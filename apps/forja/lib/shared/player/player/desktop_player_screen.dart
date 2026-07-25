@@ -213,7 +213,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   StreamSubscription<bool>? _completedSub;
   StreamSubscription<Tracks>? _tracksSub;
   StreamSubscription<PlayerLog>? _logSub;
-  /// Deferred track/subtitle auto-select — cancel on exit so it cannot
+  /// Deferred track/subtitle auto-select - cancel on exit so it cannot
   /// touch State after the route is gone.
   Timer? _trackAutoSelectTimer;
   PlaybackRecovery? _playbackRecovery;
@@ -240,7 +240,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   /// mpv renders it directly on the video frame, so the custom Flutter overlay is hidden.
   bool _isNativeSubtitle = false;
   String? _selectedExternalSubUrl;
-  /// Downloaded external subtitle file URIs keyed by source URL — reused when
+  /// Downloaded external subtitle file URIs keyed by source URL - reused when
   /// mpv wipes the track on media open (auto-pick race).
   final Map<String, String> _externalSubFileCache = {};
 
@@ -307,14 +307,14 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
 
   void _markPlaybackConfirmed(bool confirmed) {
     _playbackConfirmed = confirmed;
-    // Each open must re-earn mid / early-EOF grace — session mid alone must
+    // Each open must re-earn mid / early-EOF grace - session mid alone must
     // not paint a dead CDN as a finished episode.
     _openHadMidPlayback = false;
     if (confirmed) {
       final now = DateTime.now();
       _playbackConfirmedAt = now;
       _sessionFirstConfirmedAt ??= now;
-      // Media open resets mpv subtitle — re-apply preferred after the wipe.
+      // Media open resets mpv subtitle - re-apply preferred after the wipe.
       unawaited(_reapplyPreferredSubtitle());
     } else {
       // Keep session mid / first-confirm across source switches for credits

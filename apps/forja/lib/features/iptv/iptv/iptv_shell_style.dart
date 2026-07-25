@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 
-/// IPTV UI tokens — flat cinematic shell (RFC-025). No cyan gradients.
+/// IPTV UI tokens - flat cinematic shell (RFC-025). No cyan gradients.
 abstract final class IptvShellStyle {
   static const cinematic = ForjaShellColors.cinematic;
 

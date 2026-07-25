@@ -29,7 +29,7 @@ void main() {
 
     test('keeps thematic bullets and strips leading H1', () {
       final cleaned = AppUpdaterReleaseNotes.cleanBody('''
-# 1.2.281 — Dabaghin
+# 1.2.281 - Dabaghin
 
 ### Features
 - **Add:** Web login from the desktop app.
@@ -72,7 +72,7 @@ void main() {
           ReleaseNotesEntry(
             version: '1.2.281',
             body: '''
-# 1.2.281 — Dabaghin
+# 1.2.281 - Dabaghin
 
 ### Live & IPTV
 - **Fix:** Popular live events stay playable.
@@ -96,7 +96,7 @@ void main() {
             version: '1.2.200',
             body: '''
 ### Player
-- **Fix:** Older than installed — must not appear.
+- **Fix:** Older than installed - must not appear.
 ''',
           ),
         ],
@@ -117,7 +117,7 @@ void main() {
           ReleaseNotesEntry(
             version: '1.2.281',
             body: '''
-# 1.2.281 — Dabaghin
+# 1.2.281 - Dabaghin
 
 ### Features
 - **Add:** Only this version.

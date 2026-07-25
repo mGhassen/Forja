@@ -123,7 +123,7 @@ mixin _IptvControllerChannels on ChangeNotifier {
   /// Mirrors the Android TV `runChannelScan` exactly:
   ///   1. Bootstrap: seed the per-channel pool with all saved verified portals.
   ///   2. (Only if [scrapeMore] OR no portals at all) fetch one fresh catalog
-  ///      page and verify-until 5 are alive — newly verified portals are added
+  ///      page and verify-until 5 are alive - newly verified portals are added
   ///      to the user's library *and* the pool.
   ///   3. Take the next 8 portals from the pool, mark them attempted.
   ///   4. **In parallel** fetch live streams from all 8 portals at once,
@@ -165,7 +165,7 @@ mixin _IptvControllerChannels on ChangeNotifier {
         ..clear()
         ..addAll(pendingQueue.map((p) => p.credKey));
 
-      // Only fetch a new catalog page when the queue is empty — otherwise
+      // Only fetch a new catalog page when the queue is empty - otherwise
       // we'd be throwing away the un-tested portals from previous presses.
       if (pendingQueue.isEmpty) {
         _c.channelStatus = 'Looking for more portals…';

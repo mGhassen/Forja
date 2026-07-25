@@ -44,7 +44,7 @@ Color playerSourceStatusColor(PlayerSourceStatus status) {
 }
 
 /// Floating player menu anchored to a control button when possible.
-/// Uses [OverlayEntry] — never touches the shell route stack.
+/// Uses [OverlayEntry] - never touches the shell route stack.
 class PlayerPopupPanel {
   static const _bottomControlsZoneHeight = 120.0;
   static const _progressBarClearance = 72.0;
@@ -104,7 +104,7 @@ class PlayerPopupPanel {
   }) {
     if (!context.mounted) return Future.value();
 
-    // Read overlay ancestors before [dismiss] — [context] may live inside the
+    // Read overlay ancestors before [dismiss] - [context] may live inside the
     // panel we are about to remove (drill-in / back navigation).
     final shellScope = ShellScope.maybeOf(context);
     final ShellProfile capturedProfile;
@@ -269,7 +269,7 @@ class PlayerPopupPanel {
                     Positioned.fill(
                       child: GestureDetector(
                         onTap: close,
-                        // Opaque hit target — fully transparent colors can let
+                        // Opaque hit target - fully transparent colors can let
                         // the seek bar under the overlay still receive taps on
                         // desktop (Source / Audio / Settings menus sit above it).
                         behavior: HitTestBehavior.opaque,
@@ -335,7 +335,7 @@ class PlayerPopupPanel {
         false;
     if (!tv) return child;
     // FocusScope (not bare Focus) so FocusableControl D-pad stays inside the
-    // menu — otherwise FocusScope.of() resolves to the player chrome underneath.
+    // menu - otherwise FocusScope.of() resolves to the player chrome underneath.
     return FocusScope(
       debugLabel: 'player-tv-menu',
       autofocus: true,
@@ -417,7 +417,7 @@ class _PlayerPopupListFocusScopeState extends State<PlayerPopupListFocusScope> {
   Widget build(BuildContext context) => widget.child;
 }
 
-/// Floating-menu surface tokens — flat dark chrome + brand-green accent.
+/// Floating-menu surface tokens - flat dark chrome + brand-green accent.
 abstract final class PlayerPopupTokens {
   static const Color shellBg = Color(0xFF0E0E0E);
   static const Color cardBg = Color(0xFF161616);
@@ -652,7 +652,7 @@ class PlayerPopupNavRow extends StatefulWidget {
   final String? subtitle;
   final String? value;
 
-  /// When true the row uses the brand-green accent (green icon box + border) —
+  /// When true the row uses the brand-green accent (green icon box + border) -
   /// e.g. a language group that contains the active subtitle.
   final bool selected;
   final VoidCallback? onTap;
@@ -671,13 +671,13 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
     return v == 'on' ||
         v == 'auto' ||
         v == 'normal' ||
-        (!v.contains('off') && v != '—' && v != '-');
+        (!v.contains('off') && v != '-');
   }
 
   @override
   Widget build(BuildContext context) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    // Opaque cardBg would cover FocusableControl's flat focus fill — paint
+    // Opaque cardBg would cover FocusableControl's flat focus fill - paint
     // the gray highlight on the row itself (same look as option chips).
     final bg = widget.selected
         ? PlayerPopupTokens.accentFill
@@ -802,7 +802,7 @@ class PlayerPopupValueBadge extends StatelessWidget {
   }
 }
 
-/// Segmented option chip — selected = brand green fill / dark text.
+/// Segmented option chip - selected = brand green fill / dark text.
 class PlayerPopupOptionChip extends StatelessWidget {
   const PlayerPopupOptionChip({
     super.key,

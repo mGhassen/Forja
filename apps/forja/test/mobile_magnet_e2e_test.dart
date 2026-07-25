@@ -6,7 +6,7 @@ import 'package:rust/rust.dart';
 import 'helpers/rust_test_init.dart';
 import 'helpers/torrent_e2e.dart';
 
-/// Mobile magnet E2E — run on Android/iOS device or emulator:
+/// Mobile magnet E2E - run on Android/iOS device or emulator:
 ///   ./scripts/run_mobile_magnet_e2e.sh
 /// Optional full magnet flow (slow, needs network):
 ///   TORRENT_E2E=1 ./scripts/run_mobile_magnet_e2e.sh
@@ -72,7 +72,7 @@ void main() {
     await svc.cleanup();
   });
 
-  test('magnet stream E2E (optional — TORRENT_E2E=1)', () async {
+  test('magnet stream E2E (optional - TORRENT_E2E=1)', () async {
     final magnet = torrentE2eMagnet();
     if (magnet == null) return;
     await runMagnetStreamE2e(magnet);

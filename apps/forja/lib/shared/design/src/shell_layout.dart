@@ -11,7 +11,7 @@ import 'package:forja/shared/design/src/shell_tokens.dart';
 bool isTvProfile(BuildContext context) =>
     ShellScope.profileOf(context) == ShellProfile.tv;
 
-/// System overscan inset (when the device reports padding) — applied once in
+/// System overscan inset (when the device reports padding) - applied once in
 /// [ShellScaffold]; child [SafeArea] must not add horizontal padding again.
 double shellTvSafeHorizontalInset(BuildContext context) {
   if (!isTvProfile(context)) return 0;
@@ -228,7 +228,7 @@ TextStyle shellSectionSubtitleTextStyle(BuildContext context) => TextStyle(
       fontSize: shellScaled(context, 11).clamp(10.0, 11.0),
     );
 
-/// Desktop cinematic hero text column — prefer synopsis over a full logo slot.
+/// Desktop cinematic hero text column - prefer synopsis over a full logo slot.
 class ShellHeroDesktopTextLayout {
   const ShellHeroDesktopTextLayout({
     required this.titleHeight,

@@ -7,9 +7,9 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 
-/// Official Miruro domains — overridable via [ProviderRuntimeConfig] (RFC-039).
+/// Official Miruro domains - overridable via [ProviderRuntimeConfig] (RFC-039).
 ///
-/// Prefer `.tv` first — it matches the public site users open in a browser;
+/// Prefer `.tv` first - it matches the public site users open in a browser;
 /// `.to` is still tried as a mirror.
 class MiruroDomains {
   MiruroDomains._();
@@ -133,7 +133,7 @@ class MiruroPipeSession {
             '${error.description} (${error.type})',
           );
         }
-        // Do not markReady on main-frame errors — that skipped CF wait and
+        // Do not markReady on main-frame errors - that skipped CF wait and
         // piped immediately into 403. Let the boot timeout fail over domains.
       },
     );
@@ -173,7 +173,7 @@ class MiruroPipeSession {
             const title = document.title || '';
             const t = title.toLowerCase();
             const b = (document.body && document.body.innerText) || '';
-            // Empty title = blank/error document — not a cleared app shell.
+            // Empty title = blank/error document - not a cleared app shell.
             const blocked =
               !title.trim() ||
               t.includes('just a moment') ||
@@ -188,7 +188,7 @@ class MiruroPipeSession {
         if (value is Map && value['blocked'] != true) {
           final title = value['title']?.toString() ?? '';
           if (title.trim().isEmpty) {
-            // Keep polling — never treat blank docs as CF-cleared.
+            // Keep polling - never treat blank docs as CF-cleared.
           } else {
             if (kDebugMode) {
               debugPrint('[MiruroPipe] CF clear on $origin ($title)');
@@ -197,12 +197,12 @@ class MiruroPipeSession {
           }
         }
       } catch (_) {
-        // JS bridge glitches (unsupported type) — keep polling, do not abort.
+        // JS bridge glitches (unsupported type) - keep polling, do not abort.
       }
       await Future.delayed(const Duration(milliseconds: 400));
     }
     if (kDebugMode) {
-      debugPrint('[MiruroPipe] CF wait timed out on $origin — trying pipe anyway');
+      debugPrint('[MiruroPipe] CF wait timed out on $origin - trying pipe anyway');
     }
   }
 

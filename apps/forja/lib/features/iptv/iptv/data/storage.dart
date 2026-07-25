@@ -9,7 +9,7 @@ import 'models.dart';
 String iptvPortalPasswordMapKey(String url, String username) =>
     '${url.trim()}|${username.trim()}'.toLowerCase();
 
-/// Prefs JSON for one portal — never includes the password.
+/// Prefs JSON for one portal - never includes the password.
 Map<String, dynamic> iptvPortalMetadataJson(VerifiedPortal v) => {
       'url': v.portal.url,
       'username': v.portal.username,
@@ -141,7 +141,7 @@ class IptvStore {
     }
   }
 
-  /// Persist local IPTV cache. Cloud is master — [scheduleSync] only for real
+  /// Persist local IPTV cache. Cloud is master - [scheduleSync] only for real
   /// user edits (add/edit/delete). Profile wipe / pull apply pass false.
   static Future<void> save(
     List<VerifiedPortal> list, {
@@ -162,7 +162,7 @@ class IptvStore {
         json.encode(list.map(iptvPortalMetadataJson).toList()),
       );
     } else {
-      // Keychain unavailable — keep portals usable; passwords stay in prefs.
+      // Keychain unavailable - keep portals usable; passwords stay in prefs.
       final arr = list
           .map(
             (v) => {
@@ -541,7 +541,7 @@ class IptvLiveChannelListsStore {
     return next;
   }
 
-  /// User-pinned Live category ids — first = top under Already watched.
+  /// User-pinned Live category ids - first = top under Already watched.
   static Future<List<String>> loadPinnedCategories(String portalKey) async {
     final prefs = await SharedPreferences.getInstance();
     return List<String>.from(

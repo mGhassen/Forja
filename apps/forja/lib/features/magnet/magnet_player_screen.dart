@@ -49,7 +49,7 @@ class _MagnetPlayerScreenState extends State<MagnetPlayerScreen> {
 
       final files = await _torrent.listTorrentFiles(magnet);
       if (files == null || files.isEmpty) {
-        throw Exception('No files found — metadata timeout');
+        throw Exception('No files found - metadata timeout');
       }
 
       setState(() {

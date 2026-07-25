@@ -185,7 +185,7 @@ class TorrentReleaseMetadata {
         ...sourceTags.take(1),
       ];
 
-  /// Single-line meta for list tiles — flags + key tags, no pill chrome.
+  /// Single-line meta for list tiles - flags + key tags, no pill chrome.
   String get compactMetaLine {
     final parts = <String>[];
     final f = flags.trim();

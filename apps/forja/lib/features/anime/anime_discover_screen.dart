@@ -1,4 +1,4 @@
-// Anime discover — chip-based filters + paginated grid.
+// Anime discover - chip-based filters + paginated grid.
 // Mirrors DiscoverScreen aesthetics.
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -386,7 +386,7 @@ class _AnimeDiscoverScreenState extends State<AnimeDiscoverScreen> {
                     size: 64),
                 const SizedBox(height: 12),
                 Text(
-                  'No results — try different filters',
+                  'No results - try different filters',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
                   ),

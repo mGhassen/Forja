@@ -6,7 +6,7 @@ void main() {
   group('Megaplay AniList embeds', () {
     final service = AnimeService();
 
-    test('uses /stream/ani/{anilist}/{ep}/{lang} — never Anikoto s-2', () {
+    test('uses /stream/ani/{anilist}/{ep}/{lang} - never Anikoto s-2', () {
       final embeds = service.buildAllEmbeds(
         anilistId: 5114,
         episode: 1,
@@ -57,7 +57,7 @@ void main() {
       );
     });
 
-    test('VidNest always uses card AniList id — never Anikoto ani_id', () {
+    test('VidNest always uses card AniList id - never Anikoto ani_id', () {
       final embeds = service.buildAllEmbeds(
         anilistId: 171018,
         episode: 1,

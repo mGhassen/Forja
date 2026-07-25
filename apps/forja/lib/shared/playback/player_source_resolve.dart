@@ -23,7 +23,7 @@ abstract final class PlayerSourceResolve {
         settingsOrder: settingsOrder,
       );
 
-  /// Movie/series helper — infers domain from [movie].
+  /// Movie/series helper - infers domain from [movie].
   static List<String> failoverChainForMovie({
     required Movie? movie,
     required Map<String, dynamic> providers,
@@ -81,7 +81,7 @@ abstract final class PlayerSourceResolve {
         isCancelled: isCancelled,
         onHitsUpdated: onHitsUpdated,
         onProgress: onProgress,
-        // First playable wins — never keep scanning siblings in the background
+        // First playable wins - never keep scanning siblings in the background
         // after a working stream is found (manual Source taps still resolve).
         fillBackgroundHits: fillBackgroundHits ?? false,
       );
@@ -106,7 +106,7 @@ abstract final class PlayerSourceResolve {
     required int episode,
     bool Function()? isCancelled,
     /// Manual reload / force-refresh: drop session+disk and re-extract.
-    /// Never read cache on this path — user asked for a fresh check.
+    /// Never read cache on this path - user asked for a fresh check.
     bool bypassDiskCache = false,
   }) async {
     final cacheKey = WebstreamingStreamCache.cacheKeyFromProgress(

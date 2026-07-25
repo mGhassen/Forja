@@ -42,7 +42,7 @@ class SettingsCategoryMeta {
   final String subtitle;
   final IconData icon;
 
-  /// When true, the detail body fills the pane (no outer scroll) — for tabbed UIs.
+  /// When true, the detail body fills the pane (no outer scroll) - for tabbed UIs.
   final bool fillViewport;
 }
 

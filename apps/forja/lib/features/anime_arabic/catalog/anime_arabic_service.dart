@@ -1,6 +1,6 @@
 // AnimeSlayer (animeslayer.to) backend.
 //
-// Server-rendered HTML — we scrape the home & title pages, decode the
+// Server-rendered HTML - we scrape the home & title pages, decode the
 // XOR/base64 obfuscated `data-href` attributes, and surface clean models
 // to the UI. Stream extraction itself is delegated to StreamExtractor
 // against the resolved /e/<slug>#<token> page (it sniffs the embedded
@@ -67,7 +67,7 @@ class AnimeArabicService {
   Future<List<ArabicAnimeCard>> search(String query) async {
     final q = query.trim();
     if (q.isEmpty) return [];
-    // Site exposes a JSON search API. Use it directly — no scraping.
+    // Site exposes a JSON search API. Use it directly - no scraping.
     final body = await _get('/api/search.php?q=${Uri.encodeQueryComponent(q)}');
     try {
       final raw = jsonDecode(body);
@@ -190,7 +190,7 @@ class AnimeArabicService {
     final out = <ArabicAnimeCard>[];
     final seen = <String>{};
 
-    // Pattern A — media-card / item-link with data-href (XOR encoded slug)
+    // Pattern A - media-card / item-link with data-href (XOR encoded slug)
     final reA = RegExp(
         r'data-href="([A-Za-z0-9+/=]+)"[\s\S]{0,1500}?'
         r'<img[^>]*?src="([^"]+)"[^>]*?alt="([^"]*)"[\s\S]{0,1500}?'
@@ -213,7 +213,7 @@ class AnimeArabicService {
       final tB = m.group(5);
       var title = (tA?.isNotEmpty == true ? tA! : (tB?.isNotEmpty == true ? tB! : alt)).trim();
       title = _stripBrand(title);
-      // Many alts say "Scum of the Brave" placeholder — fall back to humanized slug.
+      // Many alts say "Scum of the Brave" placeholder - fall back to humanized slug.
       if (title.isEmpty || title.toLowerCase().contains('scum of the brave')) {
         title = _humanizeSlug(slug);
       }
@@ -303,7 +303,7 @@ class AnimeArabicService {
       }
     }
 
-    // Episodes — JS array literal `const episodes = [...]`
+    // Episodes - JS array literal `const episodes = [...]`
     final episodes = <ArabicEpisode>[];
     final epsBlock =
         RegExp(r'const\s+episodes\s*=\s*\[([\s\S]*?)\];').firstMatch(html);
@@ -328,7 +328,7 @@ class AnimeArabicService {
       }
     }
     episodes.sort((a, b) => a.number.compareTo(b.number));
-    // Dedupe by episode number — site occasionally emits the same episode
+    // Dedupe by episode number - site occasionally emits the same episode
     // twice (e.g. SD + HD entries) which would render duplicate tiles.
     if (episodes.length > 1) {
       final seen = <int>{};

@@ -1,4 +1,4 @@
-// Asian Drama continue-watching card — extracted from asian_drama_screen.dart.
+// Asian Drama continue-watching card - extracted from asian_drama_screen.dart.
 
 import 'package:forja/features/asian_drama/widgets/asian_drama_widget_imports.dart';
 

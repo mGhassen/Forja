@@ -327,7 +327,7 @@ class _RailLogo extends StatelessWidget {
       );
     }
 
-    // Runtime DEV chip — no alternate logo asset.
+    // Runtime DEV chip - no alternate logo asset.
     return SizedBox(
       width: ShellTokens.navRailWidth,
       child: Column(
@@ -479,7 +479,7 @@ class _AnimatedSaturation extends StatelessWidget {
   Widget build(BuildContext context) {
     // Keep the avatar Element stable across grey↔color. A KeyedSubtree on the
     // avatar remounts [ForjaActiveProfileAvatar] and briefly flashes the default
-    // forge face while the profile reloads — visible on quick hover.
+    // forge face while the profile reloads - visible on quick hover.
     return Stack(
       alignment: Alignment.center,
       clipBehavior: Clip.none,
@@ -494,7 +494,7 @@ class _AnimatedSaturation extends StatelessWidget {
             child: child!,
           ),
         ),
-        // Sibling marker only — must not wrap the avatar (see above).
+        // Sibling marker only - must not wrap the avatar (see above).
         SizedBox.shrink(
           key: ValueKey(
             colorized ? 'nav-profile-avatar-color' : 'nav-profile-avatar-grey',
@@ -616,7 +616,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   bool _activeFor(ShellInputPolicy policy) =>
       (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
 
-  /// Fixed footprint: icon + label slot + underline gap — never grows on reveal.
+  /// Fixed footprint: icon + label slot + underline gap - never grows on reveal.
   double _contentHeight(BuildContext context) {
     final customIconSize = widget.customIconSize;
     if (customIconSize == null) {

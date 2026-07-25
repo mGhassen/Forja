@@ -15,5 +15,5 @@ do
     exit 0
   fi
 done
-echo "warning: libffi.dylib not found — run ./scripts/build_rust.sh (Dart fallbacks active)"
+echo "warning: libffi.dylib not found - run ./scripts/build_rust.sh (Dart fallbacks active)"
 exit 0

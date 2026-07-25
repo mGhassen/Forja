@@ -24,7 +24,7 @@ class CatalogSourcesSessionCache {
         })
       >{};
 
-  /// Stable key — TV always uses 1-based season/episode.
+  /// Stable key - TV always uses 1-based season/episode.
   static String cacheKey({
     required int mediaId,
     required String mediaType,

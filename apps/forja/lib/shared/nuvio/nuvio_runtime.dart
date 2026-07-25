@@ -8,12 +8,12 @@
 // (iOS/macOS) backends.
 //
 // Design summary:
-//   * `flutter_js`'s built-in xhr/fetch is **disabled** — we route every
+//   * `flutter_js`'s built-in xhr/fetch is **disabled** - we route every
 //     network call through our own Dart-side bridge (`__native_fetch`)
 //     using `package:http`, with full header / body / status / redirect URL
 //     fidelity. This is what the upstream Nuvio host does and is the only
 //     way the third-party scrapers reliably resolve TMDB metadata.
-//   * No use of `flutter_js`'s `handlePromise` — its 20 ms polling loop
+//   * No use of `flutter_js`'s `handlePromise` - its 20 ms polling loop
 //     builds a recursive `Future.delayed` chain that stack-overflows on
 //     long-running scrapers. Instead we drive the QuickJS event loop
 //     ourselves with a non-recursive `executePendingJob` pump and capture
@@ -36,7 +36,7 @@
 //     are set immediately before `getStreams(...)` runs so providers that
 //     read settings see the right values.
 //   * `getStreams` is resolved from `module.exports.getStreams ||
-//     globalThis.getStreams` — many community scrapers attach to the global.
+//     globalThis.getStreams` - many community scrapers attach to the global.
 //
 // Public API (unchanged from the previous version, so `nuvio_service.dart`
 // keeps working without changes):
@@ -71,7 +71,7 @@ class NuvioRuntime {
   // dropped instead of feeding cancelled scrapers.
   int _fetchGeneration = 0;
   final Map<int, int> _fetchGens = {};
-  /// When false, [NuvioFetchStart] refuses new HTTP — stops orphaned JS
+  /// When false, [NuvioFetchStart] refuses new HTTP - stops orphaned JS
   /// scrapers from restarting requests after cancel/timeout.
   bool _acceptingFetches = false;
   int _activeGetStreams = 0;
@@ -92,7 +92,7 @@ class NuvioRuntime {
     if (_initCompleter != null) return _initCompleter!.future;
     _initCompleter = Completer<void>();
     try {
-      // Disable the built-in xhr/fetch — we install our own native bridge
+      // Disable the built-in xhr/fetch - we install our own native bridge
       // below. Bigger stack so recursive parser code in cheerio doesn't blow.
       final rt = getJavascriptRuntime(
         xhr: false,
@@ -226,7 +226,7 @@ class NuvioRuntime {
     br('NuvioFetchStart', (args) {
       try {
         // Panel close / abort leaves scrapers' Promise chains alive on the
-        // shared QuickJS loop — refuse new HTTP so they cannot keep loading.
+        // shared QuickJS loop - refuse new HTTP so they cannot keep loading.
         if (!_acceptingFetches || _activeGetStreams <= 0) return null;
         final m = args is Map ? args : <String, dynamic>{};
         final id = (m['id'] as num).toInt();
@@ -264,7 +264,7 @@ class NuvioRuntime {
       return null;
     });
 
-    // setTimeout / setInterval — backed by real Dart Timer.
+    // setTimeout / setInterval - backed by real Dart Timer.
     br('NuvioTimerSchedule', (args) {
       try {
         final m = args is Map ? args : <String, dynamic>{};
@@ -363,7 +363,7 @@ class NuvioRuntime {
   var module = { exports: {} };
   var exports = module.exports;
   var require = globalThis.__nuvioRequire;
-  // Fresh global getStreams slot per load — so we can detect whether the
+  // Fresh global getStreams slot per load - so we can detect whether the
   // scraper attached to it without picking up a previous scraper's value.
   globalThis.getStreams = undefined;
   try {
@@ -523,7 +523,7 @@ class NuvioRuntime {
     } catch (_) {}
     _http = http.Client();
     // Leave-path cancel is wired from several layers (details dispose, domain
-    // resolver, HostProviderAdapter) — only log when something was actually
+    // resolver, HostProviderAdapter) - only log when something was actually
     // running so idle tab switches stay quiet.
     if (hadWork) {
       debugPrint('[NuvioRuntime] abortPendingWork');
@@ -558,7 +558,7 @@ class NuvioRuntime {
     }
     Map<String, dynamic> envelope;
     try {
-      // Default UA — many CDNs reject the empty/Dart UA.
+      // Default UA - many CDNs reject the empty/Dart UA.
       headers.putIfAbsent('User-Agent',
           () => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
 
@@ -629,7 +629,7 @@ class NuvioRuntime {
   void _resolveFetch(int id, Map<String, dynamic> envelope) {
     final rt = _runtime;
     if (rt == null) return;
-    // Embed the envelope as a JS object literal — jsonEncode produces
+    // Embed the envelope as a JS object literal - jsonEncode produces
     // a valid JS expression for any JSON-encodable value.
     final js =
         'try { globalThis.__nuvioFetchResolve($id, ${jsonEncode(envelope)}); } catch (e) {}';
@@ -702,7 +702,7 @@ class NuvioRuntime {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Polyfill JS — kept as a single string literal for atomic install.
+// Polyfill JS - kept as a single string literal for atomic install.
 // Mirrors the `buildPolyfillCode` in NuvioMedia/NuvioMobile's
 // `PluginRuntime.kt` and adds `__native_fetch` glue + the cheerio shim.
 // ──────────────────────────────────────────────────────────────────────────
@@ -971,7 +971,7 @@ const String _polyfillsJs = r'''
     });
   };
 
-  // Minimal XMLHttpRequest shim — built on top of fetch — so any scraper
+  // Minimal XMLHttpRequest shim - built on top of fetch - so any scraper
   // using the older API still works.
   globalThis.XMLHttpRequest = function(){
     this.readyState = 0;
@@ -1238,7 +1238,7 @@ const String _polyfillsJs = r'''
   };
   globalThis.CryptoJS = CryptoJS;
 
-  // Default per-call context — overwritten per scrape.
+  // Default per-call context - overwritten per scrape.
   globalThis.SCRAPER_ID = '';
   globalThis.SCRAPER_SETTINGS = {};
 })();

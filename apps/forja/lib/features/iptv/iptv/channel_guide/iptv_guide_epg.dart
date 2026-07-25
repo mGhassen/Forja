@@ -209,7 +209,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
               ),
               const SizedBox(height: 6),
               Text(
-                nowEntry.title.isEmpty ? '—' : nowEntry.title,
+                nowEntry.title.isEmpty ? '-' : nowEntry.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.plusJakartaSans(
@@ -268,7 +268,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
                             ),
                           ),
                           Text(
-                            nextEntry.title.isEmpty ? '—' : nextEntry.title,
+                            nextEntry.title.isEmpty ? '-' : nextEntry.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.plusJakartaSans(
@@ -327,7 +327,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
           ),
           const SizedBox(height: 8),
           Text(
-            nowEntry.title.isEmpty ? '—' : nowEntry.title,
+            nowEntry.title.isEmpty ? '-' : nowEntry.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.plusJakartaSans(
@@ -399,7 +399,7 @@ class _IptvGuideEpgCardState extends State<IptvGuideEpgCard> {
               ),
               const SizedBox(height: 2),
               Text(
-                entry.title.isEmpty ? '—' : entry.title,
+                entry.title.isEmpty ? '-' : entry.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.plusJakartaSans(
@@ -437,7 +437,7 @@ class _CompactEpgRow extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              entry.title.isEmpty ? '—' : entry.title,
+              entry.title.isEmpty ? '-' : entry.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(

@@ -1,4 +1,4 @@
-// Home tab section widgets — extracted from home_screen.dart (RFC-019 Phase B).
+// Home tab section widgets - extracted from home_screen.dart (RFC-019 Phase B).
 
 import 'dart:convert';
 
@@ -162,7 +162,7 @@ class HomeContinueWatchingSectionState extends State<HomeContinueWatchingSection
         if (_resolvedBackdrops.length < raw.length) {
           _resolveMissingBackdrops(raw);
         }
-        // Deduplicate by tmdbId for shows — keep only the latest episode per show
+        // Deduplicate by tmdbId for shows - keep only the latest episode per show
         final seen = <dynamic>{};
         final history = <Map<String, dynamic>>[];
         for (final item in raw) {
@@ -359,7 +359,7 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
               ),
             ),
 
-            // Top-right actions (mouse only — TV uses card select + details via info elsewhere)
+            // Top-right actions (mouse only - TV uses card select + details via info elsewhere)
             Positioned(
               top: 6, right: 6,
               child: ExcludeFocus(

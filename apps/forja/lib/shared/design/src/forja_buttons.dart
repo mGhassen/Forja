@@ -190,7 +190,7 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
         if (custom == KeyEventResult.handled) return KeyEventResult.handled;
         final arrow = shellTvHandleRowArrows(event: event, tvMeta: widget.tvMeta);
         if (arrow == KeyEventResult.handled) return arrow;
-        // Menus / dialogs marked ShellTvLinearFocusScope — same as FocusableControl.
+        // Menus / dialogs marked ShellTvLinearFocusScope - same as FocusableControl.
         final linear = shellTvLinearMenuArrows(context: context, event: event);
         if (linear == KeyEventResult.handled) return linear;
         if (widget.tvMeta == null &&
@@ -232,7 +232,7 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   }
 }
 
-/// Text-only CTA — no border, no filled background.
+/// Text-only CTA - no border, no filled background.
 class ForjaGhostButton extends StatelessWidget {
   const ForjaGhostButton({
     super.key,
@@ -286,7 +286,7 @@ class ForjaGhostButton extends StatelessWidget {
   }
 }
 
-/// Bare icon action — soft circular fill on hover/press/focus, no border.
+/// Bare icon action - soft circular fill on hover/press/focus, no border.
 class ForjaPlainIcon extends StatefulWidget {
   const ForjaPlainIcon({
     super.key,
@@ -432,7 +432,7 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
 
 /// Top-bar action icon that matches the shell menu tabs (Films / TV Shows …):
 /// idles at [ForjaShellColors.textSecondary] and animates to white on
-/// hover/focus with **no** background fill — same color language as the tabs.
+/// hover/focus with **no** background fill - same color language as the tabs.
 class ForjaTopBarIcon extends StatefulWidget {
   const ForjaTopBarIcon({
     super.key,
@@ -535,7 +535,7 @@ class _ForjaTopBarIconState extends State<ForjaTopBarIcon> {
   }
 }
 
-/// Borderless dismiss control — soft circular fill on hover, no outline.
+/// Borderless dismiss control - soft circular fill on hover, no outline.
 class ForjaCloseButton extends StatelessWidget {
   const ForjaCloseButton({
     super.key,
@@ -584,7 +584,7 @@ class ForjaCloseButton extends StatelessWidget {
   }
 }
 
-/// Bordered square icon — use sparingly; prefer [ForjaPlainIcon] in hero chrome.
+/// Bordered square icon - use sparingly; prefer [ForjaPlainIcon] in hero chrome.
 class ForjaIconButton extends StatelessWidget {
   const ForjaIconButton({
     super.key,

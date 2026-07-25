@@ -776,7 +776,7 @@ class _MangaCardState extends State<_MangaCard> {
         ).then((_) {
           if (!mounted) return;
           widget.onLikeChanged();
-          // Reading history may have changed inside details/reader —
+          // Reading history may have changed inside details/reader -
           // tell the parent screen to reload it.
           mangaScreenState?._loadHistory();
         });

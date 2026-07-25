@@ -5,7 +5,7 @@ import 'package:rust/rust.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Full Simkl integration — PIN-based auth, watchlist sync,
+/// Full Simkl integration - PIN-based auth, watchlist sync,
 /// scrobble, history, ratings, and two-way import/export.
 class SimklService {
   // ── Singleton ──────────────────────────────────────────────────────────
@@ -32,7 +32,7 @@ class SimklService {
   Future<void>? _syncInProgress;
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  A U T H   —   P I N   F L O W
+  //  A U T H   -   P I N   F L O W
   // ═══════════════════════════════════════════════════════════════════════
 
   /// Step 1: Request a PIN code from Simkl.
@@ -83,7 +83,7 @@ class SimklService {
     return token != null && token.isNotEmpty;
   }
 
-  /// Log out — delete stored token.
+  /// Log out - delete stored token.
   Future<void> logout() async {
     await _storage.delete(key: _keyAccessToken);
     _initialSyncDone = false;
@@ -91,10 +91,10 @@ class SimklService {
     debugPrint('[Simkl] Logged out.');
   }
 
-  /// Handle 401 unauthorized — token revoked server-side.
+  /// Handle 401 unauthorized - token revoked server-side.
   void _handleUnauthorized(int statusCode) {
     if (statusCode == 401) {
-      debugPrint('[Simkl] 401 Unauthorized — token revoked, clearing auth');
+      debugPrint('[Simkl] 401 Unauthorized - token revoked, clearing auth');
       _storage.delete(key: _keyAccessToken);
       _initialSyncDone = false;
     }
@@ -196,7 +196,7 @@ class SimklService {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  W A T C H L I S T   —   C O N V E N I E N C E
+  //  W A T C H L I S T   -   C O N V E N I E N C E
   // ═══════════════════════════════════════════════════════════════════════
 
   /// Add a single item to watchlist (plan to watch).
@@ -410,7 +410,7 @@ class SimklService {
       _scrobble('stop', tmdbId: tmdbId, mediaType: mediaType, season: season, episode: episode);
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  I M P O R T   —   W A T C H L I S T   >   M Y   L I S T
+  //  I M P O R T   -   W A T C H L I S T   >   M Y   L I S T
   // ═══════════════════════════════════════════════════════════════════════
 
   /// Import the user's Simkl "plan to watch" list into the local My List.
@@ -505,7 +505,7 @@ class SimklService {
       }
 
       _initialSyncDone = true;
-      debugPrint('[Simkl] Smart sync done — watchlist: $watchlistCount, episodes: $episodesImported');
+      debugPrint('[Simkl] Smart sync done - watchlist: $watchlistCount, episodes: $episodesImported');
     } finally {
       _syncInProgress = null;
       completer.complete();

@@ -6,7 +6,7 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
-/// Navigator layered over [ShellBody] — media details and other in-shell routes.
+/// Navigator layered over [ShellBody] - media details and other in-shell routes.
 final GlobalKey<NavigatorState> shellOverlayNavigatorKey =
     GlobalKey<NavigatorState>();
 

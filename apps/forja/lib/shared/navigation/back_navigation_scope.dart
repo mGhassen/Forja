@@ -10,13 +10,13 @@ import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 /// Mouse back, Escape, macOS trackpad swipe-back, and Android system / remote
-/// Back — same level-aware pops as the in-app back control.
+/// Back - same level-aware pops as the in-app back control.
 ///
 /// On Android, Flutter finishes the [Activity] when every
 /// [WidgetsBindingObserver.didPopRoute] returns false (see
 /// [WidgetsBinding.handlePopRoute] → [SystemNavigator.pop]). The shell uses a
 /// nested overlay [Navigator], so the root route often cannot pop even while
-/// details/player are open — that used to quit to the leanback launcher.
+/// details/player are open - that used to quit to the leanback launcher.
 /// This scope always consumes Android pop-route and keeps
 /// [SystemNavigator.setFrameworkHandlesBack] true so Back never exits.
 class BackNavigationScope extends StatefulWidget {
@@ -32,7 +32,7 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
     with WidgetsBindingObserver {
   late final VoidCallback _boundBack = _onBack;
 
-  /// Global route — scrollables would otherwise eat [PointerPanZoom] before an
+  /// Global route - scrollables would otherwise eat [PointerPanZoom] before an
   /// ancestor [Listener] can treat a strong horizontal swipe as Back.
   double _panDx = 0;
   double _panDy = 0;
@@ -136,7 +136,7 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
     return false;
   }
 
-  /// Desktop / phone: match UI back — player → detail → tab stack.
+  /// Desktop / phone: match UI back - player → detail → tab stack.
   /// Does not steal focus to the nav rail or exit the app (TV-only).
   bool _handleDesktopOrMobileBack() {
     switch (ShellNavigationLevels.resolveBackTarget()) {
@@ -169,7 +169,7 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
     if (_popNavigatorOrOverlay(context)) {
       return;
     }
-    // Root of the app — stay put. Never SystemNavigator.pop() from Back.
+    // Root of the app - stay put. Never SystemNavigator.pop() from Back.
   }
 
   @override

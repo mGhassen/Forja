@@ -4,7 +4,7 @@ import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
-/// Minimalist Exo track / settings menus — [PlayerPopupPanel] chips & list tiles.
+/// Minimalist Exo track / settings menus - [PlayerPopupPanel] chips & list tiles.
 abstract final class ExoPlayerMenus {
   static Future<void> showAudio({
     required BuildContext context,

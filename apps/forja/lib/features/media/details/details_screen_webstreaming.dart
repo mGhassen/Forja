@@ -22,7 +22,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
   }
 
   Future<void> _playWebstreamingFromDetails() async {
-    // Overlay first — cache probe can take hundreds of ms with no UI.
+    // Overlay first - cache probe can take hundreds of ms with no UI.
     // Do not re-await watch history here: `_lastProgress` is already loaded in
     // initState and kept fresh via historyStream.
     await _startWebstreamingOnlyPlayback(hydrateCache: true);
@@ -84,7 +84,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
     providerId ??= _s._webstreamingActiveProviderId;
     providerSources ??= _s._webstreamingStreams;
     if (providerId == null || providerSources.isEmpty) return;
-    // Keep extraction order — player server panel must not reshuffle on play.
+    // Keep extraction order - player server panel must not reshuffle on play.
     final hasSelected = providerSources.any((s) => s.url == sourceUrl);
     final sources = hasSelected
         ? List<StreamSource>.from(providerSources)
@@ -104,7 +104,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
     await _persistWebstreamingCache(providerId: providerId, sources: sources);
   }
 
-  /// Prefer last-played URL when it still exists — do not reorder the list.
+  /// Prefer last-played URL when it still exists - do not reorder the list.
   StreamSource _preferredWebstreamingSource(List<StreamSource> sources) {
     final savedUrl = _s._lastProgress?['streamUrl'] as String?;
     if (savedUrl != null && savedUrl.trim().isNotEmpty) {
@@ -203,7 +203,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
           }
           return;
         }
-        // Stale in-memory extract (expired JWT / dead CDN) — drop and re-resolve.
+        // Stale in-memory extract (expired JWT / dead CDN) - drop and re-resolve.
         await WebstreamingStreamCache.drop(_webstreamingCacheKey());
         if (mounted) {
           setState(() {
@@ -523,7 +523,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
           }
         }
         probeNotifier.value = probes;
-        // Only finished hits — not partial cache from abandoned checks.
+        // Only finished hits - not partial cache from abandoned checks.
         unawaited(
           ProviderScoreProbeSync.syncSourcesCache(
             scope: scope,
@@ -656,7 +656,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
         await Future<void>.delayed(const Duration(milliseconds: 250));
 
         final key = hit.providerId;
-        // Winner first — otherwise pin/failover can open a sibling instead.
+        // Winner first - otherwise pin/failover can open a sibling instead.
         final sources = <StreamSource>[
           for (final s in hit.streamSources)
             if (s.url == hit.streamUrl) s,
@@ -678,7 +678,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
             _s._webstreamingStreams = sources;
             _s._webstreamingActiveProviderId = key;
           });
-          // Do not disk-cache until mpv confirms playback — dead resolves must
+          // Do not disk-cache until mpv confirms playback - dead resolves must
           // not poison the next Play for any provider.
 
           final isTv = _s._movie.mediaType == 'tv';
@@ -707,7 +707,7 @@ mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
                 providerSourcesCache: providerSourcesCache,
                 providerProbesNotifier: probeNotifier,
                 // Manual list pick pins; Auto race keeps failover on.
-                // Simple resolve: streams already probed — no Auto re-race.
+                // Simple resolve: streams already probed - no Auto re-race.
                 pinSource: manualPick || useSimpleResolve,
                 streamsPrevalidated: useSimpleResolve,
                 onSourcePinned: (sourceUrl, sourceTitle) =>

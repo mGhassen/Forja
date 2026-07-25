@@ -176,7 +176,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
       _s._loading = true;
       _s._error = null;
       _s._sportFilter = 'all';
-      // Fresh data rebuilds the time canvas — land on now again, not the
+      // Fresh data rebuilds the time canvas - land on now again, not the
       // previous pixel offset (which maps to a wrong clock after reload).
       _s._timelineAutoScrolled = false;
     });
@@ -202,7 +202,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
     }
   }
 
-  /// Sport chip / tab change rebuilds the time canvas — re-land on now.
+  /// Sport chip / tab change rebuilds the time canvas - re-land on now.
   void _setSportFilter(String id) {
     setState(() {
       _s._sportFilter = id;
@@ -342,7 +342,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
       final matches = results[1] as List<_StreamedMatch>;
 
       // Always-on Streamed rows keep a sport slug (`cricket`) but belong on
-      // the 24/7 chip — only scheduled matches feed sport chips from the API.
+      // the 24/7 chip - only scheduled matches feed sport chips from the API.
       final scheduledCats = matches
           .where((m) => !m.isAlwaysOn)
           .map((m) => m.category)
@@ -474,7 +474,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
         );
       }
       if (_s._sportFilter == 'all') {
-        // CDN-only: tournaments are not the 24/7 sport chip — keep all.
+        // CDN-only: tournaments are not the 24/7 sport chip - keep all.
         return true;
       }
       return s.tournament == _s._sportFilter;

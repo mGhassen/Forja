@@ -37,7 +37,7 @@ typedef HubSearchQuery = Future<List<HubSearchResult>> Function(String query);
 typedef HubRecommendationsLoader = Future<List<String>> Function();
 typedef HubSearchOpen = void Function(HubSearchResult result);
 
-/// Hub search overlay — desktop split layout with recommendations + result grid
+/// Hub search overlay - desktop split layout with recommendations + result grid
 /// (same structure as [SearchScreen]).
 class HubSearchPage extends StatefulWidget {
   const HubSearchPage({
@@ -619,7 +619,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
     if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      // Browse: trap — nav exit is Down → suggestions → Left.
+      // Browse: trap - nav exit is Down → suggestions → Left.
       // Editing: ignore so the caret can move.
       if (_searchFieldEditing) return KeyEventResult.ignored;
       return KeyEventResult.handled;

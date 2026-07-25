@@ -1,4 +1,4 @@
-// Anime continue-watching card — extracted from anime_screen.dart.
+// Anime continue-watching card - extracted from anime_screen.dart.
 
 import 'package:forja/features/anime/widgets/anime_widget_imports.dart';
 

@@ -8,7 +8,7 @@ import 'package:passkeys/exceptions.dart';
 ///
 /// macOS + Windows show the UI. Native macOS needs Associated Domains
 /// (`webcredentials:www.forjahq.xyz`), which requires a paid Apple Developer
-/// team to sign — Personal Team builds omit that entitlement, so the button
+/// team to sign - Personal Team builds omit that entitlement, so the button
 /// may fail with a domain-association error until a paid team is used.
 /// Linux / mobile / TV: no native passkeys.
 class ForjaPasskeys {

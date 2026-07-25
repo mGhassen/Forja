@@ -239,7 +239,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     node.requestFocus();
   }
 
-  /// Trap Left on the portal card — stay in the panel (Back exits to catalog).
+  /// Trap Left on the portal card - stay in the panel (Back exits to catalog).
   void _trapLeftEdge() {}
 
   String get _actionsRowId => 'portal-${widget.listIndex}-actions';
@@ -757,7 +757,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
         ),
         const SizedBox(height: 4),
         Text(
-          _shareCode ?? '—',
+          _shareCode ?? '-',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.jetBrainsMono(

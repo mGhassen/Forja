@@ -35,7 +35,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   Future<void> _recordStreamCheckSuccess(String providerId) async {
     final scope = _scoreScope;
     if (scope == null || providerId.isEmpty) return;
-    // Server + stream are linked — commit +2+2 together.
+    // Server + stream are linked - commit +2+2 together.
     await ProviderScoreMemory.recordLinkedStreamsUp(scope, providerId);
     ProviderScoreProbeSync.markScoredServerUp(scope, providerId);
     _notifySourceMenuChanged();
@@ -44,7 +44,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   Future<void> _recordStreamCheckFailure(String providerId) async {
     final scope = _scoreScope;
     if (scope == null || providerId.isEmpty) return;
-    // Only when every known stream is dead — linked +2−2, not server alone.
+    // Only when every known stream is dead - linked +2−2, not server alone.
     final applied = await ProviderScoreMemory.recordAllStreamsDownIfNeeded(
       scope: scope,
       providerId: providerId,
@@ -145,7 +145,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     if (_s._isReloadingStreams.value) return;
     _s._isReloadingStreams.value = true;
     try {
-      // Manual reload — never revive session/disk URLs.
+      // Manual reload - never revive session/disk URLs.
       await _dropTitleWebstreamingCache();
       if (widget.onReloadStreams != null) {
         final fresh = await widget.onReloadStreams!();
@@ -161,7 +161,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
         }
         return;
       }
-      // Webstreaming / drama: no host callback — force-refresh the active
+      // Webstreaming / drama: no host callback - force-refresh the active
       // server so header reload is not a no-op after cache play.
       final pid = _s._currentProvider ?? widget.activeProvider;
       if (pid == null || pid.isEmpty) return;
@@ -260,7 +260,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
         return PlayerSourceStatus.checking;
       }
       if (_s._failedSourceIndices.contains(i)) return PlayerSourceStatus.failed;
-      // Not URL-checked yet — gray until probe or play confirms.
+      // Not URL-checked yet - gray until probe or play confirms.
       return PlayerSourceStatus.unchecked;
     });
   }
@@ -298,7 +298,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     PlayerTorrentFilePanel.dismiss();
     // Exit / failover must not restore focus onto chrome that is going away.
     playerMenuClearReturnFocus();
-    // Do not cancel Engine jobs — leaving the player must not abort a
+    // Do not cancel Engine jobs - leaving the player must not abort a
     // torrentStream / magnet resolve started from details underneath.
     DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
   }
@@ -325,7 +325,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     _notifySourceMenuChanged();
   }
 
-  /// Extract-only — do not score. Server ±2 commits with stream outcome.
+  /// Extract-only - do not score. Server ±2 commits with stream outcome.
   void _scoreServerUp(String providerId) {
     if (providerId.isEmpty) return;
   }
@@ -369,7 +369,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   }
 
   void _syncPanelAfterPlaybackConfirmed() {
-    // Playing — stop leftover Auto / host extracts; do not keep checking
+    // Playing - stop leftover Auto / host extracts; do not keep checking
     // other providers in the background.
     DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     _s._refreshPanelPlayingStream();
@@ -421,7 +421,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
   }
 
   bool get _hasStreamPicker {
-    // Catalog Sources (magnet / Stremio Direct / Nuvio) already covers switching —
+    // Catalog Sources (magnet / Stremio Direct / Nuvio) already covers switching -
     // don't show the layers server picker alongside it.
     if (_usesCatalogSourcesPanel) return false;
     final hasProviders =
@@ -431,7 +431,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     return hasProviders || hasSources;
   }
 
-  /// Magnet or Stremio/Nuvio catalog play — link button opens Sources panel.
+  /// Magnet or Stremio/Nuvio catalog play - link button opens Sources panel.
   bool get _usesCatalogSourcesPanel {
     if (widget.movie == null) return false;
     final magnet = _s._activeMagnet ?? widget.magnetLink;
@@ -619,7 +619,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
           playUrl: _s._currentUrl,
           catalogUrl: _s._currentPlayingCatalogUrl,
         );
-    // Playing row: keep active glyph — probe in background without Checking….
+    // Playing row: keep active glyph - probe in background without Checking….
     if (playingRow) {
       _setUrlCheckStatus(source.url, PlayerSourceStatus.active);
     } else {
@@ -743,7 +743,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
       _s._statusController.clear();
       _s._markPlaybackConfirmed(false);
 
-      // Validated — stop the prior stream before opening the new one.
+      // Validated - stop the prior stream before opening the new one.
       _s._autoTracksAppliedForSource = false;
       _s._durationNotifier.value = Duration.zero;
       _s._positionNotifier.value = Duration.zero;
@@ -801,7 +801,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
         setState(() {
           _s._currentUrl = openUrl;
           _s._current111477FileUrl = source.url;
-          // Keep the selected index — resetting to 0 played a different stream.
+          // Keep the selected index - resetting to 0 played a different stream.
           _s._currentFallbackSourceIndex = index.clamp(
             0,
             (_s._currentSources?.length ?? 1) - 1,
@@ -856,7 +856,7 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     }
   }
 
-  /// Preview must never seek — seeking while paused was moving the real
+  /// Preview must never seek - seeking while paused was moving the real
   /// playhead/thumb to the hover X ("magnetized" progress).
   Future<Uint8List?> _captureSeekPreview(Duration _) async {
     try {

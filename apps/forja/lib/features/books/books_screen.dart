@@ -104,7 +104,7 @@ class _BooksScreenState extends State<BooksScreen> {
   Future<void> _resumeBook(BookProgress entry) async {
     final file = File(entry.filePath);
     if (file.existsSync() && file.lengthSync() > 1000) {
-      // File still on disk — open directly
+      // File still on disk - open directly
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -118,7 +118,7 @@ class _BooksScreenState extends State<BooksScreen> {
       );
       _loadReadingList();
     } else {
-      // File was deleted — re-download then resume
+      // File was deleted - re-download then resume
       _showDownloadDialog(entry.book, resumeChapter: entry.chapter);
     }
   }
@@ -608,7 +608,7 @@ class _BooksScreenState extends State<BooksScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Download dialog — resolves edition → MD5 → URL → downloads to persistent dir
+// Download dialog - resolves edition → MD5 → URL → downloads to persistent dir
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _DownloadDialog extends StatefulWidget {

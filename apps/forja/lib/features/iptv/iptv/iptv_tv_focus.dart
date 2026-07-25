@@ -26,7 +26,7 @@ bool iptvFocusActive(
       focused: focused,
     );
 
-/// TV D-pad focus — green highlight like player chrome controls.
+/// TV D-pad focus - green highlight like player chrome controls.
 bool iptvTvFocused(BuildContext context, {required bool focused}) =>
     iptvUseTvFocus(context) && focused;
 
@@ -65,7 +65,7 @@ Color iptvFocusOutlineColor({
   return idleOverride ?? Colors.white.withValues(alpha: idleAlpha);
 }
 
-/// Button/chip surface when D-pad focused — matches player chrome controls.
+/// Button/chip surface when D-pad focused - matches player chrome controls.
 BoxDecoration iptvFocusButtonDecoration({
   required bool active,
   required bool tvFocused,
@@ -166,7 +166,7 @@ VoidCallback iptvStreamLeftEdge(IptvController ctrl, IptvStream stream) {
 bool iptvFocusBrowserCategories(IptvController ctrl) =>
     iptvFocusRowItem('browser-categories', ctrl.browserCategoryFocusIndex);
 
-/// First catalog group row (sidebar) — preferred TV landing focus.
+/// First catalog group row (sidebar) - preferred TV landing focus.
 bool iptvFocusCatalogGroupRow([int index = 0]) =>
     iptvFocusRowItem('browser-categories', index);
 
@@ -214,7 +214,7 @@ bool iptvRestoreCatalogFocus({int? portalIndex}) {
   return false;
 }
 
-/// Nav Enter on IPTV — land on the first group row once catalog is ready.
+/// Nav Enter on IPTV - land on the first group row once catalog is ready.
 void iptvEnterFromNav(IptvController ctrl) {
   if (ctrl.activePortal == null) {
     iptvFocusRowItem('iptv-open-portal', 0);

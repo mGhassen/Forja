@@ -97,7 +97,7 @@ void main() {
 
     test('ignores reliability effectiveRank so checking a server does not reshuffle', () {
       // After a check, SourceEngine bumps effectiveRank for the winner while
-      // settingsRank stays fixed — panel must keep settings order.
+      // settingsRank stays fixed - panel must keep settings order.
       final scoreRows = {
         'vixsrc': ProviderOrderRow(
           id: 'vixsrc',

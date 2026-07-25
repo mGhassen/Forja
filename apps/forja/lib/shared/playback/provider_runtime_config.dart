@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Remote overlay for provider hosts / paths / CDN Referer rules (RFC-039).
 ///
 /// Built-ins always win when remote is missing or invalid. Extract logic stays
-/// in Rust/Dart — this only retargets URLs and playback headers.
+/// in Rust/Dart - this only retargets URLs and playback headers.
 class ProviderRuntimeConfig {
   ProviderRuntimeConfig._();
   static final ProviderRuntimeConfig instance = ProviderRuntimeConfig._();
@@ -41,7 +41,7 @@ class ProviderRuntimeConfig {
     final raw = sourceKey.trim();
     if (raw.isEmpty) return AnimePlaybackProfile.fallback;
     final base = _stripAnimePanelSuffix(raw).toLowerCase();
-    // Retired alias — same stack as Megaplay.
+    // Retired alias - same stack as Megaplay.
     if (base == 'vidwish') {
       return animePlaybackProfile('megaplay');
     }
@@ -78,7 +78,7 @@ class ProviderRuntimeConfig {
       return _httpsOrigin(megaplay.host, fallback: 'megaplay.buzz');
     }
 
-    // Videasy / wings CDN — same as the browser player origin.
+    // Videasy / wings CDN - same as the browser player origin.
     if (key == 'videasy' || key.startsWith('videasy/')) {
       final raw = (apis['videasyPlayerOrigin'] ?? 'https://player.videasy.to')
           .trim();
@@ -279,7 +279,7 @@ class ProviderRuntimeConfig {
       );
       if (parsed == null) {
         if (kDebugMode) {
-          debugPrint('[ProviderRuntime] remote schema unsupported — builtins');
+          debugPrint('[ProviderRuntime] remote schema unsupported - builtins');
         }
         return;
       }
@@ -344,7 +344,7 @@ class AnimeEmbedHostConfig {
     required this.scrapeReferer,
   });
 
-  /// Megaplay AniList id path — card AniList Media id only (no catalog remap).
+  /// Megaplay AniList id path - card AniList Media id only (no catalog remap).
   String buildAniUrl({
     required int anilistId,
     required int episode,
@@ -358,7 +358,7 @@ class AnimeEmbedHostConfig {
     );
   }
 
-  /// Megaplay MAL id path — MAL id from relations/Jikan, not AniList `idMal`.
+  /// Megaplay MAL id path - MAL id from relations/Jikan, not AniList `idMal`.
   String buildMalUrl({
     required int malId,
     required int episode,
@@ -528,7 +528,7 @@ class CdnRefererRule {
 
 /// How Forja probes a resolved anime stream before open / cache.
 enum AnimeProbeMode {
-  /// GET playlist 200 + `#EXTM3U` — no segment sampling (AnimePahe / Miruro).
+  /// GET playlist 200 + `#EXTM3U` - no segment sampling (AnimePahe / Miruro).
   masterOnly,
 
   /// Sample media segments for PNG ads vs PNG-wrapped TS (Megaplay family).
@@ -541,7 +541,7 @@ enum AnimeProbeMode {
   skip,
 }
 
-/// PNG-shell unwrap policy (RFC-044) — content-driven, not CDN hostname lists.
+/// PNG-shell unwrap policy (RFC-044) - content-driven, not CDN hostname lists.
 enum AnimePngStripMode {
   /// Sample a media segment; strip only when bytes wrap MPEG-TS.
   auto,
@@ -549,7 +549,7 @@ enum AnimePngStripMode {
   /// Always route HLS through `/hls-proxy?strip=png`.
   force,
 
-  /// Never strip (normal HLS — AnimePahe / owocdn).
+  /// Never strip (normal HLS - AnimePahe / owocdn).
   never,
 }
 
@@ -570,7 +570,7 @@ class AnimePlaybackProfile {
 
   static const fallback = AnimePlaybackProfile(probe: AnimeProbeMode.masterOnly);
 
-  /// Sync hint only — [force] always; [auto] host needles are legacy fast-path
+  /// Sync hint only - [force] always; [auto] host needles are legacy fast-path
   /// hints for callers. Strip decision for [auto] is content-sample only
   /// ([applyAnimePngStripIfNeeded] / [animePngStripShouldProxy]).
   bool urlNeedsPngStrip(String url) {
@@ -832,7 +832,7 @@ class ProviderRuntimeSnapshot {
         animePlaybackProfiles: _builtinAnimePlaybackProfiles,
       );
 
-  /// Every in-scope anime [sourceKey] — remote overlay merges by key.
+  /// Every in-scope anime [sourceKey] - remote overlay merges by key.
   static const Map<String, AnimePlaybackProfile> _builtinAnimePlaybackProfiles =
       {
     'megaplay': AnimePlaybackProfile(
@@ -843,7 +843,7 @@ class ProviderRuntimeSnapshot {
       probe: AnimeProbeMode.segmentPoisonSample,
       pngStrip: AnimePngStripMode.auto,
     ),
-    // Miruro: match v1.2.406 — masterOnly + never strip. Segment-poison +
+    // Miruro: match v1.2.406 - masterOnly + never strip. Segment-poison +
     // open-pipeline classify false-killed AnimePahe/AllManga/AnimeDao/AnimeGG
     // (and forced miruro.tv Referer broke upstream CDNs).
     'miruro:bee': AnimePlaybackProfile(
@@ -995,7 +995,7 @@ class ProviderRuntimeSnapshot {
         );
       }
     }
-    // Ignore retired anime.vidwish overlay — host redirects to megaplay.
+    // Ignore retired anime.vidwish overlay - host redirects to megaplay.
     profiles.remove('vidwish');
     return ProviderRuntimeSnapshot(
       schema: schema,
@@ -1025,7 +1025,7 @@ class ProviderRuntimeSnapshot {
     }
     profiles.remove('vidwish');
     // Stale remote (20260723010630) blanketed every Miruro pipe with
-    // segmentPoisonSample — false-kills AnimePahe/AllManga/AnimeDao/AnimeGG.
+    // segmentPoisonSample - false-kills AnimePahe/AllManga/AnimeDao/AnimeGG.
     // Builtins + restore migration keep masterOnly; clamp until remote catches up.
     _clampStaleMiruroSegmentPoison(profiles);
     return ProviderRuntimeSnapshot(
@@ -1041,7 +1041,7 @@ class ProviderRuntimeSnapshot {
           ? overlay.kisskhMirrors
           : kisskhMirrors,
       // Overlay first (ops override), then builtins whose host needles are
-      // not fully covered — incomplete remote edits must not wipe nekostream.
+      // not fully covered - incomplete remote edits must not wipe nekostream.
       cdnRefererRules: _unionCdnRefererRules(
         builtins: cdnRefererRules,
         overlay: overlay.cdnRefererRules,

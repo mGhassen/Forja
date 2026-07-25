@@ -35,7 +35,7 @@ Widget settingsFocusableDropdown(
   );
 }
 
-/// TV-aware slider — ←/→ nudge while focused (no OK arm).
+/// TV-aware slider - ←/→ nudge while focused (no OK arm).
 Widget settingsFocusableSlider({
   required String title,
   String? subtitle,

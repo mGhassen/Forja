@@ -4,7 +4,7 @@ part of 'live_matches_screen.dart';
 //  VERTICAL TIMELINE VIEW
 //
 //  Continuous time canvas: each 1-hour bucket is positioned at its real
-//  clock Y (empty hours take space) so a card sticks to its time — not the
+//  clock Y (empty hours take space) so a card sticks to its time - not the
 //  top of the list. Same-time streams share one horizontal line; overflow
 //  scrolls sideways without moving time. Vertical scroll moves the clock;
 //  Day / 12h / 6h set how many hours one screen height spans.
@@ -38,7 +38,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
   }
 
   /// Misc / Other long events (Tour de France, etc.) stay airing for hours
-  /// after kickoff — pin them to NOW so they ride the playhead instead of
+  /// after kickoff - pin them to NOW so they ride the playhead instead of
   /// sitting in the past (users never scroll upward for history).
   bool _timelinePinAiringMiscToNow(_LiveMatchGridEntry e) {
     if (!_gridEntryIsLive(e)) return false;
@@ -210,7 +210,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
                     ),
                   ),
                   // Ruler paint ignores pointers (scroll passes through); only
-                  // the playhead pill is tappable — jumps the clock to now.
+                  // the playhead pill is tappable - jumps the clock to now.
                   Positioned(
                     left: 0,
                     top: 0,
@@ -248,7 +248,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
   }
 
   /// Positioned bucket rows on the continuous time canvas. Rows never scale or
-  /// reorder — only the single hovered card is redrawn on top (desktop) via a
+  /// reorder - only the single hovered card is redrawn on top (desktop) via a
   /// transform-linked copy so it escapes overlapping neighbor rows.
   Widget _buildTimelineCanvas({
     required List<_TimelineBucket> buckets,
@@ -273,7 +273,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
 
     // Elevated copy of just the hovered card, painted above every row. It
     // follows the real card's position and ignores pointers, so hover stays on
-    // the original underneath (no flicker) — only this one card comes forward.
+    // the original underneath (no flicker) - only this one card comes forward.
     final hb = _s._timelineHoveredBucketMs;
     final hi = _s._timelineHoveredIndex;
     if (hoverLift && hb != null && hi != null) {
@@ -342,7 +342,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
         padding: EdgeInsets.only(
           right: ShellTokens.bodyHorizontalPadding,
         ),
-        // Horizontal scroll only — does not move the vertical time canvas.
+        // Horizontal scroll only - does not move the vertical time canvas.
         itemCount: bucket.entries.length,
         separatorBuilder: (_, _) => SizedBox(width: gap),
         itemBuilder: (context, i) {
@@ -429,7 +429,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
   }
 
   /// On first open of the timeline (or after a view/granularity reset), land
-  /// the playhead on *now* — not the first card. Retries until the scroll
+  /// the playhead on *now* - not the first card. Retries until the scroll
   /// view is attached; only then marks the one-shot as done.
   void _maybeAutoScrollToTime({
     required double contentStartMs,
@@ -450,7 +450,7 @@ mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
         _s._timelineAutoScrolled = true;
         return;
       }
-      // Scroll view not attached yet — try again next frame.
+      // Scroll view not attached yet - try again next frame.
       WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
     }
 

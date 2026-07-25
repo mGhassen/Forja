@@ -77,7 +77,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
 
   bool get _autoNextActive => _autoNextSecondsLeft != null;
 
-  /// Near end (≤15s) or finished — keep chrome up for More videos.
+  /// Near end (≤15s) or finished - keep chrome up for More videos.
   bool get _showNextTrailerChip {
     if (!_hasMoreTrailers) return false;
     if (_ended) return true;

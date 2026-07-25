@@ -62,7 +62,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     return ((inner + gap) / (cardWidth + gap)).floor().clamp(1, 8);
   }
 
-  /// Trap horizontal D-pad at the visual row ends — no wrap to the next/prev row.
+  /// Trap horizontal D-pad at the visual row ends - no wrap to the next/prev row.
   ({VoidCallback? onLeftEdge, VoidCallback? onRightEdge}) _gridRowEdgeCallbacks({
     required int index,
     required int crossCount,
@@ -404,7 +404,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
   }
 
   Widget _buildViewToggle(bool tvFocus) {
-    // TV is cards-only — callers must not show this control.
+    // TV is cards-only - callers must not show this control.
     if (tvFocus) return const SizedBox.shrink();
 
     final isTimeline = _s._view == _LiveMatchesView.timeline;
@@ -568,7 +568,7 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
     );
   }
 
-  /// Shared backdrop card for a unified grid entry — reused by the card grid
+  /// Shared backdrop card for a unified grid entry - reused by the card grid
   /// and the timeline view so both render identical posters/badges.
   Widget _gridEntryCard(
     _LiveMatchGridEntry entry,

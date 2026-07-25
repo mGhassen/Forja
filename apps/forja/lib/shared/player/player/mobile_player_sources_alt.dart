@@ -32,7 +32,7 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
       useDebrid: useDebrid,
       debridService: debridService,
     );
-    // Magnets / infoHash need engine resolve — keep current video + loading
+    // Magnets / infoHash need engine resolve - keep current video + loading
     // card, replace the player only when the new stream is ready.
     if (precheck == null) {
       await _switchStremioMagnetSource(stream);
@@ -107,7 +107,7 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
         return;
       }
 
-      // Catalog switches must show a frame — buffer/audio alone leaves a
+      // Catalog switches must show a frame - buffer/audio alone leaves a
       // black picture (common on Nuvio HLS when GPU decode stalls).
       final decoded = await confirmOpenedStreamVideoDecode(
         _s._player,
@@ -169,7 +169,7 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
     }
   }
 
-  /// Stremio/Torrentio magnet — same UX as [_switchTorrentSource]: keep the
+  /// Stremio/Torrentio magnet - same UX as [_switchTorrentSource]: keep the
   /// current player running with a bottom-right card until the new stream is
   /// ready, then open a fresh player.
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
@@ -250,7 +250,7 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
     if (_s._isLoadingNextEp) return;
     // Keep current video playing with the loading card while the new magnet
     // resolves in the background. Only replace the player when the stream is
-    // ready — never tear down the active swarm first (that freezes mpv).
+    // ready - never tear down the active swarm first (that freezes mpv).
     _s._beginEpisodeLoading(
       label: result.name,
       status: 'Starting Local Torrent Engine…',

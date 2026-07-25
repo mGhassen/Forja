@@ -84,7 +84,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     _focusNode.requestFocus();
   }
 
-  /// Keep D-pad on the panel root — InkWell / chrome must not steal keys.
+  /// Keep D-pad on the panel root - InkWell / chrome must not steal keys.
   void _reclaimFocusIfLost() {
     if (!mounted || _focusNode.hasFocus) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
@@ -394,7 +394,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         _scrollToFocused();
         return;
       }
-      // Channels column — Right returns focus to the player.
+      // Channels column - Right returns focus to the player.
       _close();
       return;
     }
@@ -405,7 +405,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
       return;
     }
-    // Channels step — Right returns focus to the player.
+    // Channels step - Right returns focus to the player.
     _close();
   }
 
@@ -448,7 +448,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         child: Focus(
           focusNode: _focusNode,
           autofocus: true,
-          // Custom D-pad highlight — do not let Material/InkWell take focus or
+          // Custom D-pad highlight - do not let Material/InkWell take focus or
           // DirectionalFocus will walk Right out of the panel onto the video.
           descendantsAreFocusable: false,
           descendantsAreTraversable: false,

@@ -67,7 +67,7 @@ class PlayerSubtitleMenu {
     final selectedSubtitleId = selectedExternalSubUrl == null
         ? (active?.id ?? current.id)
         : null;
-    // In-stream tracks only — skip Off/auto and http URI tracks (online picker).
+    // In-stream tracks only - skip Off/auto and http URI tracks (online picker).
     final embedded = player.state.tracks.subtitle
         .where(
           (t) =>
@@ -163,7 +163,7 @@ class PlayerSubtitleMenu {
             title: 'Load from file',
             subtitle: 'SRT · ASS · SSA · VTT',
             onTap: () async {
-              // Dismiss before the native picker — overlays can block the
+              // Dismiss before the native picker - overlays can block the
               // dialog, and file_picker returns null when the sheet stays up.
               PlayerPopupPanel.dismiss();
               final result = await FilePicker.platform.pickFiles(
@@ -171,7 +171,7 @@ class PlayerSubtitleMenu {
                 allowedExtensions: ['srt', 'ass', 'ssa', 'vtt'],
               );
               if (result == null || result.files.single.path == null) return;
-              // Local file — keep existing preferred language.
+              // Local file - keep existing preferred language.
               onSubtitleSelected?.call(off: false);
               final path = result.files.single.path!;
               final name = result.files.single.name;

@@ -50,7 +50,7 @@ class HubHeroSlide {
   final List<String> genres;
 
   /// AniList banners are ~4.75:1; [BoxFit.cover] on the tall page-bleed hero
-  /// zooms them into a tight crop — anime passes [BoxFit.fitWidth].
+  /// zooms them into a tight crop - anime passes [BoxFit.fitWidth].
   final BoxFit imageFit;
   final Alignment imageAlignment;
   final VoidCallback onPlay;
@@ -89,7 +89,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   final FocusNode _tvSearchFocus = FocusNode(debugLabel: 'hub-hero-search');
   Timer? _timer;
   int _index = 0;
-  /// Last PageView viewport width — resize invalidates pixel scroll offsets.
+  /// Last PageView viewport width - resize invalidates pixel scroll offsets.
   double? _pageViewportWidth;
   bool _tvHeroInitialFocusDone = false;
   bool _searchFocused = false;
@@ -278,7 +278,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
 
   @override
   Widget build(BuildContext context) {
-    // KeepAlive tabs all mount — only the active tab owns the shared nodes.
+    // KeepAlive tabs all mount - only the active tab owns the shared nodes.
     if (widget.tvTabId != null &&
         ShellTvFocus.currentNavTabId == widget.tvTabId) {
       ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;

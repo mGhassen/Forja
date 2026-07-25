@@ -36,7 +36,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                 // ── 1b. Custom subtitle overlay ─────────────────────────────
                 // Auto-scales relative to the rendered window height so
                 // it shrinks proportionally when in PiP.
-                // Custom subtitle overlay — hidden when libass is handling
+                // Custom subtitle overlay - hidden when libass is handling
                 // ASS/SSA subtitles (they render on the video frame instead).
                 if (!_s._isNativeSubtitle)
                   StreamBuilder<List<String>>(
@@ -347,7 +347,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                           ? (anchorContext) =>
                               unawaited(_s._showPlayerMenu(anchorContext))
                           : null,
-                      // Cast / PiP are phone/desktop chrome — hide on ATV.
+                      // Cast / PiP are phone/desktop chrome - hide on ATV.
                       showCast: false,
                       showPip: false,
                     ),

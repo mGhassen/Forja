@@ -316,7 +316,7 @@ class _KindTabs extends StatelessWidget {
                 selected: selected == options[i].id,
                 tvItemIndex: i,
                 onTap: () => onChanged(options[i].id),
-                // Reload only the opened kind — never prefetch a hidden category.
+                // Reload only the opened kind - never prefetch a hidden category.
                 onReload: onReloadKind == null || selected != options[i].id
                     ? null
                     : () => onReloadKind!(options[i].id),
@@ -421,7 +421,7 @@ class _KindTabState extends State<_KindTab> {
               Text(widget.label),
               if (widget.onReload != null) ...[
                 const SizedBox(width: 8),
-                // Reload stays pointer-only on TV — Kind tab OK switches kinds.
+                // Reload stays pointer-only on TV - Kind tab OK switches kinds.
                 ExcludeFocus(
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,

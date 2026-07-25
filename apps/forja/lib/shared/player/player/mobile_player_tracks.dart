@@ -41,7 +41,7 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
       if (_s._externalSubFileCache.containsKey(url)) return;
     }
 
-    // Already-local subtitle (e.g. kisskh decrypted) — feed straight to libmpv.
+    // Already-local subtitle (e.g. kisskh decrypted) - feed straight to libmpv.
     if (url.startsWith('file://') || url.startsWith('/')) {
       try {
         final uri = url.startsWith('file://') ? url : Uri.file(url).toString();
@@ -130,7 +130,7 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
       }
     }
 
-    // Anime / Asian Drama use negative hub movie ids — still auto-pick from
+    // Anime / Asian Drama use negative hub movie ids - still auto-pick from
     // the episode's provider subs even when online search is skipped.
     if (widget.movie == null || widget.movie!.id <= 0) {
       await _maybeAutoPickExternalSubtitle();
@@ -191,7 +191,7 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
     return false;
   }
 
-  /// Re-apply after media open / track settle — mpv clears external URI tracks.
+  /// Re-apply after media open / track settle - mpv clears external URI tracks.
   Future<void> _reapplyPreferredSubtitle() async {
     if (_s._disposed || !mounted) return;
     await _s._applyAutoSubtitle();
@@ -420,7 +420,7 @@ mixin _MobilePlayerTracks on State<MobilePlayerScreen> {
     final existing = _s._hlsQualitiesNotifier.value;
     if (existing != null && existing.any((q) => q.url == url)) return;
 
-    // New stream — clear any prior quality state immediately so the gear
+    // New stream - clear any prior quality state immediately so the gear
     // doesn't expose stale variants while the new master loads.
     final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
     _s._hlsMasterUrl = url;

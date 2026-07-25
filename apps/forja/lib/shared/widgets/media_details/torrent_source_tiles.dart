@@ -115,7 +115,7 @@ class WebstreamingSourceTile extends StatelessWidget {
   }
 }
 
-/// Multi-file torrent file row — same card as Sources / [WebstreamingSourceTile].
+/// Multi-file torrent file row - same card as Sources / [WebstreamingSourceTile].
 class TorrentFileSourceTile extends StatelessWidget {
   const TorrentFileSourceTile({
     super.key,

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   TextureView (not the default SurfaceView): Flutter AndroidView / VirtualDisplay
-  mis-composites SurfaceView — tiled / shifted frames on Android TV (and phones).
+  mis-composites SurfaceView - tiled / shifted frames on Android TV (and phones).
   TextureView is a normal View and composites correctly into the Flutter texture.
 -->
 <androidx.media3.ui.PlayerView

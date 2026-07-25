@@ -27,11 +27,11 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
     _s._currentProvider = widget.activeProvider;
     _s._catalogAddonBaseUrl = widget.stremioAddonBaseUrl;
     _s._catalogSourceKind = _initialCatalogSourceKind();
-    // Do not pin from pinSource / preloaded sources — that blocked Auto
+    // Do not pin from pinSource / preloaded sources - that blocked Auto
     // failover after green Play. Prefs + explicit user picks set pins.
     unawaited(_s._loadPlayerAutoSettings());
     // Torrent / Stremio Direct: never seed the webstreaming sources list with
-    // localhost stream URLs — that path skips them as "unplayable extracts"
+    // localhost stream URLs - that path skips them as "unplayable extracts"
     // and then fails pinned failover.
     final catalogSession = isCatalogSourcesMode(widget.activeProvider) ||
         (widget.magnetLink != null && widget.magnetLink!.isNotEmpty);
@@ -259,7 +259,7 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
   }
 
   /// Align panel rows + session cache with the URL mpv is actually playing.
-  /// Keeps extraction order — never promote the playing/checking row to front.
+  /// Keeps extraction order - never promote the playing/checking row to front.
   void _refreshPanelPlayingStream() {
     if (!_s._playbackConfirmed) return;
     final pid = _s._currentProvider ?? widget.activeProvider;
@@ -268,7 +268,7 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
       return;
     }
     // Catalog modes (Stremio Direct / Nuvio / torrent / Amri) use the Sources
-    // right panel — never invent a one-row "server" list for the layers picker.
+    // right panel - never invent a one-row "server" list for the layers picker.
     if (isCatalogSourcesMode(pid)) return;
 
     final catalogUrl = durableStreamCatalogUrl(
@@ -281,7 +281,7 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
           : (_s._liveProviderSourcesCache.value[pid] ?? const <StreamSource>[]),
     );
     // Drop session junk, but keep known loopback play URLs out of the panel
-    // by rewriting them to catalog identity below — never list proxy rows.
+    // by rewriting them to catalog identity below - never list proxy rows.
     sources.removeWhere((s) => isUnplayableCachedStreamUrl(s.url));
     sources = [
       for (final s in sources)
@@ -333,7 +333,7 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
         headers: widget.headers,
         catalogUrl: identity,
       );
-      // Append missing row — do not insert at front (panel order stays stable).
+      // Append missing row - do not insert at front (panel order stays stable).
       sources = dedupeStreamSources([...sources, playingRow]);
       matchIdx = sources.indexWhere((s) => s.url == identity);
       if (matchIdx < 0) matchIdx = sources.isEmpty ? -1 : sources.length - 1;
@@ -487,7 +487,7 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
     final pos = _s._positionNotifier.value.inMilliseconds;
     final dur = _s._durationNotifier.value.inMilliseconds;
 
-    // Nothing to save yet (open/buffering) — stay quiet; macOS fires
+    // Nothing to save yet (open/buffering) - stay quiet; macOS fires
     // inactive/lifecycle often and used to spam this path.
     if (pos <= 10000 || dur <= 0) return;
 
@@ -590,7 +590,7 @@ mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObser
       // Periodic / lifecycle pause keeps writing; only exit latches the flag.
       if (!isBgPause) _s._historySaved = true;
 
-      // Trakt + Simkl scrobble — fire and forget
+      // Trakt + Simkl scrobble - fire and forget
       final progressPercent = dur > 0 ? (pos / dur * 100) : 0.0;
       if (isBgPause) {
         TraktService().scrobblePause(

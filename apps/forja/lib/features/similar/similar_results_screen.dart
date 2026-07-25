@@ -1,4 +1,4 @@
-// Similar results — soothing detail screen showing the seed title hero
+// Similar results - soothing detail screen showing the seed title hero
 // + a vertical scroll of large "similar" cards with parallax thumbnails,
 // similarity rings, and tags.
 //
@@ -190,7 +190,7 @@ class _SimilarResultsScreenState extends State<SimilarResultsScreen>
           movie = await _api.getMovieDetails(item.tmdbId!);
         }
       } else {
-        // No prior TMDB enrichment — search now.
+        // No prior TMDB enrichment - search now.
         final hits = await _api.searchMulti(item.title);
         Movie? best;
         for (final h in hits) {
@@ -253,7 +253,7 @@ class _SimilarResultsScreenState extends State<SimilarResultsScreen>
               ),
             ),
           ),
-          // Backdrop blur layer — parallax with scroll.
+          // Backdrop blur layer - parallax with scroll.
 // Pre-blurred via gradient scrim so text stays readable.
           // for a frame during fade-in.
           if (widget.seedBackdrop.isNotEmpty)

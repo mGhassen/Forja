@@ -20,7 +20,7 @@ part 'search_search.dart';
 part 'search_tv.dart';
 part 'search_build.dart';
 
-/// Search tab — RFC-024 R24-A11: query-driven only; no ShellTabRefresh / auto stale refetch.
+/// Search tab - RFC-024 R24-A11: query-driven only; no ShellTabRefresh / auto stale refetch.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key, this.overlay = false});
 

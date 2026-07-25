@@ -222,7 +222,7 @@ mixin _DesktopPlayerPlayback
             continue;
           }
         } else {
-          // RFC-045: pipeline owns identity + classify — no separate probe.
+          // RFC-045: pipeline owns identity + classify - no separate probe.
           final catalogUrl = hlsProxyTargetUrl(source.url) ?? source.url;
           final pipeline = await StreamOpenPipeline.start(
             catalogUrl: catalogUrl,
@@ -289,7 +289,7 @@ mixin _DesktopPlayerPlayback
             }
 
             pipeline.report(StreamOpenStepResult.success);
-            // Keep panel row on catalog URL — proxy is play-only (_currentUrl).
+            // Keep panel row on catalog URL - proxy is play-only (_currentUrl).
             branchOk = true;
             break;
           }
@@ -405,7 +405,7 @@ mixin _DesktopPlayerPlayback
           _s._markProviderLoadFailed(_s._currentProvider!);
         }
 
-        // Anime owns reload: skip same-server pin re-extract — VidNest/Megaplay
+        // Anime owns reload: skip same-server pin re-extract - VidNest/Megaplay
         // often re-emit the same ad-poisoned nekostream URL. Walk Auto instead.
         final hostOwnsReloadEarly = widget.onReloadStreams != null;
         if (!hostOwnsReloadEarly &&
@@ -420,7 +420,7 @@ mixin _DesktopPlayerPlayback
               providers != null &&
               providers.containsKey(pid)) {
             debugPrint(
-              '[Player] Cached $pid source failed — re-resolving fresh extract',
+              '[Player] Cached $pid source failed - re-resolving fresh extract',
             );
             await _invalidateWebstreamingCacheForCurrent();
             final hit = await PlayerSourceResolve.resolvePinnedForMovie(
@@ -469,7 +469,7 @@ mixin _DesktopPlayerPlayback
         // Drop cache, then either re-extract the pinned server or run a full
         // Auto race like green Play (score order from the top).
         // Anime / host reload callback: always re-resolve like first Play even
-        // when Auto server is Off — otherwise a 1-URL session cache leaves an
+        // when Auto server is Off - otherwise a 1-URL session cache leaves an
         // empty Sources panel and no recovery (movie I43 host path).
         await _invalidateWebstreamingCacheForCurrent();
 
@@ -491,7 +491,7 @@ mixin _DesktopPlayerPlayback
           }
         }
       } else {
-        // No sources list — primary mediaPath (torrent localhost or direct URL).
+        // No sources list - primary mediaPath (torrent localhost or direct URL).
         // Never hand a raw magnet to mpv (treated as a relative file under tmp).
         var openUrl = widget.mediaPath;
         if (isTorrentStreamUrl(openUrl)) {
@@ -560,7 +560,7 @@ mixin _DesktopPlayerPlayback
               throw Exception('Failed to open media');
             }
             _s._detectHlsQualities(openedUrl, widget.headers);
-            // Confirm first — duration events before this were dropped by the
+            // Confirm first - duration events before this were dropped by the
             // stream listener. Do not block open waiting for duration: torrent
             // moov can arrive late; a long wait froze the loading transition.
             _s._markPlaybackConfirmed(true);
@@ -651,7 +651,7 @@ mixin _DesktopPlayerPlayback
     final providers = widget.providers;
     if (movie == null) return false;
 
-    debugPrint('[Player] Dead sources — full Auto re-resolve like first Play');
+    debugPrint('[Player] Dead sources - full Auto re-resolve like first Play');
     _s._statusController.upsert(
       'reresolve',
       'Finding servers…',
@@ -674,7 +674,7 @@ mixin _DesktopPlayerPlayback
     }
 
     try {
-      // Anime: race embeds via providers without cancelAllPending first —
+      // Anime: race embeds via providers without cancelAllPending first -
       // cancel kills the Miruro WebView pipe and cold reload often returns empty.
       if (animeHost && providers != null && providers.isNotEmpty) {
         // Walk servers: first extract can be a valid master with PNG-ad media
@@ -890,15 +890,15 @@ mixin _DesktopPlayerPlayback
     }
   }
 
-  /// Stop on failure — no silent hop to the next provider.
+  /// Stop on failure - no silent hop to the next provider.
   /// Used when the user pinned a server/stream (or Auto server is Off).
   Future<void> _failPlaybackNoFailover({required String message}) async {
     final pinned =
         _s._providerPinned || _s._sourcePinned || widget.pinSource;
     debugPrint(
       pinned
-          ? '[Player] Playback failed — no auto failover (pinned)'
-          : '[Player] Playback failed — recovery returned no playable streams',
+          ? '[Player] Playback failed - no auto failover (pinned)'
+          : '[Player] Playback failed - recovery returned no playable streams',
     );
     if (!mounted || _s._disposed) return;
     final pid = _s._currentProvider;
@@ -906,7 +906,7 @@ mixin _DesktopPlayerPlayback
       _s._markProviderLoadFailed(pid);
     }
     _s._finalizeProbeStatusesAfterPlayback();
-    // Terminal error owns the center chrome — drop "Finding servers…" etc.
+    // Terminal error owns the center chrome - drop "Finding servers…" etc.
     _s._statusController.clear();
     setState(() {
       _s._hasError = true;
@@ -1139,10 +1139,10 @@ mixin _DesktopPlayerPlayback
     // Position – drives seekbar & watch-history
     _s._positionSub = _s._player.stream.position.listen((pos) {
       if (_s._disposed) return;
-      // Ignore ephemeral demux while hunting a playable source — otherwise the
+      // Ignore ephemeral demux while hunting a playable source - otherwise the
       // seek bar flashes full/empty as each CDN briefly reports duration.
       if (!_s._playbackConfirmed) return;
-      // keep-open EOF often emits position 0 after a real finish — don't empty
+      // keep-open EOF often emits position 0 after a real finish - don't empty
       // a seek bar that was already at the end.
       final shownDur = _s._durationNotifier.value;
       final shownPos = _s._positionNotifier.value;
@@ -1157,9 +1157,9 @@ mixin _DesktopPlayerPlayback
       final effectiveDurMs = shownDur.inMilliseconds > 0
           ? shownDur.inMilliseconds
           : _s._player.state.duration.inMilliseconds;
-      // Dead CDN: demux jumps to duration within the early-EOF grace — do not
+      // Dead CDN: demux jumps to duration within the early-EOF grace - do not
       // paint a fake "finished" bar the user then cannot scrub off.
-      // Use this-open age/mid only — session mid from a prior source must not
+      // Use this-open age/mid only - session mid from a prior source must not
       // disable suppress on a fresh fail-open.
       if (shouldSuppressEarlyEofSeekBarPosition(
         positionMs: pos.inMilliseconds,
@@ -1214,7 +1214,7 @@ mixin _DesktopPlayerPlayback
           dur.inSeconds >= 90 &&
           widget.startPosition != null) {
         final start = widget.startPosition!;
-        // Don't seek into the credits — that looks like "started finished".
+        // Don't seek into the credits - that looks like "started finished".
         if (start.inMilliseconds > 0 &&
             start < dur - const Duration(seconds: 15)) {
           _s._hasInitialSeek = true;
@@ -1319,12 +1319,12 @@ mixin _DesktopPlayerPlayback
 
       if (!isFatalPlayerOpenError(err)) return;
       if (_s._hasError) return;
-      // Drop stale extract whenever open dies — probe hop must not leave
+      // Drop stale extract whenever open dies - probe hop must not leave
       // session/disk URLs that look "ready" on the next Play/reload.
       unawaited(_invalidateWebstreamingCacheForCurrent());
       if (_s._isInitPlaybackRunning) {
         debugPrint(
-          '[Player] Open failed during probe — hopping ($err)',
+          '[Player] Open failed during probe - hopping ($err)',
         );
         return;
       }
@@ -1367,18 +1367,18 @@ mixin _DesktopPlayerPlayback
         uiDuration: pinDur,
       )) {
         // Scrub-back race: keep-open re-emits completed while mpv pos is still
-        // 0/end — do not yank the bar back to EOF after the user left the end.
+        // 0/end - do not yank the bar back to EOF after the user left the end.
         if (!shouldPinSeekBarAtEof(
           uiPosition: _s._positionNotifier.value,
           duration: pinDur,
         )) {
           debugPrint(
-            '[Player] Ignoring completed pin — UI already seeked away from EOF',
+            '[Player] Ignoring completed pin - UI already seeked away from EOF',
           );
           return;
         }
         debugPrint('✅ Playback completed');
-        // keep-open may reset mpv position to 0 — pin the seek bar at EOF.
+        // keep-open may reset mpv position to 0 - pin the seek bar at EOF.
         if (pinDur > Duration.zero) {
           _s._durationNotifier.value = pinDur;
           _s._positionNotifier.value = pinDur;
@@ -1400,7 +1400,7 @@ mixin _DesktopPlayerPlayback
         '(openFor=${openAge.inSeconds}s '
         'openMid=${_s._openHadMidPlayback} sessionMid=${_s._hadMidPlayback})',
       );
-      // Failed / early EOF — never leave a pinned "finished" seek bar.
+      // Failed / early EOF - never leave a pinned "finished" seek bar.
       if (shouldPinSeekBarAtEof(
             uiPosition: _s._positionNotifier.value,
             duration: pinDur,
@@ -1458,7 +1458,7 @@ mixin _DesktopPlayerPlayback
           }
         }
       }
-      // Preferred subtitles must re-apply after tracks settle — media open
+      // Preferred subtitles must re-apply after tracks settle - media open
       // clears external URI tracks while the menu still shows them selected.
       await _s._reapplyPreferredSubtitle();
     } catch (e) {
@@ -1556,7 +1556,7 @@ mixin _DesktopPlayerPlayback
     await safeSet('network-timeout', '30');
     await safeSet('tls-verify', 'no'); // for self-signed / CDN certs
 
-    // Don't freeze on brief cache drain — keep decoding through HLS hiccups.
+    // Don't freeze on brief cache drain - keep decoding through HLS hiccups.
     await safeSet('cache-pause', 'no');
     await safeSet('cache-pause-initial', 'no');
 
@@ -1566,7 +1566,7 @@ mixin _DesktopPlayerPlayback
 
     final isTorrent = widget.magnetLink != null;
     if (isTorrent) {
-      // Torrent engine feeds bytes from disk as pieces complete — a small
+      // Torrent engine feeds bytes from disk as pieces complete - a small
       // forward window is enough and keeps memory pressure low.
       // Long network-timeout: first pieces can stall while peers connect.
       await safeSet('cache', 'yes');
@@ -1622,7 +1622,7 @@ mixin _DesktopPlayerPlayback
     );
 
     // Resume seeks happen after open (seekAfterOpen / duration listener) so we
-    // can skip near-end positions. Do not set mpv `start` here — that jumps
+    // can skip near-end positions. Do not set mpv `start` here - that jumps
     // into credits when history still has a false-finished near-end position.
   }
 }

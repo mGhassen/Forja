@@ -9,7 +9,7 @@ import 'package:rust/rust.dart';
 ///
 /// Detached from the production race / player-reload failover loop.
 abstract final class SimpleStreamingResolve {
-  /// Rust-native scrapers — no WebView.
+  /// Rust-native scrapers - no WebView.
   static const nativeIds = {'vidsrc', 'webstreamr'};
 
   /// Host HTTP APIs (may still fall back to WebView).
@@ -31,7 +31,7 @@ abstract final class SimpleStreamingResolve {
   /// Walk providers (Auto order or a single pinned id). Returns the first
   /// provider that yields a reachable stream after filter+probe.
   ///
-  /// Auto: natives first, then host APIs, then embeds — so CF/WebView hosts
+  /// Auto: natives first, then host APIs, then embeds - so CF/WebView hosts
   /// cannot block a working `vidsrc` forever.
   static Future<PlaybackResolveHit?> resolve({
     required Movie movie,
@@ -78,7 +78,7 @@ abstract final class SimpleStreamingResolve {
         onTimeout: () {
           timedOut = true;
           PlaybackEngine.cancelAllPending();
-          debugPrint('[SimpleResolve] $providerId — timeout ${budget.inSeconds}s');
+          debugPrint('[SimpleResolve] $providerId - timeout ${budget.inSeconds}s');
           return null;
         },
       );
@@ -86,7 +86,7 @@ abstract final class SimpleStreamingResolve {
 
       if (hit == null || hit.streamSources.isEmpty) {
         onProgress?.call(providerId, 'failed');
-        debugPrint('[SimpleResolve] $providerId — no sources');
+        debugPrint('[SimpleResolve] $providerId - no sources');
         continue;
       }
 
@@ -98,7 +98,7 @@ abstract final class SimpleStreamingResolve {
       );
       if (filtered.isEmpty) {
         onProgress?.call(providerId, 'failed');
-        debugPrint('[SimpleResolve] $providerId — all sources filtered');
+        debugPrint('[SimpleResolve] $providerId - all sources filtered');
         continue;
       }
 
@@ -122,7 +122,7 @@ abstract final class SimpleStreamingResolve {
 
       if (probed.isEmpty) {
         onProgress?.call(providerId, 'failed');
-        debugPrint('[SimpleResolve] $providerId — no reachable stream');
+        debugPrint('[SimpleResolve] $providerId - no reachable stream');
         continue;
       }
 
@@ -139,7 +139,7 @@ abstract final class SimpleStreamingResolve {
 
       onProgress?.call(providerId, 'success');
       debugPrint(
-        '[SimpleResolve] $providerId — play ${probed.first.title} '
+        '[SimpleResolve] $providerId - play ${probed.first.title} '
         '(${probed.length}/${filtered.length} probed ok)',
       );
       return PlaybackResolveHit(

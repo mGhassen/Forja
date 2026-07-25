@@ -54,7 +54,7 @@ _PortalExpiryTone _portalExpiryTone(String expiry) {
   final midnightToday = DateTime(today.year, today.month, today.day);
   final days = end.difference(midnightToday).inDays;
 
-  // Orange for soon/near — not amber/yellow (favorite star uses gold).
+  // Orange for soon/near - not amber/yellow (favorite star uses gold).
   final Color color;
   if (days < 0) {
     color = const Color(0xFFEF4444);
@@ -211,7 +211,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         final arrow = shellTvHandleRowArrows(
           event: event,
           tvMeta: _pasteTvMeta,
-          onUpEdge: () {}, // top of dialog — keep focus off header close
+          onUpEdge: () {}, // top of dialog - keep focus off header close
           onDownEdge: () => _focusDialogItem(1),
         );
         if (arrow == KeyEventResult.handled) return arrow;

@@ -130,8 +130,8 @@ class _GenerateAudiobookScreenState extends State<GenerateAudiobookScreen> {
       }
       if (!mounted) return;
       ForjaToast.success(parts.length == 1
-              ? 'Uploaded — generation started on the server.'
-              : 'Uploaded ${parts.length} parts — generation started.');
+              ? 'Uploaded - generation started on the server.'
+              : 'Uploaded ${parts.length} parts - generation started.');
       _refreshAndScheduleNext();
     } catch (e) {
       if (!mounted) return;
@@ -361,7 +361,7 @@ class _GenerateAudiobookScreenState extends State<GenerateAudiobookScreen> {
                             fontSize: 17, fontWeight: FontWeight.w600)),
                     SizedBox(height: 2),
                     Text(
-                      'Server-side TTS — closing the app is fine.',
+                      'Server-side TTS - closing the app is fine.',
                       style: TextStyle(color: Colors.white54, fontSize: 12),
                     ),
                   ],

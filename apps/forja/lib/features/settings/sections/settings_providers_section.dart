@@ -633,7 +633,7 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
         });
       }
     } catch (_) {
-      // Non-fatal — tags section simply not shown until explicit test
+      // Non-fatal - tags section simply not shown until explicit test
     }
   }
 }

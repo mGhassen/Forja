@@ -72,7 +72,7 @@ class _ExternalPlayerHandoffScreenState
             Positioned(
               top: isDesktop ? 12 : 4,
               left: 12,
-              // Picker owns its FocusScope — keep Back out of the D-pad walk.
+              // Picker owns its FocusScope - keep Back out of the D-pad walk.
               child: ExcludeFocus(
                 excluding: _pickingPlayer,
                 child: ShellBackIconButton(

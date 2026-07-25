@@ -19,7 +19,7 @@ import 'package:forja/shared/webview/forja_webview.dart';
 /// collapses; the WebView stays alive offstage for expire / refresh.
 ///
 /// Renders the standard Cloudflare widget at 300×65 with its native thin border
-/// — no rim crop (cropping clipped edges and left a thick white L).
+/// - no rim crop (cropping clipped edges and left a thick white L).
 class TurnstileCaptcha extends StatefulWidget {
   const TurnstileCaptcha({
     super.key,
@@ -183,7 +183,7 @@ class _TurnstileCaptchaState extends State<TurnstileCaptcha> {
       return s.endsWith('/') ? s : '$s/';
     }();
 
-    // Same element tree whether visible or not — swapping to a different
+    // Same element tree whether visible or not - swapping to a different
     // parent would recreate the WebView and drop the Turnstile session.
     return Offstage(
       offstage: _tokenReady,

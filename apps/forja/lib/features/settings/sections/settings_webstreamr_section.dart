@@ -3,7 +3,7 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:rust/rust.dart';
 
-/// WebStreamr hub body — countries, extractors, resolutions, MFP, Flare, TMDB.
+/// WebStreamr hub body - countries, extractors, resolutions, MFP, Flare, TMDB.
 class SettingsWebstreamrSection extends StatefulWidget {
   const SettingsWebstreamrSection({super.key});
 
@@ -218,7 +218,7 @@ class _SettingsWebstreamrSectionState extends State<SettingsWebstreamrSection> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _hint(
-                    'Optional — enables MFP-routed extractors (Voe etc.).',
+                    'Optional - enables MFP-routed extractors (Voe etc.).',
                   ),
                   SettingsTextField(
                     controller: _mfpUrl,
@@ -245,7 +245,7 @@ class _SettingsWebstreamrSectionState extends State<SettingsWebstreamrSection> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _hint(
-                    'Optional — used for Cloudflare-protected hosts.',
+                    'Optional - used for Cloudflare-protected hosts.',
                   ),
                   SettingsTextField(
                     controller: _flareUrl,

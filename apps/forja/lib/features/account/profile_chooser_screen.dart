@@ -27,7 +27,7 @@ Future<bool> presentProfileChooser(
   final result = await Navigator.of(context, rootNavigator: true).push<bool>(
     MaterialPageRoute(
       fullscreenDialog: true,
-      // Fullscreen covers MainScreen's caption — wrap again for Win/Linux.
+      // Fullscreen covers MainScreen's caption - wrap again for Win/Linux.
       builder: (context) => DesktopWindowChrome.wrapShell(
         child: ProfileChooserScreen(
           showBack: true,
@@ -139,7 +139,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
       setState(() {
         _loading = false;
         _error = message;
-        // Do not open create on a failed fetch — empty list is not trustworthy.
+        // Do not open create on a failed fetch - empty list is not trustworthy.
       });
     }
   }
@@ -591,8 +591,8 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
   }
 }
 
-/// TV/desktop action under Who’s watching — D-pad via [FocusableControl].
-/// Plain text link: hover/focus scales + bolds — no outline border.
+/// TV/desktop action under Who’s watching - D-pad via [FocusableControl].
+/// Plain text link: hover/focus scales + bolds - no outline border.
 class _ChooserAction extends StatefulWidget {
   const _ChooserAction({
     required this.label,
@@ -784,7 +784,7 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
         onTap: widget.enabled ? _handleTap : null,
         borderRadius: 8,
         scaleOnFocus: 1.06,
-        // Avatar [ForjaProfileAvatar.selected] is the hover/focus cue —
+        // Avatar [ForjaProfileAvatar.selected] is the hover/focus cue -
         // never a tile-wide FocusableControl ring around name + avatar.
         showFocusBorder: false,
         showFocusFill: false,

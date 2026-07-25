@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
-/// D-pad navigation key — first press and OS key-repeat.
+/// D-pad navigation key - first press and OS key-repeat.
 bool shellTvIsNavigationKey(KeyEvent event) =>
     event is KeyDownEvent || event is KeyRepeatEvent;
 
@@ -77,7 +77,7 @@ abstract final class ShellTvFocus {
     return true;
   }
 
-  /// Hub hero search (anime, asian drama, …) — one active tab at a time.
+  /// Hub hero search (anime, asian drama, …) - one active tab at a time.
   static FocusNode? hubHeroSearch;
 
   static bool focusHubHeroSearch() {
@@ -142,7 +142,7 @@ class ShellTvDisableLinearFocus extends InheritedWidget {
       false;
 }
 
-/// D-pad inside [ShellTvLinearFocusScope] — reading order, no wrap.
+/// D-pad inside [ShellTvLinearFocusScope] - reading order, no wrap.
 ///
 /// ↑/← → previous, ↓/→ → next, with [TraversalEdgeBehavior.stop] so the first
 /// item never jumps to the last (and last never wraps to first).
@@ -180,7 +180,7 @@ KeyEventResult shellTvLinearMenuArrows({
   return KeyEventResult.handled;
 }
 
-/// Coordinator-first D-pad arrows for catalog rows — traps horizontal edges.
+/// Coordinator-first D-pad arrows for catalog rows - traps horizontal edges.
 KeyEventResult shellTvHandleRowArrows({
   required KeyEvent event,
   ShellTvFocusMeta? tvMeta,
@@ -222,7 +222,7 @@ KeyEventResult shellTvHandleRowArrows({
     }
     final up = tvMeta?.resolveUpEdge();
     if (up != null) {
-      // Still claim handled — geometry must not leak across catalog rows.
+      // Still claim handled - geometry must not leak across catalog rows.
       up();
       return KeyEventResult.handled;
     }
@@ -261,7 +261,7 @@ KeyEventResult shellTvHandleRowArrows({
   return KeyEventResult.ignored;
 }
 
-/// TV catalog item — block Flutter geometry from moving focus across rows.
+/// TV catalog item - block Flutter geometry from moving focus across rows.
 KeyEventResult shellTvTrapRowGeometry({
   required KeyEvent event,
   required bool tvFocus,

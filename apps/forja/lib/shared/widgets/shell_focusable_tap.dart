@@ -266,7 +266,7 @@ VoidCallback shellTvResultsUpToChips({
   };
 }
 
-/// D-pad right between chips — explicit index step; trap at last chip.
+/// D-pad right between chips - explicit index step; trap at last chip.
 VoidCallback? shellTvChipRightEdge({
   required String tabId,
   required String rowId,
@@ -284,7 +284,7 @@ VoidCallback? shellTvChipRightEdge({
   };
 }
 
-/// D-pad left between chips — explicit index step; index 0 uses nav left.
+/// D-pad left between chips - explicit index step; index 0 uses nav left.
 VoidCallback? shellTvChipLeftEdge(
   BuildContext context, {
   required String tabId,

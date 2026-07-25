@@ -26,7 +26,7 @@ abstract final class HostProviderAdapter {
   static const _webviewSniffConcurrency = 2;
 
   /// After first VidSrc.sbs mirror hit, keep collecting siblings briefly then
-  /// return — dead mirrors must not block the spinner (Videasy parity).
+  /// return - dead mirrors must not block the spinner (Videasy parity).
   static const _vidsrcsbsPostFirstHitGrace = Duration(seconds: 2);
 
   static Duration get vidsrcsbsPostFirstHitGraceForTest =>
@@ -97,7 +97,7 @@ abstract final class HostProviderAdapter {
       final embed = isTv
           ? 'https://player.videasy.to/tv/${movie.id}/$season/$episode'
           : 'https://player.videasy.to/movie/${movie.id}';
-      debugPrint('[videasy] API empty — sniffing $embed');
+      debugPrint('[videasy] API empty - sniffing $embed');
       final profile = EmbedExtractProfiles.resolve('videasy');
       final sniffed = await _extractor.extract(
         embed,
@@ -133,7 +133,7 @@ abstract final class HostProviderAdapter {
           providerId: providerId,
         );
       }
-      // API empty — fall through to embed WebView sniff.
+      // API empty - fall through to embed WebView sniff.
       if (cancelled() || isAndroidTvHeadlessWebViewBlocked) return null;
       final fromPayload = payload['embedUrl']?.toString();
       final embed = (fromPayload != null && fromPayload.isNotEmpty)
@@ -141,7 +141,7 @@ abstract final class HostProviderAdapter {
           : (isTv
                 ? 'https://vidnest.fun/tv/${movie.id}/$season/$episode'
                 : 'https://vidnest.fun/movie/${movie.id}');
-      debugPrint('[vidnest] API empty — sniffing $embed');
+      debugPrint('[vidnest] API empty - sniffing $embed');
       final profile = EmbedExtractProfiles.resolve('vidnest');
       final sniffed = await _extractor.extract(
         embed,
@@ -198,7 +198,7 @@ abstract final class HostProviderAdapter {
       }
 
       if (cancelled()) return null;
-      debugPrint('[vidsrcsbs] nested empty — fallback outer $outerEmbed');
+      debugPrint('[vidsrcsbs] nested empty - fallback outer $outerEmbed');
       final outer = await _extractor.extract(
         outerEmbed,
         profile: vidsrcsbsExtractProfile,
@@ -300,7 +300,7 @@ abstract final class HostProviderAdapter {
   /// When [cancelEngineJobs] is false (user picked a torrent/Stremio row and
   /// resolve is about to start, or the player is tearing down), skip
   /// [Engine.cancelPendingResolve] so magnet / torrentStream jobs stay alive.
-  /// Provider cancelPending() only bumps generations — they must not cancel
+  /// Provider cancelPending() only bumps generations - they must not cancel
   /// Engine jobs themselves.
   static void cancelAllPending({bool cancelEngineJobs = true}) {
     WebStreamrService().cancelPending();

@@ -469,7 +469,7 @@ class _ForjaActiveProfileAvatarState extends State<ForjaActiveProfileAvatar> {
 
   Future<void> _reload() async {
     final gen = ++_reloadGen;
-    // Keep painting the last known profile while loading — clearing to null
+    // Keep painting the last known profile while loading - clearing to null
     // left the rail stuck on "Guest" when activeProfile hung or failed.
     try {
       final profile = await SyncService.instance.activeProfile();

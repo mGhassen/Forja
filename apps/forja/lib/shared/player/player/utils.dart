@@ -37,7 +37,7 @@ String normalizePlaybackStreamUrl(String url) {
 /// Headers for every network open: extractor headers + guaranteed browser UA.
 ///
 /// Prefer [providerId] (RFC-044) over CDN hostname matching. Do **not**
-/// comma-join into mpv `http-header-fields` — UA values contain commas
+/// comma-join into mpv `http-header-fields` - UA values contain commas
 /// (`KHTML, like Gecko`) and that corrupts the list. Pass the map to
 /// [Media.httpHeaders] so media_kit sets a proper NODE_ARRAY on load.
 Map<String, String> resolvePlaybackHttpHeaders(
@@ -80,7 +80,7 @@ Map<String, String> resolvePlaybackHttpHeaders(
   if (referer != null && referer.isNotEmpty) {
     putCanonical('Referer', 'referer', referer);
   } else if (policy != null) {
-    // RFC-044: recover from provider identity — never invent CDN self-Referer.
+    // RFC-044: recover from provider identity - never invent CDN self-Referer.
     putCanonical('Referer', 'referer', policy.referer);
     putCanonical('Origin', 'origin', policy.origin);
   } else if (!banSelf &&
@@ -125,7 +125,7 @@ Map<String, String> resolvePlaybackHttpHeaders(
     }
   }
 
-  // Legacy KissKh CDN sniff — only when provider identity is unknown.
+  // Legacy KissKh CDN sniff - only when provider identity is unknown.
   if (policy == null &&
       streamUrl != null &&
       _isKissKhCdnStream(streamUrl)) {
@@ -138,7 +138,7 @@ Map<String, String> resolvePlaybackHttpHeaders(
 
   // Vidsrc CloudStream (`/pl/…/master.m3u8?token=`): master/variant 200 with
   // any headers, but leaf `page-N.html` segments return CF 403 when Referer or
-  // Origin is set. Browser players use referrerpolicy=no-referrer — strip both
+  // Origin is set. Browser players use referrerpolicy=no-referrer - strip both
   // and never derive them from the stream host.
   if (streamUrl != null && _isVidsrcCloudStreamPl(streamUrl)) {
     out.remove('Referer');
@@ -149,7 +149,7 @@ Map<String, String> resolvePlaybackHttpHeaders(
 
   // VidNest MovieBox CDN (`*.hakunaymatata.com`): progressive MP4 returns HTTP
   // 429 whenever Referer is set (including self-origin). Browser JWPlayer uses
-  // no-referrer — strip Referer/Origin and never derive them from the CDN host.
+  // no-referrer - strip Referer/Origin and never derive them from the CDN host.
   if (streamUrl != null && _isVidnestMovieBoxCdn(streamUrl)) {
     out.remove('Referer');
     out.remove('referer');
@@ -157,7 +157,7 @@ Map<String, String> resolvePlaybackHttpHeaders(
     out.remove('origin');
   }
 
-  // Legacy CDN host rules — only when provider identity is unknown (RFC-044).
+  // Legacy CDN host rules - only when provider identity is unknown (RFC-044).
   if (policy == null && catalogForMatch != null) {
     for (final rule in cfg.cdnRefererRules) {
       if (!rule.matchesStreamUrl(catalogForMatch)) continue;
@@ -221,7 +221,7 @@ bool _refererMatchesPolicyFamily(String refHost, String policyHost) {
   return false;
 }
 
-/// Tokenized Vidsrc CloudStream playlist — segments reject Referer/Origin.
+/// Tokenized Vidsrc CloudStream playlist - segments reject Referer/Origin.
 bool _isVidsrcCloudStreamPl(String url) {
   final uri = Uri.tryParse(url.trim());
   if (uri == null || uri.host.isEmpty) return false;
@@ -231,7 +231,7 @@ bool _isVidsrcCloudStreamPl(String url) {
   return uri.queryParameters.containsKey('token');
 }
 
-/// VidNest Gama/MovieBox (and related) CDN — rejects any Referer with HTTP 429.
+/// VidNest Gama/MovieBox (and related) CDN - rejects any Referer with HTTP 429.
 bool _isVidnestMovieBoxCdn(String url) {
   final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
   if (host.isEmpty) return false;
@@ -239,7 +239,7 @@ bool _isVidnestMovieBoxCdn(String url) {
 }
 
 /// Set mpv `user-agent` / `referrer` before `open`. Full header list goes on
-/// [Media.httpHeaders] — never via comma-joined `http-header-fields`.
+/// [Media.httpHeaders] - never via comma-joined `http-header-fields`.
 ///
 /// Pass [alreadyResolved]: true when [headers] came from
 /// [resolvePlaybackHttpHeaders] (avoids dropping URL-derived Referer).
@@ -262,7 +262,7 @@ Future<void> applyMediaHttpHeaders(
   final native = player.platform as NativePlayer;
 
   final referer = resolved['Referer'] ?? resolved['referer'];
-  // Empty string clears a previous source's referrer — do not leave it sticky.
+  // Empty string clears a previous source's referrer - do not leave it sticky.
   await native.setProperty('referrer', referer ?? '');
 
   final ua = resolved['User-Agent'] ?? resolved['user-agent'];
@@ -278,7 +278,7 @@ Future<void> silenceMediaKitPlayer(Player player) async {
   try {
     if (player.platform is NativePlayer) {
       final mpv = player.platform as NativePlayer;
-      // waitForInitialization: false — must not block exit on stuck VC init.
+      // waitForInitialization: false - must not block exit on stuck VC init.
       await mpv.setProperty('mute', 'yes', waitForInitialization: false);
       await mpv.setProperty('pause', 'yes', waitForInitialization: false);
       await mpv.setProperty('volume', '0', waitForInitialization: false);
@@ -330,7 +330,7 @@ Future<String> openPlayerStream(
   final openUrl = normalizePlaybackStreamUrl(url);
   if (isTorrentStreamUrl(openUrl)) {
     throw Exception(
-      'Cannot open magnet/torrent URL directly — resolve to a stream first',
+      'Cannot open magnet/torrent URL directly - resolve to a stream first',
     );
   }
   final hdrs = resolvePlaybackHttpHeaders(
@@ -433,7 +433,7 @@ bool isFatalPlayerOpenError(String err) =>
     !isIgnorablePlayerError(err) &&
     (err.contains('Failed') || err.contains('No such file'));
 
-/// HTTP/CDN rejects during the open probe — fatal for fallback, ignore mid-play.
+/// HTTP/CDN rejects during the open probe - fatal for fallback, ignore mid-play.
 bool isOpenHttpFailure(String err) {
   if (err.isEmpty) return false;
   final lower = err.toLowerCase();
@@ -444,7 +444,7 @@ bool isOpenHttpFailure(String err) {
       lower.contains('failed to open');
 }
 
-/// Local librqbit HTTP URLs — mpv may emit "Failed to recognize file format"
+/// Local librqbit HTTP URLs - mpv may emit "Failed to recognize file format"
 /// while the first pieces are still arriving; that is not a hard fail yet.
 bool isLocalTorrentStreamUrl(String url) {
   final uri = Uri.tryParse(url);
@@ -453,7 +453,7 @@ bool isLocalTorrentStreamUrl(String url) {
   return uri.path.contains('/torrents/') && uri.path.contains('/stream/');
 }
 
-/// Catalog stream kind for logs — Nuvio vs Stremio from stream metadata.
+/// Catalog stream kind for logs - Nuvio vs Stremio from stream metadata.
 String catalogStreamKindLabel(Map<String, dynamic> stream) {
   if (stream['_nuvioScraperId'] != null) return 'Nuvio';
   final base = stream['_addonBaseUrl']?.toString();
@@ -469,7 +469,7 @@ bool isTransientTorrentProbeError(String err) {
       lower.contains('no data');
 }
 
-/// mpv is ready to play — VOD duration, decoded video, or live/buffered data.
+/// mpv is ready to play - VOD duration, decoded video, or live/buffered data.
 bool hasDecodedVideo(PlayerState state) {
   final w = state.videoParams.w ?? 0;
   final h = state.videoParams.h ?? 0;
@@ -502,7 +502,7 @@ bool sourceExpectsDuration(String url, {String? type}) {
 }
 
 /// Adaptive playlists can report buffer/duration while serving HTML/empty
-/// segments. Progressive containers (mkv/mp4) get real demuxer duration —
+/// segments. Progressive containers (mkv/mp4) get real demuxer duration -
 /// do not require a decoded frame or large remote files fail the 8s probe.
 ///
 /// Local torrent HTTP is the exception: moov duration arrives before any
@@ -522,7 +522,7 @@ Duration videoDecodeTimeoutForUrl(String url) {
 }
 
 /// Adaptive opens must decode at least one video frame before we treat them as
-/// playable — buffer/position alone false-positives on dead CDNs.
+/// playable - buffer/position alone false-positives on dead CDNs.
 Future<bool> waitForVideoDecode(
   Player player, {
   Duration timeout = const Duration(seconds: 8),
@@ -540,11 +540,11 @@ Future<bool> waitForVideoDecode(
 
 /// After [waitForMediaOpen], require a decoded frame for adaptive streams.
 ///
-/// Observe-only — no reopen, no `hwdec=no`. The open pipeline owns the next
+/// Observe-only - no reopen, no `hwdec=no`. The open pipeline owns the next
 /// branch; [PlaybackRecovery] owns live decoder failures after confirm.
 ///
 /// Set [force] for in-player Stremio/Nuvio switches: progressive HTTP can report
-/// duration/buffer while only audio demuxes — without a frame the UI stays black.
+/// duration/buffer while only audio demuxes - without a frame the UI stays black.
 Future<bool> confirmOpenedStreamVideoDecode(
   Player player, {
   required String openUrl,
@@ -648,7 +648,7 @@ bool shouldAcceptNaturalPlaybackEnd({
     return false;
   }
   if (!sessionHadMidPlayback) return false;
-  // Dead CDN after a mid session jumps to EOF in seconds — still abortive.
+  // Dead CDN after a mid session jumps to EOF in seconds - still abortive.
   if (openConfirmedFor < kMinConfirmedPlaybackForNaturalEnd) return false;
   return isNaturalPlaybackEnd(
     state,
@@ -667,12 +667,12 @@ bool isNaturalPlaybackEnd(
   final pos = state.position.inMilliseconds;
   // Torrent/HLS often report a tiny duration while probing. Then
   // `pos >= dur - 1000` is true at position 0 (e.g. dur=500ms → -500) and
-  // auto-next fires — episode looks like it "started finished".
+  // auto-next fires - episode looks like it "started finished".
   if (dur < 90 * 1000) return false;
   // Early EOF with a real moov duration: position jumps to end immediately.
   if (confirmedFor != null && confirmedFor < minConfirmed) return false;
   // Sitting at EOF for minutes must not become "natural" after the grace
-  // window — require evidence the user actually watched the middle.
+  // window - require evidence the user actually watched the middle.
   if (hadMidPlayback == false) return false;
   // keep-open / HLS: `completed` often fires after position resets to 0 while
   // duration remains. Mid-watch + grace already proved a real session.
@@ -735,7 +735,7 @@ bool shouldPinSeekBarAtEof({
   return uiPosition >= duration - const Duration(seconds: 2);
 }
 
-/// Grace after scrubbing away from EOF — ignore stale near-end position reports.
+/// Grace after scrubbing away from EOF - ignore stale near-end position reports.
 const kSeekAwayFromEofGrace = Duration(seconds: 2);
 
 bool shouldIgnoreStaleEofPosition({
@@ -801,7 +801,7 @@ Future<void> resetPlayerForOpen(Player player) async {
 /// Ready check for [waitForMediaOpen].
 ///
 /// Local torrent HTTP can report buffer / moov duration / playing while the
-/// first pieces are empty — that used to mark playback confirmed and leave a
+/// first pieces are empty - that used to mark playback confirmed and leave a
 /// black stuck player. Require a decoded video frame for those URLs.
 bool isOpenReadyForStream(PlayerState state, {required bool localTorrent}) {
   if (localTorrent) return hasDecodedVideo(state);
@@ -812,7 +812,7 @@ bool isOpenReadyForStream(PlayerState state, {required bool localTorrent}) {
 /// [timeout].
 ///
 /// Pass [streamUrl] for local torrent streams so early demux probe failures
-/// are ignored until the timeout — pieces may still be filling — and so
+/// are ignored until the timeout - pieces may still be filling - and so
 /// readiness requires a decoded video frame (not buffer alone).
 Future<bool> waitForMediaOpen(
   Player player, {
@@ -894,7 +894,7 @@ String? playbackQualityDetail(PlayerState state) {
   return '$w × $h';
 }
 
-/// Label for audio/subtitle chips — language endonym when known
+/// Label for audio/subtitle chips - language endonym when known
 /// (हिन्दी, தமிழ், English…), else raw title / Track id.
 String formatPlayerTrackLabel({
   required String id,
@@ -1020,7 +1020,7 @@ bool hlsProxyStripIsPng(String url) {
 
 /// Known hosts that serve Megaplay-style PNG-wrapped MPEG-TS (need hls-proxy strip).
 ///
-/// Prefer [animeHlsNeedsPngStripFor] with a [sourceKey] — host lists live on
+/// Prefer [animeHlsNeedsPngStripFor] with a [sourceKey] - host lists live on
 /// each provider's [AnimePlaybackProfile] (RFC-039 / DB).
 bool animeHlsNeedsPngStrip(String url) {
   return animeHlsNeedsPngStripFor(url, sourceKey: null);
@@ -1097,13 +1097,13 @@ bool pngWrapsMpegTs(List<int> bytes) {
 @visibleForTesting
 bool animeSegmentSampleLooksPngWrapped(List<int> sample) {
   if (pngWrapsMpegTs(sample)) return true;
-  // Tiny PNG, no TS — Range decoy (real body is PNG+TS).
+  // Tiny PNG, no TS - Range decoy (real body is PNG+TS).
   return looksLikePng(sample) && sample.length < 512;
 }
 
 /// Whether catalog HLS should open via `/hls-proxy?strip=png`.
 ///
-/// [AnimePngStripMode.auto] is content-only — host needles never force strip.
+/// [AnimePngStripMode.auto] is content-only - host needles never force strip.
 @visibleForTesting
 bool animePngStripShouldProxy({
   required AnimePngStripMode mode,
@@ -1120,7 +1120,7 @@ bool animePngStripShouldProxy({
 ///
 /// [AnimePngStripMode.force] always proxies; [AnimePngStripMode.auto] samples a
 /// media segment and strips only when [pngWrapsMpegTs]; [never] is a no-op.
-/// Host needles do **not** force strip for [auto] — plain HLS stays direct.
+/// Host needles do **not** force strip for [auto] - plain HLS stays direct.
 Future<StreamSource> applyAnimePngStripIfNeeded(
   StreamSource source, {
   String? sourceKey,
@@ -1256,7 +1256,7 @@ Future<bool> _animeHlsSegmentLooksPngWrapped(
             looksLikePng(sample) &&
             !pngWrapsMpegTs(sample)) {
           debugPrint(
-            '[Player] PNG Range decoy (${sample.length}B) — strip $segUrl',
+            '[Player] PNG Range decoy (${sample.length}B) - strip $segUrl',
           );
         }
         return true;
@@ -1277,7 +1277,7 @@ Future<List<StreamSource>> applyAnimePngStripAll(
   return out;
 }
 
-/// Known anti-scraper CDN hosts — may still wrap real video (see [pngWrapsMpegTs]).
+/// Known anti-scraper CDN hosts - may still wrap real video (see [pngWrapsMpegTs]).
 bool _isAnimeHlsAdHost(String url) {
   final u = url.toLowerCase();
   return u.contains('ibyteimg.com') ||
@@ -1294,9 +1294,9 @@ String _joinPlaylistUri(String base, String uri) {
   return b.resolve(t).toString();
 }
 
-/// Sample media segments — masters can be valid while every segment is a PNG ad.
+/// Sample media segments - masters can be valid while every segment is a PNG ad.
 ///
-/// PNG shells that wrap MPEG-TS (Megaplay / nekostream) count as playable —
+/// PNG shells that wrap MPEG-TS (Megaplay / nekostream) count as playable -
 /// open those via [applyAnimePngStripIfNeeded].
 ///
 /// Runs in Dart (not only Rust) so a stale app-bundle `libffi` cannot let
@@ -1315,7 +1315,7 @@ Future<bool> hlsMediaSegmentsLookPlayable(
     );
     if (master.status != 200 || !master.body.contains('#EXTM3U')) return false;
 
-    // Already on /hls-proxy?strip=png — nested sample is redundant.
+    // Already on /hls-proxy?strip=png - nested sample is redundant.
     // Do NOT skip sampling just because the profile has pngStrip auto/force:
     // pure image ads (vivibebe → ibyteimg PNG) are not fixable by strip.
     if (hlsProxyStripIsPng(playlistUrl)) return true;
@@ -1391,7 +1391,7 @@ Future<bool> hlsMediaSegmentsLookPlayable(
           poisoned++;
         }
       } catch (_) {
-        // Network blip — don't count.
+        // Network blip - don't count.
       }
     }
     if (checked == 0) return true;
@@ -1448,7 +1448,7 @@ Future<bool> _probeHeadOrRange(
 /// Lightweight reachability check for stream menu reload.
 ///
 /// Pass [sourceKey] for anime so probe mode comes from
-/// [ProviderRuntimeConfig.animePlaybackProfile] (DB / builtins) — not host
+/// [ProviderRuntimeConfig.animePlaybackProfile] (DB / builtins) - not host
 /// heuristics.
 Future<bool> probeStreamSourceUrl(
   String url,
@@ -1457,7 +1457,7 @@ Future<bool> probeStreamSourceUrl(
 }) async {
   final normalized = normalizePlaybackStreamUrl(url);
   if (normalized.isEmpty) return false;
-  // Already on the PNG-strip play path — don't re-sample nested segments.
+  // Already on the PNG-strip play path - don't re-sample nested segments.
   if (hlsProxyStripIsPng(normalized)) return true;
   final catalog = hlsProxyTargetUrl(normalized) ?? normalized;
   final key = sourceKey?.trim();
@@ -1490,7 +1490,7 @@ Future<bool> probeStreamSourceUrl(
             hdrs,
           )) {
             debugPrint(
-              '[Player] HLS media poison/ad segments — reject $catalog '
+              '[Player] HLS media poison/ad segments - reject $catalog '
               '(sourceKey=$key)',
             );
             return false;
@@ -1507,7 +1507,7 @@ Future<bool> probeStreamSourceUrl(
         normalized.contains('/hls-proxy')) {
       // Legacy (no sourceKey): keep segment sample for movie/misc HLS.
       if (!await hlsMediaSegmentsLookPlayable(catalog, hdrs)) {
-        debugPrint('[Player] HLS media poison/ad segments — reject $catalog');
+        debugPrint('[Player] HLS media poison/ad segments - reject $catalog');
         return false;
       }
       return true;
@@ -1522,7 +1522,7 @@ Future<bool> probeStreamSourceUrl(
 ///
 /// **111477:** catalog URLs only get a shape check (CDN HEAD is slow/flaky);
 /// the local seek proxy is validated at play. Never treat a dead localhost
-/// proxy URL as the catalog stream — those are session-local play endpoints.
+/// proxy URL as the catalog stream - those are session-local play endpoints.
 Future<bool> validateStreamSourceForCheck({
   required String? providerId,
   required StreamSource source,
@@ -1531,7 +1531,7 @@ Future<bool> validateStreamSourceForCheck({
   if (providerId == 'service111477') {
     final url = source.url.trim();
     if (url.isEmpty || isUnplayableCachedStreamUrl(url)) return false;
-    // Catalog hosts only — loopback is rejected by [isUnplayableCachedStreamUrl].
+    // Catalog hosts only - loopback is rejected by [isUnplayableCachedStreamUrl].
     return url.contains('://');
   }
   return probeStreamSourceUrl(

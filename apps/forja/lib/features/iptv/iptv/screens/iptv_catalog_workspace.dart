@@ -22,7 +22,7 @@ part 'iptv_catalog_portal_panel.dart';
 part 'iptv_catalog_portal_form.dart';
 part 'iptv_catalog_portal_widgets.dart';
 
-/// Colored Live / Movies / Series shelf — same hues as the old section tiles.
+/// Colored Live / Movies / Series shelf - same hues as the old section tiles.
 class _IptvSectionShelfSpec {
   const _IptvSectionShelfSpec({
     required this.section,
@@ -36,7 +36,7 @@ class _IptvSectionShelfSpec {
   final IconData icon;
   final List<Color> colors;
 
-  /// Shelf pill gradients — Live only: drop the near-black tile stop.
+  /// Shelf pill gradients - Live only: drop the near-black tile stop.
   List<Color> get shelfGradientColors => section == IptvSection.live
       ? const [Color(0xFFEF4444), Color(0xFF7C2D12)]
       : colors;

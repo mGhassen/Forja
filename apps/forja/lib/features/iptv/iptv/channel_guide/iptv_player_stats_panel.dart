@@ -94,10 +94,10 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
       try {
         final v = await p.getProperty(name);
         final s = v.toString().trim();
-        if (s.isEmpty || s == 'none' || s == 'null' || s == 'N/A') return '—';
+        if (s.isEmpty || s == 'none' || s == 'null' || s == 'N/A') return '-';
         return s;
       } catch (_) {
-        return '—';
+        return '-';
       }
     }
 
@@ -122,7 +122,7 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
   }
 
   static String _fmtBitrate(String raw) {
-    if (raw == '—') return raw;
+    if (raw == '-') return raw;
     final n = double.tryParse(raw);
     if (n == null || n <= 0) return raw;
     if (n < 1000) return '${n.round()} bps';
@@ -131,7 +131,7 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
   }
 
   static String _fmtBytes(String raw) {
-    if (raw == '—') return raw;
+    if (raw == '-') return raw;
     final n = double.tryParse(raw);
     if (n == null || n <= 0) return raw;
     if (n < 1024) return '${n.round()} B';
@@ -140,7 +140,7 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
   }
 
   static String _fmtSeconds(String raw) {
-    if (raw == '—') return raw;
+    if (raw == '-') return raw;
     final n = double.tryParse(raw);
     if (n == null || n < 0) return raw;
     if (n < 60) return '${n.toStringAsFixed(1)} s';
@@ -155,9 +155,9 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
     final audio = state.track.audio;
     final subtitle = state.track.subtitle;
 
-    final w = _mpv['width'] ?? '—';
-    final h = _mpv['height'] ?? '—';
-    final resolution = (w != '—' && h != '—') ? '$w×$h' : '—';
+    final w = _mpv['width'] ?? '-';
+    final h = _mpv['height'] ?? '-';
+    final resolution = (w != '-' && h != '-') ? '$w×$h' : '-';
 
     final rows = <_StatRow>[
       _StatRow('Status', snap.buffering
@@ -169,27 +169,27 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
       if (snap.retryAttempt > 0)
         _StatRow('Recoveries', '${snap.retryAttempt}'),
       _StatRow('Resolution', resolution),
-      _StatRow('Video', _mpv['videoCodec'] ?? '—'),
-      _StatRow('Video bitrate', _fmtBitrate(_mpv['videoBitrate'] ?? '—')),
-      _StatRow('FPS', _mpv['fps'] ?? '—'),
-      _StatRow('Display FPS', _mpv['displayFps'] ?? '—'),
-      _StatRow('Audio', _mpv['audioCodec'] ?? '—'),
+      _StatRow('Video', _mpv['videoCodec'] ?? '-'),
+      _StatRow('Video bitrate', _fmtBitrate(_mpv['videoBitrate'] ?? '-')),
+      _StatRow('FPS', _mpv['fps'] ?? '-'),
+      _StatRow('Display FPS', _mpv['displayFps'] ?? '-'),
+      _StatRow('Audio', _mpv['audioCodec'] ?? '-'),
       _StatRow('Audio track', audio.id == 'no'
-          ? '—'
+          ? '-'
           : (audio.title ?? audio.language ?? audio.id)),
-      _StatRow('Audio bitrate', _fmtBitrate(_mpv['audioBitrate'] ?? '—')),
+      _StatRow('Audio bitrate', _fmtBitrate(_mpv['audioBitrate'] ?? '-')),
       _StatRow('Subtitle', subtitle.id == 'no'
           ? 'Off'
           : (subtitle.title ?? subtitle.language ?? subtitle.id)),
-      _StatRow('Cache', _fmtSeconds(_mpv['cacheDuration'] ?? '—')),
-      _StatRow('Cache used', _fmtBytes(_mpv['cacheBytes'] ?? '—')),
+      _StatRow('Cache', _fmtSeconds(_mpv['cacheDuration'] ?? '-')),
+      _StatRow('Cache used', _fmtBytes(_mpv['cacheBytes'] ?? '-')),
       if (_buffered != null && _buffered!.inSeconds > 0)
         _StatRow('Buffered ahead', '${_buffered!.inSeconds} s'),
       _StatRow('Volume', '${snap.volume.round()}%'),
-      _StatRow('Speed', _mpv['speed'] ?? '—'),
-      if ((_mpv['drops'] ?? '—') != '—' && _mpv['drops'] != '0')
+      _StatRow('Speed', _mpv['speed'] ?? '-'),
+      if ((_mpv['drops'] ?? '-') != '-' && _mpv['drops'] != '0')
         _StatRow('Dropped frames', _mpv['drops']!),
-      if ((_mpv['decoderDrops'] ?? '—') != '—' &&
+      if ((_mpv['decoderDrops'] ?? '-') != '-' &&
           _mpv['decoderDrops'] != '0')
         _StatRow('Decoder drops', _mpv['decoderDrops']!),
       if (video.id != 'auto' && video.id != 'no')

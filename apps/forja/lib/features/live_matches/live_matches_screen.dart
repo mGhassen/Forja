@@ -127,7 +127,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Android TV / leanback: cards only — no timeline canvas (mirrors IPTV).
+    // Android TV / leanback: cards only - no timeline canvas (mirrors IPTV).
     if (ShellScope.inputPolicyOf(context).useFocusableMoodChips &&
         _view != _LiveMatchesView.grid) {
       _view = _LiveMatchesView.grid;
@@ -166,7 +166,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   Future<void> _restoreViewPreference() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted || _viewWasToggled) return;
-    // TV never restores timeline — cards-only surface.
+    // TV never restores timeline - cards-only surface.
     if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
       if (_view != _LiveMatchesView.grid) {
         setState(() => _view = _LiveMatchesView.grid);

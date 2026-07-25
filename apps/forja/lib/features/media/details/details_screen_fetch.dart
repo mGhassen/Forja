@@ -41,13 +41,13 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
 
     try {
       final streamAddons = await _s._stremio.getAddonsForResource('stream');
-      // Publish addons immediately — TMDB/rich fetch must not leave chips empty
+      // Publish addons immediately - TMDB/rich fetch must not leave chips empty
       // if it throws after this point.
       if (mounted) {
         setState(() => _s._streamAddons = streamAddons);
       }
 
-      // If this is a custom-ID Stremio item, skip TMDB fetch — we already
+      // If this is a custom-ID Stremio item, skip TMDB fetch - we already
       // have all the info we need from the search result.
       if (isCustomId) {
         debugPrint('[DetailsScreen] Custom ID detected: ${stremioItem['id']}');
@@ -158,7 +158,7 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
   }
 
   /// Probes Nuvio addons (built-in + user installs) for the Sources panel.
-  /// Does NOT kick off scraping — that happens when the user picks a scraper.
+  /// Does NOT kick off scraping - that happens when the user picks a scraper.
 
 
   Future<void> _fetchExternalRatings() async {

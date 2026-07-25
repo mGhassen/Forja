@@ -20,7 +20,7 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
       _s._liveProviderSourcesCache.value = next;
     }
 
-    // One host WebView — abandon other in-flight Source-panel loads.
+    // One host WebView - abandon other in-flight Source-panel loads.
     for (final id in _s._providerLoadGens.keys.toList()) {
       if (id == providerId) continue;
       _s._providerLoadGens[id] = (_s._providerLoadGens[id] ?? 0) + 1;
@@ -57,7 +57,7 @@ mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
           providerId: sources,
         };
         // Current server list prefers live [_currentSources] over session
-        // cache — refresh it so panel reload is not a no-op after cache play.
+        // cache - refresh it so panel reload is not a no-op after cache play.
         if (forceRefresh &&
             (_s._currentProvider == providerId ||
                 ((_s._currentProvider == null || _s._currentProvider!.isEmpty) &&

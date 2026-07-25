@@ -9,7 +9,7 @@ void playerChromeRegisterSeekScrubCancel(VoidCallback cb) =>
 void playerChromeUnregisterSeekScrubCancel(VoidCallback cb) =>
     _seekScrubCancelCallbacks.remove(cb);
 
-/// Call when a player Overlay menu/panel opens — stops the progress thumb
+/// Call when a player Overlay menu/panel opens - stops the progress thumb
 /// from staying magnetized to the cursor over the menu.
 void playerChromeCancelSeekScrubs() {
   for (final cb in List<VoidCallback>.from(_seekScrubCancelCallbacks)) {

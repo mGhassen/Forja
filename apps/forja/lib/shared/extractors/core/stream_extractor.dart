@@ -20,7 +20,7 @@ class StreamExtractor {
   String? _capturedAudio;
   Map<String, String>? _capturedHeaders;
 
-  /// Canonical embed URL passed to [extract] — preferred Referer for CDN opens.
+  /// Canonical embed URL passed to [extract] - preferred Referer for CDN opens.
   String? _originalEmbedUrl;
   EmbedExtractProfile _profile = EmbedExtractProfiles.generic;
 
@@ -128,14 +128,14 @@ class StreamExtractor {
   ///
   /// Manual provider switches call this while another sniff may already have
   /// a playable URL (or be mid cookie-harvest). Prefer returning that hit over
-  /// discarding it as `null` — the next extract still starts cleanly after.
+  /// discarding it as `null` - the next extract still starts cleanly after.
   Future<void> cancel() async {
     final referer = _playbackReferer(_originalEmbedUrl ?? '');
     final playable = _bestPlayableCaptured();
 
-    // Cookie harvest already running — let it finish (do not null the completer).
+    // Cookie harvest already running - let it finish (do not null the completer).
     if (_completing && _completer != null && !_completer!.isCompleted) {
-      _log('Cancel during complete — keeping in-flight result');
+      _log('Cancel during complete - keeping in-flight result');
       try {
         await _completer!.future.timeout(const Duration(seconds: 8));
       } catch (_) {}
@@ -144,9 +144,9 @@ class StreamExtractor {
       return;
     }
 
-    // Stream already sniffed — complete with it instead of discarding.
+    // Stream already sniffed - complete with it instead of discarding.
     if (playable != null && _completer != null && !_completer!.isCompleted) {
-      _log('Cancel with captured stream — completing instead of discard');
+      _log('Cancel with captured stream - completing instead of discard');
       _capturedVideo = playable;
       _cancelled = false;
       _completing = true;
@@ -524,7 +524,7 @@ class StreamExtractor {
     if (!targetUri.isScheme('http') && !targetUri.isScheme('https')) {
       return false;
     }
-    // AutoEmbed (and similar) anti-iframe pages — never treat as success.
+    // AutoEmbed (and similar) anti-iframe pages - never treat as success.
     final path = targetUri.path.toLowerCase();
     if (path == '/asb.html' || path.endsWith('/asb.html')) {
       return false;
@@ -631,7 +631,7 @@ class StreamExtractor {
 
     final playbackReferer = _playbackReferer(referer);
 
-    // Audio-only CDN paths (e.g. VidLove/111movies `tran-audio`) — never
+    // Audio-only CDN paths (e.g. VidLove/111movies `tran-audio`) - never
     // treat as the primary video when deferring for a strong stream.
     if (isAudioOnlyStreamUrl(rUrl)) {
       _log('AUDIO DETECTED: $rUrl');
@@ -660,7 +660,7 @@ class StreamExtractor {
               _isEmbedProxyPlaylistUrl(_capturedVideo!));
       if (!strong) return;
       // Chip-rotate hosts: keep sniffing every server chip until timeout so
-      // all detected playlists land in `sources` — no first-hit early complete.
+      // all detected playlists land in `sources` - no first-hit early complete.
       if (_profile.rotateServerChips) return;
       // Legacy hold: wait for at least one chip switch before completing.
       if (_profile.rotateBeforeComplete && _serverSwitchCount == 0) {
@@ -858,7 +858,7 @@ class StreamExtractor {
       return;
     }
     _capturedVideo = video;
-    // Once we have a playable URL, finish even if cancel was requested —
+    // Once we have a playable URL, finish even if cancel was requested -
     // switching providers must not throw away an already-found stream.
 
     final headers = Map<String, String>.from(
@@ -1274,7 +1274,7 @@ class StreamExtractor {
             serverChipIndex++;
           }
         }
-        // All servers tried once — allow a second pass (do not spam the active one).
+        // All servers tried once - allow a second pass (do not spam the active one).
         if (!el) {
           if (triedServerLabels.size >= chips.length) {
             triedServerLabels.clear();
@@ -1360,7 +1360,7 @@ class StreamExtractor {
         }
         await webView?.dispose().timeout(const Duration(seconds: 2));
       } on TimeoutException {
-        _log('Headless WebView dispose timed out — abandoning');
+        _log('Headless WebView dispose timed out - abandoning');
       } catch (e) {
         _log('Error during disposal: $e');
       }

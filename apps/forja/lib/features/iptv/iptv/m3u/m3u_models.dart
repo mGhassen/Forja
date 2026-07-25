@@ -1,5 +1,5 @@
 // Models for M3U / M3U8 IPTV playlists (uploaded file or URL).
-// Decoupled from the Xtream-Codes path — these are simple flat playlists.
+// Decoupled from the Xtream-Codes path - these are simple flat playlists.
 
 class M3uChannel {
   final String name;

@@ -49,7 +49,7 @@ class IptvController extends ChangeNotifier
       verified.where((v) => v.portal.source == 'Manual').toList();
   bool canGetMore = false;
   String? _scrapeAfter;
-  /// Set of credKeys (user|pass) already verified — used to dedupe portals.
+  /// Set of credKeys (user|pass) already verified - used to dedupe portals.
   /// Same credentials on a different URL still counts as a duplicate.
   final Set<String> _verifiedKeys = {};
 
@@ -59,14 +59,14 @@ class IptvController extends ChangeNotifier
   final Set<String> _attemptedKeys = {};
 
   /// Untested portals scraped on previous Get-More presses.
-  /// Consumed first before scraping a fresh page — never wasted.
+  /// Consumed first before scraping a fresh page - never wasted.
   final List<IptvPortal> _pendingPortals = [];
   final Set<String> _pendingKeys = {};
 
-  /// Favorite portal keys — pinned to the top of the list.
+  /// Favorite portal keys - pinned to the top of the list.
   final Set<String> _favoritePortals = {};
 
-  /// Session-new portals (scrape / deal / add / import) — visual badge only.
+  /// Session-new portals (scrape / deal / add / import) - visual badge only.
   final List<String> _newPortalKeys = [];
 
   /// Non-favorite display order: most recently added/scraped first.
@@ -76,7 +76,7 @@ class IptvController extends ChangeNotifier
 
   bool isNewPortal(String key) => _newPortalKeys.contains(key);
 
-  /// Dismisses the "new" highlight only — does not reorder the list.
+  /// Dismisses the "new" highlight only - does not reorder the list.
   void markPortalSeen(String key) {
     if (_newPortalKeys.remove(key)) {
       notifyListeners();
@@ -125,7 +125,7 @@ class IptvController extends ChangeNotifier
   IptvCatalogLoadStyle catalogLoadStyle = IptvCatalogLoadStyle.none;
   IptvCatalogLoadStep? catalogLoadStep;
   IptvCatalogLoadProgress catalogLoadProgress = IptvCatalogLoadProgress.empty;
-  /// In-session catalog cache — static so tab eviction / new [IptvController]
+  /// In-session catalog cache - static so tab eviction / new [IptvController]
   /// does not force a re-fetch. Shelves are also persisted via
   /// [IptvCatalogDiskStore] so app restart can skip network when warm.
   static final Map<String, _CatalogSnap> _sharedCatalogCache = () {
@@ -174,7 +174,7 @@ class IptvController extends ChangeNotifier
   /// Category chosen during search (sidebar tap or played channel); wins on clear.
   String? _browserSearchCommittedCategoryId;
 
-  /// Live catalog only — Movies/Series keep API order.
+  /// Live catalog only - Movies/Series keep API order.
   IptvCatalogSort liveCategorySort = IptvCatalogSort.playlist;
   IptvCatalogSort liveContentSort = IptvCatalogSort.playlist;
 
@@ -252,7 +252,7 @@ class IptvController extends ChangeNotifier
     }).toList();
   }
 
-  /// Categories with Live sort applied (no search filter) — channel guide.
+  /// Categories with Live sort applied (no search filter) - channel guide.
   /// Synthetic Favorites / Already watched rows are omitted (guide uses groups).
   List<IptvCategory> get liveSortedCategories {
     final cats = categories
@@ -346,7 +346,7 @@ class IptvController extends ChangeNotifier
     return [for (final c in current) c.id];
   }
 
-  /// Streams with Live content sort applied — channel guide / catalog.
+  /// Streams with Live content sort applied - channel guide / catalog.
   List<IptvStream> liveSortedStreams(List<IptvStream> streams) {
     if (activeSection != IptvSection.live) return streams;
     return sortStreams(streams, liveContentSort);
@@ -636,7 +636,7 @@ class IptvController extends ChangeNotifier
   }
 
   /// Ensures guide listings for [s] are fetched (once). Stable Future for
-  /// [FutureBuilder] — UI slices visible hours from the result.
+  /// [FutureBuilder] - UI slices visible hours from the result.
   Future<List<EpgEntry>> guideEpgFor(IptvStream s) {
     if (!_epgEnabled) return Future.value(const []);
     final p = activePortal;
@@ -715,7 +715,7 @@ class IptvController extends ChangeNotifier
 
   /// Lazy EPG fetch for a live stream. Returns the cached future (or fires a
   /// new request) so multiple `_StreamCard`s for the same id share one call.
-  /// Safe to call from `FutureBuilder` — the Future is stable across rebuilds.
+  /// Safe to call from `FutureBuilder` - the Future is stable across rebuilds.
   Future<List<EpgEntry>> epgFor(IptvStream s, {int limit = 2}) {
     if (!_epgEnabled) return Future.value(const []);
     final p = activePortal;
@@ -744,7 +744,7 @@ class IptvController extends ChangeNotifier
 
   /// EPG cache for ChannelHit cards (Channels Hub). Keyed by
   /// `portal.key|streamId` because hits come from many different portals.
-  /// Lives for the controller's lifetime — re-running a scan on the same
+  /// Lives for the controller's lifetime - re-running a scan on the same
   /// channel typically yields overlapping hits, so reuse is desirable.
   final Map<String, Future<List<EpgEntry>>> _hitEpgCache = {};
 
@@ -788,7 +788,7 @@ class IptvController extends ChangeNotifier
   List<ChannelHit> channelResults = const [];
   bool _channelCancel = false;
 
-  /// Favorite channel-hit URLs per channelId — pinned to the top.
+  /// Favorite channel-hit URLs per channelId - pinned to the top.
   final Map<String, Set<String>> _favoriteHits = {};
   bool isFavoriteHit(String channelId, ChannelHit h) =>
       _favoriteHits[channelId]?.contains(h.streamUrl) ?? false;

@@ -174,7 +174,7 @@ mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
   Future<void> _nextEpisode() async {
     if (!_isNextEpisodeAvailable || _s._isLoadingNextEp) return;
 
-    // Anime / external resolver path — the caller knows how to fetch the
+    // Anime / external resolver path - the caller knows how to fetch the
     // next episode and will navigate themselves. Save history first so the
     // current position isn't lost.
     if (widget.onNextEpisode != null) {

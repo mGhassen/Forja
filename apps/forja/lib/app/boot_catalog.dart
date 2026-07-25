@@ -55,7 +55,7 @@ class BootCatalog {
 
     if (trendingList.isEmpty && popularList.isNotEmpty) {
       debugPrint(
-        '[Boot] TMDB trending empty after retries — using popular for hero',
+        '[Boot] TMDB trending empty after retries - using popular for hero',
       );
       trendingList = popularList;
     }

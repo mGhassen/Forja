@@ -802,7 +802,7 @@ class _HitEpgNowRow extends StatelessWidget {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  now.title.isEmpty ? '—' : now.title,
+                  now.title.isEmpty ? '-' : now.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(

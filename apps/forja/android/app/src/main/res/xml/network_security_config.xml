@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- IPTV / Xtream panels often serve streams over plain HTTP. MediaKit (ffmpeg)
      bypasses Android's cleartext policy; ExoPlayer (DefaultHttpDataSource) does not.
-     base-config must allow cleartext — domain-config alone overrides usesCleartextTraffic.
+     base-config must allow cleartext - domain-config alone overrides usesCleartextTraffic.
 
      ISRG Root X1/X2: Android ≤7.0 system trust stores lack Let's Encrypt roots after
      the DST Root CA X3 cross-sign expired (2024). Without these anchors, Flutter
      HttpClient (platform trust on Android) and native HTTPS fail for image.tmdb.org
-     and other LE hosts — Home looks empty while Rust/rustls TMDB JSON still works. -->
+     and other LE hosts - Home looks empty while Rust/rustls TMDB JSON still works. -->
 <network-security-config>
   <base-config cleartextTrafficPermitted="true">
     <trust-anchors>

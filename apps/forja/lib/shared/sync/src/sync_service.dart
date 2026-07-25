@@ -51,7 +51,7 @@ class SyncService {
   static const _activeProfileKeyPrefix = 'forja_sync_active_profile_';
   static const _refreshDebounce = Duration(seconds: 30);
   static const _featuresPullMinInterval = Duration(seconds: 2);
-  /// Desktop window left "resumed" never gets lifecycle resume — keep RT warm.
+  /// Desktop window left "resumed" never gets lifecycle resume - keep RT warm.
   static const _desktopKeepAliveInterval = Duration(minutes: 12);
   static const _profileFetchTimeout = Duration(seconds: 15);
   /// Refresh access JWT when less than this remains before expiry.
@@ -80,7 +80,7 @@ class SyncService {
   /// Debounced unless [force] is true. Returns false when unsigned or refresh
   /// fails (GoTrue may then emit involuntary `signedOut`).
   ///
-  /// Success means [auth.currentSession] is present and not expired — not merely
+  /// Success means [auth.currentSession] is present and not expired - not merely
   /// that gotrue returned tokens. Concurrent `recoverSession` can bump the
   /// session version mid-refresh; gotrue then discards the apply while still
   /// returning a fresh [AuthResponse.session] (JWT-expired PostgREST race).
@@ -149,12 +149,12 @@ class SyncService {
       return current != null && !current.isExpired;
     }
 
-    // Prefer RT-only when the returned AT is already past local expiry — forces
+    // Prefer RT-only when the returned AT is already past local expiry - forces
     // a `/token` round-trip instead of setSession(getUser) on a dead JWT.
     final applyAccess = returned.isExpired ? null : at;
 
     debugPrint(
-      '[Sync] refresh returned tokens but currentSession still stale — '
+      '[Sync] refresh returned tokens but currentSession still stale - '
       're-applying (gotrue discard race)',
     );
     try {
@@ -239,7 +239,7 @@ class SyncService {
         level.currentLevel != AuthenticatorAssuranceLevels.aal2;
   }
 
-  /// Verified TOTP factors from the current user JWT (no refresh — avoids RT race).
+  /// Verified TOTP factors from the current user JWT (no refresh - avoids RT race).
   List<Factor> listTotpFactors() {
     final client = ForjaSupabase.clientOrNull;
     final factors = client?.auth.currentUser?.factors ?? const <Factor>[];
@@ -476,7 +476,7 @@ class SyncService {
       );
       if (!persisted) {
         debugPrint(
-          '[Sync] WARNING: session not durable after setSession — '
+          '[Sync] WARNING: session not durable after setSession - '
           'cold start may return to sign-in',
         );
       }
@@ -563,7 +563,7 @@ class SyncService {
       if (e is SyncProfileFetchException) rethrow;
       if (isJwtExpiredError(e)) {
         debugPrint(
-          '[Sync] listProfiles JWT expired — force refresh and retry',
+          '[Sync] listProfiles JWT expired - force refresh and retry',
         );
         try {
           return await fetchOnce(forceRefresh: true);
@@ -760,7 +760,7 @@ class SyncService {
         case 'navigation':
           merged['navigation'] = e.value;
         case 'iptv':
-          // Ignored — portals use user_iptv_portals; M3U is device-local.
+          // Ignored - portals use user_iptv_portals; M3U is device-local.
           break;
       }
     }
@@ -819,7 +819,7 @@ class SyncService {
     }
   }
 
-  /// Lean `accounts.features` — empty map means all flags off.
+  /// Lean `accounts.features` - empty map means all flags off.
   ///
   /// Coalesces concurrent calls; skips network if a pull finished within
   /// [_featuresPullMinInterval] unless [force] (e.g. after Deal).
@@ -917,7 +917,7 @@ class SyncService {
     } catch (e) {
       if (isJwtExpiredError(e)) {
         debugPrint(
-          '[Sync] pullAccountFeatures JWT expired — force refresh and retry',
+          '[Sync] pullAccountFeatures JWT expired - force refresh and retry',
         );
         try {
           return await pullOnce(forceRefresh: true);
@@ -1039,7 +1039,7 @@ class SyncService {
 
   /// Load this profile's portal assignments (`user_iptv_portals` + credentials).
   ///
-  /// Throws when assignments exist but credentials cannot be loaded — callers
+  /// Throws when assignments exist but credentials cannot be loaded - callers
   /// must not treat that as an empty inventory (would wipe local store).
   Future<List<Map<String, dynamic>>> pullUserIptvPortals() async {
     final client = ForjaSupabase.clientOrNull;
@@ -1094,7 +1094,7 @@ class SyncService {
   /// [portalName] is the per-profile label.
   ///
   /// Callers must not pass `[]` unless the user intentionally cleared every
-  /// portal — empty local cache must never reach here (see SyncDomainBridge).
+  /// portal - empty local cache must never reach here (see SyncDomainBridge).
   Future<void> replaceUserIptvPortals(
     List<
       ({

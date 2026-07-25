@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen>
   bool _traktShowsLoading = false;
   bool _traktMoviesLoading = false;
 
-  // "Because you watched ___" — seed from continue-watching; re-rolls on
+  // "Because you watched ___" - seed from continue-watching; re-rolls on
   // Home refresh / shuffle, then BestSimilar.com recommendations (mapped to TMDB).
   Map<String, dynamic>? _becauseSeed; // raw history item
   Future<List<Movie>>? _becauseFuture;
@@ -84,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen>
   String _selectedMood = 'mind';
   Future<List<Movie>>? _moodFuture;
 
-  // Mood definitions — movie and TV use different TMDB genre IDs.
+  // Mood definitions - movie and TV use different TMDB genre IDs.
   static const List<({
     String id,
     String label,

@@ -90,7 +90,7 @@ abstract final class ProviderScoreProbeSync {
     }
   }
 
-  /// Extract-only cache sync does **not** score — server/stream commit together
+  /// Extract-only cache sync does **not** score - server/stream commit together
   /// when stream play/probe finishes (or via [streamsResolved] for anime).
   static Future<void> syncSourcesCache({
     required ProviderScoreScope? scope,

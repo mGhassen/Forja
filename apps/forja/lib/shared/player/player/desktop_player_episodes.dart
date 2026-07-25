@@ -450,10 +450,10 @@ mixin _DesktopPlayerEpisodes
 
       final nextTitle = '${widget.movie!.title} - S$season E$episode';
       // Catalog torrent/Stremio: open like details Play (url + magnet), not a
-      // webstreaming sources list — localhost torrent URLs are filtered as
+      // webstreaming sources list - localhost torrent URLs are filtered as
       // "unplayable extracts" in the server-fallback path.
       final catalog = isCatalogSourcesMode(resolved.activeProvider);
-      // Keep the librqbit session alive while the outgoing player disposes —
+      // Keep the librqbit session alive while the outgoing player disposes -
       // otherwise pushReplacement stops the torrent the next episode just started.
       if (resolved.magnetLink != null && resolved.magnetLink!.isNotEmpty) {
         TorrentStreamService().retainForExternalHandoff = true;
@@ -561,7 +561,7 @@ mixin _DesktopPlayerEpisodes
       useDebrid: useDebrid,
       debridService: debridService,
     );
-    // Magnets / infoHash need engine resolve — keep current video + loading
+    // Magnets / infoHash need engine resolve - keep current video + loading
     // card, replace the player only when the new stream is ready.
     if (precheck == null) {
       await _switchStremioMagnetSource(stream);
@@ -639,7 +639,7 @@ mixin _DesktopPlayerEpisodes
         return;
       }
 
-      // Catalog switches must show a frame — buffer/audio alone leaves a
+      // Catalog switches must show a frame - buffer/audio alone leaves a
       // black picture (common on Nuvio HLS when GPU decode stalls).
       final decoded = await confirmOpenedStreamVideoDecode(
         _s._player,
@@ -701,7 +701,7 @@ mixin _DesktopPlayerEpisodes
     }
   }
 
-  /// Stremio/Torrentio magnet — same UX as [_switchTorrentSource]: keep the
+  /// Stremio/Torrentio magnet - same UX as [_switchTorrentSource]: keep the
   /// current player running with a bottom-right card until the new stream is
   /// ready, then open a fresh player.
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
@@ -782,7 +782,7 @@ mixin _DesktopPlayerEpisodes
     if (_s._isLoadingNextEp) return;
     // Keep current video playing with the loading card while the new magnet
     // resolves in the background. Only replace the player when the stream is
-    // ready — never tear down the active swarm first (that freezes mpv).
+    // ready - never tear down the active swarm first (that freezes mpv).
     _beginEpisodeLoading(
       label: result.name,
       status: 'Starting Local Torrent Engine…',
@@ -924,7 +924,7 @@ mixin _DesktopPlayerEpisodes
       return;
     }
 
-    // No preferred language — only pick first embedded when Auto subtitles is on.
+    // No preferred language - only pick first embedded when Auto subtitles is on.
     if (_s._subtitlePinned) return;
     if (embedded.isEmpty) return;
     final track = embedded.first;
@@ -945,7 +945,7 @@ mixin _DesktopPlayerEpisodes
     await settings.getAutoSkipIntro();
     if (!mounted) return;
     // Respect Auto toggles only. Do not lock because an extract already exists
-    // (green Play / cache) — that made dead CDNs hit "no auto failover".
+    // (green Play / cache) - that made dead CDNs hit "no auto failover".
     setState(() {
       _s._providerPinned = !autoServer;
       _s._sourcePinned = !autoSource;
@@ -1224,7 +1224,7 @@ mixin _DesktopPlayerEpisodes
       _s._liveProviderSourcesCache.value = next;
     }
 
-    // One host WebView — abandon other in-flight Source-panel loads.
+    // One host WebView - abandon other in-flight Source-panel loads.
     for (final id in _s._providerLoadGens.keys.toList()) {
       if (id == providerId) continue;
       _s._providerLoadGens[id] = (_s._providerLoadGens[id] ?? 0) + 1;
@@ -1261,7 +1261,7 @@ mixin _DesktopPlayerEpisodes
           providerId: sources,
         };
         // Current server list prefers live [_currentSources] over session
-        // cache — refresh it so panel reload is not a no-op after cache play.
+        // cache - refresh it so panel reload is not a no-op after cache play.
         if (forceRefresh &&
             (_s._currentProvider == providerId ||
                 ((_s._currentProvider == null || _s._currentProvider!.isEmpty) &&
@@ -1276,7 +1276,7 @@ mixin _DesktopPlayerEpisodes
         return sources;
       }
       // Re-extract miss while this server is still playing must not paint it
-      // dead — live URL is still open in the player.
+      // dead - live URL is still open in the player.
       final playingSame = _s._playbackConfirmed &&
           (_s._currentProvider == providerId ||
               widget.activeProvider == providerId);

@@ -21,21 +21,21 @@ class ReleaseStorageUrls {
     return base.endsWith('/') ? base.substring(0, base.length - 1) : base;
   }
 
-  /// `{RELEASE_CDN_URL}/latest/manifest.json` — updater discovery.
+  /// `{RELEASE_CDN_URL}/latest/manifest.json` - updater discovery.
   static String? manifestUrl() {
     final root = _root;
     if (root == null) return null;
     return '$root/latest/manifest.json';
   }
 
-  /// `{RELEASE_CDN_URL}/changelog/index.json` — version list for update notes.
+  /// `{RELEASE_CDN_URL}/changelog/index.json` - version list for update notes.
   static String? changelogIndexUrl() {
     final root = _root;
     if (root == null) return null;
     return '$root/changelog/index.json';
   }
 
-  /// `{RELEASE_CDN_URL}/changelog/{version}.md` — frozen release notes body.
+  /// `{RELEASE_CDN_URL}/changelog/{version}.md` - frozen release notes body.
   static String? changelogUrl({required String version}) {
     final root = _root;
     if (root == null) return null;
@@ -43,7 +43,7 @@ class ReleaseStorageUrls {
     return '$root/changelog/$ver.md';
   }
 
-  /// `{RELEASE_CDN_URL}/latest/{filename}` — site download CTAs only.
+  /// `{RELEASE_CDN_URL}/latest/{filename}` - site download CTAs only.
   static String? latestUrl({required String filename}) {
     final root = _root;
     if (root == null) return null;

@@ -1,10 +1,10 @@
-// Videasy extractor — mirrors player.videasy.to (chunk 8351).
+// Videasy extractor - mirrors player.videasy.to (chunk 8351).
 //
-// Pipeline (api.wingsdatabase.com — NOT the public videasy.to embed docs):
+// Pipeline (api.wingsdatabase.com - NOT the public videasy.to embed docs):
 //   1. Metadata from db.wingsdatabase.com/3 (same as the player page)
 //   2. GET /seed?mediaId=… (cached ~25s; refresh on 401)
 //   3. GET /{mirror}/sources-with-title?title&enc=2&seed=…&totalSeasons=…
-//   4. Decrypt payload in headless WebView (STREAMCRYPTO — seed + tmdbId)
+//   4. Decrypt payload in headless WebView (STREAMCRYPTO - seed + tmdbId)
 //   5. Parse JSON sources
 
 import 'dart:async';
@@ -32,12 +32,12 @@ class VideasyExtractor {
   static String get _playerOrigin =>
       ProviderRuntimeConfig.instance.api('videasyPlayerOrigin') ??
       _playerOriginDefault;
-  // Fail hung mirrors fast — neon2/m4uhd often stall with 0 bytes while cdn
+  // Fail hung mirrors fast - neon2/m4uhd often stall with 0 bytes while cdn
   // (Yoru) answers in ~100ms.
   static const _fetchTimeout = Duration(seconds: 12);
   static const _slowFetchTimeout = Duration(seconds: 18);
   // After first mirror hit, keep collecting siblings briefly then play.
-  // Do NOT bump [_generation] on grace (that discarded hits — issue 071).
+  // Do NOT bump [_generation] on grace (that discarded hits - issue 071).
   static const _postFirstHitGrace = Duration(seconds: 2);
   // Keep short enough that HostProviderAdapter can fall back to sniffing
   // player.videasy.to when wings mirrors CF-block / timeout.
@@ -46,7 +46,7 @@ class VideasyExtractor {
   static const _seedTtl = Duration(seconds: 25);
 
   /// Servers tab from player chunk 8351 (Yoru→cdn, Neon→neon2, …).
-  /// Listed order only — every mirror is probed (bounded parallel).
+  /// Listed order only - every mirror is probed (bounded parallel).
   static const _mirrors = <_VideasyMirror>[
     _VideasyMirror('cdn', displayName: 'Yoru'),
     _VideasyMirror('neon2', slow: true, displayName: 'Neon'),
@@ -373,7 +373,7 @@ class VideasyExtractor {
       final res = await _get(uri, gen: gen);
       if (res.statusCode != 200) {
         onLog('[Videasy] seed -> ${res.statusCode}');
-        // Keep last good seed — 429 mid-fanout must not kill remaining probes.
+        // Keep last good seed - 429 mid-fanout must not kill remaining probes.
         return _seedCache[tmdbId]?.seed;
       }
       final data = jsonDecode(res.body) as Map<String, dynamic>;
@@ -394,7 +394,7 @@ class VideasyExtractor {
   static void _invalidateSeed(String tmdbId) => _seedCache.remove(tmdbId);
 
   /// Probe mirrors in parallel. First hit starts a short grace, then we return
-  /// what we have — dead/hung siblings must not block play (web parity).
+  /// what we have - dead/hung siblings must not block play (web parity).
   Future<ExtractedMedia?> _collectProviders({
     required _VideasyDecryptHost crypto,
     required String tmdbId,
@@ -426,7 +426,7 @@ class VideasyExtractor {
 
     void onFirstHitScheduleGrace() {
       if (grace != null || done.isCompleted) return;
-      // Stop queueing more mirrors — keep in-flight, then cut after grace.
+      // Stop queueing more mirrors - keep in-flight, then cut after grace.
       nextIndex = jobs.length;
       grace = Timer(_postFirstHitGrace, finish);
     }
@@ -530,7 +530,7 @@ class VideasyExtractor {
       final seedInvalid =
           res.statusCode == 401 || body.contains('STREAMCRYPTO_SEED_INVALID');
       if (seedInvalid && attempt == 0) {
-        onLog('[Videasy] ${job.provider} seed invalid — retrying');
+        onLog('[Videasy] ${job.provider} seed invalid - retrying');
         _invalidateSeed(tmdbId);
         continue;
       }

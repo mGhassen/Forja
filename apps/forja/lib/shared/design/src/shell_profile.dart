@@ -10,7 +10,7 @@ enum ShellProfile { mobile, desktop, tv }
 ///
 /// Feature code must use [ShellScope.profileOf] / [ShellScope.metricsOf] /
 /// [ShellScope.inputPolicyOf], or [PlatformInfo] when [BuildContext] is
-/// unavailable — never [ShellTokens.isTvLayout] outside this resolver.
+/// unavailable - never [ShellTokens.isTvLayout] outside this resolver.
 ShellProfile resolveShellProfile(BuildContext context) {
   if (ShellTokens.isTvLayout(context)) return ShellProfile.tv;
   if (!kIsWeb &&

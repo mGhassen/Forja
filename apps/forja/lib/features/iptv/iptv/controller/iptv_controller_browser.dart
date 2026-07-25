@@ -377,7 +377,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         _c.aliveStreamIds = const {};
         _c.aliveCheckedAt = null;
       }
-      // Cache snap may predate synthetic Live pins — ensure they exist.
+      // Cache snap may predate synthetic Live pins - ensure they exist.
       if (!_c.categories.any((c) => c.id == IptvLiveCatalog.favoritesId)) {
         final api = _c.categories
             .where((c) => !IptvLiveCatalog.isPinnedId(c.id))
@@ -459,7 +459,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       t.cancel();
     }
     _c._healthDebounce.clear();
-    // Do not touch portal health expiry — catalog open/reload must keep
+    // Do not touch portal health expiry - catalog open/reload must keep
     // the active-portal status cache until TTL or an explicit refresh.
     for (final t in _portalHealthDebounce.values) {
       t.cancel();
@@ -467,7 +467,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _portalHealthDebounce.clear();
   }
 
-  /// Probe a single catalog stream — capped concurrency, after debounce.
+  /// Probe a single catalog stream - capped concurrency, after debounce.
   void lazyCheckStream(IptvStream s) {
     final p = _c.activePortal;
     if (p == null || !_sectionSupportsStreamHealth(_c.activeSection)) return;
@@ -512,7 +512,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       }
       final ok = await IptvAliveChecker.checkOne(url);
       _c.streamHealth[s.streamId] = ok;
-      // Live-only filter / IptvAliveStore — never mix VOD/series IDs in.
+      // Live-only filter / IptvAliveStore - never mix VOD/series IDs in.
       if (ok && s.kind == 'live') {
         _c.aliveStreamIds = {..._c.aliveStreamIds, s.streamId};
       }
@@ -556,7 +556,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
   bool? portalHealthFor(String key) => portalHealth[key];
 
-  /// Hover/focus probe — skips when a fresh cache entry exists.
+  /// Hover/focus probe - skips when a fresh cache entry exists.
   void schedulePortalHealthCheck(VerifiedPortal v) {
     final key = v.key;
     if (key.isEmpty) return;

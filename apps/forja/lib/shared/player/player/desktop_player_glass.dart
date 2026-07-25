@@ -1,7 +1,7 @@
 part of 'desktop_player_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  HARDWARE DECODE MODE  (RFC-026 R26-C06 — flat chrome; glass primitives removed)
+//  HARDWARE DECODE MODE  (RFC-026 R26-C06 - flat chrome; glass primitives removed)
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum _HwDecMode {

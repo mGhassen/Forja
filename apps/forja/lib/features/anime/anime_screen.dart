@@ -1,4 +1,4 @@
-// Anime hub — cinematic hero + poster rows (same shell as Home).
+// Anime hub - cinematic hero + poster rows (same shell as Home).
 
 import 'dart:async';
 

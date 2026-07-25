@@ -8,7 +8,7 @@ import 'package:rust/rust.dart';
 /// True for built-in webstreaming extractors (Videasy, VidSrc, …).
 ///
 /// [StreamProviderDisplay] labels also cover playback *modes* (`stremio_direct`,
-/// `amri`, `torrent`) — those must stay out of the green-Play cache.
+/// `amri`, `torrent`) - those must stay out of the green-Play cache.
 bool isWebStreamProviderId(String sourceId) {
   if (sourceId.isEmpty) return false;
   if (sourceId.startsWith('nuvio:')) return false;
@@ -28,7 +28,7 @@ bool isCatalogSourcesMode(String? providerId) {
   return modes.contains(StreamProviderDisplay.canonicalId(providerId));
 }
 
-/// A magnet / torrent link — NOT a direct HTTP(S) stream.
+/// A magnet / torrent link - NOT a direct HTTP(S) stream.
 bool isTorrentStreamUrl(String url) {
   final u = url.trim().toLowerCase();
   return u.startsWith('magnet:') ||
@@ -36,7 +36,7 @@ bool isTorrentStreamUrl(String url) {
       u.endsWith('.torrent');
 }
 
-/// JWT `exp` from a compact JWS (payload only — no signature verify).
+/// JWT `exp` from a compact JWS (payload only - no signature verify).
 int? jwtExpiryUnix(String jwt) {
   final parts = jwt.split('.');
   if (parts.length < 2) return null;
@@ -56,7 +56,7 @@ int? jwtExpiryUnix(String jwt) {
 /// True when `?token=` JWT is expired or within [skew] of expiry.
 ///
 /// CloudStream / tokenized HLS URLs die at JWT `exp` while session/disk cache
-/// can still hold them — reject before open / cache write.
+/// can still hold them - reject before open / cache write.
 bool isStreamUrlTokenExpired(
   String url, {
   Duration skew = const Duration(minutes: 2),
@@ -121,7 +121,7 @@ String? hlsProxyTargetUrl(String url) {
   return target.isEmpty ? null : target;
 }
 
-/// Durable catalog identity for Source panel / session cache — never loopback.
+/// Durable catalog identity for Source panel / session cache - never loopback.
 String? durableStreamCatalogUrl({
   String? catalogUrl,
   String? sourceUrl,

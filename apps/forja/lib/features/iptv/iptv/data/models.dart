@@ -143,7 +143,7 @@ enum IptvCatalogLoadStyle {
   /// Idle / cache hit applied instantly. Reload uses [IptvController.isLoading] spinner.
   none,
 
-  /// Cold portal/shelf load — progress bar + live counts.
+  /// Cold portal/shelf load - progress bar + live counts.
   verbose,
 }
 
@@ -219,7 +219,7 @@ class IptvCatalogLoadProgress {
       );
 }
 
-/// Live catalog sort — playlist = API order; nameAsc/nameDesc by display name.
+/// Live catalog sort - playlist = API order; nameAsc/nameDesc by display name.
 enum IptvCatalogSort {
   playlist,
   nameAsc,
@@ -234,7 +234,7 @@ enum IptvCatalogSort {
   String get prefsValue => name;
 }
 
-/// Live catalog channel pane layout — cards (default) or EPG timeline guide.
+/// Live catalog channel pane layout - cards (default) or EPG timeline guide.
 enum IptvLiveBrowseLayout {
   cards,
   guide;
@@ -253,7 +253,7 @@ class IptvStream {
   final String categoryId;
   final String containerExt;
   final String kind;
-  /// Xtream `epg_channel_id` — empty when the panel doesn't ship EPG for this
+  /// Xtream `epg_channel_id` - empty when the panel doesn't ship EPG for this
   /// channel. We don't actually need it for `get_short_epg` (that endpoint is
   /// indexed by stream_id) but it's a useful "has EPG?" hint to skip cards.
   final String epgChannelId;

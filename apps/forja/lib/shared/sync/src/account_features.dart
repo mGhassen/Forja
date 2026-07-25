@@ -25,7 +25,7 @@ class AccountFeatures {
   /// Credits for dealing portals from the catalog pool (RFC-040).
   int get iptvCredits => _iptvCredits;
 
-  /// `accounts.is_admin` — experimental / ops toggles in Settings.
+  /// `accounts.is_admin` - experimental / ops toggles in Settings.
   bool get isAdmin => _isAdmin;
 
   /// Apply lean cloud JSON (`{}` or `{ "iptvScrape": true, "dealPortal": true }`).

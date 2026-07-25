@@ -20,7 +20,7 @@ void main() {
 
   group('includeLiveMatchInSportFilter', () {
     test('Streamed always-on with sport slug only shows on 24/7 chip', () {
-      // Willow Cricket / Tennis Channel / Rally TV — date 0, category = sport.
+      // Willow Cricket / Tennis Channel / Rally TV - date 0, category = sport.
       expect(
         includeLiveMatchInSportFilter(
           category: 'cricket',

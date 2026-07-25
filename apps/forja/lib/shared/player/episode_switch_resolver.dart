@@ -32,7 +32,7 @@ List<String> episodeProviderChain({
   String? magnetLink,
 }) {
   final current = currentProvider ?? activeProvider;
-  // Catalog torrent / Stremio sessions must not walk webstreaming providers —
+  // Catalog torrent / Stremio sessions must not walk webstreaming providers -
   // those maps are often still non-empty from details preload.
   if (current == 'stremio_direct') return const ['stremio_direct'];
   if (current == 'torrent' ||
@@ -90,7 +90,7 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
           headers = Map<String, String>.from(proxyHeaders);
         }
         final url = stream['url'] as String;
-        // Magnet in `url` must resolve like infoHash — never open as a file path.
+        // Magnet in `url` must resolve like infoHash - never open as a file path.
         if (isTorrentStreamUrl(url)) {
           final settings = SettingsService();
           final playback = await resolveMagnetForPlayback(

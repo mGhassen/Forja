@@ -26,7 +26,7 @@ class SettingsCategoryTile extends StatelessWidget {
   final VoidCallback onTap;
   final FocusNode? focusNode;
 
-  /// Hub list index — `0` sends Left D-pad to the nav rail.
+  /// Hub list index - `0` sends Left D-pad to the nav rail.
   final int? listIndex;
 
   @override
@@ -106,7 +106,7 @@ class SettingsCategoryTile extends StatelessWidget {
   }
 }
 
-/// Flat labeled section of settings rows — no card box, hairline row dividers.
+/// Flat labeled section of settings rows - no card box, hairline row dividers.
 class SettingsGroup extends StatelessWidget {
   const SettingsGroup({
     super.key,
@@ -580,7 +580,7 @@ class SettingsActionRow extends StatelessWidget {
   }
 }
 
-/// Slider row — TV: focus then ←/→ nudge immediately (no OK arm).
+/// Slider row - TV: focus then ←/→ nudge immediately (no OK arm).
 class SettingsSliderRow extends StatefulWidget {
   const SettingsSliderRow({
     super.key,
@@ -701,7 +701,7 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
   }
 }
 
-/// Settings action button — thin wrapper over the shared [ForjaButton].
+/// Settings action button - thin wrapper over the shared [ForjaButton].
 ///
 /// Hugs its label and left-aligns by default (never full-width in a stretch
 /// column). Pass `expand: true` only when a caller explicitly wants a
@@ -744,7 +744,7 @@ class SettingsFilledButton extends StatelessWidget {
   }
 }
 
-/// Flat underline text field — no filled box.
+/// Flat underline text field - no filled box.
 class SettingsTextField extends StatelessWidget {
   const SettingsTextField({
     super.key,
@@ -803,7 +803,7 @@ class SettingsTextField extends StatelessWidget {
   }
 }
 
-/// Flat connected/status line — icon + title + subtitle, no box.
+/// Flat connected/status line - icon + title + subtitle, no box.
 class SettingsStatusRow extends StatelessWidget {
   const SettingsStatusRow({
     super.key,

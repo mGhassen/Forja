@@ -14,7 +14,7 @@ const loadingOverlayFadeOutDuration = Duration(milliseconds: 750);
 /// [RouteSettings.name] for stream-loading hosts/dialogs under the player.
 ///
 /// Player Back pops the player then strips any registered route with this name
-/// in the same frame — otherwise Back lands on the loading screen (anime /
+/// in the same frame - otherwise Back lands on the loading screen (anime /
 /// Asian Drama hosts stay mounted for Source reload during playback).
 const loadingOverlayRouteName = 'loading_overlay';
 
@@ -107,7 +107,7 @@ void dismissLoadingOverlayRoute(BuildContext loadingDialogContext) {
 }
 
 /// Dispose overlay notifiers after [dismissLoadingOverlayRoute]'s post-frame
-/// remove + [LoadingOverlay.dispose] removeListener — never dispose while the
+/// remove + [LoadingOverlay.dispose] removeListener - never dispose while the
 /// dialog is still listening (red-screens as "used after being disposed").
 void disposeLoadingOverlayNotifiers(Iterable<ChangeNotifier> notifiers) {
   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -123,7 +123,7 @@ void disposeLoadingOverlayNotifiers(Iterable<ChangeNotifier> notifiers) {
 ///
 /// Captures the loading [Route] before [openPlayer] and strips it from under
 /// the player (fade end + player close). Player Back alone never pops this
-/// dialog — leaving it mounted is what stranded users on the loading screen.
+/// dialog - leaving it mounted is what stranded users on the loading screen.
 Future<T?> crossfadeLoadingOverlayToPlayer<T>({
   required BuildContext loadingDialogContext,
   ValueNotifier<bool>? fadeOutNotifier,
@@ -136,7 +136,7 @@ Future<T?> crossfadeLoadingOverlayToPlayer<T>({
   if (!loadingDialogContext.mounted) {
     return openPlayer();
   }
-  // Capture before the player push — dialog context can unmount after remove.
+  // Capture before the player push - dialog context can unmount after remove.
   final navigator = Navigator.of(loadingDialogContext);
   final route = ModalRoute.of(loadingDialogContext);
   registerLoadingOverlayRoute(navigator, route);
@@ -412,7 +412,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     if (widget.fadeOutNotifier?.value == true) {
       _fadeOutController.reverse();
     } else {
-      // Player closed before hand-off finished — restore the overlay so
+      // Player closed before hand-off finished - restore the overlay so
       // Cancel / Reload are visible again (not a blank black route).
       _fadeOutController.forward();
     }
@@ -1072,7 +1072,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     if (escapeAction == null) return overlay;
 
     // While resolving, keep a root Focus so Escape works. On failure, do not
-    // autofocus here — ResolveFailurePanel owns Try again / Close.
+    // autofocus here - ResolveFailurePanel owns Try again / Close.
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): escapeAction,

@@ -428,7 +428,7 @@ mixin _TrailerPlayerWeb on State<TrailerPlayerScreen> {
       if (player) cropYoutubeChrome(player);
     });
 
-    // WKWebView / WebView2 eat Flutter gestures over the platform view —
+    // WKWebView / WebView2 eat Flutter gestures over the platform view -
     // bridge pointer / double-click from the page instead.
     var lastTapAt = 0;
     var singleTapTimer = null;

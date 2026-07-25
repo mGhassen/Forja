@@ -47,7 +47,7 @@ mixin _MobilePlayerSourcesSettings on State<MobilePlayerScreen> {
     await settings.getAutoSkipIntro();
     if (!mounted) return;
     // Respect Auto toggles only. Do not lock because an extract already exists
-    // (green Play / cache) — that made dead CDNs hit "no auto failover".
+    // (green Play / cache) - that made dead CDNs hit "no auto failover".
     setState(() {
       _s._providerPinned = !autoServer;
       _s._sourcePinned = !autoSource;

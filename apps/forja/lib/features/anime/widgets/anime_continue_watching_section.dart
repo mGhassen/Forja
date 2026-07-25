@@ -1,4 +1,4 @@
-// Anime continue-watching row — extracted from anime_screen_build.dart.
+// Anime continue-watching row - extracted from anime_screen_build.dart.
 
 import 'package:forja/features/anime/widgets/anime_continue_watching_card.dart';
 import 'package:forja/features/anime/widgets/anime_widget_imports.dart';

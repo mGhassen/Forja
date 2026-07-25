@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 /// Muted chrome palette for shell nav and flat cinematic CTAs.
 abstract final class ForjaShellColors {
-  /// Hero / cinematic overlays (Home top bar) — always light text on imagery.
+  /// Hero / cinematic overlays (Home top bar) - always light text on imagery.
   static const cinematic = _CinematicShellPalette();
 
-  /// Brand green from the Forja logo — hero Play CTA fill.
+  /// Brand green from the Forja logo - hero Play CTA fill.
   static const Color brandGreen = Color(0xFF1CE783);
 
   static const Color iconMuted = Color(0xFF6B7280);

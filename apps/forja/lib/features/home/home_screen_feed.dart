@@ -509,7 +509,7 @@ mixin _HomeScreenFeed on State<HomeScreen> {
       }
       debugPrint('[BecauseYouWatched] bestsimilar similar=${details.similar.length}');
 
-      // 3) Resolve each BS item to a TMDB Movie (parallel) — relaxed threshold
+      // 3) Resolve each BS item to a TMDB Movie (parallel) - relaxed threshold
       //    so we don't drop everything when the year is unknown.
       final lookups = details.similar.map((it) async {
         try {
@@ -763,7 +763,7 @@ mixin _HomeScreenFeed on State<HomeScreen> {
         return;
       }
 
-      // Browse rails only — skip search-only / genre-required catalogs.
+      // Browse rails only - skip search-only / genre-required catalogs.
       final Map<String, List<Map<String, dynamic>>> byAddon = {};
       for (final c in catalogs) {
         if (c['searchRequired'] == true) continue;

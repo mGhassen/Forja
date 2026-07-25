@@ -23,7 +23,7 @@ class WebstreamingStreamCache {
 
   static const _diskKey = 'forja_webstreaming_stream_cache_v1';
   static const _diskMaxEntries = 24;
-  /// Match anime stream cache — CloudStream JWT + CDN links go stale fast.
+  /// Match anime stream cache - CloudStream JWT + CDN links go stale fast.
   static const _diskMaxAge = Duration(minutes: 25);
   static const _sessionTtl = Duration(minutes: 25);
   static const _sessionMaxEntries = 32;
@@ -31,7 +31,7 @@ class WebstreamingStreamCache {
   static final _session =
       <String, ({DateTime at, WebstreamingCacheHit hit})>{};
 
-  /// Stable cache key — TV always uses 1-based season/episode.
+  /// Stable cache key - TV always uses 1-based season/episode.
   static String cacheKey({
     required int tmdbId,
     required String mediaType,
@@ -219,7 +219,7 @@ class WebstreamingStreamCache {
     if (!ok) {
       if (kDebugMode) {
         debugPrint(
-          '[WebstreamingCache] live probe failed — drop $key '
+          '[WebstreamingCache] live probe failed - drop $key '
           '(${first.url})',
         );
       }

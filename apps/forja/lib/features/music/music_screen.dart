@@ -48,7 +48,7 @@ class _MusicScreenState extends State<MusicScreen>
   final int _musicLimit = 20;
   String _downloadedSearchQuery = '';
 
-  // Palette colors — derived from active theme
+  // Palette colors - derived from active theme
   Color get _accentGlow => AppTheme.current.primaryColor;
 
   String get _greeting {

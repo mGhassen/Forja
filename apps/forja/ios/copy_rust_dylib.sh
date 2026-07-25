@@ -13,5 +13,5 @@ do
     exit 0
   fi
 done
-echo "warning: libffi.dylib not found — run ./scripts/build_rust_mobile.sh ios"
+echo "warning: libffi.dylib not found - run ./scripts/build_rust_mobile.sh ios"
 exit 0

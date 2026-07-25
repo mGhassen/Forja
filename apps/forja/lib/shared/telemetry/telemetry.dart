@@ -63,10 +63,10 @@ abstract final class Telemetry {
   /// Debug / QA: throw a known exception so Sentry receives a test event.
   static Future<void> sendTestException() async {
     if (!_crashActive) {
-      throw StateError('Crash reporting is off — enable it in Settings first');
+      throw StateError('Crash reporting is off - enable it in Settings first');
     }
     await captureError(
-      StateError('Forja Sentry verify — test exception'),
+      StateError('Forja Sentry verify - test exception'),
       stackTrace: StackTrace.current,
       hint: 'settings_verify',
     );
@@ -96,7 +96,7 @@ abstract final class Telemetry {
 
   static Future<void> _startCrash() async {
     if (!isConfigured) {
-      debugPrint('[Telemetry] Crash reporting on but SENTRY_DSN empty — no-op');
+      debugPrint('[Telemetry] Crash reporting on but SENTRY_DSN empty - no-op');
       _crashActive = false;
       return;
     }
@@ -145,7 +145,7 @@ abstract final class Telemetry {
   }
 }
 
-/// Visible for tests — redact stream URLs, magnets, tokens.
+/// Visible for tests - redact stream URLs, magnets, tokens.
 SentryEvent? scrubEvent(SentryEvent event, Hint hint) {
   final exceptions = event.exceptions;
   List<SentryException>? scrubbedExceptions;

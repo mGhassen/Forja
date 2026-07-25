@@ -18,7 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 // Passkey type is @experimental.
 // ignore_for_file: experimental_member_use
 
-/// Forja cloud account (Supabase) — Settings → Profile & account.
+/// Forja cloud account (Supabase) - Settings → Profile & account.
 class SettingsForjaAccountPanel extends StatefulWidget {
   const SettingsForjaAccountPanel({super.key});
 
@@ -42,7 +42,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   int _captchaKey = 0;
   List<Passkey> _passkeys = const [];
   bool _passkeysLoading = false;
-  /// False until the active profile row is loaded — never paint a stale profile.
+  /// False until the active profile row is loaded - never paint a stale profile.
   bool _profileReady = false;
   /// Set when a signed-in profile fetch fails (timeout / network).
   String? _profileLoadError;
@@ -57,7 +57,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
 
   @override
   void dispose() {
-    // Do not cancel web login on dispose — leaving Settings mid-handoff used
+    // Do not cancel web login on dispose - leaving Settings mid-handoff used
     // to abort after the browser already closed on ok:true.
     SyncService.instance.identityRevision.removeListener(_onIdentity);
     _emailCtrl.dispose();
@@ -76,7 +76,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
 
   void _onIdentity() {
     if (!mounted) return;
-    // Drop previous profile immediately — async refresh must not flash it.
+    // Drop previous profile immediately - async refresh must not flash it.
     setState(_clearProfileUi);
     _refreshRemote();
   }
@@ -493,7 +493,7 @@ class _SignedInAccountBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final syncSubtitle = domains == 0
-        ? 'No cloud settings synced yet — changes will upload as you use Forja'
+        ? 'No cloud settings synced yet - changes will upload as you use Forja'
         : '$domains setting section${domains == 1 ? '' : 's'} synced to this profile';
 
     return Column(
@@ -607,7 +607,7 @@ String _formatPasskeyDate(DateTime value) {
   return '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 }
 
-/// Cinematic active-profile hero — large avatar, name, “Watching now”.
+/// Cinematic active-profile hero - large avatar, name, “Watching now”.
 class _ActiveProfileStage extends StatelessWidget {
   const _ActiveProfileStage({
     required this.name,
@@ -630,7 +630,7 @@ class _ActiveProfileStage extends StatelessWidget {
             alignment: Alignment.center,
             clipBehavior: Clip.none,
             children: [
-              // Soft brand wash — atmosphere without a card box.
+              // Soft brand wash - atmosphere without a card box.
               Container(
                 width: 108,
                 height: 108,
@@ -828,7 +828,7 @@ class _SignedOutAccountBody extends StatelessWidget {
             children: [
               SettingsActionRow(
                 title: 'Create an account on the web',
-                subtitle: 'Use a phone or computer — then link this TV',
+                subtitle: 'Use a phone or computer - then link this TV',
                 leading: const Icon(
                   Icons.person_add_alt_1_rounded,
                   color: ForjaShellColors.iconMuted,

@@ -175,7 +175,7 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
           needsTruncation: needsTruncation,
         );
 
-        // Parent fixed slots (details / home) must never yellow-strip — clip and
+        // Parent fixed slots (details / home) must never yellow-strip - clip and
         // scroll when expanded.
         if (maxHeight == null) return content;
 

@@ -16,7 +16,7 @@ mixin _LiveMatchesPlayback on State<LiveMatchesScreen> {
       builder: (ctx) => PopScope(
         canPop: true,
         onPopInvokedWithResult: (didPop, _) {
-          // Imperative pop in [finally] also invokes this — don't treat that
+          // Imperative pop in [finally] also invokes this - don't treat that
           // as user cancel or play never continues after a successful resolve.
           if (didPop && !closingOurselves) cancelled = true;
         },

@@ -124,7 +124,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     with WidgetsBindingObserver, _IptvPtPlayerEngine, _IptvPtPlayerUi {
   static int _nextExoViewId = 1;
 
-  /// MediaKit EGL surfaces fail on Android TV (audio OK, black video) — use Exo.
+  /// MediaKit EGL surfaces fail on Android TV (audio OK, black video) - use Exo.
   late final bool _exoBackend =
       !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
   int? _exoViewId;
@@ -136,7 +136,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   int _videoEpoch = 0;
   bool _softwareDecodeForced = false;
 
-  /// Android MediaKit uses software decode — HW surfaces fail on many devices
+  /// Android MediaKit uses software decode - HW surfaces fail on many devices
   /// and ATV emulators (EGL_BAD_ATTRIBUTE, audio OK / black frame).
   bool _androidMediaKitSafeMode = false;
 
@@ -144,13 +144,13 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   /// the last frame with no reconnect banner. Force software from boot.
   bool get _windowsSoftwareDecode => !kIsWeb && Platform.isWindows;
 
-  /// Probed after each open — pure-live feeds must never be seek()'d.
+  /// Probed after each open - pure-live feeds must never be seek()'d.
   bool _streamSeekable = false;
 
   StreamSubscription? _posSub, _playingSub, _bufferingSub, _errorSub, _logSub;
   StreamSubscription? _durSub, _bufferSub;
 
-  // VOD seekbar state — duration is 0 for live streams, > 0 for VOD.
+  // VOD seekbar state - duration is 0 for live streams, > 0 for VOD.
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   Duration _buffered = Duration.zero;
@@ -187,7 +187,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   DateTime? _bufferingSince;
   DateTime? _readyNotPlayingSince;
   // When the current source was last opened. Used by detector 4 to find
-  // "playing=true but never produced a first frame" — the classic
+  // "playing=true but never produced a first frame" - the classic
   // CDN-dropped-mid-handshake hang where mpv neither buffers nor errors.
   DateTime _openedAt = DateTime.now();
 
@@ -199,7 +199,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   bool _volumeHovering = false;
   Timer? _hideVolumeTimer;
 
-  // Fullscreen state (desktop only — mobile is permanently immersive)
+  // Fullscreen state (desktop only - mobile is permanently immersive)
   bool _isFullscreen = false;
   bool get _isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
@@ -228,7 +228,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   static const int _maxRetries = 8;
   static const Duration _healthyStreakNeeded = Duration(seconds: 6);
   // After exhausting per-source retries on a single-source stream, keep
-  // probing every N seconds forever — live IPTV channels routinely come
+  // probing every N seconds forever - live IPTV channels routinely come
   // back from short outages, so we don't want to give up.
   static const Duration _coldRetryInterval = Duration(seconds: 15);
 
@@ -312,7 +312,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   /// D-pad / remote keys while chrome is up count as activity. Row focus
   /// handlers often return [KeyEventResult.handled], so [PlayerTvKeyScope]
-  /// alone never sees them — without this, controls hide mid-navigation.
+  /// alone never sees them - without this, controls hide mid-navigation.
   bool _onRemoteControlsActivity(KeyEvent event) {
     if (!shellTvIsNavigationKey(event)) return false;
     if (_disposed || !mounted) return false;

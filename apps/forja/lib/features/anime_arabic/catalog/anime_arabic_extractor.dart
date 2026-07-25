@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 // AnimeSlayer (animeslayer.to) FULLY-NATIVE extractor.
 //
-// Replicates the page's obfuscated AJAX flow in pure Dart — no WebView,
+// Replicates the page's obfuscated AJAX flow in pure Dart - no WebView,
 // no JS engine, no headless browser. Same code path the site itself
 // uses, just lifted out of obfuscation:
 //
@@ -67,7 +67,7 @@ class AnimeArabicExtractor {
       'https://patrimoines-en-mouvement.org/lib/flare/v3.php';
   static const String _xorKey = 'AQWXZSCED@@POIUYTRR159';
 
-  /// Fallback constants — used only if the live page parse fails.
+  /// Fallback constants - used only if the live page parse fails.
   /// The real values are show-specific and parsed at runtime from the
   /// `/e/<slug>#<frag>` page (`const name = "..."`, etc.). Hard-coding
   /// these to a single show's values caused most episodes to return
@@ -138,7 +138,7 @@ class AnimeArabicExtractor {
   }
 
   // ────────────────────────────────────────────────────────────────────
-  // STAGE 1 — Native flare → first → sec → decrypt
+  // STAGE 1 - Native flare → first → sec → decrypt
   // ────────────────────────────────────────────────────────────────────
   Future<List<ArabicResolvedServer>> discoverServers(
     ArabicEpisode episode, {
@@ -171,7 +171,7 @@ class AnimeArabicExtractor {
 
       // 1b. Pull the show-specific request constants from the live /e/ page.
       // The site declares `const name`, `const san`, `const mwsem`, `const bool`
-      // inline in the page — and they differ per show. Hard-coding one
+      // inline in the page - and they differ per show. Hard-coding one
       // show's values caused upstream to return `servers: []` for every
       // other show.
       String name = _fallbackName;
@@ -314,7 +314,7 @@ class AnimeArabicExtractor {
   }
 
   // ────────────────────────────────────────────────────────────────────
-  // STAGE 2 — Scrape every server iframe in parallel, race for the
+  // STAGE 2 - Scrape every server iframe in parallel, race for the
   // fastest hit, keep the rest as fallbacks for the in-player switcher.
   // ────────────────────────────────────────────────────────────────────
   Future<List<ArabicResolvedStream>> _scrapeAll(
@@ -369,7 +369,7 @@ class AnimeArabicExtractor {
     Timer(timeout, () {
       if (!completer.isCompleted) {
         debugPrint(
-            '[ArabicExtractor] hard timeout — returning ${hits.length}');
+            '[ArabicExtractor] hard timeout - returning ${hits.length}');
         completer.complete(List.of(hits));
       }
     });
@@ -483,7 +483,7 @@ class AnimeArabicExtractor {
   }
 
   // ────────────────────────────────────────────────────────────────────
-  // Helpers — flare config cache + low-level HTTP
+  // Helpers - flare config cache + low-level HTTP
   // ────────────────────────────────────────────────────────────────────
   Future<(String, String)?> _getFlare({
     required Duration timeout,

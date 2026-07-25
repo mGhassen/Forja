@@ -36,14 +36,14 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
 
   bool get _showLiveSort => ctrl.activeSection == IptvSection.live;
 
-  /// Cards / EPG toggle — Live + wide desktop only (not TV / compact bar).
+  /// Cards / EPG toggle - Live + wide desktop only (not TV / compact bar).
   bool _showLiveLayoutToggle(BuildContext context, {required bool compact}) {
     if (!_showLiveSort || compact) return false;
     return !ShellScope.metricsOf(context).usesTvDensity;
   }
 
   /// Live: Search · Sort · Portals. Else: Search · Portals.
-  /// (Cards/EPG toggle sits next to the shelf — not in this focus row.)
+  /// (Cards/EPG toggle sits next to the shelf - not in this focus row.)
   int get _searchToolIndex => 0;
 
   int get _sortToolIndex => 1;
@@ -1051,7 +1051,7 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
   }
 }
 
-/// Shelf tab — section gradient when selected / hovered.
+/// Shelf tab - section gradient when selected / hovered.
 /// Hover sequence: color paints first, then the tab expands to reveal reload.
 class _IptvSectionShelfTab extends StatefulWidget {
   const _IptvSectionShelfTab({
@@ -1095,7 +1095,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
   /// Section color on mouse hover and D-pad focus (TV included).
   bool get _paintActive => _hover || _focused;
 
-  /// Reload chip expand is mouse / desktop-keyboard only — not TV focus.
+  /// Reload chip expand is mouse / desktop-keyboard only - not TV focus.
   bool get _expandActive => _hover || (_focused && !_tv);
 
   bool get _revealReload => _expandActive && _reloadArmed;
@@ -1151,7 +1151,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Instant color — AnimatedContainer gradient lerp often lags layout
+    // Instant color - AnimatedContainer gradient lerp often lags layout
     // expand, which made the tab feel like it scaled before tinting.
     final showColor = widget.selected || _paintActive;
 
@@ -1184,7 +1184,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Full tab height is the hit target — not just the icon/label.
+            // Full tab height is the hit target - not just the icon/label.
             iptvTap(
               context: context,
               onTap: widget.onTap,

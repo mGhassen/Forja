@@ -4,7 +4,7 @@ import 'package:html/parser.dart' as hp;
 import 'package:rust/rust.dart';
 import 'package:forja/features/comics/catalog/comics_service.dart';
 
-/// Scraper for readcomicsonline.ru — used as a secondary comics source
+/// Scraper for readcomicsonline.ru - used as a secondary comics source
 /// alongside readcomiconline.li.
 ///
 /// Protocol:

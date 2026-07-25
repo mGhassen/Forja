@@ -156,10 +156,10 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
   String _friendlyLoadError(Object e) {
     final raw = '$e';
     if (raw.contains('→ 429')) {
-      return 'kisskh is busy — wait a moment and tap Retry.';
+      return 'kisskh is busy - wait a moment and tap Retry.';
     }
     if (RegExp(r'→ 5\d\d').hasMatch(raw)) {
-      return 'kisskh is temporarily unavailable — tap Retry.';
+      return 'kisskh is temporarily unavailable - tap Retry.';
     }
     return raw;
   }

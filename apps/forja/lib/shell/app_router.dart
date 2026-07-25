@@ -14,7 +14,7 @@ import 'package:forja/shell/shell_overlay_navigator.dart';
 class AppRouter {
   AppRouter._();
 
-  /// [RouteSettings.name] for [openPlayer] — used to replace an existing
+  /// [RouteSettings.name] for [openPlayer] - used to replace an existing
   /// player instead of stacking two [PlayerScreen] routes on macOS.
   static const playerRouteName = 'player';
 
@@ -32,7 +32,7 @@ class AppRouter {
     );
   }
 
-  /// Shell overlay routes — blocks TV system-back from bypassing the coordinator.
+  /// Shell overlay routes - blocks TV system-back from bypassing the coordinator.
   static Route<T> slideShellRoute<T>(
     WidgetBuilder builder, {
     RouteSettings? settings,
@@ -130,7 +130,7 @@ class AppRouter {
     );
   }
 
-  /// Legacy alias — all titles use [openDetails].
+  /// Legacy alias - all titles use [openDetails].
   static Future<T?> openStreamingDetails<T>(
     BuildContext context, {
     required Movie movie,
@@ -247,7 +247,7 @@ class AppRouter {
   }) {
     final routeBuilder = fadeTransition ? fadeRoute<T> : slideRoute<T>;
     const settings = RouteSettings(name: playerRouteName);
-    // Capture shell tokens now — loading dialogs / hosts may unmount while the
+    // Capture shell tokens now - loading dialogs / hosts may unmount while the
     // player route still rebuilds its pageBuilder.
     final existing = ShellScope.maybeOf(context);
     final profile = existing?.profile ?? resolveShellProfile(context);

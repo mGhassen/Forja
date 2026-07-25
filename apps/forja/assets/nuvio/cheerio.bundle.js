@@ -8548,7 +8548,7 @@ if (typeof Object.create === 'function') {
      *
      * **Security:** See
      * [threat model](https://github.com/lodash/lodash/blob/main/threat-model.md)
-     * — `_.template` is insecure and will be removed in v5.
+     * - `_.template` is insecure and will be removed in v5.
      *
      * @static
      * @memberOf _

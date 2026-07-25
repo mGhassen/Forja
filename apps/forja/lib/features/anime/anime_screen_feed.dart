@@ -5,7 +5,7 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
 
   void _onHistoryChanged() => _refreshHistory();
 
-  /// Reload only the Continue Watching list — cheap, no API hits other
+  /// Reload only the Continue Watching list - cheap, no API hits other
   /// than SharedPreferences. Called on init, catalog refresh, app resume,
   /// on history mutation, and after returning from player/details.
   Future<void> _refreshHistory() async {
@@ -132,7 +132,7 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
     setState(() {
       _s._catalogResolved = true;
       _s._error =
-          hasCatalog ? null : 'Failed to load anime — check your connection';
+          hasCatalog ? null : 'Failed to load anime - check your connection';
     });
     if (hasCatalog) (this as ShellTabRefresh<AnimeScreen>).markShellTabFresh();
   }

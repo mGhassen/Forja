@@ -203,7 +203,7 @@ class ExoPlayerHost(
         if (maxHeight > 0 || maxBitrate > 0) {
             var params = exo.trackSelectionParameters.buildUpon()
             if (maxHeight > 0) {
-                // Width follows 16:9 from height — caps adaptive HLS/DASH variants.
+                // Width follows 16:9 from height - caps adaptive HLS/DASH variants.
                 val maxWidth = (maxHeight * 16) / 9
                 params = params.setMaxVideoSize(maxWidth, maxHeight)
             }
@@ -481,7 +481,7 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
         hosts.remove(viewId)?.dispose()
     }
 
-    /** Detach a surface only — host/player live until Dart calls [dispose]. */
+    /** Detach a surface only - host/player live until Dart calls [dispose]. */
     internal fun detachHostView(viewId: Int, view: PlayerView) {
         hosts[viewId]?.detachView(view)
     }
@@ -600,7 +600,7 @@ class ExoPlayerPlatformView(
     private val hostId: Int,
     private val plugin: ForjaExoPlayerPlugin,
 ) : io.flutter.plugin.platform.PlatformView {
-    // Inflate with surface_type=texture_view — default SurfaceView tiles / misplaces
+    // Inflate with surface_type=texture_view - default SurfaceView tiles / misplaces
     // frames inside Flutter's AndroidView (TLHC / VirtualDisplay), especially on ATV.
     private val playerView: PlayerView = LayoutInflater.from(context)
         .inflate(R.layout.forja_exo_player_view, null) as PlayerView
@@ -612,7 +612,7 @@ class ExoPlayerPlatformView(
     override fun getView(): View = playerView
 
     override fun dispose() {
-        // Do not releaseHost here — Flutter remounts VirtualDisplay AndroidViews
+        // Do not releaseHost here - Flutter remounts VirtualDisplay AndroidViews
         // (common on ATV) and that would kill playback mid-stream.
         plugin.detachHostView(hostId, playerView)
     }

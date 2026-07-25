@@ -9,7 +9,7 @@ import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 
-/// Settings → Data & backup — export / import Xtream portals as CSV.
+/// Settings → Data & backup - export / import Xtream portals as CSV.
 class SettingsIptvPortalsSection extends StatefulWidget {
   const SettingsIptvPortalsSection({super.key});
 
@@ -131,7 +131,7 @@ class _SettingsIptvPortalsSectionState extends State<SettingsIptvPortalsSection>
       });
 
       if (merged.added > 0) {
-        ForjaToast.success('$summary — open IPTV to browse');
+        ForjaToast.success('$summary - open IPTV to browse');
       } else {
         ForjaToast.info(summary);
       }
@@ -161,7 +161,7 @@ class _SettingsIptvPortalsSectionState extends State<SettingsIptvPortalsSection>
             children: [
               Text(
                 'Export or import Xtream portals as a CSV file. The file '
-                'includes passwords in plain text — keep it private. On this '
+                'includes passwords in plain text - keep it private. On this '
                 'device, portal passwords are stored in the system Keychain / '
                 'Keystore. Import adds only portals that are not already saved.',
                 style: TextStyle(

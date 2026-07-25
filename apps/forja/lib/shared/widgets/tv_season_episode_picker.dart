@@ -542,7 +542,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
 
   Widget _buildEpisodeSkeletonRow() {
     const count = 4;
-    // Prefer season source over visible chunk — loading often has empty visible.
+    // Prefer season source over visible chunk - loading often has empty visible.
     final meta = _episodeMetaFlags(_sortedEpisodes);
     final compact = !meta.showDate && !meta.showOverview;
     return homeLoadingShimmer(
@@ -683,7 +683,7 @@ class _SeasonCardState extends State<_SeasonCard> {
     final borderWidth = widget.selected || active ? 2.0 : 1.0;
     final scale = active && !widget.selected ? _SeasonCard.hoverScale : 1.0;
 
-    // Avoid shellFocusableTap's Material clip — it ate the decoration stroke.
+    // Avoid shellFocusableTap's Material clip - it ate the decoration stroke.
     return FocusableControl(
       onTap: widget.onTap,
       borderRadius: _SeasonCard.radius,

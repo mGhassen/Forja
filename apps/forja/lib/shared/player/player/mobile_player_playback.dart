@@ -227,7 +227,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
             continue;
           }
         } else {
-          // RFC-045: pipeline owns identity + classify — no separate probe.
+          // RFC-045: pipeline owns identity + classify - no separate probe.
           final catalogUrl = hlsProxyTargetUrl(source.url) ?? source.url;
           final pipeline = await StreamOpenPipeline.start(
             catalogUrl: catalogUrl,
@@ -297,7 +297,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
             }
 
             pipeline.report(StreamOpenStepResult.success);
-            // Keep panel row on catalog URL — proxy is play-only (_currentUrl).
+            // Keep panel row on catalog URL - proxy is play-only (_currentUrl).
             branchOk = true;
             break;
           }
@@ -438,7 +438,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
               providers != null &&
               providers.containsKey(pid)) {
             debugPrint(
-              '[Player] Cached $pid source failed — re-resolving fresh extract',
+              '[Player] Cached $pid source failed - re-resolving fresh extract',
             );
             await _invalidateWebstreamingCacheForCurrent();
             final hit = await PlayerSourceResolve.resolvePinnedForMovie(
@@ -487,7 +487,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         // Drop cache, then either re-extract the pinned server or run a full
         // Auto race like green Play (score order from the top).
         // Anime / host reload callback: always re-resolve like first Play even
-        // when Auto server is Off — otherwise a 1-URL session cache leaves an
+        // when Auto server is Off - otherwise a 1-URL session cache leaves an
         // empty Sources panel and no recovery (movie I43 host path).
         await _invalidateWebstreamingCacheForCurrent();
 
@@ -509,7 +509,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           }
         }
       } else {
-        // No sources list — primary mediaPath (torrent localhost or direct URL).
+        // No sources list - primary mediaPath (torrent localhost or direct URL).
         // Never hand a raw magnet to mpv (treated as a relative file under tmp).
         var openUrl = widget.mediaPath;
         if (isTorrentStreamUrl(openUrl)) {
@@ -578,7 +578,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
               throw Exception('Failed to open media');
             }
             _s._detectHlsQualities(openedUrl, widget.headers);
-            // Confirm first — duration events before this were dropped by the
+            // Confirm first - duration events before this were dropped by the
             // stream listener. Do not block open waiting for duration: torrent
             // moov can arrive late; a long wait froze the loading transition.
             _s._markPlaybackConfirmed(true);
@@ -670,7 +670,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     final providers = widget.providers;
     if (movie == null) return false;
 
-    debugPrint('[Player] Dead sources — full Auto re-resolve like first Play');
+    debugPrint('[Player] Dead sources - full Auto re-resolve like first Play');
     _s._statusController.upsert(
       'reresolve',
       'Finding servers…',
@@ -693,7 +693,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     }
 
     try {
-      // Anime: race embeds via providers without cancelAllPending first —
+      // Anime: race embeds via providers without cancelAllPending first -
       // cancel kills the Miruro WebView pipe and cold reload often returns empty.
       if (animeHost && providers != null && providers.isNotEmpty) {
         // Walk servers: first extract can be a valid master with PNG-ad media
@@ -907,15 +907,15 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     }
   }
 
-  /// Stop on failure — no silent hop to the next provider.
+  /// Stop on failure - no silent hop to the next provider.
   /// Used when the user pinned a server/stream (or Auto server is Off).
   Future<void> _failPlaybackNoFailover({required String message}) async {
     final pinned =
         _s._providerPinned || _s._sourcePinned || widget.pinSource;
     debugPrint(
       pinned
-          ? '[Player] Playback failed — no auto failover (pinned)'
-          : '[Player] Playback failed — recovery returned no playable streams',
+          ? '[Player] Playback failed - no auto failover (pinned)'
+          : '[Player] Playback failed - recovery returned no playable streams',
     );
     if (!mounted || _s._disposed) return;
     final pid = _s._currentProvider;
@@ -923,7 +923,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       _s._markProviderLoadFailed(pid);
     }
     _s._finalizeProbeStatusesAfterPlayback();
-    // Terminal error owns the center chrome — drop "Finding servers…" etc.
+    // Terminal error owns the center chrome - drop "Finding servers…" etc.
     _s._statusController.clear();
     setState(() {
       _s._hasError = true;
@@ -1158,10 +1158,10 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
 
     _s._positionSub = _s._player.stream.position.listen((pos) {
       if (_s._disposed) return;
-      // Ignore ephemeral demux while hunting a playable source — otherwise the
+      // Ignore ephemeral demux while hunting a playable source - otherwise the
       // seek bar flashes full/empty as each CDN briefly reports duration.
       if (!_s._playbackConfirmed) return;
-      // keep-open EOF often emits position 0 after a real finish — don't empty
+      // keep-open EOF often emits position 0 after a real finish - don't empty
       // a seek bar that was already at the end.
       final shownDur = _s._durationNotifier.value;
       final shownPos = _s._positionNotifier.value;
@@ -1176,9 +1176,9 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       final effectiveDurMs = shownDur.inMilliseconds > 0
           ? shownDur.inMilliseconds
           : _s._player.state.duration.inMilliseconds;
-      // Dead CDN: demux jumps to duration within the early-EOF grace — do not
+      // Dead CDN: demux jumps to duration within the early-EOF grace - do not
       // paint a fake "finished" bar the user then cannot scrub off.
-      // Use this-open age/mid only — session mid from a prior source must not
+      // Use this-open age/mid only - session mid from a prior source must not
       // disable suppress on a fresh fail-open.
       if (shouldSuppressEarlyEofSeekBarPosition(
         positionMs: pos.inMilliseconds,
@@ -1232,7 +1232,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           dur.inSeconds >= 90 &&
           widget.startPosition != null) {
         final target = widget.startPosition!;
-        // Don't seek into the credits — that looks like "started finished".
+        // Don't seek into the credits - that looks like "started finished".
         if (target.inMilliseconds <= 0 ||
             target >= dur - const Duration(seconds: 15)) {
           _s._hasInitialSeek = true;
@@ -1311,7 +1311,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       _s._isBufferingNotifier.value = buffering;
     });
 
-    // Surface only fatal errors — transient network blips are handled by mpv
+    // Surface only fatal errors - transient network blips are handled by mpv
     _s._errorSub = _s._player.stream.error.listen((err) {
       if (_s._disposed || err.isEmpty) return;
       final currentUrl =
@@ -1336,12 +1336,12 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
 
       if (!isFatalPlayerOpenError(err)) return;
       if (_s._hasError) return;
-      // Drop stale extract whenever open dies — probe hop must not leave
+      // Drop stale extract whenever open dies - probe hop must not leave
       // session/disk URLs that look "ready" on the next Play/reload.
       unawaited(_invalidateWebstreamingCacheForCurrent());
       if (_s._isInitPlaybackRunning) {
         debugPrint(
-          '[Player] Open failed during probe — hopping ($err)',
+          '[Player] Open failed during probe - hopping ($err)',
         );
         return;
       }
@@ -1383,18 +1383,18 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         uiDuration: pinDur,
       )) {
         // Scrub-back race: keep-open re-emits completed while mpv pos is still
-        // 0/end — do not yank the bar back to EOF after the user left the end.
+        // 0/end - do not yank the bar back to EOF after the user left the end.
         if (!shouldPinSeekBarAtEof(
           uiPosition: _s._positionNotifier.value,
           duration: pinDur,
         )) {
           debugPrint(
-            '[Player] Ignoring completed pin — UI already seeked away from EOF',
+            '[Player] Ignoring completed pin - UI already seeked away from EOF',
           );
           return;
         }
         debugPrint('✅ Playback completed');
-        // keep-open may reset mpv position to 0 — pin the seek bar at EOF.
+        // keep-open may reset mpv position to 0 - pin the seek bar at EOF.
         if (pinDur > Duration.zero) {
           _s._durationNotifier.value = pinDur;
           _s._positionNotifier.value = pinDur;
@@ -1416,7 +1416,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
         '(openFor=${openAge.inSeconds}s '
         'openMid=${_s._openHadMidPlayback} sessionMid=${_s._hadMidPlayback})',
       );
-      // Failed / early EOF — never leave a pinned "finished" seek bar.
+      // Failed / early EOF - never leave a pinned "finished" seek bar.
       if (shouldPinSeekBarAtEof(
             uiPosition: _s._positionNotifier.value,
             duration: pinDur,
@@ -1428,7 +1428,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
           !_s._openHadMidPlayback) {
         _s._positionNotifier.value = Duration.zero;
       }
-      // Abortive early end — stop; do not hop to the next source.
+      // Abortive early end - stop; do not hop to the next source.
       if (mounted) setState(() => _s._showControls = true);
     });
 
@@ -1539,7 +1539,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
 
     // ── Decoding ─────────────────────────────────────────────────────────
     // Phone safe-mode: hwdec=no. ATV: keep mediacodec (matches VideoController
-    // vo=mediacodec_embed — do not overwrite with auto-safe/software).
+    // vo=mediacodec_embed - do not overwrite with auto-safe/software).
     if (widget.tvRemoteEnabled) {
       await safeSet('hwdec', 'mediacodec');
     } else {
@@ -1561,7 +1561,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     await safeSet('ad-lavc-downmix', 'no');
     await safeSet('audio-fallback-to-null', 'yes');
 
-    // Flutter renders subtitles — kill mpv's own OSD overlay.
+    // Flutter renders subtitles - kill mpv's own OSD overlay.
     await safeSet('sub-visibility', 'no');
     await safeSet('sub-auto', 'all');
 
@@ -1585,7 +1585,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
 
     final isTorrent = widget.magnetLink != null;
     if (isTorrent) {
-      // Torrent engine feeds bytes from disk as pieces complete — a small
+      // Torrent engine feeds bytes from disk as pieces complete - a small
       // forward window is enough and keeps memory pressure low.
       await safeSet('cache', 'yes');
       await safeSet('network-timeout', '60');
@@ -1608,7 +1608,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
       await safeSet('hls-bitrate', '5000000');
     }
 
-    // We supply our own URL — no yt-dlp needed.
+    // We supply our own URL - no yt-dlp needed.
     await safeSet('ytdl', 'no');
 
     // Allow volume boosting up to 150% for quiet sources.
@@ -1637,7 +1637,7 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     );
 
     // Resume seeks happen after open (seekAfterOpen / duration listener) so we
-    // can skip near-end positions. Do not set mpv `start` here — that jumps
+    // can skip near-end positions. Do not set mpv `start` here - that jumps
     // into credits when history still has a false-finished near-end position.
   }
 }

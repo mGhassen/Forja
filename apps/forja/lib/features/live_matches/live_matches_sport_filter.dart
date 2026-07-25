@@ -49,7 +49,7 @@ bool liveSportIdsMatch(String raw, String filterId) {
 
 bool isLive247Sport(String raw) => normalizeLiveSportId(raw) == '24-7';
 
-/// PPV `always_live` JSON — API sends `1`, `true`, or `"true"`.
+/// PPV `always_live` JSON - API sends `1`, `true`, or `"true"`.
 bool parsePpvAlwaysLive(dynamic value) {
   if (value == true || value == 1) return true;
   if (value is num) return value != 0;
@@ -67,7 +67,7 @@ int parsePpvViewers(dynamic value) {
   return 0;
 }
 
-/// PPV 24/7 playability — ignore expired windows when always-live / 24/7.
+/// PPV 24/7 playability - ignore expired windows when always-live / 24/7.
 bool ppvStreamIsAlwaysOn({
   required bool alwaysLive,
   required String categoryName,

@@ -12,10 +12,10 @@ import 'package:rust/rust.dart';
 /// Export/import between local stores and lean `profile_settings.payload`.
 ///
 /// **Cloud is master** for `profile_settings` and IPTV assignments. Local KV /
-/// `IptvStore` are caches — intentional UI edits write the cache then push;
+/// `IptvStore` are caches - intentional UI edits write the cache then push;
 /// wipe / pull / defaults never push incomplete cache over cloud.
 ///
-/// IPTV portals sync via `user_iptv_portals` / `iptv_portals` — never
+/// IPTV portals sync via `user_iptv_portals` / `iptv_portals` - never
 /// `profile_settings`. M3U playlists are device-local only.
 class SyncDomainBridge {
   SyncDomainBridge._();
@@ -42,7 +42,7 @@ class SyncDomainBridge {
   /// Persist the current profile before changing the device-local selection.
   ///
   /// Flushes pending domain edits (incl. intentional empty Stremio/Nuvio wipe).
-  /// Cloud is master — never push an empty IPTV cache; never drop remote
+  /// Cloud is master - never push an empty IPTV cache; never drop remote
   /// connectedServices just because local export omitted them.
   Future<void> prepareProfileSwitch() async {
     final pending = Set<String>.from(_pushTimers.keys);
@@ -70,11 +70,11 @@ class SyncDomainBridge {
   ///
   /// Local KV is a device-global **cache**; every profile switch/create must
   /// reset before applying that profile's cloud payload. Never schedules a
-  /// cloud push — empty/default cache must not overwrite cloud.
+  /// cloud push - empty/default cache must not overwrite cloud.
   Future<void> resetSyncedLocalToPlatformDefaults({
     bool clearIptv = true,
   }) async {
-    // Cache-only wipe — cancel any debounced push that would upload defaults.
+    // Cache-only wipe - cancel any debounced push that would upload defaults.
     cancelPendingPushes();
     final defaults = PlatformDefaults.forProfile(
       SettingsService.platformProfile,
@@ -112,7 +112,7 @@ class SyncDomainBridge {
     }
 
     if (clearIptv) {
-      // Local cache only — never schedule a cloud push from a wipe.
+      // Local cache only - never schedule a cloud push from a wipe.
       await IptvStore.save(const [], scheduleSync: false);
       await IptvStore.saveFavorites({}, scheduleSync: false);
     }
@@ -122,7 +122,7 @@ class SyncDomainBridge {
   Future<void> seedNewProfileDefaults() async {
     cancelPendingPushes();
     await resetSyncedLocalToPlatformDefaults(clearIptv: true);
-    // New profile has no assignments yet — settings only; skip empty IPTV wipe.
+    // New profile has no assignments yet - settings only; skip empty IPTV wipe.
     await pushAllLocal(pushIptvIfLocalEmpty: false);
   }
 
@@ -134,13 +134,13 @@ class SyncDomainBridge {
     await SyncService.instance.pullAccountFeatures();
     final remote = await SyncService.instance.pullProfileSettings();
     if (remote == null) {
-      // Missing row — seed defaults under the active profile (never push prior prefs).
+      // Missing row - seed defaults under the active profile (never push prior prefs).
       await seedNewProfileDefaults();
       return;
     }
     await _applyLeanPayload(remote);
     await _pullAndApplyUserIptvPortals();
-    // Empty `{}` insert left cloud hollow — backfill settings once (not IPTV).
+    // Empty `{}` insert left cloud hollow - backfill settings once (not IPTV).
     if (remote.isEmpty) {
       await pushAllLocal(pushIptvIfLocalEmpty: false);
     }
@@ -179,7 +179,7 @@ class SyncDomainBridge {
     );
   }
 
-  /// User intentionally cleared every portal — sync empty assignments to cloud.
+  /// User intentionally cleared every portal - sync empty assignments to cloud.
   Future<void> pushEmptyIptvInventory() async {
     if (!SyncService.instance.isSignedIn) return;
     await _pushUserIptvPortals(pushIfLocalEmpty: true, allowEmptyWipe: true);
@@ -189,7 +189,7 @@ class SyncDomainBridge {
     if (!SyncService.instance.isSignedIn) return;
     _pushTimers[domain]?.cancel();
     _pushTimers[domain] = Timer(const Duration(seconds: 3), () {
-      // Debounced user edits — empty connected wipe only for that domain.
+      // Debounced user edits - empty connected wipe only for that domain.
       unawaited(
         pushAllLocal(
           pushIptvIfLocalEmpty: false,
@@ -201,11 +201,11 @@ class SyncDomainBridge {
   }
 
   /// Local cache export for domains we own. Omitted keys mean "unchanged on
-  /// cloud" — see [_buildMergedCloudPayload].
+  /// cloud" - see [_buildMergedCloudPayload].
   Future<Map<String, dynamic>> _buildLeanPayload() async {
     final out = <String, dynamic>{};
 
-    // Full playback prefs (incl. play_source_*) — never strip defaults.
+    // Full playback prefs (incl. play_source_*) - never strip defaults.
     out['playback'] = await exportPreferences();
 
     final stremio = await _exportStremioCompact();
@@ -218,7 +218,7 @@ class SyncDomainBridge {
     final navigation = await _exportNavigationCompact();
     if (navigation.isNotEmpty) out['navigation'] = navigation;
 
-    // Never write iptv into profile_settings — portals use user_iptv_portals;
+    // Never write iptv into profile_settings - portals use user_iptv_portals;
     // M3U stays device-local.
     return out;
   }
@@ -284,7 +284,7 @@ class SyncDomainBridge {
 
     final connected = payload['connectedServices'];
     if (connected is Map) {
-      // Provider order is device-local — ignore legacy cloud providers keys.
+      // Provider order is device-local - ignore legacy cloud providers keys.
       final stremio = connected['stremio'];
       if (stremio is Map) {
         await importStremio(Map<String, dynamic>.from(stremio));
@@ -300,7 +300,7 @@ class SyncDomainBridge {
       await _importNavigation(Map<String, dynamic>.from(navigation));
     }
 
-    // Ignore legacy payload.iptv (M3U / portals) — tables + local store own IPTV.
+    // Ignore legacy payload.iptv (M3U / portals) - tables + local store own IPTV.
   }
 
   Future<Map<String, dynamic>> _exportStremioCompact() async {
@@ -366,12 +366,12 @@ class SyncDomainBridge {
     final portals = await IptvStore.load();
     if (portals.isEmpty) {
       if (!pushIfLocalEmpty) {
-        debugPrint('[Sync] skip IPTV push — empty local cache (cloud is master)');
+        debugPrint('[Sync] skip IPTV push - empty local cache (cloud is master)');
         return;
       }
       if (!allowEmptyWipe) {
         debugPrint(
-          '[Sync] refuse empty IPTV replace — empty cache must not wipe cloud',
+          '[Sync] refuse empty IPTV replace - empty cache must not wipe cloud',
         );
         return;
       }
@@ -403,9 +403,9 @@ class SyncDomainBridge {
       ));
     }
 
-    // Upserts failed entirely — do not delete cloud assignments.
+    // Upserts failed entirely - do not delete cloud assignments.
     if (assignments.isEmpty) {
-      debugPrint('[Sync] refuse IPTV replace — no portal ids resolved');
+      debugPrint('[Sync] refuse IPTV replace - no portal ids resolved');
       return;
     }
 
@@ -417,7 +417,7 @@ class SyncDomainBridge {
     try {
       rows = await SyncService.instance.pullUserIptvPortals();
     } catch (e) {
-      // Keep local inventory — never replace with [] on credential/RPC failure.
+      // Keep local inventory - never replace with [] on credential/RPC failure.
       debugPrint('[Sync] pullUserIptvPortals failed (local kept): $e');
       return false;
     }
@@ -572,7 +572,7 @@ class SyncDomainBridge {
   }
 
   /// Install / refresh manifests from cloud lean rows (`baseUrl` only).
-  /// Same contract as [importNuvio] — cloud never stores full manifests.
+  /// Same contract as [importNuvio] - cloud never stores full manifests.
   Future<void> importStremio(Map<String, dynamic> payload) async {
     final addons = payload['addons'] as List? ?? const [];
     final remoteUrls = <String>{
@@ -653,7 +653,7 @@ void schedulePreferencesSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainPreferences);
 
 void scheduleProvidersSyncPush() {
-  // Provider order is device-local — do not push to cloud.
+  // Provider order is device-local - do not push to cloud.
 }
 
 void scheduleStremioSyncPush() =>

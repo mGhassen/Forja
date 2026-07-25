@@ -55,7 +55,7 @@ class _ShellBackIconButtonState extends State<ShellBackIconButton> {
     final fg = _active ? Colors.white : _idle;
     final fillAlpha = _active ? 0.10 : 0.0;
 
-    // Full hit box must stay hittable — Align+smaller child made most of the
+    // Full hit box must stay hittable - Align+smaller child made most of the
     // target miss with GestureDetector's default deferToChild behavior.
     final body = SizedBox(
       width: resolvedHit,

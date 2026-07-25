@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
-/// Android TV / leanback remote Back key — pop routes or focus active nav tab.
+/// Android TV / leanback remote Back key - pop routes or focus active nav tab.
 abstract final class ShellTvBackHandler {
   static bool _installed = false;
 

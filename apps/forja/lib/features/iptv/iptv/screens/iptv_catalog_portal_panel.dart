@@ -69,7 +69,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       final added = currentKeys.difference(_knownPortalKeys);
       _knownPortalKeys = currentKeys;
       if (added.isNotEmpty && _query.trim().isEmpty) {
-        // Sorted list puts newest non-favorites first after favorites — scroll
+        // Sorted list puts newest non-favorites first after favorites - scroll
         // to the first newly added key in that order (e.g. scrape hits).
         String? scrollKey;
         for (final v in widget.ctrl.verified) {

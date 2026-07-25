@@ -508,7 +508,7 @@ void main() {
     expect(page.hasFocus, isTrue);
     expect(homeNav.hasFocus, isFalse);
 
-    // Second Back must not exit — moves focus to nav again.
+    // Second Back must not exit - moves focus to nav again.
     ShellTvFocusCoordinator.resetBackDebounceForTest();
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pump();

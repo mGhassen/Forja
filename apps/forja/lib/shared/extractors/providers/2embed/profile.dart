@@ -2,7 +2,7 @@ import 'package:forja/shared/extractors/core/embed_extract_profile.dart';
 
 /// Host sniff policy for `2embed`.
 ///
-/// Docs: https://www.2embed.online/ — embed URLs redirect to `2embed.stream`.
+/// Docs: https://www.2embed.online/ - embed URLs redirect to `2embed.stream`.
 /// Legacy `www.2embed.cc` is iframe-oriented (top-level → `.skin`) and fails
 /// Forja sniff. Load the stream player top-level; rotate Server N chips when
 /// the default source stalls.

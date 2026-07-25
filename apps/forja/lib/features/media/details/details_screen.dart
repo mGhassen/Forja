@@ -146,10 +146,10 @@ class _DetailsScreenState extends State<DetailsScreen>
   /// Addons that finished a stream fetch (success or empty/error) this round.
   final Set<String> _completedAddonBaseUrls = {};
 
-  /// Manual Stremio provider chip tap — do not auto-leave an empty addon.
+  /// Manual Stremio provider chip tap - do not auto-leave an empty addon.
   bool _userPickedStremioProvider = false;
 
-  // Nuvio addon results — kept independent from Stremio addons so the UI
+  // Nuvio addon results - kept independent from Stremio addons so the UI
   // can show them under their own tab.
   List<Map<String, dynamic>> _nuvioStreams = [];
   bool _isNuvioFetching = false;
@@ -167,7 +167,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   Set<String> _nuvioSelectedScraperIds = {};
   bool _nuvioSelectionHydrated = false;
 
-  // Direct webstreaming providers (videasy, webstreamr, …) — no global mode toggle.
+  // Direct webstreaming providers (videasy, webstreamr, …) - no global mode toggle.
   final Map<String, dynamic> _webstreamingProviders = {
     ...StreamProviders.providers,
   };
@@ -505,7 +505,7 @@ class _DetailsScreenState extends State<DetailsScreen>
     _userPickedStremioProvider = false;
     _nuvioStreams = [];
     _nuvioFetchedScraperIds = {};
-    // Keep scraper chip selection — persisted preference, not per-title.
+    // Keep scraper chip selection - persisted preference, not per-title.
     _errorMessage = null;
   }
 
@@ -575,7 +575,7 @@ class _DetailsScreenState extends State<DetailsScreen>
 
   void _ensureStremioPanelLoaded({bool force = false}) {
     if (_panelKindFilter != 'stremio') return;
-    // Re-read installs when opening/reloading — Settings installs after details
+    // Re-read installs when opening/reloading - Settings installs after details
     // open used to leave the chip strip empty until remount.
     unawaited(_refreshStreamAddons().then((_) {
       if (!mounted || _panelKindFilter != 'stremio') return;
@@ -586,7 +586,7 @@ class _DetailsScreenState extends State<DetailsScreen>
       }
       if (_allCombinedStremioStreams.isNotEmpty || _isStremioFetching) return;
       final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
-      // Empty cache is a miss — a prior all-failed fetch must not block YTS.
+      // Empty cache is a miss - a prior all-failed fetch must not block YTS.
       if (cached != null && cached.isNotEmpty) {
         setState(() {
           _allCombinedStremioStreams = cached;
@@ -638,7 +638,7 @@ class _DetailsScreenState extends State<DetailsScreen>
   }
 
   void _reloadPanelKind(String kind) {
-    // Reload only the opened kind — never prefetch a hidden category.
+    // Reload only the opened kind - never prefetch a hidden category.
     if (kind != _panelKindFilter) return;
     switch (kind) {
       case 'torrents':

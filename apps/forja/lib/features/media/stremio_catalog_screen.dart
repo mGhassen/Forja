@@ -276,7 +276,7 @@ class _StremioCatalogScreenState extends State<StremioCatalogScreen> {
   Widget _buildDesktopLayout() {
     return Row(
       children: [
-        // Left sidebar — catalog list
+        // Left sidebar - catalog list
         Container(
           width: 300,
           decoration: BoxDecoration(

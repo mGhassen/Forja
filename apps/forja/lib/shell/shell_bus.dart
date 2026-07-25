@@ -5,7 +5,7 @@ import 'package:flutter/scheduler.dart';
 /// Home desktop top-bar category (Films vs TV Shows).
 enum ShellHomeCategory { films, tvShows }
 
-/// Shell-level event bus — decouples features from [MainScreen].
+/// Shell-level event bus - decouples features from [MainScreen].
 class ShellBus {
   ShellBus._();
 
@@ -22,7 +22,7 @@ class ShellBus {
     null,
   );
 
-  /// Home feed vertical scroll — [HomeTopBar] slides away near [homeHeroHeight].
+  /// Home feed vertical scroll - [HomeTopBar] slides away near [homeHeroHeight].
   static final ValueNotifier<double> homeScrollOffset = ValueNotifier(0);
 
   /// Cinematic hero height in px (not the extended page-bleed backdrop).
@@ -42,7 +42,7 @@ class ShellBus {
   /// Cleared by [MainScreen] when applied.
   static bool selectDefaultTabOnNextNavLoad = false;
 
-  /// True after the splash overlay is dismissed — defer heavy tab work until then.
+  /// True after the splash overlay is dismissed - defer heavy tab work until then.
   static final ValueNotifier<bool> splashDismissed = ValueNotifier<bool>(false);
 
   /// Bumps when shell chrome (e.g. search bar) needs a rebuild.

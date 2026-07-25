@@ -1,6 +1,6 @@
 /// YouTube trailer embed helpers.
 ///
-/// YouTube returns **Error 153 — Video player configuration error** when the
+/// YouTube returns **Error 153 - Video player configuration error** when the
 /// embedded player cannot verify the request origin (missing/invalid Referer).
 /// WebView2 on Windows is especially strict: iframes created by the IFrame API
 /// may not send Referer even with [InAppWebViewInitialData.baseUrl].
@@ -26,7 +26,7 @@ String youtubeNocookieEmbedSrc({
   ).toString();
 }
 
-/// Pre-built iframe markup — keeps Referer on Windows WebView2 / Error 153 fix.
+/// Pre-built iframe markup - keeps Referer on Windows WebView2 / Error 153 fix.
 String youtubeEmbedIframeHtml({required String embedSrc}) {
   return '''
 <iframe

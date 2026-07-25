@@ -336,7 +336,7 @@ mixin _SearchTv on State<SearchScreen> {
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _s._query.trim().isNotEmpty) return;
-      // Overlay keeps nav on Home — still re-assert field focus.
+      // Overlay keeps nav on Home - still re-assert field focus.
       final onSearchTab = ShellTvFocus.currentNavTabId == 'search';
       if (!onSearchTab && !_s.widget.overlay) return;
       if (!_s._focusNode.hasFocus) {
@@ -409,7 +409,7 @@ mixin _SearchTv on State<SearchScreen> {
     _focusSearchFieldBrowse();
   }
 
-  /// TV: opening Search with no query — browse field, not first recommendation.
+  /// TV: opening Search with no query - browse field, not first recommendation.
   bool _restoreSearchTvFocusIfEmpty() {
     final ctx = _s._focusNode.context;
     final tv = ctx != null
@@ -429,7 +429,7 @@ mixin _SearchTv on State<SearchScreen> {
     }
   }
 
-  /// TV: OK / Enter after typing — run pending search and focus first result card.
+  /// TV: OK / Enter after typing - run pending search and focus first result card.
   void _submitSearchField() {
     if (!_tvFocus(context)) return;
     final query = _s._controller.text.trim();
@@ -456,7 +456,7 @@ mixin _SearchTv on State<SearchScreen> {
     if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      // Browse: trap — nav exit is Down → suggestions → Left.
+      // Browse: trap - nav exit is Down → suggestions → Left.
       // Editing: ignore so the caret can move.
       if (_s._searchFieldEditing) return KeyEventResult.ignored;
       return KeyEventResult.handled;

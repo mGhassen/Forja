@@ -27,7 +27,7 @@ class ForjaSupabase {
     if (_initialized) return;
     if (!isConfigured) {
       debugPrint(
-        '[Supabase] Not configured — set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY',
+        '[Supabase] Not configured - set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY',
       );
       return;
     }

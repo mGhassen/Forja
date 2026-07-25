@@ -18,7 +18,7 @@ bool liveEmbedAllowsMainFrameNavigation({
       url.startsWith('blob:')) {
     return true;
   }
-  // loadData(baseUrl) — never cancel. Also covers a rare post-commit reload of
+  // loadData(baseUrl) - never cancel. Also covers a rare post-commit reload of
   // the same root; SPA hijacks use deeper paths (/watch/…) and stay blocked.
   if (wrapperReferer != null &&
       liveEmbedIsCatalogOriginRoot(url: url, wrapperReferer: wrapperReferer)) {
@@ -44,7 +44,7 @@ bool liveEmbedIsWrapperCatalogUrl({
       refererHost.endsWith('.$host');
 }
 
-/// Catalog origin with empty or `/` path — the `loadData` baseUrl shape.
+/// Catalog origin with empty or `/` path - the `loadData` baseUrl shape.
 bool liveEmbedIsCatalogOriginRoot({
   required String url,
   required String wrapperReferer,

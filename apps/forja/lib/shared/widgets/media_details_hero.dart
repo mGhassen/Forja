@@ -54,7 +54,7 @@ class MediaDetailsHero extends StatefulWidget {
   /// When set (e.g. TV season poster), replaces [Movie.backdropPath] for the hero image.
   final String? backdropPathOverride;
   final String? trailerYoutubeKey;
-  /// TMDB ISO 639-1 original language — keeps YouTube player/captions in source lang.
+  /// TMDB ISO 639-1 original language - keeps YouTube player/captions in source lang.
   final String? trailerLanguageCode;
   final Map<String, dynamic>? progress;
   final double? height;
@@ -1222,7 +1222,7 @@ class _HeroMainColumn extends StatelessWidget {
     return reserved;
   }
 
-  /// Meta stack only — actions + progress are reserved below in the column.
+  /// Meta stack only - actions + progress are reserved below in the column.
   double _metaUsedHeight({
     required bool showDirector,
     required bool showGenres,

@@ -440,7 +440,7 @@ mixin _DetailsScreenPanel on State<DetailsScreen> {
         ? _filteredPanelNuvioStreams
         : <Map<String, dynamic>>[];
 
-    // Dead provider selected (Torrentio 403) while another addon has rows —
+    // Dead provider selected (Torrentio 403) while another addon has rows -
     // show the working addon's streams and fix selection after this frame.
     if (_panelShowsStremio &&
         stremio.isEmpty &&

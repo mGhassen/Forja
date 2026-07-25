@@ -370,7 +370,7 @@ class _WelcomePage extends StatelessWidget {
   }
 }
 
-/// Soft dark shadow under copy/actions — no frost blur, fractal stays sharp.
+/// Soft dark shadow under copy/actions - no frost blur, fractal stays sharp.
 class _TvContentShadow extends StatelessWidget {
   const _TvContentShadow({required this.child});
 

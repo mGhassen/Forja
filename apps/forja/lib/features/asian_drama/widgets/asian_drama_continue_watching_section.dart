@@ -1,4 +1,4 @@
-// Asian Drama continue-watching row — extracted from asian_drama_screen.dart.
+// Asian Drama continue-watching row - extracted from asian_drama_screen.dart.
 
 import 'package:flutter/rendering.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';

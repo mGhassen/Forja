@@ -39,7 +39,7 @@ Future<void> _initBaseUrl() async {
     }
   } catch (_) {}
 
-  // 2) Refresh from the bootstrap (always — cheap, single HEAD-ish GET).
+  // 2) Refresh from the bootstrap (always - cheap, single HEAD-ish GET).
   await _refreshBaseUrl();
 }
 
@@ -76,7 +76,7 @@ Future<void> _refreshBaseUrl() async {
           !finalUri.host.toLowerCase().contains('laroza')) {
         debugPrint(
           '[ArabicService] bootstrap $boot did not resolve to a laroza host '
-          '(got $resolved) — trying next',
+          '(got $resolved) - trying next',
         );
         continue;
       }
@@ -267,7 +267,7 @@ class ArabicService {
       // and retry the request once on the freshly-resolved origin.
       if (allowReresolve) {
         debugPrint(
-          '[ArabicService] fetch failed ($e) — re-resolving base from bootstrap',
+          '[ArabicService] fetch failed ($e) - re-resolving base from bootstrap',
         );
         await _refreshBaseUrl();
         // Rewrite the URL onto the new base if the path part survives.
@@ -826,7 +826,7 @@ class ArabicService {
 
   // ── Static extraction helper (used by player for on-demand server switch) ──
 
-  /// Domains that crash the WebView — skip entirely.
+  /// Domains that crash the WebView - skip entirely.
   static const _webViewBlacklist = ['mixdrop', 'm1xdrop', 'dsvplay'];
 
   /// Shahid/MBC embed hosts whose PACKER scripts link to unreliable CDN mirrors.
@@ -840,7 +840,7 @@ class ArabicService {
     final service = ArabicService();
     final host = Uri.tryParse(embedUrl)?.host ?? '';
 
-    // Phase 1: PACKER / direct HTTP (fast) — skip for hosts with unreliable PACKER
+    // Phase 1: PACKER / direct HTTP (fast) - skip for hosts with unreliable PACKER
     if (!_packerSkipHosts.any((d) => host.contains(d))) {
       final directUrl = await service.tryExtractDirectUrl(embedUrl);
       if (directUrl != null) {
@@ -858,7 +858,7 @@ class ArabicService {
         return ExtractedMedia(url: proxyUrl, headers: {});
       }
     } else {
-      debugPrint('[ArabicService] Skipping PACKER for $host — using WebView');
+      debugPrint('[ArabicService] Skipping PACKER for $host - using WebView');
     }
 
     // Phase 2: WebView fallback (skip blacklisted)
@@ -1212,7 +1212,7 @@ class ArabicService {
         }
       }
     } else {
-      // No season tabs — collect from any pm-grid in the page.
+      // No season tabs - collect from any pm-grid in the page.
       final eps = _parseBrstejEpisodeAnchors(
         doc.querySelectorAll('#pm-grid a[href*="watch.php"]'),
       );

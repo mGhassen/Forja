@@ -56,7 +56,7 @@ class PlayerScreen extends StatefulWidget {
   final Future<void> Function(String sourceUrl, String sourceTitle)?
   onSourcePinned;
   final bool pinSource;
-  /// Sources were probed before open (RFC-038 simple resolve) — skip re-probe
+  /// Sources were probed before open (RFC-038 simple resolve) - skip re-probe
   /// and do not Auto re-race when the list is exhausted.
   final bool streamsPrevalidated;
   final VoidCallback? onPlaybackStarted;
@@ -116,7 +116,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
   Duration? _resumePosition;
 
-  /// Live playback session — updated when the user switches server/source in-player
+  /// Live playback session - updated when the user switches server/source in-player
   /// or hands off to an external app. Survives external ↔ built-in toggles.
   late String _sessionStreamUrl;
   String? _sessionActiveProvider;
@@ -200,7 +200,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       setState(() => _externalLaunched = true);
       return true;
     }
-    // Player not found — fall back to built-in player
+    // Player not found - fall back to built-in player
     ForjaToast.warning(
       '$_externalPlayerName not found. Using built-in player.',
     );
@@ -310,7 +310,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       );
     }
 
-    // External player mode — show a "playing externally" screen
+    // External player mode - show a "playing externally" screen
     if (_useExternalPlayer) {
       return ExternalPlayerHandoffScreen(
         title: widget.title,
@@ -356,7 +356,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       );
     }
 
-    // Built-in player — Android TV defaults to ExoPlayer (media_kit EGL fails on TV).
+    // Built-in player - Android TV defaults to ExoPlayer (media_kit EGL fails on TV).
     if (Platform.isAndroid && PlatformInfo.isAndroidTv) {
       if (_builtInEngine == BuiltInPlayerEngine.exoPlayer) {
         return ExoPlayerScreen(

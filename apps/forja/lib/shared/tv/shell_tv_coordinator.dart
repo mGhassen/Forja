@@ -77,7 +77,7 @@ class ShellTvRowHandle {
   final VoidCallback? onFocusDown;
 }
 
-/// Central TV D-pad coordinator — nav isolation, row memory, tab restore.
+/// Central TV D-pad coordinator - nav isolation, row memory, tab restore.
 abstract final class ShellTvFocusCoordinator {
   static final Map<String, ShellTvFocusMemory> _tabMemory = {};
   static final Map<String, List<ShellTvRowHandle>> _rowsByTab = {};
@@ -91,7 +91,7 @@ abstract final class ShellTvFocusCoordinator {
   static final Map<String, VoidCallback> _tabEnterFocus = {};
   static final Map<String, bool Function()> _tabRestoreFocus = {};
 
-  /// Per-tab default focus and hero scroll — survives multi-tab mount order.
+  /// Per-tab default focus and hero scroll - survives multi-tab mount order.
   static void registerTabDefaults(
     String tabId, {
     FocusNode? Function()? defaultFocus,
@@ -112,7 +112,7 @@ abstract final class ShellTvFocusCoordinator {
     _tabRestoreFocus.remove(tabId);
   }
 
-  /// Nav Enter on a tab — e.g. search field browse focus (not last page memory).
+  /// Nav Enter on a tab - e.g. search field browse focus (not last page memory).
   static bool focusTabEnterFromNav(String tabId) {
     final enter = _tabEnterFocus[tabId];
     if (enter == null) return false;
@@ -157,18 +157,18 @@ abstract final class ShellTvFocusCoordinator {
   static bool focusActiveNavTab() => ShellTvFocus.focusCurrentNavTab();
 
   /// TV remote Back: pop overlay/route first, else focus active nav tab.
-  /// Back on the nav rail restores page focus — never exits the app.
+  /// Back on the nav rail restores page focus - never exits the app.
   /// Returns true when consumed.
   ///
   /// Set [tvBackPolicyEnabled] from [ShellScaffold] when TV input policy is
-  /// active — same signal as shell nav rail / D-pad focus (not
+  /// active - same signal as shell nav rail / D-pad focus (not
   /// [ShellTokens.isAndroidTvDevice] alone).
   static bool tvBackPolicyEnabled = false;
 
   static DateTime? _lastBackHandledAt;
   static const Duration _backDebounceWindow = Duration(milliseconds: 400);
 
-  /// Test-only — clears back debounce between widget tests.
+  /// Test-only - clears back debounce between widget tests.
   static void resetBackDebounceForTest() {
     _lastBackHandledAt = null;
   }
@@ -183,7 +183,7 @@ abstract final class ShellTvFocusCoordinator {
     return false;
   }
 
-  /// Level-aware back — see [ShellNavigationLevels].
+  /// Level-aware back - see [ShellNavigationLevels].
   /// Always returns true when [tvBackPolicyEnabled] (never exits the app).
   static bool handleShellBackKey() {
     if (_consumeDuplicateBack()) return true;
@@ -304,7 +304,7 @@ abstract final class ShellTvFocusCoordinator {
     };
   }
 
-  /// Nav RIGHT — return to the active tab page without switching tabs.
+  /// Nav RIGHT - return to the active tab page without switching tabs.
   static bool _restorePageFromNav(String tabId) {
     restoreTabFocusAfterNav(_navRestoreTabId(tabId));
     return true;
@@ -334,7 +334,7 @@ abstract final class ShellTvFocusCoordinator {
       }
     }
 
-    // Two post-frame passes — ExcludeFocus on the tab stack lifts in the same
+    // Two post-frame passes - ExcludeFocus on the tab stack lifts in the same
     // frame as overlay pop / rail RIGHT; hero Play may not be focusable yet.
     void scheduleAttempt({required int remaining}) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -362,7 +362,7 @@ abstract final class ShellTvFocusCoordinator {
     }
     final primary = FocusManager.instance.primaryFocus;
     if (primary == null) return false;
-    // Empty FocusScope (shell overlay root / ModalScope) is not page focus —
+    // Empty FocusScope (shell overlay root / ModalScope) is not page focus -
     // treating it as success left Anime/Home stuck after nav RIGHT.
     if (primary is FocusScopeNode && primary.focusedChild == null) {
       return false;
@@ -561,7 +561,7 @@ abstract final class ShellTvFocusCoordinator {
     final handle = _rowHandle(tabId, rowId);
     if (handle == null || handle.itemCount <= 0) return false;
     final clamped = index.clamp(0, handle.itemCount - 1);
-    // Prefer requested index, then 0 — lazy ListViews often lack off-screen nodes.
+    // Prefer requested index, then 0 - lazy ListViews often lack off-screen nodes.
     for (final candidate in {clamped, 0}) {
       if (candidate < 0 || candidate >= handle.itemCount) continue;
       final node = handle.nodeAt(candidate);
@@ -596,7 +596,7 @@ abstract final class ShellTvFocusCoordinator {
     return focusRowItem(tabId, next.rowId, target);
   }
 
-  /// Focus results row from chip strip — restores results history, not chip index.
+  /// Focus results row from chip strip - restores results history, not chip index.
   static bool focusFromChipStripDown({
     required String tabId,
     required String chipRowId,
@@ -617,7 +617,7 @@ abstract final class ShellTvFocusCoordinator {
     );
   }
 
-  /// Focus chip strip from results row — restores chip history, not card index.
+  /// Focus chip strip from results row - restores chip history, not card index.
   static bool focusFromResultsRowUp({
     required String tabId,
     required String chipRowId,

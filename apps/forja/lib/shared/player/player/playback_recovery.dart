@@ -5,7 +5,7 @@ import 'package:forja/shared/player/player/utils.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
 
-/// VOD playback recovery — hw decode fallback + failed URL blocklist.
+/// VOD playback recovery - hw decode fallback + failed URL blocklist.
 class PlaybackRecovery {
   PlaybackRecovery({
     required this.player,
@@ -31,14 +31,14 @@ class PlaybackRecovery {
             lower.contains('vt decoder cb') ||
             lower.contains('output image buffer is null') ||
             lower.contains('no suitable decoder'))) {
-      debugPrint('[PlaybackRecovery] hw decode failed — falling back');
+      debugPrint('[PlaybackRecovery] hw decode failed - falling back');
       hwFallbackAttempted = true;
       unawaited(_forceSoftwareDecode());
     }
     if (!_audioRecoveryAttempted &&
         onRecoverAudio != null &&
         isAudioDecoderLog(text)) {
-      debugPrint('[PlaybackRecovery] audio decode failed — recovering');
+      debugPrint('[PlaybackRecovery] audio decode failed - recovering');
       _audioRecoveryAttempted = true;
       unawaited(onRecoverAudio!());
     }
@@ -47,7 +47,7 @@ class PlaybackRecovery {
   void handlePlayerError(String err, {required String? currentUrl}) {
     if (isVideoDecoderError(err)) {
       if (currentUrl != null) PlaybackSelection.recordFailedUrl(currentUrl);
-      // One-shot software decode on the same stream — never hop providers/sources.
+      // One-shot software decode on the same stream - never hop providers/sources.
       if (!hwFallbackAttempted && onForceSoftwareDecode != null) {
         hwFallbackAttempted = true;
         unawaited(_forceSoftwareDecode());

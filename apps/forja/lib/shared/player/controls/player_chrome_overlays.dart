@@ -122,7 +122,7 @@ Widget playerSidePanelTvScope({
 }) {
   final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
   if (!tv) return child;
-  // FocusScope traps FocusableControl arrows here — not in player chrome.
+  // FocusScope traps FocusableControl arrows here - not in player chrome.
   return FocusScope(
     debugLabel: 'player-tv-menu',
     autofocus: true,
@@ -160,7 +160,7 @@ class _TvPanelFocusOnOpenState extends State<_TvPanelFocusOnOpen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Episode panel (and similar) own initial focus — don't steal to first chip.
+      // Episode panel (and similar) own initial focus - don't steal to first chip.
       if (ShellTvDisableLinearFocus.activeOf(context)) return;
       final scope = FocusScope.of(context);
       if (scope.focusedChild != null) return;
@@ -208,7 +208,7 @@ bool dismissAnyPlayerChromeOverlay() {
   return false;
 }
 
-/// True while a menu/panel overlay is mounted — seek bar must ignore taps.
+/// True while a menu/panel overlay is mounted - seek bar must ignore taps.
 bool playerChromeOverlayBlocksSeek() {
   return PlayerStreamMenu.isShowing ||
       PlayerServerStreamDialog.isShowing ||
@@ -220,6 +220,6 @@ bool playerChromeOverlayBlocksSeek() {
       PlayerSubtitleSettingsDialog.isShowing;
 }
 
-/// True while a menu/panel owns the remote — do not steal focus back to Play.
+/// True while a menu/panel owns the remote - do not steal focus back to Play.
 bool playerChromeOverlayBlocksFocusClaim() =>
     playerChromeOverlayBlocksSeek() || playerChromeHasPendingReturnFocus();

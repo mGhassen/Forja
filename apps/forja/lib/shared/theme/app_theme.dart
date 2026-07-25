@@ -71,7 +71,7 @@ class AppTheme {
     const buttonRadius = BorderRadius.all(Radius.circular(8));
     const buttonShape = RoundedRectangleBorder(borderRadius: buttonRadius);
     const buttonBorder = BorderSide(color: ForjaShellColors.ghostBorder);
-    const buttonFill = Color(0x0AFFFFFF); // ~4% white — barely-there tint
+    const buttonFill = Color(0x0AFFFFFF); // ~4% white - barely-there tint
     const buttonFg = Color(0xFFF5F5F7);
     const buttonPadding = EdgeInsets.symmetric(horizontal: 18);
     const buttonMinSize = Size(0, 44);
@@ -134,7 +134,7 @@ class AppTheme {
           foregroundColor: const Color(0xFFF5F5F7),
         ),
       ),
-      // Canonical Forja toggle — see [ForjaSwitch] / [forjaSwitchThemeData].
+      // Canonical Forja toggle - see [ForjaSwitch] / [forjaSwitchThemeData].
       switchTheme: forjaSwitchThemeData,
     );
   }
@@ -163,7 +163,7 @@ class FocusableControl extends StatefulWidget {
   final ShellTvEnsureVisibleMode ensureVisibleMode;
   final bool showFocusBorder;
 
-  /// Flat focus (scale ≤ 1): when false, only the thin border — no gray fill.
+  /// Flat focus (scale ≤ 1): when false, only the thin border - no gray fill.
   final bool showFocusFill;
 
   /// Layout width used for focus-scale bleed. Defaults to poster card width.
@@ -326,7 +326,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     );
     if (handled == KeyEventResult.handled) return handled;
 
-    // Player / dialog menus: linear next/previous — geometric inDirection
+    // Player / dialog menus: linear next/previous - geometric inDirection
     // often fails across Overlay + Wrap/Column and leaks to chrome.
     final linear = shellTvLinearMenuArrows(context: context, event: event);
     if (linear == KeyEventResult.handled) return linear;

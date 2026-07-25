@@ -1,4 +1,4 @@
-// kisskh.co (Asian Drama) hub — cinematic hero + poster rows (same shell as Home).
+// kisskh.co (Asian Drama) hub - cinematic hero + poster rows (same shell as Home).
 
 import 'dart:async';
 
@@ -31,7 +31,7 @@ class AsianDramaScreen extends StatefulWidget {
 
 class _AsianDramaScreenState extends State<AsianDramaScreen>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
-  /// KissKH `/Drama/{id}` hero synopsis — kept but off (burns shared IP).
+  /// KissKH `/Drama/{id}` hero synopsis - kept but off (burns shared IP).
   static const bool _kissKhHeroSynopsisEnrich = false;
 
   /// Trial: fill hero overview from TMDB search instead of KissKH details.
@@ -170,7 +170,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     }
   }
 
-  /// Kept for later — KissKH list endpoints omit synopsis; this hits
+  /// Kept for later - KissKH list endpoints omit synopsis; this hits
   /// `/Drama/{id}` per hero card and shares the Play rate-limit bucket.
   // ignore: unused_element
   Future<void> _enrichFeedFromKissKh(KdramaHomeFeed feed, int gen) async {
@@ -304,7 +304,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       final card = _cardFromHistoryEntry(entry);
       var episodes = KissKhService.episodesFromHistory(entry);
 
-      // Legacy rows: no episode snapshot — fetch live list (details screen path).
+      // Legacy rows: no episode snapshot - fetch live list (details screen path).
       if (episodes.isEmpty) {
         KdramaDetails details;
         try {
@@ -359,7 +359,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       if (!mounted) return;
       final raw = '$e';
       if (raw.contains('→ 429')) {
-        ForjaToast.error('kisskh is busy — wait a moment or open details and Resume.');
+        ForjaToast.error('kisskh is busy - wait a moment or open details and Resume.');
       } else {
         ForjaToast.error('Resume failed: $e');
       }
@@ -521,7 +521,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                                       tvTabId: 'asian_drama',
                                       tvRowId: 'latest',
                                       tvRowOrder: latestOrder,
-                                      // Continue sits above — don't skip to hero.
+                                      // Continue sits above - don't skip to hero.
                                       cardBuilder: (context, card, index) =>
                                           _dramaPosterCard(
                                         card,

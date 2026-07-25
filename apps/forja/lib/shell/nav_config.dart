@@ -74,7 +74,7 @@ class NavDestinationIcon extends StatelessWidget {
 }
 
 /// Tabs withheld from the shell and Settings → Features for now.
-/// Destinations and [navTabBuilders] stay registered — remove an ID here to restore.
+/// Destinations and [navTabBuilders] stay registered - remove an ID here to restore.
 const Set<String> temporarilyHiddenNavIds = {
   'discover',
   'similar',
@@ -247,7 +247,7 @@ const Map<String, Color> navDestinationAccentColors = {
 
 typedef TabBuilder = Widget Function();
 
-/// Lazy tab factories — widgets are created on first visit only.
+/// Lazy tab factories - widgets are created on first visit only.
 final Map<String, TabBuilder> navTabBuilders = {
   'home': () => const HomeScreen(),
   'discover': () => const DiscoverScreen(),

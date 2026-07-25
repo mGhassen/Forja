@@ -157,7 +157,7 @@ class MusicPlayerService {
     _player!.stream.log.listen((l) {
       // mpv-level logs (warn/error only to keep noise down).
       // NOTE: media_kit's libmpv log callback is shared globally across all
-      // Player instances in the process — meaning logs from the IPTV player
+      // Player instances in the process - meaning logs from the IPTV player
       // (or any other Player) also reach this listener. Only print when this
       // service has an active track loaded so we don't take blame for
       // unrelated mpv chatter.
@@ -250,7 +250,7 @@ class MusicPlayerService {
       debugPrint('MusicPlayerService: resolving videoId for "${track.title}" / "${track.artist}"');
       final videoId = await _musicService.getYoutubeVideoId(track.title, track.artist);
       if (_playGeneration != generation) {
-        debugPrint('MusicPlayerService: Cancelled (after videoId) — newer track requested');
+        debugPrint('MusicPlayerService: Cancelled (after videoId) - newer track requested');
         return;
       }
       if (videoId == null) {
@@ -262,7 +262,7 @@ class MusicPlayerService {
       // 3. Stream URL (cached + runs in background isolate)
       final streamUrl = await _musicService.getYoutubeStreamUrl(videoId);
       if (_playGeneration != generation) {
-        debugPrint('MusicPlayerService: Cancelled (after streamUrl) — newer track requested');
+        debugPrint('MusicPlayerService: Cancelled (after streamUrl) - newer track requested');
         return;
       }
       if (streamUrl == null || streamUrl.isEmpty) {
@@ -372,7 +372,7 @@ class MusicPlayerService {
       }
 
       if (unplayed.isEmpty) {
-        // All songs have been played — stop playback
+        // All songs have been played - stop playback
         pause();
         return;
       }

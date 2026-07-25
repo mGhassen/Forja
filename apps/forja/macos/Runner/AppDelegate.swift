@@ -18,7 +18,7 @@ class AppDelegate: FlutterAppDelegate {
   }
 
   /// ⌘Q / Quit menu skips `windowShouldClose` / Flutter `onWindowClose`.
-  /// Ask Dart to stop media_kit (mpv) first — otherwise demux SIGSEGVs in
+  /// Ask Dart to stop media_kit (mpv) first - otherwise demux SIGSEGVs in
   /// `msg_wakeup` while Flutter joins threads during `NSApplication.terminate`.
   override func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     if allowTerminate {
@@ -63,7 +63,7 @@ class AppDelegate: FlutterAppDelegate {
       waitingForFlutterQuit = false
       NSApp.reply(toApplicationShouldTerminate: true)
     } else {
-      // Red-X path: Flutter already tore down via onWindowClose — terminate now.
+      // Red-X path: Flutter already tore down via onWindowClose - terminate now.
       NSApp.terminate(nil)
     }
   }

@@ -60,5 +60,5 @@ void playerMenuClearReturnFocus() {
   _playerMenuReturnFocus = null;
 }
 
-/// True while a dismiss is about to restore the opener — don't steal to Play.
+/// True while a dismiss is about to restore the opener - don't steal to Play.
 bool playerChromeHasPendingReturnFocus() => _playerMenuReturnFocus != null;

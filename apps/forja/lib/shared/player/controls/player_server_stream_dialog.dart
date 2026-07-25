@@ -15,7 +15,7 @@ import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
 
-/// Two-column Sources dialog — left servers, right streams for the selected server.
+/// Two-column Sources dialog - left servers, right streams for the selected server.
 ///
 /// Used by ExoPlayer (phone + Android TV). MediaKit keeps its accordion panel.
 class PlayerServerStreamDialog {

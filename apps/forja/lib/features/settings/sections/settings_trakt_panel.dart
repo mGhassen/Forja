@@ -7,7 +7,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Trakt login, sync, and stats — settings Accounts slice.
+/// Trakt login, sync, and stats - settings Accounts slice.
 class SettingsTraktPanel extends StatefulWidget {
   const SettingsTraktPanel({super.key});
 

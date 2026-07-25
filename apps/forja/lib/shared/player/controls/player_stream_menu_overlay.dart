@@ -181,7 +181,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     });
   }
 
-  /// One server check at a time — drop other spinners and invalidate their gens.
+  /// One server check at a time - drop other spinners and invalidate their gens.
   void _supersedeOtherServerLoads(String providerId) {
     final others = _loadingProviders.where((id) => id != providerId).toList();
     for (final id in others) {
@@ -259,7 +259,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       if (!mounted || (_loadGens[providerId] ?? 0) != gen) return;
       setState(() => _loadingProviders.remove(providerId));
       // Multi-stream servers: paint every row first, then probe one-by-one so
-      // the panel shows Checking… per stream (probe only — does not open audio).
+      // the panel shows Checking… per stream (probe only - does not open audio).
       if (sources != null && sources.length > 1) {
         unawaited(_checkStreamsSequentially(
           providerId: providerId,
@@ -298,7 +298,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       final url = source.url;
       if (url.isEmpty) continue;
 
-      // Already playing this row — keep active, don't re-probe.
+      // Already playing this row - keep active, don't re-probe.
       if (playingThisServer &&
           streamSourceMatchesPlaying(
             source,

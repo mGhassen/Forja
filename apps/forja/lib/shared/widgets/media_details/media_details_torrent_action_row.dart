@@ -61,7 +61,7 @@ class MediaDetailsTorrentActionRow extends StatefulWidget {
 
 class _MediaDetailsTorrentActionRowState
     extends State<MediaDetailsTorrentActionRow> {
-  /// Hero ⋮ menu (Trakt/Simkl) — kept wired; hide until product wants it back.
+  /// Hero ⋮ menu (Trakt/Simkl) - kept wired; hide until product wants it back.
   static const bool _overflowVisible = false;
 
   @override

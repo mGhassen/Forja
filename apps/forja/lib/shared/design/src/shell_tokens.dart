@@ -31,7 +31,7 @@ abstract final class ShellTokens {
   static bool usesCompactNavDrawer(BuildContext context) =>
       MediaQuery.sizeOf(context).width < shellNavCompactMaxWidth;
 
-  /// Left edge for compact ☰ — clears macOS traffic lights.
+  /// Left edge for compact ☰ - clears macOS traffic lights.
   static double compactMenuLeadingInset(BuildContext context) {
     final mac = Platform.isMacOS ? macTrafficLightLeadingInset : 0.0;
     return math.max(bodyHorizontalPadding, mac);
@@ -115,7 +115,7 @@ abstract final class ShellTokens {
       homeCategoriesMenuRowHeight * homeCategoriesMenuMaxVisibleRows;
   static const double shellLogoWidth = 110;
 
-  /// Music desktop sidebar width — global rail hidden when Music tab uses this.
+  /// Music desktop sidebar width - global rail hidden when Music tab uses this.
   static const double musicDesktopSidebarWidth = 260;
   static const double musicDesktopBreakpoint = 900;
 
@@ -142,7 +142,7 @@ abstract final class ShellTokens {
   static const double heroImageGradientFadeEndFraction = 0.72;
   static const double heroHeightFractionDesktop = 0.72;
 
-  /// Home desktop/TV — page backdrop height (hero chrome + first row on image).
+  /// Home desktop/TV - page backdrop height (hero chrome + first row on image).
   static const double homeBackdropViewportFraction = 0.90;
 
   /// Padding above **Featured This Month** when stacked on the hero backdrop.
@@ -199,7 +199,7 @@ abstract final class ShellTokens {
   static double heroOverviewTextHeightDesktop(int maxLines) =>
       heroOverviewFontSizeDesktop * heroOverviewLineHeightDesktop * maxLines;
 
-  /// Fixed overview block — keeps action row stable across hero slides.
+  /// Fixed overview block - keeps action row stable across hero slides.
   static double heroOverviewSlotHeightForLines(int maxLines) =>
       heroOverviewTextHeightDesktop(maxLines) +
       heroOverviewReadMoreGap +
@@ -232,7 +232,7 @@ abstract final class ShellTokens {
   /// Vertical gap between Home content rows (not hero → first row).
   static const double homeRowSpacing = 24;
 
-  /// TV catalog spacing — aligned with desktop/detail rhythm (cards stay 90px).
+  /// TV catalog spacing - aligned with desktop/detail rhythm (cards stay 90px).
   static const double tvHomeRowSpacing = 20;
   static const double tvHomeSectionHorizontalPadding = 0;
   static const double tvHeroHeightFraction = 0.78;
@@ -243,7 +243,7 @@ abstract final class ShellTokens {
   static const double tvHomeSectionBottomGap = 14;
   static const double tvMovieCardRowGap = 12;
 
-  /// Floor for TV typography/chrome — cards scale down, text/spacing does not crush.
+  /// Floor for TV typography/chrome - cards scale down, text/spacing does not crush.
   static const double tvLayoutScaleFloor = 0.75;
 
   /// Title top inset for a standard Home row (pairs with [homeRowSpacing]).
@@ -256,7 +256,7 @@ abstract final class ShellTokens {
   /// Netflix-style search: input column on desktop.
   static const double searchPageInset = 32;
 
-  /// Top inset for desktop search — aligns with Home hero text clearance.
+  /// Top inset for desktop search - aligns with Home hero text clearance.
   static double get searchPageTopInset => homeTopBarHeight + 24;
   static const double searchColumnGap = 32;
   static const double searchLeftColumnWidth = 420;

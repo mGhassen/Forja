@@ -629,7 +629,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
   }
 }
 
-/// Platform-specific lazy health probe — desktop hover, TV focus, mobile visibility.
+/// Platform-specific lazy health probe - desktop hover, TV focus, mobile visibility.
 class _LiveHealthProbe extends StatelessWidget {
   final IptvStream stream;
   final IptvController ctrl;
@@ -717,7 +717,7 @@ class _EpgNowFooter extends StatelessWidget {
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    now.title.isEmpty ? '—' : now.title,
+                    now.title.isEmpty ? '-' : now.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
@@ -736,7 +736,7 @@ class _EpgNowFooter extends StatelessWidget {
   }
 }
 
-/// Long-press detail sheet — lists the next few programmes with start times.
+/// Long-press detail sheet - lists the next few programmes with start times.
 class _EpgSheet extends StatelessWidget {
   final IptvStream stream;
   final IptvController ctrl;
@@ -828,7 +828,7 @@ class _EpgSheet extends StatelessWidget {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          e.title.isEmpty ? '—' : e.title,
+                                          e.title.isEmpty ? '-' : e.title,
                                           style: GoogleFonts.plusJakartaSans(
                                             color: Colors.white,
                                             fontSize: 12,

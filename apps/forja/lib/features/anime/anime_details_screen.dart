@@ -306,7 +306,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     if (p != null && resumeEp == _selectedEpisode) {
       final posMs = (p['positionMs'] as num?)?.toInt() ?? 0;
       final durMs = (p['durationMs'] as num?)?.toInt() ?? 0;
-      // Same as movies: ≥85% (or <2%) restarts at 0 — avoid credits seek.
+      // Same as movies: ≥85% (or <2%) restarts at 0 - avoid credits seek.
       if (posMs > 0 && isInProgressResume(posMs, durMs)) {
         start = Duration(milliseconds: posMs);
       }

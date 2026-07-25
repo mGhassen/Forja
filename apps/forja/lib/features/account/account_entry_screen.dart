@@ -68,7 +68,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   @override
   void dispose() {
     _wordTimer?.cancel();
-    // Do not cancel web login here — disposing during browser handoff used to
+    // Do not cancel web login here - disposing during browser handoff used to
     // abort the wait after the portal already got ok:true (browser closes,
     // app stays signed out). Explicit Cancel / Continue as guest still abort.
     _breathe.dispose();
@@ -258,7 +258,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
     setState(() {
       _webBusy = true;
       _message =
-          'Opening browser — sign in on the web, then return here. '
+          'Opening browser - sign in on the web, then return here. '
           'Tap Cancel if the browser does not open.';
       _messageIsError = false;
     });
@@ -447,7 +447,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
               SizedBox(height: compact ? 16 : 22),
               Text(
                 'Sign in to sync settings and profiles across every screen. '
-                'New accounts live on the web — not in the app.',
+                'New accounts live on the web - not in the app.',
                 textAlign: compact ? TextAlign.center : TextAlign.start,
                 style: GoogleFonts.plusJakartaSans(
                   color: ForjaShellColors.textSecondary.withValues(alpha: 0.95),

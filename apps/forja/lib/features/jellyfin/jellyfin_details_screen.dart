@@ -189,7 +189,7 @@ class _JellyfinDetailsScreenState extends State<JellyfinDetailsScreen> {
           }
         }
       } else {
-        // Movie / single item — load details, then similar using detail's genres
+        // Movie / single item - load details, then similar using detail's genres
         _details = await _jf.getItemDetails(widget.item.id);
         final detailGenre = _details!.genres.isNotEmpty ? _details!.genres.first : null;
         if (detailGenre != null) {
@@ -271,7 +271,7 @@ class _JellyfinDetailsScreenState extends State<JellyfinDetailsScreen> {
       title = '${item.seriesName ?? widget.item.name} - S${item.parentIndexNumber ?? '?'}E${item.indexNumber ?? '?'} - ${item.name}';
     }
     _jf.reportPlaybackStart(item.id);
-    // Only pass startPosition for direct play — transcoded HLS already
+    // Only pass startPosition for direct play - transcoded HLS already
     // starts at the requested offset, so seeking again would double-seek.
     final startPos = result.isTranscode ? null : Duration(microseconds: posTicks ~/ 10);
     Navigator.push(

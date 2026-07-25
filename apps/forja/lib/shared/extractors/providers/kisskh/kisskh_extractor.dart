@@ -1,4 +1,4 @@
-// kisskh.co stream extractor — headless WebView based.
+// kisskh.co stream extractor - headless WebView based.
 //
 // The site signs every Episode/{epId}.png and Sub/{epId} request with a
 // `kkey` parameter generated client-side by heavily obfuscated JS. Rather
@@ -89,7 +89,7 @@ class KissKhExtractor {
     /// When set, only this mirror is tried (player Sources / sequential probe).
     String? forcedBaseUrl,
   }) async {
-    // Serialize resolves on this instance — overlapping WebViews cancel each
+    // Serialize resolves on this instance - overlapping WebViews cancel each
     // other and leave the UI stuck on "Waiting for stream key…".
     final previous = _resolveChain;
     final gate = Completer<void>();
@@ -182,7 +182,7 @@ class KissKhExtractor {
     var mirrorIndex = 0;
     var recoveryInFlight = false;
     var rateLimited = false;
-    /// Sticky for this resolve — once KissKH shows rate-limit copy, never
+    /// Sticky for this resolve - once KissKH shows rate-limit copy, never
     /// hard-nav even after the banner clears (that reload digs the hole).
     var everRateLimited = false;
     var rateLimitRetries = 0;
@@ -245,7 +245,7 @@ class KissKhExtractor {
           userAgent: _userAgent,
           mediaPlaybackRequiresUserGesture: false,
           allowsInlineMediaPlayback: true,
-          // Fresh network every extract — do not reuse disk-cached Episode API.
+          // Fresh network every extract - do not reuse disk-cached Episode API.
           cacheEnabled: false,
           clearCache: true,
           incognito: true,
@@ -287,20 +287,20 @@ class KissKhExtractor {
               everRateLimited = true;
               rateLimitRetries = 0;
               debugPrint(
-                '[KissKhExtractor] KissKH rate limit on $baseUrl — '
+                '[KissKhExtractor] KissKH rate limit on $baseUrl - '
                 'backing off (no hard-nav / mirror hop)',
               );
             }
             onProgress?.call(
               'rate_limit',
-              'KissKH rate limited — cooling down…',
+              'KissKH rate limited - cooling down…',
             );
             return;
           }
           if (s == 'KKH_RATE_CLEAR' || s.startsWith('KKH_RATE_CLEAR')) {
             if (rateLimited) {
               rateLimited = false;
-              // Keep everRateLimited — CLEAR only means the banner left the
+              // Keep everRateLimited - CLEAR only means the banner left the
               // DOM; Episode API may still be blocked. Do not reset retries
               // into a hard-nav path.
               debugPrint(
@@ -362,11 +362,11 @@ class KissKhExtractor {
       await _web!.run();
       if (cancelled()) return null;
 
-      // Do NOT block on onLoadStop — SPA can fire Episode/*.png before or
+      // Do NOT block on onLoadStop - SPA can fire Episode/*.png before or
       // long after load-stop.
       //
       // Rate limit ("Too many request."): stay on this host, click Retry after
-      // a cool-down — hard-nav + mirror hop share one IP and make it worse.
+      // a cool-down - hard-nav + mirror hop share one IP and make it worse.
       // Once everRateLimited, never hard-nav even after the banner clears.
       //
       // Silent (no rate limit this resolve): when not pinned, hop mirrors
@@ -388,12 +388,12 @@ class KissKhExtractor {
           if (rateLimitRetries > 8) {
             debugPrint(
               '[KissKhExtractor] rate limited on $baseUrl after '
-              '${rateLimitRetries * recoveryEvery.inSeconds}s — stop '
+              '${rateLimitRetries * recoveryEvery.inSeconds}s - stop '
               '(no hard-nav)',
             );
             onProgress?.call(
               'rate_limit',
-              'KissKH rate limited — try again in a minute',
+              'KissKH rate limited - try again in a minute',
             );
             if (!c.isCompleted) c.complete(<String, dynamic>{});
             return;
@@ -402,7 +402,7 @@ class KissKhExtractor {
             // Odd ticks: wait (cool-down). Even ticks: click Retry.
             onProgress?.call(
               'rate_limit',
-              'KissKH rate limited — cooling down…',
+              'KissKH rate limited - cooling down…',
             );
             return;
           }
@@ -411,7 +411,7 @@ class KissKhExtractor {
             '[KissKhExtractor] rate-limit Retry click on $baseUrl '
             '(attempt ${rateLimitRetries ~/ 2})',
           );
-          onProgress?.call('rate_limit', 'KissKH rate limited — retrying…');
+          onProgress?.call('rate_limit', 'KissKH rate limited - retrying…');
           unawaited(
             ctrl
                 .evaluateJavascript(
@@ -427,7 +427,7 @@ class KissKhExtractor {
 
         if (pinned && timer.tick >= 2) {
           debugPrint(
-            '[KissKhExtractor] pinned $baseUrl still silent after recovery — '
+            '[KissKhExtractor] pinned $baseUrl still silent after recovery - '
             'fail over',
           );
           onProgress?.call('retry', 'Trying next mirror…');
@@ -447,7 +447,7 @@ class KissKhExtractor {
             episodeNumber: episodeNumber,
           );
           debugPrint(
-            '[KissKhExtractor] no Episode API after ${timer.tick * 8}s — '
+            '[KissKhExtractor] no Episode API after ${timer.tick * 8}s - '
             'trying mirror $baseUrl',
           );
           onProgress?.call(
@@ -457,7 +457,7 @@ class KissKhExtractor {
         } else {
           final waited = timer.tick * recoveryEvery.inSeconds;
           debugPrint(
-            '[KissKhExtractor] no Episode API after ${waited}s — '
+            '[KissKhExtractor] no Episode API after ${waited}s - '
             'hard navigate $baseUrl',
           );
           onProgress?.call('retry', 'Retrying stream key…');
@@ -488,7 +488,7 @@ class KissKhExtractor {
           'No stream API response in ${timeout.inSeconds}s',
         ),
       );
-      // Empty map is the cancel sentinel — not a real Episode payload.
+      // Empty map is the cancel sentinel - not a real Episode payload.
       if (cancelled() || api.isEmpty) return null;
       try {
         await KissKhService.activateEndpoint(baseUrl);
@@ -510,7 +510,7 @@ class KissKhExtractor {
       if (streamUrl == null) {
         final embed = _thirdPartyEmbedUrl(api);
         final rejected = (api['Video'] ?? api['video'] ?? '').toString().trim();
-        // Episode listed but not unlocked — kisskh embeds a tickcounter widget.
+        // Episode listed but not unlocked - kisskh embeds a tickcounter widget.
         if (_isCountdownPlaceholder(rejected)) {
           debugPrint(
             '[KissKhExtractor] countdown placeholder (not unlocked): $rejected',
@@ -521,7 +521,7 @@ class KissKhExtractor {
         if (rejected.isNotEmpty) {
           debugPrint(
             '[KissKhExtractor] Rejected Video URL: $rejected'
-            '${embed != null ? ' — trying ThirdParty' : ''}',
+            '${embed != null ? ' - trying ThirdParty' : ''}',
           );
         }
         if (embed != null) {
@@ -598,7 +598,7 @@ class KissKhExtractor {
     _resolveGen++;
     final c = _apiCompleter;
     _apiCompleter = null;
-    // Prefer complete(empty) over completeError — avoids unhandled
+    // Prefer complete(empty) over completeError - avoids unhandled
     // TimeoutException when the waiter was already torn down.
     if (c != null && !c.isCompleted) {
       c.complete(<String, dynamic>{});

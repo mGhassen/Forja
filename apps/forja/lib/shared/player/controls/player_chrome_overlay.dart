@@ -19,7 +19,7 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 part 'player_chrome_overlay_hero.dart';
 
-/// D-pad / hover highlight for player chrome — works even without [ShellScope].
+/// D-pad / hover highlight for player chrome - works even without [ShellScope].
 bool playerChromeFocusActive(
   BuildContext context, {
   required bool tvFocusable,
@@ -153,7 +153,7 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
       color: _backgroundColor,
       shape: shape,
       child: InkWell(
-        // FocusableControl owns TV focus — InkWell must not take D-pad stops.
+        // FocusableControl owns TV focus - InkWell must not take D-pad stops.
         canRequestFocus: false,
         onTap: widget.tvFocusable ? null : onTap,
         hoverColor: Colors.transparent,
@@ -200,7 +200,7 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
           )
         : MouseRegion(
             onEnter: (_) {
-              // Drop seek-bar scrub capture before Quality / Settings hover —
+              // Drop seek-bar scrub capture before Quality / Settings hover -
               // otherwise the thumb stays magnetized to the pointer over chrome.
               playerChromeCancelSeekScrubs();
               setState(() => _hovered = true);
@@ -216,7 +216,7 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
   }
 }
 
-/// Unified stream source control — flat, matches other player icon buttons.
+/// Unified stream source control - flat, matches other player icon buttons.
 class PlayerStreamPickerButton extends StatefulWidget {
   const PlayerStreamPickerButton({
     super.key,
@@ -357,11 +357,11 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
                 : SystemMouseCursors.basic,
             child: child,
           );
-    return Tooltip(message: 'Source — ${widget.label}', child: button);
+    return Tooltip(message: 'Source - ${widget.label}', child: button);
   }
 }
 
-/// Floating skip / next-episode chip — flat shell chrome (mouse + TV D-pad).
+/// Floating skip / next-episode chip - flat shell chrome (mouse + TV D-pad).
 class PlayerFloatingChip extends StatefulWidget {
   const PlayerFloatingChip({
     super.key,

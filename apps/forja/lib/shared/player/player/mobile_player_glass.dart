@@ -1,7 +1,7 @@
 part of 'mobile_player_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  FLAT PLAYER CHROME SURFACES  (RFC-026 R26-C06 — no glass / BackdropFilter)
+//  FLAT PLAYER CHROME SURFACES  (RFC-026 R26-C06 - no glass / BackdropFilter)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Flat elevated surface for transient player chrome (seek tooltip, volume pill).

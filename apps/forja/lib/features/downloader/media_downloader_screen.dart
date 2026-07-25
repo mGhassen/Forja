@@ -1,4 +1,4 @@
-// Media Downloader — search any movie / TV episode and grab a direct
+// Media Downloader - search any movie / TV episode and grab a direct
 // download link from the 111477 file index. UI mirrors the Similar Hub
 // (liquid blob backdrop, glass search bar, gradient accents).
 
@@ -140,7 +140,7 @@ class _MediaDownloaderScreenState extends State<MediaDownloaderScreen>
         if (mounted) setState(() => _loadingDetails = false);
       }
     } else {
-      // Movie — go straight to scraping.
+      // Movie - go straight to scraping.
       setState(() => _loadingDetails = false);
       _scrapeLinks();
     }
@@ -345,7 +345,7 @@ class _MediaDownloaderScreenState extends State<MediaDownloaderScreen>
                 ),
                 if (_selected == null)
                   Text(
-                    'Search any movie or show — get a direct download link.',
+                    'Search any movie or show - get a direct download link.',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

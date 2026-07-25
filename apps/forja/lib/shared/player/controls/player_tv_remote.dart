@@ -29,7 +29,7 @@ class PlayerTvRemoteKeyHandler {
 
     final key = event.logicalKey;
 
-    // Hardware remote volume — always, even when chrome is focused.
+    // Hardware remote volume - always, even when chrome is focused.
     if (key == LogicalKeyboardKey.audioVolumeUp) {
       onVolumeUp();
       return true;

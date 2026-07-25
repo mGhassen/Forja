@@ -6,13 +6,13 @@ import 'package:forja/shared/design/src/forja_shell_colors.dart';
 /// All tones share the same rectangle + small-radius + border language; only the
 /// accent (border / text / subtle fill) changes.
 enum ForjaButtonVariant {
-  /// Brand-green accent — the affirmative / save action.
+  /// Brand-green accent - the affirmative / save action.
   primary,
 
-  /// Neutral chrome accent — the default secondary action.
+  /// Neutral chrome accent - the default secondary action.
   neutral,
 
-  /// Red accent — destructive / logout / remove actions.
+  /// Red accent - destructive / logout / remove actions.
   destructive,
 }
 
@@ -119,7 +119,7 @@ class _ForjaButtonState extends State<ForjaButton> {
           : ForjaShellColors.ghostBorder;
       foreground = ForjaShellColors.textPrimary;
     } else {
-      // Destructive — tinted fill + red border/text.
+      // Destructive - tinted fill + red border/text.
       fill = accent.withValues(alpha: active ? 0.20 : 0.12);
       border = accent.withValues(alpha: active ? 0.95 : 0.55);
       foreground = accent;

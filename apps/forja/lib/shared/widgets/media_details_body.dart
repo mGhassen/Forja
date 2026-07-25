@@ -3,7 +3,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 /// Constrained column below the full-bleed media details hero.
-/// Horizontal inset is **not** applied here — catalog rows are edge-to-edge like
+/// Horizontal inset is **not** applied here - catalog rows are edge-to-edge like
 /// Home; wrap text-only blocks in [padContent].
 class MediaDetailsBody extends StatelessWidget {
   const MediaDetailsBody({

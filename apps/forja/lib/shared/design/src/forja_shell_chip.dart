@@ -4,7 +4,7 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Flat shell chip fill + border — matches sources panel / home filter style.
+/// Flat shell chip fill + border - matches sources panel / home filter style.
 BoxDecoration shellChipDecoration({
   required bool selected,
   double radius = 20,
@@ -22,7 +22,7 @@ BoxDecoration shellChipDecoration({
   );
 }
 
-/// Clipped Material + InkWell — hover/splash follow [radius] (pills, list rows).
+/// Clipped Material + InkWell - hover/splash follow [radius] (pills, list rows).
 Widget shellRoundedInkHost({
   required Widget child,
   required double radius,
@@ -111,7 +111,7 @@ ButtonStyle shellMenuItemStyle({
   );
 }
 
-/// Selectable pill chip for filters, moods, modes — no theme purple borders.
+/// Selectable pill chip for filters, moods, modes - no theme purple borders.
 class ForjaShellChip extends StatelessWidget {
   const ForjaShellChip({
     super.key,

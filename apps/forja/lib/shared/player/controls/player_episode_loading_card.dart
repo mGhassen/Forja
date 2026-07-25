@@ -3,7 +3,7 @@ import 'package:forja/shared/design/design.dart';
 
 /// Compact floating card shown while the player resolves another episode.
 ///
-/// Sits bottom-right above the seek bar (like the Skip / Next Episode chips) —
+/// Sits bottom-right above the seek bar (like the Skip / Next Episode chips) -
 /// flat translucent shell surface, no border, no full-screen scrim so live
 /// video stays visible behind it (and no [BackdropFilter] over video on macOS).
 class PlayerEpisodeLoadingCard extends StatelessWidget {

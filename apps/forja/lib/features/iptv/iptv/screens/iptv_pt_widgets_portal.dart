@@ -624,7 +624,7 @@ class _Pill extends StatelessWidget {
   }
 }
 
-/// Empty portals CTAs — autofocuses the first enabled action on TV.
+/// Empty portals CTAs - autofocuses the first enabled action on TV.
 class _PortalEmptyCtas extends StatefulWidget {
   const _PortalEmptyCtas({
     required this.ctrl,

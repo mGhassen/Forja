@@ -52,7 +52,7 @@ class MpvExclusiveSession {
 
   /// Stop every tracked mpv instance before the VM shuts down.
   ///
-  /// Uses timed teardown — unbounded [Player.stop]/[Player.dispose] hangs
+  /// Uses timed teardown - unbounded [Player.stop]/[Player.dispose] hangs
   /// (stuck video-controller init) and freezes desktop quit while
   /// `setPreventClose(true)` keeps the window alive.
   ///

@@ -46,7 +46,7 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
     final next = await SettingsVisibility.resolve();
     if (!mounted) return;
     setState(() => _visibility = next);
-    // Split layout only — compact uses push routes and keeps selectedId at profile.
+    // Split layout only - compact uses push routes and keeps selectedId at profile.
     if (!SettingsTokens.useSplitLayout(context)) return;
     final ids = settingsCategories(next).map((c) => c.id).toSet();
     if (!ids.contains(widget.selectedId)) {

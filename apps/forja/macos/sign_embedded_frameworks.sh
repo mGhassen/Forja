@@ -9,7 +9,7 @@ DEST="${BUILT_PRODUCTS_DIR}/${FRAMEWORKS_FOLDER_PATH}"
 APP="${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}"
 
 if [ ! -d "$DEST" ]; then
-  echo "note: no Frameworks folder at $DEST — skip"
+  echo "note: no Frameworks folder at $DEST - skip"
   exit 0
 fi
 

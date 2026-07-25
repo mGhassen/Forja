@@ -70,7 +70,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       onTap: widget.onTap,
       borderRadius: 0,
       listIndex: widget.listIndex,
-      // Vertical category column is the catalog's left edge — Left → nav rail
+      // Vertical category column is the catalog's left edge - Left → nav rail
       // (not only listIndex 0; vertical rows otherwise trap ←).
       navLeftAlways: true,
       tvRowId: 'browser-categories',

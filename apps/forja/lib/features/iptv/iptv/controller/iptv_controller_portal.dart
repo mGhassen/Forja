@@ -50,7 +50,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
         // ── Step 1: fetch fresh pages until the pending queue has work.
         //         (Pending queue may already be non-empty from a prior
         //         press that found enough alive portals before draining
-        //         everything — in that case we skip the fetch entirely.)
+        //         everything - in that case we skip the fetch entirely.)
         while (_c._pendingPortals.isEmpty &&
             pagesTried < maxPagesPerPress &&
             !_c._scrapeCancel) {
@@ -62,7 +62,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
           _c._scrapeAfter = page.nextAfter;
 
           // Add only portals we haven't already verified, attempted, or queued.
-          // Dedup is by credentials (user|pass) — same login on a different
+          // Dedup is by credentials (user|pass) - same login on a different
           // host still counts as a duplicate.
           for (final p in page.portals) {
             if (_c._verifiedKeys.contains(p.credKey)) continue;
@@ -83,7 +83,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
             emptyPagesInRow = 0;
           }
 
-          // No more pages from this source — bail out of the fetch loop.
+          // No more pages from this source - bail out of the fetch loop.
           if (_c._pendingPortals.isEmpty && !page.hasMore) {
             exhausted = true;
             break;
@@ -249,7 +249,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     _c.selected.clear();
     _c.editMode = false;
     if (keep.isEmpty) {
-      // Intentional clear-all — sync empty to cloud (cache alone must not wipe).
+      // Intentional clear-all - sync empty to cloud (cache alone must not wipe).
       await IptvStore.save(keep, scheduleSync: false);
       await SyncDomainBridge.instance.pushEmptyIptvInventory();
     } else {
@@ -297,7 +297,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     final verified = await IptvClient.verifyOrNull(p);
     _c.isAdding = false;
     if (verified == null) {
-      _c.addError = 'Login failed — wrong credentials or dead portal.';
+      _c.addError = 'Login failed - wrong credentials or dead portal.';
       notifyListeners();
       return;
     }
@@ -366,7 +366,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     final verified = await IptvClient.verifyOrNull(p);
     _c.isAdding = false;
     if (verified == null) {
-      _c.addError = 'Login failed — wrong credentials or dead portal.';
+      _c.addError = 'Login failed - wrong credentials or dead portal.';
       notifyListeners();
       return;
     }
@@ -518,7 +518,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
       notifyListeners();
     }
 
-    // Verify in parallel — same approach as scrape verifier, but simpler.
+    // Verify in parallel - same approach as scrape verifier, but simpler.
     const concurrency = 8;
     var idx = 0;
     Future<void> worker() async {
@@ -593,7 +593,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
       final n = ids.length;
       if (!pulled && n > 0) {
         _c.statusText =
-            'Dealt $n portal${n == 1 ? '' : 's'} but sync failed — try again later.';
+            'Dealt $n portal${n == 1 ? '' : 's'} but sync failed - try again later.';
       } else {
         _c.statusText = n == 0
             ? 'Deal returned no portals.'

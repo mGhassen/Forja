@@ -21,7 +21,7 @@ import 'package:rust/rust.dart';
 part 'player_stream_menu_overlay.dart';
 part 'player_stream_menu_widgets.dart';
 
-/// Live stream menu state — read after async provider switches.
+/// Live stream menu state - read after async provider switches.
 class PlayerStreamMenuState {
   const PlayerStreamMenuState({
     required this.currentProviderId,
@@ -46,7 +46,7 @@ class PlayerStreamMenuState {
   final bool mediaPlaying;
 }
 
-/// Unified server + source picker — right-side panel with grouped providers.
+/// Unified server + source picker - right-side panel with grouped providers.
 class PlayerStreamMenu {
   static const _statusSlot = 18.0;
 
@@ -70,7 +70,7 @@ class PlayerStreamMenu {
   }) {
     if (onReload == null) return null;
     Widget buildButton(bool loading) {
-      // Status roulette / server glyphs already show loading — keep the
+      // Status roulette / server glyphs already show loading - keep the
       // icon; only disable the tap while a reload is in flight.
       return ForjaPlainIcon(
         icon: Icons.refresh_rounded,
@@ -218,13 +218,13 @@ class PlayerStreamMenu {
               final url = entry.value.url;
               PlayerSourceStatus? status;
               if (isPlaying) {
-                // Playing wins — never show Checking spinner on the active row.
+                // Playing wins - never show Checking spinner on the active row.
                 status = PlayerSourceStatus.ready;
               } else if (urlStatuses.containsKey(url)) {
                 status = urlStatuses[url];
               } else if (useIndexedStatuses && entry.key < statuses.length) {
                 final s = statuses[entry.key];
-                // Indexed `ready` is not a URL check — leave null (gray) until verified.
+                // Indexed `ready` is not a URL check - leave null (gray) until verified.
                 if (s == PlayerSourceStatus.checking ||
                     s == PlayerSourceStatus.failed ||
                     s == PlayerSourceStatus.active) {
@@ -267,7 +267,7 @@ class PlayerStreamMenu {
     );
   }
 
-  /// Public server list for Exo (and other) Sources UIs — same order as the
+  /// Public server list for Exo (and other) Sources UIs - same order as the
   /// MediaKit accordion panel.
   static List<MapEntry<String, dynamic>> serversForPanel(
     Map<String, dynamic> providers, {
@@ -280,7 +280,7 @@ class PlayerStreamMenu {
         probes: probes,
       );
 
-  /// Stable panel order — settings provider priority only.
+  /// Stable panel order - settings provider priority only.
   /// Reliability scores drive resolve/probe order elsewhere, not this list.
   ///
   /// Anime Miruro pipes (`miruro:*`) are clustered into one contiguous block
@@ -299,7 +299,7 @@ class PlayerStreamMenu {
       probeIndex[probes[i].id] = i;
     }
 
-    // Use settingsRank only — never effectiveRank. Checking a server updates
+    // Use settingsRank only - never effectiveRank. Checking a server updates
     // reliability scores (and thus effectiveRank), which must not reshuffle
     // the panel under the user's cursor.
     int sortRank(String providerId) {
@@ -643,7 +643,7 @@ class PlayerStreamMenu {
     return null;
   }
 
-  /// Strip server name and SUB/DUB from stream titles — shown on the server row.
+  /// Strip server name and SUB/DUB from stream titles - shown on the server row.
   /// Appends language flags at the end when found in the stream title.
   static String _streamRowLabel(StreamSource source, {String? serverLabel}) {
     var title = source.title.trim();
@@ -699,7 +699,7 @@ class PlayerStreamMenu {
     return '$body $flags';
   }
 
-  /// Stable panel order — preserves resolver/extraction list order.
+  /// Stable panel order - preserves resolver/extraction list order.
   @visibleForTesting
   static List<MapEntry<int, StreamSource>> orderedSourceEntriesForPanel(
     List<StreamSource> sources,
@@ -708,7 +708,7 @@ class PlayerStreamMenu {
 
   /// Playing / selected identity for a stream row.
   ///
-  /// Same CDN URL on another server must not paint as playing — that steals
+  /// Same CDN URL on another server must not paint as playing - that steals
   /// the trailing control (pause instead of play) and blocks the switch.
   @visibleForTesting
   static bool isCurrentSource(
@@ -852,7 +852,7 @@ class PlayerStreamMenu {
   // ── Status glyphs ─────────────────────────────────────────────────────
   // Server = solid filled dots only (green / gray / red · spinner while checking).
   // Stream = trailing control (check / ring / ✕ / spinner / play / pause).
-  // Playing encoding: green play arrow · blue pause — never a status shape.
+  // Playing encoding: green play arrow · blue pause - never a status shape.
 
   /// Server: solid green = up · solid gray = not checked · solid red = failed.
   static Widget _statusGlyph({

@@ -4,7 +4,7 @@
 /// After Let's Encrypt dropped the DST Root CA X3 cross-sign, Android 7.0 and
 /// older reject `image.tmdb.org` / `media.themoviedb.org` (and other LE hosts)
 /// with `CertPathValidatorException: Trust anchor for certification path not
-/// found`. Catalog JSON via Rust/rustls still works — Home and Asian Drama look
+/// found`. Catalog JSON via Rust/rustls still works - Home and Asian Drama look
 /// empty because posters fail.
 ///
 /// Companion: `android/.../network_security_config.xml` + `res/raw/isrg_root_x*`.
@@ -15,7 +15,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
-/// ISRG Root X1 (RSA) — https://letsencrypt.org/certs/isrgrootx1.pem
+/// ISRG Root X1 (RSA) - https://letsencrypt.org/certs/isrgrootx1.pem
 const String kIsrgRootX1Pem = r'''-----BEGIN CERTIFICATE-----
 MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
 TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
@@ -49,7 +49,7 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 -----END CERTIFICATE-----
 ''';
 
-/// ISRG Root X2 (ECDSA) — https://letsencrypt.org/certs/isrg-root-x2.pem
+/// ISRG Root X2 (ECDSA) - https://letsencrypt.org/certs/isrg-root-x2.pem
 const String kIsrgRootX2Pem = r'''-----BEGIN CERTIFICATE-----
 MIICGzCCAaGgAwIBAgIQQdKd0XLq7qeAwSxs6S+HUjAKBggqhkjOPQQDAzBPMQsw
 CQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJuZXQgU2VjdXJpdHkgUmVzZWFyY2gg

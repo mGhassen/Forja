@@ -261,7 +261,7 @@ class AudiobookService {
     if (titleLower == query) return 0; // Exact match
     if (titleLower.startsWith(query)) return 1; // Starts with query
     if (titleLower.contains(query)) return 2; // Contains query
-    // Partial word matching — count how many query words appear in the title
+    // Partial word matching - count how many query words appear in the title
     final queryWords = query.split(RegExp(r'\s+'));
     int matches = queryWords.where((w) => titleLower.contains(w)).length;
     if (matches == queryWords.length) return 3; // All words present
@@ -864,7 +864,7 @@ class AudiobookService {
   //   1. Search via their hosted Meilisearch instance (key shipped in the APK's .env)
   //   2. Fetch chapter URLs from Cloud Firestore using the integer `book_id` field
   //   3. Anonymous Firebase auth provides a 1h idToken, refreshed lazily on 401/expiry
-  // MP3s are public DigitalOcean Spaces URLs — no Referer/auth required for playback.
+  // MP3s are public DigitalOcean Spaces URLs - no Referer/auth required for playback.
 
   static const String _audionestMeiliBase = 'https://search.audionestapp.com';
   static const String _audionestMeiliKey =
@@ -990,7 +990,7 @@ class AudiobookService {
 
       var res = await _audionestFirestoreQuery(reqBody, token);
       if (res.status == 401 || res.status == 403) {
-        // Token rejected — force a fresh anonymous sign-in and retry once.
+        // Token rejected - force a fresh anonymous sign-in and retry once.
         token = await _audionestEnsureToken(force: true);
         if (token == null) return [];
         res = await _audionestFirestoreQuery(reqBody, token);

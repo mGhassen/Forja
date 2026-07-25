@@ -338,7 +338,7 @@ class _JellyfinScreenState extends State<JellyfinScreen>
       _nextUpItems = home.nextUpItems;
       _latestByLibrary = home.latestByLibrary;
 
-      // Build featured items for hero — prefer items with backdrop images
+      // Build featured items for hero - prefer items with backdrop images
       _featuredItems = [];
       for (final items in _latestByLibrary.values) {
         for (final item in items) {
@@ -454,7 +454,7 @@ class _JellyfinScreenState extends State<JellyfinScreen>
     bool viewing() => _selectedLibraryId == library.id && _currentCacheKey == key;
 
     try {
-      // Fetch ALL items in a single request (no limit) — matches how
+      // Fetch ALL items in a single request (no limit) - matches how
       // jellyfin-web and Findroid handle it. The Jellyfin server has no
       // rate-limiting on the Items endpoint; Limit is purely client-side.
       final result = await _jf.getItemsPaged(

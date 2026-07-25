@@ -15,7 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:ota_update/ota_update.dart'
     if (dart.library.html) 'package:ota_update/ota_update_stub.dart';
 
-/// Layout tokens — scaled from the **available viewport**, not fixed px.
+/// Layout tokens - scaled from the **available viewport**, not fixed px.
 ///
 /// Header/logo/gaps shrink on short windows so the pinned footer always fits
 /// and only the changelog scrolls.
@@ -172,7 +172,7 @@ class _UpdateLayout {
   }
 }
 
-/// Full-screen update gate — App Store / Play Store style, not a card dialog.
+/// Full-screen update gate - App Store / Play Store style, not a card dialog.
 class UpdateDialog extends StatefulWidget {
   final UpdateInfo updateInfo;
 
@@ -1255,7 +1255,7 @@ class _ReleaseNoteItem {
   final String text;
   final String? url;
 
-  /// Action prefix parsed from `**Add/Change/Fix/Remove:**` — null for links
+  /// Action prefix parsed from `**Add/Change/Fix/Remove:**` - null for links
   /// and free-form bullets.
   final String? prefix;
 }

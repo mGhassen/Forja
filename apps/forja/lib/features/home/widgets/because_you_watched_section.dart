@@ -1,4 +1,4 @@
-// Home tab section widgets — extracted from home_screen.dart (RFC-019 Phase B).
+// Home tab section widgets - extracted from home_screen.dart (RFC-019 Phase B).
 
 import 'package:forja/features/home/widgets/home_widget_imports.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';

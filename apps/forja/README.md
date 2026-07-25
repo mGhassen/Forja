@@ -1,6 +1,6 @@
 # Forja App
 
-Main Flutter product — permanent UI host. Engine: [Phase 2 playback wave](../../docs/migration/fixed/02-[fixed]-rust-engine-complete.md) · [Phase 3 catalog wave](../../docs/migration/fixed/03-[fixed]-engine-catalog.md).
+Main Flutter product - permanent UI host. Engine: [Phase 2 playback wave](../../docs/migration/fixed/02-[fixed]-rust-engine-complete.md) · [Phase 3 catalog wave](../../docs/migration/fixed/03-[fixed]-engine-catalog.md).
 
 ## Run (desktop)
 
@@ -34,7 +34,7 @@ Release APK bundles Rust automatically (`buildRust=true`). Debug needs a manual 
 ```bash
 ./scripts/build_rust_mobile.sh android          # optional pre-build
 BUILD_RUST_ANDROID=1 flutter run -d android
-flutter build apk                               # release — builds Rust via preReleaseBuild
+flutter build apk                               # release - builds Rust via preReleaseBuild
 ```
 
 See [crates/README.md](../../crates/README.md) for NDK discovery details.
@@ -48,7 +48,7 @@ cd apps/forja && flutter test test/engine_smoke_test.dart  # engine smoke (deskt
 
 ## Layout
 
-- `lib/app/` — bootstrap
-- `lib/shell/` — nav, `AppRouter`, `ShellBus`
-- `lib/features/` — one folder per nav tab
-- `lib/shared/` — player, widgets, casting/sync stubs
+- `lib/app/` - bootstrap
+- `lib/shell/` - nav, `AppRouter`, `ShellBus`
+- `lib/features/` - one folder per nav tab
+- `lib/shared/` - player, widgets, casting/sync stubs

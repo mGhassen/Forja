@@ -35,7 +35,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
               badge: a.format,
               genres: a.genres,
               // TMDB backdrops are cinematic 16:9. AniList banners are
-              // ultrawide (~1900×400) — fit width so the tall page-bleed
+              // ultrawide (~1900×400) - fit width so the tall page-bleed
               // hero does not crop to a tight zoom.
               imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
               imageAlignment:
@@ -184,7 +184,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                     tvTabId: 'anime',
                                     tvRowId: 'trending',
                                     tvRowOrder: trendingOrder,
-                                    // Mood/Continue sit above — don't skip to hero.
+                                    // Mood/Continue sit above - don't skip to hero.
                                     cardBuilder: (context, anime, index) =>
                                         _animePosterCard(
                                       anime,

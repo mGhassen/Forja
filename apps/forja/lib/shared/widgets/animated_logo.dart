@@ -252,7 +252,7 @@ class SplashOverlayContent extends StatelessWidget {
 
   final String slogan;
 
-  /// Current boot step — shown above the version at the bottom of the splash.
+  /// Current boot step - shown above the version at the bottom of the splash.
   final String? statusLabel;
 
   @override

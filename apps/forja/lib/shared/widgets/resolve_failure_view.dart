@@ -9,10 +9,10 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Tone for resolve / loading-page failures.
 enum ResolveFailureTone {
-  /// Hard fail — no stream, crash, not found.
+  /// Hard fail - no stream, crash, not found.
   error,
 
-  /// Soft wait — upcoming, countdown, rate limit cool-down.
+  /// Soft wait - upcoming, countdown, rate limit cool-down.
   waiting,
 }
 
@@ -44,7 +44,7 @@ class ResolveFailure {
       };
 }
 
-/// Centered failure content (no backdrop) — used inside [LoadingOverlay]
+/// Centered failure content (no backdrop) - used inside [LoadingOverlay]
 /// and [ResolveFailureScaffold].
 class ResolveFailurePanel extends StatefulWidget {
   const ResolveFailurePanel({

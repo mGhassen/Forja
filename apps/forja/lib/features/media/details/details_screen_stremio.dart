@@ -33,7 +33,7 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
   ///
   /// When [cancelEngineJobs] is false (closing Sources to start playback),
   /// generations still bump so late UI updates are ignored, but Engine resolve
-  /// jobs stay alive for the magnet / stream that starts next — and Play /
+  /// jobs stay alive for the magnet / stream that starts next - and Play /
   /// webstreaming cancel flags stay clear so the new resolve is not aborted.
   ///
   /// When [cancelEngineJobs] is true (Cancel, leave title, dispose), also flip

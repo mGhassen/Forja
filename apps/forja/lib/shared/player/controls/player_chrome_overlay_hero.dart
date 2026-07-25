@@ -280,7 +280,7 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
-        // Center ±10 / play sit above the seek bar — drop scrub or the thumb
+        // Center ±10 / play sit above the seek bar - drop scrub or the thumb
         // stays magnetized to the cursor over these controls.
         playerChromeCancelSeekScrubs();
         final policy =

@@ -88,7 +88,7 @@ abstract final class ProductAnalytics {
   static Future<void> sendTestEvent() async {
     if (!_active) {
       throw StateError(
-        'Product analytics is off — enable it in Settings first',
+        'Product analytics is off - enable it in Settings first',
       );
     }
     await track('analytics_verify');
@@ -97,7 +97,7 @@ abstract final class ProductAnalytics {
   static Future<void> _start() async {
     if (!isConfigured) {
       debugPrint(
-        '[ProductAnalytics] On but POSTHOG_API_KEY empty — no-op',
+        '[ProductAnalytics] On but POSTHOG_API_KEY empty - no-op',
       );
       _active = false;
       return;

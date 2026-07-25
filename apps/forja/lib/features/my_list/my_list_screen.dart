@@ -70,7 +70,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
     final poster = item['posterPath']?.toString() ?? '';
     final mediaType = item['mediaType']?.toString() ?? 'movie';
 
-    // TMDB source — we have the tmdbId directly
+    // TMDB source - we have the tmdbId directly
     if (source == 'tmdb' && tmdbId != null) {
       try {
         final Movie details;
@@ -86,7 +86,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
       } catch (_) {}
     }
 
-    // Stremio source or fallback — try IMDB lookup
+    // Stremio source or fallback - try IMDB lookup
     if (imdbId != null && imdbId.startsWith('tt')) {
       try {
         final movie = await _api.findByImdbId(imdbId, mediaType: mediaType == 'series' ? 'tv' : mediaType);
@@ -97,7 +97,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
       } catch (_) {}
     }
 
-    // Last resort — build a Movie from saved data
+    // Last resort - build a Movie from saved data
     if (mounted) {
       final movie = Movie(
         id: tmdbId ?? title.hashCode,
@@ -371,7 +371,7 @@ class _MyListCard extends StatelessWidget {
               ),
             ),
 
-            // Remove — mouse only on TV (card OK opens; remove via long-press elsewhere N/A)
+            // Remove - mouse only on TV (card OK opens; remove via long-press elsewhere N/A)
             Positioned(
               bottom: 4, right: 4,
               child: ExcludeFocus(

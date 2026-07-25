@@ -1,7 +1,7 @@
 // Anime Arabic player resolver: cracks streamData, then races every
 // available iframe through StreamExtractor in parallel. The first hit
 // triggers a short grace window so slower extractors land as fallbacks
-// for the in-player source switcher. No UI to pick servers — auto only.
+// for the in-player source switcher. No UI to pick servers - auto only.
 
 import 'dart:async';
 
@@ -130,7 +130,7 @@ class _AnimeArabicPlayerScreenState extends State<AnimeArabicPlayerScreen>
       }
     }
     final hasNext = widget.allEpisodes.isEmpty
-        // Unknown total — let the user try; refetch decides on click.
+        // Unknown total - let the user try; refetch decides on click.
         ? true
         : nextFromList != null;
 

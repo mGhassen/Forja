@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// macOS native shell bridge — AppKit menu / terminate hooks that never reach
+/// macOS native shell bridge - AppKit menu / terminate hooks that never reach
 /// Flutter unless rewired (see `AppDelegate`).
 abstract final class MacOsShellChannel {
   static const _channel = MethodChannel('forja.macos/shell');
@@ -35,14 +35,14 @@ abstract final class MacOsShellChannel {
     _ensureHandler();
   }
 
-  /// ⌘Q / Quit menu — AppKit asks Flutter to tear down mpv before terminate.
+  /// ⌘Q / Quit menu - AppKit asks Flutter to tear down mpv before terminate.
   static void listenPrepareQuit(Future<void> Function() onPrepareQuit) {
     if (kIsWeb || !Platform.isMacOS) return;
     _onPrepareQuit = onPrepareQuit;
     _ensureHandler();
   }
 
-  /// Tell AppKit teardown finished — [applicationShouldTerminate] may proceed.
+  /// Tell AppKit teardown finished - [applicationShouldTerminate] may proceed.
   static Future<void> replyReadyToTerminate() async {
     if (kIsWeb || !Platform.isMacOS) return;
     try {
@@ -50,7 +50,7 @@ abstract final class MacOsShellChannel {
     } catch (_) {}
   }
 
-  /// Drop Find only — keep [prepareQuit] for app quit after [MainScreen] unmounts.
+  /// Drop Find only - keep [prepareQuit] for app quit after [MainScreen] unmounts.
   static void dispose() {
     _onFind = null;
   }

@@ -1,4 +1,4 @@
-/// Flat episode list for hub players (anime, Asian drama) — no TMDB seasons.
+/// Flat episode list for hub players (anime, Asian drama) - no TMDB seasons.
 class PlayerHubEpisode {
   final num number;
   final String title;

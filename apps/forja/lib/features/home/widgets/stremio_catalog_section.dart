@@ -1,4 +1,4 @@
-// Home tab section widgets — extracted from home_screen.dart (RFC-019 Phase B).
+// Home tab section widgets - extracted from home_screen.dart (RFC-019 Phase B).
 
 import 'package:forja/features/home/widgets/home_movie_section.dart';
 import 'package:forja/features/home/widgets/home_widget_imports.dart';
@@ -194,7 +194,7 @@ class HomeStremioCatalogCard extends StatelessWidget {
               ),
             ),
 
-            // Rating badge — frosted glass
+            // Rating badge - frosted glass
             if (rating.isNotEmpty)
               Positioned(
                 top: 8, right: 8,

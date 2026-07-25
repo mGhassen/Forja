@@ -15,7 +15,7 @@ import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel_chrome.dart';
 import 'package:rust/rust.dart';
 
-/// Right-side Sources panel in the player — same shell/chrome/tiles as
+/// Right-side Sources panel in the player - same shell/chrome/tiles as
 /// media-details Sources (torrent search list), not in-torrent file picker.
 class PlayerSourcesPanel {
   static OverlayEntry? _entry;
@@ -27,7 +27,7 @@ class PlayerSourcesPanel {
   ///
   /// When [cancelEngine] is true (user closed the panel), abort in-flight
   /// Engine jobs (torrent search / Stremio HTTP). When false (user picked a
-  /// source), stop scrapers/hosts only — the upcoming magnet resolve must not
+  /// source), stop scrapers/hosts only - the upcoming magnet resolve must not
   /// be cancelled. [dispose] must never cancel Engine jobs: it runs a frame
   /// after [dismiss] and would kill the fresh torrent job.
   static void dismiss({bool cancelEngine = true}) {
@@ -50,7 +50,7 @@ class PlayerSourcesPanel {
     String? currentMagnet,
     String? currentStreamUrl,
 
-    /// `torrents` | `stremio` | `nuvio` — opens on the playing source kind.
+    /// `torrents` | `stremio` | `nuvio` - opens on the playing source kind.
     String? preferredKind,
     String? currentAddonBaseUrl,
     required Future<void> Function(TorrentResult result) onTorrentSelected,
@@ -66,7 +66,7 @@ class PlayerSourcesPanel {
     final overlay = Overlay.of(context);
     _completer = Completer<void>();
 
-    // OverlayEntry is a sibling of the player route — not under ShellScope.
+    // OverlayEntry is a sibling of the player route - not under ShellScope.
     _entry = OverlayEntry(
       builder: (_) => ShellScopeBuilder(
         builder: (context, _) => _PlayerSourcesOverlay(
@@ -246,7 +246,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     _searchGen++;
     _stremioGen++;
     _nuvioFetchGen++;
-    // Shared cancel without Engine — [dismiss] already cancelled on user
+    // Shared cancel without Engine - [dismiss] already cancelled on user
     // close; on source pick, resolve starts before this dispose and must keep
     // its torrentStream job alive.
     DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
@@ -292,7 +292,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     }
     final current = _infoHashOf(widget.currentMagnet);
     if (current == null) return false;
-    // Magnet-only session without a local stream URL yet — still Torrents.
+    // Magnet-only session without a local stream URL yet - still Torrents.
     if (_isPlayingLocalTorrentMagnet()) return false;
     final hash = stream['infoHash']?.toString();
     if (hash != null && hash.isNotEmpty) {
@@ -302,7 +302,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     return url != null && _isCurrentMagnet(url);
   }
 
-  /// Single scroll target in merged lists — torrent row wins over Stremio when
+  /// Single scroll target in merged lists - torrent row wins over Stremio when
   /// both share the same infoHash (Torrentio mirrors the active magnet).
   int? _currentItemIndex(
     List<TorrentResult> torrents,
@@ -373,7 +373,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   /// Ensure the filtered Stremio / Nuvio list includes the playing row.
   void _selectPlayingProviderIfNeeded() {
     if (_kindFilter == 'stremio') {
-      // Prefer the playing addon only when it already has rows — otherwise
+      // Prefer the playing addon only when it already has rows - otherwise
       // [promoteStremioProviderId] keeps the list stuck on Torrentio 403.
       _syncStremioProviderSelection();
       return;
@@ -432,10 +432,10 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       final nuvio =
           _showsNuvio ? _filteredNuvio : const <Map<String, dynamic>>[];
       final index = _currentItemIndex(torrents, stremio, nuvio: nuvio);
-      // Lists still loading / wrong provider filter — keep pending.
+      // Lists still loading / wrong provider filter - keep pending.
       if (index == null) return;
 
-      // Lazy ListView has not built the off-screen tile yet — jump by index
+      // Lazy ListView has not built the off-screen tile yet - jump by index
       // so the next frame mounts it and ensureVisible can finish.
       _scrollToCurrentAttempts++;
       if (_scrollToCurrentAttempts > 10) {
@@ -446,7 +446,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       final maxExtent = _listScrollController.position.maxScrollExtent;
       final target = (index * stride).clamp(0.0, maxExtent);
       if ((_listScrollController.offset - target).abs() < 1.0) {
-        // Estimate put us here but the tile still is not built — nudge once.
+        // Estimate put us here but the tile still is not built - nudge once.
         final nudged = (target + 160.0).clamp(0.0, maxExtent);
         if ((nudged - target).abs() < 1.0) {
           _pendingScrollToCurrent = false;
@@ -518,7 +518,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       }
     });
 
-    // Load only the selected kind(s) — no prefetch of other categories.
+    // Load only the selected kind(s) - no prefetch of other categories.
     _ensureVisibleKindsLoaded();
     // Bootstrap can miss installs (race / empty catch). Re-probe so the
     // Stremio tab + chips appear without remounting the player panel.
@@ -532,7 +532,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     episode: widget.episode,
   );
 
-  /// Hydrate from session TTL cache or fetch — only for kinds currently shown.
+  /// Hydrate from session TTL cache or fetch - only for kinds currently shown.
   void _ensureVisibleKindsLoaded({bool force = false}) {
     if (_showsTorrents) _ensureTorrentsLoaded(force: force);
     if (_showsStremio) _ensureStremioLoaded(force: force);
@@ -736,7 +736,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   /// already under the active kind; otherwise switch to the kind that has it.
   ///
   /// After a manual kind tap ([_userPickedKind]), only scroll/select provider
-  /// within the current tab — never yank Torrents ↔ Stremio ↔ Nuvio.
+  /// within the current tab - never yank Torrents ↔ Stremio ↔ Nuvio.
   void _focusPlayingSourceIfNeeded() {
     if (!mounted) return;
 
@@ -776,7 +776,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       return;
     }
 
-    // Already visible under the active filter — select provider + scroll.
+    // Already visible under the active filter - select provider + scroll.
     if (_kindFilter == 'torrents' && torrentsHit()) {
       finishOnKind('torrents', allowKindSwitch: true);
       return;
@@ -1480,7 +1480,7 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
       widget.onClose();
       return;
     }
-    // Close without cancelling engine jobs — resolve starts immediately and
+    // Close without cancelling engine jobs - resolve starts immediately and
     // dispose must not abort the new torrentStream (see [dismiss]).
     PlayerSourcesPanel.dismiss(cancelEngine: false);
     await widget.onTorrentSelected(result);

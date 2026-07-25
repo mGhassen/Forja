@@ -4,7 +4,7 @@ import 'package:forja/shell/adapters/mobile_shell.dart';
 import 'package:forja/shell/adapters/tv_shell.dart';
 import 'package:forja/shared/design/design.dart';
 
-/// Single platform switch — picks the shell adapter from [ShellScope.profile].
+/// Single platform switch - picks the shell adapter from [ShellScope.profile].
 class ShellHost extends StatelessWidget {
   const ShellHost({
     super.key,

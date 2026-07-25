@@ -1,4 +1,4 @@
-// AnimeSlayer details screen — mirrors `AnimeDetailsScreen` visual style.
+// AnimeSlayer details screen - mirrors `AnimeDetailsScreen` visual style.
 // Backdrop blur + poster + chips + expandable synopsis + episode grid +
 // related rail. Bound to `AnimeArabicService` / `ArabicAnimeDetails`.
 

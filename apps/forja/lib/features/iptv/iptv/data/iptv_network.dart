@@ -39,7 +39,7 @@ Future<Map<String, dynamic>?> _xtreamRequest(
   return raw;
 }
 
-/// Full engine JSON including `{error: …}` — used when empty vs failure matters.
+/// Full engine JSON including `{error: …}` - used when empty vs failure matters.
 Future<Map<String, dynamic>?> _xtreamRequestRaw(
   Map<String, dynamic> body,
 ) async {
@@ -434,7 +434,7 @@ class IptvClient {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Verifier — bounded concurrency, abort once `target` portals authenticated.
+// Verifier - bounded concurrency, abort once `target` portals authenticated.
 // ─────────────────────────────────────────────────────────────────────────────
 class IptvVerifier {
   static const _parallel = 4;
@@ -509,7 +509,7 @@ class IptvVerifier {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Alive checker — partial-content stream-content sniffing.
+// Alive checker - partial-content stream-content sniffing.
 // ─────────────────────────────────────────────────────────────────────────────
 class AliveProgress {
   final int checked;
@@ -576,7 +576,7 @@ class IptvAliveChecker {
 
 /// Which backend the catalog scraper should pull from.
 ///
-/// Prefer calling [IptvScraper.scrapeCatalogPage] without [source] — Reddit
+/// Prefer calling [IptvScraper.scrapeCatalogPage] without [source] - Reddit
 /// catalog when [_xml2ScrapeEnabled] is false; otherwise Reddit → XML2 chain.
 /// Kept for callers that still pass an explicit backend.
 enum CatalogSource { best, works }
@@ -589,9 +589,9 @@ class RedditCatalogCursor {
 }
 
 /// Decodes Reddit catalog cursors (parity with Rust `parse_reddit_catalog_cursor`):
-///   `reddit:<subIdx>:<token>` — current format
-///   `reddit:<token>`          — legacy (sub 0)
-///   `<token>`                 — legacy bare token (sub 0)
+///   `reddit:<subIdx>:<token>` - current format
+///   `reddit:<token>`          - legacy (sub 0)
+///   `<token>`                 - legacy bare token (sub 0)
 RedditCatalogCursor parseRedditCatalogCursor(String? after) {
   if (after == null || after.isEmpty) {
     return const RedditCatalogCursor();
@@ -614,7 +614,7 @@ RedditCatalogCursor parseRedditCatalogCursor(String? after) {
 }
 
 class IptvScraper {
-  /// GitHub XML2 dump scraping (`CatalogSource.works`). Off for now — Reddit
+  /// GitHub XML2 dump scraping (`CatalogSource.works`). Off for now - Reddit
   /// only until adult-host filtering / source quality is addressed.
   static const _xml2ScrapeEnabled = false;
 
@@ -714,13 +714,13 @@ class IptvScraper {
     CatalogSource? source,
   }) async {
     if (!AccountFeatures.instance.isIptvScrapeEnabled) {
-      debugPrint('[Catalog] iptvScrape feature disabled — skipping scrape');
+      debugPrint('[Catalog] iptvScrape feature disabled - skipping scrape');
       return const ScrapePage(portals: [], nextAfter: null);
     }
     if (!_xml2ScrapeEnabled) {
       if (source == CatalogSource.works ||
           (after != null && after.startsWith('xml2:'))) {
-        debugPrint('[Catalog] XML2 scrape disabled — ignoring works/xml2 cursor');
+        debugPrint('[Catalog] XML2 scrape disabled - ignoring works/xml2 cursor');
         return const ScrapePage(portals: [], nextAfter: null);
       }
       if (source == CatalogSource.best || source == null) {
@@ -795,7 +795,7 @@ class IptvScraper {
     return ScrapePage(portals: extracted, nextAfter: next);
   }
 
-  /// Reddit catalog page — fetch, parse, deep-link follow, extract in Rust.
+  /// Reddit catalog page - fetch, parse, deep-link follow, extract in Rust.
   static Future<ScrapePage> _scrapeRedditCatalog({
     int maxResults = 50,
     String? after,
@@ -821,7 +821,7 @@ class IptvScraper {
               ? null
               : nextRaw;
       debugPrint(
-          '[Catalog] DONE — ${portals.length} portals next=$nextAfter');
+          '[Catalog] DONE - ${portals.length} portals next=$nextAfter');
       return ScrapePage(portals: portals, nextAfter: nextAfter);
     } catch (e) {
       debugPrint('[Catalog] scrape_page failed: $e');

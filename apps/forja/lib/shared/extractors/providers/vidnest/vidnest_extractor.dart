@@ -1,11 +1,11 @@
-// VidNest extractor — mirrors vidnest.fun player (new.vidnest.fun API).
+// VidNest extractor - mirrors vidnest.fun player (new.vidnest.fun API).
 //
 // Pipeline:
 //   1. GET https://new.vidnest.fun/{server}/movie|tv/{tmdb}[/{s}/{e}]
 //   2. Decrypt custom-alphabet base64 when `encrypted: true`
-//   3. Parse every server that responds (bounded parallel) — show all streams
+//   3. Parse every server that responds (bounded parallel) - show all streams
 //
-// MovieBox CDN (`*.hakunaymatata.com`) returns HTTP 429 if Referer is set —
+// MovieBox CDN (`*.hakunaymatata.com`) returns HTTP 429 if Referer is set -
 // playback headers are User-Agent only for those URLs.
 
 import 'dart:async';
@@ -40,7 +40,7 @@ class VidnestExtractor {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-  /// Every listed API server — collect all responsive streams (no first-hit stop).
+  /// Every listed API server - collect all responsive streams (no first-hit stop).
   static const _servers = <_VidnestServer>[
     _VidnestServer('gama', 'Gama', 'moviebox/movie', 'moviebox/tv'),
     _VidnestServer('hexa', 'Hexa', 'vidlink/movie', 'vidlink/tv'),
@@ -190,7 +190,7 @@ class VidnestExtractor {
     }
   }
 
-  /// Custom base64 (not AES) — same alphabet as the embed player.
+  /// Custom base64 (not AES) - same alphabet as the embed player.
   @visibleForTesting
   static String decryptCipherForTest(String data) => _decryptCipher(data);
 

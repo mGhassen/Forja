@@ -10,7 +10,7 @@ enum StreamOpenAction {
   openPngStrip,
 }
 
-/// Outcome of executing a step — feeds Stage 6 re-branch.
+/// Outcome of executing a step - feeds Stage 6 re-branch.
 enum StreamOpenStepResult {
   success,
   openFailed,
@@ -136,7 +136,7 @@ class StreamOpenPipeline {
         mediaClass == StreamMediaClass.httpBlocked) {
       if (kDebugMode) {
         debugPrint(
-          '[OpenPipeline] exhaust $providerId — class=${mediaClass.name}',
+          '[OpenPipeline] exhaust $providerId - class=${mediaClass.name}',
         );
       }
       return null;
@@ -247,7 +247,7 @@ class StreamOpenPipeline {
         final proxied = await _pngStripUrl();
         if (proxied == null || proxied.isEmpty) {
           debugPrint(
-            '[OpenPipeline] openPngStrip aborted — local HLS proxy unavailable',
+            '[OpenPipeline] openPngStrip aborted - local HLS proxy unavailable',
           );
           return null;
         }

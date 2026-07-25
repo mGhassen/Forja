@@ -70,7 +70,7 @@ Future<void> _shutdownMediaKitPlayers() async {
 Future<void> _runDesktopQuit() async {
   if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
   if (_appShutdownStarted) {
-    // ⌘Q while red-X teardown is already running — still unblock AppKit.
+    // ⌘Q while red-X teardown is already running - still unblock AppKit.
     if (Platform.isMacOS) {
       await MacOsShellChannel.replyReadyToTerminate();
     }
@@ -95,7 +95,7 @@ Future<void> _runDesktopQuit() async {
     unawaited(WebViewCleanup.cleanupWebView2Cache());
   } catch (_) {}
 
-  // macOS needs longer settle — demux msg_wakeup UAF if we terminate mid-join.
+  // macOS needs longer settle - demux msg_wakeup UAF if we terminate mid-join.
   await Future.delayed(
     Duration(milliseconds: Platform.isMacOS ? 400 : 150),
   );
@@ -145,7 +145,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   ShellTvFocusCoordinator.tvBackPolicyEnabled =
       PlatformInfo.isAndroidTv || PlatformChannel.forceAndroidTv;
 
-  // Configure InAppWebView (Android only — not supported on iOS)
+  // Configure InAppWebView (Android only - not supported on iOS)
   if (Platform.isAndroid) {
     try {
       if (PlatformInfo.isAndroidTv) {
@@ -173,7 +173,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   });
 
   if (Platform.isAndroid) {
-    // Follow system rotation setting — no forced lock.
+    // Follow system rotation setting - no forced lock.
     // auto_orientation_v2 is gone, so this respects the user's
     // rotation-lock toggle in Android quick-settings.
     SystemChrome.setPreferredOrientations([]);
@@ -218,7 +218,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
     );
 
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      // macOS dock: text badge only — no alternate .icns / generated logo.
+      // macOS dock: text badge only - no alternate .icns / generated logo.
       if (kDebugMode && Platform.isMacOS) {
         try {
           await windowManager.setBadgeLabel('DEV');
@@ -235,7 +235,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
 
   // Music / Audiobooks AudioService stays off while those tabs are on hold.
   // Profile-gated engines (WebStreamr, Nuvio, LocalServer, TorrentStream, TMDB)
-  // warm after profile settings are known — see ProfileEngineWarm / SplashScreen.
+  // warm after profile settings are known - see ProfileEngineWarm / SplashScreen.
 
   // Hydrate theme preset before first frame
   await Engine.init();
@@ -252,7 +252,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   debugPrint('[Boot] Preloading splash sound...');
   await SplashSound.instance.preload();
   debugPrint('[Boot] Splash sound ready');
-  debugPrint('[Boot] All init complete — launching app');
+  debugPrint('[Boot] All init complete - launching app');
 
   runApp(App(title: title));
 }
@@ -276,7 +276,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
       windowManager.setPreventClose(true);
       SyncService.instance.startDesktopSessionKeepAlive();
     }
-    // ⌘Q / Quit menu never hits onWindowClose — AppKit calls prepareQuit.
+    // ⌘Q / Quit menu never hits onWindowClose - AppKit calls prepareQuit.
     MacOsShellChannel.listenPrepareQuit(_runDesktopQuit);
   }
 
@@ -295,7 +295,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
     final bool isPreventClose = await windowManager.isPreventClose();
     if (!isPreventClose) return;
-    // Graceful shutdown — timed media_kit + engine teardown before destroy /
+    // Graceful shutdown - timed media_kit + engine teardown before destroy /
     // AppKit terminate. See issue 062 (Windows freeze) and 081 (macOS demux
     // SIGSEGV on ⌘Q / close while mpv alive).
     await _runDesktopQuit();
@@ -331,7 +331,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     }
   }
 
-  /// True on Windows, Linux, macOS — used to disable the accessibility
+  /// True on Windows, Linux, macOS - used to disable the accessibility
   /// bridge that causes AXTree crashes on Windows.
   static final bool _isDesktop =
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
@@ -403,7 +403,7 @@ String _splashOpeningStatus(BootNeeds needs) {
 
 class _SplashScreenState extends State<SplashScreen> {
   /// Hold the splash at least this long so MainScreen / Home can warm up.
-  /// Also the hard cap — if boot work is still running past this, dismiss
+  /// Also the hard cap - if boot work is still running past this, dismiss
   /// and toast; catalog/services keep loading in the background.
   static const Duration _minSplashDuration = Duration(seconds: 8);
 
@@ -422,7 +422,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // ProfileSwitchSplash already warmed engines — open MainScreen immediately.
+    // ProfileSwitchSplash already warmed engines - open MainScreen immediately.
     if (ShellBus.splashDismissed.value) {
       _showOverlay = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -557,7 +557,7 @@ class _SplashScreenState extends State<SplashScreen> {
     } else {
       _setBootStatus('Finishing up…');
       debugPrint(
-        '[Boot] Step 4: Min splash elapsed — boot still running; '
+        '[Boot] Step 4: Min splash elapsed - boot still running; '
         'dismissing overlay and continuing in background',
       );
       _dismissSplash(showSlowBootToast: true);
@@ -571,7 +571,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initOfflineBoot() async {
-    debugPrint('[Init] offline boot — skip network catalog');
+    debugPrint('[Init] offline boot - skip network catalog');
     final needs = await BootNeeds.resolve();
     if (needs.webstreaming) {
       _setBootStatus('Starting playback services…');
@@ -678,7 +678,7 @@ void _warnIfRustMissing() {
       : './scripts/build_rust_mobile.sh (or melos run rust:build:mobile)';
 
   const msg =
-      '[Boot] Rust engine NOT loaded — engine features unavailable. '
+      '[Boot] Rust engine NOT loaded - engine features unavailable. '
       'From repo root run: ';
   final full =
       '$msg$buildHint. '

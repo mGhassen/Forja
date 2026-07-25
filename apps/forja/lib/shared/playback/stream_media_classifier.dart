@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 
-/// Structural media class from segment bytes / HTTP — never “hostname ⇒ not episode.”
+/// Structural media class from segment bytes / HTTP - never “hostname ⇒ not episode.”
 enum StreamMediaClass {
   /// Non-PNG media / MPEG-TS-like sample.
   plainMedia,
@@ -20,7 +20,7 @@ enum StreamMediaClass {
   unknown,
 }
 
-/// Stage 2 of [StreamOpenPipeline] — classify by bytes, not CDN host lists.
+/// Stage 2 of [StreamOpenPipeline] - classify by bytes, not CDN host lists.
 abstract final class StreamMediaClassifier {
   /// Classify a raw segment sample (unit-testable).
   static StreamMediaClass classifyBytes(List<int> bytes) {

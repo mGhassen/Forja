@@ -25,7 +25,7 @@ uniform sampler2D uGrain;
 
 out vec4 fragColor;
 
-// ── simplex noise (ashima / stegu) — same as repo snoise2d.glsl ──────────────
+// ── simplex noise (ashima / stegu) - same as repo snoise2d.glsl ──────────────
 
 vec3 mod289(vec3 x) {
   return x - floor(x * (1.0 / 289.0)) * 289.0;
@@ -66,7 +66,7 @@ float snoise(vec2 v) {
   return 130.0 * dot(m, g);
 }
 
-/// Repo noise.glsl — samples like the 256² noise FBO at screen UV.
+/// Repo noise.glsl - samples like the 256² noise FBO at screen UV.
 vec2 warpNoise(vec2 vUv) {
   float t = uTime * uWarpSpeed;
   float nx = snoise(vUv * vec2(uNoiseScaleX, uNoiseScaleY) + t * 0.5);
@@ -85,7 +85,7 @@ vec2 rotate2d(vec2 v, float angle) {
   return mat2(c, -s, s, c) * v;
 }
 
-/// Repo GaussianBlobs (Algo1) — warp from screen vUv, color from flutedUv.
+/// Repo GaussianBlobs (Algo1) - warp from screen vUv, color from flutedUv.
 vec3 GaussianBlobs(vec2 flutedUv, vec2 vUv) {
   float t = uTime * 0.6 + 3.5;
   vec2 p1 = vec2(-0.28 + sin(t * 0.7 + 0.5) * 0.15, 0.06 + cos(t * 0.5) * 0.12);
@@ -93,7 +93,7 @@ vec3 GaussianBlobs(vec2 flutedUv, vec2 vUv) {
   vec2 p3 = vec2(0.07 + sin(t * 0.5 + 3.4) * 0.2, 0.00 + cos(t * 0.4) * 0.14);
   vec2 p4 = vec2(0.22 + sin(t * 0.3 + 2.3) * 0.24, -0.10 + cos(t * 0.7) * 0.14);
   vec2 p5 = vec2(0.30 + sin(t * 0.6 + 1.1) * 0.18, 0.06 + cos(t * 0.4) * 0.13);
-  // Extra Forja stops (green / amber) — black pads contribute nothing.
+  // Extra Forja stops (green / amber) - black pads contribute nothing.
   vec2 p6 = vec2(-0.18 + sin(t * 0.55 + 2.1) * 0.16, -0.14 + cos(t * 0.45) * 0.12);
   vec2 p7 = vec2(0.14 + sin(t * 0.65 + 0.9) * 0.17, 0.20 + cos(t * 0.55 + 1.4) * 0.11);
 
@@ -160,7 +160,7 @@ vec3 GaussianEllipses(vec2 flutedUv, vec2 vUv) {
 
 void main() {
   // FlutterFragCoord is local paint coords (logical px), NOT gl_FragCoord / physical.
-  // Do not divide by uPixelRatio — that zooms into the center and feels "cropped".
+  // Do not divide by uPixelRatio - that zooms into the center and feels "cropped".
   vec2 logicalXY = FlutterFragCoord().xy;
   vec2 mappedCoords = logicalXY - uResolution * 0.5;
   vec2 vUv = logicalXY / max(uResolution, vec2(1.0));
@@ -176,7 +176,7 @@ void main() {
   float unit = max(uResolution.x, 1.0) * (1000.0 / 1920.0);
   vec2 flutedUv = flutedCoords / max(unit, 1.0);
 
-  // Grain UV (repo vUvA) — tile so clamp samplers still look dense.
+  // Grain UV (repo vUvA) - tile so clamp samplers still look dense.
   float aspect = uResolution.x / max(uResolution.y, 1.0);
   vec2 vUvA = vUv;
   if (aspect < 1.0 || aspect > 2.3) {

@@ -14,7 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// In-app updates.
 ///
 /// Discovery + download: Cloudflare R2 (`latest/manifest.json`, `v{ver}/{file}`).
-/// Manifest is per-platform — a macOS-only release does not wipe Windows/Linux/TV.
+/// Manifest is per-platform - a macOS-only release does not wipe Windows/Linux/TV.
 /// Changelog bodies: R2 `changelog/` (permanent); GitHub Releases as fallback.
 class AppUpdaterService {
   static const String githubRepo = 'mGhassen/Forja';
@@ -42,7 +42,7 @@ class AppUpdaterService {
     return '$base/changelog';
   }
 
-  /// Discovery result — never treat a failed check as “up to date”.
+  /// Discovery result - never treat a failed check as “up to date”.
   Future<UpdateCheckResult> checkForUpdates() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
@@ -55,7 +55,7 @@ class AppUpdaterService {
   }
 
   Future<UpdateCheckResult> _checkR2(String currentVersion) async {
-    // iOS updates go through the App Store — no sideload installer.
+    // iOS updates go through the App Store - no sideload installer.
     if (Platform.isIOS) {
       return UpdateCheckResult.upToDate();
     }

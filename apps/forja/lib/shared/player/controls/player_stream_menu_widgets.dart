@@ -88,7 +88,7 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          // Outer FocusableControl owns TV focus — InkWell must not.
+          // Outer FocusableControl owns TV focus - InkWell must not.
           canRequestFocus: false,
           onTap: tvFocus ? null : widget.onTap,
           hoverColor: ForjaShellColors.inkHover,
@@ -261,7 +261,7 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     } else if (showPlayOnUp) {
       trailingTap = widget.onPlay;
     } else if (canPlay) {
-      // Green ✓ — tap to start this stream.
+      // Green ✓ - tap to start this stream.
       trailingTap = widget.onPlay;
     }
 

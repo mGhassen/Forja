@@ -1683,7 +1683,7 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
   }
 }
 
-/// TV auto-next: no gray focus fill — icon tints green; switch overlay killed.
+/// TV auto-next: no gray focus fill - icon tints green; switch overlay killed.
 class _EpisodeAutoNextFocus extends StatelessWidget {
   const _EpisodeAutoNextFocus({
     required this.focusNode,

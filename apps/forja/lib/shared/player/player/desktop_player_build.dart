@@ -6,7 +6,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
   @override
   Widget build(BuildContext context) {
     // Mouse back / trackpad swipe / system pop must match the chrome Back
-    // button ([_exitPlayer]) — never a bare Navigator.pop (issue 059).
+    // button ([_exitPlayer]) - never a bare Navigator.pop (issue 059).
     final Widget body;
     if (!_s._playerReady) {
       body = const Scaffold(
@@ -25,7 +25,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
             builder: (context, _) => MouseRegion(
               onHover: (_) => _s._onMouseMove(),
               // Immersive hide uses [SystemMouseCursors.none], but keep the
-              // pointer visible while CHECKING SOURCES (status roulette) is up —
+              // pointer visible while CHECKING SOURCES (status roulette) is up -
               // otherwise chrome can auto-hide mid-check and the cursor vanishes.
               cursor: _s._keepPlayerCursorVisible
                   ? SystemMouseCursors.basic
@@ -59,7 +59,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                 // Auto-scales relative to the rendered window height so
                 // the text stays readable in normal mode, fullscreen, AND
                 // shrinks proportionally when in PiP (480x270).
-                // Custom subtitle overlay — hidden when mpv natively handles
+                // Custom subtitle overlay - hidden when mpv natively handles
                 // ASS/SSA or image-based subtitles (they render on the video frame instead).
                 if (!_s._isNativeSubtitle)
                   StreamBuilder<List<String>>(
@@ -91,7 +91,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                   ),
 
                 // ── Controls Overlay ─────────────────────────────────────
-                // Hidden entirely while PiP is active — replaced by the
+                // Hidden entirely while PiP is active - replaced by the
                 // floating revert button below.
                 if (!_s._isPipMode)
                   AnimatedOpacity(
@@ -257,7 +257,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                     onStream: hasStreamPicker ? _s._showStreamMenu : null,
                   )
                 : null,
-            // Must go through [_exitPlayer] — a direct pop skipped silence/stop
+            // Must go through [_exitPlayer] - a direct pop skipped silence/stop
             // and left mpv audio playing (issue 059).
             onBack: () => unawaited(_s._exitPlayer()),
             trailing: PlayerTopBarActions(
@@ -461,7 +461,7 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                 const SizedBox(height: 10),
                 // Full-width opaque hit target so empty space between left/right
                 // clusters (and the wide anime/drama Source chip) cannot start a
-                // seek scrub on the bar above. Cancel any live scrub on enter —
+                // seek scrub on the bar above. Cancel any live scrub on enter -
                 // Quality / Settings sit under the right end of the bar.
                 Material(
                   type: MaterialType.transparency,

@@ -12,7 +12,7 @@ import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/webview/atv_webview_guard.dart';
 import 'package:rust/rust.dart';
 
-/// Domain-neutral playback resolve — shared by movies, anime, and Asian drama.
+/// Domain-neutral playback resolve - shared by movies, anime, and Asian drama.
 abstract final class DomainPlaybackResolve {
   static Future<PlaybackResolveHit?> resolve({
     required SourceDomain domain,
@@ -107,7 +107,7 @@ abstract final class DomainPlaybackResolve {
       final key = entry.key;
       final payload = entry.value;
 
-      // VidLink anime = same headless WebView sniff as movie/TV — skip on ATV.
+      // VidLink anime = same headless WebView sniff as movie/TV - skip on ATV.
       if (payload is AnimeEmbed &&
           payload.server == 'vidlink' &&
           isAndroidTvHeadlessWebViewBlocked) {
@@ -215,7 +215,7 @@ class DomainStreamProviderResolver {
   final AnimeService _animeService;
   final KissKhExtractor _kissKhExtractor;
 
-  /// Shared sniff session — cancelled from [cancelAllPending] / leave-title.
+  /// Shared sniff session - cancelled from [cancelAllPending] / leave-title.
   static final StreamExtractor _vidlinkExtractor = StreamExtractor();
 
   Future<StreamProviderResolveResult?> resolve({
@@ -417,7 +417,7 @@ class DomainStreamProviderResolver {
   /// Full Sources cancel: host providers + Nuvio + KissKh + Miruro + Engine.
   ///
   /// One entry point for panel switch / panel close / leave title. Do not call
-  /// [NuvioService.cancelPending] from UI — it is invoked here.
+  /// [NuvioService.cancelPending] from UI - it is invoked here.
   static void cancelAllPending({bool cancelEngineJobs = true}) {
     PlaybackEngine.cancelAllPending(cancelEngineJobs: cancelEngineJobs);
     MiruroPipeSession.instance.cancelPending();
@@ -430,7 +430,7 @@ bool _isKissKhProvider(String key) {
   return id == 'kisskh' || KissKhService.isMirrorHost(id);
 }
 
-/// Build anime stream headers — omit empty Referer/Origin, then apply
+/// Build anime stream headers - omit empty Referer/Origin, then apply
 /// provider-identity policy via [resolvePlaybackHttpHeaders] (RFC-044).
 Map<String, String> _animePlaybackHeaders({
   required String url,

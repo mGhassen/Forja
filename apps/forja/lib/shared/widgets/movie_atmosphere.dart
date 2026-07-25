@@ -112,7 +112,7 @@ Future<BackdropEdgeColors> extractBackdropEdgeColors(String imageUrl) async {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  KEN BURNS BACKDROP — slow cinematic pan & zoom
+//  KEN BURNS BACKDROP - slow cinematic pan & zoom
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class KenBurnsBackdrop extends StatefulWidget {
@@ -237,7 +237,7 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with TickerProvider
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  GENRE PARTICLES — ambient floating elements based on movie genre
+//  GENRE PARTICLES - ambient floating elements based on movie genre
 // ═══════════════════════════════════════════════════════════════════════════════
 
 enum _ParticleType { ember, snow, dataStream, orb, bokeh, dust }
@@ -398,7 +398,7 @@ class _GenreParticlesState extends State<GenreParticles> with SingleTickerProvid
 
       // Movement per type
       if (_type == _ParticleType.dataStream) {
-        // Rising data streams — fast upward lines
+        // Rising data streams - fast upward lines
         p.y -= p.speed * dt;
         p.x += sin(p.phase * 3) * 0.0003 + p.dx * dt;
         // Flicker
@@ -559,7 +559,7 @@ class _ParticlePainter extends CustomPainter {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  POSTER FRAME — breathing glow + genre-animated border
+//  POSTER FRAME - breathing glow + genre-animated border
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class PosterGlow extends StatefulWidget {
@@ -674,7 +674,7 @@ class _PosterBorderPainter extends CustomPainter {
 
     switch (type) {
       case _ParticleType.ember:
-        // Flickering fire border — gradient rotates, orange->red->yellow
+        // Flickering fire border - gradient rotates, orange->red->yellow
         final sweep = ui.Gradient.sweep(
           rect.center,
           [
@@ -695,7 +695,7 @@ class _PosterBorderPainter extends CustomPainter {
         break;
 
       case _ParticleType.snow:
-        // Cold misty border — fading white/blue with crawling highlights
+        // Cold misty border - fading white/blue with crawling highlights
         final sweep = ui.Gradient.sweep(
           rect.center,
           [
@@ -716,7 +716,7 @@ class _PosterBorderPainter extends CustomPainter {
         break;
 
       case _ParticleType.dataStream:
-        // Scanning beam border — a bright accent segment sweeps around
+        // Scanning beam border - a bright accent segment sweeps around
         final sweepAngle = progress * pi * 2;
         final sweep = ui.Gradient.sweep(
           rect.center,
@@ -746,7 +746,7 @@ class _PosterBorderPainter extends CustomPainter {
         break;
 
       case _ParticleType.orb:
-        // Shimmering prismatic border — rotating rainbow-ish from the palette
+        // Shimmering prismatic border - rotating rainbow-ish from the palette
         final sweep = ui.Gradient.sweep(
           rect.center,
           [
@@ -767,7 +767,7 @@ class _PosterBorderPainter extends CustomPainter {
         break;
 
       case _ParticleType.bokeh:
-        // Warm rotating gradient — dominant/vibrant blend
+        // Warm rotating gradient - dominant/vibrant blend
         final sweep = ui.Gradient.sweep(
           rect.center,
           [
@@ -815,7 +815,7 @@ class _PosterBorderPainter extends CustomPainter {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  ATMOSPHERE MIXIN — add to any details screen state
+//  ATMOSPHERE MIXIN - add to any details screen state
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Helper to build the full atmosphere backdrop (Ken Burns + particles + tint).

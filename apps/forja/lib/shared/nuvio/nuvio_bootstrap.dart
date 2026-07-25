@@ -34,7 +34,7 @@ class NuvioBootstrap {
       final now = DateTime.now().millisecondsSinceEpoch;
       final stale = (now - lastTs) > _refreshInterval.inMilliseconds;
       if (!stale) {
-        debugPrint('[NuvioBootstrap] up-to-date — skipping');
+        debugPrint('[NuvioBootstrap] up-to-date - skipping');
         return;
       }
       debugPrint('[NuvioBootstrap] refreshing manifest…');

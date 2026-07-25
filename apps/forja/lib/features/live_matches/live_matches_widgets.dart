@@ -147,7 +147,7 @@ class _LiveMatchesRefreshTopBarButtonState
       tvZone: ShellTvZone.topBar,
       onDownEdge: widget.onDownEdge,
       onLeftEdge: widget.onLeftEdge,
-      // TV has no view toggle — trap right at Refresh.
+      // TV has no view toggle - trap right at Refresh.
       onRightEdge: () {},
       onFocusChange: (focused) {
         setState(() => _focused = focused);
@@ -591,7 +591,7 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
                   ],
                 ),
               ),
-              // Channels are always live — keep the play affordance visible.
+              // Channels are always live - keep the play affordance visible.
               ShellCardPlayOverlay(active: active, visible: true),
               _LiveMatchCornerBadge(
                 label: '● LIVE',
@@ -1074,7 +1074,7 @@ class _LiveMatchesEmbedPlayerScreenState
     return iptvFocusRowItem(rowId, index);
   }
 
-  /// WebView platform views steal D-pad on TV — keep focus on Flutter chrome.
+  /// WebView platform views steal D-pad on TV - keep focus on Flutter chrome.
   /// Prefer Play so Select starts playback; fall back to Back.
   void _focusTvChrome({bool preferPlay = true}) {
     if (!mounted || !_tvFocus() || _isFullscreen) return;
@@ -1278,7 +1278,7 @@ class _LiveMatchesEmbedPlayerScreenState
     }
   }
 
-  /// Stop HTML5 / iframe media. Timeouts are mandatory — WebView JS/IPC can
+  /// Stop HTML5 / iframe media. Timeouts are mandatory - WebView JS/IPC can
   /// hang forever while HLS is playing, which blocked [Navigator.pop].
   Future<void> _stopEmbedMedia() async {
     if (_mediaStopped) return;
@@ -1300,7 +1300,7 @@ class _LiveMatchesEmbedPlayerScreenState
           .loadUrl(urlRequest: URLRequest(url: WebUri('about:blank')))
           .timeout(const Duration(milliseconds: 500));
     } catch (_) {}
-    // Do not dispose the controller here — [InAppWebView] is still mounted
+    // Do not dispose the controller here - [InAppWebView] is still mounted
     // until the route pops; disposing early can hang the platform view.
   }
 
@@ -1398,7 +1398,7 @@ class _LiveMatchesEmbedPlayerScreenState
         padding: EdgeInsets.fromLTRB(8, _topBarTopPadding(context), 72, 16),
         child: Row(
           children: [
-            // Opaque hit target — WKWebView/WebView2 steal taps when chrome is
+            // Opaque hit target - WKWebView/WebView2 steal taps when chrome is
             // only painted over the platform view (macOS especially).
             Listener(
               behavior: HitTestBehavior.opaque,
@@ -1600,7 +1600,7 @@ class _LiveMatchesEmbedPlayerScreenState
                       return true;
                     },
                     shouldOverrideUrlLoading: (ctrl, action) async {
-                      // Player CDNs and nested iframes leave embed.st — never cancel
+                      // Player CDNs and nested iframes leave embed.st - never cancel
                       // subframe navigations (that caused blank/white players).
                       if (action.isForMainFrame != true) {
                         return NavigationActionPolicy.ALLOW;
@@ -1633,7 +1633,7 @@ class _LiveMatchesEmbedPlayerScreenState
                         ),
                       ),
                     ),
-                  // Off-screen host for ad window.open — required by some Streamed
+                  // Off-screen host for ad window.open - required by some Streamed
                   // embeds; never visible.
                   if (_adWindowId != null)
                     Positioned(

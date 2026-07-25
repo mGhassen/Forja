@@ -9,7 +9,7 @@ import 'package:window_manager/window_manager.dart';
 
 /// Opens the Forja web portal login and captures the session via a localhost
 /// callback (desktop OAuth-style). The portal `fetch()`es the loopback URL so
-/// the browser stays on one tab — it must not navigate to 127.0.0.1.
+/// the browser stays on one tab - it must not navigate to 127.0.0.1.
 class DesktopBrowserAuth {
   DesktopBrowserAuth._();
 
@@ -28,7 +28,7 @@ class DesktopBrowserAuth {
   @visibleForTesting
   static Duration focusRetainDuration = const Duration(seconds: 45);
 
-  /// Test hook — skips `window_manager` when set.
+  /// Test hook - skips `window_manager` when set.
   @visibleForTesting
   static Future<void> Function()? bringToFrontOverride;
 
@@ -93,7 +93,7 @@ class DesktopBrowserAuth {
       if (cancel != null) {
         unawaited(
           cancel.then((_) {
-            // Do not abort while setSession is in flight — that was closing the
+            // Do not abort while setSession is in flight - that was closing the
             // browser (ok:true) while the app had already given up.
             if (applyingTokens) return;
             finish(
@@ -109,7 +109,7 @@ class DesktopBrowserAuth {
             '[DesktopBrowserAuth] ${request.method} ${request.uri.path}',
           );
           // Portal hands off via fetch() from https://… so Chrome sends a
-          // Private Network Access preflight. Never navigate the browser here —
+          // Private Network Access preflight. Never navigate the browser here -
           // that used to open a second 127.0.0.1 tab.
           if (request.method == 'OPTIONS') {
             _applyCors(request.response);
@@ -155,7 +155,7 @@ class DesktopBrowserAuth {
               return;
             }
 
-            // Incomplete / wrong-state hits must not abort the wait — browsers,
+            // Incomplete / wrong-state hits must not abort the wait - browsers,
             // extensions, or probes can GET the callback URL without tokens.
             if (returnedState != state ||
                 access == null ||
@@ -352,7 +352,7 @@ class DesktopBrowserAuth {
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>$title — Forja</title>
+  <title>$title - Forja</title>
   <style>
     :root { color-scheme: dark; }
     body {

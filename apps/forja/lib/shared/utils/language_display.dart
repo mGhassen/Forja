@@ -390,7 +390,7 @@ const Map<String, String> _kLanguageNames = {
   'unknown': 'Unknown',
 };
 
-/// Lookup only — returns null when [code] is not a known language token.
+/// Lookup only - returns null when [code] is not a known language token.
 String? languageEndonym(String? code) {
   if (code == null || code.trim().isEmpty) return null;
   final c = code.trim().toLowerCase();

@@ -10,7 +10,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 /// process, which aborts with `gl_version_info.cc: Chrome runs only on top of
 /// OpenGL ES`. Software compositing avoids that fatal init.
 ///
-/// Mutates [settings] in place. Do **not** use [InAppWebViewSettings.copy] —
+/// Mutates [settings] in place. Do **not** use [InAppWebViewSettings.copy] -
 /// it round-trips via `fromMap(toMap())`, and on Android
 /// `ContentBlockerAction.fromMap` bangs when any `contentBlockers` are set
 /// (plugin initializes `BLOCK_COOKIES` with a null native value). That crashed
@@ -33,7 +33,7 @@ InAppWebViewSettings patchTvWebViewSettings(
 /// page CSS paints the dark player background.
 /// Upstream: https://github.com/pichillilorenzo/flutter_inappwebview/issues/2735
 ///
-/// Mutates in place — same [InAppWebViewSettings.copy] hazard as the TV patch
+/// Mutates in place - same [InAppWebViewSettings.copy] hazard as the TV patch
 /// when [InAppWebViewSettings.contentBlockers] is non-empty.
 InAppWebViewSettings patchWindowsWebViewSettings(InAppWebViewSettings settings) {
   if (kIsWeb || !Platform.isWindows) return settings;

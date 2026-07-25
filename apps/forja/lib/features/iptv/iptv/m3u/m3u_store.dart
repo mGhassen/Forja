@@ -35,7 +35,7 @@ class M3uStore {
       _key,
       json.encode(list.map((p) => p.toJson()).toList()),
     );
-    // M3U is device-local — do not push to profile_settings / cloud.
+    // M3U is device-local - do not push to profile_settings / cloud.
   }
 
   static String newId() {

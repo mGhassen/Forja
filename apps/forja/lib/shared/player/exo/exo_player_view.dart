@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 /// Embeds the native Media3 [PlayerView] (Android only).
 ///
 /// Native side uses [TextureView] (not SurfaceView) so Flutter's AndroidView
-/// compositing stays correct — SurfaceView produced tiled/shifted frames on
+/// compositing stays correct - SurfaceView produced tiled/shifted frames on
 /// Android TV.
 class ExoPlayerView extends StatelessWidget {
   const ExoPlayerView({super.key, required this.viewId});

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// TV app-root traversal — never use geometry for LEFT/RIGHT (rows trap in widgets).
+/// TV app-root traversal - never use geometry for LEFT/RIGHT (rows trap in widgets).
 class _ShellTvDirectionalFocusAction extends DirectionalFocusAction {
   _ShellTvDirectionalFocusAction();
 
@@ -63,7 +63,7 @@ class ShellInputPolicy {
 
   bool get isInteractiveActive => scaleOnHover || scaleOnFocus;
 
-  /// Policy-aware hover OR focus — use with [shellFocusableTap] callbacks.
+  /// Policy-aware hover OR focus - use with [shellFocusableTap] callbacks.
   static bool interactiveActive(
     ShellInputPolicy policy, {
     required bool hovered,
@@ -71,7 +71,7 @@ class ShellInputPolicy {
   }) =>
       (policy.scaleOnHover && hovered) || (policy.scaleOnFocus && focused);
 
-  /// App-root D-pad traversal — TV only.
+  /// App-root D-pad traversal - TV only.
   static Widget maybeWrapFocusTraversal({required Widget child, required bool enabled}) {
     if (!enabled) return child;
     return Shortcuts(

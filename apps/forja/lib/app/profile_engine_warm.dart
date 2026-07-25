@@ -5,7 +5,7 @@ import 'package:forja/app/boot_needs.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:rust/rust.dart';
 
-/// Starts profile-activated engines. Idempotent — safe from intro splash,
+/// Starts profile-activated engines. Idempotent - safe from intro splash,
 /// profile splash, and settings toggles.
 class ProfileEngineWarm {
   ProfileEngineWarm._();

@@ -70,7 +70,7 @@ class PlayerOverlayPanel extends StatelessWidget {
                 label: 'Watch Party',
                 enabled: false,
                 onTap: () {
-                  ForjaToast.warning('Watch Party — coming soon');
+                  ForjaToast.warning('Watch Party - coming soon');
                 },
               ),
               _ChipBtn(label: 'Shuffle', primary: true, onTap: onShuffle),

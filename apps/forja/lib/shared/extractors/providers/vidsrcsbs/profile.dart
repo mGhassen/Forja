@@ -2,7 +2,7 @@ import 'package:forja/shared/extractors/core/embed_extract_profile.dart';
 
 /// Host sniff policy for the outer `vidsrc.sbs/embed/…` shell (fallback only).
 ///
-/// Prefer [vidsrcsbsNestedExtractProfile] on each CFG mirror — see
+/// Prefer [vidsrcsbsNestedExtractProfile] on each CFG mirror - see
 /// [VidsrcsbsExtractor]. Outer dropdown rotation is a last resort.
 const vidsrcsbsExtractProfile = EmbedExtractProfile(
   id: 'vidsrcsbs',
@@ -24,7 +24,7 @@ const vidsrcsbsExtractProfile = EmbedExtractProfile(
 );
 
 /// Sniff one nested mirror (`web.nxsha.app`, `cinesrc.st`, `vidlux.xyz`, …)
-/// loaded as the WebView top-level document — no dropdown UI.
+/// loaded as the WebView top-level document - no dropdown UI.
 const vidsrcsbsNestedExtractProfile = EmbedExtractProfile(
   id: 'vidsrcsbs',
   timeout: Duration(seconds: 22),

@@ -241,7 +241,7 @@ class ComicsService {
 
       debugPrint('[ComicsService] Loading chapter: $url');
 
-      // Pure HTTP scrape — the headless WebView was crashing the app on Windows
+      // Pure HTTP scrape - the headless WebView was crashing the app on Windows
       // when running the page's heavily-obfuscated JS. We replicate the site's
       // decoder (beau/baeu from rguard.min.js) directly in Dart.
       final response = await animeHttp('GET', url, headers: {'User-Agent': _ua});

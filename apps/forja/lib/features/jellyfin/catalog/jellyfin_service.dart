@@ -238,7 +238,7 @@ class JellyfinService {
     await _secureStorage.delete(key: key);
   }
 
-  // In-memory cache — keyed by URL string, values are _CacheEntry<dynamic>.
+  // In-memory cache - keyed by URL string, values are _CacheEntry<dynamic>.
   final Map<String, _CacheEntry<dynamic>> _cache = {};
   static const _maxCacheEntries = 200;
   static const _shortTtl = Duration(minutes: 2);   // resume, nextUp
@@ -311,7 +311,7 @@ class JellyfinService {
   Future<_HttpResponse> _delete(String urlOrPath, {Duration timeout = const Duration(seconds: 30)}) =>
       _request('DELETE', urlOrPath, timeout: timeout, maxRetries: 0);
 
-  /// Cached GET — returns parsed JSON (already decoded) from cache or network.
+  /// Cached GET - returns parsed JSON (already decoded) from cache or network.
   Future<dynamic> _cachedGet(String url, {Duration ttl = _mediumTtl}) async {
     final cached = _getFromCache<dynamic>(url);
     if (cached != null) return cached;
@@ -583,7 +583,7 @@ class JellyfinService {
     if (searchTerm != null && searchTerm.isNotEmpty) params['searchTerm'] = searchTerm;
 
     final url = _buildQueryUrl('/Items', params);
-    // Use a longer timeout when fetching all items (no limit) — large
+    // Use a longer timeout when fetching all items (no limit) - large
     // libraries can take the server a while to serialize.
     final timeout = limit == null ? const Duration(seconds: 60) : const Duration(seconds: 30);
     final resp = await _get(url, timeout: timeout);
@@ -705,7 +705,7 @@ class JellyfinService {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // TV Shows — Seasons & Episodes
+  // TV Shows - Seasons & Episodes
   // ═══════════════════════════════════════════════════════════════════════════
 
   Future<List<JellyfinItem>> getSeasons(String seriesId) async {
@@ -743,7 +743,7 @@ class JellyfinService {
     return _parseItems(data);
   }
 
-  /// Parallel series detail loader — fetches details, seasons, episodes, and
+  /// Parallel series detail loader - fetches details, seasons, episodes, and
   /// similar items concurrently instead of sequentially.
   Future<SeriesData> loadSeriesData(String seriesId, {String? firstGenre}) async {
     // Phase 1: details + seasons in parallel (similar deferred until we have genres)
@@ -798,7 +798,7 @@ class JellyfinService {
       );
     }
 
-    // No seasons — fetch episodes + similar in parallel
+    // No seasons - fetch episodes + similar in parallel
     final fallbackResults = await Future.wait([
       getEpisodes(seriesId).catchError((_) => <JellyfinItem>[]),
       similarFuture,
@@ -1100,9 +1100,9 @@ class JellyfinService {
     return Uri.parse('$_base/Videos/$itemId/stream.$ext').replace(queryParameters: params).toString();
   }
 
-  /// Resolves a stream URL — handles direct-play validation and transcode fallback.
+  /// Resolves a stream URL - handles direct-play validation and transcode fallback.
   /// Returns the URL and whether the stream is transcoded (so callers know
-  /// not to pass a seek position — the server already starts at the offset).
+  /// not to pass a seek position - the server already starts at the offset).
   Future<({String url, bool isTranscode})> _resolveStreamUrl(String itemId, {int startTimeTicks = 0}) async {
     final info = await getPlaybackInfo(itemId, startTimeTicks: startTimeTicks);
     final proxy = LocalServerService();

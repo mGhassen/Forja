@@ -1,4 +1,4 @@
-// Anime backend — AniList GraphQL for metadata, Megaplay for streams.
+// Anime backend - AniList GraphQL for metadata, Megaplay for streams.
 // Parallel race: Anikoto HD-1/HD-2 + Forja stream servers + AllAnime fallbacks.
 
 import 'dart:convert';
@@ -45,7 +45,7 @@ class AnimeService {
     throw lastError ?? Exception('AniList query failed');
   }
 
-  /// Catalog / list cards — keep lean (no trailer / streamingEpisodes / cast).
+  /// Catalog / list cards - keep lean (no trailer / streamingEpisodes / cast).
   static const String _mediaFields = '''
     id
     idMal
@@ -321,7 +321,7 @@ class AnimeService {
     return out;
   }
 
-  /// AniList user recommendations (capped). Separate call — not franchise Related.
+  /// AniList user recommendations (capped). Separate call - not franchise Related.
   Future<List<AnimeCard>> getRecommendations(
     int anilistId, {
     int perPage = 12,
@@ -376,7 +376,7 @@ class AnimeService {
     const animeFormats = {
       'TV', 'TV_SHORT', 'MOVIE', 'OVA', 'ONA', 'SPECIAL',
     };
-    // Franchise material users open from details — not list noise.
+    // Franchise material users open from details - not list noise.
     const keepTypes = {
       'SIDE_STORY',
       'SUMMARY',
@@ -438,7 +438,7 @@ class AnimeService {
   ///
   /// Movies (and multi-ep ONA cours) are **walked as bridges** when they sit
   /// between TV seasons (Youjo Senki S1 → Movie → S2) but are **not** emitted
-  /// into the season rail — films/specials stay under Related.
+  /// into the season rail - films/specials stay under Related.
   ///
   /// 1-ep ONA prequels (One Piece → MONSTERS) are skipped entirely so they
   /// never pollute the spine. SIDE_STORY is not walked.
@@ -492,7 +492,7 @@ class AnimeService {
       if (fmt == 'TV' || fmt == 'TV_SHORT') return true;
       // Bridge: film between TV cours (Youjo Senki).
       if (fmt == 'MOVIE') return true;
-      // Multi-ep ONA cour (Dungeon Meshi S2) — not 1-ep specials.
+      // Multi-ep ONA cour (Dungeon Meshi S2) - not 1-ep specials.
       if (fmt == 'ONA') {
         final eps = node['episodes'];
         return eps is! int || eps > 1;
@@ -557,7 +557,7 @@ class AnimeService {
       }
     }
 
-    // BFS the continuity component (TV + movie bridges), not a single path —
+    // BFS the continuity component (TV + movie bridges), not a single path -
     // visiting bridges while walking back must not block walking forward.
     final queue = <int>[anilistId];
     final seen = <int>{anilistId};
@@ -684,15 +684,15 @@ class AnimeService {
     } catch (e) {
       if (kDebugMode) debugPrint('[Anikoto] resolve failed: $e');
     }
-    // Only cache hits — misses retry after getDetails fills episodes.
+    // Only cache hits - misses retry after getDetails fills episodes.
     if (s != null) _anikotoCache[anime.id] = s;
     return s;
   }
 
   Future<List<AnimeEpisode>> getEpisodes(AnimeCard anime) async {
-    // AniList only — never crawl Anikoto here (HTML probe spam / block risk).
+    // AniList only - never crawl Anikoto here (HTML probe spam / block risk).
     // Playable Anikoto ids resolve lazily in the player on Play.
-    // streamingEpisodes live on details payloads only — pass getDetails result
+    // streamingEpisodes live on details payloads only - pass getDetails result
     // when thumbs matter; list cards synthesize without them.
     AnimeCard fresh = anime;
     final hasCount = (anime.episodes ?? 0) > 0 ||
@@ -773,9 +773,9 @@ class AnimeService {
 
   // ─── Stream embed URLs ─────────────────────────────────────────
   // Megaplay: AniList + MAL id paths only (megaplay.buzz/api). Never
-  // Anikoto title→embedId — wrong show with no recovery signal.
+  // Anikoto title→embedId - wrong show with no recovery signal.
 
-  /// VidLink anime embed — MAL id required (`vidlink.pro` docs).
+  /// VidLink anime embed - MAL id required (`vidlink.pro` docs).
   String _vidlinkAnimeEmbed({
     required int malId,
     required int episode,
@@ -908,7 +908,7 @@ class AnimeService {
         ));
       }
     }
-    // AniKoto site Ajax — only when slug already resolved (pinned Anikoto).
+    // AniKoto site Ajax - only when slug already resolved (pinned Anikoto).
     final slug = series?.slug.trim() ?? '';
     if (slug.isNotEmpty) {
       for (final cat in const ['sub', 'dub']) {
@@ -920,7 +920,7 @@ class AnimeService {
         ));
       }
     }
-    // VidLink — MAL embed (same host sniff as movie/TV VidLink).
+    // VidLink - MAL embed (same host sniff as movie/TV VidLink).
     if (mal > 0) {
       for (final cat in const ['sub', 'dub']) {
         all.add(AnimeEmbed(
@@ -931,7 +931,7 @@ class AnimeService {
         ));
       }
     }
-    // Miruro — AniList id from the card only.
+    // Miruro - AniList id from the card only.
     for (final cat in const ['sub', 'dub']) {
       for (final prov in AnimeStreamProviders.miruroRaceProviders) {
         all.add(AnimeEmbed(
@@ -942,7 +942,7 @@ class AnimeService {
         ));
       }
     }
-    // AllAnime (allmanga.to) — title search (no AniList/MAL key upstream).
+    // AllAnime (allmanga.to) - title search (no AniList/MAL key upstream).
     final titles = animeTitles
         .where((t) => t.trim().isNotEmpty)
         .map((t) => Uri.encodeComponent(t.trim()))
@@ -959,7 +959,7 @@ class AnimeService {
         }
       }
     }
-    // VidNest — card AniList id only (never Anikoto ani_id remap).
+    // VidNest - card AniList id only (never Anikoto ani_id remap).
     for (final cat in const ['sub', 'dub']) {
       for (final prov in vidnestKnownProviders) {
         all.add(AnimeEmbed(
@@ -970,7 +970,7 @@ class AnimeService {
         ));
       }
     }
-    // WatchHentai — only for adult titles. Single embed; the extractor
+    // WatchHentai - only for adult titles. Single embed; the extractor
     // searches watchhentai.net's catalog for any of the provided titles.
     if (isAdult && titles.isNotEmpty) {
       all.add(AnimeEmbed(
@@ -991,14 +991,14 @@ class AnimeService {
   }
 
   /// Referer to spoof when extracting Megaplay embeds. They block
-  /// direct page loads — extraction only works when this header is present.
+  /// direct page loads - extraction only works when this header is present.
   static String get embedReferer =>
       ProviderRuntimeConfig.instance.megaplay.scrapeReferer;
 
   /// Direct HTTP extractor for megaplay.buzz embeds.
   ///
   ///   1. Prefer catalog id from `/stream/s-2/{id}/{lang}` → getSources
-  ///   2. Else scrape HTML `data-id` (often missing — pages return 410)
+  ///   2. Else scrape HTML `data-id` (often missing - pages return 410)
   ///   3. GET /stream/getSources?id={id} → JSON { sources:{file}, tracks:[] }
   /// Resolve one or more playable URLs for [embed]. Miruro may return several
   /// CDN mirrors per provider; other servers return at most one.
@@ -1142,7 +1142,7 @@ class AnimeService {
     return _extractorToAnimeResult(res);
   }
 
-  // AnimeRealms — sentinel URL:
+  // AnimeRealms - sentinel URL:
   //   animerealms://anilist/{anilistId}/{episode}/{provider}
   Future<AnimeStreamResult?> _extractAnimeRealms(AnimeEmbed embed) async {
     final m = RegExp(r'^animerealms://anilist/(\d+)/(\d+)/([a-z0-9-]+)$')
@@ -1226,7 +1226,7 @@ class AnimeService {
       if (_prefAnimeId(e) == animeId && e['cat'] == category) {
         final key = e['key'] as String?;
         if (key == null || key.isEmpty) return null;
-        // vidwish.live redirects to megaplay.buzz — alias retired.
+        // vidwish.live redirects to megaplay.buzz - alias retired.
         final normalized = key == 'vidwish' ? 'megaplay' : key;
         return AnimeStreamPref(
           sourceKey: normalized,
@@ -1303,7 +1303,7 @@ class AnimeService {
     await clearPreferredSource(animeId: animeId);
   }
 
-  /// AniKoto site scrape needs a resolved slug — only when the user pinned
+  /// AniKoto site scrape needs a resolved slug - only when the user pinned
   /// Anikoto. Auto / Megaplay / VidNest / Miruro use card AniList (or MAL)
   /// ids and must not title-match Anikoto.
   static bool savedSourceNeedsAnikoto(String? sourceKey) {
@@ -1594,7 +1594,7 @@ class AnimeService {
 //  Models
 // ════════════════════════════════════════════════════════════════════
 
-/// One AniList [Media.relations] edge — typed link to another anime.
+/// One AniList [Media.relations] edge - typed link to another anime.
 class AnimeRelation {
   final String relationType;
   final AnimeCard anime;
@@ -1655,7 +1655,7 @@ class AnimeRelation {
 
 class AnimeCard {
   final int id;
-  /// Optional MAL id from AniList GraphQL — display/legacy only.
+  /// Optional MAL id from AniList GraphQL - display/legacy only.
   /// Playback MAL ids come from [AnimeService.resolveMalId].
   final int? idMal;
   final String titleEnglish;
@@ -1686,7 +1686,7 @@ class AnimeCard {
   /// YouTube id from AniList `trailer` (details payload only).
   final String? trailerYoutubeId;
 
-  /// UI title — Settings → Playback → Anime title language (default romaji).
+  /// UI title - Settings → Playback → Anime title language (default romaji).
   String get displayTitle {
     final lang = SettingsService.animeTitleLanguageNotifier.value;
     return switch (lang) {
@@ -1961,7 +1961,7 @@ class AnimeEmbed {
 
   String get displayName => '$label · ${category.toUpperCase()}';
 
-  /// Unique player-panel id — [sourceKey] alone collides across sub/dub pairs.
+  /// Unique player-panel id - [sourceKey] alone collides across sub/dub pairs.
   String get panelKey => '$sourceKey:$category';
 
   /// Stable id for saved stream preference (e.g. `megaplay`, `miruro:zoro`).

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
-/// Shell depth — back always travels up one level at a time.
+/// Shell depth - back always travels up one level at a time.
 ///
 /// ```
 /// menu (nav rail)
@@ -19,7 +19,7 @@ enum ShellNavLevel {
   player,
 }
 
-/// TV in-scope shell tab IDs — level [ShellNavLevel.page].
+/// TV in-scope shell tab IDs - level [ShellNavLevel.page].
 /// Full metadata: [navDestinations] in `shell/nav_config.dart`.
 abstract final class ShellNavPages {
   static const tvInScope = <String>[
@@ -85,7 +85,7 @@ abstract final class ShellNavigationLevels {
     return true;
   }
 
-  /// Deepest open level — used to decide which single step back takes.
+  /// Deepest open level - used to decide which single step back takes.
   static ShellNavLevel resolveBackTarget() {
     if (rootRouteCanPop()) return ShellNavLevel.player;
     if (shellOverlayCanPop()) return ShellNavLevel.detail;

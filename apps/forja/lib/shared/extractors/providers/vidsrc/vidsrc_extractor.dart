@@ -5,17 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:rust/rust.dart';
 
-/// VSEmbed / vsembed.su — resolved via Rust (3 HTTP fetches + HTML chain).
+/// VSEmbed / vsembed.su - resolved via Rust (3 HTTP fetches + HTML chain).
 class VidsrcExtractor {
   static int _resolveGeneration = 0;
 
   /// Ignore in-flight resolves (e.g. user tapped Cancel during provider race).
-  /// Does not cancel other Engine jobs — see [HostProviderAdapter.cancelAllPending].
+  /// Does not cancel other Engine jobs - see [HostProviderAdapter.cancelAllPending].
   static void cancelPending() {
     _resolveGeneration++;
   }
 
-  /// VSEmbed only — never WebStreamr `vidsrc` (MBG parity host is vidsrcme.ru).
+  /// VSEmbed only - never WebStreamr `vidsrc` (MBG parity host is vidsrcme.ru).
   static String get _embedHost =>
       ProviderRuntimeConfig.instance.api('vidsrcEmbed') ?? 'https://vsembed.su';
 

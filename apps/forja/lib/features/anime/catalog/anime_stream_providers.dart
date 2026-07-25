@@ -2,7 +2,7 @@ import 'package:rust/rust.dart';
 
 /// Flat catalog of every anime stream source the player can race.
 ///
-/// Keys match [AnimeEmbed.sourceKey]. Display names are real upstream labels —
+/// Keys match [AnimeEmbed.sourceKey]. Display names are real upstream labels -
 /// used in Settings → Playback → Anime provider order and the anime player.
 class AnimeStreamProviders {
   AnimeStreamProviders._();
@@ -10,24 +10,24 @@ class AnimeStreamProviders {
   /// All Miruro pipe keys we race (matches [miruroKnownProviders]).
   static const List<String> miruroRaceProviders = miruroKnownProviders;
 
-  /// Default try order — strongest / most reliable first.
+  /// Default try order - strongest / most reliable first.
   ///
-  /// AnimeRealms was removed (upstream API gone — domain is a storefront).
+  /// AnimeRealms was removed (upstream API gone - domain is a storefront).
   /// AllAnime `Uv-mp4` was removed (upstream no longer returns it).
   /// Megaplay / native AniKoto first; VidLink (MAL WebView) after AllAnime;
   /// Miruro pipes after that.
   static const List<String> defaultOrder = [
     'megaplay',
     'anikoto',
-    // VidNest — AniList-native HiAnime / AnimePahe
+    // VidNest - AniList-native HiAnime / AnimePahe
     'vidnest:hianime',
     'vidnest:animepahe',
-    // AllAnime — Yt-mp4 is the reliable direct MP4; Default aliases to it first
+    // AllAnime - Yt-mp4 is the reliable direct MP4; Default aliases to it first
     'allanime:Default',
     'allanime:Yt-mp4',
     'allanime:S-mp4',
     'allanime:Luf-Mp4',
-    // VidLink — MAL embed + WebView sniff (same host as movie/TV)
+    // VidLink - MAL embed + WebView sniff (same host as movie/TV)
     'vidlink',
     // Miruro CF WebView pipes
     'miruro:bee',

@@ -79,7 +79,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<!-- PostHog manual init (RFC-043) — do not AUTO_INIT before opt-in. -->
+	<!-- PostHog manual init (RFC-043) - do not AUTO_INIT before opt-in. -->
 	<key>com.posthog.posthog.AUTO_INIT</key>
 	<false/>
 </dict>

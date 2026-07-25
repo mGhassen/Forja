@@ -194,7 +194,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
       'infoHash=${stream['infoHash']} fileIdx=${stream['fileIdx']} '
       'url=${stream['url']}',
     );
-    // Do not close Sources yet — closing mid-tap races the gesture arena
+    // Do not close Sources yet - closing mid-tap races the gesture arena
     // (pointer_router) and can cancel the resolve that starts next.
     final stremioId = widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId;
     final stremioAddonBaseUrl =
@@ -509,7 +509,7 @@ mixin _DetailsScreenPlay on State<DetailsScreen> {
       cleanupNotifiers();
     }
 
-    // Show loading BEFORE closing Sources — closing the panel mid-tap disposes
+    // Show loading BEFORE closing Sources - closing the panel mid-tap disposes
     // gesture routes under the pointer (pointer_router asserts) and can dismiss
     // the new overlay / cancel the resolve with no logs.
     showLoadingOverlayDialog(

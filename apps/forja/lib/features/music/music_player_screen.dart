@@ -329,7 +329,7 @@ class _MusicPlayerScreenState extends State<MusicPlayerScreen> with WidgetsBindi
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Album art with animated glow — flexible so it gives up pixels first
+        // Album art with animated glow - flexible so it gives up pixels first
         // if the text block ends up taller than reserved (e.g. very long titles).
         Flexible(
           child: AnimatedBuilder(

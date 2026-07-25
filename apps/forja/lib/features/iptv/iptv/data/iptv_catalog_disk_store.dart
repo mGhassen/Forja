@@ -22,7 +22,7 @@ class IptvCatalogShelfSnap {
 /// On-disk IPTV catalog shelves (one JSON file per portal + section).
 ///
 /// Survives app restart so a warm shelf skips network. Portal keys
-/// (url|user|pass) are hashed into filenames — never written raw.
+/// (url|user|pass) are hashed into filenames - never written raw.
 abstract final class IptvCatalogDiskStore {
   static const _subdir = 'iptv_catalog_v1';
   static const _version = 1;

@@ -150,7 +150,7 @@ class _DamiTvStream {
   final String? awayBadge;
   final int viewers;
   final String iframe;
-  /// PPV `always_live` — 24/7 channels keep stale start/end windows.
+  /// PPV `always_live` - 24/7 channels keep stale start/end windows.
   final bool alwaysLive;
 
   const _DamiTvStream({
@@ -203,7 +203,7 @@ class _DamiTvStream {
     );
   }
 
-  /// Playable 24/7 channel — PPV often leaves expired `starts_at`/`ends_at`
+  /// Playable 24/7 channel - PPV often leaves expired `starts_at`/`ends_at`
   /// while setting `always_live` (and/or category `24/7 Streams`).
   bool get isAlwaysOn => ppvStreamIsAlwaysOn(
     alwaysLive: alwaysLive,
@@ -565,7 +565,7 @@ const _ua = {
 };
 
 /// Force play on embed players that gate behind a gesture / big-play overlay.
-/// One retry only — repeated clicks restart playback and cause visible stutter.
+/// One retry only - repeated clicks restart playback and cause visible stutter.
 const _autoplayJs = r'''
 (function () {
   function clickPlay() {
@@ -716,7 +716,7 @@ String _embedMediaCommandJs(String cmd) {
 }
 
 /// Pause + tear down HTML media before the Flutter route pops. Parent-frame
-/// `video`/`audio` alone is not enough for the iframe wrapper — blank iframes too.
+/// `video`/`audio` alone is not enough for the iframe wrapper - blank iframes too.
 const _stopEmbedMediaJs = r'''
 (function () {
   document.querySelectorAll('video,audio').forEach(function (el) {
@@ -754,7 +754,7 @@ const _dblclickFullscreenJs = r'''
 /// matches the website (streamed.pk / ppv.is). Direct top-level loads of
 /// embed.st stall behind parser-blocking ad scripts and leave a white WebView.
 ///
-/// Do **not** set HTML `sandbox` — embed hosts reject sandboxed parents with
+/// Do **not** set HTML `sandbox` - embed hosts reject sandboxed parents with
 /// "Remove sandbox attributes on the iframe tag" / "SANDBOX IFRAME NOT ALLOWED".
 /// Main-frame hijacks are cancelled in `shouldOverrideUrlLoading` except the
 /// catalog **origin root** required by `loadData(baseUrl)` (see
@@ -763,7 +763,7 @@ const _dblclickFullscreenJs = r'''
 /// (hidden) so Streamed embeds that require a successful open keep playing.
 ///
 /// Android System WebView: load the embed **top-level** instead (see embed
-/// player) — nested iframes commonly hit the sandbox rejection page there.
+/// player) - nested iframes commonly hit the sandbox rejection page there.
 String _buildLiveEmbedWrapperHtml(String embedUrl) {
   final safe = embedUrl
       .replaceAll('&', '&amp;')
@@ -804,7 +804,7 @@ iframe{border:0;width:100%;height:100%;display:block}
 /// `onLoadStop` from firing (unlimited spinner + blank player).
 List<ContentBlocker> _liveEmbedContentBlockers() {
   // Only parser-blocking script hosts that hang the player document itself.
-  // Click / interstitial networks are not URL-blocked here — window.open is
+  // Click / interstitial networks are not URL-blocked here - window.open is
   // accepted off-screen (hidden), and main-frame redirects are cancelled.
   const hosts = <String>[
     r'.*therocketlanguages\.com.*',
@@ -879,7 +879,7 @@ String _streamedImageUrl(String path) {
 }
 
 /// embedindia JW Player resolves tokenised HLS inside the embed browsing
-/// context. The sniffed m3u8 403s in mpv — same as copying the URL into VLC.
+/// context. The sniffed m3u8 403s in mpv - same as copying the URL into VLC.
 bool _ppvEmbedRequiresWebView(String embedUrl) {
   final host = Uri.tryParse(embedUrl)?.host.toLowerCase() ?? '';
   return host.contains('embedindia.st');
@@ -905,7 +905,7 @@ Future<String?> _resolvePpvPlayUrl(String embedUrl) async {
     timeout: const Duration(seconds: 25),
   );
   if (extracted == null || extracted.url.isEmpty) {
-    debugPrint('[LiveMatches] PPV extract failed — WebView fallback');
+    debugPrint('[LiveMatches] PPV extract failed - WebView fallback');
     return null;
   }
 

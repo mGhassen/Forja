@@ -42,7 +42,7 @@ BorderRadius _heroPillSlotBorderRadius({
   return BorderRadius.zero;
 }
 
-/// Hero CTA chrome — primary green, streaming white, secondary glass.
+/// Hero CTA chrome - primary green, streaming white, secondary glass.
 enum HeroPillPlayTone { primary, secondary, streaming }
 
 class _HeroPillStyle {
@@ -95,7 +95,7 @@ BoxDecoration _decorationFor({required _HeroPillStyle style}) {
   return _heroFilledDecoration(color: style.expandedFill);
 }
 
-/// Primary hero CTA — pill with optional icon + label (Play, Watch Now, Resume).
+/// Primary hero CTA - pill with optional icon + label (Play, Watch Now, Resume).
 class HeroPillPlayButton extends StatelessWidget {
   const HeroPillPlayButton({
     super.key,
@@ -448,7 +448,7 @@ class HeroPillIconSlot {
   String get resolvedLabel => label ?? tooltip ?? '';
 }
 
-/// Horizontal hero CTA cluster — ordered left→right on TV, no escape to catalog.
+/// Horizontal hero CTA cluster - ordered left→right on TV, no escape to catalog.
 class HeroPillActionRow extends StatelessWidget {
   const HeroPillActionRow({super.key, required this.children});
 
@@ -470,7 +470,7 @@ class HeroPillActionRow extends StatelessWidget {
   }
 }
 
-/// Secondary hero actions in one sliced glass pill — focused slot expands right.
+/// Secondary hero actions in one sliced glass pill - focused slot expands right.
 class HeroPillIconGroup extends StatelessWidget {
   const HeroPillIconGroup({
     super.key,
@@ -546,7 +546,7 @@ class HeroPillSegment<T> {
   final IconData icon;
 }
 
-/// Segmented hero pill (e.g. SUB | DUB) — glass shell, white hover on segment.
+/// Segmented hero pill (e.g. SUB | DUB) - glass shell, white hover on segment.
 class HeroPillSegmentedChoice<T> extends StatelessWidget {
   const HeroPillSegmentedChoice({
     super.key,

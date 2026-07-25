@@ -42,7 +42,7 @@ mixin _DesktopPlayerTracks on State<DesktopPlayerScreen>, WidgetsBindingObserver
       if (_s._externalSubFileCache.containsKey(url)) return;
     }
 
-    // Already-local subtitle (e.g. kisskh decrypted) — feed straight to libmpv.
+    // Already-local subtitle (e.g. kisskh decrypted) - feed straight to libmpv.
     if (url.startsWith('file://') || url.startsWith('/')) {
       try {
         final uri = url.startsWith('file://') ? url : Uri.file(url).toString();
@@ -131,7 +131,7 @@ mixin _DesktopPlayerTracks on State<DesktopPlayerScreen>, WidgetsBindingObserver
       }
     }
 
-    // Anime / Asian Drama use negative hub movie ids — still auto-pick from
+    // Anime / Asian Drama use negative hub movie ids - still auto-pick from
     // the episode's provider subs even when online search is skipped.
     if (widget.movie == null || widget.movie!.id <= 0) {
       await _maybeAutoPickExternalSubtitle();
@@ -193,7 +193,7 @@ mixin _DesktopPlayerTracks on State<DesktopPlayerScreen>, WidgetsBindingObserver
     return false;
   }
 
-  /// Re-apply after media open / track settle — mpv clears external URI tracks.
+  /// Re-apply after media open / track settle - mpv clears external URI tracks.
   Future<void> _reapplyPreferredSubtitle() async {
     if (_s._disposed || !mounted) return;
     await _s._applyAutoSubtitle();

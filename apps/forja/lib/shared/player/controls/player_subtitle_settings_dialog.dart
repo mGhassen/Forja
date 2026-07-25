@@ -28,7 +28,7 @@ class PlayerSubtitleSettingsValues {
   final String font;
 }
 
-/// Subtitle appearance dialog — touch + TV D-pad (sliders, chips, toggles).
+/// Subtitle appearance dialog - touch + TV D-pad (sliders, chips, toggles).
 class PlayerSubtitleSettingsDialog {
   static bool _isShowing = false;
   static VoidCallback? _dismiss;

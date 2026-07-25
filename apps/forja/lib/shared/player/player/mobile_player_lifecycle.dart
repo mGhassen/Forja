@@ -27,7 +27,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     _s._currentProvider = widget.activeProvider;
     _s._catalogAddonBaseUrl = widget.stremioAddonBaseUrl;
     _s._catalogSourceKind = _initialCatalogSourceKind();
-    // Do not pin from pinSource / preloaded sources — that blocked Auto
+    // Do not pin from pinSource / preloaded sources - that blocked Auto
     // failover after green Play. Prefs + explicit user picks set pins.
     unawaited(_s._loadPlayerAutoSettings());
     final catalogSession = isCatalogSourcesMode(widget.activeProvider) ||
@@ -117,13 +117,13 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
 
     // ── System UI ────────────────────────────────────────────────────────
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    // Orientation is set in addPostFrameCallback below — after the
-    // first frame renders — to avoid fighting the portrait lock while
+    // Orientation is set in addPostFrameCallback below - after the
+    // first frame renders - to avoid fighting the portrait lock while
     // the widget tree is still building.
     WakelockPlus.enable();
 
     // Phone MediaKit: software-friendly decode (some MediaCodec paths flake).
-    // ATV MediaKit: keep MediaCodec HW — Impeller is disabled in
+    // ATV MediaKit: keep MediaCodec HW - Impeller is disabled in
     // ForjaApplication so the SurfaceProducer shows frames (not audio-only).
     if (Platform.isAndroid && !widget.tvRemoteEnabled) {
       _s._androidMediaKitSafeMode = true;
@@ -145,7 +145,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
       ),
     );
 
-    // ATV: vo=gpu needs an EGL context — ATV emulators die with
+    // ATV: vo=gpu needs an EGL context - ATV emulators die with
     // EGL_BAD_ATTRIBUTE (audio OK, black frame). mediacodec_embed paints
     // MediaCodec straight into the Flutter Surface (no mpv GL).
     final tvMediaKit = widget.tvRemoteEnabled;
@@ -195,7 +195,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
           DeviceOrientation.landscapeLeft,
         ]);
         // Let Android finish the rotation & surface resize.
-        // MediaTek/Transsion devices need a longer wait — the
+        // MediaTek/Transsion devices need a longer wait - the
         // fbcNotifyBufferUX storm can last several seconds.
         await Future.delayed(const Duration(milliseconds: 1500));
         if (!mounted) return;
@@ -211,7 +211,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
       _s._startHideTimer();
       _s._fetchSubtitles();
       // Initialize brightness from current screen level.
-      // ScreenBrightness only works reliably on mobile — on desktop it
+      // ScreenBrightness only works reliably on mobile - on desktop it
       // spams "Problem getting monitor brightness" errors because most
       // external monitors lack DDC/CI support.
       if (Platform.isAndroid || Platform.isIOS) {
@@ -328,7 +328,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     return _s._currentSources;
   }
 
-  /// Keeps extraction order — never promote the playing/checking row to front.
+  /// Keeps extraction order - never promote the playing/checking row to front.
   void _refreshPanelPlayingStream() {
     if (!_s._playbackConfirmed) return;
     final pid = _s._currentProvider ?? widget.activeProvider;
@@ -337,7 +337,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
       return;
     }
     // Catalog modes (Stremio Direct / Nuvio / torrent / Amri) use the Sources
-    // right panel — never invent a one-row "server" list for the layers picker.
+    // right panel - never invent a one-row "server" list for the layers picker.
     if (isCatalogSourcesMode(pid)) return;
 
     final catalogUrl = durableStreamCatalogUrl(
@@ -400,7 +400,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
         headers: widget.headers,
         catalogUrl: identity,
       );
-      // Append missing row — do not insert at front (panel order stays stable).
+      // Append missing row - do not insert at front (panel order stays stable).
       sources = dedupeStreamSources([...sources, playingRow]);
       matchIdx = sources.indexWhere((s) => s.url == identity);
       if (matchIdx < 0) matchIdx = sources.isEmpty ? -1 : sources.length - 1;
@@ -530,12 +530,12 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     _s._exitInProgress = true;
     _s._cancelPendingStreamWork();
     _saveWatchHistory();
-    // Stop mpv before orientation/pop — dispose alone is fire-and-forget
+    // Stop mpv before orientation/pop - dispose alone is fire-and-forget
     // and can leave audio after the route is gone (issue 059).
     await _s._stopPlaybackForExit();
     // Unlock orientation so the rest of the app follows system settings.
     await SystemChrome.setPreferredOrientations([]);
-    // Let the rotation finish before popping — avoids BLASTBufferQueue
+    // Let the rotation finish before popping - avoids BLASTBufferQueue
     // errors from media_kit surface teardown during an active rotation.
     await Future.delayed(const Duration(milliseconds: 300));
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -549,7 +549,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     final nav = Navigator.of(context, rootNavigator: true);
     if (_s._routePopAllowed) {
       if (nav.canPop()) nav.pop(result);
-      // Same frame as player pop — strip anime/AD/movie loading host so Back
+      // Same frame as player pop - strip anime/AD/movie loading host so Back
       // never paints the resolve overlay (details stay on the shell overlay).
       dismissActiveLoadingOverlayRoute();
       return;
@@ -570,7 +570,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
-      // Save local history + send scrobblePause (not stop — user may return)
+      // Save local history + send scrobblePause (not stop - user may return)
       _saveWatchHistory(isBgPause: true);
     } else if (state == AppLifecycleState.resumed) {
       // Tell Trakt we're back
@@ -595,7 +595,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     final pos = _s._positionNotifier.value.inMilliseconds;
     final dur = _s._durationNotifier.value.inMilliseconds;
 
-    // Nothing to save yet (open/buffering) — stay quiet.
+    // Nothing to save yet (open/buffering) - stay quiet.
     if (pos <= 10000 || dur <= 0) return;
 
     if (!shouldPersistWatchProgress(
@@ -696,10 +696,10 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
         );
       }
 
-      // Trakt + Simkl scrobble — fire and forget
+      // Trakt + Simkl scrobble - fire and forget
       final progressPercent = dur > 0 ? (pos / dur * 100) : 0.0;
       if (isBgPause) {
-        // App backgrounded — pause, don't stop (user may return)
+        // App backgrounded - pause, don't stop (user may return)
         TraktService().scrobblePause(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,

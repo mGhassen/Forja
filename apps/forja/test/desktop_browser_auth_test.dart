@@ -89,7 +89,7 @@ void main() {
       onTokens: (access, refresh) async {
         expect(access, 'access-token');
         expect(refresh, 'refresh-token');
-        // Simulate slow setSession — response must wait.
+        // Simulate slow setSession - response must wait.
         await Future<void>.delayed(const Duration(milliseconds: 50));
         applied = true;
       },

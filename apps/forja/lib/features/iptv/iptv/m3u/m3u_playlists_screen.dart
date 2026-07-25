@@ -1,7 +1,7 @@
 // Screen for managing M3U / M3U8 IPTV playlists.
 // Lets the user add a playlist by URL or upload a local file, browse the
 // channels inside, and delete playlists. Tapping a channel hands off to the
-// existing IptvPtPlayerScreen — same player, watchdog, recovery, etc.
+// existing IptvPtPlayerScreen - same player, watchdog, recovery, etc.
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -241,7 +241,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
       });
       await _persist();
       if (mounted) {
-        ForjaToast.info('Refreshed "${p.name}" — ${channels.length} channels');
+        ForjaToast.info('Refreshed "${p.name}" - ${channels.length} channels');
       }
     } catch (e) {
       if (!mounted) return;

@@ -8,7 +8,7 @@ import 'package:rust/rust.dart';
 
 /// How many Nuvio provider chips count as an active Filters badge.
 ///
-/// All selected (or none) is the default / empty state — badge stays clear.
+/// All selected (or none) is the default / empty state - badge stays clear.
 /// A partial selection counts as filtered.
 int nuvioProviderFilterActiveCount({
   required int selectedCount,
@@ -29,7 +29,7 @@ int nuvioProviderFilterActiveCount({
 /// list is not stuck blank while other addons succeeded.
 ///
 /// [userPicked] is ignored when the current id has no streams and another
-/// addon does — otherwise tapping a dead provider permanently hides working
+/// addon does - otherwise tapping a dead provider permanently hides working
 /// addons.
 String? promoteStremioProviderId({
   required String currentId,
@@ -48,7 +48,7 @@ String? promoteStremioProviderId({
     if (fetching && !completedIds.contains(preferredId)) return null;
   }
   if (loadedIds.contains(currentId)) return null;
-  // Current addon empty/failed — always move to one with rows (even after a
+  // Current addon empty/failed - always move to one with rows (even after a
   // manual tap on a dead provider). User can re-pick once it has streams.
   if (userPicked && loadedIds.isEmpty) return null;
   for (final id in addonBaseUrlsInOrder) {
@@ -538,7 +538,7 @@ class _ProviderChip extends StatelessWidget {
     return FocusableControl(
       onTap: onTap,
       borderRadius: 999,
-      // Dense strip — scale clips into chrome gaps above/below.
+      // Dense strip - scale clips into chrome gaps above/below.
       scaleOnFocus: 1.0,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
@@ -628,7 +628,7 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    '— $episodeLabel',
+                    '- $episodeLabel',
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                     style: TextStyle(
@@ -1008,7 +1008,7 @@ class _TorrentSourceSearchToolbarState
   OverlayEntry? _filtersEntry;
   bool _wasPanelOpen = false;
 
-  // Always show the tune control when the chrome asks for filters — empty
+  // Always show the tune control when the chrome asks for filters - empty
   // Stremio/Nuvio lists used to hide it entirely (no facets yet).
   bool get _canFilter => widget.showFilters;
 
@@ -1035,7 +1035,7 @@ class _TorrentSourceSearchToolbarState
     }
     _wasPanelOpen = widget.sourcesPanelOpen;
     if (_filtersOpen) {
-      // OverlayEntry is not an ancestor of this widget — markNeedsBuild during
+      // OverlayEntry is not an ancestor of this widget - markNeedsBuild during
       // didUpdateWidget (parent rebuild) trips "setState during build".
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _filtersEntry == null) return;
@@ -1046,7 +1046,7 @@ class _TorrentSourceSearchToolbarState
 
   @override
   void dispose() {
-    // Remove overlay only — never setState here (element is already unmounting).
+    // Remove overlay only - never setState here (element is already unmounting).
     _removeFiltersOverlay();
     super.dispose();
   }
@@ -1599,7 +1599,7 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
                 child: ForjaFrostedPanel(
                   // Details: BackdropFilter. Player: translucent shell (no frame).
                   enableBlur: widget.enableBlur,
-                  // Only a left border — the right edge butts flush against the
+                  // Only a left border - the right edge butts flush against the
                   // Sources panel (which draws its own left border) so the two
                   // read as one continuous surface, not two floating cards.
                   border: Border(

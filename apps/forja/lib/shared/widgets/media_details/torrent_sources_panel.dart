@@ -15,7 +15,7 @@ class TorrentSourcesPanel extends StatelessWidget {
     this.frozenFrame,
     this.contentPadding,
     /// Player OverlayEntry only: keep a hit-absorbing scrim while [isOpen] is
-    /// still false during the open animation. Details must leave this false —
+    /// still false during the open animation. Details must leave this false -
     /// the panel stays mounted when closed and must not block the page.
     this.absorbHitsWhenClosed = false,
   });
@@ -38,7 +38,7 @@ class TorrentSourcesPanel extends StatelessWidget {
     final sources = panelWidthOf(context);
     final remaining = screenWidth - sources;
     if (remaining <= 0) return 0;
-    // Never wider than the space left of Sources — a wider Filters overlay
+    // Never wider than the space left of Sources - a wider Filters overlay
     // sits on top of the Sources list and steals every row tap.
     if (remaining < 280) return remaining;
     return remaining.clamp(300.0, 420.0);

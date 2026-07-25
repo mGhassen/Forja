@@ -8,7 +8,7 @@ import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 
-/// Cinematic details hero for non-TMDB hubs — matches [MediaDetailsHero] layout.
+/// Cinematic details hero for non-TMDB hubs - matches [MediaDetailsHero] layout.
 class HubDetailsHero extends StatelessWidget {
   const HubDetailsHero({
     super.key,
@@ -343,7 +343,7 @@ class _HubHeroMainColumn extends StatelessWidget {
     return reserved;
   }
 
-  /// Meta stack only — actions + progress are reserved below in the column.
+  /// Meta stack only - actions + progress are reserved below in the column.
   double _metaUsedHeight({
     required bool showSubtitle,
     required bool showGenres,
@@ -406,7 +406,7 @@ class _HubHeroMainColumn extends StatelessWidget {
       if (overBudget()) showGenres = false;
       if (overBudget()) showSubtitle = false;
       if (overBudget()) showMetaLine = false;
-      // Synopsis yields before title — empty hero with only overview is worse.
+      // Synopsis yields before title - empty hero with only overview is worse.
       if (overBudget()) showOverview = false;
       if (overBudget() && showSeriesProgress) {
         showSeriesProgress = false;

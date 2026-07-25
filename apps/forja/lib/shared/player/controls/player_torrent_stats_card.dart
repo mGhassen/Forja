@@ -14,7 +14,7 @@ class PlayerTorrentStatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final seederText = indexerSeeders != null ? '$indexerSeeders' : '—';
+    final seederText = indexerSeeders != null ? '$indexerSeeders' : '-';
     return IgnorePointer(
       child: DecoratedBox(
         decoration: BoxDecoration(

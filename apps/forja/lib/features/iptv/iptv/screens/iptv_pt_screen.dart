@@ -41,9 +41,9 @@ part 'iptv_pt_widgets_episode.dart';
 part 'iptv_pt_widgets_channels.dart';
 
 /// Mask a URL for safe display: keeps host, masks each path segment to first 2 chars + ***.
-/// Returns '—' for empty/invalid input. Strips query and fragment.
+/// Returns '-' for empty/invalid input. Strips query and fragment.
 String _redactUrl(String? url) {
-  if (url == null || url.trim().isEmpty) return '—';
+  if (url == null || url.trim().isEmpty) return '-';
   return url.trim();
 }
 

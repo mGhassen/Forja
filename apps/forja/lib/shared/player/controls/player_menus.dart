@@ -152,7 +152,7 @@ void showPlayerSettingsMenu({
     anchorContext: anchorContext,
     width: 340,
     maxHeight: 560,
-    // Column (not ListView) — same as audio/quality so TV linear D-pad
+    // Column (not ListView) - same as audio/quality so TV linear D-pad
     // walks every row without scrollable focus gaps.
     child: Padding(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),

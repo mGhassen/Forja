@@ -103,7 +103,7 @@ class _IptvEpgGuideViewState extends State<IptvEpgGuideView> {
   bool _didInitialScroll = false;
   Timer? _nowTick;
   DateTime _now = DateTime.now();
-  /// Visible time slice (+ buffer) — programmes outside are not tiled.
+  /// Visible time slice (+ buffer) - programmes outside are not tiled.
   late DateTime _sliceStart;
   late DateTime _sliceEnd;
 
@@ -224,7 +224,7 @@ class _IptvEpgGuideViewState extends State<IptvEpgGuideView> {
     _syncVisibleSlice();
   }
 
-  /// Tile only programmes overlapping [sliceStart, sliceEnd] — not the full day.
+  /// Tile only programmes overlapping [sliceStart, sliceEnd] - not the full day.
   ///
   /// Xtream often returns overlapping / duplicate listings for the same channel.
   /// We sort, then advance a cursor so cells never stack on the same x-range.
@@ -250,7 +250,7 @@ class _IptvEpgGuideViewState extends State<IptvEpgGuideView> {
     var cursor = from;
     for (final e in ordered) {
       if (!e.stop.isAfter(from) || !e.start.isBefore(to)) continue;
-      // Clip into the remaining free range — drops dupes / overlaps.
+      // Clip into the remaining free range - drops dupes / overlaps.
       var start = e.start.isBefore(from) ? from : e.start;
       if (start.isBefore(cursor)) start = cursor;
       final stop = e.stop.isAfter(to) ? to : e.stop;
@@ -413,7 +413,7 @@ class _IptvEpgGuideViewState extends State<IptvEpgGuideView> {
                           controller: _vGrid,
                           physics: const ClampingScrollPhysics(),
                           itemExtent: _rowH,
-                          // ~2 rows above/below viewport — only those fetch EPG.
+                          // ~2 rows above/below viewport - only those fetch EPG.
                           // ignore: deprecated_member_use
                           cacheExtent: _rowH * 2,
                           itemCount: streams.length,
@@ -665,7 +665,7 @@ class _ProgrammeBlock extends StatelessWidget {
         ? const Color(0xFF3B82F6).withValues(alpha: 0.55)
         : Colors.white.withValues(alpha: 0.08);
 
-    // Tiny slices (overlap remnants / short spots) — color only, no Column.
+    // Tiny slices (overlap remnants / short spots) - color only, no Column.
     final showLabel = width >= 36;
     final showTime = width >= 64;
 
@@ -691,7 +691,7 @@ class _ProgrammeBlock extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        entry.title.isEmpty ? '—' : entry.title,
+                        entry.title.isEmpty ? '-' : entry.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(

@@ -88,7 +88,7 @@ class _ArabicScreenState extends State<ArabicScreen> {
     final merged = [...results[0], ...results[1], ...results[2]];
 
     // Cross-source dedup: collapse entries that look like the same show
-    // (same normalized title) into one — prefer larozaa, then brstej, then
+    // (same normalized title) into one - prefer larozaa, then brstej, then
     // dimatoon, matching the order results were appended in.
     String norm(String t) => t
         .toLowerCase()

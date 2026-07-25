@@ -6,7 +6,7 @@ import 'package:forja/shared/design/src/shell_tokens.dart';
 /// Content gutters reuse [ShellTokens] so details stay aligned with shell
 /// catalog rows and body max-width.
 abstract final class DetailsTokens {
-  /// Extra pull-up for movie details body (cast/trailers) — not used for TV episodes.
+  /// Extra pull-up for movie details body (cast/trailers) - not used for TV episodes.
   static const double heroBodyOverlap = 120;
 
   /// Backdrop band reserved for seasons + episodes under the hero chrome.
@@ -14,7 +14,7 @@ abstract final class DetailsTokens {
   /// overflow upward and cover the hero image.
   static const double episodeBackdropBleed = 500;
 
-  /// Episodes-only rail (no season posters) — title + episode cards + padding.
+  /// Episodes-only rail (no season posters) - title + episode cards + padding.
   /// Keeps ~180px less empty gap under Play when there is a single season.
   static const double episodeBackdropBleedEpisodesOnly = 320;
 
@@ -66,19 +66,19 @@ abstract final class DetailsTokens {
     return sideGutter + padding;
   }
 
-  /// Back chevron on details overlays — matches hero title / body content inset.
+  /// Back chevron on details overlays - matches hero title / body content inset.
   static double backButtonLeftInset(BuildContext context) {
     return contentLeftInset(MediaQuery.sizeOf(context).width);
   }
 
-  /// Cinematic hero band (~82% viewport) — see media-details feature doc.
+  /// Cinematic hero band (~82% viewport) - see media-details feature doc.
   static const double heroViewportFraction = 0.82;
 
   /// Floor for title/actions when the episode rail claims [episodeBackdropBleed].
   static const double heroWithEpisodesMinFraction = 0.42;
 
   /// Compact phones / short landscape (incl. 720p Android TV) need a taller
-  /// chrome floor — 0.42 leaves ~60–100px for the title/Play column after top
+  /// chrome floor - 0.42 leaves ~60–100px for the title/Play column after top
   /// inset + rail gap, which zeros the title and drops synopsis.
   static const double heroWithEpisodesMinFractionCompact = 0.58;
 
@@ -90,7 +90,7 @@ abstract final class DetailsTokens {
   static double heroContentToRailGap(double heroChromeHeight) =>
       heroChromeHeight < 480 ? 24.0 : 72.0;
 
-  /// Full on-screen backdrop band — title/actions + optional TV bleed.
+  /// Full on-screen backdrop band - title/actions + optional TV bleed.
   static double heroBackdropBand(
     BuildContext context, {
     double? viewportHeight,
@@ -118,7 +118,7 @@ abstract final class DetailsTokens {
     );
   }
 
-  /// Hero chrome height for media details — prefer [viewportHeight] from a [LayoutBuilder].
+  /// Hero chrome height for media details - prefer [viewportHeight] from a [LayoutBuilder].
   /// TV episode rails add [episodeRailBleed] below this in the hero stack.
   static double heroHeight(
     BuildContext context, {

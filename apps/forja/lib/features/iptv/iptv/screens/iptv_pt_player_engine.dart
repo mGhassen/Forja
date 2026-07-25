@@ -42,7 +42,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
     _s._exoViewId = _IptvPtPlayerScreenState._nextExoViewId++;
     _s._exoEventSub = ExoPlayerBridge.eventsFor(_s._exoViewId!).listen(_onExoEvent);
     if (mounted) setState(() => _s._playerReady = true);
-    // Let ExoPlayerView attach before open() — same frame-delay as ExoPlayerScreen.
+    // Let ExoPlayerView attach before open() - same frame-delay as ExoPlayerScreen.
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _s._disposed) return;
     await _openCurrent();
@@ -163,7 +163,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       );
       await _s._player!.play();
     }
-    // Re-apply after every open/recreate — media_kit resets to 100, and
+    // Re-apply after every open/recreate - media_kit resets to 100, and
     // mute is volume=0 in Dart state only.
     _engineSetVolume(_s._volume);
   }
@@ -173,7 +173,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       final p = _s._player?.platform;
       if (p is! NativePlayer) return;
 
-      // Prefer safe GPU decode with software fallback — raw `auto` can stick on
+      // Prefer safe GPU decode with software fallback - raw `auto` can stick on
       // a broken VideoToolbox session on macOS (black texture, audio OK).
       await p.setProperty('hwdec', _useSoftwareDecode ? 'no' : 'auto-safe');
       // Direct rendering + D3D11 on Windows live feeds can stick the last
@@ -187,7 +187,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       // Cache: prioritise SMOOTHNESS over live-edge latency. We aggressively
       // pre-buffer ~30 s of forward data and let mpv hold up to 150 MB so
       // brief upstream hiccups never reach the screen. cache-pause stays
-      // OFF — we'd rather let the decoder skip frames than show a spinner.
+      // OFF - we'd rather let the decoder skip frames than show a spinner.
       await p.setProperty('cache', 'yes');
       await p.setProperty('cache-secs', '30');
       await p.setProperty('demuxer-readahead-secs', '20');
@@ -195,21 +195,21 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       await p.setProperty('demuxer-max-back-bytes', '25000000');
       await p.setProperty('cache-pause', 'no');
       await p.setProperty('cache-pause-initial', 'no');
-      // Larger audio buffer too — audio underruns are the most jarring
+      // Larger audio buffer too - audio underruns are the most jarring
       // form of buffering on IPTV feeds.
       await p.setProperty('audio-buffer', '1.0');
 
       await p.setProperty('sub-auto', 'all');
       await p.setProperty('sub-visibility', 'no');
 
-      // Don't quit on EOF / brief disconnect — let us recover
+      // Don't quit on EOF / brief disconnect - let us recover
       await p.setProperty('keep-open', 'yes');
       await p.setProperty('keep-open-pause', 'no');
 
       // HLS: pick best variant
       await p.setProperty('hls-bitrate', 'max');
 
-      // RTSP over TCP — way more reliable on flaky networks
+      // RTSP over TCP - way more reliable on flaky networks
       await p.setProperty('rtsp-transport', 'tcp');
 
       // Many Xtream panels gate streams on a VLC user-agent
@@ -227,16 +227,16 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       );
 
       // MPEG-TS / HLS demux tuning.
-      //   probesize=5MB, analyzeduration=5s — big enough for ffmpeg to
+      //   probesize=5MB, analyzeduration=5s - big enough for ffmpeg to
       //                                       detect real codec params.
-      //   discardcorrupt                    — drop junk packets silently.
+      //   discardcorrupt                    - drop junk packets silently.
       // We deliberately DO NOT set fflags=+nobuffer here. +nobuffer tells
       // ffmpeg to push frames the instant they arrive, which is great for
       // sub-second-latency live but means any upstream jitter ⇒ visible
       // buffer underrun. For IPTV we'd rather have ~1–2 s of demuxer
       // smoothing than a spinner every 30 s.
       // HLS-only options (live_start_index, m3u8_hold_counters, etc.) are
-      // intentionally not set — when the stream isn't HLS, libavformat
+      // intentionally not set - when the stream isn't HLS, libavformat
       // rejects them and mpv prints noisy errors the watchdog mistakes
       // for stream failures.
       await p.setProperty(
@@ -251,7 +251,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
   }
 
   Future<void> _initOrientationAndChrome() async {
-    // Don't auto-enter fullscreen or force landscape — the player opens in a
+    // Don't auto-enter fullscreen or force landscape - the player opens in a
     // normal window/portrait, and the user enters fullscreen explicitly via
     // the fullscreen button.
     _s._isFullscreen = false;
@@ -262,7 +262,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       try {
         final isFull = await windowManager.isFullScreen();
         if (isFull) {
-          // Leaving fullscreen — also drop maximize so the user gets a real window.
+          // Leaving fullscreen - also drop maximize so the user gets a real window.
           await windowManager.setFullScreen(false);
           if (await windowManager.isMaximized()) {
             await windowManager.unmaximize();
@@ -308,7 +308,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       if (pos != _s._lastPos) {
         _s._lastPos = pos;
         _s._lastPosChange = DateTime.now();
-        // Healthy streak — reset retry count if we've been ticking smoothly
+        // Healthy streak - reset retry count if we've been ticking smoothly
         if (_s._retryAttempt > 0 &&
             DateTime.now().difference(_s._lastPosChange) <
                 const Duration(milliseconds: 200) &&
@@ -333,7 +333,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       } else if (_s._userPlayWhenReady) {
         // libmpv silently went paused while the user wants playback. On a
         // live IPTV stream this is the classic "feed died, mpv hit EOF and
-        // toggled pause=yes" symptom. Poke play() once immediately — if it
+        // toggled pause=yes" symptom. Poke play() once immediately - if it
         // takes, great; if it doesn't, the watchdog will hard-reload us.
         _s._readyNotPlayingSince = DateTime.now();
         Future.microtask(() async {
@@ -367,7 +367,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       // "Stream ends prematurely" / "End of file" on a live HTTP feed means
       // the CDN dropped the TCP connection mid-stream. mpv's reconnect_at_eof
       // only fires on clean EOF, not on premature close, so we have to force
-      // a full player recreation to get a fresh socket — gentle seek/reopen
+      // a full player recreation to get a fresh socket - gentle seek/reopen
       // attempts will just keep failing on the same dead connection.
       final lower = msg.toLowerCase();
       if (lower.contains('ends prematurely') ||
@@ -379,7 +379,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       _triggerRecovery(reason: 'error: $msg');
     });
     // mpv log stream catches conditions that don't surface as `error`
-    // events — most importantly, ffmpeg's "http: Stream ends prematurely"
+    // events - most importantly, ffmpeg's "http: Stream ends prematurely"
     // (CDN dropped the TCP connection mid-stream). Without this, the
     // watchdog only sees the resulting position freeze and tries gentle
     // recoveries that can't fix a dead socket.
@@ -389,7 +389,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
           (text.contains('hardware accelerator failed') ||
               text.contains('vt decoder cb') ||
               text.contains('output image buffer is null'))) {
-        debugPrint('[IPTV Player] hw decode failed — falling back to software');
+        debugPrint('[IPTV Player] hw decode failed - falling back to software');
         unawaited(_forceSoftwareDecode());
         return;
       }
@@ -433,7 +433,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
   Future<void> _openCurrent() async {
     final src = _s._sources[_s._sourceIdx];
     _playbackStarted = false;
-    // Connect silently — no banner. The buffering indicator (if any) will
+    // Connect silently - no banner. The buffering indicator (if any) will
     // appear naturally while the stream loads.
     try {
       await _engineOpenSource(src);
@@ -458,7 +458,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
   }
 
   /// Best-effort jump to the live edge after a (re)open.
-  /// Only fires when [_s._streamSeekable] — pure-live MPEG-TS / direct HTTP
+  /// Only fires when [_s._streamSeekable] - pure-live MPEG-TS / direct HTTP
   /// feeds must not be seek()'d (mpv prints noisy errors and it can't help).
   void _scheduleJumpToLive() {
     if (_s._exoBackend || !_s._streamSeekable) return;
@@ -473,7 +473,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
         await p.command(['drop-buffers']);
         await p.command(['seek', '99999', 'absolute']);
       } catch (_) {
-        // Best-effort — ignore.
+        // Best-effort - ignore.
       }
     });
   }
@@ -490,7 +490,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
           now.difference(_s._lastPosChange) < const Duration(milliseconds: 1500) &&
           _s._lastRecoveryAt != null &&
           now.difference(_s._lastRecoveryAt!) > _IptvPtPlayerScreenState._healthyStreakNeeded) {
-        debugPrint('[IPTV Watchdog] healthy streak — resetting retries');
+        debugPrint('[IPTV Watchdog] healthy streak - resetting retries');
         _s._retryAttempt = 0;
         _s._lastRecoveryAt = null;
         if (mounted) setState(() => _s._statusBanner = null);
@@ -509,11 +509,11 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
         return;
       }
       // Detector 2: position frozen while user wants playback.
-      // Do NOT gate on !_buffering — Windows live feeds often flicker
+      // Do NOT gate on !_buffering - Windows live feeds often flicker
       // buffering true/false while the last frame is stuck, which resets
       // detector 1's timer and previously left the stream dead forever
       // with no "Reconnecting…" banner.
-      // Gate: _lastPos > 0 — avoid false positives before first frame
+      // Gate: _lastPos > 0 - avoid false positives before first frame
       // (detector 4 covers that hang).
       if (_s._userPlayWhenReady &&
           _s._lastPos > Duration.zero &&
@@ -523,7 +523,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       }
       // Detector 3: should be playing but isn't. For LIVE IPTV, a sustained
       // self-pause (mpv flipped to pause=yes on its own) almost always means
-      // the upstream feed ended — live TV doesn't end, ever, so this is
+      // the upstream feed ended - live TV doesn't end, ever, so this is
       // dead. Skip the gradual seek→reload backoff and go straight to a hard
       // reopen (forceHard:true).
       if (_s._userPlayWhenReady &&
@@ -584,12 +584,12 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
           await _openCurrent();
           return;
         }
-        // Single-source channel that won't connect. Don't give up — live
+        // Single-source channel that won't connect. Don't give up - live
         // streams come back. Wipe the player completely and try again on a
         // long interval so we're not hammering a dead endpoint.
         if (mounted) {
           setState(() => _s._statusBanner =
-              'Stream offline — retrying every ${_IptvPtPlayerScreenState._coldRetryInterval.inSeconds}s…');
+              'Stream offline - retrying every ${_IptvPtPlayerScreenState._coldRetryInterval.inSeconds}s…');
         }
         await Future.delayed(_IptvPtPlayerScreenState._coldRetryInterval);
         if (_s._disposed) return;
@@ -628,7 +628,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       if (_s._disposed) return;
 
       // Hard recreate is expensive and fragile on Windows (unbounded mpv
-      // dispose — issue 062). Prefer soft reopen for early stalls; only
+      // dispose - issue 062). Prefer soft reopen for early stalls; only
       // recreate after several soft failures (or non-Windows forceHard).
       final allowHardRecreate = forceHard &&
           (!_s._windowsSoftwareDecode || _s._retryAttempt > 4);
@@ -748,7 +748,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
     final player = _s._player;
     if (player == null) return;
     MpvExclusiveSession.instance.untrackPlayer(player);
-    // Timed stop/dispose — unbounded media_kit teardown freezes Windows.
+    // Timed stop/dispose - unbounded media_kit teardown freezes Windows.
     final disposeFuture = teardownMediaKitPlayer(player);
     MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
     await disposeFuture;

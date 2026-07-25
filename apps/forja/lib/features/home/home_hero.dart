@@ -32,7 +32,7 @@ class HomeHeroController {
   VoidCallback? revealPlayFocus;
 }
 
-/// Cinematic home hero — carousel, metadata, play/details actions.
+/// Cinematic home hero - carousel, metadata, play/details actions.
 class HomeCinematicHero extends StatefulWidget {
   const HomeCinematicHero({
     super.key,
@@ -65,7 +65,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   static const int _heroLoopLength = 10000;
   static const int _heroLoopStart = 5000;
 
-  /// Home hero — stronger left vignette than hub/details (text column legibility).
+  /// Home hero - stronger left vignette than hub/details (text column legibility).
   static const double _heroGradientSolidEndFraction = 0.02;
   static const double _heroGradientFadeMid1Alpha = 0.82;
   static const double _heroGradientFadeMid2Alpha = 0.2;
@@ -73,7 +73,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   /// Soft black softener at the carousel seam while swiping.
   static const double _heroSeamScrimWidth = 120;
   static const double _heroSeamTransitionEpsilon = 0.015;
-  /// Trailing (right) join fade only — never paint a leading/left edge
+  /// Trailing (right) join fade only - never paint a leading/left edge
   /// (that sits under the hero text fade and looks dirty).
   static const double _heroSlideEdgeGradientFraction = 0.10;
   /// Right-edge opacity vs viewport X of that edge (0 = left, 1 = right).
@@ -129,7 +129,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
 
   @override
   Widget build(BuildContext context) {
-    // KeepAlive tabs all mount — only Home owns shared nodes while selected.
+    // KeepAlive tabs all mount - only Home owns shared nodes while selected.
     if (ShellTvFocus.currentNavTabId == 'home') {
       ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
       ShellTvFocus.homeHeroGallery = _tvHeroGalleryFocus;
@@ -185,7 +185,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         defaultBottom;
   }
 
-  /// Scroll-hide anchor for [HomeTopBar] — cinematic chrome only.
+  /// Scroll-hide anchor for [HomeTopBar] - cinematic chrome only.
   ///
   /// Must not use the extended page-bleed backdrop height (Featured row), or
   /// the top bar stays visible until nearly a full viewport of scroll.
@@ -993,7 +993,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           placeholder: (c, u) => ColoredBox(color: shellBg),
           errorWidget: (c, u, e) => ColoredBox(color: shellBg),
         ),
-        // Trailing join only — opacity tracks scroll so it fades out while
+        // Trailing join only - opacity tracks scroll so it fades out while
         // sliding left (never parks under the hero text fade). Reverse swipe
         // uses the same rule: previous slide's right edge ramps in as it
         // leaves the left zone.

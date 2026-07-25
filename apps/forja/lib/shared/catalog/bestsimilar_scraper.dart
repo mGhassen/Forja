@@ -1,4 +1,4 @@
-// bestsimilar.com scraper — title autocomplete + similar-movies extraction.
+// bestsimilar.com scraper - title autocomplete + similar-movies extraction.
 //
 // Catalog fetch + HTML parse run in Rust (`catalog`). Dart keeps
 // in-memory caches and TMDB enrichment fields on [BSItem].

@@ -5,7 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rust/rust.dart';
 
-/// Full Trakt.tv integration — OAuth device-code auth, watchlist sync,
+/// Full Trakt.tv integration - OAuth device-code auth, watchlist sync,
 /// scrobble, playback progress, and two-way import/export.
 class TraktService {
   // ── Singleton ──────────────────────────────────────────────────────────
@@ -36,10 +36,10 @@ class TraktService {
   Future<void>? _syncInProgress;
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  A U T H   —   D E V I C E   C O D E   F L O W
+  //  A U T H   -   D E V I C E   C O D E   F L O W
   // ═══════════════════════════════════════════════════════════════════════
 
-  /// Step 1 — request a device code + user_code.
+  /// Step 1 - request a device code + user_code.
   /// Returns the API response map or null on failure.
   Future<Map<String, dynamic>?> startDeviceAuth() async {
     try {
@@ -54,13 +54,13 @@ class TraktService {
     return null;
   }
 
-  /// Step 2 — poll for the token after user enters the code.
+  /// Step 2 - poll for the token after user enters the code.
   /// Returns:
-  ///   'success'  — tokens saved, good to go
-  ///   'pending'  — user hasn't authorized yet
-  ///   'expired'  — code expired
-  ///   'denied'   — user denied
-  ///   'error'    — unexpected failure
+  ///   'success'  - tokens saved, good to go
+  ///   'pending'  - user hasn't authorized yet
+  ///   'expired'  - code expired
+  ///   'denied'   - user denied
+  ///   'error'    - unexpected failure
   Future<String> pollForToken(String deviceCode) async {
     try {
       final response = await _postPublic('/oauth/device/token', body: json.encode({
@@ -83,7 +83,7 @@ class TraktService {
         case 418:
           return 'denied';
         case 429:
-          return 'pending'; // slow down — caller already uses interval
+          return 'pending'; // slow down - caller already uses interval
         default:
           debugPrint('[Trakt] Poll unexpected status: ${response.status}');
           return 'error';
@@ -279,10 +279,10 @@ class TraktService {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  S C R O B B L E   —   R E A L - T I M E   T R A C K I N G
+  //  S C R O B B L E   -   R E A L - T I M E   T R A C K I N G
   // ═══════════════════════════════════════════════════════════════════════
 
-  /// POST /scrobble/start — call when playback begins.
+  /// POST /scrobble/start - call when playback begins.
   Future<bool> scrobbleStart({
     required int tmdbId,
     required String mediaType,
@@ -296,7 +296,7 @@ class TraktService {
         progressPercent: progressPercent);
   }
 
-  /// POST /scrobble/pause — call when playback pauses.
+  /// POST /scrobble/pause - call when playback pauses.
   Future<bool> scrobblePause({
     required int tmdbId,
     required String mediaType,
@@ -310,7 +310,7 @@ class TraktService {
         progressPercent: progressPercent);
   }
 
-  /// POST /scrobble/stop — call when playback stops.
+  /// POST /scrobble/stop - call when playback stops.
   /// If progress >= 80 %, Trakt marks it as watched automatically.
   Future<bool> scrobbleStop({
     required int tmdbId,
@@ -326,7 +326,7 @@ class TraktService {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  H I S T O R Y   —   M A R K   A S   W A T C H E D
+  //  H I S T O R Y   -   M A R K   A S   W A T C H E D
   // ═══════════════════════════════════════════════════════════════════════
 
   /// Explicitly add an item to history (watched).
@@ -443,7 +443,7 @@ class TraktService {
     }
   }
 
-  /// GET /sync/playback — items the user is still in the middle of.
+  /// GET /sync/playback - items the user is still in the middle of.
   /// Returns raw Trakt response list.
   Future<List<Map<String, dynamic>>> _getPlaybackProgress() async {
     final token = await _getValidToken();
@@ -650,7 +650,7 @@ class TraktService {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  C O L L E C T I O N   —   O W N E D   M E D I A
+  //  C O L L E C T I O N   -   O W N E D   M E D I A
   // ═══════════════════════════════════════════════════════════════════════
 
   /// Add an item to the user's collection.
@@ -1051,10 +1051,10 @@ class TraktService {
 
   /// Run a full import from Trakt to local data.
   /// Uses getLastActivities to skip unchanged data (smart sync).
-  /// Safe to call multiple times — only runs once per session unless forced.
+  /// Safe to call multiple times - only runs once per session unless forced.
   Future<void> fullSync({bool force = false}) async {
     if (!force && _initialSyncDone) return;
-    // Prevent concurrent sync — piggyback on existing run
+    // Prevent concurrent sync - piggyback on existing run
     if (_syncInProgress != null) {
       await _syncInProgress;
       return;
@@ -1102,7 +1102,7 @@ class TraktService {
       }
 
       _initialSyncDone = true;
-      debugPrint('[Trakt] Smart sync done — watchlist: $watchlistCount, playback: $playbackCount, episodes: $episodesImported');
+      debugPrint('[Trakt] Smart sync done - watchlist: $watchlistCount, playback: $playbackCount, episodes: $episodesImported');
     } finally {
       _syncInProgress = null;
       completer.complete();
@@ -1189,7 +1189,7 @@ class TraktService {
       }
     } catch (e) {
       debugPrint('[Trakt] Failed to fetch existing watched state: $e');
-      // Abort — we can't safely deduplicate
+      // Abort - we can't safely deduplicate
       return 0;
     }
     debugPrint('[Trakt] Trakt already has ${traktHas.length} watched episodes');
@@ -1285,7 +1285,7 @@ class TraktService {
           if (resp.status == 200 || resp.status == 201) {
             exported += batch.length;
           } else if (resp.status == 429) {
-            // Rate limited — wait and retry
+            // Rate limited - wait and retry
             final retryAfter = resp.retryAfter ?? 2;
             debugPrint('[Trakt] Rate limited, waiting ${retryAfter}s');
             await Future.delayed(Duration(seconds: retryAfter));
@@ -1455,7 +1455,7 @@ class TraktService {
       final expiresAt = DateTime.tryParse(expiresAtStr);
       if (expiresAt != null &&
           DateTime.now().isAfter(expiresAt.subtract(const Duration(days: 7)))) {
-        // Token expires within 7 days — refresh it
+        // Token expires within 7 days - refresh it
         debugPrint('[Trakt] Token nearing expiry, refreshing...');
         final refreshed = await _refreshToken();
         if (refreshed) {
@@ -1469,10 +1469,10 @@ class TraktService {
     return token;
   }
 
-  /// Handle 401 unauthorized — token revoked server-side.
+  /// Handle 401 unauthorized - token revoked server-side.
   void _handleUnauthorized(int statusCode) {
     if (statusCode == 401) {
-      debugPrint('[Trakt] 401 Unauthorized — token revoked, clearing auth');
+      debugPrint('[Trakt] 401 Unauthorized - token revoked, clearing auth');
       _storage.delete(key: _keyAccessToken);
       _storage.delete(key: _keyRefreshToken);
       _storage.delete(key: _keyExpiresAt);
@@ -1514,7 +1514,7 @@ class TraktService {
       final resp = await _post(token, '/scrobble/$action', body: json.encode(body));
       _handleUnauthorized(resp.status);
       debugPrint('[Trakt] Scrobble $action (tmdb:$tmdbId S:$season E:$episode ${progressPercent.toStringAsFixed(1)}%): ${resp.status}');
-      // 429 = rate limited — wait and retry once
+      // 429 = rate limited - wait and retry once
       if (resp.status == 429) {
         final retryAfter = resp.retryAfter ?? 1;
         debugPrint('[Trakt] Rate limited, retrying after ${retryAfter}s');

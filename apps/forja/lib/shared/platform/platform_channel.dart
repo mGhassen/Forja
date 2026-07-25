@@ -44,7 +44,7 @@ abstract final class PlatformChannel {
     SettingsService.configurePlatformProfile(profile);
     ShellTokens.nativeAndroidTvDetected =
         profile == PlatformProfile.androidTv;
-    // Platform defaults seed after Engine.init() — see bootstrapForja.
+    // Platform defaults seed after Engine.init() - see bootstrapForja.
     unawaited(DeviceCapabilitiesService.detect(platformProfile: profile));
   }
 
@@ -55,7 +55,7 @@ abstract final class PlatformChannel {
     await SettingsService().ensurePlatformDefaultsSeeded(profile);
   }
 
-  /// Android TV only — software WebView warm-up before first real WebView use.
+  /// Android TV only - software WebView warm-up before first real WebView use.
   static Future<void> prepareWebViewForTv() async {
     if (!Platform.isAndroid) return;
     try {

@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 
 /// Common ISO-639-1 / ISO-639-2 codes mapped to display names.
-/// Order matters in the picker UI — most common first. Aliases include
+/// Order matters in the picker UI - most common first. Aliases include
 /// codes, English names, native names, and a few common foreign-language
 /// renderings so that fuzzy detection on a track's `language` or `title`
 /// field works no matter how the source labels it.
@@ -56,7 +56,7 @@ bool _matchesLanguage(String displayName, String? language, String? title) {
       language: language, title: title);
 }
 
-/// Public version of [_matchesLanguage] — useful for matching external
+/// Public version of [_matchesLanguage] - useful for matching external
 /// subtitle map entries (which carry `language`/`display` keys, not real
 /// SubtitleTrack objects yet).
 bool matchesPreferredLanguage(String displayName,
@@ -258,7 +258,7 @@ int _scoreAudioTrack(
   return score;
 }
 
-/// Picks the best concrete audio track for auto mode — never returns `auto`/`no`.
+/// Picks the best concrete audio track for auto mode - never returns `auto`/`no`.
 AudioTrack? pickBestAudioTrack({
   required List<AudioTrack> audioTracks,
   required String preferredAudioLang,

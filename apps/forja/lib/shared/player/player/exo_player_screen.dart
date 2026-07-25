@@ -163,7 +163,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ForjaToast.info(
-          'Separate audio track not supported in ExoPlayer — use MediaKit in Settings.',
+          'Separate audio track not supported in ExoPlayer - use MediaKit in Settings.',
         );
       });
     }
@@ -415,7 +415,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     if (!_isTv) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_playFocus.canRequestFocus) return;
-      // Menu/panel owns the remote — don't yank focus back to Play.
+      // Menu/panel owns the remote - don't yank focus back to Play.
       if (playerChromeOverlayBlocksFocusClaim()) return;
       _playFocus.requestFocus();
     });
@@ -697,7 +697,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       _preferredSubtitleApplied = true;
       return;
     }
-    // Already applied English fallback and preferred still missing — stop.
+    // Already applied English fallback and preferred still missing - stop.
     if (preferredMatch == null && _preferredSubtitleApplied) return;
 
     await ExoPlayerBridge.selectTrack(
@@ -752,7 +752,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     }
     _exitInProgress = true;
     await _saveProgress();
-    // Stop Exo before pop — dispose alone is unawaited and can leave audio
+    // Stop Exo before pop - dispose alone is unawaited and can leave audio
     // after the route is gone (issue 059).
     try {
       await ExoPlayerBridge.stop(_viewId);

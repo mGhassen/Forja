@@ -191,7 +191,7 @@ class PipService {
   }
 }
 
-/// Local Rect type — avoid pulling dart:ui.Rect into the service public API.
+/// Local Rect type - avoid pulling dart:ui.Rect into the service public API.
 class Rect {
   final double left;
   final double top;

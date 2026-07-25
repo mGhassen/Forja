@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 
-/// Shared Forja toggle — brand-green track, elevated thumb, hairline off outline.
+/// Shared Forja toggle - brand-green track, elevated thumb, hairline off outline.
 ///
 /// Prefer this over raw [Switch] / [SwitchListTile] color overrides. App theme
 /// [forjaSwitchThemeData] mirrors the same tokens so Material list tiles inherit
@@ -39,7 +39,7 @@ class ForjaSwitch extends StatelessWidget {
   }
 }
 
-/// Theme data matching [ForjaSwitch] — set on [ThemeData.switchTheme].
+/// Theme data matching [ForjaSwitch] - set on [ThemeData.switchTheme].
 SwitchThemeData get forjaSwitchThemeData => SwitchThemeData(
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       thumbColor: forjaSwitchThumbColor,

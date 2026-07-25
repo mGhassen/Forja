@@ -7,7 +7,7 @@ import 'package:rust/rust.dart';
 
 /// TMDB watch-provider strip for desktop shell.
 ///
-/// Hidden on Home for v1.0 — mount via [kShowShellProviderMenuOnHome] or embed
+/// Hidden on Home for v1.0 - mount via [kShowShellProviderMenuOnHome] or embed
 /// on Search (and other tabs) when that UX ships.
 const bool kShowShellProviderMenuOnHome = false;
 
@@ -385,7 +385,7 @@ class _ProviderFilterCard extends StatelessWidget {
   }
 }
 
-/// Thin line check — always visible when provider filter is active.
+/// Thin line check - always visible when provider filter is active.
 class _ProviderSelectedMark extends StatelessWidget {
   const _ProviderSelectedMark();
 

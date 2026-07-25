@@ -133,7 +133,7 @@ class _TvBrowseTextFieldState extends State<TvBrowseTextField> {
   Widget build(BuildContext context) {
     final showBrowsePlaceholder =
         _browseOnly && widget.focusNode.hasFocus && widget.controller.text.isEmpty;
-    // copyWith(hintText: null) keeps the old hint — empty string hides it.
+    // copyWith(hintText: null) keeps the old hint - empty string hides it.
     final decoration = widget.decoration.copyWith(
       hintText: showBrowsePlaceholder ? '' : widget.decoration.hintText,
     );

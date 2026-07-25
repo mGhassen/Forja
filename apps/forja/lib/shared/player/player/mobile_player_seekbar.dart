@@ -1,7 +1,7 @@
 part of 'mobile_player_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  MOBILE SEEKBAR  — touch-friendly, no tooltip (no hover on mobile)
+//  MOBILE SEEKBAR  - touch-friendly, no tooltip (no hover on mobile)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MobileSeekbar extends StatefulWidget {
@@ -108,7 +108,7 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
           ),
         );
       },
-      // 32px tall hit area — much easier to grab on touch
+      // 32px tall hit area - much easier to grab on touch
       child: SizedBox(
         height: 32,
         child: Align(
@@ -180,7 +180,7 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
                       ),
                     ),
                   ),
-                  // Drag time label — floats above thumb while dragging
+                  // Drag time label - floats above thumb while dragging
                   if (_isDragging && widget.duration.inMilliseconds > 0)
                     Positioned(
                       left: (playPx - 36).clamp(0.0, _trackWidth - 72),
@@ -224,7 +224,7 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
 //  SIDE INDICATOR  (volume / brightness vertical pill)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Replaces VolumeBrightnessIndicator from shared_widgets — self-contained.
+/// Replaces VolumeBrightnessIndicator from shared_widgets - self-contained.
 class _SideIndicator extends StatelessWidget {
   final IconData icon;
   final double value; // 0.0 – 1.0

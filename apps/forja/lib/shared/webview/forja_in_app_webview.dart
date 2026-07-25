@@ -63,7 +63,7 @@ class ForjaInAppWebView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Do not forward [key] onto InAppWebView — that would register the same
+    // Do not forward [key] onto InAppWebView - that would register the same
     // GlobalKey on two widgets (this StatelessWidget + the child).
     return InAppWebView(
       initialData: initialData,

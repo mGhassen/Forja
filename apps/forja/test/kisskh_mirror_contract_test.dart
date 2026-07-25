@@ -57,7 +57,7 @@ void main() {
           await Future<void>.delayed(const Duration(milliseconds: 10));
           return true;
         }
-        // Preferred host never answers — old Future.wait would hang forever.
+        // Preferred host never answers - old Future.wait would hang forever.
         await Completer<void>().future;
         return true;
       },

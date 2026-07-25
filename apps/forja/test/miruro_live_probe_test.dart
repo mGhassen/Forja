@@ -1,4 +1,4 @@
-// Live Miruro pipe probe — run with:
+// Live Miruro pipe probe - run with:
 //   flutter test test/miruro_live_probe_test.dart --dart-define=LIVE_MIRURO=1
 //
 // Needs network + macOS WebView (CF). Skipped unless LIVE_MIRURO=1.
@@ -9,7 +9,7 @@ import 'package:rust/rust.dart';
 
 const _live = bool.fromEnvironment('LIVE_MIRURO', defaultValue: false);
 
-/// Dan Da Dan — known Miruro/Anikoto coverage (AniList 171018 / 132029).
+/// Dan Da Dan - known Miruro/Anikoto coverage (AniList 171018 / 132029).
 const _anilistId = 132029;
 const _episode = 1;
 const _category = 'sub';
@@ -91,7 +91,7 @@ void main() {
       }
       MiruroPipeSession.instance.dispose();
 
-      // Print for operator — assertion is "we got at least one live hit".
+      // Print for operator - assertion is "we got at least one live hit".
       // ignore: avoid_print
       print('\n=== MIRURO LIVE PROBE anilist=$_anilistId ep$_episode ===');
       for (final r in rows) {

@@ -43,7 +43,7 @@ DesktopStartupDestination resolveAuthStartupDestination({
 /// Whether a [AuthChangeEvent.signedOut] should replace the running app with
 /// [AccountEntryScreen] / [TvAccountLinkScreen].
 ///
-/// Always yes — including involuntary [SignOutReason.sessionExpired] /
+/// Always yes - including involuntary [SignOutReason.sessionExpired] /
 /// [SignOutReason.sessionMissing]. Keeping the shell left Guest chrome with
 /// prior account IPTV portals still loaded (security leak).
 bool shouldReturnToAccountOnSignOut({
@@ -124,7 +124,7 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
   }
 
   Future<void> _enterPostUpdateDestination() async {
-    // Restored sessions must skip the link screen and Who's watching — land
+    // Restored sessions must skip the link screen and Who's watching - land
     // on splash with the last active profile (SharedPreferences).
     var hasSession = SyncService.instance.isSignedIn;
     if (ForjaSupabase.isConfigured) {
@@ -143,7 +143,7 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
         // Ensure active profile row is resolved before splash/shell paint.
         await SyncService.instance.activeProfile();
       } on SyncProfileFetchException catch (e) {
-        // Do not crash the startup gate — splash/shell still open; Settings
+        // Do not crash the startup gate - splash/shell still open; Settings
         // Profile shows Retry. Session may still be valid after a soft fail.
         debugPrint('[DesktopStartupGate] activeProfile: $e');
       } catch (e) {
@@ -194,7 +194,7 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     SyncService.instance.clearIdentityAfterSignOut();
     if (!mounted) return;
 
-    // Fresh splash/main tree on next entry — do not keep prior dismiss flag.
+    // Fresh splash/main tree on next entry - do not keep prior dismiss flag.
     ShellBus.splashDismissed.value = false;
     ShellBus.hideGlobalNav.value = false;
     ShellBus.requestTab.value = null;
@@ -203,7 +203,7 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     setState(() => _stage = _StartupStage.account);
   }
 
-  /// After [ProfileSwitchSplash] (avatar fly + engine warm) — open the shell
+  /// After [ProfileSwitchSplash] (avatar fly + engine warm) - open the shell
   /// without a second logo intro splash.
   void _enterShellAfterProfileSplash() {
     ShellBus.splashDismissed.value = true;
@@ -213,7 +213,7 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
   @override
   Widget build(BuildContext context) {
     // Splash → MainScreen owns its own caption. Pre-shell stages need chrome
-    // here — title bar is hidden app-wide, and WindowCaption only lives in
+    // here - title bar is hidden app-wide, and WindowCaption only lives in
     // DesktopWindowChrome.wrapShell.
     final child = switch (_stage) {
       _StartupStage.update => const ColoredBox(

@@ -246,7 +246,7 @@ class NuvioService {
     await _bundledEnsureFuture;
   }
 
-  /// Settings + Sources — same store, including the built-in addon.
+  /// Settings + Sources - same store, including the built-in addon.
   Future<List<NuvioAddon>> listUserAddons() async {
     await ensureBundledInstalled();
     return listAddons();
@@ -263,7 +263,7 @@ class NuvioService {
     return [...user, virt];
   }
 
-  /// Addons with at least one enabled scraper — for Sources panel chrome.
+  /// Addons with at least one enabled scraper - for Sources panel chrome.
   Future<List<NuvioAddon>> listSourcesPanelAddons() async {
     final addons = await listScrapingAddons();
     return addons.where((a) => a.scrapers.any((s) => s.enabled)).toList();
@@ -358,7 +358,7 @@ class NuvioService {
       scrapers: scrapers,
     );
 
-    // Pre-download every scraper script. Failures here are non-fatal — the
+    // Pre-download every scraper script. Failures here are non-fatal - the
     // user can still toggle them and retry later; getStreams will redownload.
     final prefs = await SharedPreferences.getInstance();
     for (final s in scrapers) {
@@ -380,7 +380,7 @@ class NuvioService {
     return addon;
   }
 
-  /// Lightweight refresh — fetches the manifest, merges the new scraper list
+  /// Lightweight refresh - fetches the manifest, merges the new scraper list
   /// with the existing one (preserving each scraper's `enabled` flag), and
   /// invalidates cached scripts whose source filename changed. Does NOT
   /// pre-download every script (those load lazily on first use). Safe to
@@ -487,7 +487,7 @@ class NuvioService {
   }
 
   /// Refreshes every installed addon's manifest in parallel. Safe to call
-  /// on every app launch — [refreshFromUrl] preserves each scraper's
+  /// on every app launch - [refreshFromUrl] preserves each scraper's
   /// `enabled` flag and only invalidates cached scripts whose filename
   /// changed. New scrapers added upstream show up automatically; removed
   /// ones get their cached scripts evicted. Failures are non-fatal so an
@@ -515,7 +515,7 @@ class NuvioService {
     bool forceFresh = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    // Always try the network first — community scrapers get hot-fixed
+    // Always try the network first - community scrapers get hot-fixed
     // upstream and we want users on the latest code without reinstalling.
     // Cache is only used as an offline fallback.
     try {
@@ -564,12 +564,12 @@ class NuvioService {
     return results.expand((e) => e).toList();
   }
 
-  /// Streaming variant — emits a [NuvioScraperResult] for every enabled
+  /// Streaming variant - emits a [NuvioScraperResult] for every enabled
   /// scraper as soon as it finishes (or fails / times out, in which case
   /// `streams` is empty). The stream closes when every scraper has
   /// reported. Call [cancelPending] to abort in-flight scrapers (HTTP +
   /// JS timers); cancelling only the subscription stops UI updates but
-  /// used to leave scrapers running — that path now also honors generation.
+  /// used to leave scrapers running - that path now also honors generation.
   Stream<NuvioScraperResult> streamAll({
     required String tmdbId,
     required String type, // 'movie' or 'tv'

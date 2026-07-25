@@ -55,7 +55,7 @@ class _BookReaderScreenState extends State<BookReaderScreen>
   void initState() {
     super.initState();
     _keyFocus = FocusNode();
-    debugPrint('[BookReader] initState — file: ${widget.file.path}');
+    debugPrint('[BookReader] initState - file: ${widget.file.path}');
     debugPrint('[BookReader] file exists: ${widget.file.existsSync()}');
     if (widget.file.existsSync()) {
       debugPrint('[BookReader] file size: ${widget.file.lengthSync()} bytes');
@@ -128,7 +128,7 @@ class _BookReaderScreenState extends State<BookReaderScreen>
       final containerFile =
           File('${extractDir.path}/META-INF/container.xml');
       if (!containerFile.existsSync()) {
-        throw Exception('Invalid EPUB — META-INF/container.xml missing');
+        throw Exception('Invalid EPUB - META-INF/container.xml missing');
       }
       final containerXml =
           XmlDocument.parse(await containerFile.readAsString());
@@ -405,7 +405,7 @@ class _BookReaderScreenState extends State<BookReaderScreen>
     }
 
     // Multiple lines: split forward at break points
-    // breaks = [0, b1, b2, ...] — indices into the ORIGINAL text
+    // breaks = [0, b1, b2, ...] - indices into the ORIGINAL text
     // We split from the end to preserve indices
     var pieces=[]; // text nodes, one per visual line
     var currentNode=tn;
@@ -438,7 +438,7 @@ class _BookReaderScreenState extends State<BookReaderScreen>
 
   window._focusLines=lineSpans;
 
-  // ── Merge pass — group spans on the same visual line ───────────────────
+  // ── Merge pass - group spans on the same visual line ───────────────────
   // Multiple text nodes (e.g. plain + <em> + plain) on one screen line
   // become separate spans. Group them by Y so they highlight together.
   var groups=[];  // each group = array of span indices

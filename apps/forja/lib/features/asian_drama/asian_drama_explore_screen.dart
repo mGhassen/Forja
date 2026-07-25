@@ -1,4 +1,4 @@
-// Asian Drama — Explore (browse the full kisskh.co/.ovh catalog).
+// Asian Drama - Explore (browse the full kisskh.co/.ovh catalog).
 // Mirrors https://kisskh.ovh/Explore: filter chips for type / subtitle /
 // country / status / sort order, then a paginated grid of cards with
 // Previous / Next page controls at the bottom.

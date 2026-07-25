@@ -1,4 +1,4 @@
-// Home tab section widgets — extracted from home_screen.dart (RFC-019 Phase B).
+// Home tab section widgets - extracted from home_screen.dart (RFC-019 Phase B).
 
 import 'dart:math' as math;
 
@@ -90,7 +90,7 @@ class HomeMoodCircleLayout {
   }
 }
 
-/// Circular mood picker — layout matches details **Main Characters** cast row.
+/// Circular mood picker - layout matches details **Main Characters** cast row.
 class HomeMoodCircleItem extends StatefulWidget {
   const HomeMoodCircleItem({
     required this.layout,
@@ -423,7 +423,7 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
             style: ShellSectionTitle.titleStyle,
           ),
         ),
-        // Mood circle strip — TV: always centered, no scroll; desktop: center or scroll
+        // Mood circle strip - TV: always centered, no scroll; desktop: center or scroll
         Builder(
           builder: (context) {
             final tvNav =

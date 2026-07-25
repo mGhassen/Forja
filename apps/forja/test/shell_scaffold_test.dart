@@ -695,7 +695,7 @@ void main() {
       expect(settingsInits, 1);
       final firstState = settingsStates.single;
 
-      // Enabling a tab inserts before settings — same as navbar config save.
+      // Enabling a tab inserts before settings - same as navbar config save.
       await tester.pumpWidget(
         MaterialApp(
           home: ShellBody(
@@ -718,7 +718,7 @@ void main() {
     'ShellBody selected tab receives taps when later tabs stay mounted',
     (tester) async {
       // Repro: IPTV (or any mid-list tab) looked frozen after visiting a later
-      // tab — hidden siblings kept maintainInteractivity and stole hit tests.
+      // tab - hidden siblings kept maintainInteractivity and stole hit tests.
       var iptvTaps = 0;
       var settingsTaps = 0;
 

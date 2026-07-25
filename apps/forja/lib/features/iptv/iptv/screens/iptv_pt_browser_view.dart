@@ -706,7 +706,7 @@ class _BrowserViewState extends State<_BrowserView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              ctrl.error ?? 'Failed to load channels — check connection',
+              ctrl.error ?? 'Failed to load channels - check connection',
               textAlign: TextAlign.center,
               style: GoogleFonts.plusJakartaSans(color: Colors.white60),
             ),
@@ -738,7 +738,7 @@ class _BrowserViewState extends State<_BrowserView> {
     }
     final cat = ctrl.browserSelectedCategoryId;
     final emptyMsg = cat == IptvLiveCatalog.favoritesId
-        ? 'No favorite channels yet — tap the star on a channel'
+        ? 'No favorite channels yet - tap the star on a channel'
         : cat == IptvLiveCatalog.watchedId
         ? 'No recently watched channels'
         : 'No streams in this view';
@@ -801,7 +801,7 @@ class _IptvCatalogProgressPanel extends StatelessWidget {
   final IptvCatalogLoadProgress progress;
 
   static String _fmt(int n) {
-    if (n <= 0) return '—';
+    if (n <= 0) return '-';
     final s = n.toString();
     final buf = StringBuffer();
     for (var i = 0; i < s.length; i++) {

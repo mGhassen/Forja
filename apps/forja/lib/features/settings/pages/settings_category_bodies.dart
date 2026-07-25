@@ -32,7 +32,7 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/nav_config.dart';
 
-/// Builds the body for a Settings category (lazy — only when selected / pushed).
+/// Builds the body for a Settings category (lazy - only when selected / pushed).
 Widget buildSettingsCategoryBody(
   String categoryId,
   SettingsVisibility visibility,
@@ -658,7 +658,7 @@ class SettingsAboutPageBody extends StatelessWidget {
                 onTap: () async {
                   try {
                     await Telemetry.sendTestException();
-                    ForjaToast.success('Test event sent — check Sentry Issues');
+                    ForjaToast.success('Test event sent - check Sentry Issues');
                   } catch (e) {
                     ForjaToast.info('$e');
                   }
@@ -677,7 +677,7 @@ class SettingsAboutPageBody extends StatelessWidget {
                   try {
                     await ProductAnalytics.sendTestEvent();
                     ForjaToast.success(
-                      'Test event sent — check PostHog → Activity',
+                      'Test event sent - check PostHog → Activity',
                     );
                   } catch (e) {
                     ForjaToast.info('$e');

@@ -1,4 +1,4 @@
-// AnimeSlayer (animeslayer.to) hub — mirrors `AnimeScreen` visual style.
+// AnimeSlayer (animeslayer.to) hub - mirrors `AnimeScreen` visual style.
 // Hero carousel + ambient gradient backdrop + continue-watching rail
 // + multiple horizontal poster rails parsed from /home.
 
@@ -233,7 +233,7 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
       } catch (_) {}
       ep ??= details.episodes.isNotEmpty ? details.episodes.first : null;
       if (ep == null) {
-        // No episodes resolvable — open details instead.
+        // No episodes resolvable - open details instead.
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => AnimeArabicDetailsScreen(anime: card),
@@ -767,7 +767,7 @@ class _AnimeArabicScreenState extends State<AnimeArabicScreen>
     );
   }
 
-  // ─── Episode rail (latest episodes — landscape thumbs) ────────
+  // ─── Episode rail (latest episodes - landscape thumbs) ────────
   Widget _buildEpisodeRail({
     required String title,
     required String subtitle,

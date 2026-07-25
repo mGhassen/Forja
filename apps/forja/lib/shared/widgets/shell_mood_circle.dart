@@ -92,7 +92,7 @@ class ShellMoodCircleLayout {
   }
 }
 
-/// Circular icon picker — same visual language as Home mood row.
+/// Circular icon picker - same visual language as Home mood row.
 class ShellMoodCircleItem extends StatefulWidget {
   const ShellMoodCircleItem({
     super.key,

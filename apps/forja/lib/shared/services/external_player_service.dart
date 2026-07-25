@@ -235,7 +235,7 @@ class ExternalPlayerService {
       macAppPath: '/Applications/IINA.app',
       macCliBinary: 'iina-cli',
       macBinary: 'iina',
-      // Sandboxed Forja cannot exec iina-cli directly — the child inherits the
+      // Sandboxed Forja cannot exec iina-cli directly - the child inherits the
       // sandbox and cannot IPC to IINA.app. Launch via `/usr/bin/open` instead.
       macPreferOpenLauncher: true,
     ),
@@ -355,7 +355,7 @@ class ExternalPlayerService {
   /// Resolves the URL/headers external players should open.
   ///
   /// macOS desktop: hls-proxy when headers are required (App Sandbox cannot exec
-  /// `iina-cli` with mpv flags — use `open -a IINA <url>` on a localhost proxy).
+  /// `iina-cli` with mpv flags - use `open -a IINA <url>` on a localhost proxy).
   /// Other desktop: direct URL + player CLI headers. Android: hls-proxy.
   /// 111477 uses seek proxy.
   static Future<({String url, Map<String, String>? headers})>
@@ -391,7 +391,7 @@ class ExternalPlayerService {
 
     final needsProxy = !desktop || Platform.isMacOS;
     if (desktop && !needsProxy) {
-      debugPrint('[ExternalPlayer] Direct URL — player CLI headers');
+      debugPrint('[ExternalPlayer] Direct URL - player CLI headers');
       return (url: url, headers: headers);
     }
 
@@ -408,7 +408,7 @@ class ExternalPlayerService {
       return (url: proxied, headers: null);
     }
 
-    debugPrint('[ExternalPlayer] Local proxy unavailable — passing headers');
+    debugPrint('[ExternalPlayer] Local proxy unavailable - passing headers');
     return (url: url, headers: headers);
   }
 
@@ -433,7 +433,7 @@ class ExternalPlayerService {
   }
 
   /// IINA headers via discrete `iina-cli` argv entries (sandbox cannot write
-  /// `/tmp`). [Process.start] passes each value as one arg — `&` in Referer is
+  /// `/tmp`). [Process.start] passes each value as one arg - `&` in Referer is
   /// safe (unlike shell). Mirrors VLC's direct URL + header flags.
   static void _logHeaderMap(String label, Map<String, String>? headers) {
     if (headers == null || headers.isEmpty) {
@@ -512,7 +512,7 @@ class ExternalPlayerService {
     return player.desktopArgs?.call(url, title, headers) ?? [url];
   }
 
-  /// mpv header flags — one [http-header-fields] per header so User-Agent commas
+  /// mpv header flags - one [http-header-fields] per header so User-Agent commas
   /// (e.g. "KHTML, like Gecko") do not break parsing.
   static List<String> _mpvHeaderArgs(
     Map<String, String>? headers, {
@@ -635,7 +635,7 @@ class ExternalPlayerService {
       viaOpenLauncher: viaOpen,
     );
 
-    // macOS sandbox: IINA must be opened with `open -a IINA.app <url>` — the
+    // macOS sandbox: IINA must be opened with `open -a IINA.app <url>` - the
     // main IINA binary rejects `--mpv-*` flags (`--args` only works for iina-cli,
     // which cannot run sandboxed). Use IINA's `iina://weblink` scheme instead.
     // Header-protected streams use hls-proxy above.
@@ -797,7 +797,7 @@ class ExternalPlayer {
   final String? macCliBinary;
   final String? macBinary;
   /// When true, launch with `/usr/bin/open -a <app> --args …` (required for
-  /// sandboxed hosts — direct CLI exec inherits the sandbox and breaks IINA IPC).
+  /// sandboxed hosts - direct CLI exec inherits the sandbox and breaks IINA IPC).
   final bool macPreferOpenLauncher;
 
   // Desktop args builder

@@ -7,7 +7,7 @@ Future<void> initRustForAppTests() async {
   final path = _resolveRustLibPath();
   if (!File(path).existsSync()) {
     throw StateError(
-      'Rust dylib not found at $path — run ./scripts/build_rust.sh first',
+      'Rust dylib not found at $path - run ./scripts/build_rust.sh first',
     );
   }
   await RustLib.init(libraryPath: path);
@@ -27,5 +27,5 @@ String _resolveRustLibPath() {
     if (parent.path == dir.path) break;
     dir = parent;
   }
-  throw StateError('Could not locate Rust dylib — run ./scripts/build_rust.sh');
+  throw StateError('Could not locate Rust dylib - run ./scripts/build_rust.sh');
 }

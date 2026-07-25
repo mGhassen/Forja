@@ -27,7 +27,7 @@ class ForjaFrostedPanel extends StatelessWidget {
   /// Default for Sources / Episodes panels.
   static const double defaultBlurSigma = 48;
 
-  /// Light glass — blur must read through; keep alpha low.
+  /// Light glass - blur must read through; keep alpha low.
   static Color get tint =>
       ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.28);
 
@@ -47,7 +47,7 @@ class ForjaFrostedPanel extends StatelessWidget {
     final hasFrame = frozenFrame != null && frozenFrame!.isNotEmpty;
     final sigma = blurSigma;
 
-    // Player / Overlay path — blur the still locally (ImageFiltered).
+    // Player / Overlay path - blur the still locally (ImageFiltered).
     if (hasFrame) {
       return ClipRRect(
         borderRadius: radius,
@@ -89,7 +89,7 @@ class ForjaFrostedPanel extends StatelessWidget {
       );
     }
 
-    // Player without a frame — translucent dark, not opaque #141414.
+    // Player without a frame - translucent dark, not opaque #141414.
     if (!enableBlur) {
       return ClipRRect(
         borderRadius: radius,
@@ -109,7 +109,7 @@ class ForjaFrostedPanel extends StatelessWidget {
       );
     }
 
-    // Details page — blur whatever is behind the panel.
+    // Details page - blur whatever is behind the panel.
     return ClipRRect(
       borderRadius: radius,
       child: BackdropFilter(

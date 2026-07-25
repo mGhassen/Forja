@@ -14,7 +14,7 @@ class FractalGlassParams {
     this.warpStrength = 0.26,
     this.warpSpeed = 0.21,
     this.grainStrength = 0.67,
-    /// Logical px per flute. Edit THIS (or [forTv]) — not only a leftover default.
+    /// Logical px per flute. Edit THIS (or [forTv]) - not only a leftover default.
     this.fluteWidth = 33,
     this.fluteStrength = 114,
     this.patternBrightness = 0.56,
@@ -78,7 +78,7 @@ class FractalGlassParams {
   );
 
   /// Demo screenshot look (Balanced + Neon Flux + Algo1).
-  /// Same object as the constructor defaults — edit the constructor fields above.
+  /// Same object as the constructor defaults - edit the constructor fields above.
   static const balanced = FractalGlassParams();
 
   /// TV auth background. **This is what the app uses.** Same as constructor defaults.
@@ -146,10 +146,10 @@ enum FractalGlassPattern {
 }
 
 enum FractalGlassAlgo {
-  /// Repo Algo1 — circular Gaussian blobs.
+  /// Repo Algo1 - circular Gaussian blobs.
   blobs,
 
-  /// Repo Algo2 — elliptical Gaussians (Flow-like).
+  /// Repo Algo2 - elliptical Gaussians (Flow-like).
   ellipses,
 }
 
@@ -218,7 +218,7 @@ class _FractalGlassGradientState extends State<FractalGlassGradient>
   @override
   void initState() {
     super.initState();
-    // Continuous vsync listenable — CustomPainter.repaint must hear every frame.
+    // Continuous vsync listenable - CustomPainter.repaint must hear every frame.
     _tick = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 1),
@@ -314,7 +314,7 @@ class _FractalGlassPainter extends CustomPainter {
       f(z);
     }
 
-    // Logical paint size — must match FlutterFragCoord space.
+    // Logical paint size - must match FlutterFragCoord space.
     v2(size.width, size.height);
     f(1.0); // uPixelRatio unused (kept for uniform layout); coords are already logical
     f(timeSeconds);

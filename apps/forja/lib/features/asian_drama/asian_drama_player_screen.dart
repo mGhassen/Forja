@@ -125,11 +125,11 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   String _statusLine = '';
   bool _failedAll = false;
 
-  /// KissKh countdown / not-yet-published — skip extract, show availability copy.
+  /// KissKh countdown / not-yet-published - skip extract, show availability copy.
   bool _isUpcoming = false;
   bool _cancelled = false;
   bool _handedOffLiveNotifiers = false;
-  /// Next/prev while player is open — pop player, then replace this host.
+  /// Next/prev while player is open - pop player, then replace this host.
   KdramaEpisode? _handOffEpisode;
   List<KdramaEpisode> _handOffEpisodes = const [];
   Route<dynamic>? _hostRoute;
@@ -171,7 +171,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     super.dispose();
   }
 
-  /// Leave title / Cancel / tab switch — same stop as the Cancel button.
+  /// Leave title / Cancel / tab switch - same stop as the Cancel button.
   void _haltResolve() {
     _cancelled = true;
     unawaited(_extractor.cancel());
@@ -552,7 +552,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       if (navigator.canPop()) navigator.pop();
     }
 
-    // Per-episode cache key — do not collapse every ep onto S1:E1.
+    // Per-episode cache key - do not collapse every ep onto S1:E1.
     final cacheEpisode = episode.number == episode.number.truncateToDouble()
         ? episode.number.toInt()
         : (episode.number * 100).round();

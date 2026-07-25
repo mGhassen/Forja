@@ -53,7 +53,7 @@ void main() {
     });
   });
 
-  group('isTorrentStreamUrl — Direct Streaming must reject torrents', () {
+  group('isTorrentStreamUrl - Direct Streaming must reject torrents', () {
     test('magnet links are torrents', () {
       expect(
         isTorrentStreamUrl(

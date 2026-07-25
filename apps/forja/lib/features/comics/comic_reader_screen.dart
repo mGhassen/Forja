@@ -115,7 +115,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
           _currentPageIndex = 0;
           _isLoading = false;
           if (pages.isEmpty) {
-            _errorMessage = 'No pages found for this chapter. The page extractor returned 0 pages — the site may be blocking requests or the chapter layout changed.';
+            _errorMessage = 'No pages found for this chapter. The page extractor returned 0 pages - the site may be blocking requests or the chapter layout changed.';
           }
         });
         

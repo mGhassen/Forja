@@ -26,7 +26,7 @@ class HubCatalogSection<T> extends StatefulWidget {
   final Future<List<T>>? future;
   final List<T>? items;
   final bool compactTop;
-  /// Zero title-top pad — parent owns row gap (media details sections).
+  /// Zero title-top pad - parent owns row gap (media details sections).
   final bool embedded;
   final bool showRank;
   final String? tvTabId;
@@ -89,7 +89,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
 
     final sectionTop = _sectionTitleTop(context);
     // Parent MediaDetailsBody owns the column edge; Cast/Trailers use 0 pad
-    // when embedded — don't double-apply home insets.
+    // when embedded - don't double-apply home insets.
     final horizontalPad =
         widget.embedded ? 0.0 : shellHomeSectionHorizontalPadding(context);
 

@@ -1,4 +1,4 @@
-// "Similar" hub — soothing landing screen.
+// "Similar" hub - soothing landing screen.
 //
 // Layout:
 //   • Liquid blob backdrop (animated CustomPainter)
@@ -671,7 +671,7 @@ class _PosterCardState extends State<_PosterCard> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Liquid blob backdrop — three slow-orbiting radial gradients.
+// Liquid blob backdrop - three slow-orbiting radial gradients.
 // ─────────────────────────────────────────────────────────────────────────
 class _LiquidBlobsPainter extends CustomPainter {
   final double t;

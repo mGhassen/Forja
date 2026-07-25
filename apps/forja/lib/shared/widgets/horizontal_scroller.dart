@@ -109,7 +109,7 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
     if (pos.maxScrollExtent <= 0) return;
 
     // pixels += dy: positive dy → right, negative dy → left.
-    // At an edge in that direction, do not claim — let the parent page scroll.
+    // At an edge in that direction, do not claim - let the parent page scroll.
     final atMin = pos.pixels <= pos.minScrollExtent + 0.5;
     final atMax = pos.pixels >= pos.maxScrollExtent - 0.5;
     final canScrollRow = (dy > 0 && !atMax) || (dy < 0 && !atMin);

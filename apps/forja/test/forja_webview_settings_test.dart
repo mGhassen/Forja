@@ -45,7 +45,7 @@ void main() {
       final patched = patchTvWebViewSettings(settings, isAndroidTv: true);
       expect(patched.hardwareAcceleration, isFalse);
       expect(patched.contentBlockers, same(blockers));
-      // Must not throw — forjaWebViewSettings used to call settings.copy(),
+      // Must not throw - forjaWebViewSettings used to call settings.copy(),
       // which deserializes blockers and bangs on Android.
       expect(() => forjaWebViewSettings(patched), returnsNormally);
     });

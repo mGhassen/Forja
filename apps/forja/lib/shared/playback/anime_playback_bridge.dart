@@ -8,7 +8,7 @@ import 'package:rust/rust.dart';
 
 typedef AnimeResolvedHit = ({AnimeEmbed embed, ExtractedMedia media});
 
-/// Shared anime resolve/scoring — same pipeline as movies via [DomainPlaybackResolve].
+/// Shared anime resolve/scoring - same pipeline as movies via [DomainPlaybackResolve].
 abstract final class AnimePlaybackBridge {
   /// Keys are [AnimeEmbed.sourceKey] so Rust [SourceEngine] can order and pin providers.
   static Map<String, dynamic> embedsToProviders(List<AnimeEmbed> embeds) {
@@ -19,7 +19,7 @@ abstract final class AnimePlaybackBridge {
     return out;
   }
 
-  /// One map entry per embed — sub and dub rows stay separate in the player panel.
+  /// One map entry per embed - sub and dub rows stay separate in the player panel.
   static Map<String, dynamic> embedsToPanelProviders(List<AnimeEmbed> embeds) {
     return {for (final embed in embeds) embed.panelKey: embed};
   }
@@ -50,7 +50,7 @@ abstract final class AnimePlaybackBridge {
       isCancelled: isCancelled,
       onProgress: onProgress,
       maxInFlight: maxInFlight,
-      // First playable wins — do not keep scanning siblings in the background
+      // First playable wins - do not keep scanning siblings in the background
       // once a stream is ready to open.
       fillBackgroundHits: false,
       onHitsUpdated: (batch) {

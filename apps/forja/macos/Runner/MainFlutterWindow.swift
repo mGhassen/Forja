@@ -46,7 +46,7 @@ class MainFlutterWindow: NSWindow {
 
 /// Optional native backup for system swipe gestures.
 ///
-/// Primary path is Dart [PointerPanZoom] in BackNavigationScope — Flutter
+/// Primary path is Dart [PointerPanZoom] in BackNavigationScope - Flutter
 /// already converts two-finger trackpad pans. This catches AppKit
 /// `swipe(with:)` when System Settings uses swipe-with-fingers (not scroll).
 final class ForjaFlutterViewController: FlutterViewController {

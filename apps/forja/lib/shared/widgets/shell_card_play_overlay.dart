@@ -24,7 +24,7 @@ class ShellCardPlayOverlay extends StatefulWidget {
   final double diameter;
   final double iconSize;
 
-  /// Card lift on hover/focus — shared with episode rows and continue watching.
+  /// Card lift on hover/focus - shared with episode rows and continue watching.
   static const double cardHoverScale = 1.05;
 
   @override

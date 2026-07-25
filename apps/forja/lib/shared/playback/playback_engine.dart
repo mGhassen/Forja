@@ -6,7 +6,7 @@ import 'package:forja/shared/playback/tv_stream_fallback.dart';
 import 'package:forja/shared/webview/atv_webview_guard.dart';
 import 'package:rust/rust.dart';
 
-/// Playback orchestrator — delegates resolve race to the Rust Resolver Engine.
+/// Playback orchestrator - delegates resolve race to the Rust Resolver Engine.
 abstract final class PlaybackEngine {
   static const playStartMaxInFlight = 2;
 

@@ -222,7 +222,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Video — fill the stack like the main player (Center can leave
+                // Video - fill the stack like the main player (Center can leave
                 // a zero-sized surface on Android when Impeller composites siblings).
                 Positioned.fill(
                   child: _s._exoBackend
@@ -235,12 +235,12 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                           controls: NoVideoControls,
                         ),
                 ),
-                // Reconnect/buffering banner — hidden in PiP
+                // Reconnect/buffering banner - hidden in PiP
                 if (!_s._isPipMode &&
                     (_s._buffering || _s._statusBanner != null))
                   _buildBanner(),
                 // Top bar + bottom controls (below guide when open).
-                // Hidden entirely while PiP is active — replaced by the
+                // Hidden entirely while PiP is active - replaced by the
                 // floating revert button below on desktop.
                 if (!_s._isPipMode)
                   AnimatedOpacity(
@@ -505,7 +505,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     );
   }
 
-  /// Flat top-bar action — same chrome as the movie player (`PlayerFlatIconButton`),
+  /// Flat top-bar action - same chrome as the movie player (`PlayerFlatIconButton`),
   /// with IPTV D-pad row hooks when on TV.
   Widget _topBarFlatAction({
     required IconData icon,
@@ -543,7 +543,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
 
   Widget _buildTopBar(bool compact) {
     const topRowId = 'iptv-player-top';
-    // PiP is phone/desktop chrome — hide on Android TV (matches VOD player).
+    // PiP is phone/desktop chrome - hide on Android TV (matches VOD player).
     final showPip =
         PipService.instance.isSupported && !iptvUseTvFocus(context);
     final showStats = !_s._exoBackend;
@@ -688,7 +688,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
   }
 
   // ───────────────────────────────────────────────────────────────────────
-  //  VOD SEEKBAR — only shown when duration > 0 (Xtream movies / series)
+  //  VOD SEEKBAR - only shown when duration > 0 (Xtream movies / series)
   // ───────────────────────────────────────────────────────────────────────
   Widget _buildChannelLogo(bool compact) {
     if ((_s._logoUrl ?? '').isEmpty) return const SizedBox.shrink();

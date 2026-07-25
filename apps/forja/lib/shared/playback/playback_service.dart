@@ -2,7 +2,7 @@ import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:rust/rust.dart';
 
-/// App-facing resolve API — UI asks for playable content, not providers.
+/// App-facing resolve API - UI asks for playable content, not providers.
 ///
 /// Preferred:
 /// - [SourceEngine.auto] → domain profiles + race

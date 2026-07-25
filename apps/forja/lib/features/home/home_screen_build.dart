@@ -131,7 +131,7 @@ mixin _HomeScreenBuild on State<HomeScreen> {
                     onMovieTap: _s._openDetails,
                     showRank: true,
                     // First catalog row under hero when Featured is embedded in
-                    // the hero bleed — UP must reach Play, not stop on Featured.
+                    // the hero bleed - UP must reach Play, not stop on Featured.
                     tvFocusUp: featuredSection != null
                         ? _s._homeHeroController.revealPlayFocus
                         : null,
@@ -151,7 +151,7 @@ mixin _HomeScreenBuild on State<HomeScreen> {
                   isFirstAfterHero: false,
                 ),
 
-              // Mood / Genre chips — interactive filter
+              // Mood / Genre chips - interactive filter
               _homeRowSliver(
                 HomeMoodSection(
                   moods: _HomeScreenState._moods,
@@ -165,7 +165,7 @@ mixin _HomeScreenBuild on State<HomeScreen> {
                 isFirstAfterHero: false,
               ),
 
-              // "Because you watched ___" — BestSimilar.com recommendations
+              // "Because you watched ___" - BestSimilar.com recommendations
               // (the /recommendations endpoint, not the trash /similar one)
               if (_s._becauseSeed != null && _s._becauseFuture != null)
                 _homeRowSliver(

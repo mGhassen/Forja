@@ -5,7 +5,7 @@ import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 
-/// Floating chevron back control for media details — sits below macOS traffic lights.
+/// Floating chevron back control for media details - sits below macOS traffic lights.
 class MediaDetailsBackButton extends StatelessWidget {
   const MediaDetailsBackButton({super.key, this.onPressed, this.focusNode});
 

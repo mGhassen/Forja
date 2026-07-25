@@ -455,7 +455,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   bool _prefWriteAllowed = false;
   String? _pendingPrefKey;
   String? _pendingPrefTitle;
-  /// Next/prev episode while player is open — pop player, then replace host.
+  /// Next/prev episode while player is open - pop player, then replace host.
   int? _handOffEpisode;
   Route<dynamic>? _hostRoute;
 
@@ -493,7 +493,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     DomainStreamProviderResolver.cancelAllPending();
   }
 
-  /// Resolve finished (play or fail) — kill Miruro WebView so SPA /health stops.
+  /// Resolve finished (play or fail) - kill Miruro WebView so SPA /health stops.
   void _closeMiruroPipe() {
     MiruroPipeSession.instance.cancelPending();
   }
@@ -541,7 +541,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         hubEpisodeNumber: widget.episodeNumber,
       );
 
-  /// Score only when the CDN/stream check finished — not on extract alone.
+  /// Score only when the CDN/stream check finished - not on extract alone.
   void _scoreAnimeProbe({
     required String panelKey,
     required StreamProviderProbeStatus status,
@@ -715,7 +715,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       });
       _probeNotifier.value = const [];
       _setPhase('Still searching…');
-      _setStatusLine('Saved link expired — search again');
+      _setStatusLine('Saved link expired - search again');
       return;
     }
 
@@ -773,14 +773,14 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _preferredSourceKey,
         _preferredSourceTitle,
       );
-      // Pref is per show/ep/category — a bee-only cache cannot honor kiwi.
+      // Pref is per show/ep/category - a bee-only cache cannot honor kiwi.
       final pref = _preferredSourceKey;
       if (pref != null &&
           pref.isNotEmpty &&
           !ranked.any((h) => h.embed.sourceKey == pref)) {
         if (kDebugMode) {
           debugPrint(
-            '[AnimePlayer] cache misses preferred $pref — full resolve',
+            '[AnimePlayer] cache misses preferred $pref - full resolve',
           );
         }
         await _dropAllStreamCaches();
@@ -802,12 +802,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         final playable = await _playableHits(ranked);
         if (playable.isEmpty) {
           if (kDebugMode) {
-            debugPrint('[AnimePlayer] cached streams stale — rechecking');
+            debugPrint('[AnimePlayer] cached streams stale - rechecking');
           }
           await _handleStaleSavedStreams();
           return;
         }
-        // Do not pass usedSavedSource:true — that pins the stream and blocks
+        // Do not pass usedSavedSource:true - that pins the stream and blocks
         // Auto dead-cache re-resolve (movie I43). Session cache is resume, not pin.
         await _launchPlayer(playable, fromSessionCache: true);
         return;
@@ -829,7 +829,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
     } else if (kDebugMode) {
       debugPrint(
-        '[AnimePlayer] skipping Anikoto — saved source $_preferredSourceKey',
+        '[AnimePlayer] skipping Anikoto - saved source $_preferredSourceKey',
       );
     }
 
@@ -950,7 +950,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         }
         if (kDebugMode) {
           debugPrint(
-            '[AnimePlayer] saved source ${_preferredSourceKey!} failed — full search',
+            '[AnimePlayer] saved source ${_preferredSourceKey!} failed - full search',
           );
         }
         _launchedFromSavedOrCache = false;
@@ -1014,7 +1014,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     }
 
     // First *CDN-playable* wins: try providers in order, probe each extract,
-    // drop dead CDNs and continue. Stop as soon as one probes OK — no
+    // drop dead CDNs and continue. Stop as soon as one probes OK - no
     // background scan of the rest after launch.
     var remaining = List<AnimeEmbed>.from(pair);
     var preferred = SourceEngine.auto;
@@ -1097,7 +1097,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         return;
       }
 
-      // Extracted but CDN dead — skip these keys and try the next server.
+      // Extracted but CDN dead - skip these keys and try the next server.
       final deadKeys = <String>{};
       for (final h in hits) {
         deadKeys.add(h.embed.sourceKey);
@@ -1112,7 +1112,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       }
       if (kDebugMode) {
         debugPrint(
-          '[AnimePlayer] CDN probe failed for ${deadKeys.join(", ")} — next',
+          '[AnimePlayer] CDN probe failed for ${deadKeys.join(", ")} - next',
         );
       }
       remaining = [
@@ -1134,7 +1134,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     if (_autoRecheckUsed >= 1) {
       setState(() => _awaitingManualRecheck = true);
       _setPhase('Still searching…');
-      _setStatusLine('No working source yet — search again');
+      _setStatusLine('No working source yet - search again');
       _probeNotifier.value = const [];
       return;
     }
@@ -1145,7 +1145,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     );
   }
 
-  /// Prefer Settings → Anime provider order — saved source still wins when present.
+  /// Prefer Settings → Anime provider order - saved source still wins when present.
   List<({AnimeEmbed embed, ExtractedMedia media})> _rankHits(
     List<({AnimeEmbed embed, ExtractedMedia media})> hits,
     String? preferredKey,
@@ -1176,10 +1176,10 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       hits = playable;
     }
 
-    // Winner is ready — stop scanning; remaining servers stay available for
+    // Winner is ready - stop scanning; remaining servers stay available for
     // manual Source taps / dead-stream recovery only.
 
-    // Do not re-stamp session/disk cache on cache resume — a dead URL would
+    // Do not re-stamp session/disk cache on cache resume - a dead URL would
     // overwrite a drop and poison the next Play. Fresh resolves still cache
     // playable multi-provider hits only.
     if (!fromSessionCache) {
@@ -1296,7 +1296,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     }
 
     _fadeOutNotifier.value = true;
-    // Do not re-init probes — that resets every server to pending and looks
+    // Do not re-init probes - that resets every server to pending and looks
     // like a full re-scan. Keep race progress; mark winners success.
     for (final h in hits) {
       _markProbeStatus(
@@ -1368,7 +1368,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           }
           return;
         }
-        // Do not overwrite pref during a failed / abortive open — wait until
+        // Do not overwrite pref during a failed / abortive open - wait until
         // playback has been confirmed beyond the early-EOF window.
         _pendingPrefKey = key;
         _pendingPrefTitle = title;
@@ -1386,7 +1386,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         _autoRecheckUsed = 0;
         _awaitingManualRecheck = false;
         _launchedFromSavedOrCache = false;
-        // Brief demux can fire started then abortive EOF — defer pref write.
+        // Brief demux can fire started then abortive EOF - defer pref write.
         unawaited(Future<void>.delayed(const Duration(seconds: 12), () async {
           if (!mounted || _cancelled) return;
           _prefWriteAllowed = true;
@@ -1401,7 +1401,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       onReloadStreams: () async {
         await _dropAllStreamCaches();
         await _ensureEmbedsReady();
-        // Stay usable while the player sits on top of this route — do not
+        // Stay usable while the player sits on top of this route - do not
         // treat dispose/_cancelled from a premature removeRoute.
         if (!mounted) return null;
         return reloadAnimeEpisodeStreams(
@@ -1415,9 +1415,9 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     );
     // Keep this route under the player for the whole session. Removing it on
     // fade/playback-start disposed Source cache notifiers and cancelled
-    // onReloadStreams — dead-cache recovery and server taps broke.
+    // onReloadStreams - dead-cache recovery and server taps broke.
     await playerFuture;
-    // Cache resume that never confirmed playback left a dead URL on disk —
+    // Cache resume that never confirmed playback left a dead URL on disk -
     // drop so the next Play re-resolves like green Play (movie I43).
     if (_launchedFromSavedOrCache) {
       await _dropAllStreamCaches();
@@ -1452,7 +1452,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       );
       return;
     }
-    // Player closed — leave the loading shell and return to details.
+    // Player closed - leave the loading shell and return to details.
     if (mounted && navigator.canPop()) {
       navigator.pop();
     }

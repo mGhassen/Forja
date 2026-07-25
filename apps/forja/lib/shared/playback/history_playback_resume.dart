@@ -476,7 +476,7 @@ Future<void> resumePlaybackFromHistory(
   try {
     final method = item['method'] as String;
     final movie = movieFromWatchHistory(item);
-    // ≥90% (incl. false early-EOF “finished”) must restart from 0 — raw
+    // ≥90% (incl. false early-EOF “finished”) must restart from 0 - raw
     // position seeks into credits and looks like play is broken.
     final startPos = resumeStartPositionFromProgress(item);
 

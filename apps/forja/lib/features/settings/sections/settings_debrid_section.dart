@@ -122,7 +122,7 @@ class _SettingsDebridSectionState extends State<SettingsDebridSection> {
       return;
     }
 
-    // Just save the key — no verify round-trip. The verify call hangs forever
+    // Just save the key - no verify round-trip. The verify call hangs forever
     // on macOS for some users, leaving the spinner stuck. If the key is wrong
     // they'll find out the first time they try to stream.
     await _debrid.saveRDApiKey(key);

@@ -10,7 +10,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
-/// Settings tab — RFC-033 category hub; RFC-024 R24-A13: local prefs only.
+/// Settings tab - RFC-033 category hub; RFC-024 R24-A13: local prefs only.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
