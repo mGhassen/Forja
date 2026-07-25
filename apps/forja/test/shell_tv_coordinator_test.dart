@@ -6,7 +6,6 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/design/src/forja_shell_chip.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/tv/shell_tv_back_exit.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/home_movie_card.dart';
@@ -43,9 +42,6 @@ void main() {
     ShellTvFocusCoordinator.setNavOrder(['home', 'search', 'settings']);
     ShellTvFocus.currentNavTabId = 'home';
     ShellTvFocusCoordinator.resetBackDebounceForTest();
-    ShellTvBackExit.reset();
-    ShellTvBackExit.showExitPrompt = null;
-    ShellTvFocusCoordinator.onRequestExitApp = null;
   });
 
   testWidgets('focusActiveNavTab requests current tab node', (tester) async {
@@ -472,27 +468,33 @@ void main() {
     page.dispose();
   });
 
-  testWidgets('handleShellBackKey exits when nav already focused', (tester) async {
-    var exitRequested = false;
-    var promptCount = 0;
-    ShellTvFocusCoordinator.onRequestExitApp = () => exitRequested = true;
-    ShellTvBackExit.showExitPrompt = () => promptCount++;
-    addTearDown(() {
-      ShellTvFocusCoordinator.onRequestExitApp = null;
-      ShellTvBackExit.showExitPrompt = null;
-      ShellTvBackExit.reset();
-    });
-
+  testWidgets('handleShellBackKey restores page when nav already focused',
+      (tester) async {
     final homeNav = FocusNode(debugLabel: 'nav-home');
+    final page = FocusNode(debugLabel: 'page-item');
     ShellTvFocus.registerNav('home', homeNav);
     ShellTvFocus.currentNavTabId = 'home';
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'home',
+      defaultFocus: () => page,
+    );
+    addTearDown(() {
+      ShellTvFocusCoordinator.unregisterTabDefaults('home');
+      homeNav.dispose();
+      page.dispose();
+    });
 
     await tester.pumpWidget(
       _wrapTv(
-        Focus(
-          autofocus: true,
-          focusNode: homeNav,
-          child: const SizedBox(width: 40, height: 40),
+        Row(
+          children: [
+            Focus(
+              autofocus: true,
+              focusNode: homeNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(focusNode: page, child: const SizedBox(width: 40, height: 40)),
+          ],
         ),
       ),
     );
@@ -500,18 +502,20 @@ void main() {
     expect(homeNav.hasFocus, isTrue);
 
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
-    expect(exitRequested, isFalse);
-    expect(promptCount, 1);
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    expect(page.hasFocus, isTrue);
+    expect(homeNav.hasFocus, isFalse);
 
+    // Second Back must not exit — moves focus to nav again.
     ShellTvFocusCoordinator.resetBackDebounceForTest();
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
-    expect(exitRequested, isTrue);
-
-    homeNav.dispose();
+    await tester.pump();
+    expect(homeNav.hasFocus, isTrue);
   });
 
   testWidgets('handleShellBackKey always consumes on root page', (tester) async {
-    ShellTvBackExit.reset();
     final homeNav = FocusNode(debugLabel: 'nav-home');
     final page = FocusNode(debugLabel: 'page-item', skipTraversal: true);
     ShellTvFocus.registerNav('home', homeNav);

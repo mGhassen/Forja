@@ -4,7 +4,6 @@ import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/tv/shell_tv_back_exit.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// Focus zone within a shell tab.
@@ -158,11 +157,12 @@ abstract final class ShellTvFocusCoordinator {
   static bool focusActiveNavTab() => ShellTvFocus.focusCurrentNavTab();
 
   /// TV remote Back: pop overlay/route first, else focus active nav tab.
-  /// Second Back on nav requests app exit. Returns true when consumed.
-  static VoidCallback? onRequestExitApp;
-
-  /// Set from [ShellScaffold] when TV input policy is active — same signal as
-  /// shell nav rail / D-pad focus (not [ShellTokens.isAndroidTvDevice] alone).
+  /// Back on the nav rail restores page focus — never exits the app.
+  /// Returns true when consumed.
+  ///
+  /// Set [tvBackPolicyEnabled] from [ShellScaffold] when TV input policy is
+  /// active — same signal as shell nav rail / D-pad focus (not
+  /// [ShellTokens.isAndroidTvDevice] alone).
   static bool tvBackPolicyEnabled = false;
 
   static DateTime? _lastBackHandledAt;
@@ -184,7 +184,7 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   /// Level-aware back — see [ShellNavigationLevels].
-  /// Always returns true when [tvBackPolicyEnabled] (never delegates kill to caller).
+  /// Always returns true when [tvBackPolicyEnabled] (never exits the app).
   static bool handleShellBackKey() {
     if (_consumeDuplicateBack()) return true;
 
@@ -192,42 +192,39 @@ abstract final class ShellTvFocusCoordinator {
       return _handleLegacyBackKey();
     }
 
-    switch (ShellNavigationLevels.resolveBackTarget()) {
+    final target = ShellNavigationLevels.resolveBackTarget();
+    debugPrint('[NavBack] shell back target=$target');
+    switch (target) {
       case ShellNavLevel.player:
-        ShellTvBackExit.reset();
         if (dismissAnyPlayerChromeOverlay()) {
           return true;
         }
         ShellNavigationLevels.popRootRoute();
         return true;
       case ShellNavLevel.detail:
-        ShellTvBackExit.reset();
         maybePopShellOverlay();
         return true;
       case ShellNavLevel.tabStack:
-        ShellTvBackExit.reset();
         if (ShellNavigationLevels.popTabStack()) return true;
         _focusActiveNavFromPage();
         return true;
       case ShellNavLevel.page:
-        ShellTvBackExit.reset();
         _focusActiveNavFromPage();
         return true;
       case ShellNavLevel.menu:
-        ShellTvBackExit.onNavBack(onRequestExitApp ?? SystemNavigator.pop);
+        // Stay in-app: Back from the rail returns to the tab page.
+        _restorePageFromNav(ShellTvFocus.currentNavTabId ?? '');
         return true;
     }
   }
 
   static bool _handleLegacyBackKey() {
     if (shellOverlayCanPop()) {
-      ShellTvBackExit.reset();
       maybePopShellOverlay();
       return true;
     }
 
     if (_tryPopFocusedNavigator()) {
-      ShellTvBackExit.reset();
       return true;
     }
 
@@ -240,11 +237,10 @@ abstract final class ShellTvFocusCoordinator {
     }
 
     if (ShellTvFocus.anyNavFocused || ShellTvFocus.primaryFocusIsNav) {
-      ShellTvBackExit.onNavBack(onRequestExitApp ?? SystemNavigator.pop);
+      _restorePageFromNav(ShellTvFocus.currentNavTabId ?? '');
       return true;
     }
 
-    ShellTvBackExit.reset();
     _focusActiveNavFromPage();
     return true;
   }
@@ -331,7 +327,6 @@ abstract final class ShellTvFocusCoordinator {
   /// Release nav and restore page focus after the rail handles RIGHT.
   static void restoreTabFocusAfterNav(String tabId) {
     if (tabId.isEmpty) return;
-    ShellTvBackExit.reset();
     _releaseNavFocus();
     void attempt() {
       if (!restoreTabFocus(tabId)) {

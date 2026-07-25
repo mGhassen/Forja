@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:forja/app/boot_cache.dart';
+import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/design.dart';
@@ -407,6 +408,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     final autofocusIndex = activeIndex >= 0 ? activeIndex : 0;
     final showAdd = (managing || _profiles.isEmpty) &&
         _profiles.length < SyncService.maxProfilesPerAccount;
+    final metrics = ProfileChooserMetrics.of(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -414,11 +416,17 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
           child: FocusTraversalGroup(
             policy: OrderedTraversalPolicy(),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+              padding: EdgeInsets.symmetric(
+                horizontal: metrics.horizontalPadding,
+                vertical: metrics.verticalPadding,
+              ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
                   minWidth: constraints.maxWidth,
-                  minHeight: math.max(0, constraints.maxHeight - 48),
+                  minHeight: math.max(
+                    0,
+                    constraints.maxHeight - metrics.verticalPadding * 2,
+                  ),
                 ),
                 child: Center(
                   child: ConstrainedBox(
@@ -430,13 +438,13 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                         Text(
                           managing ? 'Manage profiles' : 'Who’s watching?',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: ForjaShellColors.textPrimary,
-                            fontSize: 36,
+                            fontSize: metrics.titleFontSize,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: metrics.isTv ? 8 : 12),
                         Text(
                           _loading
                               ? 'Loading profiles…'
@@ -448,16 +456,16 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                                           ? 'Edit a profile or add a new one.'
                                           : 'Choose the profile whose settings you want on this device.',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: ForjaShellColors.textSecondary,
-                            fontSize: 14,
+                            fontSize: metrics.subtitleFontSize,
                           ),
                         ),
-                        const SizedBox(height: 36),
+                        SizedBox(height: metrics.sectionGap),
                         if (_loading)
-                          const Padding(
-                            padding: EdgeInsets.all(48),
-                            child: CircularProgressIndicator(),
+                          Padding(
+                            padding: EdgeInsets.all(metrics.isTv ? 28 : 48),
+                            child: const CircularProgressIndicator(),
                           )
                         else if (_error != null && _profiles.isEmpty)
                           Padding(
@@ -487,12 +495,13 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                         else
                           Wrap(
                             alignment: WrapAlignment.center,
-                            spacing: 28,
-                            runSpacing: 28,
+                            spacing: metrics.tileSpacing,
+                            runSpacing: metrics.tileSpacing,
                             children: [
                               for (var i = 0; i < _profiles.length; i++)
                                 _ProfileChoice(
                                   profile: _profiles[i],
+                                  metrics: metrics,
                                   active: _profiles[i].id == _activeProfileId,
                                   managing: managing,
                                   enabled: !_busy,
@@ -508,6 +517,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                                 ),
                               if (showAdd)
                                 _AddProfileTile(
+                                  metrics: metrics,
                                   enabled: !_busy,
                                   autofocus: !_busy && _profiles.isEmpty,
                                   onTap: _beginCreate,
@@ -533,7 +543,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                                 : () => _load(openCreateWhenEmpty: false),
                           ),
                         ],
-                        const SizedBox(height: 36),
+                        SizedBox(height: metrics.sectionGap),
                         Wrap(
                           alignment: WrapAlignment.center,
                           spacing: 12,
@@ -542,7 +552,6 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                             if (_profiles.isNotEmpty)
                               _ChooserAction(
                                 label: managing ? 'Done' : 'Manage profiles',
-                                outlined: true,
                                 onTap: _busy
                                     ? null
                                     : () => setState(() {
@@ -583,58 +592,57 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
 }
 
 /// TV/desktop action under Who’s watching — D-pad via [FocusableControl].
-class _ChooserAction extends StatelessWidget {
+/// Plain text link: hover/focus scales + bolds — no outline border.
+class _ChooserAction extends StatefulWidget {
   const _ChooserAction({
     required this.label,
     required this.onTap,
     this.autofocus = false,
-    this.outlined = false,
     this.primary = false,
   });
 
   final String label;
   final VoidCallback? onTap;
   final bool autofocus;
-  final bool outlined;
   final bool primary;
 
   @override
+  State<_ChooserAction> createState() => _ChooserActionState();
+}
+
+class _ChooserActionState extends State<_ChooserAction> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    final fg = primary
+    final enabled = widget.onTap != null;
+    final highlighted = enabled && (_focused || _hovered);
+    final fg = widget.primary
         ? ForjaShellColors.brandGreen
         : ForjaShellColors.textPrimary;
     return ExcludeFocus(
       excluding: !enabled,
       child: FocusableControl(
-        autoFocus: autofocus && enabled,
-        onTap: onTap,
+        autoFocus: widget.autofocus && enabled,
+        onTap: widget.onTap,
         borderRadius: 8,
-        scaleOnFocus: 1.0,
-        showFocusBorder: true,
-        showFocusFill: true,
+        scaleOnFocus: 1.06,
+        showFocusBorder: false,
+        showFocusFill: false,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: (hovered) => setState(() => _hovered = hovered),
         child: AnimatedOpacity(
           opacity: enabled ? 1 : 0.45,
           duration: const Duration(milliseconds: 120),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: outlined ? 18 : 14,
-              vertical: outlined ? 12 : 10,
-            ),
-            decoration: outlined
-                ? BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: ForjaShellColors.ghostBorder,
-                    ),
-                  )
-                : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Text(
-              label,
+              widget.label,
               style: TextStyle(
                 color: fg,
                 fontSize: 15,
-                fontWeight: FontWeight.w600,
+                fontWeight: highlighted ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
           ),
@@ -644,56 +652,75 @@ class _ChooserAction extends StatelessWidget {
   }
 }
 
-class _AddProfileTile extends StatelessWidget {
+class _AddProfileTile extends StatefulWidget {
   const _AddProfileTile({
+    required this.metrics,
     required this.enabled,
     required this.onTap,
     this.autofocus = false,
   });
 
+  final ProfileChooserMetrics metrics;
   final bool enabled;
   final VoidCallback onTap;
   final bool autofocus;
 
   @override
+  State<_AddProfileTile> createState() => _AddProfileTileState();
+}
+
+class _AddProfileTileState extends State<_AddProfileTile> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
+    final highlighted = _focused || _hovered;
+    final m = widget.metrics;
     return ExcludeFocus(
-      excluding: !enabled,
+      excluding: !widget.enabled,
       child: FocusableControl(
-        autoFocus: autofocus && enabled,
-        onTap: enabled ? onTap : null,
+        autoFocus: widget.autofocus && widget.enabled,
+        onTap: widget.enabled ? widget.onTap : null,
         borderRadius: 8,
         scaleOnFocus: 1.06,
-        showFocusBorder: true,
+        showFocusBorder: false,
         showFocusFill: false,
-        focusBleedWidth: 132,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onHoverChange: (hovered) => setState(() => _hovered = hovered),
         child: SizedBox(
-          width: 132,
+          width: m.tileWidth,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 112,
-                height: 112,
+                width: m.avatarSize,
+                height: m.avatarSize,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4.5),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.25),
+                    color: highlighted
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.25),
                     width: 3,
                   ),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.add_rounded,
-                  size: 56,
-                  color: ForjaShellColors.textSecondary,
+                  size: m.avatarSize * 0.5,
+                  color: highlighted
+                      ? ForjaShellColors.textPrimary
+                      : ForjaShellColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Add profile',
                 style: TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  fontSize: 15,
+                  color: highlighted
+                      ? ForjaShellColors.textPrimary
+                      : ForjaShellColors.textSecondary,
+                  fontSize: m.isTv ? 13 : 15,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -708,6 +735,7 @@ class _AddProfileTile extends StatelessWidget {
 class _ProfileChoice extends StatefulWidget {
   const _ProfileChoice({
     required this.profile,
+    required this.metrics,
     required this.active,
     required this.managing,
     required this.enabled,
@@ -716,6 +744,7 @@ class _ProfileChoice extends StatefulWidget {
   });
 
   final SyncProfile profile;
+  final ProfileChooserMetrics metrics;
   final bool active;
   final bool managing;
   final bool enabled;
@@ -747,6 +776,7 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
   Widget build(BuildContext context) {
     final highlighted = _focused || _hovered;
     final selected = highlighted || (!widget.managing && widget.active);
+    final m = widget.metrics;
     return ExcludeFocus(
       excluding: !widget.enabled,
       child: FocusableControl(
@@ -754,13 +784,14 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
         onTap: widget.enabled ? _handleTap : null,
         borderRadius: 8,
         scaleOnFocus: 1.06,
-        showFocusBorder: true,
+        // Avatar [ForjaProfileAvatar.selected] is the hover/focus cue —
+        // never a tile-wide FocusableControl ring around name + avatar.
+        showFocusBorder: false,
         showFocusFill: false,
-        focusBleedWidth: 132,
         onFocusChange: (focused) => setState(() => _focused = focused),
         onHoverChange: (hovered) => setState(() => _hovered = hovered),
         child: SizedBox(
-          width: 132,
+          width: m.tileWidth,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -769,7 +800,7 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
                 child: ForjaProfileAvatar(
                   avatarKey: widget.profile.avatarKey,
                   name: widget.profile.name,
-                  size: 112,
+                  size: m.avatarSize,
                   selected: selected,
                   editing: widget.managing,
                 ),
@@ -784,7 +815,7 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
                   color: selected
                       ? ForjaShellColors.textPrimary
                       : ForjaShellColors.textSecondary,
-                  fontSize: 15,
+                  fontSize: m.isTv ? 13 : 15,
                   fontWeight: (!widget.managing && widget.active)
                       ? FontWeight.w700
                       : FontWeight.w500,

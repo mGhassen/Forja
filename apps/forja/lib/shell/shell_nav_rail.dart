@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_back_exit.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -599,7 +598,6 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   }
 
   void _enterPageFromNav() {
-    ShellTvBackExit.reset();
     widget.onTap();
     final tabId = widget.destination.id;
     WidgetsBinding.instance.addPostFrameCallback((_) {

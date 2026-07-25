@@ -11,6 +11,14 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 /// Mouse back, Escape, macOS trackpad swipe-back, and Android system / remote
 /// Back — same level-aware pops as the in-app back control.
+///
+/// On Android, Flutter finishes the [Activity] when every
+/// [WidgetsBindingObserver.didPopRoute] returns false (see
+/// [WidgetsBinding.handlePopRoute] → [SystemNavigator.pop]). The shell uses a
+/// nested overlay [Navigator], so the root route often cannot pop even while
+/// details/player are open — that used to quit to the leanback launcher.
+/// This scope always consumes Android pop-route and keeps
+/// [SystemNavigator.setFrameworkHandlesBack] true so Back never exits.
 class BackNavigationScope extends StatefulWidget {
   const BackNavigationScope({super.key, required this.child});
 
@@ -20,7 +28,8 @@ class BackNavigationScope extends StatefulWidget {
   State<BackNavigationScope> createState() => _BackNavigationScopeState();
 }
 
-class _BackNavigationScopeState extends State<BackNavigationScope> {
+class _BackNavigationScopeState extends State<BackNavigationScope>
+    with WidgetsBindingObserver {
   late final VoidCallback _boundBack = _onBack;
 
   /// Global route — scrollables would otherwise eat [PointerPanZoom] before an
@@ -32,19 +41,37 @@ class _BackNavigationScopeState extends State<BackNavigationScope> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     NavigationBackHandler.bind(_boundBack);
     if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
       GestureBinding.instance.pointerRouter.addGlobalRoute(_onGlobalPointer);
+    }
+    if (Platform.isAndroid) {
+      // Root navigator often reports canHandlePop=false; without this Android
+      // finishes the Activity on the next Back without calling into Dart.
+      SystemNavigator.setFrameworkHandlesBack(true);
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
       GestureBinding.instance.pointerRouter.removeGlobalRoute(_onGlobalPointer);
     }
     NavigationBackHandler.unbind(_boundBack);
     super.dispose();
+  }
+
+  /// Android system Back / predictive-back → navigation channel `popRoute`.
+  /// Returning true stops [WidgetsBinding.handlePopRoute] from calling
+  /// [SystemNavigator.pop] (which destroys [MainActivity]).
+  @override
+  Future<bool> didPopRoute() async {
+    if (!Platform.isAndroid) return false;
+    debugPrint('[NavBack] didPopRoute → in-app back (block Activity finish)');
+    if (mounted) _onBack();
+    return true;
   }
 
   bool get _canNavigateBack {
@@ -142,9 +169,7 @@ class _BackNavigationScopeState extends State<BackNavigationScope> {
     if (_popNavigatorOrOverlay(context)) {
       return;
     }
-    if (Platform.isAndroid) {
-      SystemNavigator.pop();
-    }
+    // Root of the app — stay put. Never SystemNavigator.pop() from Back.
   }
 
   @override
@@ -174,13 +199,21 @@ class _BackNavigationScopeState extends State<BackNavigationScope> {
     );
 
     if (Platform.isAndroid) {
-      scope = PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) {
-          if (didPop) return;
-          _onBack();
+      // Absorb NavigationNotification so WidgetsApp cannot set
+      // frameworkHandlesBack=false when the root route cannot pop.
+      scope = NotificationListener<NavigationNotification>(
+        onNotification: (_) {
+          SystemNavigator.setFrameworkHandlesBack(true);
+          return true;
         },
-        child: scope,
+        child: PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) return;
+            _onBack();
+          },
+          child: scope,
+        ),
       );
     }
 

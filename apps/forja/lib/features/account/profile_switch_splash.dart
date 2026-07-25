@@ -5,6 +5,7 @@ import 'package:forja/app/boot_cache.dart';
 import 'package:forja/app/boot_catalog.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
+import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
@@ -37,12 +38,11 @@ class ProfileSwitchSplash extends StatefulWidget {
 
 class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
     with SingleTickerProviderStateMixin {
-  static const double _chooserAvatarSize = 112;
   static const Duration _splashDuration = Duration(seconds: 5);
 
   late final AnimationController _motionController;
   late final Animation<double> _motion;
-  late final Animation<double> _nameOpacity;
+  late final Animation<double> _copyOpacity;
 
   late final DateTime _startedAt;
   String _status = 'Loading profile…';
@@ -59,9 +59,9 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
       parent: _motionController,
       curve: Curves.easeInOutCubic,
     );
-    _nameOpacity = CurvedAnimation(
+    _copyOpacity = CurvedAnimation(
       parent: _motionController,
-      curve: const Interval(0.55, 0.85, curve: Curves.easeOut),
+      curve: const Interval(0.45, 0.75, curve: Curves.easeOut),
     );
     _motionController.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -149,6 +149,7 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
   @override
   Widget build(BuildContext context) {
     final status = _status.trim();
+    final metrics = ProfileChooserMetrics.of(context);
     return ColoredBox(
       color: AppTheme.bgDark,
       child: LayoutBuilder(
@@ -156,11 +157,22 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
           final screenW = constraints.maxWidth;
           final screenH = constraints.maxHeight;
           final maxSide = math.min(screenW, screenH);
-          final endSize = math.max(
-            _chooserAvatarSize,
-            math.min(maxSide * 0.72, 420.0),
+          final endSize = metrics.splashEndAvatarSize(maxSide);
+
+          // One vertical composition: avatar → name → status (not a huge
+          // centered avatar with copy stuck to the screen edges).
+          final nameGap = metrics.splashNameGap;
+          final statusGap = metrics.splashStatusGap;
+          final nameLine = metrics.splashNameFontSize * 1.25;
+          final statusLine = metrics.splashStatusFontSize * 1.35 * 2;
+          final copyBlockH = nameGap + nameLine + statusGap + statusLine;
+          final compositionH = endSize + copyBlockH;
+          final compositionTop =
+              math.max(24.0, (screenH - compositionH) / 2);
+          final endCenter = Offset(
+            screenW / 2,
+            compositionTop + endSize / 2,
           );
-          final endCenter = Offset(screenW / 2, screenH / 2);
           final endRect = Rect.fromCenter(
             center: endCenter,
             width: endSize,
@@ -169,8 +181,8 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
 
           final fallbackOrigin = Rect.fromCenter(
             center: endCenter,
-            width: _chooserAvatarSize,
-            height: _chooserAvatarSize,
+            width: metrics.avatarSize,
+            height: metrics.avatarSize,
           );
           final startRect = widget.originRect ?? fallbackOrigin;
 
@@ -203,22 +215,43 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
                         ),
                       ),
                       Positioned(
-                        left: 24,
-                        right: 24,
-                        top: endRect.bottom + 20,
+                        left: 48,
+                        right: 48,
+                        top: endRect.bottom + nameGap,
                         child: Opacity(
-                          opacity: _nameOpacity.value,
-                          child: Text(
-                            widget.profile.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: ForjaShellColors.textPrimary,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
-                              decoration: TextDecoration.none,
-                            ),
+                          opacity: _copyOpacity.value,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                widget.profile.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: ForjaShellColors.textPrimary,
+                                  fontSize: metrics.splashNameFontSize,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
+                              if (status.isNotEmpty) ...[
+                                SizedBox(height: statusGap),
+                                Text(
+                                  status,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: ForjaShellColors.textSecondary
+                                        .withValues(alpha: 0.85),
+                                    fontSize: metrics.splashStatusFontSize,
+                                    fontWeight: FontWeight.w500,
+                                    decoration: TextDecoration.none,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ),
@@ -226,26 +259,6 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
                   );
                 },
               ),
-              if (status.isNotEmpty)
-                Positioned(
-                  left: 24,
-                  right: 24,
-                  bottom: MediaQuery.paddingOf(context).bottom + 24,
-                  child: Text(
-                    status,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: ForjaShellColors.textSecondary.withValues(
-                        alpha: 0.85,
-                      ),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      decoration: TextDecoration.none,
-                    ),
-                  ),
-                ),
             ],
           );
         },
