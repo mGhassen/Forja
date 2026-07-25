@@ -57,7 +57,8 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
     _s._isStremioFetching = false;
     _s._isNuvioFetching = false;
     _s._nuvioInFlightScraperId = null;
-    if (changed && mounted) setState(() {});
+    // context.mounted (not State.mounted): Element is already defunct in dispose.
+    if (changed && context.mounted) setState(() {});
   }
 
   Future<void> _fetchAllStremioStreams() async {
