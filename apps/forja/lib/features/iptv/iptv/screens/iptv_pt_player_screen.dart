@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -38,6 +38,14 @@ import 'package:forja/shell/shell_bus.dart';
 part 'iptv_pt_player_engine.dart';
 part 'iptv_pt_player_ui.dart';
 part 'iptv_pt_player_widgets.dart';
+
+/// True for live IPTV URLs (Xtream `/live/…`, M3U, unknown). False for Xtream VOD.
+@visibleForTesting
+bool iptvExoUrlLooksLive(String url) {
+  final lower = url.toLowerCase();
+  if (lower.contains('/movie/') || lower.contains('/series/')) return false;
+  return true;
+}
 
 /// Single source for the IPTV player.
 class IptvPlaySource {

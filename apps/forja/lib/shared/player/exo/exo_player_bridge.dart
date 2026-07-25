@@ -114,6 +114,12 @@ class ExoPlayerBridge {
     Map<String, String>? headers,
     Duration startPosition = Duration.zero,
     List<Map<String, String>> subtitles = const [],
+    /// IPTV live: larger buffers + live offset + device video caps on ATV/old Android.
+    bool live = false,
+    /// 0 = native picks a safe cap when [live] (720p on API < 26, 1080p on ATV).
+    int maxVideoHeight = 0,
+    /// 0 = native picks a bitrate cap from [maxVideoHeight] when [live].
+    int maxVideoBitrate = 0,
   }) async {
     await _channel.invokeMethod<void>('open', {
       'viewId': viewId,
@@ -121,6 +127,9 @@ class ExoPlayerBridge {
       'headers': headers ?? const {},
       'startMs': startPosition.inMilliseconds,
       'subtitles': subtitles,
+      'live': live,
+      'maxVideoHeight': maxVideoHeight,
+      'maxVideoBitrate': maxVideoBitrate,
     });
   }
 

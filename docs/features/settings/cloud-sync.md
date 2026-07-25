@@ -100,9 +100,11 @@ Not synced — device-specific or sensitive:
   not the boot intro splash, and not an in-settings dropdown. After it finishes,
   the app opens that profile’s **default menu** tab (the starred tab under
   **Settings → Features**), not the screen you were on before switching.
-- On desktop, a restored session goes straight to the boot splash (the session
+- On desktop **and Android TV**, a restored session goes straight to the boot splash (the session
   is kept across quit: Keychain/Keystore on sandboxed builds; a local vault on
   ad-hoc macOS Release so updates do not re-ask for the login Keychain password).
+  Boot renews the access token before profile/features sync so a overnight-expired
+  JWT cannot leave you “signed in” with failed cloud pulls.
   A new interactive sign-in opens **Who’s watching?** so you can
   choose the device profile first. If the account has no profiles yet, you
   create one before continuing. Tapping a profile there uses the same

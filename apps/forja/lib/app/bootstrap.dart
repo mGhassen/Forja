@@ -129,8 +129,9 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
   await ForjaSupabase.ensureInitialized();
-  // Reset Auth inactivity clock for restored sessions (30d timeout).
-  unawaited(SyncService.instance.refreshSession(force: true));
+  // Await so boot sync (features / profiles) does not race gotrue's lazy
+  // recoverSession and hit PostgREST with a discarded-refresh expired JWT.
+  await SyncService.instance.ensureFreshAccessToken();
   unawaited(ProviderRuntimeConfig.instance.ensureLoaded());
   unawaited(SettingsService().getAnimeTitleLanguage());
   if (Platform.isAndroid) {

@@ -19,7 +19,7 @@ Android TV cannot use desktop Web login (no loopback browser). Cold start is a c
 - Approve on the portal while signed in
 - Continue as guest without linking
 - After link: pick a profile on **Who’s watching?** (avatar profile splash, same as desktop)
-- Next cold start (same install): skip link + Who’s watching — open on the last active profile via the logo boot splash
+- Next cold start (same install): skip link + Who’s watching — open on the last active profile via the logo boot splash. The app refreshes the access token before cloud sync so a stale JWT from the previous day does not fail the boot pull.
 - Sign out on TV to return to the link welcome screen
 - Revoke the TV session later from Account → Connections (“Forja Android TV”)
 

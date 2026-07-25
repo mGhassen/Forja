@@ -153,6 +153,9 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
         viewId: _s._exoViewId!,
         url: src.url,
         headers: const {'User-Agent': _IptvPtPlayerScreenState._ua},
+        // Live Xtream/M3U: native Exo applies live LoadControl + ATV/API<26 caps.
+        // Movies/series VOD keep the default VOD path (Home movies are unchanged).
+        live: iptvExoUrlLooksLive(src.url),
       );
     } else {
       await _s._player!.open(

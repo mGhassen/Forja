@@ -79,6 +79,11 @@ class SyncService {
   ///
   /// Debounced unless [force] is true. Returns false when unsigned or refresh
   /// fails (GoTrue may then emit involuntary `signedOut`).
+  ///
+  /// Success means [auth.currentSession] is present and not expired — not merely
+  /// that gotrue returned tokens. Concurrent `recoverSession` can bump the
+  /// session version mid-refresh; gotrue then discards the apply while still
+  /// returning a fresh [AuthResponse.session] (JWT-expired PostgREST race).
   Future<bool> refreshSession({bool force = false}) async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null || client.auth.currentSession == null) return false;
@@ -86,7 +91,10 @@ class SyncService {
     if (!force &&
         _lastRefreshAttempt != null &&
         now.difference(_lastRefreshAttempt!) < _refreshDebounce) {
-      return true;
+      final current = client.auth.currentSession;
+      // Only short-circuit when the AT is still usable; an expired session
+      // inside the debounce window must still refresh.
+      if (current != null && !current.isExpired) return true;
     }
     final inflight = _refreshInFlight;
     if (inflight != null) return inflight;
@@ -96,7 +104,7 @@ class SyncService {
       _lastRefreshAttempt = DateTime.now();
       try {
         final response = await client.auth.refreshSession();
-        return response.session != null;
+        return await _ensureCurrentSessionApplied(client, response.session);
       } on AuthException catch (e) {
         debugPrint('[Sync] refreshSession failed: ${e.message}');
         return false;
@@ -111,6 +119,75 @@ class SyncService {
     }();
     _refreshInFlight = run;
     return run;
+  }
+
+  /// Applies [returned] when gotrue discarded a successful refresh apply.
+  Future<bool> _ensureCurrentSessionApplied(
+    SupabaseClient client,
+    Session? returned,
+  ) async {
+    var current = client.auth.currentSession;
+    final returnedAt = returned?.accessToken;
+    // Trust current only when it is usable *and* matches what refresh returned
+    // (or refresh already applied the same tokens). A non-expired current with
+    // a *different* returned AT means gotrue discarded a newer apply.
+    if (current != null &&
+        !current.isExpired &&
+        (returnedAt == null ||
+            returnedAt.isEmpty ||
+            returnedAt == current.accessToken)) {
+      return true;
+    }
+
+    final rt = returned?.refreshToken;
+    final at = returned?.accessToken;
+    if (returned == null ||
+        rt == null ||
+        rt.isEmpty ||
+        at == null ||
+        at.isEmpty) {
+      return current != null && !current.isExpired;
+    }
+
+    // Prefer RT-only when the returned AT is already past local expiry — forces
+    // a `/token` round-trip instead of setSession(getUser) on a dead JWT.
+    final applyAccess = returned.isExpired ? null : at;
+
+    debugPrint(
+      '[Sync] refresh returned tokens but currentSession still stale — '
+      're-applying (gotrue discard race)',
+    );
+    try {
+      if (applyAccess == null) {
+        await client.auth.setSession(rt);
+      } else {
+        await client.auth.setSession(rt, accessToken: applyAccess);
+      }
+    } on AuthException catch (e) {
+      debugPrint('[Sync] setSession after discard race failed: ${e.message}');
+      return false;
+    } catch (e) {
+      debugPrint('[Sync] setSession after discard race failed: $e');
+      return false;
+    }
+    current = client.auth.currentSession;
+    return current != null && !current.isExpired;
+  }
+
+  /// PostgREST / gotrue rejected the access JWT as expired (PGRST303).
+  static bool isJwtExpiredError(Object? error) {
+    if (error == null) return false;
+    if (error is PostgrestException) {
+      final code = error.code?.toUpperCase() ?? '';
+      if (code == 'PGRST303') return true;
+      final msg = error.message.toLowerCase();
+      return msg.contains('jwt expired') || msg.contains('pgrst303');
+    }
+    if (error is SyncProfileFetchException) {
+      return isJwtExpiredError(error.cause);
+    }
+    final s = error.toString().toLowerCase();
+    return s.contains('jwt expired') || s.contains('pgrst303');
   }
 
   /// Starts a desktop timer that refreshes the session while the app stays open
@@ -738,6 +815,7 @@ class SyncService {
       AccountFeatures.instance.clear();
       return const {};
     }
+    await ensureFreshAccessToken();
     try {
       var isAdmin = false;
       try {

@@ -3,8 +3,10 @@ package com.forjahq.app
 import android.content.Context
 import android.content.res.Configuration
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import androidx.media3.common.C
@@ -15,6 +17,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -23,6 +26,33 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.ConcurrentHashMap
+
+/** Playback hints from Dart (IPTV live vs Home VOD). */
+data class ExoOpenOptions(
+    val live: Boolean = false,
+    /** 0 = let host pick a device-safe cap for live, or no cap for VOD. */
+    val maxVideoHeight: Int = 0,
+    /** 0 = let host pick a device-safe bitrate for live, or no cap for VOD. */
+    val maxVideoBitrate: Int = 0,
+)
+
+private const val TAG = "ForjaExo"
+
+// Live IPTV: prefer smoothness over live-edge latency on weak ATV SoCs.
+private const val LIVE_MIN_BUFFER_MS = 15_000
+private const val LIVE_MAX_BUFFER_MS = 50_000
+private const val LIVE_BUFFER_FOR_PLAYBACK_MS = 2_500
+private const val LIVE_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5_000
+private const val LIVE_TARGET_OFFSET_MS = 15_000L
+private const val LIVE_MIN_OFFSET_MS = 5_000L
+private const val LIVE_MAX_OFFSET_MS = 40_000L
+private const val LIVE_MAX_BITRATE_720 = 3_500_000
+private const val LIVE_MAX_BITRATE_1080 = 5_000_000
+
+private fun isTelevisionContext(context: Context): Boolean {
+    val uiMode = context.resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
+    return uiMode == Configuration.UI_MODE_TYPE_TELEVISION
+}
 
 class ExoPlayerHost(
     private val context: Context,
@@ -89,7 +119,13 @@ class ExoPlayerHost(
         playerView = null
     }
 
-    fun open(url: String, headers: Map<String, String>, startMs: Long, subtitles: List<Map<String, String>>) {
+    fun open(
+        url: String,
+        headers: Map<String, String>,
+        startMs: Long,
+        subtitles: List<Map<String, String>>,
+        options: ExoOpenOptions = ExoOpenOptions(),
+    ) {
         stopInternal(releasePlayer = true)
         videoAuto = true
         val httpFactory = DefaultHttpDataSource.Factory()
@@ -127,12 +163,60 @@ class ExoPlayerHost(
             }
         }
 
+        // Live IPTV: sit behind the edge so TextureView + weak SoCs have cushion.
+        if (options.live) {
+            builder.setLiveConfiguration(
+                MediaItem.LiveConfiguration.Builder()
+                    .setTargetOffsetMs(LIVE_TARGET_OFFSET_MS)
+                    .setMinOffsetMs(LIVE_MIN_OFFSET_MS)
+                    .setMaxOffsetMs(LIVE_MAX_OFFSET_MS)
+                    .setMinPlaybackSpeed(0.97f)
+                    .setMaxPlaybackSpeed(1.03f)
+                    .build(),
+            )
+        }
+
+        val loadControl = if (options.live) {
+            DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                    LIVE_MIN_BUFFER_MS,
+                    LIVE_MAX_BUFFER_MS,
+                    LIVE_BUFFER_FOR_PLAYBACK_MS,
+                    LIVE_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+                )
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .build()
+        } else {
+            DefaultLoadControl.Builder().build()
+        }
+
         val exo = ExoPlayer.Builder(context)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setLoadControl(loadControl)
             .build()
         exo.addListener(listener)
         player = exo
         playerView?.player = exo
+
+        val maxHeight = resolveMaxVideoHeight(options)
+        val maxBitrate = resolveMaxVideoBitrate(options, maxHeight)
+        if (maxHeight > 0 || maxBitrate > 0) {
+            var params = exo.trackSelectionParameters.buildUpon()
+            if (maxHeight > 0) {
+                // Width follows 16:9 from height — caps adaptive HLS/DASH variants.
+                val maxWidth = (maxHeight * 16) / 9
+                params = params.setMaxVideoSize(maxWidth, maxHeight)
+            }
+            if (maxBitrate > 0) {
+                params = params.setMaxVideoBitrate(maxBitrate)
+            }
+            exo.trackSelectionParameters = params.build()
+            Log.i(
+                TAG,
+                "open live=${options.live} maxHeight=$maxHeight maxBitrate=$maxBitrate sdk=${Build.VERSION.SDK_INT}",
+            )
+        }
+
         exo.setMediaItem(builder.build())
         exo.prepare()
         if (startMs > 0) {
@@ -140,6 +224,21 @@ class ExoPlayerHost(
         }
         exo.playWhenReady = true
         startProgressLoop()
+    }
+
+    private fun resolveMaxVideoHeight(options: ExoOpenOptions): Int {
+        if (options.maxVideoHeight > 0) return options.maxVideoHeight
+        if (!options.live) return 0
+        // Android ≤7 / API 24–25 TV SoCs (e.g. Toshiba) choke on 1080 live + TextureView.
+        if (Build.VERSION.SDK_INT < 26) return 720
+        if (isTelevisionContext(context)) return 1080
+        return 0
+    }
+
+    private fun resolveMaxVideoBitrate(options: ExoOpenOptions, maxHeight: Int): Int {
+        if (options.maxVideoBitrate > 0) return options.maxVideoBitrate
+        if (!options.live || maxHeight <= 0) return 0
+        return if (maxHeight <= 720) LIVE_MAX_BITRATE_720 else LIVE_MAX_BITRATE_1080
     }
 
     fun play() {
@@ -405,7 +504,12 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
                 val startMs = call.argument<Number>("startMs")?.toLong() ?: 0L
                 @Suppress("UNCHECKED_CAST")
                 val subtitles = call.argument<List<Map<String, String>>>("subtitles") ?: emptyList()
-                hostFor(viewId).open(url, headers, startMs, subtitles)
+                val options = ExoOpenOptions(
+                    live = call.argument<Boolean>("live") == true,
+                    maxVideoHeight = call.argument<Number>("maxVideoHeight")?.toInt() ?: 0,
+                    maxVideoBitrate = call.argument<Number>("maxVideoBitrate")?.toInt() ?: 0,
+                )
+                hostFor(viewId).open(url, headers, startMs, subtitles, options)
                 result.success(null)
             }
             "play" -> {

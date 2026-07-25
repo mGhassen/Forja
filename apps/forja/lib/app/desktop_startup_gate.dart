@@ -127,19 +127,33 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     // Restored sessions must skip the link screen and Who's watching — land
     // on splash with the last active profile (SharedPreferences).
     var hasSession = SyncService.instance.isSignedIn;
-    if (!hasSession && ForjaSupabase.isConfigured) {
-      // Storage may finish hydrating after initialize on slow TV devices.
+    if (ForjaSupabase.isConfigured) {
+      // Always renew when signed in (expired AT + gotrue discard race). When
+      // unsigned, one refresh can still hydrate after slow TV secure-store read.
       try {
-        await SyncService.instance.refreshSession();
+        if (hasSession) {
+          await SyncService.instance.ensureFreshAccessToken();
+        } else {
+          await SyncService.instance.refreshSession(force: true);
+        }
       } catch (e) {
         debugPrint('[DesktopStartupGate] refreshSession: $e');
       }
       hasSession = SyncService.instance.isSignedIn;
     }
     if (hasSession) {
-      await SyncService.instance.pullAccountFeatures();
-      // Ensure active profile row is resolved before splash/shell paint.
-      await SyncService.instance.activeProfile();
+      try {
+        await SyncService.instance.pullAccountFeatures();
+        // Ensure active profile row is resolved before splash/shell paint.
+        await SyncService.instance.activeProfile();
+      } on SyncProfileFetchException catch (e) {
+        // Do not crash the startup gate — splash/shell still open; Settings
+        // Profile shows Retry. Session may still be valid after a soft fail.
+        debugPrint('[DesktopStartupGate] activeProfile: $e');
+      } catch (e) {
+        debugPrint('[DesktopStartupGate] post-update sync: $e');
+      }
+      hasSession = SyncService.instance.isSignedIn;
     }
     if (!mounted) return;
     final destination = resolveAuthStartupDestination(
