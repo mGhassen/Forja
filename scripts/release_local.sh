@@ -764,7 +764,7 @@ build_macos() {
   echo "==> Verify payload"
   ./scripts/verify_installer_payload.sh macos
   echo "==> Package DMG"
-  ./scripts/package_macos_dmg.sh "$ver"
+  ./scripts/package_macos_dmg.sh "$ver" arm64
   local dmg
   dmg="$(dmg_path "$ver")"
   [[ -f "$dmg" ]] || die "expected DMG missing: $dmg"

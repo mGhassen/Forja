@@ -502,7 +502,8 @@ class _SettingsNavigationPageBodyState
                       _saveNavbarConfig();
                     },
                     scaleOnFocus: 1.0,
-                    navLeftAlways: true,
+                    showFocusBorder: true,
+                    showFocusFill: true,
                     tvTabId: 'settings',
                     tvZone: ShellTvZone.settings,
                     child: ListTile(

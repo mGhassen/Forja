@@ -41,7 +41,7 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 - Or in GitHub: Actions → **Release Forja** → **New version** or **Existing tag**; pick platforms
 - Tag backfill: Actions → **Backfill version tags** (requires repo secret `BACKFILL_GITHUB_TOKEN` — fine-grained PAT with Contents + Workflows write on this repo)
 - Android TV releases publish two APKs: `Forja-{version}-android-tv-arm64.apk` and `Forja-{version}-android-tv-armeabi-v7a.apk`; the in-app updater picks the matching ABI
-- macOS releases publish `Forja-{version}-macos-arm64.dmg`; the updater prefers the host arch
+- macOS releases publish `Forja-{version}-macos-arm64.dmg` and `Forja-{version}-macos-x86_64.dmg`; the updater picks the host arch
 - Optional smoke build: Actions → **Build Forja** (workflow artifacts only, no release)
 - Download latest builds from the [web download page](https://forjahq.xyz/download) if in-app update fails or no platform asset is attached
 - See [Platforms](../getting-started/platforms.md) for per-OS install formats

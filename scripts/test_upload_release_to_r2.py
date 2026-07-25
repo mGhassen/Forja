@@ -17,6 +17,7 @@ class DetectPlatformTest(unittest.TestCase):
     def test_known(self) -> None:
         self.assertEqual(detect_platform("Forja-1.2.1-windows-setup.exe"), "windows")
         self.assertEqual(detect_platform("Forja-1.2.1-macos-arm64.dmg"), "macos")
+        self.assertEqual(detect_platform("Forja-1.2.1-macos-x86_64.dmg"), "macos")
         self.assertEqual(
             detect_platform("Forja-1.2.1-linux-x86_64.AppImage"), "linux"
         )

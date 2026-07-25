@@ -29,7 +29,7 @@ on:
         type: boolean
         default: false
       platform_macos:
-        description: Build macOS
+        description: Build macOS (arm64 + Intel x86_64)
         type: boolean
         default: true
       platform_windows:
@@ -197,8 +197,8 @@ jobs:
             echo "version=${{ steps.existing.outputs.version }}" >> "$GITHUB_OUTPUT"
           fi
 
-  build_macos:
-    name: macOS
+  build_macos_arm64:
+    name: macOS arm64
     if: ${{ inputs.platform_macos }}
     needs: resolve_version
     runs-on: macos-latest
@@ -242,12 +242,63 @@ jobs:
         run: ./scripts/verify_installer_payload.sh macos
 
       - name: Package DMG
-        run: ./scripts/package_macos_dmg.sh "${{ needs.resolve_version.outputs.version }}"
+        run: ./scripts/package_macos_dmg.sh "${{ needs.resolve_version.outputs.version }}" arm64
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Forja-macOS-dmg
+          name: Forja-macOS-arm64-dmg
           path: dist/Forja-${{ needs.resolve_version.outputs.version }}-macos-arm64.dmg
+
+  # Native Intel build — macos-15-intel is GitHub's last x86_64 macOS runner
+  # (available through ~Aug 2027; macos-13 was retired Dec 2025).
+  build_macos_x86_64:
+    name: macOS x86_64
+    if: ${{ inputs.platform_macos }}
+    needs: resolve_version
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.resolve_version.outputs.version }}
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+
+      - name: Build Rust FFI
+        run: ./scripts/build_rust_release.sh
+
+      - name: Build macOS app
+        working-directory: ${{ env.APP_DIR }}
+        env:
+          FLUTTER_XCODE_CODE_SIGNING_ALLOWED: "NO"
+        run: |
+          flutter pub get
+          flutter build macos --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
+            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
+            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
+            --dart-define=SENTRY_DSN="$SENTRY_DSN" \
+            --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
+
+      - name: Ad-hoc codesign app bundle
+        run: ./scripts/codesign_macos_adhoc.sh
+
+      - name: Verify installer payload
+        run: ./scripts/verify_installer_payload.sh macos
+
+      - name: Package DMG
+        run: ./scripts/package_macos_dmg.sh "${{ needs.resolve_version.outputs.version }}" x86_64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Forja-macOS-x86_64-dmg
+          path: dist/Forja-${{ needs.resolve_version.outputs.version }}-macos-x86_64.dmg
 
   build_windows:
     name: Windows
@@ -461,7 +512,8 @@ jobs:
     name: Publish GitHub Release
     needs:
       - resolve_version
-      - build_macos
+      - build_macos_arm64
+      - build_macos_x86_64
       - build_windows
       - build_linux
       - build_android_tv
@@ -469,7 +521,8 @@ jobs:
       !cancelled() &&
       needs.resolve_version.result == 'success' &&
       (
-        needs.build_macos.result == 'success' ||
+        needs.build_macos_arm64.result == 'success' ||
+        needs.build_macos_x86_64.result == 'success' ||
         needs.build_windows.result == 'success' ||
         needs.build_linux.result == 'success' ||
         needs.build_android_tv.result == 'success'
@@ -478,13 +531,15 @@ jobs:
     steps:
       - name: Platform build summary
         run: |
-          echo "macOS:       ${{ needs.build_macos.result }}"
-          echo "Windows:     ${{ needs.build_windows.result }}"
-          echo "Linux:       ${{ needs.build_linux.result }}"
-          echo "Android TV:  ${{ needs.build_android_tv.result }}"
+          echo "macOS arm64:  ${{ needs.build_macos_arm64.result }}"
+          echo "macOS x86_64: ${{ needs.build_macos_x86_64.result }}"
+          echo "Windows:      ${{ needs.build_windows.result }}"
+          echo "Linux:        ${{ needs.build_linux.result }}"
+          echo "Android TV:   ${{ needs.build_android_tv.result }}"
           failed=0
           for result in \
-            "${{ needs.build_macos.result }}" \
+            "${{ needs.build_macos_arm64.result }}" \
+            "${{ needs.build_macos_x86_64.result }}" \
             "${{ needs.build_windows.result }}" \
             "${{ needs.build_linux.result }}" \
             "${{ needs.build_android_tv.result }}"; do

@@ -36,9 +36,12 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 - Only the selected category loads — opening Settings is lighter than the old all-sections page
 - IPTV / Live Matches alone → movie Settings stay hidden until you turn a VOD tab back on in **Navigation**, then play sources under **Playback**
 - On **TV**, the bottom rail item is your **profile avatar** (same as desktop).
-  D-pad moves through the category sidebar and into the right-pane rows; **Left**
-  on the first category returns to the nav rail. **OK** selects a category or
-  flips a toggle / cycles a dropdown; nested switches do not steal focus
+  **↑/↓** moves through the category sidebar (green left bar only — no gray
+  focus ring; focusing a category selects it); **→** opens that category’s
+  right pane; **↑/↓** (and **→**) move through detail rows, toggles, chips, and
+  buttons; **←** on the first detail control returns to the category rail;
+  **←** on the first category returns to the nav rail. **OK** flips a toggle /
+  cycles a dropdown; nested switches do not steal focus
 - Theme / appearance picker is not shipped yet — see [Appearance](appearance.md)
 
 ## Related

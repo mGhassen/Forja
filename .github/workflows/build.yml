@@ -53,7 +53,7 @@ jobs:
           esac
 
   macos:
-    name: macOS
+    name: macOS arm64
     needs: validate_config
     runs-on: macos-latest
     steps:
@@ -84,7 +84,39 @@ jobs:
         run: ./scripts/codesign_macos_adhoc.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: Forja-macOS
+          name: Forja-macOS-arm64
+          path: apps/forja/build/macos/Build/Products/Release/
+
+  macos_x86_64:
+    name: macOS x86_64
+    needs: validate_config
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: ${{ env.FLUTTER_CHANNEL }}
+      - run: ./scripts/build_rust_release.sh
+      - working-directory: ${{ env.APP_DIR }}
+        env:
+          FLUTTER_XCODE_CODE_SIGNING_ALLOWED: "NO"
+        run: |
+          flutter pub get
+          flutter build macos --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
+            --dart-define=FORJA_WEB_URL="$FORJA_WEB_URL" \
+            --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
+            --dart-define=SENTRY_DSN="$SENTRY_DSN" \
+            --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
+      - name: Ad-hoc codesign app bundle
+        run: ./scripts/codesign_macos_adhoc.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Forja-macOS-x86_64
           path: apps/forja/build/macos/Build/Products/Release/
 
   windows:

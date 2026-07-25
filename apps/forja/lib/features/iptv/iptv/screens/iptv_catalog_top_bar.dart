@@ -1226,9 +1226,10 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                         style: GoogleFonts.plusJakartaSans(
                           color: showColor ? Colors.white : Colors.white60,
                           fontSize: 12.5,
-                          fontWeight: showColor
+                          // Bold only on hover / D-pad focus — not selection.
+                          fontWeight: _paintActive
                               ? FontWeight.w700
-                              : FontWeight.w600,
+                              : FontWeight.w500,
                         ),
                       ),
                     ],

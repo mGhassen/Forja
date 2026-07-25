@@ -239,7 +239,7 @@ Latest install target = newest non-draft, non-prerelease release. Asset **names*
 | Android | `*Forja*.apk` or `*.apk` | In-app OTA install |
 | Windows | `*windows*.exe` | Download + launch installer |
 | Linux | `*.AppImage` or `*.deb` | Download + chmod + exec |
-| macOS | `Forja-*-macos-arm64.dmg` (prefer host arch) | Download to Downloads + `open` DMG |
+| macOS | `Forja-*-macos-arm64.dmg` / `Forja-*-macos-x86_64.dmg` (prefer host arch) | Download to Downloads + `open` DMG |
 | iOS | — | Link to releases / TestFlight only |
 
 **Release body:** Markdown from every stable release newer than the installed version is aggregated (newest first) into the dialog. Empty bodies and GitHub auto `Full Changelog:` stubs are skipped. When more than one version contributes notes, each block is headed with `# X.Y.Z`.
@@ -315,6 +315,7 @@ Forja-1.2.3-android-tv-arm64.apk
 Forja-1.2.3-android-tv-armeabi-v7a.apk
 Forja-1.2.3-windows-setup.exe
 Forja-1.2.3-macos-arm64.dmg
+Forja-1.2.3-macos-x86_64.dmg
 Forja-1.2.3-linux-x86_64.AppImage
 ```
 

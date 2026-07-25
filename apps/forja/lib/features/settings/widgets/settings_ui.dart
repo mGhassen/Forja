@@ -7,6 +7,9 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Category row in the Settings hub list / sidebar.
+///
+/// Chrome is only the green left bar / icon (selection). TV D-pad focus does
+/// not draw a gray ring - focusing a tile selects it so accent + detail match.
 class SettingsCategoryTile extends StatelessWidget {
   const SettingsCategoryTile({
     super.key,
@@ -17,6 +20,9 @@ class SettingsCategoryTile extends StatelessWidget {
     required this.onTap,
     this.focusNode,
     this.listIndex,
+    this.tvRowId,
+    this.tvItemIndex,
+    this.onRightEdge,
   });
 
   final IconData icon;
@@ -29,20 +35,27 @@ class SettingsCategoryTile extends StatelessWidget {
   /// Hub list index - `0` sends Left D-pad to the nav rail.
   final int? listIndex;
 
+  /// Split-layout TV: vertical category rail row id.
+  final String? tvRowId;
+  final int? tvItemIndex;
+
+  /// Split-layout TV: Right enters the detail pane.
+  final VoidCallback? onRightEdge;
+
   @override
   Widget build(BuildContext context) {
     final iconColor =
         selected ? ForjaShellColors.brandGreen : ForjaShellColors.iconMuted;
     final titleColor =
         selected ? ForjaShellColors.textPrimary : ForjaShellColors.textSecondary;
+    final rail = tvRowId != null;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     final child = AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
-        color: selected
-            ? ForjaShellColors.inkHover
-            : Colors.transparent,
+        color: selected ? ForjaShellColors.inkHover : Colors.transparent,
         border: Border(
           left: BorderSide(
             color: selected ? ForjaShellColors.brandGreen : Colors.transparent,
@@ -95,12 +108,22 @@ class SettingsCategoryTile extends StatelessWidget {
       context: context,
       onTap: onTap,
       scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      showFocusFill: true,
+      // Category rail chrome is the green left bar - never the gray menu ring.
+      showFocusBorder: false,
+      showFocusFill: false,
       listIndex: listIndex,
       tvTabId: 'settings',
-      tvZone: ShellTvZone.settings,
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex ?? listIndex,
+      tvZone: rail ? ShellTvZone.row : ShellTvZone.settings,
+      onRightEdge: onRightEdge,
       focusNode: focusNode,
+      onFocusChange: (focused) {
+        // Keep detail pane on the focused category (no dual focus/selection).
+        if (tv && focused && !selected) {
+          onTap();
+        }
+      },
       child: child,
     );
   }

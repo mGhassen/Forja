@@ -142,10 +142,35 @@ class ShellTvDisableLinearFocus extends InheritedWidget {
       false;
 }
 
+/// Optional edge handlers when linear traversal cannot move further.
+///
+/// Used by Settings detail panes so ← on the first row returns to the category
+/// rail instead of trapping focus.
+class ShellTvLinearFocusEdges extends InheritedWidget {
+  const ShellTvLinearFocusEdges({
+    super.key,
+    this.onBackwardEdge,
+    this.onForwardEdge,
+    required super.child,
+  });
+
+  final bool Function()? onBackwardEdge;
+  final bool Function()? onForwardEdge;
+
+  static ShellTvLinearFocusEdges? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<ShellTvLinearFocusEdges>();
+
+  @override
+  bool updateShouldNotify(covariant ShellTvLinearFocusEdges oldWidget) =>
+      onBackwardEdge != oldWidget.onBackwardEdge ||
+      onForwardEdge != oldWidget.onForwardEdge;
+}
+
 /// D-pad inside [ShellTvLinearFocusScope] - reading order, no wrap.
 ///
 /// ↑/← → previous, ↓/→ → next, with [TraversalEdgeBehavior.stop] so the first
 /// item never jumps to the last (and last never wraps to first).
+/// When traversal stops, optional [ShellTvLinearFocusEdges] may handle the edge.
 KeyEventResult shellTvLinearMenuArrows({
   required BuildContext context,
   required KeyEvent event,
@@ -165,14 +190,20 @@ KeyEventResult shellTvLinearMenuArrows({
   if (!backward && !forward) return KeyEventResult.ignored;
 
   final scope = FocusScope.of(context);
+  final edges = ShellTvLinearFocusEdges.maybeOf(context);
   // Default closedLoop makes previousFocus on the first node land on the last.
   final edge = scope.traversalEdgeBehavior;
   scope.traversalEdgeBehavior = TraversalEdgeBehavior.stop;
   try {
-    if (backward) {
-      scope.previousFocus();
-    } else {
-      scope.nextFocus();
+    final moved = backward ? scope.previousFocus() : scope.nextFocus();
+    if (!moved) {
+      final edgeHandler =
+          backward ? edges?.onBackwardEdge : edges?.onForwardEdge;
+      if (edgeHandler != null) {
+        return edgeHandler()
+            ? KeyEventResult.handled
+            : KeyEventResult.ignored;
+      }
     }
   } finally {
     scope.traversalEdgeBehavior = edge;

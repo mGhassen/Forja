@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
@@ -282,12 +283,22 @@ class _TabStrip extends StatelessWidget {
             tvTabId: 'settings',
             tvRowId: 'scoring-tabs',
             onTap: () => onChanged(_tabs[i].$1),
-            onLeftEdge: shellTvChipLeftEdge(
-              context,
-              tabId: 'settings',
-              rowId: 'scoring-tabs',
-              index: i,
-            ),
+            onLeftEdge: () {
+              if (i > 0) {
+                ShellTvFocusCoordinator.focusAdjacentInRow(
+                  tabId: 'settings',
+                  rowId: 'scoring-tabs',
+                  currentIndex: i,
+                  right: false,
+                );
+                return;
+              }
+              // First scoring tab: back to category rail (not shell nav).
+              final edges = ShellTvLinearFocusEdges.maybeOf(context);
+              if (edges?.onBackwardEdge?.call() != true) {
+                ShellTvFocusCoordinator.focusActiveNavTab();
+              }
+            },
             onRightEdge: shellTvChipRightEdge(
               tabId: 'settings',
               rowId: 'scoring-tabs',

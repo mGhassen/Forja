@@ -83,7 +83,7 @@ pick_platforms() {
 
   echo
   echo "Platforms (Enter = keep default):"
-  read -r -p "  macOS [Y/n]: " ans
+  read -r -p "  macOS arm64+Intel [Y/n]: " ans
   [[ "$ans" =~ ^[Nn] ]] && PLATFORM_MACOS=false
 
   read -r -p "  Windows [Y/n]: " ans

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// WebStreamr hub body - countries, extractors, resolutions, MFP, Flare, TMDB.
@@ -86,6 +88,7 @@ class _SettingsWebstreamrSectionState extends State<SettingsWebstreamrSection> {
     required void Function(String id, bool on) onToggle,
     String Function(String id)? labelOf,
   }) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 4, 2, 12),
       child: Wrap(
@@ -93,29 +96,53 @@ class _SettingsWebstreamrSectionState extends State<SettingsWebstreamrSection> {
         runSpacing: 8,
         children: [
           for (final id in ids)
-            FilterChip(
-              label: Text(labelOf?.call(id) ?? id),
-              selected: selected.contains(id),
-              onSelected: (v) => onToggle(id, v),
-              selectedColor: ForjaShellColors.brandGreen.withValues(alpha: 0.22),
-              checkmarkColor: ForjaShellColors.brandGreen,
-              backgroundColor: Colors.transparent,
-              labelStyle: TextStyle(
-                color: selected.contains(id)
-                    ? ForjaShellColors.brandGreen
-                    : ForjaShellColors.textSecondary,
-                fontWeight:
-                    selected.contains(id) ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 12.5,
-              ),
-              side: BorderSide(
-                color: selected.contains(id)
-                    ? ForjaShellColors.brandGreen
-                    : ForjaShellColors.borderSubtle,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+            Builder(
+              builder: (context) {
+                final on = selected.contains(id);
+                final label = labelOf?.call(id) ?? id;
+                final chip = Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: on
+                        ? ForjaShellColors.brandGreen.withValues(alpha: 0.22)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: on
+                          ? ForjaShellColors.brandGreen
+                          : ForjaShellColors.borderSubtle,
+                    ),
+                  ),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: on
+                          ? ForjaShellColors.brandGreen
+                          : ForjaShellColors.textSecondary,
+                      fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                );
+                if (!tv) {
+                  return GestureDetector(
+                    onTap: () => onToggle(id, !on),
+                    child: chip,
+                  );
+                }
+                return shellFocusableTap(
+                  context: context,
+                  onTap: () => onToggle(id, !on),
+                  borderRadius: 8,
+                  scaleOnFocus: 1.0,
+                  showFocusBorder: true,
+                  showFocusFill: true,
+                  tvTabId: 'settings',
+                  tvZone: ShellTvZone.settings,
+                  child: chip,
+                );
+              },
             ),
         ],
       ),

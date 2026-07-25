@@ -76,7 +76,7 @@ Single commit message theme: `chore: remove legacy root app and UI packages`
 
 - CI: build with `FLUTTER_XCODE_CODE_SIGNING_ALLOWED=NO`, then [`scripts/codesign_macos_adhoc.sh`](../../scripts/codesign_macos_adhoc.sh) (`codesign --deep --sign -`, **no entitlements**)
 - `macos/Runner/Release.entitlements`: **App Sandbox off** (if Xcode ever embeds entitlements locally)
-- Package via [`scripts/package_macos_dmg.sh`](../../scripts/package_macos_dmg.sh) → `Forja-{version}-macos-arm64.dmg`
+- Package via [`scripts/package_macos_dmg.sh`](../../scripts/package_macos_dmg.sh) → `Forja-{version}-macos-{arm64|x86_64}.dmg`
 
 **Do not** ship Release with App Sandbox on under ad-hoc (Launch Services `kLSNoExecutableErr`). **Do not** ship with unsigned frameworks (`CODE_SIGNING_ALLOWED=NO` alone — dyld rejects them).
 
@@ -85,7 +85,7 @@ Single commit message theme: `chore: remove legacy root app and UI packages`
 ```bash
 flutter build macos --release
 # optional later: codesign + notarize (Developer ID) + staple
-# create Forja-{version}-macos-arm64.dmg
+# create Forja-{version}-macos-arm64.dmg (and macos-x86_64 on CI Intel runner)
 ```
 
 ## 3. CI pipeline
@@ -96,7 +96,7 @@ flutter build macos --release
 
 | Job | Output |
 |-----|--------|
-| macOS | `Forja-{version}-macos-arm64.dmg` |
+| macOS | `Forja-{version}-macos-arm64.dmg` + `Forja-{version}-macos-x86_64.dmg` |
 | Windows | `Forja-{version}-windows-setup.exe` via [`installer/windows/setup.iss`](../../installer/windows/setup.iss); CI bundles MSVC CRT via [`scripts/bundle_windows_msvc_crt.sh`](../../scripts/bundle_windows_msvc_crt.sh) before Inno |
 | Linux | `Forja-{version}-linux-x86_64.AppImage` |
 | Android TV | `Forja-{version}-android-tv-arm64.apk` + `Forja-{version}-android-tv-armeabi-v7a.apk` |

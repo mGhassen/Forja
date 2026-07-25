@@ -4,7 +4,9 @@ import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// Hub chrome: split sidebar on wide (incl. Android TV 1080p+), list→push on compact.
@@ -25,7 +27,11 @@ class SettingsHubScaffold extends StatefulWidget {
 }
 
 class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
+  static const _categoryRowId = 'settings-categories';
+
   SettingsVisibility? _visibility;
+  final FocusScopeNode _detailScope =
+      FocusScopeNode(debugLabel: 'settings-detail');
 
   @override
   void initState() {
@@ -39,6 +45,8 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
   void dispose() {
     SettingsService.playSourceChangeNotifier.removeListener(_reload);
     SettingsService.navbarChangeNotifier.removeListener(_reload);
+    shellTvUnregisterRow(tabId: 'settings', rowId: _categoryRowId);
+    _detailScope.dispose();
     super.dispose();
   }
 
@@ -54,7 +62,53 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
     }
   }
 
-  Widget _wrapTvFocus(Widget child) {
+  void _registerCategoryRow(int count) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (!tv) return;
+    shellTvRegisterRow(
+      tabId: 'settings',
+      rowId: _categoryRowId,
+      sortOrder: 0,
+      itemCount: count,
+      orientation: ShellTvRowOrientation.vertical,
+    );
+  }
+
+  bool _focusSelectedCategory() {
+    final visibility = _visibility;
+    if (visibility == null) return false;
+    final categories = settingsCategories(visibility);
+    final index = categories.indexWhere((c) => c.id == widget.selectedId);
+    if (index < 0) return false;
+    return ShellTvFocusCoordinator.focusRowItem(
+      'settings',
+      _categoryRowId,
+      index,
+    );
+  }
+
+  bool _focusDetailFirst() {
+    if (!_detailScope.canRequestFocus) return false;
+    final first = OrderedTraversalPolicy().findFirstFocus(_detailScope);
+    if (first == null || !first.canRequestFocus) {
+      _detailScope.requestFocus();
+      return _detailScope.hasFocus;
+    }
+    first.requestFocus();
+    return true;
+  }
+
+  void _enterDetail(String categoryId) {
+    if (categoryId != widget.selectedId) {
+      widget.onSelect(categoryId);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _focusDetailFirst();
+    });
+  }
+
+  Widget _wrapCompactTvFocus(Widget child) {
     return ShellTvLinearFocusScope(
       child: FocusTraversalGroup(
         policy: OrderedTraversalPolicy(),
@@ -73,44 +127,70 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
     final categories = settingsCategories(visibility);
     final split = SettingsTokens.useSplitLayout(context);
     final selectedMeta = settingsCategoryById(widget.selectedId, visibility);
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     if (split) {
+      if (tv) _registerCategoryRow(categories.length);
       return SafeArea(
-        child: _wrapTvFocus(
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                width: SettingsTokens.sidebarWidth,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: SettingsTokens.sidebarWidth,
+              child: FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
                 child: _CategorySidebar(
                   categories: categories,
                   selectedId: widget.selectedId,
                   onSelect: widget.onSelect,
                   firstTileFocusNode: widget.firstTileFocusNode,
+                  categoryRowId: tv ? _categoryRowId : null,
+                  onEnterDetail: tv ? _enterDetail : null,
                 ),
               ),
-              Container(
-                width: 1,
-                color: ForjaShellColors.borderSubtle,
-              ),
-              Expanded(
-                child: SettingsPageScaffold(
-                  title: selectedMeta?.title ?? 'Settings',
-                  scrollable: !(selectedMeta?.fillViewport ?? false),
-                  child: buildSettingsCategoryBody(
-                    widget.selectedId,
-                    visibility,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+            Container(
+              width: 1,
+              color: ForjaShellColors.borderSubtle,
+            ),
+            Expanded(
+              child: tv
+                  ? FocusScope(
+                      node: _detailScope,
+                      child: ShellTvLinearFocusScope(
+                        child: ShellTvLinearFocusEdges(
+                          onBackwardEdge: _focusSelectedCategory,
+                          child: FocusTraversalGroup(
+                            policy: OrderedTraversalPolicy(),
+                            child: SettingsPageScaffold(
+                              title: selectedMeta?.title ?? 'Settings',
+                              scrollable:
+                                  !(selectedMeta?.fillViewport ?? false),
+                              child: buildSettingsCategoryBody(
+                                widget.selectedId,
+                                visibility,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : SettingsPageScaffold(
+                      title: selectedMeta?.title ?? 'Settings',
+                      scrollable: !(selectedMeta?.fillViewport ?? false),
+                      child: buildSettingsCategoryBody(
+                        widget.selectedId,
+                        visibility,
+                      ),
+                    ),
+            ),
+          ],
         ),
       );
     }
 
     return SafeArea(
-      child: _wrapTvFocus(
+      child: _wrapCompactTvFocus(
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -161,12 +241,16 @@ class _CategorySidebar extends StatelessWidget {
     required this.categories,
     required this.selectedId,
     required this.onSelect,
+    this.categoryRowId,
+    this.onEnterDetail,
     this.firstTileFocusNode,
   });
 
   final List<SettingsCategoryMeta> categories;
   final String selectedId;
   final ValueChanged<String> onSelect;
+  final String? categoryRowId;
+  final ValueChanged<String>? onEnterDetail;
   final FocusNode? firstTileFocusNode;
 
   @override
@@ -194,6 +278,11 @@ class _CategorySidebar extends StatelessWidget {
                 selected: c.id == selectedId,
                 listIndex: index,
                 focusNode: index == 0 ? firstTileFocusNode : null,
+                tvRowId: categoryRowId,
+                tvItemIndex: categoryRowId != null ? index : null,
+                onRightEdge: onEnterDetail == null
+                    ? null
+                    : () => onEnterDetail!(c.id),
                 onTap: () => onSelect(c.id),
               );
             },
