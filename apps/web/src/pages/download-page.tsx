@@ -20,6 +20,32 @@ import { startBackgroundDownload } from '@/lib/start-download'
 import type { ReleaseAsset } from '@/hooks/use-releases'
 import { cn } from '@/lib/utils'
 
+function WindowsIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      aria-hidden
+      fill="currentColor"
+    >
+      <path d="M3 5.5 10.5 4.4v7.1H3V5.5Zm0 13L10.5 19.6v-7.1H3v6ZM11.7 4.2 21 3v8.5h-9.3V4.2Zm0 16.6L21 21v-8.5h-9.3v8.3Z" />
+    </svg>
+  )
+}
+
+function AppleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      aria-hidden
+      fill="currentColor"
+    >
+      <path d="M16.7 12.6c0-2.1 1.7-3.1 1.8-3.2-1-1.4-2.5-1.6-3-1.7-1.3-.1-2.5.8-3.1.8-.7 0-1.7-.7-2.8-.7-1.4 0-2.8.9-3.5 2.2-1.5 2.6-.4 6.4 1.1 8.5.7 1 1.6 2.2 2.8 2.1 1.1 0 1.5-.7 2.9-.7s1.7.7 2.9.7c1.2 0 1.9-1 2.7-2 .8-1.2 1.2-2.3 1.2-2.4-.1 0-2.3-.9-2.3-3.6ZM14.9 6.4c.6-.8 1.1-1.8.9-2.9-1 .1-2.1.7-2.7 1.5-.6.7-1.1 1.8-.9 2.8 1 .1 2.1-.5 2.7-1.4Z" />
+    </svg>
+  )
+}
+
 function formatBytes(n: number | null): string | null {
   if (n == null || n <= 0) return null
   const mb = n / (1024 * 1024)
@@ -27,13 +53,18 @@ function formatBytes(n: number | null): string | null {
   return `${Math.round(n / 1024)} KB`
 }
 
-/** Short arch / package label for multi-asset platforms (Android TV, macOS, …). */
-function assetVariantLabel(name: string): string {
+/** Short arch / package label from installer filename. */
+function assetVariantLabel(
+  name: string,
+  platformId?: ShowcasePlatformId,
+): string {
   const n = name.toLowerCase()
   if (n.includes('armeabi-v7a') || n.includes('armeabi_v7a')) return 'ARMv7'
-  if (n.includes('arm64') || n.includes('aarch64')) return 'ARM64'
+  if (n.includes('arm64') || n.includes('aarch64')) {
+    return platformId === 'macos' ? 'Apple Silicon' : 'ARM64'
+  }
   if (n.includes('x86_64') || n.includes('x86-64') || n.includes('amd64')) {
-    return 'Intel'
+    return platformId === 'macos' ? 'Intel' : 'x86_64'
   }
   if (/\bx86\b/.test(n) || n.includes('i686')) return 'x86'
   if (n.endsWith('.appimage')) return 'AppImage'
@@ -42,6 +73,35 @@ function assetVariantLabel(name: string): string {
   if (n.endsWith('.exe')) return 'Installer'
   if (n.endsWith('.apk')) return 'APK'
   return name
+}
+
+/** True when the filename encodes CPU arch / package variant worth showing. */
+function hasNamedVariant(name: string): boolean {
+  const n = name.toLowerCase()
+  return (
+    n.includes('armeabi-v7a') ||
+    n.includes('armeabi_v7a') ||
+    n.includes('arm64') ||
+    n.includes('aarch64') ||
+    n.includes('x86_64') ||
+    n.includes('x86-64') ||
+    n.includes('amd64') ||
+    /\bx86\b/.test(n) ||
+    n.includes('i686') ||
+    n.endsWith('.appimage') ||
+    n.endsWith('.deb')
+  )
+}
+
+function downloadButtonLabel(
+  platform: ShowcasePlatform,
+  asset: ReleaseAsset,
+  opts?: { multi?: boolean },
+): string {
+  if (opts?.multi || hasNamedVariant(asset.name)) {
+    return `Get Forja · ${assetVariantLabel(asset.name, platform.id)}`
+  }
+  return `Get Forja · ${platform.label}`
 }
 
 /** Primary asset first, then remaining variants. */
@@ -144,7 +204,6 @@ function PlatformPicker({
   const assets = assetsById[selected.id] ?? []
   const primary = primaryById[selected.id] ?? assets[0] ?? null
   const orderedAssets = orderPlatformAssets(assets, primary)
-  const multiVariant = orderedAssets.length > 1
   const version = versionById[selected.id] ?? null
   const notes = notesById[selected.id] ?? null
   const releaseTitle = releaseTitleFromNotes(notes, version)
@@ -246,15 +305,16 @@ function PlatformPicker({
         </p>
 
         <div className="mt-10 space-y-5">
-          {multiVariant ? (
+          {orderedAssets.length > 0 ? (
             <div className="flex flex-col items-start gap-3">
               {orderedAssets.map((a) => {
                 const size = formatBytes(a.size_bytes)
+                const multi = orderedAssets.length > 1
                 return (
                   <div key={a.id} className="flex flex-col items-start gap-1.5">
                     <MagnetDownload
                       href={a.download_url}
-                      label={`Get Forja · ${assetVariantLabel(a.name)}`}
+                      label={downloadButtonLabel(selected, a, { multi })}
                     />
                     {size ? (
                       <span className="font-mono-ui px-1 text-[10px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.32)]">
@@ -265,11 +325,6 @@ function PlatformPicker({
                 )
               })}
             </div>
-          ) : primary ? (
-            <MagnetDownload
-              href={primary.download_url}
-              label={`Get Forja · ${selected.label}`}
-            />
           ) : (
             <span className="inline-flex items-center rounded-full border border-white/15 px-8 py-4 font-mono-ui text-xs font-bold uppercase tracking-[0.1em] text-white/35">
               Coming soon
@@ -372,15 +427,17 @@ export function DownloadPage() {
               <a
                 href="#windows-smartscreen"
                 data-hover=""
-                className="inline-flex items-center justify-center rounded-full border border-flame/55 bg-flame/10 px-4 py-2.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-flame transition-colors hover:border-flame hover:bg-flame/18 sm:px-5"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-flame/55 bg-flame/10 px-4 py-2.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-flame transition-colors hover:border-flame hover:bg-flame/18 sm:px-5"
               >
+                <WindowsIcon className="size-3.5 shrink-0" />
                 Windows blocked it?
               </a>
               <a
                 href="#macos-gatekeeper"
                 data-hover=""
-                className="inline-flex items-center justify-center rounded-full border border-brand/55 bg-brand/10 px-4 py-2.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-brand transition-colors hover:border-brand hover:bg-brand/18 sm:px-5"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-brand/55 bg-brand/10 px-4 py-2.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-brand transition-colors hover:border-brand hover:bg-brand/18 sm:px-5"
               >
+                <AppleIcon className="size-3.5 shrink-0" />
                 Mac won&apos;t open it?
               </a>
               <a
