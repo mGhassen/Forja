@@ -40,16 +40,19 @@ class TvBrowseTextField extends StatefulWidget {
   final double? caretHeight;
 
   @override
-  State<TvBrowseTextField> createState() => _TvBrowseTextFieldState();
+  State<TvBrowseTextField> createState() => TvBrowseTextFieldState();
 }
 
-class _TvBrowseTextFieldState extends State<TvBrowseTextField> {
+class TvBrowseTextFieldState extends State<TvBrowseTextField> {
   bool _editing = false;
   FocusOnKeyEventCallback? _previousKeyHandler;
 
   bool get _tvBrowse => shellTvBrowseSearch(context);
 
   bool get _browseOnly => _tvBrowse && !_editing;
+
+  /// True while the soft keyboard / edit mode is active.
+  bool get isEditing => _editing;
 
   String get _placeholder =>
       widget.browsePlaceholder ??
@@ -96,6 +99,23 @@ class _TvBrowseTextFieldState extends State<TvBrowseTextField> {
     }
   }
 
+  /// Open the keyboard / edit mode (TV: after OK on the browse field).
+  void beginEditing() => _beginEditing();
+
+  /// Leave edit mode; keep focus so the field stays in browse highlight.
+  void endEditing({bool keepFocus = true}) {
+    if (!_editing) {
+      if (keepFocus && !widget.focusNode.hasFocus) {
+        widget.focusNode.requestFocus();
+      }
+      return;
+    }
+    if (mounted) setState(() => _editing = false);
+    if (keepFocus && !widget.focusNode.hasFocus) {
+      widget.focusNode.requestFocus();
+    }
+  }
+
   void _beginEditing() {
     if (!_editing && mounted) {
       setState(() => _editing = true);
@@ -115,7 +135,8 @@ class _TvBrowseTextFieldState extends State<TvBrowseTextField> {
     if (chained == KeyEventResult.handled) return KeyEventResult.handled;
 
     if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.escape) {
+        (event.logicalKey == LogicalKeyboardKey.escape ||
+            event.logicalKey == LogicalKeyboardKey.goBack)) {
       if (widget.onEscape != null) {
         widget.onEscape!();
         return KeyEventResult.handled;
@@ -127,6 +148,12 @@ class _TvBrowseTextFieldState extends State<TvBrowseTextField> {
     }
 
     return chained ?? KeyEventResult.ignored;
+  }
+
+  void _onFieldSubmitted(String value) {
+    // Dismiss keyboard mode but keep browse focus for the parent to redirect.
+    endEditing(keepFocus: true);
+    widget.onSubmitted?.call(value);
   }
 
   @override
@@ -154,7 +181,8 @@ class _TvBrowseTextFieldState extends State<TvBrowseTextField> {
           showCursor: !_browseOnly || widget.controller.text.isNotEmpty,
           enableInteractiveSelection: !_browseOnly,
           onChanged: widget.onChanged,
-          onSubmitted: widget.onSubmitted,
+          onSubmitted: _onFieldSubmitted,
+          textInputAction: TextInputAction.search,
           style: widget.style,
           decoration: decoration,
         ),

@@ -36,17 +36,42 @@ class IptvChannelGuide {
   /// Known stream health from the browser (`streamId` → alive).
   final Map<String, bool> streamHealth;
 
-  const IptvChannelGuide({
+  /// Pre-indexed `groupId → channels` (built once; O(1) [channelsForGroup]).
+  final Map<String, List<IptvGuideChannel>> _channelsByGroup;
+
+  /// Pre-indexed `channelId → groupId` for O(1) playing-dot checks.
+  final Map<String, String> _groupIdByChannelId;
+
+  IptvChannelGuide({
     required this.groups,
     required this.channels,
     required this.initialChannelId,
     required this.initialGroupId,
     this.xtreamPortal,
     this.streamHealth = const {},
-  });
+  })  : _channelsByGroup = _indexChannelsByGroup(channels),
+        _groupIdByChannelId = {
+          for (final c in channels) c.id: c.groupId,
+        };
+
+  static Map<String, List<IptvGuideChannel>> _indexChannelsByGroup(
+    List<IptvGuideChannel> channels,
+  ) {
+    final map = <String, List<IptvGuideChannel>>{};
+    for (final c in channels) {
+      (map[c.groupId] ??= <IptvGuideChannel>[]).add(c);
+    }
+    return {
+      for (final e in map.entries) e.key: List<IptvGuideChannel>.unmodifiable(e.value),
+    };
+  }
 
   List<IptvGuideChannel> channelsForGroup(String groupId) =>
-      channels.where((c) => c.groupId == groupId).toList();
+      _channelsByGroup[groupId] ?? const [];
+
+  /// Group that owns [channelId], or null if unknown.
+  String? groupIdForChannel(String channelId) =>
+      _groupIdByChannelId[channelId];
 
   IptvGuideGroup? groupById(String groupId) {
     for (final g in groups) {

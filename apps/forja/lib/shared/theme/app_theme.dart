@@ -328,8 +328,22 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
 
     // Player / dialog menus: linear next/previous - geometric inDirection
     // often fails across Overlay + Wrap/Column and leaks to chrome.
+    final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
+        !ShellTvDisableLinearFocus.activeOf(context);
     final linear = shellTvLinearMenuArrows(context: context, event: event);
     if (linear == KeyEventResult.handled) return linear;
+
+    // Linear menus already own ↑/↓/←/→. Never also run focusInDirection —
+    // that double-steps focus (sort dialog / player menus / settings).
+    if (linearScope && shellTvIsNavigationKey(event)) {
+      final key = event.logicalKey;
+      if (key == LogicalKeyboardKey.arrowUp ||
+          key == LogicalKeyboardKey.arrowDown ||
+          key == LogicalKeyboardKey.arrowLeft ||
+          key == LogicalKeyboardKey.arrowRight) {
+        return KeyEventResult.handled;
+      }
+    }
 
     if (widget.tvMeta == null &&
         policy.useFocusableMoodChips &&

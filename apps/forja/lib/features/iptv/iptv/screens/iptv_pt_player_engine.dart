@@ -813,6 +813,10 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
       _s._logoUrl = ch.logoUrl;
       _s._subtitle = groupName;
     });
+    final xtream = ch.xtreamStream;
+    if (xtream != null) {
+      widget.onChannelChanged?.call(xtream);
+    }
     await _openCurrent();
   }
 }

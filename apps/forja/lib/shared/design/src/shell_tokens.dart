@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:forja/shared/design/src/shell_scope.dart';
 
 /// Layout constants for shell chrome, Home hero, and catalog surfaces.
 ///
@@ -27,9 +28,15 @@ abstract final class ShellTokens {
   /// Horizontal space for the macOS traffic-light cluster (hidden title bar).
   static const double macTrafficLightLeadingInset = 78;
 
-  /// Shell nav rail collapses to ☰ + drawer below this width.
-  static bool usesCompactNavDrawer(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < shellNavCompactMaxWidth;
+  /// True only when the shell actually shows ☰ + drawer (not merely narrow).
+  ///
+  /// TV keeps the rail at every width (`allowCompactNavDrawer: false`) — do not
+  /// treat those layouts as compact chrome or tab bars get a false hamburger inset.
+  static bool usesCompactNavDrawer(BuildContext context) {
+    final metrics = ShellScope.maybeOf(context)?.metrics;
+    if (metrics != null && !metrics.allowCompactNavDrawer) return false;
+    return MediaQuery.sizeOf(context).width < shellNavCompactMaxWidth;
+  }
 
   /// Left edge for compact ☰ - clears macOS traffic lights.
   static double compactMenuLeadingInset(BuildContext context) {

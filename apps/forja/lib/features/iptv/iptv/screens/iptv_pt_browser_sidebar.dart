@@ -77,7 +77,15 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       tvItemIndex: widget.listIndex,
       onUpEdge: widget.onUpEdge,
       onRightEdge: widget.onRightEdge,
-      onFocusChange: (focused) => setState(() => _focused = focused),
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+        // Keep channel grid on the focused group (Settings category rail pattern).
+        if (focused &&
+            !widget.selected &&
+            iptvUseTvFocus(context)) {
+          widget.onTap();
+        }
+      },
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),

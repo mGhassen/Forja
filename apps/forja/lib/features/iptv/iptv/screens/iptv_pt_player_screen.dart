@@ -71,6 +71,8 @@ class IptvPtPlayerScreen extends StatefulWidget {
   final String? subtitle;
   final String? logoUrl;
   final IptvChannelGuide? channelGuide;
+  /// Fired when the in-player guide tunes a different Xtream channel.
+  final ValueChanged<IptvStream>? onChannelChanged;
 
   const IptvPtPlayerScreen({
     super.key,
@@ -79,6 +81,7 @@ class IptvPtPlayerScreen extends StatefulWidget {
     this.subtitle,
     this.logoUrl,
     this.channelGuide,
+    this.onChannelChanged,
   });
 
   /// Convenience: build for a single Xtream stream.
@@ -88,6 +91,7 @@ class IptvPtPlayerScreen extends StatefulWidget {
     required IptvStream stream,
     String? portalName,
     IptvChannelGuide? channelGuide,
+    ValueChanged<IptvStream>? onChannelChanged,
   }) => IptvPtPlayerScreen(
     key: key,
     sources: [IptvPlaySource(url: url, label: portalName ?? 'Source 1')],
@@ -95,6 +99,7 @@ class IptvPtPlayerScreen extends StatefulWidget {
     subtitle: portalName,
     logoUrl: stream.icon.isEmpty ? null : stream.icon,
     channelGuide: channelGuide,
+    onChannelChanged: onChannelChanged,
   );
 
   /// Convenience: build for a list of channel hits (multi-source).

@@ -91,6 +91,9 @@ abstract final class ShellTvFocusCoordinator {
   static final Map<String, VoidCallback> _tabHeroReveal = {};
   static final Map<String, VoidCallback> _tabEnterFocus = {};
   static final Map<String, bool Function()> _tabRestoreFocus = {};
+  /// Optional in-page Back step before focusing the nav rail (e.g. IPTV
+  /// channels → category). Return true when Back was consumed.
+  static final Map<String, bool Function()> _tabPageBack = {};
 
   /// Per-tab default focus and hero scroll - survives multi-tab mount order.
   static void registerTabDefaults(
@@ -99,11 +102,13 @@ abstract final class ShellTvFocusCoordinator {
     VoidCallback? heroReveal,
     VoidCallback? enterFromNavFocus,
     bool Function()? restoreFocus,
+    bool Function()? pageBack,
   }) {
     if (defaultFocus != null) _tabDefaultFocus[tabId] = defaultFocus;
     if (heroReveal != null) _tabHeroReveal[tabId] = heroReveal;
     if (enterFromNavFocus != null) _tabEnterFocus[tabId] = enterFromNavFocus;
     if (restoreFocus != null) _tabRestoreFocus[tabId] = restoreFocus;
+    if (pageBack != null) _tabPageBack[tabId] = pageBack;
   }
 
   static void unregisterTabDefaults(String tabId) {
@@ -111,6 +116,7 @@ abstract final class ShellTvFocusCoordinator {
     _tabHeroReveal.remove(tabId);
     _tabEnterFocus.remove(tabId);
     _tabRestoreFocus.remove(tabId);
+    _tabPageBack.remove(tabId);
   }
 
   /// Nav Enter on a tab - e.g. search field browse focus (not last page memory).
@@ -225,6 +231,9 @@ abstract final class ShellTvFocusCoordinator {
         _focusActiveNavFromPage();
         return true;
       case ShellNavLevel.page:
+        final tabId = ShellTvFocus.currentNavTabId ?? '';
+        final pageBack = _tabPageBack[tabId];
+        if (pageBack != null && pageBack()) return true;
         _focusActiveNavFromPage();
         return true;
       case ShellNavLevel.menu:
@@ -528,6 +537,18 @@ abstract final class ShellTvFocusCoordinator {
     final handle = _rowHandle(tabId, rowId);
     if (handle == null) return;
     handle.itemCount = count;
+  }
+
+  /// Clears remembered D-pad index for a row (next restore lands on [index]).
+  static void setRowLastFocusedIndex(
+    String tabId,
+    String rowId,
+    int index,
+  ) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null) return;
+    handle.lastFocusedIndex =
+        handle.itemCount <= 0 ? 0 : index.clamp(0, handle.itemCount - 1);
   }
 
   static void _recomputeRowEdges(String tabId) {

@@ -242,6 +242,31 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   /// Trap Left on the portal card - stay in the panel (Back exits to catalog).
   void _trapLeftEdge() {}
 
+  /// Action chrome is its own horizontal row (sortOrder 200+) — without
+  /// explicit ↑/↓ edges, Down traps on the button instead of the portal list.
+  void _upFromActions() {
+    if (widget.listIndex <= 0) {
+      if (widget.onUpEdge != null) {
+        widget.onUpEdge!();
+        return;
+      }
+      iptvFocusRowItem('iptv-portal-header', 0);
+      return;
+    }
+    iptvFocusRowItem('portals', widget.listIndex - 1);
+  }
+
+  void _downFromActions() {
+    final handle = ShellTvFocusCoordinator.rowHandle('iptv', 'portals');
+    final count = handle?.itemCount ?? 0;
+    if (widget.listIndex + 1 < count) {
+      iptvFocusRowItem('portals', widget.listIndex + 1);
+      return;
+    }
+    // Last portal: leave action chrome and stay on this card.
+    _focusAction(_rowFocus);
+  }
+
   String get _actionsRowId => 'portal-${widget.listIndex}-actions';
 
   void _clearHover() {
@@ -587,6 +612,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                                   : _copyFocus,
                                             )
                                         : null,
+                                    onUpEdge: _upFromActions,
+                                    onDownEdge: _downFromActions,
                                     child: Padding(
                                       padding: const EdgeInsets.all(4),
                                       child: Icon(
@@ -637,6 +664,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                           _focusAction(_favoriteFocus),
                                       onRightEdge: () =>
                                           _focusAction(_confirmNoFocus),
+                                      onUpEdge: _upFromActions,
+                                      onDownEdge: _downFromActions,
                                     ),
                                     _IptvRailAction(
                                       tooltip: 'No',
@@ -648,6 +677,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                       tvItemIndex: 2,
                                       onLeftEdge: () =>
                                           _focusAction(_confirmYesFocus),
+                                      onUpEdge: _upFromActions,
+                                      onDownEdge: _downFromActions,
                                     ),
                                   ]
                                 : [
@@ -665,6 +696,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                           _focusAction(_favoriteFocus),
                                       onRightEdge: () =>
                                           _focusAction(_editFocus),
+                                      onUpEdge: _upFromActions,
+                                      onDownEdge: _downFromActions,
                                     ),
                                     _IptvRailAction(
                                       tooltip: 'Edit',
@@ -678,6 +711,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                           _focusAction(_copyFocus),
                                       onRightEdge: () =>
                                           _focusAction(_deleteFocus),
+                                      onUpEdge: _upFromActions,
+                                      onDownEdge: _downFromActions,
                                     ),
                                     _IptvRailAction(
                                       tooltip: 'Delete',
@@ -689,6 +724,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                                       tvItemIndex: 3,
                                       onLeftEdge: () =>
                                           _focusAction(_editFocus),
+                                      onUpEdge: _upFromActions,
+                                      onDownEdge: _downFromActions,
                                     ),
                                   ],
                           ),
@@ -860,6 +897,8 @@ class _IptvRailAction extends StatefulWidget {
     this.tvItemIndex,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final String tooltip;
@@ -871,6 +910,8 @@ class _IptvRailAction extends StatefulWidget {
   final int? tvItemIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   State<_IptvRailAction> createState() => _IptvRailActionState();
@@ -908,6 +949,8 @@ class _IptvRailActionState extends State<_IptvRailAction> {
           tvItemIndex: widget.tvItemIndex,
           onLeftEdge: widget.onLeftEdge,
           onRightEdge: widget.onRightEdge,
+          onUpEdge: widget.onUpEdge,
+          onDownEdge: widget.onDownEdge,
           onFocusChange: (focused) => setState(() => _focused = focused),
           onHoverChange: (hovered) => setState(() => _hovered = hovered),
           child: child,

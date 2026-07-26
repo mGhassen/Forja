@@ -191,8 +191,20 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
         final arrow = shellTvHandleRowArrows(event: event, tvMeta: widget.tvMeta);
         if (arrow == KeyEventResult.handled) return arrow;
         // Menus / dialogs marked ShellTvLinearFocusScope - same as FocusableControl.
+        final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
+            !ShellTvDisableLinearFocus.activeOf(context);
         final linear = shellTvLinearMenuArrows(context: context, event: event);
         if (linear == KeyEventResult.handled) return linear;
+        // Never also run focusInDirection inside linear menus (double-step).
+        if (linearScope && shellTvIsNavigationKey(event)) {
+          final key = event.logicalKey;
+          if (key == LogicalKeyboardKey.arrowUp ||
+              key == LogicalKeyboardKey.arrowDown ||
+              key == LogicalKeyboardKey.arrowLeft ||
+              key == LogicalKeyboardKey.arrowRight) {
+            return KeyEventResult.handled;
+          }
+        }
         if (widget.tvMeta == null &&
             policy.useFocusableMoodChips &&
             shellTvIsNavigationKey(event)) {

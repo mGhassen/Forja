@@ -96,7 +96,33 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
 
   void _focusPanelHeader() {
     if (!mounted || !widget.ctrl.portalPanelOpen || _searchOpen) return;
-    iptvFocusRowItem('iptv-portal-header', 2);
+    // Prefer Add (+), which is the last header action.
+    final addIndex = _portalHeaderAddIndex();
+    if (iptvFocusRowItem('iptv-portal-header', addIndex)) return;
+    iptvFocusRowItem('iptv-portal-header', 0);
+  }
+
+  /// Search (0) · optional Scrape · optional Deal · Add (last).
+  int _portalHeaderAddIndex() {
+    var idx = 1;
+    if (AccountFeatures.instance.isIptvScrapeEnabled) idx++;
+    if (AccountFeatures.instance.isDealPortalEnabled &&
+        SyncService.instance.isSignedIn) {
+      idx++;
+    }
+    return idx;
+  }
+
+  void _focusPortalsFromHeader() {
+    if (iptvFocusRowItem('portals', 0)) return;
+    // Lazy list / scrolled away — bring the first card into view and retry.
+    if (_listScroll.hasClients) {
+      _listScroll.jumpTo(0);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      iptvFocusRowItem('portals', 0);
+    });
   }
 
   void _scrollToActivePortal() {
@@ -358,7 +384,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 tvItemIndex: searchIndex,
                 tvZone: ShellTvZone.topBar,
                 onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
-                onDownEdge: () => iptvFocusRowItem('portals', 0),
+                onDownEdge: _focusPortalsFromHeader,
                 onRightEdge: () => iptvFocusRowItem(
                   'iptv-portal-header',
                   canScrape ? scrapeIndex : (canDeal ? dealIndex : addIndex),
@@ -376,7 +402,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                   tvItemIndex: scrapeIndex,
                   tvZone: ShellTvZone.topBar,
                   onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
-                  onDownEdge: () => iptvFocusRowItem('portals', 0),
+                  onDownEdge: _focusPortalsFromHeader,
                   onLeftEdge: () =>
                       iptvFocusRowItem('iptv-portal-header', searchIndex),
                   onRightEdge: () => iptvFocusRowItem(
@@ -389,16 +415,20 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                   tooltip: credits > 0
                       ? 'Deal portals from pool ($credits credits)'
                       : 'Deal portals (no credits)',
-                  onPressed: credits < 1
-                      ? null
-                      : () => unawaited(ctrl.dealFromPool()),
+                  onPressed: () {
+                    if (credits < 1) {
+                      ForjaToast.warning('No Deal credits left');
+                      return;
+                    }
+                    unawaited(ctrl.dealFromPool());
+                  },
                   icon: Icons.casino_rounded,
                   color: credits > 0 ? IptvShellStyle.accent : null,
                   tvRowId: 'iptv-portal-header',
                   tvItemIndex: dealIndex,
                   tvZone: ShellTvZone.topBar,
                   onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
-                  onDownEdge: () => iptvFocusRowItem('portals', 0),
+                  onDownEdge: _focusPortalsFromHeader,
                   onLeftEdge: () => iptvFocusRowItem(
                     'iptv-portal-header',
                     canScrape ? scrapeIndex : searchIndex,
@@ -428,7 +458,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 tvItemIndex: addIndex,
                 tvZone: ShellTvZone.topBar,
                 onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
-                onDownEdge: () => iptvFocusRowItem('portals', 0),
+                onDownEdge: _focusPortalsFromHeader,
                 onLeftEdge: () => iptvFocusRowItem(
                   'iptv-portal-header',
                   canDeal
@@ -501,7 +531,10 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
           isActive: v.key == activeKey,
           listIndex: i,
           onUpEdge: i == 0
-              ? () => iptvFocusRowItem('iptv-portal-header', 2)
+              ? () => iptvFocusRowItem(
+                    'iptv-portal-header',
+                    _portalHeaderAddIndex(),
+                  )
               : null,
           onEdit: () => _showPortalDialog(context, existing: v),
         );

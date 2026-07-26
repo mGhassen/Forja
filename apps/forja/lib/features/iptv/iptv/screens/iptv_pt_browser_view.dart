@@ -24,6 +24,11 @@ class _BrowserViewState extends State<_BrowserView> {
     debugLabel: 'iptv-streams-reload',
   );
   final ScrollController _categoryScroll = ScrollController();
+  final ScrollController _streamScroll = ScrollController();
+  /// Last grid metrics for scrolling a stream tile into view before focus.
+  int _streamCrossAxisCount = 1;
+  double _streamTileExtent = 120;
+  double _streamMainGap = 10;
   Timer? _scrollSettleTimer;
   bool _didInitialFocus = false;
   bool _wasLoading = false;
@@ -41,7 +46,18 @@ class _BrowserViewState extends State<_BrowserView> {
     _wasLoading = widget.ctrl.isLoading;
     _wasPortalPanelOpen = widget.ctrl.portalPanelOpen;
     widget.ctrl.addListener(_onCtrlChanged);
+    // Prefer this pageBack (scrolls the category rail) over the screen default.
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'iptv',
+      pageBack: _handleCatalogPageBack,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncInitialFocus());
+  }
+
+  bool _handleCatalogPageBack() {
+    if (!iptvHandleCatalogPageBack(widget.ctrl)) return false;
+    _scrollCategorySidebarToSelected();
+    return true;
   }
 
   @override
@@ -49,6 +65,7 @@ class _BrowserViewState extends State<_BrowserView> {
     widget.ctrl.removeListener(_onCtrlChanged);
     _scrollSettleTimer?.cancel();
     _categoryScroll.dispose();
+    _streamScroll.dispose();
     _searchFocus.dispose();
     _openPortalFocus.dispose();
     _reloadEmptyFocus.dispose();
@@ -117,6 +134,57 @@ class _BrowserViewState extends State<_BrowserView> {
         _categoryScroll.position.maxScrollExtent,
       );
       _categoryScroll.jumpTo(target);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  }
+
+  void _scrollStreamsToIndex(int index) {
+    if (!_streamScroll.hasClients || index < 0) return;
+    final cross = _streamCrossAxisCount.clamp(1, 999);
+    final row = widget.compact ? index : index ~/ cross;
+    final extent = _streamTileExtent + _streamMainGap;
+    final target = (row * extent).clamp(
+      0.0,
+      _streamScroll.position.maxScrollExtent,
+    );
+    _streamScroll.jumpTo(target);
+  }
+
+  /// After leaving the player: select category, scroll, focus the channel tile.
+  void _restoreFocusAfterPlayback(IptvStream stream) {
+    final catId = stream.categoryId;
+    if (catId.isNotEmpty) {
+      widget.ctrl.selectBrowserCategory(catId);
+    }
+    _scrollCategorySidebarToSelected();
+
+    if (!iptvUseTvFocus(context)) return;
+
+    var tries = 0;
+    void attempt() {
+      if (!mounted) return;
+      // Overlay ExcludeFocus must lift before catalog tiles can take focus.
+      if (ShellBus.shellOverlayHasPage.value ||
+          ShellBus.playerSurfaceActive.value) {
+        if (tries++ < 16) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        }
+        return;
+      }
+      final list = _filteredStreams;
+      final idx = list.indexWhere((x) => x.streamId == stream.streamId);
+      if (idx < 0) {
+        iptvFocusBrowserCategories(widget.ctrl);
+        return;
+      }
+      _scrollStreamsToIndex(idx);
+      if (iptvFocusBrowserStreamAt(idx)) return;
+      if (tries++ < 16) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      } else {
+        iptvFocusBrowserCategories(widget.ctrl);
+      }
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
@@ -508,7 +576,15 @@ class _BrowserViewState extends State<_BrowserView> {
                   ? () => ctrl.toggleLiveCategoryPin(cat.id)
                   : null,
               reorderIndex: canReorder ? reorderIndex : null,
-              onTap: () => ctrl.selectBrowserCategory(cat.id),
+              onTap: () {
+                final prev = ctrl.browserSelectedCategoryId;
+                ctrl.selectBrowserCategory(cat.id);
+                // Each group has its own channel focus — do not carry index
+                // from the previous category into this one.
+                if (prev != cat.id) {
+                  iptvResetBrowserStreamsFocusMemory();
+                }
+              },
               onUpEdge: listIndex == 0
                   ? () => iptvFocusRowItem(
                       'iptv-sections',
@@ -587,10 +663,13 @@ class _BrowserViewState extends State<_BrowserView> {
         final cardW = tv ? shellMovieCardWidth(ctx) : 180.0;
         final cardH = shellMovieCardHeight(ctx);
         final gap = tv ? shellMovieCardRowGap(ctx) : 10.0;
-        final hPad = 24.0;
+        final hPad = tv ? 8.0 : 16.0;
         final cross = tv
             ? ((c.maxWidth - hPad + gap) / (cardW + gap)).floor().clamp(1, 24)
             : (c.maxWidth ~/ cardW).clamp(2, 9);
+        _streamCrossAxisCount = cross;
+        _streamTileExtent = cardH;
+        _streamMainGap = gap;
         iptvSyncRow(
           rowId: 'browser-streams',
           sortOrder: 3,
@@ -603,7 +682,8 @@ class _BrowserViewState extends State<_BrowserView> {
         // Fixed column count on TV so D-pad Left/Right match the visual row
         // (MaxCrossAxisExtent can disagree with our focus math and wrap).
         final grid = GridView.builder(
-          padding: EdgeInsets.fromLTRB(12, 4, 12, 12),
+          controller: _streamScroll,
+          padding: EdgeInsets.fromLTRB(tv ? 4 : 8, 4, 12, 12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: cross,
             crossAxisSpacing: gap,
@@ -659,7 +739,13 @@ class _BrowserViewState extends State<_BrowserView> {
           iptvFocusRowItem('iptv-sections', iptvActiveSectionShelfIndex(ctrl)),
     );
 
+    // Compact list tiles are ~58px thumb + padding + 8 bottom gap.
+    _streamCrossAxisCount = 1;
+    _streamTileExtent = 74;
+    _streamMainGap = 0;
+
     final rows = ListView.builder(
+      controller: _streamScroll,
       padding: const EdgeInsets.fromLTRB(8, 6, 10, 12),
       itemCount: list.length,
       itemBuilder: (_, i) {
@@ -760,7 +846,7 @@ class _BrowserViewState extends State<_BrowserView> {
     if (s.kind == 'live') {
       unawaited(ctrl.recordLiveWatched(s.streamId));
     }
-    final catId = s.categoryId;
+    var focusStream = s;
     ctrl.noteBrowserSearchPlayedStream(s);
     final url = IptvClient.streamUrl(p.portal, s);
     final channelGuide = s.kind == 'live'
@@ -780,15 +866,12 @@ class _BrowserViewState extends State<_BrowserView> {
           stream: s,
           portalName: p.displayLabel,
           channelGuide: channelGuide,
+          onChannelChanged: (next) => focusStream = next,
         ),
       ),
     );
     if (!mounted) return;
-    // After watch: select the channel's category and scroll it into view.
-    if (catId.isNotEmpty) {
-      ctrl.selectBrowserCategory(catId);
-    }
-    _scrollCategorySidebarToSelected();
+    _restoreFocusAfterPlayback(focusStream);
   }
 }
 

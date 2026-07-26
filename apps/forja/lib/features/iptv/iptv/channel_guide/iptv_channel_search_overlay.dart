@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -46,8 +44,10 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
   /// When true, D-pad / OK target the result list (not the search field).
   bool _listFocused = false;
 
-  static const Color _panelTint = Color(0x9916161F);
+  static const Color _panelTint = Color(0xE016161F);
   static Color get _accent => IptvShellStyle.accent;
+  static Color get _panelSurface =>
+      ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.94);
 
   @override
   void initState() {
@@ -246,7 +246,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
                 onTap: widget.onClose,
                 behavior: HitTestBehavior.opaque,
                 child: Container(
-                  color: Colors.black.withValues(alpha: 0.28),
+                  color: Colors.black.withValues(alpha: 0.4),
                 ),
               ),
             ),
@@ -254,23 +254,21 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
               child: ClipRRect(
                 borderRadius:
                     BorderRadius.circular(IptvChannelSearchOverlay.panelRadius),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-                  child: Material(
-                    color: Colors.transparent,
-                    elevation: 12,
-                    shadowColor: Colors.black.withValues(alpha: 0.5),
-                    child: Container(
-                      width: panelWidth,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(
-                          IptvChannelSearchOverlay.panelRadius,
-                        ),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
-                        ),
+                child: Material(
+                  color: Colors.transparent,
+                  elevation: 0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: _panelSurface,
+                      borderRadius: BorderRadius.circular(
+                        IptvChannelSearchOverlay.panelRadius,
                       ),
-                      clipBehavior: Clip.antiAlias,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: panelWidth,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -577,6 +575,9 @@ class _ChannelLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (url.isEmpty) return _placeholder();
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cachePx = (size * dpr).round().clamp(1, 256);
+    final tv = iptvUseTvFocus(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Image.network(
@@ -584,6 +585,10 @@ class _ChannelLogo extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
+        cacheWidth: cachePx,
+        cacheHeight: cachePx,
+        filterQuality: tv ? FilterQuality.low : FilterQuality.medium,
+        gaplessPlayback: true,
         errorBuilder: (_, _, _) => _placeholder(),
         loadingBuilder: (ctx, child, prog) {
           if (prog == null) return child;

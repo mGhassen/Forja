@@ -84,6 +84,7 @@ class _IptvPtScreenState extends State<IptvPtScreen>
       'iptv',
       restoreFocus: iptvRestoreCatalogFocus,
       enterFromNavFocus: () => iptvEnterFromNav(_ctrl),
+      pageBack: () => iptvHandleCatalogPageBack(_ctrl),
     );
     unawaited(SyncService.instance.pullAccountFeatures());
     _ctrl.init().then((_) {

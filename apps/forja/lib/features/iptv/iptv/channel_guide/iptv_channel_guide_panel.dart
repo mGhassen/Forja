@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +7,7 @@ import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
@@ -38,6 +38,8 @@ class IptvChannelGuidePanel extends StatefulWidget {
   static const double panelWidthNarrow = 340;
   static const double panelEdgeGap = 10;
   static const double panelRadius = 12;
+  /// Fixed channel row height (12+12 padding + 68 logo).
+  static const double channelRowExtent = 92;
 
   @override
   State<IptvChannelGuidePanel> createState() => _IptvChannelGuidePanelState();
@@ -55,6 +57,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   int _focusedGroupIndex = 0;
   int _focusedChannelIndex = 0;
 
+  /// Local browse group — D-pad through groups updates this without parent setState.
+  late String _browseGroupId;
+
   final Map<String, bool> _health = {};
   final Set<String> _healthInFlight = {};
   final List<IptvGuideChannel> _healthQueue = [];
@@ -62,13 +67,16 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   static const _maxHealthChecks = 2;
   static const _healthCheckDelay = Duration(milliseconds: 450);
 
-  static const Color _groupsTint = Color(0x990C0C12);
-  static const Color _channelsTint = Color(0x9916161F);
+  static const Color _groupsTint = Color(0xE00C0C12);
+  static const Color _channelsTint = Color(0xE016161F);
   static Color get _accent => IptvShellStyle.accent;
+  static Color get _panelSurface =>
+      ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.94);
 
   @override
   void initState() {
     super.initState();
+    _browseGroupId = widget.selectedGroupId;
     _health.addAll(widget.guide.streamHealth);
     _syncFocusIndices();
     _focusNode.addListener(_reclaimFocusIfLost);
@@ -94,6 +102,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   void didUpdateWidget(covariant IptvChannelGuidePanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedGroupId != widget.selectedGroupId) {
+      _browseGroupId = widget.selectedGroupId;
       _syncFocusIndices();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollSelectedGroupIntoView(animate: true);
@@ -119,33 +128,51 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
   void _syncFocusIndices({bool channelOnly = false}) {
     if (!channelOnly) {
-      final gIdx = widget.guide.groups
-          .indexWhere((g) => g.id == widget.selectedGroupId);
+      final gIdx =
+          widget.guide.groups.indexWhere((g) => g.id == _browseGroupId);
       if (gIdx >= 0) _focusedGroupIndex = gIdx;
     }
-    final channels = widget.guide.channelsForGroup(widget.selectedGroupId);
+    final channels = widget.guide.channelsForGroup(_browseGroupId);
     final cIdx =
         channels.indexWhere((c) => c.id == widget.currentChannelId);
     if (cIdx >= 0) {
       _focusedChannelIndex = cIdx;
       if (!channelOnly) _focusColumn = _FocusColumn.channels;
+    } else if (!channelOnly) {
+      _focusedChannelIndex = 0;
     }
   }
 
-  void _selectGroup(String groupId, {bool animateScroll = true}) {
+  /// Local-only browse — updates channel list without parent player rebuild.
+  void _browseGroup(String groupId, {bool animateScroll = true}) {
     final gIdx = widget.guide.groups.indexWhere((g) => g.id == groupId);
-    if (gIdx >= 0) _focusedGroupIndex = gIdx;
-    if (groupId != widget.selectedGroupId) {
-      widget.onGroupSelected(groupId);
+    final nextFocus = gIdx >= 0 ? gIdx : _focusedGroupIndex;
+    final groupChanged = groupId != _browseGroupId;
+    if (!groupChanged && nextFocus == _focusedGroupIndex) {
+      return;
     }
+    setState(() {
+      _focusedGroupIndex = nextFocus;
+      if (groupChanged) {
+        _browseGroupId = groupId;
+        _focusedChannelIndex = 0;
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollSelectedGroupIntoView(animate: animateScroll);
     });
   }
 
+  /// Commit browse group to parent (OK / Right / tap).
+  void _selectGroup(String groupId, {bool animateScroll = true}) {
+    _browseGroup(groupId, animateScroll: animateScroll);
+    if (groupId != widget.selectedGroupId) {
+      widget.onGroupSelected(groupId);
+    }
+  }
+
   void _scrollSelectedGroupIntoView({bool animate = false}) {
-    final gIdx = widget.guide.groups
-        .indexWhere((g) => g.id == widget.selectedGroupId);
+    final gIdx = widget.guide.groups.indexWhere((g) => g.id == _browseGroupId);
     if (gIdx < 0) return;
     _focusedGroupIndex = gIdx;
     final ctx = _groupKey(gIdx).currentContext;
@@ -241,7 +268,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   List<IptvGuideChannel> get _visibleChannels =>
-      widget.guide.channelsForGroup(widget.selectedGroupId);
+      widget.guide.channelsForGroup(_browseGroupId);
 
   bool get _wide =>
       MediaQuery.sizeOf(context).width >= IptvChannelGuidePanel.wideBreakpoint;
@@ -328,8 +355,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         final n = widget.guide.groups.length;
         if (n == 0) return;
         final next = (_focusedGroupIndex + delta).clamp(0, n - 1);
-        setState(() => _focusedGroupIndex = next);
-        _selectGroup(widget.guide.groups[next].id);
+        // Local browse only — avoid parent player rebuild on every D-pad tick.
+        _browseGroup(widget.guide.groups[next].id);
         return;
       } else {
         final n = _visibleChannels.length;
@@ -342,8 +369,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       final n = widget.guide.groups.length;
       if (n == 0) return;
       final next = (_focusedGroupIndex + delta).clamp(0, n - 1);
-      setState(() => _focusedGroupIndex = next);
-      _selectGroup(widget.guide.groups[next].id, animateScroll: true);
+      _browseGroup(widget.guide.groups[next].id, animateScroll: true);
       return;
     } else {
       final n = _visibleChannels.length;
@@ -358,8 +384,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   String _headerGroupName() {
     final groups = widget.guide.groups;
     if (groups.isEmpty) {
-      return widget.guide.groupById(widget.selectedGroupId)?.name ??
-          'Uncategorized';
+      return widget.guide.groupById(_browseGroupId)?.name ?? 'Uncategorized';
     }
     if (_wide && _focusColumn == _FocusColumn.groups) {
       return groups[_focusedGroupIndex.clamp(0, groups.length - 1)].name;
@@ -367,8 +392,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     if (!_wide && _step == _GuideStep.groups) {
       return groups[_focusedGroupIndex.clamp(0, groups.length - 1)].name;
     }
-    return widget.guide.groupById(widget.selectedGroupId)?.name ??
-        'Uncategorized';
+    return widget.guide.groupById(_browseGroupId)?.name ?? 'Uncategorized';
   }
 
   void _focusLeft() {
@@ -390,6 +414,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   void _focusRight() {
     if (_wide) {
       if (_focusColumn == _FocusColumn.groups) {
+        // Commit browse group so parent stays in sync when leaving groups.
+        _selectGroup(_browseGroupId);
         setState(() => _focusColumn = _FocusColumn.channels);
         _scrollToFocused();
         return;
@@ -461,7 +487,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                   onTap: _close,
                   behavior: HitTestBehavior.opaque,
                   child: Container(
-                    color: Colors.black.withValues(alpha: 0.28),
+                    color: Colors.black.withValues(alpha: 0.4),
                   ),
                 ),
               ),
@@ -471,7 +497,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                   padding: _panelPadding(context),
                   child: SizedBox(
                     height: _panelHeight(context),
-                    child: _buildFrostedPanelShell(wide: wide),
+                    child: _buildPanelShell(wide: wide),
                   ),
                 ),
               ),
@@ -482,36 +508,33 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     );
   }
 
-  Widget _buildFrostedPanelShell({required bool wide}) {
+  /// Flat translucent shell — no [BackdropFilter] over live video (ATV GPU cost).
+  Widget _buildPanelShell({required bool wide}) {
     final panelWidth = wide
         ? IptvChannelGuidePanel.panelWidthWide
         : IptvChannelGuidePanel.panelWidthNarrow;
+    final radius = const BorderRadius.only(
+      topRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
+      bottomRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
+    );
 
     return ClipRRect(
-      borderRadius: const BorderRadius.only(
-        topRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
-        bottomRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
-      ),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-        child: Material(
-          color: Colors.transparent,
-          elevation: 12,
-          shadowColor: Colors.black.withValues(alpha: 0.5),
-          child: Container(
-            width: panelWidth,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
-                bottomRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
-              ),
-              border: Border(
-                top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                right: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-              ),
+      borderRadius: radius,
+      child: Material(
+        color: Colors.transparent,
+        elevation: 0,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: _panelSurface,
+            borderRadius: radius,
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              right: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
             ),
-            clipBehavior: Clip.antiAlias,
+          ),
+          child: SizedBox(
+            width: panelWidth,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -645,46 +668,37 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       children: [
         Expanded(
           flex: 8,
-          child: _frostedColumn(
+          child: _panelColumn(
             tint: _groupsTint,
-            elevated: false,
+            showDivider: true,
             child: _buildGroupList(),
           ),
         ),
         Expanded(
           flex: 10,
-          child: _frostedColumn(
+          child: _panelColumn(
             tint: _channelsTint,
-            elevated: true,
-            child: _buildChannelList(widget.selectedGroupId),
+            showDivider: false,
+            child: _buildChannelList(_browseGroupId),
           ),
         ),
       ],
     );
   }
 
-  Widget _frostedColumn({
+  Widget _panelColumn({
     required Color tint,
-    required bool elevated,
+    required bool showDivider,
     required Widget child,
   }) {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: tint,
         border: Border(
-          right: elevated
-              ? BorderSide.none
-              : BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          right: showDivider
+              ? BorderSide(color: Colors.white.withValues(alpha: 0.08))
+              : BorderSide.none,
         ),
-        boxShadow: elevated
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 14,
-                  offset: const Offset(5, 0),
-                ),
-              ]
-            : null,
       ),
       child: child,
     );
@@ -692,27 +706,24 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
   Widget _buildNarrowBody() {
     if (_step == _GuideStep.groups) {
-      return _frostedColumn(
+      return _panelColumn(
         tint: _groupsTint,
-        elevated: false,
+        showDivider: false,
         child: _buildGroupList(onPick: (id) {
-          widget.onGroupSelected(id);
+          _selectGroup(id);
           setState(() => _step = _GuideStep.channels);
         }),
       );
     }
-    return _frostedColumn(
+    return _panelColumn(
       tint: _channelsTint,
-      elevated: false,
-      child: _buildChannelList(widget.selectedGroupId),
+      showDivider: false,
+      child: _buildChannelList(_browseGroupId),
     );
   }
 
-  bool _groupHasPlayingChannel(String groupId) {
-    return widget.guide
-        .channelsForGroup(groupId)
-        .any((c) => c.id == widget.currentChannelId);
-  }
+  bool _groupHasPlayingChannel(String groupId) =>
+      widget.guide.groupIdForChannel(widget.currentChannelId) == groupId;
 
   Widget _buildGroupList({ValueChanged<String>? onPick}) {
     return ListView.builder(
@@ -721,7 +732,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       itemCount: widget.guide.groups.length,
       itemBuilder: (_, i) {
         final g = widget.guide.groups[i];
-        final selected = g.id == widget.selectedGroupId;
+        final selected = g.id == _browseGroupId;
         final focused = _focusColumn == _FocusColumn.groups &&
             i == _focusedGroupIndex &&
             (_wide || _step == _GuideStep.groups);
@@ -730,18 +741,21 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
           key: _groupKey(i),
           child: MouseRegion(
             onEnter: (_) {
-              setState(() {
-                _focusedGroupIndex = i;
-                if (_wide) _focusColumn = _FocusColumn.groups;
-              });
+              final colChanged =
+                  _wide && _focusColumn != _FocusColumn.groups;
+              if (colChanged) {
+                setState(() => _focusColumn = _FocusColumn.groups);
+              } else if (_wide) {
+                _focusColumn = _FocusColumn.groups;
+              }
+              _browseGroup(g.id, animateScroll: false);
             },
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                setState(() {
-                  _focusedGroupIndex = i;
-                  if (_wide) _focusColumn = _FocusColumn.groups;
-                });
+                if (_wide) {
+                  _focusColumn = _FocusColumn.groups;
+                }
                 _selectGroup(g.id);
                 onPick?.call(g.id);
               },
@@ -824,6 +838,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       controller: _channelScroll,
       padding: const EdgeInsets.symmetric(vertical: 6),
       itemCount: channels.length,
+      itemExtent: IptvChannelGuidePanel.channelRowExtent,
       itemBuilder: (_, i) {
         final ch = channels[i];
         final active = ch.id == widget.currentChannelId;
@@ -988,6 +1003,10 @@ class _ChannelLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (url.isEmpty) return _placeholder();
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheW = (width * dpr).round().clamp(1, 512);
+    final cacheH = (height * dpr).round().clamp(1, 512);
+    final tv = iptvUseTvFocus(context);
     return SizedBox(
       width: width,
       height: height,
@@ -996,6 +1015,10 @@ class _ChannelLogo extends StatelessWidget {
         width: width,
         height: height,
         fit: BoxFit.contain,
+        cacheWidth: cacheW,
+        cacheHeight: cacheH,
+        filterQuality: tv ? FilterQuality.low : FilterQuality.medium,
+        gaplessPlayback: true,
         errorBuilder: (_, _, _) => _placeholder(),
         loadingBuilder: (ctx, child, prog) {
           if (prog == null) return child;

@@ -175,7 +175,6 @@ KeyEventResult shellTvLinearMenuArrows({
   required BuildContext context,
   required KeyEvent event,
 }) {
-  if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
   if (!ShellTvLinearFocusScope.activeOf(context)) {
     return KeyEventResult.ignored;
   }
@@ -188,6 +187,11 @@ KeyEventResult shellTvLinearMenuArrows({
   final forward = key == LogicalKeyboardKey.arrowDown ||
       key == LogicalKeyboardKey.arrowRight;
   if (!backward && !forward) return KeyEventResult.ignored;
+
+  // Consume KeyRepeat so Flutter geometry / default traversal cannot also step
+  // (short TV remote presses often emit Down + Repeat).
+  if (event is KeyRepeatEvent) return KeyEventResult.handled;
+  if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
   final scope = FocusScope.of(context);
   final edges = ShellTvLinearFocusEdges.maybeOf(context);

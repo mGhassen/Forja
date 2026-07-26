@@ -489,6 +489,25 @@ class IptvController extends ChangeNotifier
     notifyListeners();
   }
 
+  /// True when [browserSearch] matches at least one stream by name or group.
+  bool get browserSearchHasMatchingStreams {
+    final q = browserSearch.trim().toLowerCase();
+    if (q.isEmpty) return false;
+    final catNameById = <String, String>{
+      for (final c in categories)
+        if (!IptvLiveCatalog.isSyntheticId(c.id)) c.id: c.name.toLowerCase(),
+    };
+    for (final x in browserAllStreams) {
+      if (x.name.toLowerCase().contains(q)) return true;
+      final key = x.categoryId.isEmpty
+          ? IptvCatalogOrphans.uncategorizedId
+          : x.categoryId;
+      final cn = catNameById[key];
+      if (cn != null && cn.contains(q)) return true;
+    }
+    return false;
+  }
+
   void closeBrowserSearch() {
     if (!browserSearchOpen && browserSearch.isEmpty) return;
     browserSearchOpen = false;

@@ -7,6 +7,7 @@ import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 bool iptvUseTvFocus(BuildContext context) {
   final policy = ShellScope.maybeOf(context)?.inputPolicy;
@@ -143,6 +144,11 @@ bool iptvFocusRowItem(String rowId, [int? index]) {
   return ShellTvFocusCoordinator.focusRowItem('iptv', rowId, idx);
 }
 
+/// Channel focus memory is per selected category — reset when the group changes.
+void iptvResetBrowserStreamsFocusMemory() {
+  ShellTvFocusCoordinator.setRowLastFocusedIndex('iptv', 'browser-streams', 0);
+}
+
 /// D-pad focus index for a stream's group in [IptvController.browserSidebarCategories].
 int iptvBrowserCategoryIndexFor(IptvController ctrl, String categoryId) {
   final idx = ctrl.browserSidebarCategories
@@ -203,15 +209,61 @@ VoidCallback iptvStreamUpEdge(
 }
 
 /// Restore IPTV catalog focus when returning from the nav rail (RIGHT / Enter).
+/// Prefers the last focused channel or group — not always the first category.
 bool iptvRestoreCatalogFocus({int? portalIndex}) {
-  if (iptvFocusCatalogGroupRow(0)) return true;
+  final mem = ShellTvFocusCoordinator.memoryFor('iptv');
+  if (mem != null &&
+      mem.zone == ShellTvZone.row &&
+      mem.rowId != null &&
+      mem.rowId != 'portals') {
+    if (iptvFocusRowItem(mem.rowId!, mem.itemIndex)) return true;
+  }
+  if (iptvFocusRowItem('browser-streams')) return true;
+  if (iptvFocusCatalogGroupRow()) return true;
   if (iptvFocusRowItem('iptv-sections', 0)) return true;
   if (iptvFocusRowItem('iptv-top-tools', 0)) return true;
   if (iptvFocusRowItem('iptv-top-tools', 1)) return true;
   if (iptvFocusRowItem('portals', portalIndex ?? 0)) return true;
-  if (iptvFocusRowItem('browser-streams', 0)) return true;
   if (iptvFocusRowItem('iptv-open-portal', 0)) return true;
   return false;
+}
+
+/// In-page Back: search field/X → close search · channel grid → category.
+/// Returns false so the shell can move focus to the nav rail.
+bool iptvHandleCatalogPageBack(IptvController ctrl) {
+  if (ctrl.browserSearchOpen &&
+      (_iptvRowHasFocus('iptv-search-chrome') ||
+          _iptvMemoryRowIs('iptv-search-chrome'))) {
+    ctrl.closeBrowserSearch();
+    return true;
+  }
+  final onStreams = _iptvRowHasFocus('browser-streams');
+  // After a failed restore, nothing is focused but memory still points at channels.
+  final lostFocusOnStreams = !onStreams &&
+      !_iptvRowHasFocus('browser-categories') &&
+      !_iptvRowHasFocus('iptv-sections') &&
+      !_iptvRowHasFocus('iptv-top-tools') &&
+      !_iptvRowHasFocus('iptv-search-chrome') &&
+      !ShellTvFocus.anyNavFocused &&
+      _iptvMemoryRowIs('browser-streams');
+  if (onStreams || lostFocusOnStreams) {
+    return iptvFocusBrowserCategories(ctrl);
+  }
+  return false;
+}
+
+bool _iptvRowHasFocus(String rowId) {
+  final handle = ShellTvFocusCoordinator.rowHandle('iptv', rowId);
+  if (handle == null || handle.itemCount <= 0) return false;
+  for (var i = 0; i < handle.itemCount; i++) {
+    if (handle.nodeAt(i)?.hasFocus ?? false) return true;
+  }
+  return false;
+}
+
+bool _iptvMemoryRowIs(String rowId) {
+  final mem = ShellTvFocusCoordinator.memoryFor('iptv');
+  return mem?.rowId == rowId;
 }
 
 /// Nav Enter on IPTV - land on the first group row once catalog is ready.
@@ -223,6 +275,17 @@ void iptvEnterFromNav(IptvController ctrl) {
   if (!ctrl.isLoading) {
     iptvFocusCatalogGroupRow(0);
   }
+}
+
+/// Focus a catalog channel tile after leaving the player (retries for lazy grid).
+bool iptvFocusBrowserStreamAt(int index) {
+  if (index < 0) return false;
+  ShellTvFocusCoordinator.setRowLastFocusedIndex(
+    'iptv',
+    'browser-streams',
+    index,
+  );
+  return iptvFocusRowItem('browser-streams', index);
 }
 
 Widget iptvTap({

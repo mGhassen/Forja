@@ -294,27 +294,31 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                 if (!_s._isPipMode &&
                     _s._searchVisible &&
                     widget.channelGuide != null)
-                  IptvChannelSearchOverlay(
-                    guide: widget.channelGuide!,
-                    currentChannelId: _s._currentChannelId,
-                    onChannelSelected: _onSearchChannelSelected,
-                    onClose: () => setState(() {
-                      _s._searchVisible = false;
-                      _scheduleHideControls();
-                    }),
+                  RepaintBoundary(
+                    child: IptvChannelSearchOverlay(
+                      guide: widget.channelGuide!,
+                      currentChannelId: _s._currentChannelId,
+                      onChannelSelected: _onSearchChannelSelected,
+                      onClose: () => setState(() {
+                        _s._searchVisible = false;
+                        _scheduleHideControls();
+                      }),
+                    ),
                   ),
                 if (!_s._isPipMode &&
                     _s._guideVisible &&
                     widget.channelGuide != null)
-                  IptvChannelGuidePanel(
-                    guide: widget.channelGuide!,
-                    selectedGroupId: _s._selectedGroupId,
-                    currentChannelId: _s._currentChannelId,
-                    onGroupSelected: (id) {
-                      setState(() => _s._selectedGroupId = id);
-                    },
-                    onChannelSelected: _s._switchChannel,
-                    onClose: _closeGuideAndFocusPlayer,
+                  RepaintBoundary(
+                    child: IptvChannelGuidePanel(
+                      guide: widget.channelGuide!,
+                      selectedGroupId: _s._selectedGroupId,
+                      currentChannelId: _s._currentChannelId,
+                      onGroupSelected: (id) {
+                        setState(() => _s._selectedGroupId = id);
+                      },
+                      onChannelSelected: _s._switchChannel,
+                      onClose: _closeGuideAndFocusPlayer,
+                    ),
                   ),
                 if (!_s._isPipMode && epgFuture != null)
                   Positioned(

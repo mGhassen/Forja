@@ -20,12 +20,19 @@ class IptvCatalogTopBar extends StatefulWidget {
 class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     with SingleTickerProviderStateMixin {
   final TextEditingController _searchCtrl = TextEditingController();
-  final FocusNode _searchFocus = FocusNode();
+  final FocusNode _searchFocus = FocusNode(debugLabel: 'iptv-catalog-search');
+  final FocusNode _searchCloseFocus =
+      FocusNode(debugLabel: 'iptv-catalog-search-close');
+  final GlobalKey<TvBrowseTextFieldState> _searchFieldKey =
+      GlobalKey<TvBrowseTextFieldState>();
   late final AnimationController _searchAnim;
   late final Animation<double> _searchExpand;
   bool _searchDialogOpen = false;
   bool _searchToolFocused = false;
   bool _searchToolHovered = false;
+  bool _searchCloseFocused = false;
+  bool _searchCloseHovered = false;
+  AnimationStatusListener? _focusSearchToolOnCollapse;
   bool _sortToolFocused = false;
   bool _sortToolHovered = false;
   bool _portalToolFocused = false;
@@ -89,7 +96,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       ctrl.openBrowserSearch();
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _searchFocus.requestFocus();
+      if (mounted) _focusSearchField(edit: iptvUseTvFocus(context));
     });
   }
 
@@ -97,9 +104,15 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   void dispose() {
     ShellBus.unregisterFindShortcutHandler(_handleFindShortcut);
     ctrl.removeListener(_onCtrl);
+    if (_focusSearchToolOnCollapse != null) {
+      _searchAnim.removeStatusListener(_focusSearchToolOnCollapse!);
+      _focusSearchToolOnCollapse = null;
+    }
     _searchAnim.dispose();
     _searchCtrl.dispose();
     _searchFocus.dispose();
+    _searchCloseFocus.dispose();
+    iptvSyncRow(rowId: 'iptv-search-chrome', sortOrder: 1, itemCount: 0);
     super.dispose();
   }
 
@@ -109,17 +122,121 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       _closeSearch();
     }
     final open = ctrl.browserSearchOpen;
+    final wasExpanded = _searchAnim.value > 0 ||
+        _searchAnim.status != AnimationStatus.dismissed;
+    _syncSearchChromeRow();
     if (open && _searchAnim.status != AnimationStatus.completed) {
       _searchAnim.forward();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _searchFocus.requestFocus();
+        if (mounted) _focusSearchField(edit: iptvUseTvFocus(context));
       });
-    } else if (!open && _searchAnim.status != AnimationStatus.dismissed) {
+    } else if (!open && wasExpanded) {
       _searchAnim.reverse();
       _searchCtrl.clear();
       _searchFocus.unfocus();
+      _searchCloseFocus.unfocus();
+      // Back / X / Escape close via the controller — restore Search button.
+      if (iptvUseTvFocus(context)) {
+        _scheduleFocusSearchTool();
+      }
     }
     setState(() {});
+  }
+
+  void _syncSearchChromeRow() {
+    if (!ctrl.browserSearchOpen) {
+      iptvSyncRow(rowId: 'iptv-search-chrome', sortOrder: 1, itemCount: 0);
+      return;
+    }
+    iptvSyncRow(
+      rowId: 'iptv-search-chrome',
+      sortOrder: 1,
+      itemCount: 2,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: 'iptv',
+      rowId: 'iptv-search-chrome',
+      index: 0,
+      node: _searchFocus,
+    );
+  }
+
+  /// Focus the open search field; [edit] opens the TV keyboard.
+  void _focusSearchField({bool edit = false}) {
+    if (!_searchFocus.canRequestFocus) return;
+    _searchFocus.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      'iptv',
+      ShellTvFocusMemory(
+        zone: ShellTvZone.topBar,
+        rowId: 'iptv-search-chrome',
+        itemIndex: 0,
+        node: _searchFocus,
+      ),
+    );
+    if (!edit) {
+      _searchFieldKey.currentState?.endEditing(keepFocus: true);
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _searchFieldKey.currentState?.beginEditing();
+    });
+  }
+
+  void _focusSearchClose() {
+    if (!_searchCloseFocus.canRequestFocus) return;
+    _searchCloseFocus.requestFocus();
+  }
+
+  void _onSearchSubmitted(String _) {
+    final hasHits = ctrl.browserSearchHasMatchingStreams;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (hasHits) {
+        iptvResetBrowserStreamsFocusMemory();
+        if (iptvFocusRowItem('browser-streams', 0)) return;
+        var tries = 0;
+        void attempt() {
+          if (!mounted) return;
+          if (iptvFocusRowItem('browser-streams', 0)) return;
+          if (tries++ < 8) {
+            WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+          } else {
+            _focusSearchField(edit: false);
+          }
+        }
+
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        return;
+      }
+      // No hits — stay on the field in browse mode (do not reopen keyboard).
+      _focusSearchField(edit: false);
+    });
+  }
+
+  KeyEventResult _onSearchFieldKey(FocusNode node, KeyEvent event) {
+    if (!iptvUseTvFocus(context)) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    final editing = _searchFieldKey.currentState?.isEditing ?? false;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.goBack ||
+        key == LogicalKeyboardKey.escape) {
+      _closeSearch();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowRight && !editing) {
+      _focusSearchClose();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      _focusDownFromTopTools();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft && !editing) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   String get _portalLabel {
@@ -136,6 +253,14 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     iptvFocusCatalogGroupRow(ctrl.browserCategoryFocusIndex);
   }
 
+  void _focusLeftToSearchTool() {
+    if (ctrl.browserSearchOpen) {
+      _focusSearchField(edit: false);
+      return;
+    }
+    iptvFocusRowItem('iptv-top-tools', _searchToolIndex);
+  }
+
   void _focusDownFromPortalTool() {
     if (ctrl.portalPanelOpen) {
       iptvFocusRowItem('iptv-portal-header', 2);
@@ -149,19 +274,23 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
     required bool compact,
   }) async {
     if (!compact) {
-      if (ctrl.browserSearchOpen) return;
+      if (ctrl.browserSearchOpen) {
+        _focusSearchField(edit: iptvUseTvFocus(context));
+        return;
+      }
       ctrl.openBrowserSearch();
       return;
     }
 
     if (_searchDialogOpen) {
-      _searchFocus.requestFocus();
+      _focusSearchField(edit: iptvUseTvFocus(context));
       return;
     }
 
     _searchCtrl.text = ctrl.browserSearch;
     ctrl.openBrowserSearch();
     _searchDialogOpen = true;
+    var submitted = false;
     await showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.58),
@@ -173,17 +302,55 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
           onChanged: ctrl.setBrowserSearch,
           onClear: _clearSearchQuery,
           onClose: () => Navigator.of(dialogContext).pop(),
+          onSubmitted: (q) {
+            submitted = true;
+            Navigator.of(dialogContext).pop();
+            _onSearchSubmitted(q);
+          },
         ),
       ),
     );
     _searchDialogOpen = false;
-    if (mounted && ctrl.browserSearchOpen) {
+    if (mounted && ctrl.browserSearchOpen && !submitted) {
       _closeSearch();
     }
   }
 
   void _closeSearch() {
+    final restoreSearchTool = iptvUseTvFocus(context);
     ctrl.closeBrowserSearch();
+    if (!restoreSearchTool) return;
+    _scheduleFocusSearchTool();
+  }
+
+  /// After the expanding field collapses, land on the Search icon again.
+  void _scheduleFocusSearchTool() {
+    void focusTool() {
+      if (!mounted || ctrl.browserSearchOpen) return;
+      iptvFocusRowItem('iptv-top-tools', _searchToolIndex);
+    }
+
+    if (_focusSearchToolOnCollapse != null) {
+      _searchAnim.removeStatusListener(_focusSearchToolOnCollapse!);
+      _focusSearchToolOnCollapse = null;
+    }
+
+    void onStatus(AnimationStatus status) {
+      if (status != AnimationStatus.dismissed) return;
+      if (_focusSearchToolOnCollapse != null) {
+        _searchAnim.removeStatusListener(_focusSearchToolOnCollapse!);
+        _focusSearchToolOnCollapse = null;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) => focusTool());
+    }
+
+    if (_searchAnim.status == AnimationStatus.dismissed ||
+        _searchAnim.value <= 0.0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => focusTool());
+      return;
+    }
+    _focusSearchToolOnCollapse = onStatus;
+    _searchAnim.addStatusListener(onStatus);
   }
 
   void _clearSearchQuery() {
@@ -215,14 +382,16 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
         final showLayout = _showLiveLayoutToggle(context, compact: compact);
-        iptvSyncRow(
-          rowId: 'iptv-top-tools',
-          sortOrder: 1,
-          itemCount: _topToolsCount,
-        );
-        final leftPadding = ShellTokens.compactChromeLeadingInset(
-          context,
-        ).clamp(ShellTokens.bodyHorizontalPadding, constraints.maxWidth * 0.28);
+    iptvSyncRow(
+      rowId: 'iptv-top-tools',
+      sortOrder: 1,
+      itemCount: _topToolsCount,
+    );
+    _syncSearchChromeRow();
+        // Rail / TV: flush with the category column (0). Compact ☰ only: clear the menu.
+        final leftPadding = ShellTokens.usesCompactNavDrawer(context)
+            ? ShellTokens.compactChromeLeadingInset(context)
+            : 0.0;
 
         return Padding(
           padding: EdgeInsets.fromLTRB(leftPadding, 10, 12, 8),
@@ -326,7 +495,13 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
               onReload: () => ctrl.reloadSection(_kSectionShelf[i].section),
               onDownEdge: _focusDownFromShelf,
               onRightEdge: i == _kSectionShelf.length - 1
-                  ? () => iptvFocusRowItem('iptv-top-tools', 0)
+                  ? () {
+                      if (ctrl.browserSearchOpen) {
+                        _focusSearchField(edit: false);
+                      } else {
+                        iptvFocusRowItem('iptv-top-tools', 0);
+                      }
+                    }
                   : null,
             ),
         ],
@@ -459,7 +634,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         tvRowId: 'iptv-top-tools',
         tvItemIndex: _sortToolIndex,
         onDownEdge: _focusDownFromTopTools,
-        onLeftEdge: () => iptvFocusRowItem('iptv-top-tools', _searchToolIndex),
+        onLeftEdge: _focusLeftToSearchTool,
         onRightEdge: () =>
             iptvFocusRowItem('iptv-top-tools', _portalToolIndex),
         onFocusChange: (focused) => setState(() => _sortToolFocused = focused),
@@ -526,6 +701,12 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   }
 
   Widget _buildSearchField(BuildContext context) {
+    final closeActive = iptvFocusActive(
+      context,
+      hovered: _searchCloseHovered,
+      focused: _searchCloseFocused,
+    );
+    final closeTv = iptvTvFocused(context, focused: _searchCloseFocused);
     return Container(
       height: _kSearchCollapsed,
       decoration: BoxDecoration(
@@ -541,10 +722,13 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
           const SizedBox(width: 6),
           Expanded(
             child: TvBrowseTextField(
+              key: _searchFieldKey,
               controller: _searchCtrl,
               focusNode: _searchFocus,
               onChanged: ctrl.setBrowserSearch,
               onEscape: _closeSearch,
+              onSubmitted: _onSearchSubmitted,
+              onKeyEvent: _onSearchFieldKey,
               browsePlaceholder: 'Search…',
               browseHintStyle: GoogleFonts.plusJakartaSans(
                 color: Colors.white38,
@@ -563,9 +747,31 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
             context: context,
             onTap: _closeSearch,
             borderRadius: 16,
-            child: const Padding(
-              padding: EdgeInsets.all(6),
-              child: Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+            focusNode: _searchCloseFocus,
+            tvRowId: 'iptv-search-chrome',
+            tvItemIndex: 1,
+            tvZone: ShellTvZone.topBar,
+            onLeftEdge: () => _focusSearchField(edit: false),
+            onRightEdge: () => iptvFocusRowItem(
+              'iptv-top-tools',
+              _showLiveSort ? _sortToolIndex : _portalToolIndex,
+            ),
+            onDownEdge: _focusDownFromTopTools,
+            onFocusChange: (focused) =>
+                setState(() => _searchCloseFocused = focused),
+            onHoverChange: (hovered) =>
+                setState(() => _searchCloseHovered = hovered),
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Icon(
+                Icons.close_rounded,
+                color: iptvFocusFg(
+                  Colors.white70,
+                  active: closeActive,
+                  tvFocused: closeTv,
+                ),
+                size: 18,
+              ),
             ),
           ),
         ],
@@ -615,8 +821,13 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         tvRowId: 'iptv-top-tools',
         tvItemIndex: _portalToolIndex,
         onDownEdge: _focusDownFromPortalTool,
-        onLeftEdge: () =>
-            iptvFocusRowItem('iptv-top-tools', _portalToolIndex - 1),
+        onLeftEdge: () {
+          if (!_showLiveSort && ctrl.browserSearchOpen) {
+            _focusLeftToSearchTool();
+            return;
+          }
+          iptvFocusRowItem('iptv-top-tools', _portalToolIndex - 1);
+        },
         onRightEdge:
             selected ? () => iptvFocusRowItem('portals', 0) : null,
         onFocusChange: (focused) {
@@ -921,6 +1132,7 @@ class _IptvLiveSortMenuState extends State<_IptvLiveSortMenu> {
       child: FocusableControl(
         onTap: onTap,
         borderRadius: PlayerPopupTokens.cardRadius,
+        scaleOnFocus: 1.0,
         showFocusBorder: true,
         ensureVisibleMode: ShellTvEnsureVisibleMode.item,
         child: row,
@@ -936,6 +1148,7 @@ class _IptvCatalogSearchDialog extends StatefulWidget {
     required this.onChanged,
     required this.onClear,
     required this.onClose,
+    this.onSubmitted,
   });
 
   final TextEditingController controller;
@@ -943,6 +1156,7 @@ class _IptvCatalogSearchDialog extends StatefulWidget {
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
   final VoidCallback onClose;
+  final ValueChanged<String>? onSubmitted;
 
   @override
   State<_IptvCatalogSearchDialog> createState() =>
@@ -950,12 +1164,19 @@ class _IptvCatalogSearchDialog extends StatefulWidget {
 }
 
 class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
+  final GlobalKey<TvBrowseTextFieldState> _fieldKey =
+      GlobalKey<TvBrowseTextFieldState>();
+
   @override
   void initState() {
     super.initState();
     widget.controller.addListener(_onTextChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.focusNode.requestFocus();
+      if (!mounted) return;
+      widget.focusNode.requestFocus();
+      if (iptvUseTvFocus(context)) {
+        _fieldKey.currentState?.beginEditing();
+      }
     });
   }
 
@@ -997,10 +1218,12 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
                 ),
                 const SizedBox(height: 14),
                 TvBrowseTextField(
+                  key: _fieldKey,
                   controller: widget.controller,
                   focusNode: widget.focusNode,
                   onChanged: widget.onChanged,
                   onEscape: widget.onClose,
+                  onSubmitted: widget.onSubmitted,
                   browsePlaceholder: 'Search channels or categories…',
                   browseHintStyle: GoogleFonts.plusJakartaSans(
                     color: Colors.white38,
