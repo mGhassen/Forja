@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/widgets/hero/desktop_selectable_title.dart';
+import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_facts_panel.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
@@ -541,51 +541,14 @@ class HubHeroTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const style = TextStyle(
-      fontSize: 48,
-      fontWeight: FontWeight.w900,
-      color: Colors.white,
-      height: 1.0,
-      letterSpacing: -1.2,
-    );
-    return wrapDesktopSelectableTitle(
-      context,
-      Stack(
-        clipBehavior: Clip.hardEdge,
-        children: [
-          desktopTitleSelectionGhost(
-            Transform.translate(
-              offset: const Offset(-1.5, 0),
-              child: Text(
-                title,
-                style: style.copyWith(
-                  color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          desktopTitleSelectionGhost(
-            Transform.translate(
-              offset: const Offset(1.5, 0),
-              child: Text(
-                title,
-                style: style.copyWith(
-                  color: const Color(0xFFFBBF24).withValues(alpha: 0.4),
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          Text(
-            title,
-            style: style,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+    return ChromaticHeroTitleText(
+      title: title,
+      style: const TextStyle(
+        fontSize: 48,
+        fontWeight: FontWeight.w900,
+        color: Colors.white,
+        height: 1.0,
+        letterSpacing: -1.2,
       ),
     );
   }

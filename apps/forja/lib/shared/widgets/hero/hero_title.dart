@@ -1,10 +1,74 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hero/desktop_selectable_title.dart';
 import 'package:rust/rust.dart';
 
 enum HeroTitleStyle { details, home }
+
+/// Cyan/amber offset layers under white — desktop/mobile details look.
+/// On TV, a single plain [Text]: stacked translucent offsets read as a
+/// double image with soft antialiasing on Android TV GLES.
+class ChromaticHeroTitleText extends StatelessWidget {
+  const ChromaticHeroTitleText({
+    super.key,
+    required this.title,
+    required this.style,
+    this.maxLines = 2,
+  });
+
+  final String title;
+  final TextStyle style;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    final plain = Text(
+      title,
+      style: style,
+      maxLines: maxLines,
+      overflow: TextOverflow.ellipsis,
+    );
+    if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return wrapDesktopSelectableTitle(context, plain);
+    }
+    return wrapDesktopSelectableTitle(
+      context,
+      Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          desktopTitleSelectionGhost(
+            Transform.translate(
+              offset: const Offset(-1.5, 0),
+              child: Text(
+                title,
+                style: style.copyWith(
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
+                ),
+                maxLines: maxLines,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          desktopTitleSelectionGhost(
+            Transform.translate(
+              offset: const Offset(1.5, 0),
+              child: Text(
+                title,
+                style: style.copyWith(
+                  color: const Color(0xFFFBBF24).withValues(alpha: 0.4),
+                ),
+                maxLines: maxLines,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          plain,
+        ],
+      ),
+    );
+  }
+}
 
 /// TMDB logo or stylized title for hero surfaces (Home carousel, media details).
 class HeroTitle extends StatelessWidget {
@@ -71,65 +135,25 @@ class _DetailsHeroTitle extends StatelessWidget {
         height: logoHeight,
         fit: BoxFit.contain,
         alignment: Alignment.centerLeft,
-        placeholder: (_, _) => _chromaticTitle(context, movie, logoHeight),
-        errorWidget: (_, _, _) => _chromaticTitle(context, movie, logoHeight),
+        placeholder: (_, _) => _fallbackTitle(movie, logoHeight),
+        errorWidget: (_, _, _) => _fallbackTitle(movie, logoHeight),
       );
     }
-    return _chromaticTitle(context, movie, logoHeight);
+    return _fallbackTitle(movie, logoHeight);
   }
 
-  Widget _chromaticTitle(
-    BuildContext context,
-    Movie movie,
-    double maxHeight,
-  ) {
+  Widget _fallbackTitle(Movie movie, double maxHeight) {
     final fontSize = maxHeight <= 56 ? 32.0 : maxHeight <= 72 ? 40.0 : 48.0;
     final maxLines = maxHeight <= 56 ? 1 : 2;
-    final style = TextStyle(
-      fontSize: fontSize,
-      fontWeight: FontWeight.w900,
-      color: Colors.white,
-      height: 1.0,
-      letterSpacing: -1.2,
-    );
-    return wrapDesktopSelectableTitle(
-      context,
-      Stack(
-        clipBehavior: Clip.hardEdge,
-        children: [
-          desktopTitleSelectionGhost(
-            Transform.translate(
-              offset: const Offset(-1.5, 0),
-              child: Text(
-                movie.title,
-                style: style.copyWith(
-                  color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
-                ),
-                maxLines: maxLines,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          desktopTitleSelectionGhost(
-            Transform.translate(
-              offset: const Offset(1.5, 0),
-              child: Text(
-                movie.title,
-                style: style.copyWith(
-                  color: const Color(0xFFFBBF24).withValues(alpha: 0.4),
-                ),
-                maxLines: maxLines,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          Text(
-            movie.title,
-            style: style,
-            maxLines: maxLines,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+    return ChromaticHeroTitleText(
+      title: movie.title,
+      maxLines: maxLines,
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w900,
+        color: Colors.white,
+        height: 1.0,
+        letterSpacing: -1.2,
       ),
     );
   }

@@ -10,6 +10,7 @@ class ForjaApplication : Application() {
         super.onCreate()
         // media_kit SurfaceProducer + Impeller = audio-only / black video on ATV
         // (Shield + leanback emulators). Init Skia before AudioService creates the engine.
+        // Manifest must NOT force EnableImpeller=true — that races --enable-impeller=false.
         if (PlatformUtils.isAndroidTv(this)) {
             try {
                 val loader = FlutterInjector.instance().flutterLoader()

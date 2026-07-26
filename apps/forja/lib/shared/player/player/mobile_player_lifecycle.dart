@@ -19,6 +19,11 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
   @override
   void initState() {
     super.initState();
+    PlayerBackExitGate.setOnFirstBack(() {
+      if (!mounted || _s._disposed) return;
+      if (!_s._showControls) setState(() => _s._showControls = true);
+      _s._startHideTimer();
+    });
     _s._ownedProviderSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
       {},
     );
@@ -124,8 +129,11 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
 
     // Phone MediaKit: software-friendly decode (some MediaCodec paths flake).
     // ATV MediaKit: keep MediaCodec HW - Impeller is disabled in
-    // ForjaApplication so the SurfaceProducer shows frames (not audio-only).
-    if (Platform.isAndroid && !widget.tvRemoteEnabled) {
+    // ForjaApplication / MainActivity so the SurfaceProducer shows frames
+    // (not audio-only).
+    if (Platform.isAndroid &&
+        !widget.tvRemoteEnabled &&
+        !PlatformInfo.isAndroidTv) {
       _s._androidMediaKitSafeMode = true;
       _s._hwDecMode = _HwDecMode.software;
     }
@@ -147,8 +155,10 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
 
     // ATV: vo=gpu needs an EGL context - ATV emulators die with
     // EGL_BAD_ATTRIBUTE (audio OK, black frame). mediacodec_embed paints
-    // MediaCodec straight into the Flutter Surface (no mpv GL).
-    final tvMediaKit = widget.tvRemoteEnabled;
+    // MediaCodec straight into the Flutter Surface (no mpv GL). Same knobs
+    // as IPTV [_IptvPtPlayerEngine._initPlayerInstances].
+    final tvMediaKit =
+        widget.tvRemoteEnabled || PlatformInfo.isAndroidTv;
     _s._controller = VideoController(
       _s._player,
       configuration: VideoControllerConfiguration(
@@ -158,6 +168,7 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
         hwdec: tvMediaKit
             ? 'mediacodec'
             : (_s._androidMediaKitSafeMode ? 'no' : null),
+        androidAttachSurfaceAfterVideoParameters: false,
       ),
     );
 

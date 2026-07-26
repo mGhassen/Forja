@@ -4,6 +4,7 @@ import android.graphics.Color
 import android.os.Bundle
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterShellArgs
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : AudioServiceActivity() {
@@ -15,6 +16,16 @@ class MainActivity : AudioServiceActivity() {
             window.statusBarColor = APP_BACKGROUND
             window.navigationBarColor = APP_BACKGROUND
         }
+    }
+
+    // Belt-and-suspenders with ForjaApplication: MediaKit + Impeller =
+    // audio-only / black video on leanback.
+    override fun getFlutterShellArgs(): FlutterShellArgs {
+        val args = super.getFlutterShellArgs()
+        if (isAndroidTv()) {
+            args.add(FlutterShellArgs.ARG_DISABLE_IMPELLER)
+        }
+        return args
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

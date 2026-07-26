@@ -51,6 +51,9 @@ class PlayerPopupPanel {
 
   static OverlayEntry? _entry;
   static Completer<void>? _completer;
+  /// Raw drill-in callback from [show] (`onBack`) - remote Back uses this to
+  /// return to the parent page instead of closing the whole menu.
+  static VoidCallback? _drillInOnBack;
 
   static bool get isShowing => _entry != null;
 
@@ -60,7 +63,22 @@ class PlayerPopupPanel {
     _entry = null;
     _completer?.complete();
     _completer = null;
+    _drillInOnBack = null;
     if (wasShowing) playerMenuRestoreReturnFocus();
+  }
+
+  /// One Back step: reopen parent when this panel is a drill-in, else dismiss.
+  /// Returns false when nothing was showing.
+  static bool popLayerOrDismiss() {
+    if (_entry == null) return false;
+    final reopen = _drillInOnBack;
+    dismiss();
+    if (reopen != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        reopen();
+      });
+    }
+    return true;
   }
 
   static Rect? _anchorRectInOverlay(
@@ -133,11 +151,16 @@ class PlayerPopupPanel {
     final overlay = Overlay.of(context);
     dismiss();
     playerChromeCancelSeekScrubs();
+    _drillInOnBack = onBack;
 
     _completer = Completer<void>();
 
     void close() {
       dismiss();
+    }
+
+    void popOrClose() {
+      popLayerOrDismiss();
     }
 
     _entry = OverlayEntry(
@@ -194,19 +217,7 @@ class PlayerPopupPanel {
                     trailing: trailing,
                     shellBg: shellBg,
                     showHeader: showHeader,
-                    onBack: onBack == null
-                        ? null
-                        : () {
-                            // Dismiss first, then reopen on the next frame.
-                            // Calling [onBack] synchronously after [close] inserts
-                            // a new barrier under the same pointer-up, which
-                            // immediately dismisses the parent page again.
-                            final reopen = onBack;
-                            close();
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              reopen();
-                            });
-                          },
+                    onBack: onBack == null ? null : popOrClose,
                     onClose: close,
                     child: child,
                   ),
@@ -262,7 +273,7 @@ class PlayerPopupPanel {
 
               return tvFocusableOverlay(
                 overlayContext: scopedContext,
-                onDismiss: close,
+                onDismiss: popOrClose,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [

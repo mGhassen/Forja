@@ -139,9 +139,10 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
   /// Desktop / phone: match UI back - player → detail → tab stack.
   /// Does not steal focus to the nav rail or exit the app (TV-only).
   bool _handleDesktopOrMobileBack() {
+    // Overlay menus are not navigator routes - close them before popping.
+    if (dismissAnyPlayerChromeOverlay()) return true;
     switch (ShellNavigationLevels.resolveBackTarget()) {
       case ShellNavLevel.player:
-        if (dismissAnyPlayerChromeOverlay()) return true;
         ShellNavigationLevels.popRootRoute();
         return true;
       case ShellNavLevel.detail:

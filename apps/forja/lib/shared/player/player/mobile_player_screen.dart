@@ -33,6 +33,7 @@ import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/extractors/providers/arabic/arabic_service.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
 import 'package:forja/shared/player/controls/player_menus.dart';
@@ -60,10 +61,12 @@ import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
+import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 part 'mobile_player_glass.dart';
 part 'mobile_player_lifecycle.dart';
@@ -394,6 +397,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // `_initPlayback` / mark-failed paths bail out instead of writing
     // to a disposed ValueNotifier.
     _disposed = true;
+    PlayerBackExitGate.setOnFirstBack(null);
     _cancelPendingStreamWork();
     _providerLoadFailures.dispose();
     if (widget.providerSourcesCache == null) {

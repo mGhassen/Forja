@@ -1540,14 +1540,16 @@ mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
     // ── Decoding ─────────────────────────────────────────────────────────
     // Phone safe-mode: hwdec=no. ATV: keep mediacodec (matches VideoController
     // vo=mediacodec_embed - do not overwrite with auto-safe/software).
-    if (widget.tvRemoteEnabled) {
+    final tvMediaKit =
+        widget.tvRemoteEnabled || PlatformInfo.isAndroidTv;
+    if (tvMediaKit) {
       await safeSet('hwdec', 'mediacodec');
     } else {
       await safeSet('hwdec', _s._hwDecMode.mpvValue);
     }
-    final phoneSafeMode = _s._androidMediaKitSafeMode && !widget.tvRemoteEnabled;
+    final phoneSafeMode = _s._androidMediaKitSafeMode && !tvMediaKit;
     await safeSet('vd-lavc-dr', phoneSafeMode ? 'no' : 'yes');
-    if (Platform.isAndroid && (widget.tvRemoteEnabled || phoneSafeMode)) {
+    if (Platform.isAndroid && (tvMediaKit || phoneSafeMode)) {
       // OpenSLES misconfigures on some ATV images (0 frames delivered).
       await safeSet('ao', 'audiotrack');
     }

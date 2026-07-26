@@ -358,7 +358,15 @@ mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
             sources: _s._currentSources,
           );
         }
-        return handler(_s._positionNotifier.value, builtInEngine: builtInEngine);
+        final target = _externalHandoffTarget();
+        return handler(
+          _s._positionNotifier.value,
+          builtInEngine: builtInEngine,
+          streamUrl: target.url,
+          headers: target.headers,
+          activeProvider: _s._currentProvider,
+          sources: _s._currentSources,
+        );
       },
     );
     _s._startHideTimer();

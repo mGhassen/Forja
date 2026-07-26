@@ -22,9 +22,11 @@
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:hardwareAccelerated="true">
-        <meta-data
-            android:name="io.flutter.embedding.android.EnableImpeller"
-            android:value="true" />
+        <!-- Do not set EnableImpeller=true here. On Android TV ForjaApplication
+             (and MainActivity shell args) pass --enable-impeller=false so
+             MediaKit SurfaceProducer shows video; a manifest true races that
+             and leaves audio-only / black picture on TV. Phones keep Impeller
+             via Flutter's API 29+ default. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

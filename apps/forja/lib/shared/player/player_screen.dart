@@ -370,18 +370,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (Platform.isAndroid && PlatformInfo.isAndroidTv) {
       if (_builtInEngine == BuiltInPlayerEngine.exoPlayer) {
         return ExoPlayerScreen(
-          key: ValueKey('exo_tv_${_builtInEngine.name}'),
-          mediaPath: widget.streamUrl,
+          key: ValueKey(
+            'exo_tv_${_builtInEngine.name}_${_sessionActiveProvider}_${_sessionStreamUrl.hashCode}',
+          ),
+          mediaPath: _sessionStreamUrl,
           title: widget.title,
           audioUrl: widget.audioUrl,
-          headers: widget.headers,
+          headers: _sessionHeaders,
           movie: widget.movie,
           selectedSeason: widget.selectedSeason,
           selectedEpisode: widget.selectedEpisode,
           magnetLink: widget.magnetLink,
-          activeProvider: widget.activeProvider,
+          activeProvider: _sessionActiveProvider,
           startPosition: _effectiveStartPosition,
-          sources: widget.sources,
+          sources: _sessionSources,
           fileIndex: widget.fileIndex,
           externalSubtitles: widget.externalSubtitles,
           onNextEpisode: widget.onNextEpisode,
@@ -401,18 +403,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
         );
       }
       return TvPlayerScreen(
-        key: ValueKey('mk_tv_${_builtInEngine.name}'),
-        mediaPath: widget.streamUrl,
+        key: ValueKey(
+          'mk_tv_${_builtInEngine.name}_${_sessionActiveProvider}_${_sessionStreamUrl.hashCode}',
+        ),
+        mediaPath: _sessionStreamUrl,
         title: widget.title,
         audioUrl: widget.audioUrl,
-        headers: widget.headers,
+        headers: _sessionHeaders,
         movie: widget.movie,
         selectedSeason: widget.selectedSeason,
         selectedEpisode: widget.selectedEpisode,
         magnetLink: widget.magnetLink,
-        activeProvider: widget.activeProvider,
+        activeProvider: _sessionActiveProvider,
         startPosition: _effectiveStartPosition,
-        sources: widget.sources,
+        sources: _sessionSources,
         fileIndex: widget.fileIndex,
         externalSubtitles: widget.externalSubtitles,
         stremioId: widget.stremioId,
@@ -443,18 +447,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
       if (Platform.isAndroid &&
           _builtInEngine == BuiltInPlayerEngine.exoPlayer) {
         return ExoPlayerScreen(
-          key: ValueKey('exo_${_builtInEngine.name}'),
-          mediaPath: widget.streamUrl,
+          key: ValueKey(
+            'exo_${_builtInEngine.name}_${_sessionActiveProvider}_${_sessionStreamUrl.hashCode}',
+          ),
+          mediaPath: _sessionStreamUrl,
           title: widget.title,
           audioUrl: widget.audioUrl,
-          headers: widget.headers,
+          headers: _sessionHeaders,
           movie: widget.movie,
           selectedSeason: widget.selectedSeason,
           selectedEpisode: widget.selectedEpisode,
           magnetLink: widget.magnetLink,
-          activeProvider: widget.activeProvider,
+          activeProvider: _sessionActiveProvider,
           startPosition: _effectiveStartPosition,
-          sources: widget.sources,
+          sources: _sessionSources,
           fileIndex: widget.fileIndex,
           externalSubtitles: widget.externalSubtitles,
           onNextEpisode: widget.onNextEpisode,

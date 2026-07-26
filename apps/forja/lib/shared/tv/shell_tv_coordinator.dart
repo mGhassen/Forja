@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
+import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -171,6 +172,7 @@ abstract final class ShellTvFocusCoordinator {
   /// Test-only - clears back debounce between widget tests.
   static void resetBackDebounceForTest() {
     _lastBackHandledAt = null;
+    PlayerBackExitGate.resetForTest();
   }
 
   static bool _consumeDuplicateBack() {
@@ -186,7 +188,24 @@ abstract final class ShellTvFocusCoordinator {
   /// Level-aware back - see [ShellNavigationLevels].
   /// Always returns true when [tvBackPolicyEnabled] (never exits the app).
   static bool handleShellBackKey() {
-    if (_consumeDuplicateBack()) return true;
+    // Confirming second Back must not be swallowed by the debounce window.
+    if (!PlayerBackExitGate.isArmed && _consumeDuplicateBack()) return true;
+    if (PlayerBackExitGate.isArmed) {
+      _lastBackHandledAt = DateTime.now();
+    }
+
+    // Player menus/panels are OverlayEntries (not routes). Dismiss them before
+    // any navigator pop - including IPTV/trailer menus while level=detail.
+    if (dismissAnyPlayerChromeOverlay()) {
+      PlayerBackExitGate.clear();
+      return true;
+    }
+
+    // TV: first Back stays in fullscreen players; second within the window exits.
+    if (PlayerBackExitGate.consumeFirstBackStay(enabled: tvBackPolicyEnabled)) {
+      debugPrint('[NavBack] player exit armed - stay in player');
+      return true;
+    }
 
     if (!tvBackPolicyEnabled) {
       return _handleLegacyBackKey();
@@ -196,9 +215,6 @@ abstract final class ShellTvFocusCoordinator {
     debugPrint('[NavBack] shell back target=$target');
     switch (target) {
       case ShellNavLevel.player:
-        if (dismissAnyPlayerChromeOverlay()) {
-          return true;
-        }
         ShellNavigationLevels.popRootRoute();
         return true;
       case ShellNavLevel.detail:

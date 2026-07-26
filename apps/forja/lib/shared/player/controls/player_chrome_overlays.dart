@@ -173,6 +173,9 @@ class _TvPanelFocusOnOpenState extends State<_TvPanelFocusOnOpen> {
 }
 
 /// Dismisses the topmost player chrome overlay (menus, panels) if any is open.
+///
+/// For [PlayerPopupPanel] drill-ins (Settings → Speed, subtitle language, …),
+/// pops one layer (back to parent) instead of closing the whole stack.
 bool dismissAnyPlayerChromeOverlay() {
   if (PlayerSubtitleSettingsDialog.dismissIfShowing()) {
     return true;
@@ -186,7 +189,7 @@ bool dismissAnyPlayerChromeOverlay() {
     return true;
   }
   if (PlayerPopupPanel.isShowing) {
-    PlayerPopupPanel.dismiss();
+    PlayerPopupPanel.popLayerOrDismiss();
     return true;
   }
   if (PlayerEpisodePanel.isShowing) {

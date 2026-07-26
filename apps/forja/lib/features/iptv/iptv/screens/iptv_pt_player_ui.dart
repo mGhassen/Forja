@@ -167,6 +167,11 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
         focusNode: _s._playerTvKeyFocus,
         showControls: _s._controlsVisible,
         onBack: () {
+          if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+            ShellTvFocusCoordinator.handleShellBackKey();
+            return;
+          }
+          if (dismissAnyPlayerChromeOverlay()) return;
           if (Navigator.canPop(context)) Navigator.pop(context);
         },
         onPlayPause: () {

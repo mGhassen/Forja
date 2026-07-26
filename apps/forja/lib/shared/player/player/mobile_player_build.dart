@@ -256,7 +256,13 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
       enabled: true,
       focusNode: _s._tvKeyFocus,
       showControls: _s._showControls,
-      onBack: () => unawaited(_s._exitPlayer()),
+      onBack: () {
+        if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+          ShellTvFocusCoordinator.handleShellBackKey();
+        } else {
+          unawaited(_s._exitPlayer());
+        }
+      },
       onPlayPause: () {
         if (_s._player.state.playing) {
           _s._player.pause();

@@ -27,11 +27,14 @@ import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.d
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
+import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -266,6 +269,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   void initState() {
     super.initState();
     ShellBus.enterPlayerSurface();
+    PlayerBackExitGate.setOnFirstBack(() {
+      if (_disposed || !mounted) return;
+      if (_guideVisible || _searchVisible || _isPipMode) return;
+      setState(() => _controlsVisible = true);
+      _scheduleHideControls();
+    });
     _sources = List<IptvPlaySource>.from(widget.sources);
     _title = widget.title;
     _subtitle = widget.subtitle;
@@ -397,6 +406,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   @override
   void dispose() {
+    PlayerBackExitGate.setOnFirstBack(null);
     ShellBus.leavePlayerSurface();
     _disposed = true;
     SettingsService.iptvEpgEnabledNotifier.removeListener(

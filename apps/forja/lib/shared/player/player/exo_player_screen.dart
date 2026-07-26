@@ -7,6 +7,7 @@ import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/player_source_resolve.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
+import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_episode_loading_card.dart';
@@ -31,6 +32,7 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
@@ -167,6 +169,11 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
+    PlayerBackExitGate.setOnFirstBack(() {
+      if (!mounted || _disposed) return;
+      if (!_showControls) setState(() => _showControls = true);
+      _startHideTimer();
+    });
     _sources = [];
     if (widget.audioUrl != null && widget.audioUrl!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -835,6 +842,13 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
           _position,
           builtInEngine: builtInEngine,
           externalPlayer: externalPlayer,
+          streamUrl: _currentUrl ??
+              (_sources.isNotEmpty ? _sources[_sourceIndex].url : null),
+          headers: _sources.isNotEmpty
+              ? _sources[_sourceIndex].headers
+              : widget.headers,
+          activeProvider: _currentProvider ?? widget.activeProvider,
+          sources: _currentSources ?? widget.sources,
         );
       },
     );
@@ -897,6 +911,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   @override
   void dispose() {
     _disposed = true;
+    PlayerBackExitGate.setOnFirstBack(null);
     PlayerServerStreamDialog.dismiss();
     _playFocus.dispose();
     _backFocus.dispose();
@@ -1528,7 +1543,13 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       enabled: true,
       focusNode: _tvKeyFocus,
       showControls: _showControls,
-      onBack: () => unawaited(_exit()),
+      onBack: () {
+        if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+          ShellTvFocusCoordinator.handleShellBackKey();
+        } else {
+          unawaited(_exit());
+        }
+      },
       onPlayPause: _togglePlayPause,
       onShowControls: () {
         setState(() => _showControls = true);
