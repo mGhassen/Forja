@@ -80,7 +80,9 @@ dependencies:
   qr_flutter: ^4.1.0
   supabase_flutter: ^2.16.0
   flutter_secure_storage: ^9.2.4
-  passkeys: ^2.22.0
+  # 2.22.0+ pulls passkeys_darwin with ASCredentialDataManager (Xcode 26 SDK only).
+  # GitHub macos runners are still on Xcode 16.x — pin until CI has Xcode 26.
+  passkeys: 2.21.1
   sentry_flutter: ^9.25.0
   posthog_flutter: ^5.32.1
 
@@ -126,6 +128,8 @@ flutter:
     - assets/textures/
 
 dependency_overrides:
+  # passkeys 2.21.1 allows ^0.4.1+1 which still resolves to 0.4.2+2 (needs Xcode 26).
+  passkeys_darwin: 0.4.1+1
   media_kit:
     git:
       url: https://github.com/AimesSoft/media-kit.git

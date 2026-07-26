@@ -836,6 +836,7 @@ build_android_tv() {
     cd "$APP_DIR"
     flutter pub get
     flutter build apk --release --split-per-abi \
+      --target-platform android-arm,android-arm64 \
       --dart-define=SUPABASE_URL="${SUPABASE_URL}" \
       --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY}" \
       --dart-define=RELEASE_CDN_URL="${RELEASE_CDN_URL}" \

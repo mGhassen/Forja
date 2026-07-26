@@ -45,6 +45,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Free disk space
+        run: |
+          chmod +x scripts/ci_free_disk_linux.sh
+          ./scripts/ci_free_disk_linux.sh
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
       - uses: nttld/setup-ndk@v1
         with:
@@ -85,6 +89,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Free disk space
+        run: |
+          chmod +x scripts/ci_free_disk_linux.sh
+          ./scripts/ci_free_disk_linux.sh
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
       - uses: nttld/setup-ndk@v1
         with:
@@ -125,6 +133,10 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Free disk space
+        run: |
+          chmod +x scripts/ci_free_disk_linux.sh
+          ./scripts/ci_free_disk_linux.sh
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
       - uses: nttld/setup-ndk@v1
         with:

@@ -388,6 +388,7 @@ jobs:
             clang cmake ninja-build pkg-config \
             libgtk-3-dev libmpv-dev libfuse2 libsecret-1-dev \
             libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+            libcurl4-openssl-dev \
             file wget curl
 
       - name: Build Rust FFI
@@ -430,6 +431,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: v${{ needs.resolve_version.outputs.version }}
+
+      - name: Free disk space
+        run: |
+          # Existing-tag releases checkout an older tree — pull the script from the
+          # workflow commit when missing (same pattern as R2 uploader).
+          if [[ ! -f scripts/ci_free_disk_linux.sh ]]; then
+            echo "Free-disk script missing on tag; fetching from workflow ref ${{ github.sha }}"
+            git fetch --depth=1 origin "${{ github.sha }}"
+            git checkout "${{ github.sha }}" -- scripts/ci_free_disk_linux.sh
+          fi
+          chmod +x scripts/ci_free_disk_linux.sh
+          ./scripts/ci_free_disk_linux.sh
 
       - name: Verify Android signing secrets
         env:
@@ -482,7 +495,9 @@ jobs:
           FORJA_KEY_ALIAS: ${{ secrets.FORJA_KEY_ALIAS }}
         run: |
           flutter pub get
+          # Only ship arm64 + armeabi-v7a — skip x86_64 to save ~several GB on the runner.
           flutter build apk --release --split-per-abi \
+            --target-platform android-arm,android-arm64 \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
