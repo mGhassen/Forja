@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { DownloadHelp } from '@/components/download-help'
 import { SiteFooter } from '@/components/legal-shell'
 import { PageAtmosphere } from '@/components/page-atmosphere'
@@ -44,6 +44,104 @@ function AppleIcon({ className }: { className?: string }) {
       <path d="M16.7 12.6c0-2.1 1.7-3.1 1.8-3.2-1-1.4-2.5-1.6-3-1.7-1.3-.1-2.5.8-3.1.8-.7 0-1.7-.7-2.8-.7-1.4 0-2.8.9-3.5 2.2-1.5 2.6-.4 6.4 1.1 8.5.7 1 1.6 2.2 2.8 2.1 1.1 0 1.5-.7 2.9-.7s1.7.7 2.9.7c1.2 0 1.9-1 2.7-2 .8-1.2 1.2-2.3 1.2-2.4-.1 0-2.3-.9-2.3-3.6ZM14.9 6.4c.6-.8 1.1-1.8.9-2.9-1 .1-2.1.7-2.7 1.5-.6.7-1.1 1.8-.9 2.8 1 .1 2.1-.5 2.7-1.4Z" />
     </svg>
   )
+}
+
+function LinuxIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      aria-hidden
+      fill="currentColor"
+    >
+      <path d="M12.5 2c-1.2 0-2.2 1.3-2.2 3 0 1.2.5 2.3 1.3 2.9-.1 0-.3 0-.4.1-2.2.6-3.7 2.8-3.7 5.3 0 1.3.5 2.5 1.3 3.4-.8.7-1.3 1.8-1.3 3 0 2.1 1.7 3.3 4.2 3.3 1.1 0 2.1-.3 2.8-.7.7.4 1.7.7 2.8.7 2.5 0 4.2-1.2 4.2-3.3 0-1.2-.5-2.3-1.3-3 .8-.9 1.3-2.1 1.3-3.4 0-2.5-1.5-4.7-3.7-5.3-.1-.1-.3-.1-.4-.1.8-.6 1.3-1.7 1.3-2.9 0-1.7-1-3-2.2-3zm0 1.5c.4 0 .7.6.7 1.5s-.3 1.5-.7 1.5-.7-.6-.7-1.5.3-1.5.7-1.5zM9.4 9.2c.3 0 .6.1.8.2-.2.4-.3.9-.3 1.4 0 1.1.4 2.1 1.1 2.8-.7.5-1.2 1.4-1.2 2.4 0 .9.4 1.6 1.2 2-.5.3-1.1.5-1.8.5-1.6 0-2.7-.7-2.7-1.8 0-.8.4-1.5 1.1-1.9-.5-.7-.8-1.5-.8-2.4 0-1.7 1.1-3.1 2.6-3.2zm6.2 0c1.5.1 2.6 1.5 2.6 3.2 0 .9-.3 1.7-.8 2.4.7.4 1.1 1.1 1.1 1.9 0 1.1-1.1 1.8-2.7 1.8-.7 0-1.3-.2-1.8-.5.8-.4 1.2-1.1 1.2-2 0-1-.5-1.9-1.2-2.4.7-.7 1.1-1.7 1.1-2.8 0-.5-.1-1-.3-1.4.2-.1.5-.2.8-.2z" />
+    </svg>
+  )
+}
+
+function AndroidTvIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      aria-hidden
+      fill="currentColor"
+    >
+      <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 14.5v-8ZM8 19.2h8v1.3H8v-1.3Z" />
+    </svg>
+  )
+}
+
+function PlatformGlyph({
+  id,
+  className,
+}: {
+  id: ShowcasePlatformId
+  className?: string
+}) {
+  switch (id) {
+    case 'windows':
+      return <WindowsIcon className={className} />
+    case 'macos':
+      return <AppleIcon className={className} />
+    case 'linux':
+      return <LinuxIcon className={className} />
+    case 'android_tv':
+      return <AndroidTvIcon className={className} />
+  }
+}
+
+/** First-open help for Windows / macOS detail panes only. */
+function PlatformOpenHelp({ platformId }: { platformId: ShowcasePlatformId }) {
+  if (platformId === 'windows') {
+    return (
+      <div className="rounded-2xl border border-flame/30 bg-flame/[0.06] px-5 py-5 sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <WindowsIcon className="size-5 shrink-0 text-flame" />
+          <p className="font-mono-ui text-[11px] uppercase tracking-[0.18em] text-flame">
+            Stuck opening Forja?
+          </p>
+        </div>
+        <p className="mt-2 text-base leading-relaxed text-[rgba(237,230,218,0.62)]">
+          Windows often blocks the first open. Photo steps — one click.
+        </p>
+        <a
+          href="#windows-smartscreen"
+          data-hover=""
+          className="mt-4 inline-flex items-center justify-center gap-2.5 rounded-full border border-flame/60 bg-flame/15 px-5 py-3 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-flame transition-colors hover:border-flame hover:bg-flame/25"
+        >
+          <WindowsIcon className="size-4 shrink-0" />
+          Windows blocked it?
+        </a>
+      </div>
+    )
+  }
+
+  if (platformId === 'macos') {
+    return (
+      <div className="rounded-2xl border border-brand/30 bg-brand/[0.06] px-5 py-5 sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <AppleIcon className="size-5 shrink-0 text-brand" />
+          <p className="font-mono-ui text-[11px] uppercase tracking-[0.18em] text-brand">
+            Stuck opening Forja?
+          </p>
+        </div>
+        <p className="mt-2 text-base leading-relaxed text-[rgba(237,230,218,0.62)]">
+          Mac often blocks the first open. Photo steps — one click.
+        </p>
+        <a
+          href="#macos-gatekeeper"
+          data-hover=""
+          className="mt-4 inline-flex items-center justify-center gap-2.5 rounded-full border border-brand/60 bg-brand/15 px-5 py-3 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-brand transition-colors hover:border-brand hover:bg-brand/25"
+        >
+          <AppleIcon className="size-4 shrink-0" />
+          Mac won&apos;t open it?
+        </a>
+      </div>
+    )
+  }
+
+  return null
 }
 
 function formatBytes(n: number | null): string | null {
@@ -144,9 +242,11 @@ function releaseTitleFromNotes(
 function MagnetDownload({
   href,
   label,
+  icon,
 }: {
   href: string
   label: string
+  icon?: ReactNode
 }) {
   const magnetRef = useRef<HTMLAnchorElement>(null)
 
@@ -178,6 +278,7 @@ function MagnetDownload({
       }}
       className="btn-magnet inline-flex max-w-full items-center justify-center gap-3 rounded-full px-6 py-3.5 text-center font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] will-change-transform sm:px-8 sm:py-4 sm:text-xs"
     >
+      {icon}
       {label}
     </a>
   )
@@ -228,7 +329,7 @@ function PlatformPicker({
                 type="button"
                 data-hover=""
                 onClick={() => onSelect(platform.id)}
-                className="flex min-w-0 flex-1 items-baseline gap-3 py-4 text-left sm:gap-6 sm:py-6"
+                className="flex min-w-0 flex-1 items-center gap-3 py-4 text-left sm:gap-6 sm:py-6"
               >
                 <span
                   className={cn(
@@ -244,13 +345,31 @@ function PlatformPicker({
                 </span>
                 <span
                   className={cn(
-                    'font-disp text-[clamp(28px,4.5vw,52px)] uppercase leading-none tracking-[-0.03em] transition-all duration-300',
-                    active
-                      ? 'translate-x-1 text-[#EDE6DA] sm:translate-x-2'
-                      : 'text-[rgba(237,230,218,0.28)] group-hover:text-[rgba(237,230,218,0.55)]',
+                    'inline-flex min-w-0 items-center gap-2.5 transition-all duration-300 sm:gap-3',
+                    active ? 'translate-x-1 sm:translate-x-2' : '',
                   )}
                 >
-                  {platform.label}
+                  <PlatformGlyph
+                    id={platform.id}
+                    className={cn(
+                      'size-5 shrink-0 sm:size-6',
+                      active
+                        ? i % 2 === 0
+                          ? 'text-flame'
+                          : 'text-brand'
+                        : 'text-[rgba(237,230,218,0.28)] group-hover:text-[rgba(237,230,218,0.5)]',
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'font-disp text-[clamp(28px,4.5vw,52px)] uppercase leading-none tracking-[-0.03em] transition-colors duration-300',
+                      active
+                        ? 'text-[#EDE6DA]'
+                        : 'text-[rgba(237,230,218,0.28)] group-hover:text-[rgba(237,230,218,0.55)]',
+                    )}
+                  >
+                    {platform.label}
+                  </span>
                 </span>
               </button>
               {file ? (
@@ -297,8 +416,19 @@ function PlatformPicker({
             <span className="text-[rgba(237,230,218,0.35)]"> · v{version}</span>
           ) : null}
         </p>
-        <h2 className="font-disp mt-4 text-[clamp(40px,6vw,72px)] uppercase leading-[0.88] tracking-[-0.03em]">
-          {selected.label}
+        <h2 className="mt-4 flex flex-wrap items-center gap-3 sm:gap-4">
+          <PlatformGlyph
+            id={selected.id}
+            className={cn(
+              'size-8 shrink-0 sm:size-10',
+              selected.id === 'macos' || selected.id === 'linux'
+                ? 'text-brand'
+                : 'text-flame',
+            )}
+          />
+          <span className="font-disp text-[clamp(40px,6vw,72px)] uppercase leading-[0.88] tracking-[-0.03em]">
+            {selected.label}
+          </span>
         </h2>
         <p className="font-serif-i mt-3 max-w-md text-xl text-[rgba(237,230,218,0.72)] sm:text-2xl">
           {selected.tagline}
@@ -315,6 +445,12 @@ function PlatformPicker({
                     <MagnetDownload
                       href={a.download_url}
                       label={downloadButtonLabel(selected, a, { multi })}
+                      icon={
+                        <PlatformGlyph
+                          id={selected.id}
+                          className="size-4 shrink-0"
+                        />
+                      }
                     />
                     {size ? (
                       <span className="font-mono-ui px-1 text-[10px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.32)]">
@@ -330,6 +466,8 @@ function PlatformPicker({
               Coming soon
             </span>
           )}
+
+          <PlatformOpenHelp platformId={selected.id} />
 
           {releaseTitle ? (
             <div className="border-t border-[rgba(237,230,218,0.1)] pt-5">
@@ -415,39 +553,6 @@ export function DownloadPage() {
             <p>
               Windows, Mac, Linux, or Android TV. Same player everywhere.
             </p>
-          </div>
-          <div className="mt-10 max-w-2xl rounded-2xl border border-[rgba(237,230,218,0.18)] bg-[rgba(18,17,16,0.65)] px-5 py-5 sm:px-6 sm:py-6">
-            <p className="font-mono-ui text-[11px] uppercase tracking-[0.18em] text-flame">
-              Stuck opening Forja?
-            </p>
-            <p className="mt-2 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.62)]">
-              Windows and Mac often block the first open. Photo steps below — one click.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2.5 sm:gap-3">
-              <a
-                href="#windows-smartscreen"
-                data-hover=""
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-flame/55 bg-flame/10 px-4 py-2.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-flame transition-colors hover:border-flame hover:bg-flame/18 sm:px-5"
-              >
-                <WindowsIcon className="size-3.5 shrink-0" />
-                Windows blocked it?
-              </a>
-              <a
-                href="#macos-gatekeeper"
-                data-hover=""
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-brand/55 bg-brand/10 px-4 py-2.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-brand transition-colors hover:border-brand hover:bg-brand/18 sm:px-5"
-              >
-                <AppleIcon className="size-3.5 shrink-0" />
-                Mac won&apos;t open it?
-              </a>
-              <a
-                href="#faq"
-                data-hover=""
-                className="inline-flex items-center justify-center rounded-full border border-[rgba(237,230,218,0.22)] px-4 py-2.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-[rgba(237,230,218,0.72)] transition-colors hover:border-[rgba(237,230,218,0.45)] hover:text-[#EDE6DA] sm:px-5"
-              >
-                FAQ
-              </a>
-            </div>
           </div>
         </Reveal>
 
