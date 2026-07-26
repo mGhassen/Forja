@@ -98,6 +98,9 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
     // First Back closes an open panel/menu; second exits (mobile parity).
     if (dismissAnyPlayerChromeOverlay()) return;
     _s._exitInProgress = true;
+    // Capture before awaits - State may unmount during stop; dismiss must still run.
+    final nav = Navigator.of(context, rootNavigator: true);
+    final result = _s._positionNotifier.value;
     if (_s._isFullscreen) {
       await windowManager.setFullScreen(false);
       if (mounted) setState(() => _s._isFullscreen = false);
@@ -107,12 +110,12 @@ mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, Wi
     // Instant native mute/pause/ao=null - do not await hung media_kit stop
     // before popping (that left the UI stuck with audio still playing).
     await _s._stopPlaybackForExit();
-    if (!mounted || _s._disposed) return;
-    final nav = Navigator.of(context);
-    if (!nav.canPop()) return;
-    nav.pop(_s._positionNotifier.value);
-    // Same frame - strip stream-loading host under the player (anime / AD).
-    dismissActiveLoadingOverlayRoute();
+    if (nav.mounted && nav.canPop()) {
+      nav.pop(result);
+    }
+    // Always strip stream-loading host (anime / AD / movie dialog) - even when
+    // this State already unmounted - so Back never lands on the resolve page.
+    dismissActiveLoadingOverlayRoute(nav);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

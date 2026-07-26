@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rust/rust.dart';
 
@@ -26,7 +25,14 @@ class TraktService {
   static const String _keyRefreshToken = 'trakt_refresh_token';
   static const String _keyExpiresAt = 'trakt_expires_at';
 
-  final _storage = const FlutterSecureStorage();
+  Future<String?> _secureRead(String key) =>
+      ForjaPlatformSecureStore.read(key);
+
+  Future<void> _secureWrite(String key, String value) =>
+      ForjaPlatformSecureStore.write(key, value);
+
+  Future<void> _secureDelete(String key) =>
+      ForjaPlatformSecureStore.delete(key);
 
   /// Fires when login state changes so the UI can rebuild.
   static final ValueNotifier<bool> loginNotifier = ValueNotifier<bool>(false);
@@ -96,7 +102,7 @@ class TraktService {
 
   /// Refresh the access token using the saved refresh token.
   Future<bool> _refreshToken() async {
-    final refreshToken = await _storage.read(key: _keyRefreshToken);
+    final refreshToken = await _secureRead(_keyRefreshToken);
     if (refreshToken == null) return false;
 
     try {
@@ -122,7 +128,7 @@ class TraktService {
 
   /// Revoke the current token and clear storage.
   Future<void> logout() async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token != null) {
       try {
         await _postPublic('/oauth/revoke', body: json.encode({
@@ -132,9 +138,9 @@ class TraktService {
           }));
       } catch (_) {} // best-effort
     }
-    await _storage.delete(key: _keyAccessToken);
-    await _storage.delete(key: _keyRefreshToken);
-    await _storage.delete(key: _keyExpiresAt);
+    await _secureDelete(_keyAccessToken);
+    await _secureDelete(_keyRefreshToken);
+    await _secureDelete(_keyExpiresAt);
     _initialSyncDone = false;
     _syncInProgress = null;
     loginNotifier.value = false;
@@ -1074,29 +1080,29 @@ class TraktService {
       final lastScrobble = '${lastEpisodeScrobble}_$lastMovieScrobble';
       final lastWatched = activities?['episodes']?['watched_at']?.toString() ?? '';
 
-      final savedWatchlist = await _storage.read(key: 'trakt_last_watchlist');
-      final savedScrobble = await _storage.read(key: 'trakt_last_scrobble');
-      final savedWatched = await _storage.read(key: 'trakt_last_watched');
+      final savedWatchlist = await _secureRead('trakt_last_watchlist');
+      final savedScrobble = await _secureRead('trakt_last_scrobble');
+      final savedWatched = await _secureRead('trakt_last_watched');
 
       int watchlistCount = 0, playbackCount = 0, episodesImported = 0;
 
       if (force || savedWatchlist != lastWatchlist) {
         watchlistCount = await importWatchlistToMyList();
-        if (lastWatchlist.isNotEmpty) await _storage.write(key: 'trakt_last_watchlist', value: lastWatchlist);
+        if (lastWatchlist.isNotEmpty) await _secureWrite('trakt_last_watchlist', lastWatchlist);
       } else {
         debugPrint('[Trakt] Watchlist unchanged, skipping');
       }
 
       if (force || savedScrobble != lastScrobble) {
         playbackCount = await importPlaybackToWatchHistory();
-        if (lastScrobble.isNotEmpty) await _storage.write(key: 'trakt_last_scrobble', value: lastScrobble);
+        if (lastScrobble.isNotEmpty) await _secureWrite('trakt_last_scrobble', lastScrobble);
       } else {
         debugPrint('[Trakt] Playback unchanged, skipping');
       }
 
       if (force || savedWatched != lastWatched) {
         episodesImported = await importWatchedEpisodes();
-        if (lastWatched.isNotEmpty) await _storage.write(key: 'trakt_last_watched', value: lastWatched);
+        if (lastWatched.isNotEmpty) await _secureWrite('trakt_last_watched', lastWatched);
       } else {
         debugPrint('[Trakt] Watched episodes unchanged, skipping');
       }
@@ -1435,22 +1441,22 @@ class TraktService {
       _traktRequest(method: 'POST', path: path, body: body);
 
   Future<void> _saveTokens(Map<String, dynamic> data) async {
-    await _storage.write(key: _keyAccessToken, value: data['access_token']);
-    await _storage.write(key: _keyRefreshToken, value: data['refresh_token']);
+    await _secureWrite(_keyAccessToken, data['access_token'] as String);
+    await _secureWrite(_keyRefreshToken, data['refresh_token'] as String);
     final expiresIn = data['expires_in'] as int? ?? 7776000; // ~90 days
     final expiresAt = DateTime.now()
         .add(Duration(seconds: expiresIn))
         .toIso8601String();
-    await _storage.write(key: _keyExpiresAt, value: expiresAt);
+    await _secureWrite(_keyExpiresAt, expiresAt);
     debugPrint('[Trakt] Tokens saved, expires in ${expiresIn ~/ 86400} days');
   }
 
   /// Get a valid access token, refreshing if near expiry.
   Future<String?> _getValidToken() async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return null;
 
-    final expiresAtStr = await _storage.read(key: _keyExpiresAt);
+    final expiresAtStr = await _secureRead(_keyExpiresAt);
     if (expiresAtStr != null) {
       final expiresAt = DateTime.tryParse(expiresAtStr);
       if (expiresAt != null &&
@@ -1459,7 +1465,7 @@ class TraktService {
         debugPrint('[Trakt] Token nearing expiry, refreshing...');
         final refreshed = await _refreshToken();
         if (refreshed) {
-          return await _storage.read(key: _keyAccessToken);
+          return await _secureRead(_keyAccessToken);
         }
         // If refresh failed but token isn't actually expired yet, use it
         if (DateTime.now().isBefore(expiresAt)) return token;
@@ -1473,9 +1479,9 @@ class TraktService {
   void _handleUnauthorized(int statusCode) {
     if (statusCode == 401) {
       debugPrint('[Trakt] 401 Unauthorized - token revoked, clearing auth');
-      _storage.delete(key: _keyAccessToken);
-      _storage.delete(key: _keyRefreshToken);
-      _storage.delete(key: _keyExpiresAt);
+      _secureDelete(_keyAccessToken);
+      _secureDelete(_keyRefreshToken);
+      _secureDelete(_keyExpiresAt);
       _initialSyncDone = false;
       loginNotifier.value = false;
     }

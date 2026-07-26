@@ -43,13 +43,39 @@ void clearLoadingOverlayRouteRegistration(Route<dynamic>? route) {
 /// Remove a leftover loading route under/above the player (same-frame safe).
 ///
 /// Call after popping [PlayerScreen] so Back returns to details, not loading.
-void dismissActiveLoadingOverlayRoute() {
-  final navigator = _activeLoadingOverlayNavigator;
+///
+/// Uses the registered [Route] when present, then falls back to [Navigator.popUntil]
+/// so a cleared/stale registration cannot leave `loading_overlay` on top.
+/// Retries next frame when the navigator was locked mid-transition.
+void dismissActiveLoadingOverlayRoute([NavigatorState? navigator]) {
+  final registeredNav = _activeLoadingOverlayNavigator;
   final route = _activeLoadingOverlayRoute;
   _activeLoadingOverlayNavigator = null;
   _activeLoadingOverlayRoute = null;
-  if (navigator == null || route == null) return;
-  _removeLoadingOverlayRoute(navigator, route);
+
+  final nav = navigator ?? registeredNav;
+  if (nav == null) return;
+
+  void strip() {
+    if (!nav.mounted) return;
+    if (route != null) {
+      _removeLoadingOverlayRoute(nav, route);
+    }
+    try {
+      // After the player is gone, pop any `loading_overlay` that became current.
+      // Stops at shell / details host (name != loading_overlay). Safe while a
+      // non-loading route (e.g. player) is still on top - predicate is already true.
+      // Do not delay this by name - a later Play can push a new loading host.
+      nav.popUntil(
+        (route) => route.settings.name != loadingOverlayRouteName,
+      );
+    } catch (_) {
+      // Navigator locked or disposed mid-exit - post-frame retry below.
+    }
+  }
+
+  strip();
+  WidgetsBinding.instance.addPostFrameCallback((_) => strip());
 }
 
 Future<T?> showLoadingOverlayDialog<T>(

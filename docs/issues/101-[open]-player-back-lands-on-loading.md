@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** fix · **0 / 3** acceptance |
+| **Progress** | **4 / 4** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -22,6 +22,7 @@
 | 1 | I101-T01 | Register stream-loading routes (`loading_overlay`) for movie dialogs + anime/AD hosts | ✅ |
 | 2 | I101-T02 | Player Back/Escape pops player then strips registered loading route in the same frame | ✅ |
 | 3 | I101-T03 | Keep anime/AD host mounted during playback (I75 Source reload / handoff) — strip only on exit | ✅ |
+| 4 | I101-T04 | Harden exit: always `canPop: false` + capture navigator before awaits; `dismissActiveLoadingOverlayRoute` popUntil fallback + post-frame retry; anime/AD pop host before cache cleanup | ✅ |
 
 ---
 
@@ -39,7 +40,18 @@
 
 Player and stream-loading UI share the **root** navigator. Details stay on the shell overlay. Back only popped `PlayerScreen`, so a loading dialog/host left underneath became visible — users saw the resolve roulette instead of details.
 
-Movies/TV already strip the dialog via `crossfadeLoadingOverlayToPlayer` during the fade. Anime and Asian Drama **must** keep `AnimePlayerScreen` / `AsianDramaPlayerScreen` under the player for the whole session (issue [075](fixed/075-[fixed]-anime-dead-cache-empty-sources.md) — early `removeRoute` disposed Source cache / `onReloadStreams`). Those hosts are now registered and removed **on player exit only**, in the same frame as the player pop so the loading screen never paints.
+Movies/TV already strip the dialog via `crossfadeLoadingOverlayToPlayer` during the fade. Anime and Asian Drama **must** keep `AnimePlayerScreen` / `AsianDramaPlayerScreen` under the player for the whole session (issue [075](fixed/075-[fixed]-anime-dead-cache-empty-sources.md) — early `removeRoute` disposed Source cache / `onReloadStreams`). Those hosts are registered and removed **on player exit only**.
+
+### Why the first strip still failed (I101-T04)
+
+Mobile/TV `PopScope` flipped `canPop: true` then deferred the pop. A system/deferred pop could unmount the player **before** `dismissActiveLoadingOverlayRoute` ran (`if (!mounted) return`). Desktop could return early after stop without dismiss, and dismiss relied only on a singleton registration (no-op when cleared). Anime/AD also awaited cache cleanup **before** self-popping the host, so a missed dismiss left the loading page on screen.
+
+### Hardening (I101-T04)
+
+- Desktop / mobile MediaKit / Exo / checking scaffold / external handoff: capture root navigator before awaits; always dismiss after pop (even if State unmounted).
+- `canPop: false` for the whole player session (forced `Navigator.pop` still used for episode handoff / sources-exhausted so the host stays).
+- `dismissActiveLoadingOverlayRoute`: registered `removeRoute` + `popUntil` by name + next-frame retry.
+- Anime/AD: pop (or dismiss) the host **immediately** after `playerFuture`, before cache/notifier cleanup.
 
 ## Related
 

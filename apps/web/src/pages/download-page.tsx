@@ -27,6 +27,34 @@ function formatBytes(n: number | null): string | null {
   return `${Math.round(n / 1024)} KB`
 }
 
+/** Short arch / package label for multi-asset platforms (Android TV, macOS, …). */
+function assetVariantLabel(name: string): string {
+  const n = name.toLowerCase()
+  if (n.includes('armeabi-v7a') || n.includes('armeabi_v7a')) return 'ARMv7'
+  if (n.includes('arm64') || n.includes('aarch64')) return 'ARM64'
+  if (n.includes('x86_64') || n.includes('x86-64') || n.includes('amd64')) {
+    return 'Intel'
+  }
+  if (/\bx86\b/.test(n) || n.includes('i686')) return 'x86'
+  if (n.endsWith('.appimage')) return 'AppImage'
+  if (n.endsWith('.deb')) return 'Deb'
+  if (n.endsWith('.dmg')) return 'DMG'
+  if (n.endsWith('.exe')) return 'Installer'
+  if (n.endsWith('.apk')) return 'APK'
+  return name
+}
+
+/** Primary asset first, then remaining variants. */
+function orderPlatformAssets(
+  assets: ReleaseAsset[],
+  primary: ReleaseAsset | null,
+): ReleaseAsset[] {
+  if (!assets.length) return []
+  if (!primary) return assets
+  const rest = assets.filter((a) => a.id !== primary.id)
+  return [primary, ...rest]
+}
+
 function guessPlatform(): ShowcasePlatformId {
   if (typeof navigator === 'undefined') return 'windows'
   const ua = navigator.userAgent.toLowerCase()
@@ -115,6 +143,8 @@ function PlatformPicker({
   const selected = platforms.find((p) => p.id === selectedId) ?? platforms[0]
   const assets = assetsById[selected.id] ?? []
   const primary = primaryById[selected.id] ?? assets[0] ?? null
+  const orderedAssets = orderPlatformAssets(assets, primary)
+  const multiVariant = orderedAssets.length > 1
   const version = versionById[selected.id] ?? null
   const notes = notesById[selected.id] ?? null
   const releaseTitle = releaseTitleFromNotes(notes, version)
@@ -216,7 +246,26 @@ function PlatformPicker({
         </p>
 
         <div className="mt-10 space-y-5">
-          {primary ? (
+          {multiVariant ? (
+            <div className="flex flex-col items-start gap-3">
+              {orderedAssets.map((a) => {
+                const size = formatBytes(a.size_bytes)
+                return (
+                  <div key={a.id} className="flex flex-col items-start gap-1.5">
+                    <MagnetDownload
+                      href={a.download_url}
+                      label={`Get Forja · ${assetVariantLabel(a.name)}`}
+                    />
+                    {size ? (
+                      <span className="font-mono-ui px-1 text-[10px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.32)]">
+                        {size}
+                      </span>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          ) : primary ? (
             <MagnetDownload
               href={primary.download_url}
               label={`Get Forja · ${selected.label}`}
@@ -225,32 +274,6 @@ function PlatformPicker({
             <span className="inline-flex items-center rounded-full border border-white/15 px-8 py-4 font-mono-ui text-xs font-bold uppercase tracking-[0.1em] text-white/35">
               Coming soon
             </span>
-          )}
-
-          {assets.length > 0 && (
-            <ul className="space-y-2.5 border-t border-[rgba(237,230,218,0.1)] pt-5">
-              {assets.map((a) => (
-                <li key={a.id}>
-                  <a
-                    href={a.download_url}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      startBackgroundDownload(a.download_url)
-                    }}
-                    className="group/file flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono-ui text-[11px] uppercase tracking-[0.08em] text-[rgba(237,230,218,0.48)] transition-colors hover:text-brand"
-                  >
-                    <span className="text-[rgba(237,230,218,0.72)] group-hover/file:text-brand">
-                      {a.name}
-                    </span>
-                    {formatBytes(a.size_bytes) ? (
-                      <span className="text-[rgba(237,230,218,0.32)]">
-                        {formatBytes(a.size_bytes)}
-                      </span>
-                    ) : null}
-                  </a>
-                </li>
-              ))}
-            </ul>
           )}
 
           {releaseTitle ? (
@@ -338,25 +361,36 @@ export function DownloadPage() {
               Windows, Mac, Linux, or Android TV. Same player everywhere.
             </p>
           </div>
-          <div className="mt-8 flex flex-wrap gap-4 font-mono-ui text-[11px] uppercase tracking-[0.14em]">
-            <a
-              href="#faq"
-              className="text-[rgba(237,230,218,0.45)] transition-colors hover:text-brand"
-            >
-              FAQ
-            </a>
-            <a
-              href="#windows-smartscreen"
-              className="text-[rgba(237,230,218,0.45)] transition-colors hover:text-brand"
-            >
-              Windows blocked the download?
-            </a>
-            <a
-              href="#macos-gatekeeper"
-              className="text-[rgba(237,230,218,0.45)] transition-colors hover:text-flame"
-            >
-              Mac won&apos;t open it?
-            </a>
+          <div className="mt-10 max-w-2xl rounded-2xl border border-[rgba(237,230,218,0.18)] bg-[rgba(18,17,16,0.65)] px-5 py-5 sm:px-6 sm:py-6">
+            <p className="font-mono-ui text-[11px] uppercase tracking-[0.18em] text-flame">
+              Stuck opening Forja?
+            </p>
+            <p className="mt-2 max-w-lg text-base leading-relaxed text-[rgba(237,230,218,0.62)]">
+              Windows and Mac often block the first open. Photo steps below — one click.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2.5 sm:gap-3">
+              <a
+                href="#windows-smartscreen"
+                data-hover=""
+                className="inline-flex items-center justify-center rounded-full border border-flame/55 bg-flame/10 px-4 py-2.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-flame transition-colors hover:border-flame hover:bg-flame/18 sm:px-5"
+              >
+                Windows blocked it?
+              </a>
+              <a
+                href="#macos-gatekeeper"
+                data-hover=""
+                className="inline-flex items-center justify-center rounded-full border border-brand/55 bg-brand/10 px-4 py-2.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-brand transition-colors hover:border-brand hover:bg-brand/18 sm:px-5"
+              >
+                Mac won&apos;t open it?
+              </a>
+              <a
+                href="#faq"
+                data-hover=""
+                className="inline-flex items-center justify-center rounded-full border border-[rgba(237,230,218,0.22)] px-4 py-2.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-[rgba(237,230,218,0.72)] transition-colors hover:border-[rgba(237,230,218,0.45)] hover:text-[#EDE6DA] sm:px-5"
+              >
+                FAQ
+              </a>
+            </div>
           </div>
         </Reveal>
 

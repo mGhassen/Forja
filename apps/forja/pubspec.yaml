@@ -130,6 +130,8 @@ flutter:
 dependency_overrides:
   # passkeys 2.21.1 allows ^0.4.1+1 which still resolves to 0.4.2+2 (needs Xcode 26).
   passkeys_darwin: 0.4.1+1
+  # passkeys 2.21.1 allows ^2.8.0 which resolves to 2.9.0 (signal* APIs only in 2.22.0+).
+  passkeys_platform_interface: 2.8.0
   media_kit:
     git:
       url: https://github.com/AimesSoft/media-kit.git

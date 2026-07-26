@@ -118,7 +118,6 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
 
   bool _disposed = false;
   bool _isTv = false;
-  bool _routePopAllowed = false;
   bool _exitInProgress = false;
   bool _showControls = true;
   bool _isPlaying = false;
@@ -751,31 +750,27 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       return;
     }
     _exitInProgress = true;
+    // Capture before awaits - unmount must not skip loading dismiss (I101).
+    final nav = Navigator.of(context, rootNavigator: true);
     await _saveProgress();
     // Stop Exo before pop - dispose alone is unawaited and can leave audio
     // after the route is gone (issue 059).
     try {
       await ExoPlayerBridge.stop(_viewId);
     } catch (_) {}
-    if (!mounted) return;
-    _popPlayerRoute();
+    _popPlayerRoute(nav: nav);
   }
 
-  void _popPlayerRoute() {
-    if (!mounted) return;
-    final nav = Navigator.of(context, rootNavigator: true);
-    if (_routePopAllowed) {
-      if (nav.canPop()) nav.pop();
-      dismissActiveLoadingOverlayRoute();
-      return;
+  void _popPlayerRoute({NavigatorState? nav}) {
+    final navigator =
+        nav ??
+        (mounted ? Navigator.of(context, rootNavigator: true) : null);
+    // Keep canPop false for the whole session (desktop parity). Flipping it
+    // true let a deferred system pop unmount us before dismiss ran (I101).
+    if (navigator != null && navigator.mounted && navigator.canPop()) {
+      navigator.pop();
     }
-    setState(() => _routePopAllowed = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final n = Navigator.of(context, rootNavigator: true);
-      if (n.canPop()) n.pop();
-      dismissActiveLoadingOverlayRoute();
-    });
+    dismissActiveLoadingOverlayRoute(navigator);
   }
 
   Future<void> _showPlayerMenu(BuildContext anchorContext) async {
@@ -1374,8 +1369,12 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   @override
   Widget build(BuildContext context) {
     final body = PopScope(
-      canPop: _routePopAllowed,
+      // Always false - exit via [_exit] manual pop + loading dismiss.
+      // canPop:true raced a deferred system pop and skipped dismiss (I101).
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
+        // Forced pops (episode handoff / sources exhausted) must NOT strip the
+        // loading host - those flows keep it for pushReplacement / reload UI.
         if (didPop) return;
         await _exit();
       },

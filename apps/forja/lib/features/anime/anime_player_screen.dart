@@ -1417,6 +1417,18 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     // fade/playback-start disposed Source cache notifiers and cancelled
     // onReloadStreams - dead-cache recovery and server taps broke.
     await playerFuture;
+    final handOff = _handOffEpisode;
+    _handOffEpisode = null;
+    // Leave the loading shell immediately so Back never paints resolve UI
+    // (cache cleanup below must not delay return to details).
+    if (handOff == null) {
+      if (mounted && navigator.canPop()) {
+        navigator.pop();
+      } else {
+        // Player exit may already have stripped us via dismissActiveLoadingOverlayRoute.
+        dismissActiveLoadingOverlayRoute(navigator);
+      }
+    }
     // Cache resume that never confirmed playback left a dead URL on disk -
     // drop so the next Play re-resolves like green Play (movie I43).
     if (_launchedFromSavedOrCache) {
@@ -1430,8 +1442,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     } else {
       providerSourcesCache!.dispose();
     }
-    final handOff = _handOffEpisode;
-    _handOffEpisode = null;
     if (handOff != null && mounted) {
       final existing = ShellScope.maybeOf(context);
       final profile = existing?.profile ?? resolveShellProfile(context);
@@ -1450,11 +1460,6 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           ),
         ),
       );
-      return;
-    }
-    // Player closed - leave the loading shell and return to details.
-    if (mounted && navigator.canPop()) {
-      navigator.pop();
     }
   }
 

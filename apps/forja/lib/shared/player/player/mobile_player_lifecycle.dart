@@ -528,6 +528,9 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
       return;
     }
     _s._exitInProgress = true;
+    // Capture before awaits - flipping canPop / unmount must not skip dismiss.
+    final nav = Navigator.of(context, rootNavigator: true);
+    final result = _s._positionNotifier.value;
     _s._cancelPendingStreamWork();
     _saveWatchHistory();
     // Stop mpv before orientation/pop - dispose alone is fire-and-forget
@@ -539,28 +542,21 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
     // errors from media_kit surface teardown during an active rotation.
     await Future.delayed(const Duration(milliseconds: 300));
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    if (!mounted) return;
-    _popPlayerRoute();
+    _popPlayerRoute(nav: nav, result: result);
   }
 
-  void _popPlayerRoute() {
-    if (!mounted) return;
-    final result = _s._positionNotifier.value;
-    final nav = Navigator.of(context, rootNavigator: true);
-    if (_s._routePopAllowed) {
-      if (nav.canPop()) nav.pop(result);
-      // Same frame as player pop - strip anime/AD/movie loading host so Back
-      // never paints the resolve overlay (details stay on the shell overlay).
-      dismissActiveLoadingOverlayRoute();
-      return;
+  void _popPlayerRoute({NavigatorState? nav, Duration? result}) {
+    final navigator =
+        nav ??
+        (mounted ? Navigator.of(context, rootNavigator: true) : null);
+    final popResult = result ?? _s._positionNotifier.value;
+    // Keep canPop false for the whole session (desktop parity). Flipping it
+    // true let a deferred system pop unmount us before dismiss ran (I101).
+    if (navigator != null && navigator.mounted && navigator.canPop()) {
+      navigator.pop(popResult);
     }
-    setState(() => _s._routePopAllowed = true);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final n = Navigator.of(context, rootNavigator: true);
-      if (n.canPop()) n.pop(result);
-      dismissActiveLoadingOverlayRoute();
-    });
+    // Strip anime/AD/movie loading host even if this State is already gone.
+    dismissActiveLoadingOverlayRoute(navigator);
   }
 
   @override

@@ -4,8 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Persists the Supabase session via [ForjaPlatformSecureStore].
 ///
-/// macOS: Data Protection Keychain when sandboxed; prefs vault for ad-hoc
-/// non-sandbox Release (avoids login-Keychain password dialogs on update).
+/// macOS: asks once (Keychain vs local file). Keychain uses Data Protection
+/// when sandboxed; local file / declined / ad-hoc Release use the prefs vault
+/// (avoids login-Keychain password dialogs without consent).
 class ForjaSecureLocalStorage extends LocalStorage {
   ForjaSecureLocalStorage({required this.persistSessionKey});
 

@@ -625,12 +625,20 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     // Keep this route under the player for the whole session. Removing it on
     // fade disposed Source cache notifiers while the player was still open.
     await playerFuture;
-    _probeNotifier.dispose();
-    _providerSourcesCache.dispose();
     final handOff = _handOffEpisode;
     final handOffList = _handOffEpisodes;
     _handOffEpisode = null;
     _handOffEpisodes = const [];
+    // Leave the loading shell immediately so Back never paints resolve UI.
+    if (handOff == null) {
+      if (mounted && navigator.canPop()) {
+        navigator.pop();
+      } else {
+        dismissActiveLoadingOverlayRoute(navigator);
+      }
+    }
+    _probeNotifier.dispose();
+    _providerSourcesCache.dispose();
     if (handOff != null && mounted) {
       await navigator.pushReplacement(
         AppRouter.fadeRoute(
@@ -644,10 +652,6 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           ),
         ),
       );
-      return;
-    }
-    if (mounted && navigator.canPop()) {
-      navigator.pop();
     }
   }
 

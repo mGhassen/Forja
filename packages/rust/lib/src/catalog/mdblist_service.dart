@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../forja_platform_secure_store.dart';
 import '../metadata_http.dart';
 
 /// MDBlist integration — API-key auth, ratings aggregation, list management.
@@ -12,17 +12,16 @@ class MdblistService {
 
   static const String _keyApiKey = 'mdblist_api_key';
 
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
   String? _cachedApiKey;
 
   Future<void> setApiKey(String apiKey) async {
-    await _storage.write(key: _keyApiKey, value: apiKey);
+    await ForjaPlatformSecureStore.write(_keyApiKey, apiKey);
     _cachedApiKey = apiKey;
     debugPrint('[MDBlist] API key saved.');
   }
 
   Future<String?> getApiKey() async {
-    _cachedApiKey ??= await _storage.read(key: _keyApiKey);
+    _cachedApiKey ??= await ForjaPlatformSecureStore.read(_keyApiKey);
     return _cachedApiKey;
   }
 
@@ -32,7 +31,7 @@ class MdblistService {
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: _keyApiKey);
+    await ForjaPlatformSecureStore.delete(_keyApiKey);
     _cachedApiKey = null;
     debugPrint('[MDBlist] API key removed.');
   }

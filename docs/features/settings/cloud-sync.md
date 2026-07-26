@@ -101,8 +101,9 @@ Not synced — device-specific or sensitive:
   the app opens that profile’s **default menu** tab (the starred tab under
   **Settings → Features**), not the screen you were on before switching.
 - On desktop **and Android TV**, a restored session goes straight to the boot splash (the session
-  is kept across quit: Keychain/Keystore on sandboxed builds; a local vault on
-  ad-hoc macOS Release so updates do not re-ask for the login Keychain password).
+  is kept across quit: Keychain/Keystore when you allow Keychain on macOS
+  (sandboxed builds); a local app-file vault if you decline Keychain or on
+  ad-hoc macOS Release).
   Boot renews the access token before profile/features sync so a overnight-expired
   JWT cannot leave you “signed in” with failed cloud pulls.
   A new interactive sign-in opens **Who’s watching?** so you can

@@ -45,7 +45,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 
 ## Tips
 
-- Portal passwords on this device use Keychain / Keystore (macOS ad-hoc Release uses a local vault so updates do not re-prompt for the login Keychain); CSV import/export files still contain passwords in plain text — keep those files private
+- Portal passwords on this device use Keychain / Keystore when allowed (macOS can choose a local app-file vault instead — no login-Keychain password prompts); CSV import/export files still contain passwords in plain text — keep those files private
 - **Portals** panel on the right (desktop / Android TV) holds add and the full portal list (plus scrape when the account feature is on) — search filters by portal name, account name, or URL
 - Section chips (**Live** / **Movies** / **Series**) switch the catalog; data stays on this device until you hit **Reload** on the selected shelf (or the centered **Reload** button when the catalog failed to load — autofocused on **Android TV**), or clear **IPTV portal cache** in Settings
 - On **Android TV**, empty portals autofocus the first available CTA (**Deal** / **Find Portals** / **Add portal**)

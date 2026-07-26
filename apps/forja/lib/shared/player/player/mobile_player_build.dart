@@ -6,8 +6,12 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final body = PopScope(
-      canPop: _s._routePopAllowed,
+      // Always false - exit via [_exitPlayer] manual pop + loading dismiss.
+      // canPop:true raced a deferred system pop and skipped dismiss (I101).
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
+        // Forced pops (episode handoff / sources exhausted) must NOT strip the
+        // loading host - those flows keep it for pushReplacement / reload UI.
         if (didPop) return;
         await _s._exitPlayer();
       },

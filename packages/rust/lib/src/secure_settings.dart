@@ -7,10 +7,10 @@ import 'kv.dart';
 /// Platform Keychain/Keystore for credentials.
 ///
 /// Non-secret configuration belongs in Rust KV (`forja_engine_store.json`).
-/// Never write secrets into that file. On macOS ad-hoc (non-sandbox) builds,
-/// [ForjaPlatformSecureStore] intentionally uses a prefs vault instead of the
-/// login Keychain (avoids a password dialog on every update). MissingPluginException
-/// (unit tests) is soft-skipped on reads.
+/// Never write secrets into that file. On macOS the user chooses Keychain vs
+/// local file storage once ([ForjaPlatformSecureStore]); declined / ad-hoc
+/// non-sandbox builds use a prefs vault (no login-Keychain password dialog).
+/// MissingPluginException (unit tests) is soft-skipped on reads.
 abstract final class SecureSettings {
   /// Debrid
   static const rdAccessToken = 'rd_access_token';

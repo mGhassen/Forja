@@ -12,7 +12,9 @@ import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shared/widgets/macos_keychain_consent_screen.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
+import 'package:rust/rust.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum DesktopStartupDestination { account, splash }
@@ -53,7 +55,7 @@ bool shouldReturnToAccountOnSignOut({
   return true;
 }
 
-enum _StartupStage { update, account, profiles, splash }
+enum _StartupStage { keychainConsent, update, account, profiles, splash }
 
 /// Cold-start gate: update check first, then optional account entry, then splash.
 ///
@@ -73,7 +75,7 @@ class DesktopStartupGate extends StatefulWidget {
 }
 
 class _DesktopStartupGateState extends State<DesktopStartupGate> {
-  _StartupStage _stage = _StartupStage.update;
+  late _StartupStage _stage;
   StreamSubscription<AuthState>? _authSub;
 
   bool get _isDesktopOs =>
@@ -86,15 +88,34 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
   @override
   void initState() {
     super.initState();
+    _stage = ForjaPlatformSecureStore.needsConsentPrompt
+        ? _StartupStage.keychainConsent
+        : _StartupStage.update;
     _authSub = SyncService.instance.authChanges.listen(
       _onAuthState,
       onError: (Object e, StackTrace st) {
         debugPrint('[DesktopStartupGate] auth stream error: $e');
       },
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_runUpdateGate());
-    });
+    if (_stage == _StartupStage.update) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_runUpdateGate());
+      });
+    }
+  }
+
+  Future<void> _onKeychainConsentResolved() async {
+    // Consent is persisted by the screen. Hydrate auth only after the choice
+    // so Accept can migrate Keychain items / Decline never touches Keychain.
+    try {
+      await ForjaSupabase.ensureInitialized();
+      await SyncService.instance.refreshSession(force: true);
+    } catch (e) {
+      debugPrint('[DesktopStartupGate] post-consent Supabase: $e');
+    }
+    if (!mounted) return;
+    setState(() => _stage = _StartupStage.update);
+    unawaited(_runUpdateGate());
   }
 
   @override
@@ -216,6 +237,9 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     // here - title bar is hidden app-wide, and WindowCaption only lives in
     // DesktopWindowChrome.wrapShell.
     final child = switch (_stage) {
+      _StartupStage.keychainConsent => MacOsKeychainConsentScreen(
+        onResolved: () => unawaited(_onKeychainConsentResolved()),
+      ),
       _StartupStage.update => const ColoredBox(
         color: AppTheme.appBackground,
         child: SizedBox.expand(),
@@ -244,6 +268,8 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
       _StartupStage.splash => widget.splash,
     };
     if (_stage == _StartupStage.splash) return child;
+    // Consent screen wraps its own chrome.
+    if (_stage == _StartupStage.keychainConsent) return child;
     if (_isAndroidTv) return child;
     return DesktopWindowChrome.wrapShell(child: child);
   }

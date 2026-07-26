@@ -12,6 +12,7 @@ import 'package:forja/shared/player/player/desktop_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
@@ -302,10 +303,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget build(BuildContext context) {
     // Still checking settings
     if (_checkingPlayer) {
-      return Scaffold(
-        backgroundColor: DesignTokens.bgDark,
-        body: Center(
-          child: CircularProgressIndicator(color: ForjaShellColors.brandGreen),
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          final nav = Navigator.of(context, rootNavigator: true);
+          if (nav.canPop()) nav.pop();
+          dismissActiveLoadingOverlayRoute(nav);
+        },
+        child: Scaffold(
+          backgroundColor: DesignTokens.bgDark,
+          body: Center(
+            child: CircularProgressIndicator(color: ForjaShellColors.brandGreen),
+          ),
         ),
       );
     }

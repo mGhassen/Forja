@@ -6,6 +6,7 @@ import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
@@ -64,63 +65,79 @@ class _ExternalPlayerHandoffScreenState
     final isDesktop =
         Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
-    return Scaffold(
-      backgroundColor: DesignTokens.bgDark,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned(
-              top: isDesktop ? 12 : 4,
-              left: 12,
-              // Picker owns its FocusScope - keep Back out of the D-pad walk.
-              child: ExcludeFocus(
-                excluding: _pickingPlayer,
-                child: ShellBackIconButton(
-                  icon: Icons.chevron_left_rounded,
-                  size: 28,
-                  tooltip: 'Back',
-                  onTap: () => Navigator.of(context).pop(),
+    void exitHandoff() {
+      final nav = Navigator.of(context, rootNavigator: true);
+      if (nav.canPop()) nav.pop();
+      dismissActiveLoadingOverlayRoute(nav);
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        exitHandoff();
+      },
+      child: Scaffold(
+        backgroundColor: DesignTokens.bgDark,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Positioned(
+                top: isDesktop ? 12 : 4,
+                left: 12,
+                // Picker owns its FocusScope - keep Back out of the D-pad walk.
+                child: ExcludeFocus(
+                  excluding: _pickingPlayer,
+                  child: ShellBackIconButton(
+                    icon: Icons.chevron_left_rounded,
+                    size: 28,
+                    tooltip: 'Back',
+                    onTap: exitHandoff,
+                  ),
                 ),
               ),
-            ),
-            Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 380),
-                  child: _HandoffCard(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 240),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      child: _pickingPlayer
-                          ? _PlayerPickerBody(
-                              key: const ValueKey('picker'),
-                              playerName: widget.playerName,
-                              builtInEngine: widget.builtInEngine,
-                              onSelectPlayer: widget.onSelectPlayer,
-                              onCancel: () =>
-                                  setState(() => _pickingPlayer = false),
-                            )
-                          : _StatusBody(
-                              key: const ValueKey('status'),
-                              title: widget.title,
-                              playerName: widget.playerName,
-                              launched: widget.launched,
-                              titleStyle: _titleStyle,
-                              captionStyle: _captionStyle,
-                              onRelaunch: widget.onRelaunch,
-                              onChangePlayer: widget.launched
-                                  ? () => setState(() => _pickingPlayer = true)
-                                  : null,
-                              onSwitchBuiltIn: widget.onSwitchBuiltIn,
-                            ),
+              Center(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 380),
+                    child: _HandoffCard(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 240),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: _pickingPlayer
+                            ? _PlayerPickerBody(
+                                key: const ValueKey('picker'),
+                                playerName: widget.playerName,
+                                builtInEngine: widget.builtInEngine,
+                                onSelectPlayer: widget.onSelectPlayer,
+                                onCancel: () =>
+                                    setState(() => _pickingPlayer = false),
+                              )
+                            : _StatusBody(
+                                key: const ValueKey('status'),
+                                title: widget.title,
+                                playerName: widget.playerName,
+                                launched: widget.launched,
+                                titleStyle: _titleStyle,
+                                captionStyle: _captionStyle,
+                                onRelaunch: widget.onRelaunch,
+                                onChangePlayer: widget.launched
+                                    ? () => setState(
+                                          () => _pickingPlayer = true,
+                                        )
+                                    : null,
+                                onSwitchBuiltIn: widget.onSwitchBuiltIn,
+                              ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

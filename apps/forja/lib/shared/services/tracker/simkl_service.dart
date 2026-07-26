@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Full Simkl integration - PIN-based auth, watchlist sync,
@@ -27,7 +26,15 @@ class SimklService {
   static const String _keyAccessToken = 'simkl_access_token';
 
   // ── Runtime state ──────────────────────────────────────────────────────
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  Future<String?> _secureRead(String key) =>
+      ForjaPlatformSecureStore.read(key);
+
+  Future<void> _secureWrite(String key, String value) =>
+      ForjaPlatformSecureStore.write(key, value);
+
+  Future<void> _secureDelete(String key) =>
+      ForjaPlatformSecureStore.delete(key);
+
   bool _initialSyncDone = false;
   Future<void>? _syncInProgress;
 
@@ -65,7 +72,7 @@ class SimklService {
         final result = data['result'];
         if (result == 'OK' && data['access_token'] != null) {
           final token = data['access_token'] as String;
-          await _storage.write(key: _keyAccessToken, value: token);
+          await _secureWrite(_keyAccessToken, token);
           debugPrint('[Simkl] Token saved.');
           return token;
         }
@@ -79,13 +86,13 @@ class SimklService {
 
   /// Check if the user is logged in.
   Future<bool> isLoggedIn() async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     return token != null && token.isNotEmpty;
   }
 
   /// Log out - delete stored token.
   Future<void> logout() async {
-    await _storage.delete(key: _keyAccessToken);
+    await _secureDelete(_keyAccessToken);
     _initialSyncDone = false;
     _syncInProgress = null;
     debugPrint('[Simkl] Logged out.');
@@ -95,7 +102,7 @@ class SimklService {
   void _handleUnauthorized(int statusCode) {
     if (statusCode == 401) {
       debugPrint('[Simkl] 401 Unauthorized - token revoked, clearing auth');
-      _storage.delete(key: _keyAccessToken);
+      _secureDelete(_keyAccessToken);
       _initialSyncDone = false;
     }
   }
@@ -105,7 +112,7 @@ class SimklService {
   // ═══════════════════════════════════════════════════════════════════════
 
   Future<Map<String, dynamic>?> getUserProfile() async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return null;
 
     try {
@@ -126,7 +133,7 @@ class SimklService {
 
   /// Get last activity timestamps (for smart incremental sync).
   Future<Map<String, dynamic>?> _getLastActivities() async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return null;
 
     try {
@@ -152,7 +159,7 @@ class SimklService {
     List<Map<String, dynamic>> movies = const [],
     List<Map<String, dynamic>> anime = const [],
   }) async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
 
     final body = <String, dynamic>{};
@@ -177,7 +184,7 @@ class SimklService {
     List<Map<String, dynamic>> movies = const [],
     List<Map<String, dynamic>> anime = const [],
   }) async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
 
     final body = <String, dynamic>{};
@@ -248,7 +255,7 @@ class SimklService {
     List<Map<String, dynamic>> shows = const [],
     List<Map<String, dynamic>> movies = const [],
   }) async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
 
     final body = <String, dynamic>{};
@@ -270,7 +277,7 @@ class SimklService {
     List<Map<String, dynamic>> shows = const [],
     List<Map<String, dynamic>> movies = const [],
   }) async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
 
     final body = <String, dynamic>{};
@@ -293,7 +300,7 @@ class SimklService {
 
   /// Get all user ratings.
   Future<List<Map<String, dynamic>>> getRatings() async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return [];
 
     try {
@@ -317,7 +324,7 @@ class SimklService {
   }) async {
     if (tmdbId == null && imdbId == null) return false;
     if (rating < 1 || rating > 10) return false;
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
 
     final ids = <String, dynamic>{};
@@ -351,7 +358,7 @@ class SimklService {
     required String mediaType,
   }) async {
     if (tmdbId == null && imdbId == null) return false;
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
 
     final ids = <String, dynamic>{};
@@ -415,7 +422,7 @@ class SimklService {
 
   /// Import the user's Simkl "plan to watch" list into the local My List.
   Future<int> importWatchlistToMyList() async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
     int imported = 0;
@@ -492,14 +499,14 @@ class SimklService {
       final activities = await _getLastActivities();
       final lastAll = activities?['all']?.toString() ?? '';
 
-      final savedAll = await _storage.read(key: 'simkl_last_activity');
+      final savedAll = await _secureRead('simkl_last_activity');
 
       int watchlistCount = 0, episodesImported = 0;
 
       if (force || savedAll != lastAll) {
         watchlistCount = await importWatchlistToMyList();
         episodesImported = await importWatchedEpisodes();
-        if (lastAll.isNotEmpty) await _storage.write(key: 'simkl_last_activity', value: lastAll);
+        if (lastAll.isNotEmpty) await _secureWrite('simkl_last_activity', lastAll);
       } else {
         debugPrint('[Simkl] No activity changes, skipping sync');
       }
@@ -514,7 +521,7 @@ class SimklService {
 
   /// Push the entire local My List to Simkl watchlist.
   Future<int> exportMyListToWatchlist() async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
     final items = MyListService().items;
@@ -554,7 +561,7 @@ class SimklService {
 
   /// Import completed shows/episodes from Simkl into EpisodeWatchedService.
   Future<int> importWatchedEpisodes() async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
     int imported = 0;
@@ -599,7 +606,7 @@ class SimklService {
 
   /// Export all locally marked watched episodes to Simkl history.
   Future<int> exportWatchedEpisodes() async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
     final cache = await _getEpisodeWatchedCache();
@@ -677,7 +684,7 @@ class SimklService {
     int? season,
     int? episode,
   }) async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
 
     final body = <String, dynamic>{};
