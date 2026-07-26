@@ -199,13 +199,13 @@ EdgeInsets shellHomeSectionTitlePadding(
   );
 }
 
+/// Nav rail chrome matches desktop on every profile (TV density must not
+/// shrink icons/labels — leanback already uses the same fixed rail width).
 double shellNavRailIconSize(BuildContext context) =>
-    shellScaled(context, ShellTokens.navRailIconSize)
-        .clamp(20.0, ShellTokens.navRailIconSize);
+    ShellTokens.navRailIconSize;
 
 double shellNavRailLabelFontSize(BuildContext context) =>
-    shellScaled(context, ShellTokens.navRailLabelFontSize)
-        .clamp(11.0, ShellTokens.navRailLabelFontSize);
+    ShellTokens.navRailLabelFontSize;
 
 double shellNavRailItemContentHeight(BuildContext context) {
   final icon = shellNavRailIconSize(context);

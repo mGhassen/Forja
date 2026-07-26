@@ -440,6 +440,34 @@ void main() {
     expect(underlineColor(), navDestinationAccentColors['search']);
   });
 
+  testWidgets('TV selected nav icon uses destination accent at desktop size', (
+    tester,
+  ) async {
+    await pumpScaffold(
+      tester,
+      desktopScaffold(),
+      size: const Size(1920, 1080),
+      profile: ShellProfile.tv,
+    );
+    await tester.pumpAndSettle();
+
+    final searchIcon = tester.widget<NavDestinationIcon>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is NavDestinationIcon && widget.destination.id == 'search',
+      ),
+    );
+    expect(searchIcon.color, navDestinationAccentColors['search']);
+    expect(searchIcon.size, ShellTokens.navRailIconSize);
+
+    final underline = find.byKey(const ValueKey('nav-search-underline'));
+    final underlineColor =
+        (tester.widget<AnimatedContainer>(underline).decoration
+                as BoxDecoration)
+            .color!;
+    expect(underlineColor, navDestinationAccentColors['search']);
+  });
+
   testWidgets('desktop profile avatar is grey idle and colored on hover', (
     tester,
   ) async {

@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Default tab order on every profile:** Search, Home, Asian Drama, Anime, IPTV, Live Matches, My List, and Settings. All are enabled on a fresh install. On desktop you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Default tab order on every profile:** Search, Home, Asian Drama, Anime, IPTV, Live Matches, My List, and Settings. All are enabled on a fresh install. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 
@@ -31,7 +31,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 - The app **opens on your chosen default tab** (Home unless you change it in Settings); **first focus** lands on that tab’s **nav rail** item (Home by default), not the hero Play button
 - **Settings hub:** wide TV uses the desktop-style left category rail + right detail pane
 - **Account:** cold start offers Sign in (code or QR via `/connect`) or Continue as guest; after link you pick a profile on Who’s watching?
-- Same left **nav rail** as desktop (no bottom bar); D-pad moves focus with a white ring on the active control
+- Same left **nav rail** as desktop (no bottom bar) — **same icon size, spacing, and per-tab accent colors**; selected / D-pad-focused items show their accent and label; D-pad moves focus with a white ring on page controls
 - **Layout:** catalog rows fill the body edge-to-edge (no extra section gutters); only the fixed nav rail insets content on the left; device-reported overscan padding is applied once at the shell when present
 - **Leanback density:** **115px** poster cards, 6px row gaps, tight section chrome — hero + first row peek like desktop, multiple rows visible when scrolling
 - **Nav rail:** UP/DOWN only move between nav items (trap at Search and Settings); LEFT is trapped; **RIGHT** returns to the **active** tab’s last focus (row, hero, or default) without switching tabs; **Enter/Select** switches to the focused nav tab and restores that tab’s focus; **Back** travels up one shell level at a time: **player → detail → tab page → nav rail** (in-tab sub-routes such as IPTV portals pop before leaving the tab); on tab root, **Back** focuses the **active** nav tab; **Back** on the nav rail restores that tab’s page focus — it never exits the app (leave via the Android TV launcher / Home)

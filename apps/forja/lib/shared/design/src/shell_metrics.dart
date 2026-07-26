@@ -125,10 +125,11 @@ class ShellMetrics {
     torrentPanelLeadingIconSize: 20,
     torrentPanelSectionFontSize: 15,
     usesTvDensity: true,
-    navRailItemSpacing: 16,
-    navRailLogoGap: 16,
-    navRailTopPadding: 14,
-    navRailBottomPadding: 12,
+    // Same rail chrome as desktop; spacing compresses if height is tight.
+    navRailItemSpacing: ShellTokens.navRailItemSpacing,
+    navRailLogoGap: 20,
+    navRailTopPadding: ShellTokens.shellHeaderTopPadding,
+    navRailBottomPadding: 16,
   );
 
   double get navRailWidth => ShellTokens.navRailWidth;

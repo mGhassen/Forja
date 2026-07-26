@@ -220,8 +220,8 @@ const Map<String, NavDestination> navDestinations = {
   ),
 };
 
-/// Desktop rail accents. Icons remain neutral while idle and reveal their
-/// destination color when selected or hovered.
+/// Rail accents (desktop + Android TV). Icons stay neutral while idle and
+/// reveal their destination color when selected, hovered, or D-pad focused.
 const Map<String, Color> navDestinationAccentColors = {
   'home': Color(0xFF1CE783),
   'discover': Color(0xFF2DD4BF),

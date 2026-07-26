@@ -639,13 +639,15 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final labelFontSize = shellNavRailLabelFontSize(context);
     final contentHeight = _contentHeight(context);
     final underlineWidth = shellScaled(context, 24).clamp(14.0, 24.0);
-    final desktopAccent =
+    final destinationAccent =
         navDestinationAccentColors[widget.destination.id] ??
         ForjaShellColors.brandGreen;
-    final useDestinationAccent = policy.scaleOnHover && widget.icon == null;
+    // Desktop hover + TV focus share the same per-tab accent language.
+    final useDestinationAccent =
+        policy.isInteractiveActive && widget.icon == null;
     final iconColor = useDestinationAccent
         ? (widget.selected || active
-              ? desktopAccent
+              ? destinationAccent
               : ForjaShellColors.iconMuted)
         : selectedFocused
         ? Colors.white
@@ -656,7 +658,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         : ForjaShellColors.iconMuted;
     final labelColor = useDestinationAccent
         ? (widget.selected || active
-              ? desktopAccent
+              ? destinationAccent
               : ForjaShellColors.iconMuted)
         : selectedFocused
         ? Colors.white
@@ -665,6 +667,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         : active
         ? ForjaShellColors.textSecondary
         : ForjaShellColors.iconMuted;
+    final showLabel =
+        widget.alwaysShowLabel || (policy.scaleOnFocus && _focused);
     final labelStyle = GoogleFonts.plusJakartaSans(
       color: labelColor,
       fontSize: labelFontSize,
@@ -777,7 +781,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                   decoration: BoxDecoration(
                                     color: widget.selected
                                         ? (useDestinationAccent
-                                              ? desktopAccent
+                                              ? destinationAccent
                                               : selectedFocused
                                               ? Colors.white
                                               : ForjaShellColors.navUnderline)
@@ -793,7 +797,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                             height: labelFontSize,
                             width: ShellTokens.navRailWidth,
                             child: Center(
-                              child: widget.alwaysShowLabel
+                              child: showLabel
                                   ? Text(
                                       label,
                                       textAlign: TextAlign.center,
