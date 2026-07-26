@@ -28,10 +28,14 @@ on:
         description: Mark as pre-release
         type: boolean
         default: false
-      platform_macos:
-        description: Build macOS (arm64 + Intel x86_64)
+      platform_macos_arm64:
+        description: Build macOS Apple Silicon (arm64)
         type: boolean
         default: true
+      platform_macos_x86_64:
+        description: Build macOS Intel (x86_64)
+        type: boolean
+        default: false
       platform_windows:
         description: Build Windows
         type: boolean
@@ -113,7 +117,8 @@ jobs:
 
       - name: Validate platform selection
         run: |
-          if [[ "${{ inputs.platform_macos }}" != "true" && \
+          if [[ "${{ inputs.platform_macos_arm64 }}" != "true" && \
+                "${{ inputs.platform_macos_x86_64 }}" != "true" && \
                 "${{ inputs.platform_windows }}" != "true" && \
                 "${{ inputs.platform_linux }}" != "true" && \
                 "${{ inputs.platform_android_tv }}" != "true" ]]; then
@@ -199,7 +204,7 @@ jobs:
 
   build_macos_arm64:
     name: macOS arm64
-    if: ${{ inputs.platform_macos }}
+    if: ${{ inputs.platform_macos_arm64 }}
     needs: resolve_version
     runs-on: macos-latest
     steps:
@@ -253,7 +258,7 @@ jobs:
   # (available through ~Aug 2027; macos-13 was retired Dec 2025).
   build_macos_x86_64:
     name: macOS x86_64
-    if: ${{ inputs.platform_macos }}
+    if: ${{ inputs.platform_macos_x86_64 }}
     needs: resolve_version
     runs-on: macos-15-intel
     steps:

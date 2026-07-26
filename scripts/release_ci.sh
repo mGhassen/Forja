@@ -71,7 +71,8 @@ normalize_tag() {
 }
 
 pick_platforms() {
-  PLATFORM_MACOS=true
+  PLATFORM_MACOS_ARM64=true
+  PLATFORM_MACOS_X86_64=false
   PLATFORM_WINDOWS=true
   PLATFORM_LINUX=true
   PLATFORM_ANDROID_TV=false
@@ -83,8 +84,11 @@ pick_platforms() {
 
   echo
   echo "Platforms (Enter = keep default):"
-  read -r -p "  macOS arm64+Intel [Y/n]: " ans
-  [[ "$ans" =~ ^[Nn] ]] && PLATFORM_MACOS=false
+  read -r -p "  macOS Apple Silicon arm64 [Y/n]: " ans
+  [[ "$ans" =~ ^[Nn] ]] && PLATFORM_MACOS_ARM64=false
+
+  read -r -p "  macOS Intel x86_64 [y/N]: " ans
+  [[ "$ans" =~ ^[Yy] ]] && PLATFORM_MACOS_X86_64=true
 
   read -r -p "  Windows [Y/n]: " ans
   [[ "$ans" =~ ^[Nn] ]] && PLATFORM_WINDOWS=false
@@ -110,7 +114,8 @@ trigger_release() {
     -f "tag=$tag"
     -f "bump=${BUMP:-patch}"
     -f "prerelease=$PRERELEASE"
-    -f "platform_macos=$PLATFORM_MACOS"
+    -f "platform_macos_arm64=$PLATFORM_MACOS_ARM64"
+    -f "platform_macos_x86_64=$PLATFORM_MACOS_X86_64"
     -f "platform_windows=$PLATFORM_WINDOWS"
     -f "platform_linux=$PLATFORM_LINUX"
     -f "platform_android_tv=$PLATFORM_ANDROID_TV"

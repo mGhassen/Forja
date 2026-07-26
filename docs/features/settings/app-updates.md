@@ -38,7 +38,7 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 - Published releases (CI): `./scripts/release_ci.sh` or `melos run release` — searchable tag list locally (needs `gh` CLI)
 - Local release (macOS DMG → GitHub + R2; Windows via Parallels when `FORJA_PRL_VM` is set): `./scripts/release_local.sh` or `melos run release:local`
 - First-time Windows VM toolchain (inside the guest, elevated PowerShell): `.\scripts\setup_windows_vm.ps1` — or from Mac: `./scripts/release_local.sh setup-windows`
-- Or in GitHub: Actions → **Release Forja** → **New version** or **Existing tag**; pick platforms
+- Or in GitHub: Actions → **Release Forja** → **New version** or **Existing tag**; pick platforms (macOS arm64 and Intel are separate toggles)
 - Tag backfill: Actions → **Backfill version tags** (requires repo secret `BACKFILL_GITHUB_TOKEN` — fine-grained PAT with Contents + Workflows write on this repo)
 - Android TV releases publish two APKs: `Forja-{version}-android-tv-arm64.apk` and `Forja-{version}-android-tv-armeabi-v7a.apk`; the in-app updater picks the matching ABI
 - macOS releases publish `Forja-{version}-macos-arm64.dmg` and `Forja-{version}-macos-x86_64.dmg`; the updater picks the host arch
