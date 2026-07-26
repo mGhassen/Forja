@@ -35,12 +35,16 @@ draft="$ROOT/docs/changelog/${major}.${minor}.x-[draft].md"
 # freezes the draft before tagging, leaving a fresh empty draft behind).
 if [[ -f "$released" ]]; then
   draft="$released"
-elif [[ ! -f "$draft" && "${patch:-0}" == "0" && "${minor:-0}" =~ ^[0-9]+$ && "$minor" -gt 0 ]]; then
-  # Minor bump before freeze: bullets still live on the previous arc draft.
-  prev_draft="$ROOT/docs/changelog/${major}.$((minor - 1)).x-[draft].md"
-  if [[ -f "$prev_draft" ]]; then
-    draft="$prev_draft"
-  fi
+elif [[ ! -f "$draft" && "${patch:-0}" == "0" ]]; then
+  # Minor/major bump before freeze: bullets still live on the previous arc draft.
+  shopt -s nullglob
+  local_candidates=("$ROOT/docs/changelog/"*.x-\[draft\].md)
+  shopt -u nullglob
+  for candidate in "${local_candidates[@]+"${local_candidates[@]}"}"; do
+    [[ -f "$candidate" ]] || continue
+    draft="$candidate"
+    break
+  done
 fi
 
 # Codename source of truth: kReleaseCodename in app_version.dart (admin updates

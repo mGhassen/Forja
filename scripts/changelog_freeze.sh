@@ -13,9 +13,9 @@ set -euo pipefail
 #   - starts a fresh empty docs/changelog/1.2.x-[draft].md with
 #     **Since release:** pointing at the version just shipped.
 #
-# Minor bump (e.g. 1.2.x → 1.3.0): if `1.3.x-[draft].md` is missing, freezes
-# the previous minor draft (`1.2.x-[draft].md`), writes a fresh `1.3.x` draft,
-# and removes the old `1.2.x` draft.
+# Arc bump (minor 1.2.x → 1.3.0, or major 1.x → 2.0.0): if the target
+# `N.M.x-[draft].md` is missing, freezes the previous active draft, writes a
+# fresh draft on the new arc, and removes the old draft file.
 #
 # Idempotent: if the draft is already frozen (no draft file, or the released
 # file already exists), it exits 0 without changes so CI re-runs and the
@@ -42,18 +42,20 @@ if [[ -f "$released" ]]; then
   exit 0
 fi
 
-# Prefer the target minor draft. On a new minor (.0) with no draft yet, freeze
-# the previous minor's draft (accumulated since the last patch on that arc).
+# Prefer the target arc draft. On a new minor/major (.0) with no draft yet,
+# freeze whatever active `*.x-[draft].md` still holds the unshipped bullets.
 source_draft="$target_draft"
-if [[ ! -f "$source_draft" ]]; then
-  if [[ "${patch:-0}" == "0" && "${minor:-0}" =~ ^[0-9]+$ && "$minor" -gt 0 ]]; then
-    prev_line="${major}.$((minor - 1)).x"
-    prev_draft="$ROOT/docs/changelog/${prev_line}-[draft].md"
-    if [[ -f "$prev_draft" ]]; then
-      source_draft="$prev_draft"
-      echo "changelog_freeze: minor bump — using ${prev_line}-[draft].md for ${VERSION}" >&2
-    fi
-  fi
+if [[ ! -f "$source_draft" && "${patch:-0}" == "0" ]]; then
+  shopt -s nullglob
+  local_candidates=("$ROOT/docs/changelog/"*.x-\[draft\].md)
+  shopt -u nullglob
+  for candidate in "${local_candidates[@]+"${local_candidates[@]}"}"; do
+    [[ -f "$candidate" ]] || continue
+    [[ "$(basename "$candidate")" == "${minor_line}-[draft].md" ]] && continue
+    source_draft="$candidate"
+    echo "changelog_freeze: arc bump — using $(basename "$candidate") for ${VERSION}" >&2
+    break
+  done
 fi
 
 if [[ ! -f "$source_draft" ]]; then

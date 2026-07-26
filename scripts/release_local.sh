@@ -8,8 +8,8 @@ set -euo pipefail
 #   ./scripts/release_local.sh bump [patch|minor|major]
 #   ./scripts/release_local.sh tag v1.2.404             # build + publish selected platforms
 #   ./scripts/release_local.sh backfill [--dry-run]     # tag untagged commits (push)
-#   ./scripts/release_local.sh build v1.2.404           # macOS DMG only
-#   ./scripts/release_local.sh build-android-tv v1.2.404  # Android TV APKs (arm64 + v7a)
+#   ./scripts/release_local.sh build v1.2.404           # macOS DMG (host arch)
+#   ./scripts/release_local.sh build-android-tv v1.2.404  # Android TV APKs (selected ABIs)
 #   ./scripts/release_local.sh build-windows v1.2.404   # Windows via Parallels VM
 #   ./scripts/release_local.sh setup-windows            # print / run VM toolchain setup
 #   ./scripts/release_local.sh publish v1.2.404         # upload dist/ → gh + R2
@@ -19,9 +19,10 @@ set -euo pipefail
 # Env:
 #   FORJA_PRL_VM=Windows 11          Parallels VM name (enables Windows build)
 #   FORJA_WIN_REPO=\\Mac\Forja       Windows path to this repo (default share name Forja)
-#   FORJA_PLATFORMS=macos,windows,android_tv
-#                                    platforms for tag/bump (interactive pick if unset;
-#                                    default: macos; +windows if VM set)
+#   FORJA_PLATFORMS=macos_arm64,macos_x86_64,windows,linux,android_tv_arm64,android_tv_armeabi_v7a
+#                                    same IDs as release_ci.sh / Actions (one arch per flag).
+#                                    Legacy: macos → macos_arm64; android_tv → both TV ABIs.
+#                                    Interactive pick if unset; default: macos_arm64 (+windows if VM)
 #   NONINTERACTIVE=1                 skip confirm / platform prompts
 #
 # Requires (.env): SUPABASE_*, RELEASE_CDN_URL, FORJA_WEB_URL, R2_*
@@ -434,7 +435,7 @@ version_from_tag() {
   echo "${1#v}"
 }
 
-dmg_path() { echo "$DIST/Forja-${1}-macos-arm64.dmg"; }
+dmg_path() { echo "$DIST/Forja-${1}-macos-${2:-arm64}.dmg"; }
 exe_path() { echo "$DIST/Forja-${1}-windows-setup.exe"; }
 
 confirm() {
@@ -624,16 +625,52 @@ pick_bump() {
   printf '%s\n' "$bump"
 }
 
-# Platforms for tag/bump: comma list macos,windows,linux,android_tv
+# Platforms for tag/bump — same IDs as Actions / release_ci.sh.
+# Normalize legacy aliases so old FORJA_PLATFORMS=macos,android_tv still work.
+normalize_platform_list() {
+  local raw="$1"
+  local -a out=() part
+  local IFS=','
+  # shellcheck disable=SC2206
+  local -a parts=($raw)
+  for part in "${parts[@]}"; do
+    part="${part// /}"
+    [[ -z "$part" ]] && continue
+    case "$part" in
+      macos) out+=(macos_arm64) ;;
+      android_tv)
+        out+=(android_tv_arm64)
+        out+=(android_tv_armeabi_v7a)
+        ;;
+      macos_arm64|macos_x86_64|windows|linux|android_tv_arm64|android_tv_armeabi_v7a)
+        out+=("$part")
+        ;;
+      *)
+        die "unknown platform '$part' (want macos_arm64, macos_x86_64, windows, linux, android_tv_arm64, android_tv_armeabi_v7a)"
+        ;;
+    esac
+  done
+  ((${#out[@]} > 0)) || die "select at least one platform"
+  local IFS=,
+  echo "${out[*]}"
+}
+
+host_macos_arch() {
+  case "$(uname -m)" in
+    arm64|aarch64) echo arm64 ;;
+    *) echo x86_64 ;;
+  esac
+}
+
 platforms() {
   if [[ -n "${FORJA_PLATFORMS:-}" ]]; then
-    echo "$FORJA_PLATFORMS"
+    normalize_platform_list "$FORJA_PLATFORMS"
     return
   fi
   if command -v prlctl >/dev/null 2>&1 && prlctl list -a 2>/dev/null | grep -q "$PRL_VM"; then
-    echo "macos,windows"
+    echo "macos_arm64,windows"
   else
-    echo "macos"
+    echo "macos_arm64"
   fi
 }
 
@@ -645,6 +682,10 @@ want_platform() {
 # Interactive checklist → FORJA_PLATFORMS (same surface as release_ci.sh / Actions).
 pick_platforms() {
   if [[ -n "${FORJA_PLATFORMS:-}" || "${NONINTERACTIVE:-}" == "1" ]]; then
+    if [[ -n "${FORJA_PLATFORMS:-}" ]]; then
+      FORJA_PLATFORMS="$(normalize_platform_list "$FORJA_PLATFORMS")"
+      export FORJA_PLATFORMS
+    fi
     return
   fi
 
@@ -657,12 +698,15 @@ pick_platforms() {
   fi
 
   if ! ui_can; then
-    local macos=true windows=false linux=false android_tv=false ans
+    local macos_arm64=true macos_x86_64=false windows=false linux=false
+    local android_tv_arm64=false android_tv_v7a=false ans
     ((win_default)) && windows=true
     echo
-    echo "${C_BOLD}Platforms${C_RESET} ${C_DIM}(Enter = keep default)${C_RESET}"
-    read -r -p "  macOS [Y/n]: " ans
-    [[ "$ans" =~ ^[Nn]$ ]] && macos=false
+    echo "${C_BOLD}Platforms${C_RESET} ${C_DIM}(one arch per line — same as Actions)${C_RESET}"
+    read -r -p "  macOS Apple Silicon arm64 [Y/n]: " ans
+    [[ "$ans" =~ ^[Nn]$ ]] && macos_arm64=false
+    read -r -p "  macOS Intel x86_64 [y/N]: " ans
+    [[ "$ans" =~ ^[Yy]$ ]] && macos_x86_64=true
     if $windows; then
       read -r -p "  Windows [Y/n]: " ans
       [[ "$ans" =~ ^[Nn]$ ]] && windows=false
@@ -672,13 +716,17 @@ pick_platforms() {
     fi
     read -r -p "  Linux [y/N]: " ans
     [[ "$ans" =~ ^[Yy]$ ]] && linux=true
-    read -r -p "  Android TV [y/N]: " ans
-    [[ "$ans" =~ ^[Yy]$ ]] && android_tv=true
+    read -r -p "  Android TV arm64 [y/N]: " ans
+    [[ "$ans" =~ ^[Yy]$ ]] && android_tv_arm64=true
+    read -r -p "  Android TV armeabi-v7a [y/N]: " ans
+    [[ "$ans" =~ ^[Yy]$ ]] && android_tv_v7a=true
     local -a selected=()
-    $macos && selected+=(macos)
+    $macos_arm64 && selected+=(macos_arm64)
+    $macos_x86_64 && selected+=(macos_x86_64)
     $windows && selected+=(windows)
     $linux && selected+=(linux)
-    $android_tv && selected+=(android_tv)
+    $android_tv_arm64 && selected+=(android_tv_arm64)
+    $android_tv_v7a && selected+=(android_tv_armeabi_v7a)
     ((${#selected[@]} > 0)) || die "select at least one platform"
     FORJA_PLATFORMS="$(IFS=,; echo "${selected[*]}")"
     export FORJA_PLATFORMS
@@ -687,16 +735,18 @@ pick_platforms() {
   fi
 
   local picked rc
-  picked="$(ui_checklist 1 1 "Platforms" -- \
-    "macos|macOS|1" \
+  picked="$(ui_checklist 1 1 "Platforms (one arch each — same as Actions)" -- \
+    "macos_arm64|macOS — Apple Silicon only (arm64)|1" \
+    "macos_x86_64|macOS — Intel only (x86_64) · CI only on Apple Silicon host|0" \
     "windows|${win_hint}|${win_default}" \
     "linux|Linux (use release_ci.sh)|0" \
-    "android_tv|Android TV|0")" || {
+    "android_tv_arm64|Android TV — arm64 only|0" \
+    "android_tv_armeabi_v7a|Android TV — armeabi-v7a only|0")" || {
     rc=$?
     ((rc == 2)) && return 2
     ui_abort
   }
-  FORJA_PLATFORMS="$picked"
+  FORJA_PLATFORMS="$(normalize_platform_list "$picked")"
   export FORJA_PLATFORMS
   ok "platforms: $FORJA_PLATFORMS"
 }
@@ -742,10 +792,16 @@ prl_ensure_running() {
 
 build_macos() {
   local ver="$1"
+  local arch="${2:-$(host_macos_arch)}"
+  local host
+  host="$(host_macos_arch)"
   require_build_env
+  if [[ "$arch" != "$host" ]]; then
+    die "macOS $arch DMG cannot be built on this host ($host). Use Actions / ./scripts/release_ci.sh (macos-15-intel for x86_64)."
+  fi
   echo "==> Rust FFI"
   ./scripts/build_rust_release.sh
-  echo "==> Flutter macOS ($ver)"
+  echo "==> Flutter macOS $arch ($ver)"
   (
     cd "$APP_DIR"
     flutter pub get
@@ -763,10 +819,10 @@ build_macos() {
   ./scripts/codesign_macos_adhoc.sh
   echo "==> Verify payload"
   ./scripts/verify_installer_payload.sh macos
-  echo "==> Package DMG"
-  ./scripts/package_macos_dmg.sh "$ver" arm64
+  echo "==> Package DMG ($arch)"
+  ./scripts/package_macos_dmg.sh "$ver" "$arch"
   local dmg
-  dmg="$(dmg_path "$ver")"
+  dmg="$(dmg_path "$ver" "$arch")"
   [[ -f "$dmg" ]] || die "expected DMG missing: $dmg"
   ls -lh "$dmg"
 }
@@ -794,7 +850,10 @@ build_windows_prl() {
 
 build_android_tv() {
   local ver="$1"
+  shift || true
+  local -a abis=("$@")
   local keystore="" tmp_ks="" key_alias
+  local -a flutter_targets=() package_abis=()
   require_cmd flutter
   require_cmd keytool
   [[ -n "${SUPABASE_URL:-}" ]] || die "SUPABASE_URL missing (set in .env)"
@@ -803,6 +862,27 @@ build_android_tv() {
   [[ -n "${FORJA_WEB_URL:-}" ]] || die "FORJA_WEB_URL missing (set in .env)"
   [[ -n "${FORJA_KEYSTORE_PASSWORD:-}" ]] || die "FORJA_KEYSTORE_PASSWORD missing (set in .env)"
   [[ -n "${FORJA_KEY_PASSWORD:-}" ]] || die "FORJA_KEY_PASSWORD missing (set in .env)"
+
+  if [[ ${#abis[@]} -eq 0 ]]; then
+    abis=(arm64 armeabi-v7a)
+  fi
+  local abi
+  for abi in "${abis[@]}"; do
+    case "$abi" in
+      arm64|arm64-v8a)
+        flutter_targets+=(android-arm64)
+        package_abis+=(arm64)
+        ;;
+      armeabi-v7a|v7a|arm)
+        flutter_targets+=(android-arm)
+        package_abis+=(armeabi-v7a)
+        ;;
+      *)
+        die "unknown Android TV ABI '$abi' (want arm64 or armeabi-v7a)"
+        ;;
+    esac
+  done
+  ((${#flutter_targets[@]} > 0)) || die "select at least one Android TV ABI"
 
   if [[ -n "${FORJA_KEYSTORE_PATH:-}" ]]; then
     keystore="$FORJA_KEYSTORE_PATH"
@@ -831,12 +911,17 @@ build_android_tv() {
     die "fix FORJA_KEY_ALIAS / keystore"
   fi
 
-  info "Flutter Android TV APKs ($ver) — arm64 + armeabi-v7a"
+  local target_platform
+  local IFS=,
+  target_platform="${flutter_targets[*]}"
+  unset IFS
+
+  info "Flutter Android TV APKs ($ver) — ${package_abis[*]}"
   (
     cd "$APP_DIR"
     flutter pub get
     flutter build apk --release --split-per-abi \
-      --target-platform android-arm,android-arm64 \
+      --target-platform "$target_platform" \
       --dart-define=SUPABASE_URL="${SUPABASE_URL}" \
       --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY}" \
       --dart-define=RELEASE_CDN_URL="${RELEASE_CDN_URL}" \
@@ -850,20 +935,27 @@ build_android_tv() {
       -PFORJA_KEY_ALIAS="$key_alias" \
       -PFORJA_KEY_PASSWORD="${FORJA_KEY_PASSWORD}"
   )
-  ./scripts/package_android_tv_apk.sh "$ver"
-  ls -lh "$DIST/Forja-${ver}-android-tv-arm64.apk" \
-    "$DIST/Forja-${ver}-android-tv-armeabi-v7a.apk"
+  ./scripts/package_android_tv_apk.sh "$ver" "${package_abis[@]}"
+  local out
+  for abi in "${package_abis[@]}"; do
+    out="$DIST/Forja-${ver}-android-tv-${abi}.apk"
+    [[ -f "$out" ]] || die "missing $out"
+    ls -lh "$out"
+  done
 }
 
 collect_assets() {
   local ver="$1"
   local -a files=()
   local f
-  for f in "$(dmg_path "$ver")" \
-           "$(exe_path "$ver")" \
-           "$DIST/Forja-${ver}-linux-x86_64.AppImage" \
-           "$DIST/Forja-${ver}-android-tv-arm64.apk" \
-           "$DIST/Forja-${ver}-android-tv-armeabi-v7a.apk"; do
+  # Publish whatever was built into dist/ for this version (platforms gate build only).
+  for f in \
+    "$(dmg_path "$ver" arm64)" \
+    "$(dmg_path "$ver" x86_64)" \
+    "$(exe_path "$ver")" \
+    "$DIST/Forja-${ver}-linux-x86_64.AppImage" \
+    "$DIST/Forja-${ver}-android-tv-arm64.apk" \
+    "$DIST/Forja-${ver}-android-tv-armeabi-v7a.apk"; do
     [[ -f "$f" ]] && files+=("$f")
   done
   ((${#files[@]} > 0)) || die "no installers in dist/ for $ver"
@@ -926,19 +1018,29 @@ publish_r2() {
 
 build_selected() {
   local ver="$1"
+  local -a tv_abis=()
   if want_platform linux; then
     [[ "$(uname -s)" == Linux ]] \
       || die "Linux AppImage builds need a Linux host — use ./scripts/release_ci.sh"
     die "local Linux AppImage build not wired — use ./scripts/release_ci.sh"
   fi
-  if want_platform macos; then
-    build_macos "$ver"
+  if want_platform macos_arm64; then
+    build_macos "$ver" arm64
+  fi
+  if want_platform macos_x86_64; then
+    build_macos "$ver" x86_64
   fi
   if want_platform windows; then
     build_windows_prl "$ver"
   fi
-  if want_platform android_tv; then
-    build_android_tv "$ver"
+  if want_platform android_tv_arm64; then
+    tv_abis+=(arm64)
+  fi
+  if want_platform android_tv_armeabi_v7a; then
+    tv_abis+=(armeabi-v7a)
+  fi
+  if ((${#tv_abis[@]} > 0)); then
+    build_android_tv "$ver" "${tv_abis[@]}"
   fi
 }
 
@@ -946,8 +1048,8 @@ cmd_build() {
   local tag ver
   tag="$(normalize_tag "$1")"
   ver="$(version_from_tag "$tag")"
-  info "Build macOS DMG for $tag"
-  build_macos "$ver"
+  info "Build macOS DMG for $tag ($(host_macos_arch))"
+  build_macos "$ver" "$(host_macos_arch)"
 }
 
 cmd_build_windows() {
@@ -961,11 +1063,19 @@ cmd_build_windows() {
 
 cmd_build_android_tv() {
   local tag ver
+  local -a abis=()
   tag="$(normalize_tag "$1")"
   ver="$(version_from_tag "$tag")"
-  info "Build Android TV APKs for $tag (arm64 + armeabi-v7a)"
+  if [[ -n "${FORJA_PLATFORMS:-}" ]]; then
+    want_platform android_tv_arm64 && abis+=(arm64)
+    want_platform android_tv_armeabi_v7a && abis+=(armeabi-v7a)
+  fi
+  if ((${#abis[@]} == 0)); then
+    abis=(arm64 armeabi-v7a)
+  fi
+  info "Build Android TV APKs for $tag (${abis[*]})"
   confirm "Start Android TV release build?" || die "aborted"
-  build_android_tv "$ver"
+  build_android_tv "$ver" "${abis[@]}"
   ok "APKs in dist/ for $ver"
 }
 
@@ -1193,9 +1303,9 @@ wizard_list_tags() {
 wizard_tools() {
   local tool tag rc
   tool="$(ui_choose 1 2 "Tools" -- \
-    "build_macos|Build macOS DMG only" \
+    "build_macos|Build macOS DMG (host arch only)" \
     "build_windows|Build Windows (Parallels)" \
-    "build_android_tv|Build Android TV APKs" \
+    "build_android_tv|Build Android TV APKs (per selected ABI)" \
     "publish|Publish dist/ only" \
     "setup_windows|Setup Windows VM")" || {
     rc=$?
