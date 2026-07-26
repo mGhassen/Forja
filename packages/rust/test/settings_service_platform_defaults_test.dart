@@ -54,8 +54,11 @@ void main() {
   test(
     'Android TV play sources stay off even when stored prefs are on',
     () async {
+      addTearDown(() {
+        PlatformPlayback.clearOverride();
+        SettingsService.configurePlatformProfile(PlatformProfile.phone);
+      });
       PlatformPlayback.override = PlaybackProfile.androidTv;
-      addTearDown(PlatformPlayback.clearOverride);
       SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
 
       final service = SettingsService();

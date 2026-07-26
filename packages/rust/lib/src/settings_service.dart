@@ -376,9 +376,9 @@ class SettingsService {
   Future<bool> isPlaySourceTorrentStored() async =>
       kvGetBool(_playSourceTorrentKey, fallback: _defaults.playSourceTorrent);
 
-  /// Effective for UI / playback — always off when the platform disallows it.
+  /// Effective for UI / playback — always off on Android TV.
   Future<bool> isPlaySourceTorrentEnabled() async {
-    if (!PlatformPlayback.capabilities.playSourceTorrent) return false;
+    if (platformProfile == PlatformProfile.androidTv) return false;
     return isPlaySourceTorrentStored();
   }
 
@@ -391,9 +391,9 @@ class SettingsService {
   Future<bool> isPlaySourceStremioStored() async =>
       kvGetBool(_playSourceStremioKey, fallback: _defaults.playSourceStremio);
 
-  /// Effective for UI / playback — always off when the platform disallows it.
+  /// Effective for UI / playback — always off on Android TV.
   Future<bool> isPlaySourceStremioEnabled() async {
-    if (!PlatformPlayback.capabilities.playSourceStremio) return false;
+    if (platformProfile == PlatformProfile.androidTv) return false;
     return isPlaySourceStremioStored();
   }
 
@@ -414,9 +414,9 @@ class SettingsService {
     return isPlaySourceTorrentStored();
   }
 
-  /// Effective for UI / playback — always off when the platform disallows it.
+  /// Effective for UI / playback — always off on Android TV.
   Future<bool> isPlaySourceNuvioEnabled() async {
-    if (!PlatformPlayback.capabilities.playSourceNuvio) return false;
+    if (platformProfile == PlatformProfile.androidTv) return false;
     return isPlaySourceNuvioStored();
   }
 
