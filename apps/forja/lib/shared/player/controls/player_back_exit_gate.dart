@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shell/shell_bus.dart';
 
-/// TV remote Back: first press stays in the player; second within [confirmWindow]
-/// exits. Menus/panels still close on the first Back via chrome dismiss.
+/// TV remote Back while a player surface is active:
+/// 1. Menus/panels dismiss first ([dismissAnyPlayerChromeOverlay]).
+/// 2. Visible player chrome hides ([tryHideChrome]) — stay in player.
+/// 3. Otherwise first Back arms exit; second within [confirmWindow] exits.
 abstract final class PlayerBackExitGate {
   static DateTime? _armedAt;
   static VoidCallback? _onFirstBack;
+  static bool Function()? _tryHideChrome;
   static bool _listening = false;
 
   /// How long the second Back still counts as “confirm exit”.
@@ -20,14 +23,35 @@ abstract final class PlayerBackExitGate {
       if (!ShellBus.playerSurfaceActive.value) {
         clear();
         _onFirstBack = null;
+        _tryHideChrome = null;
       }
     });
   }
 
-  /// Optional: show player chrome when the first Back arms exit.
+  /// Optional: feedback when the first Back arms exit (chrome already hidden).
   static void setOnFirstBack(VoidCallback? callback) {
     _ensureSurfaceListener();
     _onFirstBack = callback;
+  }
+
+  /// When chrome is visible, hide it and return `true` (Back stays in player).
+  static void setTryHideChrome(bool Function()? callback) {
+    _ensureSurfaceListener();
+    _tryHideChrome = callback;
+  }
+
+  /// Returns `true` when chrome was visible and is now hidden.
+  static bool tryHideChrome() {
+    _ensureSurfaceListener();
+    if (!ShellBus.playerSurfaceActive.value) return false;
+    final cb = _tryHideChrome;
+    if (cb == null) return false;
+    try {
+      return cb();
+    } catch (e, st) {
+      debugPrint('[PlayerBackExitGate] tryHideChrome failed: $e\n$st');
+      return false;
+    }
   }
 
   static void clear() {
@@ -38,6 +62,7 @@ abstract final class PlayerBackExitGate {
   static void resetForTest() {
     clear();
     _onFirstBack = null;
+    _tryHideChrome = null;
   }
 
   /// Returns `true` when this Back should keep the player open (first press).

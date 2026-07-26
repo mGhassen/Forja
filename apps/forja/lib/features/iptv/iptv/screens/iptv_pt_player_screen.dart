@@ -269,12 +269,15 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   void initState() {
     super.initState();
     ShellBus.enterPlayerSurface();
-    PlayerBackExitGate.setOnFirstBack(() {
-      if (_disposed || !mounted) return;
-      if (_guideVisible || _searchVisible || _isPipMode) return;
-      setState(() => _controlsVisible = true);
-      _scheduleHideControls();
+    PlayerBackExitGate.setTryHideChrome(() {
+      if (_disposed || !mounted) return false;
+      if (_guideVisible || _searchVisible || _isPipMode) return false;
+      if (!_controlsVisible) return false;
+      setState(() => _controlsVisible = false);
+      _hideControlsTimer?.cancel();
+      return true;
     });
+    // Exit-arm Back: chrome already hidden — do not re-show.
     _sources = List<IptvPlaySource>.from(widget.sources);
     _title = widget.title;
     _subtitle = widget.subtitle;
@@ -402,6 +405,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   @override
   void dispose() {
+    PlayerBackExitGate.setTryHideChrome(null);
     PlayerBackExitGate.setOnFirstBack(null);
     ShellBus.leavePlayerSurface();
     _disposed = true;

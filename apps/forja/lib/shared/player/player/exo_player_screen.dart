@@ -169,11 +169,14 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
-    PlayerBackExitGate.setOnFirstBack(() {
-      if (!mounted || _disposed) return;
-      if (!_showControls) setState(() => _showControls = true);
-      _startHideTimer();
+    PlayerBackExitGate.setTryHideChrome(() {
+      if (!mounted || _disposed) return false;
+      if (!_showControls) return false;
+      setState(() => _showControls = false);
+      _hideTimer?.cancel();
+      return true;
     });
+    // Exit-arm Back: chrome already hidden — do not re-show.
     _sources = [];
     if (widget.audioUrl != null && widget.audioUrl!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -341,7 +344,10 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
         setState(() {
           _isPlaying = event['value'] == true;
         });
-        if (_isPlaying) _isBufferingNotifier.value = false;
+        if (_isPlaying) {
+          _isBufferingNotifier.value = false;
+          _startHideTimer();
+        }
         break;
       case 'buffering':
         _isBufferingNotifier.value = event['value'] == true;
@@ -435,12 +441,13 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   }
 
   void _toggleControls() {
-    if (_isTv) {
-      setState(() => _showControls = true);
-      return;
-    }
     setState(() => _showControls = !_showControls);
-    if (_showControls) _startHideTimer();
+    if (_showControls) {
+      _startHideTimer();
+      if (_isTv) _claimPlayFocus();
+    } else {
+      _hideTimer?.cancel();
+    }
   }
 
   void _claimPlayFocus() {
@@ -463,13 +470,18 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   }
 
   void _startHideTimer() {
-    if (_isTv) return;
     _hideTimer?.cancel();
     if (!_isPlaying) return;
-    _hideTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted && !_disposed && _isPlaying) {
-        setState(() => _showControls = false);
+    if (playerChromeOverlayBlocksSeek()) return;
+    final hideAfter =
+        _isTv ? const Duration(seconds: 10) : const Duration(seconds: 4);
+    _hideTimer = Timer(hideAfter, () {
+      if (!mounted || _disposed || !_isPlaying) return;
+      if (playerChromeOverlayBlocksSeek()) {
+        _startHideTimer();
+        return;
       }
+      setState(() => _showControls = false);
     });
   }
 
@@ -920,6 +932,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   @override
   void dispose() {
     _disposed = true;
+    PlayerBackExitGate.setTryHideChrome(null);
     PlayerBackExitGate.setOnFirstBack(null);
     PlayerServerStreamDialog.dismiss();
     _playFocus.dispose();
@@ -1562,6 +1575,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       onPlayPause: _togglePlayPause,
       onShowControls: () {
         setState(() => _showControls = true);
+        _startHideTimer();
         _claimPlayFocus();
       },
       onSeekBack: () =>
@@ -1573,12 +1587,15 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       onToggleControls: _toggleControls,
       onFocusBack: () {
         setState(() => _showControls = true);
+        _startHideTimer();
         _claimBackFocus();
       },
       onFocusPlay: () {
         setState(() => _showControls = true);
+        _startHideTimer();
         _claimPlayFocus();
       },
+      onControlsActivity: _startHideTimer,
       child: body,
     );
   }

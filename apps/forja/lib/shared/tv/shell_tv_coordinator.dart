@@ -207,6 +207,14 @@ abstract final class ShellTvFocusCoordinator {
       return true;
     }
 
+    // Visible player chrome: Back hides controls and arms exit confirm so
+    // the next Back leaves (Netflix-style: hide → exit).
+    if (PlayerBackExitGate.tryHideChrome()) {
+      PlayerBackExitGate.consumeFirstBackStay(enabled: tvBackPolicyEnabled);
+      debugPrint('[NavBack] player chrome hidden - stay in player');
+      return true;
+    }
+
     // TV: first Back stays in fullscreen players; second within the window exits.
     if (PlayerBackExitGate.consumeFirstBackStay(enabled: tvBackPolicyEnabled)) {
       debugPrint('[NavBack] player exit armed - stay in player');

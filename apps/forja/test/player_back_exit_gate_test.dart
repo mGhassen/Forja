@@ -19,6 +19,56 @@ void main() {
     PlayerBackExitGate.resetForTest();
   });
 
+  testWidgets('TV Back hides chrome before arming exit', (tester) async {
+    var chromeVisible = true;
+    PlayerBackExitGate.setTryHideChrome(() {
+      if (!chromeVisible) return false;
+      chromeVisible = false;
+      return true;
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(1920, 1080)),
+          child: ShellScope(
+            profile: ShellProfile.tv,
+            config: shellPlatformConfigFor(ShellProfile.tv),
+            child: const Stack(
+              children: [
+                SizedBox.expand(),
+                ShellOverlayNavigator(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    shellOverlayNavigatorKey.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const _FakePlayerRoute(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('player-body'), findsOneWidget);
+
+    // First Back hides chrome and arms exit - stays in player.
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text('player-body'), findsOneWidget);
+    expect(chromeVisible, isFalse);
+    expect(PlayerBackExitGate.isArmed, isTrue);
+
+    await tester.pump(const Duration(milliseconds: 450));
+
+    // Second Back exits.
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text('player-body'), findsNothing);
+  });
+
   testWidgets('TV Back requires two presses to leave a player surface',
       (tester) async {
     await tester.pumpWidget(

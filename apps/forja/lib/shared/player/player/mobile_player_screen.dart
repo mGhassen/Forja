@@ -397,6 +397,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // `_initPlayback` / mark-failed paths bail out instead of writing
     // to a disposed ValueNotifier.
     _disposed = true;
+    PlayerBackExitGate.setTryHideChrome(null);
     PlayerBackExitGate.setOnFirstBack(null);
     _cancelPendingStreamWork();
     _providerLoadFailures.dispose();

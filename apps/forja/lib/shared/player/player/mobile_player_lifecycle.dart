@@ -19,11 +19,14 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
   @override
   void initState() {
     super.initState();
-    PlayerBackExitGate.setOnFirstBack(() {
-      if (!mounted || _s._disposed) return;
-      if (!_s._showControls) setState(() => _s._showControls = true);
-      _s._startHideTimer();
+    PlayerBackExitGate.setTryHideChrome(() {
+      if (!mounted || _s._disposed) return false;
+      if (!_s._showControls) return false;
+      setState(() => _s._showControls = false);
+      _s._hideTimer?.cancel();
+      return true;
     });
+    // Exit-arm Back: chrome already hidden — do not re-show.
     _s._ownedProviderSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
       {},
     );

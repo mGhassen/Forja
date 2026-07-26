@@ -8,7 +8,6 @@ mixin _MobilePlayerUi on State<MobilePlayerScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   void _startHideTimer() {
-    if (widget.tvRemoteEnabled) return;
     _s._hideTimer?.cancel();
     if (_s._isInitPlaybackRunning ||
         !_s._playbackConfirmed ||
@@ -16,12 +15,20 @@ mixin _MobilePlayerUi on State<MobilePlayerScreen> {
         !_s._isPlayingNotifier.value) {
       return;
     }
-    _s._hideTimer = Timer(const Duration(seconds: 3), () {
+    if (playerChromeOverlayBlocksSeek()) return;
+    final hideAfter = widget.tvRemoteEnabled
+        ? const Duration(seconds: 10)
+        : const Duration(seconds: 3);
+    _s._hideTimer = Timer(hideAfter, () {
       if (mounted &&
           !_s._disposed &&
           !_s._hasError &&
           _s._playbackConfirmed &&
           !_s._isInitPlaybackRunning) {
+        if (playerChromeOverlayBlocksSeek()) {
+          _startHideTimer();
+          return;
+        }
         setState(() => _s._showControls = false);
       }
     });
@@ -58,12 +65,13 @@ mixin _MobilePlayerUi on State<MobilePlayerScreen> {
   }
 
   void _toggleControls() {
-    if (widget.tvRemoteEnabled) {
-      setState(() => _s._showControls = true);
-      return;
-    }
     setState(() => _s._showControls = !_s._showControls);
-    if (_s._showControls) _startHideTimer();
+    if (_s._showControls) {
+      _startHideTimer();
+      if (widget.tvRemoteEnabled) _claimPlayFocus();
+    } else {
+      _s._hideTimer?.cancel();
+    }
   }
 
   void _claimPlayFocus() {

@@ -272,6 +272,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
       },
       onShowControls: () {
         setState(() => _s._showControls = true);
+        _s._startHideTimer();
         _s._claimPlayFocus();
       },
       onSeekBack: () {
@@ -290,12 +291,15 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
       onToggleControls: _s._toggleControls,
       onFocusBack: () {
         setState(() => _s._showControls = true);
+        _s._startHideTimer();
         _s._claimBackFocus();
       },
       onFocusPlay: () {
         setState(() => _s._showControls = true);
+        _s._startHideTimer();
         _s._claimPlayFocus();
       },
+      onControlsActivity: _s._startHideTimer,
       child: body,
     );
   }
