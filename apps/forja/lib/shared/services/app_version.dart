@@ -3,7 +3,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 /// Release codename for the current **minor** arc only (patches inherit; no per-patch names).
 /// Runway: docs/backlog/README.md#codename-runway - update when shipping minor changes.
-const kReleaseCodename = 'Dabaghin';
+const kReleaseCodename = 'Elblat';
 
 final class AppVersion {
   AppVersion._();

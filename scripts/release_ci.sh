@@ -75,7 +75,8 @@ pick_platforms() {
   PLATFORM_MACOS_X86_64=false
   PLATFORM_WINDOWS=true
   PLATFORM_LINUX=true
-  PLATFORM_ANDROID_TV=false
+  PLATFORM_ANDROID_TV_ARM64=false
+  PLATFORM_ANDROID_TV_V7A=false
   PRERELEASE=false
 
   if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
@@ -83,7 +84,7 @@ pick_platforms() {
   fi
 
   echo
-  echo "Platforms (Enter = keep default):"
+  echo "Platforms (Enter = keep default) — one arch per prompt:"
   read -r -p "  macOS Apple Silicon arm64 [Y/n]: " ans
   [[ "$ans" =~ ^[Nn] ]] && PLATFORM_MACOS_ARM64=false
 
@@ -96,8 +97,11 @@ pick_platforms() {
   read -r -p "  Linux [Y/n]: " ans
   [[ "$ans" =~ ^[Nn] ]] && PLATFORM_LINUX=false
 
-  read -r -p "  Android TV [y/N]: " ans
-  [[ "$ans" =~ ^[Yy] ]] && PLATFORM_ANDROID_TV=true
+  read -r -p "  Android TV arm64 [y/N]: " ans
+  [[ "$ans" =~ ^[Yy] ]] && PLATFORM_ANDROID_TV_ARM64=true
+
+  read -r -p "  Android TV armeabi-v7a [y/N]: " ans
+  [[ "$ans" =~ ^[Yy] ]] && PLATFORM_ANDROID_TV_V7A=true
 
   read -r -p "  Pre-release [y/N]: " ans
   [[ "$ans" =~ ^[Yy] ]] && PRERELEASE=true
@@ -118,7 +122,8 @@ trigger_release() {
     -f "platform_macos_x86_64=$PLATFORM_MACOS_X86_64"
     -f "platform_windows=$PLATFORM_WINDOWS"
     -f "platform_linux=$PLATFORM_LINUX"
-    -f "platform_android_tv=$PLATFORM_ANDROID_TV"
+    -f "platform_android_tv_arm64=$PLATFORM_ANDROID_TV_ARM64"
+    -f "platform_android_tv_armeabi_v7a=$PLATFORM_ANDROID_TV_V7A"
   )
 
   echo "Triggering Release Forja ($mode)…"

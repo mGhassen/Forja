@@ -50,4 +50,35 @@ else
   sed -i "s/^  #define MyAppVersion \".*\"/${semver_line}/" "$SETUP_ISS"
 fi
 
+# On minor/major, set kReleaseCodename from docs/backlog runway (e.g. 1.3 → Elblat).
+if [[ "$BUMP" == "minor" || "$BUMP" == "major" ]]; then
+  VERSION_DART="$ROOT/apps/forja/lib/shared/services/app_version.dart"
+  BACKLOG_README="$ROOT/docs/backlog/README.md"
+  if [[ -f "$VERSION_DART" && -f "$BACKLOG_README" ]]; then
+    codename="$(
+      python3 - "$BACKLOG_README" "${major}.${minor}" <<'PY'
+import re, sys
+readme, want = sys.argv[1], sys.argv[2]
+text = open(readme, encoding="utf-8").read()
+# | **1.3** 🔄 | **Elblat** |
+pat = re.compile(
+    r"\|\s*\*\*" + re.escape(want) + r"\*\*\s*[^|]*\|\s*\*\*([^*]+)\*\*"
+)
+m = pat.search(text)
+print(m.group(1).strip() if m else "")
+PY
+    )"
+    if [[ -n "$codename" ]]; then
+      if [[ "$(uname -s)" == Darwin ]]; then
+        sed -i '' "s/^const kReleaseCodename = '.*';/const kReleaseCodename = '${codename}';/" "$VERSION_DART"
+      else
+        sed -i "s/^const kReleaseCodename = '.*';/const kReleaseCodename = '${codename}';/" "$VERSION_DART"
+      fi
+      echo "bump_version: kReleaseCodename → ${codename}" >&2
+    else
+      echo "bump_version: warning — no runway codename for ${major}.${minor}" >&2
+    fi
+  fi
+fi
+
 echo "${major}.${minor}.${patch}"

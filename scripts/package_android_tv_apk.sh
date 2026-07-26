@@ -2,20 +2,21 @@
 set -euo pipefail
 
 # Rename split-per-abi release APKs to Forja release asset names.
-# Usage: package_android_tv_apk.sh <version>
-# Output:
+# Usage: package_android_tv_apk.sh <version> [arm64|armeabi-v7a]...
+#   No ABI args → both (local release default).
+# Output (per selected ABI):
 #   dist/Forja-<version>-android-tv-arm64.apk
 #   dist/Forja-<version>-android-tv-armeabi-v7a.apk
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-VERSION="${1:?usage: package_android_tv_apk.sh <version>}"
+VERSION="${1:?usage: package_android_tv_apk.sh <version> [arm64|armeabi-v7a]...}"
+shift || true
 APK_DIR="$ROOT/apps/forja/build/app/outputs/flutter-apk"
 DIST="$ROOT/dist"
 
-SRC_ARM64="$APK_DIR/app-arm64-v8a-release.apk"
-SRC_V7A="$APK_DIR/app-armeabi-v7a-release.apk"
-OUT_ARM64="$DIST/Forja-${VERSION}-android-tv-arm64.apk"
-OUT_V7A="$DIST/Forja-${VERSION}-android-tv-armeabi-v7a.apk"
+if [[ $# -eq 0 ]]; then
+  set -- arm64 armeabi-v7a
+fi
 
 verify_libffi() {
   local apk="$1"
@@ -29,22 +30,39 @@ verify_libffi() {
   fi
 }
 
-if [[ ! -f "$SRC_ARM64" ]]; then
-  echo "error: missing $SRC_ARM64 — run flutter build apk --release --split-per-abi first" >&2
-  exit 1
-fi
-
-if [[ ! -f "$SRC_V7A" ]]; then
-  echo "error: missing $SRC_V7A — run flutter build apk --release --split-per-abi first" >&2
-  exit 1
-fi
-
 mkdir -p "$DIST"
-cp -f "$SRC_ARM64" "$OUT_ARM64"
-cp -f "$SRC_V7A" "$OUT_V7A"
+created=0
 
-verify_libffi "$OUT_ARM64" "lib/arm64-v8a/libffi.so"
-verify_libffi "$OUT_V7A" "lib/armeabi-v7a/libffi.so"
+for abi in "$@"; do
+  case "$abi" in
+    arm64|arm64-v8a)
+      src="$APK_DIR/app-arm64-v8a-release.apk"
+      out="$DIST/Forja-${VERSION}-android-tv-arm64.apk"
+      lib="lib/arm64-v8a/libffi.so"
+      ;;
+    armeabi-v7a|v7a|arm)
+      src="$APK_DIR/app-armeabi-v7a-release.apk"
+      out="$DIST/Forja-${VERSION}-android-tv-armeabi-v7a.apk"
+      lib="lib/armeabi-v7a/libffi.so"
+      ;;
+    *)
+      echo "error: unknown ABI '$abi' (want arm64 or armeabi-v7a)" >&2
+      exit 1
+      ;;
+  esac
 
-echo "Created $OUT_ARM64"
-echo "Created $OUT_V7A"
+  if [[ ! -f "$src" ]]; then
+    echo "error: missing $src — run flutter build apk --release --split-per-abi first" >&2
+    exit 1
+  fi
+
+  cp -f "$src" "$out"
+  verify_libffi "$out" "$lib"
+  echo "Created $out"
+  created=$((created + 1))
+done
+
+if [[ "$created" -eq 0 ]]; then
+  echo "error: no APKs packaged" >&2
+  exit 1
+fi

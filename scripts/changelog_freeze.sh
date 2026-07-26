@@ -13,6 +13,10 @@ set -euo pipefail
 #   - starts a fresh empty docs/changelog/1.2.x-[draft].md with
 #     **Since release:** pointing at the version just shipped.
 #
+# Minor bump (e.g. 1.2.x → 1.3.0): if `1.3.x-[draft].md` is missing, freezes
+# the previous minor draft (`1.2.x-[draft].md`), writes a fresh `1.3.x` draft,
+# and removes the old `1.2.x` draft.
+#
 # Idempotent: if the draft is already frozen (no draft file, or the released
 # file already exists), it exits 0 without changes so CI re-runs and the
 # "Existing tag" release mode do not fail.
@@ -20,9 +24,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="${1:?usage: changelog_freeze.sh <version>}"
 
-IFS=. read -r major minor _patch <<<"$VERSION"
+IFS=. read -r major minor patch <<<"$VERSION"
 minor_line="${major}.${minor}.x"
-draft="$ROOT/docs/changelog/${minor_line}-[draft].md"
+target_draft="$ROOT/docs/changelog/${minor_line}-[draft].md"
 released="$ROOT/docs/changelog/done/${VERSION}-[released].md"
 readme="$ROOT/docs/changelog/README.md"
 
@@ -38,29 +42,44 @@ if [[ -f "$released" ]]; then
   exit 0
 fi
 
-if [[ ! -f "$draft" ]]; then
-  echo "changelog_freeze: no draft at ${draft#"$ROOT"/} — nothing to freeze." >&2
+# Prefer the target minor draft. On a new minor (.0) with no draft yet, freeze
+# the previous minor's draft (accumulated since the last patch on that arc).
+source_draft="$target_draft"
+if [[ ! -f "$source_draft" ]]; then
+  if [[ "${patch:-0}" == "0" && "${minor:-0}" =~ ^[0-9]+$ && "$minor" -gt 0 ]]; then
+    prev_line="${major}.$((minor - 1)).x"
+    prev_draft="$ROOT/docs/changelog/${prev_line}-[draft].md"
+    if [[ -f "$prev_draft" ]]; then
+      source_draft="$prev_draft"
+      echo "changelog_freeze: minor bump — using ${prev_line}-[draft].md for ${VERSION}" >&2
+    fi
+  fi
+fi
+
+if [[ ! -f "$source_draft" ]]; then
+  echo "changelog_freeze: no draft at ${target_draft#"$ROOT"/} — nothing to freeze." >&2
   exit 0
 fi
 
 mkdir -p "$ROOT/docs/changelog/done"
 
 VERSION="$VERSION" CODENAME="$codename" MINOR_LINE="$minor_line" \
-DRAFT="$draft" RELEASED="$released" README="$readme" \
+SOURCE_DRAFT="$source_draft" TARGET_DRAFT="$target_draft" \
+RELEASED="$released" README="$readme" \
 python3 - <<'PY'
 import os
-import re
 
 version = os.environ["VERSION"]
 codename = os.environ["CODENAME"]
 minor_line = os.environ["MINOR_LINE"]
-draft_path = os.environ["DRAFT"]
+source_draft = os.environ["SOURCE_DRAFT"]
+target_draft = os.environ["TARGET_DRAFT"]
 released_path = os.environ["RELEASED"]
 readme_path = os.environ["README"]
 
 title = f"# {version} — {codename}" if codename else f"# {version}"
 
-with open(draft_path, "r", encoding="utf-8") as fh:
+with open(source_draft, "r", encoding="utf-8") as fh:
     src = fh.read()
 
 # Keep the bullet body: everything from the first horizontal rule onward.
@@ -81,7 +100,7 @@ if body:
 with open(released_path, "w", encoding="utf-8") as fh:
     fh.write("\n".join(released_lines).rstrip() + "\n")
 
-# Fresh empty draft for the next patch batch on the same minor line.
+# Fresh empty draft for the next patch batch on the *target* minor line.
 draft_lines = [
     f"# {minor_line} — {codename}" if codename else f"# {minor_line}",
     "",
@@ -101,8 +120,14 @@ draft_lines = [
     "---",
     "",
 ]
-with open(draft_path, "w", encoding="utf-8") as fh:
+with open(target_draft, "w", encoding="utf-8") as fh:
     fh.write("\n".join(draft_lines))
+
+# Minor bump: remove the previous-arc draft after freezing into the new minor.
+if os.path.abspath(source_draft) != os.path.abspath(target_draft) and os.path.isfile(
+    source_draft
+):
+    os.remove(source_draft)
 
 # README: refresh Active row, prepend a Released row.
 released_rel = f"done/{version}-[released].md"
@@ -152,5 +177,6 @@ for line in lines:
 with open(readme_path, "w", encoding="utf-8") as fh:
     fh.writelines(out)
 
-print(f"changelog_freeze: froze {draft_rel} -> {released_rel}")
+src_name = os.path.basename(source_draft)
+print(f"changelog_freeze: froze {src_name} -> {released_rel}; active {draft_rel}")
 PY

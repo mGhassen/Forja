@@ -28,24 +28,29 @@ on:
         description: Mark as pre-release
         type: boolean
         default: false
+      # One checkbox per arch — never group macOS / Android TV ABIs.
       platform_macos_arm64:
-        description: Build macOS Apple Silicon (arm64)
+        description: "macOS — Apple Silicon only (arm64)"
         type: boolean
         default: true
       platform_macos_x86_64:
-        description: Build macOS Intel (x86_64)
+        description: "macOS — Intel only (x86_64)"
         type: boolean
         default: false
       platform_windows:
-        description: Build Windows
+        description: "Windows"
         type: boolean
         default: true
       platform_linux:
-        description: Build Linux
+        description: "Linux"
         type: boolean
         default: true
-      platform_android_tv:
-        description: Build Android TV (arm64 + armeabi-v7a APKs)
+      platform_android_tv_arm64:
+        description: "Android TV — arm64 only"
+        type: boolean
+        default: false
+      platform_android_tv_armeabi_v7a:
+        description: "Android TV — armeabi-v7a only"
         type: boolean
         default: false
 
@@ -121,7 +126,8 @@ jobs:
                 "${{ inputs.platform_macos_x86_64 }}" != "true" && \
                 "${{ inputs.platform_windows }}" != "true" && \
                 "${{ inputs.platform_linux }}" != "true" && \
-                "${{ inputs.platform_android_tv }}" != "true" ]]; then
+                "${{ inputs.platform_android_tv_arm64 }}" != "true" && \
+                "${{ inputs.platform_android_tv_armeabi_v7a }}" != "true" ]]; then
             echo "::error::Select at least one platform to release."
             exit 1
           fi
@@ -165,7 +171,8 @@ jobs:
           chmod +x scripts/changelog_freeze.sh
           ./scripts/changelog_freeze.sh "$NEW"
 
-          git add apps/forja/pubspec.yaml installer/windows/setup.iss docs/changelog
+          git add apps/forja/pubspec.yaml apps/forja/lib/shared/services/app_version.dart \
+            installer/windows/setup.iss docs/changelog docs/backlog/README.md
           git commit -m "chore: release v${NEW}"
           git tag -a "v${NEW}" -m "Forja ${NEW}"
           git push origin HEAD
@@ -429,7 +436,7 @@ jobs:
 
   build_android_tv:
     name: Android TV
-    if: ${{ inputs.platform_android_tv }}
+    if: ${{ inputs.platform_android_tv_arm64 || inputs.platform_android_tv_armeabi_v7a }}
     needs: resolve_version
     runs-on: ubuntu-latest
     steps:
@@ -498,11 +505,23 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
         env:
           FORJA_KEY_ALIAS: ${{ secrets.FORJA_KEY_ALIAS }}
+          WANT_ARM64: ${{ inputs.platform_android_tv_arm64 }}
+          WANT_V7A: ${{ inputs.platform_android_tv_armeabi_v7a }}
         run: |
+          targets=()
+          [[ "$WANT_V7A" == "true" ]] && targets+=(android-arm)
+          [[ "$WANT_ARM64" == "true" ]] && targets+=(android-arm64)
+          if [[ ${#targets[@]} -eq 0 ]]; then
+            echo "::error::No Android TV ABI selected."
+            exit 1
+          fi
+          IFS=,
+          target_platform="${targets[*]}"
+          unset IFS
+          echo "Building target-platform=$target_platform"
           flutter pub get
-          # Only ship arm64 + armeabi-v7a — skip x86_64 to save ~several GB on the runner.
           flutter build apk --release --split-per-abi \
-            --target-platform android-arm,android-arm64 \
+            --target-platform "$target_platform" \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
@@ -517,14 +536,22 @@ jobs:
             -PFORJA_KEY_PASSWORD="${{ secrets.FORJA_KEY_PASSWORD }}"
 
       - name: Package Android TV APKs
-        run: ./scripts/package_android_tv_apk.sh "${{ needs.resolve_version.outputs.version }}"
+        env:
+          WANT_ARM64: ${{ inputs.platform_android_tv_arm64 }}
+          WANT_V7A: ${{ inputs.platform_android_tv_armeabi_v7a }}
+        run: |
+          abis=()
+          [[ "$WANT_ARM64" == "true" ]] && abis+=(arm64)
+          [[ "$WANT_V7A" == "true" ]] && abis+=(armeabi-v7a)
+          ./scripts/package_android_tv_apk.sh \
+            "${{ needs.resolve_version.outputs.version }}" \
+            "${abis[@]}"
 
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Android-TV-apks
-          path: |
-            dist/Forja-${{ needs.resolve_version.outputs.version }}-android-tv-arm64.apk
-            dist/Forja-${{ needs.resolve_version.outputs.version }}-android-tv-armeabi-v7a.apk
+          path: dist/Forja-${{ needs.resolve_version.outputs.version }}-android-tv-*.apk
+          if-no-files-found: error
 
   # Platforms are independent: publish whatever succeeded. Failed platforms do not
   # block the GitHub Release — re-run with "Existing tag" + only the missing platforms.
@@ -551,11 +578,11 @@ jobs:
     steps:
       - name: Platform build summary
         run: |
-          echo "macOS arm64:  ${{ needs.build_macos_arm64.result }}"
-          echo "macOS x86_64: ${{ needs.build_macos_x86_64.result }}"
-          echo "Windows:      ${{ needs.build_windows.result }}"
-          echo "Linux:        ${{ needs.build_linux.result }}"
-          echo "Android TV:   ${{ needs.build_android_tv.result }}"
+          echo "macOS arm64:           ${{ needs.build_macos_arm64.result }}"
+          echo "macOS x86_64:          ${{ needs.build_macos_x86_64.result }}"
+          echo "Windows:               ${{ needs.build_windows.result }}"
+          echo "Linux:                 ${{ needs.build_linux.result }}"
+          echo "Android TV:            ${{ needs.build_android_tv.result }}"
           failed=0
           for result in \
             "${{ needs.build_macos_arm64.result }}" \

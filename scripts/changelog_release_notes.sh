@@ -27,7 +27,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="${1:?usage: changelog_release_notes.sh <version> [out_file]}"
 OUT="${2:-}"
 
-IFS=. read -r major minor _patch <<<"$VERSION"
+IFS=. read -r major minor patch <<<"$VERSION"
 released="$ROOT/docs/changelog/done/${VERSION}-[released].md"
 draft="$ROOT/docs/changelog/${major}.${minor}.x-[draft].md"
 
@@ -35,6 +35,12 @@ draft="$ROOT/docs/changelog/${major}.${minor}.x-[draft].md"
 # freezes the draft before tagging, leaving a fresh empty draft behind).
 if [[ -f "$released" ]]; then
   draft="$released"
+elif [[ ! -f "$draft" && "${patch:-0}" == "0" && "${minor:-0}" =~ ^[0-9]+$ && "$minor" -gt 0 ]]; then
+  # Minor bump before freeze: bullets still live on the previous arc draft.
+  prev_draft="$ROOT/docs/changelog/${major}.$((minor - 1)).x-[draft].md"
+  if [[ -f "$prev_draft" ]]; then
+    draft="$prev_draft"
+  fi
 fi
 
 # Codename source of truth: kReleaseCodename in app_version.dart (admin updates
