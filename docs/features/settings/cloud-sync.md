@@ -53,7 +53,7 @@ Per profile:
 
 | Store | What it includes |
 |---------|------------------|
-| **`accounts.features`** | Lean account flags (default `{}` = all off). Enabled keys only — e.g. `iptvScrape` (Find Portals) and `dealPortal` (Deal from catalog pool). The app re-pulls flags/credits on IPTV open and when the app resumes. |
+| **`accounts.features`** | Lean account flags (default `{}` = all off). Enabled boolean keys only — e.g. `iptvScrape` (Find Portals) and `dealPortal` (Deal from catalog pool). Numeric `maxIptvPortals` when raised above the default **5** (omit when 5). Admins (`is_admin`) are unlimited for portals. The app re-pulls flags/credits on IPTV open and when the app resumes. |
 | **`user_iptv_portals`** | Assigned portals: `portal_id` + your **portal name** + favorite. Credentials live on shared `iptv_portals` (passwords encrypted at rest). |
 | **`profile_settings` → Playback** | Full prefs: torrent / Stremio / Nuvio / webstreaming play sources, Simple resolve, auto next/skip intro, IPTV EPG, preferred audio / subtitle, max quality, anime title language |
 | **`profile_settings` → Features** | Visible shell tabs and default tab — editable on web under **Profile → Features** |

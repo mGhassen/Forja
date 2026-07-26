@@ -58,16 +58,11 @@ export function useUserIptvPortals() {
           'Refusing to save an empty portal list (would wipe cloud assignments). Delete portals individually or keep at least one.',
         )
       }
-      const now = new Date().toISOString()
       const portalIds: string[] = []
       const assignments: Array<{
-        account_id: string
-        profile_id: string
         portal_id: string
         portal_name: string
         favorite: boolean
-        updated_at: string
-        updated_by: string
       }> = []
 
       for (const row of rows) {
@@ -81,29 +76,20 @@ export function useUserIptvPortals() {
         })
         portalIds.push(portalId)
         assignments.push({
-          account_id: user.id,
-          profile_id: activeProfile.id,
           portal_id: portalId,
           portal_name: row.portalName.trim() || row.username,
           favorite: row.favorite === true,
-          updated_at: now,
-          updated_by: user.id,
         })
       }
 
-      const { error: delError } = await supabase
-        .from('user_iptv_portals')
-        .delete()
-        .eq('account_id', user.id)
-        .eq('profile_id', activeProfile.id)
-      if (delError) throw delError
-
-      if (assignments.length) {
-        const { error: insError } = await supabase
-          .from('user_iptv_portals')
-          .insert(assignments)
-        if (insError) throw insError
-      }
+      const { error: replaceError } = await supabase.rpc(
+        'replace_user_iptv_portals',
+        {
+          p_profile_id: activeProfile.id,
+          p_assignments: assignments,
+        },
+      )
+      if (replaceError) throw replaceError
       return portalIds
     },
     onSuccess: () => {

@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
-import { useAccountFeatures } from '@/hooks/use-account-features'
+import { useAccountFeatures, canAddIptvPortal } from '@/hooks/use-account-features'
 import { useUserIptvPortals } from '@/hooks/use-user-iptv-portals'
 import {
   downloadTextFile,
@@ -164,6 +164,7 @@ export function AccountSettingsIptvPage() {
   const iptvScrapeActive = accountFeatures?.iptvScrape === true
   const dealPortalActive = accountFeatures?.dealPortal === true
   const iptvCredits = accountFeatures?.iptvCredits ?? 0
+  const maxIptvPortals = accountFeatures?.maxIptvPortals ?? 5
   const profileId = portalsHook.profileId
   const isLoading = portalsHook.isLoading
   const isSaving = portalsHook.isSaving
@@ -186,6 +187,8 @@ export function AccountSettingsIptvPage() {
   const [savedFlash, setSavedFlash] = useState(false)
   const [portalPage, setPortalPage] = useState(1)
   const [hydrateError, setHydrateError] = useState<string | null>(null)
+  const atPortalLimit =
+    !editingKey && !canAddIptvPortal(accountFeatures, draft.portals.length)
 
   useEffect(() => {
     setDraft({ portals: [] })
@@ -302,6 +305,15 @@ export function AccountSettingsIptvPage() {
     const username = portalForm.username.trim()
     const password = portalForm.password
     if (!url || !username || !password) return
+    if (
+      !editingKey &&
+      !canAddIptvPortal(accountFeatures, draft.portals.length)
+    ) {
+      setShareError(
+        `Maximum of ${maxIptvPortals} IPTV portals per profile`,
+      )
+      return
+    }
     const existing = editingKey
       ? draft.portals.find((p) => rowIdentity(p) === editingKey)
       : undefined
@@ -320,6 +332,7 @@ export function AccountSettingsIptvPage() {
     setPortalForm({ url: '', username: '', password: '', portalName: '' })
     setEditingKey(null)
     setAddOpen(false)
+    setShareError(null)
   }
 
   const beginEdit = (portal: IptvPortalRow) => {
@@ -517,6 +530,12 @@ export function AccountSettingsIptvPage() {
           <Button
             type="button"
             variant="secondary"
+            disabled={atPortalLimit && !addOpen}
+            title={
+              atPortalLimit
+                ? `Maximum of ${maxIptvPortals} portals per profile`
+                : undefined
+            }
             onClick={() => {
               setAddOpen((open) => !open)
               setEditingKey(null)
@@ -537,6 +556,9 @@ export function AccountSettingsIptvPage() {
         <p className="mb-2 text-xs text-forja-muted">
           {filteredPortals.length}
           {portalQuery.trim() ? ` of ${draft.portals.length}` : ''} portals
+          {accountFeatures?.isAdmin
+            ? ' · unlimited'
+            : ` · max ${maxIptvPortals}`}
           {portalPager.totalPages > 1
             ? ` · page ${portalPager.page} of ${portalPager.totalPages}`
             : ''}

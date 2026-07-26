@@ -31,7 +31,18 @@ mixin _IptvControllerPortal on ChangeNotifier {
   }
 
   Future<void> _scrapeAndVerify() async {
-    const targetAlive = 5;
+    final room = AccountFeatures.instance.iptvPortalSlotsRemaining(
+      _c.verified.length,
+    );
+    if (room < 1) {
+      _c.statusText =
+          'Portal limit reached (${AccountFeatures.instance.iptvPortalLimitLabel()}).';
+      _c.isScraping = false;
+      notifyListeners();
+      return;
+    }
+    // Prefer up to 5 new portals per press, but never exceed remaining slots.
+    final targetAlive = room < 5 ? room : 5;
     // Hard safety cap so a totally dead source can't loop forever.
     const maxPagesPerPress = 40;
     final newAlive = <VerifiedPortal>[];
@@ -348,6 +359,12 @@ mixin _IptvControllerPortal on ChangeNotifier {
       notifyListeners();
       return;
     }
+    if (!AccountFeatures.instance.canAddIptvPortal(_c.verified.length)) {
+      _c.addError =
+          'Maximum of ${AccountFeatures.instance.maxIptvPortals} portals per profile';
+      notifyListeners();
+      return;
+    }
     _c.isAdding = true;
     _c.addError = null;
     notifyListeners();
@@ -492,6 +509,11 @@ mixin _IptvControllerPortal on ChangeNotifier {
         final v = await IptvClient.verifyOrNull(p);
         if (v == null) {
           failed++;
+        } else if (!AccountFeatures.instance.canAddIptvPortal(
+          _c.verified.length + newAlive.length,
+        )) {
+          // Re-check after await — parallel workers may have filled the cap.
+          skipped++;
         } else {
           // Tag as Manual even if the existing entry was scraped: this
           // promotes the user-imported portal into the visible list.
@@ -558,6 +580,17 @@ mixin _IptvControllerPortal on ChangeNotifier {
     if (AccountFeatures.instance.iptvCredits < 1) {
       return (assigned: 0, error: 'No credits left.');
     }
+    final room = AccountFeatures.instance.iptvPortalSlotsRemaining(
+      _c.verified.length,
+    );
+    if (room < 1) {
+      return (
+        assigned: 0,
+        error:
+            'Maximum of ${AccountFeatures.instance.maxIptvPortals} portals per profile',
+      );
+    }
+    final dealCount = count < room ? count : room;
     final SyncProfile profile;
     try {
       final active = await SyncService.instance.activeProfile();
@@ -568,14 +601,14 @@ mixin _IptvControllerPortal on ChangeNotifier {
     } on SyncProfileFetchException catch (e) {
       return (assigned: 0, error: e.message);
     }
-    _c.statusText = 'Dealing $count portals ($region)…';
+    _c.statusText = 'Dealing $dealCount portals ($region)…';
     notifyListeners();
     final beforeKeys = _c.verified.map((v) => v.key).toSet();
     try {
       final ids = await SyncService.instance.dealIptvPortals(
         profileId: profile.id,
         region: region,
-        count: count,
+        count: dealCount,
       );
       await SyncService.instance.pullAccountFeatures(force: true);
       final pulled =

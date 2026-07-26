@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -77,6 +78,14 @@ class _MusicScreenState extends State<MusicScreen>
   }
 
   @override
+  void onShellTabShown() {
+    super.onShellTabShown();
+    if (_trendingTracks.isEmpty && !_isLoading) {
+      unawaited(onShellTabRefresh(force: false));
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
@@ -99,7 +108,7 @@ class _MusicScreenState extends State<MusicScreen>
   Future<void> _loadUserData() async {
     final playlists = await _storageService.getPlaylists();
     final albums = await _storageService.getSavedAlbums();
-    if (!mounted) return;
+    if (!mounted || !shellTabVisible) return;
     setState(() {
       _userPlaylists = playlists;
       _userAlbums = albums;
@@ -107,10 +116,10 @@ class _MusicScreenState extends State<MusicScreen>
   }
 
   Future<void> _loadTrendingTracks() async {
-    if (!mounted) return;
+    if (!mounted || !shellTabVisible) return;
     setState(() => _isLoading = true);
     final tracks = await _musicService.getTrendingTracks(index: _currentMusicOffset, limit: _musicLimit);
-    if (!mounted) return;
+    if (!mounted || !shellTabVisible) return;
     setState(() {
       _trendingTracks = tracks;
       _isLoading = false;

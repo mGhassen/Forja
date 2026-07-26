@@ -26,10 +26,20 @@ class _PortalListView extends StatelessWidget {
                 ),
                 icon: Icons.playlist_play_rounded,
               ),
-              IptvIconAction(
-                tooltip: 'Add portal',
-                onPressed: () => _showAddDialog(context),
-                icon: Icons.add_rounded,
+              ListenableBuilder(
+                listenable: AccountFeatures.instance.revision,
+                builder: (context, _) {
+                  final canAdd = AccountFeatures.instance.canAddIptvPortal(
+                    ctrl.verified.length,
+                  );
+                  return IptvIconAction(
+                    tooltip: canAdd
+                        ? 'Add portal'
+                        : 'Portal limit reached (${AccountFeatures.instance.iptvPortalLimitLabel()})',
+                    onPressed: canAdd ? () => _showAddDialog(context) : null,
+                    icon: Icons.add_rounded,
+                  );
+                },
               ),
               if (ctrl.verified.isNotEmpty)
                 IptvIconAction(

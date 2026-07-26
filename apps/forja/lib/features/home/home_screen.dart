@@ -73,6 +73,9 @@ class _HomeScreenState extends State<HomeScreen>
   Future<List<Movie>>? _becauseFuture;
   int _becausePoolSize = 0; // unique in-progress shows; controls shuffle button
   StreamSubscription<List<Map<String, dynamic>>>? _historySeedSub;
+  /// Invalidates Because-you-watched + Trakt home rails when the tab hides.
+  int _homeBgWorkGen = 0;
+  bool _postSplashWorkStarted = false;
   VoidCallback? _splashDismissedListener;
   VoidCallback? _watchProviderListener;
   VoidCallback? _homeCategoryListener;
@@ -167,6 +170,18 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Future<void> onShellTabRefresh({required bool force}) => _reloadHomeFeed();
+
+  @override
+  void onShellTabHidden() {
+    super.onShellTabHidden();
+    _pauseHomeBackgroundWork();
+  }
+
+  @override
+  void onShellTabShown() {
+    super.onShellTabShown();
+    _resumeHomeBackgroundWorkIfNeeded();
+  }
 
   int? get _watchProviderId => ShellBus.selectedWatchProviderId.value;
 

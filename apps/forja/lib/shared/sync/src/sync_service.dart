@@ -1095,6 +1095,8 @@ class SyncService {
   ///
   /// Callers must not pass `[]` unless the user intentionally cleared every
   /// portal - empty local cache must never reach here (see SyncDomainBridge).
+  ///
+  /// Uses `replace_user_iptv_portals` RPC (grandfather over-limit + atomic).
   Future<void> replaceUserIptvPortals(
     List<
       ({
@@ -1111,29 +1113,21 @@ class SyncService {
     final profile = await activeProfile();
     if (profile == null) return;
 
-    final now = DateTime.now().toUtc().toIso8601String();
     try {
-      await client
-          .from('user_iptv_portals')
-          .delete()
-          .eq('account_id', userId)
-          .eq('profile_id', profile.id);
-
-      if (assignments.isEmpty) return;
-
-      await client.from('user_iptv_portals').insert([
-        for (final a in assignments)
-          {
-            'account_id': userId,
-            'profile_id': profile.id,
-            'portal_id': a.portalId,
-            'portal_name': a.portalName,
-            'favorite': a.favorite,
-            'updated_at': now,
-            'updated_by': userId,
-            'created_by': userId,
-          },
-      ]);
+      await client.rpc(
+        'replace_user_iptv_portals',
+        params: {
+          'p_profile_id': profile.id,
+          'p_assignments': [
+            for (final a in assignments)
+              {
+                'portal_id': a.portalId,
+                'portal_name': a.portalName,
+                'favorite': a.favorite,
+              },
+          ],
+        },
+      );
     } catch (e) {
       debugPrint('[Sync] replaceUserIptvPortals error: $e');
     }

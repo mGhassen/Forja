@@ -366,14 +366,27 @@ class _JellyfinScreenState extends State<JellyfinScreen>
 
   void _startHeroTimer() {
     _heroTimer?.cancel();
-    if (_featuredItems.length <= 1) return;
+    if (!shellTabVisible || _featuredItems.length <= 1) return;
     _heroTimer = Timer.periodic(const Duration(seconds: 7), (_) {
-      if (!mounted || !_heroController.hasClients) return;
+      if (!mounted || !shellTabVisible || !_heroController.hasClients) return;
       _heroPage = (_heroPage + 1) % _featuredItems.length;
       _heroController.animateToPage(_heroPage,
           duration: const Duration(milliseconds: 600),
           curve: Curves.easeInOutCubic);
     });
+  }
+
+  @override
+  void onShellTabHidden() {
+    super.onShellTabHidden();
+    _heroTimer?.cancel();
+    _heroTimer = null;
+  }
+
+  @override
+  void onShellTabShown() {
+    super.onShellTabShown();
+    _startHeroTimer();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

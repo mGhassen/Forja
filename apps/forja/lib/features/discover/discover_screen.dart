@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:async';
 import 'package:rust/rust.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -24,6 +25,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   List<Movie> _movies = [];
   bool _isLoading = false;
   int _currentPage = 1;
+  int _loadGen = 0;
   
   // Filters
   String _selectedType = "Movies"; // Movies, TV Shows, All
@@ -84,6 +86,20 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   @override
+  void onShellTabHidden() {
+    super.onShellTabHidden();
+    _loadGen++;
+  }
+
+  @override
+  void onShellTabShown() {
+    super.onShellTabShown();
+    if (_movies.isEmpty && !_isLoading) {
+      unawaited(_loadData());
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
     _loadGenres();
@@ -118,7 +134,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   }
 
   Future<void> _loadData() async {
-    if (_isLoading) return;
+    if (_isLoading || !shellTabVisible) return;
+    final gen = ++_loadGen;
     setState(() => _isLoading = true);
     
     try {
@@ -156,6 +173,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       }
 
       final responses = await Future.wait(tasks);
+      if (!mounted || !shellTabVisible || gen != _loadGen) return;
       for (var list in responses) {
         results.addAll(list);
       }
@@ -165,18 +183,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
         results.shuffle();
       }
 
-      if (mounted) {
-        setState(() {
-          _movies = results;
-          _isLoading = false;
-        });
-        if (_scrollController.hasClients) {
-          _scrollController.jumpTo(0);
-        }
+      setState(() {
+        _movies = results;
+        _isLoading = false;
+      });
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
       }
     } catch (e) {
       debugPrint("Error loading discover: $e");
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && gen == _loadGen) setState(() => _isLoading = false);
     }
   }
 

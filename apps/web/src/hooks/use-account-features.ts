@@ -14,15 +14,18 @@ export function useAccountFeatures() {
     queryKey: ['account_features', user?.id],
     enabled: Boolean(user?.id && supabaseConfigured),
     queryFn: async (): Promise<AccountFeaturesExpanded> => {
-      let data: { features?: unknown; iptv_credits?: number | null } | null =
-        null
+      let data: {
+        features?: unknown
+        iptv_credits?: number | null
+        is_admin?: boolean | null
+      } | null = null
+
       const withCredits = await supabase
         .from('accounts')
-        .select('features, iptv_credits')
+        .select('features, iptv_credits, is_admin')
         .eq('id', user!.id)
         .maybeSingle()
       if (withCredits.error) {
-        // Column missing until RFC-040 migration is applied.
         const fallback = await supabase
           .from('accounts')
           .select('features')
@@ -33,13 +36,24 @@ export function useAccountFeatures() {
       } else {
         data = withCredits.data
       }
+
       const credits = Number(data?.iptv_credits ?? 0)
-      return expandAccountFeatures(
-        data?.features,
-        Number.isFinite(credits) ? credits : 0,
-      )
+      return expandAccountFeatures(data?.features, {
+        iptvCredits: Number.isFinite(credits) ? credits : 0,
+        isAdmin: data?.is_admin === true,
+      })
     },
     staleTime: 60_000,
     placeholderData: emptyAccountFeatures(),
   })
+}
+
+/** Whether the account can add another portal to a profile inventory. */
+export function canAddIptvPortal(
+  features: AccountFeaturesExpanded | undefined,
+  currentCount: number,
+): boolean {
+  if (!features) return currentCount < 5
+  if (features.isAdmin) return true
+  return currentCount < features.maxIptvPortals
 }

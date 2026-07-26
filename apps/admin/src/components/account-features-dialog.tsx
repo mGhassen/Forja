@@ -1,13 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { X } from 'lucide-react'
+import { Minus, Plus, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { adminDb } from '@/lib/admin-db'
 import {
   ACCOUNT_FEATURES,
+  ABSOLUTE_MAX_IPTV_PORTALS,
+  DEFAULT_MAX_IPTV_PORTALS,
   type AccountFeatureKey,
   type AccountFeaturesMap,
   parseAccountFeatures,
+  parseMaxIptvPortals,
 } from '@/lib/account-features'
 import { cn } from '@/lib/utils'
 
@@ -15,6 +18,7 @@ type Props = {
   accountId: string
   accountEmail: string | null
   features: Record<string, unknown> | null
+  isAdmin: boolean
   onClose: () => void
 }
 
@@ -22,17 +26,23 @@ export function AccountFeaturesDialog({
   accountId,
   accountEmail,
   features,
+  isAdmin,
   onClose,
 }: Props) {
   const qc = useQueryClient()
   const [local, setLocal] = useState<AccountFeaturesMap>(() =>
     parseAccountFeatures(features),
   )
+  const [maxPortals, setMaxPortals] = useState(() =>
+    parseMaxIptvPortals(features),
+  )
   const [error, setError] = useState<string | null>(null)
   const [busyKey, setBusyKey] = useState<AccountFeatureKey | null>(null)
+  const [maxBusy, setMaxBusy] = useState(false)
 
   useEffect(() => {
     setLocal(parseAccountFeatures(features))
+    setMaxPortals(parseMaxIptvPortals(features))
   }, [features, accountId])
 
   const setFlag = useMutation({
@@ -69,6 +79,38 @@ export function AccountFeaturesDialog({
     onSettled: () => setBusyKey(null),
   })
 
+  const setMax = useMutation({
+    mutationFn: async (next: number) => {
+      const clamped = Math.max(
+        1,
+        Math.min(ABSOLUTE_MAX_IPTV_PORTALS, Math.trunc(next)),
+      )
+      setMaxBusy(true)
+      setError(null)
+      const { data, error: rpcError } = await adminDb.rpc(
+        'admin_set_max_iptv_portals',
+        {
+          p_account_id: accountId,
+          p_max: clamped,
+        },
+      )
+      if (rpcError) throw rpcError
+      return parseMaxIptvPortals(
+        (data as Record<string, unknown> | null) ?? { maxIptvPortals: clamped },
+      )
+    },
+    onSuccess: (value) => {
+      setMaxPortals(value)
+      void qc.invalidateQueries({ queryKey: ['admin', 'accounts'] })
+    },
+    onError: (e) => {
+      setError(e instanceof Error ? e.message : 'Failed to update max portals')
+    },
+    onSettled: () => setMaxBusy(false),
+  })
+
+  const savedMax = parseMaxIptvPortals(features)
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -104,6 +146,80 @@ export function AccountFeaturesDialog({
         </div>
 
         <ul className="max-h-[min(60vh,28rem)] space-y-1 overflow-y-auto p-3">
+          <li className="flex items-start gap-3 rounded-xl px-3 py-3 hover:bg-white/2">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-forja-text">
+                Max IPTV portals
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-forja-muted">
+                Cap per profile (default {DEFAULT_MAX_IPTV_PORTALS}). Stored in
+                features.maxIptvPortals when raised. Admin accounts are
+                unlimited.
+              </p>
+              <p className="mt-1 font-mono text-[10px] text-forja-muted/80">
+                maxIptvPortals
+              </p>
+              {isAdmin ? (
+                <p className="mt-2 text-xs font-medium text-amber-300">
+                  This account is admin — portal cap bypassed (unlimited).
+                </p>
+              ) : null}
+            </div>
+            <div className="inline-flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                disabled={maxBusy || maxPortals <= 1 || setMax.isPending}
+                aria-label="Decrease max portals"
+                onClick={() => setMax.mutate(maxPortals - 1)}
+                className="inline-flex size-7 items-center justify-center rounded-md border border-forja-border text-forja-muted transition-colors hover:bg-white/5 hover:text-forja-text disabled:pointer-events-none disabled:opacity-40"
+              >
+                <Minus className="size-3.5" />
+              </button>
+              <input
+                type="number"
+                min={1}
+                max={ABSOLUTE_MAX_IPTV_PORTALS}
+                value={maxPortals}
+                disabled={maxBusy || setMax.isPending}
+                aria-label="Max IPTV portals"
+                onChange={(e) => {
+                  const n = Number(e.target.value)
+                  if (!Number.isFinite(n)) return
+                  setMaxPortals(
+                    Math.max(
+                      1,
+                      Math.min(ABSOLUTE_MAX_IPTV_PORTALS, Math.trunc(n)),
+                    ),
+                  )
+                }}
+                onBlur={() => {
+                  if (maxPortals !== savedMax) {
+                    setMax.mutate(maxPortals)
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur()
+                  }
+                }}
+                className="h-7 w-12 rounded-md border border-forja-border bg-transparent text-center font-disp text-base tabular-nums text-forja-text outline-none focus:border-forja-green/50 disabled:opacity-60"
+              />
+              <button
+                type="button"
+                disabled={
+                  maxBusy ||
+                  maxPortals >= ABSOLUTE_MAX_IPTV_PORTALS ||
+                  setMax.isPending
+                }
+                aria-label="Increase max portals"
+                onClick={() => setMax.mutate(maxPortals + 1)}
+                className="inline-flex size-7 items-center justify-center rounded-md border border-forja-border text-forja-muted transition-colors hover:border-forja-green/40 hover:bg-forja-green/10 hover:text-forja-green disabled:pointer-events-none disabled:opacity-40"
+              >
+                <Plus className="size-3.5" />
+              </button>
+            </div>
+          </li>
+
           {ACCOUNT_FEATURES.map((def) => {
             const on = local[def.key] === true
             const busy = busyKey === def.key

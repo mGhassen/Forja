@@ -539,9 +539,7 @@ class _BrowserViewState extends State<_BrowserView> {
             }
             return SliverReorderableList(
               itemCount: movable.length,
-              proxyDecorator: (child, index, animation) {
-                return Material(color: Colors.transparent, child: child);
-              },
+              proxyDecorator: _iptvCategoryReorderProxy,
               onReorderItem: (oldIndex, newIndex) {
                 unawaited(ctrl.reorderLiveCategories(oldIndex, newIndex));
               },

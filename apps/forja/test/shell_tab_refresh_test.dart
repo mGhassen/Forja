@@ -70,4 +70,14 @@ void main() {
     final state = tester.state<_StaleProbeState>(find.byType(_StaleProbe));
     expect(state.shellBlocksEviction, isTrue);
   });
+
+  testWidgets('ShellTabRefresh hide/show toggles shellTabVisible', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: _EvictProbe()));
+    final state = tester.state<_EvictProbeState>(find.byType(_EvictProbe));
+    expect(state.shellTabVisible, isTrue);
+    state.onShellTabHidden();
+    expect(state.shellTabVisible, isFalse);
+    state.onShellTabShown();
+    expect(state.shellTabVisible, isTrue);
+  });
 }

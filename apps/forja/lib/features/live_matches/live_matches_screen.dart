@@ -24,6 +24,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/features/live_matches/live_embed_nav.dart';
 import 'package:forja/features/live_matches/live_matches_sport_filter.dart';
 import 'package:rust/rust.dart';
@@ -49,6 +50,7 @@ class LiveMatchesScreen extends StatefulWidget {
 class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     with
         TickerProviderStateMixin,
+        ShellTabRefresh<LiveMatchesScreen>,
         _LiveMatchesData,
         _LiveMatchesBuild,
         _LiveMatchesTimeline,
@@ -64,6 +66,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   List<_Sport> _sports = [];
   bool _loading = true;
   String? _error;
+  int _loadGen = 0;
 
   // selected sport filter ('all' = no filter)
   String _sportFilter = 'all';
@@ -110,6 +113,33 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   );
 
   @override
+  Duration get shellStaleAfter => ShellTokens.tabStaleDefault;
+
+  @override
+  Future<void> onShellTabRefresh({required bool force}) async {
+    if (_error != null || _sports.isEmpty || force) {
+      await _load();
+    }
+  }
+
+  @override
+  void onShellTabHidden() {
+    super.onShellTabHidden();
+    _loadGen++;
+    _timelineLiveTick?.cancel();
+    _timelineLiveTick = null;
+  }
+
+  @override
+  void onShellTabShown() {
+    super.onShellTabShown();
+    _syncTimelineLiveTick();
+    if (_error != null || (_sports.isEmpty && !_loading)) {
+      unawaited(_load());
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
     ShellTvFocusCoordinator.registerTabDefaults(
@@ -151,10 +181,12 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
   }
 
   void _syncTimelineLiveTick() {
-    final need = _view == _LiveMatchesView.timeline;
+    final need = shellTabVisible && _view == _LiveMatchesView.timeline;
     if (need) {
       _timelineLiveTick ??= Timer.periodic(const Duration(minutes: 1), (_) {
-        if (!mounted || _view != _LiveMatchesView.timeline) return;
+        if (!mounted || !shellTabVisible || _view != _LiveMatchesView.timeline) {
+          return;
+        }
         setState(() {});
       });
     } else {

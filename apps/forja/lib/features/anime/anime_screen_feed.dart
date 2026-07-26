@@ -1,6 +1,6 @@
 part of 'anime_screen.dart';
 
-mixin _AnimeScreenFeed on State<AnimeScreen> {
+mixin _AnimeScreenFeed on State<AnimeScreen>, ShellTabRefresh<AnimeScreen> {
   _AnimeScreenState get _s => this as _AnimeScreenState;
 
   void _onHistoryChanged() => _refreshHistory();
@@ -55,10 +55,12 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
   ) async {
     try {
       final list = await spotlightFuture;
-      if (!mounted || gen != _s._loadGen || list.isEmpty) return;
+      if (!mounted || !shellTabVisible || gen != _s._loadGen || list.isEmpty) {
+        return;
+      }
       final head = list.take(5).toList();
       final enrichedHead = await _s._service.attachTmdbBackdrops(head);
-      if (!mounted || gen != _s._loadGen) return;
+      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
       final byId = {for (final c in enrichedHead) c.id: c};
       final merged = [
         for (final c in list) byId[c.id] ?? c,
@@ -72,6 +74,7 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted || !shellTabVisible) return;
     final gen = ++_s._loadGen;
     unawaited(_refreshHistory());
 
@@ -123,7 +126,7 @@ mixin _AnimeScreenFeed on State<AnimeScreen> {
       top10Future,
       recentEpisodesFuture,
     ]);
-    if (!mounted || gen != _s._loadGen) return;
+    if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
 
     final hasCatalog = results
         .cast<List<AnimeCard>>()

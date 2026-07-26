@@ -17,6 +17,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -30,7 +31,10 @@ class AsianDramaScreen extends StatefulWidget {
 }
 
 class _AsianDramaScreenState extends State<AsianDramaScreen>
-    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+    with
+        AutomaticKeepAliveClientMixin,
+        WidgetsBindingObserver,
+        ShellTabRefresh<AsianDramaScreen> {
   /// KissKH `/Drama/{id}` hero synopsis - kept but off (burns shared IP).
   static const bool _kissKhHeroSynopsisEnrich = false;
 
@@ -73,6 +77,30 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  Duration get shellStaleAfter => ShellTokens.tabStaleDefault;
+
+  @override
+  Future<void> onShellTabRefresh({required bool force}) async {
+    if (_error != null || _feed == null || force) {
+      await _load();
+    }
+  }
+
+  @override
+  void onShellTabHidden() {
+    super.onShellTabHidden();
+    _loadGen++;
+  }
+
+  @override
+  void onShellTabShown() {
+    super.onShellTabShown();
+    if (_feed == null || _error != null) {
+      unawaited(_load());
+    }
+  }
 
   @override
   void initState() {
@@ -131,6 +159,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   }
 
   Future<void> _load() async {
+    if (!mounted || !shellTabVisible) return;
     final gen = ++_loadGen;
     setState(() {
       _loading = true;
@@ -141,7 +170,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
         _service.getHome(),
         _service.getWatchHistory(),
       ]);
-      if (!mounted || gen != _loadGen) return;
+      if (!mounted || !shellTabVisible || gen != _loadGen) return;
       final feed = results[0] as KdramaHomeFeed;
       setState(() {
         _feed = feed;
@@ -149,10 +178,11 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
             (results[1] as List<Map<String, dynamic>>).take(10).toList();
         _loading = false;
       });
+      markShellTabFresh();
       // Hero synopsis: TMDB trial (or KissKH path when re-enabled).
       unawaited(_enrichFeed(feed, gen));
     } catch (e) {
-      if (!mounted || gen != _loadGen) return;
+      if (!mounted || !shellTabVisible || gen != _loadGen) return;
       setState(() {
         _loading = false;
         _error = '$e';
@@ -179,7 +209,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       if (hero.any((c) => c.description.trim().isEmpty)) {
         final withSynopsis = await _service.enrichCardDescriptions(hero);
         final working = feed.withCardsReplaced(withSynopsis);
-        if (!mounted || gen != _loadGen) return;
+        if (!mounted || !shellTabVisible || gen != _loadGen) return;
         setState(() => _feed = working);
       }
     } catch (_) {}
@@ -201,7 +231,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
           return card.copyWith(description: overview);
         }),
       );
-      if (!mounted || gen != _loadGen) return;
+      if (!mounted || !shellTabVisible || gen != _loadGen) return;
       setState(() => _feed = feed.withCardsReplaced(enriched));
     } catch (e) {
       if (kDebugMode) {

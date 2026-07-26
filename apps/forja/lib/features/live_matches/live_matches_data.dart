@@ -1,6 +1,6 @@
 part of 'live_matches_screen.dart';
 
-mixin _LiveMatchesData on State<LiveMatchesScreen> {
+mixin _LiveMatchesData on State<LiveMatchesScreen>, ShellTabRefresh<LiveMatchesScreen> {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   void _focusTopBarItem(int index) {
@@ -172,6 +172,8 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
   }
 
   Future<void> _load() async {
+    if (!mounted || !shellTabVisible) return;
+    final gen = ++_s._loadGen;
     setState(() {
       _s._loading = true;
       _s._error = null;
@@ -185,19 +187,19 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
       _s._timelineScrollController.jumpTo(0);
     }
     if (_s._server == _LiveMatchesServer.all) {
-      await _loadAll();
+      await _loadAll(gen);
       return;
     }
     if (_s._server == _LiveMatchesServer.ppv) {
-      await _loadDamiTv();
+      await _loadDamiTv(gen);
       return;
     }
     if (_s._server == _LiveMatchesServer.streamed) {
-      await _loadStreamed();
+      await _loadStreamed(gen);
       return;
     }
     if (_s._server == _LiveMatchesServer.cdnLive) {
-      await _loadCdn();
+      await _loadCdn(gen);
       return;
     }
   }
@@ -229,7 +231,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
     setState(() => _s._tabController = newCtrl);
   }
 
-  Future<void> _loadAll() async {
+  Future<void> _loadAll(int gen) async {
     try {
       final results = await Future.wait([
         _fetchDamiTvStreams().catchError((_) => <_DamiTvStream>[]),
@@ -237,6 +239,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
         _fetchCdnChannels().catchError((_) => <_CdnChannel>[]),
         _fetchCdnSports().catchError((_) => <_CdnSportEvent>[]),
       ]);
+      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
       final ppvStreams = results[0] as List<_DamiTvStream>;
       final streamedMatches = results[1] as List<_StreamedMatch>;
       final cdnChannels = results[2] as List<_CdnChannel>;
@@ -270,7 +273,7 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
       }
       cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
-      if (!mounted) return;
+      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
       setState(() {
         _s._damiTvStreams = ppvStreams;
         _s._streamedMatches = streamedMatches;
@@ -278,8 +281,9 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
         _s._cdnSports = cdnSports;
       });
       _applySportTabs(cats);
+      markShellTabFresh();
     } catch (e) {
-      if (mounted) {
+      if (mounted && shellTabVisible && gen == _s._loadGen) {
         setState(() {
           _s._loading = false;
           _s._error = e.toString();
@@ -288,9 +292,10 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
     }
   }
 
-  Future<void> _loadDamiTv() async {
+  Future<void> _loadDamiTv(int gen) async {
     try {
       final streams = await _fetchDamiTvStreams();
+      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
       final seenCats = <String>{};
       final cats = <_Sport>[];
       for (final s in streams) {
@@ -304,26 +309,29 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
         if (id.isEmpty || !seenCats.add(id)) continue;
         cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
       }
-      if (mounted) {
-        final oldCtrl = _s._tabController;
-        setState(() {
-          _s._tabController = null;
-          _s._damiTvStreams = streams;
-          _s._sports = cats;
-          _s._loading = false;
-        });
-        oldCtrl?.dispose();
-        final newCtrl = TabController(length: cats.length + 1, vsync: _s);
-        newCtrl.addListener(() {
-          if (!newCtrl.indexIsChanging) {
-            final idx = newCtrl.index;
-            _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
-          }
-        });
-        if (mounted) setState(() => _s._tabController = newCtrl);
+      final oldCtrl = _s._tabController;
+      setState(() {
+        _s._tabController = null;
+        _s._damiTvStreams = streams;
+        _s._sports = cats;
+        _s._loading = false;
+      });
+      oldCtrl?.dispose();
+      final newCtrl = TabController(length: cats.length + 1, vsync: _s);
+      newCtrl.addListener(() {
+        if (!newCtrl.indexIsChanging) {
+          final idx = newCtrl.index;
+          _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
+        }
+      });
+      if (mounted && shellTabVisible && gen == _s._loadGen) {
+        setState(() => _s._tabController = newCtrl);
+        markShellTabFresh();
+      } else {
+        newCtrl.dispose();
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && shellTabVisible && gen == _s._loadGen) {
         setState(() {
           _s._loading = false;
           _s._error = e.toString();
@@ -332,12 +340,13 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
     }
   }
 
-  Future<void> _loadStreamed() async {
+  Future<void> _loadStreamed(int gen) async {
     try {
       final results = await Future.wait([
         _fetchStreamedSports(),
         _fetchStreamedMatches(),
       ]);
+      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
       final sports = results[0] as List<_Sport>;
       final matches = results[1] as List<_StreamedMatch>;
 
@@ -364,26 +373,29 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
       }
       cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
-      if (mounted) {
-        final oldCtrl = _s._tabController;
-        setState(() {
-          _s._tabController = null;
-          _s._streamedMatches = matches;
-          _s._sports = cats;
-          _s._loading = false;
-        });
-        oldCtrl?.dispose();
-        final newCtrl = TabController(length: cats.length + 1, vsync: _s);
-        newCtrl.addListener(() {
-          if (!newCtrl.indexIsChanging) {
-            final idx = newCtrl.index;
-            _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
-          }
-        });
-        if (mounted) setState(() => _s._tabController = newCtrl);
+      final oldCtrl = _s._tabController;
+      setState(() {
+        _s._tabController = null;
+        _s._streamedMatches = matches;
+        _s._sports = cats;
+        _s._loading = false;
+      });
+      oldCtrl?.dispose();
+      final newCtrl = TabController(length: cats.length + 1, vsync: _s);
+      newCtrl.addListener(() {
+        if (!newCtrl.indexIsChanging) {
+          final idx = newCtrl.index;
+          _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
+        }
+      });
+      if (mounted && shellTabVisible && gen == _s._loadGen) {
+        setState(() => _s._tabController = newCtrl);
+        markShellTabFresh();
+      } else {
+        newCtrl.dispose();
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && shellTabVisible && gen == _s._loadGen) {
         setState(() {
           _s._loading = false;
           _s._error = e.toString();
@@ -392,12 +404,13 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
     }
   }
 
-  Future<void> _loadCdn() async {
+  Future<void> _loadCdn(int gen) async {
     try {
       final results = await Future.wait([
         _fetchCdnChannels(),
         _fetchCdnSports(),
       ]);
+      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
       final channels = results[0] as List<_CdnChannel>;
       final sports = results[1] as List<_CdnSportEvent>;
 
@@ -410,27 +423,30 @@ mixin _LiveMatchesData on State<LiveMatchesScreen> {
         }
       }
 
-      if (mounted) {
-        final oldCtrl = _s._tabController;
-        setState(() {
-          _s._tabController = null;
-          _s._cdnChannels = channels;
-          _s._cdnSports = sports;
-          _s._sports = cats;
-          _s._loading = false;
-        });
-        oldCtrl?.dispose();
-        final newCtrl = TabController(length: cats.length + 1, vsync: _s);
-        newCtrl.addListener(() {
-          if (!newCtrl.indexIsChanging) {
-            final idx = newCtrl.index;
-            _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
-          }
-        });
-        if (mounted) setState(() => _s._tabController = newCtrl);
+      final oldCtrl = _s._tabController;
+      setState(() {
+        _s._tabController = null;
+        _s._cdnChannels = channels;
+        _s._cdnSports = sports;
+        _s._sports = cats;
+        _s._loading = false;
+      });
+      oldCtrl?.dispose();
+      final newCtrl = TabController(length: cats.length + 1, vsync: _s);
+      newCtrl.addListener(() {
+        if (!newCtrl.indexIsChanging) {
+          final idx = newCtrl.index;
+          _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
+        }
+      });
+      if (mounted && shellTabVisible && gen == _s._loadGen) {
+        setState(() => _s._tabController = newCtrl);
+        markShellTabFresh();
+      } else {
+        newCtrl.dispose();
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && shellTabVisible && gen == _s._loadGen) {
         setState(() {
           _s._loading = false;
           _s._error = e.toString();

@@ -182,6 +182,68 @@ class _CategoryReorderDragStartListener extends ReorderableDragStartListener {
   }
 }
 
+/// Floating drag proxy: lifted card, elevated surface, brand-green accent.
+Widget _iptvCategoryReorderProxy(
+  Widget child,
+  int index,
+  Animation<double> animation,
+) {
+  return AnimatedBuilder(
+    animation: animation,
+    builder: (context, child) {
+      final t = Curves.easeOutCubic.transform(animation.value);
+      return Transform.translate(
+        offset: Offset(6 * t, -6 * t),
+        child: Transform.scale(
+          scale: 1 + 0.04 * t,
+          alignment: Alignment.centerLeft,
+          child: Material(
+            elevation: 12 * t,
+            color: Colors.transparent,
+            shadowColor: Colors.black.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(10),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Stack(
+                fit: StackFit.passthrough,
+                children: [
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: Color.lerp(
+                        ForjaShellColors.surfaceElevated,
+                        const Color(0xFF1E2A22),
+                        t,
+                      )!,
+                    ),
+                  ),
+                  child!,
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: ForjaShellColors.brandGreen
+                                .withValues(alpha: 0.28 + 0.52 * t),
+                            width: 1.5,
+                          ),
+                          color: ForjaShellColors.brandGreen
+                              .withValues(alpha: 0.10 * t),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+    child: child,
+  );
+}
+
 IconData? _iptvCategoryIcon(String categoryId) {
   if (categoryId == IptvLiveCatalog.favoritesId) return Icons.star_rounded;
   if (categoryId == IptvLiveCatalog.watchedId) {

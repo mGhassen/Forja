@@ -201,4 +201,18 @@ class _AnimeScreenState extends State<AnimeScreen>
     }
   }
 
+  @override
+  void onShellTabHidden() {
+    super.onShellTabHidden();
+    _loadGen++;
+  }
+
+  @override
+  void onShellTabShown() {
+    super.onShellTabShown();
+    if (!_catalogResolved || _error != null) {
+      unawaited(_load());
+    }
+  }
+
 }

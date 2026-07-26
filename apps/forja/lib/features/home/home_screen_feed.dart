@@ -1,6 +1,6 @@
 part of 'home_screen.dart';
 
-mixin _HomeScreenFeed on State<HomeScreen> {
+mixin _HomeScreenFeed on State<HomeScreen>, ShellTabRefresh<HomeScreen> {
   _HomeScreenState get _s => this as _HomeScreenState;
 
   Future<List<Movie>> _fetchMovies({
@@ -346,21 +346,55 @@ mixin _HomeScreenFeed on State<HomeScreen> {
   }
 
   void _onWatchProviderChanged() {
-    if (!mounted) return;
+    if (!mounted || !shellTabVisible) return;
     setState(() => _resetHomeCategoryFeeds());
   }
 
   void _onHomeCategoryChanged() {
-    if (!mounted) return;
+    if (!mounted || !shellTabVisible) return;
     setState(() => _resetHomeCategoryFeeds());
   }
 
   void _onHomeGenreChanged() {
-    if (!mounted) return;
+    if (!mounted || !shellTabVisible) return;
     setState(() => _resetHomeCategoryFeeds());
   }
+
+  /// Stop Home-scoped network work while another shell tab is selected.
+  /// Keep-alive leaves [mounted] true — generation bumps abort in-flight loops.
+  void _pauseHomeBackgroundWork() {
+    _s._stremioCatalogGen++;
+    _s._homeBgWorkGen++;
+    _s._historySeedSub?.cancel();
+    _s._historySeedSub = null;
+    if (_s._splashDismissedListener != null) {
+      ShellBus.splashDismissed.removeListener(_s._splashDismissedListener!);
+      _s._splashDismissedListener = null;
+    }
+  }
+
+  void _resumeHomeBackgroundWorkIfNeeded() {
+    if (!mounted || !shellTabVisible) return;
+    // Incomplete Stremio rails: restart catalog load.
+    if (_s._stremioCatalogsLoading || !_s._catalogsLoaded) {
+      unawaited(_loadStremioCatalogs());
+    }
+    // Post-splash personalization never started (left before splash / delay).
+    if (!_s._postSplashWorkStarted) {
+      _schedulePostSplashWork();
+      return;
+    }
+    // Because-you-watched still empty after a mid-fetch hide.
+    if (_s._becauseSeed == null || _s._becauseFuture == null) {
+      _initBecauseYouWatched();
+    }
+  }
+
   void _schedulePostSplashWork() {
     void run() {
+      if (!mounted || !shellTabVisible) return;
+      _s._postSplashWorkStarted = true;
+      // Account-level sync — OK to continue if user leaves Home mid-flight.
       TraktService().fullSync();
       SimklService().fullSync();
       _loadTraktRecommendations();
@@ -370,8 +404,10 @@ mixin _HomeScreenFeed on State<HomeScreen> {
     }
 
     void schedule() {
+      final gen = _s._homeBgWorkGen;
       Future<void>.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) run();
+        if (!mounted || !shellTabVisible || gen != _s._homeBgWorkGen) return;
+        run();
       });
     }
 
@@ -384,15 +420,19 @@ mixin _HomeScreenFeed on State<HomeScreen> {
       if (!ShellBus.splashDismissed.value) return;
       ShellBus.splashDismissed.removeListener(_s._splashDismissedListener!);
       _s._splashDismissedListener = null;
+      if (!mounted || !shellTabVisible) return;
       schedule();
     };
     ShellBus.splashDismissed.addListener(_s._splashDismissedListener!);
   }
 
   void _initBecauseYouWatched() {
+    if (!mounted || !shellTabVisible) return;
     final svc = WatchHistoryService();
     if (!_pickBecauseSeed(svc.current)) {
+      _s._historySeedSub?.cancel();
       _s._historySeedSub = svc.historyStream.listen((items) {
+        if (!mounted || !shellTabVisible) return;
         if (_pickBecauseSeed(items)) {
           _s._historySeedSub?.cancel();
           _s._historySeedSub = null;
@@ -427,7 +467,7 @@ mixin _HomeScreenFeed on State<HomeScreen> {
   /// items (between 2% and 90% watched) and picks one at random.
   /// When the pool has more than one title, avoids repeating the current seed.
   bool _pickBecauseSeed(List<Map<String, dynamic>> history) {
-    if (!mounted || history.isEmpty) return false;
+    if (!mounted || !shellTabVisible || history.isEmpty) return false;
     final pool = _inProgressPool(history);
     if (pool.isEmpty) return false;
 
@@ -442,10 +482,11 @@ mixin _HomeScreenFeed on State<HomeScreen> {
 
     final seed = candidates[math.Random().nextInt(candidates.length)];
     final secondary = _pickOppositeSeed(pool, seed);
+    final workGen = _s._homeBgWorkGen;
     setState(() {
       _s._becauseSeed = seed;
       _s._becausePoolSize = pool.length;
-      _s._becauseFuture = _loadBecauseRecsMixed(seed, secondary);
+      _s._becauseFuture = _loadBecauseRecsMixed(seed, secondary, workGen);
     });
     return true;
   }
@@ -458,16 +499,21 @@ mixin _HomeScreenFeed on State<HomeScreen> {
   Future<List<Movie>> _loadBecauseRecsMixed(
     Map<String, dynamic> primary,
     Map<String, dynamic>? secondary,
+    int workGen,
   ) async {
-    if (secondary == null) return _loadBecauseRecs(primary);
+    if (secondary == null) return _loadBecauseRecs(primary, workGen);
     final results = await Future.wait([
-      _loadBecauseRecs(primary),
-      _loadBecauseRecs(secondary),
+      _loadBecauseRecs(primary, workGen),
+      _loadBecauseRecs(secondary, workGen),
     ]);
+    if (!mounted || workGen != _s._homeBgWorkGen) return const [];
     return _interleaveMedia(results[0], results[1]);
   }
 
-  Future<List<Movie>> _loadBecauseRecs(Map<String, dynamic> seed) async {
+  Future<List<Movie>> _loadBecauseRecs(
+    Map<String, dynamic> seed,
+    int workGen,
+  ) async {
     final title = (seed['title'] as String?)?.trim();
     if (title == null || title.isEmpty) {
       debugPrint('[BecauseYouWatched] no title in seed');
@@ -482,6 +528,7 @@ mixin _HomeScreenFeed on State<HomeScreen> {
     try {
       // 1) Autocomplete on bestsimilar; pick the closest hit (forgiving).
       final hits = await BestSimilarScraper.autocomplete(title);
+      if (!mounted || workGen != _s._homeBgWorkGen) return const [];
       debugPrint('[BecauseYouWatched] autocomplete hits=${hits.length}');
       if (hits.isEmpty) return const [];
 
@@ -503,6 +550,7 @@ mixin _HomeScreenFeed on State<HomeScreen> {
       // 2) Detail page → similar items.
       final details =
           await BestSimilarScraper.fetchDetails(id: hit.id, slug: hit.slug);
+      if (!mounted || workGen != _s._homeBgWorkGen) return const [];
       if (details == null || details.similar.isEmpty) {
         debugPrint('[BecauseYouWatched] no similar items returned');
         return const [];
@@ -512,8 +560,10 @@ mixin _HomeScreenFeed on State<HomeScreen> {
       // 3) Resolve each BS item to a TMDB Movie (parallel) - relaxed threshold
       //    so we don't drop everything when the year is unknown.
       final lookups = details.similar.map((it) async {
+        if (workGen != _s._homeBgWorkGen) return null;
         try {
           final hits = await _s._api.searchMulti(it.title);
+          if (workGen != _s._homeBgWorkGen) return null;
           if (hits.isEmpty) return null;
           Movie? best;
           var bestScore = -1;
@@ -549,6 +599,7 @@ mixin _HomeScreenFeed on State<HomeScreen> {
         }
       });
       final resolved = await Future.wait(lookups);
+      if (!mounted || workGen != _s._homeBgWorkGen) return const [];
 
       // 4) Sort by bestsimilar similarity % (desc), drop dupes & nulls.
       //    Items without a percentage fall to the bottom.
@@ -574,12 +625,16 @@ mixin _HomeScreenFeed on State<HomeScreen> {
   }
 
   Future<void> _loadTraktRecommendations() async {
+    final workGen = _s._homeBgWorkGen;
     try {
       if (!await TraktService().isLoggedIn()) return;
+      if (!mounted || !shellTabVisible || workGen != _s._homeBgWorkGen) return;
       if (mounted) setState(() => _s._traktRecsLoading = true);
       // Fetch movie + show recommendations and convert via TMDB
       final movieRecs = await TraktService().getRecommendations('movies');
+      if (!mounted || workGen != _s._homeBgWorkGen) return;
       final showRecs = await TraktService().getRecommendations('shows');
+      if (!mounted || workGen != _s._homeBgWorkGen) return;
       final all = [...movieRecs, ...showRecs];
       final entries = all.take(20).map((rec) {
         final item = rec['movie'] ?? rec['show'];
@@ -594,6 +649,7 @@ mixin _HomeScreenFeed on State<HomeScreen> {
       // Parallel TMDB lookups in batches of 5
       final movies = <Movie>[];
       for (var i = 0; i < entries.length; i += 5) {
+        if (!mounted || workGen != _s._homeBgWorkGen) return;
         final batch = entries.skip(i).take(5);
         final results = await Future.wait(
           batch.map((e) async {
@@ -606,21 +662,27 @@ mixin _HomeScreenFeed on State<HomeScreen> {
         );
         movies.addAll(results.whereType<Movie>());
       }
-      if (mounted && movies.isNotEmpty) {
+      if (mounted && workGen == _s._homeBgWorkGen && movies.isNotEmpty) {
         setState(() => _s._traktRecommendations = movies);
       }
     } catch (_) {} finally {
-      if (mounted) setState(() => _s._traktRecsLoading = false);
+      if (mounted && workGen == _s._homeBgWorkGen) {
+        setState(() => _s._traktRecsLoading = false);
+      }
     }
   }
 
   Future<void> _loadTraktCalendar() async {
+    final workGen = _s._homeBgWorkGen;
     try {
       if (!await TraktService().isLoggedIn()) return;
+      if (!mounted || !shellTabVisible || workGen != _s._homeBgWorkGen) return;
       if (mounted) setState(() => _s._traktShowsLoading = true);
       final shows = await TraktService().getCalendarShows(days: 14);
+      if (!mounted || workGen != _s._homeBgWorkGen) return;
       final movies = <Movie>[];
       for (final entry in shows.take(20)) {
+        if (!mounted || workGen != _s._homeBgWorkGen) return;
         final show = entry['show'] as Map<String, dynamic>? ?? {};
         final tmdbId = (show['ids'] as Map<String, dynamic>?)?['tmdb'] as int?;
         if (tmdbId == null) continue;
@@ -628,21 +690,27 @@ mixin _HomeScreenFeed on State<HomeScreen> {
           movies.add(await _s._api.getTvDetails(tmdbId));
         } catch (_) {}
       }
-      if (mounted && movies.isNotEmpty) {
+      if (mounted && workGen == _s._homeBgWorkGen && movies.isNotEmpty) {
         setState(() => _s._traktUpcomingShows = movies);
       }
     } catch (_) {} finally {
-      if (mounted) setState(() => _s._traktShowsLoading = false);
+      if (mounted && workGen == _s._homeBgWorkGen) {
+        setState(() => _s._traktShowsLoading = false);
+      }
     }
   }
 
   Future<void> _loadTraktCalendarMovies() async {
+    final workGen = _s._homeBgWorkGen;
     try {
       if (!await TraktService().isLoggedIn()) return;
+      if (!mounted || !shellTabVisible || workGen != _s._homeBgWorkGen) return;
       if (mounted) setState(() => _s._traktMoviesLoading = true);
       final entries = await TraktService().getCalendarMovies(days: 30);
+      if (!mounted || workGen != _s._homeBgWorkGen) return;
       final movies = <Movie>[];
       for (final entry in entries.take(20)) {
+        if (!mounted || workGen != _s._homeBgWorkGen) return;
         final movie = entry['movie'] as Map<String, dynamic>? ?? {};
         final tmdbId = (movie['ids'] as Map<String, dynamic>?)?['tmdb'] as int?;
         if (tmdbId == null) continue;
@@ -650,11 +718,13 @@ mixin _HomeScreenFeed on State<HomeScreen> {
           movies.add(await _s._api.getMovieDetails(tmdbId));
         } catch (_) {}
       }
-      if (mounted && movies.isNotEmpty) {
+      if (mounted && workGen == _s._homeBgWorkGen && movies.isNotEmpty) {
         setState(() => _s._traktUpcomingMovies = movies);
       }
     } catch (_) {} finally {
-      if (mounted) setState(() => _s._traktMoviesLoading = false);
+      if (mounted && workGen == _s._homeBgWorkGen) {
+        setState(() => _s._traktMoviesLoading = false);
+      }
     }
   }
 
@@ -686,6 +756,7 @@ mixin _HomeScreenFeed on State<HomeScreen> {
 
 
   void _onAddonsChanged() {
+    if (!mounted || !shellTabVisible) return;
     // Clear stale data and schedule a rebuild so the old sliders disappear
     // immediately while the new ones load.
     _s._stremioCatalogGen++;
@@ -734,6 +805,7 @@ mixin _HomeScreenFeed on State<HomeScreen> {
   Future<void> _loadStremioCatalogs() async {
     final gen = ++_s._stremioCatalogGen;
     final stremioOn = await SettingsService().isPlaySourceStremioEnabled();
+    if (!mounted || gen != _s._stremioCatalogGen) return;
     if (!stremioOn) {
       if (mounted && gen == _s._stremioCatalogGen) {
         setState(() {
@@ -745,12 +817,13 @@ mixin _HomeScreenFeed on State<HomeScreen> {
       }
       return;
     }
+    if (!shellTabVisible) return;
     if (mounted && gen == _s._stremioCatalogGen) {
       setState(() => _s._stremioCatalogsLoading = true);
     }
     try {
       final catalogs = await _s._stremio.getAllCatalogs();
-      if (!mounted || gen != _s._stremioCatalogGen) return;
+      if (!mounted || gen != _s._stremioCatalogGen || !shellTabVisible) return;
       if (catalogs.isEmpty) {
         debugPrint(
           '[HomeScreen] No Stremio catalogs (install Cinemeta + ensure manifest hydrated)',
@@ -787,7 +860,9 @@ mixin _HomeScreenFeed on State<HomeScreen> {
 
       await Future.wait(byAddon.values.map((addonCatalogs) async {
         for (final cat in addonCatalogs) {
-          if (!mounted || gen != _s._stremioCatalogGen) return;
+          if (!mounted || gen != _s._stremioCatalogGen || !shellTabVisible) {
+            return;
+          }
           try {
             final items = await _s._stremio.getCatalog(
               baseUrl: cat['addonBaseUrl'],
@@ -800,7 +875,9 @@ mixin _HomeScreenFeed on State<HomeScreen> {
               item['_addonBaseUrl'] = cat['addonBaseUrl'];
               item['_addonName'] = cat['addonName'];
             }
-            if (!mounted || gen != _s._stremioCatalogGen) return;
+            if (!mounted || gen != _s._stremioCatalogGen || !shellTabVisible) {
+              return;
+            }
             final itemKey =
                 '${cat['addonBaseUrl']}/${cat['catalogType']}/${cat['catalogId']}';
             setState(() {

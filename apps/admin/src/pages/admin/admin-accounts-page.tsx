@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input'
 import {
   enabledFeatureDefs,
   parseAccountFeatures,
+  parseMaxIptvPortals,
 } from '@/lib/account-features'
 import { adminDb } from '@/lib/admin-db'
 import { catalogVerify } from '@/lib/catalog-verify'
@@ -374,6 +375,7 @@ export function AdminAccountsPage() {
                   const feats = parseAccountFeatures(a.features)
                   const enabled = enabledFeatureDefs(feats)
                   const credits = a.iptv_credits ?? 0
+                  const maxPortals = parseMaxIptvPortals(a.features)
                   const rowBusy = busyId === a.id
                   const expanded = openId === a.id
                   const portalCount = counts.data?.[a.id] ?? 0
@@ -455,9 +457,12 @@ export function AdminAccountsPage() {
                             className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-md border border-forja-border px-2 py-1 text-left transition-colors hover:border-forja-green/40 hover:bg-forja-green/5"
                             title="Edit feature flags"
                           >
+                            <span className="rounded bg-white/8 px-1.5 py-0.5 text-[10px] font-semibold text-forja-muted">
+                              {a.is_admin ? '∞ portals' : `Max ${maxPortals}`}
+                            </span>
                             {enabled.length === 0 ? (
                               <span className="text-xs text-forja-muted">
-                                None · Edit
+                                Edit
                               </span>
                             ) : (
                               enabled.map((d) => (
@@ -520,6 +525,10 @@ export function AdminAccountsPage() {
           features={
             (list.data?.find((a) => a.id === featuresFor.id) ?? featuresFor)
               .features
+          }
+          isAdmin={
+            (list.data?.find((a) => a.id === featuresFor.id) ?? featuresFor)
+              .is_admin === true
           }
           onClose={() => setFeaturesFor(null)}
         />

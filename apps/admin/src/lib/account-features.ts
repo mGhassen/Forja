@@ -33,6 +33,24 @@ export const ACCOUNT_FEATURES: readonly AccountFeatureDef[] = [
 
 export type AccountFeaturesMap = Partial<Record<AccountFeatureKey, boolean>>
 
+export const DEFAULT_MAX_IPTV_PORTALS = 5
+export const ABSOLUTE_MAX_IPTV_PORTALS = 500
+
+/** Lean numeric: omit when default 5. */
+export function parseMaxIptvPortals(
+  raw: Record<string, unknown> | null | undefined,
+): number {
+  const v = raw?.maxIptvPortals
+  const n =
+    typeof v === 'number'
+      ? Math.trunc(v)
+      : typeof v === 'string'
+        ? Number.parseInt(v, 10)
+        : Number.NaN
+  if (!Number.isFinite(n)) return DEFAULT_MAX_IPTV_PORTALS
+  return Math.max(1, Math.min(ABSOLUTE_MAX_IPTV_PORTALS, n))
+}
+
 export function parseAccountFeatures(
   raw: Record<string, unknown> | null | undefined,
 ): AccountFeaturesMap {

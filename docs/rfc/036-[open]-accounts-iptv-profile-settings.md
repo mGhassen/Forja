@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 8** components · **18 / 28** acceptance (account `features` + IPTV scrape flag; web VIP banner when scrape on; web navigation settings; no default profile on signup; M3U out of profile_settings; max 5 profiles; new-profile defaults no prior-profile bleed; profile_settings cloud-master merge) |
-| **Current slice** | Account feature flags (`iptvScrape`, `dealPortal`) — admin Features dialog on Accounts; M3U device-local only; max 5 profiles/account; Flutter seeds platform defaults on create/switch merge; profile_settings merge push (cloud master) |
+| **Progress** | **3 / 8** components · **21 / 31** acceptance (account `features` + IPTV scrape flag; web VIP banner when scrape on; web navigation settings; no default profile on signup; M3U out of profile_settings; max 5 profiles; max IPTV portals per profile; new-profile defaults no prior-profile bleed; profile_settings cloud-master merge) |
+| **Current slice** | Max IPTV portals per profile (`features.maxIptvPortals`, default 5; admin unlimited; admin Features dialog setter) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -69,6 +69,9 @@
 | 26 | R36-A26 | Max 5 profiles per account — DB trigger + web/app hide Add at limit | ✅ |
 | 27 | R36-A27 | New profile create + empty-payload merge: reset synced local to platform defaults (playback/nav/Stremio/IPTV) then push — never inherit prior profile's device prefs | ✅ |
 | 28 | R36-A28 | Flutter `profile_settings` push merges into cloud row — local KV is cache; empty Stremio/Nuvio cache never wipes cloud unless that domain’s intentional edit | ✅ |
+| 29 | R36-A29 | `accounts.features.maxIptvPortals` (omit when default 5); DB trigger + deal/assign/replace enforce per profile; `is_admin` unlimited | ✅ |
+| 30 | R36-A30 | Admin Features dialog + `admin_set_max_iptv_portals` set per-account max in features JSON (1–500) | ✅ |
+| 31 | R36-A31 | Flutter + web IPTV hide/block Add (and clamp scrape/deal/import) at portal limit | ✅ |
 
 ---
 
@@ -105,6 +108,7 @@ On write, clients call compact helpers:
 - Never store `"iptvScrape": false` / `"dealPortal": false`
 - **`iptvScrape`** — Reddit / Find Portals scrape in the app
 - **`dealPortal`** — Deal lottery from catalog pool (credits separate; see [RFC-040](040-[open]-iptv-catalog-ops.md) R40-A23). Admin toggles via dedicated RPCs (`admin_set_iptv_scrape`, `admin_set_deal_portal`) and the Accounts Features dialog.
+- **`maxIptvPortals`** — integer in the same lean JSON (default **5** when omitted; range 1–500). Caps `user_iptv_portals` **per profile**. Never store `5` (omit key). `accounts.is_admin` bypasses the cap (unlimited). Admin sets via `admin_set_max_iptv_portals` in the Features dialog (merges into `features` without clearing other keys).
 - Activation this slice: SQL / seed / service-role; admin UI later (R36-A08)
 
 ## Correction (M3U out of settings)

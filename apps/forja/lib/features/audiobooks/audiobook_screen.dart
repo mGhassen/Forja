@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -46,6 +47,14 @@ class _AudiobookScreenState extends State<AudiobookScreen>
   }
 
   @override
+  void onShellTabShown() {
+    super.onShellTabShown();
+    if (_books.isEmpty && !_isLoading) {
+      unawaited(onShellTabRefresh(force: false));
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
@@ -68,25 +77,24 @@ class _AudiobookScreenState extends State<AudiobookScreen>
 
   Future<void> _loadHistory() async {
     final history = await _playerService.getHistory();
-    if (mounted) {
-      setState(() => _history = history);
-    }
+    if (!mounted || !shellTabVisible) return;
+    setState(() => _history = history);
   }
 
   Future<void> _loadLikedBooks() async {
     final liked = await _playerService.getLikedBooks();
-    if (mounted) {
-      setState(() => _likedBooks = liked);
-    }
+    if (!mounted || !shellTabVisible) return;
+    setState(() => _likedBooks = liked);
   }
 
   Future<void> _loadBooks() async {
+    if (!shellTabVisible) return;
     setState(() {
       _isLoading = true;
       _showLiked = false;
     });
     final books = await _service.getAudiobooks(offset: _currentOffset, limit: _limit);
-    if (!mounted) return;
+    if (!mounted || !shellTabVisible) return;
     setState(() {
       _books = books;
       _isLoading = false;

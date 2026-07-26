@@ -71,6 +71,7 @@ class _IptvPtScreenState extends State<IptvPtScreen>
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
     await SyncService.instance.pullAccountFeatures(force: force);
+    if (!mounted || !shellTabVisible) return;
     await _ctrl.init();
   }
 

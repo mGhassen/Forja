@@ -407,8 +407,16 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                       iptvFocusRowItem('iptv-portal-header', addIndex),
                 ),
               IptvIconAction(
-                tooltip: 'Add portal',
-                onPressed: () => _showAddDialog(context),
+                tooltip: AccountFeatures.instance.canAddIptvPortal(
+                      ctrl.verified.length,
+                    )
+                    ? 'Add portal'
+                    : 'Portal limit reached (${AccountFeatures.instance.iptvPortalLimitLabel()})',
+                onPressed: AccountFeatures.instance.canAddIptvPortal(
+                      ctrl.verified.length,
+                    )
+                    ? () => _showAddDialog(context)
+                    : null,
                 icon: Icons.add_rounded,
                 tvRowId: 'iptv-portal-header',
                 tvItemIndex: addIndex,

@@ -4,12 +4,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/features/audiobooks/audiobook_screen.dart';
+import 'package:forja/features/anime/anime_screen.dart';
 import 'package:forja/features/anime/anime_search_screen.dart';
+import 'package:forja/features/asian_drama/asian_drama_screen.dart';
 import 'package:forja/features/asian_drama/asian_drama_search_screen.dart';
 import 'package:forja/features/discover/discover_screen.dart';
 import 'package:forja/features/home/home_screen.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_screen.dart';
 import 'package:forja/features/jellyfin/jellyfin_screen.dart';
+import 'package:forja/features/live_matches/live_matches_screen.dart';
 import 'package:forja/features/music/music_screen.dart';
 import 'package:forja/features/my_list/my_list_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
@@ -54,19 +57,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Timer? _metricsSafety;
 
   final GlobalKey<SearchScreenState> _searchKey = GlobalKey<SearchScreenState>();
-  final Map<String, GlobalKey<State<StatefulWidget>>> _tabKeys = {
-    'home': GlobalKey<State<StatefulWidget>>(),
-    'audiobooks': GlobalKey<State<StatefulWidget>>(),
-    'mylist': GlobalKey<State<StatefulWidget>>(),
-    'discover': GlobalKey<State<StatefulWidget>>(),
-    'iptv': GlobalKey<State<StatefulWidget>>(),
-    'music': GlobalKey<State<StatefulWidget>>(),
-    'jellyfin': GlobalKey<State<StatefulWidget>>(),
-  };
+  final Map<String, GlobalKey<State<StatefulWidget>>> _tabKeys = {};
+
+  GlobalKey<State<StatefulWidget>> _ensureTabKey(String id) {
+    return _tabKeys.putIfAbsent(id, GlobalKey<State<StatefulWidget>>.new);
+  }
 
   GlobalKey<State<StatefulWidget>>? _keyForTab(String id) {
     if (id == 'search') return null;
-    return _tabKeys[id];
+    return _ensureTabKey(id);
   }
 
   ShellTabRefresh? _refreshStateFor(String id) {
@@ -110,6 +109,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         'iptv' => IptvPtScreen(key: key),
         'music' => MusicScreen(key: key),
         'jellyfin' => JellyfinScreen(key: key),
+        'anime' => AnimeScreen(key: key),
+        'asian_drama' => AsianDramaScreen(key: key),
+        'live_matches' => LiveMatchesScreen(key: key),
         _ => navTabBuilders[id]!(),
       };
     });
@@ -170,6 +172,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
   }
 
+  void _notifyTabHidden(String id) {
+    _refreshStateFor(id)?.onShellTabHidden();
+  }
+
+  void _notifyTabShown(String id) {
+    _refreshStateFor(id)?.onShellTabShown();
+  }
+
   Widget? _shellHeader() {
     if (_visibleIds.isEmpty || _selectedIndex >= _visibleIds.length) return null;
     if (_visibleIds[_selectedIndex] != 'search') return null;
@@ -186,7 +196,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     // Match nav-rail taps: dismiss details / hub overlays so the tab is visible
     // (e.g. Who's watching → Account settings via [ShellBus.requestTab]).
     popShellOverlayUntilRoot();
+    final previousId = _currentTabId;
     final id = _visibleIds[index];
+    if (previousId != null && previousId != id) {
+      _notifyTabHidden(previousId);
+    }
     setState(() {
       _mountedTabIds.add(id);
       _selectedIndex = index;
@@ -204,7 +218,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _refreshTabIfStale(id);
+      if (!mounted) return;
+      _notifyTabShown(id);
+      _refreshTabIfStale(id);
     });
   }
 
@@ -280,6 +296,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           _touchTab(tabId);
           _applyTabShellChrome(tabId);
           unawaited(ProductAnalytics.screenTab(tabId));
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _notifyTabShown(tabId);
+          });
         }
       } else if (currentId != null) {
         final newIndex = _visibleIds.indexOf(currentId);

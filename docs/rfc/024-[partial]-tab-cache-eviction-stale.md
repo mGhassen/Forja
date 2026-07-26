@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **15 / 16** acceptance · **1** deferred |
-| **Current slice** | R24-A04 global busy registry — deferred |
+| **Progress** | **17 / 18** acceptance · **1** deferred |
+| **Current slice** | R24-A17–A18 shell tab visibility cancel — shipped |
 | **Backlog** | — |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -55,9 +55,20 @@
 
 ---
 
+## Acceptance (tab visibility — cancel off-tab work)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 17 | R24-A17 | `ShellTabRefresh.onShellTabHidden` / `onShellTabShown` + `shellTabVisible`; MainScreen notifies on switch | ✅ |
+| 18 | R24-A18 | Home / Anime / Asian Drama / Live Matches / Discover / Jellyfin / Music / Audiobooks cancel or gate in-flight work when hidden | ✅ |
+
+---
+
 ## Summary
 
 Separate **widget cache** (RAM) from **data freshness** (TTL). Cap mounted tabs with LRU eviction; refresh stale data on re-select, app resume, and pull-to-refresh — per tab, not one global knob.
+
+**Visibility:** keep-alive must not mean keep-fetching. Leaving a mounted tab calls `onShellTabHidden` so generation tokens / timers stop Home Stremio rails, Because-you-watched, hub enrichers, Live Matches ticks, Jellyfin hero rotation, etc. Returning calls `onShellTabShown` to resume incomplete work.
 
 ## Problem (historical)
 

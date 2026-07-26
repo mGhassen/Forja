@@ -1,11 +1,15 @@
 /** Profile settings payload — must match Flutter SyncDomainBridge (lean storage). */
 
-/** Account-level feature flags. Empty `{}` = all off. Only store enabled keys. */
+/** Account-level feature flags. Empty `{}` = all off.
+ *  Booleans: only store enabled keys. Numeric: omit maxIptvPortals when default 5.
+ */
 export type AccountFeaturesPayload = {
   /** Reddit / Find Portals scrape in the IPTV tab. */
   iptvScrape?: true
   /** Deal lottery packs from the catalog pool (requires credits). */
   dealPortal?: true
+  /** Max Xtream portals per profile. Omit when default 5. */
+  maxIptvPortals?: number
 }
 
 export type AccountFeaturesExpanded = {
@@ -13,21 +17,51 @@ export type AccountFeaturesExpanded = {
   dealPortal: boolean
   /** Catalog pool deal balance (accounts.iptv_credits). */
   iptvCredits: number
+  /** Max portals per profile (features.maxIptvPortals). Default 5. */
+  maxIptvPortals: number
+  /** accounts.is_admin — unlimited portals when true. */
+  isAdmin: boolean
 }
 
 export function emptyAccountFeatures(): AccountFeaturesExpanded {
-  return { iptvScrape: false, dealPortal: false, iptvCredits: 0 }
+  return {
+    iptvScrape: false,
+    dealPortal: false,
+    iptvCredits: 0,
+    maxIptvPortals: 5,
+    isAdmin: false,
+  }
+}
+
+function parseMaxFromFeatures(raw: Record<string, unknown>): number {
+  const v = raw.maxIptvPortals
+  const n =
+    typeof v === 'number'
+      ? Math.trunc(v)
+      : typeof v === 'string'
+        ? Number.parseInt(v, 10)
+        : Number.NaN
+  if (!Number.isFinite(n)) return 5
+  return Math.max(1, Math.min(500, n))
 }
 
 export function expandAccountFeatures(
   raw: unknown,
-  iptvCredits?: number,
+  opts?: {
+    iptvCredits?: number
+    isAdmin?: boolean
+  },
 ): AccountFeaturesExpanded {
   const base = emptyAccountFeatures()
+  const iptvCredits = opts?.iptvCredits
+  const isAdmin = opts?.isAdmin === true
   if (!raw || typeof raw !== 'object') {
     return {
       ...base,
-      iptvCredits: Number.isFinite(iptvCredits) ? Math.max(0, iptvCredits!) : 0,
+      iptvCredits: Number.isFinite(iptvCredits)
+        ? Math.max(0, iptvCredits!)
+        : 0,
+      isAdmin,
     }
   }
   const p = raw as Record<string, unknown>
@@ -38,10 +72,12 @@ export function expandAccountFeatures(
     iptvScrape: p.iptvScrape === true,
     dealPortal: p.dealPortal === true,
     iptvCredits: credits,
+    maxIptvPortals: parseMaxFromFeatures(p),
+    isAdmin,
   }
 }
 
-/** Lean write: omit disabled keys entirely. */
+/** Lean write: omit disabled keys and default maxIptvPortals. */
 export function compactAccountFeatures(
   f: AccountFeaturesExpanded | AccountFeaturesPayload | undefined,
 ): AccountFeaturesPayload {
@@ -49,6 +85,13 @@ export function compactAccountFeatures(
   const out: AccountFeaturesPayload = {}
   if (f.iptvScrape === true) out.iptvScrape = true
   if (f.dealPortal === true) out.dealPortal = true
+  const max =
+    'maxIptvPortals' in f && typeof f.maxIptvPortals === 'number'
+      ? f.maxIptvPortals
+      : undefined
+  if (max != null && max !== 5) {
+    out.maxIptvPortals = Math.max(1, Math.min(500, Math.trunc(max)))
+  }
   return out
 }
 
