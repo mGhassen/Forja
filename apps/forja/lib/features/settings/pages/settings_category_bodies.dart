@@ -623,11 +623,12 @@ class SettingsAboutPageBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsGroup(label: 'Updates', children: const [SettingsAboutPanel()]),
-        const SettingsGroup(
+        SettingsGroup(
           label: 'Privacy',
           children: [
-            SettingsCrashReportingRow(),
-            SettingsProductAnalyticsRow(),
+            const SettingsCrashReportingRow(),
+            const SettingsProductAnalyticsRow(),
+            if (Platform.isMacOS) const SettingsMacOsKeychainRow(),
           ],
         ),
         if (showSplashPreview)

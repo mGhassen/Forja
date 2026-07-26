@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 3** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -19,10 +19,11 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I111-T01 | `ForjaPlatformSecureStore` Keychain consent (unset / accepted / declined); no Keychain I/O until accepted | ✅ |
-| 2 | I111-T02 | macOS in-app explain/ask screen before Supabase hydrate; decline → prefs vault only | ✅ |
+| 1 | I111-T01 | `ForjaPlatformSecureStore` Keychain consent; default macOS = local prefs vault (no Keychain) | ✅ |
+| 2 | I111-T02 | No boot prompt — explain dialog only when enabling Keychain from Settings | ✅ |
 | 3 | I111-T03 | Route Trakt / Simkl / MDBList through platform store (stop bare `FlutterSecureStorage` login Keychain) | ✅ |
 | 4 | I111-T04 | Docs + changelog (platforms / cloud-sync / issue index) | ✅ |
+| 5 | I111-T05 | Settings → About → Privacy toggle; Material dialog (no yellow underline bleed) | ✅ |
 
 ---
 
@@ -30,25 +31,23 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I111-A01 | Fresh macOS install: Forja explains Keychain vs local file before any system Keychain password dialog | ⬜ |
-| 2 | I111-A02 | Choosing **Use local file** never shows the login-Keychain password dialog; account / Trakt tokens still persist across relaunch | ⬜ |
-| 3 | I111-A03 | Choosing **Use Keychain** may show one OS dialog mentioning `flutter_secure_storage_service` (explained in-app); secrets work after Always Allow | ⬜ |
+| 1 | I111-A01 | Fresh macOS launch never shows Keychain explain screen or system Keychain password dialog | ⬜ |
+| 2 | I111-A02 | Account / Trakt tokens persist across relaunch using local file storage by default | ⬜ |
+| 3 | I111-A03 | Enabling **Store secrets in Keychain** shows the explain dialog first; Accept may show one OS dialog mentioning `flutter_secure_storage_service` | ⬜ |
 
 ---
 
 ## Summary
 
-The system dialog *“Forja wants to use … `flutter_secure_storage_service`”* is macOS Keychain ACL for `flutter_secure_storage`. The 1.2.434 session path already preferred Data Protection / prefs vault, but **Trakt, Simkl, and MDBList** still used bare `FlutterSecureStorage()` (login Keychain) and legacy migrate could still prompt with no in-app explanation.
+The system dialog *“Forja wants to use … `flutter_secure_storage_service`”* is macOS Keychain ACL for `flutter_secure_storage`. Trakt / Simkl / MDBList used bare `FlutterSecureStorage()` (login Keychain).
 
 ### Shipped
 
-- One-time macOS consent screen (`MacOsKeychainConsentScreen`) before Supabase init when consent is unset.
-- Decline → SharedPreferences vault only (plain app-file storage).
-- Accept → existing DP Keychain (sandboxed) + optional one-shot login-Keychain migrate.
+- **Default:** local prefs vault on macOS — no boot ask, no Keychain I/O.
+- **Opt-in:** Settings → About → Privacy → **Store secrets in Keychain** shows an `AlertDialog` explain/ask, then may touch Keychain.
 - Tracker / MDBList secrets go through `ForjaPlatformSecureStore`.
 
 ## Related
 
 - [Cloud sync](../features/settings/cloud-sync.md)
 - [Platforms](../features/getting-started/platforms.md)
-- Changelog 1.2.434 Keychain-on-update fix (session path only)

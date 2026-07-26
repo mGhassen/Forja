@@ -1828,6 +1828,7 @@ dependencies = [
  "base64",
  "cbc",
  "futures-util",
+ "getrandom 0.2.17",
  "md-5",
  "pbkdf2",
  "regex",

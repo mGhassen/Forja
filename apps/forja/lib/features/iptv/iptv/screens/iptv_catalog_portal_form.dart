@@ -323,7 +323,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     super.dispose();
   }
 
-  String _joinedShareCode() => IptvPortalShare.normalizeCode(_pasteCtrl.text);
+  String _joinedShareCode() {
+    final raw = _pasteCtrl.text.trim();
+    if (IptvPortalShare.isEmbeddedToken(raw)) return raw;
+    return IptvPortalShare.normalizeCode(raw);
+  }
+
+  bool get _pasteIsEmbedded =>
+      IptvPortalShare.isEmbeddedToken(_pasteCtrl.text.trim());
 
   int get _activeCodeIndex {
     final sel = _pasteCtrl.selection.baseOffset;
@@ -337,11 +344,31 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     }
     _lastImportedCode = null;
 
+    final trimmed = value.trim();
+    // Embedded F1. token (paste) — keep base64 alphabet, do not force 8-char.
+    if (trimmed.startsWith(IptvPortalShare.embeddedPrefix) ||
+        trimmed.toUpperCase().startsWith('F1.')) {
+      final token = trimmed.startsWith(IptvPortalShare.embeddedPrefix)
+          ? trimmed
+          : 'F1.${trimmed.substring(3)}';
+      if (token != value) {
+        _pasteCtrl.value = TextEditingValue(
+          text: token,
+          selection: TextSelection.collapsed(offset: token.length),
+        );
+      }
+      setState(() {});
+      _tryAutoImportShareCode();
+      return;
+    }
+
     final cleaned = value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    if (cleaned != value) {
+    final clipped =
+        cleaned.length > _codeLen ? cleaned.substring(0, _codeLen) : cleaned;
+    if (clipped != value) {
       _pasteCtrl.value = TextEditingValue(
-        text: cleaned,
-        selection: TextSelection.collapsed(offset: cleaned.length),
+        text: clipped,
+        selection: TextSelection.collapsed(offset: clipped.length),
       );
       setState(() {});
       _tryAutoImportShareCode();
@@ -383,7 +410,12 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
 
   Future<void> _tryAutoImportShareCode() async {
     final code = _joinedShareCode();
-    if (code.length != _codeLen || _importingShareCode) return;
+    if (_importingShareCode) return;
+    if (IptvPortalShare.isEmbeddedToken(code)) {
+      if (code.length < IptvPortalShare.embeddedPrefix.length + 16) return;
+    } else if (code.length != _codeLen) {
+      return;
+    }
     if (code == _lastImportedCode) return;
     await _importShareCode(code);
   }
@@ -402,7 +434,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       if (portal == null) {
         setState(() {
           _importingShareCode = false;
-          _shareCodeError = 'Share code not found or invalid';
+          _shareCodeError = IptvPortalShare.isEmbeddedToken(code)
+              ? 'Share code invalid'
+              : 'Share code not found or invalid';
         });
         return;
       }
@@ -419,11 +453,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         if (!mounted) return;
         _labelFocus.requestFocus();
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+      final msg = e.toString().toLowerCase();
       setState(() {
         _importingShareCode = false;
-        _shareCodeError = 'Could not load share code';
+        _shareCodeError = msg.contains('unavailable')
+            ? 'Share service temporarily unavailable — try again later'
+            : 'Could not load share code';
       });
     }
   }
@@ -1070,6 +1107,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }
 
   Widget _shareCodeSection() {
+    final embedded = _pasteIsEmbedded;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1078,30 +1116,49 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
           height: _codeBoxHeight,
           child: Stack(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var i = 0; i < 4; i++) ...[
-                    if (i > 0) const SizedBox(width: 6),
-                    _shareCodeCell(i),
-                  ],
-                  Padding(
+              if (embedded)
+                Center(
+                  child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Text(
-                      '-',
+                      _pasteCtrl.text.trim(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
                       style: GoogleFonts.jetBrainsMono(
-                        color: Colors.white.withValues(alpha: 0.35),
-                        fontSize: _tv ? 14 : (_compact ? 16 : 22),
-                        fontWeight: FontWeight.w500,
+                        color: IptvShellStyle.accent,
+                        fontSize: _tv ? 11 : (_compact ? 12 : 13),
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.4,
                       ),
                     ),
                   ),
-                  for (var i = 4; i < 8; i++) ...[
-                    if (i > 4) const SizedBox(width: 6),
-                    _shareCodeCell(i),
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < 4; i++) ...[
+                      if (i > 0) const SizedBox(width: 6),
+                      _shareCodeCell(i),
+                    ],
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        '-',
+                        style: GoogleFonts.jetBrainsMono(
+                          color: Colors.white.withValues(alpha: 0.35),
+                          fontSize: _tv ? 14 : (_compact ? 16 : 22),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    for (var i = 4; i < 8; i++) ...[
+                      if (i > 4) const SizedBox(width: 6),
+                      _shareCodeCell(i),
+                    ],
                   ],
-                ],
-              ),
+                ),
               Positioned.fill(
                 child: TextField(
                   controller: _pasteCtrl,
@@ -1110,9 +1167,11 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                   readOnly: iptvUseTvFocus(context) && !_pasteEditing,
                   enableInteractiveSelection:
                       !iptvUseTvFocus(context) || _pasteEditing,
-                  maxLength: _codeLen,
+                  maxLength: embedded ? 512 : _codeLen,
                   textAlign: TextAlign.center,
-                  textCapitalization: TextCapitalization.characters,
+                  textCapitalization: embedded
+                      ? TextCapitalization.none
+                      : TextCapitalization.characters,
                   autocorrect: false,
                   enableSuggestions: false,
                   keyboardType: TextInputType.visiblePassword,
@@ -1129,7 +1188,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                     contentPadding: EdgeInsets.zero,
                   ),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'[A-Za-z0-9._\-]'),
+                    ),
                   ],
                   onChanged: _onSharePasteChanged,
                 ),

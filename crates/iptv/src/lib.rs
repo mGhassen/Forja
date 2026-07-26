@@ -1,6 +1,7 @@
 pub mod m3u;
 pub mod pastesh;
 pub mod portal_extract;
+pub mod portal_share;
 pub mod reddit_catalog;
 pub mod region;
 pub mod stream_probe;

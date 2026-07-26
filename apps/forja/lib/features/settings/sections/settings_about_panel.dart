@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
@@ -6,6 +7,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
+import 'package:forja/shared/widgets/macos_keychain_consent_screen.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:rust/rust.dart';
 
@@ -189,5 +191,66 @@ class _SettingsProductAnalyticsRowState
     } else if (!value) {
       ForjaToast.success('Product analytics off');
     }
+  }
+}
+
+/// macOS only — opt into Keychain for secrets (default is local app file).
+class SettingsMacOsKeychainRow extends StatefulWidget {
+  const SettingsMacOsKeychainRow({super.key});
+
+  @override
+  State<SettingsMacOsKeychainRow> createState() =>
+      _SettingsMacOsKeychainRowState();
+}
+
+class _SettingsMacOsKeychainRowState extends State<SettingsMacOsKeychainRow> {
+  bool _enabled = false;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    await ForjaPlatformSecureStore.ensureConsentLoaded();
+    if (!mounted) return;
+    setState(() {
+      _enabled = ForjaPlatformSecureStore.usesKeychain;
+      _loaded = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded || !Platform.isMacOS) return const SizedBox.shrink();
+    return SettingsToggleRow(
+      title: 'Store secrets in Keychain',
+      subtitle:
+          'Off by default (local app file). Turn on to use the macOS Keychain — '
+          'Forja explains first; the system may ask for your password once.',
+      value: _enabled,
+      onChanged: _setEnabled,
+    );
+  }
+
+  Future<void> _setEnabled(bool value) async {
+    if (value) {
+      final result = await showMacOsKeychainConsentDialog(context);
+      if (!mounted) return;
+      final accepted = result == ForjaKeychainConsent.accepted;
+      setState(() => _enabled = accepted);
+      if (accepted) {
+        ForjaToast.success('Keychain enabled for secrets');
+      }
+      return;
+    }
+    await ForjaPlatformSecureStore.setKeychainConsent(
+      ForjaKeychainConsent.declined,
+    );
+    if (!mounted) return;
+    setState(() => _enabled = false);
+    ForjaToast.success('Using local file storage');
   }
 }

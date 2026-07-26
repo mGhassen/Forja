@@ -7,35 +7,32 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// macOS Keychain vs local-file choice (persisted).
 enum ForjaKeychainConsent {
-  /// Not asked yet — never touch Keychain until resolved.
+  /// Default on macOS — prefs vault only; never touch Keychain until the user
+  /// opts in (Settings). Same runtime behavior as [declined].
   unset,
 
   /// User allowed Keychain (DP when sandboxed; may migrate legacy login items).
   accepted,
 
-  /// User declined — prefs vault only; never touch Keychain.
+  /// User declined or never opted in — prefs vault only; never touch Keychain.
   declined,
 }
 
 /// Platform secret I/O shared by [SecureSettings] and the app host.
 ///
 /// macOS policy:
-/// - **Consent required** before any Keychain I/O. Until the user answers,
-///   reads/writes use the SharedPreferences vault only (no system password
-///   dialog). Decline keeps the vault permanently.
-/// - **Sandboxed** + accepted: Data Protection Keychain (group ACL, no
-///   login-password dialog on every rebuild).
-/// - **Non-sandboxed** (ad-hoc Release DMG) + accepted: prefs vault for
-///   writes (DP returns `-34018`); one-shot login-Keychain migrate may still
-///   show a system Allow dialog — only after in-app consent.
-/// - **Declined / unset:** prefs vault; never login or DP Keychain.
+/// - **Default:** local prefs vault — no Keychain, no boot prompt.
+/// - **Opt-in:** user enables Keychain from Settings (explain dialog first).
+/// - **Sandboxed** + accepted: Data Protection Keychain.
+/// - **Non-sandboxed** (ad-hoc Release) + accepted: prefs vault for writes;
+///   one-shot login-Keychain migrate may show a system Allow dialog.
 ///
 /// **Android / Android TV:** always dual-write EncryptedSharedPreferences + a
 /// SharedPreferences vault. Encrypted prefs have been empty after TV emulator
 /// restarts; the vault keeps Supabase sessions across cold starts.
 ///
 /// Never writes the legacy login Keychain (`useDataProtectionKeyChain: false`).
-/// Reads may one-shot migrate leftovers out of that store after consent.
+/// Reads may one-shot migrate leftovers out of that store after opt-in.
 abstract final class ForjaPlatformSecureStore {
   static const _prefsPrefix = 'forja_secure_';
   static const _consentPrefsKey = 'forja_keychain_consent_v1';
@@ -63,28 +60,26 @@ abstract final class ForjaPlatformSecureStore {
     return Platform.environment.containsKey('APP_SANDBOX_CONTAINER_ID');
   }
 
-  /// True on macOS until the user picks Keychain or local file storage.
-  static bool get needsConsentPrompt {
-    if (!_isMacOS) return false;
-    return (_cachedConsent ?? ForjaKeychainConsent.unset) ==
-        ForjaKeychainConsent.unset;
-  }
+  /// True when the user has opted into Keychain.
+  static bool get usesKeychain => consent == ForjaKeychainConsent.accepted;
 
-  static ForjaKeychainConsent get consent =>
-      _cachedConsent ?? ForjaKeychainConsent.unset;
+  static ForjaKeychainConsent get consent {
+    final c = _cachedConsent ?? ForjaKeychainConsent.unset;
+    // Unset behaves as declined (local file) until an explicit opt-in.
+    if (c == ForjaKeychainConsent.unset) return ForjaKeychainConsent.declined;
+    return c;
+  }
 
   /// Prefer SharedPreferences vault as the durable store.
   static bool get _usePrefsVaultPrimary {
     if (_isAndroid) return true;
     if (!_isMacOS) return false;
-    // Unset / declined: never Keychain. Non-sandbox: vault even when accepted.
-    if (consent != ForjaKeychainConsent.accepted) return true;
+    if (!usesKeychain) return true;
     return !usesDataProtectionKeychain;
   }
 
   /// Whether Keychain (DP or legacy migrate) may be touched.
-  static bool get _mayTouchKeychain =>
-      _isMacOS && consent == ForjaKeychainConsent.accepted;
+  static bool get _mayTouchKeychain => _isMacOS && usesKeychain;
 
   static String prefsKey(String key) => '$_prefsPrefix$key';
 
@@ -94,22 +89,27 @@ abstract final class ForjaPlatformSecureStore {
       _cachedConsent = ForjaKeychainConsent.accepted;
       return _cachedConsent!;
     }
-    if (_cachedConsent != null) return _cachedConsent!;
+    if (_cachedConsent != null) return consent;
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_consentPrefsKey);
       _cachedConsent = switch (raw) {
         'accepted' => ForjaKeychainConsent.accepted,
         'declined' => ForjaKeychainConsent.declined,
-        _ => ForjaKeychainConsent.unset,
+        // Default: local file — do not ask at boot.
+        _ => ForjaKeychainConsent.declined,
       };
+      // Persist default so later launches stay quiet.
+      if (raw == null || raw.isEmpty) {
+        await prefs.setString(_consentPrefsKey, 'declined');
+      }
     } catch (_) {
-      _cachedConsent = ForjaKeychainConsent.unset;
+      _cachedConsent = ForjaKeychainConsent.declined;
     }
-    return _cachedConsent!;
+    return consent;
   }
 
-  /// Persist Keychain vs local-file choice. Call from the in-app consent UI.
+  /// Persist Keychain vs local-file choice (Settings opt-in / opt-out).
   static Future<void> setKeychainConsent(ForjaKeychainConsent value) async {
     if (value == ForjaKeychainConsent.unset) {
       throw ArgumentError('Use accepted or declined');
@@ -169,10 +169,8 @@ abstract final class ForjaPlatformSecureStore {
   static Future<void> write(String key, String value) async {
     await ensureConsentLoaded();
 
-    // macOS declined/unset, or ad-hoc non-sandbox: vault only.
-    if (_isMacOS &&
-        (consent != ForjaKeychainConsent.accepted ||
-            !usesDataProtectionKeychain)) {
+    // macOS without Keychain opt-in, or ad-hoc non-sandbox: vault only.
+    if (_isMacOS && (!usesKeychain || !usesDataProtectionKeychain)) {
       await _writePrefsVault(key, value);
       return;
     }

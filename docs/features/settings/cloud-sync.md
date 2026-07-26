@@ -101,9 +101,9 @@ Not synced — device-specific or sensitive:
   the app opens that profile’s **default menu** tab (the starred tab under
   **Settings → Features**), not the screen you were on before switching.
 - On desktop **and Android TV**, a restored session goes straight to the boot splash (the session
-  is kept across quit: Keychain/Keystore when you allow Keychain on macOS
-  (sandboxed builds); a local app-file vault if you decline Keychain or on
-  ad-hoc macOS Release).
+  is kept across quit: local app-file vault by default on macOS; Keychain/Keystore
+  when you enable Keychain under Settings → About → Privacy, or Keystore on
+  Android).
   Boot renews the access token before profile/features sync so a overnight-expired
   JWT cannot leave you “signed in” with failed cloud pulls.
   A new interactive sign-in opens **Who’s watching?** so you can
@@ -221,8 +221,9 @@ Supabase `service_role` / `sb_secret_…` key in a desktop build.
 - **Cloud is master for portal assignments.** The device IPTV list is a cache. An empty local cache never deletes cloud portals (profile switch / sign-out wipe). Only deleting portals in the UI (or an intentional clear-all) updates cloud.
 - **Cloud is master for `profile_settings` too.** The device settings file is a cache of the active profile’s cloud row. Edits write the cache and push; wipe / pull / defaults never upload an empty or partial cache over Stremio, Nuvio, or navigation already in cloud.
 - Cloud settings never store M3U playlists, M3U channel lists, or My List — those stay on each device. Playback prefs (including play sources and preferred subtitle language) sync in full.
-- Portal **share codes** are a separate peer handoff (encrypted ciphertext on
-  rentry) — they are not stored in your sync payload.
+- Portal **share codes** are a peer handoff: new shares are self-contained encrypted
+  `F1.…` tokens (no server). Legacy 8-character codes still resolve from rentry when
+  that host is available — they are not stored in your sync payload.
 - Each account always keeps at least one profile. Deleting a profile also deletes its remote settings.
 - Profile selection is local to each device; profile settings remain remote and account-owned.
 - Per-domain merge by timestamp is still evolving — sign in after web edits to refresh the app.

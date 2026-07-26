@@ -758,13 +758,16 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
         const SizedBox(height: 4),
         Text(
           _shareCode ?? '-',
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.jetBrainsMono(
             color: IptvShellStyle.accent,
-            fontSize: 18,
+            fontSize: IptvPortalShare.isEmbeddedToken(_shareCode ?? '')
+                ? 12
+                : 18,
             fontWeight: FontWeight.w700,
-            letterSpacing: 2,
+            letterSpacing:
+                IptvPortalShare.isEmbeddedToken(_shareCode ?? '') ? 0.4 : 2,
           ),
         ),
       ],

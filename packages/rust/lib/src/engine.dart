@@ -186,6 +186,23 @@ class RustLib {
         return _readString(_native.ffi_decode_xtream_text(ptr));
       });
 
+  String iptvPortalShareEncode(String url, String username, String password) =>
+      using((arena) {
+        final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final userPtr =
+            username.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final passPtr =
+            password.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(
+          _native.ffi_iptv_portal_share_encode(urlPtr, userPtr, passPtr),
+        );
+      });
+
+  String iptvPortalShareDecode(String token) => using((arena) {
+        final ptr = token.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _readString(_native.ffi_iptv_portal_share_decode(ptr));
+      });
+
   String parseXtreamCategoriesJson(String json) => using((arena) {
         final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_parse_xtream_categories_json(ptr));
@@ -820,6 +837,16 @@ final class _FfiNative {
               'ffi_decode_xtream_text',
             )
             .asFunction(),
+        ffi_iptv_portal_share_encode = lib
+            .lookup<ffi.NativeFunction<_ThreeStringNative>>(
+              'ffi_iptv_portal_share_encode',
+            )
+            .asFunction(),
+        ffi_iptv_portal_share_decode = lib
+            .lookup<ffi.NativeFunction<_StringInOutNative>>(
+              'ffi_iptv_portal_share_decode',
+            )
+            .asFunction(),
         ffi_parse_xtream_categories_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_parse_xtream_categories_json',
@@ -1251,6 +1278,13 @@ final class _FfiNative {
   ) ffi_openssl_aes_decrypt_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_decode_xtream_text;
+  final ffi.Pointer<ffi.Char> Function(
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Char>,
+  ) ffi_iptv_portal_share_encode;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+      ffi_iptv_portal_share_decode;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_parse_xtream_categories_json;
   final ffi.Pointer<ffi.Char> Function(

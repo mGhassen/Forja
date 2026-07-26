@@ -1,92 +1,107 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:pointycastle/export.dart' as pc;
+import 'package:rust/rust.dart';
 
 import 'models.dart';
 
-/// Creates and resolves 8-character IPTV portal share codes.
+/// Creates and resolves IPTV portal share tokens.
 ///
-/// Portal credentials are AES-encrypted with a key derived from the share code,
-/// then stored on [rentry.co](https://rentry.co) under a custom URL slug that
-/// matches the code.
+/// **New shares** are self-contained `F1.` tokens (AES in Rust) — no pastebin.
+/// **Legacy** 8-character codes still resolve from [rentry.co](https://rentry.co)
+/// so existing codes keep working.
 class IptvPortalShare {
   IptvPortalShare._();
 
   static const shareCodeLength = 8;
-  static const _charset = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  static const embeddedPrefix = 'F1.';
   static const _rentryBase = 'https://rentry.co';
   static const _rentryEditCode = 'ForjaIptvShare1';
   static const _ua = 'Forja/1.2 (https://github.com/forja-forja/forja)';
 
-  static String generateCode() {
-    final rand = Random.secure();
-    return List.generate(
-      shareCodeLength,
-      (_) => _charset[rand.nextInt(_charset.length)],
-    ).join();
-  }
-
   static String normalizeCode(String raw) =>
       raw.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
 
-  static bool isValidCode(String raw) =>
+  static bool isEmbeddedToken(String raw) =>
+      raw.trim().startsWith(embeddedPrefix);
+
+  static bool isLegacyCode(String raw) =>
       normalizeCode(raw).length == shareCodeLength;
 
-  /// Upload encrypted portal credentials and return the 8-char share code.
-  static Future<String> createShare(IptvPortal portal) async {
-    Object? lastError;
-    for (var attempt = 0; attempt < 6; attempt++) {
-      final code = generateCode();
-      try {
-        final encrypted = _encryptPortal(portal, code);
-        await _rentryCreate(code: code, text: encrypted);
-        return code;
-      } on _RentryUrlInUseException {
-        continue;
-      } catch (e, st) {
-        lastError = e;
-        debugPrint('[IptvPortalShare] create failed ($code): $e\n$st');
-        rethrow;
-      }
-    }
-    throw StateError('Could not allocate share code: $lastError');
+  static bool isValidCode(String raw) =>
+      isEmbeddedToken(raw) || isLegacyCode(raw);
+
+  /// Format for clipboard / display (legacy `XXXX-XXXX`, embedded as-is).
+  static String formatCode(String raw) {
+    final trimmed = raw.trim();
+    if (isEmbeddedToken(trimmed)) return trimmed;
+    final code = normalizeCode(trimmed);
+    if (code.length <= 4) return code;
+    return '${code.substring(0, 4)}-${code.substring(4)}';
   }
 
-  /// Resolve an 8-char share code into portal credentials.
+  /// Encrypt portal credentials into a self-contained `F1.` token (Rust).
+  static Future<String> createShare(IptvPortal portal) async {
+    final token = RustLib.instance.iptvPortalShareEncode(
+      portal.url,
+      portal.username,
+      portal.password,
+    );
+    if (token.isEmpty || !isEmbeddedToken(token)) {
+      throw StateError('Could not create share code');
+    }
+    return token;
+  }
+
+  /// Resolve an embedded `F1.` token or a legacy 8-char rentry code.
   static Future<IptvPortal?> resolveShare(String rawCode) async {
-    final code = normalizeCode(rawCode);
+    final trimmed = rawCode.trim();
+    if (isEmbeddedToken(trimmed)) {
+      return _resolveEmbedded(trimmed);
+    }
+
+    final code = normalizeCode(trimmed);
     if (code.length != shareCodeLength) return null;
 
     final encrypted = await _rentryFetch(code);
     if (encrypted == null || encrypted.isEmpty) return null;
 
-    return _decryptPortal(encrypted, code);
+    return _decryptLegacyPortal(encrypted, code);
   }
 
-  static String _encryptPortal(IptvPortal portal, String code) {
-    final plain = utf8.encode(
-      jsonEncode({
-        'v': 1,
-        'url': portal.url,
-        'username': portal.username,
-        'password': portal.password,
-      }),
-    );
-    final key = _deriveKey(code);
-    final iv = _deriveIv(code);
-    final cipherBytes = _aesCbcEncrypt(key, iv, Uint8List.fromList(plain));
-    return base64Encode(cipherBytes);
-  }
-
-  static IptvPortal? _decryptPortal(String encryptedB64, String code) {
+  static IptvPortal? _resolveEmbedded(String token) {
     try {
-      final cipherBytes = base64.decode(encryptedB64.replaceAll('\n', '').trim());
-      final key = _deriveKey(code);
-      final iv = _deriveIv(code);
+      final jsonStr = RustLib.instance.iptvPortalShareDecode(token);
+      if (jsonStr.isEmpty) return null;
+      final decoded = jsonDecode(jsonStr);
+      if (decoded is! Map) return null;
+      final map = Map<String, dynamic>.from(decoded);
+      final url = (map['url'] as String?)?.trim() ?? '';
+      final username = (map['username'] as String?)?.trim() ?? '';
+      final password = (map['password'] as String?)?.trim() ?? '';
+      if (url.isEmpty || username.isEmpty || password.isEmpty) return null;
+      return IptvPortal(
+        url: url,
+        username: username,
+        password: password,
+        source: 'Shared',
+      );
+    } catch (e, st) {
+      debugPrint('[IptvPortalShare] embedded decode failed: $e\n$st');
+      return null;
+    }
+  }
+
+  /// Legacy AES (key derived from 8-char code) — same as pre-F1 shares on rentry.
+  static IptvPortal? _decryptLegacyPortal(String encryptedB64, String code) {
+    try {
+      final cipherBytes =
+          base64.decode(encryptedB64.replaceAll('\n', '').trim());
+      final key = _deriveLegacyKey(code);
+      final iv = _deriveLegacyIv(code);
       final plainBytes = _aesCbcDecrypt(key, iv, cipherBytes);
       final plain = utf8.decode(plainBytes);
       final decoded = jsonDecode(plain);
@@ -103,28 +118,17 @@ class IptvPortalShare {
         source: 'Shared',
       );
     } catch (e, st) {
-      debugPrint('[IptvPortalShare] decrypt failed: $e\n$st');
+      debugPrint('[IptvPortalShare] legacy decrypt failed: $e\n$st');
       return null;
     }
   }
 
-  static Uint8List _deriveKey(String code) =>
+  static Uint8List _deriveLegacyKey(String code) =>
       Uint8List.fromList(sha256.convert(utf8.encode('forja-iptv-share-v1:$code')).bytes);
 
-  static Uint8List _deriveIv(String code) => Uint8List.fromList(
+  static Uint8List _deriveLegacyIv(String code) => Uint8List.fromList(
         sha256.convert(utf8.encode('forja-iptv-iv-v1:$code')).bytes.sublist(0, 16),
       );
-
-  static Uint8List _aesCbcEncrypt(Uint8List key, Uint8List iv, Uint8List data) {
-    final padded = _pkcs7Pad(data, 16);
-    final cipher = pc.CBCBlockCipher(pc.AESEngine())
-      ..init(true, pc.ParametersWithIV(pc.KeyParameter(key), iv));
-    final out = Uint8List(padded.length);
-    for (var offset = 0; offset < padded.length; offset += 16) {
-      cipher.processBlock(padded, offset, out, offset);
-    }
-    return out;
-  }
 
   static Uint8List _aesCbcDecrypt(
     Uint8List key,
@@ -141,14 +145,6 @@ class IptvPortalShare {
       cipher.processBlock(cipherBytes, offset, out, offset);
     }
     return _pkcs7Unpad(out, 16);
-  }
-
-  static Uint8List _pkcs7Pad(Uint8List data, int blockSize) {
-    final padLen = blockSize - (data.length % blockSize);
-    final out = Uint8List(data.length + padLen);
-    out.setRange(0, data.length, data);
-    out.fillRange(data.length, out.length, padLen);
-    return out;
   }
 
   static Uint8List _pkcs7Unpad(Uint8List data, int blockSize) {
@@ -189,46 +185,6 @@ class IptvPortalShare {
     return semi >= 0 ? setCookie.substring(0, semi) : setCookie;
   }
 
-  static Future<void> _rentryCreate({
-    required String code,
-    required String text,
-  }) async {
-    final session = await _rentrySession();
-    final headers = <String, String>{
-      'User-Agent': _ua,
-      'Content-Type': 'application/x-www-form-urlencoded',
-      if (session.cookie != null) 'Cookie': session.cookie!,
-    };
-    final body = {
-      'csrfmiddlewaretoken': session.csrf,
-      'url': code,
-      'edit_code': _rentryEditCode,
-      'text': text,
-    };
-    final resp = await http.post(
-      Uri.parse('$_rentryBase/api/new'),
-      headers: headers,
-      body: body,
-    );
-    if (resp.statusCode != 200) {
-      throw StateError('Share upload failed (${resp.statusCode})');
-    }
-    final decoded = jsonDecode(resp.body);
-    if (decoded is! Map) {
-      throw StateError('Share upload failed (invalid response)');
-    }
-    final status = '${decoded['status'] ?? ''}';
-    if (status == '400') {
-      final errors = '${decoded['errors'] ?? ''}'.toLowerCase();
-      if (errors.contains('already in use')) {
-        throw _RentryUrlInUseException();
-      }
-    }
-    if (status != '200') {
-      throw StateError('Share upload failed ($status)');
-    }
-  }
-
   static Future<String?> _rentryFetch(String code) async {
     final session = await _rentrySession();
     final headers = <String, String>{
@@ -248,7 +204,14 @@ class IptvPortalShare {
     if (resp.statusCode != 200) return null;
     final decoded = jsonDecode(resp.body);
     if (decoded is! Map) return null;
-    if ('${decoded['status']}' != '200') return null;
+    if ('${decoded['status']}' != '200') {
+      final content = '${decoded['content'] ?? ''}';
+      if (content.toLowerCase().contains('unavailable') ||
+          '${decoded['status']}' == '503') {
+        throw StateError('Share service unavailable');
+      }
+      return null;
+    }
     final content = decoded['content'];
     if (content is! Map) return null;
     return content['text'] as String?;
@@ -261,5 +224,3 @@ class _RentrySession {
   final String csrf;
   final String? cookie;
 }
-
-class _RentryUrlInUseException implements Exception {}

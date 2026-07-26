@@ -181,6 +181,24 @@ pub unsafe extern "C" fn ffi_decode_xtream_text(text: *const c_char) -> *mut c_c
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ffi_iptv_portal_share_encode(
+    url: *const c_char,
+    username: *const c_char,
+    password: *const c_char,
+) -> *mut c_char {
+    to_c_string(crate::iptv_portal_share_encode(
+        from_c_str(url),
+        from_c_str(username),
+        from_c_str(password),
+    ))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_iptv_portal_share_decode(token: *const c_char) -> *mut c_char {
+    to_c_string(crate::iptv_portal_share_decode(from_c_str(token)))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_parse_xtream_categories_json(json: *const c_char) -> *mut c_char {
     to_c_string(crate::parse_xtream_categories_json(from_c_str(json)))
 }

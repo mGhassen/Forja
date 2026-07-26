@@ -128,21 +128,11 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   MyListService().syncRemoveHandler = syncMyListRemoveFromTrackers;
   unawaited(AppVersion.instance.load());
   debugPrint('[Boot] Flutter binding initialized');
-  // macOS: load Keychain consent before any secure I/O. If unset, defer
-  // Supabase until DesktopStartupGate shows the explain/ask screen — otherwise
-  // FlutterSecureStorage can pop the system login-Keychain password dialog
-  // with no in-app context.
   await ForjaPlatformSecureStore.ensureConsentLoaded();
-  if (!ForjaPlatformSecureStore.needsConsentPrompt) {
-    await ForjaSupabase.ensureInitialized();
-    // Always rotate the access JWT on cold start when a session exists. Skew /
-    // gotrue discard can leave a locally "valid" AT that PostgREST rejects.
-    await SyncService.instance.refreshSession(force: true);
-  } else {
-    debugPrint(
-      '[Boot] Deferring Supabase until macOS Keychain consent is resolved',
-    );
-  }
+  await ForjaSupabase.ensureInitialized();
+  // Always rotate the access JWT on cold start when a session exists. Skew /
+  // gotrue discard can leave a locally "valid" AT that PostgREST rejects.
+  await SyncService.instance.refreshSession(force: true);
   unawaited(ProviderRuntimeConfig.instance.ensureLoaded());
   unawaited(SettingsService().getAnimeTitleLanguage());
   if (Platform.isAndroid) {

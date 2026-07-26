@@ -177,6 +177,14 @@ fn decode_xtream_text(text: String) -> String {
     iptv::xtream::decode_xtream_text(&text)
 }
 
+fn iptv_portal_share_encode(url: String, username: String, password: String) -> String {
+    iptv::portal_share::encode_token(&url, &username, &password)
+}
+
+fn iptv_portal_share_decode(token: String) -> String {
+    iptv::portal_share::decode_token_json(&token)
+}
+
 fn parse_xtream_categories_json(json: String) -> String {
     iptv::xtream::parse_categories_json(&json)
 }

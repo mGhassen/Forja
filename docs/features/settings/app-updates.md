@@ -18,6 +18,7 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
   **error** toast (Forja does not claim you are up to date when the check failed)
 - Toggle **Crash reporting** under **Privacy** (off by default) to send anonymized crash reports via Sentry when this build includes a DSN — stream URLs, magnets, and tokens are stripped
 - Toggle **Product analytics** under **Privacy** (off by default) to send anonymous usage events via PostHog with masked session replay. Screen names follow real tabs (`home`, `anime`, …) and routes (`media_details`, `player`) — not Flutter’s `/` root.
+- On **macOS**, toggle **Store secrets in Keychain** under **Privacy** (off by default — local app file). Turning it on shows an explain dialog first; macOS may then ask for your password once.
 - Accept update prompt when a newer version exists
 - Browse **What’s new** per version (left list, newest first, max 16 since your build)
 - Open **See full changelog on the web** for the complete history on the portal

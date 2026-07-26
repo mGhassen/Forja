@@ -65,6 +65,24 @@ void main() {
     expect(rustOut.last['episode'], 3);
   });
 
+  test('iptvPortalShareEncodeDecode round trip', () {
+    final token = RustLib.instance.iptvPortalShareEncode(
+      'http://portal.example.com:8080',
+      'user1',
+      'pass1',
+    );
+    expect(token.startsWith('F1.'), isTrue);
+    final raw = RustLib.instance.iptvPortalShareDecode(token);
+    final map = jsonDecode(raw) as Map<String, dynamic>;
+    expect(map['url'], 'http://portal.example.com:8080');
+    expect(map['username'], 'user1');
+    expect(map['password'], 'pass1');
+  });
+
+  test('iptvPortalShareDecode rejects legacy short code', () {
+    expect(RustLib.instance.iptvPortalShareDecode('FGNVUSEL'), '');
+  });
+
   test('iptvProbeStreamJson rejects invalid url', () {
     final raw = RustLib.instance.iptvProbeStreamJson('not-a-url');
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
