@@ -824,103 +824,106 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       widget.guide.groupIdForChannel(widget.currentChannelId) == groupId;
 
   Widget _buildGroupList({ValueChanged<String>? onPick}) {
-    return ListView.builder(
+    return IptvTvScrollbar(
       controller: _groupScroll,
-      padding: const EdgeInsets.symmetric(
-        vertical: IptvChannelGuidePanel.groupListPaddingV,
-      ),
-      itemCount: widget.guide.groups.length,
-      itemExtent: IptvChannelGuidePanel.groupRowExtent,
-      itemBuilder: (_, i) {
-        final g = widget.guide.groups[i];
-        final selected = g.id == _browseGroupId;
-        final focused = _focusColumn == _FocusColumn.groups &&
-            i == _focusedGroupIndex &&
-            (_wide || _step == _GuideStep.groups);
-        final hasPlaying = _groupHasPlayingChannel(g.id);
-        return KeyedSubtree(
-          key: _groupKey(i),
-          child: MouseRegion(
-            onEnter: (_) {
-              final colChanged =
-                  _wide && _focusColumn != _FocusColumn.groups;
-              if (colChanged) {
-                setState(() => _focusColumn = _FocusColumn.groups);
-              } else if (_wide) {
-                _focusColumn = _FocusColumn.groups;
-              }
-              _browseGroup(g.id, animateScroll: false);
-            },
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (_wide) {
+      child: ListView.builder(
+        controller: _groupScroll,
+        padding: const EdgeInsets.symmetric(
+          vertical: IptvChannelGuidePanel.groupListPaddingV,
+        ),
+        itemCount: widget.guide.groups.length,
+        itemExtent: IptvChannelGuidePanel.groupRowExtent,
+        itemBuilder: (_, i) {
+          final g = widget.guide.groups[i];
+          final selected = g.id == _browseGroupId;
+          final focused = _focusColumn == _FocusColumn.groups &&
+              i == _focusedGroupIndex &&
+              (_wide || _step == _GuideStep.groups);
+          final hasPlaying = _groupHasPlayingChannel(g.id);
+          return KeyedSubtree(
+            key: _groupKey(i),
+            child: MouseRegion(
+              onEnter: (_) {
+                final colChanged =
+                    _wide && _focusColumn != _FocusColumn.groups;
+                if (colChanged) {
+                  setState(() => _focusColumn = _FocusColumn.groups);
+                } else if (_wide) {
                   _focusColumn = _FocusColumn.groups;
                 }
-                _selectGroup(g.id);
-                onPick?.call(g.id);
+                _browseGroup(g.id, animateScroll: false);
               },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                alignment: Alignment.centerLeft,
-                decoration: BoxDecoration(
-                  color: selected
-                      ? _accent.withValues(alpha: 0.18)
-                      : focused
-                          ? Colors.white.withValues(alpha: 0.06)
-                          : Colors.transparent,
-                  border: Border(
-                    left: BorderSide(
-                      color: selected
-                          ? _accent
-                          : focused
-                              ? Colors.white54
-                              : Colors.transparent,
-                      width: 3,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  if (_wide) {
+                    _focusColumn = _FocusColumn.groups;
+                  }
+                  _selectGroup(g.id);
+                  onPick?.call(g.id);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  alignment: Alignment.centerLeft,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? _accent.withValues(alpha: 0.18)
+                        : focused
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : Colors.transparent,
+                    border: Border(
+                      left: BorderSide(
+                        color: selected
+                            ? _accent
+                            : focused
+                                ? Colors.white54
+                                : Colors.transparent,
+                        width: 3,
+                      ),
                     ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        g.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: selected || focused
-                              ? Colors.white
-                              : Colors.white60,
-                          fontSize: 13,
-                          fontWeight: selected || focused
-                              ? FontWeight.w700
-                              : FontWeight.w400,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          g.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: selected || focused
+                                ? Colors.white
+                                : Colors.white60,
+                            fontSize: 13,
+                            fontWeight: selected || focused
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                          ),
                         ),
                       ),
-                    ),
-                    if (hasPlaying && !selected)
-                      Container(
-                        width: 7,
-                        height: 7,
-                        margin: const EdgeInsets.only(left: 6),
-                        decoration: BoxDecoration(
-                          color: _accent,
-                          shape: BoxShape.circle,
+                      if (hasPlaying && !selected)
+                        Container(
+                          width: 7,
+                          height: 7,
+                          margin: const EdgeInsets.only(left: 6),
+                          decoration: BoxDecoration(
+                            color: _accent,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                      ),
-                    if (selected)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: Icon(Icons.chevron_right_rounded,
-                            color: _accent, size: 18),
-                      ),
-                  ],
+                      if (selected)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Icon(Icons.chevron_right_rounded,
+                              color: _accent, size: 18),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -935,48 +938,51 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       );
     }
 
-    return ListView.builder(
+    return IptvTvScrollbar(
       controller: _channelScroll,
-      padding: const EdgeInsets.symmetric(
-        vertical: IptvChannelGuidePanel.channelListPaddingV,
+      child: ListView.builder(
+        controller: _channelScroll,
+        padding: const EdgeInsets.symmetric(
+          vertical: IptvChannelGuidePanel.channelListPaddingV,
+        ),
+        itemCount: channels.length,
+        itemExtent: IptvChannelGuidePanel.channelRowExtent,
+        itemBuilder: (_, i) {
+          final ch = channels[i];
+          final active = ch.id == widget.currentChannelId;
+          final focused = _focusColumn == _FocusColumn.channels &&
+              i == _focusedChannelIndex &&
+              (_wide || _step == _GuideStep.channels);
+          return KeyedSubtree(
+            key: _channelKey(i),
+            child: _GuideChannelTile(
+              channel: ch,
+              active: active,
+              focused: focused,
+              health: _health[ch.id],
+              onProbe: () => _scheduleHealthCheck(ch),
+              onCancelProbe: () => _cancelHealthCheck(ch.id),
+              onHover: () {
+                if (_focusColumn == _FocusColumn.channels &&
+                    _focusedChannelIndex == i) {
+                  return;
+                }
+                setState(() {
+                  _focusedChannelIndex = i;
+                  _focusColumn = _FocusColumn.channels;
+                });
+              },
+              onTap: () {
+                setState(() {
+                  _focusedChannelIndex = i;
+                  _focusColumn = _FocusColumn.channels;
+                });
+                widget.onChannelSelected(ch);
+              },
+            ),
+          );
+        },
       ),
-      itemCount: channels.length,
-      itemExtent: IptvChannelGuidePanel.channelRowExtent,
-      itemBuilder: (_, i) {
-        final ch = channels[i];
-        final active = ch.id == widget.currentChannelId;
-        final focused = _focusColumn == _FocusColumn.channels &&
-            i == _focusedChannelIndex &&
-            (_wide || _step == _GuideStep.channels);
-        return KeyedSubtree(
-          key: _channelKey(i),
-          child: _GuideChannelTile(
-            channel: ch,
-            active: active,
-            focused: focused,
-            health: _health[ch.id],
-            onProbe: () => _scheduleHealthCheck(ch),
-            onCancelProbe: () => _cancelHealthCheck(ch.id),
-            onHover: () {
-              if (_focusColumn == _FocusColumn.channels &&
-                  _focusedChannelIndex == i) {
-                return;
-              }
-              setState(() {
-                _focusedChannelIndex = i;
-                _focusColumn = _FocusColumn.channels;
-              });
-            },
-            onTap: () {
-              setState(() {
-                _focusedChannelIndex = i;
-                _focusColumn = _FocusColumn.channels;
-              });
-              widget.onChannelSelected(ch);
-            },
-          ),
-        );
-      },
     );
   }
 }

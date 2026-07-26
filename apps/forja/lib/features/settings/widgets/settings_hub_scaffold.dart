@@ -38,6 +38,11 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
     super.initState();
     SettingsService.playSourceChangeNotifier.addListener(_reload);
     SettingsService.navbarChangeNotifier.addListener(_reload);
+    // Back ladder: detail → selected category → first category → nav rail.
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'settings',
+      pageBack: _handlePageBack,
+    );
     _reload();
   }
 
@@ -106,6 +111,37 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
       if (!mounted) return;
       _focusDetailFirst();
     });
+  }
+
+  int? _focusedCategoryIndex() {
+    final handle =
+        ShellTvFocusCoordinator.rowHandle('settings', _categoryRowId);
+    if (handle == null || handle.itemCount <= 0) return null;
+    for (var i = 0; i < handle.itemCount; i++) {
+      if (handle.nodeAt(i)?.hasFocus ?? false) return i;
+    }
+    return null;
+  }
+
+  /// TV Back: detail → selected category → first category → (false → nav).
+  bool _handlePageBack() {
+    if (!mounted) return false;
+    if (!SettingsTokens.useSplitLayout(context)) return false;
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return false;
+
+    if (_detailScope.hasFocus) {
+      return _focusSelectedCategory();
+    }
+
+    final categoryIndex = _focusedCategoryIndex();
+    if (categoryIndex != null && categoryIndex > 0) {
+      return ShellTvFocusCoordinator.focusRowItem(
+        'settings',
+        _categoryRowId,
+        0,
+      );
+    }
+    return false;
   }
 
   Widget _wrapCompactTvFocus(Widget child) {
@@ -283,7 +319,16 @@ class _CategorySidebar extends StatelessWidget {
                 onRightEdge: onEnterDetail == null
                     ? null
                     : () => onEnterDetail!(c.id),
-                onTap: () => onSelect(c.id),
+                // ↑/↓ selects only; OK / Right enters the independent detail pane.
+                onFocusSelect:
+                    onEnterDetail == null ? null : () => onSelect(c.id),
+                onTap: () {
+                  if (onEnterDetail != null) {
+                    onEnterDetail!(c.id);
+                  } else {
+                    onSelect(c.id);
+                  }
+                },
               );
             },
           ),

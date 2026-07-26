@@ -5,6 +5,7 @@ import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/player_server_stream_dialog.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
+import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 
@@ -13,6 +14,7 @@ FocusNode? _playerMenuReturnFocus;
 bool _anyPlayerMenuOpen() {
   return PlayerStreamMenu.isShowing ||
       PlayerServerStreamDialog.isShowing ||
+      PlayerSubtitleDialog.isShowing ||
       PlayerPopupPanel.isShowing ||
       PlayerEpisodePanel.isShowing ||
       PlayerHubEpisodePanel.isShowing ||

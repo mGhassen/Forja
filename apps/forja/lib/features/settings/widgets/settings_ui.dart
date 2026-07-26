@@ -18,6 +18,7 @@ class SettingsCategoryTile extends StatelessWidget {
     this.subtitle,
     required this.selected,
     required this.onTap,
+    this.onFocusSelect,
     this.focusNode,
     this.listIndex,
     this.tvRowId,
@@ -30,6 +31,10 @@ class SettingsCategoryTile extends StatelessWidget {
   final String? subtitle;
   final bool selected;
   final VoidCallback onTap;
+
+  /// TV split: focus lands on a tile → select only (do not enter detail).
+  /// When null, [onTap] is used (compact list / non-TV).
+  final VoidCallback? onFocusSelect;
   final FocusNode? focusNode;
 
   /// Hub list index - `0` sends Left D-pad to the nav rail.
@@ -120,8 +125,10 @@ class SettingsCategoryTile extends StatelessWidget {
       focusNode: focusNode,
       onFocusChange: (focused) {
         // Keep detail pane on the focused category (no dual focus/selection).
+        // Prefer [onFocusSelect] so OK/Right can enter detail without ↑/↓ also
+        // diving into the right pane.
         if (tv && focused && !selected) {
-          onTap();
+          (onFocusSelect ?? onTap)();
         }
       },
       child: child,

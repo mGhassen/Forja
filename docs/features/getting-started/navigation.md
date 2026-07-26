@@ -29,7 +29,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 - **Nav rail order:** Search, Home, Asian Drama, Anime, IPTV, Live Matches, My List, then the **profile avatar** (same Settings hub as desktop — always last and cannot be hidden)
 - The app **opens on your chosen default tab** (Home unless you change it in Settings); **first focus** lands on that tab’s **nav rail** item (Home by default), not the hero Play button
-- **Settings hub:** wide TV uses the desktop-style left category rail + right detail pane
+- **Settings hub:** wide TV uses the desktop-style left category rail + right detail pane; **OK** or **→** enters the detail pane; **Back** steps detail → selected category → first category → nav rail
 - **Account:** cold start offers Sign in (code or QR via `/connect`) or Continue as guest; after link you pick a profile on Who’s watching?
 - Same left **nav rail** as desktop (no bottom bar) — **same per-tab accent colors**; icon size and spacing **shrink to fit every enabled tab** on screen (no rail scroll); profile avatar is smaller and sits nearer the bottom; selected / D-pad-focused items show their accent and label; D-pad moves focus with a white ring on page controls
 - **Layout:** catalog rows fill the body edge-to-edge (no extra section gutters); only the fixed nav rail insets content on the left; device-reported overscan padding is applied once at the shell when present

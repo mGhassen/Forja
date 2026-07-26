@@ -1,12 +1,9 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_menus.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/player/utils.dart';
-import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/utils/language_display.dart';
 
 /// Minimalist Exo track / settings menus - [PlayerPopupPanel] chips & list tiles.
 abstract final class ExoPlayerMenus {
@@ -34,6 +31,7 @@ abstract final class ExoPlayerMenus {
     );
   }
 
+  /// Two-panel Subtitles dialog (groups | tracks) — same shape as Sources.
   static Future<void> showSubtitles({
     required BuildContext context,
     required ExoTracksSnapshot tracks,
@@ -43,170 +41,21 @@ abstract final class ExoPlayerMenus {
     String? selectedExternalSubUrl,
     bool isFetchingSubs = false,
     Future<void> Function(Map<String, dynamic> sub)? onSelectExternal,
-    /// Local SRT/VTT file — same row as MediaKit (ASS/SSA need MediaKit/libass).
+    /// Local SRT/VTT file (ASS/SSA need MediaKit/libass).
     Future<void> Function({required String path, required String name})?
         onLoadFromFile,
     BuildContext? anchorContext,
   }) {
-    final byLang = <String, List<Map<String, dynamic>>>{};
-    for (final s in externalSubtitles) {
-      final key = languageGroupKey(
-        (s['language'] ?? s['lang'])?.toString(),
-      );
-      byLang.putIfAbsent(key, () => []).add(s);
-    }
-    final folderKeys = byLang.keys.toList()..sort(compareLanguageCodes);
-    final textOff = tracks.textOff ||
-        (tracks.text.every((t) => !t.selected) &&
-            selectedExternalSubUrl == null);
-
-    return PlayerPopupPanel.show(
-      context: context,
-      title: 'Subtitles',
-      leadingIcon: Icons.subtitles_outlined,
-      alignment: Alignment.bottomLeft,
-      anchorContext: anchorContext,
-      maxHeight: 420,
-      width: 320,
-      trailing: _SubtitleOffChip(
-        selected: textOff,
-        onTap: () async {
-          PlayerPopupPanel.dismiss();
-          await onOff();
-        },
-      ),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        shrinkWrap: true,
-        children: [
-          if (isFetchingSubs)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 10),
-              child: LinearProgressIndicator(
-                color: Colors.white54,
-                backgroundColor: Colors.white10,
-              ),
-            ),
-          for (var i = 0; i < tracks.text.length; i++) ...[
-            if (i != 0) const SizedBox(height: 8),
-            PlayerPopupOptionChip(
-              label: formatPlayerTrackLabel(
-                id: tracks.text[i].id,
-                title: tracks.text[i].label,
-                language: tracks.text[i].language,
-              ),
-              selected: selectedExternalSubUrl == null &&
-                  !tracks.textOff &&
-                  tracks.text[i].selected,
-              expanded: true,
-              onTap: () async {
-                PlayerPopupPanel.dismiss();
-                await onSelectEmbedded(tracks.text[i]);
-              },
-            ),
-          ],
-          if (tracks.text.isNotEmpty) const SizedBox(height: 10),
-          if (onLoadFromFile != null)
-            PlayerPopupNavRow(
-              icon: Icons.upload_file_rounded,
-              title: 'Load from file',
-              subtitle: 'SRT · VTT',
-              onTap: () async {
-                // Dismiss before the native picker - overlays can block the
-                // dialog, and file_picker returns null when the sheet stays up.
-                PlayerPopupPanel.dismiss();
-                final result = await FilePicker.platform.pickFiles(
-                  type: FileType.custom,
-                  allowedExtensions: const ['srt', 'vtt'],
-                );
-                if (result == null || result.files.single.path == null) return;
-                await onLoadFromFile(
-                  path: result.files.single.path!,
-                  name: result.files.single.name,
-                );
-              },
-            ),
-          for (final key in folderKeys) ...[
-            const SizedBox(height: 8),
-            Builder(
-              builder: (_) {
-                final list = byLang[key]!;
-                final hasSelected = list.any(
-                  (s) => s['url'] == selectedExternalSubUrl,
-                );
-                return PlayerPopupNavRow(
-                  title: languageDisplayName(key),
-                  value: '${list.length}',
-                  selected: hasSelected,
-                  onTap: () async {
-                    PlayerPopupPanel.dismiss();
-                    await _openExternalLanguage(
-                      context,
-                      langKey: key,
-                      subs: list,
-                      selectedExternalSubUrl: selectedExternalSubUrl,
-                      onSelectExternal: onSelectExternal,
-                      onRoot: () => showSubtitles(
-                        context: context,
-                        tracks: tracks,
-                        onSelectEmbedded: onSelectEmbedded,
-                        onOff: onOff,
-                        externalSubtitles: externalSubtitles,
-                        selectedExternalSubUrl: selectedExternalSubUrl,
-                        isFetchingSubs: isFetchingSubs,
-                        onSelectExternal: onSelectExternal,
-                        onLoadFromFile: onLoadFromFile,
-                        anchorContext: anchorContext,
-                      ),
-                      anchorContext: anchorContext,
-                    );
-                  },
-                );
-              },
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  static Future<void> _openExternalLanguage(
-    BuildContext context, {
-    required String langKey,
-    required List<Map<String, dynamic>> subs,
-    required String? selectedExternalSubUrl,
-    Future<void> Function(Map<String, dynamic> sub)? onSelectExternal,
-    required Future<void> Function() onRoot,
-    BuildContext? anchorContext,
-  }) {
-    return PlayerPopupPanel.show(
-      context: context,
-      title: languageDisplayName(langKey),
-      anchorContext: anchorContext,
-      maxHeight: 420,
-      width: 320,
-      onBack: () {
-        onRoot();
-      },
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        shrinkWrap: true,
-        children: subs.map((s) {
-          final sel = s['url'] == selectedExternalSubUrl;
-          final source =
-              (s['translated'] == true ? 'Translated · ' : '') +
-              (s['sourceName']?.toString() ?? 'opensubtitles');
-          return PlayerPopupListTile(
-            label: s['display']?.toString() ?? languageDisplayName(langKey),
-            subtitle: source,
-            selected: sel,
-            onTap: () async {
-              await onSelectExternal?.call(s);
-              if (context.mounted) PlayerPopupPanel.dismiss();
-            },
-          );
-        }).toList(),
-      ),
+    return PlayerSubtitleDialog.show(
+      context,
+      tracks: tracks,
+      onOff: onOff,
+      externalSubtitles: externalSubtitles,
+      selectedExternalSubUrl: selectedExternalSubUrl,
+      isFetchingSubs: isFetchingSubs,
+      onSelectExternal: onSelectExternal,
+      onLoadFromFile: onLoadFromFile,
+      onSelectEmbedded: (track) => onSelectEmbedded(track),
     );
   }
 
@@ -385,60 +234,3 @@ abstract final class ExoPlayerMenus {
   }
 }
 
-class _SubtitleOffChip extends StatelessWidget {
-  const _SubtitleOffChip({required this.selected, required this.onTap});
-
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final face = Container(
-      height: 28,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: selected ? PlayerPopupTokens.accent : Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        border: Border.all(
-          color: selected
-              ? PlayerPopupTokens.accent
-              : PlayerPopupTokens.border,
-        ),
-      ),
-      child: Text(
-        'Off',
-        style: TextStyle(
-          color: selected
-              ? PlayerPopupTokens.accentFg
-              : PlayerPopupTokens.muted,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-    if (!tvFocus) {
-      return Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-          hoverColor: selected
-              ? Colors.black.withValues(alpha: 0.06)
-              : ForjaShellColors.inkHover,
-          child: face,
-        ),
-      );
-    }
-    return FocusableControl(
-      onTap: onTap,
-      borderRadius: PlayerPopupTokens.chipRadius,
-      scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      child: face,
-    );
-  }
-}
