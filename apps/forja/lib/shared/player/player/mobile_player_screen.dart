@@ -199,6 +199,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _exitInProgress = false;
   final FocusNode _playFocus = FocusNode(debugLabel: 'player-play');
   final FocusNode _backFocus = FocusNode(debugLabel: 'player-back');
+  final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'player-menu');
+  final FocusNode _retryFocus = FocusNode(debugLabel: 'player-retry');
+  final FocusNode _streamActionFocus = FocusNode(debugLabel: 'player-stream-action');
   final FocusNode _skipChipFocus = FocusNode(debugLabel: 'player-skip-chip');
   final FocusNode _nextEpChipFocus = FocusNode(debugLabel: 'player-next-ep-chip');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
@@ -304,7 +307,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   final Set<int> _checkingSourceIndices = {};
   final Map<String, PlayerSourceStatus> _urlCheckStatuses = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
-  final ValueNotifier<bool> _isReloadingStreams = ValueNotifier(false);
   bool _isInitPlaybackRunning = false;
   bool _playbackConfirmed = false;
   DateTime? _playbackConfirmedAt;
@@ -421,6 +423,9 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
 
     _playFocus.dispose();
     _backFocus.dispose();
+    _playerMenuFocus.dispose();
+    _retryFocus.dispose();
+    _streamActionFocus.dispose();
     _skipChipFocus.dispose();
     _nextEpChipFocus.dispose();
     _tvKeyFocus.dispose();
@@ -454,7 +459,6 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     _hlsQualitiesNotifier.dispose();
     _statusController.dispose();
     _sourceMenuRevision.dispose();
-    _isReloadingStreams.dispose();
 
     unawaited(_teardownMediaKitPlayer());
 

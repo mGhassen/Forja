@@ -355,16 +355,49 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                     statusActions: _s._hasError
                         ? PlayerTopStatusActions(
                             onRetry: _s._initPlayback,
-                            onStream: hasStreamPicker ? _s._showStreamMenu : null,
+                            onStream:
+                                hasStreamPicker ? _s._showStreamMenu : null,
                             tvFocusable: true,
+                            retryFocusNode: _s._retryFocus,
+                            streamFocusNode: _s._streamActionFocus,
+                            onRetryLeftEdge: () =>
+                                _s._backFocus.requestFocus(),
+                            onRetryRightEdge: hasStreamPicker ||
+                                    widget.onSwitchPlayer != null
+                                ? () {
+                                    if (hasStreamPicker) {
+                                      _s._streamActionFocus.requestFocus();
+                                    } else {
+                                      _s._playerMenuFocus.requestFocus();
+                                    }
+                                  }
+                                : null,
+                            onStreamLeftEdge: () =>
+                                _s._retryFocus.requestFocus(),
+                            onStreamRightEdge: widget.onSwitchPlayer != null
+                                ? () => _s._playerMenuFocus.requestFocus()
+                                : null,
                           )
                         : null,
                     onBack: _s._exitPlayer,
                     tvFocusable: true,
                     backFocusNode: _s._backFocus,
+                    backOnRightEdge: _s._hasError
+                        ? () => _s._retryFocus.requestFocus()
+                        : null,
                     trailing: PlayerTopBarActions(
                       tvFocusable: true,
                       showPlayer: widget.onSwitchPlayer != null,
+                      playerFocusNode: _s._playerMenuFocus,
+                      playerOnLeftEdge: _s._hasError
+                          ? () {
+                              if (hasStreamPicker) {
+                                _s._streamActionFocus.requestFocus();
+                              } else {
+                                _s._retryFocus.requestFocus();
+                              }
+                            }
+                          : null,
                       onPlayer: widget.onSwitchPlayer != null
                           ? (anchorContext) =>
                               unawaited(_s._showPlayerMenu(anchorContext))
@@ -617,6 +650,18 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
                               btnSize: btnSize,
                               iconSz: iconSz,
                             ),
+                            if (_s._buildTransportPrevEpisodeButton(
+                                  btnSize: btnSize,
+                                  iconSz: iconSz,
+                                )
+                                case final prevEp?)
+                              prevEp,
+                            if (_s._buildTransportNextEpisodeButton(
+                                  btnSize: btnSize,
+                                  iconSz: iconSz,
+                                )
+                                case final nextEp?)
+                              nextEp,
                             PlayerVolumeControl(
                               volume: _s._volume,
                               maxVolume: 150,
@@ -818,25 +863,26 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
               tvFocusable: true,
               tvFocusOrder: 5,
             ),
-            const SizedBox(width: 2),
-            ordered(
-              6,
-              PlayerVolumeControl(
-                volume: _s._volume,
-                maxVolume: 150,
-                size: btnSize,
-                iconSize: iconSz,
-                tvFocusable: true,
-                compact: true,
-                onVolumeChanged: (v) {
-                  setState(() => _s._volume = v);
-                  _s._player.setVolume(v);
-                },
-                onInteraction: () {},
-                onDragStart: () {},
-                onDragEnd: () {},
-              ),
-            ),
+            if (_s._buildTransportPrevEpisodeButton(
+                  btnSize: btnSize,
+                  iconSz: iconSz,
+                  tvFocusable: true,
+                  tvFocusOrder: 6,
+                )
+                case final prevEp?) ...[
+              const SizedBox(width: 2),
+              prevEp,
+            ],
+            if (_s._buildTransportNextEpisodeButton(
+                  btnSize: btnSize,
+                  iconSz: iconSz,
+                  tvFocusable: true,
+                  tvFocusOrder: 7,
+                )
+                case final nextEp?) ...[
+              const SizedBox(width: 2),
+              nextEp,
+            ],
             const SizedBox(width: 6),
             ExcludeFocus(
               child: ValueListenableBuilder<Duration>(
@@ -858,7 +904,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
           children: [
             if (hasTorrentSources)
               ordered(
-                7,
+                8,
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   icon: Icons.link_rounded,
@@ -871,7 +917,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
             if (hasTorrentSources) const SizedBox(width: 2),
             if (hasStreamPicker)
               ordered(
-                8,
+                9,
                 PlayerStreamPickerButton(
                   tvFocusable: true,
                   size: btnSize,
@@ -883,7 +929,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
             if (hasStreamPicker) const SizedBox(width: 2),
             if (hasEpisodePicker)
               ordered(
-                9,
+                10,
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   icon: Icons.video_library_outlined,
@@ -894,7 +940,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
               ),
             if (hasEpisodePicker) const SizedBox(width: 2),
             ordered(
-              10,
+              11,
               PlayerFlatIconButton(
                 tvFocusable: true,
                 icon: Icons.audiotrack_rounded,
@@ -906,7 +952,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
             ),
             const SizedBox(width: 2),
             ordered(
-              11,
+              12,
               PlayerFlatIconButton(
                 tvFocusable: true,
                 icon: Icons.subtitles_outlined,
@@ -917,7 +963,7 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
             ),
             const SizedBox(width: 2),
             ordered(
-              12,
+              13,
               PlayerFlatIconButton(
                 tvFocusable: true,
                 icon: Icons.hd_outlined,
@@ -929,25 +975,13 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
             ),
             const SizedBox(width: 2),
             ordered(
-              13,
+              14,
               PlayerFlatIconButton(
                 tvFocusable: true,
                 icon: Icons.settings_outlined,
                 size: btnSize,
                 iconSize: iconSz,
                 onPressedWithContext: _s._showSettingsMenu,
-              ),
-            ),
-            const SizedBox(width: 2),
-            ordered(
-              14,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                icon: _s._isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
-                active: _s._isLocked,
-                size: btnSize,
-                iconSize: iconSz,
-                onPressed: _s._toggleLock,
               ),
             ),
           ],

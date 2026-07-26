@@ -28,8 +28,6 @@ class _StreamMenuOverlay extends StatefulWidget {
     this.statusController,
     this.providersEnabled = true,
     this.refreshListenable,
-    this.onReload,
-    this.isReloading,
     this.movie,
     this.selectedSeason,
     this.selectedEpisode,
@@ -55,8 +53,6 @@ class _StreamMenuOverlay extends StatefulWidget {
   final VoidCallback? onTogglePlayPause;
   final bool providersEnabled;
   final Listenable? refreshListenable;
-  final Future<void> Function()? onReload;
-  final ValueListenable<bool>? isReloading;
   final Movie? movie;
   final int? selectedSeason;
   final int? selectedEpisode;
@@ -83,6 +79,9 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
   int _sequentialCheckIndex = 0;
   int _sequentialCheckTotal = 0;
   _StreamAudioFilter? _audioFilter;
+  final FocusNode _subFilterFocus = FocusNode(debugLabel: 'source-sub-filter');
+  final FocusNode _dubFilterFocus = FocusNode(debugLabel: 'source-dub-filter');
+  final FocusNode _closeFocus = FocusNode(debugLabel: 'source-close');
 
   Set<String> get _failedProviders =>
       widget.providerLoadFailures?.value ?? const {};
@@ -127,6 +126,9 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
   @override
   void dispose() {
     ProviderScoreMemory.revision.removeListener(_onScoreRevision);
+    _subFilterFocus.dispose();
+    _dubFilterFocus.dispose();
+    _closeFocus.dispose();
     super.dispose();
   }
 
@@ -588,21 +590,22 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
     );
   }
 
-  Widget _buildHeaderTrailing() {
-    return PlayerStreamMenu.reloadTrailing(
-          onReload: widget.onReload,
-          isReloading: widget.isReloading,
-        ) ??
-        const SizedBox.shrink();
-  }
-
   Widget? _buildAudioFilterGroup() {
     if (!PlayerStreamMenu.hasSubDubProviders(widget.providers)) return null;
-    Widget segment(String label, _StreamAudioFilter value) {
+    Widget segment(
+      String label,
+      _StreamAudioFilter value, {
+      required FocusNode focusNode,
+      VoidCallback? onLeftEdge,
+      VoidCallback? onRightEdge,
+    }) {
       return ForjaShellChip(
         label: label,
         selected: _audioFilter == value,
+        focusNode: focusNode,
         onTap: () => setState(() => _audioFilter = value),
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         radius: 6,
         fontSize: 11,
@@ -619,12 +622,35 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          segment('SUB', _StreamAudioFilter.sub),
+          segment(
+            'SUB',
+            _StreamAudioFilter.sub,
+            focusNode: _subFilterFocus,
+            onRightEdge: () => _dubFilterFocus.requestFocus(),
+          ),
           const SizedBox(width: 3),
-          segment('DUB', _StreamAudioFilter.dub),
+          segment(
+            'DUB',
+            _StreamAudioFilter.dub,
+            focusNode: _dubFilterFocus,
+            onLeftEdge: () => _subFilterFocus.requestFocus(),
+            onRightEdge: () => _closeFocus.requestFocus(),
+          ),
         ],
       ),
     );
+  }
+
+  KeyEventResult _onCloseKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event.logicalKey != LogicalKeyboardKey.arrowLeft) {
+      return KeyEventResult.ignored;
+    }
+    if (!PlayerStreamMenu.hasSubDubProviders(widget.providers)) {
+      return KeyEventResult.ignored;
+    }
+    _dubFilterFocus.requestFocus();
+    return KeyEventResult.handled;
   }
 
   Widget _buildBody() {
@@ -641,13 +667,14 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
         PlayerSidePanelHeader(
           title: 'Source',
           onClose: widget.onClose,
+          closeFocusNode: _closeFocus,
+          closeOnKeyEvent: _onCloseKeyEvent,
           leading: Icon(
             Icons.layers_outlined,
             color: ForjaShellColors.cinematic.textSecondary,
             size: 18,
           ),
           titleTrailing: _buildAudioFilterGroup(),
-          trailing: _buildHeaderTrailing(),
         ),
         Expanded(child: list),
       ],

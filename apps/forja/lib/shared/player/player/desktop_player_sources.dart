@@ -129,58 +129,6 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     _notifySourceMenuChanged();
   }
 
-  Future<void> _dropTitleWebstreamingCache() async {
-    final movie = widget.movie;
-    if (movie == null || widget.magnetLink != null) return;
-    final key = WebstreamingStreamCache.cacheKeyFromProgress(
-      tmdbId: movie.id,
-      mediaType: movie.mediaType,
-      season: widget.selectedSeason,
-      episode: widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode,
-    );
-    await WebstreamingStreamCache.drop(key);
-  }
-
-  Future<void> _reloadStreamMenu() async {
-    if (_s._isReloadingStreams.value) return;
-    _s._isReloadingStreams.value = true;
-    try {
-      // Manual reload - never revive session/disk URLs.
-      await _dropTitleWebstreamingCache();
-      if (widget.onReloadStreams != null) {
-        final fresh = await widget.onReloadStreams!();
-        if (!mounted) return;
-        if (fresh != null && fresh.isNotEmpty) {
-          setState(() {
-            _s._currentSources = fresh;
-            _s._failedSourceIndices.clear();
-            _s._checkingSourceIndices.clear();
-            _s._urlCheckStatuses.clear();
-          });
-          _notifySourceMenuChanged();
-        }
-        return;
-      }
-      // Webstreaming / drama: no host callback - force-refresh the active
-      // server so header reload is not a no-op after cache play.
-      final pid = _s._currentProvider ?? widget.activeProvider;
-      if (pid == null || pid.isEmpty) return;
-      final fresh = await _s._loadProvider(pid, forceRefresh: true);
-      if (!mounted) return;
-      if (fresh != null && fresh.isNotEmpty) {
-        setState(() {
-          _s._currentSources = fresh;
-          _s._failedSourceIndices.clear();
-          _s._checkingSourceIndices.clear();
-          _s._urlCheckStatuses.clear();
-        });
-        _notifySourceMenuChanged();
-      }
-    } finally {
-      if (mounted) _s._isReloadingStreams.value = false;
-    }
-  }
-
   void _onLiveSourcesUpdated() {
     unawaited(_rankLiveSources());
   }
@@ -389,7 +337,6 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
     final listenables = <Listenable>[
       _s._statusController,
       _s._sourceMenuRevision,
-      _s._isReloadingStreams,
       _s._isPlayingNotifier,
       _s._providerLoadFailures,
       ProviderScoreMemory.revision,
@@ -460,8 +407,6 @@ mixin _DesktopPlayerSources on State<DesktopPlayerScreen>, WidgetsBindingObserve
       },
       anchorContext: anchorContext,
       refreshListenable: _streamMenuRefreshListenable(),
-      onReload: _reloadStreamMenu,
-      isReloading: _s._isReloadingStreams,
       movie: widget.movie,
       selectedSeason: widget.selectedSeason,
       selectedEpisode: widget.selectedEpisode,

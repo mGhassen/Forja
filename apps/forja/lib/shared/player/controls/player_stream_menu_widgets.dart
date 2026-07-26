@@ -74,13 +74,138 @@ class _ServerMenuHeader extends StatefulWidget {
 class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
   bool _hovered = false;
   bool _focused = false;
+  bool _reloadFocused = false;
+  final FocusNode _serverFocus = FocusNode(debugLabel: 'source-server');
+  final FocusNode _reloadFocus = FocusNode(debugLabel: 'source-server-reload');
+
+  @override
+  void dispose() {
+    _serverFocus.dispose();
+    _reloadFocus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final showReloadGlyph =
-        widget.showReload && (tvFocus ? _focused || _hovered : _hovered);
+    final canReload = widget.onReload != null && !widget.isReloading;
+    final showReloadGlyph = widget.showReload &&
+        (tvFocus
+            ? _focused || _reloadFocused || _hovered
+            : _hovered || _reloadFocused);
     final playingColor = PlayerPopupTokens.accent;
+
+    final labelColor = widget.isPlaying
+        ? Colors.white
+        : widget.status == PlayerSourceStatus.failed
+            ? Colors.white.withValues(alpha: 0.42)
+            : widget.isLoaded
+                ? Colors.white.withValues(alpha: 0.92)
+                : Colors.white.withValues(alpha: 0.62);
+
+    final nameColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.label,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: labelColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            height: 1.25,
+            decoration: widget.status == PlayerSourceStatus.failed
+                ? TextDecoration.lineThrough
+                : null,
+            decorationColor: Colors.white38,
+          ),
+        ),
+        if (widget.subtitle != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              widget.subtitle!,
+              style: TextStyle(
+                color: widget.isPlaying
+                    ? playingColor
+                    : Colors.white.withValues(alpha: 0.42),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
+    );
+
+    Widget reloadButton({required bool focusable}) {
+      final icon = Center(
+        child: Icon(
+          Icons.refresh_rounded,
+          size: 16,
+          color: Colors.white.withValues(
+            alpha: widget.isReloading
+                ? 0.28
+                : (_reloadFocused ? 0.95 : 0.55),
+          ),
+        ),
+      );
+      final visible = showReloadGlyph || (focusable && canReload);
+      final body = SizedBox(
+        width: 28,
+        height: 28,
+        child: visible
+            ? Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  canRequestFocus: false,
+                  onTap: focusable || !canReload ? null : widget.onReload,
+                  borderRadius: BorderRadius.circular(6),
+                  hoverColor: Colors.white.withValues(alpha: 0.08),
+                  child: icon,
+                ),
+              )
+            : const SizedBox.shrink(),
+      );
+      if (!focusable || !canReload) return body;
+      return shellFocusableTap(
+        context: context,
+        focusNode: _reloadFocus,
+        onTap: widget.onReload,
+        borderRadius: 6,
+        scaleOnFocus: 1.0,
+        showFocusBorder: true,
+        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        onLeftEdge: () => _serverFocus.requestFocus(),
+        onFocusChange: (focused) => setState(() => _reloadFocused = focused),
+        child: body,
+      );
+    }
+
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(4, 5, 4, 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          PlayerStreamMenu._statusGlyph(
+            status: widget.status,
+            isLoaded: widget.isLoaded,
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: nameColumn),
+          if (widget.showReload) ...[
+            const SizedBox(width: 4),
+            reloadButton(focusable: tvFocus),
+          ],
+          PlayerStreamMenu._serverTrailingBadges(
+            categoryBadge: widget.categoryBadge,
+            scoreScope: widget.scoreScope,
+            providerId: widget.providerId,
+            hideCategoryBadge: widget.hideCategoryBadge,
+          ),
+        ],
+      ),
+    );
 
     final row = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -93,122 +218,59 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
           onTap: tvFocus ? null : widget.onTap,
           hoverColor: ForjaShellColors.inkHover,
           splashColor: ForjaShellColors.inkSplash,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(4, 5, 4, 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                PlayerStreamMenu._statusGlyph(
-                  status: widget.status,
-                  isLoaded: widget.isLoaded,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              widget.label,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: widget.isPlaying
-                                    ? Colors.white
-                                    : widget.status == PlayerSourceStatus.failed
-                                        ? Colors.white.withValues(alpha: 0.42)
-                                        : widget.isLoaded
-                                            ? Colors.white
-                                                .withValues(alpha: 0.92)
-                                            : Colors.white
-                                                .withValues(alpha: 0.62),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                height: 1.25,
-                                decoration:
-                                    widget.status == PlayerSourceStatus.failed
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                decorationColor: Colors.white38,
-                              ),
-                            ),
-                          ),
-                          if (widget.showReload) ...[
-                            const SizedBox(width: 4),
-                            SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: showReloadGlyph
-                                  ? Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        canRequestFocus: false,
-                                        onTap: widget.isReloading
-                                            ? null
-                                            : widget.onReload,
-                                        borderRadius: BorderRadius.circular(4),
-                                        hoverColor: Colors.white
-                                            .withValues(alpha: 0.08),
-                                        child: Center(
-                                          child: Icon(
-                                            Icons.refresh_rounded,
-                                            size: 16,
-                                            color: Colors.white.withValues(
-                                              alpha: widget.isReloading
-                                                  ? 0.28
-                                                  : 0.55,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  : const SizedBox.shrink(),
-                            ),
-                          ],
-                        ],
-                      ),
-                      if (widget.subtitle != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            widget.subtitle!,
-                            style: TextStyle(
-                              color: widget.isPlaying
-                                  ? playingColor
-                                  : Colors.white.withValues(alpha: 0.42),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                PlayerStreamMenu._serverTrailingBadges(
-                  categoryBadge: widget.categoryBadge,
-                  scoreScope: widget.scoreScope,
-                  providerId: widget.providerId,
-                  hideCategoryBadge: widget.hideCategoryBadge,
-                ),
-              ],
-            ),
-          ),
+          child: content,
         ),
       ),
     );
 
     if (!tvFocus || widget.onTap == null) return row;
-    return shellFocusableTap(
-      context: context,
-      onTap: widget.onTap,
-      borderRadius: 8,
-      scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      onFocusChange: (focused) => setState(() => _focused = focused),
-      child: row,
+
+    // Split focus: server row ↔ reload (→ / ←). Nested reload FocusableControl
+    // must sit outside the server control so D-pad can reach it.
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: shellFocusableTap(
+            context: context,
+            focusNode: _serverFocus,
+            onTap: widget.onTap,
+            borderRadius: 8,
+            scaleOnFocus: 1.0,
+            showFocusBorder: true,
+            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+            onRightEdge: widget.showReload && canReload
+                ? () => _reloadFocus.requestFocus()
+                : null,
+            onFocusChange: (focused) => setState(() => _focused = focused),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(4, 5, 0, 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  PlayerStreamMenu._statusGlyph(
+                    status: widget.status,
+                    isLoaded: widget.isLoaded,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: nameColumn),
+                  PlayerStreamMenu._serverTrailingBadges(
+                    categoryBadge: widget.categoryBadge,
+                    scoreScope: widget.scoreScope,
+                    providerId: widget.providerId,
+                    hideCategoryBadge: widget.hideCategoryBadge,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (widget.showReload)
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: reloadButton(focusable: true),
+          ),
+      ],
     );
   }
 }

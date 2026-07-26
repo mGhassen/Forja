@@ -253,6 +253,14 @@ mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
     _s._startHideTimer();
   }
 
+  Widget _wrapTvFocusOrder(int? tvFocusOrder, Widget button) {
+    if (tvFocusOrder == null) return button;
+    return FocusTraversalOrder(
+      order: NumericFocusOrder(tvFocusOrder.toDouble()),
+      child: button,
+    );
+  }
+
   Widget _buildTransportBackButton({
     required double btnSize,
     required double iconSz,
@@ -260,22 +268,9 @@ mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
     FocusNode? focusNode,
     int? tvFocusOrder,
   }) {
-    Widget button;
-    if (_s._hasPrevEpisodeAdjacent) {
-      button = PlayerFlatIconButton(
-        tvFocusable: tvFocusable,
-        focusNode: focusNode,
-        icon: Icons.skip_previous_rounded,
-        tooltip: 'Previous Episode',
-        size: btnSize,
-        iconSize: iconSz,
-        onPressed: () {
-          if (_s._isLoadingNextEp) return;
-          unawaited(_previousEpisode());
-        },
-      );
-    } else {
-      button = PlayerFlatIconButton(
+    return _wrapTvFocusOrder(
+      tvFocusOrder,
+      PlayerFlatIconButton(
         tvFocusable: tvFocusable,
         focusNode: focusNode,
         icon: Icons.replay_10_rounded,
@@ -283,15 +278,8 @@ mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
         size: btnSize,
         iconSize: iconSz,
         onPressed: _seekBack10Seconds,
-      );
-    }
-    if (tvFocusOrder != null) {
-      return FocusTraversalOrder(
-        order: NumericFocusOrder(tvFocusOrder.toDouble()),
-        child: button,
-      );
-    }
-    return button;
+      ),
+    );
   }
 
   Widget _buildTransportForwardButton({
@@ -300,9 +288,52 @@ mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
     bool tvFocusable = false,
     int? tvFocusOrder,
   }) {
-    Widget button;
-    if (_s._hasNextEpisodeAdjacent) {
-      button = PlayerFlatIconButton(
+    return _wrapTvFocusOrder(
+      tvFocusOrder,
+      PlayerFlatIconButton(
+        tvFocusable: tvFocusable,
+        icon: Icons.forward_10_rounded,
+        tooltip: 'Forward 10s',
+        size: btnSize,
+        iconSize: iconSz,
+        onPressed: _seekForward10Seconds,
+      ),
+    );
+  }
+
+  Widget? _buildTransportPrevEpisodeButton({
+    required double btnSize,
+    required double iconSz,
+    bool tvFocusable = false,
+    int? tvFocusOrder,
+  }) {
+    if (!_s._hasPrevEpisodeAdjacent) return null;
+    return _wrapTvFocusOrder(
+      tvFocusOrder,
+      PlayerFlatIconButton(
+        tvFocusable: tvFocusable,
+        icon: Icons.skip_previous_rounded,
+        tooltip: 'Previous Episode',
+        size: btnSize,
+        iconSize: iconSz,
+        onPressed: () {
+          if (_s._isLoadingNextEp) return;
+          unawaited(_previousEpisode());
+        },
+      ),
+    );
+  }
+
+  Widget? _buildTransportNextEpisodeButton({
+    required double btnSize,
+    required double iconSz,
+    bool tvFocusable = false,
+    int? tvFocusOrder,
+  }) {
+    if (!_s._hasNextEpisodeAdjacent) return null;
+    return _wrapTvFocusOrder(
+      tvFocusOrder,
+      PlayerFlatIconButton(
         tvFocusable: tvFocusable,
         icon: Icons.skip_next_rounded,
         tooltip: 'Next Episode',
@@ -312,24 +343,8 @@ mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
           if (_s._isLoadingNextEp) return;
           unawaited(_nextEpisode());
         },
-      );
-    } else {
-      button = PlayerFlatIconButton(
-        tvFocusable: tvFocusable,
-        icon: Icons.forward_10_rounded,
-        tooltip: 'Forward 10s',
-        size: btnSize,
-        iconSize: iconSz,
-        onPressed: _seekForward10Seconds,
-      );
-    }
-    if (tvFocusOrder != null) {
-      return FocusTraversalOrder(
-        order: NumericFocusOrder(tvFocusOrder.toDouble()),
-        child: button,
-      );
-    }
-    return button;
+      ),
+    );
   }
 
   Future<({int season, int episode})?> _computeNextEpisode({

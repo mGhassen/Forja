@@ -518,27 +518,30 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       itemCount: list.length,
       orientation: ShellTvRowOrientation.vertical,
     );
-    return ListView.builder(
+    return IptvTvScrollbar(
       controller: _listScroll,
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-      itemExtent: _portalRowHeight,
-      itemCount: list.length,
-      itemBuilder: (_, i) {
-        final v = list[i];
-        return _PortalHoverTile(
-          portal: v,
-          ctrl: ctrl,
-          isActive: v.key == activeKey,
-          listIndex: i,
-          onUpEdge: i == 0
-              ? () => iptvFocusRowItem(
-                    'iptv-portal-header',
-                    _portalHeaderAddIndex(),
-                  )
-              : null,
-          onEdit: () => _showPortalDialog(context, existing: v),
-        );
-      },
+      child: ListView.builder(
+        controller: _listScroll,
+        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+        itemExtent: _portalRowHeight,
+        itemCount: list.length,
+        itemBuilder: (_, i) {
+          final v = list[i];
+          return _PortalHoverTile(
+            portal: v,
+            ctrl: ctrl,
+            isActive: v.key == activeKey,
+            listIndex: i,
+            onUpEdge: i == 0
+                ? () => iptvFocusRowItem(
+                      'iptv-portal-header',
+                      _portalHeaderAddIndex(),
+                    )
+                : null,
+            onEdit: () => _showPortalDialog(context, existing: v),
+          );
+        },
+      ),
     );
   }
 

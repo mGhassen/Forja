@@ -240,16 +240,6 @@ mixin _DesktopPlayerEpisodes
   }
 
   Widget _buildTransportBackButton() {
-    if (_s._hasPrevEpisodeAdjacent) {
-      return PlayerFlatIconButton(
-        icon: Icons.skip_previous_rounded,
-        tooltip: 'Previous Episode',
-        onPressed: () {
-          if (_s._isLoadingNextEp) return;
-          unawaited(_previousEpisode());
-        },
-      );
-    }
     return PlayerFlatIconButton(
       icon: Icons.replay_10_rounded,
       tooltip: 'Back 10s',
@@ -258,20 +248,34 @@ mixin _DesktopPlayerEpisodes
   }
 
   Widget _buildTransportForwardButton() {
-    if (_s._hasNextEpisodeAdjacent) {
-      return PlayerFlatIconButton(
-        icon: Icons.skip_next_rounded,
-        tooltip: 'Next Episode',
-        onPressed: () {
-          if (_s._isLoadingNextEp) return;
-          unawaited(_nextEpisode());
-        },
-      );
-    }
     return PlayerFlatIconButton(
       icon: Icons.forward_10_rounded,
       tooltip: 'Forward 10s',
       onPressed: _seekForward10Seconds,
+    );
+  }
+
+  Widget? _buildTransportPrevEpisodeButton() {
+    if (!_s._hasPrevEpisodeAdjacent) return null;
+    return PlayerFlatIconButton(
+      icon: Icons.skip_previous_rounded,
+      tooltip: 'Previous Episode',
+      onPressed: () {
+        if (_s._isLoadingNextEp) return;
+        unawaited(_previousEpisode());
+      },
+    );
+  }
+
+  Widget? _buildTransportNextEpisodeButton() {
+    if (!_s._hasNextEpisodeAdjacent) return null;
+    return PlayerFlatIconButton(
+      icon: Icons.skip_next_rounded,
+      tooltip: 'Next Episode',
+      onPressed: () {
+        if (_s._isLoadingNextEp) return;
+        unawaited(_nextEpisode());
+      },
     );
   }
 

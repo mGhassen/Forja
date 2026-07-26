@@ -494,6 +494,16 @@ mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver,
                         _s._buildTransportBackButton(),
                         const SizedBox(width: 2),
                         _s._buildTransportForwardButton(),
+                        if (_s._buildTransportPrevEpisodeButton()
+                            case final prevEp?) ...[
+                          const SizedBox(width: 2),
+                          prevEp,
+                        ],
+                        if (_s._buildTransportNextEpisodeButton()
+                            case final nextEp?) ...[
+                          const SizedBox(width: 2),
+                          nextEp,
+                        ],
                         const SizedBox(width: 6),
                         ValueListenableBuilder<double>(
                           valueListenable: _s._volumeNotifier,

@@ -93,6 +93,8 @@ class PlayerFlatIconButton extends StatefulWidget {
     this.iconSize = 22,
     this.tvFocusable = false,
     this.focusNode,
+    this.onLeftEdge,
+    this.onRightEdge,
   }) : assert(onPressed != null || onPressedWithContext != null);
 
   final IconData icon;
@@ -105,6 +107,8 @@ class PlayerFlatIconButton extends StatefulWidget {
   final double iconSize;
   final bool tvFocusable;
   final FocusNode? focusNode;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   State<PlayerFlatIconButton> createState() => _PlayerFlatIconButtonState();
@@ -191,6 +195,8 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
             onTap: onTap,
             borderRadius: borderRadius,
             scaleOnFocus: 1.0,
+            onLeftEdge: widget.onLeftEdge,
+            onRightEdge: widget.onRightEdge,
             onFocusChange: (focused) => setState(() => _focused = focused),
             onHoverChange: (hovered) {
               if (hovered) playerChromeCancelSeekScrubs();
@@ -486,6 +492,7 @@ class PlayerTopBar extends StatelessWidget {
     this.trailing,
     this.tvFocusable = false,
     this.backFocusNode,
+    this.backOnRightEdge,
   });
 
   final String title;
@@ -498,6 +505,8 @@ class PlayerTopBar extends StatelessWidget {
   final Widget? trailing;
   final bool tvFocusable;
   final FocusNode? backFocusNode;
+  /// TV: D-pad → from Back (e.g. to Retry when stream failure actions show).
+  final VoidCallback? backOnRightEdge;
 
   String? get _episodeLine {
     if (episodeLine != null && episodeLine!.isNotEmpty) return episodeLine;
@@ -602,6 +611,7 @@ class PlayerTopBar extends StatelessWidget {
                         size: 44,
                         tvFocusable: tvFocusable,
                         focusNode: backFocusNode,
+                        onRightEdge: backOnRightEdge,
                       ),
                     ),
                     Positioned(
@@ -627,12 +637,24 @@ class PlayerTopStatusActions extends StatelessWidget {
     this.onStream,
     this.streamEnabled = true,
     this.tvFocusable = false,
+    this.retryFocusNode,
+    this.streamFocusNode,
+    this.onRetryLeftEdge,
+    this.onRetryRightEdge,
+    this.onStreamLeftEdge,
+    this.onStreamRightEdge,
   });
 
   final VoidCallback onRetry;
   final VoidCallback? onStream;
   final bool streamEnabled;
   final bool tvFocusable;
+  final FocusNode? retryFocusNode;
+  final FocusNode? streamFocusNode;
+  final VoidCallback? onRetryLeftEdge;
+  final VoidCallback? onRetryRightEdge;
+  final VoidCallback? onStreamLeftEdge;
+  final VoidCallback? onStreamRightEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -641,14 +663,32 @@ class PlayerTopStatusActions extends StatelessWidget {
       spacing: 12,
       runSpacing: 4,
       children: [
-        _link('Retry', onRetry),
+        _link(
+          'Retry',
+          onRetry,
+          focusNode: retryFocusNode,
+          onLeftEdge: onRetryLeftEdge,
+          onRightEdge: onRetryRightEdge,
+        ),
         if (onStream != null)
-          _link('Stream', streamEnabled ? onStream! : () {}),
+          _link(
+            'Stream',
+            streamEnabled ? onStream! : () {},
+            focusNode: streamFocusNode,
+            onLeftEdge: onStreamLeftEdge,
+            onRightEdge: onStreamRightEdge,
+          ),
       ],
     );
   }
 
-  Widget _link(String label, VoidCallback onTap) {
+  Widget _link(
+    String label,
+    VoidCallback onTap, {
+    FocusNode? focusNode,
+    VoidCallback? onLeftEdge,
+    VoidCallback? onRightEdge,
+  }) {
     final button = TextButton(
       onPressed: tvFocusable ? null : onTap,
       style: TextButton.styleFrom(
@@ -667,6 +707,9 @@ class PlayerTopStatusActions extends StatelessWidget {
         onTap: onTap,
         borderRadius: 8,
         showFocusBorder: true,
+        focusNode: focusNode,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
         child: button,
       ),
     );
@@ -684,6 +727,8 @@ class PlayerTopBarActions extends StatelessWidget {
     this.onPlayer,
     this.showPlayer = false,
     this.tvFocusable = false,
+    this.playerFocusNode,
+    this.playerOnLeftEdge,
   });
 
   final VoidCallback? onCast;
@@ -694,6 +739,8 @@ class PlayerTopBarActions extends StatelessWidget {
   final ValueChanged<BuildContext>? onPlayer;
   final bool showPlayer;
   final bool tvFocusable;
+  final FocusNode? playerFocusNode;
+  final VoidCallback? playerOnLeftEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -707,6 +754,8 @@ class PlayerTopBarActions extends StatelessWidget {
             onPressedWithContext: onPlayer!,
             size: 44,
             tvFocusable: tvFocusable,
+            focusNode: playerFocusNode,
+            onLeftEdge: playerOnLeftEdge,
           ),
         if (showCast && onCast != null)
           PlayerFlatIconButton(

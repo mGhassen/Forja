@@ -162,6 +162,10 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   int _fallbackGen = 0;
   final FocusNode _playFocus = FocusNode(debugLabel: 'exo-player-play');
   final FocusNode _backFocus = FocusNode(debugLabel: 'exo-player-back');
+  final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'exo-player-menu');
+  final FocusNode _retryFocus = FocusNode(debugLabel: 'exo-player-retry');
+  final FocusNode _streamActionFocus =
+      FocusNode(debugLabel: 'exo-player-stream-action');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'exo-player-tv-keys');
 
   @override
@@ -937,6 +941,9 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     PlayerServerStreamDialog.dismiss();
     _playFocus.dispose();
     _backFocus.dispose();
+    _playerMenuFocus.dispose();
+    _retryFocus.dispose();
+    _streamActionFocus.dispose();
     _tvKeyFocus.dispose();
     _statusController.dispose();
     _isBufferingNotifier.dispose();
@@ -1014,14 +1021,44 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                             onStream: _hasStreamPicker
                                 ? () => unawaited(_showSourcesDialog(context))
                                 : null,
+                            tvFocusable: true,
+                            retryFocusNode: _retryFocus,
+                            streamFocusNode: _streamActionFocus,
+                            onRetryLeftEdge: () => _backFocus.requestFocus(),
+                            onRetryRightEdge: _hasStreamPicker ||
+                                    widget.onSwitchPlayer != null
+                                ? () {
+                                    if (_hasStreamPicker) {
+                                      _streamActionFocus.requestFocus();
+                                    } else {
+                                      _playerMenuFocus.requestFocus();
+                                    }
+                                  }
+                                : null,
+                            onStreamLeftEdge: () => _retryFocus.requestFocus(),
+                            onStreamRightEdge: widget.onSwitchPlayer != null
+                                ? () => _playerMenuFocus.requestFocus()
+                                : null,
                           )
                         : null,
                     onBack: () => unawaited(_exit()),
                     tvFocusable: true,
                     backFocusNode: _backFocus,
+                    backOnRightEdge:
+                        _hasError ? () => _retryFocus.requestFocus() : null,
                     trailing: PlayerTopBarActions(
                       tvFocusable: true,
                       showPlayer: widget.onSwitchPlayer != null,
+                      playerFocusNode: _playerMenuFocus,
+                      playerOnLeftEdge: _hasError
+                          ? () {
+                              if (_hasStreamPicker) {
+                                _streamActionFocus.requestFocus();
+                              } else {
+                                _retryFocus.requestFocus();
+                              }
+                            }
+                          : null,
                       onPlayer: widget.onSwitchPlayer != null
                           ? (anchorContext) =>
                               unawaited(_showPlayerMenu(anchorContext))
@@ -1340,22 +1377,6 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
                 iconSize: iconSz,
                 onPressed: () =>
                     unawaited(_seekRelative(const Duration(seconds: 10))),
-              ),
-            ),
-            const SizedBox(width: 2),
-            ordered(
-              6,
-              PlayerVolumeControl(
-                volume: _volume,
-                maxVolume: 150,
-                size: btnSize,
-                iconSize: iconSz,
-                tvFocusable: true,
-                compact: true,
-                onVolumeChanged: (v) => unawaited(_setVolume(v)),
-                onInteraction: () {},
-                onDragStart: () {},
-                onDragEnd: () {},
               ),
             ),
             const SizedBox(width: 6),

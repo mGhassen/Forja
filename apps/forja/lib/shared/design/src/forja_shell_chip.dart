@@ -123,6 +123,7 @@ class ForjaShellChip extends StatelessWidget {
     this.radius = 20,
     this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     this.fontSize = 12.5,
+    this.focusNode,
     this.listIndex,
     this.tvTabId,
     this.tvRowId,
@@ -140,6 +141,7 @@ class ForjaShellChip extends StatelessWidget {
   final double radius;
   final EdgeInsetsGeometry padding;
   final double fontSize;
+  final FocusNode? focusNode;
   final int? listIndex;
   final String? tvTabId;
   final String? tvRowId;
@@ -186,6 +188,7 @@ class ForjaShellChip extends StatelessWidget {
       return shellFocusableTap(
         context: context,
         onTap: onTap,
+        focusNode: focusNode,
         borderRadius: radius,
         scaleOnFocus: 1.0,
         listIndex: listIndex,

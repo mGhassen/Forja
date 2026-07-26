@@ -384,6 +384,10 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     return Focus(
       focusNode: _effectiveNode,
       autofocus: widget.autoFocus,
+      // Own TV focus exclusively — nested InkWell/Material must not become
+      // extra traversal stops (sort dialog double ↑/↓ per row).
+      descendantsAreFocusable: false,
+      descendantsAreTraversable: false,
       onFocusChange: (f) {
         setState(() => _isFocused = f);
         _updateState(f || (policy.scaleOnHover && _isHovered));

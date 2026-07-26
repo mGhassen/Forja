@@ -69,3 +69,35 @@ abstract final class IptvShellStyle {
         overlayColor: progress.withValues(alpha: 0.2),
       );
 }
+
+/// Thin position scroller for long TV catalog lists (categories / channels / portals).
+/// No-op off TV so desktop/mobile keep the existing chrome.
+class IptvTvScrollbar extends StatelessWidget {
+  const IptvTvScrollbar({
+    super.key,
+    required this.controller,
+    required this.child,
+  });
+
+  final ScrollController controller;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!ShellScope.metricsOf(context).usesTvDensity) return child;
+    return RawScrollbar(
+      controller: controller,
+      thumbVisibility: true,
+      trackVisibility: true,
+      interactive: false,
+      thickness: 3,
+      radius: const Radius.circular(2),
+      mainAxisMargin: 6,
+      crossAxisMargin: 2,
+      thumbColor: ForjaShellColors.brandGreen.withValues(alpha: 0.55),
+      trackColor: Colors.white.withValues(alpha: 0.08),
+      trackBorderColor: Colors.transparent,
+      child: child,
+    );
+  }
+}

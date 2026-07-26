@@ -1024,39 +1024,43 @@ class _IptvLiveSortMenuState extends State<_IptvLiveSortMenu> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionLabel('Categories'),
-          for (final (sort, label, icon) in _options)
-            _sortRow(
-              icon: icon,
-              label: label,
-              selected: _categorySort == sort,
-              onTap: () {
-                setState(() => _categorySort = sort);
-                widget.onCategorySort(sort);
-              },
+    // Same list-focus contract as PlayerPopupListTile: one focus node per
+    // row (InkWell must not request focus) or D-pad double-steps.
+    return PlayerPopupListFocusScope(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _sectionLabel('Categories'),
+            for (final (sort, label, icon) in _options)
+              _sortRow(
+                icon: icon,
+                label: label,
+                selected: _categorySort == sort,
+                onTap: () {
+                  setState(() => _categorySort = sort);
+                  widget.onCategorySort(sort);
+                },
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Divider(height: 1, color: PlayerPopupTokens.border),
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Divider(height: 1, color: PlayerPopupTokens.border),
-          ),
-          _sectionLabel('Channels'),
-          for (final (sort, label, icon) in _options)
-            _sortRow(
-              icon: icon,
-              label: label,
-              selected: _contentSort == sort,
-              onTap: () {
-                setState(() => _contentSort = sort);
-                widget.onContentSort(sort);
-              },
-            ),
-        ],
+            _sectionLabel('Channels'),
+            for (final (sort, label, icon) in _options)
+              _sortRow(
+                icon: icon,
+                label: label,
+                selected: _contentSort == sort,
+                onTap: () {
+                  setState(() => _contentSort = sort);
+                  widget.onContentSort(sort);
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1088,9 +1092,13 @@ class _IptvLiveSortMenuState extends State<_IptvLiveSortMenu> {
       borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
+        // Nested inside FocusableControl on TV — must not be a second
+        // traversal target (double ↑/↓ per visual row).
+        canRequestFocus: false,
+        onTap: tvFocus ? null : onTap,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
         hoverColor: ForjaShellColors.inkHover,
+        splashColor: ForjaShellColors.inkSplash,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           child: Row(
@@ -1130,6 +1138,8 @@ class _IptvLiveSortMenuState extends State<_IptvLiveSortMenu> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: FocusableControl(
+        autoFocus:
+            selected && PlayerPopupListFocusScope.claimAutofocus(context),
         onTap: onTap,
         borderRadius: PlayerPopupTokens.cardRadius,
         scaleOnFocus: 1.0,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
@@ -64,29 +65,6 @@ class PlayerStreamMenu {
     if (wasShowing) playerMenuRestoreReturnFocus();
   }
 
-  static Widget? reloadTrailing({
-    required Future<void> Function()? onReload,
-    ValueListenable<bool>? isReloading,
-  }) {
-    if (onReload == null) return null;
-    Widget buildButton(bool loading) {
-      // Status roulette / server glyphs already show loading - keep the
-      // icon; only disable the tap while a reload is in flight.
-      return ForjaPlainIcon(
-        icon: Icons.refresh_rounded,
-        size: 20,
-        color: loading ? Colors.white24 : Colors.white54,
-        onTap: loading ? null : () => unawaited(onReload()),
-      );
-    }
-
-    if (isReloading == null) return buildButton(false);
-    return ValueListenableBuilder<bool>(
-      valueListenable: isReloading,
-      builder: (context, loading, _) => buildButton(loading),
-    );
-  }
-
   static Future<void> show(
     BuildContext context, {
     Map<String, dynamic>? providers,
@@ -111,8 +89,6 @@ class PlayerStreamMenu {
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
     Listenable? refreshListenable,
-    Future<void> Function()? onReload,
-    ValueListenable<bool>? isReloading,
     Movie? movie,
     int? selectedSeason,
     int? selectedEpisode,
@@ -162,8 +138,6 @@ class PlayerStreamMenu {
           onTogglePlayPause: onTogglePlayPause,
           providersEnabled: providersEnabled,
           refreshListenable: refreshListenable,
-          onReload: onReload,
-          isReloading: isReloading,
           movie: movie,
           selectedSeason: selectedSeason,
           selectedEpisode: selectedEpisode,

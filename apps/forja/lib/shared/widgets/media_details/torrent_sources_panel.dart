@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 
 /// Right-side sliding panel shell for torrent / addon source picking.
@@ -146,6 +147,8 @@ class PlayerSidePanelHeader extends StatelessWidget {
     this.trailing,
     this.titleTrailing,
     this.badge,
+    this.closeFocusNode,
+    this.closeOnKeyEvent,
   });
 
   final String title;
@@ -156,6 +159,8 @@ class PlayerSidePanelHeader extends StatelessWidget {
   /// Rendered inline right after the title (e.g. a SUB/DUB group toggle).
   final Widget? titleTrailing;
   final String? badge;
+  final FocusNode? closeFocusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? closeOnKeyEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -207,6 +212,8 @@ class PlayerSidePanelHeader extends StatelessWidget {
             ForjaCloseButton(
               color: cinematic.textSecondary,
               onTap: onClose,
+              focusNode: closeFocusNode,
+              onKeyEvent: closeOnKeyEvent,
             ),
           ],
         ),

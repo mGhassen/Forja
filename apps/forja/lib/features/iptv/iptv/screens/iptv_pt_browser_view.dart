@@ -625,26 +625,29 @@ class _BrowserViewState extends State<_BrowserView> {
 
           // Remount when search changes so a prior scroll offset doesn't leave
           // the short filtered list floating mid-viewport.
-          return CustomScrollView(
-            key: ValueKey('browser-cats|${ctrl.browserSearch.trim()}'),
+          return IptvTvScrollbar(
             controller: _categoryScroll,
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                sliver: SliverMainAxisGroup(
-                  slivers: [
-                    if (fixed.isNotEmpty)
-                      SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, i) => rowFor(fixed[i], i),
-                          childCount: fixed.length,
+            child: CustomScrollView(
+              key: ValueKey('browser-cats|${ctrl.browserSearch.trim()}'),
+              controller: _categoryScroll,
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  sliver: SliverMainAxisGroup(
+                    slivers: [
+                      if (fixed.isNotEmpty)
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, i) => rowFor(fixed[i], i),
+                            childCount: fixed.length,
+                          ),
                         ),
-                      ),
-                    if (movable.isNotEmpty) movableSliver(),
-                  ],
+                      if (movable.isNotEmpty) movableSliver(),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
@@ -714,11 +717,13 @@ class _BrowserViewState extends State<_BrowserView> {
             );
           },
         );
-        if (!_LiveHealthProbe.usesScrollDebounce(ctx)) return grid;
-        return NotificationListener<ScrollNotification>(
-          onNotification: _onScrollNotification,
-          child: grid,
-        );
+        final scrollable = !_LiveHealthProbe.usesScrollDebounce(ctx)
+            ? grid
+            : NotificationListener<ScrollNotification>(
+                onNotification: _onScrollNotification,
+                child: grid,
+              );
+        return IptvTvScrollbar(controller: _streamScroll, child: scrollable);
       },
     );
   }
@@ -766,11 +771,13 @@ class _BrowserViewState extends State<_BrowserView> {
         );
       },
     );
-    if (!_LiveHealthProbe.usesScrollDebounce(context)) return rows;
-    return NotificationListener<ScrollNotification>(
-      onNotification: _onScrollNotification,
-      child: rows,
-    );
+    final scrollable = !_LiveHealthProbe.usesScrollDebounce(context)
+        ? rows
+        : NotificationListener<ScrollNotification>(
+            onNotification: _onScrollNotification,
+            child: rows,
+          );
+    return IptvTvScrollbar(controller: _streamScroll, child: scrollable);
   }
 
   Widget _buildStreamsEmpty() {

@@ -281,7 +281,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
   final Set<int> _checkingSourceIndices = {};
   final Map<String, PlayerSourceStatus> _urlCheckStatuses = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
-  final ValueNotifier<bool> _isReloadingStreams = ValueNotifier(false);
   bool _isInitPlaybackRunning = false;
   bool _playbackConfirmed = false;
   DateTime? _playbackConfirmedAt;
@@ -418,7 +417,6 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
     _volumeNotifier.dispose();
     _statusController.dispose();
     _sourceMenuRevision.dispose();
-    _isReloadingStreams.dispose();
 
     if (_playerReady) {
       _playerReady = false;
