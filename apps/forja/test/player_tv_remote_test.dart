@@ -5,27 +5,48 @@ import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_tv_remote.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
+PlayerTvRemoteKeyHandler _handler({
+  VoidCallback? onBack,
+  VoidCallback? onPlayPause,
+  VoidCallback? onShowControls,
+  VoidCallback? onSeekBack,
+  VoidCallback? onSeekForward,
+  VoidCallback? onVolumeUp,
+  VoidCallback? onVolumeDown,
+  VoidCallback? onToggleControls,
+  VoidCallback? onFocusBack,
+  VoidCallback? onFocusPlay,
+}) {
+  return PlayerTvRemoteKeyHandler(
+    onBack: onBack ?? () {},
+    onPlayPause: onPlayPause ?? () {},
+    onShowControls: onShowControls ?? () {},
+    onSeekBack: onSeekBack ?? () {},
+    onSeekForward: onSeekForward ?? () {},
+    onVolumeUp: onVolumeUp ?? () {},
+    onVolumeDown: onVolumeDown ?? () {},
+    onToggleControls: onToggleControls ?? () {},
+    onFocusBack: onFocusBack ?? () {},
+    onFocusPlay: onFocusPlay ?? () {},
+  );
+}
+
+KeyDownEvent _key(LogicalKeyboardKey key) {
+  return KeyDownEvent(
+    physicalKey: PhysicalKeyboardKey(0),
+    logicalKey: key,
+    timeStamp: Duration.zero,
+  );
+}
+
 void main() {
   group('PlayerTvRemoteKeyHandler', () {
     test('back key invokes onBack', () {
       var back = 0;
-      final handler = PlayerTvRemoteKeyHandler(
-        onBack: () => back++,
-        onPlayPause: () {},
-        onShowControls: () {},
-        onSeekBack: () {},
-        onSeekForward: () {},
-        onVolumeUp: () {},
-        onVolumeDown: () {},
-        onToggleControls: () {},
-      );
+      final handler = _handler(onBack: () => back++);
 
       final handled = handler.handle(
-        KeyDownEvent(
-          physicalKey: PhysicalKeyboardKey(0),
-          logicalKey: LogicalKeyboardKey.goBack,
-          timeStamp: Duration.zero,
-        ),
+        _key(LogicalKeyboardKey.goBack),
         showControls: true,
       );
 
@@ -35,23 +56,10 @@ void main() {
 
     test('select toggles play/pause when controls visible', () {
       var playPause = 0;
-      final handler = PlayerTvRemoteKeyHandler(
-        onBack: () {},
-        onPlayPause: () => playPause++,
-        onShowControls: () {},
-        onSeekBack: () {},
-        onSeekForward: () {},
-        onVolumeUp: () {},
-        onVolumeDown: () {},
-        onToggleControls: () {},
-      );
+      final handler = _handler(onPlayPause: () => playPause++);
 
       final handled = handler.handle(
-        KeyDownEvent(
-          physicalKey: PhysicalKeyboardKey(0),
-          logicalKey: LogicalKeyboardKey.select,
-          timeStamp: Duration.zero,
-        ),
+        _key(LogicalKeyboardKey.select),
         showControls: true,
       );
 
@@ -61,23 +69,10 @@ void main() {
 
     test('menu key toggles controls', () {
       var toggled = 0;
-      final handler = PlayerTvRemoteKeyHandler(
-        onBack: () {},
-        onPlayPause: () {},
-        onShowControls: () {},
-        onSeekBack: () {},
-        onSeekForward: () {},
-        onVolumeUp: () {},
-        onVolumeDown: () {},
-        onToggleControls: () => toggled++,
-      );
+      final handler = _handler(onToggleControls: () => toggled++);
 
       final handled = handler.handle(
-        KeyDownEvent(
-          physicalKey: PhysicalKeyboardKey(0),
-          logicalKey: LogicalKeyboardKey.contextMenu,
-          timeStamp: Duration.zero,
-        ),
+        _key(LogicalKeyboardKey.contextMenu),
         showControls: false,
       );
 
@@ -88,41 +83,76 @@ void main() {
     test('hardware volume keys always adjust volume', () {
       var up = 0;
       var down = 0;
-      final handler = PlayerTvRemoteKeyHandler(
-        onBack: () {},
-        onPlayPause: () {},
-        onShowControls: () {},
-        onSeekBack: () {},
-        onSeekForward: () {},
+      final handler = _handler(
         onVolumeUp: () => up++,
         onVolumeDown: () => down++,
-        onToggleControls: () {},
       );
 
       expect(
-        handler.handle(
-          KeyDownEvent(
-            physicalKey: PhysicalKeyboardKey(0),
-            logicalKey: LogicalKeyboardKey.audioVolumeUp,
-            timeStamp: Duration.zero,
-          ),
-          showControls: true,
-        ),
+        handler.handle(_key(LogicalKeyboardKey.audioVolumeUp), showControls: true),
         isTrue,
       );
       expect(
         handler.handle(
-          KeyDownEvent(
-            physicalKey: PhysicalKeyboardKey(0),
-            logicalKey: LogicalKeyboardKey.audioVolumeDown,
-            timeStamp: Duration.zero,
-          ),
+          _key(LogicalKeyboardKey.audioVolumeDown),
           showControls: true,
         ),
         isTrue,
       );
       expect(up, 1);
       expect(down, 1);
+    });
+
+    test('arrow up focuses back when chrome is hidden', () {
+      var focusBack = 0;
+      var volumeUp = 0;
+      final handler = _handler(
+        onFocusBack: () => focusBack++,
+        onVolumeUp: () => volumeUp++,
+      );
+
+      expect(
+        handler.handle(_key(LogicalKeyboardKey.arrowUp), showControls: false),
+        isTrue,
+      );
+      expect(focusBack, 1);
+      expect(volumeUp, 0);
+    });
+
+    test('arrow down focuses play when chrome is hidden', () {
+      var focusPlay = 0;
+      var volumeDown = 0;
+      final handler = _handler(
+        onFocusPlay: () => focusPlay++,
+        onVolumeDown: () => volumeDown++,
+      );
+
+      expect(
+        handler.handle(_key(LogicalKeyboardKey.arrowDown), showControls: false),
+        isTrue,
+      );
+      expect(focusPlay, 1);
+      expect(volumeDown, 0);
+    });
+
+    test('arrow up/down focus back/play even when chrome is visible', () {
+      var focusBack = 0;
+      var focusPlay = 0;
+      final handler = _handler(
+        onFocusBack: () => focusBack++,
+        onFocusPlay: () => focusPlay++,
+      );
+
+      expect(
+        handler.handle(_key(LogicalKeyboardKey.arrowUp), showControls: true),
+        isTrue,
+      );
+      expect(
+        handler.handle(_key(LogicalKeyboardKey.arrowDown), showControls: true),
+        isTrue,
+      );
+      expect(focusBack, 1);
+      expect(focusPlay, 1);
     });
   });
 

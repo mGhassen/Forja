@@ -132,6 +132,24 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     });
   }
 
+  void _focusPlayerBack() {
+    if (!iptvUseTvFocus(context) || !_s._controlsVisible) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_s._controlsVisible) return;
+      iptvFocusRowItem('iptv-player-top', 0);
+    });
+  }
+
+  void _revealControlsAndFocus({required bool back}) {
+    setState(() => _s._controlsVisible = true);
+    _scheduleHideControls();
+    if (back) {
+      _focusPlayerBack();
+    } else {
+      _focusPlayerChrome();
+    }
+  }
+
   void _toggleControls() {
     final show = !_s._controlsVisible;
     setState(() => _s._controlsVisible = show);
@@ -208,6 +226,8 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
           setState(() => _s._setCachedVolume((_s._volume - 5).clamp(0, 100)));
         },
         onToggleControls: _toggleControls,
+        onFocusBack: () => _revealControlsAndFocus(back: true),
+        onFocusPlay: () => _revealControlsAndFocus(back: false),
         onControlsActivity: _scheduleHideControls,
         child: MouseRegion(
           onHover: (_) => _onPlayerMouseMove(),
@@ -218,8 +238,12 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
             behavior: HitTestBehavior.opaque,
             onTap: _s._isPipMode ? null : _toggleControls,
             // Double-click / double-tap video → toggle fullscreen (same as films).
+            // Android TV is already immersive — no fullscreen toggle.
             onDoubleTap: () {
-              if (_s._isPipMode || _s._guideVisible || _s._searchVisible) {
+              if (_s._isPipMode ||
+                  _s._guideVisible ||
+                  _s._searchVisible ||
+                  iptvUseTvFocus(context)) {
                 return;
               }
               unawaited(_s._toggleFullscreen());
@@ -846,12 +870,13 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
 
   Widget _buildBottomBar(bool compact) {
     const rowId = 'iptv-player-controls';
+    final tvFocus = iptvUseTvFocus(context);
     final expectedCount =
-        3 // play, replay, mute
+        2 // play, replay
         +
         (widget.channelGuide != null ? 2 : 0) +
         (_s._sources.length > 1 ? 1 : 0) +
-        1; // fullscreen
+        (tvFocus ? 0 : 1); // fullscreen (phone / desktop only)
     iptvSyncRow(rowId: rowId, sortOrder: 1, itemCount: expectedCount);
     var i = 0;
     void upFromControls() {
@@ -900,83 +925,6 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               _scheduleHideControls();
             },
           ),
-          const SizedBox(width: 14),
-          MouseRegion(
-            onEnter: (_) {
-              setState(() => _s._volumeHovering = true);
-              _s._hideVolumeTimer?.cancel();
-              _scheduleHideControls();
-            },
-            onExit: (_) {
-              setState(() => _s._volumeHovering = false);
-              _scheduleHideVolumeSlider();
-            },
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IptvRoundIcon(
-                  icon: _s._muted || _s._volume == 0
-                      ? Icons.volume_off_rounded
-                      : (_s._volume < 40
-                            ? Icons.volume_down_rounded
-                            : Icons.volume_up_rounded),
-                  tvRowId: rowId,
-                  tvItemIndex: i++,
-                  onUpEdge: upFromControls,
-                  onTap: _toggleMute,
-                  onLongPress: () {
-                    setState(
-                      () => _s._showVolumeSlider = !_s._showVolumeSlider,
-                    );
-                    if (_s._showVolumeSlider) {
-                      _s._hideVolumeTimer?.cancel();
-                    } else {
-                      _scheduleHideVolumeSlider();
-                    }
-                    _scheduleHideControls();
-                  },
-                ),
-                AnimatedSize(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOut,
-                  child: SizedBox(
-                    width: (_s._showVolumeSlider || _s._volumeHovering)
-                        ? (compact ? 110 : 160)
-                        : 0,
-                    child: ClipRect(
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: SliderTheme(
-                          data: IptvShellStyle.sliderTheme(context).copyWith(
-                            inactiveTrackColor: Colors.white24,
-                            trackHeight: 3,
-                            thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 7,
-                            ),
-                          ),
-                          child: Slider(
-                            value: _s._volume.clamp(0.0, 100.0),
-                            min: 0,
-                            max: 100,
-                            onChangeStart: (_) {
-                              _s._hideVolumeTimer?.cancel();
-                              _scheduleHideControls();
-                            },
-                            onChanged: (v) {
-                              setState(() => _s._setCachedVolume(v));
-                              _scheduleHideVolumeSlider();
-                              _scheduleHideControls();
-                            },
-                            onChangeEnd: (_) => _scheduleHideVolumeSlider(),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
           const Spacer(),
           if (widget.channelGuide != null) ...[
             IptvRoundIcon(
@@ -1005,42 +953,19 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               onTap: _showSourcePicker,
             ),
           if (_s._sources.length > 1) const SizedBox(width: 14),
-          IptvRoundIcon(
-            icon: _s._isFullscreen
-                ? Icons.fullscreen_exit_rounded
-                : Icons.fullscreen_rounded,
-            tvRowId: rowId,
-            tvItemIndex: i++,
-            onUpEdge: upFromControls,
-            onTap: _s._toggleFullscreen,
-          ),
+          if (!tvFocus)
+            IptvRoundIcon(
+              icon: _s._isFullscreen
+                  ? Icons.fullscreen_exit_rounded
+                  : Icons.fullscreen_rounded,
+              tvRowId: rowId,
+              tvItemIndex: i++,
+              onUpEdge: upFromControls,
+              onTap: _s._toggleFullscreen,
+            ),
         ],
       ),
     );
-  }
-
-  void _toggleMute() {
-    setState(() {
-      if (_s._muted || _s._volume == 0) {
-        _s._setCachedVolume(
-          _s._volumeBeforeMute > 0 ? _s._volumeBeforeMute : 100.0,
-        );
-      } else {
-        _s._volumeBeforeMute = _s._volume;
-        _s._setCachedVolume(0);
-      }
-      _s._showVolumeSlider = true;
-    });
-    _scheduleHideVolumeSlider();
-    _scheduleHideControls();
-  }
-
-  void _scheduleHideVolumeSlider() {
-    _s._hideVolumeTimer?.cancel();
-    _s._hideVolumeTimer = Timer(const Duration(seconds: 3), () {
-      if (!mounted || _s._volumeHovering) return;
-      setState(() => _s._showVolumeSlider = false);
-    });
   }
 
   void _showSourcePicker() {

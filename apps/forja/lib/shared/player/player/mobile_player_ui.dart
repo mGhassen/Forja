@@ -75,6 +75,15 @@ mixin _MobilePlayerUi on State<MobilePlayerScreen> {
     });
   }
 
+  void _claimBackFocus() {
+    if (!widget.tvRemoteEnabled) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_s._backFocus.canRequestFocus) return;
+      if (playerChromeOverlayBlocksFocusClaim()) return;
+      _s._backFocus.requestFocus();
+    });
+  }
+
   void _nudgeTvVolume(double delta) {
     final next = (_s._volume + delta).clamp(0.0, 150.0);
     _s._volume = next;

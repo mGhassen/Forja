@@ -13,6 +13,7 @@ set -euo pipefail
 #   ./scripts/release_local.sh build-windows v1.2.404   # Windows via Parallels VM
 #   ./scripts/release_local.sh setup-windows            # print / run VM toolchain setup
 #   ./scripts/release_local.sh publish v1.2.404         # upload dist/ → gh + R2
+#   ./scripts/release_local.sh sync [v1.2.404]          # push branch (+ tag) → forjahq mirror
 #
 # Interactive wizard (TTY): ↑↓ / j k navigate · Space toggle · Enter next · b back · q quit
 #
@@ -23,6 +24,8 @@ set -euo pipefail
 #                                    same IDs as release_ci.sh / Actions (one arch per flag).
 #                                    Legacy: macos → macos_arm64; android_tv → both TV ABIs.
 #                                    Interactive pick if unset; default: macos_arm64 (+windows if VM)
+#   FORJA_SYNC_REPO=forjahq/forja    org mirror; force-push after origin (branch + release tag)
+#   FORJA_SYNC_SKIP=1                skip org mirror push
 #   NONINTERACTIVE=1                 skip confirm / platform prompts
 #
 # Requires (.env): SUPABASE_*, RELEASE_CDN_URL, FORJA_WEB_URL, R2_*
@@ -36,6 +39,9 @@ APP_DIR="$ROOT/apps/forja"
 DIST="$ROOT/dist"
 GH_REPO=""
 PRL_VM="${FORJA_PRL_VM:-Windows 11}"
+# Org mirror of origin (mGhassen/Forja). Override or set FORJA_SYNC_SKIP=1 to disable.
+SYNC_REPO="${FORJA_SYNC_REPO:-forjahq/forja}"
+SYNC_REMOTE="${FORJA_SYNC_REMOTE:-forjahq}"
 
 if [[ -t 1 ]]; then
   C_BOLD=$'\033[1m'
@@ -376,6 +382,51 @@ gh_repo() {
 
 gh_r() {
   gh -R "$(gh_repo)" "$@"
+}
+
+# Push current branch (+ optional release tag) to the org mirror.
+# Source of truth stays origin (mGhassen/Forja); forjahq is a direct mirror.
+ensure_sync_remote() {
+  local url="https://github.com/${SYNC_REPO}.git"
+  if git remote get-url "$SYNC_REMOTE" >/dev/null 2>&1; then
+    local cur
+    cur="$(git remote get-url "$SYNC_REMOTE")"
+    if [[ "$cur" != "$url" && "$cur" != "${url%.git}" && "$cur" != "git@github.com:${SYNC_REPO}.git" ]]; then
+      warn "remote '$SYNC_REMOTE' is $cur (expected $url) — using configured URL"
+      git remote set-url "$SYNC_REMOTE" "$url"
+    fi
+    return 0
+  fi
+  git remote add "$SYNC_REMOTE" "$url"
+  ok "added remote $SYNC_REMOTE → $SYNC_REPO"
+}
+
+sync_to_forjahq() {
+  local tag="${1:-}"
+  local branch
+
+  if [[ "${FORJA_SYNC_SKIP:-}" == "1" || -z "${SYNC_REPO}" ]]; then
+    return 0
+  fi
+
+  require_cmd git
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+  [[ "$branch" != "HEAD" ]] || die "detached HEAD — checkout a branch before syncing to $SYNC_REPO"
+
+  ensure_sync_remote
+  # One-way mirror: origin (mGhassen) wins. Force so divergent forjahq history is overwritten.
+  info "Sync origin → ${SYNC_REPO} (force branch ${branch}${tag:+, tag ${tag}})"
+
+  if ! git push --force "$SYNC_REMOTE" "HEAD:refs/heads/${branch}"; then
+    die "failed to force-push ${branch} → ${SYNC_REPO} (check write access / credentials)"
+  fi
+  if [[ -n "$tag" ]]; then
+    git rev-parse "$tag" >/dev/null 2>&1 || die "tag $tag does not exist locally"
+    if ! git push --force "$SYNC_REMOTE" "refs/tags/${tag}"; then
+      die "failed to force-push tag ${tag} → ${SYNC_REPO}"
+    fi
+  fi
+  ok "Synced to https://github.com/${SYNC_REPO}"
 }
 
 load_env() {
@@ -1125,7 +1176,26 @@ cmd_publish() {
   confirm "Upload dist assets for $ver to GitHub + R2?" || die "aborted"
   publish_github "$ver"
   publish_r2 "$ver"
+  if [[ "${FORJA_SYNC_SKIP:-}" != "1" ]]; then
+    sync_to_forjahq "$tag"
+  else
+    warn "Skipped mirror sync (${SYNC_REPO})"
+  fi
   ok "Done: $tag"
+}
+
+cmd_sync() {
+  local tag=""
+  if [[ -n "${1:-}" ]]; then
+    tag="$(normalize_tag "$1")"
+  else
+    tag="$(default_release_tag)"
+    [[ -n "$tag" ]] || die "no v* tags found — pass a tag: release_local.sh sync vX.Y.Z"
+  fi
+  require_cmd git
+  info "Mirror sync → ${SYNC_REPO} (${tag})"
+  confirm "Force-push current branch + ${tag} to ${SYNC_REPO} (mirror overwrite)?" || die "aborted"
+  FORJA_SYNC_SKIP=0 sync_to_forjahq "$tag"
 }
 
 cmd_backfill() {
@@ -1146,6 +1216,11 @@ cmd_tag() {
   build_selected "$ver"
   publish_github "$ver"
   publish_r2 "$ver"
+  if [[ "${FORJA_SYNC_SKIP:-}" != "1" ]]; then
+    sync_to_forjahq "$tag"
+  else
+    warn "Skipped mirror sync (${SYNC_REPO})"
+  fi
   ok "Done: $tag"
 }
 
@@ -1184,6 +1259,11 @@ cmd_bump() {
   git tag -a "v${ver}" -m "Forja ${ver}"
   git push origin HEAD
   git push origin "v${ver}"
+  if [[ "${FORJA_SYNC_SKIP:-}" != "1" ]]; then
+    sync_to_forjahq "v${ver}"
+  else
+    warn "Skipped mirror sync (${SYNC_REPO})"
+  fi
 
   build_selected "$ver"
   publish_github "$ver"
@@ -1192,7 +1272,7 @@ cmd_bump() {
 }
 
 wizard_release_tag() {
-  local tag detail rc
+  local tag detail rc do_sync=1
   while true; do
     pick_platforms || {
       rc=$?
@@ -1204,12 +1284,29 @@ wizard_release_tag() {
       ((rc == 2)) && continue
       ui_abort
     }
+    do_sync=1
+    if ui_confirm_screen 3 5 "Sync to ${SYNC_REPO} after publish?" \
+      "Pushes this branch + ${tag} from mGhassen/Forja → ${SYNC_REPO}." 1; then
+      do_sync=1
+    else
+      rc=$?
+      ((rc == 2)) && continue
+      ((rc == 3)) && ui_abort
+      do_sync=0
+    fi
     detail="Tag:       ${tag}
 Platforms: $(platforms)
-Action:    build + publish → GitHub + R2"
-    if ui_confirm_screen 4 4 "Confirm release" "$detail" 1; then
+Action:    build + publish → GitHub + R2
+Mirror:    $([[ "$do_sync" == 1 ]] && echo "yes → ${SYNC_REPO}" || echo no)"
+    if ui_confirm_screen 4 5 "Confirm release" "$detail" 1; then
       ui_raw_off
       ui_clear
+      if ((do_sync)); then
+        FORJA_SYNC_SKIP=0
+      else
+        FORJA_SYNC_SKIP=1
+      fi
+      export FORJA_SYNC_SKIP
       NONINTERACTIVE=1 cmd_tag "$tag"
       return 0
     else
@@ -1221,7 +1318,7 @@ Action:    build + publish → GitHub + R2"
 }
 
 wizard_new_version() {
-  local bump do_backfill=0 detail rc
+  local bump do_backfill=0 do_sync=1 detail rc
   # Fail before backfill/push so a dirty tree cannot strand a half-finished release.
   require_clean_tree
   while true; do
@@ -1230,7 +1327,7 @@ wizard_new_version() {
       ((rc == 2)) && return 2
       ui_abort
     }
-    bump="$(ui_choose 2 5 "Bump type" -- \
+    bump="$(ui_choose 2 6 "Bump type" -- \
       "patch|patch — 1.2.N → 1.2.N+1" \
       "minor|minor — 1.2.x → 1.3.0" \
       "major|major — 1.x → 2.0.0")" || {
@@ -1240,7 +1337,7 @@ wizard_new_version() {
     }
 
     do_backfill=0
-    if ui_confirm_screen 3 5 "Backfill untagged commits first?" \
+    if ui_confirm_screen 3 6 "Backfill untagged commits first?" \
       "Creates + pushes missing patch tags before the new release." 0; then
       do_backfill=1
     else
@@ -1250,11 +1347,23 @@ wizard_new_version() {
       do_backfill=0
     fi
 
+    do_sync=1
+    if ui_confirm_screen 4 6 "Sync to ${SYNC_REPO} after origin push?" \
+      "Pushes this branch + new tag from mGhassen/Forja → ${SYNC_REPO}." 1; then
+      do_sync=1
+    else
+      rc=$?
+      ((rc == 2)) && continue
+      ((rc == 3)) && ui_abort
+      do_sync=0
+    fi
+
     detail="Bump:      ${bump}
 Platforms: $(platforms)
 Backfill:  $([[ "$do_backfill" == 1 ]] && echo yes || echo no)
+Mirror:    $([[ "$do_sync" == 1 ]] && echo "yes → ${SYNC_REPO}" || echo no)
 Action:    freeze changelog → commit → tag → push → build + publish"
-    if ui_confirm_screen 4 5 "Confirm new version" "$detail" 1; then
+    if ui_confirm_screen 5 6 "Confirm new version" "$detail" 1; then
       :
     else
       rc=$?
@@ -1265,9 +1374,9 @@ Action:    freeze changelog → commit → tag → push → build + publish"
     ui_raw_off
     ui_clear
     if ((do_backfill)); then
-      if ui_confirm_screen 5 5 "Dry-run backfill first?" "" 1; then
+      if ui_confirm_screen 6 6 "Dry-run backfill first?" "" 1; then
         cmd_backfill --dry-run
-        ui_confirm_screen 5 5 "Looks good — run real backfill (push tags)?" "" 1 || ui_abort
+        ui_confirm_screen 6 6 "Looks good — run real backfill (push tags)?" "" 1 || ui_abort
       else
         rc=$?
         ((rc == 3)) && ui_abort
@@ -1278,9 +1387,38 @@ Action:    freeze changelog → commit → tag → push → build + publish"
       fetch_tags
       ok "backfill done — arc tip: $(default_release_tag)"
     fi
+    if ((do_sync)); then
+      FORJA_SYNC_SKIP=0
+    else
+      FORJA_SYNC_SKIP=1
+    fi
+    export FORJA_SYNC_SKIP
     NONINTERACTIVE=1 cmd_bump "$bump"
     return 0
   done
+}
+
+wizard_sync() {
+  local tag detail branch
+  fetch_tags
+  tag="$(default_release_tag)"
+  [[ -n "$tag" ]] || die "no v* tags found to sync"
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+  detail="Source:  origin ($(gh_repo))
+Target:  ${SYNC_REPO}
+Branch:  ${branch}
+Tag:     ${tag}
+Action:  force-push branch + tag (mGhassen overwrites ${SYNC_REPO})"
+  if ui_confirm_screen 1 1 "Sync to ${SYNC_REPO}?" "$detail" 1; then
+    ui_raw_off
+    ui_clear
+    NONINTERACTIVE=1 cmd_sync "$tag"
+    return 0
+  else
+    local rc=$?
+    ((rc == 2)) && return 2
+    ui_abort
+  fi
 }
 
 wizard_backfill() {
@@ -1339,7 +1477,18 @@ wizard_tools() {
         build_macos) cmd_build "$tag" ;;
         build_windows) cmd_build_windows "$tag" ;;
         build_android_tv) cmd_build_android_tv "$tag" ;;
-        publish) cmd_publish "$tag" ;;
+        publish)
+          if ui_confirm_screen 1 1 "Also sync to ${SYNC_REPO} after publish?" \
+            "Pushes this branch + tag → ${SYNC_REPO}." 1; then
+            FORJA_SYNC_SKIP=0
+          else
+            rc=$?
+            ((rc == 3)) && ui_abort
+            FORJA_SYNC_SKIP=1
+          fi
+          export FORJA_SYNC_SKIP
+          cmd_publish "$tag"
+          ;;
       esac
       ;;
   esac
@@ -1366,11 +1515,22 @@ interactive_menu() {
     echo "  6) Build Windows"
     echo "  7) Build Android TV"
     echo "  8) Publish"
-    echo "  9) Setup Windows VM"
+    echo "  9) Sync → ${SYNC_REPO}"
+    echo "  10) Setup Windows VM"
     echo "  q) Quit"
     read -r -p "Choice: " choice
     case "$choice" in
-      1) pick_platforms; tag="$(pick_tag_interactive)"; cmd_tag "$tag" ;;
+      1)
+        pick_platforms
+        tag="$(pick_tag_interactive)"
+        if confirm_yes "Also sync branch + tag to ${SYNC_REPO}?"; then
+          FORJA_SYNC_SKIP=0
+        else
+          FORJA_SYNC_SKIP=1
+        fi
+        export FORJA_SYNC_SKIP
+        cmd_tag "$tag"
+        ;;
       2)
         pick_platforms
         bump="$(pick_bump)"
@@ -1382,6 +1542,12 @@ interactive_menu() {
           cmd_backfill
           fetch_tags
         fi
+        if confirm_yes "Also sync branch + tag to ${SYNC_REPO}?"; then
+          FORJA_SYNC_SKIP=0
+        else
+          FORJA_SYNC_SKIP=1
+        fi
+        export FORJA_SYNC_SKIP
         cmd_bump "$bump"
         ;;
       3)
@@ -1400,7 +1566,8 @@ interactive_menu() {
       6) tag="$(pick_tag_interactive)"; cmd_build_windows "$tag" ;;
       7) tag="$(pick_tag_interactive)"; cmd_build_android_tv "$tag" ;;
       8) tag="$(pick_tag_interactive)"; cmd_publish "$tag" ;;
-      9) cmd_setup_windows ;;
+      9) cmd_sync ;;
+      10) cmd_setup_windows ;;
       q|Q) exit 0 ;;
       *) die "invalid choice" ;;
     esac
@@ -1412,6 +1579,7 @@ interactive_menu() {
     action="$(ui_choose 1 1 "What do you want to do?" -- \
       "release_tag|Release existing tag — platforms → build + publish" \
       "new_version|New version — bump → platforms → build + publish" \
+      "sync|Sync to ${SYNC_REPO} — push branch + tag from origin" \
       "backfill|Backfill untagged commits" \
       "list_tags|List / filter tags" \
       "tools|Build / publish tools…" \
@@ -1431,6 +1599,14 @@ interactive_menu() {
         ;;
       new_version)
         wizard_new_version || {
+          rc=$?
+          ((rc == 2)) && continue
+          ui_abort
+        }
+        return
+        ;;
+      sync)
+        wizard_sync || {
           rc=$?
           ((rc == 2)) && continue
           ui_abort
@@ -1473,8 +1649,9 @@ main() {
     build-android-tv) cmd_build_android_tv "${1:?usage: release_local.sh build-android-tv vX.Y.Z}" ;;
     setup-windows) cmd_setup_windows ;;
     publish) cmd_publish "${1:?usage: release_local.sh publish vX.Y.Z}" ;;
+    sync) cmd_sync "${1:-}" ;;
     -h|--help)
-      sed -n '3,30p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,35p' "$0" | sed 's/^# \{0,1\}//'
       ;;
     *)
       die "unknown command: $cmd (try --help)"

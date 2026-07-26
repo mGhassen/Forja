@@ -1067,7 +1067,7 @@ class _LiveMatchesEmbedPlayerScreenState
   void _syncTvRows() {
     if (!_tvFocus()) return;
     iptvSyncRow(rowId: _topRowId, sortOrder: 0, itemCount: 1);
-    iptvSyncRow(rowId: _controlsRowId, sortOrder: 1, itemCount: 3);
+    iptvSyncRow(rowId: _controlsRowId, sortOrder: 1, itemCount: 2);
   }
 
   bool _focusEmbedRow(String rowId, [int index = 0]) {
@@ -1449,7 +1449,8 @@ class _LiveMatchesEmbedPlayerScreenState
     );
   }
 
-  /// TV-only bottom chrome: Play/Pause · Mute · Fullscreen (WebView steals D-pad).
+  /// TV-only bottom chrome: Play/Pause · Mute (WebView steals D-pad).
+  /// Fullscreen is omitted on TV — the player is already immersive.
   Widget _buildTvControls() {
     _syncTvRows();
     void upToBack() => _focusEmbedRow(_topRowId, 0);
@@ -1476,19 +1477,7 @@ class _LiveMatchesEmbedPlayerScreenState
               tvItemIndex: 1,
               onUpEdge: upToBack,
               onLeftEdge: () => _focusEmbedRow(_controlsRowId, 0),
-              onRightEdge: () => _focusEmbedRow(_controlsRowId, 2),
               onTap: () => unawaited(_toggleMute()),
-            ),
-            const SizedBox(width: 14),
-            IptvRoundIcon(
-              icon: _isFullscreen
-                  ? Icons.fullscreen_exit_rounded
-                  : Icons.fullscreen_rounded,
-              tvRowId: _controlsRowId,
-              tvItemIndex: 2,
-              onUpEdge: upToBack,
-              onLeftEdge: () => _focusEmbedRow(_controlsRowId, 1),
-              onTap: () => unawaited(_toggleFullscreen()),
             ),
           ],
         ),

@@ -197,13 +197,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   // CDN-dropped-mid-handshake hang where mpv neither buffers nor errors.
   DateTime _openedAt = DateTime.now();
 
-  // Audio state
+  // Audio state (hardware remote / persisted; no chrome volume button)
   double _volume = 100.0; // 0..100 (mpv scale)
-  double _volumeBeforeMute = 100.0;
-  bool _muted = false;
-  bool _showVolumeSlider = false;
-  bool _volumeHovering = false;
-  Timer? _hideVolumeTimer;
 
   // Fullscreen state (desktop only - mobile is permanently immersive)
   bool _isFullscreen = false;
@@ -338,8 +333,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     final v = await IptvStore.loadPlayerVolume();
     if (_disposed || !mounted) return;
     _volume = v;
-    _volumeBeforeMute = v > 0 ? v : 100.0;
-    _muted = v == 0;
     if (_exoBackend) {
       await _bootExoPlayer();
     } else {
@@ -398,8 +391,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   void _setCachedVolume(double volume) {
     final v = volume.clamp(0.0, 100.0);
     _volume = v;
-    _muted = v == 0;
-    if (v > 0) _volumeBeforeMute = v;
     _engineSetVolume(v);
     unawaited(IptvStore.savePlayerVolume(v));
   }
@@ -417,7 +408,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     _pipSub?.cancel();
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();
-    _hideVolumeTimer?.cancel();
     _playerTvKeyFocus.dispose();
     _seekFocus.dispose();
     unawaited(_finalizeExit());

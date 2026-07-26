@@ -13,6 +13,8 @@ class PlayerTvRemoteKeyHandler {
     required this.onVolumeUp,
     required this.onVolumeDown,
     required this.onToggleControls,
+    required this.onFocusBack,
+    required this.onFocusPlay,
   });
 
   final VoidCallback onBack;
@@ -23,6 +25,10 @@ class PlayerTvRemoteKeyHandler {
   final VoidCallback onVolumeUp;
   final VoidCallback onVolumeDown;
   final VoidCallback onToggleControls;
+  /// Chrome hidden / video key scope: D-pad ↑ → Back button.
+  final VoidCallback onFocusBack;
+  /// Chrome hidden / video key scope: D-pad ↓ → Play button.
+  final VoidCallback onFocusPlay;
 
   bool handle(KeyEvent event, {required bool showControls}) {
     if (!shellTvIsNavigationKey(event)) return false;
@@ -63,11 +69,12 @@ class PlayerTvRemoteKeyHandler {
       return true;
     }
 
+    // ←/→ while chrome is up: let focus traversal own the keys.
+    // ↑/↓ always reveal Back / Play when this handler sees them (chrome is
+    // not focused — [PlayerTvKeyScope] ignores us while a chrome control is).
     if (showControls &&
         (key == LogicalKeyboardKey.arrowLeft ||
             key == LogicalKeyboardKey.arrowRight ||
-            key == LogicalKeyboardKey.arrowUp ||
-            key == LogicalKeyboardKey.arrowDown ||
             key == LogicalKeyboardKey.mediaRewind ||
             key == LogicalKeyboardKey.mediaFastForward)) {
       return false;
@@ -86,12 +93,12 @@ class PlayerTvRemoteKeyHandler {
     }
 
     if (key == LogicalKeyboardKey.arrowUp) {
-      onVolumeUp();
+      onFocusBack();
       return true;
     }
 
     if (key == LogicalKeyboardKey.arrowDown) {
-      onVolumeDown();
+      onFocusPlay();
       return true;
     }
 

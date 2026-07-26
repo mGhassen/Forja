@@ -453,6 +453,15 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     });
   }
 
+  void _claimBackFocus() {
+    if (!_isTv) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_backFocus.canRequestFocus) return;
+      if (playerChromeOverlayBlocksFocusClaim()) return;
+      _backFocus.requestFocus();
+    });
+  }
+
   void _startHideTimer() {
     if (_isTv) return;
     _hideTimer?.cancel();
@@ -1562,6 +1571,14 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       onVolumeUp: () => unawaited(_setVolume(_volume + 10)),
       onVolumeDown: () => unawaited(_setVolume(_volume - 10)),
       onToggleControls: _toggleControls,
+      onFocusBack: () {
+        setState(() => _showControls = true);
+        _claimBackFocus();
+      },
+      onFocusPlay: () {
+        setState(() => _showControls = true);
+        _claimPlayFocus();
+      },
       child: body,
     );
   }

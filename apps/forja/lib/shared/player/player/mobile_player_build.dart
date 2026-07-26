@@ -288,6 +288,14 @@ mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
       onVolumeUp: () => _s._nudgeTvVolume(10),
       onVolumeDown: () => _s._nudgeTvVolume(-10),
       onToggleControls: _s._toggleControls,
+      onFocusBack: () {
+        setState(() => _s._showControls = true);
+        _s._claimBackFocus();
+      },
+      onFocusPlay: () {
+        setState(() => _s._showControls = true);
+        _s._claimPlayFocus();
+      },
       child: body,
     );
   }

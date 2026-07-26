@@ -21,6 +21,8 @@ class PlayerTvKeyScope extends StatefulWidget {
     required this.onVolumeUp,
     required this.onVolumeDown,
     required this.onToggleControls,
+    required this.onFocusBack,
+    required this.onFocusPlay,
     this.onControlsActivity,
     required this.child,
   });
@@ -36,6 +38,10 @@ class PlayerTvKeyScope extends StatefulWidget {
   final VoidCallback onVolumeUp;
   final VoidCallback onVolumeDown;
   final VoidCallback onToggleControls;
+  /// D-pad ↑ while chrome is not focused — show chrome and focus Back.
+  final VoidCallback onFocusBack;
+  /// D-pad ↓ while chrome is not focused — show chrome and focus Play.
+  final VoidCallback onFocusPlay;
   /// Fired on D-pad / remote keys while chrome is visible so auto-hide can
   /// restart from idle (focus traversal alone does not touch the timer).
   final VoidCallback? onControlsActivity;
@@ -55,6 +61,8 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
         onVolumeUp: widget.onVolumeUp,
         onVolumeDown: widget.onVolumeDown,
         onToggleControls: widget.onToggleControls,
+        onFocusBack: widget.onFocusBack,
+        onFocusPlay: widget.onFocusPlay,
       );
 
   @override
