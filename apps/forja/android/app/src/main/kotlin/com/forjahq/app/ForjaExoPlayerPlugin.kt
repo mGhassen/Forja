@@ -16,6 +16,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
@@ -64,6 +65,8 @@ class ExoPlayerHost(
     private var player: ExoPlayer? = null
     private var progressRunnable: Runnable? = null
     private var videoAuto = true
+    private var lastUrl: String? = null
+    private var lastOptions: ExoOpenOptions = ExoOpenOptions()
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -128,53 +131,16 @@ class ExoPlayerHost(
     ) {
         stopInternal(releasePlayer = true)
         videoAuto = true
-        val httpFactory = DefaultHttpDataSource.Factory()
-        val requestHeaders = headers.toMutableMap()
-        val userAgent = requestHeaders.remove("User-Agent")
-            ?: requestHeaders.remove("user-agent")
-        if (!userAgent.isNullOrEmpty()) {
-            httpFactory.setUserAgent(userAgent)
-        }
-        if (requestHeaders.isNotEmpty()) {
-            httpFactory.setDefaultRequestProperties(requestHeaders)
-        }
+        lastUrl = url
+        lastOptions = options
 
+        val httpFactory = buildHttpFactory(headers)
+        // DefaultDataSource handles file:// / content:// / asset; HTTP goes through [httpFactory].
+        val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
         val mediaSourceFactory = DefaultMediaSourceFactory(context)
-            .setDataSourceFactory(httpFactory)
+            .setDataSourceFactory(dataSourceFactory)
 
-        val builder = MediaItem.Builder().setUri(Uri.parse(url))
-        if (subtitles.isNotEmpty()) {
-            val configs = subtitles.mapNotNull { sub ->
-                val subUrl = sub["url"]?.trim().orEmpty()
-                if (subUrl.isEmpty()) return@mapNotNull null
-                val mime = when {
-                    subUrl.lowercase().endsWith(".vtt") -> MimeTypes.TEXT_VTT
-                    subUrl.lowercase().endsWith(".srt") -> MimeTypes.APPLICATION_SUBRIP
-                    else -> MimeTypes.TEXT_VTT
-                }
-                MediaItem.SubtitleConfiguration.Builder(Uri.parse(subUrl))
-                    .setMimeType(mime)
-                    .setLanguage(sub["lang"] ?: "und")
-                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                    .build()
-            }
-            if (configs.isNotEmpty()) {
-                builder.setSubtitleConfigurations(configs)
-            }
-        }
-
-        // Live IPTV: sit behind the edge so TextureView + weak SoCs have cushion.
-        if (options.live) {
-            builder.setLiveConfiguration(
-                MediaItem.LiveConfiguration.Builder()
-                    .setTargetOffsetMs(LIVE_TARGET_OFFSET_MS)
-                    .setMinOffsetMs(LIVE_MIN_OFFSET_MS)
-                    .setMaxOffsetMs(LIVE_MAX_OFFSET_MS)
-                    .setMinPlaybackSpeed(0.97f)
-                    .setMaxPlaybackSpeed(1.03f)
-                    .build(),
-            )
-        }
+        val builder = mediaItemBuilder(url, subtitles, options)
 
         val loadControl = if (options.live) {
             DefaultLoadControl.Builder()
@@ -198,24 +164,7 @@ class ExoPlayerHost(
         player = exo
         playerView?.player = exo
 
-        val maxHeight = resolveMaxVideoHeight(options)
-        val maxBitrate = resolveMaxVideoBitrate(options, maxHeight)
-        if (maxHeight > 0 || maxBitrate > 0) {
-            var params = exo.trackSelectionParameters.buildUpon()
-            if (maxHeight > 0) {
-                // Width follows 16:9 from height - caps adaptive HLS/DASH variants.
-                val maxWidth = (maxHeight * 16) / 9
-                params = params.setMaxVideoSize(maxWidth, maxHeight)
-            }
-            if (maxBitrate > 0) {
-                params = params.setMaxVideoBitrate(maxBitrate)
-            }
-            exo.trackSelectionParameters = params.build()
-            Log.i(
-                TAG,
-                "open live=${options.live} maxHeight=$maxHeight maxBitrate=$maxBitrate sdk=${Build.VERSION.SDK_INT}",
-            )
-        }
+        applyLiveTrackCaps(exo, options)
 
         exo.setMediaItem(builder.build())
         exo.prepare()
@@ -224,6 +173,112 @@ class ExoPlayerHost(
         }
         exo.playWhenReady = true
         startProgressLoop()
+    }
+
+    /**
+     * Soft-reload the current media with new external subtitle sideloads,
+     * preserving position and play/pause. Used when online subs arrive or
+     * the user picks a language after open.
+     */
+    fun setSubtitles(subtitles: List<Map<String, String>>) {
+        val p = player ?: return
+        val url = lastUrl ?: return
+        val pos = p.currentPosition
+        val playWhenReady = p.playWhenReady
+        val item = mediaItemBuilder(url, subtitles, lastOptions).build()
+        p.setMediaItem(item, pos)
+        p.prepare()
+        p.playWhenReady = playWhenReady
+    }
+
+    private fun buildHttpFactory(headers: Map<String, String>): DefaultHttpDataSource.Factory {
+        val httpFactory = DefaultHttpDataSource.Factory()
+        val requestHeaders = headers.toMutableMap()
+        val userAgent = requestHeaders.remove("User-Agent")
+            ?: requestHeaders.remove("user-agent")
+        if (!userAgent.isNullOrEmpty()) {
+            httpFactory.setUserAgent(userAgent)
+        }
+        if (requestHeaders.isNotEmpty()) {
+            httpFactory.setDefaultRequestProperties(requestHeaders)
+        }
+        return httpFactory
+    }
+
+    private fun mediaItemBuilder(
+        url: String,
+        subtitles: List<Map<String, String>>,
+        options: ExoOpenOptions,
+    ): MediaItem.Builder {
+        val builder = MediaItem.Builder().setUri(Uri.parse(url))
+        if (subtitles.isNotEmpty()) {
+            val configs = subtitles.mapNotNull { sub ->
+                subtitleConfiguration(sub)
+            }
+            if (configs.isNotEmpty()) {
+                builder.setSubtitleConfigurations(configs)
+            }
+        }
+        // Live IPTV: sit behind the edge so TextureView + weak SoCs have cushion.
+        if (options.live) {
+            builder.setLiveConfiguration(
+                MediaItem.LiveConfiguration.Builder()
+                    .setTargetOffsetMs(LIVE_TARGET_OFFSET_MS)
+                    .setMinOffsetMs(LIVE_MIN_OFFSET_MS)
+                    .setMaxOffsetMs(LIVE_MAX_OFFSET_MS)
+                    .setMinPlaybackSpeed(0.97f)
+                    .setMaxPlaybackSpeed(1.03f)
+                    .build(),
+            )
+        }
+        return builder
+    }
+
+    private fun subtitleConfiguration(sub: Map<String, String>): MediaItem.SubtitleConfiguration? {
+        val subUrl = sub["url"]?.trim().orEmpty()
+        if (subUrl.isEmpty()) return null
+        val mime = mimeForSubtitleUrl(subUrl) ?: return null
+        val lang = sub["lang"]?.takeIf { it.isNotBlank() } ?: "und"
+        val label = sub["label"]?.takeIf { it.isNotBlank() } ?: lang
+        return MediaItem.SubtitleConfiguration.Builder(Uri.parse(subUrl))
+            .setMimeType(mime)
+            .setLanguage(lang)
+            .setLabel(label)
+            // Let Dart apply preferred language - do not force-select every track.
+            .setSelectionFlags(0)
+            .build()
+    }
+
+    private fun mimeForSubtitleUrl(subUrl: String): String? {
+        val path = subUrl.lowercase().substringBefore('?').substringBefore('#')
+        return when {
+            path.endsWith(".vtt") -> MimeTypes.TEXT_VTT
+            path.endsWith(".srt") -> MimeTypes.APPLICATION_SUBRIP
+            // ASS/SSA needs libass (media_kit) - skip rather than mis-label as VTT.
+            path.endsWith(".ass") || path.endsWith(".ssa") -> null
+            // Extensionless / unknown: MediaKit downloads as .srt; treat as SubRip.
+            else -> MimeTypes.APPLICATION_SUBRIP
+        }
+    }
+
+    private fun applyLiveTrackCaps(exo: ExoPlayer, options: ExoOpenOptions) {
+        val maxHeight = resolveMaxVideoHeight(options)
+        val maxBitrate = resolveMaxVideoBitrate(options, maxHeight)
+        if (maxHeight <= 0 && maxBitrate <= 0) return
+        var params = exo.trackSelectionParameters.buildUpon()
+        if (maxHeight > 0) {
+            // Width follows 16:9 from height - caps adaptive HLS/DASH variants.
+            val maxWidth = (maxHeight * 16) / 9
+            params = params.setMaxVideoSize(maxWidth, maxHeight)
+        }
+        if (maxBitrate > 0) {
+            params = params.setMaxVideoBitrate(maxBitrate)
+        }
+        exo.trackSelectionParameters = params.build()
+        Log.i(
+            TAG,
+            "open live=${options.live} maxHeight=$maxHeight maxBitrate=$maxBitrate sdk=${Build.VERSION.SDK_INT}",
+        )
     }
 
     private fun resolveMaxVideoHeight(options: ExoOpenOptions): Int {
@@ -414,6 +469,8 @@ class ExoPlayerHost(
         if (releasePlayer) {
             player?.release()
             player = null
+            lastUrl = null
+            lastOptions = ExoOpenOptions()
         }
         videoAuto = true
     }
@@ -555,6 +612,14 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
                 val type = call.argument<String>("type") ?: return result.error("ARG", "type required", null)
                 val trackId = call.argument<String>("trackId")
                 hostFor(viewId).selectTrack(type, trackId)
+                result.success(null)
+            }
+            "setSubtitles" -> {
+                val viewId = call.argument<Int>("viewId")
+                    ?: return result.error("ARG", "viewId required", null)
+                @Suppress("UNCHECKED_CAST")
+                val subtitles = call.argument<List<Map<String, String>>>("subtitles") ?: emptyList()
+                hostFor(viewId).setSubtitles(subtitles)
                 result.success(null)
             }
             "stop" -> {

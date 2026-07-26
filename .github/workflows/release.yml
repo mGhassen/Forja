@@ -164,7 +164,7 @@ jobs:
           echo "Bumped to $NEW"
 
           if git rev-parse "v${NEW}" >/dev/null 2>&1; then
-            echo "::error::Tag v${NEW} already exists — sync pubspec to the latest tag, push, then re-run."
+            echo "::error::Tag v${NEW} already exists (often a stale tag from another era). Delete or retarget it on the repo, sync, then re-run."
             exit 1
           fi
 

@@ -35,9 +35,10 @@ mixin _IptvControllerPortal on ChangeNotifier {
       _c.verified.length,
     );
     if (room < 1) {
-      _c.statusText =
-          'Portal limit reached (${AccountFeatures.instance.iptvPortalLimitLabel()}).';
+      final msg = AccountFeatures.instance.iptvPortalLimitReachedMessage();
+      _c.statusText = msg;
       _c.isScraping = false;
+      ForjaToast.warning(msg);
       notifyListeners();
       return;
     }
@@ -360,8 +361,9 @@ mixin _IptvControllerPortal on ChangeNotifier {
       return;
     }
     if (!AccountFeatures.instance.canAddIptvPortal(_c.verified.length)) {
-      _c.addError =
-          'Maximum of ${AccountFeatures.instance.maxIptvPortals} portals per profile';
+      final msg = AccountFeatures.instance.iptvPortalLimitReachedMessage();
+      _c.addError = msg;
+      ForjaToast.warning(msg);
       notifyListeners();
       return;
     }
@@ -496,7 +498,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     _c.statusText = 'Importing 0 / ${candidates.length}…';
     notifyListeners();
 
-    int added = 0, skipped = 0, failed = 0, done = 0;
+    int added = 0, skipped = 0, failed = 0, done = 0, skippedLimit = 0;
     final newAlive = <VerifiedPortal>[];
     final seenInBatch = <String>{};
 
@@ -514,6 +516,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
         )) {
           // Re-check after await — parallel workers may have filled the cap.
           skipped++;
+          skippedLimit++;
         } else {
           // Tag as Manual even if the existing entry was scraped: this
           // promotes the user-imported portal into the visible list.
@@ -562,6 +565,11 @@ mixin _IptvControllerPortal on ChangeNotifier {
 
     isImporting = false;
     _c.statusText = 'Imported $added · skipped $skipped · failed $failed';
+    if (skippedLimit > 0) {
+      ForjaToast.warning(
+        AccountFeatures.instance.iptvPortalLimitReachedMessage(),
+      );
+    }
     notifyListeners();
     return (added: added, skipped: skipped, failed: failed, error: null);
   }
@@ -584,11 +592,9 @@ mixin _IptvControllerPortal on ChangeNotifier {
       _c.verified.length,
     );
     if (room < 1) {
-      return (
-        assigned: 0,
-        error:
-            'Maximum of ${AccountFeatures.instance.maxIptvPortals} portals per profile',
-      );
+      final msg = AccountFeatures.instance.iptvPortalLimitReachedMessage();
+      ForjaToast.warning(msg);
+      return (assigned: 0, error: msg);
     }
     final dealCount = count < room ? count : room;
     final SyncProfile profile;
@@ -637,6 +643,11 @@ mixin _IptvControllerPortal on ChangeNotifier {
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
       _c.statusText = 'Deal failed: $msg';
+      if (msg.contains('Maximum of') && msg.contains('portal')) {
+        ForjaToast.warning(msg);
+      } else {
+        ForjaToast.error(msg);
+      }
       notifyListeners();
       return (assigned: 0, error: msg);
     }

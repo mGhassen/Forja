@@ -36,7 +36,18 @@ class _PortalListView extends StatelessWidget {
                     tooltip: canAdd
                         ? 'Add portal'
                         : 'Portal limit reached (${AccountFeatures.instance.iptvPortalLimitLabel()})',
-                    onPressed: canAdd ? () => _showAddDialog(context) : null,
+                    onPressed: () {
+                      if (!AccountFeatures.instance.canAddIptvPortal(
+                        ctrl.verified.length,
+                      )) {
+                        ForjaToast.warning(
+                          AccountFeatures.instance
+                              .iptvPortalLimitReachedMessage(),
+                        );
+                        return;
+                      }
+                      _showAddDialog(context);
+                    },
                     icon: Icons.add_rounded,
                   );
                 },

@@ -475,20 +475,29 @@ latest_tag() {
   git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -1
 }
 
-# Prefer newest tag on the pubspec major.minor arc (avoids stale v1.4.* leftovers).
+# Prefer newest tag on the pubspec major.minor arc that is an ancestor of HEAD
+# (avoids stale v1.3.9 leftovers that are not on this branch).
 default_release_tag() {
-  local semver major minor arc
+  local semver major minor t
   semver="$(grep '^version:' "$APP_DIR/pubspec.yaml" 2>/dev/null | sed 's/version: *//' | cut -d+ -f1 || true)"
   if [[ "$semver" =~ ^([0-9]+)\.([0-9]+)\. ]]; then
     major="${BASH_REMATCH[1]}"
     minor="${BASH_REMATCH[2]}"
-    arc="$(git tag -l "v${major}.${minor}.*" --sort=-v:refname 2>/dev/null | head -1 || true)"
-    if [[ -n "$arc" ]]; then
-      echo "$arc"
+    while IFS= read -r t; do
+      [[ -z "$t" ]] && continue
+      if git merge-base --is-ancestor "$t" HEAD 2>/dev/null; then
+        echo "$t"
+        return
+      fi
+    done < <(git tag -l "v${major}.${minor}.*" --sort=-v:refname 2>/dev/null || true)
+  fi
+  while IFS= read -r t; do
+    [[ -z "$t" ]] && continue
+    if git merge-base --is-ancestor "$t" HEAD 2>/dev/null; then
+      echo "$t"
       return
     fi
-  fi
-  latest_tag
+  done < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null || true)
 }
 
 list_tags() {
@@ -1160,14 +1169,18 @@ cmd_bump() {
   confirm "Freeze changelog, commit, tag v${ver}, push, then build + publish?" || {
     git checkout -- apps/forja/pubspec.yaml \
       apps/forja/lib/shared/services/app_version.dart \
-      installer/windows/setup.iss
-    die "aborted (pubspec restored)"
+      installer/windows/setup.iss \
+      docs/backlog/README.md
+    die "aborted (version files restored)"
   }
 
   ./scripts/changelog_freeze.sh "$ver"
   git add apps/forja/pubspec.yaml apps/forja/lib/shared/services/app_version.dart \
     installer/windows/setup.iss docs/changelog docs/backlog/README.md
   git commit -m "chore: release v${ver}"
+  if git rev-parse "v${ver}" >/dev/null 2>&1; then
+    die "Tag v${ver} already exists (often a stale tag from another era). Delete or retarget it, then re-run."
+  fi
   git tag -a "v${ver}" -m "Forja ${ver}"
   git push origin HEAD
   git push origin "v${ver}"

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **0 / 8** acceptance (phase 1) |
-| **Current slice** | Android dual-engine MVP — settings toggle + ExoPlayer VOD path |
+| **Progress** | **4 / 4** components · **1 / 8** acceptance (phase 1) |
+| **Current slice** | Android dual-engine MVP — settings toggle + ExoPlayer VOD path; external SRT/VTT sideload shipped |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -34,7 +34,7 @@
 | 2 | R29-A02 | Built-in + ExoPlayer: HLS/mp4 plays with custom headers | ⬜ |
 | 3 | R29-A03 | `sources` list failover on open/play error | ⬜ |
 | 4 | R29-A04 | Resume `startPosition` seeks after ready | ⬜ |
-| 5 | R29-A05 | External SRT/VTT via ExoPlayer subtitle track | ⬜ |
+| 5 | R29-A05 | External SRT/VTT via ExoPlayer subtitle track | ✅ |
 | 6 | R29-A06 | Built-in + MediaKit: mobile player still works (Android fallback) | ⬜ |
 | 7 | R29-A07 | ATV D-pad play/pause/seek/back on ExoPlayer path | ⬜ |
 | 8 | R29-A08 | `onSaveProgress` / scrobble hooks fire on ExoPlayer path | ⬜ |

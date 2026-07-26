@@ -186,6 +186,16 @@ class ExoPlayerBridge {
         'trackId': trackId,
       });
 
+  /// Soft-reload external SRT/VTT sideloads on the current media (keeps position).
+  static Future<void> setSubtitles(
+    int viewId,
+    List<Map<String, String>> subtitles,
+  ) =>
+      _channel.invokeMethod<void>('setSubtitles', {
+        'viewId': viewId,
+        'subtitles': subtitles,
+      });
+
   static Future<void> stop(int viewId) =>
       _channel.invokeMethod<void>('stop', {'viewId': viewId});
 

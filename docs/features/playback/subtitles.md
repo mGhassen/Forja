@@ -4,7 +4,7 @@
 
 ## What it is
 
-The player fetches subtitles from multiple sources in parallel — APIs (Wyzie, Levrx), [subtitle scrapers](../scrapers/subtitle-scrapers.md), and Stremio subtitle addons. Pick a track, adjust size, color, font, opacity, and delay. ASS/SSA subtitles render with native styling via libass.
+The player fetches subtitles from multiple sources in parallel — APIs (Wyzie, Levrx), [subtitle scrapers](../scrapers/subtitle-scrapers.md), and Stremio subtitle addons. Pick a track, adjust size, color, font, opacity, and delay. ASS/SSA subtitles render with native styling via libass (**MediaKit** only). On **Android ExoPlayer** (default on phone and Android TV), SRT/VTT work for online search and provider sideloads (including local Asian Drama tracks); appearance sliders and ASS styling stay on MediaKit.
 
 ## How to open it
 
@@ -12,7 +12,7 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 ## What you can do
 
-- Floating subtitle picker: Off, embedded in-stream tracks (when the file has them), load from file, then online languages with track counts; drill into a language for specific files. Language names use native script (e.g. العربية, Français, தமிழ்)
+- Floating subtitle picker: Off, embedded in-stream tracks (when the file has them), load from file (MediaKit), then online languages with track counts; drill into a language for specific files. Language names use native script (e.g. العربية, Français, தமிழ்). ExoPlayer shows Off, embedded tracks, and online/provider languages (no load-from-file or ASS appearance panel yet)
 - Enable, disable, or switch tracks
 - Change appearance (size, color, font, opacity) — on **TV**, focus a slider and use **Left/Right** to adjust (no OK first)
 - Adjust sync delay if dialogue is early/late

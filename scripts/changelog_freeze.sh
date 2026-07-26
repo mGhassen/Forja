@@ -43,7 +43,8 @@ if [[ -f "$released" ]]; then
 fi
 
 # Prefer the target arc draft. On a new minor/major (.0) with no draft yet,
-# freeze whatever active `*.x-[draft].md` still holds the unshipped bullets.
+# freeze whatever active `*.x-[draft].md` still holds the unshipped bullets
+# (same bullets patch would have frozen on the previous arc).
 source_draft="$target_draft"
 if [[ ! -f "$source_draft" && "${patch:-0}" == "0" ]]; then
   shopt -s nullglob
@@ -59,8 +60,9 @@ if [[ ! -f "$source_draft" && "${patch:-0}" == "0" ]]; then
 fi
 
 if [[ ! -f "$source_draft" ]]; then
-  echo "changelog_freeze: no draft at ${target_draft#"$ROOT"/} — nothing to freeze." >&2
-  exit 0
+  echo "changelog_freeze: error — no draft to freeze for ${VERSION} (expected ${minor_line}-[draft].md)." >&2
+  echo "changelog_freeze: patch/minor/major all require an active changelog draft — aborting." >&2
+  exit 1
 fi
 
 mkdir -p "$ROOT/docs/changelog/done"

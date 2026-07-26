@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
@@ -30,10 +31,13 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 part 'exo_player_sources.dart';
+part 'exo_player_tracks.dart';
 
 /// Android built-in player using native Media3 ExoPlayer.
 class ExoPlayerScreen extends StatefulWidget {
@@ -101,7 +105,7 @@ class ExoPlayerScreen extends StatefulWidget {
 }
 
 class _ExoPlayerScreenState extends State<ExoPlayerScreen>
-    with WidgetsBindingObserver, _ExoPlayerSources {
+    with WidgetsBindingObserver, _ExoPlayerSources, _ExoPlayerTracks {
   static int _nextViewId = 1;
 
   late final int _viewId = _nextViewId++;
@@ -135,6 +139,12 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   String _resizeMode = 'fit';
   ExoTracksSnapshot _tracks = ExoTracksSnapshot.empty;
   bool _preferredSubtitleApplied = false;
+  List<Map<String, dynamic>> _externalSubtitles = [];
+  final Map<String, String> _externalSubFileCache = {};
+  /// Sideloaded Media3 payloads (`url` file://, `lang`, `label`, `sourceUrl`).
+  List<Map<String, String>> _sideloadedSubtitles = [];
+  String? _selectedExternalSubUrl;
+  bool _isFetchingSubs = false;
 
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -211,6 +221,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _disposed) return;
     await _openCurrentSource();
+    unawaited(_fetchSubtitles());
 
     _progressSaveTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       unawaited(_saveProgress());
@@ -221,6 +232,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     if (_opening || _disposed) return;
     _opening = true;
     _preferredSubtitleApplied = false;
+    _selectedExternalSubUrl = null;
     setState(() {
       _hasError = false;
       _errorMessage = '';
@@ -234,12 +246,22 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
     debugPrint(
       '[ExoPlayer] Trying source ${_sourceIndex + 1}/${_sources.length}: ${source.title}',
     );
-    final subs = (widget.externalSubtitles ?? [])
+    final rawSubs = (widget.externalSubtitles ?? [])
         .where((s) => (s['url'] ?? '').toString().isNotEmpty)
+        .toList();
+    final prepared = await _prepareOpenSubtitles(rawSubs);
+    _sideloadedSubtitles = prepared;
+    if (rawSubs.isNotEmpty && mounted) {
+      setState(
+        () => _externalSubtitles = List<Map<String, dynamic>>.from(rawSubs),
+      );
+    }
+    final subs = prepared
         .map(
           (s) => {
-            'url': s['url'].toString(),
-            'lang': (s['lang'] ?? 'Unknown').toString(),
+            'url': s['url']!,
+            'lang': s['lang'] ?? 'und',
+            'label': s['label'] ?? s['lang'] ?? 'und',
           },
         )
         .toList();
@@ -353,6 +375,10 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
           _rate = _tracks.rate;
         });
         unawaited(_maybeApplyPreferredSubtitle());
+        // After soft-reload sideload, lock onto the user-selected external track.
+        if (_selectedExternalSubUrl != null) {
+          unawaited(_selectSideloadedMatchingSelection());
+        }
         break;
     }
   }
@@ -635,17 +661,28 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       context: context,
       tracks: tracks,
       anchorContext: anchorContext,
-      onSelect: (track) async {
+      externalSubtitles: _externalSubtitles,
+      selectedExternalSubUrl: _selectedExternalSubUrl,
+      isFetchingSubs: _isFetchingSubs,
+      onOff: _turnOffSubtitles,
+      onSelectExternal: (sub) async {
+        final settings = SettingsService();
+        final resolved = resolvePreferredLanguageDisplayName(
+          language: (sub['language'] ?? sub['lang'])?.toString(),
+          title: sub['display']?.toString(),
+        );
+        if (resolved != null) {
+          await settings.setPreferredSubtitleLanguage(resolved);
+        }
+        await _loadOnlineSubtitle(sub);
+      },
+      onSelectEmbedded: (track) async {
         final settings = SettingsService();
         if (track == null) {
-          await settings.setPreferredSubtitleLanguage('None');
-          await ExoPlayerBridge.selectTrack(
-            _viewId,
-            type: 'text',
-            trackId: null,
-          );
+          await _turnOffSubtitles();
           return;
         }
+        _selectedExternalSubUrl = null;
         final resolved = resolvePreferredLanguageDisplayName(
           language: track.language,
           title: track.label,
@@ -658,13 +695,19 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
           type: 'text',
           trackId: track.id,
         );
+        if (mounted) setState(() {});
       },
     );
     if (_isTv) _claimPlayFocus();
   }
 
   Future<void> _maybeApplyPreferredSubtitle() async {
-    if (_disposed || _tracks.text.isEmpty) return;
+    if (_disposed) return;
+    // Prefer external catalog when Media3 text tracks are still empty.
+    if (_tracks.text.isEmpty) {
+      await _maybeAutoPickExternalSubtitle();
+      return;
+    }
     final preferred = await SettingsService().getPreferredSubtitleLanguage();
     if (preferred == 'None' || preferred.isEmpty) return;
 
@@ -687,7 +730,10 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       }
     }
     final match = preferredMatch ?? englishMatch;
-    if (match == null) return;
+    if (match == null) {
+      await _maybeAutoPickExternalSubtitle();
+      return;
+    }
 
     final onPreferred = preferredMatch != null &&
         preferredMatch.selected &&

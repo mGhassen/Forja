@@ -65,6 +65,12 @@ class AccountFeatures {
     return '$_maxIptvPortals';
   }
 
+  /// Message when Add / scrape / deal / import hits the cap.
+  String iptvPortalLimitReachedMessage() {
+    if (hasUnlimitedIptvPortals) return 'Portal limit reached.';
+    return 'Maximum of $_maxIptvPortals portals per profile';
+  }
+
   static int _parseMaxIptvPortals(Map<String, dynamic>? raw) {
     if (raw == null) return defaultMaxIptvPortals;
     final v = raw['maxIptvPortals'];

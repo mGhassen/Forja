@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_menus.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/utils/language_display.dart';
 
 /// Minimalist Exo track / settings menus - [PlayerPopupPanel] chips & list tiles.
 abstract final class ExoPlayerMenus {
@@ -33,56 +36,159 @@ abstract final class ExoPlayerMenus {
   static Future<void> showSubtitles({
     required BuildContext context,
     required ExoTracksSnapshot tracks,
-    required Future<void> Function(ExoTrackInfo? track) onSelect,
+    required Future<void> Function(ExoTrackInfo? track) onSelectEmbedded,
+    required Future<void> Function() onOff,
+    List<Map<String, dynamic>> externalSubtitles = const [],
+    String? selectedExternalSubUrl,
+    bool isFetchingSubs = false,
+    Future<void> Function(Map<String, dynamic> sub)? onSelectExternal,
     BuildContext? anchorContext,
   }) {
+    final byLang = <String, List<Map<String, dynamic>>>{};
+    for (final s in externalSubtitles) {
+      final key = languageGroupKey(
+        (s['language'] ?? s['lang'])?.toString(),
+      );
+      byLang.putIfAbsent(key, () => []).add(s);
+    }
+    final folderKeys = byLang.keys.toList()..sort(compareLanguageCodes);
+    final hasExternal = folderKeys.isNotEmpty;
+    final textOff = tracks.textOff ||
+        (tracks.text.every((t) => !t.selected) &&
+            selectedExternalSubUrl == null);
+
     return PlayerPopupPanel.show(
       context: context,
       title: 'Subtitles',
       leadingIcon: Icons.subtitles_outlined,
       anchorContext: anchorContext,
-      child: Padding(
+      maxHeight: 420,
+      width: 320,
+      trailing: _SubtitleOffChip(
+        selected: textOff,
+        onTap: () async {
+          PlayerPopupPanel.dismiss();
+          await onOff();
+        },
+      ),
+      child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        shrinkWrap: true,
+        children: [
+          if (isFetchingSubs)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 10),
+              child: LinearProgressIndicator(
+                color: Colors.white54,
+                backgroundColor: Colors.white10,
+              ),
+            ),
+          for (var i = 0; i < tracks.text.length; i++) ...[
+            if (i != 0) const SizedBox(height: 8),
             PlayerPopupOptionChip(
-              label: 'Off',
-              selected: tracks.textOff ||
-                  tracks.text.every((t) => !t.selected),
+              label: formatPlayerTrackLabel(
+                id: tracks.text[i].id,
+                title: tracks.text[i].label,
+                language: tracks.text[i].language,
+              ),
+              selected: selectedExternalSubUrl == null &&
+                  !tracks.textOff &&
+                  tracks.text[i].selected,
               expanded: true,
               onTap: () async {
                 PlayerPopupPanel.dismiss();
-                await onSelect(null);
+                await onSelectEmbedded(tracks.text[i]);
               },
             ),
-            if (tracks.text.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: Text(
-                  'None available',
-                  style: TextStyle(color: PlayerPopupTokens.muted),
-                ),
-              )
-            else
-              for (final t in tracks.text) ...[
-                const SizedBox(height: 8),
-                PlayerPopupOptionChip(
-                  label: formatPlayerTrackLabel(
-                    id: t.id,
-                    title: t.label,
-                    language: t.language,
-                  ),
-                  selected: !tracks.textOff && t.selected,
-                  expanded: true,
+          ],
+          if (tracks.text.isEmpty && !hasExternal && !isFetchingSubs)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                'None available',
+                style: TextStyle(color: PlayerPopupTokens.muted),
+              ),
+            ),
+          if (tracks.text.isNotEmpty && hasExternal) const SizedBox(height: 10),
+          for (final key in folderKeys) ...[
+            const SizedBox(height: 8),
+            Builder(
+              builder: (_) {
+                final list = byLang[key]!;
+                final hasSelected = list.any(
+                  (s) => s['url'] == selectedExternalSubUrl,
+                );
+                return PlayerPopupNavRow(
+                  title: languageDisplayName(key),
+                  value: '${list.length}',
+                  selected: hasSelected,
                   onTap: () async {
                     PlayerPopupPanel.dismiss();
-                    await onSelect(t);
+                    await _openExternalLanguage(
+                      context,
+                      langKey: key,
+                      subs: list,
+                      selectedExternalSubUrl: selectedExternalSubUrl,
+                      onSelectExternal: onSelectExternal,
+                      onRoot: () => showSubtitles(
+                        context: context,
+                        tracks: tracks,
+                        onSelectEmbedded: onSelectEmbedded,
+                        onOff: onOff,
+                        externalSubtitles: externalSubtitles,
+                        selectedExternalSubUrl: selectedExternalSubUrl,
+                        isFetchingSubs: isFetchingSubs,
+                        onSelectExternal: onSelectExternal,
+                        anchorContext: anchorContext,
+                      ),
+                      anchorContext: anchorContext,
+                    );
                   },
-                ),
-              ],
+                );
+              },
+            ),
           ],
-        ),
+        ],
+      ),
+    );
+  }
+
+  static Future<void> _openExternalLanguage(
+    BuildContext context, {
+    required String langKey,
+    required List<Map<String, dynamic>> subs,
+    required String? selectedExternalSubUrl,
+    Future<void> Function(Map<String, dynamic> sub)? onSelectExternal,
+    required Future<void> Function() onRoot,
+    BuildContext? anchorContext,
+  }) {
+    return PlayerPopupPanel.show(
+      context: context,
+      title: languageDisplayName(langKey),
+      anchorContext: anchorContext,
+      maxHeight: 420,
+      width: 320,
+      onBack: () {
+        onRoot();
+      },
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        shrinkWrap: true,
+        children: subs.map((s) {
+          final sel = s['url'] == selectedExternalSubUrl;
+          final source =
+              (s['translated'] == true ? 'Translated · ' : '') +
+              (s['sourceName']?.toString() ?? 'opensubtitles');
+          return PlayerPopupListTile(
+            label: s['display']?.toString() ?? languageDisplayName(langKey),
+            subtitle: source,
+            selected: sel,
+            onTap: () async {
+              await onSelectExternal?.call(s);
+              if (context.mounted) PlayerPopupPanel.dismiss();
+            },
+          );
+        }).toList(),
       ),
     );
   }
@@ -258,6 +364,59 @@ abstract final class ExoPlayerMenus {
                 ],
               ],
             ),
+    );
+  }
+}
+
+class _SubtitleOffChip extends StatelessWidget {
+  const _SubtitleOffChip({required this.selected, required this.onTap});
+
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final face = Container(
+      height: 28,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: selected ? PlayerPopupTokens.accent : Colors.transparent,
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        border: Border.all(
+          color: selected
+              ? PlayerPopupTokens.accent
+              : PlayerPopupTokens.border,
+        ),
+      ),
+      child: Text(
+        'Off',
+        style: TextStyle(
+          color: selected
+              ? PlayerPopupTokens.accentFg
+              : PlayerPopupTokens.muted,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+    if (!tvFocus) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+          child: face,
+        ),
+      );
+    }
+    return FocusableControl(
+      onTap: onTap,
+      borderRadius: PlayerPopupTokens.chipRadius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
+      child: face,
     );
   }
 }

@@ -412,11 +412,17 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                     )
                     ? 'Add portal'
                     : 'Portal limit reached (${AccountFeatures.instance.iptvPortalLimitLabel()})',
-                onPressed: AccountFeatures.instance.canAddIptvPortal(
-                      ctrl.verified.length,
-                    )
-                    ? () => _showAddDialog(context)
-                    : null,
+                onPressed: () {
+                  if (!AccountFeatures.instance.canAddIptvPortal(
+                    ctrl.verified.length,
+                  )) {
+                    ForjaToast.warning(
+                      AccountFeatures.instance.iptvPortalLimitReachedMessage(),
+                    );
+                    return;
+                  }
+                  _showAddDialog(context);
+                },
                 icon: Icons.add_rounded,
                 tvRowId: 'iptv-portal-header',
                 tvItemIndex: addIndex,

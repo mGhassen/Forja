@@ -248,17 +248,25 @@ mixin _ExoPlayerSources on State<ExoPlayerScreen> {
 
       _s._opening = false;
       _s._startPositionApplied = true;
+      _s._preferredSubtitleApplied = false;
+      final prepared = await _s._prepareOpenSubtitles(
+        (widget.externalSubtitles ?? [])
+            .where((s) => (s['url'] ?? '').toString().isNotEmpty)
+            .toList(),
+      );
+      if (!mounted || _s._disposed || switchGen != _s._fallbackGen) return;
+      _s._sideloadedSubtitles = prepared;
       await ExoPlayerBridge.open(
         viewId: _s._viewId,
         url: openUrl,
         headers: headers,
         startPosition: resumeAt.inSeconds > 0 ? resumeAt : Duration.zero,
-        subtitles: (widget.externalSubtitles ?? [])
-            .where((s) => (s['url'] ?? '').toString().isNotEmpty)
+        subtitles: prepared
             .map(
               (s) => {
-                'url': s['url'].toString(),
-                'lang': (s['lang'] ?? 'Unknown').toString(),
+                'url': s['url']!,
+                'lang': s['lang'] ?? 'und',
+                'label': s['label'] ?? s['lang'] ?? 'und',
               },
             )
             .toList(),
