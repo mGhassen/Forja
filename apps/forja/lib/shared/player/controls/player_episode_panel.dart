@@ -259,6 +259,11 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
     WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
+  /// Search field OK / Done / ↓ — land on the first visible row (never play it).
+  void _focusEpisodeListFromSearch() {
+    _focusEpisodeList(preferIndex: 0);
+  }
+
   void _focusTopBarFromList() {
     if (!_tvFocus) return;
     if ((_seasonCount ?? 0) > 1 && _seasonFocus.canRequestFocus) {
@@ -463,7 +468,8 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
               _autoNextFocus.requestFocus();
             }
           },
-          onSearchDownEdge: _focusEpisodeList,
+          onSearchDownEdge: _focusEpisodeListFromSearch,
+          onSearchSubmitted: _focusEpisodeListFromSearch,
           onAutoNextLeftEdge: () {
             if (_searchFocus.canRequestFocus) _searchFocus.requestFocus();
           },
@@ -895,6 +901,11 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
     WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
+  /// Search field OK / Done / ↓ — land on the first visible row (never play it).
+  void _focusEpisodeListFromSearch() {
+    _focusEpisodeList(preferIndex: 0);
+  }
+
   void _focusTopBarFromList() {
     if (!_tvFocus) return;
     if (_searchFocus.canRequestFocus) _searchFocus.requestFocus();
@@ -1006,7 +1017,8 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
               _autoNextFocus.requestFocus();
             }
           },
-          onSearchDownEdge: _focusEpisodeList,
+          onSearchDownEdge: _focusEpisodeListFromSearch,
+          onSearchSubmitted: _focusEpisodeListFromSearch,
           onAutoNextLeftEdge: () {
             if (_searchFocus.canRequestFocus) _searchFocus.requestFocus();
           },
@@ -1417,6 +1429,7 @@ class _EpisodePanelTopBar extends StatelessWidget {
     this.onSearchLeftEdge,
     this.onSearchRightEdge,
     this.onSearchDownEdge,
+    this.onSearchSubmitted,
     this.onAutoNextLeftEdge,
     this.onAutoNextRightEdge,
     this.onAutoNextDownEdge,
@@ -1436,6 +1449,7 @@ class _EpisodePanelTopBar extends StatelessWidget {
   final VoidCallback? onSearchLeftEdge;
   final VoidCallback? onSearchRightEdge;
   final VoidCallback? onSearchDownEdge;
+  final VoidCallback? onSearchSubmitted;
   final VoidCallback? onAutoNextLeftEdge;
   final VoidCallback? onAutoNextRightEdge;
   final VoidCallback? onAutoNextDownEdge;
@@ -1461,6 +1475,7 @@ class _EpisodePanelTopBar extends StatelessWidget {
             onSearchLeftEdge: onSearchLeftEdge,
             onSearchRightEdge: onSearchRightEdge,
             onSearchDownEdge: onSearchDownEdge,
+            onSearchSubmitted: onSearchSubmitted,
             onAutoNextLeftEdge: onAutoNextLeftEdge,
             onAutoNextRightEdge: onAutoNextRightEdge,
             onAutoNextDownEdge: onAutoNextDownEdge,
@@ -1489,6 +1504,7 @@ class _EpisodeSearchAutoNextBar extends StatefulWidget {
     this.onSearchLeftEdge,
     this.onSearchRightEdge,
     this.onSearchDownEdge,
+    this.onSearchSubmitted,
     this.onAutoNextLeftEdge,
     this.onAutoNextRightEdge,
     this.onAutoNextDownEdge,
@@ -1503,6 +1519,7 @@ class _EpisodeSearchAutoNextBar extends StatefulWidget {
   final VoidCallback? onSearchLeftEdge;
   final VoidCallback? onSearchRightEdge;
   final VoidCallback? onSearchDownEdge;
+  final VoidCallback? onSearchSubmitted;
   final VoidCallback? onAutoNextLeftEdge;
   final VoidCallback? onAutoNextRightEdge;
   final VoidCallback? onAutoNextDownEdge;
@@ -1567,6 +1584,17 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
     if (key == LogicalKeyboardKey.arrowUp) {
       return KeyEventResult.handled;
     }
+    // OK / Enter while editing: focus first episode — never play it.
+    // Browse-mode OK still opens the keyboard (handled before this chain).
+    if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter ||
+        key == LogicalKeyboardKey.select) {
+      final submit = widget.onSearchSubmitted ?? widget.onSearchDownEdge;
+      if (submit != null) {
+        submit();
+        return KeyEventResult.handled;
+      }
+    }
     return KeyEventResult.ignored;
   }
 
@@ -1595,6 +1623,8 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
             controller: _controller,
             focusNode: _searchFocus,
             onChanged: widget.onSearchChanged,
+            onSubmitted: (_) =>
+                (widget.onSearchSubmitted ?? widget.onSearchDownEdge)?.call(),
             decoration: fieldDecoration,
             style: fieldStyle,
             onKeyEvent: _onSearchKey,
@@ -1603,6 +1633,8 @@ class _EpisodeSearchAutoNextBarState extends State<_EpisodeSearchAutoNextBar> {
             controller: _controller,
             focusNode: _searchFocus,
             onChanged: widget.onSearchChanged,
+            onSubmitted: (_) =>
+                (widget.onSearchSubmitted ?? widget.onSearchDownEdge)?.call(),
             style: fieldStyle,
             decoration: fieldDecoration,
           );

@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/shared/design/design.dart';
@@ -42,6 +43,8 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
   final Map<int, GlobalKey> _resultKeys = {};
 
   int _focusedResultIndex = 0;
+  /// When true, D-pad / OK target the result list (not the search field).
+  bool _listFocused = false;
 
   static const Color _panelTint = Color(0x9916161F);
   static Color get _accent => IptvShellStyle.accent;
@@ -73,6 +76,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
 
   void _onQueryChanged(String _) {
     setState(() {
+      _listFocused = false;
       _focusedResultIndex = 0;
       _resetFocusIndex();
     });
@@ -93,17 +97,51 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
     );
   }
 
-  void _moveResultFocus(int delta) {
+  /// Leave the search field and highlight the first (or current) result.
+  /// Does **not** open the channel — OK on a highlighted row does that.
+  void _focusResultsList({int? index}) {
     final results = _results;
     if (results.isEmpty) return;
     setState(() {
+      _listFocused = true;
       _focusedResultIndex =
-          (_focusedResultIndex + delta).clamp(0, results.length - 1);
+          (index ?? _focusedResultIndex).clamp(0, results.length - 1);
     });
+    if (_queryFocus.hasFocus) {
+      _queryFocus.unfocus();
+    }
+    if (_overlayFocus.canRequestFocus) {
+      _overlayFocus.requestFocus();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollFocusedIntoView();
+    });
+  }
+
+  void _focusSearchField() {
+    setState(() => _listFocused = false);
+    _queryFocus.requestFocus();
+  }
+
+  void _moveResultFocus(int delta) {
+    final results = _results;
+    if (results.isEmpty) return;
+    if (!_listFocused) {
+      _focusResultsList(index: delta > 0 ? 0 : results.length - 1);
+      return;
+    }
+    final next = _focusedResultIndex + delta;
+    if (next < 0) {
+      _focusSearchField();
+      return;
+    }
+    if (next >= results.length) return;
+    setState(() => _focusedResultIndex = next);
     _scrollFocusedIntoView();
   }
 
   void _activateFocusedResult() {
+    if (!_listFocused) return;
     final results = _results;
     if (results.isEmpty) return;
     widget.onChannelSelected(
@@ -111,7 +149,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
     );
   }
 
-  KeyEventResult _onResultNavigationKey(KeyEvent event) {
+  KeyEventResult _onResultListKey(KeyEvent event) {
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (_results.isEmpty) return KeyEventResult.ignored;
 
@@ -124,9 +162,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
       _moveResultFocus(1);
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.numpadEnter ||
-        key == LogicalKeyboardKey.select ||
+    if (shellTvIsActivateKey(event) ||
         key == LogicalKeyboardKey.space) {
       _activateFocusedResult();
       return KeyEventResult.handled;
@@ -136,22 +172,53 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
 
   KeyEventResult _onOverlayKey(FocusNode node, KeyEvent event) {
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
+    if (event.logicalKey == LogicalKeyboardKey.escape ||
+        event.logicalKey == LogicalKeyboardKey.goBack) {
+      if (_listFocused) {
+        _focusSearchField();
+        return KeyEventResult.handled;
+      }
       widget.onClose();
       return KeyEventResult.handled;
     }
-    return _onResultNavigationKey(event);
+    if (!_listFocused && _results.isNotEmpty) {
+      // Overlay may hold focus briefly after submit — treat OK/↓ as enter list.
+      if (shellTvIsActivateKey(event) ||
+          event.logicalKey == LogicalKeyboardKey.arrowDown) {
+        _focusResultsList(index: 0);
+        return KeyEventResult.handled;
+      }
+    }
+    return _onResultListKey(event);
   }
 
   KeyEventResult _onSearchFieldKey(FocusNode node, KeyEvent event) {
-    final nav = _onResultNavigationKey(event);
-    if (nav == KeyEventResult.handled) return nav;
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.escape) {
+    if (event.logicalKey == LogicalKeyboardKey.escape ||
+        event.logicalKey == LogicalKeyboardKey.goBack) {
       widget.onClose();
       return KeyEventResult.handled;
     }
+    if (_results.isEmpty) return KeyEventResult.ignored;
+
+    // ↓ or OK/Enter from the field: land on the first result — never open it.
+    // Do not treat Space here — that inserts a character while typing.
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _focusResultsList(index: 0);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter ||
+        event.logicalKey == LogicalKeyboardKey.select) {
+      _focusResultsList(index: 0);
+      return KeyEventResult.handled;
+    }
     return KeyEventResult.ignored;
+  }
+
+  void _onSearchSubmitted(String _) {
+    if (_results.isEmpty) return;
+    _focusResultsList(index: 0);
   }
 
   @override
@@ -250,15 +317,24 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
                                           '',
                                       active: results[i].id ==
                                           widget.currentChannelId,
-                                      focused: i == _focusedResultIndex,
+                                      focused: _listFocused &&
+                                          i == _focusedResultIndex,
                                       onTap: () {
-                                        setState(() => _focusedResultIndex = i);
+                                        setState(() {
+                                          _listFocused = true;
+                                          _focusedResultIndex = i;
+                                        });
                                         widget.onChannelSelected(results[i]);
                                       },
                                       onHover: () {
-                                        if (_focusedResultIndex == i) return;
-                                        setState(
-                                            () => _focusedResultIndex = i);
+                                        if (_focusedResultIndex == i &&
+                                            _listFocused) {
+                                          return;
+                                        }
+                                        setState(() {
+                                          _listFocused = true;
+                                          _focusedResultIndex = i;
+                                        });
                                       },
                                     ),
                                   ),
@@ -326,7 +402,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
               controller: _queryCtrl,
               focusNode: _queryFocus,
               onChanged: _onQueryChanged,
-              onSubmitted: (_) => _activateFocusedResult(),
+              onSubmitted: _onSearchSubmitted,
               onEscape: widget.onClose,
               onKeyEvent: _onSearchFieldKey,
               browsePlaceholder: 'Search channels or categories…',
