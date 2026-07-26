@@ -458,11 +458,10 @@ class SyncDomainBridge {
 
   Future<Map<String, dynamic>> exportPreferences() async {
     return {
-      'play_source_torrent_enabled': await _settings
-          .isPlaySourceTorrentEnabled(),
-      'play_source_stremio_enabled': await _settings
-          .isPlaySourceStremioEnabled(),
-      'play_source_nuvio_enabled': await _settings.isPlaySourceNuvioEnabled(),
+      // Stored (not effective) so Android TV does not wipe desktop play sources.
+      'play_source_torrent_enabled': await _settings.isPlaySourceTorrentStored(),
+      'play_source_stremio_enabled': await _settings.isPlaySourceStremioStored(),
+      'play_source_nuvio_enabled': await _settings.isPlaySourceNuvioStored(),
       'play_source_webstreaming_enabled': await _settings
           .isPlaySourceWebstreamingEnabled(),
       'simple_streaming_resolve_enabled': await _settings

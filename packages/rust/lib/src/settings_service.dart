@@ -372,31 +372,52 @@ class SettingsService {
   static final ValueNotifier<int> playSourceChangeNotifier =
       ValueNotifier<int>(0);
 
-  Future<bool> isPlaySourceTorrentEnabled() async =>
+  /// Device-cache value for cloud sync / backup (not platform-gated).
+  Future<bool> isPlaySourceTorrentStored() async =>
       kvGetBool(_playSourceTorrentKey, fallback: _defaults.playSourceTorrent);
+
+  /// Effective for UI / playback — always off when the platform disallows it.
+  Future<bool> isPlaySourceTorrentEnabled() async {
+    if (!PlatformPlayback.capabilities.playSourceTorrent) return false;
+    return isPlaySourceTorrentStored();
+  }
 
   Future<void> setPlaySourceTorrentEnabled(bool enabled) async {
     await kvSetBool(_playSourceTorrentKey, enabled);
     playSourceChangeNotifier.value++;
   }
 
-  Future<bool> isPlaySourceStremioEnabled() async =>
+  /// Device-cache value for cloud sync / backup (not platform-gated).
+  Future<bool> isPlaySourceStremioStored() async =>
       kvGetBool(_playSourceStremioKey, fallback: _defaults.playSourceStremio);
+
+  /// Effective for UI / playback — always off when the platform disallows it.
+  Future<bool> isPlaySourceStremioEnabled() async {
+    if (!PlatformPlayback.capabilities.playSourceStremio) return false;
+    return isPlaySourceStremioStored();
+  }
 
   Future<void> setPlaySourceStremioEnabled(bool enabled) async {
     await kvSetBool(_playSourceStremioKey, enabled);
     playSourceChangeNotifier.value++;
   }
 
-  /// Nuvio scrapers in Sources. Legacy installs (no key) follow Direct torrent.
-  Future<bool> isPlaySourceNuvioEnabled() async {
+  /// Device-cache value for cloud sync / backup (not platform-gated).
+  /// Legacy installs (no key) follow stored Direct torrent.
+  Future<bool> isPlaySourceNuvioStored() async {
     if (await kvHasKey(_playSourceNuvioKey)) {
       return kvGetBool(
         _playSourceNuvioKey,
         fallback: _defaults.playSourceNuvio,
       );
     }
-    return isPlaySourceTorrentEnabled();
+    return isPlaySourceTorrentStored();
+  }
+
+  /// Effective for UI / playback — always off when the platform disallows it.
+  Future<bool> isPlaySourceNuvioEnabled() async {
+    if (!PlatformPlayback.capabilities.playSourceNuvio) return false;
+    return isPlaySourceNuvioStored();
   }
 
   Future<void> setPlaySourceNuvioEnabled(bool enabled) async {
@@ -1124,9 +1145,9 @@ class SettingsService {
       fallback: false,
     );
     prefsMap[_useDebridKey] = await kvGetBool(_useDebridKey, fallback: false);
-    prefsMap[_playSourceTorrentKey] = await isPlaySourceTorrentEnabled();
-    prefsMap[_playSourceStremioKey] = await isPlaySourceStremioEnabled();
-    prefsMap[_playSourceNuvioKey] = await isPlaySourceNuvioEnabled();
+    prefsMap[_playSourceTorrentKey] = await isPlaySourceTorrentStored();
+    prefsMap[_playSourceStremioKey] = await isPlaySourceStremioStored();
+    prefsMap[_playSourceNuvioKey] = await isPlaySourceNuvioStored();
     prefsMap[_playSourceWebstreamingKey] =
         await isPlaySourceWebstreamingEnabled();
     for (final key in [

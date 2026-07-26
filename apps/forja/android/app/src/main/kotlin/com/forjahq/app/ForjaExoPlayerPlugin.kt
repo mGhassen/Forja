@@ -39,16 +39,15 @@ data class ExoOpenOptions(
 
 private const val TAG = "ForjaExo"
 
-// Live IPTV: prefer smoothness over live-edge latency on weak ATV SoCs.
-private const val LIVE_MIN_BUFFER_MS = 15_000
-private const val LIVE_MAX_BUFFER_MS = 50_000
-private const val LIVE_BUFFER_FOR_PLAYBACK_MS = 2_500
-private const val LIVE_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5_000
-private const val LIVE_TARGET_OFFSET_MS = 15_000L
-private const val LIVE_MIN_OFFSET_MS = 5_000L
-private const val LIVE_MAX_OFFSET_MS = 40_000L
-private const val LIVE_MAX_BITRATE_720 = 3_500_000
-private const val LIVE_MAX_BITRATE_1080 = 5_000_000
+// Live IPTV: deeper buffers for underrun cushion. No automatic height/bitrate
+// caps — aggressive caps made ATV look soft / low-FPS and unwatchable.
+private const val LIVE_MIN_BUFFER_MS = 12_000
+private const val LIVE_MAX_BUFFER_MS = 45_000
+private const val LIVE_BUFFER_FOR_PLAYBACK_MS = 2_000
+private const val LIVE_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 4_000
+private const val LIVE_TARGET_OFFSET_MS = 8_000L
+private const val LIVE_MIN_OFFSET_MS = 3_000L
+private const val LIVE_MAX_OFFSET_MS = 25_000L
 
 private fun isTelevisionContext(context: Context): Boolean {
     val uiMode = context.resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
@@ -282,18 +281,14 @@ class ExoPlayerHost(
     }
 
     private fun resolveMaxVideoHeight(options: ExoOpenOptions): Int {
+        // Explicit Dart override only — do not auto-cap live ABR (soft/low-FPS picture).
         if (options.maxVideoHeight > 0) return options.maxVideoHeight
-        if (!options.live) return 0
-        // Android ≤7 / API 24–25 TV SoCs (e.g. Toshiba) choke on 1080 live + TextureView.
-        if (Build.VERSION.SDK_INT < 26) return 720
-        if (isTelevisionContext(context)) return 1080
         return 0
     }
 
     private fun resolveMaxVideoBitrate(options: ExoOpenOptions, maxHeight: Int): Int {
         if (options.maxVideoBitrate > 0) return options.maxVideoBitrate
-        if (!options.live || maxHeight <= 0) return 0
-        return if (maxHeight <= 720) LIVE_MAX_BITRATE_720 else LIVE_MAX_BITRATE_1080
+        return 0
     }
 
     fun play() {

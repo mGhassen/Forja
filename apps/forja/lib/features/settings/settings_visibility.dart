@@ -35,10 +35,17 @@ class SettingsVisibility {
       playSourceTorrent &&
       PlatformPlayback.capabilities.builtinTorrentSearch;
 
-  /// Nuvio scrapers (own play source).
-  bool get showNuvio => vodTab && playSourceNuvio;
+  /// Nuvio scrapers (own play source). Hidden on Android TV for all accounts.
+  bool get showNuvio =>
+      vodTab &&
+      playSourceNuvio &&
+      PlatformPlayback.capabilities.playSourceNuvio;
 
-  bool get showStremioAddons => vodTab && playSourceStremio;
+  /// Stremio addons. Hidden on Android TV for all accounts.
+  bool get showStremioAddons =>
+      vodTab &&
+      playSourceStremio &&
+      PlatformPlayback.capabilities.playSourceStremio;
 
   /// Settings → Sources hub tile.
   bool get showSourcesCategory =>

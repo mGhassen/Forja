@@ -402,11 +402,17 @@ class _DetailsScreenState extends State<DetailsScreen>
   }
 
   bool get _panelShowTorrent =>
-      _playSourceTorrent && _playbackProfile.builtinTorrentSearch;
+      _playSourceTorrent &&
+      _playbackProfile.builtinTorrentSearch &&
+      _playbackProfile.playSourceTorrent;
 
-  bool get _panelShowStremio => _playSourceStremio;
+  bool get _panelShowStremio =>
+      _playSourceStremio && _playbackProfile.playSourceStremio;
 
-  bool get _panelShowNuvio => _playSourceNuvio && _hasNuvioAddons;
+  bool get _panelShowNuvio =>
+      _playSourceNuvio &&
+      _playbackProfile.playSourceNuvio &&
+      _hasNuvioAddons;
 
   bool get _hasPanelPlaySources =>
       _panelShowTorrent || _panelShowStremio || _panelShowNuvio;

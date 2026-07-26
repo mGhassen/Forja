@@ -51,6 +51,30 @@ void main() {
     expect(await service.isPlaySourceNuvioEnabled(), isFalse);
   });
 
+  test(
+    'Android TV play sources stay off even when stored prefs are on',
+    () async {
+      PlatformPlayback.override = PlaybackProfile.androidTv;
+      addTearDown(PlatformPlayback.clearOverride);
+      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+
+      final service = SettingsService();
+      await service.setPlaySourceTorrentEnabled(true);
+      await service.setPlaySourceStremioEnabled(true);
+      await service.setPlaySourceNuvioEnabled(true);
+
+      expect(await service.isPlaySourceTorrentStored(), isTrue);
+      expect(await service.isPlaySourceStremioStored(), isTrue);
+      expect(await service.isPlaySourceNuvioStored(), isTrue);
+      expect(await service.isPlaySourceTorrentEnabled(), isFalse);
+      expect(await service.isPlaySourceStremioEnabled(), isFalse);
+      expect(await service.isPlaySourceNuvioEnabled(), isFalse);
+      expect(PlatformPlayback.capabilities.playSourceTorrent, isFalse);
+      expect(PlatformPlayback.capabilities.playSourceStremio, isFalse);
+      expect(PlatformPlayback.capabilities.playSourceNuvio, isFalse);
+    },
+  );
+
   test('fresh phone install seeds phone nav defaults', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);

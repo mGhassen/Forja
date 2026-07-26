@@ -55,8 +55,8 @@ class IptvPlaySource {
   const IptvPlaySource({required this.url, required this.label});
 }
 
-/// Dedicated IPTV player. Android TV uses native ExoPlayer (Media3); all other
-/// platforms use libmpv (media_kit). Includes:
+/// Dedicated IPTV player. Android uses Settings → Built-in engine (ExoPlayer or
+/// MediaKit); other platforms use libmpv (media_kit). Includes:
 ///   • Watchdog (3 detectors): long buffering, frozen position, ready-but-not-playing
 ///   • Tiered recovery: seek-zero → reload → stop+open → recreate
 ///   • Multi-source rotation
@@ -124,9 +124,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     with WidgetsBindingObserver, _IptvPtPlayerEngine, _IptvPtPlayerUi {
   static int _nextExoViewId = 1;
 
-  /// MediaKit EGL surfaces fail on Android TV (audio OK, black video) - use Exo.
-  late final bool _exoBackend =
-      !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
+  /// When true, IPTV uses Media3 ExoPlayer; otherwise media_kit.
+  /// Android reads [SettingsService.getBuiltInPlayerEngine] at boot / Player menu.
+  bool _exoBackend = false;
   int? _exoViewId;
   StreamSubscription<Map<dynamic, dynamic>>? _exoEventSub;
 
@@ -136,9 +136,12 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   int _videoEpoch = 0;
   bool _softwareDecodeForced = false;
 
-  /// Android MediaKit uses software decode - HW surfaces fail on many devices
-  /// and ATV emulators (EGL_BAD_ATTRIBUTE, audio OK / black frame).
+  /// Phone MediaKit: software decode (some MediaCodec paths flake).
+  /// Android TV MediaKit: keep HW + [vo=mediacodec_embed] (Impeller off in app).
   bool _androidMediaKitSafeMode = false;
+
+  bool get _atvMediaKit =>
+      !_exoBackend && !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
 
   /// Windows D3D11 / ANGLE + live IPTV: HW decode plays ~15–20s then sticks
   /// the last frame with no reconnect banner. Force software from boot.
@@ -277,9 +280,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     unawaited(_loadIptvEpgPref());
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_onRemoteControlsActivity);
-    if (!_exoBackend && !kIsWeb && Platform.isAndroid) {
-      _androidMediaKitSafeMode = true;
-    }
     if (_windowsSoftwareDecode) {
       _softwareDecodeForced = true;
     }
@@ -324,6 +324,8 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   }
 
   Future<void> _bootWithCachedVolume() async {
+    await _resolveBackendFromSettings();
+    if (_disposed || !mounted) return;
     final v = await IptvStore.loadPlayerVolume();
     if (_disposed || !mounted) return;
     _volume = v;
@@ -334,6 +336,53 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     } else {
       await _bootPlayer();
     }
+  }
+
+  /// Android IPTV follows Settings → Built-in engine; other platforms stay MediaKit.
+  Future<void> _resolveBackendFromSettings() async {
+    if (kIsWeb || !Platform.isAndroid) {
+      _exoBackend = false;
+      _androidMediaKitSafeMode = false;
+      return;
+    }
+    final engine = await SettingsService().getBuiltInPlayerEngine();
+    if (_disposed) return;
+    _exoBackend = engine == BuiltInPlayerEngine.exoPlayer;
+    // Phone MediaKit: software-friendly. ATV MediaKit: HW + mediacodec_embed.
+    _androidMediaKitSafeMode = !_exoBackend && !PlatformInfo.isAndroidTv;
+  }
+
+  /// Hot-swap Exo ↔ MediaKit from the in-player Player menu (Android).
+  Future<void> _switchBuiltInEngine(BuiltInPlayerEngine engine) async {
+    if (kIsWeb || !Platform.isAndroid) return;
+    final wantExo = engine == BuiltInPlayerEngine.exoPlayer;
+    await SettingsService().setBuiltInPlayerEngine(engine);
+    if (_disposed || !mounted) return;
+    if (wantExo == _exoBackend) return;
+
+    if (mounted) {
+      setState(() {
+        _playerReady = false;
+        _statusBanner = 'Switching player…';
+      });
+    }
+    await _disposePlayer();
+    if (_disposed || !mounted) return;
+
+    _exoBackend = wantExo;
+    _androidMediaKitSafeMode = !_exoBackend && !PlatformInfo.isAndroidTv;
+    _softwareDecodeForced = _windowsSoftwareDecode;
+    _player = null;
+    _controller = null;
+    _exoViewId = null;
+    _retryAttempt = 0;
+
+    if (_exoBackend) {
+      await _bootExoPlayer();
+    } else {
+      await _bootPlayer();
+    }
+    if (mounted) setState(() => _statusBanner = null);
   }
 
   /// Apply volume to the engine and persist for the next IPTV player open.

@@ -30,7 +30,7 @@ Stremio addons are manifest-based extensions. Forja supports installing the same
 - Not every addon implements catalog, stream, and search — check the addon's manifest resources
 - Cloud sync stores addon URLs only; the app re-fetches each manifest on sync / Home / Sources so catalog rails and stream chips stay correct
 - Community addon lists change frequently — verify manifests are trustworthy
-- **Hash-based streams** (`infoHash`, e.g. Torrentio): on desktop and Android, Forja plays these via the local torrent engine or debrid. On **web** and future TV builds (`constrained` profile), only direct `url` streams and debrid-resolved hashes work — hash-only addons need debrid configured or streams are hidden
+- **Hash-based streams** (`infoHash`, e.g. Torrentio): on desktop and Android phone, Forja plays these via the local torrent engine or debrid. On **web**, only direct `url` streams and debrid-resolved hashes work — hash-only addons need debrid configured or streams are hidden. **Android TV** does not expose Stremio (or Direct torrent / Nuvio) at all
 - If **Torrentio** fails (Cloudflare / HTTP 403) while another stream addon works, Sources switches the provider chip to the addon that returned streams — pick Torrentio again only if you want to retry that addon alone
 
 ## Platform playback
@@ -38,9 +38,10 @@ Stremio addons are manifest-based extensions. Forja supports installing the same
 | Platform | `url` streams | `infoHash` (no debrid) | `infoHash` + debrid |
 |----------|---------------|------------------------|---------------------|
 | Desktop, Android, iOS | Play direct | Local torrent engine | Debrid URL |
-| Web, TV (planned) | Play direct | Requires debrid | Debrid URL |
+| Web | Play direct | Requires debrid | Debrid URL |
+| Android TV | Not available (Stremio hidden) | — | — |
 
-Capability profile: `PlatformPlayback.capabilities` in `packages/api/lib/playback/platform/playback_profile.dart`. Stream resolution: `resolveStremioStream()` in `stremio_stream_resolver.dart`.
+Capability profile: `PlatformPlayback.capabilities` in `packages/rust/lib/src/playback/platform/playback_profile.dart`. Stream resolution: `resolveStremioStream()` in `stremio_stream_resolver.dart`.
 
 ## Related
 

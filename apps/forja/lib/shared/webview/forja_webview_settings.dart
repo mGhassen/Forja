@@ -6,21 +6,23 @@ import 'package:forja/shared/platform/platform_info.dart';
 
 /// Patches WebView settings for Android TV.
 ///
-/// ATV emulators (and some devices) expose no GLES version to Chromium's GPU
-/// process, which aborts with `gl_version_info.cc: Chrome runs only on top of
-/// OpenGL ES`. Software compositing avoids that fatal init.
+/// Historically forced `hardwareAcceleration: false` (View `LAYER_TYPE_NONE`)
+/// to dodge Chromium GLES aborts on ATV emulators. That does **not** stop
+/// `Chrome_InProcGp` / `gl_version_info.cc`, and it blanks YouTube / HTML5
+/// video on real devices (white trailer player and hero). Emulator GLES is
+/// handled by `scripts/atv-run.sh` (`--disable-gpu`) and by blocking headless
+/// extractors — keep View HA on.
 ///
-/// Mutates [settings] in place. Do **not** use [InAppWebViewSettings.copy] -
-/// it round-trips via `fromMap(toMap())`, and on Android
-/// `ContentBlockerAction.fromMap` bangs when any `contentBlockers` are set
-/// (plugin initializes `BLOCK_COOKIES` with a null native value). That crashed
-/// Live Matches embeds on ATV with a red screen.
+/// Mutates [settings] in place when a future TV patch is needed. Do **not**
+/// use [InAppWebViewSettings.copy] - it round-trips via `fromMap(toMap())`,
+/// and on Android `ContentBlockerAction.fromMap` bangs when any
+/// `contentBlockers` are set (plugin initializes `BLOCK_COOKIES` with a null
+/// native value). That crashed Live Matches embeds on ATV with a red screen.
 InAppWebViewSettings patchTvWebViewSettings(
   InAppWebViewSettings settings, {
   required bool isAndroidTv,
 }) {
   if (!isAndroidTv) return settings;
-  settings.hardwareAcceleration = false;
   return settings;
 }
 

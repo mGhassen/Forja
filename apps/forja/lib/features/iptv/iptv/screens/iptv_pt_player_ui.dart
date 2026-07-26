@@ -482,6 +482,10 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
       usingBuiltIn: true,
       builtInEngine: _builtInEngine,
       onSelect: ({builtInEngine, externalPlayer}) async {
+        if (builtInEngine != null) {
+          await _s._switchBuiltInEngine(builtInEngine);
+          return;
+        }
         if (externalPlayer == null) return;
         final url = _s._sources[_s._sourceIdx].url;
         if (url.isEmpty) return;

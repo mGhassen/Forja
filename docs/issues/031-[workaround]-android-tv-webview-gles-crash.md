@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** workaround · **0 / 1** root |
+| **Progress** | **5 / 5** workaround · **0 / 1** root |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I31-T02 | Unit test + repo guard — no direct plugin WebView outside `shared/webview/` | ✅ |
 | 3 | I31-T03 | Native TV prep — software WebView warm-up + defer boot `setWebContentsDebuggingEnabled` on TV | ✅ |
 | 4 | I31-T04 | Block headless WebView on TV; route play via WebStreamr/Vidsrc/111477; [`scripts/atv-run.sh`](../../scripts/atv-run.sh) for emulator GPU flags | ✅ |
+| 5 | I31-T05 | Stop forcing TV `hardwareAcceleration: false` — blanks YouTube (white trailer); keep `atv-run.sh` + headless block for GLES | ✅ |
 
 ---
 
@@ -46,7 +47,7 @@ Thread name: `Chrome_InProcGp`. This is **not** `media_kit` / player UI — it i
 
 ## Workaround (shipped)
 
-**Dart (View layer — supplement):** [`forja_webview_settings.dart`](../../apps/forja/lib/shared/webview/forja_webview_settings.dart) sets `hardwareAcceleration: false` on TV (in place — do not `settings.copy()`; the plugin’s `fromMap` bangs on Android when `contentBlockers` are set, which red-screened Live Matches embeds). Maps to `LAYER_TYPE_NONE` — does **not** stop `Chrome_InProcGp`.
+**Dart (View layer — do not use for video):** Early builds set `hardwareAcceleration: false` on TV ([`forja_webview_settings.dart`](../../apps/forja/lib/shared/webview/forja_webview_settings.dart)). That maps to `LAYER_TYPE_NONE` — it does **not** stop `Chrome_InProcGp`, and it **blanks YouTube / HTML5 video** on real devices ([issue 113](113-[open]-android-tv-trailer-player-white-screen.md)). **I31-T05** stops forcing HA off; keep HA enabled for trailers and live embeds.
 
 **Native (boot):** [`ForjaApplication.kt`](../../apps/forja/android/app/src/main/kotlin/com/forjahq/app/ForjaApplication.kt) + [`WebViewTvWorkaround.kt`](../../apps/forja/android/app/src/main/kotlin/com/forjahq/app/WebViewTvWorkaround.kt) — software warm-up; boot skips `setWebContentsDebuggingEnabled` on TV.
 
@@ -69,4 +70,5 @@ Thread name: `Chrome_InProcGp`. This is **not** `media_kit` / player UI — it i
 ## Related
 
 - [010](fixed/010-[fixed]-webview-js-extractors-main-thread.md) — WebView stays on UI isolate by design  
-- [025](025-[open]-android-tv-leanback-smoke-unverified.md) — broader ATV manual matrix
+- [025](025-[open]-android-tv-leanback-smoke-unverified.md) — broader ATV manual matrix  
+- [113](113-[open]-android-tv-trailer-player-white-screen.md) — white trailer from HA=false

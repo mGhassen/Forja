@@ -733,7 +733,7 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
                             initialSettings: InAppWebViewSettings(
                               mediaPlaybackRequiresUserGesture: false,
                               allowsInlineMediaPlayback: true,
-                              transparentBackground: false,
+                              transparentBackground: true,
                               disableVerticalScroll: true,
                               disableHorizontalScroll: true,
                               supportZoom: false,

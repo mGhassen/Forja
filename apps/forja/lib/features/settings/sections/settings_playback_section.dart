@@ -113,49 +113,54 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
           SettingsGroup(
             label: 'Play sources',
             children: [
-              settingsFocusableToggle(
-                context,
-                'Direct torrent',
-                'Search Forja indexers (Jackett / Prowlarr) in Sources.',
-                _playSourceTorrent,
-                (val) async {
-                  await _settings.setPlaySourceTorrentEnabled(val);
-                  setState(() => _playSourceTorrent = val);
-                  schedulePreferencesSyncPush();
-                  // Explicit toggle: start now even if no VOD tab is visible.
-                  if (val &&
-                      PlatformPlayback.capabilities.localTorrentEngine) {
-                    debugPrint('[Init] TorrentStream start (settings toggle)');
-                    await TorrentStreamService().start();
-                  }
-                },
-              ),
-              settingsFocusableToggle(
-                context,
-                'Stremio',
-                'Play from installed Stremio addon streams.',
-                _playSourceStremio,
-                (val) async {
-                  await _settings.setPlaySourceStremioEnabled(val);
-                  setState(() => _playSourceStremio = val);
-                  schedulePreferencesSyncPush();
-                },
-              ),
-              settingsFocusableToggle(
-                context,
-                'Nuvio',
-                'Play from installed Nuvio scraper addons in Sources.',
-                _playSourceNuvio,
-                (val) async {
-                  await _settings.setPlaySourceNuvioEnabled(val);
-                  setState(() => _playSourceNuvio = val);
-                  schedulePreferencesSyncPush();
-                  if (val) {
-                    debugPrint('[Init] Nuvio refresh (settings toggle)');
-                    unawaited(NuvioService.instance.refreshAllInstalled());
-                  }
-                },
-              ),
+              // Android TV: torrent / Stremio / Nuvio stay hidden for everyone
+              // (including admins) — platform capabilities, not account flags.
+              if (PlatformPlayback.capabilities.playSourceTorrent)
+                settingsFocusableToggle(
+                  context,
+                  'Direct torrent',
+                  'Search Forja indexers (Jackett / Prowlarr) in Sources.',
+                  _playSourceTorrent,
+                  (val) async {
+                    await _settings.setPlaySourceTorrentEnabled(val);
+                    setState(() => _playSourceTorrent = val);
+                    schedulePreferencesSyncPush();
+                    // Explicit toggle: start now even if no VOD tab is visible.
+                    if (val &&
+                        PlatformPlayback.capabilities.localTorrentEngine) {
+                      debugPrint('[Init] TorrentStream start (settings toggle)');
+                      await TorrentStreamService().start();
+                    }
+                  },
+                ),
+              if (PlatformPlayback.capabilities.playSourceStremio)
+                settingsFocusableToggle(
+                  context,
+                  'Stremio',
+                  'Play from installed Stremio addon streams.',
+                  _playSourceStremio,
+                  (val) async {
+                    await _settings.setPlaySourceStremioEnabled(val);
+                    setState(() => _playSourceStremio = val);
+                    schedulePreferencesSyncPush();
+                  },
+                ),
+              if (PlatformPlayback.capabilities.playSourceNuvio)
+                settingsFocusableToggle(
+                  context,
+                  'Nuvio',
+                  'Play from installed Nuvio scraper addons in Sources.',
+                  _playSourceNuvio,
+                  (val) async {
+                    await _settings.setPlaySourceNuvioEnabled(val);
+                    setState(() => _playSourceNuvio = val);
+                    schedulePreferencesSyncPush();
+                    if (val) {
+                      debugPrint('[Init] Nuvio refresh (settings toggle)');
+                      unawaited(NuvioService.instance.refreshAllInstalled());
+                    }
+                  },
+                ),
               settingsFocusableToggle(
                 context,
                 'Webstreaming',

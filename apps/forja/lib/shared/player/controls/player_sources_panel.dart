@@ -463,9 +463,13 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
     final sort = await _settings.getSortPreference();
     final jackett = await _settings.isJackettConfigured();
     final prowlarr = await _settings.isProwlarrConfigured();
-    final torrentOn = await _settings.isPlaySourceTorrentEnabled();
-    final stremioOn = await _settings.isPlaySourceStremioEnabled();
-    final nuvioOn = await _settings.isPlaySourceNuvioEnabled();
+    final caps = PlatformPlayback.capabilities;
+    final torrentOn = caps.playSourceTorrent &&
+        await _settings.isPlaySourceTorrentEnabled();
+    final stremioOn = caps.playSourceStremio &&
+        await _settings.isPlaySourceStremioEnabled();
+    final nuvioOn =
+        caps.playSourceNuvio && await _settings.isPlaySourceNuvioEnabled();
     final local = _profile.localTorrentEngine;
     List<Map<String, dynamic>> addons = const [];
     if (stremioOn) {

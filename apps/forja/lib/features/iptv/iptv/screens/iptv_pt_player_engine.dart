@@ -12,11 +12,17 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
     _s._videoEpoch++;
     final player = Player(configuration: _IptvPtPlayerScreenState._playerConfiguration);
     _s._player = MpvExclusiveSession.instance.trackPlayer(player);
+    // ATV: vo=gpu needs EGL (black / audio-only on leanback). mediacodec_embed
+    // paints MediaCodec into the Flutter Surface — same as VOD TvPlayerScreen.
+    final atv = _s._atvMediaKit;
     _s._controller = VideoController(
       _s._player!,
       configuration: VideoControllerConfiguration(
-        enableHardwareAcceleration: !_useSoftwareDecode,
-        hwdec: _useSoftwareDecode ? 'no' : 'auto-safe',
+        vo: atv ? 'mediacodec_embed' : null,
+        enableHardwareAcceleration: atv || !_useSoftwareDecode,
+        hwdec: atv
+            ? 'mediacodec'
+            : (_useSoftwareDecode ? 'no' : 'auto-safe'),
         // Avoid blank video when the surface attaches before mpv negotiates
         // dimensions (common on Android / ATV emulators).
         androidAttachSurfaceAfterVideoParameters: false,
@@ -175,7 +181,12 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
 
       // Prefer safe GPU decode with software fallback - raw `auto` can stick on
       // a broken VideoToolbox session on macOS (black texture, audio OK).
-      await p.setProperty('hwdec', _useSoftwareDecode ? 'no' : 'auto-safe');
+      // ATV MediaKit: pin mediacodec (matches VideoControllerConfiguration).
+      if (_s._atvMediaKit) {
+        await p.setProperty('hwdec', 'mediacodec');
+      } else {
+        await p.setProperty('hwdec', _useSoftwareDecode ? 'no' : 'auto-safe');
+      }
       // Direct rendering + D3D11 on Windows live feeds can stick the last
       // frame after the readahead window (~20s) with A/V frozen.
       await p.setProperty('vd-lavc-dr', _useSoftwareDecode ? 'no' : 'yes');
@@ -740,6 +751,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
           await ExoPlayerBridge.dispose(_s._exoViewId!);
         } catch (_) {}
       }
+      _s._exoViewId = null;
       return;
     }
     if (!_s._playerAlive) return;
@@ -752,6 +764,8 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
     final disposeFuture = teardownMediaKitPlayer(player);
     MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
     await disposeFuture;
+    _s._player = null;
+    _s._controller = null;
   }
 
   Future<void> _finalizeExit() async {

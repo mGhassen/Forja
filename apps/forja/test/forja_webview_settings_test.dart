@@ -15,13 +15,13 @@ void main() {
       expect(patched.hardwareAcceleration, isTrue);
     });
 
-    test('TV disables hardware acceleration', () {
+    test('TV keeps hardware acceleration (YouTube needs View HA)', () {
       final settings = InAppWebViewSettings(
         javaScriptEnabled: true,
         hardwareAcceleration: true,
       );
       final patched = patchTvWebViewSettings(settings, isAndroidTv: true);
-      expect(patched.hardwareAcceleration, isFalse);
+      expect(patched.hardwareAcceleration, isTrue);
       expect(patched.javaScriptEnabled, isTrue);
       expect(identical(patched, settings), isTrue);
     });
@@ -43,7 +43,7 @@ void main() {
         hardwareAcceleration: true,
       );
       final patched = patchTvWebViewSettings(settings, isAndroidTv: true);
-      expect(patched.hardwareAcceleration, isFalse);
+      expect(patched.hardwareAcceleration, isTrue);
       expect(patched.contentBlockers, same(blockers));
       // Must not throw - forjaWebViewSettings used to call settings.copy(),
       // which deserializes blockers and bangs on Android.

@@ -91,57 +91,43 @@ function PlatformGlyph({
   }
 }
 
-/** First-open help for Windows / macOS detail panes only. */
+/** First-open help for Windows / macOS detail panes — always flame (alert), never brand green. */
 function PlatformOpenHelp({ platformId }: { platformId: ShowcasePlatformId }) {
-  if (platformId === 'windows') {
-    return (
-      <div className="rounded-2xl border border-flame/30 bg-flame/[0.06] px-5 py-5 sm:px-6">
-        <div className="flex items-center gap-2.5">
+  const isWindows = platformId === 'windows'
+  const isMac = platformId === 'macos'
+  if (!isWindows && !isMac) return null
+
+  return (
+    <div className="rounded-2xl border border-flame/30 bg-flame/6 px-5 py-5 sm:px-6">
+      <div className="flex items-center gap-2.5">
+        {isWindows ? (
           <WindowsIcon className="size-5 shrink-0 text-flame" />
-          <p className="font-mono-ui text-[11px] uppercase tracking-[0.18em] text-flame">
-            Stuck opening Forja?
-          </p>
-        </div>
-        <p className="mt-2 text-base leading-relaxed text-[rgba(237,230,218,0.62)]">
-          Windows often blocks the first open. Photo steps — one click.
+        ) : (
+          <AppleIcon className="size-5 shrink-0 text-flame" />
+        )}
+        <p className="font-mono-ui text-[11px] uppercase tracking-[0.18em] text-flame">
+          Stuck opening Forja?
         </p>
-        <a
-          href="#windows-smartscreen"
-          data-hover=""
-          className="mt-4 inline-flex items-center justify-center gap-2.5 rounded-full border border-flame/60 bg-flame/15 px-5 py-3 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-flame transition-colors hover:border-flame hover:bg-flame/25"
-        >
+      </div>
+      <p className="mt-2 text-base leading-relaxed text-[rgba(237,230,218,0.62)]">
+        {isWindows
+          ? 'Windows often blocks the first open. Photo steps — one click.'
+          : 'Mac often blocks the first open. Photo steps — one click.'}
+      </p>
+      <a
+        href={isWindows ? '#windows-smartscreen' : '#macos-gatekeeper'}
+        data-hover=""
+        className="mt-4 inline-flex items-center justify-center gap-2.5 rounded-full border border-flame/60 bg-flame/15 px-5 py-3 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-flame transition-colors hover:border-flame hover:bg-flame/25"
+      >
+        {isWindows ? (
           <WindowsIcon className="size-4 shrink-0" />
-          Windows blocked it?
-        </a>
-      </div>
-    )
-  }
-
-  if (platformId === 'macos') {
-    return (
-      <div className="rounded-2xl border border-brand/30 bg-brand/[0.06] px-5 py-5 sm:px-6">
-        <div className="flex items-center gap-2.5">
-          <AppleIcon className="size-5 shrink-0 text-brand" />
-          <p className="font-mono-ui text-[11px] uppercase tracking-[0.18em] text-brand">
-            Stuck opening Forja?
-          </p>
-        </div>
-        <p className="mt-2 text-base leading-relaxed text-[rgba(237,230,218,0.62)]">
-          Mac often blocks the first open. Photo steps — one click.
-        </p>
-        <a
-          href="#macos-gatekeeper"
-          data-hover=""
-          className="mt-4 inline-flex items-center justify-center gap-2.5 rounded-full border border-brand/60 bg-brand/15 px-5 py-3 font-mono-ui text-[11px] font-bold uppercase tracking-[0.1em] text-brand transition-colors hover:border-brand hover:bg-brand/25"
-        >
+        ) : (
           <AppleIcon className="size-4 shrink-0" />
-          Mac won&apos;t open it?
-        </a>
-      </div>
-    )
-  }
-
-  return null
+        )}
+        {isWindows ? 'Windows blocked it?' : "Mac won't open it?"}
+      </a>
+    </div>
+  )
 }
 
 function formatBytes(n: number | null): string | null {

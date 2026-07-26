@@ -22,11 +22,23 @@ class PlaybackProfile {
   final bool stremioUrl;
   final bool builtinTorrentSearch;
 
+  /// Whether Settings / Sources may expose Direct torrent (not admin-gated).
+  final bool playSourceTorrent;
+
+  /// Whether Settings / Sources / Home catalogs may expose Stremio.
+  final bool playSourceStremio;
+
+  /// Whether Settings / Sources may expose Nuvio.
+  final bool playSourceNuvio;
+
   const PlaybackProfile({
     required this.localTorrentEngine,
     required this.stremioInfoHash,
     this.stremioUrl = true,
     required this.builtinTorrentSearch,
+    required this.playSourceTorrent,
+    required this.playSourceStremio,
+    required this.playSourceNuvio,
   });
 
   /// Desktop / Android / iOS — full torrent engine + hash playback.
@@ -34,13 +46,29 @@ class PlaybackProfile {
     localTorrentEngine: true,
     stremioInfoHash: StremioInfoHashPolicy.localEngine,
     builtinTorrentSearch: true,
+    playSourceTorrent: true,
+    playSourceStremio: true,
+    playSourceNuvio: true,
   );
 
-  /// Web, future TV — URL-only; hash streams need debrid or are hidden.
+  /// Web — URL Stremio/Nuvio; hash streams need debrid; no local torrent.
   static const constrained = PlaybackProfile(
     localTorrentEngine: false,
     stremioInfoHash: StremioInfoHashPolicy.debridOnly,
     builtinTorrentSearch: false,
+    playSourceTorrent: false,
+    playSourceStremio: true,
+    playSourceNuvio: true,
+  );
+
+  /// Android TV — webstreaming only; torrent / Stremio / Nuvio never shown.
+  static const androidTv = PlaybackProfile(
+    localTorrentEngine: false,
+    stremioInfoHash: StremioInfoHashPolicy.hidden,
+    builtinTorrentSearch: false,
+    playSourceTorrent: false,
+    playSourceStremio: false,
+    playSourceNuvio: false,
   );
 
   bool get canPlayInfoHashLocally =>
@@ -62,7 +90,7 @@ abstract final class PlatformPlayback {
   static PlaybackProfile _detect() {
     if (kIsWeb) return PlaybackProfile.constrained;
     if (SettingsService.platformProfile == PlatformProfile.androidTv) {
-      return PlaybackProfile.constrained;
+      return PlaybackProfile.androidTv;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:

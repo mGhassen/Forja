@@ -28,7 +28,9 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 initialSettings: InAppWebViewSettings(
                   mediaPlaybackRequiresUserGesture: false,
                   allowsInlineMediaPlayback: true,
-                  transparentBackground: false,
+                  // Let the black Scaffold show through while the embed paints
+                  // (default Android WebView surface is white).
+                  transparentBackground: true,
                   disableVerticalScroll: true,
                   disableHorizontalScroll: true,
                   supportZoom: false,
