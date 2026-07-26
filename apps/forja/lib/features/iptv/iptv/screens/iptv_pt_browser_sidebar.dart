@@ -157,7 +157,28 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
 
     final reorderIndex = widget.reorderIndex;
     if (reorderIndex == null) return row;
-    return ReorderableDragStartListener(index: reorderIndex, child: row);
+    return _CategoryReorderDragStartListener(
+      index: reorderIndex,
+      child: row,
+    );
+  }
+}
+
+/// Hold ~1.5s before category reorder begins (tap/scroll stay normal).
+class _CategoryReorderDragStartListener extends ReorderableDragStartListener {
+  const _CategoryReorderDragStartListener({
+    required super.child,
+    required super.index,
+  });
+
+  static const Duration _delay = Duration(milliseconds: 1500);
+
+  @override
+  MultiDragGestureRecognizer createRecognizer() {
+    return DelayedMultiDragGestureRecognizer(
+      delay: _delay,
+      debugOwner: this,
+    );
   }
 }
 

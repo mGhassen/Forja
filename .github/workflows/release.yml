@@ -206,7 +206,8 @@ jobs:
     name: macOS arm64
     if: ${{ inputs.platform_macos_arm64 }}
     needs: resolve_version
-    runs-on: macos-latest
+    # passkeys_darwin 0.4.2+ needs Xcode 26 (ASCredentialDataManager).
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
         with:
@@ -254,13 +255,12 @@ jobs:
           name: Forja-macOS-arm64-dmg
           path: dist/Forja-${{ needs.resolve_version.outputs.version }}-macos-arm64.dmg
 
-  # Native Intel build — macos-15-intel is GitHub's last x86_64 macOS runner
-  # (available through ~Aug 2027; macos-13 was retired Dec 2025).
+  # Native Intel build — macos-26-intel ships Xcode 26 (required by passkeys_darwin).
   build_macos_x86_64:
     name: macOS x86_64
     if: ${{ inputs.platform_macos_x86_64 }}
     needs: resolve_version
-    runs-on: macos-15-intel
+    runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@v4
         with:

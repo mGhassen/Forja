@@ -55,7 +55,8 @@ jobs:
   macos:
     name: macOS arm64
     needs: validate_config
-    runs-on: macos-latest
+    # passkeys_darwin 0.4.2+ needs Xcode 26 (ASCredentialDataManager).
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -90,7 +91,8 @@ jobs:
   macos_x86_64:
     name: macOS x86_64
     needs: validate_config
-    runs-on: macos-15-intel
+    # passkeys_darwin 0.4.2+ needs Xcode 26 (ASCredentialDataManager).
+    runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
