@@ -20,6 +20,12 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
         _s._searchVisible = false;
         _s._controlsVisible = true;
         _s._hideControlsTimer?.cancel();
+        // Always open on the playing channel's category.
+        final playingGroup =
+            widget.channelGuide!.groupIdForChannel(_s._currentChannelId);
+        if (playingGroup != null && playingGroup.isNotEmpty) {
+          _s._selectedGroupId = playingGroup;
+        }
       } else {
         _scheduleHideControls();
         _focusPlayerChrome();
@@ -291,33 +297,40 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
                     ),
                   ),
                 if (_s._isPipMode) _buildPipRevertOverlay(),
+                // Positioned.fill must be a direct Stack child — wrapping the
+                // overlay (which used to return Positioned) in RepaintBoundary
+                // caused ParentDataWidget spam on every frame.
                 if (!_s._isPipMode &&
                     _s._searchVisible &&
                     widget.channelGuide != null)
-                  RepaintBoundary(
-                    child: IptvChannelSearchOverlay(
-                      guide: widget.channelGuide!,
-                      currentChannelId: _s._currentChannelId,
-                      onChannelSelected: _onSearchChannelSelected,
-                      onClose: () => setState(() {
-                        _s._searchVisible = false;
-                        _scheduleHideControls();
-                      }),
+                  Positioned.fill(
+                    child: RepaintBoundary(
+                      child: IptvChannelSearchOverlay(
+                        guide: widget.channelGuide!,
+                        currentChannelId: _s._currentChannelId,
+                        onChannelSelected: _onSearchChannelSelected,
+                        onClose: () => setState(() {
+                          _s._searchVisible = false;
+                          _scheduleHideControls();
+                        }),
+                      ),
                     ),
                   ),
                 if (!_s._isPipMode &&
                     _s._guideVisible &&
                     widget.channelGuide != null)
-                  RepaintBoundary(
-                    child: IptvChannelGuidePanel(
-                      guide: widget.channelGuide!,
-                      selectedGroupId: _s._selectedGroupId,
-                      currentChannelId: _s._currentChannelId,
-                      onGroupSelected: (id) {
-                        setState(() => _s._selectedGroupId = id);
-                      },
-                      onChannelSelected: _s._switchChannel,
-                      onClose: _closeGuideAndFocusPlayer,
+                  Positioned.fill(
+                    child: RepaintBoundary(
+                      child: IptvChannelGuidePanel(
+                        guide: widget.channelGuide!,
+                        selectedGroupId: _s._selectedGroupId,
+                        currentChannelId: _s._currentChannelId,
+                        onGroupSelected: (id) {
+                          setState(() => _s._selectedGroupId = id);
+                        },
+                        onChannelSelected: _s._switchChannel,
+                        onClose: _closeGuideAndFocusPlayer,
+                      ),
                     ),
                   ),
                 if (!_s._isPipMode && epgFuture != null)

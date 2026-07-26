@@ -4,7 +4,7 @@
 
 ## What it is
 
-The player fetches subtitles from multiple sources in parallel — APIs (Wyzie, Levrx), [subtitle scrapers](../scrapers/subtitle-scrapers.md), and Stremio subtitle addons. Pick a track, adjust size, color, font, opacity, and delay. ASS/SSA subtitles render with native styling via libass (**MediaKit** only). On **Android ExoPlayer** (default on phone and Android TV), SRT/VTT work for online search and provider sideloads (including local Asian Drama tracks); appearance sliders and ASS styling stay on MediaKit.
+The player fetches subtitles from multiple sources in parallel — APIs (Wyzie, Levrx), [subtitle scrapers](../scrapers/subtitle-scrapers.md), and Stremio subtitle addons. Pick a track, adjust size, color, font, opacity, and delay. ASS/SSA subtitles render with native styling via libass (**MediaKit** only). On **Android ExoPlayer** (default on phone and Android TV), SRT/VTT work for online search, provider sideloads (including local Asian Drama tracks), and **Load from file**; appearance sliders and ASS styling stay on MediaKit.
 
 ## How to open it
 
@@ -12,11 +12,11 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 ## What you can do
 
-- Floating subtitle picker: Off, embedded in-stream tracks (when the file has them), load from file (MediaKit), then online languages with track counts; drill into a language for specific files. Language names use native script (e.g. العربية, Français, தமிழ்). ExoPlayer shows Off, embedded tracks, and online/provider languages (no load-from-file or ASS appearance panel yet)
+- Floating subtitle picker: Off, embedded in-stream tracks (when the file has them), **Load from file** (SRT/VTT on ExoPlayer; SRT/ASS/SSA/VTT on MediaKit), then online languages with track counts; drill into a language for specific files. Language names use native script (e.g. العربية, Français, தமிழ்)
 - Enable, disable, or switch tracks
-- Change appearance (size, color, font, opacity) — on **TV**, focus a slider and use **Left/Right** to adjust (no OK first)
-- Adjust sync delay if dialogue is early/late
-- Use advanced ASS/SSA rendering for styled subs
+- Change appearance (size, color, font, opacity) — on **MediaKit** via the tune icon in the Subtitles header; on **TV**, focus a slider and use **Left/Right** to adjust (no OK first). ExoPlayer uses the system caption look (no appearance panel yet)
+- Adjust sync delay if dialogue is early/late (MediaKit)
+- Use advanced ASS/SSA rendering for styled subs (MediaKit)
 - **Preferred language sticks across episodes** — picking French (or any category) remembers it; the next episode auto-selects the same language when available, otherwise **English**. **Off** clears the preference
 
 ## Tips

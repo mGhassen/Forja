@@ -34,12 +34,20 @@ class IptvChannelGuidePanel extends StatefulWidget {
   final VoidCallback onClose;
 
   static const double wideBreakpoint = 700;
-  static const double panelWidthWide = 660;
-  static const double panelWidthNarrow = 340;
+  /// Compact overlay — leaves video visible on the right (was 660).
+  static const double panelWidthWide = 480;
+  static const double panelWidthNarrow = 300;
   static const double panelEdgeGap = 10;
   static const double panelRadius = 12;
-  /// Fixed channel row height (12+12 padding + 68 logo).
-  static const double channelRowExtent = 92;
+  /// Cap guide height so it does not fill the player.
+  static const double panelHeightFraction = 0.72;
+  static const double panelVerticalGap = 28;
+  /// Fixed channel row height (padding + logo).
+  static const double channelRowExtent = 72;
+  static const double channelListPaddingV = 6;
+  /// Fixed group row height for reliable jump-to-index scrolling.
+  static const double groupRowExtent = 44;
+  static const double groupListPaddingV = 8;
 
   @override
   State<IptvChannelGuidePanel> createState() => _IptvChannelGuidePanelState();
@@ -76,15 +84,14 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   @override
   void initState() {
     super.initState();
-    _browseGroupId = widget.selectedGroupId;
+    // Always open on the playing channel's category when known.
+    _browseGroupId =
+        widget.guide.groupIdForChannel(widget.currentChannelId) ??
+            widget.selectedGroupId;
     _health.addAll(widget.guide.streamHealth);
     _syncFocusIndices();
     _focusNode.addListener(_reclaimFocusIfLost);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollSelectedGroupIntoView(animate: false);
-      _scrollToFocused(animate: false);
-      _claimFocus();
-    });
+    _scheduleRevealPlaying();
   }
 
   void _claimFocus() {
@@ -98,18 +105,114 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
   }
 
+  /// ListView.builder only mounts visible rows — [ensureVisible] can't reach
+  /// off-screen keys. Jump by fixed [itemExtent] instead; retry until attached.
+  void _scheduleRevealPlaying({bool animate = false}) {
+    void attempt({int tries = 0}) {
+      if (!mounted) return;
+      final ready = _revealPlaying(animate: animate);
+      if (ready) {
+        _claimFocus();
+        return;
+      }
+      if (tries < 12) {
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => attempt(tries: tries + 1));
+      } else {
+        _claimFocus();
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  }
+
+  bool _revealPlaying({bool animate = false}) {
+    if (!_groupScroll.hasClients) return false;
+
+    // Wait for layout — maxScrollExtent is 0 until the list measures.
+    if (_focusedGroupIndex > 0 &&
+        _groupScroll.position.maxScrollExtent <= 0) {
+      return false;
+    }
+
+    final needChannels = _wide || _step == _GuideStep.channels;
+    if (needChannels) {
+      if (!_channelScroll.hasClients) return false;
+      if (_focusedChannelIndex > 0 &&
+          _channelScroll.position.maxScrollExtent <= 0) {
+        return false;
+      }
+    }
+
+    _jumpListToIndex(
+      _groupScroll,
+      index: _focusedGroupIndex,
+      itemExtent: IptvChannelGuidePanel.groupRowExtent,
+      paddingV: IptvChannelGuidePanel.groupListPaddingV,
+      alignment: 0.45,
+      animate: animate,
+    );
+
+    if (needChannels) {
+      _jumpListToIndex(
+        _channelScroll,
+        index: _focusedChannelIndex,
+        itemExtent: IptvChannelGuidePanel.channelRowExtent,
+        paddingV: IptvChannelGuidePanel.channelListPaddingV,
+        alignment: 0.35,
+        animate: animate,
+      );
+    }
+    return true;
+  }
+
+  void _jumpListToIndex(
+    ScrollController controller, {
+    required int index,
+    required double itemExtent,
+    required double paddingV,
+    required double alignment,
+    bool animate = false,
+  }) {
+    if (!controller.hasClients || index < 0) return;
+    final position = controller.position;
+    final viewport = position.viewportDimension;
+    final raw = paddingV +
+        index * itemExtent -
+        (viewport - itemExtent) * alignment;
+    final offset = raw.clamp(0.0, position.maxScrollExtent);
+    if (animate) {
+      controller.animateTo(
+        offset,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      );
+    } else {
+      controller.jumpTo(offset);
+    }
+  }
+
   @override
   void didUpdateWidget(covariant IptvChannelGuidePanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedGroupId != widget.selectedGroupId) {
       _browseGroupId = widget.selectedGroupId;
       _syncFocusIndices();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollSelectedGroupIntoView(animate: true);
-        _scrollToFocused(animate: true);
-      });
+      _scheduleRevealPlaying(animate: true);
     } else if (oldWidget.currentChannelId != widget.currentChannelId) {
-      _syncFocusIndices(channelOnly: true);
+      final playingGroup =
+          widget.guide.groupIdForChannel(widget.currentChannelId);
+      if (playingGroup != null && playingGroup != _browseGroupId) {
+        _browseGroupId = playingGroup;
+        _syncFocusIndices();
+        _scheduleRevealPlaying(animate: true);
+      } else {
+        _syncFocusIndices(channelOnly: true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _revealPlaying(animate: true);
+        });
+      }
     }
   }
 
@@ -175,25 +278,32 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final gIdx = widget.guide.groups.indexWhere((g) => g.id == _browseGroupId);
     if (gIdx < 0) return;
     _focusedGroupIndex = gIdx;
-    final ctx = _groupKey(gIdx).currentContext;
-    if (ctx == null) return;
-    Scrollable.ensureVisible(
-      ctx,
-      duration: animate ? const Duration(milliseconds: 180) : Duration.zero,
-      curve: Curves.easeOut,
-      alignment: 0.5,
+    if (!_groupScroll.hasClients) return;
+    _jumpListToIndex(
+      _groupScroll,
+      index: gIdx,
+      itemExtent: IptvChannelGuidePanel.groupRowExtent,
+      paddingV: IptvChannelGuidePanel.groupListPaddingV,
+      alignment: 0.45,
+      animate: animate,
     );
   }
 
   EdgeInsets _panelPadding(BuildContext context) {
     return EdgeInsets.only(
-      top: DesktopWindowChrome.topInset(context),
+      top: DesktopWindowChrome.topInset(context) +
+          IptvChannelGuidePanel.panelVerticalGap,
+      bottom: IptvChannelGuidePanel.panelVerticalGap,
+      left: IptvChannelGuidePanel.panelEdgeGap,
     );
   }
 
   double _panelHeight(BuildContext context) {
     final pad = _panelPadding(context);
-    return MediaQuery.sizeOf(context).height - pad.top - pad.bottom;
+    final available =
+        MediaQuery.sizeOf(context).height - pad.top - pad.bottom;
+    final target = available * IptvChannelGuidePanel.panelHeightFraction;
+    return target.clamp(280.0, available).toDouble();
   }
 
   IptvGuideChannel? get _currentChannel {
@@ -280,28 +390,17 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       _channelKeys.putIfAbsent(index, GlobalKey.new);
 
   void _scrollToFocused({bool animate = true, bool groupsOnly = false}) {
-    void reveal(
-      GlobalKey key,
-      ScrollController controller, {
-      double alignment = 0.35,
-    }) {
-      final ctx = key.currentContext;
-      if (ctx == null) return;
-      Scrollable.ensureVisible(
-        ctx,
-        duration: animate ? const Duration(milliseconds: 180) : Duration.zero,
-        curve: Curves.easeOut,
-        alignment: alignment,
-      );
-    }
-
-    if (_focusColumn == _FocusColumn.groups || groupsOnly) {
-      reveal(_groupKey(_focusedGroupIndex), _groupScroll, alignment: 0.5);
-    } else {
-      _scrollSelectedGroupIntoView(animate: animate);
-    }
+    _scrollSelectedGroupIntoView(animate: animate);
     if (!groupsOnly && _focusColumn == _FocusColumn.channels) {
-      reveal(_channelKey(_focusedChannelIndex), _channelScroll);
+      if (!_channelScroll.hasClients) return;
+      _jumpListToIndex(
+        _channelScroll,
+        index: _focusedChannelIndex,
+        itemExtent: IptvChannelGuidePanel.channelRowExtent,
+        paddingV: IptvChannelGuidePanel.channelListPaddingV,
+        alignment: 0.35,
+        animate: animate,
+      );
     }
   }
 
@@ -469,40 +568,39 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   Widget build(BuildContext context) {
     final wide = _wide;
 
-    return Positioned.fill(
-      child: FocusScope(
-        child: Focus(
-          focusNode: _focusNode,
-          autofocus: true,
-          // Custom D-pad highlight - do not let Material/InkWell take focus or
-          // DirectionalFocus will walk Right out of the panel onto the video.
-          descendantsAreFocusable: false,
-          descendantsAreTraversable: false,
-          onKeyEvent: _onKey,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: _close,
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.4),
-                  ),
+    // Caller must wrap with Positioned.fill as a direct Stack child.
+    return FocusScope(
+      child: Focus(
+        focusNode: _focusNode,
+        autofocus: true,
+        // Custom D-pad highlight - do not let Material/InkWell take focus or
+        // DirectionalFocus will walk Right out of the panel onto the video.
+        descendantsAreFocusable: false,
+        descendantsAreTraversable: false,
+        onKeyEvent: _onKey,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _close,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.4),
                 ),
               ),
-              Align(
-                alignment: Alignment.topLeft,
-                child: Padding(
-                  padding: _panelPadding(context),
-                  child: SizedBox(
-                    height: _panelHeight(context),
-                    child: _buildPanelShell(wide: wide),
-                  ),
+            ),
+            Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: _panelPadding(context),
+                child: SizedBox(
+                  height: _panelHeight(context),
+                  child: _buildPanelShell(wide: wide),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -728,8 +826,11 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   Widget _buildGroupList({ValueChanged<String>? onPick}) {
     return ListView.builder(
       controller: _groupScroll,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        vertical: IptvChannelGuidePanel.groupListPaddingV,
+      ),
       itemCount: widget.guide.groups.length,
+      itemExtent: IptvChannelGuidePanel.groupRowExtent,
       itemBuilder: (_, i) {
         final g = widget.guide.groups[i];
         final selected = g.id == _browseGroupId;
@@ -760,8 +861,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 onPick?.call(g.id);
               },
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                alignment: Alignment.centerLeft,
                 decoration: BoxDecoration(
                   color: selected
                       ? _accent.withValues(alpha: 0.18)
@@ -784,13 +885,13 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                     Expanded(
                       child: Text(
                         g.name,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
                           color: selected || focused
                               ? Colors.white
                               : Colors.white60,
-                          fontSize: 13.5,
+                          fontSize: 13,
                           fontWeight: selected || focused
                               ? FontWeight.w700
                               : FontWeight.w400,
@@ -836,7 +937,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
     return ListView.builder(
       controller: _channelScroll,
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        vertical: IptvChannelGuidePanel.channelListPaddingV,
+      ),
       itemCount: channels.length,
       itemExtent: IptvChannelGuidePanel.channelRowExtent,
       itemBuilder: (_, i) {
@@ -933,7 +1036,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(8, 12, 14, 12),
+          padding: const EdgeInsets.fromLTRB(8, 8, 14, 8),
           decoration: BoxDecoration(
             color: fill,
             border: Border(
@@ -947,8 +1050,8 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                 children: [
                   _ChannelLogo(
                     url: widget.channel.logoUrl ?? '',
-                    width: 104,
-                    height: 68,
+                    width: 78,
+                    height: 48,
                   ),
                   if (widget.health != null)
                     Positioned(

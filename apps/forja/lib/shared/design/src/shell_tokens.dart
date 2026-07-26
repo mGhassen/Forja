@@ -52,6 +52,15 @@ abstract final class ShellTokens {
 
   static const double navRailIconSize = 36;
 
+  /// Floor when TV compresses the rail to fit every enabled tab.
+  static const double navRailIconSizeMin = 22;
+
+  /// Profile avatar vs nav icon (desktop hover rail).
+  static const double navRailProfileAvatarScaleDesktop = 1.65;
+
+  /// Profile avatar vs nav icon on Android TV — smaller, sits nearer the bottom.
+  static const double navRailProfileAvatarScaleTv = 1.1;
+
   /// Resting rail icon scale (below [navRailIconSize]).
   static const double navRailIconIdleScale = 0.82;
 

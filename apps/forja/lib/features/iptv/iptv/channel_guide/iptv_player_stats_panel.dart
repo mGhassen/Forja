@@ -42,9 +42,13 @@ class IptvPlayerStatsPanel {
       alignment: alignment,
       margin: margin,
       anchorContext: anchorContext,
-      child: _IptvStatsBody(
-        player: player,
-        snapshot: snapshot,
+      // Read-only rows — land TV focus on Close so Select dismisses.
+      autofocusClose: true,
+      child: ExcludeFocus(
+        child: _IptvStatsBody(
+          player: player,
+          snapshot: snapshot,
+        ),
       ),
     );
   }

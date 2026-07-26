@@ -119,6 +119,8 @@ class PlayerPopupPanel {
     bool showHeader = true,
     /// Override panel fill (default [PlayerPopupTokens.shellBg]).
     Color? shellBg,
+    /// TV: land D-pad on Close (e.g. read-only panels with no list options).
+    bool autofocusClose = false,
   }) {
     if (!context.mounted) return Future.value();
 
@@ -217,6 +219,7 @@ class PlayerPopupPanel {
                     trailing: trailing,
                     shellBg: shellBg,
                     showHeader: showHeader,
+                    autofocusClose: autofocusClose,
                     onBack: onBack == null ? null : popOrClose,
                     onClose: close,
                     child: child,
@@ -456,6 +459,7 @@ class _PanelShell extends StatelessWidget {
     this.onClose,
     this.showHeader = true,
     this.shellBg,
+    this.autofocusClose = false,
   });
 
   final String title;
@@ -466,6 +470,7 @@ class _PanelShell extends StatelessWidget {
   final VoidCallback? onClose;
   final bool showHeader;
   final Color? shellBg;
+  final bool autofocusClose;
 
   @override
   Widget build(BuildContext context) {
@@ -521,6 +526,7 @@ class _PanelShell extends StatelessWidget {
                     icon: Icons.close_rounded,
                     tooltip: 'Close',
                     onTap: onClose,
+                    autoFocus: tvFocus && autofocusClose,
                   ),
                 ],
               ),
@@ -549,11 +555,13 @@ class _PopupChromeButton extends StatefulWidget {
     required this.icon,
     required this.onTap,
     this.tooltip,
+    this.autoFocus = false,
   });
 
   final IconData icon;
   final VoidCallback? onTap;
   final String? tooltip;
+  final bool autoFocus;
 
   @override
   State<_PopupChromeButton> createState() => _PopupChromeButtonState();
@@ -592,6 +600,7 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
         clipBehavior: Clip.antiAlias,
         child: tvFocus
             ? FocusableControl(
+                autoFocus: widget.autoFocus,
                 onTap: widget.onTap,
                 borderRadius: PlayerPopupTokens.chipRadius,
                 scaleOnFocus: 1.0,

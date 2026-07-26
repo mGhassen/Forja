@@ -233,24 +233,24 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
         .clamp(0.0, MediaQuery.sizeOf(context).width - 32)
         .toDouble();
 
-    return Positioned.fill(
-      child: Focus(
-        focusNode: _overlayFocus,
-        autofocus: true,
-        onKeyEvent: _onOverlayKey,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: widget.onClose,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.4),
-                ),
+    // Caller must wrap with Positioned.fill as a direct Stack child.
+    return Focus(
+      focusNode: _overlayFocus,
+      autofocus: true,
+      onKeyEvent: _onOverlayKey,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: widget.onClose,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.4),
               ),
             ),
-            Center(
+          ),
+          Center(
               child: ClipRRect(
                 borderRadius:
                     BorderRadius.circular(IptvChannelSearchOverlay.panelRadius),
@@ -348,7 +348,6 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -524,7 +523,7 @@ class _SearchResultTileState extends State<_SearchResultTile> {
           ),
           child: Row(
             children: [
-              _ChannelLogo(url: widget.channel.logoUrl ?? '', size: 28),
+              _ChannelLogo(url: widget.channel.logoUrl ?? ''),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -567,26 +566,29 @@ class _SearchResultTileState extends State<_SearchResultTile> {
 }
 
 class _ChannelLogo extends StatelessWidget {
-  const _ChannelLogo({required this.url, this.size = 28});
+  const _ChannelLogo({required this.url});
 
   final String url;
-  final double size;
+  static const double width = 52;
+  static const double height = 34;
 
   @override
   Widget build(BuildContext context) {
     if (url.isEmpty) return _placeholder();
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    final cachePx = (size * dpr).round().clamp(1, 256);
+    final cacheW = (width * dpr).round().clamp(1, 512);
+    final cacheH = (height * dpr).round().clamp(1, 512);
     final tv = iptvUseTvFocus(context);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+    return SizedBox(
+      width: width,
+      height: height,
       child: Image.network(
         url,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        cacheWidth: cachePx,
-        cacheHeight: cachePx,
+        width: width,
+        height: height,
+        fit: BoxFit.contain,
+        cacheWidth: cacheW,
+        cacheHeight: cacheH,
         filterQuality: tv ? FilterQuality.low : FilterQuality.medium,
         gaplessPlayback: true,
         errorBuilder: (_, _, _) => _placeholder(),
@@ -599,17 +601,13 @@ class _ChannelLogo extends StatelessWidget {
   }
 
   Widget _placeholder() {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
-      ),
+    return const SizedBox(
+      width: width,
+      height: height,
       child: Icon(
         Icons.live_tv_rounded,
         color: Colors.white38,
-        size: size * 0.5,
+        size: height * 0.5,
       ),
     );
   }

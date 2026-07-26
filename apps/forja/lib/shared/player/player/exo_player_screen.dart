@@ -697,6 +697,14 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
       selectedExternalSubUrl: _selectedExternalSubUrl,
       isFetchingSubs: _isFetchingSubs,
       onOff: _turnOffSubtitles,
+      onLoadFromFile: ({required String path, required String name}) async {
+        await _loadOnlineSubtitle({
+          'url': Uri.file(path).toString(),
+          'language': 'und',
+          'lang': 'und',
+          'display': name,
+        });
+      },
       onSelectExternal: (sub) async {
         final settings = SettingsService();
         final resolved = resolvePreferredLanguageDisplayName(

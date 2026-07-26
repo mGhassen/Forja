@@ -199,21 +199,31 @@ EdgeInsets shellHomeSectionTitlePadding(
   );
 }
 
-/// Nav rail chrome matches desktop on every profile (TV density must not
-/// shrink icons/labels — leanback already uses the same fixed rail width).
+/// Preferred nav icon size (desktop). TV may pass a compressed size into items.
 double shellNavRailIconSize(BuildContext context) =>
     ShellTokens.navRailIconSize;
 
 double shellNavRailLabelFontSize(BuildContext context) =>
     ShellTokens.navRailLabelFontSize;
 
-double shellNavRailItemContentHeight(BuildContext context) {
-  final icon = shellNavRailIconSize(context);
+double shellNavRailProfileAvatarScale(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity
+        ? ShellTokens.navRailProfileAvatarScaleTv
+        : ShellTokens.navRailProfileAvatarScaleDesktop;
+
+/// Fixed footprint for one rail item at [iconSize] (hover/focus scale included).
+double shellNavRailItemContentHeight(
+  BuildContext context, {
+  double? iconSize,
+  double? labelFontSize,
+}) {
+  final icon = iconSize ?? shellNavRailIconSize(context);
+  final label = labelFontSize ?? shellNavRailLabelFontSize(context);
   return icon * ShellTokens.navRailIconHoverScale +
       ShellTokens.navRailIconUnderlineGap +
       ShellTokens.shellNavUnderlineHeight +
       ShellTokens.navRailIconLabelGap +
-      shellNavRailLabelFontSize(context);
+      label;
 }
 
 TextStyle shellSectionTitleTextStyle(BuildContext context) => TextStyle(

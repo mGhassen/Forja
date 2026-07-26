@@ -26,6 +26,82 @@ double _navRailItemSpacingForHeight({
   return math.max(0, (maxHeight - itemCount * itemContentHeight) / itemCount);
 }
 
+double _navRailItemContentHeight({
+  required double iconSize,
+  required double labelFontSize,
+}) {
+  return iconSize * ShellTokens.navRailIconHoverScale +
+      ShellTokens.navRailIconUnderlineGap +
+      ShellTokens.shellNavUnderlineHeight +
+      ShellTokens.navRailIconLabelGap +
+      labelFontSize;
+}
+
+/// Shrink icons (then spacing) so [itemCount] rail items fit in [maxHeight].
+({double iconSize, double labelFontSize, double itemSpacing}) _navRailFitForHeight({
+  required int itemCount,
+  required double maxHeight,
+  required double preferredIconSize,
+  required double preferredLabelFontSize,
+  required double preferredSpacing,
+}) {
+  if (itemCount <= 0) {
+    return (
+      iconSize: preferredIconSize,
+      labelFontSize: preferredLabelFontSize,
+      itemSpacing: preferredSpacing,
+    );
+  }
+
+  var iconSize = preferredIconSize;
+  var labelFontSize = preferredLabelFontSize;
+  double contentHeight() => _navRailItemContentHeight(
+    iconSize: iconSize,
+    labelFontSize: labelFontSize,
+  );
+
+  var spacing = _navRailItemSpacingForHeight(
+    itemCount: itemCount,
+    maxHeight: maxHeight,
+    preferredSpacing: preferredSpacing,
+    itemContentHeight: contentHeight(),
+  );
+
+  // Prefer keeping desktop-sized icons; only compress when spacing hits ~0.
+  if (itemCount * contentHeight() <= maxHeight) {
+    return (
+      iconSize: iconSize,
+      labelFontSize: labelFontSize,
+      itemSpacing: spacing,
+    );
+  }
+
+  final minIcon = ShellTokens.navRailIconSizeMin;
+  // Solve: n * (icon * hoverScale + fixedChrome + minSpacing) <= maxHeight
+  const minSpacing = 2.0;
+  final fixedChrome = ShellTokens.navRailIconUnderlineGap +
+      ShellTokens.shellNavUnderlineHeight +
+      ShellTokens.navRailIconLabelGap;
+  final perItemBudget = maxHeight / itemCount;
+  final iconBudget =
+      (perItemBudget - fixedChrome - preferredLabelFontSize - minSpacing) /
+      ShellTokens.navRailIconHoverScale;
+  iconSize = iconBudget.clamp(minIcon, preferredIconSize);
+  labelFontSize = (preferredLabelFontSize * (iconSize / preferredIconSize))
+      .clamp(9.0, preferredLabelFontSize);
+  spacing = _navRailItemSpacingForHeight(
+    itemCount: itemCount,
+    maxHeight: maxHeight,
+    preferredSpacing: preferredSpacing,
+    itemContentHeight: contentHeight(),
+  );
+  return (
+    iconSize: iconSize,
+    labelFontSize: labelFontSize,
+    itemSpacing: spacing,
+  );
+}
+
 /// Opens the shell nav drawer when the rail is collapsed on narrow windows.
 class ShellNavMenuButton extends StatefulWidget {
   const ShellNavMenuButton({super.key, required this.onPressed});
@@ -188,12 +264,19 @@ class _ShellNavRailState extends State<ShellNavRail> {
     _scheduleColdStartNavFocus(context);
     final settingsIndex = _indexForId('settings');
     final metrics = ShellScope.metricsOf(context);
+    final isTv = metrics.usesTvDensity;
     final showDesktopProfile =
         ShellScope.inputPolicyOf(context).scaleOnHover ||
         ShellScope.profileOf(context) == ShellProfile.tv;
-    final profileAvatarSize = shellNavRailIconSize(context) * 1.65;
+    final preferredIconSize = shellNavRailIconSize(context);
+    final preferredLabelFont = shellNavRailLabelFontSize(context);
+    final profileAvatarScale = shellNavRailProfileAvatarScale(context);
 
-    Widget buildNavColumn(double itemSpacing) {
+    Widget buildNavColumn({
+      required double itemSpacing,
+      required double iconSize,
+      required double labelFontSize,
+    }) {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -209,6 +292,8 @@ class _ShellNavRailState extends State<ShellNavRail> {
                   selected: selected,
                   onTap: () => widget.onDestinationSelected(index),
                   itemSpacing: itemSpacing,
+                  iconSize: iconSize,
+                  labelFontSize: labelFontSize,
                   railEngaged: _railEngaged,
                   onFocusChanged: _syncFocusInRail,
                 );
@@ -238,62 +323,89 @@ class _ShellNavRailState extends State<ShellNavRail> {
                 child: MouseRegion(
                   onEnter: (_) => setState(() => _mouseInRail = true),
                   onExit: (_) => setState(() => _mouseInRail = false),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final contentHeight = shellNavRailItemContentHeight(
-                              context,
-                            );
-                            final itemSpacing = _navRailItemSpacingForHeight(
-                              itemCount: _navIds.length,
-                              maxHeight: constraints.maxHeight,
-                              preferredSpacing: metrics.navRailItemSpacing,
-                              itemContentHeight: contentHeight,
-                            );
-                            final navColumn = buildNavColumn(itemSpacing);
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final profileIconSize =
+                          preferredIconSize * profileAvatarScale;
+                      final profileSpacing =
+                          isTv ? 4.0 : metrics.navRailItemSpacing;
+                      final profileBlockHeight = settingsIndex == null
+                          ? 0.0
+                          : _navRailItemContentHeight(
+                                iconSize: profileIconSize,
+                                labelFontSize: preferredLabelFont,
+                              ) +
+                              profileSpacing;
+                      const navPadV = 4.0;
+                      final navMaxHeight = math.max(
+                        0.0,
+                        constraints.maxHeight -
+                            profileBlockHeight -
+                            (isTv ? navPadV * 2 : 16),
+                      );
+                      final fit = _navRailFitForHeight(
+                        itemCount: _navIds.length,
+                        maxHeight: navMaxHeight,
+                        preferredIconSize: preferredIconSize,
+                        preferredLabelFontSize: preferredLabelFont,
+                        preferredSpacing: metrics.navRailItemSpacing,
+                      );
 
-                            return SingleChildScrollView(
+                      final navColumn = buildNavColumn(
+                        itemSpacing: fit.itemSpacing,
+                        iconSize: fit.iconSize,
+                        labelFontSize: fit.labelFontSize,
+                      );
+
+                      final navArea = isTv
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: navPadV,
+                              ),
+                              child: navColumn,
+                            )
+                          : SingleChildScrollView(
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               child: ConstrainedBox(
                                 constraints: BoxConstraints(
-                                  minHeight: math.max(
-                                    0,
-                                    constraints.maxHeight - 16,
-                                  ),
+                                  minHeight: math.max(0, navMaxHeight),
                                 ),
                                 child: navColumn,
                               ),
                             );
-                          },
-                        ),
-                      ),
-                      if (settingsIndex != null)
-                        _ShellNavRailItem(
-                          destination: navDestinations['settings']!,
-                          label: showDesktopProfile ? _profileLabel : null,
-                          icon: showDesktopProfile
-                              ? ForjaActiveProfileAvatar(
-                                  size: profileAvatarSize,
-                                  showBorder: false,
-                                  onProfile: _onActiveProfile,
-                                )
-                              : null,
-                          customIconSize: showDesktopProfile
-                              ? profileAvatarSize
-                              : null,
-                          alwaysShowLabel: showDesktopProfile,
-                          desaturateCustomIconWhenIdle: showDesktopProfile,
-                          selected: settingsIndex == widget.selectedIndex,
-                          onTap: () {
-                            widget.onDestinationSelected(settingsIndex);
-                          },
-                          itemSpacing: metrics.navRailItemSpacing,
-                          railEngaged: _railEngaged,
-                          onFocusChanged: _syncFocusInRail,
-                        ),
-                    ],
+
+                      return Column(
+                        children: [
+                          Expanded(child: navArea),
+                          if (settingsIndex != null)
+                            _ShellNavRailItem(
+                              destination: navDestinations['settings']!,
+                              label: showDesktopProfile ? _profileLabel : null,
+                              icon: showDesktopProfile
+                                  ? ForjaActiveProfileAvatar(
+                                      size: profileIconSize,
+                                      showBorder: false,
+                                      onProfile: _onActiveProfile,
+                                    )
+                                  : null,
+                              customIconSize: showDesktopProfile
+                                  ? profileIconSize
+                                  : null,
+                              iconSize: fit.iconSize,
+                              labelFontSize: preferredLabelFont,
+                              alwaysShowLabel: showDesktopProfile,
+                              desaturateCustomIconWhenIdle: showDesktopProfile,
+                              selected: settingsIndex == widget.selectedIndex,
+                              onTap: () {
+                                widget.onDestinationSelected(settingsIndex);
+                              },
+                              itemSpacing: profileSpacing,
+                              railEngaged: _railEngaged,
+                              onFocusChanged: _syncFocusInRail,
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),
@@ -515,6 +627,8 @@ class _ShellNavRailItem extends StatefulWidget {
     required this.onFocusChanged,
     this.label,
     this.icon,
+    this.iconSize,
+    this.labelFontSize,
     this.customIconSize,
     this.alwaysShowLabel = false,
     this.desaturateCustomIconWhenIdle = false,
@@ -528,6 +642,9 @@ class _ShellNavRailItem extends StatefulWidget {
   final VoidCallback onFocusChanged;
   final String? label;
   final Widget? icon;
+  /// Fitted / preferred glyph size for destination icons.
+  final double? iconSize;
+  final double? labelFontSize;
   final double? customIconSize;
   final bool alwaysShowLabel;
   final bool desaturateCustomIconWhenIdle;
@@ -619,14 +736,20 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   /// Fixed footprint: icon + label slot + underline gap - never grows on reveal.
   double _contentHeight(BuildContext context) {
     final customIconSize = widget.customIconSize;
+    final labelFont =
+        widget.labelFontSize ?? shellNavRailLabelFontSize(context);
     if (customIconSize == null) {
-      return shellNavRailItemContentHeight(context);
+      return shellNavRailItemContentHeight(
+        context,
+        iconSize: widget.iconSize,
+        labelFontSize: labelFont,
+      );
     }
     return customIconSize * ShellTokens.navRailIconHoverScale +
         ShellTokens.navRailIconUnderlineGap +
         ShellTokens.shellNavUnderlineHeight +
         ShellTokens.navRailIconLabelGap +
-        shellNavRailLabelFontSize(context);
+        labelFont;
   }
 
   @override
@@ -634,9 +757,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final policy = ShellScope.inputPolicyOf(context);
     final active = _activeFor(policy);
     final selectedFocused = widget.selected && active;
-    final iconSize = shellNavRailIconSize(context);
+    final iconSize = widget.iconSize ?? shellNavRailIconSize(context);
     final renderedIconSize = widget.customIconSize ?? iconSize;
-    final labelFontSize = shellNavRailLabelFontSize(context);
+    final labelFontSize =
+        widget.labelFontSize ?? shellNavRailLabelFontSize(context);
     final contentHeight = _contentHeight(context);
     final underlineWidth = shellScaled(context, 24).clamp(14.0, 24.0);
     final destinationAccent =

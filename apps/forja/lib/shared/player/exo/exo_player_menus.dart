@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_menus.dart';
@@ -42,6 +43,9 @@ abstract final class ExoPlayerMenus {
     String? selectedExternalSubUrl,
     bool isFetchingSubs = false,
     Future<void> Function(Map<String, dynamic> sub)? onSelectExternal,
+    /// Local SRT/VTT file — same row as MediaKit (ASS/SSA need MediaKit/libass).
+    Future<void> Function({required String path, required String name})?
+        onLoadFromFile,
     BuildContext? anchorContext,
   }) {
     final byLang = <String, List<Map<String, dynamic>>>{};
@@ -52,7 +56,6 @@ abstract final class ExoPlayerMenus {
       byLang.putIfAbsent(key, () => []).add(s);
     }
     final folderKeys = byLang.keys.toList()..sort(compareLanguageCodes);
-    final hasExternal = folderKeys.isNotEmpty;
     final textOff = tracks.textOff ||
         (tracks.text.every((t) => !t.selected) &&
             selectedExternalSubUrl == null);
@@ -61,6 +64,7 @@ abstract final class ExoPlayerMenus {
       context: context,
       title: 'Subtitles',
       leadingIcon: Icons.subtitles_outlined,
+      alignment: Alignment.bottomLeft,
       anchorContext: anchorContext,
       maxHeight: 420,
       width: 320,
@@ -101,15 +105,27 @@ abstract final class ExoPlayerMenus {
               },
             ),
           ],
-          if (tracks.text.isEmpty && !hasExternal && !isFetchingSubs)
-            const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Text(
-                'None available',
-                style: TextStyle(color: PlayerPopupTokens.muted),
-              ),
+          if (tracks.text.isNotEmpty) const SizedBox(height: 10),
+          if (onLoadFromFile != null)
+            PlayerPopupNavRow(
+              icon: Icons.upload_file_rounded,
+              title: 'Load from file',
+              subtitle: 'SRT · VTT',
+              onTap: () async {
+                // Dismiss before the native picker - overlays can block the
+                // dialog, and file_picker returns null when the sheet stays up.
+                PlayerPopupPanel.dismiss();
+                final result = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: const ['srt', 'vtt'],
+                );
+                if (result == null || result.files.single.path == null) return;
+                await onLoadFromFile(
+                  path: result.files.single.path!,
+                  name: result.files.single.name,
+                );
+              },
             ),
-          if (tracks.text.isNotEmpty && hasExternal) const SizedBox(height: 10),
           for (final key in folderKeys) ...[
             const SizedBox(height: 8),
             Builder(
@@ -139,6 +155,7 @@ abstract final class ExoPlayerMenus {
                         selectedExternalSubUrl: selectedExternalSubUrl,
                         isFetchingSubs: isFetchingSubs,
                         onSelectExternal: onSelectExternal,
+                        onLoadFromFile: onLoadFromFile,
                         anchorContext: anchorContext,
                       ),
                       anchorContext: anchorContext,
@@ -404,9 +421,14 @@ class _SubtitleOffChip extends StatelessWidget {
     if (!tvFocus) {
       return Material(
         color: Colors.transparent,
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+          hoverColor: selected
+              ? Colors.black.withValues(alpha: 0.06)
+              : ForjaShellColors.inkHover,
           child: face,
         ),
       );

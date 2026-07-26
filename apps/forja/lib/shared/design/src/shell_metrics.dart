@@ -125,11 +125,11 @@ class ShellMetrics {
     torrentPanelLeadingIconSize: 20,
     torrentPanelSectionFontSize: 15,
     usesTvDensity: true,
-    // Same rail chrome as desktop; spacing compresses if height is tight.
-    navRailItemSpacing: ShellTokens.navRailItemSpacing,
-    navRailLogoGap: 20,
-    navRailTopPadding: ShellTokens.shellHeaderTopPadding,
-    navRailBottomPadding: 16,
+    // Tighter preferred gaps; TV rail still shrinks icons to fit all tabs.
+    navRailItemSpacing: 12,
+    navRailLogoGap: 12,
+    navRailTopPadding: 10,
+    navRailBottomPadding: 6,
   );
 
   double get navRailWidth => ShellTokens.navRailWidth;

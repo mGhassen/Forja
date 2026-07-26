@@ -468,6 +468,53 @@ void main() {
     expect(underlineColor, navDestinationAccentColors['search']);
   });
 
+  testWidgets('TV nav rail fits all enabled tabs without scrolling', (
+    tester,
+  ) async {
+    const manyIds = [
+      'search',
+      'home',
+      'asian_drama',
+      'anime',
+      'iptv',
+      'live_matches',
+      'mylist',
+      'settings',
+    ];
+    await pumpScaffold(
+      tester,
+      ShellScaffold(
+        useNavRail: true,
+        visibleIds: manyIds,
+        selectedIndex: 0,
+        mountedTabIds: manyIds.toSet(),
+        onDestinationSelected: (_) {},
+        tabFor: (id) => Center(child: Text(id)),
+      ),
+      size: const Size(1280, 720),
+      profile: ShellProfile.tv,
+    );
+    await tester.pumpAndSettle();
+
+    for (final id in manyIds) {
+      if (id == 'settings') continue;
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is NavDestinationIcon && widget.destination.id == id,
+        ),
+        findsOneWidget,
+        reason: '$id should be visible on 720p TV rail',
+      );
+    }
+
+    final avatar = tester.widget<ForjaProfileAvatar>(
+      find.byType(ForjaProfileAvatar),
+    );
+    expect(avatar.size, ShellTokens.navRailIconSize * ShellTokens.navRailProfileAvatarScaleTv);
+    expect(avatar.size, lessThan(ShellTokens.navRailIconSize * ShellTokens.navRailProfileAvatarScaleDesktop));
+  });
+
   testWidgets('desktop profile avatar is grey idle and colored on hover', (
     tester,
   ) async {
@@ -486,7 +533,10 @@ void main() {
     expect(avatar.showBorder, isFalse);
     expect(
       avatar.size,
-      shellNavRailIconSize(tester.element(find.byType(ShellNavRail))) * 1.65,
+      shellNavRailIconSize(tester.element(find.byType(ShellNavRail))) *
+          shellNavRailProfileAvatarScale(
+            tester.element(find.byType(ShellNavRail)),
+          ),
     );
     final avatarScale = tester.widget<AnimatedScale>(
       find
