@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PasswordRecoveryGate } from '@/components/password-recovery-gate'
+import { PostHogAnalytics } from '@/components/posthog-analytics'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProfilesProvider } from '@/hooks/use-profiles'
 import appCss from '@/index.css?url'
@@ -57,12 +58,14 @@ function RootComponent() {
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <PasswordRecoveryGate />
-          <ProfilesProvider>
-            <Outlet />
-          </ProfilesProvider>
-        </AuthProvider>
+        <PostHogAnalytics>
+          <AuthProvider>
+            <PasswordRecoveryGate />
+            <ProfilesProvider>
+              <Outlet />
+            </ProfilesProvider>
+          </AuthProvider>
+        </PostHogAnalytics>
       </QueryClientProvider>
     </RootDocument>
   )

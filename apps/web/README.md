@@ -16,6 +16,7 @@ cd apps/web
 pnpm install
 cp .env.example .env
 # fill VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, VITE_TURNSTILE_SITE_KEY
+# optional: VITE_POSTHOG_KEY / VITE_POSTHOG_HOST (web PostHog project — not Flutter POSTHOG_API_KEY)
 pnpm dev
 ```
 
@@ -29,6 +30,7 @@ local Supabase after changing captcha settings (`supabase stop && supabase start
 2. Framework Preset: TanStack Start
 3. Leave Build / Output / Install on defaults (do **not** override Output to `dist`)
 4. Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`
+5. Optional analytics: `VITE_POSTHOG_KEY` (+ `VITE_POSTHOG_HOST`) — empty skips PostHog entirely
 
 Nitro (`nitro()` in `vite.config.ts`) is required — without it Vercel returns `404: NOT_FOUND` because there is no serverless entry.
 

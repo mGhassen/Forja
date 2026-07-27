@@ -2,14 +2,14 @@
 
 **Status:** open  
 **Depends on:** —  
-**Area:** `apps/forja` telemetry, Settings → About
+**Area:** `apps/forja` telemetry, Settings → About; `apps/web` PostHog
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **8 / 8** Sentry · **6 / 6** PostHog · **0 / 0** deferred |
-| **Current slice** | Sentry Issues + PostHog events/replay (mobile); dual opt-in toggles |
+| **Progress** | **5 / 5** components · **8 / 8** Sentry · **6 / 6** PostHog (app) · **3 / 3** PostHog (web) · **0 / 0** deferred |
+| **Current slice** | App Sentry + PostHog dual opt-in shipped; web portal PostHog pageviews + masked replay |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -23,6 +23,7 @@
 | 2 | R43-C02 | Sentry Flutter init + scrubbing (`beforeSend`) | ✅ |
 | 3 | R43-C03 | Settings → About opt-in toggles (crash + product analytics) | ✅ |
 | 4 | R43-C04 | PostHog SDK + allowlisted events + mobile session replay | ✅ |
+| 5 | R43-C05 | Web portal PostHog (`posthog-js`) + SPA pageviews + masked replay | ✅ |
 
 ---
 
@@ -54,11 +55,21 @@
 
 ---
 
+## Acceptance (web portal PostHog)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R43-A15 | Empty `VITE_POSTHOG_KEY` → portal SDK never starts (no network) | ✅ |
+| 2 | R43-A16 | Configured key → SPA `$pageview` on route changes; session replay masks inputs/text; no email identify | ✅ |
+| 3 | R43-A17 | Env docs (`apps/web` + root bridge) + feature/changelog | ✅ |
+
+---
+
 ## Summary
 
-**Sentry** = crashes / Issues. **PostHog** = product events + mobile session replay. Dual **opt-in** toggles (default off). Strict scrubbing — no stream URLs, magnets, cookies, JWTs.
+**Sentry** = crashes / Issues (Flutter). **PostHog** = product events + session replay (Flutter opt-in; web when key configured). Flutter dual **opt-in** toggles (default off). Strict scrubbing — no stream URLs, magnets, cookies, JWTs.
 
-**Out of scope:** Sentry Logs dump, Sentry Replay, web/admin SDKs, identify-by-email.
+**Out of scope:** Sentry Logs dump, Sentry Replay, admin app SDK, identify-by-email.
 
 ### Privacy contract
 
@@ -68,7 +79,9 @@
 | Exception type + scrubbed message | Magnets, IPTV credentials |
 | Allowlisted event names (`app_start`, `play_started`, …) | Auth tokens, cookies, Authorization headers |
 | Anonymous distinct id (SDK default) | Account email / display name |
+| Web portal page paths (scrubbed URL props) | Form passwords / IPTV credentials on web |
 
 ### Related
 
 - Settings hub: [RFC-033](033-[open]-settings-ux-redesign.md)
+- Web portal: [RFC-034](034-[partial]-web-portal-landing.md)

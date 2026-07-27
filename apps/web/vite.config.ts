@@ -13,6 +13,7 @@ const forjaAuthRoot = path.resolve(repoRoot, 'packages/forja-auth')
 /**
  * Prefer apps/web/.env VITE_* keys; fall back to repo-root SUPABASE_* /
  * VITE_SUPABASE_* / RELEASE_CDN_URL so one root .env unlocks web locally.
+ * PostHog web key is separate from Flutter POSTHOG_API_KEY — never bridge that.
  */
 function bridgeWebEnv(mode: string) {
   const webEnv = loadEnv(mode, webRoot, '')
@@ -47,6 +48,21 @@ function bridgeWebEnv(mode: string) {
     ''
   if (oauth && !process.env.VITE_AUTH_OAUTH_PROVIDERS) {
     process.env.VITE_AUTH_OAUTH_PROVIDERS = oauth
+  }
+  // Web PostHog is its own project. Only VITE_POSTHOG_* (web or root), never
+  // Flutter POSTHOG_API_KEY.
+  const posthogKey =
+    webEnv.VITE_POSTHOG_KEY || rootEnv.VITE_POSTHOG_KEY || ''
+  const posthogHost =
+    webEnv.VITE_POSTHOG_HOST ||
+    rootEnv.VITE_POSTHOG_HOST ||
+    rootEnv.POSTHOG_HOST ||
+    ''
+  if (posthogKey && !process.env.VITE_POSTHOG_KEY) {
+    process.env.VITE_POSTHOG_KEY = posthogKey
+  }
+  if (posthogHost && !process.env.VITE_POSTHOG_HOST) {
+    process.env.VITE_POSTHOG_HOST = posthogHost
   }
 }
 
