@@ -21,12 +21,13 @@ Changelogs track **releases** (git tags), not individual commits. The draft file
 
 | File | Codename | Since tag | Status |
 |------|----------|-----------|--------|
-| [1.3.x-[draft].md](1.3.x-[draft].md) | Elblat | v1.3.9 | drafting |
+| [1.3.x-[draft].md](1.3.x-[draft].md) | Elblat | v1.3.24 | drafting |
 
 ## Released
 
 | Version | Codename | File |
 |---------|----------|------|
+| 1.3.24 | Elblat | [done/1.3.24-[released].md](done/1.3.24-[released].md) |
 | 1.3.9 | Elblat | [done/1.3.9-[released].md](done/1.3.9-[released].md) |
 | 1.3.0 | Elblat | [done/1.3.0-[released].md](done/1.3.0-[released].md) |
 | 1.2.434 | Dabaghin | [done/1.2.434-[released].md](done/1.2.434-[released].md) |
