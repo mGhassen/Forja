@@ -147,13 +147,17 @@ ui_clear() {
 
 ui_step_banner() {
   local step="$1" total="$2" title="$3"
-  local latest
+  local latest pending
   latest="$(default_release_tag 2>/dev/null || true)"
+  pending="$(latest_pending_release_tag 2>/dev/null || true)"
   echo >&2
   printf '  %sForja%s local release' "${C_BOLD}${C_CYAN}" "${C_RESET}" >&2
   printf '  %s·%s  step %s/%s\n' "${C_DIM}" "${C_RESET}" "$step" "$total" >&2
   printf '  %s%s%s\n' "${C_BOLD}" "$title" "${C_RESET}" >&2
-  if [[ -n "$latest" ]]; then
+  if [[ -n "$pending" ]]; then
+    printf '  %slatest tag%s  %s  %s(not on this branch — sync-from)%s\n' \
+      "${C_DIM}" "${C_RESET}" "$pending" "${C_YELLOW}" "${C_RESET}" >&2
+  elif [[ -n "$latest" ]]; then
     printf '  %slatest tag%s  %s\n' "${C_DIM}" "${C_RESET}" "$latest" >&2
   fi
   hr >&2
@@ -403,32 +407,17 @@ ensure_sync_remote() {
   ok "added remote $SYNC_REMOTE → $SYNC_REPO"
 }
 
-sync_to_forjahq() {
-  local tag="${1:-}"
-  local branch
-
-  if [[ "${FORJA_SYNC_SKIP:-}" == "1" || -z "${SYNC_REPO}" ]]; then
+# Tag is on our history: already merged into HEAD, or a 1-commit side branch off it
+# (forjahq Actions "chore: release vX.Y.Z" after sync-to force-pushed past it).
+tag_on_our_line() {
+  local tag="$1"
+  local tip parent
+  tip="$(git rev-parse "${tag}^{commit}" 2>/dev/null)" || return 1
+  if git merge-base --is-ancestor "$tip" HEAD 2>/dev/null; then
     return 0
   fi
-
-  require_cmd git
-  branch="$(git rev-parse --abbrev-ref HEAD)"
-  [[ "$branch" != "HEAD" ]] || die "detached HEAD — checkout a branch before syncing to $SYNC_REPO"
-
-  ensure_sync_remote
-  # origin (mGhassen) wins. Force so divergent forjahq history is overwritten.
-  info "Sync origin → ${SYNC_REPO} (force branch ${branch}${tag:+, tag ${tag}})"
-
-  if ! git push --force "$SYNC_REMOTE" "HEAD:refs/heads/${branch}"; then
-    die "failed to force-push ${branch} → ${SYNC_REPO} (check write access / credentials)"
-  fi
-  if [[ -n "$tag" ]]; then
-    git rev-parse "$tag" >/dev/null 2>&1 || die "tag $tag does not exist locally"
-    if ! git push --force "$SYNC_REMOTE" "refs/tags/${tag}"; then
-      die "failed to force-push tag ${tag} → ${SYNC_REPO}"
-    fi
-  fi
-  ok "Synced to https://github.com/${SYNC_REPO}"
+  parent="$(git rev-parse "${tip}^" 2>/dev/null)" || return 1
+  git merge-base --is-ancestor "$parent" HEAD 2>/dev/null
 }
 
 # Newest v* tag that is an ancestor of ref (e.g. forjahq/main after CI release).
@@ -445,8 +434,57 @@ latest_tag_on_ref() {
   return 1
 }
 
+# Newest release tag on our line whose commit is NOT on HEAD (orphaned CI release).
+latest_pending_release_tag() {
+  local t tip
+  while IFS= read -r t; do
+    [[ -z "$t" ]] && continue
+    tip="$(git rev-parse "${t}^{commit}" 2>/dev/null)" || continue
+    git merge-base --is-ancestor "$tip" HEAD 2>/dev/null && continue
+    tag_on_our_line "$t" || continue
+    echo "$t"
+    return 0
+  done < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null || true)
+  return 1
+}
+
+sync_to_forjahq() {
+  local tag="${1:-}"
+  local branch pending
+
+  if [[ "${FORJA_SYNC_SKIP:-}" == "1" || -z "${SYNC_REPO}" ]]; then
+    return 0
+  fi
+
+  require_cmd git
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+  [[ "$branch" != "HEAD" ]] || die "detached HEAD — checkout a branch before syncing to $SYNC_REPO"
+
+  ensure_sync_remote
+  git fetch "$SYNC_REMOTE" --tags --force 2>/dev/null || true
+
+  # Force-pushing main without the CI release commit orphans it (tag stays, branch moves).
+  if pending="$(latest_pending_release_tag)"; then
+    die "CI release ${pending} is not on ${branch} yet — run: ./scripts/release_local.sh sync-from ${pending}"
+  fi
+
+  info "Sync origin → ${SYNC_REPO} (force branch ${branch}${tag:+, tag ${tag}})"
+
+  if ! git push --force "$SYNC_REMOTE" "HEAD:refs/heads/${branch}"; then
+    die "failed to force-push ${branch} → ${SYNC_REPO} (check write access / credentials)"
+  fi
+  if [[ -n "$tag" ]]; then
+    git rev-parse "$tag" >/dev/null 2>&1 || die "tag $tag does not exist locally"
+    if ! git push --force "$SYNC_REMOTE" "refs/tags/${tag}"; then
+      die "failed to force-push tag ${tag} → ${SYNC_REPO}"
+    fi
+  fi
+  ok "Synced to https://github.com/${SYNC_REPO}"
+}
+
 # Pull the CI release commit (+ tag) from forjahq into the current branch and push origin.
 # Happy path after Actions "New version" on forjahq: fast-forward. If histories diverged, merge.
+# Also finds release tags orphaned by a prior sync-to force-push (not on forjahq/main tip).
 sync_from_forjahq() {
   local tag="${1:-}"
   local branch remote_ref release_sha
@@ -473,8 +511,12 @@ sync_from_forjahq() {
     [[ "$tag" == v* ]] || tag="v${tag}"
     git rev-parse "$tag" >/dev/null 2>&1 || die "tag $tag not found after fetch from ${SYNC_REPO}"
   else
-    tag="$(latest_tag_on_ref "$remote_ref")" \
-      || die "no v* tags found on ${remote_ref}"
+    # Prefer orphaned CI release not yet on HEAD; else newest tag on remote tip.
+    tag="$(latest_pending_release_tag || true)"
+    if [[ -z "$tag" ]]; then
+      tag="$(latest_tag_on_ref "$remote_ref")" \
+        || die "no v* tags found on ${remote_ref}"
+    fi
   fi
 
   release_sha="$(git rev-parse "${tag}^{commit}")"
@@ -497,6 +539,12 @@ sync_from_forjahq() {
   fi
   if ! git push origin "refs/tags/${tag}"; then
     die "failed to push tag ${tag} → origin (tag may already exist with a different SHA)"
+  fi
+  # Keep forjahq/main in sync after merge (non-force: only if we advanced).
+  if ! git push "$SYNC_REMOTE" "HEAD:refs/heads/${branch}"; then
+    warn "merged locally + origin, but push to ${SYNC_REPO} failed — run sync after fixing access"
+  else
+    ok "Updated ${SYNC_REPO} ${branch} with ${tag}"
   fi
   ok "Brought ${tag} from ${SYNC_REPO} → origin ($(gh_repo))"
 }
@@ -598,8 +646,9 @@ latest_tag() {
   git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null | head -1
 }
 
-# Prefer newest tag on the pubspec major.minor arc that is an ancestor of HEAD
-# (avoids stale v1.3.9 leftovers that are not on this branch).
+# Prefer newest tag on the pubspec major.minor arc that is on our history line
+# (merged into HEAD, or a CI release commit that branched off HEAD's ancestors).
+# Ancestor-only missed forjahq "chore: release" tags after sync-to force-pushed past them.
 default_release_tag() {
   local semver major minor t
   semver="$(grep '^version:' "$APP_DIR/pubspec.yaml" 2>/dev/null | sed 's/version: *//' | cut -d+ -f1 || true)"
@@ -608,7 +657,7 @@ default_release_tag() {
     minor="${BASH_REMATCH[2]}"
     while IFS= read -r t; do
       [[ -z "$t" ]] && continue
-      if git merge-base --is-ancestor "$t" HEAD 2>/dev/null; then
+      if tag_on_our_line "$t"; then
         echo "$t"
         return
       fi
@@ -616,7 +665,7 @@ default_release_tag() {
   fi
   while IFS= read -r t; do
     [[ -z "$t" ]] && continue
-    if git merge-base --is-ancestor "$t" HEAD 2>/dev/null; then
+    if tag_on_our_line "$t"; then
       echo "$t"
       return
     fi
@@ -1520,7 +1569,7 @@ Action:  force-push branch + tag (mGhassen overwrites ${SYNC_REPO})"
 }
 
 wizard_sync_from() {
-  local tag detail branch remote_ref
+  local tag detail branch remote_ref tip note=""
   require_clean_tree
   ensure_sync_remote
   git fetch "$SYNC_REMOTE" --tags --force
@@ -1528,12 +1577,18 @@ wizard_sync_from() {
   remote_ref="${SYNC_REMOTE}/${branch}"
   git rev-parse "$remote_ref" >/dev/null 2>&1 \
     || die "missing ${remote_ref} — does ${SYNC_REPO} have ${branch}?"
-  tag="$(latest_tag_on_ref "$remote_ref")" \
-    || die "no v* tags found on ${remote_ref}"
+  tag="$(latest_pending_release_tag || true)"
+  if [[ -z "$tag" ]]; then
+    tag="$(latest_tag_on_ref "$remote_ref")" \
+      || die "no v* tags found on ${remote_ref}"
+  else
+    note=" (pending — not on ${branch} yet)"
+  fi
+  tip="$(git rev-parse --short "${tag}^{commit}")"
   detail="Source:  ${SYNC_REPO}
 Target:  origin ($(gh_repo))
 Branch:  ${branch}
-Tag:     ${tag} @ $(git rev-parse --short "${tag}^{commit}")
+Tag:     ${tag} @ ${tip}${note}
 Action:  FF or merge CI release commit, then push branch + tag to origin
 Use after: Actions New version on forjahq"
   if ui_confirm_screen 2 2 "Sync from ${SYNC_REPO}?" "$detail" 1; then
