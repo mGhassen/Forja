@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/player_tv_remote.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
@@ -103,6 +104,46 @@ void main() {
       expect(down, 1);
     });
 
+    test('arrow left/right seek when chrome is hidden', () {
+      var back = 0;
+      var forward = 0;
+      final handler = _handler(
+        onSeekBack: () => back++,
+        onSeekForward: () => forward++,
+      );
+
+      expect(
+        handler.handle(_key(LogicalKeyboardKey.arrowLeft), showControls: false),
+        isTrue,
+      );
+      expect(
+        handler.handle(_key(LogicalKeyboardKey.arrowRight), showControls: false),
+        isTrue,
+      );
+      expect(back, 1);
+      expect(forward, 1);
+    });
+
+    test('arrow left/right defer to focus when chrome is visible', () {
+      var back = 0;
+      var forward = 0;
+      final handler = _handler(
+        onSeekBack: () => back++,
+        onSeekForward: () => forward++,
+      );
+
+      expect(
+        handler.handle(_key(LogicalKeyboardKey.arrowLeft), showControls: true),
+        isFalse,
+      );
+      expect(
+        handler.handle(_key(LogicalKeyboardKey.arrowRight), showControls: true),
+        isFalse,
+      );
+      expect(back, 0);
+      expect(forward, 0);
+    });
+
     test('arrow up focuses back when chrome is hidden', () {
       var focusBack = 0;
       var volumeUp = 0;
@@ -170,5 +211,58 @@ void main() {
     );
 
     expect(find.byType(FocusableControl), findsOneWidget);
+  });
+
+  testWidgets('PlayerTvKeyScope seeks left/right when chrome is hidden', (
+    tester,
+  ) async {
+    final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');
+    final playFocus = FocusNode(debugLabel: 'test-play');
+    var seekBack = 0;
+    var seekForward = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlayerTvKeyScope(
+            enabled: true,
+            focusNode: keyFocus,
+            showControls: false,
+            onBack: () {},
+            onPlayPause: () {},
+            onShowControls: () {},
+            onSeekBack: () => seekBack++,
+            onSeekForward: () => seekForward++,
+            onVolumeUp: () {},
+            onVolumeDown: () {},
+            onToggleControls: () {},
+            onFocusBack: () {},
+            onFocusPlay: () {},
+            child: FocusScope(
+              debugLabel: 'player-chrome',
+              child: Focus(
+                focusNode: playFocus,
+                child: const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(keyFocus.hasFocus, isTrue);
+    expect(playFocus.hasFocus, isFalse);
+    expect(playFocus.canRequestFocus, isFalse);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+
+    expect(seekBack, 1);
+    expect(seekForward, 1);
+
+    keyFocus.dispose();
+    playFocus.dispose();
   });
 }

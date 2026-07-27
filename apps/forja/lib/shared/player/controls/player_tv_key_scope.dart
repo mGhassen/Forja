@@ -120,9 +120,14 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
+    // When chrome is hidden, only this node may hold focus. Otherwise an
+    // invisible Play / Sources control can keep primary focus and FocusableControl
+    // eats ←/→ as traversal instead of [PlayerTvRemoteKeyHandler] seeking.
     return Focus(
       focusNode: widget.focusNode,
       autofocus: true,
+      descendantsAreFocusable: widget.showControls,
+      descendantsAreTraversable: widget.showControls,
       onKeyEvent: _onKey,
       child: widget.child,
     );

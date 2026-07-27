@@ -34,6 +34,7 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -125,7 +126,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Timer? _progressSaveTimer;
 
   bool _disposed = false;
-  bool _isTv = false;
+  /// Prefer boot-time [PlatformInfo] so TV key scope / ExcludeFocus work on the
+  /// first frame; [_boot] still refreshes via the Exo bridge.
+  bool _isTv = PlatformInfo.isAndroidTv;
   bool _exitInProgress = false;
   bool _showControls = true;
   bool _isPlaying = false;

@@ -1,7 +1,6 @@
 package com.forjahq.app
 
 import android.content.Context
-import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -49,10 +48,8 @@ private const val LIVE_TARGET_OFFSET_MS = 8_000L
 private const val LIVE_MIN_OFFSET_MS = 3_000L
 private const val LIVE_MAX_OFFSET_MS = 25_000L
 
-private fun isTelevisionContext(context: Context): Boolean {
-    val uiMode = context.resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
-    return uiMode == Configuration.UI_MODE_TYPE_TELEVISION
-}
+private fun isTelevisionContext(context: Context): Boolean =
+    PlatformUtils.isAndroidTv(context)
 
 class ExoPlayerHost(
     private val context: Context,
@@ -546,8 +543,7 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
                     result.success(false)
                     return
                 }
-                val uiMode = ctx.resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
-                result.success(uiMode == Configuration.UI_MODE_TYPE_TELEVISION)
+                result.success(isTelevisionContext(ctx))
             }
             "open" -> {
                 val viewId = call.argument<Int>("viewId") ?: return result.error("ARG", "viewId required", null)
