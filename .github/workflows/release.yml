@@ -178,6 +178,74 @@ jobs:
           git push origin HEAD
           git push origin "v${NEW}"
 
+      # Push the release commit + tag to the personal/dev mirror (mGhassen/Forja).
+      # Requires forjahq repo secret ORIGIN_SYNC_TOKEN (fine-grained PAT: Contents write on ORIGIN_SYNC_REPO).
+      # Optional repo variable ORIGIN_SYNC_REPO (default mGhassen/Forja).
+      - name: Sync release to origin mirror
+        if: inputs.version_mode == 'New version'
+        env:
+          ORIGIN_SYNC_TOKEN: ${{ secrets.ORIGIN_SYNC_TOKEN }}
+          ORIGIN_SYNC_REPO: ${{ vars.ORIGIN_SYNC_REPO || 'mGhassen/Forja' }}
+          VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${ORIGIN_SYNC_TOKEN}" ]]; then
+            echo "::warning::ORIGIN_SYNC_TOKEN not set — skipped push to ${ORIGIN_SYNC_REPO}."
+            echo "Add a fine-grained PAT (Contents: Read and write on ${ORIGIN_SYNC_REPO}) as"
+            echo "Settings → Secrets → Actions → ORIGIN_SYNC_TOKEN, or run locally:"
+            echo "  ./scripts/release_local.sh sync-from v${VERSION}"
+            exit 0
+          fi
+          # Case-insensitive: skip when this workflow already runs on the mirror repo.
+          self="$(printf '%s' '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          target="$(printf '%s' "${ORIGIN_SYNC_REPO}" | tr '[:upper:]' '[:lower:]')"
+          if [[ "$self" == "$target" ]]; then
+            echo "Already on ${ORIGIN_SYNC_REPO} — skip mirror push"
+            exit 0
+          fi
+
+          TAG="v${VERSION}"
+          BRANCH="${GITHUB_REF_NAME}"
+          summary() {
+            {
+              echo "## Origin mirror"
+              echo "Pushed release \`${TAG}\` to [\`${ORIGIN_SYNC_REPO}\`](https://github.com/${ORIGIN_SYNC_REPO}) (\`${BRANCH}\` — $1)."
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+          git remote remove origin-sync 2>/dev/null || true
+          git remote add origin-sync "https://x-access-token:${ORIGIN_SYNC_TOKEN}@github.com/${ORIGIN_SYNC_REPO}.git"
+          git fetch origin-sync --tags --force
+
+          echo "Pushing ${TAG} → ${ORIGIN_SYNC_REPO}"
+          git push origin-sync "refs/tags/${TAG}"
+
+          REMOTE_REF="origin-sync/${BRANCH}"
+          if ! git rev-parse "$REMOTE_REF" >/dev/null 2>&1; then
+            git push origin-sync "HEAD:refs/heads/${BRANCH}"
+            echo "Created ${BRANCH} on ${ORIGIN_SYNC_REPO} at ${TAG}"
+            summary "created"
+            exit 0
+          fi
+
+          if git merge-base --is-ancestor "$REMOTE_REF" HEAD; then
+            git push origin-sync "HEAD:refs/heads/${BRANCH}"
+            echo "Fast-forwarded ${ORIGIN_SYNC_REPO}/${BRANCH} → ${TAG}"
+            summary "fast-forward"
+            exit 0
+          fi
+
+          echo "Histories diverged — merging ${TAG} into ${ORIGIN_SYNC_REPO}/${BRANCH}"
+          git checkout -B "_origin_sync_${BRANCH}" "$REMOTE_REF"
+          if ! git merge --no-edit -m "chore: sync release ${TAG} from ${{ github.repository }}" "${TAG}^{commit}"; then
+            echo "::error::Merge conflict syncing ${TAG} to ${ORIGIN_SYNC_REPO}."
+            echo "Resolve locally: ./scripts/release_local.sh sync-from ${TAG}"
+            git merge --abort || true
+            exit 1
+          fi
+          git push origin-sync "HEAD:refs/heads/${BRANCH}"
+          echo "Merged ${TAG} into ${ORIGIN_SYNC_REPO}/${BRANCH}"
+          summary "merged"
+
       - name: Resolve existing tag
         if: inputs.version_mode == 'Existing tag'
         id: existing

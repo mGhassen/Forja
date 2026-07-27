@@ -132,7 +132,9 @@ trigger_release() {
   echo "Watch: gh run watch"
   if [[ "$mode" == "New version" ]]; then
     echo
-    echo "After the run finishes on forjahq, bring the release commit back to origin:"
+    echo "After the run finishes on forjahq, the release commit is pushed to origin"
+    echo "(mGhassen/Forja) when ORIGIN_SYNC_TOKEN is set on the forjahq repo."
+    echo "Fallback if the secret is missing or histories conflict:"
     echo "  ./scripts/release_local.sh sync-from"
   fi
 }

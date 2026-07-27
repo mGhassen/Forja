@@ -38,8 +38,8 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 - Crash reporting and product analytics stay off until you enable them; local builds without `SENTRY_DSN` / `POSTHOG_API_KEY` keep the toggles but send nothing
 - Enable **Record user sessions** in PostHog project settings for session replay
 - Web portal analytics needs its own `VITE_POSTHOG_KEY` (separate PostHog project from the app); empty key means the site never loads PostHog
-- Published releases (CI): `./scripts/release_ci.sh` or `melos run release` — searchable tag list locally (needs `gh` CLI)
-- After a **New version** release on forjahq Actions: `./scripts/release_local.sh sync-from` pulls the `chore: release` commit + tag back to origin (mGhassen)
+- Published releases (CI on forjahq): `./scripts/release_ci.sh` or `melos run release` — searchable tag list locally (needs `gh` CLI)
+- After **New version** on forjahq, CI pushes the `chore: release` commit + tag to origin (`mGhassen/Forja`) when repo secret `ORIGIN_SYNC_TOKEN` is set (optional variable `ORIGIN_SYNC_REPO`). Fallback: `./scripts/release_local.sh sync-from`
 - Local release (macOS DMG → GitHub + R2; Windows via Parallels when `FORJA_PRL_VM` is set): `./scripts/release_local.sh` or `melos run release:local`
 - First-time Windows VM toolchain (inside the guest, elevated PowerShell): `.\scripts\setup_windows_vm.ps1` — or from Mac: `./scripts/release_local.sh setup-windows`
 - Or in GitHub: Actions → **Release Forja** → **New version** or **Existing tag**; each arch is its own checkbox (macOS arm64, macOS Intel, Android TV arm64, Android TV v7a)
