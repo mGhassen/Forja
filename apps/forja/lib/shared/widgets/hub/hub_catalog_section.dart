@@ -20,12 +20,14 @@ class HubCatalogSection<T> extends StatefulWidget {
     this.tvRowId,
     this.tvRowOrder = 0,
     this.tvFocusUp,
+    this.cardAspect = HubPosterAspect.portrait,
   }) : assert(future != null || items != null);
 
   final String title;
   final Future<List<T>>? future;
   final List<T>? items;
   final bool compactTop;
+
   /// Zero title-top pad - parent owns row gap (media details sections).
   final bool embedded;
   final bool showRank;
@@ -33,13 +35,15 @@ class HubCatalogSection<T> extends StatefulWidget {
   final String? tvRowId;
   final int tvRowOrder;
   final VoidCallback? tvFocusUp;
+  final HubPosterAspect cardAspect;
   final HubPosterCard Function(BuildContext context, T item, int index)
-      cardBuilder;
+  cardBuilder;
 
   static double sectionHeight(
     BuildContext context, {
     bool compactTop = false,
     bool embedded = false,
+    HubPosterAspect cardAspect = HubPosterAspect.portrait,
   }) {
     final titleTop = embedded
         ? 0.0
@@ -47,7 +51,7 @@ class HubCatalogSection<T> extends StatefulWidget {
     return titleTop +
         shellHomeSectionHeaderHeight(context) +
         shellHomeSectionBottomGap(context) +
-        HubPosterCard.cardHeight(context);
+        HubPosterCard.cardHeight(context, aspect: cardAspect);
   }
 
   @override
@@ -90,8 +94,9 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
     final sectionTop = _sectionTitleTop(context);
     // Parent MediaDetailsBody owns the column edge; Cast/Trailers use 0 pad
     // when embedded - don't double-apply home insets.
-    final horizontalPad =
-        widget.embedded ? 0.0 : shellHomeSectionHorizontalPadding(context);
+    final horizontalPad = widget.embedded
+        ? 0.0
+        : shellHomeSectionHorizontalPadding(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,7 +115,10 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
         ),
         FocusTraversalGroup(
           child: HorizontalScroller(
-            height: HubPosterCard.cardHeight(context),
+            height: HubPosterCard.cardHeight(
+              context,
+              aspect: widget.cardAspect,
+            ),
             padding: EdgeInsets.symmetric(horizontal: horizontalPad),
             itemCount: list.length,
             separatorBuilder: (_, _) => SizedBox(
@@ -148,6 +156,14 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
                 titleWidth: widget.title.length > 12
                     ? 180
                     : widget.title.length * 11.0,
+                cardWidth: HubPosterCard.cardWidth(
+                  context,
+                  aspect: widget.cardAspect,
+                ),
+                cardHeight: HubPosterCard.cardHeight(
+                  context,
+                  aspect: widget.cardAspect,
+                ),
               ),
             );
           }
@@ -170,8 +186,7 @@ SliverToBoxAdapter hubRowSliver(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!isFirstAfterHero)
-          SizedBox(height: shellHomeRowSpacing(context)),
+        if (!isFirstAfterHero) SizedBox(height: shellHomeRowSpacing(context)),
         RepaintBoundary(child: section),
       ],
     ),

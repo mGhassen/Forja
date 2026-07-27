@@ -66,23 +66,23 @@ double shellSectionTitleTopCompact(BuildContext context) {
 
 double shellHomeSectionHorizontalPadding(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
-        ? ShellTokens.tvHomeSectionHorizontalPadding
-        : ShellTokens.homeSectionHorizontalPadding;
+    ? ShellTokens.tvHomeSectionHorizontalPadding
+    : ShellTokens.homeSectionHorizontalPadding;
 
 double shellHomeRowSpacing(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
-        ? ShellTokens.tvHomeRowSpacing
-        : ShellTokens.homeRowSpacing;
+    ? ShellTokens.tvHomeRowSpacing
+    : ShellTokens.homeRowSpacing;
 
 double shellHeroHeightFraction(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
-        ? ShellTokens.tvHeroHeightFraction
-        : ShellTokens.heroHeightFractionDesktop;
+    ? ShellTokens.tvHeroHeightFraction
+    : ShellTokens.heroHeightFractionDesktop;
 
 double shellMovieCardRowGap(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
-        ? ShellTokens.tvMovieCardRowGap
-        : 14.0;
+    ? ShellTokens.tvMovieCardRowGap
+    : 14.0;
 
 /// Horizontal inset so TV focus scale + border stay inside layout bounds.
 ///
@@ -99,10 +99,7 @@ double shellMovieCardFocusBleed(
   return w * (scaleOnFocus - 1) / 2 + borderWidth + 1;
 }
 
-double shellHomeSectionTitleTop(
-  BuildContext context, {
-  bool compact = false,
-}) {
+double shellHomeSectionTitleTop(BuildContext context, {bool compact = false}) {
   if (compact) return shellSectionTitleTopCompact(context);
   if (ShellScope.metricsOf(context).usesTvDensity) {
     return ShellTokens.tvHomeSectionTitleTop;
@@ -112,13 +109,13 @@ double shellHomeSectionTitleTop(
 
 double shellHomeSectionHeaderHeight(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
-        ? ShellTokens.tvHomeSectionHeaderHeight
-        : 28.0;
+    ? ShellTokens.tvHomeSectionHeaderHeight
+    : 28.0;
 
 double shellHomeSectionBottomGap(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
-        ? ShellTokens.tvHomeSectionBottomGap
-        : 16.0;
+    ? ShellTokens.tvHomeSectionBottomGap
+    : 16.0;
 
 double shellCatalogSectionHeight(
   BuildContext context, {
@@ -133,13 +130,14 @@ double shellCatalogSectionHeight(
 
 double shellHeroNextRowPeekFraction(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
-        ? ShellTokens.tvHeroNextRowPeekFraction
-        : ShellTokens.heroNextRowPeekFraction;
+    ? ShellTokens.tvHeroNextRowPeekFraction
+    : ShellTokens.heroNextRowPeekFraction;
 
 double shellHeroMinHeight(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity ? 400.0 : 320.0;
 
-double shellSearchGridCardWidth(BuildContext context) => shellMovieCardWidth(context);
+double shellSearchGridCardWidth(BuildContext context) =>
+    shellMovieCardWidth(context);
 
 int shellGridCrossAxisCount(
   BuildContext context, {
@@ -158,7 +156,8 @@ bool shellIptvUsesWideLayout(BuildContext context) =>
 /// TV density vs desktop card baseline (190px). Typography uses [ShellTokens.tvLayoutScaleFloor].
 double shellLayoutScale(BuildContext context) {
   if (!ShellScope.metricsOf(context).usesTvDensity) return 1.0;
-  final raw = ShellScope.metricsOf(context).homeMovieCardWidth /
+  final raw =
+      ShellScope.metricsOf(context).homeMovieCardWidth /
       ShellMetrics.desktop.homeMovieCardWidth;
   return math.max(ShellTokens.tvLayoutScaleFloor, raw);
 }
@@ -208,8 +207,8 @@ double shellNavRailLabelFontSize(BuildContext context) =>
 
 double shellNavRailProfileAvatarScale(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
-        ? ShellTokens.navRailProfileAvatarScaleTv
-        : ShellTokens.navRailProfileAvatarScaleDesktop;
+    ? ShellTokens.navRailProfileAvatarScaleTv
+    : ShellTokens.navRailProfileAvatarScaleDesktop;
 
 /// Fixed footprint for one rail item at [iconSize] (hover/focus scale included).
 double shellNavRailItemContentHeight(
@@ -227,16 +226,16 @@ double shellNavRailItemContentHeight(
 }
 
 TextStyle shellSectionTitleTextStyle(BuildContext context) => TextStyle(
-      color: Colors.white,
-      fontSize: shellScaled(context, 20).clamp(15.0, 20.0),
-      fontWeight: FontWeight.w800,
-      letterSpacing: -0.3,
-    );
+  color: Colors.white,
+  fontSize: shellScaled(context, 20).clamp(15.0, 20.0),
+  fontWeight: FontWeight.w800,
+  letterSpacing: -0.3,
+);
 
 TextStyle shellSectionSubtitleTextStyle(BuildContext context) => TextStyle(
-      color: Colors.white.withValues(alpha: 0.3),
-      fontSize: shellScaled(context, 11).clamp(10.0, 11.0),
-    );
+  color: Colors.white.withValues(alpha: 0.3),
+  fontSize: shellScaled(context, 11).clamp(10.0, 11.0),
+);
 
 /// Desktop cinematic hero text column - prefer synopsis over a full logo slot.
 class ShellHeroDesktopTextLayout {
@@ -264,7 +263,8 @@ ShellHeroDesktopTextLayout shellHeroDesktopTextLayout({
 }) {
   const titleGap = 20.0;
   const actionGap = 16.0;
-  final baseWithoutOverview = titleGap +
+  final baseWithoutOverview =
+      titleGap +
       ShellTokens.heroMetaSlotHeightDesktop +
       actionGap +
       ShellTokens.shellButtonHeight;
@@ -283,8 +283,10 @@ ShellHeroDesktopTextLayout shellHeroDesktopTextLayout({
 
   if (!hasOverview) {
     if (!fits(titleHeight, 0)) {
-      titleHeight = (maxHeight - baseWithoutOverview)
-          .clamp(minTitleHeight, ShellTokens.heroTitleSlotHeightDesktop);
+      titleHeight = (maxHeight - baseWithoutOverview).clamp(
+        minTitleHeight,
+        ShellTokens.heroTitleSlotHeightDesktop,
+      );
     }
     return ShellHeroDesktopTextLayout(
       titleHeight: titleHeight,
@@ -300,24 +302,30 @@ ShellHeroDesktopTextLayout shellHeroDesktopTextLayout({
   var overviewBlock = metaGap + slot;
 
   if (!fits(titleHeight, overviewBlock)) {
-    titleHeight = (maxHeight - baseWithoutOverview - overviewBlock)
-        .clamp(minTitleHeight, ShellTokens.heroTitleSlotHeightDesktop);
+    titleHeight = (maxHeight - baseWithoutOverview - overviewBlock).clamp(
+      minTitleHeight,
+      ShellTokens.heroTitleSlotHeightDesktop,
+    );
   }
 
   while (!fits(titleHeight, overviewBlock) && lines > 1) {
     lines--;
     slot = slotFor(lines, includeReadMore: includeReadMore);
     overviewBlock = metaGap + slot;
-    titleHeight = (maxHeight - baseWithoutOverview - overviewBlock)
-        .clamp(minTitleHeight, ShellTokens.heroTitleSlotHeightDesktop);
+    titleHeight = (maxHeight - baseWithoutOverview - overviewBlock).clamp(
+      minTitleHeight,
+      ShellTokens.heroTitleSlotHeightDesktop,
+    );
   }
 
   if (!fits(titleHeight, overviewBlock)) {
     includeReadMore = false;
     slot = slotFor(lines, includeReadMore: includeReadMore);
     overviewBlock = metaGap + slot;
-    titleHeight = (maxHeight - baseWithoutOverview - overviewBlock)
-        .clamp(minTitleHeight, ShellTokens.heroTitleSlotHeightDesktop);
+    titleHeight = (maxHeight - baseWithoutOverview - overviewBlock).clamp(
+      minTitleHeight,
+      ShellTokens.heroTitleSlotHeightDesktop,
+    );
   }
 
   if (!fits(titleHeight, overviewBlock)) {
@@ -332,8 +340,10 @@ ShellHeroDesktopTextLayout shellHeroDesktopTextLayout({
     }
     titleHeight = ShellTokens.heroTitleSlotHeightDesktop;
     if (!fits(titleHeight, 0)) {
-      titleHeight = (maxHeight - baseWithoutOverview)
-          .clamp(minTitleHeight, ShellTokens.heroTitleSlotHeightDesktop);
+      titleHeight = (maxHeight - baseWithoutOverview).clamp(
+        minTitleHeight,
+        ShellTokens.heroTitleSlotHeightDesktop,
+      );
     }
     return ShellHeroDesktopTextLayout(
       titleHeight: titleHeight,

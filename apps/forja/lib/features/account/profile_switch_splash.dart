@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -15,7 +16,9 @@ import 'package:forja/shared/widgets/forja_profile_avatar.dart';
 import 'package:rust/rust.dart';
 
 /// Profile-switch splash: avatar flies from its Who's watching tile to center
-/// while scaling up (~5s). Not the boot intro splash.
+/// while scaling up. Boot work matches [SplashScreen] intro: warm under the
+/// motion floor, dismiss when the floor elapses even if catalog is still
+/// loading, torrent starts after dismiss.
 class ProfileSwitchSplash extends StatefulWidget {
   const ProfileSwitchSplash({
     super.key,
@@ -38,6 +41,8 @@ class ProfileSwitchSplash extends StatefulWidget {
 
 class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
     with SingleTickerProviderStateMixin {
+  /// Same role as intro [_SplashScreenState._minSplashDuration]: motion floor
+  /// and hard cap — dismiss even if warm/TMDB is still running.
   static const Duration _splashDuration = Duration(seconds: 5);
 
   late final AnimationController _motionController;
@@ -46,6 +51,7 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
 
   late final DateTime _startedAt;
   String _status = 'Loading profile…';
+  bool _finished = false;
 
   @override
   void initState() {
@@ -65,7 +71,7 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
     );
     _motionController.forward();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _run();
+      if (mounted) unawaited(_run());
     });
   }
 
@@ -105,35 +111,102 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
       BootCache.clear();
       final needs = await BootNeeds.resolve();
 
-      await ProfileEngineWarm.warm(
-        needs,
-        startTorrent: true,
-        reason: 'profile-splash',
-        onStatus: _setStatus,
-      );
-      if (!mounted) return;
-
-      if (needs.tmdb) {
-        _setStatus('Loading your home feed…');
-        await BootCatalog.prefetchTmdb(onStatus: _setStatus);
-        if (!mounted) return;
-      }
-
+      // Same as intro splash: warm under the floor; torrent after dismiss.
+      final bootFuture = _warmLikeIntro(needs);
       if (widget.prepareCurrent) {
         _prepareShellForIncomingProfile();
       }
-      await _waitOutSplash();
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
+      await _dismissWhenReady(bootFuture, needs);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || _finished) return;
       await _waitOutSplash();
-      if (!mounted) return;
-      Navigator.of(context).pop(false);
+      _finish(false);
     }
   }
 
-  /// Keep the splash on screen for the full motion even if sync finishes early.
+  /// Intro-equivalent warm: LocalServer/WebStreamr/Nuvio + TMDB; no torrent.
+  Future<void> _warmLikeIntro(BootNeeds needs) async {
+    await ProfileEngineWarm.warm(
+      needs,
+      startTorrent: false,
+      reason: 'profile-splash',
+      onStatus: _setStatus,
+    );
+    if (!mounted) return;
+    if (needs.tmdb) {
+      _setStatus('Loading your home feed…');
+      await BootCatalog.prefetchTmdb(onStatus: _setStatus);
+    }
+  }
+
+  /// Mirror [SplashScreen._dismissWhenReady]: dismiss at the motion floor even
+  /// when warm/TMDB is still running; keep that future alive in the background.
+  Future<void> _dismissWhenReady(Future<void> bootFuture, BootNeeds needs) async {
+    final elapsed = DateTime.now().difference(_startedAt);
+    final remaining = elapsed >= _splashDuration
+        ? Duration.zero
+        : _splashDuration - elapsed;
+    final minSplashFuture = Future<void>.delayed(remaining);
+
+    final bootFinishedFirst = await Future.any<bool>([
+      bootFuture.then((_) => true),
+      minSplashFuture.then((_) => false),
+    ]);
+
+    if (!mounted || _finished) return;
+
+    if (bootFinishedFirst) {
+      await minSplashFuture;
+      if (!mounted || _finished) return;
+      _finish(true);
+      unawaited(_startTorrentPostSplash(needs));
+      return;
+    }
+
+    debugPrint(
+      '[ProfileSplash] Motion floor elapsed — dismissing; warm continues '
+      'in background',
+    );
+    // Keep boot alive after this State may dispose.
+    unawaited(
+      bootFuture.then((_) {
+        debugPrint('[ProfileSplash] Background warm complete');
+      }).catchError((Object e) {
+        debugPrint('[ProfileSplash] Background warm error: $e');
+      }),
+    );
+    _finish(true);
+    unawaited(_startTorrentPostSplash(needs));
+  }
+
+  Future<void> _startTorrentPostSplash(BootNeeds needs) async {
+    if (!needs.torrent) return;
+    if (!PlatformPlayback.capabilities.localTorrentEngine) return;
+    debugPrint('[Init] TorrentStream start (post-profile-splash)');
+    final ok = await TorrentStreamService()
+        .start()
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('[Init] TorrentStream timed out after 10s');
+            return false;
+          },
+        )
+        .catchError((Object e, StackTrace st) {
+          debugPrint('[Init] TorrentStream error: $e');
+          debugPrint('[Init] Stack trace: $st');
+          return false;
+        });
+    debugPrint('[Init] TorrentStream ${ok ? "ready" : "failed"}');
+  }
+
+  void _finish(bool ok) {
+    if (!mounted || _finished) return;
+    _finished = true;
+    Navigator.of(context).pop(ok);
+  }
+
+  /// Keep the splash on screen for the full motion even if sync fails early.
   Future<void> _waitOutSplash() async {
     final elapsed = DateTime.now().difference(_startedAt);
     if (elapsed < _splashDuration) {

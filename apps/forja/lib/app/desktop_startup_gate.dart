@@ -203,7 +203,7 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     setState(() => _stage = _StartupStage.account);
   }
 
-  /// After [ProfileSwitchSplash] (avatar fly + engine warm) - open the shell
+  /// After [ProfileSwitchSplash] (avatar fly + intro-style warm) — open the shell
   /// without a second logo intro splash.
   void _enterShellAfterProfileSplash() {
     ShellBus.splashDismissed.value = true;

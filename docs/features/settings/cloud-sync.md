@@ -95,11 +95,13 @@ Not synced — device-specific or sensitive:
 - Continue as a guest; the current local-only app behavior remains available
 - Tap **Watching now** under **Settings → Profile & account** (desktop rail
   avatar opens that page) to open **Who’s watching?** / **Manage profiles**
-  (same Netflix-style grid as the web). Choosing a profile shows a ~5s splash
+  (same Netflix-style grid as the web). Choosing a profile shows a short splash
   where that avatar scales from its tile into the center while settings sync —
-  not the boot intro splash, and not an in-settings dropdown. After it finishes,
-  the app opens that profile’s **default menu** tab (the starred tab under
-  **Settings → Features**), not the screen you were on before switching.
+  same dismiss timing idea as the boot intro (it does not wait forever for home
+  feed / engines). Not the logo intro splash, and not an in-settings dropdown.
+  After it finishes, the app opens that profile’s **default menu** tab (the
+  starred tab under **Settings → Features**), not the screen you were on before
+  switching. IPTV portals sync only when that profile has IPTV in the menu.
 - On desktop **and Android TV**, a restored session goes straight to the boot splash (the session
   is kept across quit: local app-file vault by default on macOS; Keychain/Keystore
   when you enable Keychain under Settings → About → Privacy, or Keystore on
@@ -109,8 +111,8 @@ Not synced — device-specific or sensitive:
   A new interactive sign-in opens **Who’s watching?** so you can
   choose the device profile first. If the account has no profiles yet, you
   create one before continuing. Tapping a profile there uses the same
-  avatar profile splash as mid-session switches (engines + catalog), then
-  opens the app — not a second logo boot splash.
+  avatar profile splash as mid-session switches (settings sync, then warm like
+  the intro splash), then opens the app — not a second logo boot splash.
 - **Sign out** from Profile & account (or the profile chooser) returns to the
   desktop sign-in screen and unloads the main app. You must sign in again or
   choose **Continue without an account**. Account-bound local data on this

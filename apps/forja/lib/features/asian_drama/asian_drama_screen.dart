@@ -174,8 +174,9 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       final feed = results[0] as KdramaHomeFeed;
       setState(() {
         _feed = feed;
-        _continueWatching =
-            (results[1] as List<Map<String, dynamic>>).take(10).toList();
+        _continueWatching = (results[1] as List<Map<String, dynamic>>)
+            .take(10)
+            .toList();
         _loading = false;
       });
       markShellTabFresh();
@@ -389,7 +390,9 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       if (!mounted) return;
       final raw = '$e';
       if (raw.contains('→ 429')) {
-        ForjaToast.error('kisskh is busy - wait a moment or open details and Resume.');
+        ForjaToast.error(
+          'kisskh is busy - wait a moment or open details and Resume.',
+        );
       } else {
         ForjaToast.error('Resume failed: $e');
       }
@@ -435,6 +438,8 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       listIndex: listIndex,
       tvTabId: 'asian_drama',
       tvRowId: tvRowId,
+      // KissKH list thumbs are 16:9 banners (often TMDB w1000_and_h563_face).
+      aspect: HubPosterAspect.landscape,
       onTap: () => _openDetails(card),
     );
   }
@@ -466,8 +471,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
         final fullHero = hubIsFullCinematicHero(context);
         final usesShell = hubUsesShellLayout(context);
         final latestList = _feed?.latest ?? const <KdramaCard>[];
-        final latestOnHero =
-            usesShell && fullHero && latestList.isNotEmpty;
+        final latestOnHero = usesShell && fullHero && latestList.isNotEmpty;
         final latestAsCatalogRow = !latestOnHero && latestList.isNotEmpty;
         final latestOrder = _latestOrder(latestOnHero: latestOnHero);
         final catalogBase = _catalogRowBase(
@@ -484,178 +488,200 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
                 title: 'Latest Update',
                 items: latestList,
                 compactTop: true,
+                cardAspect: HubPosterAspect.landscape,
                 tvTabId: 'asian_drama',
                 tvRowId: 'latest',
                 tvRowOrder: latestOrder,
                 tvFocusUp: focusHeroPlay,
-                cardBuilder: (context, card, index) => _dramaPosterCard(
-                  card,
-                  listIndex: index,
-                  tvRowId: 'latest',
-                ),
+                cardBuilder: (context, card, index) =>
+                    _dramaPosterCard(card, listIndex: index, tvRowId: 'latest'),
               )
             : null;
 
         return _error != null && !_loading
-              ? _buildError()
-              : RefreshIndicator(
-                          color: ForjaShellColors.sectionAccent,
-                          backgroundColor: AppTheme.bgCard,
-                          onRefresh: _load,
-                          child: ColoredBox(
-                            color: AppTheme.bgDark,
-                            child: CustomScrollView(
-                            controller: _scroll,
-                            physics: const BouncingScrollPhysics(
-                              parent: AlwaysScrollableScrollPhysics(),
-                            ),
-                            slivers: [
-                              if (_loading)
-                                ...homeHubLoadingSlivers(
-                                  context,
-                                  heroShimmer: homeCinematicHeroShimmer(
+            ? _buildError()
+            : RefreshIndicator(
+                color: ForjaShellColors.sectionAccent,
+                backgroundColor: AppTheme.bgCard,
+                onRefresh: _load,
+                child: ColoredBox(
+                  color: AppTheme.bgDark,
+                  child: CustomScrollView(
+                    controller: _scroll,
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    slivers: [
+                      if (_loading)
+                        ...homeHubLoadingSlivers(
+                          context,
+                          heroShimmer: homeCinematicHeroShimmer(
+                            context,
+                            pageBottomBleed: true,
+                          ),
+                          rows: kHomeHubAsianDramaLoadingRows,
+                          catalogCardWidth: HubPosterCard.cardWidth(
+                            context,
+                            aspect: HubPosterAspect.landscape,
+                          ),
+                          catalogCardHeight: HubPosterCard.cardHeight(
+                            context,
+                            aspect: HubPosterAspect.landscape,
+                          ),
+                        )
+                      else ...[
+                        SliverToBoxAdapter(
+                          child: HubCinematicHero(
+                            slides: _heroSlides(_spotlight),
+                            onSearch: _openSearch,
+                            tvTabId: 'asian_drama',
+                            firstRowHeight: latestSection == null
+                                ? null
+                                : HubCatalogSection.sectionHeight(
                                     context,
-                                    pageBottomBleed: true,
+                                    compactTop: true,
+                                    cardAspect: HubPosterAspect.landscape,
                                   ),
-                                  rows: kHomeHubAsianDramaLoadingRows,
-                                )
-                              else ...[
-                                SliverToBoxAdapter(
-                                  child: HubCinematicHero(
-                                    slides: _heroSlides(_spotlight),
-                                    onSearch: _openSearch,
-                                    tvTabId: 'asian_drama',
-                                    pageBottomChild: latestSection,
-                                  ),
-                                ),
-                                if (_continueWatching.isNotEmpty)
-                                  hubRowSliver(context,
-                                    _buildContinueWatching(
-                                      tvRowOrder: _continueOrder(
-                                        latestOnHero: latestOnHero,
-                                      ),
-                                      // Under bleed Latest: ↑ goes to Latest.
-                                      // Otherwise Continue is first → hero Play.
-                                      tvFocusUp: latestOnHero
-                                          ? null
-                                          : focusHeroPlay,
-                                    ),
-                                    isFirstAfterHero: latestSection == null,
-                                  ),
-                                if (latestAsCatalogRow)
-                                  hubRowSliver(context,
-                                    HubCatalogSection<KdramaCard>(
-                                      title: 'Latest Update',
-                                      items: latestList,
-                                      compactTop: _continueWatching.isEmpty,
-                                      tvTabId: 'asian_drama',
-                                      tvRowId: 'latest',
-                                      tvRowOrder: latestOrder,
-                                      // Continue sits above - don't skip to hero.
-                                      cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(
-                                        card,
-                                        listIndex: index,
-                                        tvRowId: 'latest',
-                                      ),
-                                    ),
-                                    isFirstAfterHero: _continueWatching.isEmpty,
-                                  ),
-                                if ((_feed?.trending ?? const []).isNotEmpty)
-                                  hubRowSliver(context,
-                                    HubCatalogSection<KdramaCard>(
-                                      title: 'Trending',
-                                      items: _feed!.trending,
-                                      tvTabId: 'asian_drama',
-                                      tvRowId: 'trending',
-                                      tvRowOrder: catalogBase + 0,
-                                      cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(
-                                        card,
-                                        listIndex: index,
-                                        tvRowId: 'trending',
-                                      ),
-                                    ),
-                                    isFirstAfterHero: false,
-                                  ),
-                                if ((_feed?.topRated ?? const []).isNotEmpty)
-                                  hubRowSliver(context,
-                                    HubCatalogSection<KdramaCard>(
-                                      title: 'Top Rated',
-                                      items: _feed!.topRated,
-                                      showRank: true,
-                                      tvTabId: 'asian_drama',
-                                      tvRowId: 'top-rated',
-                                      tvRowOrder: catalogBase + 1,
-                                      cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(
-                                        card,
-                                        rank: index + 1,
-                                        listIndex: index,
-                                        tvRowId: 'top-rated',
-                                      ),
-                                    ),
-                                    isFirstAfterHero: false,
-                                  ),
-                                if ((_feed?.mostViewed ?? const []).isNotEmpty)
-                                  hubRowSliver(context,
-                                    HubCatalogSection<KdramaCard>(
-                                      title: 'Most Viewed',
-                                      items: _feed!.mostViewed,
-                                      tvTabId: 'asian_drama',
-                                      tvRowId: 'most-viewed',
-                                      tvRowOrder: catalogBase + 2,
-                                      cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(
-                                        card,
-                                        listIndex: index,
-                                        tvRowId: 'most-viewed',
-                                      ),
-                                    ),
-                                    isFirstAfterHero: false,
-                                  ),
-                                if ((_feed?.anime ?? const []).isNotEmpty)
-                                  hubRowSliver(context,
-                                    HubCatalogSection<KdramaCard>(
-                                      title: 'Anime',
-                                      items: _feed!.anime,
-                                      tvTabId: 'asian_drama',
-                                      tvRowId: 'anime',
-                                      tvRowOrder: catalogBase + 3,
-                                      cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(
-                                        card,
-                                        listIndex: index,
-                                        tvRowId: 'anime',
-                                      ),
-                                    ),
-                                    isFirstAfterHero: false,
-                                  ),
-                                if ((_feed?.upcoming ?? const []).isNotEmpty)
-                                  hubRowSliver(context,
-                                    HubCatalogSection<KdramaCard>(
-                                      title: 'Upcoming',
-                                      items: _feed!.upcoming,
-                                      tvTabId: 'asian_drama',
-                                      tvRowId: 'upcoming',
-                                      tvRowOrder: catalogBase + 4,
-                                      cardBuilder: (context, card, index) =>
-                                          _dramaPosterCard(
-                                        card,
-                                        listIndex: index,
-                                        tvRowId: 'upcoming',
-                                      ),
-                                    ),
-                                    isFirstAfterHero: false,
-                                  ),
-                              ],
-                              const SliverToBoxAdapter(
-                                child: SizedBox(height: 80),
+                            pageBottomChild: latestSection,
+                          ),
+                        ),
+                        if (_continueWatching.isNotEmpty)
+                          hubRowSliver(
+                            context,
+                            _buildContinueWatching(
+                              tvRowOrder: _continueOrder(
+                                latestOnHero: latestOnHero,
                               ),
-                            ],
+                              // Under bleed Latest: ↑ goes to Latest.
+                              // Otherwise Continue is first → hero Play.
+                              tvFocusUp: latestOnHero ? null : focusHeroPlay,
+                            ),
+                            isFirstAfterHero: latestSection == null,
                           ),
+                        if (latestAsCatalogRow)
+                          hubRowSliver(
+                            context,
+                            HubCatalogSection<KdramaCard>(
+                              title: 'Latest Update',
+                              items: latestList,
+                              compactTop: _continueWatching.isEmpty,
+                              cardAspect: HubPosterAspect.landscape,
+                              tvTabId: 'asian_drama',
+                              tvRowId: 'latest',
+                              tvRowOrder: latestOrder,
+                              // Continue sits above - don't skip to hero.
+                              cardBuilder: (context, card, index) =>
+                                  _dramaPosterCard(
+                                    card,
+                                    listIndex: index,
+                                    tvRowId: 'latest',
+                                  ),
+                            ),
+                            isFirstAfterHero: _continueWatching.isEmpty,
                           ),
-                        );
+                        if ((_feed?.trending ?? const []).isNotEmpty)
+                          hubRowSliver(
+                            context,
+                            HubCatalogSection<KdramaCard>(
+                              title: 'Trending',
+                              items: _feed!.trending,
+                              cardAspect: HubPosterAspect.landscape,
+                              tvTabId: 'asian_drama',
+                              tvRowId: 'trending',
+                              tvRowOrder: catalogBase + 0,
+                              cardBuilder: (context, card, index) =>
+                                  _dramaPosterCard(
+                                    card,
+                                    listIndex: index,
+                                    tvRowId: 'trending',
+                                  ),
+                            ),
+                            isFirstAfterHero: false,
+                          ),
+                        if ((_feed?.topRated ?? const []).isNotEmpty)
+                          hubRowSliver(
+                            context,
+                            HubCatalogSection<KdramaCard>(
+                              title: 'Top Rated',
+                              items: _feed!.topRated,
+                              showRank: true,
+                              cardAspect: HubPosterAspect.landscape,
+                              tvTabId: 'asian_drama',
+                              tvRowId: 'top-rated',
+                              tvRowOrder: catalogBase + 1,
+                              cardBuilder: (context, card, index) =>
+                                  _dramaPosterCard(
+                                    card,
+                                    rank: index + 1,
+                                    listIndex: index,
+                                    tvRowId: 'top-rated',
+                                  ),
+                            ),
+                            isFirstAfterHero: false,
+                          ),
+                        if ((_feed?.mostViewed ?? const []).isNotEmpty)
+                          hubRowSliver(
+                            context,
+                            HubCatalogSection<KdramaCard>(
+                              title: 'Most Viewed',
+                              items: _feed!.mostViewed,
+                              cardAspect: HubPosterAspect.landscape,
+                              tvTabId: 'asian_drama',
+                              tvRowId: 'most-viewed',
+                              tvRowOrder: catalogBase + 2,
+                              cardBuilder: (context, card, index) =>
+                                  _dramaPosterCard(
+                                    card,
+                                    listIndex: index,
+                                    tvRowId: 'most-viewed',
+                                  ),
+                            ),
+                            isFirstAfterHero: false,
+                          ),
+                        if ((_feed?.anime ?? const []).isNotEmpty)
+                          hubRowSliver(
+                            context,
+                            HubCatalogSection<KdramaCard>(
+                              title: 'Anime',
+                              items: _feed!.anime,
+                              cardAspect: HubPosterAspect.landscape,
+                              tvTabId: 'asian_drama',
+                              tvRowId: 'anime',
+                              tvRowOrder: catalogBase + 3,
+                              cardBuilder: (context, card, index) =>
+                                  _dramaPosterCard(
+                                    card,
+                                    listIndex: index,
+                                    tvRowId: 'anime',
+                                  ),
+                            ),
+                            isFirstAfterHero: false,
+                          ),
+                        if ((_feed?.upcoming ?? const []).isNotEmpty)
+                          hubRowSliver(
+                            context,
+                            HubCatalogSection<KdramaCard>(
+                              title: 'Upcoming',
+                              items: _feed!.upcoming,
+                              cardAspect: HubPosterAspect.landscape,
+                              tvTabId: 'asian_drama',
+                              tvRowId: 'upcoming',
+                              tvRowOrder: catalogBase + 4,
+                              cardBuilder: (context, card, index) =>
+                                  _dramaPosterCard(
+                                    card,
+                                    listIndex: index,
+                                    tvRowId: 'upcoming',
+                                  ),
+                            ),
+                            isFirstAfterHero: false,
+                          ),
+                      ],
+                      const SliverToBoxAdapter(child: SizedBox(height: 80)),
+                    ],
+                  ),
+                ),
+              );
       },
     );
   }
@@ -668,6 +694,7 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
       statusIconSize: 56,
     );
   }
+
   // ─── Continue Watching ────────────────────────────────────────
   Widget _buildContinueWatching({
     required int tvRowOrder,

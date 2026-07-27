@@ -30,7 +30,7 @@ local Supabase after changing captcha settings (`supabase stop && supabase start
 2. Framework Preset: TanStack Start
 3. Leave Build / Output / Install on defaults (do **not** override Output to `dist`)
 4. Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`
-5. Optional analytics: `VITE_POSTHOG_KEY` (+ `VITE_POSTHOG_HOST`) — empty skips PostHog entirely
+5. Optional analytics: `VITE_POSTHOG_KEY` (+ `VITE_POSTHOG_HOST`) — or on Vercel `POSTHOG_API_KEY` / `POSTHOG_HOST` with the **web** project token (mapped at build). Empty skips PostHog. Redeploy after changing.
 
 Nitro (`nitro()` in `vite.config.ts`) is required — without it Vercel returns `404: NOT_FOUND` because there is no serverless entry.
 

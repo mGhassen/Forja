@@ -5,6 +5,12 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/home_movie_card.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
+/// Poster frame for hub catalog rows.
+///
+/// [HubPosterAspect.portrait] — TMDB / AniList 2:3 posters (Home, Anime).
+/// [HubPosterAspect.landscape] — 16:9 banners (KissKH list thumbs).
+enum HubPosterAspect { portrait, landscape }
+
 class HubPosterCard extends StatelessWidget {
   const HubPosterCard({
     super.key,
@@ -19,6 +25,7 @@ class HubPosterCard extends StatelessWidget {
     this.tvTabId,
     this.tvRowId,
     this.onUpEdge,
+    this.aspect = HubPosterAspect.portrait,
   });
 
   final String imageUrl;
@@ -32,18 +39,33 @@ class HubPosterCard extends StatelessWidget {
   final String? tvRowId;
   final VoidCallback? onUpEdge;
   final VoidCallback onTap;
+  final HubPosterAspect aspect;
 
-  static double cardWidth(BuildContext context) =>
-      HomeMovieCard.cardWidth(context);
+  static double cardWidth(
+    BuildContext context, {
+    HubPosterAspect aspect = HubPosterAspect.portrait,
+  }) {
+    if (aspect == HubPosterAspect.landscape) {
+      return shellContinueWatchingCardWidth(context);
+    }
+    return HomeMovieCard.cardWidth(context);
+  }
 
-  static double cardHeight(BuildContext context) =>
-      HomeMovieCard.cardHeight(context);
+  static double cardHeight(
+    BuildContext context, {
+    HubPosterAspect aspect = HubPosterAspect.portrait,
+  }) {
+    if (aspect == HubPosterAspect.landscape) {
+      return shellContinueWatchingCardHeight(context);
+    }
+    return HomeMovieCard.cardHeight(context);
+  }
 
   @override
   Widget build(BuildContext context) {
     final titleSize = shellHubCardTitleFontSize(context);
-    final cardWidth = HubPosterCard.cardWidth(context);
-    final cardHeight = HubPosterCard.cardHeight(context);
+    final cardWidth = HubPosterCard.cardWidth(context, aspect: aspect);
+    final cardHeight = HubPosterCard.cardHeight(context, aspect: aspect);
     final radius = shellCardBorderRadius(context);
     final inset = shellScaled(context, 10).clamp(4.0, 10.0);
     final metaSize = shellScaled(context, 11).clamp(7.0, 11.0);
@@ -93,7 +115,10 @@ class HubPosterCard extends StatelessWidget {
                               title,
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: shellScaled(context, 10).clamp(7.0, 10.0),
+                                fontSize: shellScaled(
+                                  context,
+                                  10,
+                                ).clamp(7.0, 10.0),
                                 color: Colors.white24,
                               ),
                             ),
@@ -177,7 +202,9 @@ class HubPosterCard extends StatelessWidget {
                         height: 1.15,
                       ),
                     ),
-                    if (!compact && subtitle != null && subtitle!.isNotEmpty) ...[
+                    if (!compact &&
+                        subtitle != null &&
+                        subtitle!.isNotEmpty) ...[
                       SizedBox(height: shellScaled(context, 4).clamp(1.0, 4.0)),
                       Text(
                         subtitle!,

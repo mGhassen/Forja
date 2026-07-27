@@ -15,7 +15,11 @@ Widget homeLoadingShimmer(Widget child) {
   );
 }
 
-Widget homeTitleBarSkeleton(BuildContext context, {double width = 140, double? height}) {
+Widget homeTitleBarSkeleton(
+  BuildContext context, {
+  double width = 140,
+  double? height,
+}) {
   final h = height ?? shellScaled(context, 18).clamp(10.0, 18.0);
   const minWidth = 60.0;
   final maxWidth = math.max(minWidth, width);
@@ -24,16 +28,23 @@ Widget homeTitleBarSkeleton(BuildContext context, {double width = 140, double? h
     width: shellScaled(context, width).clamp(minWidth, maxWidth),
     decoration: BoxDecoration(
       color: AppTheme.bgCard,
-      borderRadius: BorderRadius.circular(shellScaled(context, 6).clamp(3.0, 6.0)),
+      borderRadius: BorderRadius.circular(
+        shellScaled(context, 6).clamp(3.0, 6.0),
+      ),
     ),
   );
 }
 
-Widget homeCardSkeleton(BuildContext context, {double? width}) {
+Widget homeCardSkeleton(
+  BuildContext context, {
+  double? width,
+  double? height,
+}) {
   final cardWidth = width ?? HomeMovieCard.cardWidth(context);
+  final cardHeight = height ?? HomeMovieCard.cardHeight(context);
   return Container(
     width: cardWidth,
-    height: HomeMovieCard.cardHeight(context),
+    height: cardHeight,
     decoration: BoxDecoration(
       color: AppTheme.bgCard,
       borderRadius: BorderRadius.circular(shellCardBorderRadius(context)),
@@ -43,10 +54,7 @@ Widget homeCardSkeleton(BuildContext context, {double? width}) {
 
 bool homeUsesShellLayout(BuildContext context) => shellUsesWideLayout(context);
 
-double homeSectionTitleTop(
-  BuildContext context, {
-  bool compactTop = false,
-}) =>
+double homeSectionTitleTop(BuildContext context, {bool compactTop = false}) =>
     shellHomeSectionTitleTop(context, compact: compactTop);
 
 double homeContinueWatchingCardWidth(BuildContext context) =>
@@ -62,11 +70,13 @@ Widget homeMovieRowSkeleton(
   int itemCount = 5,
   bool showSubtitle = false,
   double topPadding = 0,
+  double? cardWidth,
+  double? cardHeight,
 }) {
   final top = topPadding > 0
       ? topPadding
       : homeSectionTitleTop(context, compactTop: compactTop);
-  final cardHeight = HomeMovieCard.cardHeight(context);
+  final height = cardHeight ?? HomeMovieCard.cardHeight(context);
   final hPad = shellHomeSectionHorizontalPadding(context);
 
   return Padding(
@@ -93,7 +103,7 @@ Widget homeMovieRowSkeleton(
           ),
         ),
         SizedBox(
-          height: cardHeight,
+          height: height,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const NeverScrollableScrollPhysics(),
@@ -101,7 +111,11 @@ Widget homeMovieRowSkeleton(
             itemCount: itemCount,
             separatorBuilder: (_, _) =>
                 SizedBox(width: shellMovieCardRowGap(context)),
-            itemBuilder: (_, _) => homeCardSkeleton(context),
+            itemBuilder: (_, _) => homeCardSkeleton(
+              context,
+              width: cardWidth,
+              height: height,
+            ),
           ),
         ),
       ],
@@ -146,8 +160,9 @@ Widget homeContinueWatchingSkeleton(
                 width: cardWidth,
                 decoration: BoxDecoration(
                   color: AppTheme.bgCard,
-                  borderRadius:
-                      BorderRadius.circular(shellCardBorderRadius(context)),
+                  borderRadius: BorderRadius.circular(
+                    shellCardBorderRadius(context),
+                  ),
                 ),
               ),
             ),
@@ -197,9 +212,11 @@ Widget homeCinematicHeroShimmer(
   BuildContext context, {
   bool pageBottomBleed = false,
 }) {
-  final compact = !ShellScope.metricsOf(context).usesTvDensity &&
+  final compact =
+      !ShellScope.metricsOf(context).usesTvDensity &&
       MediaQuery.sizeOf(context).width < ShellTokens.heroDesktopMinBodyWidth;
-  final height = homeCinematicHeroBodyHeight(
+  final height =
+      homeCinematicHeroBodyHeight(
         context,
         compact: compact,
         pageBottomBleed: pageBottomBleed && !compact,
@@ -209,9 +226,7 @@ Widget homeCinematicHeroShimmer(
 }
 
 Widget homeHubHeroShimmer({required double height}) {
-  return homeLoadingShimmer(
-    Container(height: height, color: AppTheme.bgCard),
-  );
+  return homeLoadingShimmer(Container(height: height, color: AppTheme.bgCard));
 }
 
 typedef HomeHubLoadingRowSpec = ({double width, bool showSubtitle});
@@ -243,8 +258,7 @@ SliverToBoxAdapter homeHubRowSliver(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!isFirstAfterHero)
-          SizedBox(height: shellHomeRowSpacing(context)),
+        if (!isFirstAfterHero) SizedBox(height: shellHomeRowSpacing(context)),
         RepaintBoundary(child: section),
       ],
     ),
@@ -255,6 +269,8 @@ List<Widget> homeHubLoadingSlivers(
   BuildContext context, {
   required Widget heroShimmer,
   List<HomeHubLoadingRowSpec>? rows,
+  double? catalogCardWidth,
+  double? catalogCardHeight,
 }) {
   final specs = rows ?? kHomeHubDefaultLoadingRows;
   return [
@@ -272,6 +288,8 @@ List<Widget> homeHubLoadingSlivers(
             context,
             titleWidth: spec.width,
             showSubtitle: spec.showSubtitle,
+            cardWidth: catalogCardWidth,
+            cardHeight: catalogCardHeight,
           ),
         ),
         isFirstAfterHero: false,

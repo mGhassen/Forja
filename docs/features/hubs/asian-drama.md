@@ -12,7 +12,7 @@ Tap **Asian Drama** in the navigation bar.
 
 ## What you can do
 
-- Browse hero and explore sections — the desktop hero shows title and a synopsis filled from TMDB when a title matches (KissKH list rows have no synopsis; KissKH `/Drama/{id}` hero enrich is disabled for now to save rate-limit budget)
+- Browse hero and explore sections — hub and explore cards use **wide 16:9** frames because KissKH list thumbs are landscape banners (not portrait posters). The desktop hero shows title and a synopsis filled from TMDB when a title matches (KissKH list rows have no synopsis; KissKH `/Drama/{id}` hero enrich is disabled for now to save rate-limit budget)
 - Search dramas — **desktop / TV:** same layout as the Search tab (large search field, trending title suggestions on the left, poster grid on the right; **Select** a suggestion to run that search; on desktop, hover a result card to reveal the info button — click it or double-click the card to open details); **mobile:** search bar + results grid — on **desktop**, **Cmd+F** / **Ctrl+F** opens this search page (or focuses the field when it is already open)
 - Open details with episodes — on wide screens the hero shows the same production facts card as movies/TV (no heading). Tap an episode card to select it; click the card’s **play** button (or hero **Play** / **Resume**) to start that episode. On **TV**, **Play** / **Resume** is focused when the page opens; **↑** from hero actions closes details; **←** from the leftmost hero action moves focus to the shell nav rail; **↑** from the episode rail returns focus to **Play**
 - Play with subtitle support where available

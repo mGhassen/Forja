@@ -139,7 +139,16 @@ class SyncDomainBridge {
       return;
     }
     await _applyLeanPayload(remote);
-    await _pullAndApplyUserIptvPortals();
+    // Lazy IPTV: only pull portals when this profile shows the IPTV tab.
+    // Otherwise wipe the device cache so the previous profile cannot bleed.
+    final nav = await _settings.getNavbarConfig();
+    if (nav.contains('iptv')) {
+      await _pullAndApplyUserIptvPortals();
+    } else {
+      debugPrint('[Sync] IPTV pull skip (iptv tab not visible)');
+      await IptvStore.save(const [], scheduleSync: false);
+      await IptvStore.saveFavorites({}, scheduleSync: false);
+    }
     // Empty `{}` insert left cloud hollow - backfill settings once (not IPTV).
     if (remote.isEmpty) {
       await pushAllLocal(pushIptvIfLocalEmpty: false);

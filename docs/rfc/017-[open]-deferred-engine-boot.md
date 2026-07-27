@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 6** acceptance (first-use lazy) ⏭️ · **8 / 8** acceptance (profile-gated splash) |
-| **Current slice** | Profile-gated warm at intro / profile splash — engines follow nav + play sources |
+| **Progress** | **0 / 6** acceptance (first-use lazy) ⏭️ · **8 / 8** acceptance (profile-gated splash) · **3 / 3** acceptance (profile-switch = intro) |
+| **Current slice** | Profile switch matches intro dismiss-when-ready + IPTV gated pull |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -43,9 +43,19 @@
 
 ---
 
+## Acceptance (profile-switch = intro)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R17-A15 | Profile switch splash dismisses at motion floor even if warm/TMDB still running (same as intro `_dismissWhenReady`) | ✅ |
+| 2 | R17-A16 | Profile switch warm uses `startTorrent: false`; torrent starts post-dismiss | ✅ |
+| 3 | R17-A17 | `pullAndMergeAll` pulls IPTV portals only when `iptv` is in navbar; otherwise clears local IPTV cache (no bleed, no network) | ✅ |
+
+---
+
 ## Summary
 
-Move heavy native and network engines off the uncritical always-on boot path. **Current slice:** warm only what the active profile has activated (visible tabs + play sources) at intro splash / profile splash.
+Move heavy native and network engines off the uncritical always-on boot path. **Current slice:** profile switch matches intro splash timing (dismiss at floor, warm continues in background) and skips IPTV portal sync unless that profile shows IPTV.
 
 ## Problem
 
@@ -153,10 +163,19 @@ Errors: catch, log `[EngineRegistry] $id failed: $e`, surface once via `ShellBus
 | [`profile_engine_warm.dart`](../../apps/forja/lib/app/profile_engine_warm.dart) | Idempotent warm |
 | [`bootstrap.dart`](../../apps/forja/lib/app/bootstrap.dart) | Slim Phase 0; gated intro / post-splash |
 | [`boot_catalog.dart`](../../apps/forja/lib/app/boot_catalog.dart) | Shared TMDB → BootCache prefetch |
-| Profile chooser / switch splash | Warm + catalog after `pullAndMergeAll`; cold pick skips logo intro |
+| Profile chooser / switch splash | After `pullAndMergeAll`: warm like intro (`startTorrent: false` + TMDB); dismiss at 5s floor even if warm still running; torrent post-dismiss |
 | Settings playback toggles | Warm on enable |
 
 Nuvio is Direct torrent (not webstreaming). WebStreamr + LocalServer are Webstreaming.
+
+### Profile-switch = intro (R17-A15–A17)
+
+Mid-session / cold Who’s watching no longer blocks the avatar splash on full warm + TMDB + always-on IPTV pull:
+
+1. **Required before dismiss:** save prior profile (if mid-session), `selectProfile`, lean `pullAndMergeAll` (settings only unless `iptv` nav).
+2. **Under the floor (like intro):** `ProfileEngineWarm(startTorrent: false)` + optional TMDB prefetch.
+3. **Hard cap:** when the 5s motion floor elapses, pop the splash and keep warm/TMDB alive in the background.
+4. **IPTV:** pull portals only if navbar contains `iptv`; otherwise empty local cache so the previous profile cannot bleed.
 
 ## Related
 

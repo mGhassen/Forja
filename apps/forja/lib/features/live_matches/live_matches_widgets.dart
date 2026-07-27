@@ -1050,11 +1050,11 @@ class _LiveMatchesEmbedPlayerScreenState
   /// embeds that require a successful open keep working; never shown in UI.
   int? _adWindowId;
 
-  /// Desktop/iOS: iframe under catalog origin. Android: top-level embed URL
-  /// (System WebView rejects nested iframes with "Remove sandbox attributes…").
-  InAppWebViewInitialData? _initialData;
-  URLRequest? _initialUrlRequest;
-  late final bool _androidDirectEmbed;
+  /// Catalog-origin iframe wrapper (`streamed.pk` / `ppv.is`) so
+  /// `document.referrer` matches the website (issue 046). Used on every
+  /// platform — including Android TV. Top-level embed loads break the host
+  /// lock and show the red “Remove sandbox attributes…” page.
+  late final InAppWebViewInitialData _initialData;
   late final InAppWebViewSettings _initialSettings;
   late final UnmodifiableListView<UserScript> _initialUserScripts;
 
@@ -1133,25 +1133,15 @@ class _LiveMatchesEmbedPlayerScreenState
     super.initState();
     ShellBus.enterPlayerSurface();
     final embedUrl = widget.embedUrl;
-    // Android System WebView: nested iframe embeds show
-    // "Remove sandbox attributes on the iframe tag". Load top-level with
-    // catalog Referer instead (same idea as VidSrc forceDirect), and inject
-    // sandbox strip + frameElement defeat in every frame (nested player
-    // frames still gate even when the outer page is top-level). Desktop /
-    // iOS keep the iframe wrapper for document.referrer (issues 046 / 049).
-    _androidDirectEmbed = !kIsWeb && Platform.isAndroid;
+    // Always load under catalog origin (streamed.pk / ppv.is). Top-level
+    // embed.st on Android looked like a “sandbox” fix but breaks the host
+    // lock — same red “Remove sandbox attributes…” + UA page (issue 046).
+    // Referer HTTP headers on loadUrl do not set document.referrer.
     _initialUserScripts = UnmodifiableListView([
-      // Strip sandbox on iframes first, then defeat frameElement checks in
-      // every frame (embedindia nests a player that gates on sandbox).
       UserScript(
         source: _stripIframeSandboxJs,
         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-        forMainFrameOnly: false,
-      ),
-      UserScript(
-        source: _defeatEmbedSandboxCheckJs,
-        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-        forMainFrameOnly: false,
+        forMainFrameOnly: true,
       ),
       UserScript(
         source: _embedMediaControlUserScript,
@@ -1170,28 +1160,18 @@ class _LiveMatchesEmbedPlayerScreenState
       ),
     ]);
 
-    if (_androidDirectEmbed) {
-      _initialUrlRequest = URLRequest(
-        url: WebUri(embedUrl),
-        headers: {
-          'Referer': widget.referer,
-          'Origin': widget.origin,
-        },
-      );
-    } else {
-      // Windows WebView2 opacity still forced opaque via forjaWebViewSettings
-      // (issue 053).
-      final wrapperBase = widget.referer.endsWith('/')
-          ? widget.referer
-          : '${widget.referer}/';
-      _initialData = InAppWebViewInitialData(
-        data: _buildLiveEmbedWrapperHtml(embedUrl),
-        baseUrl: WebUri(wrapperBase),
-        historyUrl: WebUri(wrapperBase),
-        mimeType: 'text/html',
-        encoding: 'utf-8',
-      );
-    }
+    // Windows WebView2 opacity still forced opaque via forjaWebViewSettings
+    // (issue 053).
+    final wrapperBase = widget.referer.endsWith('/')
+        ? widget.referer
+        : '${widget.referer}/';
+    _initialData = InAppWebViewInitialData(
+      data: _buildLiveEmbedWrapperHtml(embedUrl),
+      baseUrl: WebUri(wrapperBase),
+      historyUrl: WebUri(wrapperBase),
+      mimeType: 'text/html',
+      encoding: 'utf-8',
+    );
     _initialSettings = InAppWebViewSettings(
       userAgent: _ua['User-Agent'],
       domStorageEnabled: true,
@@ -1535,11 +1515,9 @@ class _LiveMatchesEmbedPlayerScreenState
                 fit: StackFit.expand,
                 children: [
                   ForjaInAppWebView(
-                    // Desktop/iOS: iframe under catalog origin (046 / 049).
-                    // Android: top-level embed + Referer (sandbox iframe reject).
+                    // Catalog-origin iframe wrapper on every platform (046).
                     // Windows opaque WebView2 via forjaWebViewSettings (053).
                     initialData: _initialData,
-                    initialUrlRequest: _initialUrlRequest,
                     initialUserScripts: _initialUserScripts,
                     initialSettings: _initialSettings,
                     onWebViewCreated: (controller) {
@@ -1606,7 +1584,7 @@ class _LiveMatchesEmbedPlayerScreenState
                       if (liveEmbedAllowsMainFrameNavigation(
                         url: url,
                         embedUrl: embedUrl,
-                        allowEmbedHostAsMainFrame: _androidDirectEmbed,
+                        allowEmbedHostAsMainFrame: false,
                         wrapperReferer: widget.referer,
                       )) {
                         return NavigationActionPolicy.ALLOW;

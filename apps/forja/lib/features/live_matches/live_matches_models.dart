@@ -752,21 +752,16 @@ const _dblclickFullscreenJs = r'''
 
 /// Wrap the third-party embed in an iframe under [baseUrl] so `document.referrer`
 /// matches the website (streamed.pk / ppv.is). Direct top-level loads of
-/// embed.st stall behind parser-blocking ad scripts and leave a white WebView.
+/// embed.st / embedindia break the host lock (same red “Remove sandbox
+/// attributes…” page + UA) and stall behind parser-blocking ads (issue 046).
 ///
-/// Do **not** set HTML `sandbox` - embed hosts reject sandboxed parents with
-/// "Remove sandbox attributes on the iframe tag" / "SANDBOX IFRAME NOT ALLOWED".
-/// Main-frame hijacks are cancelled in `shouldOverrideUrlLoading` except the
-/// catalog **origin root** required by `loadData(baseUrl)` (see
-/// [liveEmbedAllowsMainFrameNavigation] / issue 046 T05). Cancelling that root
-/// whitescreens and can kill WKWebView. Ad `window.open` is accepted off-screen
-/// (hidden) so Streamed embeds that require a successful open keep playing.
-///
-/// Android System WebView: load the embed **top-level** instead (see embed
-/// player) - nested iframes commonly hit the sandbox rejection page there.
-/// Also inject [_stripIframeSandboxJs] + [_defeatEmbedSandboxCheckJs] in every
-/// frame: embed hosts nest their own player iframe, which still gates on
-/// sandbox even when the outer page is top-level.
+/// Do **not** set HTML `sandbox`. Main-frame hijacks are cancelled in
+/// `shouldOverrideUrlLoading` except the catalog **origin root** required by
+/// `loadData(baseUrl)` (see [liveEmbedAllowsMainFrameNavigation] / 046 T05).
+/// Ad `window.open` is accepted off-screen so Streamed embeds that require a
+/// successful open keep playing. Same wrapper on **all** platforms including
+/// Android / Android TV — top-level + Referer headers do not set
+/// `document.referrer` the way the lock expects.
 String _buildLiveEmbedWrapperHtml(String embedUrl) {
   final safe = embedUrl
       .replaceAll('&', '&amp;')
@@ -827,74 +822,17 @@ List<ContentBlocker> _liveEmbedContentBlockers() {
   ];
 }
 
-/// Defeat “Remove sandbox attributes on the iframe tag” gates.
-///
-/// Sports embeds (embedindia / Streamed clones) typically run in a nested
-/// player frame:
-///   if (window.frameElement && window.frameElement.hasAttribute('sandbox')) …
-/// Android System WebView (and some ad injectors) can leave `sandbox` on
-/// parent iframes even when Forja never set it. Top-level load alone is not
-/// enough when the embed page nests its own player. Run in every frame.
-const _defeatEmbedSandboxCheckJs = r'''
-(function () {
-  if (window.__forjaDefeatSandbox) return;
-  window.__forjaDefeatSandbox = true;
-  try {
-    Object.defineProperty(window, 'frameElement', {
-      configurable: true,
-      get: function () { return null; },
-    });
-  } catch (_) {}
-  try {
-    Object.defineProperty(Window.prototype, 'frameElement', {
-      configurable: true,
-      get: function () { return null; },
-    });
-  } catch (_) {}
-  try {
-    var origHas = Element.prototype.hasAttribute;
-    Element.prototype.hasAttribute = function (name) {
-      if (String(name).toLowerCase() === 'sandbox') return false;
-      return origHas.apply(this, arguments);
-    };
-    var origGet = Element.prototype.getAttribute;
-    Element.prototype.getAttribute = function (name) {
-      if (String(name).toLowerCase() === 'sandbox') return null;
-      return origGet.apply(this, arguments);
-    };
-  } catch (_) {}
-})();
-''';
-
-/// Strip `sandbox` from iframes and reload so the flag takes effect.
+/// Strip `sandbox` from iframes under the wrapper document before they load.
 /// Embed hosts reject sandboxed parents; some injectors re-add the attribute.
-/// Uses native attribute APIs so it still works after [_defeatEmbedSandboxCheckJs].
 const _stripIframeSandboxJs = r'''
 (function () {
   if (window.__forjaStripSandbox) return;
   window.__forjaStripSandbox = true;
-  var nativeGet = Element.prototype.getAttribute;
-  var nativeRemove = Element.prototype.removeAttribute;
-  var nativeSet = Element.prototype.setAttribute;
-  function unsandbox(f) {
-    try {
-      if (!f || f.tagName !== 'IFRAME') return;
-      if (f.__forjaUnsandboxed) return;
-      // Prefer NamedNodeMap so this still sees sandbox after hasAttribute is
-      // patched by [_defeatEmbedSandboxCheckJs].
-      var hasSandbox = f.attributes && f.attributes.getNamedItem('sandbox');
-      if (!hasSandbox) return;
-      f.__forjaUnsandboxed = true;
-      var src = nativeGet.call(f, 'src');
-      nativeRemove.call(f, 'sandbox');
-      // Sandbox flags only apply on navigation - reload without the attribute.
-      if (src) nativeSet.call(f, 'src', src);
-    } catch (_) {}
-  }
   function strip(root) {
     try {
-      var list = (root || document).querySelectorAll('iframe');
-      for (var i = 0; i < list.length; i++) unsandbox(list[i]);
+      (root || document).querySelectorAll('iframe[sandbox]').forEach(function (f) {
+        f.removeAttribute('sandbox');
+      });
     } catch (_) {}
   }
   strip();
@@ -902,15 +840,18 @@ const _stripIframeSandboxJs = r'''
     new MutationObserver(function (mutations) {
       for (var i = 0; i < mutations.length; i++) {
         var m = mutations[i];
-        if (m.type === 'attributes' && m.attributeName === 'sandbox' && m.target) {
-          unsandbox(m.target);
+        if (m.type === 'attributes' && m.attributeName === 'sandbox' && m.target && m.target.tagName === 'IFRAME') {
+          m.target.removeAttribute('sandbox');
         }
         if (m.addedNodes) {
           for (var j = 0; j < m.addedNodes.length; j++) {
             var n = m.addedNodes[j];
             if (!n || n.nodeType !== 1) continue;
-            if (n.tagName === 'IFRAME') unsandbox(n);
-            else strip(n);
+            if (n.tagName === 'IFRAME' && n.hasAttribute('sandbox')) {
+              n.removeAttribute('sandbox');
+            } else {
+              strip(n);
+            }
           }
         }
       }
@@ -923,6 +864,7 @@ const _stripIframeSandboxJs = r'''
   } catch (_) {}
 })();
 ''';
+
 const _ppvReferer = 'https://ppv.is/';
 const _streamedBase = 'https://streamed.pk';
 const _streamedReferer = 'https://streamed.pk/';
