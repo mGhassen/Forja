@@ -15,6 +15,7 @@ class MediaDetailsScrollPage extends StatelessWidget {
     this.bodyOverlap,
     this.topSpacing,
     this.tvHeroPlayFocus,
+    this.tvBackFocus,
   });
 
   final Widget hero;
@@ -25,6 +26,7 @@ class MediaDetailsScrollPage extends StatelessWidget {
   final double? bodyOverlap;
   final double? topSpacing;
   final FocusNode? tvHeroPlayFocus;
+  final FocusNode? tvBackFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +59,7 @@ class MediaDetailsScrollPage extends StatelessWidget {
       scroll = MediaDetailsTvScope(
         heroPlayFocus: tvHeroPlayFocus!,
         scrollController: scrollController!,
+        backFocus: tvBackFocus,
         child: scroll,
       );
     }

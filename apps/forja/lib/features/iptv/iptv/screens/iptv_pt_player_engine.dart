@@ -36,8 +36,11 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
     await MpvExclusiveSession.instance.prepareForVideoPlayer();
     if (_s._disposed) return;
     _initPlayerInstances();
-    if (mounted) setState(() => _s._playerReady = true);
+    // Tunables wait for libmpv create. Do not mark ready before that —
+    // Player menu → Exo switch would silence with null ctx (issue 115).
     await _applyMpvTunables();
+    if (_s._disposed) return;
+    if (mounted) setState(() => _s._playerReady = true);
     await _openCurrent();
     _startWatchdog();
     _s._scheduleHideControls();
@@ -721,6 +724,7 @@ mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
     if (_s._disposed) return false;
     _initPlayerInstances();
     await _applyMpvTunables();
+    if (_s._disposed) return false;
     if (mounted) setState(() => _s._playerReady = true);
     return true;
   }

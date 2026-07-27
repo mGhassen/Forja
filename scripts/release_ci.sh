@@ -130,6 +130,11 @@ trigger_release() {
   gh workflow run "$RELEASE_WORKFLOW" "${args[@]}"
   gh run list --workflow="$RELEASE_WORKFLOW" --limit 1
   echo "Watch: gh run watch"
+  if [[ "$mode" == "New version" ]]; then
+    echo
+    echo "After the run finishes on forjahq, bring the release commit back to origin:"
+    echo "  ./scripts/release_local.sh sync-from"
+  fi
 }
 
 trigger_backfill() {

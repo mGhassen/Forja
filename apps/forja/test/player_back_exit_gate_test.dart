@@ -19,11 +19,11 @@ void main() {
     PlayerBackExitGate.resetForTest();
   });
 
-  testWidgets('TV Back hides chrome before arming exit', (tester) async {
-    var chromeVisible = true;
-    PlayerBackExitGate.setTryHideChrome(() {
-      if (!chromeVisible) return false;
-      chromeVisible = false;
+  testWidgets('TV Back focuses player Back before exiting', (tester) async {
+    var backFocused = false;
+    PlayerBackExitGate.setTryFocusBack(() {
+      if (backFocused) return false;
+      backFocused = true;
       return true;
     });
 
@@ -54,81 +54,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
 
-    // First Back hides chrome and arms exit - stays in player.
+    // First Back focuses Back control - stays in player.
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
-    expect(chromeVisible, isFalse);
-    expect(PlayerBackExitGate.isArmed, isTrue);
+    expect(backFocused, isTrue);
 
     await tester.pump(const Duration(milliseconds: 450));
 
-    // Second Back exits.
+    // Second Back (Back already focused) exits.
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsNothing);
   });
 
-  testWidgets('TV Back requires two presses to leave a player surface',
-      (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(size: Size(1920, 1080)),
-          child: ShellScope(
-            profile: ShellProfile.tv,
-            config: shellPlatformConfigFor(ShellProfile.tv),
-            child: const Stack(
-              children: [
-                SizedBox.expand(),
-                ShellOverlayNavigator(),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    shellOverlayNavigatorKey.currentState!.push(
-      MaterialPageRoute<void>(
-        builder: (_) => const _FakePlayerRoute(),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('player-body'), findsOneWidget);
-    expect(ShellBus.playerSurfaceActive.value, isTrue);
-
-    // First Back arms exit - stays in player.
-    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
-    await tester.pumpAndSettle();
-    expect(find.text('player-body'), findsOneWidget);
-    expect(PlayerBackExitGate.isArmed, isTrue);
-
-    // Past debounce so the confirming Back is not swallowed.
-    await tester.pump(const Duration(milliseconds: 450));
-
-    // Second Back exits.
-    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
-    await tester.pumpAndSettle();
-    expect(find.text('player-body'), findsNothing);
-  });
-
-  test('consumeFirstBackStay arms then allows exit', () {
+  test('tryFocusBackStay stays then allows exit', () {
     ShellBus.enterPlayerSurface();
     addTearDown(ShellBus.leavePlayerSurface);
 
-    expect(
-      PlayerBackExitGate.consumeFirstBackStay(enabled: true),
-      isTrue,
-    );
-    expect(PlayerBackExitGate.isArmed, isTrue);
+    var focused = false;
+    PlayerBackExitGate.setTryFocusBack(() {
+      if (focused) return false;
+      focused = true;
+      return true;
+    });
 
-    expect(
-      PlayerBackExitGate.consumeFirstBackStay(enabled: true),
-      isFalse,
-    );
-    expect(PlayerBackExitGate.isArmed, isFalse);
+    expect(PlayerBackExitGate.tryFocusBackStay(), isTrue);
+    expect(focused, isTrue);
+    expect(PlayerBackExitGate.tryFocusBackStay(), isFalse);
   });
 }
 

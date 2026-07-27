@@ -456,6 +456,7 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     return MediaDetailsTvScope(
       heroPlayFocus: _heroPlayFocus,
       scrollController: _detailsScrollController,
+      backFocus: _backFocus,
       child: scroll,
     );
   }

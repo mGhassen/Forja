@@ -95,6 +95,10 @@ abstract final class ShellTvFocusCoordinator {
   /// channels → category). Return true when Back was consumed.
   static final Map<String, bool Function()> _tabPageBack = {};
 
+  /// Details overlay Back control - first remote Back focuses it, second pops.
+  static FocusNode? _detailBackFocus;
+  static bool _detailBackExitArmed = false;
+
   /// Per-tab default focus and hero scroll - survives multi-tab mount order.
   static void registerTabDefaults(
     String tabId, {
@@ -117,6 +121,33 @@ abstract final class ShellTvFocusCoordinator {
     _tabEnterFocus.remove(tabId);
     _tabRestoreFocus.remove(tabId);
     _tabPageBack.remove(tabId);
+  }
+
+  /// Register the media-details Back chevron for TV remote Back.
+  static void registerDetailBackFocus(FocusNode? node) {
+    _detailBackFocus = node;
+    _detailBackExitArmed = false;
+  }
+
+  static void unregisterDetailBackFocus(FocusNode? node) {
+    if (identical(_detailBackFocus, node)) {
+      _detailBackFocus = null;
+      _detailBackExitArmed = false;
+    }
+  }
+
+  /// First Back on details focuses the Back chevron; returns true when stayed.
+  static bool _tryFocusDetailBack() {
+    final back = _detailBackFocus;
+    if (back == null || !back.canRequestFocus) return false;
+    if (back.hasFocus || _detailBackExitArmed) {
+      _detailBackExitArmed = false;
+      return false;
+    }
+    _detailBackExitArmed = true;
+    back.requestFocus();
+    debugPrint('[NavBack] focused details back - stay on details');
+    return true;
   }
 
   /// Nav Enter on a tab - e.g. search field browse focus (not last page memory).
@@ -175,9 +206,14 @@ abstract final class ShellTvFocusCoordinator {
   static DateTime? _lastBackHandledAt;
   static const Duration _backDebounceWindow = Duration(milliseconds: 400);
 
+  /// True after a Back that only moved focus (player/details Back control) so
+  /// the confirming Back is not swallowed by [_backDebounceWindow].
+  static bool _backStepPending = false;
+
   /// Test-only - clears back debounce between widget tests.
   static void resetBackDebounceForTest() {
     _lastBackHandledAt = null;
+    _backStepPending = false;
     PlayerBackExitGate.resetForTest();
   }
 
@@ -194,30 +230,25 @@ abstract final class ShellTvFocusCoordinator {
   /// Level-aware back - see [ShellNavigationLevels].
   /// Always returns true when [tvBackPolicyEnabled] (never exits the app).
   static bool handleShellBackKey() {
-    // Confirming second Back must not be swallowed by the debounce window.
-    if (!PlayerBackExitGate.isArmed && _consumeDuplicateBack()) return true;
-    if (PlayerBackExitGate.isArmed) {
-      _lastBackHandledAt = DateTime.now();
+    // Confirming exit / pop must not be swallowed by debounce.
+    if (!_backStepPending &&
+        !PlayerBackExitGate.exitReady &&
+        _consumeDuplicateBack()) {
+      return true;
     }
+    _backStepPending = false;
 
     // Player menus/panels are OverlayEntries (not routes). Dismiss them before
     // any navigator pop - including IPTV/trailer menus while level=detail.
     if (dismissAnyPlayerChromeOverlay()) {
-      PlayerBackExitGate.clear();
+      PlayerBackExitGate.exitReady = false;
       return true;
     }
 
-    // Visible player chrome: Back hides controls and arms exit confirm so
-    // the next Back leaves (Netflix-style: hide → exit).
-    if (PlayerBackExitGate.tryHideChrome()) {
-      PlayerBackExitGate.consumeFirstBackStay(enabled: tvBackPolicyEnabled);
-      debugPrint('[NavBack] player chrome hidden - stay in player');
-      return true;
-    }
-
-    // TV: first Back stays in fullscreen players; second within the window exits.
-    if (PlayerBackExitGate.consumeFirstBackStay(enabled: tvBackPolicyEnabled)) {
-      debugPrint('[NavBack] player exit armed - stay in player');
+    // TV players: first Back focuses the Back control; second exits.
+    if (tvBackPolicyEnabled && PlayerBackExitGate.tryFocusBackStay()) {
+      _backStepPending = true;
+      debugPrint('[NavBack] focused player back - stay in player');
       return true;
     }
 
@@ -232,6 +263,10 @@ abstract final class ShellTvFocusCoordinator {
         ShellNavigationLevels.popRootRoute();
         return true;
       case ShellNavLevel.detail:
+        if (_tryFocusDetailBack()) {
+          _backStepPending = true;
+          return true;
+        }
         maybePopShellOverlay();
         return true;
       case ShellNavLevel.tabStack:
@@ -241,7 +276,10 @@ abstract final class ShellTvFocusCoordinator {
       case ShellNavLevel.page:
         final tabId = ShellTvFocus.currentNavTabId ?? '';
         final pageBack = _tabPageBack[tabId];
-        if (pageBack != null && pageBack()) return true;
+        if (pageBack != null && pageBack()) {
+          _backStepPending = true;
+          return true;
+        }
         _focusActiveNavFromPage();
         return true;
       case ShellNavLevel.menu:

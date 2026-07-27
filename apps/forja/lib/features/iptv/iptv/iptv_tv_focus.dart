@@ -375,6 +375,7 @@ Widget iptvBackButton(
   VoidCallback? onDownEdge,
   VoidCallback? onLeftEdge,
   VoidCallback? onRightEdge,
+  ValueChanged<bool>? onFocusChange,
 }) {
   if (onTap == null) return const SizedBox.shrink();
   if (iptvUseTvFocus(context)) {
@@ -393,6 +394,7 @@ Widget iptvBackButton(
       onDownEdge: onDownEdge,
       onLeftEdge: onLeftEdge,
       onRightEdge: onRightEdge,
+      onFocusChange: onFocusChange,
     );
   }
   return ForjaPlainIcon(
@@ -449,6 +451,7 @@ class _IptvFocusIconTap extends StatefulWidget {
     this.onDownEdge,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onFocusChange,
   });
 
   final IconData icon;
@@ -465,6 +468,7 @@ class _IptvFocusIconTap extends StatefulWidget {
   final VoidCallback? onDownEdge;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final ValueChanged<bool>? onFocusChange;
 
   @override
   State<_IptvFocusIconTap> createState() => _IptvFocusIconTapState();
@@ -507,7 +511,10 @@ class _IptvFocusIconTapState extends State<_IptvFocusIconTap> {
       onDownEdge: widget.onDownEdge,
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
-      onFocusChange: (focused) => setState(() => _focused = focused),
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+        widget.onFocusChange?.call(focused);
+      },
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: child,
     );

@@ -199,6 +199,18 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
   bool _exitInProgress = false;
   final FocusNode _playFocus = FocusNode(debugLabel: 'player-play');
   final FocusNode _backFocus = FocusNode(debugLabel: 'player-back');
+  /// First TV Back focused the Back control — next Back exits even before
+  /// the post-frame [requestFocus] lands.
+  bool _tvBackExitArmed = false;
+
+  void _onTvBackFocusChanged() {
+    if (_backFocus.hasFocus) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_backFocus.hasFocus) _tvBackExitArmed = false;
+    });
+  }
+
   final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'player-menu');
   final FocusNode _retryFocus = FocusNode(debugLabel: 'player-retry');
   final FocusNode _streamActionFocus = FocusNode(debugLabel: 'player-stream-action');
@@ -399,8 +411,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     // `_initPlayback` / mark-failed paths bail out instead of writing
     // to a disposed ValueNotifier.
     _disposed = true;
-    PlayerBackExitGate.setTryHideChrome(null);
-    PlayerBackExitGate.setOnFirstBack(null);
+    PlayerBackExitGate.setTryFocusBack(null);
     _cancelPendingStreamWork();
     _providerLoadFailures.dispose();
     if (widget.providerSourcesCache == null) {
@@ -422,6 +433,7 @@ class _MobilePlayerScreenState extends State<MobilePlayerScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     _playFocus.dispose();
+    _backFocus.removeListener(_onTvBackFocusChanged);
     _backFocus.dispose();
     _playerMenuFocus.dispose();
     _retryFocus.dispose();

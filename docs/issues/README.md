@@ -136,6 +136,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [112-[fixed]-…](fixed/112-[fixed]-iptv-share-self-contained-tokens.md) | IPTV share: self-contained `F1.` tokens | P1 | High | fixed | Complete · 5/5 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [113-[open]-…](113-[open]-android-tv-trailer-player-white-screen.md) | Android TV trailer player white screen | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [114-[open]-…](114-[open]-android-tv-movie-mediakit-audio-only.md) | Android TV movie MediaKit audio-only | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [115-[open]-…](115-[open]-android-tv-iptv-player-menu-mpv-sigsegv.md) | Android TV IPTV Player menu mpv SIGSEGV | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

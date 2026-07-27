@@ -272,12 +272,34 @@ Future<void> applyMediaHttpHeaders(
   );
 }
 
+/// True when NativePlayer has finished libmpv create (`ctx` non-null).
+///
+/// [NativePlayer.setProperty] with `waitForInitialization: false` calls
+/// `mpv_set_property_string` even when `ctx` is still `nullptr` → SIGSEGV
+/// (issue 115 — IPTV Player menu Exo switch before create completes).
+Future<bool> mediaKitPlayerHandleReady(
+  NativePlayer mpv, {
+  Duration timeout = const Duration(milliseconds: 400),
+}) async {
+  if (mpv.disposed) return false;
+  if (mpv.completer.isCompleted) return true;
+  try {
+    await mpv.waitForPlayerInitialization.timeout(timeout);
+    return !mpv.disposed;
+  } catch (_) {
+    return false;
+  }
+}
+
 /// Kill audible output immediately via libmpv, without waiting on media_kit's
 /// video-controller init futures (those can hang and leave audio after exit).
 Future<void> silenceMediaKitPlayer(Player player) async {
   try {
     if (player.platform is NativePlayer) {
       final mpv = player.platform as NativePlayer;
+      // Skip native props if create never finished — waitForInitialization:
+      // false would SIGSEGV on null ctx. Still try Dart pause/volume below.
+      if (!await mediaKitPlayerHandleReady(mpv)) return;
       // waitForInitialization: false - must not block exit on stuck VC init.
       await mpv.setProperty('mute', 'yes', waitForInitialization: false);
       await mpv.setProperty('pause', 'yes', waitForInitialization: false);
@@ -306,8 +328,14 @@ Future<void> teardownMediaKitPlayer(Player player) async {
   try {
     if (player.platform is NativePlayer) {
       final mpv = player.platform as NativePlayer;
-      await mpv.setProperty('msg-level', 'all=no', waitForInitialization: false);
-      await mpv.setProperty('quiet', 'yes', waitForInitialization: false);
+      if (await mediaKitPlayerHandleReady(mpv)) {
+        await mpv.setProperty(
+          'msg-level',
+          'all=no',
+          waitForInitialization: false,
+        );
+        await mpv.setProperty('quiet', 'yes', waitForInitialization: false);
+      }
     }
   } catch (_) {}
   try {

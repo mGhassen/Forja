@@ -45,7 +45,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
   bool _listFocused = false;
 
   static const Color _panelTint = Color(0xE016161F);
-  static Color get _accent => IptvShellStyle.accent;
+  static Color get _accent => ForjaShellColors.brandGreen;
   static Color get _panelSurface =>
       ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.94);
 
@@ -481,7 +481,7 @@ class _SearchResultTile extends StatefulWidget {
 class _SearchResultTileState extends State<_SearchResultTile> {
   bool _hovered = false;
 
-  static Color get _accent => IptvShellStyle.accent;
+  static Color get _accent => ForjaShellColors.brandGreen;
 
   @override
   Widget build(BuildContext context) {
@@ -508,15 +508,11 @@ class _SearchResultTileState extends State<_SearchResultTile> {
             color: active
                 ? _accent.withValues(alpha: 0.18)
                 : focused
-                    ? Colors.white.withValues(alpha: 0.06)
+                    ? _accent.withValues(alpha: 0.10)
                     : Colors.transparent,
             border: Border(
               left: BorderSide(
-                color: active
-                    ? _accent
-                    : focused
-                        ? Colors.white54
-                        : Colors.transparent,
+                color: active || focused ? _accent : Colors.transparent,
                 width: 3,
               ),
             ),
@@ -535,7 +531,11 @@ class _SearchResultTileState extends State<_SearchResultTile> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.plusJakartaSans(
-                        color: highlighted ? Colors.white : Colors.white60,
+                        color: focused
+                            ? _accent
+                            : active
+                                ? Colors.white
+                                : Colors.white60,
                         fontSize: 12,
                         fontWeight:
                             highlighted ? FontWeight.w700 : FontWeight.w400,

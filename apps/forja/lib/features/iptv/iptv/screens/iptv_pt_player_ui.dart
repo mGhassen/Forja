@@ -132,6 +132,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
 
   void _focusPlayerChrome() {
     if (!iptvUseTvFocus(context) || !_s._controlsVisible) return;
+    _s._tvBackExitArmed = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_s._controlsVisible) return;
       iptvFocusRowItem('iptv-player-controls', 0);
@@ -144,6 +145,12 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
       if (!mounted || !_s._controlsVisible) return;
       iptvFocusRowItem('iptv-player-top', 0);
     });
+  }
+
+  bool _isPlayerBackFocused() {
+    final handle =
+        ShellTvFocusCoordinator.rowHandle('iptv', 'iptv-player-top');
+    return handle?.nodeAt(0)?.hasFocus ?? false;
   }
 
   void _revealControlsAndFocus({required bool back}) {
@@ -643,10 +650,25 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
               size: 22,
               tvRowId: topRowId,
               tvItemIndex: backIdx,
-              onDownEdge: downFromTop,
+              onDownEdge: () {
+                _s._tvBackExitArmed = false;
+                downFromTop();
+              },
               onRightEdge: topCount > 1
-                  ? () => iptvFocusRowItem(topRowId, firstTrailingIdx)
+                  ? () {
+                      _s._tvBackExitArmed = false;
+                      iptvFocusRowItem(topRowId, firstTrailingIdx);
+                    }
                   : null,
+              onFocusChange: (focused) {
+                if (focused) return;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  if (!_isPlayerBackFocused()) {
+                    _s._tvBackExitArmed = false;
+                  }
+                });
+              },
             ),
             const SizedBox(width: 8),
             Expanded(

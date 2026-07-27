@@ -167,20 +167,39 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   final FocusNode _streamActionFocus =
       FocusNode(debugLabel: 'exo-player-stream-action');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'exo-player-tv-keys');
+  /// First TV Back focused the Back control — next Back exits even before
+  /// the post-frame [requestFocus] lands.
+  bool _tvBackExitArmed = false;
+
+  void _onBackFocusChanged() {
+    if (_backFocus.hasFocus) return;
+    // Deferred: ignore the brief gap between arming and requestFocus landing.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_backFocus.hasFocus) _tvBackExitArmed = false;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
-    PlayerBackExitGate.setTryHideChrome(() {
+    _backFocus.addListener(_onBackFocusChanged);
+    PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted || _disposed) return false;
-      if (!_showControls) return false;
-      setState(() => _showControls = false);
+      if (_backFocus.hasFocus || _tvBackExitArmed) {
+        _tvBackExitArmed = false;
+        return false;
+      }
+      _tvBackExitArmed = true;
+      setState(() => _showControls = true);
       _hideTimer?.cancel();
+      _startHideTimer();
+      _claimBackFocus();
       return true;
     });
-    // Exit-arm Back: chrome already hidden — do not re-show.
+    // First Back focuses Back; second (Back focused / armed) exits.
     _sources = [];
     if (widget.audioUrl != null && widget.audioUrl!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -456,6 +475,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
 
   void _claimPlayFocus() {
     if (!_isTv) return;
+    _tvBackExitArmed = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_playFocus.canRequestFocus) return;
       // Menu/panel owns the remote - don't yank focus back to Play.
@@ -944,10 +964,10 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
   @override
   void dispose() {
     _disposed = true;
-    PlayerBackExitGate.setTryHideChrome(null);
-    PlayerBackExitGate.setOnFirstBack(null);
+    PlayerBackExitGate.setTryFocusBack(null);
     PlayerServerStreamDialog.dismiss();
     _playFocus.dispose();
+    _backFocus.removeListener(_onBackFocusChanged);
     _backFocus.dispose();
     _playerMenuFocus.dispose();
     _retryFocus.dispose();

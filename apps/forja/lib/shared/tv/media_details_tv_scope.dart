@@ -14,11 +14,14 @@ class MediaDetailsTvScope extends StatefulWidget {
     super.key,
     required this.heroPlayFocus,
     required this.scrollController,
+    this.backFocus,
     required this.child,
   });
 
   final FocusNode heroPlayFocus;
   final ScrollController scrollController;
+  /// Top-left Back chevron — first remote Back focuses it before popping.
+  final FocusNode? backFocus;
   final Widget child;
 
   @override
@@ -34,6 +37,16 @@ class _MediaDetailsTvScopeState extends State<MediaDetailsTvScope> {
       defaultFocus: () => widget.heroPlayFocus,
       heroReveal: _scrollHeroIntoView,
     );
+    ShellTvFocusCoordinator.registerDetailBackFocus(widget.backFocus);
+  }
+
+  @override
+  void didUpdateWidget(covariant MediaDetailsTvScope oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.backFocus, widget.backFocus)) {
+      ShellTvFocusCoordinator.unregisterDetailBackFocus(oldWidget.backFocus);
+      ShellTvFocusCoordinator.registerDetailBackFocus(widget.backFocus);
+    }
   }
 
   void _scrollHeroIntoView() {
@@ -48,6 +61,7 @@ class _MediaDetailsTvScopeState extends State<MediaDetailsTvScope> {
 
   @override
   void dispose() {
+    ShellTvFocusCoordinator.unregisterDetailBackFocus(widget.backFocus);
     ShellTvFocusCoordinator.clearTab(MediaDetailsTv.tabId);
     ShellTvFocusCoordinator.unregisterTabDefaults(MediaDetailsTv.tabId);
     super.dispose();

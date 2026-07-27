@@ -14,6 +14,7 @@ set -euo pipefail
 #   ./scripts/release_local.sh setup-windows            # print / run VM toolchain setup
 #   ./scripts/release_local.sh publish v1.2.404         # upload dist/ → gh + R2
 #   ./scripts/release_local.sh sync [v1.2.404]          # push branch (+ tag) → forjahq mirror
+#   ./scripts/release_local.sh sync-from [v1.2.404]     # pull CI release commit from forjahq → origin
 #
 # Interactive wizard (TTY): ↑↓ / j k navigate · Space toggle · Enter next · b back · q quit
 #
@@ -25,7 +26,7 @@ set -euo pipefail
 #                                    Legacy: macos → macos_arm64; android_tv → both TV ABIs.
 #                                    Interactive pick if unset; default: macos_arm64 (+windows if VM)
 #   FORJA_SYNC_REPO=forjahq/forja    org mirror; force-push after origin (branch + release tag)
-#   FORJA_SYNC_SKIP=1                skip org mirror push
+#   FORJA_SYNC_SKIP=1                skip org mirror push / pull
 #   NONINTERACTIVE=1                 skip confirm / platform prompts
 #
 # Requires (.env): SUPABASE_*, RELEASE_CDN_URL, FORJA_WEB_URL, R2_*
@@ -384,8 +385,9 @@ gh_r() {
   gh -R "$(gh_repo)" "$@"
 }
 
-# Push current branch (+ optional release tag) to the org mirror.
-# Source of truth stays origin (mGhassen/Forja); forjahq is a direct mirror.
+# Bidirectional mirror with forjahq:
+#   sync_to_forjahq   — origin (mGhassen) → forjahq (force; before / after local publish)
+#   sync_from_forjahq — forjahq → origin (after CI "New version" creates chore: release)
 ensure_sync_remote() {
   local url="https://github.com/${SYNC_REPO}.git"
   if git remote get-url "$SYNC_REMOTE" >/dev/null 2>&1; then
@@ -414,7 +416,7 @@ sync_to_forjahq() {
   [[ "$branch" != "HEAD" ]] || die "detached HEAD — checkout a branch before syncing to $SYNC_REPO"
 
   ensure_sync_remote
-  # One-way mirror: origin (mGhassen) wins. Force so divergent forjahq history is overwritten.
+  # origin (mGhassen) wins. Force so divergent forjahq history is overwritten.
   info "Sync origin → ${SYNC_REPO} (force branch ${branch}${tag:+, tag ${tag}})"
 
   if ! git push --force "$SYNC_REMOTE" "HEAD:refs/heads/${branch}"; then
@@ -427,6 +429,76 @@ sync_to_forjahq() {
     fi
   fi
   ok "Synced to https://github.com/${SYNC_REPO}"
+}
+
+# Newest v* tag that is an ancestor of ref (e.g. forjahq/main after CI release).
+latest_tag_on_ref() {
+  local ref="$1"
+  local t
+  while IFS= read -r t; do
+    [[ -z "$t" ]] && continue
+    if git merge-base --is-ancestor "$t" "$ref" 2>/dev/null; then
+      echo "$t"
+      return 0
+    fi
+  done < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null || true)
+  return 1
+}
+
+# Pull the CI release commit (+ tag) from forjahq into the current branch and push origin.
+# Happy path after Actions "New version" on forjahq: fast-forward. If histories diverged, merge.
+sync_from_forjahq() {
+  local tag="${1:-}"
+  local branch remote_ref release_sha
+
+  if [[ "${FORJA_SYNC_SKIP:-}" == "1" || -z "${SYNC_REPO}" ]]; then
+    return 0
+  fi
+
+  require_cmd git
+  require_clean_tree
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+  [[ "$branch" != "HEAD" ]] || die "detached HEAD — checkout a branch before syncing from $SYNC_REPO"
+
+  ensure_sync_remote
+  info "Fetch ${SYNC_REPO} (bring CI release → origin)"
+  git fetch "$SYNC_REMOTE" --tags --force
+  git fetch origin --tags --force 2>/dev/null || true
+
+  remote_ref="${SYNC_REMOTE}/${branch}"
+  git rev-parse "$remote_ref" >/dev/null 2>&1 \
+    || die "missing ${remote_ref} after fetch — does ${SYNC_REPO} have branch ${branch}?"
+
+  if [[ -n "$tag" ]]; then
+    [[ "$tag" == v* ]] || tag="v${tag}"
+    git rev-parse "$tag" >/dev/null 2>&1 || die "tag $tag not found after fetch from ${SYNC_REPO}"
+  else
+    tag="$(latest_tag_on_ref "$remote_ref")" \
+      || die "no v* tags found on ${remote_ref}"
+  fi
+
+  release_sha="$(git rev-parse "${tag}^{commit}")"
+  info "Release ${tag} @ ${release_sha:0:8} from ${SYNC_REPO}"
+
+  if git merge-base --is-ancestor "$release_sha" HEAD; then
+    ok "${tag} already on ${branch}"
+  elif git merge-base --is-ancestor HEAD "$release_sha"; then
+    info "Fast-forward ${branch} → ${tag}"
+    git merge --ff-only "$release_sha"
+  else
+    warn "Histories diverged — merging ${tag} into ${branch} (keeps tagged SHA)"
+    if ! git merge --no-edit -m "chore: sync release ${tag} from ${SYNC_REPO}" "$release_sha"; then
+      die "merge conflict — resolve, then: git push origin HEAD && git push origin ${tag}"
+    fi
+  fi
+
+  if ! git push origin "HEAD:refs/heads/${branch}"; then
+    die "failed to push ${branch} → origin (check write access / credentials)"
+  fi
+  if ! git push origin "refs/tags/${tag}"; then
+    die "failed to push tag ${tag} → origin (tag may already exist with a different SHA)"
+  fi
+  ok "Brought ${tag} from ${SYNC_REPO} → origin ($(gh_repo))"
 }
 
 load_env() {
@@ -1198,6 +1270,17 @@ cmd_sync() {
   FORJA_SYNC_SKIP=0 sync_to_forjahq "$tag"
 }
 
+cmd_sync_from() {
+  local tag="${1:-}"
+  require_cmd git
+  if [[ -n "$tag" ]]; then
+    [[ "$tag" == v* ]] || tag="v${tag}"
+  fi
+  info "Mirror sync ← ${SYNC_REPO}${tag:+ (${tag})} → origin"
+  confirm "Fetch CI release from ${SYNC_REPO} and push branch + tag to origin?" || die "aborted"
+  FORJA_SYNC_SKIP=0 sync_from_forjahq "$tag"
+}
+
 cmd_backfill() {
   local -a dry=()
   [[ "${1:-}" == "--dry-run" ]] && dry=(--dry-run)
@@ -1421,6 +1504,35 @@ Action:  force-push branch + tag (mGhassen overwrites ${SYNC_REPO})"
   fi
 }
 
+wizard_sync_from() {
+  local tag detail branch remote_ref
+  require_clean_tree
+  ensure_sync_remote
+  git fetch "$SYNC_REMOTE" --tags --force
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+  remote_ref="${SYNC_REMOTE}/${branch}"
+  git rev-parse "$remote_ref" >/dev/null 2>&1 \
+    || die "missing ${remote_ref} — does ${SYNC_REPO} have ${branch}?"
+  tag="$(latest_tag_on_ref "$remote_ref")" \
+    || die "no v* tags found on ${remote_ref}"
+  detail="Source:  ${SYNC_REPO}
+Target:  origin ($(gh_repo))
+Branch:  ${branch}
+Tag:     ${tag} @ $(git rev-parse --short "${tag}^{commit}")
+Action:  FF or merge CI release commit, then push branch + tag to origin
+Use after: Actions New version on forjahq"
+  if ui_confirm_screen 1 1 "Sync from ${SYNC_REPO}?" "$detail" 1; then
+    ui_raw_off
+    ui_clear
+    NONINTERACTIVE=1 cmd_sync_from "$tag"
+    return 0
+  else
+    local rc=$?
+    ((rc == 2)) && return 2
+    ui_abort
+  fi
+}
+
 wizard_backfill() {
   local mode rc
   mode="$(ui_choose 1 2 "Backfill untagged" -- \
@@ -1516,7 +1628,8 @@ interactive_menu() {
     echo "  7) Build Android TV"
     echo "  8) Publish"
     echo "  9) Sync → ${SYNC_REPO}"
-    echo "  10) Setup Windows VM"
+    echo "  10) Sync ← ${SYNC_REPO} (CI release → origin)"
+    echo "  11) Setup Windows VM"
     echo "  q) Quit"
     read -r -p "Choice: " choice
     case "$choice" in
@@ -1567,7 +1680,8 @@ interactive_menu() {
       7) tag="$(pick_tag_interactive)"; cmd_build_android_tv "$tag" ;;
       8) tag="$(pick_tag_interactive)"; cmd_publish "$tag" ;;
       9) cmd_sync ;;
-      10) cmd_setup_windows ;;
+      10) cmd_sync_from ;;
+      11) cmd_setup_windows ;;
       q|Q) exit 0 ;;
       *) die "invalid choice" ;;
     esac
@@ -1580,6 +1694,7 @@ interactive_menu() {
       "release_tag|Release existing tag — platforms → build + publish" \
       "new_version|New version — bump → platforms → build + publish" \
       "sync|Sync to ${SYNC_REPO} — push branch + tag from origin" \
+      "sync_from|Sync from ${SYNC_REPO} — pull CI release commit → origin" \
       "backfill|Backfill untagged commits" \
       "list_tags|List / filter tags" \
       "tools|Build / publish tools…" \
@@ -1607,6 +1722,14 @@ interactive_menu() {
         ;;
       sync)
         wizard_sync || {
+          rc=$?
+          ((rc == 2)) && continue
+          ui_abort
+        }
+        return
+        ;;
+      sync_from)
+        wizard_sync_from || {
           rc=$?
           ((rc == 2)) && continue
           ui_abort
@@ -1650,6 +1773,7 @@ main() {
     setup-windows) cmd_setup_windows ;;
     publish) cmd_publish "${1:?usage: release_local.sh publish vX.Y.Z}" ;;
     sync) cmd_sync "${1:-}" ;;
+    sync-from) cmd_sync_from "${1:-}" ;;
     -h|--help)
       sed -n '3,35p' "$0" | sed 's/^# \{0,1\}//'
       ;;

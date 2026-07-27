@@ -186,6 +186,9 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   bool _guideVisible = false;
   bool _searchVisible = false;
+  /// First TV Back focused the Back control — next Back exits even before
+  /// the post-frame [requestFocus] lands.
+  bool _tvBackExitArmed = false;
   late String _selectedGroupId;
   late String _currentChannelId;
   IptvGuideEpgCache? _epgCache;
@@ -269,15 +272,44 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   void initState() {
     super.initState();
     ShellBus.enterPlayerSurface();
-    PlayerBackExitGate.setTryHideChrome(() {
+    PlayerBackExitGate.setTryFocusBack(() {
       if (_disposed || !mounted) return false;
-      if (_guideVisible || _searchVisible || _isPipMode) return false;
-      if (!_controlsVisible) return false;
-      setState(() => _controlsVisible = false);
+      if (_isPipMode) return false;
+      // Guide / search own Back first (HardwareKeyboard steals Focus onKey).
+      if (_guideVisible) {
+        setState(() {
+          _guideVisible = false;
+          _controlsVisible = true;
+        });
+        _tvBackExitArmed = false;
+        _hideControlsTimer?.cancel();
+        _scheduleHideControls();
+        _focusPlayerBack();
+        return true;
+      }
+      if (_searchVisible) {
+        setState(() {
+          _searchVisible = false;
+          _controlsVisible = true;
+        });
+        _tvBackExitArmed = false;
+        _hideControlsTimer?.cancel();
+        _scheduleHideControls();
+        _focusPlayerBack();
+        return true;
+      }
+      if (_isPlayerBackFocused() || _tvBackExitArmed) {
+        _tvBackExitArmed = false;
+        return false;
+      }
+      _tvBackExitArmed = true;
+      setState(() => _controlsVisible = true);
       _hideControlsTimer?.cancel();
+      _scheduleHideControls();
+      _focusPlayerBack();
       return true;
     });
-    // Exit-arm Back: chrome already hidden — do not re-show.
+    // First Back focuses Back; second (Back focused / armed) exits.
     _sources = List<IptvPlaySource>.from(widget.sources);
     _title = widget.title;
     _subtitle = widget.subtitle;
@@ -405,8 +437,7 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
 
   @override
   void dispose() {
-    PlayerBackExitGate.setTryHideChrome(null);
-    PlayerBackExitGate.setOnFirstBack(null);
+    PlayerBackExitGate.setTryFocusBack(null);
     ShellBus.leavePlayerSurface();
     _disposed = true;
     SettingsService.iptvEpgEnabledNotifier.removeListener(

@@ -19,14 +19,21 @@ mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserve
   @override
   void initState() {
     super.initState();
-    PlayerBackExitGate.setTryHideChrome(() {
+    PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted || _s._disposed) return false;
-      if (!_s._showControls) return false;
-      setState(() => _s._showControls = false);
+      if (_s._backFocus.hasFocus || _s._tvBackExitArmed) {
+        _s._tvBackExitArmed = false;
+        return false;
+      }
+      _s._tvBackExitArmed = true;
+      setState(() => _s._showControls = true);
       _s._hideTimer?.cancel();
+      _s._startHideTimer();
+      _s._claimBackFocus();
       return true;
     });
-    // Exit-arm Back: chrome already hidden — do not re-show.
+    // First Back focuses Back; second (Back focused / armed) exits.
+    _s._backFocus.addListener(_s._onTvBackFocusChanged);
     _s._ownedProviderSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
       {},
     );

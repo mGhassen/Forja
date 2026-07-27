@@ -78,7 +78,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
   static const Color _groupsTint = Color(0xE00C0C12);
   static const Color _channelsTint = Color(0xE016161F);
-  static Color get _accent => IptvShellStyle.accent;
+  /// Brand green — matches catalog sidebar / TV focus chrome (not gray navUnderline).
+  static Color get _accent => ForjaShellColors.brandGreen;
   static Color get _panelSurface =>
       ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.94);
 
@@ -889,15 +890,13 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                     color: selected
                         ? _accent.withValues(alpha: 0.18)
                         : focused
-                            ? Colors.white.withValues(alpha: 0.06)
+                            ? _accent.withValues(alpha: 0.10)
                             : Colors.transparent,
                     border: Border(
                       left: BorderSide(
-                        color: selected
+                        color: selected || focused
                             ? _accent
-                            : focused
-                                ? Colors.white54
-                                : Colors.transparent,
+                            : Colors.transparent,
                         width: 3,
                       ),
                     ),
@@ -910,9 +909,11 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.plusJakartaSans(
-                            color: selected || focused
-                                ? Colors.white
-                                : Colors.white60,
+                            color: focused
+                                ? _accent
+                                : selected
+                                    ? Colors.white
+                                    : Colors.white60,
                             fontSize: 13,
                             fontWeight: selected || focused
                                 ? FontWeight.w700
@@ -1033,7 +1034,7 @@ class _GuideChannelTile extends StatefulWidget {
 }
 
 class _GuideChannelTileState extends State<_GuideChannelTile> {
-  static Color get _accent => IptvShellStyle.accent;
+  static Color get _accent => ForjaShellColors.brandGreen;
   static const Color _alive = Color(0xFF22C55E);
   static const Color _dead = Color(0xFFEF4444);
 
@@ -1044,13 +1045,9 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
     final fill = active
         ? _accent.withValues(alpha: 0.18)
         : focused
-            ? Colors.white.withValues(alpha: 0.06)
+            ? _accent.withValues(alpha: 0.10)
             : Colors.transparent;
-    final barColor = active
-        ? _accent
-        : focused
-            ? Colors.white54
-            : Colors.transparent;
+    final barColor = active || focused ? _accent : Colors.transparent;
 
     return MouseRegion(
       onEnter: (_) {
@@ -1101,7 +1098,11 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
-                    color: active || focused ? Colors.white : Colors.white70,
+                    color: focused
+                        ? _accent
+                        : active
+                            ? Colors.white
+                            : Colors.white70,
                     fontSize: 13.5,
                     fontWeight:
                         active || focused ? FontWeight.w700 : FontWeight.w500,

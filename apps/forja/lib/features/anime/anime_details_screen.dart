@@ -744,6 +744,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     return MediaDetailsTvScope(
       heroPlayFocus: _heroPlayFocus,
       scrollController: _detailsScrollController,
+      backFocus: _backFocus,
       child: scroll,
     );
   }
