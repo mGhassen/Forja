@@ -142,23 +142,41 @@ ui_read_key() {
 }
 
 ui_clear() {
-  printf '\033[H\033[2J' >&2
+  # Home + erase below (avoids full-buffer flash vs \033[2J when redraw is fast).
+  printf '\033[H\033[J' >&2
+}
+
+# Banner tag line is expensive (walks all v* tags). Cache for the interactive session;
+# invalidate after fetch / sync / bump so the label can change.
+_UI_TAGS_READY=0
+_UI_CACHED_PENDING=""
+_UI_CACHED_LATEST=""
+
+ui_invalidate_tags() {
+  _UI_TAGS_READY=0
+  _UI_CACHED_PENDING=""
+  _UI_CACHED_LATEST=""
+}
+
+ui_cache_tags() {
+  ((_UI_TAGS_READY)) && return 0
+  _UI_CACHED_PENDING="$(latest_pending_release_tag 2>/dev/null || true)"
+  _UI_CACHED_LATEST="$(default_release_tag 2>/dev/null || true)"
+  _UI_TAGS_READY=1
 }
 
 ui_step_banner() {
   local step="$1" total="$2" title="$3"
-  local latest pending
-  latest="$(default_release_tag 2>/dev/null || true)"
-  pending="$(latest_pending_release_tag 2>/dev/null || true)"
+  ui_cache_tags
   echo >&2
   printf '  %sForja%s local release' "${C_BOLD}${C_CYAN}" "${C_RESET}" >&2
   printf '  %s·%s  step %s/%s\n' "${C_DIM}" "${C_RESET}" "$step" "$total" >&2
   printf '  %s%s%s\n' "${C_BOLD}" "$title" "${C_RESET}" >&2
-  if [[ -n "$pending" ]]; then
+  if [[ -n "$_UI_CACHED_PENDING" ]]; then
     printf '  %slatest tag%s  %s  %s(not on this branch — sync-from)%s\n' \
-      "${C_DIM}" "${C_RESET}" "$pending" "${C_YELLOW}" "${C_RESET}" >&2
-  elif [[ -n "$latest" ]]; then
-    printf '  %slatest tag%s  %s\n' "${C_DIM}" "${C_RESET}" "$latest" >&2
+      "${C_DIM}" "${C_RESET}" "$_UI_CACHED_PENDING" "${C_YELLOW}" "${C_RESET}" >&2
+  elif [[ -n "$_UI_CACHED_LATEST" ]]; then
+    printf '  %slatest tag%s  %s\n' "${C_DIM}" "${C_RESET}" "$_UI_CACHED_LATEST" >&2
   fi
   hr >&2
   echo >&2
@@ -480,6 +498,7 @@ sync_to_forjahq() {
     fi
   fi
   ok "Synced to https://github.com/${SYNC_REPO}"
+  ui_invalidate_tags
 }
 
 # Pull the CI release commit (+ tag) from forjahq into the current branch and push origin.
@@ -547,6 +566,7 @@ sync_from_forjahq() {
     ok "Updated ${SYNC_REPO} ${branch} with ${tag}"
   fi
   ok "Brought ${tag} from ${SYNC_REPO} → origin ($(gh_repo))"
+  ui_invalidate_tags
 }
 
 load_env() {
@@ -640,6 +660,7 @@ confirm_yes() {
 
 fetch_tags() {
   git fetch origin --tags --force 2>/dev/null || true
+  ui_invalidate_tags
 }
 
 latest_tag() {
