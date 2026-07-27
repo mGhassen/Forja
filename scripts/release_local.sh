@@ -1183,28 +1183,38 @@ collect_assets() {
 }
 
 publish_github() {
+  # mode: assets (default) — notes + upload installers; notes — changelog only
   local ver="$1"
+  local mode="${2:-assets}"
   local tag="v${ver}"
   local notes repo
   local -a assets=()
-  mapfile -t assets < <(collect_assets "$ver")
   repo="$(gh_repo)"
   notes="$(mktemp)"
   ./scripts/changelog_release_notes.sh "$ver" "$notes"
+  if [[ "$mode" == assets ]]; then
+    mapfile -t assets < <(collect_assets "$ver")
+  fi
   if gh_r release view "$tag" >/dev/null 2>&1; then
-    echo "==> Updating GitHub release $tag ($repo)"
+    echo "==> Updating GitHub release $tag ($repo) [${mode}]"
     if grep -q '^### ' "$notes"; then
       gh_r release edit "$tag" --title "Forja ${ver}" --notes-file "$notes"
+    else
+      warn "No changelog groups for $ver — release notes left unchanged"
     fi
-    gh_r release upload "$tag" "${assets[@]}" --clobber
+    if [[ "$mode" == assets ]]; then
+      gh_r release upload "$tag" "${assets[@]}" --clobber
+    fi
   else
-    echo "==> Creating GitHub release $tag ($repo)"
+    echo "==> Creating GitHub release $tag ($repo) [${mode}]"
     local -a args=(
       "$tag"
       --title "Forja ${ver}"
       --verify-tag
-      "${assets[@]}"
     )
+    if [[ "$mode" == assets ]]; then
+      args+=("${assets[@]}")
+    fi
     if [[ "${PRERELEASE:-}" == "1" ]]; then
       args+=(--prerelease)
     fi
@@ -1217,7 +1227,11 @@ publish_github() {
   fi
   rm -f "$notes"
   echo "GitHub: https://github.com/${repo}/releases/tag/${tag}"
-  printf '  asset: %s\n' "${assets[@]}"
+  if [[ "$mode" == assets ]]; then
+    printf '  asset: %s\n' "${assets[@]}"
+  else
+    echo "  (changelog notes only — no assets uploaded)"
+  fi
 }
 
 publish_r2() {
@@ -1334,10 +1348,59 @@ cmd_publish() {
   info "Publish $tag → GitHub + R2"
   collect_assets "$ver" >/dev/null
   confirm "Upload dist assets for $ver to GitHub + R2?" || die "aborted"
-  publish_github "$ver"
+  publish_github "$ver" assets
   publish_r2 "$ver"
   if [[ "${FORJA_SYNC_SKIP:-}" != "1" ]]; then
     sync_to_forjahq "$tag"
+  else
+    warn "Skipped mirror sync (${SYNC_REPO})"
+  fi
+  ok "Done: $tag"
+}
+
+# Selective publish used by the interactive tools wizard.
+# gh_mode: assets | notes | skip · do_r2: 0|1 · do_sync: 0|1
+cmd_publish_parts() {
+  local tag ver gh_mode do_r2 do_sync
+  tag="$(normalize_tag "$1")"
+  ver="$(version_from_tag "$tag")"
+  gh_mode="${2:-assets}"
+  do_r2="${3:-0}"
+  do_sync="${4:-0}"
+
+  case "$gh_mode" in
+    assets|notes|skip) ;;
+    *) die "invalid GitHub mode: $gh_mode (assets|notes|skip)" ;;
+  esac
+  if [[ "$gh_mode" == skip ]] && [[ "$do_r2" != "1" ]]; then
+    die "nothing to publish — pick GitHub and/or R2"
+  fi
+
+  if [[ "$gh_mode" != skip ]]; then
+    require_cmd gh
+    gh auth status >/dev/null 2>&1 || die "gh not authenticated — run: gh auth login"
+  fi
+  if [[ "$gh_mode" == assets || "$do_r2" == "1" ]]; then
+    collect_assets "$ver" >/dev/null
+  fi
+  if [[ "$do_r2" == "1" ]]; then
+    [[ -n "${R2_ACCESS_KEY_ID:-}" ]] || die "R2_ACCESS_KEY_ID missing (set in .env)"
+    [[ -n "${R2_SECRET_ACCESS_KEY:-}" ]] || die "R2_SECRET_ACCESS_KEY missing (set in .env)"
+  fi
+
+  info "Publish $tag (github=${gh_mode}, r2=${do_r2}, sync=${do_sync})"
+  if [[ "$gh_mode" != skip ]]; then
+    publish_github "$ver" "$gh_mode"
+  else
+    warn "Skipped GitHub"
+  fi
+  if [[ "$do_r2" == "1" ]]; then
+    publish_r2 "$ver"
+  else
+    warn "Skipped R2"
+  fi
+  if [[ "$do_sync" == "1" ]]; then
+    FORJA_SYNC_SKIP=0 sync_to_forjahq "$tag"
   else
     warn "Skipped mirror sync (${SYNC_REPO})"
   fi
@@ -1686,12 +1749,12 @@ wizard_list_tags() {
 }
 
 wizard_tools() {
-  local tool tag rc
+  local tool tag rc gh_mode do_r2=0 do_sync=0
   tool="$(ui_choose 1 2 "Tools" -- \
     "build_macos|Build macOS DMG (host arch only)" \
     "build_windows|Build Windows (Parallels)" \
     "build_android_tv|Build Android TV APKs (per selected ABI)" \
-    "publish|Publish dist/ → GitHub + R2" \
+    "publish|Publish dist/…" \
     "publish_r2|Upload dist/ → R2 only (retry)" \
     "setup_windows|Setup Windows VM")" || {
     rc=$?
@@ -1704,6 +1767,57 @@ wizard_tools() {
       ui_clear
       cmd_setup_windows
       ;;
+    publish)
+      tag="$(pick_tag_interactive)" || {
+        rc=$?
+        ((rc == 2)) && return 2
+        ui_abort
+      }
+      gh_mode="$(ui_choose 2 5 "GitHub release" -- \
+        "assets|Upload assets + update changelog notes" \
+        "notes|Update changelog notes only (no assets)" \
+        "skip|Skip GitHub")" || {
+        rc=$?
+        ((rc == 2)) && return 2
+        ui_abort
+      }
+      if ui_confirm_screen 3 5 "Upload installers to R2?" \
+        "Uses dist/ assets for ${tag}." 1; then
+        do_r2=1
+      else
+        rc=$?
+        ((rc == 2)) && return 2
+        ((rc == 3)) && ui_abort
+        do_r2=0
+      fi
+      if [[ "$gh_mode" == skip && "$do_r2" != "1" ]]; then
+        ui_raw_off
+        ui_clear
+        die "nothing to publish — pick GitHub and/or R2"
+      fi
+      if ui_confirm_screen 4 5 "Also sync to ${SYNC_REPO} after publish?" \
+        "Pushes this branch + tag → ${SYNC_REPO}." 1; then
+        do_sync=1
+      else
+        rc=$?
+        ((rc == 2)) && return 2
+        ((rc == 3)) && ui_abort
+        do_sync=0
+      fi
+      if ui_confirm_screen 5 5 "Confirm publish ${tag}" \
+        "GitHub: ${gh_mode}
+R2:      $([[ "$do_r2" == 1 ]] && echo yes || echo no)
+Mirror:  $([[ "$do_sync" == 1 ]] && echo "yes → ${SYNC_REPO}" || echo no)" 1; then
+        :
+      else
+        rc=$?
+        ((rc == 2)) && return 2
+        ui_abort
+      fi
+      ui_raw_off
+      ui_clear
+      cmd_publish_parts "$tag" "$gh_mode" "$do_r2" "$do_sync"
+      ;;
     *)
       tag="$(pick_tag_interactive)" || ui_abort
       ui_raw_off
@@ -1712,18 +1826,6 @@ wizard_tools() {
         build_macos) cmd_build "$tag" ;;
         build_windows) cmd_build_windows "$tag" ;;
         build_android_tv) cmd_build_android_tv "$tag" ;;
-        publish)
-          if ui_confirm_screen 1 1 "Also sync to ${SYNC_REPO} after publish?" \
-            "Pushes this branch + tag → ${SYNC_REPO}." 1; then
-            FORJA_SYNC_SKIP=0
-          else
-            rc=$?
-            ((rc == 3)) && ui_abort
-            FORJA_SYNC_SKIP=1
-          fi
-          export FORJA_SYNC_SKIP
-          cmd_publish "$tag"
-          ;;
         publish_r2) cmd_publish_r2 "$tag" ;;
       esac
       ;;
@@ -1735,7 +1837,7 @@ interactive_menu() {
 
   if ! ui_can; then
     # Non-TTY fallback (piped / NONINTERACTIVE).
-    local latest choice tag bump filter
+    local latest choice tag bump filter gh_mode do_r2 do_sync
     latest="$(default_release_tag)"
     echo
     echo "${C_BOLD}${C_CYAN}Forja local release${C_RESET}"
@@ -1803,7 +1905,15 @@ interactive_menu() {
       5) tag="$(pick_tag_interactive)"; cmd_build "$tag" ;;
       6) tag="$(pick_tag_interactive)"; cmd_build_windows "$tag" ;;
       7) tag="$(pick_tag_interactive)"; cmd_build_android_tv "$tag" ;;
-      8) tag="$(pick_tag_interactive)"; cmd_publish "$tag" ;;
+      8)
+        tag="$(pick_tag_interactive)"
+        echo "GitHub: assets / notes / skip?"
+        read -r -p "[assets|notes|skip] (default assets): " gh_mode
+        gh_mode="${gh_mode:-assets}"
+        if confirm_yes "Upload installers to R2?"; then do_r2=1; else do_r2=0; fi
+        if confirm_yes "Also sync to ${SYNC_REPO}?"; then do_sync=1; else do_sync=0; fi
+        cmd_publish_parts "$tag" "$gh_mode" "$do_r2" "$do_sync"
+        ;;
       9) tag="$(pick_tag_interactive)"; cmd_publish_r2 "$tag" ;;
       10) cmd_sync ;;
       11) cmd_sync_from ;;
