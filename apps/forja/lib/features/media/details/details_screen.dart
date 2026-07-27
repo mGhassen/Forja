@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/media/details/providers/details_providers.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -56,7 +58,7 @@ part 'details_screen_play.dart';
 part 'details_screen_build.dart';
 part 'details_screen_fetch.dart';
 
-class DetailsScreen extends StatefulWidget {
+class DetailsScreen extends ConsumerStatefulWidget {
   final Movie movie;
 
   /// Optional: when opened from a Stremio addon search result with a custom ID,
@@ -85,10 +87,10 @@ class DetailsScreen extends StatefulWidget {
   });
 
   @override
-  State<DetailsScreen> createState() => _DetailsScreenState();
+  ConsumerState<DetailsScreen> createState() => _DetailsScreenState();
 }
 
-class _DetailsScreenState extends State<DetailsScreen>
+class _DetailsScreenState extends ConsumerState<DetailsScreen>
     with
         AtmosphereMixin,
         _DetailsScreenTorrent,
@@ -101,6 +103,16 @@ class _DetailsScreenState extends State<DetailsScreen>
         _DetailsScreenBuild {
   late Movie _movie;
   bool _isLoading = true;
+
+  DetailsMetaKey get _metaKey => DetailsMetaKey(
+        id: widget.movie.id,
+        mediaType: widget.movie.mediaType,
+      );
+
+  bool get _isCustomStremioItem {
+    final item = widget.stremioItem;
+    return item != null && !(item['id']?.toString().startsWith('tt') ?? true);
+  }
   final TmdbApi _api = TmdbApi();
   final SettingsService _settings = SettingsService();
   final StremioService _stremio = StremioService();

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
@@ -42,7 +44,7 @@ part 'exo_player_sources.dart';
 part 'exo_player_tracks.dart';
 
 /// Android built-in player using native Media3 ExoPlayer.
-class ExoPlayerScreen extends StatefulWidget {
+class ExoPlayerScreen extends ConsumerStatefulWidget {
   const ExoPlayerScreen({
     super.key,
     required this.mediaPath,
@@ -103,10 +105,10 @@ class ExoPlayerScreen extends StatefulWidget {
   final PlayerSwitchHandler? onSwitchPlayer;
 
   @override
-  State<ExoPlayerScreen> createState() => _ExoPlayerScreenState();
+  ConsumerState<ExoPlayerScreen> createState() => _ExoPlayerScreenState();
 }
 
-class _ExoPlayerScreenState extends State<ExoPlayerScreen>
+class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     with WidgetsBindingObserver, _ExoPlayerSources, _ExoPlayerTracks {
   static int _nextViewId = 1;
 
@@ -1500,6 +1502,29 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(playerResolveStatusProvider, (previous, next) {
+      if (!mounted || _disposed) return;
+      switch (next.status) {
+        case PlayerResolveStatus.loading:
+          _statusController.upsert(
+            'resolve',
+            'Loading sources…',
+            kind: StatusRouletteKind.loading,
+          );
+        case PlayerResolveStatus.ready:
+          _statusController.complete();
+        case PlayerResolveStatus.error:
+          _statusController.upsert(
+            'resolve',
+            next.message ?? 'Failed to load sources',
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(seconds: 2),
+          );
+        case PlayerResolveStatus.idle:
+          break;
+      }
+    });
+    ref.watch(playerResolveStatusProvider);
     final body = PopScope(
       // Always false - exit via [_exit] manual pop + loading dismiss.
       // canPop:true raced a deferred system pop and skipped dismiss (I101).

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:logging/logging.dart';
@@ -255,7 +256,11 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   debugPrint('[Boot] Splash sound ready');
   debugPrint('[Boot] All init complete - launching app');
 
-  runApp(App(title: title));
+  runApp(
+    ProviderScope(
+      child: App(title: title),
+    ),
+  );
 }
 
 class App extends StatefulWidget {
@@ -306,19 +311,23 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
   void onWindowFocus() {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
     unawaited(SyncService.instance.refreshSession());
+    unawaited(SyncDomainBridge.instance.syncFromCloud());
   }
 
   @override
   void onWindowRestore() {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
     unawaited(SyncService.instance.refreshSession());
+    unawaited(SyncDomainBridge.instance.syncFromCloud());
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(SyncService.instance.refreshSession());
-      unawaited(SyncService.instance.pullAccountFeatures());
+      // Cloud is master — pull full profile_settings (Stremio, nav, …) into
+      // local cache, not only account feature flags.
+      unawaited(SyncDomainBridge.instance.syncFromCloud());
       return;
     }
     if (state == AppLifecycleState.detached) {

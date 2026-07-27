@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
@@ -14,17 +15,17 @@ import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/sync/sync.dart';
 
 /// Playback sources, scoring, and audio prefs.
-class SettingsPlaybackSection extends StatefulWidget {
+class SettingsPlaybackSection extends ConsumerStatefulWidget {
   const SettingsPlaybackSection({super.key, required this.visibility});
 
   final SettingsVisibility visibility;
 
   @override
-  State<SettingsPlaybackSection> createState() =>
+  ConsumerState<SettingsPlaybackSection> createState() =>
       _SettingsPlaybackSectionState();
 }
 
-class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
+class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSection> {
   final SettingsService _settings = SettingsService();
 
   bool _playSourceTorrent = true;
@@ -46,18 +47,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
   @override
   void initState() {
     super.initState();
-    AccountFeatures.instance.revision.addListener(_onAccountFeatures);
     _load();
-  }
-
-  @override
-  void dispose() {
-    AccountFeatures.instance.revision.removeListener(_onAccountFeatures);
-    super.dispose();
-  }
-
-  void _onAccountFeatures() {
-    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -106,6 +96,7 @@ class _SettingsPlaybackSectionState extends State<SettingsPlaybackSection> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(accountFeaturesProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

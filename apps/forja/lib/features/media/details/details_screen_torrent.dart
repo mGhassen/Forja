@@ -1,6 +1,6 @@
 part of 'details_screen.dart';
 
-mixin _DetailsScreenTorrent on State<DetailsScreen> {
+mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
   _DetailsScreenState get _s => this as _DetailsScreenState;
 
   Future<void> _checkIndexerConfiguration() async {
@@ -67,6 +67,9 @@ mixin _DetailsScreenTorrent on State<DetailsScreen> {
     String episodeQuery,
   ) async {
     final gen = ++_s._torrentSearchGen;
+    _s.ref
+        .read(detailsResolveStatusProvider(_s._metaKey).notifier)
+        .setLoading();
     setState(() {
       _s._isSearching = true;
       _s._allTorrentResults = [];
@@ -106,6 +109,9 @@ mixin _DetailsScreenTorrent on State<DetailsScreen> {
         _s._allTorrentResults = combined.values.toList();
         _s._isSearching = false;
       });
+      _s.ref
+          .read(detailsResolveStatusProvider(_s._metaKey).notifier)
+          .setReady();
       _sortResults();
     } catch (e) {
       if (mounted && gen == _s._torrentSearchGen) {
@@ -113,6 +119,9 @@ mixin _DetailsScreenTorrent on State<DetailsScreen> {
           _s._errorMessage = e.toString();
           _s._isSearching = false;
         });
+        _s.ref
+            .read(detailsResolveStatusProvider(_s._metaKey).notifier)
+            .setError();
         _s._maybeAutoPlay();
       }
     }
@@ -120,6 +129,9 @@ mixin _DetailsScreenTorrent on State<DetailsScreen> {
 
   Future<void> _searchTorrents(String query) async {
     final gen = ++_s._torrentSearchGen;
+    _s.ref
+        .read(detailsResolveStatusProvider(_s._metaKey).notifier)
+        .setLoading();
     setState(() {
       _s._isSearching = true;
       _s._allTorrentResults = [];
@@ -139,6 +151,9 @@ mixin _DetailsScreenTorrent on State<DetailsScreen> {
         _s._allTorrentResults = filtered;
         _s._isSearching = false;
       });
+      _s.ref
+          .read(detailsResolveStatusProvider(_s._metaKey).notifier)
+          .setReady();
       _sortResults();
     } catch (e) {
       if (mounted && gen == _s._torrentSearchGen) {
@@ -146,6 +161,9 @@ mixin _DetailsScreenTorrent on State<DetailsScreen> {
           _s._errorMessage = e.toString();
           _s._isSearching = false;
         });
+        _s.ref
+            .read(detailsResolveStatusProvider(_s._metaKey).notifier)
+            .setError();
         _s._maybeAutoPlay();
       }
     }

@@ -1,6 +1,6 @@
 part of 'live_matches_screen.dart';
 
-mixin _LiveMatchesData on State<LiveMatchesScreen>, ShellTabRefresh<LiveMatchesScreen> {
+mixin _LiveMatchesData on ConsumerState<LiveMatchesScreen>, ShellTabRefresh<LiveMatchesScreen> {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   void _focusTopBarItem(int index) {
@@ -173,54 +173,36 @@ mixin _LiveMatchesData on State<LiveMatchesScreen>, ShellTabRefresh<LiveMatchesS
 
   Future<void> _load() async {
     if (!mounted || !shellTabVisible) return;
-    final gen = ++_s._loadGen;
+    _s._loadGen++;
     setState(() {
       _s._loading = true;
       _s._error = null;
       _s._sportFilter = 'all';
-      // Fresh data rebuilds the time canvas - land on now again, not the
-      // previous pixel offset (which maps to a wrong clock after reload).
       _s._timelineAutoScrolled = false;
     });
-    // Drop the stale offset immediately so a remount can't flash Dec/epoch junk.
     if (_s._timelineScrollController.hasClients) {
       _s._timelineScrollController.jumpTo(0);
     }
-    if (_s._server == _LiveMatchesServer.all) {
-      await _loadAll(gen);
-      return;
-    }
-    if (_s._server == _LiveMatchesServer.ppv) {
-      await _loadDamiTv(gen);
-      return;
-    }
-    if (_s._server == _LiveMatchesServer.streamed) {
-      await _loadStreamed(gen);
-      return;
-    }
-    if (_s._server == _LiveMatchesServer.cdnLive) {
-      await _loadCdn(gen);
-      return;
-    }
+    ref.invalidate(liveMatchesPrimaryLoadProvider(_s._server));
   }
 
-  /// Sport chip / tab change rebuilds the time canvas - re-land on now.
-  void _setSportFilter(String id) {
-    setState(() {
-      _s._sportFilter = id;
-      _s._timelineAutoScrolled = false;
-    });
-  }
-
-  void _applySportTabs(List<_Sport> cats) {
+  void _applyPrimaryLoad(LiveMatchesPrimaryLoad load) {
     final oldCtrl = _s._tabController;
     setState(() {
       _s._tabController = null;
-      _s._sports = cats;
+      _s._damiTvStreams = load.damiTvStreams;
+      _s._streamedMatches = load.streamedMatches;
+      _s._cdnChannels = load.cdnChannels;
+      _s._cdnSports = load.cdnSports;
+      _s._sports = load.sports;
       _s._loading = false;
+      _s._error = null;
+      _s._sportFilter = 'all';
+      _s._timelineAutoScrolled = false;
     });
     oldCtrl?.dispose();
     if (!mounted) return;
+    final cats = load.sports;
     final newCtrl = TabController(length: cats.length + 1, vsync: _s);
     newCtrl.addListener(() {
       if (!newCtrl.indexIsChanging) {
@@ -229,230 +211,18 @@ mixin _LiveMatchesData on State<LiveMatchesScreen>, ShellTabRefresh<LiveMatchesS
       }
     });
     setState(() => _s._tabController = newCtrl);
+    if (_s._timelineScrollController.hasClients) {
+      _s._timelineScrollController.jumpTo(0);
+    }
+    markShellTabFresh();
   }
 
-  Future<void> _loadAll(int gen) async {
-    try {
-      final results = await Future.wait([
-        _fetchDamiTvStreams().catchError((_) => <_DamiTvStream>[]),
-        _fetchStreamedMatches().catchError((_) => <_StreamedMatch>[]),
-        _fetchCdnChannels().catchError((_) => <_CdnChannel>[]),
-        _fetchCdnSports().catchError((_) => <_CdnSportEvent>[]),
-      ]);
-      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
-      final ppvStreams = results[0] as List<_DamiTvStream>;
-      final streamedMatches = results[1] as List<_StreamedMatch>;
-      final cdnChannels = results[2] as List<_CdnChannel>;
-      final cdnSports = results[3] as List<_CdnSportEvent>;
-
-      final seenCats = <String>{};
-      final cats = <_Sport>[];
-      void addCat(String raw) {
-        final id = _normalizeSportId(raw);
-        if (id.isEmpty || !seenCats.add(id)) return;
-        cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
-      }
-
-      void addMatchCat(String category, {required bool isAlwaysOn}) {
-        if (_is247Item(category: category, isAlwaysOn: isAlwaysOn)) {
-          addCat('24/7');
-        } else {
-          addCat(category);
-        }
-      }
-
-      for (final s in ppvStreams) {
-        addMatchCat(s.categoryName, isAlwaysOn: s.isAlwaysOn);
-      }
-      for (final m in streamedMatches) {
-        addMatchCat(m.category, isAlwaysOn: m.isAlwaysOn);
-      }
-      for (final e in cdnSports) {
-        // Unified chips are sport-level; CDN tournaments stay for CDN-only mode.
-        if (e.sport.isNotEmpty) addCat(e.sport);
-      }
-      cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-
-      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
-      setState(() {
-        _s._damiTvStreams = ppvStreams;
-        _s._streamedMatches = streamedMatches;
-        _s._cdnChannels = cdnChannels;
-        _s._cdnSports = cdnSports;
-      });
-      _applySportTabs(cats);
-      markShellTabFresh();
-    } catch (e) {
-      if (mounted && shellTabVisible && gen == _s._loadGen) {
-        setState(() {
-          _s._loading = false;
-          _s._error = e.toString();
-        });
-      }
-    }
-  }
-
-  Future<void> _loadDamiTv(int gen) async {
-    try {
-      final streams = await _fetchDamiTvStreams();
-      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
-      final seenCats = <String>{};
-      final cats = <_Sport>[];
-      for (final s in streams) {
-        final raw = _is247Item(
-              category: s.categoryName,
-              isAlwaysOn: s.isAlwaysOn,
-            )
-            ? '24/7'
-            : s.categoryName;
-        final id = _normalizeSportId(raw);
-        if (id.isEmpty || !seenCats.add(id)) continue;
-        cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
-      }
-      final oldCtrl = _s._tabController;
-      setState(() {
-        _s._tabController = null;
-        _s._damiTvStreams = streams;
-        _s._sports = cats;
-        _s._loading = false;
-      });
-      oldCtrl?.dispose();
-      final newCtrl = TabController(length: cats.length + 1, vsync: _s);
-      newCtrl.addListener(() {
-        if (!newCtrl.indexIsChanging) {
-          final idx = newCtrl.index;
-          _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
-        }
-      });
-      if (mounted && shellTabVisible && gen == _s._loadGen) {
-        setState(() => _s._tabController = newCtrl);
-        markShellTabFresh();
-      } else {
-        newCtrl.dispose();
-      }
-    } catch (e) {
-      if (mounted && shellTabVisible && gen == _s._loadGen) {
-        setState(() {
-          _s._loading = false;
-          _s._error = e.toString();
-        });
-      }
-    }
-  }
-
-  Future<void> _loadStreamed(int gen) async {
-    try {
-      final results = await Future.wait([
-        _fetchStreamedSports(),
-        _fetchStreamedMatches(),
-      ]);
-      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
-      final sports = results[0] as List<_Sport>;
-      final matches = results[1] as List<_StreamedMatch>;
-
-      // Always-on Streamed rows keep a sport slug (`cricket`) but belong on
-      // the 24/7 chip - only scheduled matches feed sport chips from the API.
-      final scheduledCats = matches
-          .where((m) => !m.isAlwaysOn)
-          .map((m) => m.category)
-          .toSet();
-      var cats = sports.where((s) => scheduledCats.contains(s.id)).toList();
-      if (cats.isEmpty) {
-        final seen = <String>{};
-        cats = [];
-        for (final m in matches) {
-          if (m.isAlwaysOn) continue;
-          if (m.category.isNotEmpty && seen.add(m.category)) {
-            cats.add(_Sport(id: m.category, name: m.categoryLabel));
-          }
-        }
-      }
-      if (matches.any((m) => m.isAlwaysOn) &&
-          !cats.any((c) => _normalizeSportId(c.id) == '24-7')) {
-        cats = [...cats, const _Sport(id: '24-7', name: '24/7')];
-      }
-      cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-
-      final oldCtrl = _s._tabController;
-      setState(() {
-        _s._tabController = null;
-        _s._streamedMatches = matches;
-        _s._sports = cats;
-        _s._loading = false;
-      });
-      oldCtrl?.dispose();
-      final newCtrl = TabController(length: cats.length + 1, vsync: _s);
-      newCtrl.addListener(() {
-        if (!newCtrl.indexIsChanging) {
-          final idx = newCtrl.index;
-          _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
-        }
-      });
-      if (mounted && shellTabVisible && gen == _s._loadGen) {
-        setState(() => _s._tabController = newCtrl);
-        markShellTabFresh();
-      } else {
-        newCtrl.dispose();
-      }
-    } catch (e) {
-      if (mounted && shellTabVisible && gen == _s._loadGen) {
-        setState(() {
-          _s._loading = false;
-          _s._error = e.toString();
-        });
-      }
-    }
-  }
-
-  Future<void> _loadCdn(int gen) async {
-    try {
-      final results = await Future.wait([
-        _fetchCdnChannels(),
-        _fetchCdnSports(),
-      ]);
-      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
-      final channels = results[0] as List<_CdnChannel>;
-      final sports = results[1] as List<_CdnSportEvent>;
-
-      // Build categories from sports
-      final seenCats = <String>{};
-      final cats = <_Sport>[];
-      for (final s in sports) {
-        if (s.tournament.isNotEmpty && seenCats.add(s.tournament)) {
-          cats.add(_Sport(id: s.tournament, name: s.tournament));
-        }
-      }
-
-      final oldCtrl = _s._tabController;
-      setState(() {
-        _s._tabController = null;
-        _s._cdnChannels = channels;
-        _s._cdnSports = sports;
-        _s._sports = cats;
-        _s._loading = false;
-      });
-      oldCtrl?.dispose();
-      final newCtrl = TabController(length: cats.length + 1, vsync: _s);
-      newCtrl.addListener(() {
-        if (!newCtrl.indexIsChanging) {
-          final idx = newCtrl.index;
-          _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
-        }
-      });
-      if (mounted && shellTabVisible && gen == _s._loadGen) {
-        setState(() => _s._tabController = newCtrl);
-        markShellTabFresh();
-      } else {
-        newCtrl.dispose();
-      }
-    } catch (e) {
-      if (mounted && shellTabVisible && gen == _s._loadGen) {
-        setState(() {
-          _s._loading = false;
-          _s._error = e.toString();
-        });
-      }
-    }
+  /// Sport chip / tab change rebuilds the time canvas - re-land on now.
+  void _setSportFilter(String id) {
+    setState(() {
+      _s._sportFilter = id;
+      _s._timelineAutoScrolled = false;
+    });
   }
 
   List<_DamiTvStream> get _filteredDamiTv => _sortDamiTvLiveFirst(

@@ -1,6 +1,6 @@
 part of 'details_screen.dart';
 
-mixin _DetailsScreenFetch on State<DetailsScreen> {
+mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
   _DetailsScreenState get _s => this as _DetailsScreenState;
 
   Future<void> _resolveInitialSeasonEpisode() async {
@@ -35,9 +35,7 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
     _s._syncPanelKindFilterToPlaySources();
     if (!mounted) return;
 
-    final bool isCustomId =
-        stremioItem != null &&
-        !(stremioItem['id']?.toString().startsWith('tt') ?? true);
+    final bool isCustomId = _s._isCustomStremioItem;
 
     try {
       final streamAddons = await _s._stremio.getAddonsForResource('stream');
@@ -50,7 +48,7 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
       // If this is a custom-ID Stremio item, skip TMDB fetch - we already
       // have all the info we need from the search result.
       if (isCustomId) {
-        debugPrint('[DetailsScreen] Custom ID detected: ${stremioItem['id']}');
+        debugPrint('[DetailsScreen] Custom ID detected: ${stremioItem!['id']}');
         debugPrint(
           '[DetailsScreen] stremioItem keys: ${stremioItem.keys.toList()}',
         );
@@ -98,8 +96,11 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
       }
 
       final RichMediaDetails rich;
+      final similarFuture = ref.read(
+        detailsRecommendationsProvider(_s._metaKey).future,
+      );
       if (_s._movie.mediaType == 'tv') {
-        rich = await _s._api.getRichTvDetails(widget.movie.id);
+        rich = await ref.read(detailsMetaProvider(_s._metaKey).future);
         if (widget.initialSeason == null) {
           await _resolveInitialSeasonEpisode();
         }
@@ -108,11 +109,9 @@ mixin _DetailsScreenFetch on State<DetailsScreen> {
         }
         await _s._fetchSeason(_s._selectedSeason);
       } else {
-        rich = await _s._api.getRichMovieDetails(widget.movie.id);
+        rich = await ref.read(detailsMetaProvider(_s._metaKey).future);
       }
-      final similar = rich.movie.mediaType == 'tv'
-          ? await _s._api.getTvRecommendations(rich.movie.id)
-          : await _s._api.getMovieRecommendations(rich.movie.id);
+      final similar = await similarFuture;
       if (mounted) {
         setState(() {
           _s._movie = rich.movie;

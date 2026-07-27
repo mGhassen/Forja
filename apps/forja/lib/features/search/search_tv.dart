@@ -1,6 +1,6 @@
 part of 'search_screen.dart';
 
-mixin _SearchTv on State<SearchScreen> {
+mixin _SearchTv on ConsumerState<SearchScreen> {
   SearchScreenState get _s => this as SearchScreenState;
 
   List<_FlatSearchResult> _flatResults() {
@@ -446,7 +446,7 @@ mixin _SearchTv on State<SearchScreen> {
     _s._pendingGridFocusIndex = 0;
 
     if (hadPendingDebounce) {
-      _s._performUnifiedSearch(query);
+      (this as _SearchSearch)._runSearchNow(query);
     }
 
     _scheduleFocusOnResultCardIfPending();

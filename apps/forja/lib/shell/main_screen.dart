@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/audiobooks/audiobook_screen.dart';
 import 'package:forja/features/anime/anime_screen.dart';
 import 'package:forja/features/anime/anime_search_screen.dart';
@@ -27,32 +28,28 @@ import 'package:forja/shell/macos_shell_channel.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 
-class MainScreen extends StatefulWidget {
+class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
 
-  static State<MainScreen>? of(BuildContext context) {
+  static ConsumerState<MainScreen>? of(BuildContext context) {
     return context.findAncestorStateOfType<_MainScreenState>();
   }
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
-  static List<String> _bootstrapVisibleNavIds() {
-    final base = SettingsService.platformProfile == PlatformProfile.androidTv
-        ? SettingsService.defaultTvVisibleNavIds
-        : SettingsService.defaultVisibleNavIds;
-    return [...base, 'settings'];
-  }
-
-  int _selectedIndex =
-      SettingsService.initialShellTabIndex(_bootstrapVisibleNavIds());
+class _MainScreenState extends ConsumerState<MainScreen>
+    with WidgetsBindingObserver {
+  /// Prefer home until the first async navbar load resolves — do not paint the
+  /// full platform-default rail (all Features tabs) before the real config.
+  int _selectedIndex = 0;
   Timer? _metricsDebounce;
   Timer? _metricsSafety;
 
@@ -84,7 +81,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   /// Empty until [_loadNavbarConfig] mounts the profile default tab.
   final Set<String> _mountedTabIds = {};
   final List<String> _tabLru = [];
-  List<String> _visibleIds = _bootstrapVisibleNavIds();
+  /// Empty until first [getNavbarConfig] — avoids all-tabs → filtered flash.
+  List<String> _visibleIds = const [];
   bool _initialNavResolved = false;
   BuildContext? _shellScopedContext;
 
@@ -219,6 +217,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Rapid tab switches queue multiple callbacks; only the still-selected
+      // tab may run show/refresh (avoids setState/invalidate on a deactivated
+      // keep-alive element → Riverpod ancestor lookup / inactive-elements assert).
+      if (_currentTabId != id) return;
       _notifyTabShown(id);
       _refreshTabIfStale(id);
     });
@@ -250,7 +252,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     ShellBus.shellChromeRevision.addListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
     ShellBus.playerSurfaceActive.addListener(_onShellChromeChanged);
-    SettingsService.navbarChangeNotifier.addListener(_onNavbarConfigChanged);
     MacOsShellChannel.listen(onFind: _onFindShortcut);
 
     _loadNavbarConfig();
@@ -284,6 +285,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           _tabCache.clear();
           _mountedTabIds.clear();
           _tabLru.clear();
+          // Drop GlobalKeys so remounted tabs cannot reparent a deactivated
+          // element mid-frame (Riverpod ancestor lookup / inactive-elements).
+          _tabKeys.clear();
         }
         _initialNavResolved = true;
         _selectedIndex = SettingsService.initialShellTabIndex(
@@ -297,7 +301,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           _applyTabShellChrome(tabId);
           unawaited(ProductAnalytics.screenTab(tabId));
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _notifyTabShown(tabId);
+            if (!mounted || _currentTabId != tabId) return;
+            _notifyTabShown(tabId);
           });
         }
       } else if (currentId != null) {
@@ -417,13 +422,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
     ShellBus.playerSurfaceActive.removeListener(_onShellChromeChanged);
     ShellBus.clearHideGlobalNav();
-    SettingsService.navbarChangeNotifier.removeListener(_onNavbarConfigChanged);
     MacOsShellChannel.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(navbarRevisionProvider, (_, _) {
+      _onNavbarConfigChanged();
+    });
     return ShellScopeBuilder(
       builder: (shellContext, profile) {
         _shellScopedContext = shellContext;

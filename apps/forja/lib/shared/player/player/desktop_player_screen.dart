@@ -64,6 +64,8 @@ import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 
 part 'desktop_player_glass.dart';
 part 'desktop_player_lifecycle.dart';

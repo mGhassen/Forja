@@ -1,6 +1,6 @@
 part of 'details_screen.dart';
 
-mixin _DetailsScreenBuild on State<DetailsScreen> {
+mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
   _DetailsScreenState get _s => this as _DetailsScreenState;
 
   Widget _buildDetailsHero({
@@ -229,7 +229,13 @@ mixin _DetailsScreenBuild on State<DetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_s._isLoading) {
+    final metaAsync = _s._isCustomStremioItem
+        ? null
+        : ref.watch(detailsMetaProvider(_s._metaKey));
+    final isLoading =
+        _s._isLoading || (metaAsync?.isLoading ?? false);
+
+    if (isLoading) {
       return Scaffold(
         backgroundColor: AppTheme.bgDark,
         body: Stack(

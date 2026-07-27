@@ -1,6 +1,6 @@
 part of 'search_screen.dart';
 
-mixin _SearchBuild on State<SearchScreen> {
+mixin _SearchBuild on ConsumerState<SearchScreen> {
   SearchScreenState get _s => this as SearchScreenState;
 
   double _searchPageTopInset(BuildContext context) =>
@@ -69,6 +69,18 @@ mixin _SearchBuild on State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    _s._watchSearchResultsProvider();
+    ref.watch(searchAddonProvidersProvider);
+    final trendingTitles = ref.watch(searchTrendingTitlesProvider).valueOrNull;
+    if (trendingTitles != null && trendingTitles.isNotEmpty) {
+      shellTvRegisterRow(
+        tabId: 'search',
+        rowId: 'helpers',
+        sortOrder: 0,
+        itemCount: trendingTitles.length,
+        orientation: ShellTvRowOrientation.vertical,
+      );
+    }
 
     if (widget.overlay) {
       return ValueListenableBuilder<AppThemePreset>(

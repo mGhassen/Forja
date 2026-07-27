@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/iptv/iptv/providers/iptv_controller_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -50,16 +52,16 @@ String _redactUrl(String? url) {
 
 /// Main entry-point widget for the PT IPTV experience.
 /// Presents all 6 sub-views and routes to the dedicated player.
-class IptvPtScreen extends StatefulWidget {
+class IptvPtScreen extends ConsumerStatefulWidget {
   const IptvPtScreen({super.key});
 
   @override
-  State<IptvPtScreen> createState() => _IptvPtScreenState();
+  ConsumerState<IptvPtScreen> createState() => _IptvPtScreenState();
 }
 
-class _IptvPtScreenState extends State<IptvPtScreen>
+class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
     with ShellTabRefresh<IptvPtScreen> {
-  late final IptvController _ctrl;
+  IptvController get _ctrl => ref.read(iptvControllerProvider);
 
   @override
   Duration get shellStaleAfter => ShellTokens.tabStaleIptv;
@@ -78,17 +80,20 @@ class _IptvPtScreenState extends State<IptvPtScreen>
   @override
   void initState() {
     super.initState();
-    _ctrl = IptvController();
-    _ctrl.addListener(_syncShellNav);
-    ShellTvFocusCoordinator.registerTabDefaults(
-      'iptv',
-      restoreFocus: iptvRestoreCatalogFocus,
-      enterFromNavFocus: () => iptvEnterFromNav(_ctrl),
-      pageBack: () => iptvHandleCatalogPageBack(_ctrl),
-    );
-    unawaited(SyncService.instance.pullAccountFeatures());
-    _ctrl.init().then((_) {
-      if (mounted) markShellTabFresh();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final ctrl = ref.read(iptvControllerProvider);
+      ctrl.addListener(_syncShellNav);
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'iptv',
+        restoreFocus: iptvRestoreCatalogFocus,
+        enterFromNavFocus: () => iptvEnterFromNav(ctrl),
+        pageBack: () => iptvHandleCatalogPageBack(ctrl),
+      );
+      unawaited(SyncService.instance.pullAccountFeatures());
+      ctrl.init().then((_) {
+        if (mounted) markShellTabFresh();
+      });
     });
   }
 
@@ -105,7 +110,6 @@ class _IptvPtScreenState extends State<IptvPtScreen>
     ShellTvFocusCoordinator.unregisterTabDefaults('iptv');
     ShellTvFocusCoordinator.clearTab('iptv');
     _ctrl.removeListener(_syncShellNav);
-    _ctrl.dispose();
     super.dispose();
   }
 
@@ -114,6 +118,7 @@ class _IptvPtScreenState extends State<IptvPtScreen>
 
   @override
   Widget build(BuildContext context) {
+    final ctrl = ref.watch(iptvControllerProvider);
     return VisibilityDetector(
       key: const Key('iptv_pt_screen'),
       onVisibilityChanged: (info) {
@@ -123,17 +128,17 @@ class _IptvPtScreenState extends State<IptvPtScreen>
         }
       },
       child: PopScope(
-        canPop: !_ctrl.portalPanelOpen && _ctrl.view != IptvView.episodeList,
+        canPop: !ctrl.portalPanelOpen && ctrl.view != IptvView.episodeList,
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) _ctrl.back();
+          if (!didPop) ctrl.back();
         },
         child: AnimatedBuilder(
-          animation: _ctrl,
+          animation: ctrl,
           builder: (_, _) => AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
             child: KeyedSubtree(
-              key: ValueKey(_ctrl.view),
-              child: _buildView(context),
+              key: ValueKey(ctrl.view),
+              child: _buildView(context, ctrl),
             ),
           ),
         ),
@@ -141,22 +146,22 @@ class _IptvPtScreenState extends State<IptvPtScreen>
     );
   }
 
-  Widget _buildView(BuildContext context) {
-    switch (_ctrl.view) {
+  Widget _buildView(BuildContext context, IptvController ctrl) {
+    switch (ctrl.view) {
       case IptvView.portalList:
       case IptvView.sectionPick:
       case IptvView.browser:
         return _IptvCatalogShell(
-          ctrl: _ctrl,
+          ctrl: ctrl,
           compact: _isCompact(context),
           wide: _isWide(context),
         );
       case IptvView.episodeList:
-        return _EpisodeListView(ctrl: _ctrl, compact: _isCompact(context));
+        return _EpisodeListView(ctrl: ctrl, compact: _isCompact(context));
       case IptvView.channelsHub:
       case IptvView.channelResults:
         return _IptvCatalogShell(
-          ctrl: _ctrl,
+          ctrl: ctrl,
           compact: _isCompact(context),
           wide: _isWide(context),
         );

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:rust/rust.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/search/providers/search_providers.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
@@ -21,21 +23,20 @@ part 'search_tv.dart';
 part 'search_build.dart';
 
 /// Search tab - RFC-024 R24-A11: query-driven only; no ShellTabRefresh / auto stale refetch.
-class SearchScreen extends StatefulWidget {
+class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key, this.overlay = false});
 
   /// Slide-in overlay from Home / hubs (vs mounted Search tab).
   final bool overlay;
 
   @override
-  State<SearchScreen> createState() => SearchScreenState();
+  ConsumerState<SearchScreen> createState() => SearchScreenState();
 }
 
-class SearchScreenState extends State<SearchScreen>
+class SearchScreenState extends ConsumerState<SearchScreen>
     with AutomaticKeepAliveClientMixin, _SearchSearch, _SearchTv, _SearchBuild {
   final TextEditingController _controller = TextEditingController();
   final TmdbApi _api = TmdbApi();
-  final StremioService _stremio = StremioService();
   final FocusNode _focusNode = FocusNode();
   final FocusNode _closeFocusNode = FocusNode(debugLabel: 'search-close');
   final FocusNode _firstHelperFocusNode = FocusNode();
@@ -45,16 +46,13 @@ class SearchScreenState extends State<SearchScreen>
   Timer? _debounce;
   String _query = '';
 
-  /// All search-capable addon providers (loaded once).
-  List<Map<String, dynamic>> _addonProviders = [];
+  /// Debounced query driving [searchResultsProvider].
+  String _activeSearchQuery = '';
 
-  /// Currently visible sections (populated dynamically as results arrive).
-  final List<_SearchSection> _sections = [];
+  /// Currently visible sections (from Riverpod search results).
+  List<_SearchSection> _sections = [];
 
-  /// Track which search generation we're on to discard stale results.
-  int _searchGeneration = 0;
-
-  /// True while at least one provider hasn't responded yet.
+  /// True while [searchResultsProvider] is loading for [_activeSearchQuery].
   bool _isSearching = false;
 
   int? _helperFocusedIndex;
@@ -63,11 +61,19 @@ class SearchScreenState extends State<SearchScreen>
   /// After picking a proposition, focus the matching grid card once results exist.
   int? _pendingGridFocusIndex;
 
-  List<String> _trendingHelperTitles = [];
   bool _searchFieldEditing = false;
+
+  /// Cached for debounce/invalidate without inherited lookup on inactive elements.
+  ProviderContainer? _container;
 
   @override
   bool get wantKeepAlive => true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _container = ProviderScope.containerOf(context, listen: false);
+  }
 
   @override
   void initState() {
@@ -81,8 +87,6 @@ class SearchScreenState extends State<SearchScreen>
     ShellBus.registerFindShortcutHandler(_handleFindShortcut);
     _focusNode.addListener(_onSearchFieldFocusChange);
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
-    _loadProviders();
-    _loadTrendingHelpers();
     ShellBus.stremioSearchNotifier.addListener(_onExternalSearch);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ShellBus.notifyShellChromeChanged();

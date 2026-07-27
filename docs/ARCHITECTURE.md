@@ -20,7 +20,7 @@ Forja is a **GPL-2.0 melos monorepo**: one cross-platform Flutter product (`apps
 |---------|-------|
 | Engine (playback, catalog APIs, storage, proxy, scrape) | `crates/*` |
 | C2 vertical scrape + C3–C5 hosts (WebView, Nuvio, WASM) | `apps/forja` (until ported) |
-| Widgets, navigation, theme, OAuth | Host (`apps/forja`) |
+| Widgets, navigation, theme, OAuth, **Riverpod host state** ([RFC-047](rfc/047-[open]-riverpod-state-migration.md)) | Host (`apps/forja`) |
 | FFI bridge | `packages/rust` (permanent) |
 
 ### Target end-state

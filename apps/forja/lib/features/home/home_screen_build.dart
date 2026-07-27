@@ -23,10 +23,25 @@ SliverToBoxAdapter _homeRowSliver(
   );
 }
 
-mixin _HomeScreenBuild on State<HomeScreen> {
+mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
   _HomeScreenState get _s => this as _HomeScreenState;
 
   static const int _kGenreRowOrderBase = 21;
+
+  void _listenHomeFeedSideEffects() {
+    ref.listen(addonRevisionProvider, (prev, next) {
+      if (prev != next) _s._onAddonsChanged();
+    });
+    ref.listen(shellWatchProviderIdProvider, (prev, next) {
+      if (prev != next) _s._onWatchProviderChanged();
+    });
+    ref.listen(shellHomeCategoryProvider, (prev, next) {
+      if (prev != next) _s._onHomeCategoryChanged();
+    });
+    ref.listen(shellHomeGenreIdProvider, (prev, next) {
+      if (prev != next) _s._onHomeGenreChanged();
+    });
+  }
 
   List<Widget> _randomCategoryRowSlivers() => [
         for (var i = 0; i < _s._randomCategoryRows.length; i++)
@@ -47,6 +62,8 @@ mixin _HomeScreenBuild on State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    _s._syncMainRailFutures();
+    _listenHomeFeedSideEffects();
 
     final usesShellHome = _usesShellHomeLayout(context);
     final fullHero = homeIsFullCinematicHero(context);

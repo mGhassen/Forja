@@ -71,8 +71,13 @@ class SyncDomainBridge {
   /// Local KV is a device-global **cache**; every profile switch/create must
   /// reset before applying that profile's cloud payload. Never schedules a
   /// cloud push - empty/default cache must not overwrite cloud.
+  ///
+  /// When [notify] is false, UI listeners are not bumped mid-wipe (caller
+  /// should notify once after the final cloud import so the shell does not
+  /// flash platform-default nav tabs).
   Future<void> resetSyncedLocalToPlatformDefaults({
     bool clearIptv = true,
+    bool notify = true,
   }) async {
     // Cache-only wipe - cancel any debounced push that would upload defaults.
     cancelPendingPushes();
@@ -92,14 +97,17 @@ class SyncDomainBridge {
       'iptv_epg_enabled': defaults.iptvEpgEnabled,
       'max_playback_height': 0,
     });
-    await _settings.setNavbarConfig(List<String>.from(defaults.visibleNavIds));
+    await _settings.setNavbarConfig(
+      List<String>.from(defaults.visibleNavIds),
+      notify: notify,
+    );
     await _settings.setDefaultNavTab('home');
 
     final addons = await _settings.getStremioAddons();
     for (final addon in addons) {
       final baseUrl = (addon['baseUrl'] as String?)?.trim() ?? '';
       if (baseUrl.isNotEmpty) {
-        await _settings.removeStremioAddon(baseUrl);
+        await _settings.removeStremioAddon(baseUrl, notify: notify);
       }
     }
 
@@ -126,7 +134,52 @@ class SyncDomainBridge {
     await pushAllLocal(pushIptvIfLocalEmpty: false);
   }
 
-  Future<void> pullAndMergeAll() async {
+  DateTime? _lastCloudPullAt;
+  Future<void>? _cloudPullInFlight;
+  static const _cloudPullMinInterval = Duration(seconds: 15);
+
+  /// Cloud → local cache. Flush pending local domain pushes first so an in-flight
+  /// edit is not lost, then [pullAndMergeAll]. Debounced unless [force].
+  ///
+  /// Call on window focus / app resume, and from realtime when cloud changes.
+  Future<void> syncFromCloud({bool force = false}) async {
+    if (!SyncService.instance.isSignedIn) return;
+    final now = DateTime.now();
+    if (!force &&
+        _lastCloudPullAt != null &&
+        now.difference(_lastCloudPullAt!) < _cloudPullMinInterval) {
+      return;
+    }
+    final inflight = _cloudPullInFlight;
+    if (inflight != null) return inflight;
+
+    late final Future<void> run;
+    run = () async {
+      try {
+        final pending = Set<String>.from(_pushTimers.keys);
+        cancelPendingPushes();
+        if (pending.isNotEmpty) {
+          await pushAllLocal(
+            pushIptvIfLocalEmpty: false,
+            allowEmptyStremioWipe: pending.contains(_domainStremio),
+            allowEmptyNuvioWipe: pending.contains(_domainNuvio),
+          );
+        }
+        await pullAndMergeAll(resetLocalFirst: false);
+        _lastCloudPullAt = DateTime.now();
+      } catch (e) {
+        debugPrint('[Sync] syncFromCloud failed: $e');
+      } finally {
+        if (identical(_cloudPullInFlight, run)) {
+          _cloudPullInFlight = null;
+        }
+      }
+    }();
+    _cloudPullInFlight = run;
+    return run;
+  }
+
+  Future<void> pullAndMergeAll({bool resetLocalFirst = true}) async {
     if (!SyncService.instance.isSignedIn) {
       AccountFeatures.instance.clear();
       return;
@@ -138,7 +191,7 @@ class SyncDomainBridge {
       await seedNewProfileDefaults();
       return;
     }
-    await _applyLeanPayload(remote);
+    await _applyLeanPayload(remote, resetLocalFirst: resetLocalFirst);
     // Lazy IPTV: only pull portals when this profile shows the IPTV tab.
     // Otherwise wipe the device cache so the previous profile cannot bleed.
     final nav = await _settings.getNavbarConfig();
@@ -282,9 +335,19 @@ class SyncDomainBridge {
     return next;
   }
 
-  Future<void> _applyLeanPayload(Map<String, dynamic> payload) async {
-    // Reset first: missing lean keys must not keep the previous profile's local state.
-    await resetSyncedLocalToPlatformDefaults(clearIptv: false);
+  Future<void> _applyLeanPayload(
+    Map<String, dynamic> payload, {
+    required bool resetLocalFirst,
+  }) async {
+    // Profile switch: wipe first so missing lean keys cannot keep prior profile.
+    // Focus/resume refresh: apply cloud over the current cache — do not flash
+    // platform-default nav (all tabs) before the real visibleIds land.
+    if (resetLocalFirst) {
+      await resetSyncedLocalToPlatformDefaults(
+        clearIptv: false,
+        notify: false,
+      );
+    }
 
     final playback = payload['playback'];
     if (playback is Map) {
@@ -307,6 +370,9 @@ class SyncDomainBridge {
     final navigation = payload['navigation'];
     if (navigation is Map) {
       await _importNavigation(Map<String, dynamic>.from(navigation));
+    } else if (resetLocalFirst) {
+      // Reset left platform-default nav without notifying; publish once.
+      SettingsService.navbarChangeNotifier.value++;
     }
 
     // Ignore legacy payload.iptv (M3U / portals) - tables + local store own IPTV.

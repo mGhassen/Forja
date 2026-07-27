@@ -27,6 +27,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -440,6 +441,7 @@ class _SettingsNavigationPageBodyState
         .where((id) => _navbarVisible.contains(id))
         .toList();
     _settings.setNavbarConfig(visible);
+    scheduleNavigationSyncPush();
     final startupOptions = _startupTabOptions();
     if (!startupOptions.contains(_defaultNavTab)) {
       final resolved = startupOptions.isNotEmpty
@@ -447,12 +449,14 @@ class _SettingsNavigationPageBodyState
           : 'settings';
       setState(() => _defaultNavTab = resolved);
       _settings.setDefaultNavTab(resolved);
+      scheduleNavigationSyncPush();
     }
   }
 
   void _setDefaultNavTab(String id) {
     setState(() => _defaultNavTab = id);
     _settings.setDefaultNavTab(id);
+    scheduleNavigationSyncPush();
   }
 
   Widget _defaultNavStar(String id, {required bool enabled}) {

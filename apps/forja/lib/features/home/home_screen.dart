@@ -3,12 +3,14 @@ import 'package:rust/rust.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/home/providers/home_feed_providers.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shell/app_router.dart';
-import 'package:forja/app/boot_cache.dart';
 import 'package:forja/shell/home_top_bar.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
@@ -21,31 +23,30 @@ import 'package:forja/features/home/widgets/home_mood_section.dart';
 import 'package:forja/features/home/widgets/home_movie_section.dart';
 import 'package:forja/features/home/widgets/stremio_catalog_section.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 
 
 
 part 'home_screen_feed.dart';
 part 'home_screen_build.dart';
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
+class _HomeScreenState extends ConsumerState<HomeScreen>
     with AutomaticKeepAliveClientMixin, ShellTabRefresh<HomeScreen>, _HomeScreenFeed, _HomeScreenBuild {
 
   final TmdbApi _api = TmdbApi();
   final StremioService _stremio = StremioService();
   final ScrollController _homeScrollController = ScrollController();
   final HomeHeroController _homeHeroController = HomeHeroController();
-  late Future<List<Movie>> _trendingFuture;
-  late Future<List<Movie>> _popularFuture;
-  late Future<List<Movie>> _featuredThisMonthFuture;
-  late Future<List<Movie>> _nowPlayingFuture;
+  Future<List<Movie>> _trendingFuture = Future.value(const <Movie>[]);
+  Future<List<Movie>> _popularFuture = Future.value(const <Movie>[]);
+  Future<List<Movie>> _featuredThisMonthFuture = Future.value(const <Movie>[]);
+  Future<List<Movie>> _nowPlayingFuture = Future.value(const <Movie>[]);
 
   List<({String id, String label, Future<List<Movie>> future})>
       _randomCategoryRows = [];
@@ -77,9 +78,6 @@ class _HomeScreenState extends State<HomeScreen>
   int _homeBgWorkGen = 0;
   bool _postSplashWorkStarted = false;
   VoidCallback? _splashDismissedListener;
-  VoidCallback? _watchProviderListener;
-  VoidCallback? _homeCategoryListener;
-  VoidCallback? _homeGenreListener;
 
   bool _shellOffsetSyncScheduled = false;
 
@@ -196,6 +194,17 @@ class _HomeScreenState extends State<HomeScreen>
 
 
 
+  void _syncMainRailFutures() {
+    ref.watch(homeTrendingProvider);
+    ref.watch(homePopularProvider);
+    ref.watch(homeFeaturedProvider);
+    ref.watch(homeNowPlayingProvider);
+    _trendingFuture = ref.read(homeTrendingProvider.future);
+    _popularFuture = ref.read(homePopularProvider.future);
+    _featuredThisMonthFuture = ref.read(homeFeaturedProvider.future);
+    _nowPlayingFuture = ref.read(homeNowPlayingProvider.future);
+  }
+
   void _syncHomeScrollOffset() {
     if (_shellOffsetSyncScheduled) return;
     _shellOffsetSyncScheduled = true;
@@ -214,16 +223,9 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     _homeScrollController.addListener(_syncHomeScrollOffset);
-    _resetHomeCategoryFeeds(useBootCache: true);
+    _resetHomeCategoryFeeds();
 
     _loadStremioCatalogs();
-    SettingsService.addonChangeNotifier.addListener(_onAddonsChanged);
-    _watchProviderListener = _onWatchProviderChanged;
-    ShellBus.selectedWatchProviderId.addListener(_watchProviderListener!);
-    _homeCategoryListener = _onHomeCategoryChanged;
-    ShellBus.homeCategory.addListener(_homeCategoryListener!);
-    _homeGenreListener = _onHomeGenreChanged;
-    ShellBus.homeSelectedGenreId.addListener(_homeGenreListener!);
 
     _schedulePostSplashWork();
     markShellTabFresh();

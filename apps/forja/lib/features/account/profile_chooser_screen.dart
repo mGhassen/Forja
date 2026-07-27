@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/app/boot_cache.dart';
 import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
@@ -213,7 +214,9 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     try {
       final selected = await SyncService.instance.selectProfile(profile.id);
       if (!selected) return false;
-      await SyncDomainBridge.instance.pullAndMergeAll();
+      await ProviderScope.containerOf(context)
+          .read(profileSettingsSyncProvider.notifier)
+          .pullAndMergeForProfileSwitch();
       BootCache.clear();
       return true;
     } catch (_) {

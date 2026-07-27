@@ -1,6 +1,6 @@
 part of 'details_screen.dart';
 
-mixin _DetailsScreenEpisodes on State<DetailsScreen> {
+mixin _DetailsScreenEpisodes on ConsumerState<DetailsScreen> {
   _DetailsScreenState get _s => this as _DetailsScreenState;
 
   Future<void> _loadEpisodeProgressForSeason(int season) async {

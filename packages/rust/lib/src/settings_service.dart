@@ -351,7 +351,7 @@ class SettingsService {
     if (notify) addonChangeNotifier.value++;
   }
 
-  Future<void> removeStremioAddon(String baseUrl) async {
+  Future<void> removeStremioAddon(String baseUrl, {bool notify = true}) async {
     final base = normalizeStremioAddonBaseUrl(baseUrl);
     final current = await getStremioAddons();
     current.removeWhere(
@@ -359,7 +359,7 @@ class SettingsService {
           normalizeStremioAddonBaseUrl(a['baseUrl']?.toString() ?? '') == base,
     );
     await kvSetMapList(_stremioAddonsKey, current);
-    addonChangeNotifier.value++;
+    if (notify) addonChangeNotifier.value++;
   }
 
   Future<bool> isStreamingModeEnabled() async =>
@@ -1108,10 +1108,13 @@ class SettingsService {
     return filtered;
   }
 
-  Future<void> setNavbarConfig(List<String> visibleIds) async {
+  Future<void> setNavbarConfig(
+    List<String> visibleIds, {
+    bool notify = true,
+  }) async {
     await kvSetStringList(_navbarConfigKey, visibleIds);
     await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
-    navbarChangeNotifier.value++;
+    if (notify) navbarChangeNotifier.value++;
   }
 
   static const List<String> _secureKeys = [

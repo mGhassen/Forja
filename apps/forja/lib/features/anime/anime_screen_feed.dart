@@ -1,6 +1,6 @@
 part of 'anime_screen.dart';
 
-mixin _AnimeScreenFeed on State<AnimeScreen>, ShellTabRefresh<AnimeScreen> {
+mixin _AnimeScreenFeed on ConsumerState<AnimeScreen>, ShellTabRefresh<AnimeScreen> {
   _AnimeScreenState get _s => this as _AnimeScreenState;
 
   void _onHistoryChanged() => _refreshHistory();
@@ -75,91 +75,37 @@ mixin _AnimeScreenFeed on State<AnimeScreen>, ShellTabRefresh<AnimeScreen> {
 
   Future<void> _load() async {
     if (!mounted || !shellTabVisible) return;
+    final container = _s._container;
+    // Visibility keep-alive can leave State.mounted true while the element is
+    // deactivated — never fall back to ProviderScope.containerOf here.
+    if (container == null) return;
     final gen = ++_s._loadGen;
     unawaited(_refreshHistory());
-
-    // One TRENDING_DESC query → spotlight / top10 / trending (was 3).
-    final trendingBase =
-        _safeSection(_s._service.getTrending(perPage: 20), 'trending');
-    final spotlightFuture =
-        trendingBase.then(_spotlightFromTrending);
-    final top10Future = trendingBase.then((list) => list.take(10).toList());
-    final trendingFuture = trendingBase;
-
-    final topAiringFuture = _safeSection(_s._service.getTopAiring(), 'top airing');
-    final mostPopularFuture =
-        _safeSection(_s._service.getMostPopular(), 'most popular');
-    final mostFavoriteFuture =
-        _safeSection(_s._service.getMostFavorite(), 'most favorite');
-    final topRatedFuture = _safeSection(_s._service.getTopRated(), 'top rated');
-    final latestCompletedFuture =
-        _safeSection(_s._service.getLatestCompleted(), 'latest completed');
-    final recentEpisodesFuture =
-        _safeSection(_s._service.getRecentEpisodes(), 'recent episodes');
-    final moodFuture = _loadMood(_s._selectedMood);
-
-    setState(() {
-      _s._error = null;
-      _s._catalogResolved = false;
-      _s._spotlightFuture = spotlightFuture;
-      _s._trendingFuture = trendingFuture;
-      _s._topAiringFuture = topAiringFuture;
-      _s._mostPopularFuture = mostPopularFuture;
-      _s._mostFavoriteFuture = mostFavoriteFuture;
-      _s._topRatedFuture = topRatedFuture;
-      _s._latestCompletedFuture = latestCompletedFuture;
-      _s._top10Future = top10Future;
-      _s._recentEpisodesFuture = recentEpisodesFuture;
-      _s._moodFuture = moodFuture;
+    final done = Completer<void>();
+    // Shell show/refresh runs in a post-frame callback; the keep-alive element
+    // may still be inactive in that window. Defer so setState is safe.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
+        setState(() {
+          _s._error = null;
+          _s._catalogResolved = false;
+        });
+        container.invalidate(animeCatalogProvider);
+        container.invalidate(animeMoodCatalogProvider(_s._selectedMood));
+      } finally {
+        if (!done.isCompleted) done.complete();
+      }
     });
-
-    unawaited(_enrichSpotlightTmdb(gen, spotlightFuture));
-
-    final results = await Future.wait([
-      spotlightFuture,
-      trendingFuture,
-      topAiringFuture,
-      mostPopularFuture,
-      mostFavoriteFuture,
-      topRatedFuture,
-      latestCompletedFuture,
-      top10Future,
-      recentEpisodesFuture,
-    ]);
-    if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
-
-    final hasCatalog = results
-        .cast<List<AnimeCard>>()
-        .any((section) => section.isNotEmpty);
-
-    setState(() {
-      _s._catalogResolved = true;
-      _s._error =
-          hasCatalog ? null : 'Failed to load anime - check your connection';
-    });
-    if (hasCatalog) (this as ShellTabRefresh<AnimeScreen>).markShellTabFresh();
-  }
-
-  Future<List<AnimeCard>> _loadMood(String id) async {
-    try {
-      final mood = _AnimeScreenState._moods.firstWhere((m) => m.id == id, orElse: () => _AnimeScreenState._moods[0]);
-      return await _s._service.browse(
-        genre: mood.genre,
-        sort: 'TRENDING_DESC',
-        perPage: 20,
-      );
-    } catch (e) {
-      debugPrint('[AnimeScreen] mood load failed: $e');
-      return const [];
-    }
+    return done.future;
   }
 
   void _selectMood(String id) {
     if (id == _s._selectedMood) return;
-    setState(() {
-      _s._selectedMood = id;
-      _s._moodFuture = _loadMood(id);
-    });
+    setState(() => _s._selectedMood = id);
+    final container = _s._container;
+    if (container == null) return;
+    container.invalidate(animeMoodCatalogProvider(id));
   }
 
   void _openDetails(AnimeCard a) {

@@ -4,6 +4,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/asian_drama/providers/asian_drama_providers.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/asian_drama/widgets/asian_drama_continue_watching_section.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
@@ -23,14 +25,14 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
 
-class AsianDramaScreen extends StatefulWidget {
+class AsianDramaScreen extends ConsumerStatefulWidget {
   const AsianDramaScreen({super.key});
 
   @override
-  State<AsianDramaScreen> createState() => _AsianDramaScreenState();
+  ConsumerState<AsianDramaScreen> createState() => _AsianDramaScreenState();
 }
 
-class _AsianDramaScreenState extends State<AsianDramaScreen>
+class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
     with
         AutomaticKeepAliveClientMixin,
         WidgetsBindingObserver,
@@ -44,6 +46,10 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   final KissKhService _service = KissKhService();
   final TmdbApi _tmdb = TmdbApi();
   final ScrollController _scroll = ScrollController();
+
+  /// Cached so [onShellTabShown] / refresh can invalidate without
+  /// `dependOnInheritedWidget` on a deactivated [Visibility] child.
+  ProviderContainer? _container;
 
   KdramaHomeFeed? _feed;
   bool _loading = true;
@@ -124,7 +130,15 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
     WidgetsBinding.instance.addObserver(this);
     AppTheme.themeNotifier.addListener(_onTheme);
     KissKhService.watchHistoryRevision.addListener(_onHistoryChanged);
-    _load();
+    // Initial feed load comes from ref.watch in build — do not invalidate
+    // here (didChangeDependencies has not cached ProviderContainer yet).
+    unawaited(_refreshHistory());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _container = ProviderScope.containerOf(context, listen: false);
   }
 
   @override
@@ -160,35 +174,28 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
 
   Future<void> _load() async {
     if (!mounted || !shellTabVisible) return;
+    final container = _container;
+    // Visibility keep-alive can leave State.mounted true while the element is
+    // deactivated — never fall back to ProviderScope.containerOf here.
+    if (container == null) return;
     final gen = ++_loadGen;
-    setState(() {
-      _loading = true;
-      _error = null;
+    unawaited(_refreshHistory());
+    final done = Completer<void>();
+    // Shell show/refresh runs in a post-frame callback; the keep-alive element
+    // may still be inactive in that window. Defer so setState is safe.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        if (!mounted || !shellTabVisible || gen != _loadGen) return;
+        setState(() {
+          _loading = true;
+          _error = null;
+        });
+        container.invalidate(asianDramaFeedProvider);
+      } finally {
+        if (!done.isCompleted) done.complete();
+      }
     });
-    try {
-      final results = await Future.wait([
-        _service.getHome(),
-        _service.getWatchHistory(),
-      ]);
-      if (!mounted || !shellTabVisible || gen != _loadGen) return;
-      final feed = results[0] as KdramaHomeFeed;
-      setState(() {
-        _feed = feed;
-        _continueWatching = (results[1] as List<Map<String, dynamic>>)
-            .take(10)
-            .toList();
-        _loading = false;
-      });
-      markShellTabFresh();
-      // Hero synopsis: TMDB trial (or KissKH path when re-enabled).
-      unawaited(_enrichFeed(feed, gen));
-    } catch (e) {
-      if (!mounted || !shellTabVisible || gen != _loadGen) return;
-      setState(() {
-        _loading = false;
-        _error = '$e';
-      });
-    }
+    return done.future;
   }
 
   Future<void> _enrichFeed(KdramaHomeFeed feed, int gen) async {
@@ -465,6 +472,30 @@ class _AsianDramaScreenState extends State<AsianDramaScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    ref.listen(asianDramaFeedProvider, (_, next) {
+      if (!mounted || !shellTabVisible) return;
+      next.when(
+        loading: () {
+          if (!_loading) setState(() => _loading = true);
+        },
+        error: (e, _) {
+          setState(() {
+            _loading = false;
+            _error = '$e';
+          });
+        },
+        data: (feed) {
+          setState(() {
+            _feed = feed;
+            _loading = false;
+            _error = null;
+          });
+          markShellTabFresh();
+          unawaited(_enrichFeed(feed, _loadGen));
+        },
+      );
+    });
+    ref.watch(asianDramaFeedProvider);
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {

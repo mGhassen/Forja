@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/my_list/providers/my_list_providers.dart';
 import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
@@ -8,17 +10,16 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
-class MyListScreen extends StatefulWidget {
+class MyListScreen extends ConsumerStatefulWidget {
   const MyListScreen({super.key});
 
   @override
-  State<MyListScreen> createState() => _MyListScreenState();
+  ConsumerState<MyListScreen> createState() => _MyListScreenState();
 }
 
-class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyListScreen> {
+class _MyListScreenState extends ConsumerState<MyListScreen> with ShellTabRefresh<MyListScreen> {
   final MyListService _myList = MyListService();
   final TmdbApi _api = TmdbApi();
-  List<Map<String, dynamic>> _items = [];
   static const _gridRowId = 'grid';
 
   @override
@@ -27,14 +28,12 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
     if (!mounted) return;
-    setState(() => _items = _myList.items);
+    ref.invalidate(myListRevisionProvider);
   }
 
   @override
   void initState() {
     super.initState();
-    _items = _myList.items;
-    MyListService.changeNotifier.addListener(_onListChanged);
     ShellTvFocusCoordinator.registerTabDefaults(
       'mylist',
       enterFromNavFocus: () {
@@ -46,17 +45,10 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
     markShellTabFresh();
   }
 
-  void _onListChanged() {
-    if (mounted) {
-      setState(() => _items = _myList.items);
-    }
-  }
-
   @override
   void dispose() {
     ShellTvFocusCoordinator.unregisterTabDefaults('mylist');
     ShellTvFocusCoordinator.clearTab('mylist');
-    MyListService.changeNotifier.removeListener(_onListChanged);
     super.dispose();
   }
 
@@ -115,6 +107,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
 
   @override
   Widget build(BuildContext context) {
+    final items = ref.watch(myListItemsProvider);
     final crossAxisCount = shellGridCrossAxisCount(context);
 
     return CustomScrollView(
@@ -125,7 +118,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
             title: 'My List',
             actions: [
               Text(
-                '${_items.length} items',
+                '${items.length} items',
                 style: const TextStyle(
                   color: Colors.white38,
                   fontSize: 14,
@@ -135,7 +128,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
             ],
           ),
         ),
-        if (_items.isEmpty) ...[
+        if (items.isEmpty) ...[
           Builder(
             builder: (context) {
               shellTvUnregisterRow(tabId: 'mylist', rowId: _gridRowId);
@@ -179,15 +172,15 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    if (index == 0 && _items.isNotEmpty) {
+                    if (index == 0 && items.isNotEmpty) {
                       shellTvRegisterRow(
                         tabId: 'mylist',
                         rowId: 'grid',
                         sortOrder: 0,
-                        itemCount: _items.length,
+                        itemCount: items.length,
                       );
                     }
-                    final item = _items[index];
+                    final item = items[index];
                     return _MyListCard(
                       item: item,
                       gridIndex: index,
@@ -229,7 +222,7 @@ class _MyListScreenState extends State<MyListScreen> with ShellTabRefresh<MyList
                       },
                     );
                   },
-                  childCount: _items.length,
+                  childCount: items.length,
                 ),
               ),
             ),

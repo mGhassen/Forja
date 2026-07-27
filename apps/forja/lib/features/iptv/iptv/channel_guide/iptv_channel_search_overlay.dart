@@ -24,7 +24,7 @@ class IptvChannelSearchOverlay extends StatefulWidget {
   final VoidCallback onClose;
 
   static const int maxVisibleResults = 8;
-  static const double resultRowHeight = 48;
+  static const double resultRowHeight = 58;
   static const double panelRadius = 12;
   static const double panelWidth = 400;
 
@@ -503,7 +503,7 @@ class _SearchResultTileState extends State<_SearchResultTile> {
         child: InkWell(
         onTap: widget.onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
             color: active
                 ? _accent.withValues(alpha: 0.18)
@@ -520,7 +520,7 @@ class _SearchResultTileState extends State<_SearchResultTile> {
           child: Row(
             children: [
               _ChannelLogo(url: widget.channel.logoUrl ?? ''),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -569,8 +569,8 @@ class _ChannelLogo extends StatelessWidget {
   const _ChannelLogo({required this.url});
 
   final String url;
-  static const double width = 52;
-  static const double height = 34;
+  static const double width = 60;
+  static const double height = 44;
 
   @override
   Widget build(BuildContext context) {

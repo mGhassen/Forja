@@ -34,6 +34,10 @@ class _BrowserViewState extends State<_BrowserView> {
   bool _wasLoading = false;
   bool _wasPortalPanelOpen = false;
   String _lastBrowserSearch = '';
+  /// TV category rail focus — channel pane stays on the last OK/→ group until
+  /// this matches [IptvController.browserSelectedCategoryId].
+  String? _tvFocusedCategoryId;
+  bool _tvCategoryRailFocused = false;
 
   bool get _searchOpen => widget.ctrl.browserSearchOpen;
   bool get _needsPortal => widget.ctrl.activePortal == null;
@@ -225,11 +229,37 @@ class _BrowserViewState extends State<_BrowserView> {
     if (prev != categoryId) {
       iptvResetBrowserStreamsFocusMemory();
     }
+    if (iptvUseTvFocus(context)) {
+      setState(() {
+        _tvFocusedCategoryId = categoryId;
+        _tvCategoryRailFocused = !enterStreams;
+      });
+    }
     if (!enterStreams || !iptvUseTvFocus(context)) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       iptvFocusRowItem('browser-streams');
     });
+  }
+
+  void _onCategoryTvFocus(String categoryId, bool focused) {
+    if (!iptvUseTvFocus(context)) return;
+    setState(() {
+      if (focused) {
+        _tvFocusedCategoryId = categoryId;
+        _tvCategoryRailFocused = true;
+      } else if (_tvFocusedCategoryId == categoryId) {
+        _tvCategoryRailFocused = false;
+      }
+    });
+  }
+
+  /// While D-pad is on an unopened group, keep logos off the channel pane.
+  bool get _tvCategoryPendingCommit {
+    if (!iptvUseTvFocus(context) || !_tvCategoryRailFocused) return false;
+    final focused = _tvFocusedCategoryId;
+    if (focused == null) return false;
+    return focused != widget.ctrl.browserSelectedCategoryId;
   }
 
   @override
@@ -528,6 +558,9 @@ class _BrowserViewState extends State<_BrowserView> {
 
   Widget _buildChannelPane() {
     final ctrl = widget.ctrl;
+    if (_tvCategoryPendingCommit) {
+      return _buildPressOkToOpenCategory();
+    }
     final useGuide =
         !widget.compact &&
         !ShellScope.metricsOf(context).usesTvDensity &&
@@ -546,6 +579,23 @@ class _BrowserViewState extends State<_BrowserView> {
       );
     }
     return widget.compact ? _buildStreamRows() : _buildStreamGrid();
+  }
+
+  Widget _buildPressOkToOpenCategory() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Text(
+          'Press OK to open',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            color: Colors.white54,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildCategorySidebar({bool compact = false}) {
@@ -604,6 +654,8 @@ class _BrowserViewState extends State<_BrowserView> {
               // → commits the focused group first (TV no longer selects on focus).
               onRightEdge: () =>
                   _commitBrowserCategory(cat.id, enterStreams: true),
+              onTvFocusChange: (focused) =>
+                  _onCategoryTvFocus(cat.id, focused),
             );
           }
 

@@ -15,6 +15,7 @@ class _CategorySidebarRow extends StatefulWidget {
     this.reorderIndex,
     this.onUpEdge,
     this.onRightEdge,
+    this.onTvFocusChange,
   });
 
   final String label;
@@ -30,6 +31,8 @@ class _CategorySidebarRow extends StatefulWidget {
   final int? reorderIndex;
   final VoidCallback? onUpEdge;
   final VoidCallback? onRightEdge;
+  /// TV: report focus so the channel pane can stay lazy until OK / →.
+  final ValueChanged<bool>? onTvFocusChange;
 
   @override
   State<_CategorySidebarRow> createState() => _CategorySidebarRowState();
@@ -81,6 +84,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
         // TV: ↑/↓ only moves focus chrome — do not select. Selecting rebuilds
         // the channel grid and starts logo fetches; that runs on OK / → instead.
         setState(() => _focused = focused);
+        widget.onTvFocusChange?.call(focused);
       },
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(

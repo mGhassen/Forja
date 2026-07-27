@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/features/settings/providers/stremio_addons_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
@@ -7,23 +9,23 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/sync/sync.dart';
 
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr.
-class SettingsProvidersSection extends StatefulWidget {
+class SettingsProvidersSection extends ConsumerStatefulWidget {
   const SettingsProvidersSection({super.key, required this.visibility});
 
   final SettingsVisibility visibility;
 
   @override
-  State<SettingsProvidersSection> createState() =>
+  ConsumerState<SettingsProvidersSection> createState() =>
       _SettingsProvidersSectionState();
 }
 
-class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
+class _SettingsProvidersSectionState
+    extends ConsumerState<SettingsProvidersSection> {
   final SettingsService _settings = SettingsService();
   final StremioService _stremio = StremioService();
   final JackettService _jackett = JackettService();
   final ProwlarrService _prowlarr = ProwlarrService();
 
-  List<Map<String, dynamic>> _installedAddons = [];
   bool _isInstalling = false;
   final TextEditingController _addonController = TextEditingController();
   final TextEditingController _nuvioController = TextEditingController();
@@ -46,7 +48,7 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _loadIndexerConfig();
     _loadNuvioAddons();
     NuvioService.changeNotifier.addListener(_loadNuvioAddons);
   }
@@ -71,8 +73,7 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
     setState(() => _nuvioAddons = list);
   }
 
-  Future<void> _load() async {
-    final addons = await _settings.getStremioAddons();
+  Future<void> _loadIndexerConfig() async {
     final jackettUrl = await _settings.getJackettBaseUrl();
     final jackettKey = await _settings.getJackettApiKey();
     final prowlarrUrl = await _settings.getProwlarrBaseUrl();
@@ -80,20 +81,22 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
     final prowlarrTagIds = await _settings.getProwlarrTagIds();
     if (!mounted) return;
     setState(() {
-      _installedAddons = addons;
       _jackettUrlController.text = jackettUrl ?? '';
       _jackettApiKeyController.text = jackettKey ?? '';
       _prowlarrUrlController.text = prowlarrUrl ?? '';
       _prowlarrApiKeyController.text = prowlarrKey ?? '';
       _prowlarrSelectedTagIds = prowlarrTagIds.toSet();
     });
-    if ((prowlarrUrl?.isNotEmpty ?? false) && (prowlarrKey?.isNotEmpty ?? false)) {
+    if ((prowlarrUrl?.isNotEmpty ?? false) &&
+        (prowlarrKey?.isNotEmpty ?? false)) {
       _tryLoadProwlarrTags();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final addonsAsync = ref.watch(stremioAddonsProvider);
+    final installedAddons = addonsAsync.valueOrNull ?? const [];
     final v = widget.visibility;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -101,7 +104,21 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
         if (v.showStremioAddons)
           SettingsGroup(
             label: 'Stremio addons',
-            children: [_buildAddonInput()],
+            children: [
+              if (addonsAsync.isLoading && installedAddons.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                )
+              else
+                _buildAddonInput(installedAddons),
+            ],
           ),
         if (v.showNuvio)
           SettingsGroup(
@@ -132,7 +149,7 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
       if (addonData != null) {
         await _settings.saveStremioAddon(addonData);
         _addonController.clear();
-        await _load();
+        // saveStremioAddon bumps addonChangeNotifier → stremioAddonsProvider.
         scheduleStremioSyncPush();
         if (mounted) ForjaToast.success('Addon installed successfully!');
       } else {
@@ -147,11 +164,11 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
 
   void _removeAddon(String baseUrl) async {
     await _settings.removeStremioAddon(baseUrl);
-    await _load();
     scheduleStremioSyncPush();
     if (mounted) ForjaToast.success('Addon removed');
   }
-  Widget _buildAddonInput() {
+
+  Widget _buildAddonInput(List<Map<String, dynamic>> installedAddons) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
@@ -170,11 +187,11 @@ class _SettingsProvidersSectionState extends State<SettingsProvidersSection> {
             busy: _isInstalling,
             onPressed: _installAddon,
           ),
-          if (_installedAddons.isNotEmpty) ...[
+          if (installedAddons.isNotEmpty) ...[
             const SizedBox(height: 20),
             const _MiniLabel('Installed addons'),
             const SizedBox(height: 4),
-            ..._installedAddons.map((addon) {
+            ...installedAddons.map((addon) {
               // Synced / web-installed addons may omit icon (or name).
               // Never pass a null URL into Image.network.
               final icon = addon['icon']?.toString().trim() ?? '';

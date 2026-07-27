@@ -1,6 +1,6 @@
 part of 'details_screen.dart';
 
-mixin _DetailsScreenWebstreaming on State<DetailsScreen> {
+mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
   _DetailsScreenState get _s => this as _DetailsScreenState;
 
   Future<void> _resumeEpisodeWebStream(String providerId) async {

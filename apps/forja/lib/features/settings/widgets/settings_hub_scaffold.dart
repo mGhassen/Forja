@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/pages/settings_category_bodies.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
+import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
-import 'package:rust/rust.dart';
 
 /// Hub chrome: split sidebar on wide (incl. Android TV 1080p+), list→push on compact.
-class SettingsHubScaffold extends StatefulWidget {
+class SettingsHubScaffold extends ConsumerStatefulWidget {
   const SettingsHubScaffold({
     super.key,
     required this.selectedId,
@@ -23,10 +25,11 @@ class SettingsHubScaffold extends StatefulWidget {
   final FocusNode? firstTileFocusNode;
 
   @override
-  State<SettingsHubScaffold> createState() => _SettingsHubScaffoldState();
+  ConsumerState<SettingsHubScaffold> createState() =>
+      _SettingsHubScaffoldState();
 }
 
-class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
+class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   static const _categoryRowId = 'settings-categories';
 
   SettingsVisibility? _visibility;
@@ -36,35 +39,28 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
   @override
   void initState() {
     super.initState();
-    SettingsService.playSourceChangeNotifier.addListener(_reload);
-    SettingsService.navbarChangeNotifier.addListener(_reload);
     // Back ladder: detail → selected category → first category → nav rail.
     ShellTvFocusCoordinator.registerTabDefaults(
       'settings',
       pageBack: _handlePageBack,
     );
-    _reload();
   }
 
-  @override
-  void dispose() {
-    SettingsService.playSourceChangeNotifier.removeListener(_reload);
-    SettingsService.navbarChangeNotifier.removeListener(_reload);
-    shellTvUnregisterRow(tabId: 'settings', rowId: _categoryRowId);
-    _detailScope.dispose();
-    super.dispose();
-  }
-
-  Future<void> _reload() async {
-    final next = await SettingsVisibility.resolve();
+  void _reloadFromProvider(SettingsVisibility next) {
     if (!mounted) return;
     setState(() => _visibility = next);
-    // Split layout only - compact uses push routes and keeps selectedId at profile.
     if (!SettingsTokens.useSplitLayout(context)) return;
     final ids = settingsCategories(next).map((c) => c.id).toSet();
     if (!ids.contains(widget.selectedId)) {
       widget.onSelect(SettingsCategoryId.profile);
     }
+  }
+
+  @override
+  void dispose() {
+    shellTvUnregisterRow(tabId: 'settings', rowId: _categoryRowId);
+    _detailScope.dispose();
+    super.dispose();
   }
 
   void _registerCategoryRow(int count) {
@@ -97,7 +93,6 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
     final first = OrderedTraversalPolicy().findFirstFocus(_detailScope);
     if (first == null || !first.canRequestFocus) {
       _detailScope.requestFocus();
-      // Async bodies (Features navbar load) may gain focusables next frame.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_detailScope.hasFocus) return;
         final retry = OrderedTraversalPolicy().findFirstFocus(_detailScope);
@@ -131,7 +126,6 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
     return null;
   }
 
-  /// TV Back: detail → selected category → first category → (false → nav).
   bool _handlePageBack() {
     if (!mounted) return false;
     if (!SettingsTokens.useSplitLayout(context)) return false;
@@ -163,7 +157,18 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    final visibility = _visibility;
+    final visibilityAsync = ref.watch(settingsVisibilityProvider);
+    ref.listen(settingsVisibilityProvider, (_, next) {
+      next.whenData(_reloadFromProvider);
+    });
+    ref.listen(playSourceRevisionProvider, (_, _) {
+      ref.invalidate(settingsVisibilityProvider);
+    });
+    ref.listen(navbarRevisionProvider, (_, _) {
+      ref.invalidate(settingsVisibilityProvider);
+    });
+
+    final visibility = visibilityAsync.valueOrNull ?? _visibility;
     if (visibility == null) {
       return const SafeArea(child: SizedBox.expand());
     }

@@ -1,6 +1,6 @@
 part of 'exo_player_screen.dart';
 
-mixin _ExoPlayerTracks on State<ExoPlayerScreen> {
+mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
   _ExoPlayerScreenState get _s => this as _ExoPlayerScreenState;
 
   /// Download (or reuse cache) → local `file://` → soft-reload Media3 sideloads.

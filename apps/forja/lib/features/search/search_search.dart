@@ -1,61 +1,59 @@
 part of 'search_screen.dart';
 
-mixin _SearchSearch on State<SearchScreen> {
+mixin _SearchSearch on ConsumerState<SearchScreen> {
   SearchScreenState get _s => this as SearchScreenState;
 
-  Future<void> _loadProviders() async {
-    final catalogs = await _s._stremio.getAllCatalogs();
-    final Map<String, Map<String, dynamic>> providers = {};
-    for (final c in catalogs) {
-      if (c['supportsSearch'] != true) continue;
-      final key = c['addonBaseUrl'] as String;
-      if (!providers.containsKey(key)) {
-        providers[key] = {
-          'id': key,
-          'name': c['addonName'],
-          'icon': c['addonIcon'],
-          'baseUrl': key,
-          'catalogs': <Map<String, dynamic>>[],
-        };
-      }
-      (providers[key]!['catalogs'] as List).add(c);
-    }
-    if (mounted) {
-      setState(() => _s._addonProviders = providers.values.toList());
-    }
+  List<Map<String, dynamic>> get _addonProviders {
+    return ref.watch(searchAddonProvidersProvider).valueOrNull ?? const [];
   }
 
-  Future<void> _loadTrendingHelpers() async {
-    try {
-      final movies = await _s._api.getTrending();
-      final shows = await _s._api.getTrendingTv();
-      final titles = <String>[];
-      for (final item in [...movies, ...shows]) {
-        if (item.title.isEmpty || titles.contains(item.title)) continue;
-        titles.add(item.title);
-        if (titles.length >= 12) break;
-      }
-      if (mounted) {
-        setState(() => _s._trendingHelperTitles = titles);
-        shellTvRegisterRow(
-          tabId: 'search',
-          rowId: 'helpers',
-          sortOrder: 0,
-          itemCount: titles.length,
-          orientation: ShellTvRowOrientation.vertical,
-        );
-        if (_s._query.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            if (_s._tvFocus(context) &&
-                ShellTvFocus.currentNavTabId == 'search' &&
-                !_s._focusNode.hasFocus) {
-              _s._focusSearchFieldBrowse();
-            }
-          });
-        }
-      }
-    } catch (_) {}
+  List<String> get _trendingHelperTitles {
+    return ref.watch(searchTrendingTitlesProvider).valueOrNull ?? const [];
+  }
+
+  List<_SearchSection> _mapSearchSections(List<SearchResultSection> sections) {
+    return sections
+        .map(
+          (s) => _SearchSection(
+            key: s.key,
+            title: s.title,
+            icon: s.icon,
+            isTmdb: s.isTmdb,
+            results: List<dynamic>.from(s.results),
+          ),
+        )
+        .toList();
+  }
+
+  /// Apply provider value into local fields without [setState].
+  /// Safe to call from [build] (Riverpod watch path).
+  void _applySearchAsync(AsyncValue<List<SearchResultSection>> async) {
+    async.when(
+      loading: () {
+        _s._isSearching = true;
+      },
+      error: (_, _) {
+        _s._isSearching = false;
+      },
+      data: (sections) {
+        _s._sections = _mapSearchSections(sections);
+        _s._isSearching = false;
+      },
+    );
+  }
+
+  /// Debounced query change → immediate fetch (TV submit / external).
+  void _runSearchNow(String query) {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return;
+    setState(() {
+      _s._activeSearchQuery = trimmed;
+      _s._sections = [];
+      _s._isSearching = true;
+      _s._gridFocusedIndex = null;
+    });
+    (_s._container ?? ProviderScope.containerOf(context, listen: false))
+        .invalidate(searchResultsProvider(trimmed));
   }
 
   void _applyHelperQuery(String title) {
@@ -68,7 +66,7 @@ mixin _SearchSearch on State<SearchScreen> {
     final data = ShellBus.stremioSearchNotifier.value;
     if (data == null || (data['query'] ?? '').isEmpty) return;
     final query = data['query']!;
-    if (_s._addonProviders.isEmpty) await _loadProviders();
+    await ref.read(searchAddonProvidersProvider.future);
     if (mounted) {
       _s._controller.text = query;
       _onSearchChanged(query);
@@ -86,6 +84,7 @@ mixin _SearchSearch on State<SearchScreen> {
       setState(() {
         _s._sections.clear();
         _s._isSearching = false;
+        _s._activeSearchQuery = '';
         _s._helperFocusedIndex = null;
         _s._gridFocusedIndex = null;
         _s._pendingGridFocusIndex = null;
@@ -96,141 +95,37 @@ mixin _SearchSearch on State<SearchScreen> {
       return;
     }
     _s._debounce = Timer(const Duration(milliseconds: 500), () {
-      _performUnifiedSearch(query);
-    });
-  }
-
-  /// Fire all search APIs in parallel; results stream in as they arrive.
-  Future<void> _performUnifiedSearch(String query) async {
-    if (query.trim().isEmpty) return;
-
-    final gen = ++_s._searchGeneration;
-    setState(() {
-      _s._sections.clear();
-      _s._isSearching = true;
-      _s._gridFocusedIndex = null;
-    });
-
-    int pendingCount = 1 + _s._addonProviders.length; // TMDB + each addon
-
-    void decPending() {
-      pendingCount--;
-      if (pendingCount <= 0 && gen == _s._searchGeneration && mounted) {
-        setState(() => _s._isSearching = false);
-      }
-    }
-
-    // ── TMDB ──
-    _searchTmdb(query, gen).then((_) => decPending());
-
-    // ── Stremio Addons ──
-    for (final provider in _s._addonProviders) {
-      _searchAddon(query, provider, gen).then((_) => decPending());
-    }
-  }
-
-  Future<void> _searchTmdb(String query, int gen) async {
-    try {
-      final results = await _s._api.searchMulti(query);
-      if (gen != _s._searchGeneration || !mounted) return;
-
-      final movies = results.where((m) => m.mediaType == 'movie').toList();
-      final shows = results.where((m) => m.mediaType == 'tv').toList();
-
+      final trimmed = query.trim();
+      if (trimmed.isEmpty) return;
       setState(() {
-        if (movies.isNotEmpty) {
-          _s._sections.insert(
-            0,
-            _SearchSection(
-              key: 'tmdb_movies',
-              title: 'TMDB Movies',
-              isTmdb: true,
-              results: movies,
-            ),
-          );
-        }
-        if (shows.isNotEmpty) {
-          // Insert after tmdb_movies if it exists, else at 0
-          final idx = _s._sections.indexWhere((s) => s.key == 'tmdb_movies');
-          _s._sections.insert(
-            idx >= 0 ? idx + 1 : 0,
-            _SearchSection(
-              key: 'tmdb_shows',
-              title: 'TMDB Shows',
-              isTmdb: true,
-              results: shows,
-            ),
-          );
-        }
+        _s._activeSearchQuery = trimmed;
+        _s._sections = [];
+        _s._isSearching = true;
+        _s._gridFocusedIndex = null;
       });
-      _s._scheduleFocusOnResultCardIfPending();
-    } catch (e) {
-      debugPrint('TMDB search error: $e');
-    }
+      (_s._container ?? ProviderScope.containerOf(context, listen: false))
+          .invalidate(searchResultsProvider(trimmed));
+    });
   }
 
-  Future<void> _searchAddon(
-    String query,
-    Map<String, dynamic> provider,
-    int gen,
-  ) async {
-    final providerBaseUrl = provider['baseUrl'] as String;
-    final providerName = provider['name'] as String;
-    final providerIcon = provider['icon']?.toString() ?? '';
-    final catalogs = provider['catalogs'] as List<Map<String, dynamic>>;
+  /// Watch [searchResultsProvider] in build — never [setState] here.
+  void _watchSearchResultsProvider() {
+    final query = _s._activeSearchQuery.trim();
+    if (query.isEmpty) return;
 
-    // Group results by type (movie / series)
-    final Map<String, List<Map<String, dynamic>>> byType = {};
+    final async = ref.watch(searchResultsProvider(query));
+    final wasSearching = _s._isSearching;
+    _applySearchAsync(async);
 
-    await Future.wait(
-      catalogs.map((cat) async {
-        try {
-          final results = await _s._stremio.getCatalog(
-            baseUrl: cat['addonBaseUrl'],
-            type: cat['catalogType'],
-            id: cat['catalogId'],
-            search: query,
-          );
-          for (final r in results) {
-            r['_addonBaseUrl'] = providerBaseUrl;
-            r['_addonName'] = providerName;
-          }
-          final type = cat['catalogType']?.toString() ?? 'other';
-          byType.putIfAbsent(type, () => []);
-          byType[type]!.addAll(results);
-        } catch (_) {}
-      }),
-    );
-
-    if (gen != _s._searchGeneration || !mounted) return;
-
-    setState(() {
-      for (final entry in byType.entries) {
-        // Deduplicate within this type
-        final seen = <String>{};
-        final deduped = entry.value.where((r) {
-          final id = r['id']?.toString() ?? '';
-          if (id.isEmpty || seen.contains(id)) return false;
-          seen.add(id);
-          return true;
-        }).toList();
-
-        if (deduped.isEmpty) continue;
-
-        final typeLabel = entry.key == 'series'
-            ? 'Shows'
-            : (entry.key == 'movie' ? 'Movies' : entry.key);
-        _s._sections.add(
-          _SearchSection(
-            key: '${providerBaseUrl}_${entry.key}',
-            title: '$providerName $typeLabel',
-            icon: providerIcon,
-            results: deduped,
-          ),
-        );
-      }
-    });
-    _s._scheduleFocusOnResultCardIfPending();
+    // Focus after results land (post-frame — must not run mid-build).
+    if (async.hasValue &&
+        wasSearching &&
+        _s._pendingGridFocusIndex != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _s._scheduleFocusOnResultCardIfPending();
+      });
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

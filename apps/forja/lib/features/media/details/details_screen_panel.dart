@@ -1,6 +1,6 @@
 part of 'details_screen.dart';
 
-mixin _DetailsScreenPanel on State<DetailsScreen> {
+mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
   _DetailsScreenState get _s => this as _DetailsScreenState;
 
   // ─── audio filter helpers ────────────────────────────────────────────────

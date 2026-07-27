@@ -1,6 +1,6 @@
 part of 'exo_player_screen.dart';
 
-mixin _ExoPlayerSources on State<ExoPlayerScreen> {
+mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
   _ExoPlayerScreenState get _s => this as _ExoPlayerScreenState;
 
   bool get _usesCatalogSourcesPanel {
@@ -102,6 +102,7 @@ mixin _ExoPlayerSources on State<ExoPlayerScreen> {
 
     final gen = (_s._providerLoadGens[providerId] ?? 0) + 1;
     _s._providerLoadGens[providerId] = gen;
+    _s.ref.read(playerResolveStatusProvider.notifier).setLoading(providerId);
 
     try {
       if (widget.movie == null || widget.providers == null) return null;
@@ -129,10 +130,19 @@ mixin _ExoPlayerSources on State<ExoPlayerScreen> {
         if (forceRefresh && providerId == _s._currentProvider) {
           _s._currentSources = sources;
         }
+        _s.ref.read(playerResolveStatusProvider.notifier).setReady();
         return sources;
       }
+      _s.ref.read(playerResolveStatusProvider.notifier).setError(
+            'No streams found',
+          );
       return null;
     } catch (_) {
+      if (!_s._disposed && (_s._providerLoadGens[providerId] ?? 0) == gen) {
+        _s.ref.read(playerResolveStatusProvider.notifier).setError(
+              'Failed to load sources',
+            );
+      }
       return null;
     }
   }

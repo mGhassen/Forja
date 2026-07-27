@@ -1,6 +1,6 @@
 part of 'anime_screen.dart';
 
-mixin _AnimeScreenBuild on State<AnimeScreen> {
+mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
   _AnimeScreenState get _s => this as _AnimeScreenState;
 
   /// TV D-pad order must match visual stack.
@@ -79,6 +79,43 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    ref.listen(animeCatalogProvider, (_, next) {
+      if (!mounted || !_s.shellTabVisible) return;
+      next.when(
+        loading: () {
+          if (_s._catalogResolved) return;
+          setState(() => _s._catalogResolved = false);
+        },
+        error: (_, _) {
+          setState(() {
+            _s._catalogResolved = true;
+            _s._error = 'Failed to load anime - check your connection';
+          });
+        },
+        data: (bundle) => _s._applyCatalogBundle(bundle),
+      );
+    });
+    ref.listen(animeMoodCatalogProvider(_s._selectedMood), (_, next) {
+      if (!mounted) return;
+      next.whenData((cards) {
+        setState(() => _s._moodFuture = Future.value(cards));
+      });
+    });
+    final catalogAsync = ref.watch(animeCatalogProvider);
+    ref.watch(animeMoodCatalogProvider(_s._selectedMood));
+    // ref.listen does not fire for the current value — bridge AsyncData that
+    // arrived before the listener was attached (or while the tab was hidden).
+    final pendingBundle = catalogAsync.asData?.value;
+    if (pendingBundle != null &&
+        _s._trendingFuture == null &&
+        _s.shellTabVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_s.shellTabVisible || _s._trendingFuture != null) {
+          return;
+        }
+        _s._applyCatalogBundle(pendingBundle);
+      });
+    }
     return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
@@ -92,12 +129,15 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
         // Bleed Trending owns 0; otherwise Trending is the first catalog row.
         final trendingOrder = trendingOnHero ? 0 : catalogBase;
         final catalogStart = trendingOnHero ? catalogBase : catalogBase + 1;
+        // Riverpod no longer seeds futures in _load(); HubCatalogSection
+        // asserts future != null — gate until _applyCatalogBundle runs.
+        final catalogReady = _s._trendingFuture != null;
         void focusHeroPlay() {
           ShellTvFocusCoordinator.revealHeroForTab('anime');
           ShellTvFocus.focusHomeHeroPlay();
         }
 
-        final trendingSection = trendingOnHero
+        final trendingSection = catalogReady && trendingOnHero
             ? HubCatalogSection<AnimeCard>(
                 title: 'Trending Now',
                 future: _s._trendingFuture,
@@ -128,6 +168,15 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                               parent: AlwaysScrollableScrollPhysics(),
                             ),
                             slivers: [
+                              if (!catalogReady)
+                                ...homeHubLoadingSlivers(
+                                  context,
+                                  heroShimmer: homeCinematicHeroShimmer(
+                                    context,
+                                    pageBottomBleed: trendingOnHero,
+                                  ),
+                                )
+                              else ...[
                               SliverToBoxAdapter(
                                 child: FutureBuilder<List<AnimeCard>>(
                                   future: _s._spotlightFuture,
@@ -308,6 +357,7 @@ mixin _AnimeScreenBuild on State<AnimeScreen> {
                                 ),
                                 isFirstAfterHero: false,
                               ),
+                              ],
                               const SliverToBoxAdapter(
                                 child: SizedBox(height: 80),
                               ),

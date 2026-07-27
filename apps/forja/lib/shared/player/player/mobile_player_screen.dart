@@ -67,6 +67,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 
 part 'mobile_player_glass.dart';
 part 'mobile_player_lifecycle.dart';

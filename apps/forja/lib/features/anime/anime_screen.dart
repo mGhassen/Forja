@@ -4,6 +4,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/anime/providers/anime_catalog_provider.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub/hub_cinematic_hero.dart';
@@ -30,18 +32,22 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 part 'anime_screen_feed.dart';
 part 'anime_screen_build.dart';
 
-class AnimeScreen extends StatefulWidget {
+class AnimeScreen extends ConsumerStatefulWidget {
   const AnimeScreen({super.key});
 
   @override
-  State<AnimeScreen> createState() => _AnimeScreenState();
+  ConsumerState<AnimeScreen> createState() => _AnimeScreenState();
 }
 
-class _AnimeScreenState extends State<AnimeScreen>
+class _AnimeScreenState extends ConsumerState<AnimeScreen>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver, ShellTabRefresh<AnimeScreen>, _AnimeScreenFeed, _AnimeScreenBuild {
   final AnimeService _service = AnimeService();
   final ScrollController _cwScrollController = ScrollController();
   final ScrollController _scroll = ScrollController();
+
+  /// Cached so tab show/refresh can invalidate without inherited lookup
+  /// on a deactivated [Visibility] child.
+  ProviderContainer? _container;
 
   // Section futures
   Future<List<AnimeCard>>? _spotlightFuture;
@@ -172,7 +178,34 @@ class _AnimeScreenState extends State<AnimeScreen>
     AppTheme.themeNotifier.addListener(_onTheme);
     SettingsService.animeTitleLanguageNotifier.addListener(_onTheme);
     AnimeService.watchHistoryRevision.addListener(_onHistoryChanged);
-    unawaited(_load());
+    // Initial catalog load comes from ref.watch in build — do not invalidate
+    // here (didChangeDependencies has not cached ProviderContainer yet).
+    unawaited(_refreshHistory());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _container = ProviderScope.containerOf(context, listen: false);
+  }
+
+  void _applyCatalogBundle(AnimeCatalogBundle bundle) {
+    setState(() {
+      _error = bundle.hasCatalog
+          ? null
+          : 'Failed to load anime - check your connection';
+      _catalogResolved = true;
+      _spotlightFuture = Future.value(bundle.spotlight);
+      _trendingFuture = Future.value(bundle.trending);
+      _topAiringFuture = Future.value(bundle.topAiring);
+      _mostPopularFuture = Future.value(bundle.mostPopular);
+      _mostFavoriteFuture = Future.value(bundle.mostFavorite);
+      _topRatedFuture = Future.value(bundle.topRated);
+      _latestCompletedFuture = Future.value(bundle.latestCompleted);
+      _top10Future = Future.value(bundle.top10);
+      _recentEpisodesFuture = Future.value(bundle.recentEpisodes);
+    });
+    if (bundle.hasCatalog) markShellTabFresh();
   }
 
   @override

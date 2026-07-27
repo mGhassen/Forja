@@ -10,7 +10,7 @@ part of 'live_matches_screen.dart';
 //  Day / 12h / 6h set how many hours one screen height spans.
 // ═════════════════════════════════════════════════════════════════════════════
 
-mixin _LiveMatchesTimeline on State<LiveMatchesScreen> {
+mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   static const double _timelineRulerWidth = 112;

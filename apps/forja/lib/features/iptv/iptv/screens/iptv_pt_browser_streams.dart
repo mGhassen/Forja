@@ -1,8 +1,7 @@
 part of 'iptv_pt_screen.dart';
 
-/// Live/Movies probe direct URLs; Series probes the first episode.
-bool _streamHealthEnabled(IptvStream s) =>
-    s.kind == 'live' || s.kind == 'vod' || s.kind == 'series';
+/// Live channels probe on hover/focus; Movies and Series skip status checks.
+bool _streamHealthEnabled(IptvStream s) => s.kind == 'live';
 
 class _StreamThumbPlayHint extends StatelessWidget {
   const _StreamThumbPlayHint({required this.active});

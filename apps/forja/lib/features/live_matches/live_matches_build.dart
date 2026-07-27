@@ -1,6 +1,6 @@
 part of 'live_matches_screen.dart';
 
-mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
+mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   bool _tvFocus(BuildContext context) =>
@@ -343,6 +343,22 @@ mixin _LiveMatchesBuild on State<LiveMatchesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(liveMatchesPrimaryLoadProvider(_s._server), (_, next) {
+      if (!mounted || !(this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible) return;
+      next.when(
+        loading: () {
+          if (!_s._loading) setState(() => _s._loading = true);
+        },
+        error: (e, _) {
+          setState(() {
+            _s._loading = false;
+            _s._error = e.toString();
+          });
+        },
+        data: (this as _LiveMatchesData)._applyPrimaryLoad,
+      );
+    });
+    ref.watch(liveMatchesPrimaryLoadProvider(_s._server));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

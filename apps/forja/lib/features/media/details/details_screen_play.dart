@@ -1,6 +1,6 @@
 part of 'details_screen.dart';
 
-mixin _DetailsScreenPlay on State<DetailsScreen> {
+mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
   _DetailsScreenState get _s => this as _DetailsScreenState;
 
   Duration? _startPositionForAutoPlay({required bool fromRoute}) {

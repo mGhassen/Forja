@@ -1,47 +1,7 @@
 part of 'home_screen.dart';
 
-mixin _HomeScreenFeed on State<HomeScreen>, ShellTabRefresh<HomeScreen> {
+mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> {
   _HomeScreenState get _s => this as _HomeScreenState;
-
-  Future<List<Movie>> _fetchMovies({
-    required Future<List<Movie>> Function() standard,
-    List<int>? genres,
-    int? watchProviderId,
-    String sortBy = 'popularity.desc',
-    double? minRating,
-    String? releaseDateGte,
-    String? releaseDateLte,
-  }) {
-    if (genres == null || genres.isEmpty) return standard();
-    return _s._api.discoverMovies(
-      genres: genres,
-      watchProviderId: watchProviderId,
-      sortBy: sortBy,
-      minRating: minRating,
-      releaseDateGte: releaseDateGte,
-      releaseDateLte: releaseDateLte,
-    );
-  }
-
-  Future<List<Movie>> _fetchTv({
-    required Future<List<Movie>> Function() standard,
-    List<int>? genres,
-    int? watchProviderId,
-    String sortBy = 'popularity.desc',
-    double? minRating,
-    String? releaseDateGte,
-    String? releaseDateLte,
-  }) {
-    if (genres == null || genres.isEmpty) return standard();
-    return _s._api.discoverTvShows(
-      genres: genres,
-      watchProviderId: watchProviderId,
-      sortBy: sortBy,
-      minRating: minRating,
-      releaseDateGte: releaseDateGte,
-      releaseDateLte: releaseDateLte,
-    );
-  }
 
   Future<List<Movie>> _fetchCategoryRow(
     ({String id, String label, List<int> movieGenres, List<int> tvGenres})
@@ -178,167 +138,15 @@ mixin _HomeScreenFeed on State<HomeScreen>, ShellTabRefresh<HomeScreen> {
     });
   }
 
-  ({String gte, String lte}) _currentMonthDateRange() {
-    final now = DateTime.now();
-    final lastDay = DateTime(now.year, now.month + 1, 0);
-    String pad(int n) => n.toString().padLeft(2, '0');
-    return (
-      gte: '${now.year}-${pad(now.month)}-01',
-      lte: '${lastDay.year}-${pad(lastDay.month)}-${pad(lastDay.day)}',
-    );
-  }
-
-  Future<List<Movie>> _loadFeaturedThisMonth() {
-    final range = _currentMonthDateRange();
-    final providerId = _s._watchProviderId;
-    final genres = _s._genreIds;
-    return _fetchMediaFiltered(
-      movieFetch: () => _fetchMovies(
-        standard: () => _s._api.discoverMovies(
-          releaseDateGte: range.gte,
-          releaseDateLte: range.lte,
-          minRating: 6.0,
-          watchProviderId: providerId,
-          sortBy: 'popularity.desc',
-        ),
-        genres: genres.movie,
-        releaseDateGte: range.gte,
-        releaseDateLte: range.lte,
-        minRating: 6.0,
-        watchProviderId: providerId,
-        sortBy: 'popularity.desc',
-      ),
-      tvFetch: () => _fetchTv(
-        standard: () => _s._api.discoverTvShows(
-          releaseDateGte: range.gte,
-          releaseDateLte: range.lte,
-          minRating: 6.0,
-          watchProviderId: providerId,
-          sortBy: 'popularity.desc',
-        ),
-        genres: genres.tv,
-        releaseDateGte: range.gte,
-        releaseDateLte: range.lte,
-        minRating: 6.0,
-        watchProviderId: providerId,
-        sortBy: 'popularity.desc',
-      ),
-    );
-  }
-
-  void _resetHomeCategoryFeeds({bool useBootCache = false}) {
+  void _resetHomeCategoryFeeds() {
     _s._homeFeedEpoch++;
-    final providerId = _s._watchProviderId;
-    final genres = _s._genreIds;
-    final canUseBootCache = useBootCache &&
-        providerId == null &&
-        ShellBus.homeSelectedGenreId.value == null &&
-        _s._mediaFilter == null;
-
-    if (providerId != null) {
-      _s._trendingFuture = _fetchMediaFiltered(
-        movieFetch: () => _fetchMovies(
-          standard: () => _s._api.discoverMovies(watchProviderId: providerId),
-          genres: genres.movie,
-          watchProviderId: providerId,
-        ),
-        tvFetch: () => _fetchTv(
-          standard: () => _s._api.discoverTvShows(watchProviderId: providerId),
-          genres: genres.tv,
-          watchProviderId: providerId,
-        ),
-      );
-      _s._popularFuture = _fetchMediaFiltered(
-        movieFetch: () => _fetchMovies(
-          standard: () => _s._api.discoverMovies(
-            watchProviderId: providerId,
-            sortBy: 'vote_average.desc',
-            minRating: 0,
-          ),
-          genres: genres.movie,
-          watchProviderId: providerId,
-          sortBy: 'vote_average.desc',
-          minRating: 0,
-        ),
-        tvFetch: () => _fetchTv(
-          standard: () => _s._api.discoverTvShows(
-            watchProviderId: providerId,
-            sortBy: 'vote_average.desc',
-            minRating: 0,
-          ),
-          genres: genres.tv,
-          watchProviderId: providerId,
-          sortBy: 'vote_average.desc',
-          minRating: 0,
-        ),
-      );
-      _s._nowPlayingFuture = _fetchMediaFiltered(
-        movieFetch: () => _fetchMovies(
-          standard: () => _s._api.discoverMovies(
-            watchProviderId: providerId,
-            sortBy: 'primary_release_date.desc',
-          ),
-          genres: genres.movie,
-          watchProviderId: providerId,
-          sortBy: 'primary_release_date.desc',
-        ),
-        tvFetch: () => _fetchTv(
-          standard: () => _s._api.discoverTvShows(
-            watchProviderId: providerId,
-            sortBy: 'first_air_date.desc',
-          ),
-          genres: genres.tv,
-          watchProviderId: providerId,
-          sortBy: 'first_air_date.desc',
-        ),
-      );
-      _s._featuredThisMonthFuture = _loadFeaturedThisMonth();
-    } else {
-      _s._trendingFuture = _fetchMediaFiltered(
-        movieFetch: () => _fetchMovies(
-          standard: _s._api.getTrending,
-          genres: genres.movie,
-        ),
-        tvFetch: () => _fetchTv(
-          standard: _s._api.getTrendingTv,
-          genres: genres.tv,
-        ),
-        movieCache: canUseBootCache ? BootCache.trending : null,
-      );
-      _s._popularFuture = _fetchMediaFiltered(
-        movieFetch: () => _fetchMovies(
-          standard: _s._api.getPopular,
-          genres: genres.movie,
-          sortBy: 'vote_average.desc',
-        ),
-        tvFetch: () => _fetchTv(
-          standard: _s._api.getPopularTv,
-          genres: genres.tv,
-          sortBy: 'vote_average.desc',
-        ),
-        movieCache: canUseBootCache ? BootCache.popular : null,
-      );
-      _s._nowPlayingFuture = _fetchMediaFiltered(
-        movieFetch: () => _fetchMovies(
-          standard: _s._api.getNowPlaying,
-          genres: genres.movie,
-          sortBy: 'primary_release_date.desc',
-        ),
-        tvFetch: () => _fetchTv(
-          standard: _s._api.getOnTheAir,
-          genres: genres.tv,
-          sortBy: 'first_air_date.desc',
-        ),
-        movieCache: canUseBootCache ? BootCache.nowPlaying : null,
-      );
-      _s._featuredThisMonthFuture = _loadFeaturedThisMonth();
-    }
     _s._moodFuture = _loadMoodMovies(_s._selectedMood);
     _resetRandomCategoryRows();
   }
 
   Future<void> _reloadHomeFeed() async {
     if (!mounted) return;
+    refreshHomeFeed(ref);
     setState(() => _resetHomeCategoryFeeds());
     await _loadStremioCatalogs();
     // Re-roll "Because you watched" on every Home refresh.
@@ -771,18 +579,8 @@ mixin _HomeScreenFeed on State<HomeScreen>, ShellTabRefresh<HomeScreen> {
 
   @override
   void dispose() {
-    SettingsService.addonChangeNotifier.removeListener(_onAddonsChanged);
     if (_s._splashDismissedListener != null) {
       ShellBus.splashDismissed.removeListener(_s._splashDismissedListener!);
-    }
-    if (_s._watchProviderListener != null) {
-      ShellBus.selectedWatchProviderId.removeListener(_s._watchProviderListener!);
-    }
-    if (_s._homeCategoryListener != null) {
-      ShellBus.homeCategory.removeListener(_s._homeCategoryListener!);
-    }
-    if (_s._homeGenreListener != null) {
-      ShellBus.homeSelectedGenreId.removeListener(_s._homeGenreListener!);
     }
     _s._homeScrollController.removeListener(_s._syncHomeScrollOffset);
     _s._homeScrollController.dispose();

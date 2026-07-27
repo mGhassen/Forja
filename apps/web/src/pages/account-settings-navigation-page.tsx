@@ -9,7 +9,6 @@ import {
   DEFAULT_NAV_TAB,
   DEFAULT_NAV_VISIBLE_IDS,
   SYNCABLE_NAV_TABS,
-  emptyNavigationPayload,
   normalizeNavigationPayload,
   type NavigationPayload,
 } from '@/lib/sync-domains'
@@ -51,7 +50,13 @@ function navigationFromServer(value: unknown): NavDraft {
 }
 
 function emptyNavDraft(): NavDraft {
-  return draftFromPayload(emptyNavigationPayload())
+  // Placeholder while the profile row loads — do not paint every tab checked
+  // (emptyNavigationPayload defaults), or the UI flashes all-on then real subset.
+  return {
+    order: [...DEFAULT_NAV_VISIBLE_IDS],
+    visible: new Set(),
+    defaultTab: DEFAULT_NAV_TAB,
+  }
 }
 
 export function AccountSettingsNavigationPage() {
@@ -206,7 +211,7 @@ export function AccountSettingsNavigationPage() {
                 >
                   <span
                     className={cn(
-                      'absolute top-1 size-4 rounded-full bg-forja-bg transition-transform',
+                      'absolute top-1 size-4 rounded-full bg-white shadow-sm transition-transform',
                       on ? 'translate-x-6' : 'translate-x-1',
                     )}
                   />

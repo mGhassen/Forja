@@ -40,8 +40,9 @@ class IptvChannelGuidePanel extends StatefulWidget {
   /// Desktop/phone floating inset — TV uses a flush full-height left rail.
   static const double panelEdgeGap = 10;
   static const double panelRadius = 12;
-  /// Desktop/phone only — cap guide height so it does not fill the player.
-  static const double panelHeightFraction = 0.72;
+  /// Phone only — cap guide height so it does not fill the player.
+  /// Desktop fills from chrome inset to the bottom edge gap.
+  static const double panelHeightFractionPhone = 0.72;
   static const double panelVerticalGap = 28;
   /// Fixed channel row height (padding + logo).
   static const double channelRowExtent = 72;
@@ -248,7 +249,29 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     }
   }
 
+  /// Move group highlight only — does not rebuild the channel list / logos.
+  /// [scroll] false = hover: highlight in place, do not jump the list.
+  void _focusGroupAt(
+    int index, {
+    bool animateScroll = true,
+    bool scroll = true,
+  }) {
+    final n = widget.guide.groups.length;
+    if (n == 0) return;
+    final next = index.clamp(0, n - 1);
+    if (next == _focusedGroupIndex) {
+      if (scroll) _scrollFocusedGroupIntoView(animate: animateScroll);
+      return;
+    }
+    setState(() => _focusedGroupIndex = next);
+    if (!scroll) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollFocusedGroupIntoView(animate: animateScroll);
+    });
+  }
+
   /// Local-only browse — updates channel list without parent player rebuild.
+  /// Use for click / OK / → — not for hover or D-pad ↑/↓ on groups.
   void _browseGroup(String groupId, {bool animateScroll = true}) {
     final gIdx = widget.guide.groups.indexWhere((g) => g.id == groupId);
     final nextFocus = gIdx >= 0 ? gIdx : _focusedGroupIndex;
@@ -264,7 +287,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollSelectedGroupIntoView(animate: animateScroll);
+      _scrollFocusedGroupIntoView(animate: animateScroll);
     });
   }
 
@@ -276,14 +299,11 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     }
   }
 
-  void _scrollSelectedGroupIntoView({bool animate = false}) {
-    final gIdx = widget.guide.groups.indexWhere((g) => g.id == _browseGroupId);
-    if (gIdx < 0) return;
-    _focusedGroupIndex = gIdx;
-    if (!_groupScroll.hasClients) return;
+  void _scrollFocusedGroupIntoView({bool animate = false}) {
+    if (_focusedGroupIndex < 0 || !_groupScroll.hasClients) return;
     _jumpListToIndex(
       _groupScroll,
-      index: gIdx,
+      index: _focusedGroupIndex,
       itemExtent: IptvChannelGuidePanel.groupRowExtent,
       paddingV: IptvChannelGuidePanel.groupListPaddingV,
       alignment: 0.45,
@@ -294,10 +314,15 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   EdgeInsets _panelPadding(BuildContext context) {
     // Android TV: flush left rail from top to bottom (no floating inset).
     if (iptvUseTvFocus(context)) return EdgeInsets.zero;
+    // Desktop: top chrome + edge gap, bottom flush to a thin edge gap so the
+    // panel reaches the bottom of the player. Phone keeps a larger bottom gap.
+    final desktop = DesktopWindowChrome.isDesktop;
     return EdgeInsets.only(
       top: DesktopWindowChrome.topInset(context) +
           IptvChannelGuidePanel.panelVerticalGap,
-      bottom: IptvChannelGuidePanel.panelVerticalGap,
+      bottom: desktop
+          ? IptvChannelGuidePanel.panelEdgeGap
+          : IptvChannelGuidePanel.panelVerticalGap,
       left: IptvChannelGuidePanel.panelEdgeGap,
     );
   }
@@ -307,7 +332,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final available =
         MediaQuery.sizeOf(context).height - pad.top - pad.bottom;
     if (iptvUseTvFocus(context)) return available;
-    final target = available * IptvChannelGuidePanel.panelHeightFraction;
+    // Desktop: full height to the bottom. Phone: capped floating overlay.
+    if (DesktopWindowChrome.isDesktop) return available;
+    final target =
+        available * IptvChannelGuidePanel.panelHeightFractionPhone;
     return target.clamp(280.0, available).toDouble();
   }
 
@@ -395,7 +423,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       _channelKeys.putIfAbsent(index, GlobalKey.new);
 
   void _scrollToFocused({bool animate = true, bool groupsOnly = false}) {
-    _scrollSelectedGroupIntoView(animate: animate);
+    _scrollFocusedGroupIntoView(animate: animate);
     if (!groupsOnly && _focusColumn == _FocusColumn.channels) {
       if (!_channelScroll.hasClients) return;
       _jumpListToIndex(
@@ -458,9 +486,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       if (_focusColumn == _FocusColumn.groups) {
         final n = widget.guide.groups.length;
         if (n == 0) return;
-        final next = (_focusedGroupIndex + delta).clamp(0, n - 1);
-        // Local browse only — avoid parent player rebuild on every D-pad tick.
-        _browseGroup(widget.guide.groups[next].id);
+        // Focus chrome only — channel logos stay on last OK/→ group.
+        _focusGroupAt(_focusedGroupIndex + delta);
         return;
       } else {
         final n = _visibleChannels.length;
@@ -472,8 +499,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     } else if (_step == _GuideStep.groups) {
       final n = widget.guide.groups.length;
       if (n == 0) return;
-      final next = (_focusedGroupIndex + delta).clamp(0, n - 1);
-      _browseGroup(widget.guide.groups[next].id, animateScroll: true);
+      _focusGroupAt(_focusedGroupIndex + delta, animateScroll: true);
       return;
     } else {
       final n = _visibleChannels.length;
@@ -518,8 +544,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   void _focusRight() {
     if (_wide) {
       if (_focusColumn == _FocusColumn.groups) {
-        // Commit browse group so parent stays in sync when leaving groups.
-        _selectGroup(_browseGroupId);
+        // Commit focused group (↑/↓ no longer browses) then enter channels.
+        final g = widget.guide.groups[_focusedGroupIndex];
+        _selectGroup(g.id);
         setState(() => _focusColumn = _FocusColumn.channels);
         _scrollToFocused();
         return;
@@ -544,7 +571,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       if (_focusColumn == _FocusColumn.groups) {
         final g = widget.guide.groups[_focusedGroupIndex];
         _selectGroup(g.id);
-        setState(() {});
+        setState(() => _focusColumn = _FocusColumn.channels);
+        _scrollToFocused();
         return;
       }
       final channels = _visibleChannels;
@@ -602,6 +630,15 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 top: 0,
                 bottom: 0,
                 child: _buildPanelShell(wide: wide, tvRail: true),
+              )
+            else if (DesktopWindowChrome.isDesktop)
+              // Dock under window chrome → bottom of the player (no height cap).
+              Positioned(
+                left: IptvChannelGuidePanel.panelEdgeGap,
+                top: DesktopWindowChrome.topInset(context) +
+                    IptvChannelGuidePanel.panelVerticalGap,
+                bottom: IptvChannelGuidePanel.panelEdgeGap,
+                child: _buildPanelShell(wide: wide, tvRail: false),
               )
             else
               Align(
@@ -782,6 +819,14 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   Widget _buildWideBody() {
+    final groups = widget.guide.groups;
+    final focusedGroupId = groups.isEmpty
+        ? _browseGroupId
+        : groups[_focusedGroupIndex.clamp(0, groups.length - 1)].id;
+    final pendingCommit = iptvUseTvFocus(context) &&
+        _focusColumn == _FocusColumn.groups &&
+        focusedGroupId != _browseGroupId;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -798,10 +843,29 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
           child: _panelColumn(
             tint: _channelsTint,
             showDivider: false,
-            child: _buildChannelList(_browseGroupId),
+            child: pendingCommit
+                ? _buildPressOkToOpenGroup()
+                : _buildChannelList(_browseGroupId),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPressOkToOpenGroup() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Text(
+          'Press OK to open',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            color: Colors.white54,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 
@@ -865,14 +929,14 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
             key: _groupKey(i),
             child: MouseRegion(
               onEnter: (_) {
+                // Hover only highlights in place — never scrolls the list.
+                // Click / OK / → opens the group.
                 final colChanged =
                     _wide && _focusColumn != _FocusColumn.groups;
                 if (colChanged) {
                   setState(() => _focusColumn = _FocusColumn.groups);
-                } else if (_wide) {
-                  _focusColumn = _FocusColumn.groups;
                 }
-                _browseGroup(g.id, animateScroll: false);
+                _focusGroupAt(i, scroll: false);
               },
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,

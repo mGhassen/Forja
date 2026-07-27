@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/app/boot_cache.dart';
 import 'package:forja/app/boot_catalog.dart';
 import 'package:forja/app/boot_needs.dart';
@@ -19,7 +20,7 @@ import 'package:rust/rust.dart';
 /// while scaling up. Boot work matches [SplashScreen] intro: warm under the
 /// motion floor, dismiss when the floor elapses even if catalog is still
 /// loading, torrent starts after dismiss.
-class ProfileSwitchSplash extends StatefulWidget {
+class ProfileSwitchSplash extends ConsumerStatefulWidget {
   const ProfileSwitchSplash({
     super.key,
     required this.profile,
@@ -36,10 +37,11 @@ class ProfileSwitchSplash extends StatefulWidget {
   final bool prepareCurrent;
 
   @override
-  State<ProfileSwitchSplash> createState() => _ProfileSwitchSplashState();
+  ConsumerState<ProfileSwitchSplash> createState() =>
+      _ProfileSwitchSplashState();
 }
 
-class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
+class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     with SingleTickerProviderStateMixin {
   /// Same role as intro [_SplashScreenState._minSplashDuration]: motion floor
   /// and hard cap — dismiss even if warm/TMDB is still running.
@@ -105,7 +107,9 @@ class _ProfileSwitchSplashState extends State<ProfileSwitchSplash>
         throw StateError('Profile unavailable');
       }
       _setStatus('Syncing settings…');
-      await SyncDomainBridge.instance.pullAndMergeAll();
+      await ref
+          .read(profileSettingsSyncProvider.notifier)
+          .pullAndMergeForProfileSwitch();
       if (!mounted) return;
 
       BootCache.clear();

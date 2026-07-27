@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -39,15 +40,16 @@ part 'live_matches_data.dart';
 part 'live_matches_build.dart';
 part 'live_matches_timeline.dart';
 part 'live_matches_playback.dart';
+part 'providers/live_matches_providers.dart';
 
-class LiveMatchesScreen extends StatefulWidget {
+class LiveMatchesScreen extends ConsumerStatefulWidget {
   const LiveMatchesScreen({super.key});
 
   @override
-  State<LiveMatchesScreen> createState() => _LiveMatchesScreenState();
+  ConsumerState<LiveMatchesScreen> createState() => _LiveMatchesScreenState();
 }
 
-class _LiveMatchesScreenState extends State<LiveMatchesScreen>
+class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     with
         TickerProviderStateMixin,
         ShellTabRefresh<LiveMatchesScreen>,
@@ -151,7 +153,7 @@ class _LiveMatchesScreenState extends State<LiveMatchesScreen>
     );
     _syncTimelineLiveTick();
     unawaited(_restoreViewPreference());
-    _load();
+    unawaited(_load());
   }
 
   @override

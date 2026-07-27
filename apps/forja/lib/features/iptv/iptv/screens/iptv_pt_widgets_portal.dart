@@ -1,12 +1,13 @@
 part of 'iptv_pt_screen.dart';
 
-class _PortalListView extends StatelessWidget {
+class _PortalListView extends ConsumerWidget {
   final IptvController ctrl;
   final bool compact;
   const _PortalListView({required this.ctrl, required this.compact});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final features = ref.watch(accountFeaturesProvider);
     return SafeArea(
       child: Column(
         children: [
@@ -26,31 +27,20 @@ class _PortalListView extends StatelessWidget {
                 ),
                 icon: Icons.playlist_play_rounded,
               ),
-              ListenableBuilder(
-                listenable: AccountFeatures.instance.revision,
-                builder: (context, _) {
-                  final canAdd = AccountFeatures.instance.canAddIptvPortal(
-                    ctrl.verified.length,
-                  );
-                  return IptvIconAction(
-                    tooltip: canAdd
-                        ? 'Add portal'
-                        : 'Portal limit reached (${AccountFeatures.instance.iptvPortalLimitLabel()})',
-                    onPressed: () {
-                      if (!AccountFeatures.instance.canAddIptvPortal(
-                        ctrl.verified.length,
-                      )) {
-                        ForjaToast.warning(
-                          AccountFeatures.instance
-                              .iptvPortalLimitReachedMessage(),
-                        );
-                        return;
-                      }
-                      _showAddDialog(context);
-                    },
-                    icon: Icons.add_rounded,
-                  );
+              IptvIconAction(
+                tooltip: features.canAddIptvPortal(ctrl.verified.length)
+                    ? 'Add portal'
+                    : 'Portal limit reached (${features.iptvPortalLimitLabel()})',
+                onPressed: () {
+                  if (!features.canAddIptvPortal(ctrl.verified.length)) {
+                    ForjaToast.warning(
+                      features.iptvPortalLimitReachedMessage(),
+                    );
+                    return;
+                  }
+                  _showAddDialog(context);
                 },
+                icon: Icons.add_rounded,
               ),
               if (ctrl.verified.isNotEmpty)
                 IptvIconAction(
@@ -66,10 +56,10 @@ class _PortalListView extends StatelessWidget {
           if (ctrl.editMode && ctrl.verified.isNotEmpty) _buildEditBar(),
           Expanded(
             child: ctrl.verified.isEmpty
-                ? _buildEmpty(context)
+                ? _buildEmpty(context, features)
                 : _buildPortalGrid(),
           ),
-          _buildBottomBar(context),
+          _buildBottomBar(context, features),
         ],
       ),
     );
@@ -108,76 +98,71 @@ class _PortalListView extends StatelessWidget {
     );
   }
 
-  Widget _buildEmpty(BuildContext context) {
-    return ListenableBuilder(
-      listenable: AccountFeatures.instance.revision,
-      builder: (context, _) {
-        final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
-        final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
-            SyncService.instance.isSignedIn;
-        final credits = AccountFeatures.instance.iptvCredits;
-        final emptyHint = ctrl.statusText.isEmpty
-            ? (canDeal
-                ? (canScrape
-                    ? 'Deal from the pool, find portals,\nor add one manually.'
-                    : 'Deal from the pool, or add a portal manually.')
-                : (canScrape
-                    ? 'Find live Xtream portals,\nor add one manually.'
-                    : 'Add an Xtream portal to get started.'))
-            : ctrl.statusText;
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.satellite_alt_rounded,
-                        size: 80,
-                        color: IptvShellStyle.accent,
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'No portals yet',
-                        style: IptvShellStyle.pageTitle.copyWith(fontSize: 36),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        emptyHint,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(color: Colors.white60),
-                      ),
-                      if (canDeal) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          '$credits credit${credits == 1 ? '' : 's'}',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: credits > 0
-                                ? IptvShellStyle.accent
-                                : Colors.white38,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 28),
-                      _PortalEmptyCtas(
-                        ctrl: ctrl,
-                        canDeal: canDeal,
-                        canScrape: canScrape,
-                        credits: credits,
-                        onAdd: () => _showAddDialog(context),
-                      ),
-                    ],
+  Widget _buildEmpty(BuildContext context, AccountFeatures features) {
+    final canScrape = features.isIptvScrapeEnabled;
+    final canDeal =
+        features.isDealPortalEnabled && SyncService.instance.isSignedIn;
+    final credits = features.iptvCredits;
+    final emptyHint = ctrl.statusText.isEmpty
+        ? (canDeal
+            ? (canScrape
+                ? 'Deal from the pool, find portals,\nor add one manually.'
+                : 'Deal from the pool, or add a portal manually.')
+            : (canScrape
+                ? 'Find live Xtream portals,\nor add one manually.'
+                : 'Add an Xtream portal to get started.'))
+        : ctrl.statusText;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.satellite_alt_rounded,
+                    size: 80,
+                    color: IptvShellStyle.accent,
                   ),
-                ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'No portals yet',
+                    style: IptvShellStyle.pageTitle.copyWith(fontSize: 36),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    emptyHint,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(color: Colors.white60),
+                  ),
+                  if (canDeal) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '$credits credit${credits == 1 ? '' : 's'}',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: credits > 0
+                            ? IptvShellStyle.accent
+                            : Colors.white38,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 28),
+                  _PortalEmptyCtas(
+                    ctrl: ctrl,
+                    canDeal: canDeal,
+                    canScrape: canScrape,
+                    credits: credits,
+                    onAdd: () => _showAddDialog(context),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
@@ -229,16 +214,13 @@ class _PortalListView extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomBar(BuildContext context) {
-    return ListenableBuilder(
-      listenable: AccountFeatures.instance.revision,
-      builder: (context, _) {
-        final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
-        final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
-            SyncService.instance.isSignedIn;
-        final credits = AccountFeatures.instance.iptvCredits;
-        final actions =
-            <({IconData icon, String label, bool subtle, VoidCallback? onPressed})>[
+  Widget _buildBottomBar(BuildContext context, AccountFeatures features) {
+    final canScrape = features.isIptvScrapeEnabled;
+    final canDeal =
+        features.isDealPortalEnabled && SyncService.instance.isSignedIn;
+    final credits = features.iptvCredits;
+    final actions =
+        <({IconData icon, String label, bool subtle, VoidCallback? onPressed})>[
           if (canDeal)
             (
               icon: Icons.casino_rounded,
@@ -278,21 +260,19 @@ class _PortalListView extends StatelessWidget {
               onPressed: ctrl.runVerification,
             ),
         ];
-        iptvSyncRow(
-          rowId: 'portal-actions',
-          sortOrder: 2,
-          itemCount: actions.length,
-        );
-        return Container(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
-            ),
-          ),
-          child: _buildBottomBarActions(context, actions),
-        );
-      },
+    iptvSyncRow(
+      rowId: 'portal-actions',
+      sortOrder: 2,
+      itemCount: actions.length,
+    );
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+      ),
+      child: _buildBottomBarActions(context, actions),
     );
   }
 

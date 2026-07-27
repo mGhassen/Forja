@@ -1,6 +1,6 @@
 part of 'live_matches_screen.dart';
 
-mixin _LiveMatchesPlayback on State<LiveMatchesScreen> {
+mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
   Future<bool> _runWithCancellableLoading(
     String message,
