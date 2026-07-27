@@ -19,6 +19,8 @@
         android:name=".ForjaApplication"
         android:banner="@drawable/ic_banner"
         android:icon="@mipmap/ic_launcher"
+        android:logo="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:hardwareAccelerated="true">
@@ -33,6 +35,9 @@
             android:launchMode="singleTop"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
+            android:banner="@drawable/ic_banner"
+            android:icon="@mipmap/ic_launcher"
+            android:logo="@mipmap/ic_launcher"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode|screenLayout"
             android:hardwareAccelerated="true"
             android:supportsPictureInPicture="true"

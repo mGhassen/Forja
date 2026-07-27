@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { SettingsSection } from '@/components/settings-section'
 import { SettingsToggle } from '@/components/settings-toggle'
 import { useIsAdmin } from '@/hooks/use-is-admin'
+import { useServerDraft } from '@/hooks/use-server-draft'
 import { usePlaybackSetting } from '@/hooks/use-user-setting'
 import {
   AUDIO_LANGUAGE_OPTIONS,
@@ -13,25 +14,27 @@ import {
   type PreferencesPayload,
 } from '@/lib/sync-domains'
 
+function playbackFromServer(value: unknown): PreferencesPayload {
+  return {
+    ...emptyPreferencesPayload(),
+    ...((value as PreferencesPayload | undefined) ?? {}),
+  }
+}
+
 export function AccountSettingsPlaybackPage() {
   const { data, profileId, isLoading, save, isSaving, saveError } =
     usePlaybackSetting()
   const { data: isAdmin = false } = useIsAdmin()
-  const [draft, setDraft] = useState(emptyPreferencesPayload())
+  const [draft, setDraft] = useServerDraft(
+    profileId,
+    data?.updated_at,
+    Boolean(data) && !isLoading,
+    data?.payload,
+    playbackFromServer,
+    emptyPreferencesPayload,
+  )
   const [savedFlash, setSavedFlash] = useState(false)
-
-  useEffect(() => {
-    // Wipe immediately on profile change — never keep the previous profile's draft.
-    setDraft(emptyPreferencesPayload())
-  }, [profileId])
-
-  useEffect(() => {
-    if (!profileId || isLoading || !data) {
-      setDraft(emptyPreferencesPayload())
-      return
-    }
-    setDraft({ ...emptyPreferencesPayload(), ...data.payload })
-  }, [profileId, isLoading, data])
+  const controlsLocked = !profileId || (isLoading && !data)
 
   const setBool = (key: keyof PreferencesPayload, value: boolean) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -49,7 +52,7 @@ export function AccountSettingsPlaybackPage() {
       description="Cross-device playback preferences. Built-in engine and per-device player choices stay in the app."
       footer={
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => void handleSave()} disabled={isLoading || isSaving}>
+          <Button onClick={() => void handleSave()} disabled={controlsLocked || isSaving}>
             {isSaving ? 'Saving…' : 'Save changes'}
           </Button>
           {savedFlash ? (
@@ -72,28 +75,28 @@ export function AccountSettingsPlaybackPage() {
             description="Forja / Jackett / Prowlarr indexers in Sources."
             checked={draft.play_source_torrent_enabled ?? true}
             onChange={(v) => setBool('play_source_torrent_enabled', v)}
-            disabled={isLoading}
+            disabled={controlsLocked}
           />
           <SettingsToggle
             label="Stremio"
             description="Installed Stremio addons."
             checked={draft.play_source_stremio_enabled ?? true}
             onChange={(v) => setBool('play_source_stremio_enabled', v)}
-            disabled={isLoading}
+            disabled={controlsLocked}
           />
           <SettingsToggle
             label="Nuvio"
             description="Installed Nuvio scraper addons in Sources."
             checked={draft.play_source_nuvio_enabled ?? true}
             onChange={(v) => setBool('play_source_nuvio_enabled', v)}
-            disabled={isLoading}
+            disabled={controlsLocked}
           />
           <SettingsToggle
             label="Web streaming"
             description="Embed and extractor providers."
             checked={draft.play_source_webstreaming_enabled ?? true}
             onChange={(v) => setBool('play_source_webstreaming_enabled', v)}
-            disabled={isLoading}
+            disabled={controlsLocked}
           />
           {isAdmin && (draft.play_source_webstreaming_enabled ?? true) ? (
             <SettingsToggle
@@ -101,7 +104,7 @@ export function AccountSettingsPlaybackPage() {
               description="One provider at a time: filter, probe, then open the player once. Admin only."
               checked={draft.simple_streaming_resolve_enabled ?? true}
               onChange={(v) => setBool('simple_streaming_resolve_enabled', v)}
-              disabled={isLoading}
+              disabled={controlsLocked}
             />
           ) : null}
       </SettingsSection>
@@ -111,28 +114,28 @@ export function AccountSettingsPlaybackPage() {
             label="Auto next episode"
             checked={draft.auto_next_episode ?? true}
             onChange={(v) => setBool('auto_next_episode', v)}
-            disabled={isLoading}
+            disabled={controlsLocked}
           />
           <SettingsToggle
             label="Auto skip intro"
             description="Uses IntroDB when available."
             checked={draft.auto_skip_intro ?? false}
             onChange={(v) => setBool('auto_skip_intro', v)}
-            disabled={isLoading}
+            disabled={controlsLocked}
           />
           <SettingsToggle
             label="IPTV programme guide"
             description="Load EPG in the IPTV player."
             checked={draft.iptv_epg_enabled ?? true}
             onChange={(v) => setBool('iptv_epg_enabled', v)}
-            disabled={isLoading}
+            disabled={controlsLocked}
           />
           <SettingsToggle
             label="Avoid unsupported audio"
             description="Skip Atmos, TrueHD, and 7.1 when possible."
             checked={draft.avoid_unsupported_audio ?? true}
             onChange={(v) => setBool('avoid_unsupported_audio', v)}
-            disabled={isLoading}
+            disabled={controlsLocked}
           />
 
           <div className="flex min-h-[66px] items-center justify-between gap-5 px-0.5 py-3">
@@ -143,7 +146,7 @@ export function AccountSettingsPlaybackPage() {
               id="audio-lang"
               className="h-9 min-w-40 border border-forja-border bg-forja-surface px-3 text-sm"
               value={draft.preferred_audio_lang ?? 'None'}
-              disabled={isLoading}
+              disabled={controlsLocked}
               onChange={(e) =>
                 setDraft((prev) => ({ ...prev, preferred_audio_lang: e.target.value }))
               }
@@ -164,7 +167,7 @@ export function AccountSettingsPlaybackPage() {
               id="max-quality"
               className="h-9 min-w-40 border border-forja-border bg-forja-surface px-3 text-sm"
               value={String(draft.max_playback_height ?? 0)}
-              disabled={isLoading}
+              disabled={controlsLocked}
               onChange={(e) =>
                 setDraft((prev) => ({
                   ...prev,

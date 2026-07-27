@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SettingsSection } from '@/components/settings-section'
+import { useServerDraft } from '@/hooks/use-server-draft'
 import { useStremioSetting } from '@/hooks/use-user-setting'
 import {
   emptyStremioPayload,
@@ -12,24 +13,25 @@ import {
   type StremioPayload,
 } from '@/lib/sync-domains'
 
+function stremioFromServer(value: unknown): StremioPayload {
+  const payload = value as StremioPayload | undefined
+  return { addons: payload?.addons ?? [] }
+}
+
 export function AccountSettingsStremioPage() {
   const { data, profileId, isLoading, save, isSaving, saveError } =
     useStremioSetting()
-  const [draft, setDraft] = useState(emptyStremioPayload())
+  const [draft, setDraft] = useServerDraft(
+    profileId,
+    data?.updated_at,
+    Boolean(data) && !isLoading,
+    data?.payload,
+    stremioFromServer,
+    emptyStremioPayload,
+  )
   const [url, setUrl] = useState('')
   const [savedFlash, setSavedFlash] = useState(false)
-
-  useEffect(() => {
-    setDraft(emptyStremioPayload())
-  }, [profileId])
-
-  useEffect(() => {
-    if (!profileId || isLoading || !data) {
-      setDraft(emptyStremioPayload())
-      return
-    }
-    setDraft({ addons: data.payload.addons ?? [] })
-  }, [profileId, isLoading, data])
+  const controlsLocked = !profileId || (isLoading && !data)
 
   const addAddon = () => {
     const baseUrl = url.trim()
@@ -58,7 +60,7 @@ export function AccountSettingsStremioPage() {
       description="Manifest URLs for Stremio addons. The app installs these on sync - same list as Settings → Sources."
       footer={
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => void handleSave()} disabled={isLoading || isSaving}>
+          <Button onClick={() => void handleSave()} disabled={controlsLocked || isSaving}>
             {isSaving ? 'Saving…' : 'Save changes'}
           </Button>
           {savedFlash ? (
@@ -95,6 +97,7 @@ export function AccountSettingsStremioPage() {
                     size="sm"
                     className="text-red-300 hover:text-red-200"
                     onClick={() => removeAddon(addon.baseUrl)}
+                    disabled={controlsLocked}
                   >
                     <Trash2 className="size-4" />
                   </Button>
@@ -110,9 +113,15 @@ export function AccountSettingsStremioPage() {
               placeholder="https://…/manifest.json"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
+              disabled={controlsLocked}
             />
           </div>
-          <Button type="button" variant="secondary" onClick={addAddon}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={addAddon}
+            disabled={controlsLocked}
+          >
             Add addon
           </Button>
       </SettingsSection>

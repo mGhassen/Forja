@@ -192,6 +192,85 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
     if (mounted) _s._startHideTimer();
   }
 
+  Future<void> _showPlayerMenu(BuildContext anchorContext) async {
+    _s._hideTimer?.cancel();
+    if (!_s._showControls) setState(() => _s._showControls = true);
+    if (!mounted) return;
+    await PlayerPopupPanel.show(
+      context: context,
+      title: 'Player',
+      leadingIcon: Icons.smart_display_outlined,
+      anchorContext: anchorContext,
+      centered: _s._tvFocus,
+      maxHeight: 280,
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
+            child: Text(
+              'Built-in',
+              style: TextStyle(
+                color: PlayerPopupTokens.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          PlayerPopupOptionChip(
+            label: 'Forja trailer',
+            selected: true,
+            expanded: true,
+            onTap: PlayerPopupPanel.dismiss,
+          ),
+          const SizedBox(height: 14),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
+            child: Text(
+              'External app',
+              style: TextStyle(
+                color: PlayerPopupTokens.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          PlayerPopupOptionChip(
+            label: 'YouTube',
+            selected: false,
+            expanded: true,
+            onTap: () async {
+              PlayerPopupPanel.dismiss();
+              await _s._openInYouTube();
+            },
+          ),
+        ],
+      ),
+    );
+    if (mounted) {
+      _s._startHideTimer();
+      if (_s._tvFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !_s._playerMenuFocus.canRequestFocus) return;
+          _s._playerMenuFocus.requestFocus();
+        });
+      }
+    }
+  }
+
+  Future<void> _openInYouTube() async {
+    final uri = Uri.parse(_s._trailer.youtubeUrl);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ForjaToast.show(
+        'Could not open YouTube',
+        kind: ForjaToastKind.error,
+        duration: const Duration(seconds: 3),
+      );
+    }
+  }
+
   String _defaultAudioLabel() {
     final lang = widget.languageCode?.trim();
     if (lang != null && lang.isNotEmpty) {

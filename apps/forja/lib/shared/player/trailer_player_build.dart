@@ -6,10 +6,14 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final tvFocus = _s._tvFocus;
-    return PopScope(
+    final body = PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
+        if (tvFocus && ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+          ShellTvFocusCoordinator.handleShellBackKey();
+          return;
+        }
         unawaited(_s._exitTrailer());
       },
       child: Scaffold(
@@ -129,11 +133,14 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               // (platform WebView steals Flutter gesture arena on desktop).
               DesktopWindowChrome.overlayDragStrip(),
               AnimatedOpacity(
-                opacity: (tvFocus || _s._showControls) ? 1.0 : 0.0,
+                opacity: _s._showControls ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 220),
-                child: IgnorePointer(
-                  ignoring: !tvFocus && !_s._showControls,
-                  child: _buildChromeOverlay(tvFocus: tvFocus),
+                child: ExcludeFocus(
+                  excluding: tvFocus && !_s._showControls,
+                  child: IgnorePointer(
+                    ignoring: !_s._showControls,
+                    child: _buildChromeOverlay(tvFocus: tvFocus),
+                  ),
                 ),
               ),
             ],
@@ -141,12 +148,68 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         ),
       ),
     );
+
+    if (!tvFocus) return body;
+    return PlayerTvKeyScope(
+      enabled: true,
+      focusNode: _s._tvKeyFocus,
+      showControls: _s._showControls,
+      onBack: () {
+        if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+          ShellTvFocusCoordinator.handleShellBackKey();
+        } else {
+          unawaited(_s._exitTrailer());
+        }
+      },
+      onPlayPause: () {
+        if (!_s._ready) return;
+        unawaited(_s._togglePlayPause());
+      },
+      onShowControls: _s._showChromeAndFocusPlay,
+      onSeekBack: () {
+        if (!_s._ready) return;
+        unawaited(_s._skip(-10));
+      },
+      onSeekForward: () {
+        if (!_s._ready) return;
+        unawaited(_s._skip(10));
+      },
+      onVolumeUp: () {
+        if (!_s._ready) return;
+        unawaited(_s._setVolume((_s._volume + 10).clamp(0, 100)));
+      },
+      onVolumeDown: () {
+        if (!_s._ready) return;
+        unawaited(_s._setVolume((_s._volume - 10).clamp(0, 100)));
+      },
+      onToggleControls: () {
+        setState(() => _s._showControls = !_s._showControls);
+        if (_s._showControls) {
+          _s._startHideTimer();
+          _s._claimPlayFocus();
+        } else {
+          _s._hideTimer?.cancel();
+        }
+      },
+      onFocusBack: _s._showChromeAndFocusBack,
+      onFocusPlay: _s._showChromeAndFocusPlay,
+      onControlsActivity: _s._startHideTimer,
+      child: body,
+    );
   }
 
   Widget _buildChromeOverlay({required bool tvFocus}) {
     final layers = Stack(
       clipBehavior: Clip.none,
       children: [
+        const Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ExcludeFocus(
+            child: PlayerOverlayGradient(isTop: true),
+          ),
+        ),
         Positioned(
           top: DesktopWindowChrome.isDesktop
               ? DesktopWindowChrome.topInset(context) + 6
@@ -160,6 +223,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     tooltip: 'Back',
                     tvFocusable: true,
                     focusNode: _s._backFocus,
+                    onRightEdge: () => _s._playerMenuFocus.requestFocus(),
                     onPressed: () => unawaited(_s._exitTrailer()),
                   ),
                 )
@@ -169,65 +233,81 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   onPressed: () => unawaited(_s._exitTrailer()),
                 ),
         ),
-        const Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: ExcludeFocus(
-            child: PlayerOverlayGradient(isTop: true),
-          ),
+        Positioned(
+          top: DesktopWindowChrome.isDesktop
+              ? DesktopWindowChrome.topInset(context) + 6
+              : MediaQuery.paddingOf(context).top + 6,
+          right: 16,
+          child: tvFocus
+              ? FocusTraversalOrder(
+                  order: const NumericFocusOrder(1.5),
+                  child: PlayerTopBarActions(
+                    tvFocusable: true,
+                    showPlayer: true,
+                    playerFocusNode: _s._playerMenuFocus,
+                    playerOnLeftEdge: () => _s._backFocus.requestFocus(),
+                    onPlayer: (anchorContext) =>
+                        unawaited(_s._showPlayerMenu(anchorContext)),
+                  ),
+                )
+              : PlayerTopBarActions(
+                  showPlayer: true,
+                  onPlayer: (anchorContext) =>
+                      unawaited(_s._showPlayerMenu(anchorContext)),
+                ),
         ),
-        Positioned.fill(
-          child: ExcludeFocus(
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  PlayerCenterActionButton(
-                    icon: Icons.replay_10_rounded,
-                    onPressed: () {
-                      if (!_s._ready) return;
-                      unawaited(_s._skip(-10));
-                      _s._onPointerActivity();
-                    },
-                  ),
-                  const SizedBox(width: 28),
-                  PlayerCenterActionButton(
-                    icon: _s._showReplayControl
-                        ? Icons.replay_rounded
-                        : _s._playing
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                    size: 80,
-                    iconSize: 44,
-                    onPressed: () {
-                      if (!_s._ready) return;
-                      unawaited(_s._togglePlayPause());
-                      _s._onPointerActivity();
-                    },
-                  ),
-                  const SizedBox(width: 28),
-                  PlayerCenterActionButton(
-                    icon: Icons.forward_10_rounded,
-                    onPressed: () {
-                      if (!_s._ready) return;
-                      unawaited(_s._skip(10));
-                      _s._onPointerActivity();
-                    },
-                  ),
-                ],
+        if (!tvFocus)
+          Positioned.fill(
+            child: ExcludeFocus(
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PlayerCenterActionButton(
+                      icon: Icons.replay_10_rounded,
+                      onPressed: () {
+                        if (!_s._ready) return;
+                        unawaited(_s._skip(-10));
+                        _s._onPointerActivity();
+                      },
+                    ),
+                    const SizedBox(width: 28),
+                    PlayerCenterActionButton(
+                      icon: _s._showReplayControl
+                          ? Icons.replay_rounded
+                          : _s._playing
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                      size: 80,
+                      iconSize: 44,
+                      onPressed: () {
+                        if (!_s._ready) return;
+                        unawaited(_s._togglePlayPause());
+                        _s._onPointerActivity();
+                      },
+                    ),
+                    const SizedBox(width: 28),
+                    PlayerCenterActionButton(
+                      icon: Icons.forward_10_rounded,
+                      onPressed: () {
+                        if (!_s._ready) return;
+                        unawaited(_s._skip(10));
+                        _s._onPointerActivity();
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
         _buildBottomChrome(tvFocus: tvFocus),
       ],
     );
 
     if (!tvFocus) return layers;
-    return Positioned.fill(
+    return SizedBox.expand(
       child: FocusScope(
-        debugLabel: 'trailer-player-chrome',
+        debugLabel: 'player-chrome',
         child: FocusTraversalGroup(
           policy: ReadingOrderTraversalPolicy(),
           child: layers,
@@ -435,8 +515,6 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   },
                 ),
               ),
-              const SizedBox(width: 2),
-              ordered(6, _buildVolumeControl(tvFocus: true)),
             ],
           ),
           Row(

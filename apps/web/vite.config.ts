@@ -78,7 +78,17 @@ function bridgeWebEnv(mode: string) {
 export default defineConfig(({ mode }) => {
   bridgeWebEnv(mode)
 
+  // Force-bake client PostHog env (Vercel POSTHOG_* → VITE_* via bridge above).
+  // Without this, a non-VITE_ platform secret never reaches import.meta.env.
+  const clientPosthogKey = process.env.VITE_POSTHOG_KEY ?? ''
+  const clientPosthogHost =
+    process.env.VITE_POSTHOG_HOST ?? 'https://us.i.posthog.com'
+
   return {
+    define: {
+      'import.meta.env.VITE_POSTHOG_KEY': JSON.stringify(clientPosthogKey),
+      'import.meta.env.VITE_POSTHOG_HOST': JSON.stringify(clientPosthogHost),
+    },
     server: {
       port: 3000,
       // Flutter Web login defaults to http://127.0.0.1:3000 (IPv4). Without an

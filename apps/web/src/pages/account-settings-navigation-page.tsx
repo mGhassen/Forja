@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp, Lock, Star } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { SettingsSection } from '@/components/settings-section'
 import { Button } from '@/components/ui/button'
+import { useServerDraft } from '@/hooks/use-server-draft'
 import { useNavigationSetting } from '@/hooks/use-user-setting'
 import {
   DEFAULT_NAV_TAB,
@@ -45,25 +46,27 @@ function payloadFromDraft(draft: NavDraft): NavigationPayload {
   })
 }
 
+function navigationFromServer(value: unknown): NavDraft {
+  return draftFromPayload(value as NavigationPayload | undefined)
+}
+
+function emptyNavDraft(): NavDraft {
+  return draftFromPayload(emptyNavigationPayload())
+}
+
 export function AccountSettingsNavigationPage() {
   const { data, profileId, isLoading, save, isSaving, saveError } =
     useNavigationSetting()
-  const [draft, setDraft] = useState<NavDraft>(() =>
-    draftFromPayload(emptyNavigationPayload()),
+  const [draft, setDraft] = useServerDraft(
+    profileId,
+    data?.updated_at,
+    Boolean(data) && !isLoading,
+    data?.payload,
+    navigationFromServer,
+    emptyNavDraft,
   )
   const [savedFlash, setSavedFlash] = useState(false)
-
-  useEffect(() => {
-    setDraft(draftFromPayload(emptyNavigationPayload()))
-  }, [profileId])
-
-  useEffect(() => {
-    if (!profileId || isLoading || !data) {
-      setDraft(draftFromPayload(emptyNavigationPayload()))
-      return
-    }
-    setDraft(draftFromPayload(data.payload))
-  }, [profileId, isLoading, data])
+  const controlsLocked = !profileId || (isLoading && !data)
 
   const startupOptions = useMemo(() => {
     const opts = draft.order.filter((id) => draft.visible.has(id))
@@ -113,7 +116,7 @@ export function AccountSettingsNavigationPage() {
       description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Matches Settings → Features in the app."
       footer={
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => void handleSave()} disabled={isLoading || isSaving}>
+          <Button onClick={() => void handleSave()} disabled={controlsLocked || isSaving}>
             {isSaving ? 'Saving…' : 'Save changes'}
           </Button>
           {savedFlash ? (
@@ -144,7 +147,7 @@ export function AccountSettingsNavigationPage() {
                   <button
                     type="button"
                     aria-label={`Move ${labelFor(id)} up`}
-                    disabled={isLoading || index === 0}
+                    disabled={controlsLocked || index === 0}
                     onClick={() => move(index, -1)}
                     className="text-forja-muted hover:text-forja-text disabled:opacity-30"
                   >
@@ -153,7 +156,7 @@ export function AccountSettingsNavigationPage() {
                   <button
                     type="button"
                     aria-label={`Move ${labelFor(id)} down`}
-                    disabled={isLoading || index === draft.order.length - 1}
+                    disabled={controlsLocked || index === draft.order.length - 1}
                     onClick={() => move(index, 1)}
                     className="text-forja-muted hover:text-forja-text disabled:opacity-30"
                   >
@@ -175,7 +178,7 @@ export function AccountSettingsNavigationPage() {
                       ? `${labelFor(id)} is default tab`
                       : `Set ${labelFor(id)} as default tab`
                   }
-                  disabled={isLoading || !on}
+                  disabled={controlsLocked || !on}
                   onClick={() =>
                     setDraft((prev) => ({ ...prev, defaultTab: id }))
                   }
@@ -189,27 +192,25 @@ export function AccountSettingsNavigationPage() {
                     fill={isDefault ? 'currentColor' : 'none'}
                   />
                 </button>
-                <label
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={on}
+                  aria-label={`Show ${labelFor(id)}`}
+                  disabled={controlsLocked}
+                  onClick={() => setVisible(id, !on)}
                   className={cn(
-                    'relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors',
+                    'relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60',
                     on ? 'bg-forja-green' : 'bg-white/15',
-                    isLoading ? 'cursor-not-allowed opacity-60' : null,
                   )}
                 >
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={on}
-                    disabled={isLoading}
-                    onChange={(e) => setVisible(id, e.target.checked)}
-                  />
                   <span
                     className={cn(
                       'absolute top-1 size-4 rounded-full bg-forja-bg transition-transform',
                       on ? 'translate-x-6' : 'translate-x-1',
                     )}
                   />
-                </label>
+                </button>
               </li>
             )
           })}
@@ -225,7 +226,7 @@ export function AccountSettingsNavigationPage() {
                   ? 'Settings is default tab'
                   : 'Set Settings as default tab'
               }
-              disabled={isLoading}
+              disabled={controlsLocked}
               onClick={() =>
                 setDraft((prev) => ({ ...prev, defaultTab: 'settings' }))
               }
@@ -261,7 +262,7 @@ export function AccountSettingsNavigationPage() {
                 ? draft.defaultTab
                 : (startupOptions[0] ?? DEFAULT_NAV_TAB)
             }
-            disabled={isLoading}
+            disabled={controlsLocked}
             onChange={(e) =>
               setDraft((prev) => ({ ...prev, defaultTab: e.target.value }))
             }

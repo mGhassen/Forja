@@ -12,7 +12,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 
 ## What you can do
 
-- Enable **Play sources**: **Direct torrent** (Forja / Jackett / Prowlarr in **Sources**), **Stremio**, **Nuvio**, and **Webstreaming** (torrent / Stremio / Nuvio / webstreaming on by default on phone and desktop; **Android TV** shows **Webstreaming** only — Direct torrent, Stremio, and Nuvio are not available there, including for admin accounts)
+- Enable **Play sources**: **Direct torrent** (Forja / Jackett / Prowlarr in **Sources**), **Stremio**, **Nuvio**, and **Webstreaming** (torrent / Stremio / Nuvio / webstreaming on by default on phone and desktop; **Android TV** shows **Webstreaming** only — Direct torrent, Stremio, and Nuvio are not available there, including for admin accounts, and the **Sources** / **Debrid** Settings categories stay hidden)
 - When **Nuvio** is off: **Settings → Nuvio addons** and the **Sources → Nuvio** tab stay hidden
 - When **Webstreaming** is on and the signed-in account is an **admin**: toggle **Simple resolve (experimental)** (on by default) — tries one provider at a time, filters/probes streams, then opens the player once (old multi-provider race stays when this is off). Non-admin accounts do not see this row
 - On **Android**, choose **Built-in engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — in Settings or from the **Player** button in the playback controls (movies/series and **IPTV**)

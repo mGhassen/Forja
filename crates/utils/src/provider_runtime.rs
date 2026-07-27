@@ -123,9 +123,16 @@ pub fn webstreamr_base(source_id: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    /// Process-wide overlay is shared; serialize tests that mutate it.
+    static OVERLAY_TEST_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn overlay_movie_template() {
+        let _guard = OVERLAY_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         clear_overlay();
         set_overlay_json(
             r#"{
@@ -143,6 +150,9 @@ mod tests {
 
     #[test]
     fn overlay_webstreamr_base() {
+        let _guard = OVERLAY_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         clear_overlay();
         set_overlay_json(
             r#"{

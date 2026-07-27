@@ -36,18 +36,15 @@ class SettingsVisibility {
       PlatformPlayback.capabilities.builtinTorrentSearch;
 
   /// Nuvio scrapers (own play source). Hidden on Android TV for all accounts.
-  bool get showNuvio =>
-      vodTab &&
-      playSourceNuvio &&
-      PlatformPlayback.capabilities.playSourceNuvio;
+  bool get showNuvio => vodTab && playSourceNuvio;
 
   /// Stremio addons. Hidden on Android TV for all accounts.
-  bool get showStremioAddons =>
-      vodTab &&
-      playSourceStremio &&
-      PlatformPlayback.capabilities.playSourceStremio;
+  bool get showStremioAddons => vodTab && playSourceStremio;
 
-  /// Settings → Sources hub tile.
+  /// Settings → Sources hub tile (torrent / Stremio / Nuvio only).
+  ///
+  /// Never true on Android TV — [resolve] ANDs platform capabilities so synced
+  /// phone prefs cannot reopen these tiles.
   bool get showSourcesCategory =>
       vodTab && (playSourceTorrent || playSourceStremio || playSourceNuvio);
 
@@ -77,10 +74,16 @@ class SettingsVisibility {
     var nav = await s.getNavbarConfig();
     nav = nav.where((id) => !temporarilyHiddenNavIds.contains(id)).toList();
 
+    // Same capability AND as [BootNeeds] — Android TV caps force torrent /
+    // Stremio / Nuvio off even if cloud sync wrote phone prefs into KV.
+    final caps = PlatformPlayback.capabilities;
     return SettingsVisibility(
-      playSourceTorrent: await s.isPlaySourceTorrentEnabled(),
-      playSourceStremio: await s.isPlaySourceStremioEnabled(),
-      playSourceNuvio: await s.isPlaySourceNuvioEnabled(),
+      playSourceTorrent:
+          caps.playSourceTorrent && await s.isPlaySourceTorrentEnabled(),
+      playSourceStremio:
+          caps.playSourceStremio && await s.isPlaySourceStremioEnabled(),
+      playSourceNuvio:
+          caps.playSourceNuvio && await s.isPlaySourceNuvioEnabled(),
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
       vodTab: nav.any(BootNeeds.vodNavIds.contains),
       iptvNav: nav.contains('iptv'),

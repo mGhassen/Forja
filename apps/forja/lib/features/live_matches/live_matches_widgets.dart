@@ -1042,8 +1042,12 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _exiting = false;
   bool _playing = false;
   bool _muted = false;
+  /// Android: cover the broken WebView lock UI while we sniff HLS for native.
+  bool _androidNativeHandoff = false;
+  bool _androidHandoffStarted = false;
   Timer? _loadingWatchdog;
   Timer? _adWindowCloseTimer;
+  Timer? _androidHandoffWatchdog;
   InAppWebViewController? _webViewController;
 
   /// Native popup ([window.open]) from an ad. Accepted off-screen so Streamed
@@ -1133,16 +1137,22 @@ class _LiveMatchesEmbedPlayerScreenState
     super.initState();
     ShellBus.enterPlayerSurface();
     final embedUrl = widget.embedUrl;
-    // Always load under catalog origin (streamed.pk / ppv.is). Top-level
-    // embed.st on Android looked like a “sandbox” fix but breaks the host
-    // lock — same red “Remove sandbox attributes…” + UA page (issue 046).
-    // Referer HTTP headers on loadUrl do not set document.referrer.
+    // Catalog-origin iframe wrapper so document.referrer matches the site
+    // (issue 046). On Android, WebView still cannot play Streamed in-page
+    // (CORS on strmd.st + host lock UI) — sniff HLS and hand off to native.
+    _androidNativeHandoff = !kIsWeb && Platform.isAndroid;
     _initialUserScripts = UnmodifiableListView([
       UserScript(
         source: _stripIframeSandboxJs,
         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
         forMainFrameOnly: true,
       ),
+      if (_androidNativeHandoff)
+        UserScript(
+          source: _liveEmbedMediaSpyJs,
+          injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+          forMainFrameOnly: false,
+        ),
       UserScript(
         source: _embedMediaControlUserScript,
         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
@@ -1185,6 +1195,7 @@ class _LiveMatchesEmbedPlayerScreenState
       iframeAllow: 'autoplay; fullscreen; encrypted-media',
       iframeAllowFullscreen: true,
       useShouldOverrideUrlLoading: true,
+      useOnLoadResource: _androidNativeHandoff,
       // Accept window.open off-screen. Rejecting it falls back to main-frame
       // ad navigations that break Streamed HLS (manifestParsingError).
       supportMultipleWindows: true,
@@ -1197,11 +1208,64 @@ class _LiveMatchesEmbedPlayerScreenState
     // Clear the Flutter spinner early; iframe load / embedReady also clears it.
     // A long center spinner sits on top of the embed play button.
     _loadingWatchdog = Timer(const Duration(seconds: 2), _clearLoading);
+    if (_androidNativeHandoff) {
+      _androidHandoffWatchdog = Timer(const Duration(seconds: 28), () {
+        if (!mounted || _androidHandoffStarted || _exiting) return;
+        debugPrint('[LiveMatches] Android HLS sniff timed out');
+        ForjaToast.info('Could not open this stream');
+        unawaited(_exitPlayer());
+      });
+    }
     HardwareKeyboard.instance.addHandler(_handleEmbedKeyEvent);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncTvRows();
       _focusTvChrome(preferPlay: true);
     });
+  }
+
+  void _onSniffedMediaUrl(String rawUrl) {
+    if (!_androidNativeHandoff || _androidHandoffStarted || _exiting) return;
+    final url = rawUrl.trim();
+    if (!_liveEmbedIsSniffableMediaUrl(url)) return;
+    _androidHandoffStarted = true;
+    _androidHandoffWatchdog?.cancel();
+    debugPrint('[LiveMatches] Android sniffed media: $url');
+    unawaited(_handOffToNativePlayer(url));
+  }
+
+  Future<void> _handOffToNativePlayer(String mediaUrl) async {
+    if (_exiting) return;
+    _exiting = true;
+    _mediaStopped = true;
+    _loadingWatchdog?.cancel();
+    try {
+      await _webViewController
+          ?.evaluateJavascript(source: _embedMediaCommandJs('pause'));
+    } catch (_) {}
+    final headers = _liveEmbedStreamHeaders(widget.embedUrl);
+    String playUrl = mediaUrl;
+    try {
+      final proxy = LocalServerService();
+      await proxy.start();
+      if (proxy.port > 0) {
+        playUrl = proxy.getHlsProxyUrl(mediaUrl, headers);
+      }
+    } catch (e) {
+      debugPrint('[LiveMatches] HLS proxy failed: $e');
+    }
+    if (!mounted) return;
+    final title = widget.title;
+    final subtitle = widget.subtitle;
+    final label = widget.badgeLabel;
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => IptvPtPlayerScreen(
+          sources: [IptvPlaySource(url: playUrl, label: label)],
+          title: title,
+          subtitle: subtitle,
+        ),
+      ),
+    );
   }
 
   Future<void> _enterFullscreen() async {
@@ -1311,6 +1375,7 @@ class _LiveMatchesEmbedPlayerScreenState
     ShellBus.leavePlayerSurface();
     _loadingWatchdog?.cancel();
     _adWindowCloseTimer?.cancel();
+    _androidHandoffWatchdog?.cancel();
     shellTvUnregisterRow(tabId: _tvTabId, rowId: _topRowId);
     shellTvUnregisterRow(tabId: _tvTabId, rowId: _controlsRowId);
     _backFocusNode.dispose();
@@ -1517,6 +1582,7 @@ class _LiveMatchesEmbedPlayerScreenState
                   ForjaInAppWebView(
                     // Catalog-origin iframe wrapper on every platform (046).
                     // Windows opaque WebView2 via forjaWebViewSettings (053).
+                    // Android: sniff HLS → native IPTV player (CORS / lock).
                     initialData: _initialData,
                     initialUserScripts: _initialUserScripts,
                     initialSettings: _initialSettings,
@@ -1535,7 +1601,22 @@ class _LiveMatchesEmbedPlayerScreenState
                           _clearLoading();
                         },
                       );
+                      if (_androidNativeHandoff) {
+                        controller.addJavaScriptHandler(
+                          handlerName: 'liveMediaUrl',
+                          callback: (args) {
+                            if (args.isEmpty) return null;
+                            _onSniffedMediaUrl(args.first.toString());
+                            return null;
+                          },
+                        );
+                      }
                     },
+                    onLoadResource: _androidNativeHandoff
+                        ? (ctrl, resource) {
+                            _onSniffedMediaUrl(resource.url.toString());
+                          }
+                        : null,
                     onLoadStart: (_, _) {
                       // Ad main-frame hijack attempts can fire load-start; do not
                       // setState after the player is ready (rebuild churn + WK crash).
@@ -1551,6 +1632,11 @@ class _LiveMatchesEmbedPlayerScreenState
                         await ctrl.evaluateJavascript(
                           source: _embedMediaControlUserScript,
                         );
+                        if (_androidNativeHandoff) {
+                          await ctrl.evaluateJavascript(
+                            source: _liveEmbedMediaSpyJs,
+                          );
+                        }
                         await ctrl.evaluateJavascript(source: _autoplayJs);
                         await ctrl.evaluateJavascript(
                           source: _dblclickFullscreenJs,
@@ -1578,6 +1664,10 @@ class _LiveMatchesEmbedPlayerScreenState
                       // Player CDNs and nested iframes leave embed.st - never cancel
                       // subframe navigations (that caused blank/white players).
                       if (action.isForMainFrame != true) {
+                        final sub = action.request.url?.toString() ?? '';
+                        if (_androidNativeHandoff) {
+                          _onSniffedMediaUrl(sub);
+                        }
                         return NavigationActionPolicy.ALLOW;
                       }
                       final url = action.request.url?.toString() ?? '';
@@ -1593,7 +1683,35 @@ class _LiveMatchesEmbedPlayerScreenState
                       return NavigationActionPolicy.CANCEL;
                     },
                   ),
-                  if (_loading)
+                  // Android: hide the host lock / CORS failure UI while sniffing.
+                  if (_androidNativeHandoff && !_androidHandoffStarted)
+                    const ColoredBox(
+                      color: Colors.black,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: ForjaShellColors.sectionAccent,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Connecting to stream…',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (_loading && !_androidNativeHandoff)
                     Positioned(
                       top: 12,
                       right: 16,

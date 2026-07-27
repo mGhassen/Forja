@@ -69,12 +69,11 @@ class _MediaDetailsTrailersSectionState
     final outdent = widget.outdentHorizontal;
     final useHomeInsets = outdent > 0;
     final homePad = ShellTokens.homeSectionHorizontalPadding;
-    // Catalog focus scale (desktop hover / TV focus) needs vertical room.
+    // Catalog focus scale (desktop hover / TV focus) needs vertical room on the thumb only.
     const thumbHeight = _kTrailerCardWidth * 9 / 16;
     const textBlock = 8 + 12 * 1.25 * 2;
-    const baseRowHeight = thumbHeight + textBlock;
     final trailerRowHeight =
-        baseRowHeight * ShellTokens.focusActiveScale + 4;
+        thumbHeight * ShellTokens.focusActiveScale + textBlock + 4;
 
     final row = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,23 +160,23 @@ class _TrailerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final thumbHeight = _kTrailerCardWidth * 9 / 16;
 
-    // Same catalog chrome as HubPosterCard / HomeMovieCard on every platform.
-    return shellFocusableTap(
-      context: context,
-      onTap: () => _open(context),
-      borderRadius: 10,
-      showFocusBorder: true,
-      focusBleedWidth: _kTrailerCardWidth,
-      listIndex: index,
-      tvTabId: tvTabId,
-      tvRowId: tvRowId,
-      tvItemIndex: index,
-      child: SizedBox(
-        width: _kTrailerCardWidth,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
+    // Focus ring only on the thumb (poster-card chrome) — not around title text.
+    return SizedBox(
+      width: _kTrailerCardWidth,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          shellFocusableTap(
+            context: context,
+            onTap: () => _open(context),
+            borderRadius: 10,
+            showFocusBorder: true,
+            focusBleedWidth: _kTrailerCardWidth,
+            listIndex: index,
+            tvTabId: tvTabId,
+            tvRowId: tvRowId,
+            tvItemIndex: index,
+            child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: SizedBox(
                 width: _kTrailerCardWidth,
@@ -244,20 +243,20 @@ class _TrailerCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              trailer.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                height: 1.25,
-              ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            trailer.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              height: 1.25,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

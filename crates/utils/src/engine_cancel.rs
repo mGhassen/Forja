@@ -121,9 +121,25 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex as StdMutex;
+
+    /// Process-wide cancel/shutdown state is shared; serialize tests that mutate it.
+    static CANCEL_TEST_LOCK: StdMutex<()> = StdMutex::new(());
+
+    fn lock_tests() -> std::sync::MutexGuard<'static, ()> {
+        CANCEL_TEST_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+    }
 
     #[test]
     fn cancel_aborts_attached_job() {
+        let _guard = lock_tests();
+        clear_job_token();
+        clear_shutdown();
+        // Reset root so a prior [request] does not leave a cancelled parent.
+        request();
+        clear_job_token();
         let token = new_job_token();
         attach_job_token(token.clone());
         assert!(!token.is_cancelled());
@@ -134,7 +150,9 @@ mod tests {
 
     #[tokio::test]
     async fn playback_cancel_does_not_abort_shutdown_only_path() {
+        let _guard = lock_tests();
         clear_shutdown();
+        clear_job_token();
         let fut = with_shutdown_cancel(async { Ok::<_, String>(42) });
         request();
         assert_eq!(fut.await.unwrap(), 42);
@@ -142,7 +160,9 @@ mod tests {
 
     #[tokio::test]
     async fn shutdown_aborts_shutdown_only_path() {
+        let _guard = lock_tests();
         clear_shutdown();
+        clear_job_token();
         let handle = tokio::spawn(async {
             with_shutdown_cancel(std::future::pending::<Result<i32, String>>()).await
         });
@@ -151,5 +171,6 @@ mod tests {
         let err = handle.await.unwrap().unwrap_err();
         assert_eq!(err, cancelled_message());
         clear_shutdown();
+        clear_job_token();
     }
 }

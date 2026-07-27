@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/playback/settings_data_cleaner.dart';
+import 'package:forja/shared/platform/platform_info.dart';
+import 'package:rust/rust.dart';
 
 /// Clear stream caches, images, provider scores, and local watch data.
 class SettingsCacheDataSection extends StatefulWidget {
@@ -24,6 +26,22 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
 
   @override
   Widget build(BuildContext context) {
+    final mentionTorrent =
+        !PlatformInfo.isAndroidTv &&
+        PlatformPlayback.capabilities.localTorrentEngine;
+    final streamSubtitle = mentionTorrent
+        ? 'Saved webstreaming and anime stream URLs, torrent temp files, '
+            'and seek buffers. Next play re-resolves. Settings and watch history stay.'
+        : 'Saved webstreaming and anime stream URLs and seek buffers. '
+            'Next play re-resolves. Settings and watch history stay.';
+    final streamBody = mentionTorrent
+        ? 'Clears saved stream extracts, torrent download cache, and '
+            'temporary seek buffers on this device.\n\n'
+            'Watch history, provider scores, and settings are not affected.'
+        : 'Clears saved stream extracts and temporary seek buffers on this '
+            'device.\n\n'
+            'Watch history, provider scores, and settings are not affected.';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -35,16 +53,11 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
               icon: Icons.cached_rounded,
               iconColor: const Color(0xFFFB923C),
               title: 'Stream cache',
-              subtitle:
-                  'Saved webstreaming and anime stream URLs, torrent temp files, '
-                  'and seek buffers. Next play re-resolves. Settings and watch history stay.',
+              subtitle: streamSubtitle,
               onTap: () => _run(
                 kind: _ClearBusy.streams,
                 title: 'Clear stream cache?',
-                body:
-                    'Clears saved stream extracts, torrent download cache, and '
-                    'temporary seek buffers on this device.\n\n'
-                    'Watch history, provider scores, and settings are not affected.',
+                body: streamBody,
                 confirmLabel: 'Clear',
                 success: 'Stream cache cleared',
                 action: SettingsDataCleaner.clearStreamCaches,

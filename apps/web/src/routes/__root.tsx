@@ -6,10 +6,15 @@ import {
   Scripts,
 } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { PostHogProvider } from '@posthog/react'
 import { PasswordRecoveryGate } from '@/components/password-recovery-gate'
-import { PostHogAnalytics } from '@/components/posthog-analytics'
 import { AuthProvider } from '@/hooks/use-auth'
 import { ProfilesProvider } from '@/hooks/use-profiles'
+import {
+  posthogApiKey,
+  posthogBrowserOptions,
+  posthogConfigured,
+} from '@/lib/posthog'
 import appCss from '@/index.css?url'
 
 const queryClient = new QueryClient({
@@ -58,27 +63,35 @@ function RootComponent() {
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
-        <PostHogAnalytics>
-          <AuthProvider>
-            <PasswordRecoveryGate />
-            <ProfilesProvider>
-              <Outlet />
-            </ProfilesProvider>
-          </AuthProvider>
-        </PostHogAnalytics>
+        <AuthProvider>
+          <PasswordRecoveryGate />
+          <ProfilesProvider>
+            <Outlet />
+          </ProfilesProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </RootDocument>
   )
 }
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+  // Official TanStack Start pattern: PostHogProvider in the document shell.
+  // Empty key → skip mount (local / unconfigured deploys send nothing).
+  const body = posthogConfigured ? (
+    <PostHogProvider apiKey={posthogApiKey} options={posthogBrowserOptions}>
+      {children}
+    </PostHogProvider>
+  ) : (
+    children
+  )
+
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body>
-        {children}
+        {body}
         <Scripts />
       </body>
     </html>

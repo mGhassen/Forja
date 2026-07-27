@@ -8,14 +8,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 part 'trailer_player_web.dart';
@@ -60,7 +65,9 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   int? _autoNextSecondsLeft;
   final FocusNode _backFocus = FocusNode(debugLabel: 'trailer-back');
   final FocusNode _playFocus = FocusNode(debugLabel: 'trailer-play');
+  final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'trailer-player-menu');
   final FocusNode _nextTrailerFocus = FocusNode(debugLabel: 'trailer-next');
+  final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'trailer-player-tv-keys');
   bool _tvFocus = false;
   bool _initialFocusClaimed = false;
   late int _pickerIndex;
@@ -153,6 +160,16 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     _currentIndex = widget.initialIndex;
     _pickerIndex = _pickerIndexAfter(_currentIndex);
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    PlayerBackExitGate.setTryFocusBack(() {
+      if (!mounted) return false;
+      // Chrome visible → hide it (remote Back). Hidden → allow exit.
+      if (_showControls) {
+        setState(() => _showControls = false);
+        _hideTimer?.cancel();
+        return true;
+      }
+      return false;
+    });
     if (!DesktopWindowChrome.isDesktop) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
@@ -168,9 +185,12 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     _cancelAutoNext(rebuild: false);
     ShellBus.leavePlayerSurface();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    PlayerBackExitGate.setTryFocusBack(null);
     _backFocus.dispose();
     _playFocus.dispose();
+    _playerMenuFocus.dispose();
     _nextTrailerFocus.dispose();
+    _tvKeyFocus.dispose();
     if (!DesktopWindowChrome.isDesktop) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
@@ -179,22 +199,16 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
 
   void _startHideTimer() {
     _hideTimer?.cancel();
-    // TV keeps chrome visible; next-trailer / menus need chrome up.
-    if (_tvFocus ||
-        _ended ||
-        _autoNextActive ||
-        _showNextTrailerChip ||
-        PlayerPopupPanel.isShowing ||
-        !_playing) {
-      return;
-    }
-    _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (!mounted ||
-          _tvFocus ||
-          _ended ||
-          _autoNextActive ||
-          _showNextTrailerChip ||
-          PlayerPopupPanel.isShowing) {
+    if (!_playing) return;
+    if (_ended || _autoNextActive || _showNextTrailerChip) return;
+    if (playerChromeOverlayBlocksSeek()) return;
+    final hideAfter =
+        _tvFocus ? const Duration(seconds: 10) : const Duration(seconds: 3);
+    _hideTimer = Timer(hideAfter, () {
+      if (!mounted || !_playing) return;
+      if (_ended || _autoNextActive || _showNextTrailerChip) return;
+      if (playerChromeOverlayBlocksSeek()) {
+        _startHideTimer();
         return;
       }
       setState(() => _showControls = false);
@@ -204,6 +218,22 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   void _onPointerActivity() {
     if (!_showControls) setState(() => _showControls = true);
     _startHideTimer();
+  }
+
+  void _showChromeAndFocusPlay() {
+    if (!_showControls) setState(() => _showControls = true);
+    _startHideTimer();
+    _claimPlayFocus();
+  }
+
+  void _showChromeAndFocusBack() {
+    if (!_showControls) setState(() => _showControls = true);
+    _startHideTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_backFocus.canRequestFocus) return;
+      if (playerChromeOverlayBlocksFocusClaim()) return;
+      _backFocus.requestFocus();
+    });
   }
 
   @override
@@ -222,6 +252,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     if (!_tvFocus) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_playFocus.canRequestFocus) return;
+      if (playerChromeOverlayBlocksFocusClaim()) return;
       _playFocus.requestFocus();
     });
   }
@@ -252,8 +283,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   }
 
   Future<void> _exitTrailer() async {
-    if (PlayerPopupPanel.isShowing) {
-      PlayerPopupPanel.dismiss();
+    if (dismissAnyPlayerChromeOverlay()) {
       _claimPlayFocus();
       return;
     }

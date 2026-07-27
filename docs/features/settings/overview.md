@@ -22,9 +22,9 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 |----------|----------------|------------|
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
 | [Playback](playback-settings.md) | Play sources, server reliability, audio, auto next/skip, quality, IPTV EPG | Always (play sources / scoring / episode extras need a VOD tab; IPTV EPG needs the IPTV tab) |
-| [Sources](torrent-settings.md) | Torrents, Stremio / Nuvio / Jackett / Prowlarr | VOD tab + Direct torrent and/or Stremio on (not on Android TV) |
+| [Sources](torrent-settings.md) | Torrents, Stremio / Nuvio / Jackett / Prowlarr | VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
 | [WebStreamr](../scrapers/webstreamr-settings.md) | Country sources, extractors, resolutions, MFP, FlareSolverr, TMDB | VOD tab + Webstreaming on |
-| Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link | VOD tab + Direct torrent and/or Stremio on (not on Android TV) |
+| Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link | VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
 | Connected services | Trakt, Simkl, MDBlist | VOD tab |
 | [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists | VOD tab |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Always (IPTV portals CSV / portal cache only if IPTV tab is on) |

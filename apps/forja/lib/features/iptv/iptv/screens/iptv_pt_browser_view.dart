@@ -214,6 +214,24 @@ class _BrowserViewState extends State<_BrowserView> {
     _didInitialFocus = true;
   }
 
+  /// Commit a category for the channel pane. On TV, OK / → also moves focus
+  /// into streams; ↑/↓ alone must not call this (avoids logo thrash).
+  void _commitBrowserCategory(String categoryId, {required bool enterStreams}) {
+    final ctrl = widget.ctrl;
+    final prev = ctrl.browserSelectedCategoryId;
+    ctrl.selectBrowserCategory(categoryId);
+    // Each group has its own channel focus — do not carry index
+    // from the previous category into this one.
+    if (prev != categoryId) {
+      iptvResetBrowserStreamsFocusMemory();
+    }
+    if (!enterStreams || !iptvUseTvFocus(context)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      iptvFocusRowItem('browser-streams');
+    });
+  }
+
   @override
   void didUpdateWidget(covariant _BrowserView oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -576,22 +594,16 @@ class _BrowserViewState extends State<_BrowserView> {
                   ? () => ctrl.toggleLiveCategoryPin(cat.id)
                   : null,
               reorderIndex: canReorder ? reorderIndex : null,
-              onTap: () {
-                final prev = ctrl.browserSelectedCategoryId;
-                ctrl.selectBrowserCategory(cat.id);
-                // Each group has its own channel focus — do not carry index
-                // from the previous category into this one.
-                if (prev != cat.id) {
-                  iptvResetBrowserStreamsFocusMemory();
-                }
-              },
+              onTap: () => _commitBrowserCategory(cat.id, enterStreams: true),
               onUpEdge: listIndex == 0
                   ? () => iptvFocusRowItem(
                       'iptv-sections',
                       iptvActiveSectionShelfIndex(ctrl),
                     )
                   : null,
-              onRightEdge: () => iptvFocusRowItem('browser-streams'),
+              // → commits the focused group first (TV no longer selects on focus).
+              onRightEdge: () =>
+                  _commitBrowserCategory(cat.id, enterStreams: true),
             );
           }
 

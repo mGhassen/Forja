@@ -84,12 +84,14 @@ export function useProfileSettings() {
 
   const profileId = activeProfile?.id ?? null
   // Never surface another profile's cached row while this profile is pending.
-  const data = !profileId || query.isPending ? undefined : query.data
+  // Keep prior data during background refetch so drafts are not treated as "loading".
+  const data =
+    !profileId || (query.isPending && !query.data) ? undefined : query.data
 
   return {
     ...query,
     data,
-    isLoading: !profileId || query.isPending || query.isLoading,
+    isLoading: !profileId || (query.isPending && !query.data),
     profileId,
     save: saveMutation.mutateAsync,
     patch: patchMutation.mutateAsync,

@@ -78,13 +78,9 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       onUpEdge: widget.onUpEdge,
       onRightEdge: widget.onRightEdge,
       onFocusChange: (focused) {
+        // TV: ↑/↓ only moves focus chrome — do not select. Selecting rebuilds
+        // the channel grid and starts logo fetches; that runs on OK / → instead.
         setState(() => _focused = focused);
-        // Keep channel grid on the focused group (Settings category rail pattern).
-        if (focused &&
-            !widget.selected &&
-            iptvUseTvFocus(context)) {
-          widget.onTap();
-        }
       },
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(

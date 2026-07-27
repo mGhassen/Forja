@@ -1,13 +1,13 @@
-import posthog from 'posthog-js'
+import type { PostHogConfig } from 'posthog-js'
 
 /**
- * PostHog product analytics for the web portal (RFC-043 web slice).
+ * PostHog web portal config (RFC-043 web slice).
  *
- * Empty `VITE_POSTHOG_KEY` → SDK never starts (local / unconfigured deploys).
- * Never identify by email or display name — anonymous distinct id only.
+ * Empty `VITE_POSTHOG_KEY` → provider is not mounted (no SDK traffic).
+ * Never identify by email / display name — anonymous distinct id only.
  */
 
-const apiKey = (
+const apiKeyRaw = (
   import.meta.env.VITE_POSTHOG_KEY as string | undefined
 )?.trim()
 
@@ -21,13 +21,9 @@ export const posthogHost =
     ? hostDefine
     : 'https://us.i.posthog.com'
 
-export const posthogConfigured = Boolean(apiKey)
+export const posthogApiKey = apiKeyRaw ?? ''
 
-let started = false
-
-export function isPostHogActive(): boolean {
-  return started
-}
+export const posthogConfigured = posthogApiKey.length > 0
 
 function sensitivePropertyKey(key: string): boolean {
   const k = key.toLowerCase()
@@ -40,23 +36,6 @@ function sensitivePropertyKey(key: string): boolean {
     k.includes('email') ||
     k.includes('stream')
   )
-}
-
-function scrubText(value: string): string {
-  return value
-    .replace(/magnet:\?[^\s"']+/gi, '[magnet]')
-    .replace(
-      /https?:\/\/[^\s"'<>]+/gi,
-      (match) => scrubPageUrl(match),
-    )
-    .replace(
-      /Bearer\s+[A-Za-z0-9._~+/=-]+/gi,
-      'Bearer [redacted]',
-    )
-    .replace(
-      /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
-      '[jwt]',
-    )
 }
 
 /** Keep origin + path; strip query/hash that may hold auth codes. */
@@ -74,6 +53,17 @@ export function scrubPageUrl(url: string): string {
   } catch {
     return '[url]'
   }
+}
+
+function scrubText(value: string): string {
+  return value
+    .replace(/magnet:\?[^\s"']+/gi, '[magnet]')
+    .replace(/https?:\/\/[^\s"'<>]+/gi, (match) => scrubPageUrl(match))
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [redacted]')
+    .replace(
+      /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
+      '[jwt]',
+    )
 }
 
 function scrubProperties(
@@ -96,50 +86,35 @@ function scrubProperties(
   return out
 }
 
-/** Client-only. Safe to call multiple times. */
-export function initWebPostHog(): boolean {
-  if (typeof window === 'undefined') return false
-  if (!apiKey) return false
-  if (started) return true
-
-  posthog.init(apiKey, {
-    api_host: posthogHost,
-    person_profiles: 'identified_only',
-    capture_pageview: false,
-    capture_pageleave: true,
-    persistence: 'localStorage+cookie',
-    session_recording: {
-      maskAllInputs: true,
-      maskTextSelector: '*',
-    },
-    before_send: (event) => {
-      if (!event) return event
-      if (event.properties) {
-        event.properties = scrubProperties(
-          event.properties as Record<string, unknown>,
-        ) as typeof event.properties
-      }
-      return event
-    },
-  })
-
-  started = true
-  return true
+/** Options for `@posthog/react` PostHogProvider (TanStack Start docs). */
+export const posthogBrowserOptions: Partial<PostHogConfig> = {
+  api_host: posthogHost,
+  // Enables modern SPA pageview / history tracking.
+  defaults: '2026-05-30',
+  person_profiles: 'identified_only',
+  capture_exceptions: true,
+  // Loud in local DEV so Network/console make it obvious the SDK started.
+  debug: Boolean(import.meta.env.DEV),
+  persistence: 'localStorage+cookie',
+  session_recording: {
+    maskAllInputs: true,
+    maskTextSelector: '*',
+  },
+  before_send: (event) => {
+    if (!event) return event
+    if (event.properties) {
+      event.properties = scrubProperties(
+        event.properties as Record<string, unknown>,
+      ) as typeof event.properties
+    }
+    return event
+  },
 }
 
-export function capturePageview(url: string): void {
-  if (!started) return
-  const cleaned = scrubPageUrl(url.trim())
-  if (!cleaned || cleaned === '[url]') return
-  posthog.capture('$pageview', { $current_url: cleaned })
+if (import.meta.env.DEV) {
+  // eslint-disable-next-line no-console
+  console.info(
+    `[PostHog] web key ${posthogConfigured ? 'present' : 'MISSING'} · host ${posthogHost}`,
+  )
 }
 
-export function track(
-  name: string,
-  properties?: Record<string, unknown>,
-): void {
-  if (!started) return
-  posthog.capture(name, scrubProperties(properties))
-}
-
-export { posthog }

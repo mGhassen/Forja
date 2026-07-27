@@ -99,6 +99,10 @@ flutter_launcher_icons:
   image_path: assets/icon/logo-icon-1024.png
   adaptive_icon_background: "#141414"
   adaptive_icon_foreground: assets/icon/logo-icon-1024.png
+  remove_alpha_ios: true
+  # iOS project is Forja.xcodeproj (not Runner.xcodeproj) — after changing
+  # logo-icon-1024.png, regenerate Android/macOS with this tool, then copy
+  # iOS AppIcon.appiconset sizes manually (or re-run the asset script).
 
 # Match Flutter SplashScreen (AppTheme.bgDark). Do not use light #f7f7f7 —
 # Android TV often reports light theme and flashed a white wordmark on launch.

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:rust/rust.dart';
@@ -34,9 +35,20 @@ abstract final class PlatformChannel {
       } catch (e) {
         debugPrint('[PlatformChannel] isAndroidTv failed: $e');
       }
+      // Keep playback caps aligned with [ShellTokens.isAndroidTvDevice] when the
+      // leanback channel fails but the panel still looks like a TV (1080p+).
+      if (_physicalAndroidTvPanel()) return PlatformProfile.androidTv;
       return PlatformProfile.phone;
     }
     return PlatformProfile.phone;
+  }
+
+  /// Same heuristic as [ShellTokens.isAndroidTvDevice] physical fallback.
+  static bool _physicalAndroidTvPanel() {
+    final views = SchedulerBinding.instance.platformDispatcher.views;
+    if (views.isEmpty) return false;
+    final physical = views.first.physicalSize;
+    return physical.shortestSide >= 1080 && physical.width > physical.height;
   }
 
   static Future<void> initialize() async {

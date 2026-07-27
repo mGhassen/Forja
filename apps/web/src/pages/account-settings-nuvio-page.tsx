@@ -1,34 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SettingsSection } from '@/components/settings-section'
+import { useServerDraft } from '@/hooks/use-server-draft'
 import { useNuvioSetting } from '@/hooks/use-user-setting'
 import {
   emptyNuvioPayload,
   type NuvioAddonRow,
+  type NuvioPayload,
 } from '@/lib/sync-domains'
+
+function nuvioFromServer(value: unknown): NuvioPayload {
+  const payload = value as NuvioPayload | undefined
+  return { addons: payload?.addons ?? [] }
+}
 
 export function AccountSettingsNuvioPage() {
   const { data, profileId, isLoading, save, isSaving, saveError } =
     useNuvioSetting()
-  const [draft, setDraft] = useState(emptyNuvioPayload())
+  const [draft, setDraft] = useServerDraft(
+    profileId,
+    data?.updated_at,
+    Boolean(data) && !isLoading,
+    data?.payload,
+    nuvioFromServer,
+    emptyNuvioPayload,
+  )
   const [url, setUrl] = useState('')
   const [savedFlash, setSavedFlash] = useState(false)
-
-  useEffect(() => {
-    setDraft(emptyNuvioPayload())
-  }, [profileId])
-
-  useEffect(() => {
-    if (!profileId || isLoading || !data) {
-      setDraft(emptyNuvioPayload())
-      return
-    }
-    setDraft({ addons: data.payload.addons ?? [] })
-  }, [profileId, isLoading, data])
+  const controlsLocked = !profileId || (isLoading && !data)
 
   const addAddon = () => {
     const manifestUrl = url.trim()
@@ -57,7 +60,7 @@ export function AccountSettingsNuvioPage() {
       description="Manifest URLs for Nuvio scrapers. The app installs these on sync — same list as Settings → Providers & Addons → Nuvio."
       footer={
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => void handleSave()} disabled={isLoading || isSaving}>
+          <Button onClick={() => void handleSave()} disabled={controlsLocked || isSaving}>
             {isSaving ? 'Saving…' : 'Save changes'}
           </Button>
           {savedFlash ? (
@@ -96,6 +99,7 @@ export function AccountSettingsNuvioPage() {
                   size="sm"
                   className="text-red-300 hover:text-red-200"
                   onClick={() => removeAddon(addon.manifestUrl)}
+                  disabled={controlsLocked}
                 >
                   <Trash2 className="size-4" />
                 </Button>
@@ -111,9 +115,15 @@ export function AccountSettingsNuvioPage() {
             placeholder="https://…/manifest.json"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            disabled={controlsLocked}
           />
         </div>
-        <Button type="button" variant="secondary" onClick={addAddon}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={addAddon}
+          disabled={controlsLocked}
+        >
           Add addon
         </Button>
       </SettingsSection>

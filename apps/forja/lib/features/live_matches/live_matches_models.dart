@@ -865,6 +865,45 @@ const _stripIframeSandboxJs = r'''
 })();
 ''';
 
+/// Report HLS / media URLs to Flutter. Android System WebView cannot play
+/// Streamed `embed.st` in-page (CORS on strmd.st + host lock UI). We sniff the
+/// playlist from the visible WebView and hand off to the native IPTV player.
+const _liveEmbedMediaSpyJs = r'''
+(function () {
+  if (window.__forjaLiveMediaSpy) return;
+  window.__forjaLiveMediaSpy = true;
+  function report(u) {
+    try {
+      if (!u) return;
+      var s = String(u);
+      if (s.indexOf('blob:') === 0) return;
+      var low = s.toLowerCase();
+      if (low.indexOf('.m3u8') === -1 && low.indexOf('strmd.st') === -1) return;
+      window.flutter_inappwebview.callHandler('liveMediaUrl', s);
+    } catch (_) {}
+  }
+  try {
+    var ofetch = window.fetch;
+    if (typeof ofetch === 'function') {
+      window.fetch = function (input, init) {
+        try {
+          if (typeof input === 'string') report(input);
+          else if (input && input.url) report(input.url);
+        } catch (_) {}
+        return ofetch.apply(this, arguments);
+      };
+    }
+  } catch (_) {}
+  try {
+    var open = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      try { report(url); } catch (_) {}
+      return open.apply(this, arguments);
+    };
+  } catch (_) {}
+})();
+''';
+
 const _ppvReferer = 'https://ppv.is/';
 const _streamedBase = 'https://streamed.pk';
 const _streamedReferer = 'https://streamed.pk/';
@@ -890,6 +929,32 @@ Map<String, String> _ppvEmbedStreamHeaders(String embedUrl) {
     'Referer': embedUrl,
     'Origin': origin,
   };
+}
+
+Map<String, String> _liveEmbedStreamHeaders(String embedUrl) {
+  final origin = Uri.tryParse(embedUrl)?.origin ?? '';
+  return {
+    'User-Agent': _ua['User-Agent']!,
+    'Referer': embedUrl,
+    if (origin.isNotEmpty) 'Origin': origin,
+  };
+}
+
+bool _liveEmbedIsSniffableMediaUrl(String url) {
+  final lower = url.toLowerCase();
+  if (lower.startsWith('blob:') || lower.startsWith('data:')) return false;
+  if (lower.contains('doubleclick') ||
+      lower.contains('googlesyndication') ||
+      lower.contains('therocketlanguages') ||
+      lower.contains('optimserve')) {
+    return false;
+  }
+  if (lower.contains('.m3u8')) return true;
+  if (lower.contains('strmd.st/') &&
+      (lower.contains('/secure/') || lower.contains('playlist'))) {
+    return true;
+  }
+  return false;
 }
 
 /// Sniff the direct HLS/MP4 URL from a PPV embed, proxied so Referer applies
