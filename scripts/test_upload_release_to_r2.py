@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Unit tests for per-platform latest/ merge helpers."""
+"""Unit tests for per-platform / per-arch latest/ merge helpers."""
 
 from __future__ import annotations
 
 import unittest
 
 from upload_release_to_r2 import (
+    detect_arch,
     detect_platform,
+    merge_assets_by_arch,
     merge_platform_manifest,
     platforms_from_filenames,
+    referenced_version_prefixes,
     stale_latest_keys,
 )
 
@@ -23,6 +26,47 @@ class DetectPlatformTest(unittest.TestCase):
         )
         self.assertEqual(
             detect_platform("Forja-1.2.1-android-tv-arm64.apk"), "android_tv"
+        )
+
+
+class DetectArchTest(unittest.TestCase):
+    def test_slots(self) -> None:
+        self.assertEqual(detect_arch("Forja-1.2.1-macos-arm64.dmg"), "arm64")
+        self.assertEqual(detect_arch("Forja-1.2.1-macos-x86_64.dmg"), "x86_64")
+        self.assertEqual(
+            detect_arch("Forja-1.2.1-android-tv-armeabi-v7a.apk"), "armeabi-v7a"
+        )
+        self.assertEqual(detect_arch("Forja-1.2.1-windows-setup.exe"), "default")
+
+
+class MergeAssetsByArchTest(unittest.TestCase):
+    def test_incoming_x86_keeps_arm64(self) -> None:
+        merged = merge_assets_by_arch(
+            ["Forja-1.3.9-macos-arm64.dmg"],
+            ["Forja-1.3.24-macos-x86_64.dmg"],
+        )
+        self.assertEqual(
+            merged,
+            [
+                "Forja-1.3.9-macos-arm64.dmg",
+                "Forja-1.3.24-macos-x86_64.dmg",
+            ],
+        )
+
+    def test_incoming_arm64_replaces_same_slot(self) -> None:
+        merged = merge_assets_by_arch(
+            [
+                "Forja-1.3.9-macos-arm64.dmg",
+                "Forja-1.3.9-macos-x86_64.dmg",
+            ],
+            ["Forja-1.3.24-macos-arm64.dmg"],
+        )
+        self.assertEqual(
+            merged,
+            [
+                "Forja-1.3.24-macos-arm64.dmg",
+                "Forja-1.3.9-macos-x86_64.dmg",
+            ],
         )
 
 
@@ -69,6 +113,51 @@ class MergePlatformManifestTest(unittest.TestCase):
         self.assertIn("Forja-1.2.406-macos-arm64.dmg", flat)
         self.assertNotIn("Forja-1.2.399-macos-arm64.dmg", flat)
 
+    def test_macos_x86_only_upload_keeps_existing_arm64(self) -> None:
+        """Regression: Intel-only publish must not wipe Apple Silicon from latest/."""
+        existing = {
+            "published_at": "2026-07-26T14:40:16Z",
+            "platforms": {
+                "macos": {
+                    "version": "1.3.9",
+                    "published_at": "2026-07-26T14:40:16Z",
+                    "assets": [
+                        "Forja-1.3.9-macos-arm64.dmg",
+                        "Forja-1.3.9-macos-x86_64.dmg",
+                    ],
+                },
+                "windows": {
+                    "version": "1.3.0",
+                    "published_at": "2026-07-25T00:00:00Z",
+                    "assets": ["Forja-1.3.0-windows-setup.exe"],
+                },
+            },
+        }
+        incoming = platforms_from_filenames(
+            [
+                "Forja-1.3.24-macos-x86_64.dmg",
+                "Forja-1.3.24-windows-setup.exe",
+            ],
+            version="1.3.24",
+            published_at="2026-07-27T00:30:43Z",
+        )
+        merged = merge_platform_manifest(
+            existing, incoming, published_at="2026-07-27T00:30:43Z"
+        )
+        macos = merged["platforms"]["macos"]
+        self.assertEqual(
+            macos["assets"],
+            [
+                "Forja-1.3.9-macos-arm64.dmg",
+                "Forja-1.3.24-macos-x86_64.dmg",
+            ],
+        )
+        self.assertEqual(macos["version"], "1.3.24")
+        self.assertEqual(
+            merged["platforms"]["windows"]["assets"],
+            ["Forja-1.3.24-windows-setup.exe"],
+        )
+
     def test_legacy_flat_manifest_promotes(self) -> None:
         existing = {
             "version": "1.2.400",
@@ -108,6 +197,38 @@ class StaleLatestKeysTest(unittest.TestCase):
             replaced_platforms={"macos"},
         )
         self.assertEqual(stale, ["latest/Forja-1.2.399-macos-arm64.dmg"])
+
+    def test_kept_sibling_arch_not_stale(self) -> None:
+        keys = [
+            "latest/Forja-1.3.9-macos-arm64.dmg",
+            "latest/Forja-1.3.9-macos-x86_64.dmg",
+            "latest/Forja-1.3.24-macos-x86_64.dmg",
+        ]
+        stale = stale_latest_keys(
+            all_keys=keys,
+            merged_assets=[
+                "Forja-1.3.9-macos-arm64.dmg",
+                "Forja-1.3.24-macos-x86_64.dmg",
+            ],
+            replaced_platforms={"macos"},
+        )
+        self.assertEqual(stale, ["latest/Forja-1.3.9-macos-x86_64.dmg"])
+
+
+class ReferencedVersionsTest(unittest.TestCase):
+    def test_includes_older_arch_filename_version(self) -> None:
+        refs = referenced_version_prefixes(
+            {
+                "macos": {
+                    "version": "1.3.24",
+                    "assets": [
+                        "Forja-1.3.9-macos-arm64.dmg",
+                        "Forja-1.3.24-macos-x86_64.dmg",
+                    ],
+                }
+            }
+        )
+        self.assertEqual(refs, {"v1.3.9", "v1.3.24"})
 
 
 if __name__ == "__main__":

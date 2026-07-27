@@ -25,6 +25,10 @@ Manifest shape (latest/manifest.json):
       "windows": { "version": "1.2.400", "published_at": "…", "assets": ["…exe"] }
     }
   }
+
+Within a platform, incoming assets replace only the same architecture
+(arm64 / x86_64 / …). Other arches already in latest/ are kept — a one-arch
+macOS or Android TV publish must not delete the sibling arch.
 """
 
 from __future__ import annotations
@@ -248,6 +252,41 @@ def detect_platform(name: str) -> str | None:
     return None
 
 
+_VERSION_IN_NAME = re.compile(r"(?i)forja-(\d+\.\d+\.\d+)")
+
+
+def version_from_filename(name: str) -> str | None:
+    """Semver embedded in Forja-{ver}-… installer names."""
+    match = _VERSION_IN_NAME.search(name)
+    return match.group(1) if match else None
+
+
+def detect_arch(name: str) -> str:
+    """
+    Architecture slot for merge within a platform.
+
+    Same slot → incoming replaces prior file. Different slot → both kept.
+    Platforms with a single unversioned installer (Windows EXE) use "default".
+    """
+    lower = name.lower()
+    if "armeabi-v7a" in lower or "armeabi_v7a" in lower:
+        return "armeabi-v7a"
+    if "arm64" in lower or "aarch64" in lower:
+        return "arm64"
+    if "x86_64" in lower or "x86-64" in lower or "amd64" in lower:
+        return "x86_64"
+    if re.search(r"(?<![a-z0-9])x86(?![_a-z0-9])", lower):
+        return "x86"
+    return "default"
+
+
+def max_semver(versions: list[str]) -> str | None:
+    cleaned = [v.strip().lstrip("v") for v in versions if v and str(v).strip()]
+    if not cleaned:
+        return None
+    return max(cleaned, key=semver_key)
+
+
 def platforms_from_filenames(
     filenames: list[str],
     *,
@@ -272,6 +311,53 @@ def platforms_from_filenames(
     }
 
 
+def _normalize_platform_entry(
+    entry: dict,
+    *,
+    fallback_published_at: str | None,
+) -> dict | None:
+    assets = entry.get("assets")
+    if not isinstance(assets, list) or not assets:
+        return None
+    names = [a for a in assets if isinstance(a, str) and a.strip()]
+    if not names:
+        return None
+    from_names = [v for n in names if (v := version_from_filename(n))]
+    ver = entry.get("version")
+    if isinstance(ver, str) and ver.strip():
+        from_names.append(ver.strip().lstrip("v"))
+    version = max_semver(from_names)
+    if not version:
+        return None
+    published = entry.get("published_at")
+    if not isinstance(published, str) or not published.strip():
+        published = fallback_published_at
+    out: dict = {"version": version, "assets": names}
+    if isinstance(published, str) and published.strip():
+        out["published_at"] = published
+    return out
+
+
+def merge_assets_by_arch(existing_names: list[str], incoming_names: list[str]) -> list[str]:
+    """
+    Merge installer lists: incoming wins per architecture slot; other slots kept.
+    """
+    by_arch: dict[str, str] = {}
+    for name in existing_names:
+        by_arch[detect_arch(name)] = name
+    for name in incoming_names:
+        by_arch[detect_arch(name)] = name
+    # Stable-ish order: arm64, x86_64, then others alpha by arch then name.
+    order = {"arm64": 0, "x86_64": 1, "armeabi-v7a": 2, "x86": 3, "default": 4}
+    return [
+        name
+        for _, name in sorted(
+            by_arch.items(),
+            key=lambda item: (order.get(item[0], 50), item[0], item[1]),
+        )
+    ]
+
+
 def merge_platform_manifest(
     existing: dict | None,
     incoming: dict[str, dict],
@@ -280,7 +366,11 @@ def merge_platform_manifest(
 ) -> dict:
     """
     Merge incoming platform entries into existing latest manifest.
-    Incoming platforms replace prior entries; other platforms are kept.
+
+    - Platforms not in this upload are kept untouched.
+    - Platforms in this upload merge **by architecture**: only the uploaded
+      arch(es) replace prior files; sibling arches stay (may be older versions).
+    - Platform `version` is the max semver among remaining asset filenames.
     """
     platforms: dict[str, dict] = {}
     if isinstance(existing, dict):
@@ -289,24 +379,18 @@ def merge_platform_manifest(
             for key, entry in raw.items():
                 if not isinstance(key, str) or not isinstance(entry, dict):
                     continue
-                ver = entry.get("version")
-                assets = entry.get("assets")
-                if not isinstance(ver, str) or not ver.strip():
-                    continue
-                if not isinstance(assets, list) or not assets:
-                    continue
-                names = [a for a in assets if isinstance(a, str) and a.strip()]
-                if not names:
-                    continue
-                platforms[key] = {
-                    "version": ver.strip().lstrip("v"),
-                    "published_at": (
+                normalized = _normalize_platform_entry(
+                    entry,
+                    fallback_published_at=(
                         entry.get("published_at")
                         if isinstance(entry.get("published_at"), str)
                         else existing.get("published_at")
+                        if isinstance(existing.get("published_at"), str)
+                        else published_at
                     ),
-                    "assets": names,
-                }
+                )
+                if normalized:
+                    platforms[key] = normalized
         elif isinstance(existing.get("assets"), list) and existing.get("version"):
             # Legacy flat manifest → one synthetic entry set (all assets same version).
             legacy_ver = str(existing["version"]).strip().lstrip("v")
@@ -325,7 +409,42 @@ def merge_platform_manifest(
                 )
             )
 
-    platforms.update(incoming)
+    for key, entry in incoming.items():
+        if not isinstance(entry, dict):
+            continue
+        incoming_assets = entry.get("assets")
+        if not isinstance(incoming_assets, list):
+            continue
+        new_names = [a for a in incoming_assets if isinstance(a, str) and a.strip()]
+        if not new_names:
+            continue
+        prior = platforms.get(key)
+        prior_names = (
+            [a for a in prior["assets"] if isinstance(a, str)]
+            if isinstance(prior, dict) and isinstance(prior.get("assets"), list)
+            else []
+        )
+        merged_names = merge_assets_by_arch(prior_names, new_names)
+        from_names = [v for n in merged_names if (v := version_from_filename(n))]
+        entry_ver = entry.get("version")
+        if isinstance(entry_ver, str) and entry_ver.strip():
+            from_names.append(entry_ver.strip().lstrip("v"))
+        version = max_semver(from_names) or (
+            entry_ver.strip().lstrip("v")
+            if isinstance(entry_ver, str) and entry_ver.strip()
+            else None
+        )
+        if not version:
+            continue
+        platforms[key] = {
+            "version": version,
+            "published_at": (
+                entry.get("published_at")
+                if isinstance(entry.get("published_at"), str)
+                else published_at
+            ),
+            "assets": merged_names,
+        }
 
     return {
         "published_at": published_at,
@@ -351,8 +470,11 @@ def stale_latest_keys(
 ) -> list[str]:
     """
     latest/ files to delete after a partial upload.
-    Only drop files belonging to platforms we just replaced, and only if they
-    are no longer in the merged asset list. Never wipe other platforms.
+
+    Only drop files for platforms touched this run that are no longer in the
+    merged asset list (superseded same-arch builds). Sibling arches that
+    merge_platform_manifest kept stay in merged_assets and are not deleted.
+    Never wipe other platforms.
     """
     keep = {f"latest/{n}" for n in merged_assets} | {"latest/manifest.json"}
     stale: list[str] = []
@@ -367,6 +489,27 @@ def stale_latest_keys(
             continue
         stale.append(key)
     return stale
+
+
+def referenced_version_prefixes(platforms: dict[str, dict]) -> set[str]:
+    """v{semver} prefixes still serving any platform latest asset — never prune."""
+    out: set[str] = set()
+    for entry in platforms.values():
+        if not isinstance(entry, dict):
+            continue
+        ver = entry.get("version")
+        if isinstance(ver, str) and ver.strip():
+            out.add(f"v{ver.strip().lstrip('v')}")
+        assets = entry.get("assets")
+        if not isinstance(assets, list):
+            continue
+        for name in assets:
+            if not isinstance(name, str):
+                continue
+            from_name = version_from_filename(name)
+            if from_name:
+                out.add(f"v{from_name}")
+    return out
 
 
 _RELEASED_MD = re.compile(r"^(\d+\.\d+\.\d+)-\[released\]\.md$")
@@ -730,11 +873,8 @@ def main() -> None:
         print("No version prefixes found; nothing to prune.")
         return
 
-    # Never prune a version still serving as any platform's latest.
-    referenced = {
-        f"v{entry['version'].lstrip('v')}"
-        for entry in merged["platforms"].values()
-    }
+    # Never prune a version still serving any platform latest (incl. older arch).
+    referenced = referenced_version_prefixes(merged["platforms"])
     keep_set = set(versions[:keep]) | referenced
     drop = [v for v in versions if v not in keep_set]
     print(f"Keeping (window): {', '.join(versions[:keep])}")

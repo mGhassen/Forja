@@ -1481,6 +1481,21 @@ Action:    freeze changelog → commit → tag → push → build + publish"
   done
 }
 
+wizard_sync_menu() {
+  local direction rc
+  direction="$(ui_choose 1 2 "Sync with ${SYNC_REPO}" -- \
+    "to|Sync to ${SYNC_REPO} — push branch + tag from origin" \
+    "from|Sync from ${SYNC_REPO} — pull CI release commit → origin")" || {
+    rc=$?
+    ((rc == 2)) && return 2
+    ui_abort
+  }
+  case "$direction" in
+    to) wizard_sync ;;
+    from) wizard_sync_from ;;
+  esac
+}
+
 wizard_sync() {
   local tag detail branch
   fetch_tags
@@ -1492,7 +1507,7 @@ Target:  ${SYNC_REPO}
 Branch:  ${branch}
 Tag:     ${tag}
 Action:  force-push branch + tag (mGhassen overwrites ${SYNC_REPO})"
-  if ui_confirm_screen 1 1 "Sync to ${SYNC_REPO}?" "$detail" 1; then
+  if ui_confirm_screen 2 2 "Sync to ${SYNC_REPO}?" "$detail" 1; then
     ui_raw_off
     ui_clear
     NONINTERACTIVE=1 cmd_sync "$tag"
@@ -1521,7 +1536,7 @@ Branch:  ${branch}
 Tag:     ${tag} @ $(git rev-parse --short "${tag}^{commit}")
 Action:  FF or merge CI release commit, then push branch + tag to origin
 Use after: Actions New version on forjahq"
-  if ui_confirm_screen 1 1 "Sync from ${SYNC_REPO}?" "$detail" 1; then
+  if ui_confirm_screen 2 2 "Sync from ${SYNC_REPO}?" "$detail" 1; then
     ui_raw_off
     ui_clear
     NONINTERACTIVE=1 cmd_sync_from "$tag"
@@ -1693,8 +1708,7 @@ interactive_menu() {
     action="$(ui_choose 1 1 "What do you want to do?" -- \
       "release_tag|Release existing tag — platforms → build + publish" \
       "new_version|New version — bump → platforms → build + publish" \
-      "sync|Sync to ${SYNC_REPO} — push branch + tag from origin" \
-      "sync_from|Sync from ${SYNC_REPO} — pull CI release commit → origin" \
+      "sync|Sync with ${SYNC_REPO} — to / from origin…" \
       "backfill|Backfill untagged commits" \
       "list_tags|List / filter tags" \
       "tools|Build / publish tools…" \
@@ -1721,15 +1735,7 @@ interactive_menu() {
         return
         ;;
       sync)
-        wizard_sync || {
-          rc=$?
-          ((rc == 2)) && continue
-          ui_abort
-        }
-        return
-        ;;
-      sync_from)
-        wizard_sync_from || {
+        wizard_sync_menu || {
           rc=$?
           ((rc == 2)) && continue
           ui_abort
