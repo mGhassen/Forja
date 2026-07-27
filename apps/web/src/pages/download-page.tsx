@@ -8,10 +8,11 @@ import { SiteHeader } from '@/components/site-header'
 import {
   SHOWCASE_PLATFORMS,
   assetsForPlatform,
-  notesForPlatform,
+  notesForVersion,
   primaryDownloadsByPlatform,
   useChangelogNotes,
   useLatestRelease,
+  versionForAsset,
   versionForPlatform,
   type ShowcasePlatform,
   type ShowcasePlatformId,
@@ -180,12 +181,53 @@ function hasNamedVariant(name: string): boolean {
 function downloadButtonLabel(
   platform: ShowcasePlatform,
   asset: ReleaseAsset,
-  opts?: { multi?: boolean },
+  opts?: { multi?: boolean; showVersion?: boolean },
 ): string {
+  const version = opts?.showVersion ? versionForAsset(asset) : null
+  const versionSuffix = version ? ` · v${version}` : ''
   if (opts?.multi || hasNamedVariant(asset.name)) {
-    return `Get Forja · ${assetVariantLabel(asset.name, platform.id)}`
+    return `Get Forja · ${assetVariantLabel(asset.name, platform.id)}${versionSuffix}`
   }
-  return `Get Forja · ${platform.label}`
+  return `Get Forja · ${platform.label}${versionSuffix}`
+}
+
+/** Unique (version, arch label) rows for What's New when arches diverge. */
+function changelogEntriesForAssets(
+  assets: ReleaseAsset[],
+  platformId: ShowcasePlatformId,
+  resolveNotes: (version: string | null) => string | null,
+): Array<{
+  key: string
+  version: string
+  label: string | null
+  title: string
+}> {
+  const seen = new Set<string>()
+  const entries: Array<{
+    key: string
+    version: string
+    label: string | null
+    title: string
+  }> = []
+
+  for (const asset of assets) {
+    const version = versionForAsset(asset)
+    if (!version || seen.has(version)) continue
+    seen.add(version)
+    const notes = resolveNotes(version)
+    const title = releaseTitleFromNotes(notes, version)
+    if (!title) continue
+    entries.push({
+      key: version,
+      version,
+      label:
+        assets.length > 1
+          ? assetVariantLabel(asset.name, platformId)
+          : null,
+      title,
+    })
+  }
+  return entries
 }
 
 /** Primary asset first, then remaining variants. */
@@ -277,7 +319,7 @@ function PlatformPicker({
   assetsById,
   primaryById,
   versionById,
-  notesById,
+  resolveNotes,
 }: {
   platforms: ShowcasePlatform[]
   selectedId: ShowcasePlatformId
@@ -285,15 +327,30 @@ function PlatformPicker({
   assetsById: Record<ShowcasePlatformId, ReleaseAsset[]>
   primaryById: Record<ShowcasePlatformId, ReleaseAsset | null>
   versionById: Record<ShowcasePlatformId, string | null>
-  notesById: Record<ShowcasePlatformId, string | null>
+  resolveNotes: (version: string | null) => string | null
 }) {
   const selected = platforms.find((p) => p.id === selectedId) ?? platforms[0]
   const assets = assetsById[selected.id] ?? []
   const primary = primaryById[selected.id] ?? assets[0] ?? null
   const orderedAssets = orderPlatformAssets(assets, primary)
   const version = versionById[selected.id] ?? null
-  const notes = notesById[selected.id] ?? null
-  const releaseTitle = releaseTitleFromNotes(notes, version)
+  const assetVersions = orderedAssets
+    .map((a) => versionForAsset(a))
+    .filter((v): v is string => !!v)
+  const uniqueVersions = [...new Set(assetVersions)]
+  const versionsDiverge = uniqueVersions.length > 1
+  const headerVersionLabel = versionsDiverge
+    ? uniqueVersions.map((v) => `v${v}`).join(' / ')
+    : uniqueVersions[0]
+      ? `v${uniqueVersions[0]}`
+      : version
+        ? `v${version}`
+        : null
+  const changelogEntries = changelogEntriesForAssets(
+    orderedAssets,
+    selected.id,
+    resolveNotes,
+  )
 
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16 lg:items-start">
@@ -398,8 +455,11 @@ function PlatformPicker({
           )}
         >
           {selected.format}
-          {version ? (
-            <span className="text-[rgba(237,230,218,0.35)]"> · v{version}</span>
+          {headerVersionLabel ? (
+            <span className="text-[rgba(237,230,218,0.35)]">
+              {' '}
+              · {headerVersionLabel}
+            </span>
           ) : null}
         </p>
         <h2 className="mt-4 flex flex-wrap items-center gap-3 sm:gap-4">
@@ -430,7 +490,10 @@ function PlatformPicker({
                   <div key={a.id} className="flex flex-col items-start gap-1.5">
                     <MagnetDownload
                       href={a.download_url}
-                      label={downloadButtonLabel(selected, a, { multi })}
+                      label={downloadButtonLabel(selected, a, {
+                        multi,
+                        showVersion: versionsDiverge,
+                      })}
                       icon={
                         <PlatformGlyph
                           id={selected.id}
@@ -455,23 +518,36 @@ function PlatformPicker({
 
           <PlatformOpenHelp platformId={selected.id} />
 
-          {releaseTitle ? (
-            <div className="border-t border-[rgba(237,230,218,0.1)] pt-5">
-              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-                <p className="font-mono-ui text-[11px] uppercase tracking-[0.16em] text-brand">
-                  What&apos;s new{version ? ` · v${version}` : ''}
-                </p>
-                <Link
-                  to="/changelog"
-                  search={version ? { v: version } : undefined}
-                  className="font-mono-ui text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.42)] transition-colors hover:text-flame"
+          {changelogEntries.length > 0 ? (
+            <div className="space-y-5 border-t border-[rgba(237,230,218,0.1)] pt-5">
+              {changelogEntries.map((entry, i) => (
+                <div
+                  key={entry.key}
+                  className={cn(
+                    i > 0 && 'border-t border-[rgba(237,230,218,0.08)] pt-5',
+                  )}
                 >
-                  Full changelog →
-                </Link>
-              </div>
-              <p className="font-disp text-xl uppercase tracking-tight text-[#EDE6DA] sm:text-2xl">
-                {releaseTitle}
-              </p>
+                  <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+                    <p className="font-mono-ui text-[11px] uppercase tracking-[0.16em] text-brand">
+                      What&apos;s new
+                      {versionsDiverge && entry.label
+                        ? ` · ${entry.label}`
+                        : ''}
+                      {` · v${entry.version}`}
+                    </p>
+                    <Link
+                      to="/changelog"
+                      search={{ v: entry.version }}
+                      className="font-mono-ui text-[11px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.42)] transition-colors hover:text-flame"
+                    >
+                      Full changelog →
+                    </Link>
+                  </div>
+                  <p className="font-disp text-xl uppercase tracking-tight text-[#EDE6DA] sm:text-2xl">
+                    {entry.title}
+                  </p>
+                </div>
+              ))}
             </div>
           ) : null}
         </div>
@@ -510,13 +586,11 @@ export function DownloadPage() {
     return map
   }, [data])
 
-  const notesById = useMemo(() => {
-    const map = {} as Record<ShowcasePlatformId, string | null>
-    for (const p of SHOWCASE_PLATFORMS) {
-      map[p.id] = notesForPlatform(data, p.id, archiveNotes)
-    }
-    return map
-  }, [data, archiveNotes])
+  const resolveNotes = useMemo(
+    () => (version: string | null) =>
+      notesForVersion(version, data, archiveNotes),
+    [data, archiveNotes],
+  )
 
   return (
     <div className="film-grain relative min-h-screen bg-forja-bg text-[#EDE6DA]">
@@ -574,7 +648,7 @@ export function DownloadPage() {
               assetsById={assetsById}
               primaryById={primaryById}
               versionById={versionById}
-              notesById={notesById}
+              resolveNotes={resolveNotes}
             />
           </div>
         </Reveal>

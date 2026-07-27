@@ -61,6 +61,12 @@ function cdnBase(): string | null {
   return raw.replace(/\/$/, '')
 }
 
+/** Semver embedded in installer filenames (`Forja-1.3.35-macos-arm64.dmg`). */
+export function versionFromFilename(name: string): string | null {
+  const match = name.match(/(?:^|[^0-9])(\d+\.\d+\.\d+)(?:[^0-9]|$)/)
+  return match?.[1] ?? null
+}
+
 export function detectPlatformFromFilename(name: string): string {
   const lower = name.toLowerCase()
   if (lower.includes('windows') || lower.endsWith('.exe') || lower.endsWith('.msi')) {
@@ -166,14 +172,14 @@ export function fromR2Manifest(
       maxVersion = entry.version
     }
     if (entry.published_at) publishedAt = entry.published_at
-    const releaseId = `r2-${entry.version}`
     for (let i = 0; i < entry.assets.length; i++) {
       const name = entry.assets[i]
+      const fileVersion = versionFromFilename(name) ?? entry.version
       assets.push({
-        id: `r2-asset-${platform}-${entry.version}-${i}`,
-        release_id: releaseId,
+        id: `r2-asset-${platform}-${fileVersion}-${i}`,
+        release_id: `r2-${fileVersion}`,
         platform,
-        version: entry.version,
+        version: fileVersion,
         name,
         download_url: releaseCdnLatestUrl(base, name),
         size_bytes: null,
@@ -247,8 +253,17 @@ export async function fetchR2LatestRelease(): Promise<R2LatestRelease | null> {
   const platforms = normalizePlatforms(decoded as R2LatestManifest)
   if (!Object.keys(platforms).length) return null
 
+  // Include filename semvers so split-arch releases (e.g. macOS arm64 ≠ Intel)
+  // still get their changelog bodies, not only the platform bucket version.
   const uniqueVersions = [
-    ...new Set(Object.values(platforms).map((p) => p.version)),
+    ...new Set(
+      Object.values(platforms).flatMap((p) => [
+        p.version,
+        ...p.assets
+          .map((name) => versionFromFilename(name))
+          .filter((v): v is string => !!v),
+      ]),
+    ),
   ]
   const notesEntries = await Promise.all(
     uniqueVersions.map(async (version) => {

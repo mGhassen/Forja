@@ -2,7 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import { compareSemverDesc } from '@/lib/changelog-docs'
 import type { R2ChangelogArchive } from '@/lib/r2-changelog'
 import type { R2LatestRelease } from '@/lib/r2-latest-release'
-import { detectPlatformFromFilename } from '@/lib/r2-latest-release'
+import {
+  detectPlatformFromFilename,
+  versionFromFilename,
+} from '@/lib/r2-latest-release'
+
+export { versionFromFilename }
 
 /** Release row used by download + changelog UI (R2-backed). */
 export type ReleaseAsset = {
@@ -218,12 +223,6 @@ export function mergeChangelogReleases(
     .slice(0, CHANGELOG_MENU_LIMIT)
 }
 
-/** Semver embedded in installer filenames (`Forja-1.2.365-windows-setup.exe`). */
-export function versionFromFilename(name: string): string | null {
-  const match = name.match(/(?:^|[^0-9])(\d+\.\d+\.\d+)(?:[^0-9]|$)/)
-  return match?.[1] ?? null
-}
-
 /**
  * Latest release for download buttons — version/assets from R2
  * `latest/manifest.json` (via /api/latest-release); URLs point at CDN `latest/`.
@@ -351,20 +350,44 @@ export function versionForPlatform(
 }
 
 /**
- * Changelog markdown for a showcase platform's latest version.
+ * Changelog markdown for a specific release version.
  * Falls back to the permanent changelog archive when the latest-release
  * payload only includes notes for the max version.
+ */
+export function notesForVersion(
+  version: string | null | undefined,
+  release?: ReleaseWithAssets | null,
+  archiveNotes?: Record<string, string> | null,
+): string | null {
+  const ver = version?.replace(/^v/, '').trim()
+  if (!ver) return null
+  return (
+    release?.notesByVersion?.[ver] ??
+    archiveNotes?.[ver] ??
+    null
+  )
+}
+
+/**
+ * Changelog markdown for a showcase platform's latest (primary) version.
  */
 export function notesForPlatform(
   release: ReleaseWithAssets | null | undefined,
   platformId: ShowcasePlatformId,
   archiveNotes?: Record<string, string> | null,
 ): string | null {
-  const version = versionForPlatform(release, platformId)
-  if (!version) return null
+  return notesForVersion(
+    versionForPlatform(release, platformId),
+    release,
+    archiveNotes,
+  )
+}
+
+/** Semver for one installer asset (filename wins). */
+export function versionForAsset(asset: ReleaseAsset): string | null {
   return (
-    release?.notesByVersion?.[version] ??
-    archiveNotes?.[version] ??
+    versionFromFilename(asset.name) ??
+    asset.version?.replace(/^v/, '') ??
     null
   )
 }
