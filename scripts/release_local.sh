@@ -13,6 +13,7 @@ set -euo pipefail
 #   ./scripts/release_local.sh build-windows v1.2.404   # Windows via Parallels VM
 #   ./scripts/release_local.sh setup-windows            # print / run VM toolchain setup
 #   ./scripts/release_local.sh publish v1.2.404         # upload dist/ → gh + R2
+#   ./scripts/release_local.sh publish-r2 v1.2.404      # upload dist/ → R2 only (retry)
 #   ./scripts/release_local.sh sync [v1.2.404]          # push branch (+ tag) → forjahq mirror
 #   ./scripts/release_local.sh sync-from [v1.2.404]     # pull CI release commit from forjahq → origin
 #
@@ -1343,6 +1344,19 @@ cmd_publish() {
   ok "Done: $tag"
 }
 
+cmd_publish_r2() {
+  local tag ver
+  tag="$(normalize_tag "$1")"
+  ver="$(version_from_tag "$tag")"
+  [[ -n "${R2_ACCESS_KEY_ID:-}" ]] || die "R2_ACCESS_KEY_ID missing (set in .env)"
+  [[ -n "${R2_SECRET_ACCESS_KEY:-}" ]] || die "R2_SECRET_ACCESS_KEY missing (set in .env)"
+  info "Upload $tag → R2 only"
+  collect_assets "$ver" >/dev/null
+  confirm "Upload dist assets for $ver to R2 (skip GitHub)?" || die "aborted"
+  publish_r2 "$ver"
+  ok "R2 upload done: $tag"
+}
+
 cmd_sync() {
   local tag=""
   if [[ -n "${1:-}" ]]; then
@@ -1677,7 +1691,8 @@ wizard_tools() {
     "build_macos|Build macOS DMG (host arch only)" \
     "build_windows|Build Windows (Parallels)" \
     "build_android_tv|Build Android TV APKs (per selected ABI)" \
-    "publish|Publish dist/ only" \
+    "publish|Publish dist/ → GitHub + R2" \
+    "publish_r2|Upload dist/ → R2 only (retry)" \
     "setup_windows|Setup Windows VM")" || {
     rc=$?
     ((rc == 2)) && return 2
@@ -1709,6 +1724,7 @@ wizard_tools() {
           export FORJA_SYNC_SKIP
           cmd_publish "$tag"
           ;;
+        publish_r2) cmd_publish_r2 "$tag" ;;
       esac
       ;;
   esac
@@ -1734,10 +1750,11 @@ interactive_menu() {
     echo "  5) Build macOS"
     echo "  6) Build Windows"
     echo "  7) Build Android TV"
-    echo "  8) Publish"
-    echo "  9) Sync → ${SYNC_REPO}"
-    echo "  10) Sync ← ${SYNC_REPO} (CI release → origin)"
-    echo "  11) Setup Windows VM"
+    echo "  8) Publish (GitHub + R2)"
+    echo "  9) Upload R2 only"
+    echo "  10) Sync → ${SYNC_REPO}"
+    echo "  11) Sync ← ${SYNC_REPO} (CI release → origin)"
+    echo "  12) Setup Windows VM"
     echo "  q) Quit"
     read -r -p "Choice: " choice
     case "$choice" in
@@ -1787,9 +1804,10 @@ interactive_menu() {
       6) tag="$(pick_tag_interactive)"; cmd_build_windows "$tag" ;;
       7) tag="$(pick_tag_interactive)"; cmd_build_android_tv "$tag" ;;
       8) tag="$(pick_tag_interactive)"; cmd_publish "$tag" ;;
-      9) cmd_sync ;;
-      10) cmd_sync_from ;;
-      11) cmd_setup_windows ;;
+      9) tag="$(pick_tag_interactive)"; cmd_publish_r2 "$tag" ;;
+      10) cmd_sync ;;
+      11) cmd_sync_from ;;
+      12) cmd_setup_windows ;;
       q|Q) exit 0 ;;
       *) die "invalid choice" ;;
     esac
@@ -1871,6 +1889,7 @@ main() {
     build-android-tv) cmd_build_android_tv "${1:?usage: release_local.sh build-android-tv vX.Y.Z}" ;;
     setup-windows) cmd_setup_windows ;;
     publish) cmd_publish "${1:?usage: release_local.sh publish vX.Y.Z}" ;;
+    publish-r2) cmd_publish_r2 "${1:?usage: release_local.sh publish-r2 vX.Y.Z}" ;;
     sync) cmd_sync "${1:-}" ;;
     sync-from) cmd_sync_from "${1:-}" ;;
     -h|--help)
