@@ -452,14 +452,31 @@ latest_tag_on_ref() {
   return 1
 }
 
-# Newest release tag on our line whose commit is NOT on HEAD (orphaned CI release).
+# True if tag $1 is a newer semver than tag $2 (vX.Y.Z).
+version_tag_gt() {
+  local a="$1" b="$2"
+  [[ "$a" == "$b" ]] && return 1
+  [[ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -1)" == "$a" ]]
+}
+
+# Newest release tag whose commit is on HEAD.
+latest_tag_on_head() {
+  latest_tag_on_ref HEAD
+}
+
+# Newest CI release on our line that is NOT on HEAD and is newer than HEAD's tip tag.
+# Ignores ancient orphaned tags (e.g. v1.3.0 still dangling after main moved to v1.3.33).
 latest_pending_release_tag() {
-  local t tip
+  local t tip on_head
+  on_head="$(latest_tag_on_head || true)"
   while IFS= read -r t; do
     [[ -z "$t" ]] && continue
     tip="$(git rev-parse "${t}^{commit}" 2>/dev/null)" || continue
     git merge-base --is-ancestor "$tip" HEAD 2>/dev/null && continue
     tag_on_our_line "$t" || continue
+    if [[ -n "$on_head" ]] && ! version_tag_gt "$t" "$on_head"; then
+      continue
+    fi
     echo "$t"
     return 0
   done < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null || true)
