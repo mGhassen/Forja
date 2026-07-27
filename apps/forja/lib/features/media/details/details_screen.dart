@@ -285,9 +285,10 @@ class _DetailsScreenState extends State<DetailsScreen>
   void dispose() {
     // Leave the title → stop every in-flight source fetch (panel owner gone).
     // Flags first so Auto host loops halt even if cancel races mid-sniff.
+    // rebuild: false — Element is already defunct here; setState would assert.
     _webstreamingOnlyExtractionCancelled = true;
     _streamCancelled = true;
-    _cancelActiveSourceFetch();
+    _cancelActiveSourceFetch(rebuild: false);
     _detailsHeroPlayFocus.dispose();
     _detailsBackFocus.dispose();
     _detailsScrollController.dispose();

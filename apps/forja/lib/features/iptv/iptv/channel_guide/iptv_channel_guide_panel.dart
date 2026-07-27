@@ -37,9 +37,10 @@ class IptvChannelGuidePanel extends StatefulWidget {
   /// Compact overlay — leaves video visible on the right (was 660).
   static const double panelWidthWide = 480;
   static const double panelWidthNarrow = 300;
+  /// Desktop/phone floating inset — TV uses a flush full-height left rail.
   static const double panelEdgeGap = 10;
   static const double panelRadius = 12;
-  /// Cap guide height so it does not fill the player.
+  /// Desktop/phone only — cap guide height so it does not fill the player.
   static const double panelHeightFraction = 0.72;
   static const double panelVerticalGap = 28;
   /// Fixed channel row height (padding + logo).
@@ -290,6 +291,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   EdgeInsets _panelPadding(BuildContext context) {
+    // Android TV: flush left rail from top to bottom (no floating inset).
+    if (iptvUseTvFocus(context)) return EdgeInsets.zero;
     return EdgeInsets.only(
       top: DesktopWindowChrome.topInset(context) +
           IptvChannelGuidePanel.panelVerticalGap,
@@ -302,6 +305,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final pad = _panelPadding(context);
     final available =
         MediaQuery.sizeOf(context).height - pad.top - pad.bottom;
+    if (iptvUseTvFocus(context)) return available;
     final target = available * IptvChannelGuidePanel.panelHeightFraction;
     return target.clamp(280.0, available).toDouble();
   }
@@ -567,6 +571,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   @override
   Widget build(BuildContext context) {
     final wide = _wide;
+    final tv = iptvUseTvFocus(context);
 
     // Caller must wrap with Positioned.fill as a direct Stack child.
     return FocusScope(
@@ -590,16 +595,24 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 ),
               ),
             ),
-            Align(
-              alignment: Alignment.topLeft,
-              child: Padding(
-                padding: _panelPadding(context),
-                child: SizedBox(
-                  height: _panelHeight(context),
-                  child: _buildPanelShell(wide: wide),
+            if (tv)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: _buildPanelShell(wide: wide, tvRail: true),
+              )
+            else
+              Align(
+                alignment: Alignment.topLeft,
+                child: Padding(
+                  padding: _panelPadding(context),
+                  child: SizedBox(
+                    height: _panelHeight(context),
+                    child: _buildPanelShell(wide: wide, tvRail: false),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -607,14 +620,17 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   /// Flat translucent shell — no [BackdropFilter] over live video (ATV GPU cost).
-  Widget _buildPanelShell({required bool wide}) {
+  Widget _buildPanelShell({required bool wide, required bool tvRail}) {
     final panelWidth = wide
         ? IptvChannelGuidePanel.panelWidthWide
         : IptvChannelGuidePanel.panelWidthNarrow;
-    final radius = const BorderRadius.only(
-      topRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
-      bottomRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
-    );
+    // TV: square full-height rail flush to the left edge.
+    final radius = tvRail
+        ? BorderRadius.zero
+        : const BorderRadius.only(
+            topRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
+            bottomRight: Radius.circular(IptvChannelGuidePanel.panelRadius),
+          );
 
     return ClipRRect(
       borderRadius: radius,
@@ -626,9 +642,13 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
             color: _panelSurface,
             borderRadius: radius,
             border: Border(
-              top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              top: tvRail
+                  ? BorderSide.none
+                  : BorderSide(color: Colors.white.withValues(alpha: 0.1)),
               right: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-              bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              bottom: tvRail
+                  ? BorderSide.none
+                  : BorderSide(color: Colors.white.withValues(alpha: 0.1)),
             ),
           ),
           child: SizedBox(

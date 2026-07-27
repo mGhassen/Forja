@@ -1135,16 +1135,24 @@ class _LiveMatchesEmbedPlayerScreenState
     final embedUrl = widget.embedUrl;
     // Android System WebView: nested iframe embeds show
     // "Remove sandbox attributes on the iframe tag". Load top-level with
-    // catalog Referer instead (same idea as VidSrc forceDirect). Desktop /
+    // catalog Referer instead (same idea as VidSrc forceDirect), and inject
+    // sandbox strip + frameElement defeat in every frame (nested player
+    // frames still gate even when the outer page is top-level). Desktop /
     // iOS keep the iframe wrapper for document.referrer (issues 046 / 049).
     _androidDirectEmbed = !kIsWeb && Platform.isAndroid;
     _initialUserScripts = UnmodifiableListView([
-      if (!_androidDirectEmbed)
-        UserScript(
-          source: _stripIframeSandboxJs,
-          injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-          forMainFrameOnly: true,
-        ),
+      // Strip sandbox on iframes first, then defeat frameElement checks in
+      // every frame (embedindia nests a player that gates on sandbox).
+      UserScript(
+        source: _stripIframeSandboxJs,
+        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+        forMainFrameOnly: false,
+      ),
+      UserScript(
+        source: _defeatEmbedSandboxCheckJs,
+        injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+        forMainFrameOnly: false,
+      ),
       UserScript(
         source: _embedMediaControlUserScript,
         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,

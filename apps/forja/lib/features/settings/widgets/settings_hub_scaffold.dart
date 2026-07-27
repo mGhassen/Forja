@@ -97,6 +97,14 @@ class _SettingsHubScaffoldState extends State<SettingsHubScaffold> {
     final first = OrderedTraversalPolicy().findFirstFocus(_detailScope);
     if (first == null || !first.canRequestFocus) {
       _detailScope.requestFocus();
+      // Async bodies (Features navbar load) may gain focusables next frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_detailScope.hasFocus) return;
+        final retry = OrderedTraversalPolicy().findFirstFocus(_detailScope);
+        if (retry != null && retry.canRequestFocus) {
+          retry.requestFocus();
+        }
+      });
       return _detailScope.hasFocus;
     }
     first.requestFocus();

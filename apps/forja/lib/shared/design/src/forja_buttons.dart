@@ -50,10 +50,15 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     final node = _nodeFor(widget);
     assert(
       node != null,
-      'ForjaInteractive with onTap must have a FocusNode',
+      'ForjaInteractive with onTap or focusNode must have a FocusNode',
     );
     return node!;
   }
+
+  /// TV / keyboard: an explicit [focusNode] stays focusable even when [onTap]
+  /// is null (e.g. Play disabled until episodes load).
+  bool get _wantsFocus =>
+      widget.onTap != null || widget.focusNode != null;
 
   ShellInputPolicy _policy(BuildContext context) =>
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
@@ -173,7 +178,7 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
             ),
     );
 
-    if (widget.onTap == null) return interactive;
+    if (!_wantsFocus) return interactive;
 
     return Focus(
       focusNode: _effectiveNode,
@@ -234,7 +239,9 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
         if (trap == KeyEventResult.handled) return trap;
         if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
         if (shellTvIsActivateKey(event)) {
-          widget.onTap!();
+          final tap = widget.onTap;
+          if (tap == null) return KeyEventResult.handled;
+          tap();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;

@@ -494,15 +494,19 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
 
+    // Wait until Play is in the tree (ForjaInteractive mounts Focus when the
+    // explicit focusNode is set). Marking done on an unattached node left TV
+    // with no focus after episodes finished loading.
     if (policy.heroPlayAutoFocus &&
         !_detailsHeroInitialFocusDone &&
         _error == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _detailsHeroInitialFocusDone) return;
-        if (_heroPlayFocus.canRequestFocus) {
-          _heroPlayFocus.requestFocus();
-          _detailsHeroInitialFocusDone = true;
+        if (_heroPlayFocus.context == null || !_heroPlayFocus.canRequestFocus) {
+          return;
         }
+        _heroPlayFocus.requestFocus();
+        _detailsHeroInitialFocusDone = true;
       });
     }
 

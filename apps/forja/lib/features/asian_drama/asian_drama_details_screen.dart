@@ -342,10 +342,11 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     if (policy.heroPlayAutoFocus && !_detailsHeroInitialFocusDone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _detailsHeroInitialFocusDone) return;
-        if (_heroPlayFocus.canRequestFocus) {
-          _heroPlayFocus.requestFocus();
-          _detailsHeroInitialFocusDone = true;
+        if (_heroPlayFocus.context == null || !_heroPlayFocus.canRequestFocus) {
+          return;
         }
+        _heroPlayFocus.requestFocus();
+        _detailsHeroInitialFocusDone = true;
       });
     }
 

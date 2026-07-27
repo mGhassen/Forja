@@ -341,9 +341,12 @@ class SettingsNavigationPageBody extends StatefulWidget {
 class _SettingsNavigationPageBodyState
     extends State<SettingsNavigationPageBody> {
   final SettingsService _settings = SettingsService();
+  final FocusNode _firstTabFocus =
+      FocusNode(debugLabel: 'settings-features-tab-0');
   List<String> _navbarVisible = [];
   List<String> _navbarOrder = [];
   String _defaultNavTab = 'home';
+  bool _loaded = false;
 
   @override
   void initState() {
@@ -355,11 +358,30 @@ class _SettingsNavigationPageBodyState
   @override
   void dispose() {
     SettingsService.navbarChangeNotifier.removeListener(_onNavbarChanged);
+    _firstTabFocus.dispose();
     super.dispose();
   }
 
   void _onNavbarChanged() {
     _load();
+  }
+
+  /// Features loads tab rows async — if the user already entered the detail
+  /// pane (OK/→ from the category rail), land focus on the first tab once
+  /// rows exist. Otherwise Right appears to do nothing / D-pad dies on the
+  /// locked Settings star IconButton.
+  void _focusFirstTabIfDetailActive() {
+    if (!mounted || !_loaded || _navbarOrder.isEmpty) return;
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_firstTabFocus.canRequestFocus) return;
+      final scope = FocusScope.of(context);
+      if (!scope.hasFocus) return;
+      final primary = FocusManager.instance.primaryFocus;
+      if (primary == _firstTabFocus) return;
+      // Prefer first tab over stray IconButtons / empty scope focus.
+      _firstTabFocus.requestFocus();
+    });
   }
 
   Future<void> _load() async {
@@ -384,6 +406,7 @@ class _SettingsNavigationPageBodyState
     setState(() {
       _navbarVisible = navVisible;
       _navbarOrder = navOrder;
+      _loaded = true;
       final startupOptions = _startupTabOptionsFor(navOrder, navVisible);
       _defaultNavTab = startupOptions.contains(defaultNavTab)
           ? defaultNavTab
@@ -392,6 +415,7 @@ class _SettingsNavigationPageBodyState
         _settings.setDefaultNavTab(_defaultNavTab);
       }
     });
+    _focusFirstTabIfDetailActive();
   }
 
   List<String> _startupTabOptionsFor(List<String> order, List<String> visible) {
@@ -485,12 +509,14 @@ class _SettingsNavigationPageBodyState
                 final id = _navbarOrder[index];
                 final dest = navDestinations[id]!;
                 final isVisible = _navbarVisible.contains(id);
+                final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
                 return Container(
                   key: ValueKey(id),
                   color: Colors.transparent,
                   child: shellFocusableTap(
                     context: context,
+                    focusNode: index == 0 ? _firstTabFocus : null,
                     onTap: () {
                       setState(() {
                         if (isVisible) {
@@ -527,8 +553,7 @@ class _SettingsNavigationPageBodyState
                         ),
                       ),
                       trailing: ExcludeFocus(
-                        excluding: ShellScope.inputPolicyOf(context)
-                            .useFocusableMoodChips,
+                        excluding: tv,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -566,42 +591,66 @@ class _SettingsNavigationPageBodyState
                 );
               },
             ),
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 2),
-              leading: const Icon(
-                Icons.settings,
-                color: ForjaShellColors.brandGreen,
-                size: 22,
-              ),
-              title: const Text(
-                'Settings',
-                style: TextStyle(
-                  color: ForjaShellColors.brandGreen,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _defaultNavStar('settings', enabled: true),
-                  Icon(
-                    Icons.lock_outline,
-                    color: ForjaShellColors.iconMuted.withValues(alpha: 0.5),
-                    size: 16,
+            Builder(
+              builder: (context) {
+                final tv =
+                    ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+                final tile = ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 2),
+                  leading: const Icon(
+                    Icons.settings,
+                    color: ForjaShellColors.brandGreen,
+                    size: 22,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Always visible',
+                  title: const Text(
+                    'Settings',
                     style: TextStyle(
-                      color: ForjaShellColors.textSecondary.withValues(
-                        alpha: 0.7,
-                      ),
-                      fontSize: 11,
+                      color: ForjaShellColors.brandGreen,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              ),
+                  trailing: ExcludeFocus(
+                    excluding: tv,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _defaultNavStar('settings', enabled: true),
+                        Icon(
+                          Icons.lock_outline,
+                          color: ForjaShellColors.iconMuted.withValues(
+                            alpha: 0.5,
+                          ),
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Always visible',
+                          style: TextStyle(
+                            color: ForjaShellColors.textSecondary.withValues(
+                              alpha: 0.7,
+                            ),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+                if (!tv) return tile;
+                // TV: whole row is one focus stop (star IconButton must not
+                // steal first focus while the tab list is still loading).
+                return shellFocusableTap(
+                  context: context,
+                  onTap: () => _setDefaultNavTab('settings'),
+                  scaleOnFocus: 1.0,
+                  showFocusBorder: true,
+                  showFocusFill: true,
+                  tvTabId: 'settings',
+                  tvZone: ShellTvZone.settings,
+                  child: tile,
+                );
+              },
             ),
           ],
         ),

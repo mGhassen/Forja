@@ -40,7 +40,14 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
   /// those flags. `cancelAllPending` alone only kills the *current* host sniff;
   /// without the flag the Auto loop keeps walking the next server after tab
   /// switch (the Cancel button always set both).
-  void _cancelActiveSourceFetch({bool cancelEngineJobs = true}) {
+  ///
+  /// Pass [rebuild]: false from [State.dispose] — by then the [Element] is
+  /// already defunct, so [State.setState] asserts even though [State.mounted]
+  /// is still true until dispose returns.
+  void _cancelActiveSourceFetch({
+    bool cancelEngineJobs = true,
+    bool rebuild = true,
+  }) {
     final changed =
         _s._isSearching || _s._isStremioFetching || _s._isNuvioFetching;
     _s._torrentSearchGen++;
@@ -57,8 +64,7 @@ mixin _DetailsScreenStremio on State<DetailsScreen> {
     _s._isStremioFetching = false;
     _s._isNuvioFetching = false;
     _s._nuvioInFlightScraperId = null;
-    // context.mounted (not State.mounted): Element is already defunct in dispose.
-    if (changed && context.mounted) setState(() {});
+    if (changed && rebuild && mounted) setState(() {});
   }
 
   Future<void> _fetchAllStremioStreams() async {
