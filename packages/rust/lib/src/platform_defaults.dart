@@ -1,3 +1,4 @@
+import 'built_in_player_engine.dart';
 import 'platform_profile.dart';
 
 /// Per-platform first-run defaults and getter fallbacks.
@@ -5,6 +6,7 @@ class PlatformDefaults {
   const PlatformDefaults({
     required this.visibleNavIds,
     required this.externalPlayer,
+    required this.builtInPlayerEngine,
     required this.subSize,
     required this.subBottomPadding,
     required this.iptvEpgEnabled,
@@ -18,6 +20,7 @@ class PlatformDefaults {
 
   final List<String> visibleNavIds;
   final String externalPlayer;
+  final BuiltInPlayerEngine builtInPlayerEngine;
   final double subSize;
   final double subBottomPadding;
   final bool iptvEpgEnabled;
@@ -45,6 +48,7 @@ class PlatformDefaults {
       PlatformProfile.androidTv => const PlatformDefaults(
         visibleNavIds: androidTvNavIds,
         externalPlayer: 'Built-in Player',
+        builtInPlayerEngine: BuiltInPlayerEngine.exoPlayer,
         subSize: 52,
         subBottomPadding: 48,
         iptvEpgEnabled: true,
@@ -58,6 +62,7 @@ class PlatformDefaults {
       PlatformProfile.desktop => const PlatformDefaults(
         visibleNavIds: phoneNavIds,
         externalPlayer: 'Built-in Player',
+        builtInPlayerEngine: BuiltInPlayerEngine.mediaKit,
         subSize: 44,
         subBottomPadding: 24,
         iptvEpgEnabled: true,
@@ -71,6 +76,7 @@ class PlatformDefaults {
       PlatformProfile.phone => const PlatformDefaults(
         visibleNavIds: phoneNavIds,
         externalPlayer: 'Built-in Player',
+        builtInPlayerEngine: BuiltInPlayerEngine.exoPlayer,
         subSize: 24,
         subBottomPadding: 24,
         iptvEpgEnabled: true,

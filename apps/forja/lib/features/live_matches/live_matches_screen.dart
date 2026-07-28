@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
-import 'dart:io' show Platform;
+import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -184,12 +184,13 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   }
 
   void _syncTimelineLiveTick() {
-    final need = shellTabVisible && _view == _LiveMatchesView.timeline;
+    // Grid (including Android TV cards-only) also needs a minute tick so ● LIVE
+    // badges flip when kickoff passes without a manual refresh.
+    final need = shellTabVisible &&
+        (_view == _LiveMatchesView.timeline || _view == _LiveMatchesView.grid);
     if (need) {
       _timelineLiveTick ??= Timer.periodic(const Duration(minutes: 1), (_) {
-        if (!mounted || !shellTabVisible || _view != _LiveMatchesView.timeline) {
-          return;
-        }
+        if (!mounted || !shellTabVisible) return;
         setState(() {});
       });
     } else {

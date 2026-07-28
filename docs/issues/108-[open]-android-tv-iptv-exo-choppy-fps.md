@@ -3,14 +3,15 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** Android TV · IPTV · Media3 ExoPlayer · TextureView · MediaKit  
+**Area:** Android TV · IPTV · Media3 ExoPlayer · SurfaceView · MediaKit  
 **Reported:** 2026-07-25 (Toshiba Android 7 TV)
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 3** acceptance |
+| **Progress** | **8 / 8** fix · **0 / 3** acceptance |
+| **Current slice** | ATV Exo SurfaceView + hybrid composition; MediaKit display-resample |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +26,9 @@
 | 3 | I108-T03 | Unit test `iptvExoUrlLooksLive` | ✅ |
 | 4 | I108-T04 | Drop automatic live height/bitrate caps; shorter live target offset (~8s) — caps made picture soft / unwatchable | ✅ |
 | 5 | I108-T05 | IPTV honors Settings / Player menu Exo ↔ MediaKit (ATV MediaKit uses `vo=mediacodec_embed`) | ✅ |
+| 6 | I108-T06 | ATV Exo: SurfaceView + Flutter hybrid composition (TextureView low-FPS / soft on leanback); phone keeps TextureView | ✅ |
+| 7 | I108-T07 | ATV MediaKit IPTV: `video-sync=display-resample` + `framedrop=vo`; Exo live decoder fallback + wake mode | ✅ |
+| 8 | I108-T08 | IPTV Exo: skip no-op buffering/playing setState; skip progress setState when chrome hidden | ✅ |
 
 ---
 
@@ -40,7 +44,7 @@
 
 ## Summary
 
-On **Android TV**, IPTV and Home/Search movies both use Media3 ExoPlayer + TextureView by default. Home VOD was smooth; **IPTV live** felt like constant low FPS on a Toshiba Android 7 set.
+On **Android TV**, IPTV and Home/Search movies both use Media3 ExoPlayer by default. Home VOD was smoother; **IPTV live** felt like constant low FPS on a Toshiba Android 7 set. MediaKit (`mediacodec_embed`) looked more fluid.
 
 **Root cause (initial):** Live Xtream/M3U feeds are often fixed high-bitrate MPEG-TS (or high HLS variants) at the live edge. The shared Exo host had **no live LoadControl**, **no LiveConfiguration**, and **no max video size/bitrate** — while movie playback uses ABR + device caps in source selection. Weak API 24 TV SoCs + TextureView compositing fall behind first on live.
 
@@ -48,11 +52,13 @@ On **Android TV**, IPTV and Home/Search movies both use Media3 ExoPlayer + Textu
 
 **Follow-up (T04–T05):** device caps made live look soft / low-FPS and unwatchable. Caps are removed (LoadControl + ~8s live offset remain). IPTV now reads **Settings → Built-in engine** and the in-player **Player** menu can hot-swap Exo ↔ MediaKit; ATV MediaKit uses `vo=mediacodec_embed` + `hwdec=mediacodec` (same as VOD).
 
-**Limit:** single-variant TS above what the SoC can decode still hitch — try **MediaKit** from the Player menu. TextureView compositing cost remains (required for Flutter — see issue 102).
+**Surface / sync (T06–T08):** TextureView inside Flutter’s platform view has poor frame timing and often cannot paint at full leanback display resolution (UI layer upscaled — Google Media3 guidance prefers SurfaceView on ATV). ATV Exo now inflates **SurfaceView** and embeds via **hybrid composition** (`initExpensiveAndroidView`) so frames are not tiled (issue 102). Phone keeps TextureView + TLHC. MediaKit IPTV on ATV uses display-resample sync; Exo skips redundant Dart rebuilds during live.
+
+**Limit:** single-variant TS above what the SoC can decode may still hitch — try **MediaKit** from the Player menu.
 
 ## Related
 
-- [102](102-[open]-android-tv-exoplayer-tiled-frames.md) — TextureView compositing (required for Flutter)
+- [102](102-[open]-android-tv-exoplayer-tiled-frames.md) — SurfaceView tiling under TLHC; ATV now uses hybrid composition
 - [092](092-[open]-windows-iptv-stream-freeze-after-20s.md) — Windows MediaKit IPTV freeze (separate)
 - [107](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) — same Toshiba device, posters only
 - [IPTV Xtream](../features/live/iptv-xtream.md) · [Player](../features/playback/player.md)

@@ -82,8 +82,9 @@ bool ppvStreamIsAlwaysOn({
 
 /// Whether a PPV schedule row is airing (matches site **Live now**).
 ///
-/// Uses start/end when present; also treats an active viewer count after start
-/// as live so long events stay playable if `ends_at` drifts.
+/// Uses start/end when present; also treats an active viewer count as live
+/// (ppv.is is viewer-driven). Allows a few hours before [startsAt] so device
+/// clock skew / early doors still show ● LIVE like desktop.
 bool ppvStreamIsLive({
   required bool isAlwaysOn,
   required String status,
@@ -100,10 +101,19 @@ bool ppvStreamIsLive({
     return true;
   }
   // Live now on ppv.is is viewer-driven; keep airing while people are watching.
-  if (viewers > 0 && startsAt > 0 && now >= startsAt) {
-    if (endsAt <= startsAt) return true;
-    final graceEnd = endsAt + const Duration(hours: 3).inSeconds;
-    return now <= graceEnd;
+  if (viewers > 0) {
+    if (startsAt > 0 && endsAt > startsAt) {
+      final earlyStart =
+          startsAt - const Duration(hours: 6).inSeconds;
+      final graceEnd = endsAt + const Duration(hours: 3).inSeconds;
+      return now >= earlyStart && now <= graceEnd;
+    }
+    if (startsAt > 0) {
+      final earlyStart =
+          startsAt - const Duration(hours: 6).inSeconds;
+      return now >= earlyStart;
+    }
+    return true;
   }
   return false;
 }

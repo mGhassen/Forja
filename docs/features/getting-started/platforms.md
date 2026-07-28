@@ -23,7 +23,7 @@ Download builds from the [web download page](https://forjahq.xyz/download). The 
 
 - Install on any supported device and use the same tabs and settings model
 - Export settings on one device and import on another ([Backup & restore](../settings/backup-restore.md))
-- Use external players where the platform allows (VLC, mpv, MX Player, etc.)
+- Use external players where the platform allows (VLC, mpv, MX Player, etc.) — not offered from the in-player **Player** menu on **Android TV** (ExoPlayer / MediaKit only)
 
 ## Platform notes
 

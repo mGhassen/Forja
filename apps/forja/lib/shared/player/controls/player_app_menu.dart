@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/services/external_player_service.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,6 +26,8 @@ typedef PlayerMenuSelectHandler =
     });
 
 /// In-player picker: built-in engine (Android) + external apps.
+///
+/// On Android TV, only ExoPlayer / MediaKit are offered (no external apps).
 class PlayerAppMenu {
   static void show(
     BuildContext context, {
@@ -59,28 +62,28 @@ class PlayerAppMenu {
     VoidCallback? onDismiss,
     ScrollPhysics? physics,
   }) {
+    // Android TV: Exo + MediaKit only — external apps are not offered.
+    final showExternal = !PlatformInfo.isAndroidTv;
+    final engines = builtInPlayerEngineOptionsForUi;
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       shrinkWrap: true,
       physics: physics ?? const ClampingScrollPhysics(),
       children: [
-        const _SectionLabel('Built-in'),
+        if (showExternal) const _SectionLabel('Built-in'),
         if (Platform.isAndroid)
-          for (var i = 0; i < builtInPlayerEngineOptions.length; i++) ...[
+          for (var i = 0; i < engines.length; i++) ...[
             if (i != 0) const SizedBox(height: 6),
             PlayerPopupOptionChip(
-              label: builtInPlayerEngineOptions[i].displayName,
-              selected:
-                  usingBuiltIn &&
-                  builtInPlayerEngineOptions[i] == builtInEngine,
+              label: engines[i].displayName,
+              selected: usingBuiltIn && engines[i] == builtInEngine,
               expanded: true,
               onTap: () async {
                 onDismiss?.call();
-                if (usingBuiltIn &&
-                    builtInPlayerEngineOptions[i] == builtInEngine) {
+                if (usingBuiltIn && engines[i] == builtInEngine) {
                   return;
                 }
-                await onSelect(builtInEngine: builtInPlayerEngineOptions[i]);
+                await onSelect(builtInEngine: engines[i]);
               },
             ),
           ]
@@ -95,14 +98,16 @@ class PlayerAppMenu {
               await onSelect(builtInEngine: builtInEngine);
             },
           ),
-        const SizedBox(height: 14),
-        const _SectionLabel('External app'),
-        _InstalledExternalPlayers(
-          usingBuiltIn: usingBuiltIn,
-          externalPlayerName: externalPlayerName,
-          onSelect: onSelect,
-          onDismiss: onDismiss,
-        ),
+        if (showExternal) ...[
+          const SizedBox(height: 14),
+          const _SectionLabel('External app'),
+          _InstalledExternalPlayers(
+            usingBuiltIn: usingBuiltIn,
+            externalPlayerName: externalPlayerName,
+            onSelect: onSelect,
+            onDismiss: onDismiss,
+          ),
+        ],
       ],
     );
   }

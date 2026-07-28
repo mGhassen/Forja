@@ -156,10 +156,12 @@ class _SettingsPlaybackSectionState
                 'Built-in engine',
                 'Decoder when Video Player is Built-in.',
                 snap.builtInEngine.displayName,
-                builtInPlayerEngineOptions.map((e) => e.displayName).toList(),
+                builtInPlayerEngineOptionsForUi
+                    .map((e) => e.displayName)
+                    .toList(),
                 (val) async {
                   if (val == null) return;
-                  final match = builtInPlayerEngineOptions
+                  final match = builtInPlayerEngineOptionsForUi
                       .where((e) => e.displayName == val)
                       .toList();
                   if (match.isEmpty) return;

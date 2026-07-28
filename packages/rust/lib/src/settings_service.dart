@@ -946,6 +946,10 @@ class SettingsService {
       );
       await kvSetStringList(_navbarKnownIdsKey, List<String>.from(allNavIds));
       await kvSetString(_externalPlayerKey, defaults.externalPlayer);
+      await kvSetString(
+        _builtInPlayerEngineKey,
+        defaults.builtInPlayerEngine.storageKey,
+      );
       await kvSetDouble(_subSizeKey, defaults.subSize);
       await kvSetDouble(_subBottomPaddingKey, defaults.subBottomPadding);
       await kvSetBool(_iptvEpgEnabledKey, defaults.iptvEpgEnabled);

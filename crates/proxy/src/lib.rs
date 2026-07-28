@@ -139,6 +139,16 @@ fn parse_custom_headers(raw: Option<&str>) -> HashMap<String, String> {
     serde_json::from_str(raw).unwrap_or_default()
 }
 
+fn header_ci<'a>(
+    custom_headers: &'a HashMap<String, String>,
+    name: &str,
+) -> Option<&'a str> {
+    custom_headers
+        .iter()
+        .find(|(k, _)| k.eq_ignore_ascii_case(name))
+        .map(|(_, v)| v.as_str())
+}
+
 fn build_upstream_request(
     state: &ProxyState,
     method: Method,
@@ -147,20 +157,25 @@ fn build_upstream_request(
     incoming: &HeaderMap,
 ) -> Result<reqwest::RequestBuilder, StatusCode> {
     let mut req = state.client.request(method, target_url);
-    let ua = custom_headers
-        .get("User-Agent")
-        .cloned()
+    let ua = header_ci(custom_headers, "User-Agent")
+        .map(str::to_owned)
         .unwrap_or_else(|| {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".into()
         });
     req = req.header(header::USER_AGENT, ua);
-    if let Some(referer) = custom_headers.get("Referer") {
+    if let Some(referer) = header_ci(custom_headers, "Referer") {
         req = req.header(header::REFERER, referer);
     } else {
         req = req.header(header::REFERER, "https://www.youtube.com/");
     }
-    if let Some(origin) = custom_headers.get("Origin") {
+    if let Some(origin) = header_ci(custom_headers, "Origin") {
         req = req.header(header::ORIGIN, origin);
+    }
+    if let Some(cookie) = header_ci(custom_headers, "Cookie") {
+        req = req.header(header::COOKIE, cookie);
+    }
+    if let Some(auth) = header_ci(custom_headers, "Authorization") {
+        req = req.header(header::AUTHORIZATION, auth);
     }
     req = req.header(header::ACCEPT, "*/*");
     req = req.header(header::ACCEPT_LANGUAGE, "en-US,en;q=0.9");

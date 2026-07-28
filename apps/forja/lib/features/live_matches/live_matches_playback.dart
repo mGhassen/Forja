@@ -195,6 +195,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
             sources: [IptvPlaySource(url: playUrl!, label: 'PPV')],
             title: s.name,
             subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
+            forceBuiltInEngine: BuiltInPlayerEngine.exoPlayer,
           ),
         ),
       );

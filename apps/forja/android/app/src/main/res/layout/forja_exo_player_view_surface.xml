@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Phone TextureView: Flutter AndroidView / TLHC composites this correctly.
-  Android TV uses forja_exo_player_view_surface.xml (SurfaceView) via hybrid
-  composition — TextureView felt low-FPS / soft on leanback displays.
+  SurfaceView for Android TV: accurate frame timing + full display resolution.
+  Must be paired with Flutter hybrid composition (initExpensiveAndroidView /
+  initSurfaceAndroidView). Default AndroidView TLHC/VD tiles SurfaceView.
 -->
 <androidx.media3.ui.PlayerView
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -10,5 +10,5 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@android:color/black"
-    app:surface_type="texture_view"
+    app:surface_type="surface_view"
     app:use_controller="false" />

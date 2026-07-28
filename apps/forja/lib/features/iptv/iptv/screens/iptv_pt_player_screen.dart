@@ -75,6 +75,9 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   final IptvChannelGuide? channelGuide;
   /// Fired when the in-player guide tunes a different Xtream channel.
   final ValueChanged<IptvStream>? onChannelChanged;
+  /// When set on Android, boot with this engine instead of Settings.
+  /// Live Matches handoff forces Exo so MediaKit is not stuck on proxy HTML.
+  final BuiltInPlayerEngine? forceBuiltInEngine;
 
   const IptvPtPlayerScreen({
     super.key,
@@ -84,6 +87,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     this.logoUrl,
     this.channelGuide,
     this.onChannelChanged,
+    this.forceBuiltInEngine,
   });
 
   /// Convenience: build for a single Xtream stream.
@@ -207,8 +211,14 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   // CDN-dropped-mid-handshake hang where mpv neither buffers nor errors.
   DateTime _openedAt = DateTime.now();
 
-  // Audio state (hardware remote / persisted; no chrome volume button)
+  // Audio state — desktop/phone chrome has mute + hover slider; TV uses
+  // hardware volume keys only (no volume button in the transport row).
   double _volume = 100.0; // 0..100 (mpv scale)
+  double _volumeBeforeMute = 100.0;
+  bool _muted = false;
+  bool _showVolumeSlider = false;
+  bool _volumeHovering = false;
+  Timer? _hideVolumeTimer;
 
   // Fullscreen state (desktop only - mobile is permanently immersive)
   bool _isFullscreen = false;
@@ -223,6 +233,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   // Retry state
   int _retryAttempt = 0;
   DateTime? _lastRecoveryAt;
+  /// One-shot Exo ↔ MediaKit swap after unrecognized-format errors.
+  bool _formatEngineSwapped = false;
   // When the user explicitly paused (so play-after-pause can rejoin live edge)
   // ignore: unused_field
   DateTime? _pausedAt;
@@ -371,11 +383,18 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   Future<void> _bootWithCachedVolume() async {
     final prefs = await ref.read(iptvPlayerBootPrefsProvider.future);
     if (_disposed || !mounted) return;
-    _exoBackend = prefs.useExoBackend;
+    final forced = widget.forceBuiltInEngine;
+    if (forced != null && !kIsWeb && Platform.isAndroid) {
+      _exoBackend = forced == BuiltInPlayerEngine.exoPlayer;
+    } else {
+      _exoBackend = prefs.useExoBackend;
+    }
     // Phone MediaKit: software-friendly. ATV MediaKit: HW + mediacodec_embed.
     _androidMediaKitSafeMode =
         !_exoBackend && !kIsWeb && Platform.isAndroid && !PlatformInfo.isAndroidTv;
     _volume = prefs.volume;
+    _volumeBeforeMute = prefs.volume > 0 ? prefs.volume : 100.0;
+    _muted = prefs.volume == 0;
     if (_exoBackend) {
       await _bootExoPlayer();
     } else {
@@ -384,10 +403,16 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   }
 
   /// Hot-swap Exo ↔ MediaKit from the in-player Player menu (Android).
-  Future<void> _switchBuiltInEngine(BuiltInPlayerEngine engine) async {
+  /// Set [persist] false for one-shot recovery so IPTV Settings stay unchanged.
+  Future<void> _switchBuiltInEngine(
+    BuiltInPlayerEngine engine, {
+    bool persist = true,
+  }) async {
     if (kIsWeb || !Platform.isAndroid) return;
     final wantExo = engine == BuiltInPlayerEngine.exoPlayer;
-    await SettingsService().setBuiltInPlayerEngine(engine);
+    if (persist) {
+      await SettingsService().setBuiltInPlayerEngine(engine);
+    }
     if (_disposed || !mounted) return;
     if (wantExo == _exoBackend) return;
 
@@ -416,10 +441,36 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     if (mounted) setState(() => _statusBanner = null);
   }
 
+  static bool _isUnrecognizedFormatError(String msg) {
+    final lower = msg.toLowerCase();
+    return lower.contains('failed to recognize file format') ||
+        lower.contains('unrecognizedinputformat') ||
+        lower.contains('none of the available extractors') ||
+        (lower.contains('source error') && lower.contains('m3u8'));
+  }
+
+  /// After format errors on `/hls-proxy`, try the other Android engine once.
+  Future<void> _autoSwapEngineForFormatError(String reason) async {
+    if (_disposed || _formatEngineSwapped || kIsWeb || !Platform.isAndroid) {
+      return;
+    }
+    _formatEngineSwapped = true;
+    final next = _exoBackend
+        ? BuiltInPlayerEngine.mediaKit
+        : BuiltInPlayerEngine.exoPlayer;
+    debugPrint('[IPTV] format error → auto-swap to $next ($reason)');
+    if (mounted) {
+      setState(() => _statusBanner = 'Trying ${next.displayName}…');
+    }
+    await _switchBuiltInEngine(next, persist: false);
+  }
+
   /// Apply volume to the engine and persist for the next IPTV player open.
   void _setCachedVolume(double volume) {
     final v = volume.clamp(0.0, 100.0);
     _volume = v;
+    _muted = v == 0;
+    if (v > 0) _volumeBeforeMute = v;
     _engineSetVolume(v);
     unawaited(IptvStore.savePlayerVolume(v));
   }
@@ -434,6 +485,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _pipSub?.cancel();
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();
+    _hideVolumeTimer?.cancel();
     _playerTvKeyFocus.dispose();
     _seekFocus.dispose();
     unawaited(_finalizeExit());

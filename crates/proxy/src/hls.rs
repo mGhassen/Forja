@@ -148,6 +148,17 @@ pub fn rewrite_hls_playlist(
         .join("\n")
 }
 
+fn header_ci<'a>(
+    custom_headers: &'a HashMap<String, String>,
+    name: &str,
+) -> Option<&'a str> {
+    let want = name.to_ascii_lowercase();
+    custom_headers
+        .iter()
+        .find(|(k, _)| k.eq_ignore_ascii_case(&want))
+        .map(|(_, v)| v.as_str())
+}
+
 fn build_hls_upstream_request(
     state: &ProxyState,
     method: Method,
@@ -156,18 +167,24 @@ fn build_hls_upstream_request(
     incoming: &HeaderMap,
 ) -> Result<reqwest::RequestBuilder, StatusCode> {
     let mut req = state.client.request(method, target_url);
-    let ua = custom_headers
-        .get("User-Agent")
-        .cloned()
+    let ua = header_ci(custom_headers, "User-Agent")
+        .map(str::to_owned)
         .unwrap_or_else(|| {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36".into()
         });
     req = req.header(header::USER_AGENT, ua);
-    if let Some(referer) = custom_headers.get("Referer") {
+    if let Some(referer) = header_ci(custom_headers, "Referer") {
         req = req.header(header::REFERER, referer);
     }
-    if let Some(origin) = custom_headers.get("Origin") {
+    if let Some(origin) = header_ci(custom_headers, "Origin") {
         req = req.header(header::ORIGIN, origin);
+    }
+    // Live Matches / PPV CDN tokens live in WebView cookies — must forward.
+    if let Some(cookie) = header_ci(custom_headers, "Cookie") {
+        req = req.header(header::COOKIE, cookie);
+    }
+    if let Some(auth) = header_ci(custom_headers, "Authorization") {
+        req = req.header(header::AUTHORIZATION, auth);
     }
     req = req.header(header::ACCEPT, "*/*");
     req = req.header(header::ACCEPT_ENCODING, "identity");
@@ -202,12 +219,28 @@ pub async fn hls_proxy_handler(
         .unwrap_or("")
         .to_lowercase();
 
-    let is_playlist = content_type.contains("mpegurl")
+    let looks_like_playlist_url = content_type.contains("mpegurl")
         || content_type.contains("x-mpegurl")
         || target_url.contains(".m3u8");
 
-    if is_playlist {
+    if looks_like_playlist_url {
         let body = resp.text().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+        let trimmed = body.trim_start();
+        // Never mask HTML/403 bodies as a 200 m3u8 — MediaKit then loops on
+        // "Failed to recognize file format" and the IPTV watchdog reconnects forever.
+        if !status.is_success() || !trimmed.starts_with("#EXTM3U") {
+            let out_status = if status.is_success() {
+                StatusCode::BAD_GATEWAY
+            } else {
+                StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY)
+            };
+            return Response::builder()
+                .status(out_status)
+                .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+        }
         let port = *state.listen_port.read().await;
         let proxy_base = format!("http://127.0.0.1:{port}/hls-proxy");
         let rewritten = rewrite_hls_playlist(&body, &target_url, &proxy_base, headers_json, strip);
@@ -239,6 +272,14 @@ pub async fn hls_proxy_handler(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn header_ci_is_case_insensitive() {
+        let mut map = HashMap::new();
+        map.insert("cookie".into(), "a=1".into());
+        assert_eq!(header_ci(&map, "Cookie"), Some("a=1"));
+        assert_eq!(header_ci(&map, "COOKIE"), Some("a=1"));
+    }
 
     #[test]
     fn rewrites_segment_lines() {

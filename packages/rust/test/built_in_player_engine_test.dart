@@ -22,4 +22,12 @@ void main() {
       expect(engine.displayName, isNotEmpty);
     }
   });
+
+  test('UI options list ExoPlayer first on Android', () {
+    final ui = builtInPlayerEngineOptionsForUi;
+    expect(ui, isNotEmpty);
+    // VM tests run as non-Android host → declaration order.
+    // On device Android the getter returns [exoPlayer, mediaKit].
+    expect(ui.toSet(), builtInPlayerEngineOptions.toSet());
+  });
 }

@@ -656,6 +656,14 @@ const _embedMediaControlUserScript = r'''
     } catch (_) {}
   }
 
+  function setMute(on) {
+    try {
+      document.querySelectorAll('video,audio').forEach(function (el) {
+        try { el.muted = !!on; } catch (e) {}
+      });
+    } catch (_) {}
+  }
+
   function toggleMute() {
     try {
       document.querySelectorAll('video,audio').forEach(function (el) {
@@ -677,7 +685,9 @@ const _embedMediaControlUserScript = r'''
   function handle(cmd) {
     if (cmd === 'play') clickPlay();
     else if (cmd === 'pause') pauseAll();
-    else if (cmd === 'mute') toggleMute();
+    else if (cmd === 'mute') setMute(true);
+    else if (cmd === 'unmute') setMute(false);
+    else if (cmd === 'toggleMute') toggleMute();
     dispatchToIframes(cmd);
   }
 

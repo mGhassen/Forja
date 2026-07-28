@@ -65,7 +65,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     final type = event['type']?.toString() ?? '';
     switch (type) {
       case 'ready':
-        setState(() => _s._buffering = false);
+        if (_s._buffering) {
+          setState(() => _s._buffering = false);
+        } else {
+          _s._buffering = false;
+        }
         _s._bufferingSince = null;
         if (!_playbackStarted) {
           _playbackStarted = true;
@@ -73,7 +77,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         break;
       case 'playing':
         final playing = event['value'] == true;
-        setState(() => _s._playing = playing);
+        if (playing != _s._playing) {
+          setState(() => _s._playing = playing);
+        }
         if (playing) {
           _s._readyNotPlayingSince = null;
           _s._bufferingSince = null;
@@ -83,6 +89,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         break;
       case 'buffering':
         final buffering = event['value'] == true;
+        // Live Exo flickers isLoading — skip no-op setState (ATV Texture/Surface
+        // churn was a big source of perceived low FPS).
+        if (buffering == _s._buffering) return;
         setState(() => _s._buffering = buffering);
         if (buffering) {
           _s._bufferingSince ??= DateTime.now();
@@ -96,10 +105,19 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final pos = Duration(milliseconds: posMs);
         if (!_s._isSeeking && pos != _s._position) {
           if (durMs > 0) {
-            setState(() {
+            // Only rebuild chrome when controls need the scrubber (or duration
+            // changed). Pure live (dur=0) never setStates on tick.
+            final needUi = _s._controlsVisible ||
+                durMs != _s._duration.inMilliseconds;
+            if (needUi) {
+              setState(() {
+                _s._position = pos;
+                _s._duration = Duration(milliseconds: durMs);
+              });
+            } else {
               _s._position = pos;
               _s._duration = Duration(milliseconds: durMs);
-            });
+            }
           } else {
             _s._position = pos;
           }
@@ -116,6 +134,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       case 'error':
         final msg = event['message']?.toString() ?? 'Playback error';
         debugPrint('[IPTV Exo] error: $msg');
+        if (!_s._formatEngineSwapped &&
+            _IptvPtPlayerScreenState._isUnrecognizedFormatError(msg)) {
+          unawaited(_s._autoSwapEngineForFormatError(msg));
+          return;
+        }
         _triggerRecovery(reason: 'exo error: $msg', forceHard: true);
         break;
     }
@@ -187,6 +210,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // ATV MediaKit: pin mediacodec (matches VideoControllerConfiguration).
       if (_s._atvMediaKit) {
         await p.setProperty('hwdec', 'mediacodec');
+        // Match display refresh — smoother than audio-clock sync on leanback.
+        await p.setProperty('video-sync', 'display-resample');
+        await p.setProperty('framedrop', 'vo');
       } else {
         await p.setProperty('hwdec', _useSoftwareDecode ? 'no' : 'auto-safe');
       }
@@ -384,6 +410,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // a full player recreation to get a fresh socket - gentle seek/reopen
       // attempts will just keep failing on the same dead connection.
       final lower = msg.toLowerCase();
+      if (!_s._formatEngineSwapped &&
+          _IptvPtPlayerScreenState._isUnrecognizedFormatError(msg)) {
+        unawaited(_s._autoSwapEngineForFormatError(msg));
+        return;
+      }
       if (lower.contains('ends prematurely') ||
           lower.contains('end of file') ||
           lower.contains('connection reset')) {

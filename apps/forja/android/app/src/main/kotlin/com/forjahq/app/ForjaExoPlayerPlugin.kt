@@ -18,6 +18,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -152,11 +153,22 @@ class ExoPlayerHost(
             DefaultLoadControl.Builder().build()
         }
 
+        // Prefer HW decode; fall back to software if MediaCodec rejects the
+        // stream (common on weak ATV SoCs with odd IPTV profiles).
+        val renderersFactory = DefaultRenderersFactory(context)
+            .setEnableDecoderFallback(true)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
+
         val exo = ExoPlayer.Builder(context)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setRenderersFactory(renderersFactory)
             .setLoadControl(loadControl)
             .build()
         exo.addListener(listener)
+        // Wake lock while playing live IPTV — weak TVs throttle decode in doze.
+        exo.setWakeMode(
+            if (options.live) C.WAKE_MODE_NETWORK else C.WAKE_MODE_NONE,
+        )
         player = exo
         playerView?.player = exo
 
@@ -668,7 +680,8 @@ class ExoPlayerViewFactory(private val plugin: ForjaExoPlayerPlugin) :
     override fun create(context: Context, viewId: Int, args: Any?): io.flutter.plugin.platform.PlatformView {
         val map = args as? Map<*, *>
         val hostId = (map?.get("viewId") as? Number)?.toInt() ?: viewId
-        return ExoPlayerPlatformView(context, hostId, plugin)
+        val surfaceType = (map?.get("surfaceType") as? String)?.lowercase() ?: "texture"
+        return ExoPlayerPlatformView(context, hostId, plugin, surfaceType)
     }
 }
 
@@ -676,11 +689,19 @@ class ExoPlayerPlatformView(
     context: Context,
     private val hostId: Int,
     private val plugin: ForjaExoPlayerPlugin,
+    surfaceType: String,
 ) : io.flutter.plugin.platform.PlatformView {
-    // Inflate with surface_type=texture_view - default SurfaceView tiles / misplaces
-    // frames inside Flutter's AndroidView (TLHC / VirtualDisplay), especially on ATV.
+    // Phone: texture_view (TLHC-safe). ATV: surface_view + Dart hybrid composition
+    // for accurate frame timing / full display resolution (TextureView felt low-FPS).
     private val playerView: PlayerView = LayoutInflater.from(context)
-        .inflate(R.layout.forja_exo_player_view, null) as PlayerView
+        .inflate(
+            if (surfaceType == "surface") {
+                R.layout.forja_exo_player_view_surface
+            } else {
+                R.layout.forja_exo_player_view
+            },
+            null,
+        ) as PlayerView
 
     init {
         plugin.hostFor(hostId).attachView(playerView)

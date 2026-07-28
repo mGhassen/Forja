@@ -22,6 +22,7 @@ void main() {
     test('android TV player defaults', () {
       final tv = PlatformDefaults.forProfile(PlatformProfile.androidTv);
       expect(tv.externalPlayer, 'Built-in Player');
+      expect(tv.builtInPlayerEngine, BuiltInPlayerEngine.exoPlayer);
       expect(tv.subSize, 52);
       expect(tv.subBottomPadding, 48);
       expect(tv.torrentRamCacheMb, 128);

@@ -199,7 +199,7 @@ void main() {
       );
     });
 
-    test('false before start even with viewers', () {
+    test('true with viewers shortly before start (clock skew / early doors)', () {
       expect(
         ppvStreamIsLive(
           isAlwaysOn: false,
@@ -208,6 +208,20 @@ void main() {
           endsAt: end,
           viewers: 50,
           nowSecs: start - 10,
+        ),
+        isTrue,
+      );
+    });
+
+    test('false with viewers far before start', () {
+      expect(
+        ppvStreamIsLive(
+          isAlwaysOn: false,
+          status: '',
+          startsAt: start,
+          endsAt: end,
+          viewers: 50,
+          nowSecs: start - const Duration(hours: 7).inSeconds,
         ),
         isFalse,
       );

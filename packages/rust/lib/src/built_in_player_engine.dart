@@ -13,7 +13,7 @@ enum BuiltInPlayerEngine {
     return mediaKit;
   }
 
-  /// Android defaults to ExoPlayer; all other platforms to media_kit.
+  /// Android (phone + TV) defaults to ExoPlayer; all other platforms to media_kit.
   static BuiltInPlayerEngine platformDefault() {
     if (Platform.isAndroid) return exoPlayer;
     return mediaKit;
@@ -25,4 +25,17 @@ enum BuiltInPlayerEngine {
       };
 }
 
+/// Enum declaration order (MediaKit first). Prefer [builtInPlayerEngineOptionsForUi]
+/// in pickers so ExoPlayer (the Android default) appears first.
 const builtInPlayerEngineOptions = BuiltInPlayerEngine.values;
+
+/// UI order: ExoPlayer first on Android (default), then MediaKit.
+List<BuiltInPlayerEngine> get builtInPlayerEngineOptionsForUi {
+  if (Platform.isAndroid) {
+    return const [
+      BuiltInPlayerEngine.exoPlayer,
+      BuiltInPlayerEngine.mediaKit,
+    ];
+  }
+  return builtInPlayerEngineOptions;
+}

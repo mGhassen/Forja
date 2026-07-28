@@ -1108,8 +1108,9 @@ class _LiveMatchesEmbedPlayerScreenState
   }
 
   Future<void> _toggleMute() async {
-    await _runEmbedMediaCmd('mute');
-    if (mounted) setState(() => _muted = !_muted);
+    final next = !_muted;
+    await _runEmbedMediaCmd(next ? 'mute' : 'unmute');
+    if (mounted) setState(() => _muted = next);
   }
 
   void _clearLoading() {
@@ -1332,6 +1333,7 @@ class _LiveMatchesEmbedPlayerScreenState
                   sources: [IptvPlaySource(url: url, label: label)],
                   title: title,
                   subtitle: subtitle,
+                  forceBuiltInEngine: BuiltInPlayerEngine.exoPlayer,
                 ),
               ),
             );
@@ -1386,6 +1388,19 @@ class _LiveMatchesEmbedPlayerScreenState
     } catch (e) {
       debugPrint('[LiveMatches] HLS proxy failed: $e');
     }
+    // Reject HTML/403 bodies before the IPTV reconnect loop starts.
+    if (playUrl.contains('/hls-proxy')) {
+      final ok = await _probeHlsProxyPlaylist(playUrl);
+      if (!ok) {
+        debugPrint('[LiveMatches] HLS proxy probe failed for $playUrl');
+        if (mounted) {
+          ForjaToast.info('Could not open this stream');
+          _exiting = false;
+          unawaited(_exitPlayer());
+        }
+        return;
+      }
+    }
     debugPrint('[LiveMatches] Android handoff → $playUrl');
     if (!mounted) return;
     final title = widget.title;
@@ -1397,9 +1412,32 @@ class _LiveMatchesEmbedPlayerScreenState
           sources: [IptvPlaySource(url: playUrl, label: label)],
           title: title,
           subtitle: subtitle,
+          // Live Matches /hls-proxy needs Exo MIME override; MediaKit often
+          // hits "Failed to recognize file format" when Settings preferred it.
+          forceBuiltInEngine: BuiltInPlayerEngine.exoPlayer,
         ),
       ),
     );
+  }
+
+  /// Confirm the local proxy returns a real `#EXTM3U` body (Cookie/Referer OK).
+  Future<bool> _probeHlsProxyPlaylist(String playUrl) async {
+    HttpClient? client;
+    try {
+      client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 8);
+      final req = await client.getUrl(Uri.parse(playUrl));
+      final resp = await req.close().timeout(const Duration(seconds: 10));
+      if (resp.statusCode >= 400) return false;
+      final body = await resp.transform(utf8.decoder).join();
+      return body.trimLeft().startsWith('#EXTM3U');
+    } catch (e) {
+      debugPrint('[LiveMatches] HLS probe error: $e');
+      // Soft-fail: still hand off — Exo may succeed where the probe flaked.
+      return true;
+    } finally {
+      client?.close(force: true);
+    }
   }
 
   Future<void> _enterFullscreen() async {
@@ -1696,7 +1734,23 @@ class _LiveMatchesEmbedPlayerScreenState
                 Positioned(
                   top: _topBarTopPadding(context),
                   right: 16,
-                  child: _buildSourceBadge(),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Desktop / phone: embeds often start muted (autoplay
+                      // policy). TV has Mute in the bottom chrome instead.
+                      if (!_tvFocus()) ...[
+                        IptvRoundIcon(
+                          icon: _muted
+                              ? Icons.volume_off_rounded
+                              : Icons.volume_up_rounded,
+                          onTap: () => unawaited(_toggleMute()),
+                        ),
+                        const SizedBox(width: 10),
+                      ],
+                      _buildSourceBadge(),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1802,6 +1856,17 @@ class _LiveMatchesEmbedPlayerScreenState
                         await ctrl.evaluateJavascript(
                           source: _dblclickFullscreenJs,
                         );
+                        // Desktop / phone: opening the match is a user gesture —
+                        // force unmute after autoplay's muted fallback so Windows
+                        // / macOS are not stuck silent (TV has Mute chrome).
+                        if (!_tvFocus() && !_androidNativeHandoff) {
+                          await ctrl.evaluateJavascript(
+                            source: _embedMediaCommandJs('unmute'),
+                          );
+                          await ctrl.evaluateJavascript(
+                            source: _embedMediaCommandJs('play'),
+                          );
+                        }
                         if (mounted) setState(() => _playing = true);
                       } catch (_) {}
                       WidgetsBinding.instance.addPostFrameCallback(
@@ -2690,6 +2755,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
     final hasIframe = s.iframe.isNotEmpty;
     final hasTeams = s.homeTeam != null && s.awayTeam != null;
     final canPlay = widget.playableOverride ?? (hasIframe && s.isLive);
+    final showLive = (widget.playableOverride == true) || s.isLive;
     final policy = ShellScope.inputPolicyOf(context);
     final active =
         widget.forceActive ||
@@ -2814,7 +2880,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
               right: null,
               left: 8,
             ),
-            if (s.isLive)
+            if (showLive)
               const _LiveMatchCornerBadge(label: '● LIVE', live: true)
             else if (s.timeLabel.isNotEmpty)
               _LiveMatchCornerBadge(label: s.timeLabel, live: false),
