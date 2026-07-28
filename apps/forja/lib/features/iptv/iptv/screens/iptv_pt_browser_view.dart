@@ -152,26 +152,41 @@ class _BrowserViewState extends State<_BrowserView> {
       0.0,
       _streamScroll.position.maxScrollExtent,
     );
+    if ((_streamScroll.offset - target).abs() < 0.5) return;
     _streamScroll.jumpTo(target);
   }
 
   /// After leaving the player: select category, scroll, focus the channel tile.
   void _restoreFocusAfterPlayback(IptvStream stream) {
-    final catId = stream.categoryId;
-    if (catId.isNotEmpty) {
-      widget.ctrl.selectBrowserCategory(catId);
+    // Keep Favorites / Already watched / search hits when the channel is still
+    // visible; otherwise open the channel's real group.
+    final alreadyVisible =
+        _filteredStreams.any((x) => x.streamId == stream.streamId);
+    if (!alreadyVisible) {
+      final catId = stream.categoryId;
+      if (catId.isNotEmpty) {
+        widget.ctrl.selectBrowserCategory(catId);
+      }
+    }
+    final selected = widget.ctrl.browserSelectedCategoryId;
+    if (iptvUseTvFocus(context) && selected != null) {
+      setState(() {
+        _tvFocusedCategoryId = selected;
+        _tvCategoryRailFocused = false;
+      });
     }
     _scrollCategorySidebarToSelected();
 
     if (!iptvUseTvFocus(context)) return;
 
     var tries = 0;
+    var scrolledFor = -1;
     void attempt() {
       if (!mounted) return;
       // Overlay ExcludeFocus must lift before catalog tiles can take focus.
       if (ShellBus.shellOverlayHasPage.value ||
           ShellBus.playerSurfaceActive.value) {
-        if (tries++ < 16) {
+        if (tries++ < 24) {
           WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
         }
         return;
@@ -182,9 +197,18 @@ class _BrowserViewState extends State<_BrowserView> {
         iptvFocusBrowserCategories(widget.ctrl);
         return;
       }
-      _scrollStreamsToIndex(idx);
+      // Scroll first; lazy grid builds the tile on the next frame.
+      if (scrolledFor != idx) {
+        _scrollStreamsToIndex(idx);
+        scrolledFor = idx;
+        tries++;
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        return;
+      }
       if (iptvFocusBrowserStreamAt(idx)) return;
-      if (tries++ < 16) {
+      // Node still missing — nudge scroll again and retry.
+      scrolledFor = -1;
+      if (tries++ < 24) {
         WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
       } else {
         iptvFocusBrowserCategories(widget.ctrl);

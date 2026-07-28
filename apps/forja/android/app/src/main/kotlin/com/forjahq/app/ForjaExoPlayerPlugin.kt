@@ -704,6 +704,11 @@ class ExoPlayerPlatformView(
         ) as PlayerView
 
     init {
+        // Leanback D-pad must stay in Flutter chrome — PlayerView/SurfaceView
+        // otherwise steals focus and remote keys do nothing (IPTV + VOD Exo).
+        playerView.isFocusable = false
+        playerView.isFocusableInTouchMode = false
+        playerView.descendantFocusability = android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
         plugin.hostFor(hostId).attachView(playerView)
     }
 

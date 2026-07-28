@@ -278,7 +278,10 @@ void iptvEnterFromNav(IptvController ctrl) {
   }
 }
 
-/// Focus a catalog channel tile after leaving the player (retries for lazy grid).
+/// Focus a catalog channel tile after leaving the player (exact index only).
+///
+/// Does not fall back to tile 0 — callers must scroll the lazy grid into view
+/// and retry until the target node is registered.
 bool iptvFocusBrowserStreamAt(int index) {
   if (index < 0) return false;
   ShellTvFocusCoordinator.setRowLastFocusedIndex(
@@ -286,7 +289,11 @@ bool iptvFocusBrowserStreamAt(int index) {
     'browser-streams',
     index,
   );
-  return iptvFocusRowItem('browser-streams', index);
+  return ShellTvFocusCoordinator.focusRowItemExact(
+    'iptv',
+    'browser-streams',
+    index,
+  );
 }
 
 Widget iptvTap({

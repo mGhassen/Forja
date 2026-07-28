@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 
 const loadingOverlayFadeOutDuration = Duration(milliseconds: 750);
@@ -85,6 +88,7 @@ Future<T?> showLoadingOverlayDialog<T>(
   /// dialog stranded on the shell overlay under a root player route.
   bool useRootNavigator = true,
 }) {
+  final hostContext = context;
   return showDialog<T>(
     context: context,
     useRootNavigator: useRootNavigator,
@@ -96,7 +100,9 @@ Future<T?> showLoadingOverlayDialog<T>(
       final navigator = Navigator.of(dialogContext);
       final route = ModalRoute.of(dialogContext);
       registerLoadingOverlayRoute(navigator, route);
-      return builder(dialogContext);
+      // Root-navigator dialogs sit above the shell route - rehost so TV
+      // Cancel / server-list focus uses [ShellInputPolicy.tv].
+      return ShellScope.rehost(hostContext, builder(dialogContext));
     },
   );
 }
@@ -304,6 +310,9 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   void _focusInitialAction() {
+    final tvFocus =
+        ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
+    if (!tvFocus) return;
     if (_showProviderProbes && _providersButtonFocus.canRequestFocus) {
       _providersButtonFocus.requestFocus();
       return;
@@ -325,46 +334,13 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     }
   }
 
-  KeyEventResult _providersButtonKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.arrowLeft) {
-      if (_cancelFocus.canRequestFocus) {
-        _cancelFocus.requestFocus();
-        return KeyEventResult.handled;
-      }
+  void _toggleProviderList() {
+    setState(() => _providerListOpen = !_providerListOpen);
+    if (_providerListOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focusFirstProviderRow();
+      });
     }
-    if (key == LogicalKeyboardKey.arrowUp && _providerListOpen) {
-      _focusFirstProviderRow();
-      return KeyEventResult.handled;
-    }
-    if (key == LogicalKeyboardKey.select ||
-        key == LogicalKeyboardKey.enter) {
-      setState(() => _providerListOpen = !_providerListOpen);
-      if (_providerListOpen) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _focusFirstProviderRow();
-        });
-      }
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-
-  KeyEventResult _cancelButtonKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.arrowRight && _showProviderProbes) {
-      if (_providersButtonFocus.canRequestFocus) {
-        _providersButtonFocus.requestFocus();
-        return KeyEventResult.handled;
-      }
-    }
-    if (key == LogicalKeyboardKey.arrowUp && _providerListOpen) {
-      _focusFirstProviderRow();
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
   }
 
   void _focusNextProviderRow(int index) {
@@ -391,6 +367,12 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         return;
       }
     }
+    // First provider → back to servers / cancel row.
+    if (_providersButtonFocus.canRequestFocus) {
+      _providersButtonFocus.requestFocus();
+    } else if (_cancelFocus.canRequestFocus) {
+      _cancelFocus.requestFocus();
+    }
   }
 
   void _onMessageChanged() {
@@ -410,10 +392,18 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   void _onProbesChanged() {
     final next = widget.providerProbesNotifier?.value;
     if (next != null && mounted) {
+      final hadProbes = _probes.isNotEmpty;
       setState(() {
         _probes = next;
         _syncProviderRowFocusNodes();
       });
+      // Probes arrive after first paint - claim Cancel / servers once they exist.
+      if (!hadProbes && next.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _showingFailure) return;
+          _focusInitialAction();
+        });
+      }
     }
   }
 
@@ -659,76 +649,132 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     );
   }
 
-  Widget _cancelActionRow() {
-    final showListToggle = _showProviderProbes;
-    final cancelButton = Focus(
-      focusNode: _cancelFocus,
-      onKeyEvent: _cancelButtonKey,
-      child: TextButton(
-        onPressed: widget.onCancel,
-        style: TextButton.styleFrom(
-          foregroundColor: Colors.white.withValues(alpha: 0.7),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 32,
-            vertical: 12,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: BorderSide(
-              color: Colors.white.withValues(alpha: 0.3),
-            ),
-          ),
-        ),
-        child: const Text(
-          'CANCEL',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 3,
-            fontFamily: 'Poppins',
-          ),
+  Widget _cancelChipFace() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        'CANCEL',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.7),
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 3,
+          fontFamily: 'Poppins',
         ),
       ),
     );
+  }
+
+  Widget _serversChipFace({required bool open}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+        color: open ? Colors.white.withValues(alpha: 0.12) : Colors.transparent,
+      ),
+      child: Icon(
+        open ? Icons.layers : Icons.layers_outlined,
+        size: 20,
+        color: Colors.white.withValues(alpha: open ? 0.95 : 0.7),
+      ),
+    );
+  }
+
+  Widget _cancelActionRow() {
+    final showListToggle = _showProviderProbes;
+    final tvFocus =
+        ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
+
+    final cancelButton = tvFocus
+        ? shellFocusableTap(
+            context: context,
+            focusNode: _cancelFocus,
+            onTap: widget.onCancel,
+            borderRadius: 24,
+            scaleOnFocus: 1.0,
+            showFocusBorder: true,
+            onRightEdge: showListToggle
+                ? () {
+                    if (_providersButtonFocus.canRequestFocus) {
+                      _providersButtonFocus.requestFocus();
+                    }
+                  }
+                : null,
+            onUpEdge: _providerListOpen ? _focusFirstProviderRow : null,
+            child: _cancelChipFace(),
+          )
+        : TextButton(
+            onPressed: widget.onCancel,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white.withValues(alpha: 0.7),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 32,
+                vertical: 12,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+                side: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 3,
+                fontFamily: 'Poppins',
+              ),
+            ),
+          );
 
     if (!showListToggle) return cancelButton;
 
-    final listButton = Focus(
-      focusNode: _providersButtonFocus,
-      onKeyEvent: _providersButtonKey,
-      child: IconButton(
-        onPressed: () {
-          setState(() => _providerListOpen = !_providerListOpen);
-          if (_providerListOpen) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _focusFirstProviderRow();
-            });
-          }
-        },
-        tooltip: _providerListOpen ? 'Hide servers' : 'Show servers',
-        style: IconButton.styleFrom(
-          foregroundColor: Colors.white.withValues(
-            alpha: _providerListOpen || _providersButtonFocus.hasFocus
-                ? 0.95
-                : 0.7,
-          ),
-          backgroundColor: _providerListOpen || _providersButtonFocus.hasFocus
-              ? Colors.white.withValues(alpha: 0.12)
-              : Colors.transparent,
-          side: BorderSide(
-            color: Colors.white.withValues(alpha: 0.3),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          padding: const EdgeInsets.all(12),
-        ),
-        icon: Icon(
-          _providerListOpen ? Icons.layers : Icons.layers_outlined,
-          size: 20,
-        ),
-      ),
-    );
+    final listButton = tvFocus
+        ? shellFocusableTap(
+            context: context,
+            focusNode: _providersButtonFocus,
+            onTap: _toggleProviderList,
+            borderRadius: 24,
+            scaleOnFocus: 1.0,
+            showFocusBorder: true,
+            onLeftEdge: () {
+              if (_cancelFocus.canRequestFocus) {
+                _cancelFocus.requestFocus();
+              }
+            },
+            onUpEdge: _providerListOpen ? _focusFirstProviderRow : null,
+            child: _serversChipFace(open: _providerListOpen),
+          )
+        : IconButton(
+            onPressed: _toggleProviderList,
+            tooltip: _providerListOpen ? 'Hide servers' : 'Show servers',
+            style: IconButton.styleFrom(
+              foregroundColor: Colors.white.withValues(
+                alpha: _providerListOpen ? 0.95 : 0.7,
+              ),
+              backgroundColor: _providerListOpen
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              side: BorderSide(
+                color: Colors.white.withValues(alpha: 0.3),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              padding: const EdgeInsets.all(12),
+            ),
+            icon: Icon(
+              _providerListOpen ? Icons.layers : Icons.layers_outlined,
+              size: 20,
+            ),
+          );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1097,16 +1143,18 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         : widget.onCancel;
     if (escapeAction == null) return overlay;
 
-    // While resolving, keep a root Focus so Escape works. On failure, do not
-    // autofocus here - ResolveFailurePanel owns Try again / Close.
+    // While resolving, trap TV focus in the overlay so Cancel / servers stay
+    // reachable. On failure, ResolveFailurePanel owns Try again / Close.
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): escapeAction,
       },
       child: _showingFailure
           ? overlay
-          : Focus(
-              autofocus: true,
+          : TvOverlayScope(
+              onDismiss: escapeAction,
+              autofocusFirst: false,
+              debugLabel: 'loading-overlay',
               child: overlay,
             ),
     );

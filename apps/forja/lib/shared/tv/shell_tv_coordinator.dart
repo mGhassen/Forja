@@ -701,6 +701,27 @@ abstract final class ShellTvFocusCoordinator {
     return false;
   }
 
+  /// Like [focusRowItem] but never falls back to index 0.
+  /// Use when scrolling to a specific tile (e.g. return from IPTV player).
+  static bool focusRowItemExact(String tabId, String rowId, int index) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null || handle.itemCount <= 0) return false;
+    if (index < 0 || index >= handle.itemCount) return false;
+    final node = handle.nodeAt(index);
+    if (node == null || !node.canRequestFocus) return false;
+    handle.lastFocusedIndex = index;
+    saveFocus(
+      tabId,
+      ShellTvFocusMemory(
+        zone: ShellTvZone.row,
+        rowId: rowId,
+        itemIndex: index,
+        node: node,
+      ),
+    );
+    return _request(node);
+  }
+
   /// Focus a row item, or the next registered row below when empty/unavailable.
   static bool focusRowItemOrNextBelow(
     String tabId,

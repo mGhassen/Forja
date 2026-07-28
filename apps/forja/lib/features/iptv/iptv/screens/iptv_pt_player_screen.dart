@@ -189,6 +189,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _controlsVisible = true;
   Timer? _hideControlsTimer;
   final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
+  final FocusNode _backFocus = FocusNode(debugLabel: 'iptv-player-back');
+  final FocusNode _playFocus = FocusNode(debugLabel: 'iptv-player-play');
   final FocusNode _seekFocus = FocusNode(debugLabel: 'iptv-player-seek');
 
   bool _guideVisible = false;
@@ -312,7 +314,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         _focusPlayerBack();
         return true;
       }
-      if (_isPlayerBackFocused() || _tvBackExitArmed) {
+      if (_backFocus.hasFocus || _tvBackExitArmed) {
         _tvBackExitArmed = false;
         return false;
       }
@@ -487,6 +489,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onRemoteControlsActivity);
+    _backFocus.dispose();
+    _playFocus.dispose();
     _pipSub?.cancel();
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();

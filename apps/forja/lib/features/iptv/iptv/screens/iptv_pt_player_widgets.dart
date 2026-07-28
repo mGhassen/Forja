@@ -3,20 +3,12 @@ part of 'iptv_pt_player_screen.dart';
 class _SourceChip extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
-  final String? tvRowId;
-  final int? tvItemIndex;
   final VoidCallback? onDownEdge;
-  final VoidCallback? onLeftEdge;
-  final VoidCallback? onRightEdge;
 
   const _SourceChip({
     required this.label,
     required this.onTap,
-    this.tvRowId,
-    this.tvItemIndex,
     this.onDownEdge,
-    this.onLeftEdge,
-    this.onRightEdge,
   });
 
   @override
@@ -47,11 +39,7 @@ class _SourceChipState extends State<_SourceChip> {
       onTap: widget.onTap,
       borderRadius: 20,
       scaleOnFocus: 1.0,
-      tvRowId: widget.tvRowId,
-      tvItemIndex: widget.tvItemIndex,
       onDownEdge: widget.onDownEdge,
-      onLeftEdge: widget.onLeftEdge,
-      onRightEdge: widget.onRightEdge,
       onFocusChange: tv ? (f) => setState(() => _focused = f) : null,
       onHoverChange: tv ? (h) => setState(() => _hovered = h) : null,
       child: AnimatedContainer(
@@ -92,28 +80,23 @@ class _SourceChipState extends State<_SourceChip> {
   }
 }
 
-/// IPTV top-bar flat icon with movie-player green D-pad chrome + row edges.
+/// IPTV top-bar flat icon with movie-player green D-pad chrome.
+/// Uses FocusTraversal (no catalog-row meta) — same path as [PlayerFlatIconButton].
 class _IptvPlayerTopBarIcon extends StatefulWidget {
   const _IptvPlayerTopBarIcon({
     required this.icon,
     required this.tooltip,
-    required this.tvRowId,
-    required this.tvItemIndex,
+    this.focusNode,
     this.onPressed,
     this.onPressedWithContext,
-    this.onLeftEdge,
-    this.onRightEdge,
     this.onDownEdge,
   }) : assert(onPressed != null || onPressedWithContext != null);
 
   final IconData icon;
   final String tooltip;
-  final String tvRowId;
-  final int tvItemIndex;
+  final FocusNode? focusNode;
   final VoidCallback? onPressed;
   final ValueChanged<BuildContext>? onPressedWithContext;
-  final VoidCallback? onLeftEdge;
-  final VoidCallback? onRightEdge;
   final VoidCallback? onDownEdge;
 
   @override
@@ -179,10 +162,7 @@ class _IptvPlayerTopBarIconState extends State<_IptvPlayerTopBarIcon> {
             },
             borderRadius: _size / 2,
             scaleOnFocus: 1.0,
-            tvRowId: widget.tvRowId,
-            tvItemIndex: widget.tvItemIndex,
-            onLeftEdge: widget.onLeftEdge,
-            onRightEdge: widget.onRightEdge,
+            focusNode: widget.focusNode,
             onDownEdge: widget.onDownEdge,
             onFocusChange: (focused) => setState(() => _focused = focused),
             onHoverChange: (hovered) => setState(() => _hovered = hovered),
