@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -12,7 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 enum _TvLinkStep { welcome, connect, linking, error }
 
 /// Leanback account link: welcome → code/QR (not desktop login).
-class TvAccountLinkScreen extends ConsumerStatefulWidget {
+class TvAccountLinkScreen extends StatefulWidget {
   const TvAccountLinkScreen({
     super.key,
     required this.onAuthenticated,
@@ -23,11 +22,10 @@ class TvAccountLinkScreen extends ConsumerStatefulWidget {
   final VoidCallback onContinueAsGuest;
 
   @override
-  ConsumerState<TvAccountLinkScreen> createState() =>
-      _TvAccountLinkScreenState();
+  State<TvAccountLinkScreen> createState() => _TvAccountLinkScreenState();
 }
 
-class _TvAccountLinkScreenState extends ConsumerState<TvAccountLinkScreen>
+class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
     with SingleTickerProviderStateMixin {
   _TvLinkStep _step = _TvLinkStep.welcome;
   TvDeviceLinkSession? _session;
@@ -90,8 +88,9 @@ class _TvAccountLinkScreenState extends ConsumerState<TvAccountLinkScreen>
     _focus(_backFocus);
 
     try {
-      final session =
-          await ref.read(tvDeviceLinkSessionProvider.notifier).create();
+      // Call Edge directly — do not route through an autoDispose Riverpod
+      // provider with only ref.read (dispose mid-await → false "create failed").
+      final session = await TvDeviceLinkAuth.create();
       if (!mounted) return;
       setState(() {
         _session = session;

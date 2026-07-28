@@ -86,10 +86,13 @@ class TvDeviceLinkAuth {
       );
       return _sessionFromData(response.data);
     } on FunctionException catch (e) {
-      throw AuthException(
-        _errorFromDetails(e.details) ??
-            'Could not start TV linking (${e.status}).',
-      );
+      final message = _errorFromDetails(e.details) ??
+          'Could not start TV linking (${e.status}).';
+      debugPrint('[TvDeviceLink] create FunctionException status=${e.status} $message');
+      throw AuthException(message);
+    } catch (e, st) {
+      debugPrint('[TvDeviceLink] create error: $e\n$st');
+      rethrow;
     }
   }
 
