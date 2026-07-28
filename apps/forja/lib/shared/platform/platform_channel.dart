@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:rust/rust.dart';
 
 /// Resolves [PlatformProfile] and configures [SettingsService] at boot.
@@ -56,8 +57,19 @@ abstract final class PlatformChannel {
     SettingsService.configurePlatformProfile(profile);
     ShellTokens.nativeAndroidTvDetected =
         profile == PlatformProfile.androidTv;
+    PlatformInfo.isAndroidEmulator = await _detectAndroidEmulator();
     // Platform defaults seed after Engine.init() - see bootstrapForja.
     unawaited(DeviceCapabilitiesService.detect(platformProfile: profile));
+  }
+
+  static Future<bool> _detectAndroidEmulator() async {
+    if (!Platform.isAndroid) return false;
+    try {
+      return await _channel.invokeMethod<bool>('isAndroidEmulator') == true;
+    } catch (e) {
+      debugPrint('[PlatformChannel] isAndroidEmulator failed: $e');
+      return false;
+    }
   }
 
   /// Seed platform defaults once the Rust KV file is open.

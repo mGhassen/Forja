@@ -396,6 +396,7 @@ class SyncDomainBridge {
     if (overlayNavigation) {
       final navigation = local['navigation'];
       if (navigation is Map && navigation.isNotEmpty) {
+        final localNav = Map<String, dynamic>.from(navigation);
         final remoteNav = remote['navigation'] is Map
             ? Map<String, dynamic>.from(remote['navigation'] as Map)
             : null;
@@ -406,12 +407,12 @@ class SyncDomainBridge {
             overlayDomains != null &&
             overlayDomains.contains(_domainNavigation);
         if (!intentionalNavEdit &&
-            navigationWouldShrinkCloud(remoteNav, navigation)) {
+            navigationWouldShrinkCloud(remoteNav, localNav)) {
           debugPrint(
             '[Sync] refuse navigation shrink from non-Features push',
           );
         } else {
-          next['navigation'] = Map<String, dynamic>.from(navigation);
+          next['navigation'] = localNav;
         }
       }
     }

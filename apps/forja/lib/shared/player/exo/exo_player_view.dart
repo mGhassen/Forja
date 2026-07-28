@@ -7,14 +7,16 @@ import 'package:forja/shared/platform/platform_info.dart';
 
 /// Embeds the native Media3 [PlayerView] (Android only).
 ///
-/// **Phone:** TextureView + [AndroidView] (TLHC) — SurfaceView tiles under
-/// TLHC/VirtualDisplay.
+/// **Phone / ATV emulator:** TextureView + [AndroidView] (TLHC) — SurfaceView
+/// tiles under TLHC/VirtualDisplay; goldfish MediaCodec often fails
+/// `setOutputSurface` on SurfaceView (audio-only + chrome covered).
 ///
-/// **Android TV:** SurfaceView + hybrid composition — TextureView has poor
-/// frame timing and often cannot paint at full display resolution on leanback
-/// (UI layer is upscaled). Hybrid composition is required so SurfaceView is
-/// not mis-composited (issue 102 tiling). SurfaceView also enables Media3's
-/// Compose surface-sync workaround so frames are not zoomed/cropped (issue 129).
+/// **Physical Android TV:** SurfaceView + hybrid composition — TextureView has
+/// poor frame timing and often cannot paint at full display resolution on
+/// leanback (UI layer is upscaled). Hybrid composition is required so
+/// SurfaceView is not mis-composited (issue 102 tiling). SurfaceView also
+/// enables Media3's Compose surface-sync workaround so frames are not
+/// zoomed/cropped (issue 129).
 class ExoPlayerView extends StatelessWidget {
   const ExoPlayerView({super.key, required this.viewId});
 
@@ -31,8 +33,10 @@ class ExoPlayerView extends StatelessWidget {
     if (defaultTargetPlatform != TargetPlatform.android) {
       return const ColoredBox(color: Colors.black);
     }
-    // Prefer SurfaceView on ATV for fluid live / VOD (Media3 + display upscale).
-    if (PlatformInfo.isAndroidTv) {
+    // Physical ATV: SurfaceView + hybrid composition (fluid live / VOD).
+    // Emulator: TextureView + TLHC — goldfish SurfaceView often fails
+    // setOutputSurface (audio-only black) and can cover Flutter chrome.
+    if (PlatformInfo.isAndroidTv && !PlatformInfo.isAndroidEmulator) {
       return _AtvExoSurfaceView(viewId: viewId);
     }
     return AndroidView(

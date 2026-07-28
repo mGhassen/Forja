@@ -41,6 +41,7 @@ class MainActivity : AudioServiceActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isAndroidTv" -> result.success(isAndroidTv())
+                "isAndroidEmulator" -> result.success(PlatformUtils.isLikelyEmulator())
                 "getPlaybackCapabilities" -> result.success(PlaybackCapabilities.probe())
                 "prepareWebViewForTv" -> {
                     WebViewTvWorkaround.warmUpSoftwareWebView(applicationContext)

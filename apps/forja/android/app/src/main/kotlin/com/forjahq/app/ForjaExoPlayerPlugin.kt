@@ -787,7 +787,17 @@ class ExoPlayerViewFactory(private val plugin: ForjaExoPlayerPlugin) :
     override fun create(context: Context, viewId: Int, args: Any?): io.flutter.plugin.platform.PlatformView {
         val map = args as? Map<*, *>
         val hostId = (map?.get("viewId") as? Number)?.toInt() ?: viewId
-        val surfaceType = (map?.get("surfaceType") as? String)?.lowercase() ?: "texture"
+        val requested = (map?.get("surfaceType") as? String)?.lowercase() ?: "texture"
+        // Goldfish/ranchu: SurfaceView MediaCodec often fails setOutputSurface
+        // (BAD_INDEX) → audio-only + black hole covering Flutter chrome.
+        val surfaceType =
+            if (PlatformUtils.isLikelyEmulator()) "texture" else requested
+        if (surfaceType != requested) {
+            Log.i(
+                "ForjaExo",
+                "emulator: forcing texture_view (requested=$requested)",
+            )
+        }
         return ExoPlayerPlatformView(context, hostId, plugin, surfaceType)
     }
 }
