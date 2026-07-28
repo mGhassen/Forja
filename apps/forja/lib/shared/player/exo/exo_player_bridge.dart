@@ -145,7 +145,7 @@ class ExoPlayerBridge {
         'positionMs': position.inMilliseconds,
       });
 
-  /// [volume] is 0.0–1.0 (maps from UI 0–150 scale).
+  /// [volume] is 0.0–1.0 (UI 100 = full; values above 100 clamp to 1.0).
   static Future<void> setVolume(int viewId, double volume) =>
       _channel.invokeMethod<void>('setVolume', {
         'viewId': viewId,

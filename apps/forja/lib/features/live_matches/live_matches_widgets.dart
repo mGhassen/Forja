@@ -1046,6 +1046,8 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _androidNativeHandoff = false;
   bool _androidHandoffStarted = false;
   bool _androidFallbackStarted = false;
+  /// Permanent failure — stop sniff/handoff and leave the route.
+  bool _androidHandoffAbandoned = false;
   /// Last sniffed media/variant playlist if master was never seen.
   String? _androidVariantFallback;
   /// Soft recover after Cookie/Referer probe fail (same URL may work next).
@@ -1259,7 +1261,13 @@ class _LiveMatchesEmbedPlayerScreenState
   }
 
   void _onSniffedMediaUrl(String rawUrl) {
-    if (!_androidNativeHandoff || _androidHandoffStarted || _exiting) return;
+    if (!_androidNativeHandoff ||
+        _androidHandoffStarted ||
+        _androidHandoffAbandoned ||
+        _androidFallbackStarted ||
+        _exiting) {
+      return;
+    }
     final url = rawUrl.trim();
     if (url.isEmpty) return;
     if (!_liveEmbedIsSniffableMediaUrl(url)) {
@@ -1292,6 +1300,8 @@ class _LiveMatchesEmbedPlayerScreenState
   Future<void> _pollAndroidSniffCandidates() async {
     if (!_androidNativeHandoff ||
         _androidHandoffStarted ||
+        _androidHandoffAbandoned ||
+        _androidFallbackStarted ||
         _exiting ||
         !mounted) {
       return;
@@ -1299,7 +1309,9 @@ class _LiveMatchesEmbedPlayerScreenState
     final ctrl = _webViewController;
     if (ctrl == null) return;
     try {
+      // Mute: play is only to trigger HLS XHR; cover hides video but not audio.
       await ctrl.evaluateJavascript(source: _autoplayJs);
+      await ctrl.evaluateJavascript(source: _embedMediaCommandJs('mute'));
       await ctrl.evaluateJavascript(source: _embedMediaCommandJs('play'));
       final raw = await ctrl.evaluateJavascript(source: _liveEmbedSniffPollJs);
       if (raw is List) {
@@ -1332,7 +1344,12 @@ class _LiveMatchesEmbedPlayerScreenState
   /// Visible WebView sniff failed. Try variant fallback, then StreamExtractor
   /// on phone. On Android TV headless WebView is blocked — exit with a toast.
   Future<void> _androidSniffTimeoutFallback() async {
-    if (_androidHandoffStarted || _exiting || _androidFallbackStarted) return;
+    if (_androidHandoffAbandoned ||
+        _androidHandoffStarted ||
+        _exiting ||
+        _androidFallbackStarted) {
+      return;
+    }
     final variant = _androidVariantFallback;
     if (variant != null && variant.isNotEmpty) {
       debugPrint('[LiveMatches] Android sniff timeout → variant fallback');
@@ -1401,12 +1418,25 @@ class _LiveMatchesEmbedPlayerScreenState
     }
 
     if (!mounted || _exiting || _androidHandoffStarted) return;
+    _androidHandoffAbandoned = true;
     ForjaToast.info('Could not open this stream');
-    unawaited(_exitPlayer());
+    unawaited(_exitPlayer(force: true));
+  }
+
+  Future<void> _abandonAndroidHandoff(String reason) async {
+    if (_androidHandoffAbandoned) return;
+    _androidHandoffAbandoned = true;
+    _androidFallbackStarted = true;
+    _androidSniffPoll?.cancel();
+    _androidHandoffWatchdog?.cancel();
+    debugPrint('[LiveMatches] abandon handoff: $reason');
+    if (!mounted) return;
+    ForjaToast.info('Could not open this stream');
+    await _exitPlayer(force: true);
   }
 
   Future<void> _handOffToNativePlayer(String mediaUrl) async {
-    if (_exiting) return;
+    if (_exiting || _androidHandoffAbandoned) return;
     _exiting = true;
     _mediaStopped = true;
     _loadingWatchdog?.cancel();
@@ -1419,14 +1449,22 @@ class _LiveMatchesEmbedPlayerScreenState
 
     // CDN tokens / Set-Cookie often land a beat after the playlist URL appears.
     await Future<void>.delayed(const Duration(milliseconds: 450));
-    if (!mounted) return;
+    if (!mounted || _androidHandoffAbandoned) return;
 
     String? playUrl;
     for (var attempt = 1; attempt <= 3; attempt++) {
+      if (_androidHandoffAbandoned || !mounted) return;
+      // Streamed CDN often checks catalog Referer (streamed.pk); PPV needs
+      // the full embedindia URL. On probe retry, also try the alternate.
+      final useCatalogReferer = !liveEmbedRequiresWebViewPlayback(widget.embedUrl) &&
+          (attempt == 1 || attempt == 3);
       final headers = Map<String, String>.from(
         liveEmbedRequiresWebViewPlayback(widget.embedUrl)
             ? _ppvEmbedStreamHeaders(widget.embedUrl)
-            : _liveEmbedStreamHeaders(widget.embedUrl),
+            : _liveEmbedStreamHeaders(
+                widget.embedUrl,
+                catalogReferer: useCatalogReferer ? widget.referer : null,
+              ),
       );
       final cookie = await _liveEmbedCollectCookieHeader(
         embedUrl: widget.embedUrl,
@@ -1461,28 +1499,20 @@ class _LiveMatchesEmbedPlayerScreenState
       playUrl = null;
       if (attempt < 3) {
         await Future<void>.delayed(Duration(milliseconds: 350 * attempt));
-        if (!mounted) return;
+        if (!mounted || _androidHandoffAbandoned) return;
       }
     }
 
     if (playUrl == null || playUrl.isEmpty) {
-      // Soft recover: keep sniffing. Same URL may succeed once cookies settle —
-      // do not blacklist (that broke Streamed retries).
-      if (_androidSoftRecoverCount >= 2) {
-        debugPrint('[LiveMatches] handoff probe exhausted — give up soft recover');
-        if (!mounted) return;
-        _exiting = false;
-        _mediaStopped = false;
-        _androidHandoffStarted = false;
-        // Skip variant re-handoff; go to extract / toast.
-        _androidVariantFallback = null;
-        unawaited(_androidSniffTimeoutFallback());
+      // Soft recover once: cookies often land after the first playlist hit.
+      if (_androidSoftRecoverCount >= 1) {
+        await _abandonAndroidHandoff('probe exhausted');
         return;
       }
       _androidSoftRecoverCount++;
       debugPrint(
         '[LiveMatches] handoff probe exhausted — resume sniff '
-        '(soft ${_androidSoftRecoverCount}/2)',
+        '(soft ${_androidSoftRecoverCount}/1)',
       );
       if (!mounted) return;
       _exiting = false;
@@ -1491,20 +1521,31 @@ class _LiveMatchesEmbedPlayerScreenState
       try {
         await _webViewController?.evaluateJavascript(source: _autoplayJs);
         await _webViewController
+            ?.evaluateJavascript(source: _embedMediaCommandJs('mute'));
+        await _webViewController
             ?.evaluateJavascript(source: _embedMediaCommandJs('play'));
       } catch (_) {}
-      // Brief settle so we do not immediately re-probe the same cold URL.
       await Future<void>.delayed(const Duration(milliseconds: 800));
-      if (!mounted || _exiting || _androidHandoffStarted) return;
+      if (!mounted ||
+          _exiting ||
+          _androidHandoffStarted ||
+          _androidHandoffAbandoned) {
+        return;
+      }
       _androidSniffPoll?.cancel();
       _androidSniffPoll = Timer.periodic(const Duration(seconds: 2), (_) {
         unawaited(_pollAndroidSniffCandidates());
       });
-      // Re-offer the same media URL after settle (cookies often land late).
+      // Re-offer after settle (do not loop forever — abandon on next fail).
       _onSniffedMediaUrl(mediaUrl);
       _androidHandoffWatchdog?.cancel();
       _androidHandoffWatchdog = Timer(const Duration(seconds: 18), () {
-        if (!mounted || _androidHandoffStarted || _exiting) return;
+        if (!mounted ||
+            _androidHandoffStarted ||
+            _androidHandoffAbandoned ||
+            _exiting) {
+          return;
+        }
         debugPrint('[LiveMatches] Android HLS sniff timed out (after probe)');
         unawaited(_androidSniffTimeoutFallback());
       });
@@ -1512,7 +1553,7 @@ class _LiveMatchesEmbedPlayerScreenState
     }
 
     debugPrint('[LiveMatches] Android handoff → $playUrl');
-    if (!mounted) return;
+    if (!mounted || _androidHandoffAbandoned) return;
     final title = widget.title;
     final subtitle = widget.subtitle;
     final label = widget.badgeLabel;
@@ -1538,9 +1579,15 @@ class _LiveMatchesEmbedPlayerScreenState
       client.connectionTimeout = const Duration(seconds: 8);
       final req = await client.getUrl(Uri.parse(playUrl));
       final resp = await req.close().timeout(const Duration(seconds: 10));
-      if (resp.statusCode >= 400) return false;
       final body = await resp.transform(utf8.decoder).join();
-      return body.trimLeft().startsWith('#EXTM3U');
+      final ok = resp.statusCode < 400 && body.trimLeft().startsWith('#EXTM3U');
+      if (!ok) {
+        final snip = body.length > 80 ? body.substring(0, 80) : body;
+        debugPrint(
+          '[LiveMatches] HLS probe status=${resp.statusCode} body=${snip.replaceAll('\n', ' ')}',
+        );
+      }
+      return ok;
     } catch (e) {
       debugPrint('[LiveMatches] HLS probe error: $e');
       // Soft-fail: still hand off — Exo may succeed where the probe flaked.
@@ -1638,9 +1685,12 @@ class _LiveMatchesEmbedPlayerScreenState
     // until the route pops; disposing early can hang the platform view.
   }
 
-  Future<void> _exitPlayer() async {
-    if (_exiting) return;
+  Future<void> _exitPlayer({bool force = false}) async {
+    if (_exiting && !force) return;
     _exiting = true;
+    _androidHandoffAbandoned = true;
+    _androidSniffPoll?.cancel();
+    _androidHandoffWatchdog?.cancel();
     if (_isFullscreen) {
       unawaited(_exitFullscreen());
     }
@@ -1978,6 +2028,10 @@ class _LiveMatchesEmbedPlayerScreenState
                           await ctrl.evaluateJavascript(
                             source: _liveEmbedMediaSpyJs,
                           );
+                          // Sniffer only — keep silent under the handoff cover.
+                          await ctrl.evaluateJavascript(
+                            source: _embedMediaCommandJs('mute'),
+                          );
                         }
                         await ctrl.evaluateJavascript(source: _autoplayJs);
                         await ctrl.evaluateJavascript(
@@ -2036,8 +2090,10 @@ class _LiveMatchesEmbedPlayerScreenState
                       return NavigationActionPolicy.CANCEL;
                     },
                   ),
-                  // Android: hide the host lock / CORS failure UI while sniffing.
-                  if (_androidNativeHandoff && !_androidHandoffStarted)
+                  // Android: keep this cover for the whole sniffer route.
+                  // Tying it to !_androidHandoffStarted uncovered JW mid-probe
+                  // (multi-cam PiP + audio) before pushReplacement to native.
+                  if (_androidNativeHandoff)
                     const ColoredBox(
                       color: Colors.black,
                       child: Center(

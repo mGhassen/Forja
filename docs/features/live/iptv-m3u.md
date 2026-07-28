@@ -19,7 +19,7 @@ Besides Xtream portals, Forja supports plain **M3U/M3U8 playlists**. Import from
 - Use **Player** and **Picture-in-picture** from the IPTV player top-right on Android and desktop (same flat controls as the movie player). On **Android TV**, **Player** lists only ExoPlayer and MediaKit (no external apps)
 - Change channels from the in-player guide (flat translucent groups + channel list overlay — no frosted blur over the live video)
 - Search channels from the in-player search overlay (flat translucent panel) — dismiss the overlay with the borderless **Close** control in the header (circular hover highlight, no box border). On **Android TV**, **OK** on the search field focuses the first result (does not open it); **↑/↓** move through results; **OK** on a result opens that channel
-- See the current channel logo at the bottom-left of the player; when a progress bar is available, the logo sits immediately before it and playback time appears on its right
+- See the current channel logo at the bottom-left of the player; it sits immediately before the progress bar, with playback time on its right (live uses programme-guide fill when EPG is available)
 - Manage multiple playlists
 - Double-click the video (desktop) to enter/exit fullscreen — same as the fullscreen button. On **Android TV**, the fullscreen button is hidden (already immersive)
 

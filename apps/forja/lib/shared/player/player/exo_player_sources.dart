@@ -282,7 +282,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
             .toList(),
       );
       if (!mounted || _s._disposed || switchGen != _s._fallbackGen) return;
-      await ExoPlayerBridge.setVolume(_s._viewId, _s._volume / 150.0);
+      await ExoPlayerBridge.setVolume(_s._viewId, _s._volume / 100.0);
       if (_s._rate != 1.0) {
         await ExoPlayerBridge.setRate(_s._viewId, _s._rate);
       }

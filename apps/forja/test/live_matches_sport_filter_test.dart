@@ -213,7 +213,7 @@ void main() {
       );
     });
 
-    test('false with viewers far before start', () {
+    test('true with viewers far before start (lobby / wrong device clock)', () {
       expect(
         ppvStreamIsLive(
           isAlwaysOn: false,
@@ -222,6 +222,20 @@ void main() {
           endsAt: end,
           viewers: 50,
           nowSecs: start - const Duration(hours: 7).inSeconds,
+        ),
+        isTrue,
+      );
+    });
+
+    test('false with viewers long after ends_at grace', () {
+      expect(
+        ppvStreamIsLive(
+          isAlwaysOn: false,
+          status: '',
+          startsAt: start,
+          endsAt: end,
+          viewers: 50,
+          nowSecs: end + const Duration(hours: 4).inSeconds,
         ),
         isFalse,
       );

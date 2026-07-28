@@ -83,8 +83,9 @@ bool ppvStreamIsAlwaysOn({
 /// Whether a PPV schedule row is airing (matches site **Live now**).
 ///
 /// Uses start/end when present; also treats an active viewer count as live
-/// (ppv.is is viewer-driven). Allows a few hours before [startsAt] so device
-/// clock skew / early doors still show ● LIVE like desktop.
+/// (ppv.is is viewer-driven). A non-zero [viewers] count wins over schedule
+/// walls — lobby / early doors / device clock skew still show ● LIVE and the
+/// play affordance. Only drop viewer-driven live well past [endsAt].
 bool ppvStreamIsLive({
   required bool isAlwaysOn,
   required String status,
@@ -103,15 +104,10 @@ bool ppvStreamIsLive({
   // Live now on ppv.is is viewer-driven; keep airing while people are watching.
   if (viewers > 0) {
     if (startsAt > 0 && endsAt > startsAt) {
-      final earlyStart =
-          startsAt - const Duration(hours: 6).inSeconds;
       final graceEnd = endsAt + const Duration(hours: 3).inSeconds;
-      return now >= earlyStart && now <= graceEnd;
-    }
-    if (startsAt > 0) {
-      final earlyStart =
-          startsAt - const Duration(hours: 6).inSeconds;
-      return now >= earlyStart;
+      // Do not gate on earlyStart — cards with audience numbers must stay
+      // playable even when kickoff is still hours away (or the clock is wrong).
+      return now <= graceEnd;
     }
     return true;
   }

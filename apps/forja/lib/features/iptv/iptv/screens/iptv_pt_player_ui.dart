@@ -74,7 +74,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
     final barPad = compact ? 12.0 : 18.0;
     const barHeight = 56.0;
-    final seekbar = _s._isVod ? (compact ? 48.0 : 56.0) : 0.0;
+    // Progress row always present (VOD scrubber or live EPG / live-edge bar).
+    final seekbar = compact ? 48.0 : 56.0;
     return safeBottom + barPad + barHeight + seekbar + 12;
   }
 
@@ -431,10 +432,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           children: [
             _buildTopBar(compact),
             const Spacer(),
+            // Always show progress chrome (VOD scrubber, or live EPG / live-edge).
             if (_s._isVod)
               _buildSeekbar(compact)
             else
-              _buildLiveChannelLogo(compact),
+              _buildLiveProgressBar(compact),
             _buildBottomBar(compact),
           ],
         ),
@@ -762,13 +764,112 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     );
   }
 
-  Widget _buildLiveChannelLogo(bool compact) {
-    if ((_s._logoUrl ?? '').isEmpty) return const SizedBox.shrink();
-    return Align(
-      alignment: Alignment.bottomLeft,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(compact ? 16 : 24, 0, 0, 8),
-        child: _buildChannelLogo(compact),
+  static double _epgProgress(EpgEntry e) {
+    final now = DateTime.now();
+    final total = e.stop.difference(e.start).inSeconds;
+    if (total <= 0) return 0;
+    final elapsed = now.difference(e.start).inSeconds.clamp(0, total);
+    return elapsed / total;
+  }
+
+  /// Live chrome: same logo + track + time row as VOD, driven by EPG when
+  /// available (read-only). Pure live with no guide still shows a full track
+  /// so Android TV Exo matches the progress chrome users expect.
+  Widget _buildLiveProgressBar(bool compact) {
+    final future = _floatingEpgFuture();
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 16 : 24,
+        vertical: compact ? 2 : 4,
+      ),
+      child: Row(
+        children: [
+          if ((_s._logoUrl ?? '').isNotEmpty) ...[
+            _buildChannelLogo(compact),
+            SizedBox(width: compact ? 10 : 16),
+          ],
+          Expanded(
+            child: future == null
+                ? _liveProgressTrack(value: 1.0, compact: compact)
+                : FutureBuilder<List<EpgEntry>>(
+                    future: future,
+                    builder: (context, snap) {
+                      final data = snap.data ?? const <EpgEntry>[];
+                      EpgEntry? nowEntry;
+                      if (data.isNotEmpty) {
+                        nowEntry = data.cast<EpgEntry?>().firstWhere(
+                          (e) => e!.isNow,
+                          orElse: () => data.first,
+                        );
+                      }
+                      final value = nowEntry != null
+                          ? _epgProgress(nowEntry).clamp(0.0, 1.0)
+                          : 1.0;
+                      return _liveProgressTrack(
+                        value: value,
+                        compact: compact,
+                      );
+                    },
+                  ),
+          ),
+          SizedBox(
+            width: compact ? 84 : 100,
+            child: future == null
+                ? _liveProgressTimeLabel('LIVE', compact)
+                : FutureBuilder<List<EpgEntry>>(
+                    future: future,
+                    builder: (context, snap) {
+                      final data = snap.data ?? const <EpgEntry>[];
+                      EpgEntry? nowEntry;
+                      if (data.isNotEmpty) {
+                        nowEntry = data.cast<EpgEntry?>().firstWhere(
+                          (e) => e!.isNow,
+                          orElse: () => data.first,
+                        );
+                      }
+                      if (nowEntry == null || !nowEntry.isNow) {
+                        return _liveProgressTimeLabel('LIVE', compact);
+                      }
+                      final elapsed = DateTime.now().difference(nowEntry.start);
+                      final safe = elapsed.isNegative ? Duration.zero : elapsed;
+                      return _liveProgressTimeLabel(
+                        _IptvPtPlayerScreenState._fmtDur(safe),
+                        compact,
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _liveProgressTimeLabel(String text, bool compact) {
+    return Text(
+      text,
+      textAlign: TextAlign.right,
+      style: GoogleFonts.spaceMono(
+        color: Colors.white,
+        fontSize: compact ? 12 : 13,
+        fontFeatures: const [FontFeature.tabularFigures()],
+        shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
+      ),
+    );
+  }
+
+  Widget _liveProgressTrack({required double value, required bool compact}) {
+    return SizedBox(
+      height: compact ? 28 : 32,
+      child: Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: LinearProgressIndicator(
+            value: value.clamp(0.0, 1.0),
+            minHeight: 3.5,
+            backgroundColor: Colors.white24,
+            color: ForjaShellColors.brandGreen,
+          ),
+        ),
       ),
     );
   }

@@ -315,7 +315,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         startPosition: start,
         subtitles: subs,
       );
-      await ExoPlayerBridge.setVolume(_viewId, _volume / 150.0);
+      await ExoPlayerBridge.setVolume(_viewId, _volume / 100.0);
       if (_rate != 1.0) {
         await ExoPlayerBridge.setRate(_viewId, _rate);
       }
@@ -517,7 +517,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Future<void> _setVolume(double volume) async {
     final v = volume.clamp(0.0, 150.0);
     setState(() => _volume = v);
-    await ExoPlayerBridge.setVolume(_viewId, v / 150.0);
+    await ExoPlayerBridge.setVolume(_viewId, v / 100.0);
     _startHideTimer();
   }
 

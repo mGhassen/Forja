@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** fix · **0 / 3** acceptance |
+| **Progress** | **12 / 12** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,6 +29,8 @@
 | 8 | I117-T08 | PPV embedindia: Ajax/Fetch XHR sniff for `*.indianservers.st`; full-embed Referer on handoff; prefer master playlist | ✅ |
 | 9 | I117-T09 | Streamed intermittent close: retry Cookie probe 3×; on fail resume sniff (do not pop player) | ✅ |
 | 10 | I117-T10 | Android PPV: top-level embedindia + Referer (no ppv.is iframe); Ajax/Fetch intercept PPV-only; drop probe URL blacklist | ✅ |
+| 11 | I117-T11 | Keep handoff cover until route exit; mute sniffer WebView (no mid-probe JW PiP / audio leak) | ✅ |
+| 12 | I117-T12 | Stop probe soft-recover loop; force-exit on abandon; Streamed catalog Referer on `/hls-proxy` | ✅ |
 
 ---
 
@@ -57,6 +59,10 @@
 **Streamed intermittent close (I117-T09):** First open sometimes sniffed the playlist before WebView cookies settled → probe 403 → toast + pop. Retry worked because the session was warm. Fix: short settle delay, up to 3 Cookie re-harvest + probe attempts, then resume sniff instead of closing.
 
 **PPV stuck + Streamed broke again (I117-T10):** Logs showed `embedindia.st` blocked from reading `flutter_inappwebview` on parent `ppv.is`, then sniff + StreamExtractor never saw m3u8. Ajax/Fetch intercept on **all** Android live embeds also broke Streamed XHR; probe-fail URL blacklist blocked the warm retry. Fix: Android PPV loads **top-level** embedindia with catalog `Referer` (cover still hides WebView); Ajax/Fetch hooks **PPV-only**; soft recover retries the same URL without blacklisting.
+
+**Mid-handoff double video (I117-T11):** Sniff success set `_androidHandoffStarted` which **removed** the black cover before Cookie probe + `pushReplacement`. JW’s multi-cam PiP painted under Flutter chrome. Fix: keep the cover for the whole Android sniffer route; mute play nudges.
+
+**Probe loop / Back stuck / process kill (I117-T12):** Soft-recover give-up reset `_exiting` while WebView kept re-sniffing the same `strmd.st` playlist → infinite handoff. `_exitPlayer` no-op’d while `_exiting` was true (Back looked broken); mashing Back on the nav rail then hit ATV double-Back exit (`finish` + kill). Fix: abandon flag stops sniff; one soft recover then toast + `force` pop; Streamed proxy Prefer catalog `Referer` (`streamed.pk`).
 
 **Player button:** The in-player **Player** control (Exo ↔ MediaKit / external) lives on `IptvPtPlayerScreen` after handoff — it does not appear on the WebView “Opening stream…” cover.
 

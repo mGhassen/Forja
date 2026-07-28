@@ -168,7 +168,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   StreamSubscription? _posSub, _playingSub, _bufferingSub, _errorSub, _logSub;
   StreamSubscription? _durSub, _bufferSub;
 
-  // VOD seekbar state - duration is 0 for live streams, > 0 for VOD.
+  // Seekbar: duration > 1s ⇒ VOD scrubber; live always shows EPG / live-edge bar.
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   Duration _buffered = Duration.zero;

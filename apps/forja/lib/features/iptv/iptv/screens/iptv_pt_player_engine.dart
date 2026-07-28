@@ -115,23 +115,33 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       case 'progress':
         final posMs = (event['position'] as num?)?.toInt() ?? 0;
         final durMs = (event['duration'] as num?)?.toInt() ?? 0;
+        final bufMs = (event['buffered'] as num?)?.toInt() ?? 0;
         final pos = Duration(milliseconds: posMs);
-        if (!_s._isSeeking && pos != _s._position) {
+        final durChanged =
+            durMs > 0 && durMs != _s._duration.inMilliseconds;
+        final posChanged = !_s._isSeeking && pos != _s._position;
+        if (posChanged || durChanged) {
           if (durMs > 0) {
-            // Only rebuild chrome when controls need the scrubber (or duration
-            // changed). Pure live (dur=0) never setStates on tick.
-            final needUi = _s._controlsVisible ||
-                durMs != _s._duration.inMilliseconds;
+            // Rebuild when chrome is up, or when duration first arrives so the
+            // VOD seekbar mounts (do not gate duration on position — Exo often
+            // reports duration while still at 0:00).
+            final needUi = _s._controlsVisible || durChanged;
             if (needUi) {
               setState(() {
-                _s._position = pos;
+                if (posChanged) _s._position = pos;
                 _s._duration = Duration(milliseconds: durMs);
+                if (bufMs > 0) {
+                  _s._buffered = Duration(milliseconds: bufMs);
+                }
               });
             } else {
-              _s._position = pos;
+              if (posChanged) _s._position = pos;
               _s._duration = Duration(milliseconds: durMs);
+              if (bufMs > 0) {
+                _s._buffered = Duration(milliseconds: bufMs);
+              }
             }
-          } else {
+          } else if (posChanged) {
             _s._position = pos;
           }
         }

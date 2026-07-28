@@ -13,6 +13,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultDataSource
@@ -520,11 +521,25 @@ class ExoPlayerHost(
 
     private fun emitProgress() {
         val p = player ?: return
+        // Live / DVR: Player.duration is often TIME_UNSET; contentDuration or a
+        // seekable timeline window still carries a scrubbable length for VOD-like
+        // IPTV movies mis-tagged live, and for catch-up windows.
+        var durationMs = p.duration
+        if (durationMs <= 0) {
+            val content = p.contentDuration
+            if (content > 0) durationMs = content
+        }
+        if (durationMs <= 0 && !p.currentTimeline.isEmpty) {
+            val window = Timeline.Window()
+            p.currentTimeline.getWindow(p.currentMediaItemIndex, window)
+            if (window.durationMs > 0) durationMs = window.durationMs
+        }
+        if (durationMs <= 0) durationMs = 0L
         emit(
             mapOf(
                 "type" to "progress",
                 "position" to p.currentPosition,
-                "duration" to if (p.duration > 0) p.duration else 0L,
+                "duration" to durationMs,
                 "buffered" to p.bufferedPosition,
             ),
         )

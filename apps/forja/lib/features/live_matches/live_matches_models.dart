@@ -1232,14 +1232,28 @@ Map<String, String> _ppvEmbedStreamHeaders(String embedUrl) {
   };
 }
 
-Map<String, String> _liveEmbedStreamHeaders(String embedUrl) {
+Map<String, String> _liveEmbedStreamHeaders(
+  String embedUrl, {
+  String? catalogReferer,
+}) {
   final uri = Uri.tryParse(embedUrl);
   final origin = uri?.origin ?? '';
+  final catalog = (catalogReferer ?? '').trim();
+  final catalogRoot = catalog.isEmpty
+      ? null
+      : (catalog.endsWith('/') ? catalog : '$catalog/');
+  final catalogOrigin = catalogRoot == null
+      ? null
+      : Uri.tryParse(catalogRoot)?.origin;
+  // Streamed CDN (`strmd.st`) often validates against the catalog site, not
+  // only the embed host origin.
+  final referer = catalogRoot ??
+      (origin.isNotEmpty ? '$origin/' : embedUrl);
+  final headerOrigin = catalogOrigin ?? (origin.isNotEmpty ? origin : null);
   return {
     'User-Agent': _ua['User-Agent']!,
-    // CDN checks embed origin Referer; full path is less reliable than origin/.
-    'Referer': origin.isNotEmpty ? '$origin/' : embedUrl,
-    if (origin.isNotEmpty) 'Origin': origin,
+    'Referer': referer,
+    if (headerOrigin != null && headerOrigin.isNotEmpty) 'Origin': headerOrigin,
   };
 }
 
