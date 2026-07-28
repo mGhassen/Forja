@@ -211,7 +211,7 @@ export function AccountSettingsNavigationPage() {
                 >
                   <span
                     className={cn(
-                      'pointer-events-none absolute top-1 left-1 size-4 rounded-full bg-forja-bg transition-[transform,background-color] group-hover:bg-white',
+                      'pointer-events-none absolute top-1 left-1 size-4 rounded-full bg-forja-bg transition-[transform,background-color] group-hover:bg-white/55',
                       on ? 'translate-x-5' : 'translate-x-0',
                     )}
                   />
