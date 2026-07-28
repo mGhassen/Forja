@@ -1048,8 +1048,8 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _androidFallbackStarted = false;
   /// Last sniffed media/variant playlist if master was never seen.
   String? _androidVariantFallback;
-  /// Playlist URLs that failed Cookie/Referer probe — skip until timeout.
-  final Set<String> _androidFailedMediaUrls = {};
+  /// Soft recover after Cookie/Referer probe fail (same URL may work next).
+  int _androidSoftRecoverCount = 0;
   Timer? _loadingWatchdog;
   Timer? _adWindowCloseTimer;
   Timer? _androidHandoffWatchdog;
@@ -1061,10 +1061,14 @@ class _LiveMatchesEmbedPlayerScreenState
   int? _adWindowId;
 
   /// Catalog-origin iframe wrapper (`streamed.pk` / `ppv.is`) so
-  /// `document.referrer` matches the website (issue 046). Used on every
-  /// platform — including Android TV. Top-level embed loads break the host
-  /// lock and show the red “Remove sandbox attributes…” page.
-  late final InAppWebViewInitialData _initialData;
+  /// `document.referrer` matches the website (issue 046). Streamed keeps the
+  /// wrapper on Android. PPV embedindia uses top-level load + Referer header
+  /// (`_androidDirectEmbed`) so sniff is same-origin under the cover overlay.
+  late final InAppWebViewInitialData? _initialData;
+  late final URLRequest? _initialUrlRequest;
+  /// Android PPV: load embedindia top-level (no ppv.is iframe) so sniff JS /
+  /// callHandler are same-origin. Catalog Referer is sent as an HTTP header.
+  late final bool _androidDirectEmbed;
   late final InAppWebViewSettings _initialSettings;
   late final UnmodifiableListView<UserScript> _initialUserScripts;
 
@@ -1144,6 +1148,12 @@ class _LiveMatchesEmbedPlayerScreenState
     _androidNativeHandoff = !kIsWeb &&
         Platform.isAndroid &&
         liveEmbedAndroidNativeHandoff(embedUrl);
+    // embedindia in a ppv.is iframe → cross-origin SecurityError on the
+    // flutter_inappwebview bridge; the JW player often never requests HLS.
+    // Top-level load + Referer header still satisfies the CDN for sniffing.
+    _androidDirectEmbed = _androidNativeHandoff &&
+        liveEmbedRequiresWebViewPlayback(embedUrl);
+    final ppvXhrHooks = _androidDirectEmbed;
     _initialUserScripts = UnmodifiableListView([
       UserScript(
         source: _stripIframeSandboxJs,
@@ -1180,13 +1190,25 @@ class _LiveMatchesEmbedPlayerScreenState
     final wrapperBase = widget.referer.endsWith('/')
         ? widget.referer
         : '${widget.referer}/';
-    _initialData = InAppWebViewInitialData(
-      data: _buildLiveEmbedWrapperHtml(embedUrl),
-      baseUrl: WebUri(wrapperBase),
-      historyUrl: WebUri(wrapperBase),
-      mimeType: 'text/html',
-      encoding: 'utf-8',
-    );
+    if (_androidDirectEmbed) {
+      _initialData = null;
+      _initialUrlRequest = URLRequest(
+        url: WebUri(embedUrl),
+        headers: {
+          'Referer': wrapperBase,
+          'User-Agent': _ua['User-Agent']!,
+        },
+      );
+    } else {
+      _initialUrlRequest = null;
+      _initialData = InAppWebViewInitialData(
+        data: _buildLiveEmbedWrapperHtml(embedUrl),
+        baseUrl: WebUri(wrapperBase),
+        historyUrl: WebUri(wrapperBase),
+        mimeType: 'text/html',
+        encoding: 'utf-8',
+      );
+    }
     _initialSettings = InAppWebViewSettings(
       userAgent: _ua['User-Agent'],
       domStorageEnabled: true,
@@ -1202,10 +1224,10 @@ class _LiveMatchesEmbedPlayerScreenState
       useShouldOverrideUrlLoading: true,
       useOnLoadResource: _androidNativeHandoff,
       useShouldInterceptRequest: _androidNativeHandoff,
-      // PPV embedindia loads the playlist via XHR — Android WebViewClient
-      // often misses those; Ajax/Fetch hooks catch them.
-      useShouldInterceptAjaxRequest: _androidNativeHandoff,
-      useShouldInterceptFetchRequest: _androidNativeHandoff,
+      // Ajax/Fetch hooks only for PPV XHR playlists — wrapping every XHR
+      // broke Streamed handshake on Android.
+      useShouldInterceptAjaxRequest: ppvXhrHooks,
+      useShouldInterceptFetchRequest: ppvXhrHooks,
       // Accept window.open off-screen. Rejecting it falls back to main-frame
       // ad navigations that break Streamed HLS (manifestParsingError).
       supportMultipleWindows: true,
@@ -1254,10 +1276,6 @@ class _LiveMatchesEmbedPlayerScreenState
     }
     // Prefer master playlist over media/variant tracks when both appear.
     final low = url.toLowerCase();
-    if (_androidFailedMediaUrls.contains(url)) {
-      debugPrint('[LiveMatches] sniff skip failed url: $url');
-      return;
-    }
     if (low.contains('/tracks-') || low.contains('mono.ts.m3u8')) {
       debugPrint('[LiveMatches] sniff defer variant: $url');
       // Still accept if nothing better arrives before timeout — stash as fallback.
@@ -1335,7 +1353,9 @@ class _LiveMatchesEmbedPlayerScreenState
         final extracted = await StreamExtractor().extract(
           widget.embedUrl,
           referer: widget.referer,
-          iframeWrapperBaseUrl: widget.referer,
+          // Match visible WebView: PPV is top-level; Streamed keeps wrapper.
+          iframeWrapperBaseUrl:
+              _androidDirectEmbed ? null : widget.referer,
           timeout: const Duration(seconds: 22),
           isCancelled: () => _exiting || !mounted,
         );
@@ -1446,26 +1466,42 @@ class _LiveMatchesEmbedPlayerScreenState
     }
 
     if (playUrl == null || playUrl.isEmpty) {
-      // Soft recover: keep the WebView sniffing instead of popping the route.
-      // First-open races (cookies / token) often succeed on the next sniff.
-      debugPrint('[LiveMatches] handoff probe exhausted — resume sniff');
-      _androidFailedMediaUrls.add(mediaUrl);
+      // Soft recover: keep sniffing. Same URL may succeed once cookies settle —
+      // do not blacklist (that broke Streamed retries).
+      if (_androidSoftRecoverCount >= 2) {
+        debugPrint('[LiveMatches] handoff probe exhausted — give up soft recover');
+        if (!mounted) return;
+        _exiting = false;
+        _mediaStopped = false;
+        _androidHandoffStarted = false;
+        // Skip variant re-handoff; go to extract / toast.
+        _androidVariantFallback = null;
+        unawaited(_androidSniffTimeoutFallback());
+        return;
+      }
+      _androidSoftRecoverCount++;
+      debugPrint(
+        '[LiveMatches] handoff probe exhausted — resume sniff '
+        '(soft ${_androidSoftRecoverCount}/2)',
+      );
       if (!mounted) return;
       _exiting = false;
       _mediaStopped = false;
       _androidHandoffStarted = false;
-      if (_androidVariantFallback == mediaUrl) {
-        _androidVariantFallback = null;
-      }
       try {
         await _webViewController?.evaluateJavascript(source: _autoplayJs);
         await _webViewController
             ?.evaluateJavascript(source: _embedMediaCommandJs('play'));
       } catch (_) {}
+      // Brief settle so we do not immediately re-probe the same cold URL.
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+      if (!mounted || _exiting || _androidHandoffStarted) return;
       _androidSniffPoll?.cancel();
       _androidSniffPoll = Timer.periodic(const Duration(seconds: 2), (_) {
         unawaited(_pollAndroidSniffCandidates());
       });
+      // Re-offer the same media URL after settle (cookies often land late).
+      _onSniffedMediaUrl(mediaUrl);
       _androidHandoffWatchdog?.cancel();
       _androidHandoffWatchdog = Timer(const Duration(seconds: 18), () {
         if (!mounted || _androidHandoffStarted || _exiting) return;
@@ -1854,10 +1890,11 @@ class _LiveMatchesEmbedPlayerScreenState
                     fit: StackFit.expand,
                     children: [
                       ForjaInAppWebView(
-                    // Catalog-origin iframe wrapper on every platform (046).
-                    // Windows opaque WebView2 via forjaWebViewSettings (053).
+                    // Catalog iframe wrapper (046) except Android PPV: top-level
+                    // embedindia + Referer (avoids cross-origin bridge / no HLS).
                     // Android: sniff HLS → native IPTV player (CORS / lock).
                     initialData: _initialData,
+                    initialUrlRequest: _initialUrlRequest,
                     initialUserScripts: _initialUserScripts,
                     initialSettings: _initialSettings,
                     onWebViewCreated: (controller) {
@@ -1899,7 +1936,8 @@ class _LiveMatchesEmbedPlayerScreenState
                             return null;
                           }
                         : null,
-                    shouldInterceptAjaxRequest: _androidNativeHandoff
+                    // PPV-only: wrapping every XHR/Fetch broke Streamed.
+                    shouldInterceptAjaxRequest: _androidDirectEmbed
                         ? (ctrl, ajax) async {
                             final u = ajax.url?.toString() ?? '';
                             if (u.isNotEmpty) _onSniffedMediaUrl(u);
@@ -1907,7 +1945,7 @@ class _LiveMatchesEmbedPlayerScreenState
                             return null;
                           }
                         : null,
-                    shouldInterceptFetchRequest: _androidNativeHandoff
+                    shouldInterceptFetchRequest: _androidDirectEmbed
                         ? (ctrl, fetch) async {
                             final u = fetch.url.toString();
                             _onSniffedMediaUrl(u);
@@ -1989,7 +2027,7 @@ class _LiveMatchesEmbedPlayerScreenState
                       if (liveEmbedAllowsMainFrameNavigation(
                         url: url,
                         embedUrl: embedUrl,
-                        allowEmbedHostAsMainFrame: false,
+                        allowEmbedHostAsMainFrame: _androidDirectEmbed,
                         wrapperReferer: widget.referer,
                       )) {
                         return NavigationActionPolicy.ALLOW;

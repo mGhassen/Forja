@@ -364,7 +364,12 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     } else if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
       _pipSub = PipService.instance.desktopPipChanges.listen(onPipChanged);
     }
-    unawaited(_bootWithCachedVolume());
+    // Same as VOD: [waitForRouteTransition] uses ModalRoute.of — illegal in
+    // initState. Defer until after the first frame so the modal scope exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_disposed || !mounted) return;
+      unawaited(_bootWithCachedVolume());
+    });
   }
 
   /// D-pad / remote keys while chrome is up count as activity. Row focus

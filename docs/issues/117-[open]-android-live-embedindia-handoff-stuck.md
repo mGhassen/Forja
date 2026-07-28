@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** fix · **0 / 3** acceptance |
+| **Progress** | **10 / 10** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,7 @@
 | 7 | I117-T07 | Live Matches handoff forces Exo; probe playlist before open; one-shot Exo↔MediaKit swap on format error | ✅ |
 | 8 | I117-T08 | PPV embedindia: Ajax/Fetch XHR sniff for `*.indianservers.st`; full-embed Referer on handoff; prefer master playlist | ✅ |
 | 9 | I117-T09 | Streamed intermittent close: retry Cookie probe 3×; on fail resume sniff (do not pop player) | ✅ |
+| 10 | I117-T10 | Android PPV: top-level embedindia + Referer (no ppv.is iframe); Ajax/Fetch intercept PPV-only; drop probe URL blacklist | ✅ |
 
 ---
 
@@ -54,6 +55,8 @@
 **PPV still failing after Streamed worked (I117-T08):** embedindia JW loads `https://*.indianservers.st/secure/…/index.m3u8` via **XHR**. Streamed’s `strmd.st` path was visible to resource intercept; PPV XHR often was not. Ajax/Fetch intercept + `indianservers.st` sniff match + handoff Referer = full embed URL (not only origin/).
 
 **Streamed intermittent close (I117-T09):** First open sometimes sniffed the playlist before WebView cookies settled → probe 403 → toast + pop. Retry worked because the session was warm. Fix: short settle delay, up to 3 Cookie re-harvest + probe attempts, then resume sniff instead of closing.
+
+**PPV stuck + Streamed broke again (I117-T10):** Logs showed `embedindia.st` blocked from reading `flutter_inappwebview` on parent `ppv.is`, then sniff + StreamExtractor never saw m3u8. Ajax/Fetch intercept on **all** Android live embeds also broke Streamed XHR; probe-fail URL blacklist blocked the warm retry. Fix: Android PPV loads **top-level** embedindia with catalog `Referer` (cover still hides WebView); Ajax/Fetch hooks **PPV-only**; soft recover retries the same URL without blacklisting.
 
 **Player button:** The in-player **Player** control (Exo ↔ MediaKit / external) lives on `IptvPtPlayerScreen` after handoff — it does not appear on the WebView “Opening stream…” cover.
 
