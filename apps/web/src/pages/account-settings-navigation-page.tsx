@@ -205,15 +205,13 @@ export function AccountSettingsNavigationPage() {
                   disabled={controlsLocked}
                   onClick={() => setVisible(id, !on)}
                   className={cn(
-                    'group relative h-6 w-11 shrink-0 appearance-none rounded-full border-0 p-0 transition-[background-color,box-shadow,filter,transform] duration-150 disabled:cursor-not-allowed disabled:opacity-60',
-                    'hover:brightness-110 hover:ring-2 hover:ring-forja-green/45 hover:ring-offset-2 hover:ring-offset-forja-bg',
-                    'active:scale-95 active:brightness-110 active:filter-none',
+                    'group relative h-6 w-11 shrink-0 appearance-none rounded-full border-0 p-0 transition-colors active:scale-100 active:filter-none disabled:cursor-not-allowed disabled:opacity-60',
                     on ? 'bg-forja-green' : 'bg-white/15',
                   )}
                 >
                   <span
                     className={cn(
-                      'pointer-events-none absolute top-1 left-1 size-4 rounded-full bg-white shadow-sm transition-transform duration-150 group-hover:scale-105',
+                      'pointer-events-none absolute top-1 left-1 size-4 rounded-full bg-forja-bg transition-[transform,background-color] group-hover:bg-white',
                       on ? 'translate-x-5' : 'translate-x-0',
                     )}
                   />
