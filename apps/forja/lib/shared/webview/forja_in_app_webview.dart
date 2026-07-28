@@ -21,6 +21,8 @@ class ForjaInAppWebView extends StatelessWidget {
     this.onCreateWindow,
     this.onLoadResource,
     this.shouldInterceptRequest,
+    this.shouldInterceptAjaxRequest,
+    this.shouldInterceptFetchRequest,
     this.onReceivedError,
     this.onReceivedHttpError,
     this.onConsoleMessage,
@@ -51,6 +53,14 @@ class ForjaInAppWebView extends StatelessWidget {
     InAppWebViewController controller,
     WebResourceRequest request,
   )? shouldInterceptRequest;
+  final Future<AjaxRequest?> Function(
+    InAppWebViewController controller,
+    AjaxRequest ajaxRequest,
+  )? shouldInterceptAjaxRequest;
+  final Future<FetchRequest?> Function(
+    InAppWebViewController controller,
+    FetchRequest fetchRequest,
+  )? shouldInterceptFetchRequest;
   final void Function(
     InAppWebViewController controller,
     WebResourceRequest request,
@@ -86,6 +96,8 @@ class ForjaInAppWebView extends StatelessWidget {
       onCreateWindow: onCreateWindow,
       onLoadResource: onLoadResource,
       shouldInterceptRequest: shouldInterceptRequest,
+      shouldInterceptAjaxRequest: shouldInterceptAjaxRequest,
+      shouldInterceptFetchRequest: shouldInterceptFetchRequest,
       onReceivedError: onReceivedError,
       onReceivedHttpError: onReceivedHttpError,
       onConsoleMessage: onConsoleMessage,

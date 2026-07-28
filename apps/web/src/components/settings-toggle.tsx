@@ -35,7 +35,7 @@ export function SettingsToggle({
         }`}
       >
         <span
-          className={`absolute top-1 left-1 size-4 rounded-full bg-forja-bg transition-[transform,background-color] group-hover:bg-white/55 ${
+          className={`absolute top-1 left-1 size-4 rounded-full bg-forja-bg transition-[transform,background-color] group-hover:bg-neutral-600 ${
             checked ? 'translate-x-5' : 'translate-x-0'
           }`}
         />

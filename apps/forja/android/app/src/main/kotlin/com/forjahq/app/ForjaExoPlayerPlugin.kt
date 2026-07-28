@@ -68,6 +68,10 @@ class ExoPlayerHost(
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             when (state) {
+                // True rebuffer — not isLoading. Live IPTV stays isLoading while
+                // happily playing (prefetch), which used to stick "Reconnecting…".
+                Player.STATE_BUFFERING ->
+                    emit(mapOf("type" to "buffering", "value" to true))
                 Player.STATE_READY -> {
                     emit(mapOf("type" to "ready"))
                     emit(mapOf("type" to "buffering", "value" to false))
@@ -76,10 +80,6 @@ class ExoPlayerHost(
                 Player.STATE_ENDED -> emit(mapOf("type" to "ended"))
             }
             emitProgress()
-        }
-
-        override fun onIsLoadingChanged(isLoading: Boolean) {
-            emit(mapOf("type" to "buffering", "value" to isLoading))
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -258,7 +258,8 @@ class ExoPlayerHost(
             haystack.contains(".mpd") -> MimeTypes.APPLICATION_MPD
             haystack.contains(".m3u8") ||
                 haystack.contains("/hls-proxy") ||
-                haystack.contains("strmd.st") -> MimeTypes.APPLICATION_M3U8
+                haystack.contains("strmd.st") ||
+                haystack.contains("indianservers.st") -> MimeTypes.APPLICATION_M3U8
             else -> null
         }
     }

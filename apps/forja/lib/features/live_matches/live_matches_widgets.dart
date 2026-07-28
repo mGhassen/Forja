@@ -1046,6 +1046,10 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _androidNativeHandoff = false;
   bool _androidHandoffStarted = false;
   bool _androidFallbackStarted = false;
+  /// Last sniffed media/variant playlist if master was never seen.
+  String? _androidVariantFallback;
+  /// Playlist URLs that failed Cookie/Referer probe — skip until timeout.
+  final Set<String> _androidFailedMediaUrls = {};
   Timer? _loadingWatchdog;
   Timer? _adWindowCloseTimer;
   Timer? _androidHandoffWatchdog;
@@ -1198,6 +1202,10 @@ class _LiveMatchesEmbedPlayerScreenState
       useShouldOverrideUrlLoading: true,
       useOnLoadResource: _androidNativeHandoff,
       useShouldInterceptRequest: _androidNativeHandoff,
+      // PPV embedindia loads the playlist via XHR — Android WebViewClient
+      // often misses those; Ajax/Fetch hooks catch them.
+      useShouldInterceptAjaxRequest: _androidNativeHandoff,
+      useShouldInterceptFetchRequest: _androidNativeHandoff,
       // Accept window.open off-screen. Rejecting it falls back to main-frame
       // ad navigations that break Streamed HLS (manifestParsingError).
       supportMultipleWindows: true,
@@ -1236,11 +1244,24 @@ class _LiveMatchesEmbedPlayerScreenState
       final low = url.toLowerCase();
       if (low.contains('m3u8') ||
           low.contains('strmd') ||
+          low.contains('indianservers') ||
           low.contains('/hls') ||
           low.contains('playlist') ||
           low.contains('/secure/')) {
         debugPrint('[LiveMatches] sniff rejected: $url');
       }
+      return;
+    }
+    // Prefer master playlist over media/variant tracks when both appear.
+    final low = url.toLowerCase();
+    if (_androidFailedMediaUrls.contains(url)) {
+      debugPrint('[LiveMatches] sniff skip failed url: $url');
+      return;
+    }
+    if (low.contains('/tracks-') || low.contains('mono.ts.m3u8')) {
+      debugPrint('[LiveMatches] sniff defer variant: $url');
+      // Still accept if nothing better arrives before timeout — stash as fallback.
+      _androidVariantFallback ??= url;
       return;
     }
     _androidHandoffStarted = true;
@@ -1290,10 +1311,18 @@ class _LiveMatchesEmbedPlayerScreenState
     } catch (_) {}
   }
 
-  /// Visible WebView sniff failed. On phone, try headless StreamExtractor.
-  /// On Android TV headless WebView is blocked — exit with a clear toast.
+  /// Visible WebView sniff failed. Try variant fallback, then StreamExtractor
+  /// on phone. On Android TV headless WebView is blocked — exit with a toast.
   Future<void> _androidSniffTimeoutFallback() async {
     if (_androidHandoffStarted || _exiting || _androidFallbackStarted) return;
+    final variant = _androidVariantFallback;
+    if (variant != null && variant.isNotEmpty) {
+      debugPrint('[LiveMatches] Android sniff timeout → variant fallback');
+      _androidHandoffStarted = true;
+      _androidSniffPoll?.cancel();
+      await _handOffToNativePlayer(variant);
+      return;
+    }
     _androidFallbackStarted = true;
     _androidSniffPoll?.cancel();
 
@@ -1367,40 +1396,85 @@ class _LiveMatchesEmbedPlayerScreenState
       await _webViewController
           ?.evaluateJavascript(source: _embedMediaCommandJs('pause'));
     } catch (_) {}
-    final headers = Map<String, String>.from(
-      _liveEmbedStreamHeaders(widget.embedUrl),
-    );
-    final cookie = await _liveEmbedCollectCookieHeader(
-      embedUrl: widget.embedUrl,
-      streamUrl: mediaUrl,
-      catalogReferer: widget.referer,
-    );
-    if (cookie != null && cookie.isNotEmpty) {
-      headers['Cookie'] = cookie;
-    }
-    String playUrl = mediaUrl;
-    try {
-      final proxy = LocalServerService();
-      await proxy.start();
-      if (proxy.port > 0) {
-        playUrl = proxy.getHlsProxyUrl(mediaUrl, headers);
+
+    // CDN tokens / Set-Cookie often land a beat after the playlist URL appears.
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    if (!mounted) return;
+
+    String? playUrl;
+    for (var attempt = 1; attempt <= 3; attempt++) {
+      final headers = Map<String, String>.from(
+        liveEmbedRequiresWebViewPlayback(widget.embedUrl)
+            ? _ppvEmbedStreamHeaders(widget.embedUrl)
+            : _liveEmbedStreamHeaders(widget.embedUrl),
+      );
+      final cookie = await _liveEmbedCollectCookieHeader(
+        embedUrl: widget.embedUrl,
+        streamUrl: mediaUrl,
+        catalogReferer: widget.referer,
+      );
+      if (cookie != null && cookie.isNotEmpty) {
+        headers['Cookie'] = cookie;
+      } else {
+        debugPrint(
+          '[LiveMatches] handoff attempt $attempt: no cookies yet',
+        );
       }
-    } catch (e) {
-      debugPrint('[LiveMatches] HLS proxy failed: $e');
-    }
-    // Reject HTML/403 bodies before the IPTV reconnect loop starts.
-    if (playUrl.contains('/hls-proxy')) {
-      final ok = await _probeHlsProxyPlaylist(playUrl);
-      if (!ok) {
-        debugPrint('[LiveMatches] HLS proxy probe failed for $playUrl');
-        if (mounted) {
-          ForjaToast.info('Could not open this stream');
-          _exiting = false;
-          unawaited(_exitPlayer());
+      playUrl = mediaUrl;
+      try {
+        final proxy = LocalServerService();
+        await proxy.start();
+        if (proxy.port > 0) {
+          playUrl = proxy.getHlsProxyUrl(mediaUrl, headers);
         }
-        return;
+      } catch (e) {
+        debugPrint('[LiveMatches] HLS proxy failed: $e');
+      }
+      if (playUrl == null || !playUrl.contains('/hls-proxy')) {
+        break;
+      }
+      final ok = await _probeHlsProxyPlaylist(playUrl);
+      if (ok) break;
+      debugPrint(
+        '[LiveMatches] HLS proxy probe failed (attempt $attempt/3)',
+      );
+      playUrl = null;
+      if (attempt < 3) {
+        await Future<void>.delayed(Duration(milliseconds: 350 * attempt));
+        if (!mounted) return;
       }
     }
+
+    if (playUrl == null || playUrl.isEmpty) {
+      // Soft recover: keep the WebView sniffing instead of popping the route.
+      // First-open races (cookies / token) often succeed on the next sniff.
+      debugPrint('[LiveMatches] handoff probe exhausted — resume sniff');
+      _androidFailedMediaUrls.add(mediaUrl);
+      if (!mounted) return;
+      _exiting = false;
+      _mediaStopped = false;
+      _androidHandoffStarted = false;
+      if (_androidVariantFallback == mediaUrl) {
+        _androidVariantFallback = null;
+      }
+      try {
+        await _webViewController?.evaluateJavascript(source: _autoplayJs);
+        await _webViewController
+            ?.evaluateJavascript(source: _embedMediaCommandJs('play'));
+      } catch (_) {}
+      _androidSniffPoll?.cancel();
+      _androidSniffPoll = Timer.periodic(const Duration(seconds: 2), (_) {
+        unawaited(_pollAndroidSniffCandidates());
+      });
+      _androidHandoffWatchdog?.cancel();
+      _androidHandoffWatchdog = Timer(const Duration(seconds: 18), () {
+        if (!mounted || _androidHandoffStarted || _exiting) return;
+        debugPrint('[LiveMatches] Android HLS sniff timed out (after probe)');
+        unawaited(_androidSniffTimeoutFallback());
+      });
+      return;
+    }
+
     debugPrint('[LiveMatches] Android handoff → $playUrl');
     if (!mounted) return;
     final title = widget.title;
@@ -1409,7 +1483,7 @@ class _LiveMatchesEmbedPlayerScreenState
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => IptvPtPlayerScreen(
-          sources: [IptvPlaySource(url: playUrl, label: label)],
+          sources: [IptvPlaySource(url: playUrl!, label: label)],
           title: title,
           subtitle: subtitle,
           // Live Matches /hls-proxy needs Exo MIME override; MediaKit often
@@ -1822,6 +1896,21 @@ class _LiveMatchesEmbedPlayerScreenState
                             final u = request.url.toString();
                             _onSniffedMediaUrl(u);
                             // Observe only — never replace the response.
+                            return null;
+                          }
+                        : null,
+                    shouldInterceptAjaxRequest: _androidNativeHandoff
+                        ? (ctrl, ajax) async {
+                            final u = ajax.url?.toString() ?? '';
+                            if (u.isNotEmpty) _onSniffedMediaUrl(u);
+                            // null = let the XHR proceed unchanged.
+                            return null;
+                          }
+                        : null,
+                    shouldInterceptFetchRequest: _androidNativeHandoff
+                        ? (ctrl, fetch) async {
+                            final u = fetch.url.toString();
+                            _onSniffedMediaUrl(u);
                             return null;
                           }
                         : null,

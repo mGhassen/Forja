@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **5 / 5** acceptance (foundation) · **4 / 4** acceptance (shared) · **7 / 7** acceptance (tabs) · **2 / 2** acceptance (details meta) · **2 / 2** acceptance (players status) · **5 / 6** acceptance (deep play/resolve) · **5 / 5** acceptance (settings panels) · **7 / 7** acceptance (TV / leanback async) |
-| **Current slice** | TV restored-session cloud pull + leanback async on Riverpod — resolve engine loops (R47-A26) remain |
+| **Progress** | **6 / 6** components · **5 / 5** acceptance (foundation) · **4 / 4** acceptance (shared) · **7 / 7** acceptance (tabs) · **2 / 2** acceptance (details meta) · **2 / 2** acceptance (players status) · **5 / 6** acceptance (deep play/resolve) · **5 / 5** acceptance (settings panels) · **8 / 8** acceptance (TV / leanback async) |
+| **Current slice** | Nav-select cloud pull + leanback async on Riverpod — resolve engine loops (R47-A26) remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -124,6 +124,7 @@ TV shares phone/desktop Riverpod for tabs. This slice covers TV-critical residua
 | 36 | R47-A36 | Home Trakt + Stremio residual feeds via `home_tracker_providers` | ✅ |
 | 37 | R47-A37 | Settings Lists (Trakt/MDBlist) via `external_lists_providers` | ✅ |
 | 38 | R47-A38 | Restored-session cold start pulls cloud `profile_settings` (DesktopStartupGate + Android/iOS first-frame force sync) before splash | ✅ |
+| 39 | R47-A39 | Side-nav tab select triggers `syncFromCloud` (debounced) — no periodic poll | ✅ |
 
 ---
 

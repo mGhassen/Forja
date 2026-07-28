@@ -65,8 +65,15 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     final type = event['type']?.toString() ?? '';
     switch (type) {
       case 'ready':
-        if (_s._buffering) {
-          setState(() => _s._buffering = false);
+        if (_s._buffering || _s._statusBanner != null) {
+          setState(() {
+            _s._buffering = false;
+            // Soft reopen succeeded — drop reconnect UI even if the watchdog
+            // healthy streak has not elapsed yet (live isLoading used to block it).
+            if (_s._retryAttempt > 0 || _s._lastRecoveryAt != null) {
+              _s._statusBanner = null;
+            }
+          });
         } else {
           _s._buffering = false;
         }
@@ -77,8 +84,15 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         break;
       case 'playing':
         final playing = event['value'] == true;
-        if (playing != _s._playing) {
-          setState(() => _s._playing = playing);
+        if (playing != _s._playing ||
+            (playing && _s._statusBanner != null)) {
+          setState(() {
+            _s._playing = playing;
+            if (playing &&
+                (_s._retryAttempt > 0 || _s._lastRecoveryAt != null)) {
+              _s._statusBanner = null;
+            }
+          });
         }
         if (playing) {
           _s._readyNotPlayingSince = null;
@@ -89,8 +103,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         break;
       case 'buffering':
         final buffering = event['value'] == true;
-        // Live Exo flickers isLoading — skip no-op setState (ATV Texture/Surface
-        // churn was a big source of perceived low FPS).
+        // Skip no-op setState (ATV Texture/Surface churn hurt perceived FPS).
         if (buffering == _s._buffering) return;
         setState(() => _s._buffering = buffering);
         if (buffering) {
@@ -367,7 +380,14 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     });
     _s._playingSub = player.stream.playing.listen((p) {
       if (!mounted || _s._disposed) return;
-      setState(() => _s._playing = p);
+      setState(() {
+        _s._playing = p;
+        if (p &&
+            _s._statusBanner != null &&
+            (_s._retryAttempt > 0 || _s._lastRecoveryAt != null)) {
+          _s._statusBanner = null;
+        }
+      });
       if (p) {
         _s._readyNotPlayingSince = null;
       } else if (_s._userPlayWhenReady) {
@@ -490,10 +510,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       unawaited(_probeStreamCapabilities().then((_) {
         if (mounted) _scheduleJumpToLive();
       }));
-      // Clear banner after a short successful run
+      // Clear banner after a short successful run (do not require !_buffering —
+      // Exo live prefetch used to keep isLoading true and leave reconnect UI up).
       Future.delayed(const Duration(seconds: 2), () {
         if (!mounted) return;
-        if (_s._playing && !_s._buffering) {
+        if (_s._statusBanner == null) return;
+        if (_s._playing &&
+            (_s._lastPos > Duration.zero || !_s._buffering)) {
           setState(() => _s._statusBanner = null);
         }
       });
@@ -528,17 +551,32 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (!mounted || _s._disposed) return;
       final now = DateTime.now();
 
-      // Healthy streak resets retry counter
+      // Drop reconnect UI as soon as frames are moving again. Do not gate on
+      // !_buffering — Exo live used to report isLoading=true while playing,
+      // which left "Reconnecting… (1/8)" stuck forever.
+      if (_s._statusBanner != null &&
+          _s._playing &&
+          _s._lastPos > Duration.zero &&
+          now.difference(_s._lastPosChange) <
+              const Duration(milliseconds: 1500) &&
+          _s._lastRecoveryAt != null &&
+          now.difference(_s._lastRecoveryAt!) >
+              const Duration(seconds: 2)) {
+        if (mounted) setState(() => _s._statusBanner = null);
+      }
+
+      // Healthy streak resets retry counter (banner may already be cleared)
       if (_s._retryAttempt > 0 &&
           _s._playing &&
-          !_s._buffering &&
           now.difference(_s._lastPosChange) < const Duration(milliseconds: 1500) &&
           _s._lastRecoveryAt != null &&
           now.difference(_s._lastRecoveryAt!) > _IptvPtPlayerScreenState._healthyStreakNeeded) {
         debugPrint('[IPTV Watchdog] healthy streak - resetting retries');
         _s._retryAttempt = 0;
         _s._lastRecoveryAt = null;
-        if (mounted) setState(() => _s._statusBanner = null);
+        if (mounted && _s._statusBanner != null) {
+          setState(() => _s._statusBanner = null);
+        }
       }
 
       // Detector 1: long buffering. Mid-stream stalls with a 30 s buffer
@@ -724,6 +762,18 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       _s._lastPosChange = DateTime.now();
       _s._openedAt = DateTime.now();
       unawaited(_probeStreamCapabilities());
+      // Soft recovery skips [_openCurrent]'s delayed clear — schedule one here
+      // so a successful reopen does not leave "Reconnecting…" up forever.
+      Future.delayed(const Duration(seconds: 2), () {
+        if (!mounted || _s._disposed) return;
+        if (_s._statusBanner == null) return;
+        if (_s._playing &&
+            _s._lastPos > Duration.zero &&
+            DateTime.now().difference(_s._lastPosChange) <
+                const Duration(milliseconds: 2000)) {
+          setState(() => _s._statusBanner = null);
+        }
+      });
     } finally {
       _recoveryInFlight = false;
     }

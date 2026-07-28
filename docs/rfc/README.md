@@ -67,7 +67,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [044-[open]-…](044-[open]-provider-identity-playback.md) | Provider-identity playback (end CDN host chase) | v1.0.1 | open | 11/11 · 21/21 unit · 0/3 manual | [1.0.1](../backlog/1.0.1-[open].md) |
 | [045-[open]-…](045-[open]-stream-open-pipeline.md) | Stream open pipeline middleware | v1.0.1 | open | 6/6 · 6/8 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [046-[open]-…](046-[open]-android-tv-device-link.md) | Android TV device-code / QR account link | v1.0.7 | open | 5/5 · 0/8 | [1.0.7](../backlog/1.0.7-[draft].md) |
-| [047-[open]-…](047-[open]-riverpod-state-migration.md) | Riverpod state / async loading migration | v1.x | open | 6/6 · … · **5/5** settings · **7/7** TV | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
+| [047-[open]-…](047-[open]-riverpod-state-migration.md) | Riverpod state / async loading migration | v1.x | open | 6/6 · … · **5/5** settings · **8/8** TV | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
 | [048-[fixed]-…](fixed/048-[fixed]-tv-focus-graph.md) | TV focus graph + screen recipes | v1.0.1 | fixed | Complete · 6/6 · 6/6 · 3/3 · 2/2 · 4/4 · 2/2 · 1/1 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S132 ✅ |
 
 ## Related

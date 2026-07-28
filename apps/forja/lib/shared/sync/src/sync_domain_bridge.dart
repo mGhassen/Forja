@@ -141,7 +141,7 @@ class SyncDomainBridge {
   /// Cloud → local cache. Flush pending local domain pushes first so an in-flight
   /// edit is not lost, then [pullAndMergeAll]. Debounced unless [force].
   ///
-  /// Call on window focus / app resume, and from realtime when cloud changes.
+  /// Call on side-nav tab select, window focus / app resume. Not on a timer.
   Future<void> syncFromCloud({bool force = false}) async {
     if (!SyncService.instance.isSignedIn) return;
     final now = DateTime.now();

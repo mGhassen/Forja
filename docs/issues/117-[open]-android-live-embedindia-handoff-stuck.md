@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 3** acceptance |
+| **Progress** | **9 / 9** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,8 @@
 | 5 | I117-T05 | Sniff timeout: StreamExtractor fallback on phone; clear toast + exit on ATV (headless blocked) | ✅ |
 | 6 | I117-T06 | `/hls-proxy`: forward Cookie/Authorization upstream; never rewrite non-`#EXTM3U` bodies as 200 m3u8 | ✅ |
 | 7 | I117-T07 | Live Matches handoff forces Exo; probe playlist before open; one-shot Exo↔MediaKit swap on format error | ✅ |
+| 8 | I117-T08 | PPV embedindia: Ajax/Fetch XHR sniff for `*.indianservers.st`; full-embed Referer on handoff; prefer master playlist | ✅ |
+| 9 | I117-T09 | Streamed intermittent close: retry Cookie probe 3×; on fail resume sniff (do not pop player) | ✅ |
 
 ---
 
@@ -48,6 +50,10 @@
 **Sniff still timing out (I117-T04):** Visible WebView cover (“Opening stream…”) hid a dead sniff — fetch/XHR-only spy missed JW `playlist` / HLS.js `loadSource`, and cross-origin embed iframes could not `callHandler`. Hardened spy + Android `shouldInterceptRequest` + Dart poll/play nudge. Phone can fall back to StreamExtractor; ATV cannot (headless WebView blocked).
 
 **Reconnect loop after sniff (I117-T06/T07):** Cookies were harvested into the proxy URL query JSON, but Rust `/hls-proxy` only forwarded User-Agent / Referer / Origin — **Cookie never reached the CDN**. Upstream HTML/403 was still rewritten as **200** `application/vnd.apple.mpegurl`, so MediaKit reported **Failed to recognize file format** and the IPTV watchdog showed **Reconnecting…** forever. Fix: forward Cookie, reject non-`#EXTM3U` bodies, force Exo on Live Matches handoff, probe before open, and one-shot engine swap on format errors.
+
+**PPV still failing after Streamed worked (I117-T08):** embedindia JW loads `https://*.indianservers.st/secure/…/index.m3u8` via **XHR**. Streamed’s `strmd.st` path was visible to resource intercept; PPV XHR often was not. Ajax/Fetch intercept + `indianservers.st` sniff match + handoff Referer = full embed URL (not only origin/).
+
+**Streamed intermittent close (I117-T09):** First open sometimes sniffed the playlist before WebView cookies settled → probe 403 → toast + pop. Retry worked because the session was warm. Fix: short settle delay, up to 3 Cookie re-harvest + probe attempts, then resume sniff instead of closing.
 
 **Player button:** The in-player **Player** control (Exo ↔ MediaKit / external) lives on `IptvPtPlayerScreen` after handoff — it does not appear on the WebView “Opening stream…” cover.
 

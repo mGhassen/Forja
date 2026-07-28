@@ -899,6 +899,8 @@ const _liveEmbedMediaSpyJs = r'''
     if (low.indexOf('.mpd') !== -1) return true;
     if (low.indexOf('.mp4') !== -1) return true;
     if (low.indexOf('strmd.st') !== -1) return true;
+    // PPV embedindia JW CDN (XHR playlist).
+    if (low.indexOf('indianservers.st') !== -1) return true;
     if (low.indexOf('/playlist') !== -1) return true;
     if (low.indexOf('/secure/') !== -1) return true;
     if (low.indexOf('/hls') !== -1) return true;
@@ -1260,6 +1262,8 @@ bool _liveEmbedIsSniffableMediaUrl(String url) {
       (lower.contains('http://') || lower.contains('https://'))) {
     return true;
   }
+  // PPV embedindia JW Player CDN (playlist often via XHR).
+  if (lower.contains('indianservers.st')) return true;
   if (lower.contains('strmd.st/') &&
       (lower.contains('/secure/') ||
           lower.contains('playlist') ||
