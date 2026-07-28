@@ -148,6 +148,11 @@ Deno.serve(async (req) => {
       p_session_id: sessionId,
       p_user_agent: TV_USER_AGENT,
     })
+    await admin.rpc('service_revoke_other_labeled_sessions', {
+      p_user_id: claimed.user_id,
+      p_keep_session_id: sessionId,
+      p_user_agent: TV_USER_AGENT,
+    })
   }
 
   return json(

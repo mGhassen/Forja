@@ -84,11 +84,18 @@ Deno.serve(async (req) => {
 
   // Label so Account → Connections shows "Forja desktop app" (mint runs
   // server-side, so GoTrue would otherwise store an empty / Deno UA).
+  // Then drop prior desktop sessions + unlabeled Edge mint orphans.
+  const desktopUa = 'Forja Desktop (Web login)'
   const sessionId = sessionIdFromJwt(session.access_token)
   if (sessionId) {
     await admin.rpc('service_label_auth_session', {
       p_session_id: sessionId,
-      p_user_agent: 'Forja Desktop (Web login)',
+      p_user_agent: desktopUa,
+    })
+    await admin.rpc('service_revoke_other_labeled_sessions', {
+      p_user_id: user.id,
+      p_keep_session_id: sessionId,
+      p_user_agent: desktopUa,
     })
   }
 

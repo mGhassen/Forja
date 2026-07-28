@@ -51,6 +51,14 @@ export function describeSessionPlace(userAgent: string | null | undefined): {
   if (/forja/i.test(ua)) {
     return { label: 'Forja app', detail: null }
   }
+  // Flutter GoTrue default UA before a branded string is set.
+  if (/^dart\//i.test(ua)) {
+    return { label: 'Forja app', detail: null }
+  }
+  // Should not appear (RPC filters these); keep a clear label if one slips through.
+  if (/supabaseedgeruntime|^deno\//i.test(ua)) {
+    return { label: 'Forja app session', detail: 'Server mint' }
+  }
 
   let browser = 'Browser'
   if (/Edg\//i.test(ua)) browser = 'Edge'

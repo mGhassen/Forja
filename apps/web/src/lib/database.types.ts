@@ -422,6 +422,14 @@ export type Database = {
         Args: { p_session_id: string; p_user_agent: string }
         Returns: undefined
       }
+      service_revoke_other_labeled_sessions: {
+        Args: {
+          p_keep_session_id: string
+          p_user_agent: string
+          p_user_id: string
+        }
+        Returns: number
+      }
       upsert_iptv_portal: {
         Args: {
           p_expiry?: string
