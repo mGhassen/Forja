@@ -18,6 +18,17 @@ class AppRouter {
   /// player instead of stacking two [PlayerScreen] routes on macOS.
   static const playerRouteName = 'player';
 
+  /// Opaque slide / fade pushes fight decode + layout on weak Android TV
+  /// SoCs (API 24) — cut them to zero so initState work is not concurrent
+  /// with a compositor slide.
+  static Duration get _pushTransitionDuration => ShellTokens.isAndroidTvDevice
+      ? Duration.zero
+      : const Duration(milliseconds: 350);
+
+  static Duration get _popTransitionDuration => ShellTokens.isAndroidTvDevice
+      ? Duration.zero
+      : const Duration(milliseconds: 300);
+
   static Route<T> slideRoute<T>(
     WidgetBuilder builder, {
     RouteSettings? settings,
@@ -26,8 +37,8 @@ class AppRouter {
       settings: settings,
       opaque: true,
       pageBuilder: (context, animation, secondaryAnimation) => builder(context),
-      transitionDuration: const Duration(milliseconds: 350),
-      reverseTransitionDuration: const Duration(milliseconds: 300),
+      transitionDuration: _pushTransitionDuration,
+      reverseTransitionDuration: _popTransitionDuration,
       transitionsBuilder: _slideTransition,
     );
   }
@@ -43,8 +54,8 @@ class AppRouter {
       pageBuilder: (context, animation, secondaryAnimation) {
         return _tvBackGuardPage(builder(context));
       },
-      transitionDuration: const Duration(milliseconds: 350),
-      reverseTransitionDuration: const Duration(milliseconds: 300),
+      transitionDuration: _pushTransitionDuration,
+      reverseTransitionDuration: _popTransitionDuration,
       transitionsBuilder: _slideTransition,
     );
   }
@@ -86,13 +97,17 @@ class AppRouter {
     Duration duration = const Duration(milliseconds: 1000),
     RouteSettings? settings,
   }) {
+    final push = ShellTokens.isAndroidTvDevice ? Duration.zero : duration;
+    final pop = ShellTokens.isAndroidTvDevice
+        ? Duration.zero
+        : const Duration(milliseconds: 500);
     return PageRouteBuilder<T>(
       settings: settings,
       opaque: true,
       fullscreenDialog: true,
       pageBuilder: (context, animation, secondaryAnimation) => builder(context),
-      transitionDuration: duration,
-      reverseTransitionDuration: const Duration(milliseconds: 500),
+      transitionDuration: push,
+      reverseTransitionDuration: pop,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         return FadeTransition(
           opacity: CurvedAnimation(
@@ -202,8 +217,8 @@ class AppRouter {
             languageCode: languageCode,
           ),
         ),
-        transitionDuration: const Duration(milliseconds: 350),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
+        transitionDuration: AppRouter._pushTransitionDuration,
+        reverseTransitionDuration: AppRouter._popTransitionDuration,
         transitionsBuilder: _slideTransition,
       ),
     );

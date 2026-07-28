@@ -438,7 +438,9 @@ class _BrowserViewState extends State<_BrowserView> {
             child: AnimatedAlign(
               alignment: Alignment.topCenter,
               heightFactor: _searchOpen ? 1 : 0,
-              duration: const Duration(milliseconds: 350),
+              duration: ShellTokens.isAndroidTvDevice
+                  ? Duration.zero
+                  : const Duration(milliseconds: 350),
               curve: Curves.easeOutCubic,
               child: _buildOverlaySearchBar(),
             ),

@@ -146,7 +146,9 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
           child: AnimatedBuilder(
             animation: ctrl,
             builder: (_, _) => AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
+              duration: ShellTokens.isAndroidTvDevice
+                  ? Duration.zero
+                  : const Duration(milliseconds: 250),
               child: KeyedSubtree(
                 key: ValueKey(ctrl.view),
                 child: _buildView(context, ctrl),

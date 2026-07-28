@@ -381,6 +381,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// Boot prefs (engine choice + last volume + EPG toggle) come from
   /// [iptvPlayerBootPrefsProvider] — Settings playback snapshot + cached volume.
   Future<void> _bootWithCachedVolume() async {
+    // Same contract as VOD [waitForRouteTransition]: do not open Exo/MediaKit
+    // while a shell slide is still compositing (jank on weak Android 7 TVs).
+    // On ATV slides are Duration.zero — this returns immediately.
+    await waitForRouteTransition(context);
+    if (_disposed || !mounted) return;
     final prefs = await ref.read(iptvPlayerBootPrefsProvider.future);
     if (_disposed || !mounted) return;
     final forced = widget.forceBuiltInEngine;
