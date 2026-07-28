@@ -41,16 +41,19 @@ class SyncDomainBridge {
 
   /// Persist the current profile before changing the device-local selection.
   ///
-  /// Flushes pending domain edits (incl. intentional empty Stremio/Nuvio wipe).
-  /// Cloud is master - never push an empty IPTV cache; never drop remote
-  /// connectedServices just because local export omitted them.
+  /// Flushes **pending** domain edits only (same rule as [syncFromCloud] /
+  /// issue 126). Never full-overlays lean domains — a stale TV nav cache must
+  /// not rewrite cloud Features when switching profiles (or when nothing was
+  /// pending).
   Future<void> prepareProfileSwitch() async {
     final pending = Set<String>.from(_pushTimers.keys);
     cancelPendingPushes();
+    if (pending.isEmpty) return;
     await pushAllLocal(
       pushIptvIfLocalEmpty: false,
       allowEmptyStremioWipe: pending.contains(_domainStremio),
       allowEmptyNuvioWipe: pending.contains(_domainNuvio),
+      overlayDomains: pending,
     );
   }
 
@@ -229,9 +232,12 @@ class SyncDomainBridge {
   /// Push lean settings + IPTV. Cloud is master:
   /// - Merges local cache into the existing cloud row (never replaces with a
   ///   partial local export that drops remote keys).
-  /// - [overlayDomains] null = full overlay (profile switch / seed / empty
-  ///   backfill). Non-null = only those domains (debounced UI edits) so a
-  ///   playback toggle cannot rewrite cloud navigation (issue 126).
+  /// - [overlayDomains] null = full overlay (new-profile seed / empty-row
+  ///   backfill). Non-null = only those domains (debounced UI edits **and**
+  ///   [prepareProfileSwitch] flush). A playback-only / empty-pending switch
+  ///   cannot rewrite cloud navigation (issue 126). Navigation shrink from a
+  ///   thin device cache is refused unless `_domainNavigation` is in the
+  ///   overlay set (Settings → Features).
   /// - Empty local Stremio/Nuvio never deletes cloud unless
   ///   [allowEmptyStremioWipe] / [allowEmptyNuvioWipe] (that domain's edit).
   /// - Empty IPTV cache never deletes assignments unless [allowEmptyIptvWipe].
@@ -309,6 +315,24 @@ class SyncDomainBridge {
     });
   }
 
+  /// True when [localNav] drops any tab id that [remoteNav] still has.
+  @visibleForTesting
+  static bool navigationWouldShrinkCloud(
+    Map<String, dynamic>? remoteNav,
+    Map<String, dynamic> localNav,
+  ) {
+    final remoteIds = _navVisibleIds(remoteNav);
+    if (remoteIds.isEmpty) return false;
+    final localSet = _navVisibleIds(localNav).toSet();
+    return remoteIds.any((id) => !localSet.contains(id));
+  }
+
+  static List<String> _navVisibleIds(Map<String, dynamic>? nav) {
+    final raw = nav?['visibleIds'];
+    if (raw is! List) return const [];
+    return raw.map((e) => e.toString()).where((id) => id.isNotEmpty).toList();
+  }
+
   /// Local cache export for domains we own. Omitted keys mean "unchanged on
   /// cloud" - see [_buildMergedCloudPayload].
   Future<Map<String, dynamic>> _buildLeanPayload() async {
@@ -372,7 +396,23 @@ class SyncDomainBridge {
     if (overlayNavigation) {
       final navigation = local['navigation'];
       if (navigation is Map && navigation.isNotEmpty) {
-        next['navigation'] = Map<String, dynamic>.from(navigation);
+        final remoteNav = remote['navigation'] is Map
+            ? Map<String, dynamic>.from(remote['navigation'] as Map)
+            : null;
+        // Features UI schedules `_domainNavigation` — allow intentional hide.
+        // Full overlay / profile-switch flush / playback-only must never drop
+        // cloud tabs from a thin device cache (issue 126).
+        final intentionalNavEdit =
+            overlayDomains != null &&
+            overlayDomains.contains(_domainNavigation);
+        if (!intentionalNavEdit &&
+            navigationWouldShrinkCloud(remoteNav, navigation)) {
+          debugPrint(
+            '[Sync] refuse navigation shrink from non-Features push',
+          );
+        } else {
+          next['navigation'] = Map<String, dynamic>.from(navigation);
+        }
       }
     }
 

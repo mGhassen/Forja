@@ -169,53 +169,60 @@ class PlayerSidePanelHeader extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            if (leading != null) ...[
-              leading!,
-              const SizedBox(width: 8),
-            ],
-            Expanded(
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      title,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: cinematic.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        letterSpacing: -0.2,
+        // Small inset so title / close sit inside the panel edge (not flush).
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
+          child: Row(
+            children: [
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: cinematic.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ),
-                  ),
-                  if (badge != null) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      badge!,
-                      style: TextStyle(
-                        color: cinematic.textSecondary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                    if (badge != null) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        badge!,
+                        style: TextStyle(
+                          color: cinematic.textSecondary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
+                    ],
+                    if (titleTrailing != null) ...[
+                      const SizedBox(width: 12),
+                      titleTrailing!,
+                    ],
                   ],
-                  if (titleTrailing != null) ...[
-                    const SizedBox(width: 12),
-                    titleTrailing!,
-                  ],
-                ],
+                ),
               ),
-            ),
-            ?trailing,
-            ForjaCloseButton(
-              color: cinematic.textSecondary,
-              onTap: onClose,
-              focusNode: closeFocusNode,
-              onKeyEvent: closeOnKeyEvent,
-            ),
-          ],
+              if (trailing != null) ...[
+                trailing!,
+                const SizedBox(width: 2),
+              ],
+              ForjaCloseButton.compact(
+                color: cinematic.textSecondary,
+                onTap: onClose,
+                focusNode: closeFocusNode,
+                onKeyEvent: closeOnKeyEvent,
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 6),
         Divider(height: 1, color: cinematic.borderSubtle),

@@ -1,11 +1,14 @@
 package com.forjahq.app
 
 import android.content.Context
+import android.graphics.Color
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import androidx.media3.common.C
@@ -23,6 +26,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -67,6 +71,17 @@ class ExoPlayerHost(
     private var lastOptions: ExoOpenOptions = ExoOpenOptions()
     /** Last Dart resize mode — re-applied when Flutter remounts the PlatformView. */
     private var resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT
+    /** Last subtitle appearance — re-applied when Flutter remounts the PlatformView. */
+    private var subtitleStyle: SubtitleStyleParams? = null
+
+    private data class SubtitleStyleParams(
+        val sizeSp: Float,
+        val textColorArgb: Int,
+        val backgroundOpacity: Float,
+        val bottomPaddingPx: Float,
+        val bold: Boolean,
+        val font: String,
+    )
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -116,6 +131,7 @@ class ExoPlayerHost(
         // mid-stream remount cannot leave Zoom/Fill stuck or drop a user Fit.
         view.resizeMode = resizeMode
         player?.let { view.player = it }
+        subtitleStyle?.let { applySubtitleStyleToView(view, it) }
     }
 
     fun detachView(view: PlayerView) {
@@ -203,6 +219,60 @@ class ExoPlayerHost(
         p.setMediaItem(item, pos)
         p.prepare()
         p.playWhenReady = playWhenReady
+    }
+
+    fun setSubtitleStyle(
+        sizeSp: Float,
+        textColorArgb: Int,
+        backgroundOpacity: Float,
+        bottomPaddingPx: Float,
+        bold: Boolean,
+        font: String,
+    ) {
+        val params = SubtitleStyleParams(
+            sizeSp = sizeSp.coerceIn(10f, 80f),
+            textColorArgb = textColorArgb,
+            backgroundOpacity = backgroundOpacity.coerceIn(0f, 1f),
+            bottomPaddingPx = bottomPaddingPx.coerceAtLeast(0f),
+            bold = bold,
+            font = font,
+        )
+        subtitleStyle = params
+        playerView?.let { applySubtitleStyleToView(it, params) }
+    }
+
+    private fun applySubtitleStyleToView(view: PlayerView, params: SubtitleStyleParams) {
+        val subtitleView = view.subtitleView ?: return
+        subtitleView.setApplyEmbeddedStyles(false)
+        subtitleView.setApplyEmbeddedFontSizes(false)
+        subtitleView.setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, params.sizeSp)
+        // Flutter Position slider is 0–120 px; map to a small bottom fraction.
+        val fraction = (0.02f + (params.bottomPaddingPx / 120f) * 0.18f).coerceIn(0.02f, 0.22f)
+        subtitleView.setBottomPaddingFraction(fraction)
+        val bgAlpha = (params.backgroundOpacity * 255f).toInt().coerceIn(0, 255)
+        val backgroundColor = Color.argb(bgAlpha, 0, 0, 0)
+        val typeface = typefaceFor(params.font, params.bold)
+        val style = CaptionStyleCompat(
+            params.textColorArgb,
+            backgroundColor,
+            Color.TRANSPARENT,
+            CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+            Color.BLACK,
+            typeface,
+        )
+        subtitleView.setStyle(style)
+    }
+
+    private fun typefaceFor(font: String, bold: Boolean): Typeface {
+        val style = if (bold) Typeface.BOLD else Typeface.NORMAL
+        return when (font) {
+            "Roboto Mono" -> Typeface.create(Typeface.MONOSPACE, style)
+            "Default" -> Typeface.create(Typeface.DEFAULT, style)
+            else -> {
+                val named = Typeface.create(font, style)
+                if (named != null) named else Typeface.create(Typeface.SANS_SERIF, style)
+            }
+        }
     }
 
     private fun buildHttpFactory(headers: Map<String, String>): DefaultHttpDataSource.Factory {
@@ -665,6 +735,22 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
                 @Suppress("UNCHECKED_CAST")
                 val subtitles = call.argument<List<Map<String, String>>>("subtitles") ?: emptyList()
                 hostFor(viewId).setSubtitles(subtitles)
+                result.success(null)
+            }
+            "setSubtitleStyle" -> {
+                val viewId = call.argument<Int>("viewId")
+                    ?: return result.error("ARG", "viewId required", null)
+                hostFor(viewId).setSubtitleStyle(
+                    sizeSp = call.argument<Number>("sizeSp")?.toFloat() ?: 24f,
+                    textColorArgb = call.argument<Number>("textColorArgb")?.toInt()
+                        ?: Color.WHITE,
+                    backgroundOpacity = call.argument<Number>("backgroundOpacity")?.toFloat()
+                        ?: 0f,
+                    bottomPaddingPx = call.argument<Number>("bottomPaddingPx")?.toFloat()
+                        ?: 0f,
+                    bold = call.argument<Boolean>("bold") == true,
+                    font = call.argument<String>("font") ?: "Default",
+                )
                 result.success(null)
             }
             "stop" -> {

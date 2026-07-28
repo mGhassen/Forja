@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** fix · **0 / 2** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,8 @@
 | 1 | I126-T01 | `pullProfileSettings` rethrows on error — `null` only means missing row | ✅ |
 | 2 | I126-T02 | `pullAndMergeAll` aborts on pull failure (keep local) — never `seedNewProfileDefaults` + push | ✅ |
 | 3 | I126-T03 | Debounced / pending pushes overlay only the edited domain(s); failed cloud pull aborts upsert | ✅ |
+| 4 | I126-T04 | `prepareProfileSwitch` flushes **pending domains only** — never full-overlay lean settings | ✅ |
+| 5 | I126-T05 | Refuse navigation shrink on non-Features pushes (thin local must not drop cloud Home/Search) | ✅ |
 
 ---
 
@@ -45,7 +47,7 @@
 2. **Every debounced domain push overlaid all lean domains.** A playback toggle still rewrote `payload.navigation` from whatever was in the local cache — so a stale TV nav could poison cloud without the user touching Features.
 3. **Merge-on-push used `pull ?? {}`.** A failed pull mid-push built a local-only payload and upserted it, dropping remote keys.
 
-**After:** Failed pulls keep local and never seed/push. Debounced edits overlay only that domain. Full overlay remains for profile switch / new-profile seed / empty-row backfill.
+**After:** Failed pulls keep local and never seed/push. Debounced edits overlay only that domain. **`prepareProfileSwitch` also overlays only pending domains** (was a remaining full-overlay hole). Merge refuses dropping cloud nav tabs unless Settings → Features scheduled the navigation push. Full overlay remains for new-profile seed / empty-row backfill only.
 
 **Related:** [099](099-[open]-profile-settings-cloud-master-local-cache.md) · [109](109-[open]-android-tv-boot-jwt-expired-discard-race.md) · [118](118-[open]-iptv-thin-local-cache-shrinks-cloud.md)
 

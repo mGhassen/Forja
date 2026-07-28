@@ -12,9 +12,9 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 ## What you can do
 
-- Floating subtitle picker: on **MediaKit**, Off, embedded in-stream tracks, **Load from file**, then online language folders (drill-in). On **ExoPlayer**, a two-column dialog like Sources — left = groups only (Off, In-stream, languages, Load from file); right = tracks inside the selected group (no lone tracks stacked above groups). Language names use native script (e.g. العربية, Français, தமிழ்)
+- Floating subtitle picker: on **MediaKit**, Off, embedded in-stream tracks, **Load from file**, then online language folders (drill-in). On **ExoPlayer**, a two-column dialog like Sources — left = groups (Off, In-stream, languages, Load from file); right = tracks inside the selected group. Tapping **Off** turns subtitles off immediately (no second tap). Language names use native script (e.g. العربية, Français, தமிழ்)
 - Enable, disable, or switch tracks
-- Change appearance (size, color, font, opacity) — on **MediaKit** via the tune icon in the Subtitles header; on **TV**, focus a slider and use **Left/Right** to adjust (no OK first). ExoPlayer uses the system caption look (no appearance panel yet)
+- Change appearance (size, color, font, opacity, position) — tune icon next to Close in the Subtitles header on **MediaKit** and **ExoPlayer**. On **TV**, focus a slider and use **Left/Right** to adjust (no OK first). Sync **delay** applies on MediaKit only
 - Adjust sync delay if dialogue is early/late (MediaKit)
 - Use advanced ASS/SSA rendering for styled subs (MediaKit)
 - **Preferred language sticks across episodes** — picking French (or any category) remembers it; the next episode auto-selects the same language when available, otherwise **English**. **Off** clears the preference

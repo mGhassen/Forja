@@ -44,6 +44,7 @@ abstract final class ExoPlayerMenus {
     /// Local SRT/VTT file (ASS/SSA need MediaKit/libass).
     Future<void> Function({required String path, required String name})?
         onLoadFromFile,
+    VoidCallback? onSubtitleSettings,
     BuildContext? anchorContext,
   }) {
     return PlayerSubtitleDialog.show(
@@ -55,6 +56,7 @@ abstract final class ExoPlayerMenus {
       isFetchingSubs: isFetchingSubs,
       onSelectExternal: onSelectExternal,
       onLoadFromFile: onLoadFromFile,
+      onSubtitleSettings: onSubtitleSettings,
       onSelectEmbedded: (track) => onSelectEmbedded(track),
     );
   }

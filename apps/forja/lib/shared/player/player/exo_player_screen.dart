@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
+import 'package:forja/shared/player/providers/player_prefs_providers.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
@@ -20,6 +21,8 @@ import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';
 import 'package:forja/shared/player/controls/player_server_stream_dialog.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
+import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
+import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_touch_seekbar.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
@@ -152,6 +155,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   List<Map<String, String>> _sideloadedSubtitles = [];
   String? _selectedExternalSubUrl;
   bool _isFetchingSubs = false;
+  double _subtitleSize = 24;
+  double _subtitleDelay = 0;
+  Color _subtitleColor = Colors.white;
+  double _subtitleBgOpacity = 0;
+  double _subtitleBottomPadding = 0;
+  bool _subtitleBold = false;
+  String _subtitleFont = 'Default';
 
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -215,6 +225,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       });
     }
     unawaited(_boot());
+    unawaited(_loadSubtitlePrefs());
   }
 
   Future<List<_ExoSource>> _buildRankedSources() async {
@@ -326,6 +337,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       // Always re-apply fit after open — engine switch / PlatformView remount
       // can leave SurfaceView painted zoomed until resize mode is set again.
       await ExoPlayerBridge.setResizeMode(_viewId, _resizeMode);
+      await _applySubtitleStyle();
     } catch (e) {
       debugPrint('[ExoPlayer] open failed: $e');
       await _failCurrentSource('Failed to open stream');
@@ -726,6 +738,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       selectedExternalSubUrl: _selectedExternalSubUrl,
       isFetchingSubs: _isFetchingSubs,
       onOff: _turnOffSubtitles,
+      onSubtitleSettings: _showSubtitleSettings,
       onLoadFromFile: ({required String path, required String name}) async {
         await _loadOnlineSubtitle({
           'url': Uri.file(path).toString(),
@@ -768,6 +781,64 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       },
     );
     if (_isTv) _claimPlayFocus();
+  }
+
+  Future<void> _loadSubtitlePrefs() async {
+    final prefs = await ref.read(playerSubtitlePrefsProvider(false).future);
+    if (!mounted) return;
+    setState(() {
+      _subtitleSize = prefs.size;
+      _subtitleColor = Color(prefs.colorArgb);
+      _subtitleBgOpacity = prefs.bgOpacity;
+      _subtitleBold = prefs.bold;
+      _subtitleBottomPadding = prefs.bottomPadding;
+      _subtitleFont = prefs.font;
+    });
+    await _applySubtitleStyle();
+  }
+
+  Future<void> _applySubtitleStyle() async {
+    if (_disposed) return;
+    try {
+      await ExoPlayerBridge.setSubtitleStyle(
+        _viewId,
+        sizeSp: _subtitleSize,
+        textColorArgb: _subtitleColor.toARGB32(),
+        backgroundOpacity: _subtitleBgOpacity,
+        bottomPaddingPx: _subtitleBottomPadding,
+        bold: _subtitleBold,
+        font: _subtitleFont,
+      );
+    } catch (e) {
+      debugPrint('[ExoPlayer] setSubtitleStyle failed: $e');
+    }
+  }
+
+  void _showSubtitleSettings() {
+    PlayerSubtitleSettingsDialog.show(
+      context,
+      initial: PlayerSubtitleSettingsValues(
+        size: _subtitleSize,
+        delay: _subtitleDelay,
+        color: _subtitleColor,
+        bgOpacity: _subtitleBgOpacity,
+        bottomPadding: _subtitleBottomPadding,
+        bold: _subtitleBold,
+        font: _subtitleFont,
+      ),
+      onChanged: (values) {
+        setState(() {
+          _subtitleSize = values.size;
+          _subtitleDelay = values.delay;
+          _subtitleColor = values.color;
+          _subtitleBgOpacity = values.bgOpacity;
+          _subtitleBottomPadding = values.bottomPadding;
+          _subtitleBold = values.bold;
+          _subtitleFont = values.font;
+        });
+        unawaited(_applySubtitleStyle());
+      },
+    );
   }
 
   Future<void> _maybeApplyPreferredSubtitle() async {
@@ -975,6 +1046,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _disposed = true;
     PlayerBackExitGate.setTryFocusBack(null);
     PlayerServerStreamDialog.dismiss();
+    PlayerSubtitleDialog.dismiss();
+    PlayerSubtitleSettingsDialog.dismissIfShowing();
     _playFocus.dispose();
     _backFocus.removeListener(_onBackFocusChanged);
     _backFocus.dispose();

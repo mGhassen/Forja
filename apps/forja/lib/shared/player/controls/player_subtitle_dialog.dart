@@ -44,6 +44,7 @@ class PlayerSubtitleDialog {
     Future<void> Function(Map<String, dynamic> sub)? onSelectExternal,
     Future<void> Function({required String path, required String name})?
         onLoadFromFile,
+    VoidCallback? onSubtitleSettings,
   }) async {
     playerMenuCaptureReturnFocus(context);
     dismiss();
@@ -71,6 +72,7 @@ class PlayerSubtitleDialog {
           isFetchingSubs: isFetchingSubs,
           onSelectExternal: onSelectExternal,
           onLoadFromFile: onLoadFromFile,
+          onSubtitleSettings: onSubtitleSettings,
           onClose: close,
         ),
       ),
@@ -110,6 +112,7 @@ class _SubtitleDialogOverlay extends StatefulWidget {
     required this.onClose,
     this.onSelectExternal,
     this.onLoadFromFile,
+    this.onSubtitleSettings,
   });
 
   final ExoTracksSnapshot tracks;
@@ -121,6 +124,7 @@ class _SubtitleDialogOverlay extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic> sub)? onSelectExternal;
   final Future<void> Function({required String path, required String name})?
       onLoadFromFile;
+  final VoidCallback? onSubtitleSettings;
   final VoidCallback onClose;
 
   @override
@@ -259,6 +263,12 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
                 unawaited(_pickFile());
                 return;
               }
+              // Off applies immediately — no second tap on the right column.
+              if (g.kind == _SubGroupKind.off) {
+                PlayerSubtitleDialog.dismiss();
+                unawaited(widget.onOff());
+                return;
+              }
               setState(() => _selectedGroupId = g.id);
             },
           ),
@@ -293,18 +303,12 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
 
     switch (group.kind) {
       case _SubGroupKind.off:
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(6, 8, 10, 12),
-          children: [
-            PlayerPopupListTile(
-              label: 'Subtitles off',
-              selected: _textOff,
-              onTap: () async {
-                PlayerSubtitleDialog.dismiss();
-                await widget.onOff();
-              },
-            ),
-          ],
+        // Off is applied from the left column; right side is informational only.
+        return const Center(
+          child: Text(
+            'Subtitles off',
+            style: TextStyle(color: Colors.white54, fontSize: 13),
+          ),
         );
       case _SubGroupKind.embedded:
         final tracks = widget.tracks.text;
@@ -397,6 +401,19 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
             color: ForjaShellColors.cinematic.textSecondary,
             size: 18,
           ),
+          trailing: widget.onSubtitleSettings == null
+              ? null
+              : ForjaPlainIcon(
+                  icon: Icons.tune_rounded,
+                  size: 18,
+                  hitSize: 32,
+                  color: ForjaShellColors.cinematic.textSecondary,
+                  tooltip: 'Subtitle settings',
+                  onTap: () {
+                    PlayerSubtitleDialog.dismiss();
+                    widget.onSubtitleSettings!();
+                  },
+                ),
         ),
         if (widget.isFetchingSubs)
           const Padding(
@@ -469,6 +486,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     final size = MediaQuery.sizeOf(context);
     final width = (size.width * 0.88).clamp(560.0, 960.0);
     final maxHeight = size.height * 0.82;
+    final padding = TorrentSourcesPanel.defaultContentPadding(playerOverlay: true);
 
     return PlayerPopupPanel.tvFocusableOverlay(
       overlayContext: context,
@@ -505,10 +523,13 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
                       borderRadius: BorderRadius.circular(
                         PlayerPopupTokens.shellRadius,
                       ),
-                      child: playerSidePanelTvScope(
-                        context: context,
-                        onClose: widget.onClose,
-                        child: _buildBody(),
+                      child: Padding(
+                        padding: padding,
+                        child: playerSidePanelTvScope(
+                          context: context,
+                          onClose: widget.onClose,
+                          child: _buildBody(),
+                        ),
                       ),
                     ),
                   ),

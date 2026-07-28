@@ -196,6 +196,26 @@ class ExoPlayerBridge {
         'subtitles': subtitles,
       });
 
+  /// Apply Media3 [SubtitleView] appearance (size, color, background, position).
+  static Future<void> setSubtitleStyle(
+    int viewId, {
+    required double sizeSp,
+    required int textColorArgb,
+    required double backgroundOpacity,
+    required double bottomPaddingPx,
+    required bool bold,
+    String font = 'Default',
+  }) =>
+      _channel.invokeMethod<void>('setSubtitleStyle', {
+        'viewId': viewId,
+        'sizeSp': sizeSp,
+        'textColorArgb': textColorArgb,
+        'backgroundOpacity': backgroundOpacity.clamp(0.0, 1.0),
+        'bottomPaddingPx': bottomPaddingPx,
+        'bold': bold,
+        'font': font,
+      });
+
   static Future<void> stop(int viewId) =>
       _channel.invokeMethod<void>('stop', {'viewId': viewId});
 
