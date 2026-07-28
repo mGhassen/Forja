@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 3** acceptance |
-| **Current slice** | ATV Exo SurfaceView + hybrid composition; MediaKit display-resample |
+| **Progress** | **9 / 9** fix · **0 / 3** acceptance |
+| **Current slice** | Opt-in IPTV live max quality (default Auto = full quality) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,6 +29,7 @@
 | 6 | I108-T06 | ATV Exo: SurfaceView + Flutter hybrid composition (TextureView low-FPS / soft on leanback); phone keeps TextureView | ✅ |
 | 7 | I108-T07 | ATV MediaKit IPTV: `video-sync=display-resample` + `framedrop=vo`; Exo live decoder fallback + wake mode | ✅ |
 | 8 | I108-T08 | IPTV Exo: skip no-op buffering/playing setState; skip progress setState when chrome hidden | ✅ |
+| 9 | I108-T09 | Settings → **IPTV live max quality** (Auto default = no cap; 1080/720/480 opt-in only) | ✅ |
 
 ---
 
@@ -37,7 +38,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I108-A01 | Toshiba Android 7 TV (or API 24 leanback): IPTV **live** channel plays without constant choppy FPS (Home/Search movies still smooth) | ⬜ |
-| 2 | I108-A02 | Newer ATV: live IPTV still opens; adaptive HLS stays ≤1080p when variants exist | ⬜ |
+| 2 | I108-A02 | Default Auto: live IPTV plays full portal quality (no forced downscale); opt-in 720p/1080p only when user sets **IPTV live max quality** | ⬜ |
 | 3 | I108-A03 | Android TV IPTV **Player** menu switches Exo ↔ MediaKit and shows video (not black) on MediaKit | ⬜ |
 
 ---
@@ -50,11 +51,13 @@ On **Android TV**, IPTV and Home/Search movies both use Media3 ExoPlayer by defa
 
 **First fix (T01–T03):** when Dart opens with `live: true` (IPTV live URLs), native Exo applies larger live buffers, a live offset, and track caps (720p / ~3.5 Mbps on API ≤25; 1080p / ~5 Mbps on other ATV).
 
-**Follow-up (T04–T05):** device caps made live look soft / low-FPS and unwatchable. Caps are removed (LoadControl + ~8s live offset remain). IPTV now reads **Settings → Built-in engine** and the in-player **Player** menu can hot-swap Exo ↔ MediaKit; ATV MediaKit uses `vo=mediacodec_embed` + `hwdec=mediacodec` (same as VOD).
+**Follow-up (T04–T05):** device caps made live look soft / low-FPS and unwatchable. Caps are removed by default (LoadControl + ~8s live offset remain). IPTV now reads **Settings → Built-in engine** and the in-player **Player** menu can hot-swap Exo ↔ MediaKit; ATV MediaKit uses `vo=mediacodec_embed` + `hwdec=mediacodec` (same as VOD).
 
 **Surface / sync (T06–T08):** TextureView inside Flutter’s platform view has poor frame timing and often cannot paint at full leanback display resolution (UI layer upscaled — Google Media3 guidance prefers SurfaceView on ATV). ATV Exo now inflates **SurfaceView** and embeds via **hybrid composition** (`initExpensiveAndroidView`) so frames are not tiled (issue 102). Phone keeps TextureView + TLHC. MediaKit IPTV on ATV uses display-resample sync; Exo skips redundant Dart rebuilds during live.
 
-**Limit:** single-variant TS above what the SoC can decode may still hitch — try **MediaKit** from the Player menu.
+**Opt-in quality (T09):** **Settings → Playback → IPTV live max quality** defaults to **Auto (full quality)**. Choosing 1080p / 720p / 480p applies an Exo track ceiling for live adaptive feeds only — never automatic.
+
+**Limit:** single-variant TS above what the SoC can decode may still hitch — try **MediaKit** from the Player menu, or optionally set **IPTV live max quality** when the feed has adaptive variants.
 
 ## Related
 

@@ -65,18 +65,19 @@ export function useUserIptvPortals() {
         .eq('account_id', user.id)
         .eq('profile_id', activeProfile.id)
       if (countError) throw countError
-      // Thin client list must not replace a much larger cloud inventory (issue 118).
-      // Intentional single deletes still save; 5-over-600 style wipes do not.
+      // Cloud is master: any shrink without an explicit loaded editor is refused.
+      // Web Save always comes from the cloud-backed editor, so allow_shrink is
+      // true only when the client list is not a catastrophic thin subset.
       const cloud = cloudCount ?? 0
-      if (
+      const catastrophic =
         cloud > rows.length &&
-        rows.length * 2 < cloud &&
-        cloud - rows.length >= 10
-      ) {
+        (rows.length * 2 < cloud || cloud - rows.length >= 10)
+      if (catastrophic) {
         throw new Error(
           `Refusing to save ${rows.length} portals over ${cloud} cloud assignments (would wipe portals). Reload and try again.`,
         )
       }
+      const allowShrink = cloud > rows.length
 
       const portalIds: string[] = []
       const assignments: Array<{
@@ -107,6 +108,7 @@ export function useUserIptvPortals() {
         {
           p_profile_id: activeProfile.id,
           p_assignments: assignments,
+          p_allow_shrink: allowShrink,
         },
       )
       if (replaceError) throw replaceError

@@ -471,7 +471,10 @@ class SyncDomainBridge {
         );
         return;
       }
-      await SyncService.instance.replaceUserIptvPortals(const []);
+      await SyncService.instance.replaceUserIptvPortals(
+        const [],
+        allowShrink: true,
+      );
       return;
     }
 
@@ -517,6 +520,14 @@ class SyncDomainBridge {
       debugPrint('[Sync] refuse IPTV replace - no portal ids resolved');
       return;
     }
+    // Partial upsert must never over-shrink (even intentional delete).
+    if (assignments.length < portals.length) {
+      debugPrint(
+        '[Sync] refuse IPTV replace - resolved ${assignments.length} of '
+        '${portals.length} local portals',
+      );
+      return;
+    }
     if (!allowEmptyWipe &&
         !allowShrink &&
         cloudCount > assignments.length) {
@@ -527,7 +538,10 @@ class SyncDomainBridge {
       return;
     }
 
-    await SyncService.instance.replaceUserIptvPortals(assignments);
+    await SyncService.instance.replaceUserIptvPortals(
+      assignments,
+      allowShrink: allowEmptyWipe || allowShrink,
+    );
   }
 
   Future<bool> _pullAndApplyUserIptvPortals() async {

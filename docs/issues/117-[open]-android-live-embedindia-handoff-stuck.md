@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 12** fix · **0 / 3** acceptance |
+| **Progress** | **14 / 14** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -31,6 +31,8 @@
 | 10 | I117-T10 | Android PPV: top-level embedindia + Referer (no ppv.is iframe); Ajax/Fetch intercept PPV-only; drop probe URL blacklist | ✅ |
 | 11 | I117-T11 | Keep handoff cover until route exit; mute sniffer WebView (no mid-probe JW PiP / audio leak) | ✅ |
 | 12 | I117-T12 | Stop probe soft-recover loop; force-exit on abandon; Streamed catalog Referer on `/hls-proxy` | ✅ |
+| 13 | I117-T13 | Disable InAppWebView Fetch/Ajax intercept on PPV (reused Request kills JW); spy clones Request | ✅ |
+| 14 | I117-T14 | Split Android handoff: `LiveEmbedAndroidHandoffProfile` (PPV ≠ Streamed load/headers/soft-recover) | ✅ |
 
 ---
 
@@ -63,6 +65,10 @@
 **Mid-handoff double video (I117-T11):** Sniff success set `_androidHandoffStarted` which **removed** the black cover before Cookie probe + `pushReplacement`. JW’s multi-cam PiP painted under Flutter chrome. Fix: keep the cover for the whole Android sniffer route; mute play nudges.
 
 **Probe loop / Back stuck / process kill (I117-T12):** Soft-recover give-up reset `_exiting` while WebView kept re-sniffing the same `strmd.st` playlist → infinite handoff. `_exitPlayer` no-op’d while `_exiting` was true (Back looked broken); mashing Back on the nav rail then hit ATV double-Back exit (`finish` + kill). Fix: abandon flag stops sniff; one soft recover then toast + `force` pop; Streamed proxy Prefer catalog `Referer` (`streamed.pk`).
+
+**PPV fetch broken (I117-T13):** Console `Cannot construct a Request with a Request object that has already been used` from embedindia — InAppWebView `shouldInterceptFetchRequest` wrapper. Disabled Fetch/Ajax intercept; sniff via `shouldInterceptRequest` + media spy (Request.clone).
+
+**Cross-contamination (I117-T14):** PPV and Streamed share one embed player but fail differently. Fixes for one kept applying to both. Added `LiveEmbedAndroidHandoffProfile` — PPV: top-level load, full-embed Referer, soft-recover 0; Streamed: catalog iframe, **embed-origin Referer first** (catalog only on retry), short settle (120ms), 2 probes. Shared only cover + `/hls-proxy` + Exo.
 
 **Player button:** The in-player **Player** control (Exo ↔ MediaKit / external) lives on `IptvPtPlayerScreen` after handoff — it does not appear on the WebView “Opening stream…” cover.
 

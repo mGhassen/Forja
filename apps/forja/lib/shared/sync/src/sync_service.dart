@@ -1041,19 +1041,22 @@ class SyncService {
   ///
   /// Used to refuse catastrophic `replace_user_iptv_portals` shrinks when the
   /// local cache is a thin subset of cloud.
+  ///
+  /// Returns `-1` when auth/profile/count is unavailable — **never** `0` on
+  /// "not ready" (that fail-open let a thin local cache replace hundreds).
   Future<int> countUserIptvPortals() async {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
-    if (client == null || userId == null) return 0;
+    if (client == null || userId == null) return -1;
     final profile = await activeProfile();
-    if (profile == null) return 0;
+    if (profile == null) return -1;
     try {
-      final rows = await client
+      // Exact head count — do not rely on `.select().length` (row cap / race).
+      return await client
           .from('user_iptv_portals')
-          .select('id')
+          .count(CountOption.exact)
           .eq('account_id', userId)
           .eq('profile_id', profile.id);
-      return rows.length;
     } catch (e) {
       debugPrint('[Sync] countUserIptvPortals error: $e');
       // Fail closed for shrink checks - caller should not replace.
@@ -1120,6 +1123,9 @@ class SyncService {
   /// Callers must not pass `[]` unless the user intentionally cleared every
   /// portal - empty local cache must never reach here (see SyncDomainBridge).
   ///
+  /// [allowShrink] must be true only for intentional delete / clear-all.
+  /// Server refuses shrink when false (issue 118).
+  ///
   /// Uses `replace_user_iptv_portals` RPC (grandfather over-limit + atomic).
   Future<void> replaceUserIptvPortals(
     List<
@@ -1129,8 +1135,9 @@ class SyncService {
         bool favorite,
       })
     >
-    assignments,
-  ) async {
+    assignments, {
+    bool allowShrink = false,
+  }) async {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) return;
@@ -1150,6 +1157,7 @@ class SyncService {
                 'favorite': a.favorite,
               },
           ],
+          'p_allow_shrink': allowShrink,
         },
       );
     } catch (e) {

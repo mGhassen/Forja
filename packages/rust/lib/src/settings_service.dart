@@ -80,8 +80,25 @@ class SettingsService {
   static const String _legacyAutoNextKey = 'forja_auto_next';
   static const String _autoSkipIntroKey = 'auto_skip_intro';
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
+  /// IPTV live Exo only: 0 = full portal quality (default). Never auto-cap.
+  static const String _iptvLiveMaxHeightKey = 'iptv_live_max_height';
   static const String _maxPlaybackHeightKey = 'max_playback_height';
   static const String _animeTitleLanguageKey = 'anime_title_language';
+
+  /// Opt-in ceiling for IPTV **live** Exo adaptive variants. Default Auto = no cap.
+  static const Map<String, int> iptvLiveMaxHeightOptions = {
+    'Auto (full quality)': 0,
+    '1080p': 1080,
+    '720p': 720,
+    '480p': 480,
+  };
+
+  static String iptvLiveMaxHeightLabel(int height) {
+    for (final entry in iptvLiveMaxHeightOptions.entries) {
+      if (entry.value == height) return entry.key;
+    }
+    return height > 0 ? '${height}p' : 'Auto (full quality)';
+  }
 
   /// Anime catalog display language (AniList). Default romaji.
   static const List<String> animeTitleLanguageOptions = [
@@ -226,6 +243,13 @@ class SettingsService {
     await kvSetBool(_iptvEpgEnabledKey, enabled);
     iptvEpgEnabledNotifier.value = enabled;
   }
+
+  /// IPTV live Exo max video height. `0` = no cap (full quality). Default `0`.
+  Future<int> getIptvLiveMaxHeight() async =>
+      await kvGetInt(_iptvLiveMaxHeightKey, fallback: 0);
+
+  Future<void> setIptvLiveMaxHeight(int height) async =>
+      kvSetInt(_iptvLiveMaxHeightKey, height < 0 ? 0 : height);
 
   Future<int> getMaxPlaybackHeight() async =>
       await kvGetInt(_maxPlaybackHeightKey, fallback: 0);

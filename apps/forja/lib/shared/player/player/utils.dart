@@ -19,6 +19,42 @@ const kDefaultStreamUserAgent =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
     '(KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36';
 
+/// Soft Auto ceiling (~1080p mid-high) — faster first frame than `max`.
+const kHlsBitrateAutoSoftCeiling = '5000000';
+const kExoBitrateAutoSoftCeiling = 5_000_000;
+
+/// mpv `hls-bitrate` from Settings → Max stream quality (`0` = Auto).
+String hlsBitrateForMaxPlaybackHeight(int maxHeight) {
+  if (maxHeight <= 0) return kHlsBitrateAutoSoftCeiling;
+  if (maxHeight <= 480) return '1500000';
+  if (maxHeight <= 720) return '3500000';
+  if (maxHeight <= 1080) return '8000000';
+  if (maxHeight <= 1440) return '12000000';
+  return 'max';
+}
+
+/// Exo ABR caps from Settings → Max stream quality (`0` = Auto soft bitrate).
+({int maxVideoHeight, int maxVideoBitrate}) exoVodCapsForMaxPlaybackHeight(
+  int maxHeight,
+) {
+  if (maxHeight <= 0) {
+    return (maxVideoHeight: 0, maxVideoBitrate: kExoBitrateAutoSoftCeiling);
+  }
+  if (maxHeight <= 480) {
+    return (maxVideoHeight: 480, maxVideoBitrate: 1_500_000);
+  }
+  if (maxHeight <= 720) {
+    return (maxVideoHeight: 720, maxVideoBitrate: 3_500_000);
+  }
+  if (maxHeight <= 1080) {
+    return (maxVideoHeight: 1080, maxVideoBitrate: 8_000_000);
+  }
+  if (maxHeight <= 1440) {
+    return (maxVideoHeight: 1440, maxVideoBitrate: 12_000_000);
+  }
+  return (maxVideoHeight: 2160, maxVideoBitrate: 0);
+}
+
 final _trailingMediaSlash = RegExp(
   r'\.(mp4|mkv|webm|avi|mov|m4v|ts|mpd|m3u8)/+$',
   caseSensitive: false,

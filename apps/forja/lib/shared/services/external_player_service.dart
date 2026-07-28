@@ -412,11 +412,11 @@ class ExternalPlayerService {
     return (url: url, headers: headers);
   }
 
-  /// Match built-in player mpv network/HLS tuning (fast open profile).
+  /// Match built-in Auto soft ceiling (external launch path is sync).
   static List<String> _mpvStreamArgs({required String prefix}) => [
         '${prefix}network-timeout=30',
         '${prefix}tls-verify=no',
-        '${prefix}hls-bitrate=5000000',
+        '${prefix}hls-bitrate=$kHlsBitrateAutoSoftCeiling',
         '${prefix}cache=yes',
         '${prefix}demuxer-readahead-secs=20',
         '${prefix}ytdl=no',

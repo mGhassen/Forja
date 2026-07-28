@@ -32,16 +32,16 @@ import java.util.concurrent.ConcurrentHashMap
 /** Playback hints from Dart (IPTV live vs Home VOD). */
 data class ExoOpenOptions(
     val live: Boolean = false,
-    /** 0 = let host pick a device-safe cap for live, or no cap for VOD. */
+    /** Explicit Settings opt-in only. 0 = full quality (never auto-cap). */
     val maxVideoHeight: Int = 0,
-    /** 0 = let host pick a device-safe bitrate for live, or no cap for VOD. */
+    /** Soft bitrate companion when [maxVideoHeight] is set. 0 = none. */
     val maxVideoBitrate: Int = 0,
 )
 
 private const val TAG = "ForjaExo"
 
-// Live IPTV: deeper buffers for underrun cushion. No automatic height/bitrate
-// caps — aggressive caps made ATV look soft / low-FPS and unwatchable.
+// Live IPTV: deeper buffers for underrun cushion. Quality caps are opt-in from
+// Dart (Settings → IPTV live max quality); never applied automatically.
 private const val LIVE_MIN_BUFFER_MS = 12_000
 private const val LIVE_MAX_BUFFER_MS = 45_000
 private const val LIVE_BUFFER_FOR_PLAYBACK_MS = 2_000
@@ -313,7 +313,7 @@ class ExoPlayerHost(
     }
 
     private fun resolveMaxVideoHeight(options: ExoOpenOptions): Int {
-        // Explicit Dart override only — do not auto-cap live ABR (soft/low-FPS picture).
+        // Settings opt-in only — never invent a device default cap.
         if (options.maxVideoHeight > 0) return options.maxVideoHeight
         return 0
     }

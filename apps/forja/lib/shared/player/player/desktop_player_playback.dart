@@ -1587,9 +1587,10 @@ mixin _DesktopPlayerPlayback
       // How far back the demuxer keeps decoded data (for backward seeks).
       await safeSet('demuxer-max-back-bytes', '50MiB');
 
-      // Soft ceiling (~5 Mbps): avoid opening 1080p/4K tops on slow CDNs.
+      // Cap from Settings → Max stream quality (Auto = soft ~5 Mbps).
       // Manual Quality still locks a specific playlist URL.
-      await safeSet('hls-bitrate', '5000000');
+      final maxH = await SettingsService().getMaxPlaybackHeight();
+      await safeSet('hls-bitrate', hlsBitrateForMaxPlaybackHeight(maxH));
     }
 
     // Prevent yt-dlp from being invoked (we supply our own URL).

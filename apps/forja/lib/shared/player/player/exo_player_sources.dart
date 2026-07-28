@@ -266,6 +266,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       );
       if (!mounted || _s._disposed || switchGen != _s._fallbackGen) return;
       _s._sideloadedSubtitles = prepared;
+      final maxH = await SettingsService().getMaxPlaybackHeight();
+      final caps = exoVodCapsForMaxPlaybackHeight(maxH);
       await ExoPlayerBridge.open(
         viewId: _s._viewId,
         url: openUrl,
@@ -280,6 +282,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
               },
             )
             .toList(),
+        maxVideoHeight: caps.maxVideoHeight,
+        maxVideoBitrate: caps.maxVideoBitrate,
       );
       if (!mounted || _s._disposed || switchGen != _s._fallbackGen) return;
       await ExoPlayerBridge.setVolume(_s._viewId, _s._volume / 100.0);

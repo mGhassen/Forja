@@ -967,15 +967,24 @@ const _liveEmbedMediaSpyJs = r'''
 
   try {
     var ofetch = window.fetch;
-    if (typeof ofetch === 'function') {
-      window.fetch = function (input, init) {
+    if (typeof ofetch === 'function' && !ofetch.__forjaFetchHooked) {
+      var wrappedFetch = function (input, init) {
         var reqUrl = '';
+        var nextInput = input;
         try {
           if (typeof input === 'string') reqUrl = input;
-          else if (input && input.url) reqUrl = input.url;
+          else if (input && input.url) {
+            reqUrl = input.url;
+            // Never pass a consumed Request through — clone first.
+            try {
+              if (typeof Request !== 'undefined' && input instanceof Request) {
+                nextInput = input.clone();
+              }
+            } catch (_) {}
+          }
           report(reqUrl);
         } catch (_) {}
-        return ofetch.apply(this, arguments).then(function (res) {
+        return ofetch.call(this, nextInput, init).then(function (res) {
           try {
             var clone = res.clone();
             clone.text().then(function (text) {
@@ -988,6 +997,8 @@ const _liveEmbedMediaSpyJs = r'''
           return res;
         });
       };
+      wrappedFetch.__forjaFetchHooked = true;
+      window.fetch = wrappedFetch;
     }
   } catch (_) {}
 
@@ -1245,8 +1256,9 @@ Map<String, String> _liveEmbedStreamHeaders(
   final catalogOrigin = catalogRoot == null
       ? null
       : Uri.tryParse(catalogRoot)?.origin;
-  // Streamed CDN (`strmd.st`) often validates against the catalog site, not
-  // only the embed host origin.
+  // Streamed CDN (`strmd.st`) usually validates against the **embed** origin
+  // (what worked when handoff was fast). Pass [catalogReferer] only as a
+  // secondary probe attempt.
   final referer = catalogRoot ??
       (origin.isNotEmpty ? '$origin/' : embedUrl);
   final headerOrigin = catalogOrigin ?? (origin.isNotEmpty ? origin : null);

@@ -26,6 +26,7 @@ class SettingsPlaybackSnapshot {
     required this.autoNextEpisode,
     required this.autoSkipIntro,
     required this.iptvEpgEnabled,
+    required this.iptvLiveMaxHeightLabel,
     required this.maxPlaybackHeightLabel,
     required this.animeTitleLanguageLabel,
   });
@@ -43,6 +44,7 @@ class SettingsPlaybackSnapshot {
   final bool autoNextEpisode;
   final bool autoSkipIntro;
   final bool iptvEpgEnabled;
+  final String iptvLiveMaxHeightLabel;
   final String maxPlaybackHeightLabel;
   final String animeTitleLanguageLabel;
 
@@ -60,6 +62,7 @@ class SettingsPlaybackSnapshot {
     bool? autoNextEpisode,
     bool? autoSkipIntro,
     bool? iptvEpgEnabled,
+    String? iptvLiveMaxHeightLabel,
     String? maxPlaybackHeightLabel,
     String? animeTitleLanguageLabel,
   }) {
@@ -80,6 +83,8 @@ class SettingsPlaybackSnapshot {
       autoNextEpisode: autoNextEpisode ?? this.autoNextEpisode,
       autoSkipIntro: autoSkipIntro ?? this.autoSkipIntro,
       iptvEpgEnabled: iptvEpgEnabled ?? this.iptvEpgEnabled,
+      iptvLiveMaxHeightLabel:
+          iptvLiveMaxHeightLabel ?? this.iptvLiveMaxHeightLabel,
       maxPlaybackHeightLabel:
           maxPlaybackHeightLabel ?? this.maxPlaybackHeightLabel,
       animeTitleLanguageLabel:
@@ -122,6 +127,9 @@ class SettingsPlaybackNotifier
       autoNextEpisode: await s.getAutoNextEpisode(),
       autoSkipIntro: await s.getAutoSkipIntro(),
       iptvEpgEnabled: iptvEpgEnabled,
+      iptvLiveMaxHeightLabel: SettingsService.iptvLiveMaxHeightLabel(
+        await s.getIptvLiveMaxHeight(),
+      ),
       maxPlaybackHeightLabel: SettingsService.maxPlaybackHeightLabel(
         await s.getMaxPlaybackHeight(),
       ),

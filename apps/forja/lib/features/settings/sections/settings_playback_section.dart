@@ -226,7 +226,7 @@ class _SettingsPlaybackSectionState
                 },
               ),
             ],
-            if (widget.visibility.showIptvSettings)
+            if (widget.visibility.showIptvSettings) ...[
               settingsFocusableToggle(
                 context,
                 'IPTV programme guide (EPG)',
@@ -238,11 +238,29 @@ class _SettingsPlaybackSectionState
                   schedulePreferencesSyncPush();
                 },
               ),
+              settingsFocusableDropdown(
+                context,
+                'IPTV live max quality',
+                'ExoPlayer only. Auto keeps full portal quality. Pick 1080p / 720p / 480p only if a weak device needs a lower adaptive variant — never applied automatically.',
+                snap.iptvLiveMaxHeightLabel,
+                SettingsService.iptvLiveMaxHeightOptions.keys.toList(),
+                (val) async {
+                  if (val == null) return;
+                  final height =
+                      SettingsService.iptvLiveMaxHeightOptions[val] ?? 0;
+                  await _settings.setIptvLiveMaxHeight(height);
+                  await _playback.patch(
+                    (s) => s.copyWith(iptvLiveMaxHeightLabel: val),
+                  );
+                  schedulePreferencesSyncPush();
+                },
+              ),
+            ],
             if (widget.visibility.showPlaySources)
               settingsFocusableDropdown(
                 context,
                 'Max stream quality',
-                'Cap automatic stream selection. Auto uses the best your device supports.',
+                'Cap Auto stream ranking and HLS start bitrate. Auto uses a mid-high soft ceiling for a faster first frame; pick 4K for the top ladder rung.',
                 snap.maxPlaybackHeightLabel,
                 SettingsService.maxPlaybackHeightOptions.keys.toList(),
                 (val) async {

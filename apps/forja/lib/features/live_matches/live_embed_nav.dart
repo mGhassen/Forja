@@ -64,6 +64,89 @@ bool liveEmbedRequiresWebViewPlayback(String embedUrl) {
   return host.contains('embedindia.st');
 }
 
+/// Which Live catalog family owns this embed — techniques must not cross.
+///
+/// PPV and Streamed fail differently (JW + `indianservers` vs HLS.js +
+/// `strmd.st`). Android handoff settings are chosen **only** from this kind;
+/// never apply a PPV-only hook to Streamed (or the reverse).
+enum LiveEmbedProviderKind {
+  /// `embedindia.st` under ppv.is
+  ppv,
+
+  /// Streamed / embedsports-style under streamed.pk
+  streamed,
+}
+
+LiveEmbedProviderKind liveEmbedProviderKind(String embedUrl) {
+  if (liveEmbedRequiresWebViewPlayback(embedUrl)) {
+    return LiveEmbedProviderKind.ppv;
+  }
+  return LiveEmbedProviderKind.streamed;
+}
+
+/// Per-provider Android sniff → native handoff profile.
+///
+/// Shared: black cover, Cookie harvest, `/hls-proxy`, Exo open, abandon/exit.
+/// Split: how the WebView loads, main-frame policy, proxy Referer, timing.
+class LiveEmbedAndroidHandoffProfile {
+  const LiveEmbedAndroidHandoffProfile._({
+    required this.kind,
+    required this.topLevelEmbedLoad,
+    required this.allowEmbedHostAsMainFrame,
+    required this.maxSoftRecover,
+    required this.cookieSettle,
+    required this.maxProbeAttempts,
+    required this.logLabel,
+  });
+
+  final LiveEmbedProviderKind kind;
+
+  /// PPV: load embedindia as the main frame (no ppv.is iframe).
+  /// Streamed: keep catalog `loadData` iframe wrapper (host lock).
+  final bool topLevelEmbedLoad;
+
+  final bool allowEmbedHostAsMainFrame;
+
+  /// Extra probe→re-sniff attempts before abandon (Streamed cookie settle).
+  final int maxSoftRecover;
+
+  /// Wait after sniff before Cookie harvest / probe (Streamed is usually warm).
+  final Duration cookieSettle;
+
+  final int maxProbeAttempts;
+
+  final String logLabel;
+
+  bool get isPpv => kind == LiveEmbedProviderKind.ppv;
+  bool get isStreamed => kind == LiveEmbedProviderKind.streamed;
+
+  factory LiveEmbedAndroidHandoffProfile.forEmbed(String embedUrl) {
+    switch (liveEmbedProviderKind(embedUrl)) {
+      case LiveEmbedProviderKind.ppv:
+        return const LiveEmbedAndroidHandoffProfile._(
+          kind: LiveEmbedProviderKind.ppv,
+          topLevelEmbedLoad: true,
+          allowEmbedHostAsMainFrame: true,
+          maxSoftRecover: 0,
+          cookieSettle: Duration(milliseconds: 450),
+          maxProbeAttempts: 3,
+          logLabel: 'ppv/embedindia',
+        );
+      case LiveEmbedProviderKind.streamed:
+        return const LiveEmbedAndroidHandoffProfile._(
+          kind: LiveEmbedProviderKind.streamed,
+          topLevelEmbedLoad: false,
+          allowEmbedHostAsMainFrame: false,
+          // One Cookie settle retry — do not slow the happy path.
+          maxSoftRecover: 1,
+          cookieSettle: Duration(milliseconds: 120),
+          maxProbeAttempts: 2,
+          logLabel: 'streamed',
+        );
+    }
+  }
+}
+
 /// Android System WebView cannot play Streamed / many PPV embeds in-page
 /// (CORS + host lock UI). Sniff HLS and hand off to the native IPTV player.
 bool liveEmbedAndroidNativeHandoff(String embedUrl) {

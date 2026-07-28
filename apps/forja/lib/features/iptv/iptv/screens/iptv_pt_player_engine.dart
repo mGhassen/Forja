@@ -204,13 +204,23 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   Future<void> _engineOpenSource(IptvPlaySource src) async {
     if (_s._exoBackend) {
       await ExoPlayerBridge.stop(_s._exoViewId!);
+      final live = iptvExoUrlLooksLive(src.url);
+      // Opt-in only (Settings → IPTV live max quality). Default 0 = full quality.
+      var maxHeight = 0;
+      var maxBitrate = 0;
+      if (live) {
+        maxHeight = await SettingsService().getIptvLiveMaxHeight();
+        if (maxHeight > 0) {
+          maxBitrate = maxHeight <= 720 ? 3_500_000 : 5_000_000;
+        }
+      }
       await ExoPlayerBridge.open(
         viewId: _s._exoViewId!,
         url: src.url,
         headers: const {'User-Agent': _IptvPtPlayerScreenState._ua},
-        // Live Xtream/M3U: native Exo applies live LoadControl + ATV/API<26 caps.
-        // Movies/series VOD keep the default VOD path (Home movies are unchanged).
-        live: iptvExoUrlLooksLive(src.url),
+        live: live,
+        maxVideoHeight: maxHeight,
+        maxVideoBitrate: maxBitrate,
       );
     } else {
       await _s._player!.open(

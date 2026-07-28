@@ -308,12 +308,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           ? (widget.startPosition ?? Duration.zero)
           : Duration.zero;
       _startPositionApplied = true;
+      final maxH = await SettingsService().getMaxPlaybackHeight();
+      final caps = exoVodCapsForMaxPlaybackHeight(maxH);
       await ExoPlayerBridge.open(
         viewId: _viewId,
         url: source.url,
         headers: source.headers,
         startPosition: start,
         subtitles: subs,
+        maxVideoHeight: caps.maxVideoHeight,
+        maxVideoBitrate: caps.maxVideoBitrate,
       );
       await ExoPlayerBridge.setVolume(_viewId, _volume / 100.0);
       if (_rate != 1.0) {

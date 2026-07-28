@@ -1606,8 +1606,9 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       // 30 MiB back-buffer so backward seeks don't require a full rebuffer.
       await safeSet('demuxer-max-back-bytes', '30MiB');
 
-      // Soft ceiling (~5 Mbps): avoid opening top rungs on slow CDNs.
-      await safeSet('hls-bitrate', '5000000');
+      // Cap from Settings → Max stream quality (Auto = soft ~5 Mbps).
+      final maxH = await SettingsService().getMaxPlaybackHeight();
+      await safeSet('hls-bitrate', hlsBitrateForMaxPlaybackHeight(maxH));
     }
 
     // We supply our own URL - no yt-dlp needed.
