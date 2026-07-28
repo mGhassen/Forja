@@ -868,43 +868,330 @@ const _stripIframeSandboxJs = r'''
 /// Report HLS / media URLs to Flutter. Android System WebView cannot play
 /// Streamed / PPV embeds in-page (CORS + host lock UI). We sniff the playlist
 /// from the visible WebView and hand off to the native IPTV player.
+///
+/// Cross-origin embed iframes often cannot call `flutter_inappwebview` — fall
+/// back to `postMessage` so the catalog wrapper (main frame) can bridge.
 const _liveEmbedMediaSpyJs = r'''
 (function () {
   if (window.__forjaLiveMediaSpy) return;
   window.__forjaLiveMediaSpy = true;
+
+  function absUrl(u) {
+    try { return new URL(String(u), window.location.href).href; } catch (_) {
+      return String(u || '');
+    }
+  }
+
+  function looksMedia(s) {
+    var low = String(s || '').toLowerCase();
+    if (!low || low.indexOf('blob:') === 0 || low.indexOf('data:') === 0) return false;
+    if (low.indexOf('.m3u8') !== -1) return true;
+    if (low.indexOf('.mpd') !== -1) return true;
+    if (low.indexOf('.mp4') !== -1) return true;
+    if (low.indexOf('strmd.st') !== -1) return true;
+    if (low.indexOf('/playlist') !== -1) return true;
+    if (low.indexOf('/secure/') !== -1) return true;
+    if (low.indexOf('/hls') !== -1) return true;
+    if (low.indexOf('application/x-mpegurl') !== -1) return true;
+    if (low.indexOf('mpegurl') !== -1) return true;
+    return false;
+  }
+
   function report(u) {
     try {
       if (!u) return;
-      var s = String(u);
-      if (s.indexOf('blob:') === 0) return;
-      var low = s.toLowerCase();
-      if (low.indexOf('.m3u8') === -1 &&
-          low.indexOf('strmd.st') === -1 &&
-          low.indexOf('/playlist') === -1 &&
-          low.indexOf('/secure/') === -1 &&
-          low.indexOf('.mp4') === -1) return;
-      window.flutter_inappwebview.callHandler('liveMediaUrl', s);
+      var s = absUrl(u);
+      if (!looksMedia(s)) return;
+      try {
+        if (window.flutter_inappwebview &&
+            typeof window.flutter_inappwebview.callHandler === 'function') {
+          window.flutter_inappwebview.callHandler('liveMediaUrl', s);
+          return;
+        }
+      } catch (_) {}
+      try { window.parent.postMessage({ __forjaLiveMedia: s }, '*'); } catch (_) {}
+      try { window.top.postMessage({ __forjaLiveMedia: s }, '*'); } catch (_) {}
     } catch (_) {}
   }
+
+  function reportM3u8InText(text) {
+    try {
+      var t = String(text || '');
+      if (!t) return;
+      if (t.indexOf('#EXTM3U') === 0 || t.indexOf('#EXTM3U') !== -1) {
+        // Body is the playlist itself — caller should have reported the request URL.
+      }
+      var re = /https?:\/\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*/gi;
+      var m;
+      while ((m = re.exec(t)) !== null) report(m[0]);
+      re = /https?:\/\/[^"'\\s<>]+strmd\\.st[^"'\\s<>]*/gi;
+      while ((m = re.exec(t)) !== null) report(m[0]);
+    } catch (_) {}
+  }
+
+  // Main-frame bridge for iframe postMessage reports.
+  try {
+    window.addEventListener('message', function (e) {
+      try {
+        var d = e && e.data;
+        if (!d) return;
+        if (typeof d === 'string') {
+          if (looksMedia(d)) report(d);
+          return;
+        }
+        if (d.__forjaLiveMedia) report(d.__forjaLiveMedia);
+        if (d.file) report(d.file);
+        if (d.source) report(d.source);
+        if (d.sources && d.sources.length) {
+          for (var i = 0; i < d.sources.length; i++) {
+            var src = d.sources[i];
+            if (typeof src === 'string') report(src);
+            else if (src && src.file) report(src.file);
+          }
+        }
+      } catch (_) {}
+    });
+  } catch (_) {}
+
   try {
     var ofetch = window.fetch;
     if (typeof ofetch === 'function') {
       window.fetch = function (input, init) {
+        var reqUrl = '';
         try {
-          if (typeof input === 'string') report(input);
-          else if (input && input.url) report(input.url);
+          if (typeof input === 'string') reqUrl = input;
+          else if (input && input.url) reqUrl = input.url;
+          report(reqUrl);
         } catch (_) {}
-        return ofetch.apply(this, arguments);
+        return ofetch.apply(this, arguments).then(function (res) {
+          try {
+            var clone = res.clone();
+            clone.text().then(function (text) {
+              reportM3u8InText(text);
+              if (text && text.trim().indexOf('#EXTM3U') === 0 && reqUrl) {
+                report(reqUrl);
+              }
+            }).catch(function () {});
+          } catch (_) {}
+          return res;
+        });
       };
     }
   } catch (_) {}
+
   try {
     var open = XMLHttpRequest.prototype.open;
+    var send = XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.open = function (method, url) {
-      try { report(url); } catch (_) {}
+      try {
+        this.__forjaUrl = absUrl(url);
+        report(this.__forjaUrl);
+      } catch (_) {}
       return open.apply(this, arguments);
     };
+    XMLHttpRequest.prototype.send = function () {
+      try {
+        this.addEventListener('load', function () {
+          try {
+            var text = this.responseText || '';
+            reportM3u8InText(text);
+            if (text && text.trim().indexOf('#EXTM3U') === 0 && this.__forjaUrl) {
+              report(this.__forjaUrl);
+            }
+          } catch (_) {}
+        });
+      } catch (_) {}
+      return send.apply(this, arguments);
+    };
   } catch (_) {}
+
+  // HLS.js / similar: playlist often never appears as video.src (blob: MSE).
+  function hookHlsProto(H) {
+    try {
+      if (!H || !H.prototype || H.prototype.__forjaHlsHooked) return;
+      H.prototype.__forjaHlsHooked = true;
+      var orig = H.prototype.loadSource;
+      if (typeof orig !== 'function') return;
+      H.prototype.loadSource = function (url) {
+        try { report(url); } catch (_) {}
+        return orig.apply(this, arguments);
+      };
+    } catch (_) {}
+  }
+  function hookHls() {
+    hookHlsProto(window.Hls);
+    hookHlsProto(window.hls);
+    hookHlsProto(window.Hlsjs);
+  }
+  try {
+    hookHls();
+    setInterval(hookHls, 500);
+    var _hls = window.Hls;
+    Object.defineProperty(window, 'Hls', {
+      configurable: true,
+      get: function () { return _hls; },
+      set: function (v) { _hls = v; hookHlsProto(v); }
+    });
+  } catch (_) {}
+
+  // JW Player playlist / setup hooks (embedindia).
+  function hookJw() {
+    try {
+      var jw = window.jwplayer;
+      if (typeof jw !== 'function' || jw.__forjaHooked) return;
+      jw.__forjaHooked = true;
+      var wrapped = function () {
+        var player = jw.apply(this, arguments);
+        try {
+          if (player && typeof player.on === 'function') {
+            player.on('playlist', function (e) {
+              try {
+                var pl = (e && e.playlist) || [];
+                for (var i = 0; i < pl.length; i++) {
+                  if (pl[i] && pl[i].file) report(pl[i].file);
+                  if (pl[i] && pl[i].sources) {
+                    for (var j = 0; j < pl[i].sources.length; j++) {
+                      var s = pl[i].sources[j];
+                      if (s && s.file) report(s.file);
+                    }
+                  }
+                }
+              } catch (_) {}
+            });
+            player.on('meta', function (e) {
+              try {
+                if (e && e.metadata && e.metadata.file) report(e.metadata.file);
+              } catch (_) {}
+            });
+          }
+        } catch (_) {}
+        return player;
+      };
+      wrapped.__forjaHooked = true;
+      try {
+        for (var k in jw) {
+          if (Object.prototype.hasOwnProperty.call(jw, k)) wrapped[k] = jw[k];
+        }
+      } catch (_) {}
+      window.jwplayer = wrapped;
+    } catch (_) {}
+  }
+  try {
+    hookJw();
+    setInterval(hookJw, 500);
+  } catch (_) {}
+
+  function scanDom() {
+    try {
+      document.querySelectorAll('video, audio, source').forEach(function (el) {
+        try {
+          if (el.src) report(el.src);
+          if (el.currentSrc) report(el.currentSrc);
+          if (el.getAttribute) {
+            var ds = el.getAttribute('data-src');
+            if (ds) report(ds);
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+    try {
+      performance.getEntriesByType('resource').forEach(function (e) {
+        if (e && e.name) report(e.name);
+      });
+    } catch (_) {}
+  }
+  try {
+    scanDom();
+    setInterval(scanDom, 1200);
+  } catch (_) {}
+
+  try {
+    var obs = new MutationObserver(function (mutations) {
+      for (var i = 0; i < mutations.length; i++) {
+        var m = mutations[i];
+        if (m.type === 'attributes' &&
+            (m.attributeName === 'src' || m.attributeName === 'data-src')) {
+          try {
+            report(m.target.getAttribute(m.attributeName));
+          } catch (_) {}
+        }
+        for (var j = 0; j < m.addedNodes.length; j++) {
+          var n = m.addedNodes[j];
+          if (!n || n.nodeType !== 1) continue;
+          try {
+            if (n.src) report(n.src);
+            if (n.querySelectorAll) {
+              n.querySelectorAll('video,audio,source').forEach(function (el) {
+                if (el.src) report(el.src);
+                if (el.currentSrc) report(el.currentSrc);
+              });
+            }
+          } catch (_) {}
+        }
+      }
+    });
+    obs.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['src', 'data-src']
+    });
+  } catch (_) {}
+
+  try {
+    if (window.PerformanceObserver) {
+      var po = new PerformanceObserver(function (list) {
+        try {
+          list.getEntries().forEach(function (e) {
+            if (e && e.name) report(e.name);
+          });
+        } catch (_) {}
+      });
+      po.observe({ entryTypes: ['resource'] });
+    }
+  } catch (_) {}
+
+  // Parent asks nested frames to re-scan (Dart poll).
+  try {
+    window.addEventListener('message', function (e) {
+      try {
+        if (e && e.data && e.data.__forjaSniffPoll) scanDom();
+      } catch (_) {}
+    });
+  } catch (_) {}
+})();
+''';
+
+/// Poll performance / media elements from the catalog wrapper (and fan out to
+/// iframes via postMessage). Used while Android native handoff is waiting.
+const _liveEmbedSniffPollJs = r'''
+(function () {
+  var out = [];
+  function push(u) {
+    try {
+      if (!u) return;
+      var s = String(u);
+      if (s.indexOf('blob:') === 0 || s.indexOf('data:') === 0) return;
+      out.push(s);
+    } catch (_) {}
+  }
+  try {
+    performance.getEntriesByType('resource').forEach(function (e) {
+      if (e && e.name) push(e.name);
+    });
+  } catch (_) {}
+  try {
+    document.querySelectorAll('video,audio,source').forEach(function (el) {
+      if (el.src) push(el.src);
+      if (el.currentSrc) push(el.currentSrc);
+    });
+  } catch (_) {}
+  try {
+    document.querySelectorAll('iframe').forEach(function (frame) {
+      try { frame.contentWindow.postMessage({ __forjaSniffPoll: true }, '*'); } catch (_) {}
+    });
+  } catch (_) {}
+  return out;
 })();
 ''';
 
@@ -951,20 +1238,30 @@ bool _liveEmbedIsSniffableMediaUrl(String url) {
       lower.contains('googlesyndication') ||
       lower.contains('therocketlanguages') ||
       lower.contains('optimserve') ||
-      lower.contains('googleadservices')) {
+      lower.contains('googleadservices') ||
+      lower.contains('adnxs.com') ||
+      lower.contains('/ads/') ||
+      lower.contains('vast.')) {
     return false;
   }
   if (lower.contains('.m3u8')) return true;
+  if (lower.contains('.mpd')) return true;
   if (lower.contains('.mp4') &&
       (lower.contains('http://') || lower.contains('https://'))) {
     return true;
   }
   if (lower.contains('strmd.st/') &&
-      (lower.contains('/secure/') || lower.contains('playlist'))) {
+      (lower.contains('/secure/') ||
+          lower.contains('playlist') ||
+          lower.contains('/hls'))) {
     return true;
   }
   // embedindia / similar JW hosts often omit `.m3u8` in the path.
-  if ((lower.contains('/secure/') || lower.contains('/playlist')) &&
+  if ((lower.contains('/secure/') ||
+          lower.contains('/playlist') ||
+          lower.contains('/hls/') ||
+          lower.contains('/hls?') ||
+          lower.contains('mpegurl')) &&
       (lower.contains('http://') || lower.contains('https://'))) {
     return true;
   }

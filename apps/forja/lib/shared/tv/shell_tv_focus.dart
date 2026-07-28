@@ -26,6 +26,10 @@ abstract final class ShellTvFocus {
     if (_navNodes[id] == node) _navNodes.remove(id);
   }
 
+  /// Test-only — drop all rail FocusNode registrations between widget tests.
+  @visibleForTesting
+  static void clearNavRegistrationsForTest() => _navNodes.clear();
+
   static bool get anyNavFocused =>
       _navNodes.values.any((node) => node.hasFocus);
 

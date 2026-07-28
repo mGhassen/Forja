@@ -1045,9 +1045,11 @@ class _LiveMatchesEmbedPlayerScreenState
   /// Android: cover the broken WebView lock UI while we sniff HLS for native.
   bool _androidNativeHandoff = false;
   bool _androidHandoffStarted = false;
+  bool _androidFallbackStarted = false;
   Timer? _loadingWatchdog;
   Timer? _adWindowCloseTimer;
   Timer? _androidHandoffWatchdog;
+  Timer? _androidSniffPoll;
   InAppWebViewController? _webViewController;
 
   /// Native popup ([window.open]) from an ad. Accepted off-screen so Streamed
@@ -1194,6 +1196,7 @@ class _LiveMatchesEmbedPlayerScreenState
       iframeAllowFullscreen: true,
       useShouldOverrideUrlLoading: true,
       useOnLoadResource: _androidNativeHandoff,
+      useShouldInterceptRequest: _androidNativeHandoff,
       // Accept window.open off-screen. Rejecting it falls back to main-frame
       // ad navigations that break Streamed HLS (manifestParsingError).
       supportMultipleWindows: true,
@@ -1207,11 +1210,15 @@ class _LiveMatchesEmbedPlayerScreenState
     // A long center spinner sits on top of the embed play button.
     _loadingWatchdog = Timer(const Duration(seconds: 2), _clearLoading);
     if (_androidNativeHandoff) {
-      _androidHandoffWatchdog = Timer(const Duration(seconds: 28), () {
+      _androidHandoffWatchdog = Timer(const Duration(seconds: 22), () {
         if (!mounted || _androidHandoffStarted || _exiting) return;
         debugPrint('[LiveMatches] Android HLS sniff timed out');
-        ForjaToast.info('Could not open this stream');
-        unawaited(_exitPlayer());
+        unawaited(_androidSniffTimeoutFallback());
+      });
+      // Keep nudging play + polling resource URLs while the cover is up —
+      // JW embeds often only request HLS after a (muted) play attempt.
+      _androidSniffPoll = Timer.periodic(const Duration(seconds: 2), (_) {
+        unawaited(_pollAndroidSniffCandidates());
       });
     }
     HardwareKeyboard.instance.addHandler(_handleEmbedKeyEvent);
@@ -1223,11 +1230,128 @@ class _LiveMatchesEmbedPlayerScreenState
   void _onSniffedMediaUrl(String rawUrl) {
     if (!_androidNativeHandoff || _androidHandoffStarted || _exiting) return;
     final url = rawUrl.trim();
-    if (!_liveEmbedIsSniffableMediaUrl(url)) return;
+    if (url.isEmpty) return;
+    if (!_liveEmbedIsSniffableMediaUrl(url)) {
+      final low = url.toLowerCase();
+      if (low.contains('m3u8') ||
+          low.contains('strmd') ||
+          low.contains('/hls') ||
+          low.contains('playlist') ||
+          low.contains('/secure/')) {
+        debugPrint('[LiveMatches] sniff rejected: $url');
+      }
+      return;
+    }
     _androidHandoffStarted = true;
     _androidHandoffWatchdog?.cancel();
+    _androidSniffPoll?.cancel();
     debugPrint('[LiveMatches] Android sniffed media: $url');
     unawaited(_handOffToNativePlayer(url));
+  }
+
+  Future<void> _pollAndroidSniffCandidates() async {
+    if (!_androidNativeHandoff ||
+        _androidHandoffStarted ||
+        _exiting ||
+        !mounted) {
+      return;
+    }
+    final ctrl = _webViewController;
+    if (ctrl == null) return;
+    try {
+      await ctrl.evaluateJavascript(source: _autoplayJs);
+      await ctrl.evaluateJavascript(source: _embedMediaCommandJs('play'));
+      final raw = await ctrl.evaluateJavascript(source: _liveEmbedSniffPollJs);
+      if (raw is List) {
+        for (final item in raw) {
+          _onSniffedMediaUrl(item.toString());
+          if (_androidHandoffStarted) return;
+        }
+      } else if (raw is String && raw.isNotEmpty && raw != 'null') {
+        // Some platforms JSON-encode the JS array as a string.
+        final trimmed = raw.trim();
+        if (trimmed.startsWith('[')) {
+          try {
+            final decoded = jsonDecode(trimmed);
+            if (decoded is List) {
+              for (final item in decoded) {
+                _onSniffedMediaUrl(item.toString());
+                if (_androidHandoffStarted) return;
+              }
+            }
+          } catch (_) {
+            _onSniffedMediaUrl(trimmed);
+          }
+        } else {
+          _onSniffedMediaUrl(trimmed);
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Visible WebView sniff failed. On phone, try headless StreamExtractor.
+  /// On Android TV headless WebView is blocked — exit with a clear toast.
+  Future<void> _androidSniffTimeoutFallback() async {
+    if (_androidHandoffStarted || _exiting || _androidFallbackStarted) return;
+    _androidFallbackStarted = true;
+    _androidSniffPoll?.cancel();
+
+    final blockedOnTv = !kIsWeb &&
+        Platform.isAndroid &&
+        isAndroidTvHeadlessWebViewBlocked;
+    if (!blockedOnTv) {
+      debugPrint('[LiveMatches] Android sniff timeout → StreamExtractor');
+      try {
+        final extracted = await StreamExtractor().extract(
+          widget.embedUrl,
+          referer: widget.referer,
+          iframeWrapperBaseUrl: widget.referer,
+          timeout: const Duration(seconds: 22),
+          isCancelled: () => _exiting || !mounted,
+        );
+        if (extracted != null &&
+            extracted.url.isNotEmpty &&
+            mounted &&
+            !_exiting &&
+            !_androidHandoffStarted) {
+          _androidHandoffStarted = true;
+          final url = extracted.url;
+          // Already proxied by some extract paths — still run handoff headers
+          // when it looks like a raw CDN playlist.
+          if (url.contains('/hls-proxy')) {
+            debugPrint('[LiveMatches] Android extract → $url');
+            if (!mounted) return;
+            final title = widget.title;
+            final subtitle = widget.subtitle;
+            final label = widget.badgeLabel;
+            _exiting = true;
+            _mediaStopped = true;
+            await Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => IptvPtPlayerScreen(
+                  sources: [IptvPlaySource(url: url, label: label)],
+                  title: title,
+                  subtitle: subtitle,
+                ),
+              ),
+            );
+            return;
+          }
+          await _handOffToNativePlayer(url);
+          return;
+        }
+      } catch (e) {
+        debugPrint('[LiveMatches] Android extract fallback failed: $e');
+      }
+    } else {
+      debugPrint(
+        '[LiveMatches] Android TV sniff timeout (headless extract blocked)',
+      );
+    }
+
+    if (!mounted || _exiting || _androidHandoffStarted) return;
+    ForjaToast.info('Could not open this stream');
+    unawaited(_exitPlayer());
   }
 
   Future<void> _handOffToNativePlayer(String mediaUrl) async {
@@ -1235,6 +1359,8 @@ class _LiveMatchesEmbedPlayerScreenState
     _exiting = true;
     _mediaStopped = true;
     _loadingWatchdog?.cancel();
+    _androidHandoffWatchdog?.cancel();
+    _androidSniffPoll?.cancel();
     try {
       await _webViewController
           ?.evaluateJavascript(source: _embedMediaCommandJs('pause'));
@@ -1384,6 +1510,7 @@ class _LiveMatchesEmbedPlayerScreenState
     _loadingWatchdog?.cancel();
     _adWindowCloseTimer?.cancel();
     _androidHandoffWatchdog?.cancel();
+    _androidSniffPoll?.cancel();
     _backFocusNode.dispose();
     _playFocusNode.dispose();
     HardwareKeyboard.instance.removeHandler(_handleEmbedKeyEvent);
@@ -1636,6 +1763,21 @@ class _LiveMatchesEmbedPlayerScreenState
                             _onSniffedMediaUrl(resource.url.toString());
                           }
                         : null,
+                    shouldInterceptRequest: _androidNativeHandoff
+                        ? (ctrl, request) async {
+                            final u = request.url.toString();
+                            _onSniffedMediaUrl(u);
+                            // Observe only — never replace the response.
+                            return null;
+                          }
+                        : null,
+                    onReceivedHttpError: _androidNativeHandoff
+                        ? (ctrl, request, response) {
+                            final u = request.url.toString();
+                            // CORS / 403 on the playlist still exposes the URL.
+                            _onSniffedMediaUrl(u);
+                          }
+                        : null,
                     onLoadStart: (_, _) {
                       // Ad main-frame hijack attempts can fire load-start; do not
                       // setState after the player is ready (rebuild churn + WK crash).
@@ -1720,10 +1862,18 @@ class _LiveMatchesEmbedPlayerScreenState
                             ),
                             SizedBox(height: 16),
                             Text(
-                              'Connecting to stream…',
+                              'Opening stream…',
                               style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Handing off to the native player',
+                              style: TextStyle(
+                                color: Colors.white38,
+                                fontSize: 12,
                               ),
                             ),
                           ],

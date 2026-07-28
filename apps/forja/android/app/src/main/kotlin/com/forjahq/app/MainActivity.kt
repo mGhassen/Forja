@@ -46,6 +46,13 @@ class MainActivity : AudioServiceActivity() {
                     WebViewTvWorkaround.warmUpSoftwareWebView(applicationContext)
                     result.success(null)
                 }
+                "exitAppCompletely" -> {
+                    // Double Back on nav / remote Exit — leave leanback and
+                    // free process memory so the next open is a cold start.
+                    finishAndRemoveTask()
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }

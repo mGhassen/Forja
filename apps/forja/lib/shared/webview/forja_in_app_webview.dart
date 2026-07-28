@@ -20,6 +20,7 @@ class ForjaInAppWebView extends StatelessWidget {
     this.shouldOverrideUrlLoading,
     this.onCreateWindow,
     this.onLoadResource,
+    this.shouldInterceptRequest,
     this.onReceivedError,
     this.onReceivedHttpError,
     this.onConsoleMessage,
@@ -46,6 +47,10 @@ class ForjaInAppWebView extends StatelessWidget {
   )? onCreateWindow;
   final void Function(InAppWebViewController controller, LoadedResource resource)?
       onLoadResource;
+  final Future<WebResourceResponse?> Function(
+    InAppWebViewController controller,
+    WebResourceRequest request,
+  )? shouldInterceptRequest;
   final void Function(
     InAppWebViewController controller,
     WebResourceRequest request,
@@ -80,6 +85,7 @@ class ForjaInAppWebView extends StatelessWidget {
       shouldOverrideUrlLoading: shouldOverrideUrlLoading,
       onCreateWindow: onCreateWindow,
       onLoadResource: onLoadResource,
+      shouldInterceptRequest: shouldInterceptRequest,
       onReceivedError: onReceivedError,
       onReceivedHttpError: onReceivedHttpError,
       onConsoleMessage: onConsoleMessage,

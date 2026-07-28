@@ -68,6 +68,7 @@ import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/player/providers/player_prefs_providers.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 
 part 'mobile_player_glass.dart';

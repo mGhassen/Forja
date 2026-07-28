@@ -76,4 +76,19 @@ abstract final class PlatformChannel {
       debugPrint('[PlatformChannel] prepareWebViewForTv failed: $e');
     }
   }
+
+  /// Finish the task and kill the process so the next launch is cold.
+  /// Used by Android TV double Back (nav) / double Exit — not phone Back.
+  static Future<void> exitAppCompletely() async {
+    if (!Platform.isAndroid) {
+      await SystemNavigator.pop();
+      return;
+    }
+    try {
+      await _channel.invokeMethod<void>('exitAppCompletely');
+    } catch (e) {
+      debugPrint('[PlatformChannel] exitAppCompletely failed: $e');
+      await SystemNavigator.pop();
+    }
+  }
 }

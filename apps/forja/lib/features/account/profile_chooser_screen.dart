@@ -49,7 +49,7 @@ Future<bool> presentProfileChooser(
 }
 
 /// Netflix-style profile picker: Who's watching? + Manage profiles.
-class ProfileChooserScreen extends StatefulWidget {
+class ProfileChooserScreen extends ConsumerStatefulWidget {
   const ProfileChooserScreen({
     super.key,
     required this.onProfileSelected,
@@ -78,17 +78,15 @@ class ProfileChooserScreen extends StatefulWidget {
   final bool useLogoIntroSplash;
 
   @override
-  State<ProfileChooserScreen> createState() => _ProfileChooserScreenState();
+  ConsumerState<ProfileChooserScreen> createState() =>
+      _ProfileChooserScreenState();
 }
 
 enum _Screen { choose, manage, create, edit }
 
-class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
-  List<SyncProfile> _profiles = const [];
-  String? _activeProfileId;
+class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
   String? _editingId;
   String? _error;
-  bool _loading = true;
   bool _busy = false;
   late _Screen _screen;
 
@@ -101,7 +99,6 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     _screen = widget.initialMode == ProfileChooserMode.manage
         ? _Screen.manage
         : _Screen.choose;
-    _load();
   }
 
   @override
@@ -110,40 +107,11 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     super.dispose();
   }
 
-  Future<void> _load({bool openCreateWhenEmpty = true}) async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final profiles = await SyncService.instance.listProfiles();
-      final active = await SyncService.instance.activeProfile(
-        profiles: profiles,
-      );
-      if (!mounted) return;
-      setState(() {
-        _profiles = profiles;
-        _activeProfileId = active?.id;
-        _loading = false;
-        if (profiles.isEmpty && openCreateWhenEmpty) {
-          _screen = _Screen.create;
-          _editingId = null;
-          _nameCtrl.text = '';
-          _avatarKey = forjaProfileAvatarKeys.first;
-        }
-      });
-    } catch (e) {
-      if (!mounted) return;
-      final message = e is SyncProfileFetchException
-          ? e.message
-          : 'Could not load profiles. Check your connection and retry.';
-      setState(() {
-        _loading = false;
-        _error = message;
-        // Do not open create on a failed fetch - empty list is not trustworthy.
-      });
-    }
-  }
+  List<SyncProfile> get _profiles =>
+      ref.read(syncProfilesProvider).valueOrNull?.profiles ?? const [];
+
+  String? get _activeProfileId =>
+      ref.read(syncProfilesProvider).valueOrNull?.activeProfileId;
 
   Future<void> _select(SyncProfile profile, {Rect? originRect}) async {
     if (_busy) return;
@@ -214,7 +182,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     try {
       final selected = await SyncService.instance.selectProfile(profile.id);
       if (!selected) return false;
-      await ProviderScope.containerOf(context)
+      await ref
           .read(profileSettingsSyncProvider.notifier)
           .pullAndMergeForProfileSwitch();
       BootCache.clear();
@@ -279,6 +247,8 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
         // New profile must not inherit the previous profile's local prefs.
         await SyncDomainBridge.instance.seedNewProfileDefaults();
         if (!mounted) return;
+        await ref.read(syncProfilesProvider.notifier).reload();
+        if (!mounted) return;
         if (creatingFirst) {
           setState(() => _busy = false);
           await _select(profile);
@@ -290,6 +260,8 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
           name: _nameCtrl.text,
           avatarKey: _avatarKey,
         );
+        if (!mounted) return;
+        await ref.read(syncProfilesProvider.notifier).reload();
       }
       if (!mounted) return;
       setState(() {
@@ -297,7 +269,6 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
         _editingId = null;
         _busy = false;
       });
-      await _load(openCreateWhenEmpty: false);
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -322,12 +293,13 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     try {
       await SyncService.instance.deleteProfile(_editingId!);
       if (!mounted) return;
+      await ref.read(syncProfilesProvider.notifier).reload();
+      if (!mounted) return;
       setState(() {
         _screen = _Screen.manage;
         _editingId = null;
         _busy = false;
       });
-      await _load();
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -352,6 +324,30 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final profilesAsync = ref.watch(syncProfilesProvider);
+    final snap = profilesAsync.valueOrNull;
+    final profiles = snap?.profiles ?? const <SyncProfile>[];
+    final activeProfileId = snap?.activeProfileId;
+    final loading = profilesAsync.isLoading && !profilesAsync.hasValue;
+    final loadError = profilesAsync.hasError
+        ? (profilesAsync.error is SyncProfileFetchException
+            ? (profilesAsync.error as SyncProfileFetchException).message
+            : 'Could not load profiles. Check your connection and retry.')
+        : null;
+    final error = _error ?? loadError;
+
+    // Cold sign-in / last profile deleted - jump straight into profile
+    // creation. Mutating fields here (not via setState) is safe: we are
+    // already mid-build and the widget tree below reflects the new screen.
+    if (snap != null &&
+        snap.profiles.isEmpty &&
+        (_screen == _Screen.choose || _screen == _Screen.manage)) {
+      _screen = _Screen.create;
+      _editingId = null;
+      _nameCtrl.text = '';
+      _avatarKey = forjaProfileAvatarKeys.first;
+    }
+
     final showChromeBack = widget.showBack &&
         (_screen == _Screen.choose || _screen == _Screen.manage);
 
@@ -363,28 +359,28 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
             child: _screen == _Screen.create || _screen == _Screen.edit
                 ? _ProfileEditor(
                     title: _screen == _Screen.create
-                        ? (_profiles.isEmpty
+                        ? (profiles.isEmpty
                             ? 'Create your profile'
                             : 'Add profile')
                         : 'Edit profile',
                     nameController: _nameCtrl,
                     avatarKey: _avatarKey,
                     saving: _busy,
-                    canDelete: _screen == _Screen.edit && _profiles.length > 1,
-                    canCancel: _profiles.isNotEmpty || _screen == _Screen.edit,
+                    canDelete: _screen == _Screen.edit && profiles.length > 1,
+                    canCancel: profiles.isNotEmpty || _screen == _Screen.edit,
                     error: _error,
                     onAvatarChange: (key) => setState(() => _avatarKey = key),
                     onSave: _saveEditor,
                     onDelete: _deleteEditing,
                     onCancel: () => setState(() {
-                      _screen = _profiles.isEmpty
+                      _screen = profiles.isEmpty
                           ? _Screen.choose
                           : _Screen.manage;
                       _editingId = null;
                       _error = null;
                     }),
                   )
-                : _buildChooserBody(),
+                : _buildChooserBody(profiles, activeProfileId, loading, error),
           ),
           if (showChromeBack)
             Positioned(
@@ -405,12 +401,17 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
     );
   }
 
-  Widget _buildChooserBody() {
+  Widget _buildChooserBody(
+    List<SyncProfile> profiles,
+    String? activeProfileId,
+    bool loading,
+    String? error,
+  ) {
     final managing = _screen == _Screen.manage;
-    final activeIndex = _profiles.indexWhere((p) => p.id == _activeProfileId);
+    final activeIndex = profiles.indexWhere((p) => p.id == activeProfileId);
     final autofocusIndex = activeIndex >= 0 ? activeIndex : 0;
-    final showAdd = (managing || _profiles.isEmpty) &&
-        _profiles.length < SyncService.maxProfilesPerAccount;
+    final showAdd = (managing || profiles.isEmpty) &&
+        profiles.length < SyncService.maxProfilesPerAccount;
     final metrics = ProfileChooserMetrics.of(context);
 
     return LayoutBuilder(
@@ -449,11 +450,11 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                         ),
                         SizedBox(height: metrics.isTv ? 8 : 12),
                         Text(
-                          _loading
+                          loading
                               ? 'Loading profiles…'
-                              : _error != null
+                              : error != null
                                   ? 'Could not load who’s watching right now.'
-                                  : _profiles.isEmpty
+                                  : profiles.isEmpty
                                       ? 'Create a profile to sync settings on this device.'
                                       : managing
                                           ? 'Edit a profile or add a new one.'
@@ -465,18 +466,18 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                           ),
                         ),
                         SizedBox(height: metrics.sectionGap),
-                        if (_loading)
+                        if (loading)
                           Padding(
                             padding: EdgeInsets.all(metrics.isTv ? 28 : 48),
                             child: const CircularProgressIndicator(),
                           )
-                        else if (_error != null && _profiles.isEmpty)
+                        else if (error != null && profiles.isEmpty)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 24),
                             child: Column(
                               children: [
                                 Text(
-                                  _error!,
+                                  error,
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     color: Colors.redAccent,
@@ -490,7 +491,9 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                                   primary: true,
                                   onTap: _busy
                                       ? null
-                                      : () => _load(openCreateWhenEmpty: false),
+                                      : () => ref
+                                          .read(syncProfilesProvider.notifier)
+                                          .reload(),
                                 ),
                               ],
                             ),
@@ -501,16 +504,16 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                             spacing: metrics.tileSpacing,
                             runSpacing: metrics.tileSpacing,
                             children: [
-                              for (var i = 0; i < _profiles.length; i++)
+                              for (var i = 0; i < profiles.length; i++)
                                 _ProfileChoice(
-                                  profile: _profiles[i],
+                                  profile: profiles[i],
                                   metrics: metrics,
-                                  active: _profiles[i].id == _activeProfileId,
+                                  active: profiles[i].id == activeProfileId,
                                   managing: managing,
                                   enabled: !_busy,
                                   autofocus: !_busy && i == autofocusIndex,
                                   onTap: (originRect) {
-                                    final profile = _profiles[i];
+                                    final profile = profiles[i];
                                     if (managing) {
                                       _beginEdit(profile);
                                     } else {
@@ -522,15 +525,15 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                                 _AddProfileTile(
                                   metrics: metrics,
                                   enabled: !_busy,
-                                  autofocus: !_busy && _profiles.isEmpty,
+                                  autofocus: !_busy && profiles.isEmpty,
                                   onTap: _beginCreate,
                                 ),
                             ],
                           ),
-                        if (_error != null && _profiles.isNotEmpty) ...[
+                        if (error != null && profiles.isNotEmpty) ...[
                           const SizedBox(height: 20),
                           Text(
-                            _error!,
+                            error,
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               color: Colors.redAccent,
@@ -543,7 +546,9 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                             primary: true,
                             onTap: _busy
                                 ? null
-                                : () => _load(openCreateWhenEmpty: false),
+                                : () => ref
+                                    .read(syncProfilesProvider.notifier)
+                                    .reload(),
                           ),
                         ],
                         SizedBox(height: metrics.sectionGap),
@@ -552,7 +557,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                           spacing: 12,
                           runSpacing: 8,
                           children: [
-                            if (_profiles.isNotEmpty)
+                            if (profiles.isNotEmpty)
                               _ChooserAction(
                                 label: managing ? 'Done' : 'Manage profiles',
                                 onTap: _busy
@@ -564,7 +569,7 @@ class _ProfileChooserScreenState extends State<ProfileChooserScreen> {
                                           _error = null;
                                         }),
                               ),
-                            if (widget.showBack && _profiles.isNotEmpty)
+                            if (widget.showBack && profiles.isNotEmpty)
                               _ChooserAction(
                                 label: 'Account settings',
                                 onTap: _busy

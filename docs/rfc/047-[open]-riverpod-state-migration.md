@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **5 / 5** acceptance (foundation) · **4 / 4** acceptance (shared) · **7 / 7** acceptance (tabs) · **2 / 2** acceptance (details meta) · **2 / 2** acceptance (players status) · **5 / 6** acceptance (deep play/resolve) · **5 / 5** acceptance (settings panels) |
-| **Current slice** | Settings panels on Riverpod — resolve engine loops (R47-A26) remain |
+| **Progress** | **6 / 6** components · **5 / 5** acceptance (foundation) · **4 / 4** acceptance (shared) · **7 / 7** acceptance (tabs) · **2 / 2** acceptance (details meta) · **2 / 2** acceptance (players status) · **5 / 6** acceptance (deep play/resolve) · **5 / 5** acceptance (settings panels) · **7 / 7** acceptance (TV / leanback async) |
+| **Current slice** | TV restored-session cloud pull + leanback async on Riverpod — resolve engine loops (R47-A26) remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -111,6 +111,22 @@ Thin status shells (A17–A19) were not enough — play buttons, torrent/Stremio
 
 ---
 
+## Acceptance (TV / leanback async)
+
+TV shares phone/desktop Riverpod for tabs. This slice covers TV-critical residual loads. Focus/hover and hot playback ticks stay local.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 32 | R47-A32 | TV device-link + Who's watching profiles via `tvDeviceLinkSessionProvider` / `syncProfilesProvider` | ✅ |
+| 33 | R47-A33 | IPTV player boot prefs + EPG via `iptvPlayerBootPrefsProvider` / `iptvEpgEnabledProvider` (Consumer player) | ✅ |
+| 34 | R47-A34 | M3U playlists via `m3uPlaylistsProvider` | ✅ |
+| 35 | R47-A35 | Mobile/TV player auto-selection + subtitle prefs via `playerAutoSettingsProvider` / `playerSubtitlePrefsProvider` | ✅ |
+| 36 | R47-A36 | Home Trakt + Stremio residual feeds via `home_tracker_providers` | ✅ |
+| 37 | R47-A37 | Settings Lists (Trakt/MDBlist) via `external_lists_providers` | ✅ |
+| 38 | R47-A38 | Restored-session cold start pulls cloud `profile_settings` (DesktopStartupGate + Android/iOS first-frame force sync) before splash | ✅ |
+
+---
+
 ## Summary
 
 Migrate Forja’s Flutter host from ad-hoc `StatefulWidget` + `setState` / `ValueNotifier` async ownership to **Riverpod**, in phases. Cloud sync remains pull-based; Riverpod consumes applied local state. Web realtime is out of scope.
@@ -144,6 +160,11 @@ Migrate Forja’s Flutter host from ad-hoc `StatefulWidget` + `setState` / `Valu
 | Settings visibility | `lib/features/settings/providers/settings_visibility_provider.dart` |
 | Settings panels (playback, debrid, webstreamr, nav, trackers, …) | `lib/features/settings/providers/settings_panel_providers.dart` |
 | Stremio addons | `lib/features/settings/providers/stremio_addons_provider.dart` |
+| Sync profiles + TV device link | `lib/shared/sync/providers/sync_profiles_provider.dart` |
+| IPTV player boot / EPG / M3U | `lib/features/iptv/iptv/providers/iptv_player_providers.dart` |
+| Player auto + subtitle prefs | `lib/shared/player/providers/player_prefs_providers.dart` |
+| Home Trakt / Stremio rails | `lib/features/home/providers/home_tracker_providers.dart` |
+| External lists (Trakt / MDBlist) | `lib/features/my_list/providers/external_lists_providers.dart` |
 | Details meta / resolve | `lib/features/media/details/providers/details_providers.dart` |
 | Details play session (Direct / torrent / Stremio / Nuvio) | `lib/features/media/details/providers/details_play_session.dart` |
 | Player resolve status + sources session | `lib/shared/player/providers/player_resolve_providers.dart` |

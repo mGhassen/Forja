@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/account/account_entry_screen.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
@@ -9,6 +10,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
+import 'package:forja/shared/sync/providers/profile_settings_sync_provider.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
@@ -59,20 +61,21 @@ enum _StartupStage { update, account, profiles, splash }
 ///
 /// Desktop and Android TV: Guest and unconfigured builds skip account but still
 /// run the update gate before splash. Restored sessions skip account and go
-/// update → splash. Fresh sign-in → Who's watching → avatar
-/// [ProfileSwitchSplash] → app (no second logo intro). Guest / restored cold
-/// start still use the logo [SplashScreen]. Sign-out returns to account without
-/// re-running the update check.
-class DesktopStartupGate extends StatefulWidget {
+/// update → splash (with a forced cloud → local profile_settings pull — Who's
+/// watching is the only other path that merges settings). Fresh sign-in →
+/// Who's watching → avatar [ProfileSwitchSplash] → app (no second logo intro).
+/// Guest / restored cold start still use the logo [SplashScreen]. Sign-out
+/// returns to account without re-running the update check.
+class DesktopStartupGate extends ConsumerStatefulWidget {
   const DesktopStartupGate({super.key, required this.splash});
 
   final Widget splash;
 
   @override
-  State<DesktopStartupGate> createState() => _DesktopStartupGateState();
+  ConsumerState<DesktopStartupGate> createState() => _DesktopStartupGateState();
 }
 
-class _DesktopStartupGateState extends State<DesktopStartupGate> {
+class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
   _StartupStage _stage = _StartupStage.update;
   StreamSubscription<AuthState>? _authSub;
 
@@ -139,9 +142,15 @@ class _DesktopStartupGateState extends State<DesktopStartupGate> {
     }
     if (hasSession) {
       try {
-        await SyncService.instance.pullAccountFeatures();
         // Ensure active profile row is resolved before splash/shell paint.
         await SyncService.instance.activeProfile();
+        // Restored session skips Who's watching / ProfileSwitchSplash, so this
+        // is the only cold-start pull of nav, Stremio, IPTV, playback prefs,
+        // etc. into local cache (+ Riverpod revision invalidation).
+        // Account features are included inside pullAndMergeAll / syncFromCloud.
+        await ref
+            .read(profileSettingsSyncProvider.notifier)
+            .pullAndMergeAll();
       } on SyncProfileFetchException catch (e) {
         // Do not crash the startup gate - splash/shell still open; Settings
         // Profile shows Retry. Session may still be valid after a soft fail.

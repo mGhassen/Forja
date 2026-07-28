@@ -5,6 +5,7 @@ import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/tv/shell_tv_app_exit.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// Focus zone within a shell tab.
@@ -195,7 +196,8 @@ abstract final class ShellTvFocusCoordinator {
   static bool focusActiveNavTab() => ShellTvFocus.focusCurrentNavTab();
 
   /// TV remote Back: pop overlay/route first, else focus active nav tab.
-  /// Back on the nav rail restores page focus - never exits the app.
+  /// Back on the nav rail: first press arms exit, second within 2s quits.
+  /// Remote Exit (Escape) is separate — [handleShellExitKey].
   /// Returns true when consumed.
   ///
   /// Set [tvBackPolicyEnabled] from [ShellScaffold] when TV input policy is
@@ -215,6 +217,7 @@ abstract final class ShellTvFocusCoordinator {
     _lastBackHandledAt = null;
     _backStepPending = false;
     PlayerBackExitGate.resetForTest();
+    ShellTvAppExit.resetForTest();
   }
 
   static bool _consumeDuplicateBack() {
@@ -228,9 +231,13 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   /// Level-aware back - see [ShellNavigationLevels].
-  /// Always returns true when [tvBackPolicyEnabled] (never exits the app).
+  /// Always returns true when [tvBackPolicyEnabled] (never finishes via a
+  /// single Back — nav needs a second press; see [ShellTvAppExit]).
   static bool handleShellBackKey() {
     // Confirming exit / pop must not be swallowed by debounce.
+    // When exit is armed, still debounce same-press duplicates
+    // (HardwareKeyboard + didPopRoute); [ShellTvAppExit.minConfirmGap] also
+    // rejects instant confirms.
     if (!_backStepPending &&
         !PlayerBackExitGate.exitReady &&
         _consumeDuplicateBack()) {
@@ -242,12 +249,14 @@ abstract final class ShellTvFocusCoordinator {
     // any navigator pop - including IPTV/trailer menus while level=detail.
     if (dismissAnyPlayerChromeOverlay()) {
       PlayerBackExitGate.exitReady = false;
+      ShellTvAppExit.clear();
       return true;
     }
 
     // TV players: first Back focuses the Back control; second exits.
     if (tvBackPolicyEnabled && PlayerBackExitGate.tryFocusBackStay()) {
       _backStepPending = true;
+      ShellTvAppExit.clear();
       debugPrint('[NavBack] focused player back - stay in player');
       return true;
     }
@@ -260,9 +269,11 @@ abstract final class ShellTvFocusCoordinator {
     debugPrint('[NavBack] shell back target=$target');
     switch (target) {
       case ShellNavLevel.player:
+        ShellTvAppExit.clear();
         ShellNavigationLevels.popRootRoute();
         return true;
       case ShellNavLevel.detail:
+        ShellTvAppExit.clear();
         if (_tryFocusDetailBack()) {
           _backStepPending = true;
           return true;
@@ -270,10 +281,12 @@ abstract final class ShellTvFocusCoordinator {
         maybePopShellOverlay();
         return true;
       case ShellNavLevel.tabStack:
+        ShellTvAppExit.clear();
         if (ShellNavigationLevels.popTabStack()) return true;
         _focusActiveNavFromPage();
         return true;
       case ShellNavLevel.page:
+        ShellTvAppExit.clear();
         final tabId = ShellTvFocus.currentNavTabId ?? '';
         final pageBack = _tabPageBack[tabId];
         if (pageBack != null && pageBack()) {
@@ -283,10 +296,24 @@ abstract final class ShellTvFocusCoordinator {
         _focusActiveNavFromPage();
         return true;
       case ShellNavLevel.menu:
-        // Stay in-app: Back from the rail returns to the tab page.
-        _restorePageFromNav(ShellTvFocus.currentNavTabId ?? '');
+        // Double Back on the rail exits (first arms, second quits).
+        // Do not set _backStepPending — Android delivers Back twice per press
+        // (HardwareKeyboard + didPopRoute); shell debounce + minConfirmGap
+        // must swallow the duplicate so we do not quit on the first press.
+        ShellTvAppExit.armOrExit(message: 'Press Back again to exit');
         return true;
     }
+  }
+
+  /// Remote Exit (Escape on TV) — double-confirm quit from anywhere.
+  /// Distinct from Back; does not navigate.
+  static bool handleShellExitKey() {
+    if (!tvBackPolicyEnabled) {
+      return handleShellBackKey();
+    }
+    // Same double-delivery problem as Back — minConfirmGap absorbs it.
+    ShellTvAppExit.armOrExit(message: 'Press Exit again to exit');
+    return true;
   }
 
   static bool _handleLegacyBackKey() {
@@ -346,21 +373,30 @@ abstract final class ShellTvFocusCoordinator {
     final current = _focusedNavId() ?? ShellTvFocus.currentNavTabId;
     final idx = _navIndexForId(current);
     if (idx == null) return false;
-    if (idx >= _navOrder.length - 1) return false;
-    final next = _navNodeForId(_navIdAt(idx + 1));
-    if (next == null || !next.canRequestFocus) return false;
-    next.requestFocus();
-    return true;
+    // Skip holes (tab still in order but FocusNode not registered yet after
+    // async navbar rebuild) so ↑/↓ never appear to jump over menus.
+    for (var i = idx + 1; i < _navOrder.length; i++) {
+      final next = _navNodeForId(_navIdAt(i));
+      if (next != null && next.canRequestFocus) {
+        next.requestFocus();
+        return true;
+      }
+    }
+    return false;
   }
 
   static bool focusPrevNavItem() {
     final current = _focusedNavId() ?? ShellTvFocus.currentNavTabId;
     final idx = _navIndexForId(current);
     if (idx == null || idx <= 0) return false;
-    final prev = _navNodeForId(_navIdAt(idx - 1));
-    if (prev == null || !prev.canRequestFocus) return false;
-    prev.requestFocus();
-    return true;
+    for (var i = idx - 1; i >= 0; i--) {
+      final prev = _navNodeForId(_navIdAt(i));
+      if (prev != null && prev.canRequestFocus) {
+        prev.requestFocus();
+        return true;
+      }
+    }
+    return false;
   }
 
   static bool handleNavKey(LogicalKeyboardKey key) {
@@ -377,6 +413,7 @@ abstract final class ShellTvFocusCoordinator {
 
   /// Nav RIGHT - return to the active tab page without switching tabs.
   static bool _restorePageFromNav(String tabId) {
+    ShellTvAppExit.clear();
     restoreTabFocusAfterNav(_navRestoreTabId(tabId));
     return true;
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -11,7 +12,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 enum _TvLinkStep { welcome, connect, linking, error }
 
 /// Leanback account link: welcome → code/QR (not desktop login).
-class TvAccountLinkScreen extends StatefulWidget {
+class TvAccountLinkScreen extends ConsumerStatefulWidget {
   const TvAccountLinkScreen({
     super.key,
     required this.onAuthenticated,
@@ -22,10 +23,11 @@ class TvAccountLinkScreen extends StatefulWidget {
   final VoidCallback onContinueAsGuest;
 
   @override
-  State<TvAccountLinkScreen> createState() => _TvAccountLinkScreenState();
+  ConsumerState<TvAccountLinkScreen> createState() =>
+      _TvAccountLinkScreenState();
 }
 
-class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
+class _TvAccountLinkScreenState extends ConsumerState<TvAccountLinkScreen>
     with SingleTickerProviderStateMixin {
   _TvLinkStep _step = _TvLinkStep.welcome;
   TvDeviceLinkSession? _session;
@@ -88,7 +90,8 @@ class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
     _focus(_backFocus);
 
     try {
-      final session = await TvDeviceLinkAuth.create();
+      final session =
+          await ref.read(tvDeviceLinkSessionProvider.notifier).create();
       if (!mounted) return;
       setState(() {
         _session = session;

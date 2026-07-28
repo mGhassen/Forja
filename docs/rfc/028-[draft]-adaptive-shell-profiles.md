@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **4 / 4** acceptance (slice 1c TV coordinator) · **3 / 4** acceptance (slice 1d TV desktop visual parity) · **1 / 1** acceptance (slice 1e card motion) · **1 / 1** acceptance (slice 1f nav defaults) · **0 / 4** acceptance (slice 2 mobile) |
-| **Current slice** | Slice 1f shared navigation defaults shipped in code; slice 1d leanback manual smoke still blocks `[fixed]` ([issue 025](../issues/025-[open]-android-tv-leanback-smoke-unverified.md)) |
+| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **4 / 4** acceptance (slice 1c TV coordinator) · **3 / 4** acceptance (slice 1d TV desktop visual parity) · **1 / 1** acceptance (slice 1e card motion) · **1 / 1** acceptance (slice 1f nav defaults) · **1 / 1** acceptance (slice 1g TV app exit) · **0 / 4** acceptance (slice 2 mobile) |
+| **Current slice** | Slice 1g TV double Back / Exit quit shipped in code; slice 1d leanback manual smoke still blocks `[fixed]` ([issue 025](../issues/025-[open]-android-tv-leanback-smoke-unverified.md) · [issue 119](../issues/119-[open]-android-tv-double-back-exit.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -91,6 +91,14 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 28 | R28-A28 | Fresh installs enable Search, Home, Asian Drama, Anime, IPTV, Live Matches, and My List in that order on every profile; legacy untouched defaults migrate without overwriting custom layouts | ✅ |
+
+---
+
+## Acceptance (slice 1g — TV app exit)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 29 | R28-A29 | TV: Back on nav rail double-confirms quit; remote Exit (Escape) double-confirms quit from anywhere; Back elsewhere stays in-app ([issue 119](../issues/119-[open]-android-tv-double-back-exit.md)) | ✅ |
 
 ---
 

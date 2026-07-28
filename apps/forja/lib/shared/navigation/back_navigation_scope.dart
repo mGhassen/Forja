@@ -173,18 +173,33 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
     // Root of the app - stay put. Never SystemNavigator.pop() from Back.
   }
 
+  void _onExit() {
+    if (!mounted) return;
+    if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+      ShellTvFocusCoordinator.handleShellExitKey();
+      return;
+    }
+    _onBack();
+  }
+
   @override
   Widget build(BuildContext context) {
     Widget scope = Shortcuts(
       shortcuts: const {
-        SingleActivator(LogicalKeyboardKey.escape): _BackIntent(),
         SingleActivator(LogicalKeyboardKey.goBack): _BackIntent(),
+        SingleActivator(LogicalKeyboardKey.escape): _EscapeIntent(),
       },
       child: Actions(
         actions: {
           _BackIntent: CallbackAction<_BackIntent>(
             onInvoke: (_) {
               _onBack();
+              return null;
+            },
+          ),
+          _EscapeIntent: CallbackAction<_EscapeIntent>(
+            onInvoke: (_) {
+              _onExit();
               return null;
             },
           ),
@@ -224,4 +239,8 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
 
 class _BackIntent extends Intent {
   const _BackIntent();
+}
+
+class _EscapeIntent extends Intent {
+  const _EscapeIntent();
 }

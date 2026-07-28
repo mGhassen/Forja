@@ -224,6 +224,12 @@ class _ShellNavRailState extends State<ShellNavRail> {
   void didUpdateWidget(covariant ShellNavRail oldWidget) {
     super.didUpdateWidget(oldWidget);
     _syncNavOrder();
+    // Empty → first async navbar: allow cold-start focus again (earlier
+    // attempts failed while the rail had no items).
+    if (oldWidget.visibleIds.isEmpty && widget.visibleIds.isNotEmpty) {
+      _coldStartNavFocusDone = false;
+      _coldStartNavFocusScheduled = false;
+    }
   }
 
   void _syncNavOrder() {
@@ -240,6 +246,9 @@ class _ShellNavRailState extends State<ShellNavRail> {
       _coldStartNavFocusDone = true;
       return;
     }
+    // Wait until the async navbar has real tabs — otherwise we burn attempts
+    // on an empty rail and never focus after load.
+    if (widget.visibleIds.isEmpty) return;
     _coldStartNavFocusScheduled = true;
     var attempts = 0;
     void attempt() {
@@ -249,7 +258,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
         return;
       }
       attempts += 1;
-      if (attempts >= 5) {
+      if (attempts >= 8) {
         _coldStartNavFocusDone = true;
         return;
       }
@@ -288,6 +297,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                 final dest = navDestinations[id]!;
                 final selected = index == widget.selectedIndex;
                 return _ShellNavRailItem(
+                  key: ValueKey('nav-rail-$id'),
                   destination: dest,
                   selected: selected,
                   onTap: () => widget.onDestinationSelected(index),
@@ -379,6 +389,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                           Expanded(child: navArea),
                           if (settingsIndex != null)
                             _ShellNavRailItem(
+                              key: const ValueKey('nav-rail-settings'),
                               destination: navDestinations['settings']!,
                               label: showDesktopProfile ? _profileLabel : null,
                               icon: showDesktopProfile
@@ -619,6 +630,7 @@ class _AnimatedSaturation extends StatelessWidget {
 
 class _ShellNavRailItem extends StatefulWidget {
   const _ShellNavRailItem({
+    super.key,
     required this.destination,
     required this.selected,
     required this.onTap,
@@ -666,6 +678,18 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     super.initState();
     _focusNode = FocusNode(debugLabel: 'nav-${widget.destination.id}');
     ShellTvFocus.registerNav(widget.destination.id, _focusNode);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ShellNavRailItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Without ValueKey, Flutter can reuse this State for a different tab after
+    // an async navbar reload — keep the focus map keyed to the live id.
+    if (oldWidget.destination.id != widget.destination.id) {
+      ShellTvFocus.unregisterNav(oldWidget.destination.id, _focusNode);
+      ShellTvFocus.registerNav(widget.destination.id, _focusNode);
+      _focusNode.debugLabel = 'nav-${widget.destination.id}';
+    }
   }
 
   @override

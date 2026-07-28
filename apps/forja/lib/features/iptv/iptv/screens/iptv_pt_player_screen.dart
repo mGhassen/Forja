@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:media_kit/media_kit.dart';
@@ -25,6 +26,7 @@ import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/features/iptv/iptv/providers/iptv_player_providers.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
@@ -65,7 +67,7 @@ class IptvPlaySource {
 ///   • Multi-source rotation
 ///   • Backoff retries with healthy-streak reset
 ///   • Pretty responsive overlay UI
-class IptvPtPlayerScreen extends StatefulWidget {
+class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   final List<IptvPlaySource> sources;
   final String title;
   final String? subtitle;
@@ -125,10 +127,11 @@ class IptvPtPlayerScreen extends StatefulWidget {
   );
 
   @override
-  State<IptvPtPlayerScreen> createState() => _IptvPtPlayerScreenState();
+  ConsumerState<IptvPtPlayerScreen> createState() =>
+      _IptvPtPlayerScreenState();
 }
 
-class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
+class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     with WidgetsBindingObserver, _IptvPtPlayerEngine, _IptvPtPlayerUi {
   static int _nextExoViewId = 1;
 
@@ -192,7 +195,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
   late String _selectedGroupId;
   late String _currentChannelId;
   IptvGuideEpgCache? _epgCache;
-  bool _iptvEpgEnabled = true;
 
   // Watchdog state
   Timer? _watchdog;
@@ -319,9 +321,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     _currentChannelId = guide?.initialChannelId ?? '';
     final portal = guide?.xtreamPortal;
     if (portal != null) _epgCache = IptvGuideEpgCache(portal);
-    _iptvEpgEnabled = SettingsService.iptvEpgEnabledNotifier.value;
-    SettingsService.iptvEpgEnabledNotifier.addListener(_onIptvEpgPrefChanged);
-    unawaited(_loadIptvEpgPref());
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_onRemoteControlsActivity);
     if (_windowsSoftwareDecode) {
@@ -367,31 +366,21 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     return false;
   }
 
+  /// Boot prefs (engine choice + last volume + EPG toggle) come from
+  /// [iptvPlayerBootPrefsProvider] — Settings playback snapshot + cached volume.
   Future<void> _bootWithCachedVolume() async {
-    await _resolveBackendFromSettings();
+    final prefs = await ref.read(iptvPlayerBootPrefsProvider.future);
     if (_disposed || !mounted) return;
-    final v = await IptvStore.loadPlayerVolume();
-    if (_disposed || !mounted) return;
-    _volume = v;
+    _exoBackend = prefs.useExoBackend;
+    // Phone MediaKit: software-friendly. ATV MediaKit: HW + mediacodec_embed.
+    _androidMediaKitSafeMode =
+        !_exoBackend && !kIsWeb && Platform.isAndroid && !PlatformInfo.isAndroidTv;
+    _volume = prefs.volume;
     if (_exoBackend) {
       await _bootExoPlayer();
     } else {
       await _bootPlayer();
     }
-  }
-
-  /// Android IPTV follows Settings → Built-in engine; other platforms stay MediaKit.
-  Future<void> _resolveBackendFromSettings() async {
-    if (kIsWeb || !Platform.isAndroid) {
-      _exoBackend = false;
-      _androidMediaKitSafeMode = false;
-      return;
-    }
-    final engine = await SettingsService().getBuiltInPlayerEngine();
-    if (_disposed) return;
-    _exoBackend = engine == BuiltInPlayerEngine.exoPlayer;
-    // Phone MediaKit: software-friendly. ATV MediaKit: HW + mediacodec_embed.
-    _androidMediaKitSafeMode = !_exoBackend && !PlatformInfo.isAndroidTv;
   }
 
   /// Hot-swap Exo ↔ MediaKit from the in-player Player menu (Android).
@@ -440,9 +429,6 @@ class _IptvPtPlayerScreenState extends State<IptvPtPlayerScreen>
     PlayerBackExitGate.setTryFocusBack(null);
     ShellBus.leavePlayerSurface();
     _disposed = true;
-    SettingsService.iptvEpgEnabledNotifier.removeListener(
-      _onIptvEpgPrefChanged,
-    );
     WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onRemoteControlsActivity);
     _pipSub?.cancel();

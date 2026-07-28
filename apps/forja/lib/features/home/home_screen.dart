@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/home/providers/home_feed_providers.dart';
+import 'package:forja/features/home/providers/home_tracker_providers.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';

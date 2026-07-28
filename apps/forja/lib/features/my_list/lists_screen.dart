@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
@@ -8,83 +10,31 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
-class ListsScreen extends StatefulWidget {
+class ListsScreen extends ConsumerStatefulWidget {
   const ListsScreen({super.key, this.embedded = false});
 
   /// When true, render as a Settings hub body (no Scaffold / AppBar).
   final bool embedded;
 
   @override
-  State<ListsScreen> createState() => _ListsScreenState();
+  ConsumerState<ListsScreen> createState() => _ListsScreenState();
 }
 
-class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStateMixin {
+class _ListsScreenState extends ConsumerState<ListsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TraktService _trakt = TraktService();
-  final MdblistService _mdblist = MdblistService();
-
-  bool _isTraktLoggedIn = false;
-  bool _isMdblistConfigured = false;
-
-  List<Map<String, dynamic>> _traktLists = [];
-  List<Map<String, dynamic>> _mdblistLists = [];
-  List<Map<String, dynamic>> _mdblistTopLists = [];
-
-  bool _loadingTrakt = true;
-  bool _loadingMdblist = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadData();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadData() async {
-    final traktLoggedIn = await _trakt.isLoggedIn();
-    final mdblistConfigured = await _mdblist.isConfigured();
-    if (mounted) {
-      setState(() {
-        _isTraktLoggedIn = traktLoggedIn;
-        _isMdblistConfigured = mdblistConfigured;
-      });
-    }
-    if (traktLoggedIn) _loadTraktLists();
-    if (mdblistConfigured) {
-      _loadMdblistLists();
-      _loadMdblistTopLists();
-    }
-  }
-
-  Future<void> _loadTraktLists() async {
-    try {
-      final lists = await _trakt.getUserLists();
-      if (mounted) setState(() { _traktLists = lists; _loadingTrakt = false; });
-    } catch (_) {
-      if (mounted) setState(() => _loadingTrakt = false);
-    }
-  }
-
-  Future<void> _loadMdblistLists() async {
-    try {
-      final lists = await _mdblist.getUserLists();
-      if (mounted) setState(() { _mdblistLists = lists; _loadingMdblist = false; });
-    } catch (_) {
-      if (mounted) setState(() => _loadingMdblist = false);
-    }
-  }
-
-  Future<void> _loadMdblistTopLists() async {
-    try {
-      final lists = await _mdblist.getTopLists();
-      if (mounted) setState(() => _mdblistTopLists = lists);
-    } catch (_) {}
   }
 
   Future<void> _createTraktList() async {
@@ -165,7 +115,7 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
         privacy: privacy,
       );
       if (created != null) {
-        _loadTraktLists();
+        ref.invalidate(traktUserListsProvider);
         if (mounted) {
           ForjaToast.success('List created!');
         }
@@ -315,19 +265,43 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
     );
   }
 
+  static const _loadingSpinner =
+      Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
+
+  static const _loadErrorText = Center(
+    child: Text(
+      'Failed to load lists',
+      style: TextStyle(color: Colors.white54, fontSize: 16),
+      textAlign: TextAlign.center,
+    ),
+  );
+
   Widget _buildTraktTab() {
-    if (!_isTraktLoggedIn) {
-      return const Center(
-        child: Text(
-          'Login to Trakt in Settings → Accounts',
-          style: TextStyle(color: Colors.white54, fontSize: 16),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-    if (_loadingTrakt) {
-      return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
-    }
+    final gate = ref.watch(externalListsGateProvider);
+    return gate.when(
+      data: (gate) {
+        if (!gate.traktLoggedIn) {
+          return const Center(
+            child: Text(
+              'Login to Trakt in Settings → Accounts',
+              style: TextStyle(color: Colors.white54, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+        final lists = ref.watch(traktUserListsProvider);
+        return lists.when(
+          data: _traktListsBody,
+          loading: () => _loadingSpinner,
+          error: (_, _) => _loadErrorText,
+        );
+      },
+      loading: () => _loadingSpinner,
+      error: (_, _) => _loadErrorText,
+    );
+  }
+
+  Widget _traktListsBody(List<Map<String, dynamic>> traktLists) {
     return Column(
       children: [
         Padding(
@@ -342,17 +316,17 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
           ),
         ),
         Expanded(
-          child: _traktLists.isEmpty
+          child: traktLists.isEmpty
             ? const Center(child: Text('No lists yet', style: TextStyle(color: Colors.white38)))
             : ListView.separated(
                 padding: EdgeInsets.zero,
-                itemCount: _traktLists.length,
+                itemCount: traktLists.length,
                 separatorBuilder: (_, _) => Divider(
                   height: 1,
                   color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
                 ),
                 itemBuilder: (context, index) {
-                  final list = _traktLists[index];
+                  final list = traktLists[index];
                   final name = list['name']?.toString() ?? 'Unnamed';
                   final desc = list['description']?.toString() ?? '';
                   final itemCount = list['item_count'] as int? ?? 0;
@@ -374,29 +348,42 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
   }
 
   Widget _buildMdblistTab() {
-    if (!_isMdblistConfigured) {
-      return const Center(
-        child: Text(
-          'Configure MDBlist in Settings → Accounts',
-          style: TextStyle(color: Colors.white54, fontSize: 16),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-    if (_loadingMdblist) {
-      return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
-    }
-    return _mdblistLists.isEmpty
+    final gate = ref.watch(externalListsGateProvider);
+    return gate.when(
+      data: (gate) {
+        if (!gate.mdblistConfigured) {
+          return const Center(
+            child: Text(
+              'Configure MDBlist in Settings → Accounts',
+              style: TextStyle(color: Colors.white54, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+        final lists = ref.watch(mdblistUserListsProvider);
+        return lists.when(
+          data: _mdblistListsBody,
+          loading: () => _loadingSpinner,
+          error: (_, _) => _loadErrorText,
+        );
+      },
+      loading: () => _loadingSpinner,
+      error: (_, _) => _loadErrorText,
+    );
+  }
+
+  Widget _mdblistListsBody(List<Map<String, dynamic>> mdblistLists) {
+    return mdblistLists.isEmpty
       ? const Center(child: Text('No lists yet', style: TextStyle(color: Colors.white38)))
       : ListView.separated(
           padding: EdgeInsets.zero,
-          itemCount: _mdblistLists.length,
+          itemCount: mdblistLists.length,
           separatorBuilder: (_, _) => Divider(
             height: 1,
             color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
           ),
           itemBuilder: (context, index) {
-            final list = _mdblistLists[index];
+            final list = mdblistLists[index];
             final name = list['name']?.toString() ?? 'Unnamed';
             final itemCount = list['items'] as int? ?? 0;
 
@@ -412,27 +399,40 @@ class _ListsScreenState extends State<ListsScreen> with SingleTickerProviderStat
   }
 
   Widget _buildTopListsTab() {
-    if (!_isMdblistConfigured) {
-      return const Center(
-        child: Text(
-          'Configure MDBlist in Settings → Accounts',
-          style: TextStyle(color: Colors.white54, fontSize: 16),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-    if (_mdblistTopLists.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
-    }
+    final gate = ref.watch(externalListsGateProvider);
+    return gate.when(
+      data: (gate) {
+        if (!gate.mdblistConfigured) {
+          return const Center(
+            child: Text(
+              'Configure MDBlist in Settings → Accounts',
+              style: TextStyle(color: Colors.white54, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+        final lists = ref.watch(mdblistTopListsProvider);
+        return lists.when(
+          data: _topListsBody,
+          loading: () => _loadingSpinner,
+          error: (_, _) => _loadErrorText,
+        );
+      },
+      loading: () => _loadingSpinner,
+      error: (_, _) => _loadErrorText,
+    );
+  }
+
+  Widget _topListsBody(List<Map<String, dynamic>> topLists) {
     return ListView.separated(
       padding: EdgeInsets.zero,
-      itemCount: _mdblistTopLists.length,
+      itemCount: topLists.length,
       separatorBuilder: (_, _) => Divider(
         height: 1,
         color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
       ),
       itemBuilder: (context, index) {
-        final list = _mdblistTopLists[index];
+        final list = topLists[index];
         final name = list['name']?.toString() ?? 'Unnamed';
         final itemCount = list['items'] as int? ?? 0;
         final likes = list['likes'] as int? ?? 0;

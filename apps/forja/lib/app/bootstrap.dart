@@ -284,6 +284,16 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     }
     // ⌘Q / Quit menu never hits onWindowClose - AppKit calls prepareQuit.
     MacOsShellChannel.listenPrepareQuit(_runDesktopQuit);
+    // Mobile/TV often launch already in [AppLifecycleState.resumed], so
+    // [didChangeAppLifecycleState] never fires for the first frame. Desktop
+    // StartupGate still does a forced pull for restored sessions; this covers
+    // mid-session returns and any race where resume was missed.
+    if (Platform.isAndroid || Platform.isIOS) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(SyncService.instance.refreshSession());
+        unawaited(SyncDomainBridge.instance.syncFromCloud(force: true));
+      });
+    }
   }
 
   @override

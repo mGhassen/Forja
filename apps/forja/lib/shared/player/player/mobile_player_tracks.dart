@@ -332,21 +332,15 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
   }
 
   Future<void> _loadSubtitlePrefs() async {
-    final s = SettingsService();
-    final size = await s.getSubSize();
-    final color = await s.getSubColor();
-    final bgOp = await s.getSubBgOpacity();
-    final bold = await s.getSubBold();
-    final padding = await s.getSubBottomPadding();
-    final font = await s.getSubFont();
+    final prefs = await ref.read(playerSubtitlePrefsProvider(false).future);
     if (mounted) {
       setState(() {
-        _s._subtitleSize = size;
-        _s._subtitleColor = Color(color);
-        _s._subtitleBgOpacity = bgOp;
-        _s._subtitleBold = bold;
-        _s._subtitleBottomPadding = padding;
-        _s._subtitleFont = font;
+        _s._subtitleSize = prefs.size;
+        _s._subtitleColor = Color(prefs.colorArgb);
+        _s._subtitleBgOpacity = prefs.bgOpacity;
+        _s._subtitleBold = prefs.bold;
+        _s._subtitleBottomPadding = prefs.bottomPadding;
+        _s._subtitleFont = prefs.font;
       });
     }
   }

@@ -48,7 +48,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [023-[fixed]-…](fixed/023-[fixed]-app-shell-redesign.md) | App shell redesign | v0.8.x | fixed | Complete · 5/5 · 18/18 | [0.8.1](../backlog/done/0.8.1-[done].md) |
 | [025-[fixed]-…](fixed/025-[fixed]-flat-cinematic-shell.md) | Flat cinematic shell & Home hero | v1.0.0 | fixed | Complete · 4/4 · 37/37 · 3/3 deferred | [1.0.0](../backlog/done/1.0.0-[done].md) |
 | [027-[draft]-…](027-[draft]-iptv-channel-guide.md) | IPTV in-player channel guide | v1.0.2 | draft | 4/4 · 1/4 | [1.0.2](../backlog/1.0.2-[draft].md) |
-| [028-[draft]-…](028-[draft]-adaptive-shell-profiles.md) | Adaptive shell profiles | v1.0.1 | draft | 6/6 · 10/10 · 4/4 · 4/4 · 3/4 · 1/1 · 1/1 · 0/4 ⏭️ | [1.0.1](../backlog/1.0.1-[open].md) — leanback blocks `[fixed]` |
+| [028-[draft]-…](028-[draft]-adaptive-shell-profiles.md) | Adaptive shell profiles | v1.0.1 | draft | 6/6 · 10/10 · 4/4 · 4/4 · 3/4 · 1/1 · 1/1 · 1/1 · 0/4 ⏭️ | [1.0.1](../backlog/1.0.1-[open].md) — leanback blocks `[fixed]` |
 | [029-[open]-…](029-[open]-dual-built-in-playback-engines.md) | Dual built-in engines (MediaKit + ExoPlayer) | v1.0.2 | open | 4/4 · 1/8 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [030-[open]-…](030-[open]-playback-selection-engine.md) | Playback selection engine | v1.0.2 | open | 4/4 · 16/16 · 0/5 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [031-[open]-…](031-[open]-source-engine-middleware.md) | Source Engine middleware | v1.0.2 | open | 3/3 · 8/8 · 4/4 · 2/10 | [1.0.2](../backlog/1.0.2-[draft].md) → [1.0.3](../backlog/1.0.3-[draft].md) |
@@ -67,7 +67,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [044-[open]-…](044-[open]-provider-identity-playback.md) | Provider-identity playback (end CDN host chase) | v1.0.1 | open | 11/11 · 21/21 unit · 0/3 manual | [1.0.1](../backlog/1.0.1-[open].md) |
 | [045-[open]-…](045-[open]-stream-open-pipeline.md) | Stream open pipeline middleware | v1.0.1 | open | 6/6 · 6/8 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [046-[open]-…](046-[open]-android-tv-device-link.md) | Android TV device-code / QR account link | v1.0.7 | open | 5/5 · 0/8 | [1.0.7](../backlog/1.0.7-[draft].md) |
-| [047-[open]-…](047-[open]-riverpod-state-migration.md) | Riverpod state / async loading migration | v1.x | open | 6/6 · … · **5/6** deep · **5/5** settings | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
+| [047-[open]-…](047-[open]-riverpod-state-migration.md) | Riverpod state / async loading migration | v1.x | open | 6/6 · … · **5/5** settings · **7/7** TV | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
 | [048-[fixed]-…](fixed/048-[fixed]-tv-focus-graph.md) | TV focus graph + screen recipes | v1.0.1 | fixed | Complete · 6/6 · 6/6 · 3/3 · 2/2 · 4/4 · 2/2 · 1/1 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S132 ✅ |
 
 ## Related

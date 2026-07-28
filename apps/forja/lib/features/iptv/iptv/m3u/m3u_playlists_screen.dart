@@ -6,9 +6,11 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
+import 'package:forja/features/iptv/iptv/providers/iptv_player_providers.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/shared/design/design.dart';
@@ -21,25 +23,18 @@ import 'm3u_models.dart';
 import 'm3u_parser.dart';
 import 'm3u_store.dart';
 
-class M3uPlaylistsScreen extends StatefulWidget {
+class M3uPlaylistsScreen extends ConsumerStatefulWidget {
   const M3uPlaylistsScreen({super.key});
 
   @override
-  State<M3uPlaylistsScreen> createState() => _M3uPlaylistsScreenState();
+  ConsumerState<M3uPlaylistsScreen> createState() =>
+      _M3uPlaylistsScreenState();
 }
 
-class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
-  List<M3uPlaylist> _playlists = const [];
-  bool _loading = true;
+class _M3uPlaylistsScreenState extends ConsumerState<M3uPlaylistsScreen> {
   bool _busy = false;
   String? _error;
   final FocusNode _addUrlFocus = FocusNode(debugLabel: 'm3u-add-url');
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
 
   @override
   void dispose() {
@@ -47,25 +42,21 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
     super.dispose();
   }
 
-  Future<void> _load() async {
-    final list = await M3uStore.loadAll();
-    if (!mounted) return;
-    setState(() {
-      _playlists = list;
-      _loading = false;
+  /// Focus "Add from URL" once the initial load lands with no playlists.
+  void _focusAddUrlIfEmpty(List<M3uPlaylist> list) {
+    if (list.isNotEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!iptvUseTvFocus(context)) return;
+      if (_addUrlFocus.canRequestFocus) _addUrlFocus.requestFocus();
     });
-    if (list.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        if (!iptvUseTvFocus(context)) return;
-        if (_addUrlFocus.canRequestFocus) _addUrlFocus.requestFocus();
-      });
-    }
   }
 
-  Future<void> _persist() async {
-    await M3uStore.saveAll(_playlists);
-  }
+  List<M3uPlaylist> get _currentPlaylists =>
+      ref.read(m3uPlaylistsProvider).valueOrNull ?? const [];
+
+  Future<void> _save(List<M3uPlaylist> list) =>
+      ref.read(m3uPlaylistsProvider.notifier).save(list);
 
   // ──────────────────────────────────────────────────────────────────────
   // Add by URL
@@ -148,10 +139,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
                           channels: channels,
                         );
                         if (!mounted) return;
-                        setState(() {
-                          _playlists = [playlist, ..._playlists];
-                        });
-                        await _persist();
+                        await _save([playlist, ..._currentPlaylists]);
                         if (ctx.mounted) Navigator.of(ctx).pop();
                       } catch (e) {
                         setLocal(() {
@@ -206,11 +194,8 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
         channels: channels,
       );
       if (!mounted) return;
-      setState(() {
-        _playlists = [playlist, ..._playlists];
-        _error = null;
-      });
-      await _persist();
+      setState(() => _error = null);
+      await _save([playlist, ..._currentPlaylists]);
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = _friendlyError(e));
@@ -233,13 +218,10 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
         updatedAt: DateTime.now().millisecondsSinceEpoch,
       );
       if (!mounted) return;
-      setState(() {
-        _playlists = [
-          for (final x in _playlists) x.id == p.id ? updated : x,
-        ];
-        _error = null;
-      });
-      await _persist();
+      setState(() => _error = null);
+      await _save([
+        for (final x in _currentPlaylists) x.id == p.id ? updated : x,
+      ]);
       if (mounted) {
         ForjaToast.info('Refreshed "${p.name}" - ${channels.length} channels');
       }
@@ -282,10 +264,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
     );
     if (ok != true) return;
     if (!mounted) return;
-    setState(() {
-      _playlists = _playlists.where((x) => x.id != p.id).toList();
-    });
-    await _persist();
+    await _save(_currentPlaylists.where((x) => x.id != p.id).toList());
   }
 
   // ──────────────────────────────────────────────────────────────────────
@@ -317,6 +296,16 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
   // ──────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final playlistsAsync = ref.watch(m3uPlaylistsProvider);
+    ref.listen<AsyncValue<List<M3uPlaylist>>>(m3uPlaylistsProvider,
+        (prev, next) {
+      final list = next.valueOrNull;
+      if (list != null && (prev == null || prev.isLoading)) {
+        _focusAddUrlIfEmpty(list);
+      }
+    });
+    final playlists = playlistsAsync.valueOrNull ?? const <M3uPlaylist>[];
+    final loading = playlistsAsync.isLoading && !playlistsAsync.hasValue;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
@@ -324,16 +313,16 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              _buildAppBar(),
+              _buildAppBar(playlists),
               if (_error != null) _buildErrorBanner(),
               Expanded(
-                child: _loading
+                child: loading
                     ? Center(
                         child: CircularProgressIndicator(
                             color: IptvShellStyle.accent))
-                    : _playlists.isEmpty
+                    : playlists.isEmpty
                         ? _buildEmpty()
-                        : _buildList(),
+                        : _buildList(playlists),
               ),
               _buildBottomBar(),
             ],
@@ -343,7 +332,7 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(List<M3uPlaylist> playlists) {
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 12, 12, 12),
       decoration: BoxDecoration(
@@ -364,9 +353,9 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
                   style: IptvShellStyle.pageTitle.copyWith(fontSize: 28),
                 ),
                 Text(
-                  _playlists.isEmpty
+                  playlists.isEmpty
                       ? 'No playlists yet'
-                      : '${_playlists.length} playlist${_playlists.length == 1 ? "" : "s"}',
+                      : '${playlists.length} playlist${playlists.length == 1 ? "" : "s"}',
                   style: GoogleFonts.plusJakartaSans(
                       color: Colors.white60, fontSize: 12),
                 ),
@@ -441,18 +430,18 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
     );
   }
 
-  Widget _buildList() {
+  Widget _buildList(List<M3uPlaylist> playlists) {
     return iptvCatalogRow(
       rowId: 'm3u-playlists',
       sortOrder: 0,
-      itemCount: _playlists.length,
+      itemCount: playlists.length,
       orientation: ShellTvRowOrientation.vertical,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        itemCount: _playlists.length,
+        itemCount: playlists.length,
         separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (_, i) {
-          final p = _playlists[i];
+          final p = playlists[i];
           return _PlaylistCard(
             playlist: p,
             listIndex: i,

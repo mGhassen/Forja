@@ -37,22 +37,15 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
   }
 
   Future<void> _loadPlayerAutoSettings() async {
-    final settings = SettingsService();
-    final autoServer = await settings.getPlayerAutoServer();
-    final autoSource = await settings.getPlayerAutoSource();
-    final autoAudio = await settings.getPlayerAutoAudio();
-    final autoSubtitle = await settings.getPlayerAutoSubtitle();
-    // Hydrate live notifiers used by skip/next episode and the Episodes panel.
-    await settings.getAutoNextEpisode();
-    await settings.getAutoSkipIntro();
+    final settings = await ref.read(playerAutoSettingsProvider.future);
     if (!mounted) return;
     // Respect Auto toggles only. Do not lock because an extract already exists
     // (green Play / cache) - that made dead CDNs hit "no auto failover".
     setState(() {
-      _s._providerPinned = !autoServer;
-      _s._sourcePinned = !autoSource;
-      _s._audioPinned = !autoAudio;
-      _s._subtitlePinned = !autoSubtitle;
+      _s._providerPinned = settings.providerPinned;
+      _s._sourcePinned = settings.sourcePinned;
+      _s._audioPinned = settings.audioPinned;
+      _s._subtitlePinned = settings.subtitlePinned;
     });
   }
 

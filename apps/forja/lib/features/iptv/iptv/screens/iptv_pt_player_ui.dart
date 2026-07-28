@@ -1,6 +1,6 @@
 part of 'iptv_pt_player_screen.dart';
 
-mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
+mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   _IptvPtPlayerScreenState get _s => this as _IptvPtPlayerScreenState;
 
   void _closeGuideAndFocusPlayer() {
@@ -62,20 +62,9 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     return null;
   }
 
-  Future<void> _loadIptvEpgPref() async {
-    final enabled = await SettingsService().isIptvEpgEnabled();
-    SettingsService.iptvEpgEnabledNotifier.value = enabled;
-  }
-
-  void _onIptvEpgPrefChanged() {
-    if (!mounted) return;
-    setState(
-      () => _s._iptvEpgEnabled = SettingsService.iptvEpgEnabledNotifier.value,
-    );
-  }
-
   Future<List<EpgEntry>>? _floatingEpgFuture() {
-    if (!_s._iptvEpgEnabled || _s._epgCache == null) return null;
+    final epgEnabled = ref.watch(iptvEpgEnabledProvider);
+    if (!epgEnabled || _s._epgCache == null) return null;
     final stream = _currentGuideChannel()?.xtreamStream;
     if (stream == null) return null;
     return _s._epgCache!.load(stream, limit: 8);

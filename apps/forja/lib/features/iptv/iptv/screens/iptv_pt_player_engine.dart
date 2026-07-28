@@ -1,6 +1,6 @@
 part of 'iptv_pt_player_screen.dart';
 
-mixin _IptvPtPlayerEngine on State<IptvPtPlayerScreen> {
+mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   _IptvPtPlayerScreenState get _s => this as _IptvPtPlayerScreenState;
 
   bool get _useSoftwareDecode =>

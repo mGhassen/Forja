@@ -147,6 +147,10 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   Future<void> _reloadHomeFeed() async {
     if (!mounted) return;
     refreshHomeFeed(ref);
+    ref.invalidate(homeStremioCatalogsProvider);
+    ref.invalidate(homeTraktRecommendationsProvider);
+    ref.invalidate(homeTraktUpcomingShowsProvider);
+    ref.invalidate(homeTraktUpcomingMoviesProvider);
     setState(() => _resetHomeCategoryFeeds());
     await _loadStremioCatalogs();
     // Re-roll "Because you watched" on every Home refresh.
@@ -438,38 +442,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
       if (!await TraktService().isLoggedIn()) return;
       if (!mounted || !shellTabVisible || workGen != _s._homeBgWorkGen) return;
       if (mounted) setState(() => _s._traktRecsLoading = true);
-      // Fetch movie + show recommendations and convert via TMDB
-      final movieRecs = await TraktService().getRecommendations('movies');
-      if (!mounted || workGen != _s._homeBgWorkGen) return;
-      final showRecs = await TraktService().getRecommendations('shows');
-      if (!mounted || workGen != _s._homeBgWorkGen) return;
-      final all = [...movieRecs, ...showRecs];
-      final entries = all.take(20).map((rec) {
-        final item = rec['movie'] ?? rec['show'];
-        if (item == null) return null;
-        final ids = item['ids'] as Map<String, dynamic>?;
-        final tmdbId = ids?['tmdb'] as int?;
-        if (tmdbId == null) return null;
-        final type = rec.containsKey('show') ? 'tv' : 'movie';
-        return (tmdbId: tmdbId, type: type);
-      }).whereType<({int tmdbId, String type})>().toList();
-
-      // Parallel TMDB lookups in batches of 5
-      final movies = <Movie>[];
-      for (var i = 0; i < entries.length; i += 5) {
-        if (!mounted || workGen != _s._homeBgWorkGen) return;
-        final batch = entries.skip(i).take(5);
-        final results = await Future.wait(
-          batch.map((e) async {
-            try {
-              return e.type == 'tv'
-                  ? await _s._api.getTvDetails(e.tmdbId)
-                  : await _s._api.getMovieDetails(e.tmdbId);
-            } catch (_) { return null; }
-          }),
-        );
-        movies.addAll(results.whereType<Movie>());
-      }
+      final movies = await ref.read(homeTraktRecommendationsProvider.future);
       if (mounted && workGen == _s._homeBgWorkGen && movies.isNotEmpty) {
         setState(() => _s._traktRecommendations = movies);
       }
@@ -486,18 +459,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
       if (!await TraktService().isLoggedIn()) return;
       if (!mounted || !shellTabVisible || workGen != _s._homeBgWorkGen) return;
       if (mounted) setState(() => _s._traktShowsLoading = true);
-      final shows = await TraktService().getCalendarShows(days: 14);
-      if (!mounted || workGen != _s._homeBgWorkGen) return;
-      final movies = <Movie>[];
-      for (final entry in shows.take(20)) {
-        if (!mounted || workGen != _s._homeBgWorkGen) return;
-        final show = entry['show'] as Map<String, dynamic>? ?? {};
-        final tmdbId = (show['ids'] as Map<String, dynamic>?)?['tmdb'] as int?;
-        if (tmdbId == null) continue;
-        try {
-          movies.add(await _s._api.getTvDetails(tmdbId));
-        } catch (_) {}
-      }
+      final movies = await ref.read(homeTraktUpcomingShowsProvider.future);
       if (mounted && workGen == _s._homeBgWorkGen && movies.isNotEmpty) {
         setState(() => _s._traktUpcomingShows = movies);
       }
@@ -514,18 +476,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
       if (!await TraktService().isLoggedIn()) return;
       if (!mounted || !shellTabVisible || workGen != _s._homeBgWorkGen) return;
       if (mounted) setState(() => _s._traktMoviesLoading = true);
-      final entries = await TraktService().getCalendarMovies(days: 30);
-      if (!mounted || workGen != _s._homeBgWorkGen) return;
-      final movies = <Movie>[];
-      for (final entry in entries.take(20)) {
-        if (!mounted || workGen != _s._homeBgWorkGen) return;
-        final movie = entry['movie'] as Map<String, dynamic>? ?? {};
-        final tmdbId = (movie['ids'] as Map<String, dynamic>?)?['tmdb'] as int?;
-        if (tmdbId == null) continue;
-        try {
-          movies.add(await _s._api.getMovieDetails(tmdbId));
-        } catch (_) {}
-      }
+      final movies = await ref.read(homeTraktUpcomingMoviesProvider.future);
       if (mounted && workGen == _s._homeBgWorkGen && movies.isNotEmpty) {
         setState(() => _s._traktUpcomingMovies = movies);
       }
@@ -568,6 +519,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
     // Clear stale data and schedule a rebuild so the old sliders disappear
     // immediately while the new ones load.
     _s._stremioCatalogGen++;
+    ref.invalidate(homeStremioCatalogsProvider);
     setState(() {
       _s._stremioCatalogs = [];
       _s._catalogItems.clear();
@@ -602,9 +554,14 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
 
   Future<void> _loadStremioCatalogs() async {
     final gen = ++_s._stremioCatalogGen;
-    final stremioOn = await SettingsService().isPlaySourceStremioEnabled();
+    List<Map<String, dynamic>> catalogs;
+    try {
+      catalogs = await ref.read(homeStremioCatalogsProvider.future);
+    } catch (_) {
+      catalogs = const [];
+    }
     if (!mounted || gen != _s._stremioCatalogGen) return;
-    if (!stremioOn) {
+    if (catalogs.isEmpty) {
       if (mounted && gen == _s._stremioCatalogGen) {
         setState(() {
           _s._stremioCatalogs = [];
@@ -620,20 +577,6 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
       setState(() => _s._stremioCatalogsLoading = true);
     }
     try {
-      final catalogs = await _s._stremio.getAllCatalogs();
-      if (!mounted || gen != _s._stremioCatalogGen || !shellTabVisible) return;
-      if (catalogs.isEmpty) {
-        debugPrint(
-          '[HomeScreen] No Stremio catalogs (install Cinemeta + ensure manifest hydrated)',
-        );
-        setState(() {
-          _s._stremioCatalogs = [];
-          _s._catalogItems.clear();
-          _s._catalogsLoaded = true;
-        });
-        return;
-      }
-
       // Browse rails only - skip search-only / genre-required catalogs.
       final Map<String, List<Map<String, dynamic>>> byAddon = {};
       for (final c in catalogs) {
