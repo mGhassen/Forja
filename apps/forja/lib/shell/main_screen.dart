@@ -139,6 +139,40 @@ class _MainScreenState extends ConsumerState<MainScreen>
     }
   }
 
+  /// Player-surface purge: keep only the shell tab under the player (the
+  /// screen that opened it). Force-evict every other mounted tab — including
+  /// [home] and tabs that normally block LRU — so decode gets max RAM/GPU.
+  void _forceEvictSiblingTab(String id) {
+    final current = _currentTabId;
+    if (current != null && id == current) return;
+    if (!_mountedTabIds.contains(id)) return;
+
+    _mountedTabIds.remove(id);
+    _tabCache.remove(id);
+    _tabLru.remove(id);
+    if (id != 'search') {
+      _tabKeys.remove(id);
+    }
+    if (kDebugMode) {
+      debugPrint('[MainScreen] Force-evicted sibling tab for player: $id');
+    }
+  }
+
+  void _purgeMountedTabsForPlayer() {
+    final victims = List<String>.from(_mountedTabIds);
+    var changed = false;
+    for (final id in victims) {
+      final before = _mountedTabIds.length;
+      _forceEvictSiblingTab(id);
+      if (_mountedTabIds.length < before) changed = true;
+    }
+    if (changed && mounted) setState(() {});
+  }
+
+  void _onPlayerResourcePurge() {
+    _purgeMountedTabsForPlayer();
+  }
+
   void _evictTabsNotInNavbar(Iterable<String> visible) {
     final allowed = visible.toSet();
     for (final id in List<String>.from(_mountedTabIds)) {
@@ -252,6 +286,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.shellChromeRevision.addListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
     ShellBus.playerSurfaceActive.addListener(_onShellChromeChanged);
+    ShellBus.playerResourcePurgeRevision.addListener(_onPlayerResourcePurge);
     MacOsShellChannel.listen(onFind: _onFindShortcut);
 
     _loadNavbarConfig();
@@ -421,6 +456,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.shellChromeRevision.removeListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
     ShellBus.playerSurfaceActive.removeListener(_onShellChromeChanged);
+    ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
     ShellBus.clearHideGlobalNav();
     MacOsShellChannel.dispose();
     super.dispose();

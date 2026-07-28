@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **17 / 18** acceptance · **1** deferred |
-| **Current slice** | R24-A17–A18 shell tab visibility cancel — shipped |
+| **Progress** | **21 / 22** acceptance · **1** deferred |
+| **Current slice** | R24-A19–A22 player-surface memory purge — shipped |
 | **Backlog** | — |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -64,6 +64,17 @@
 
 ---
 
+## Acceptance (player-surface memory — ATV / decode)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 19 | R24-A19 | Android TV mount cap `maxMountedTabsTv = 3` (desktop/phone stay 5) | ✅ |
+| 20 | R24-A20 | Hidden shell tabs pause tickers via `TickerMode(enabled: selected)` | ✅ |
+| 21 | R24-A21 | `enterPlayerSurface` 0→1 trims `imageCache` and force-evicts sibling mounted tabs (keeps screen under player) | ✅ |
+| 22 | R24-A22 | IPTV `onShellTabHidden` trims image cache (portal selection kept) | ✅ |
+
+---
+
 ## Summary
 
 Separate **widget cache** (RAM) from **data freshness** (TTL). Cap mounted tabs with LRU eviction; refresh stale data on re-select, app resume, and pull-to-refresh — per tab, not one global knob.
@@ -78,10 +89,11 @@ After RFC-016 mount shipped, `_mountedTabIds` only grew and `_tabCache` never cl
 
 ### LRU eviction
 
-- `ShellTokens.maxMountedTabs` (default 5)
+- `ShellTokens.maxMountedTabs` — **5** on desktop/phone; **3** on Android TV
 - `_tabLru` tracks visit order; `_evictTab` removes from cache + mount set
-- Never evict `home` or currently selected tab
+- Never evict `home` or currently selected tab (normal LRU)
 - Evict immediately when tab hidden in navbar settings
+- **Player enter:** force-evict every mounted tab **except** the one under the player and clear Flutter `imageCache` so decode gets max RAM/GPU
 
 ### Stale refresh
 
@@ -109,4 +121,4 @@ After RFC-016 mount shipped, `_mountedTabIds` only grew and `_tabCache` never cl
 
 ## Related
 
-RFC-016, RFC-023, RFC-018 (Home stagger), [0.8.2 backlog](../backlog/done/0.8.2-[done].md)
+RFC-016, RFC-023, RFC-018 (Home stagger), [0.8.2 backlog](../backlog/done/0.8.2-[done].md), [issue 120](../issues/120-[open]-android-tv-player-memory-purge.md)

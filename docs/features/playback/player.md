@@ -27,7 +27,7 @@ On **Android TV** (MediaKit or ExoPlayer), D-pad moves focus between chrome cont
 
 Tap **Play** on any details screen, stream list, IPTV channel, or hub episode.
 
-On desktop, playback opens in a **full-window layer** above the app shell — the left nav rail is hidden until you tap back.
+On desktop, playback opens in a **full-window layer** above the app shell — the left nav rail is hidden until you tap back. Opening any fullscreen player (movie, trailer, IPTV, Live Matches handoff) also clears poster/image memory and unloads other shell tabs so decode gets max resources — the screen under the player stays mounted for a fast Back.
 
 ## What you can do
 

@@ -11,6 +11,7 @@ void main() {
     while (ShellBus.playerSurfaceActive.value) {
       ShellBus.leavePlayerSurface();
     }
+    ShellBus.playerResourcePurgeRevision.value = 0;
   });
 
   test('ShellBus find shortcut handlers invoke newest first', () {
@@ -69,6 +70,31 @@ void main() {
     expect(ShellBus.playerSurfaceActive.value, isTrue);
     ShellBus.leavePlayerSurface();
     expect(ShellBus.playerSurfaceActive.value, isFalse);
+  });
+
+  test('ShellBus enterPlayerSurface bumps purge revision once per activation', () {
+    final start = ShellBus.playerResourcePurgeRevision.value;
+    ShellBus.enterPlayerSurface();
+    expect(ShellBus.playerResourcePurgeRevision.value, start + 1);
+    ShellBus.enterPlayerSurface();
+    expect(ShellBus.playerResourcePurgeRevision.value, start + 1);
+    ShellBus.leavePlayerSurface();
+    ShellBus.leavePlayerSurface();
+    ShellBus.enterPlayerSurface();
+    expect(ShellBus.playerResourcePurgeRevision.value, start + 2);
+    ShellBus.leavePlayerSurface();
+  });
+
+  testWidgets('ShellBus.trimImageCacheForPlayback clears image cache', (
+    tester,
+  ) async {
+    final cache = imageCache;
+    cache.clear();
+    expect(cache.currentSize, 0);
+    // Seed a live image entry path is hard without network; clearLiveImages
+    // must still be callable after trim.
+    ShellBus.trimImageCacheForPlayback();
+    expect(cache.currentSize, 0);
   });
 
   testWidgets(

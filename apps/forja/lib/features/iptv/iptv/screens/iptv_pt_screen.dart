@@ -79,6 +79,14 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
   }
 
   @override
+  void onShellTabHidden() {
+    super.onShellTabHidden();
+    // Keep portal / catalog selection; drop decoded logos so Home → IPTV
+    // play does not compete with poster bitmaps on weak ATV SoCs.
+    ShellBus.trimImageCacheForPlayback();
+  }
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {

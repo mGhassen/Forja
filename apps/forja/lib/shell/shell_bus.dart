@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -62,6 +61,12 @@ class ShellBus {
     false,
   );
 
+  /// Bumps when a player surface becomes active (depth 0→1). [MainScreen]
+  /// listens and force-evicts sibling mounted tabs (keeps the screen under
+  /// the player) so decode gets max RAM.
+  static final ValueNotifier<int> playerResourcePurgeRevision =
+      ValueNotifier<int>(0);
+
   static int _playerSurfaceDepth = 0;
   static bool _playerSurfaceNotifyPending = false;
 
@@ -90,9 +95,31 @@ class ShellBus {
     });
   }
 
+  /// Drop decoded catalog / poster bitmaps so the next player session can
+  /// claim MediaCodec + GPU memory on weak Android TV SoCs.
+  static void trimImageCacheForPlayback() {
+    imageCache.clear();
+    imageCache.clearLiveImages();
+  }
+
   static void enterPlayerSurface() {
+    final becameActive = _playerSurfaceDepth == 0;
     _playerSurfaceDepth++;
     _syncPlayerSurfaceActive();
+    if (becameActive) {
+      trimImageCacheForPlayback();
+      // Defer tab purge past the current build/layout phase (same as surface
+      // active notifier) so MainScreen setState is never mid-frame.
+      final phase = SchedulerBinding.instance.schedulerPhase;
+      if (phase == SchedulerPhase.idle ||
+          phase == SchedulerPhase.postFrameCallbacks) {
+        playerResourcePurgeRevision.value++;
+      } else {
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          playerResourcePurgeRevision.value++;
+        });
+      }
+    }
   }
 
   static void leavePlayerSurface() {

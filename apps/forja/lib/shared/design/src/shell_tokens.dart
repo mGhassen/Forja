@@ -289,8 +289,15 @@ abstract final class ShellTokens {
   static const Duration navSelectionAnimation = Duration(milliseconds: 200);
   static const double navSelectionBorderRadius = 16;
 
-  /// Max tabs kept mounted in [MainScreen] (home + current always kept).
-  static const int maxMountedTabs = 5;
+  /// Max tabs kept mounted in [MainScreen] on desktop / phone (home + current always kept).
+  static const int maxMountedTabsDesktop = 5;
+
+  /// Tighter cap on Android TV — weak SoCs need RAM/GPU for decode after browsing.
+  static const int maxMountedTabsTv = 3;
+
+  /// Max tabs kept mounted in [MainScreen] (home + current always kept under normal LRU).
+  static int get maxMountedTabs =>
+      isAndroidTvDevice ? maxMountedTabsTv : maxMountedTabsDesktop;
 
   /// Default stale TTL before re-select / resume triggers [ShellTabRefresh].
   static const Duration tabStaleDefault = Duration(minutes: 15);

@@ -34,6 +34,8 @@ class ShellBody extends StatelessWidget {
                   key: ValueKey<String>('shell-tab-${visibleIds[i]}'),
                   visible: i == selectedIndex,
                   maintainState: true,
+                  // Flutter requires maintainAnimation when maintainSize is true.
+                  // Pause tickers on hidden tabs via TickerMode below instead.
                   maintainAnimation: true,
                   maintainSize: true,
                   // Hidden tabs must not hit-test. With maintainInteractivity,
@@ -41,9 +43,14 @@ class ShellBody extends StatelessWidget {
                   // and swallow hover/clicks (e.g. IPTV "frozen" after visiting
                   // Settings / Live Matches).
                   maintainInteractivity: false,
-                  child: mountedTabIds.contains(visibleIds[i])
-                      ? tabFor(visibleIds[i])
-                      : const SizedBox.shrink(),
+                  child: TickerMode(
+                    // Hidden tabs must not keep tickers/animations alive — wastes
+                    // CPU on ATV while another tab (or the player) needs the SoC.
+                    enabled: i == selectedIndex,
+                    child: mountedTabIds.contains(visibleIds[i])
+                        ? tabFor(visibleIds[i])
+                        : const SizedBox.shrink(),
+                  ),
                 ),
             ],
           ),

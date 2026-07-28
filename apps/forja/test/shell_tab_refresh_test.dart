@@ -53,7 +53,9 @@ void main() {
     expect(state.refreshCount, 2);
   });
 
-  test('ShellTokens maxMountedTabs is defined', () {
+  test('ShellTokens maxMountedTabs is platform-aware', () {
+    expect(ShellTokens.maxMountedTabsDesktop, 5);
+    expect(ShellTokens.maxMountedTabsTv, 3);
     expect(ShellTokens.maxMountedTabs, greaterThanOrEqualTo(3));
     expect(ShellTokens.tabStaleDefault.inMinutes, 15);
     expect(ShellTokens.tabStaleIptv.inMinutes, 10);
