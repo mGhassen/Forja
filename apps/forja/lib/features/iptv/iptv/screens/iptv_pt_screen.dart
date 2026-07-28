@@ -64,6 +64,10 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
     with ShellTabRefresh<IptvPtScreen> {
   IptvController get _ctrl => ref.read(iptvControllerProvider);
 
+  /// Held so [dispose] can detach without [ref] (illegal after unmount —
+  /// profile switch wipes the tab cache while IPTV may still be mounted).
+  IptvController? _navListenerCtrl;
+
   @override
   Duration get shellStaleAfter => ShellTokens.tabStaleIptv;
 
@@ -92,6 +96,7 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final ctrl = ref.read(iptvControllerProvider);
+      _navListenerCtrl = ctrl;
       ctrl.addListener(_syncShellNav);
       TvHeroActions.bind(
         'iptv',
@@ -107,7 +112,9 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
   }
 
   void _syncShellNav() {
-    final hide = _ctrl.view == IptvView.episodeList;
+    final ctrl = _navListenerCtrl;
+    if (ctrl == null) return;
+    final hide = ctrl.view == IptvView.episodeList;
     if (ShellBus.hideGlobalNav.value != hide) {
       ShellBus.hideGlobalNav.value = hide;
       ShellBus.notifyShellChromeChanged();
@@ -118,7 +125,8 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
   void dispose() {
     TvHeroActions.unbind('iptv');
     ShellTvFocusCoordinator.clearTab('iptv');
-    _ctrl.removeListener(_syncShellNav);
+    _navListenerCtrl?.removeListener(_syncShellNav);
+    _navListenerCtrl = null;
     super.dispose();
   }
 
