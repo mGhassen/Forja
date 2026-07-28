@@ -8,6 +8,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 bool iptvUseTvFocus(BuildContext context) {
   final policy = ShellScope.maybeOf(context)?.inputPolicy;
@@ -340,7 +341,29 @@ Widget iptvTap({
   );
 }
 
-/// Registers an IPTV row with the TV coordinator.
+/// Registers an IPTV catalog row via [TvCatalogRow].
+Widget iptvCatalogRow({
+  required String rowId,
+  required int sortOrder,
+  required int itemCount,
+  required Widget child,
+  VoidCallback? onFocusUp,
+  ShellTvRowOrientation orientation = ShellTvRowOrientation.horizontal,
+}) {
+  return TvCatalogRow(
+    tabId: 'iptv',
+    rowId: rowId,
+    sortOrder: sortOrder,
+    itemCount: itemCount,
+    onFocusUp: onFocusUp,
+    orientation: orientation,
+    registerWhen: iptvUseTvFocus,
+    child: child,
+  );
+}
+
+/// Imperative register for chrome that syncs before focus (player / dispose).
+/// Prefer [iptvCatalogRow] when wrapping a subtree.
 void iptvSyncRow({
   required String rowId,
   required int sortOrder,

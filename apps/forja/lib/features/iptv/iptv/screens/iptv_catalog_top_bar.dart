@@ -362,17 +362,11 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   Widget build(BuildContext context) {
     final hasActivePortal = ctrl.activePortal != null;
     if (!hasActivePortal) {
-      iptvSyncRow(rowId: 'iptv-sections', sortOrder: 0, itemCount: 0);
+      // iptv-sections / iptv-top-tools unregister via iptvCatalogRow dispose.
       iptvSyncRow(rowId: 'iptv-section-reload', sortOrder: 0, itemCount: 0);
-      iptvSyncRow(rowId: 'iptv-top-tools', sortOrder: 1, itemCount: 0);
       return const SizedBox.shrink();
     }
 
-    iptvSyncRow(
-      rowId: 'iptv-sections',
-      sortOrder: 0,
-      itemCount: _kSectionShelf.length,
-    );
     iptvSyncRow(
       rowId: 'iptv-section-reload',
       sortOrder: 0,
@@ -382,12 +376,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
         final showLayout = _showLiveLayoutToggle(context, compact: compact);
-    iptvSyncRow(
-      rowId: 'iptv-top-tools',
-      sortOrder: 1,
-      itemCount: _topToolsCount,
-    );
-    _syncSearchChromeRow();
+        _syncSearchChromeRow();
         // Rail / TV: flush with the category column (0). Compact ☰ only: clear the menu.
         final leftPadding = ShellTokens.usesCompactNavDrawer(context)
             ? ShellTokens.compactChromeLeadingInset(context)
@@ -405,7 +394,12 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildShelf(context),
+                        iptvCatalogRow(
+                          rowId: 'iptv-sections',
+                          sortOrder: 0,
+                          itemCount: _kSectionShelf.length,
+                          child: _buildShelf(context),
+                        ),
                         if (showLayout) ...[
                           const SizedBox(width: 8),
                           _buildLiveLayoutToggle(context),
@@ -416,15 +410,25 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
                 ),
               ),
               const SizedBox(width: 8),
-              compact
-                  ? _buildSearchIcon(context, compact: true)
-                  : _buildExpandingSearch(context),
-              if (_showLiveSort) ...[
-                const SizedBox(width: 8),
-                _buildSortButton(context),
-              ],
-              const SizedBox(width: 8),
-              _buildPortalButton(context, compact: compact),
+              iptvCatalogRow(
+                rowId: 'iptv-top-tools',
+                sortOrder: 1,
+                itemCount: _topToolsCount,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    compact
+                        ? _buildSearchIcon(context, compact: true)
+                        : _buildExpandingSearch(context),
+                    if (_showLiveSort) ...[
+                      const SizedBox(width: 8),
+                      _buildSortButton(context),
+                    ],
+                    const SizedBox(width: 8),
+                    _buildPortalButton(context, compact: compact),
+                  ],
+                ),
+              ),
             ],
           ),
         );

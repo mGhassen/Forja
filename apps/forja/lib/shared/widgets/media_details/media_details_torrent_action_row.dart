@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
-import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
@@ -63,15 +63,6 @@ class _MediaDetailsTorrentActionRowState
     extends State<MediaDetailsTorrentActionRow> {
   /// Hero ⋮ menu (Trakt/Simkl) - kept wired; hide until product wants it back.
   static const bool _overflowVisible = false;
-
-  @override
-  void dispose() {
-    final tabId = widget.tvTabId;
-    if (tabId != null) {
-      shellTvUnregisterRow(tabId: tabId, rowId: MediaDetailsTv.heroRowId);
-    }
-    super.dispose();
-  }
 
   void _openBestTrailer(BuildContext context) {
     if (widget.trailers.isEmpty) return;
@@ -298,35 +289,35 @@ class _MediaDetailsTorrentActionRowState
 
   @override
   Widget build(BuildContext context) {
-    final tabId = widget.tvTabId;
-    if (tabId != null) {
-      shellTvRegisterRow(
-        tabId: tabId,
-        rowId: MediaDetailsTv.heroRowId,
-        sortOrder: MediaDetailsTv.heroRowSortOrder,
-        itemCount: _focusableActionCount(),
-        onFocusUp: widget.tvFocusUp,
-      );
-    }
-
     final row = _buildRow(context);
-    if (!widget.isStreamingExtracting || widget.statusMessage == null) {
-      return row;
-    }
+    final child =
+        !widget.isStreamingExtracting || widget.statusMessage == null
+            ? row
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  row,
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.statusMessage!,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        row,
-        const SizedBox(height: 8),
-        Text(
-          widget.statusMessage!,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
-            fontSize: 12,
-          ),
-        ),
-      ],
+    final tabId = widget.tvTabId;
+    if (tabId == null) return child;
+
+    return TvCatalogRow(
+      tabId: tabId,
+      rowId: MediaDetailsTv.heroRowId,
+      sortOrder: MediaDetailsTv.heroRowSortOrder,
+      itemCount: _focusableActionCount(),
+      onFocusUp: widget.tvFocusUp,
+      child: child,
     );
   }
 }

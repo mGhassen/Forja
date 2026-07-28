@@ -100,12 +100,6 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
   Widget _buildTimelineBody() {
     final buckets = _timelineBuckets;
     if (buckets.isEmpty) {
-      for (final id in _s._timelineTvRowIds) {
-        shellTvUnregisterRow(
-          tabId: _LiveMatchesScreenState._tabId,
-          rowId: id,
-        );
-      }
       _s._timelineTvRowIds.clear();
       return const Center(
         child: Column(
@@ -124,30 +118,12 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
 
     final tvFocus = _s._tvFocus(context);
     if (tvFocus) {
-      shellTvUnregisterRow(
-        tabId: _LiveMatchesScreenState._tabId,
-        rowId: _LiveMatchesScreenState._gridRowId,
-      );
       final nextIds = <String>{
         for (final b in buckets) 'tl-${b.bucketMs}',
       };
-      for (final id in _s._timelineTvRowIds.difference(nextIds)) {
-        shellTvUnregisterRow(
-          tabId: _LiveMatchesScreenState._tabId,
-          rowId: id,
-        );
-      }
       _s._timelineTvRowIds
         ..clear()
         ..addAll(nextIds);
-      for (var i = 0; i < buckets.length; i++) {
-        shellTvRegisterRow(
-          tabId: _LiveMatchesScreenState._tabId,
-          rowId: 'tl-${buckets[i].bucketMs}',
-          sortOrder: 2 + i,
-          itemCount: buckets[i].entries.length,
-        );
-      }
     }
 
     return Column(
@@ -263,6 +239,7 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
       for (var b = 0; b < buckets.length; b++)
         _buildTimedBucketRow(
           bucket: buckets[b],
+          bucketIndex: b,
           top: (buckets[b].bucketMs - contentStartMs) * pxPerMs,
           cardWidth: cardWidth,
           cardHeight: cardHeight,
@@ -325,60 +302,70 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
 
   Widget _buildTimedBucketRow({
     required _TimelineBucket bucket,
+    required int bucketIndex,
     required double top,
     required double cardWidth,
     required double cardHeight,
     required double gap,
     required bool hoverLift,
   }) {
+    final rowId = 'tl-${bucket.bucketMs}';
+    final scroller = HorizontalScroller(
+      height: cardHeight,
+      padding: EdgeInsets.only(
+        right: ShellTokens.bodyHorizontalPadding,
+      ),
+      // Horizontal scroll only - does not move the vertical time canvas.
+      itemCount: bucket.entries.length,
+      separatorBuilder: (_, _) => SizedBox(width: gap),
+      itemBuilder: (context, i) {
+        final entry = bucket.entries[i];
+        // Opaque base so overlapping rows never show through the card.
+        Widget slot = SizedBox(
+          width: cardWidth,
+          height: cardHeight,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: _timelineCardBase,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: _s._gridEntryCard(
+              entry,
+              i,
+              bucket.entries.length,
+              null,
+              tvRowId: rowId,
+              tvZone: ShellTvZone.row,
+              onHoverChanged: hoverLift
+                  ? (hovered) =>
+                      _onTimelineCardHover(bucket.bucketMs, i, hovered)
+                  : null,
+            ),
+          ),
+        );
+        if (hoverLift) {
+          final link = _s._timelineCardLinks.putIfAbsent(
+            '${bucket.bucketMs}:$i',
+            () => LayerLink(),
+          );
+          slot = CompositedTransformTarget(link: link, child: slot);
+        }
+        return slot;
+      },
+    );
+
     return Positioned(
       key: ValueKey(bucket.bucketMs),
       left: _timelineRulerWidth + 6,
       right: 0,
       top: top,
       height: cardHeight,
-      child: HorizontalScroller(
-        height: cardHeight,
-        padding: EdgeInsets.only(
-          right: ShellTokens.bodyHorizontalPadding,
-        ),
-        // Horizontal scroll only - does not move the vertical time canvas.
+      child: TvCatalogRow(
+        tabId: _LiveMatchesScreenState._tabId,
+        rowId: rowId,
+        sortOrder: 2 + bucketIndex,
         itemCount: bucket.entries.length,
-        separatorBuilder: (_, _) => SizedBox(width: gap),
-        itemBuilder: (context, i) {
-          final entry = bucket.entries[i];
-          final rowId = 'tl-${bucket.bucketMs}';
-          // Opaque base so overlapping rows never show through the card.
-          Widget slot = SizedBox(
-            width: cardWidth,
-            height: cardHeight,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: _timelineCardBase,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: _s._gridEntryCard(
-                entry,
-                i,
-                bucket.entries.length,
-                null,
-                tvRowId: rowId,
-                tvZone: ShellTvZone.row,
-                onHoverChanged: hoverLift
-                    ? (hovered) => _onTimelineCardHover(bucket.bucketMs, i, hovered)
-                    : null,
-              ),
-            ),
-          );
-          if (hoverLift) {
-            final link = _s._timelineCardLinks.putIfAbsent(
-              '${bucket.bucketMs}:$i',
-              () => LayerLink(),
-            );
-            slot = CompositedTransformTarget(link: link, child: slot);
-          }
-          return slot;
-        },
+        child: scroller,
       ),
     );
   }
@@ -458,6 +445,7 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
   }
 
   Widget _buildTimelineGranularityBar() {
+    final values = _TimelineGranularity.values;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         ShellTokens.compactChromeLeadingInset(context),
@@ -480,21 +468,34 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
             ),
             child: Builder(
               builder: (context) {
-                final values = _TimelineGranularity.values;
-                if (_s._tvFocus(context)) {
-                  shellTvRegisterRow(
-                    tabId: _LiveMatchesScreenState._tabId,
-                    rowId: _LiveMatchesScreenState._granularityRowId,
-                    sortOrder: 1,
-                    itemCount: values.length,
-                  );
-                }
-                return Row(
+                final row = Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     for (var i = 0; i < values.length; i++)
                       _buildTimelineGranularityTab(values[i], i, values.length),
                   ],
+                );
+                if (!_s._tvFocus(context)) return row;
+                return TvChipStrip(
+                  tabId: _LiveMatchesScreenState._tabId,
+                  rowId: _LiveMatchesScreenState._granularityRowId,
+                  sortOrder: 1,
+                  itemCount: values.length,
+                  resultsRowId: _s._timelineTvRowIds.isNotEmpty
+                      ? _s._timelineTvRowIds.first
+                      : _LiveMatchesScreenState._gridRowId,
+                  builder: (context, edgesFor) => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var i = 0; i < values.length; i++)
+                        _buildTimelineGranularityTab(
+                          values[i],
+                          i,
+                          values.length,
+                          edges: edgesFor(i),
+                        ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -507,8 +508,9 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
   Widget _buildTimelineGranularityTab(
     _TimelineGranularity g,
     int index,
-    int itemCount,
-  ) {
+    int itemCount, {
+    TvChipEdges? edges,
+  }) {
     final selected = _s._timelineGranularity == g;
     final cinematic = ForjaShellColors.cinematic;
     final fg = selected ? cinematic.textPrimary : cinematic.textSecondary;
@@ -547,18 +549,8 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
       tvTabId: _LiveMatchesScreenState._tabId,
       tvRowId: _LiveMatchesScreenState._granularityRowId,
       tvItemIndex: index,
-      onLeftEdge: shellTvChipLeftEdge(
-        context,
-        tabId: _LiveMatchesScreenState._tabId,
-        rowId: _LiveMatchesScreenState._granularityRowId,
-        index: index,
-      ),
-      onRightEdge: shellTvChipRightEdge(
-        tabId: _LiveMatchesScreenState._tabId,
-        rowId: _LiveMatchesScreenState._granularityRowId,
-        index: index,
-        itemCount: itemCount,
-      ),
+      onLeftEdge: edges?.onLeft,
+      onRightEdge: edges?.onRight,
       onUpEdge: () => _s._focusTopBarItem(
         _LiveMatchesScreenState._topBarServersIndex,
       ),

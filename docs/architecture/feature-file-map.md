@@ -265,6 +265,7 @@ flowchart TB
     ShellScope[ShellScope]
     ShellMetrics[ShellMetrics]
     ShellInputPolicy[ShellInputPolicy]
+    TvGraph[TvFocusGraph recipes]
     TvCoord[ShellTvFocusCoordinator]
   end
   subgraph shared [SharedPresentation]
@@ -278,6 +279,7 @@ flowchart TB
     widgets[feature/widgets]
     catalog[catalog services]
   end
+  TvGraph --> TvCoord
   shell --> shared
   shared --> features
   features --> shell
@@ -285,7 +287,7 @@ flowchart TB
 
 | Layer | Location | Owns | Does NOT own |
 |-------|----------|------|--------------|
-| Shell / profile | `shared/design/`, `shell/adapters/`, `shared/tv/` | Metrics, input policy, D-pad coordinator | Feature fetching |
+| Shell / profile | `shared/design/`, `shell/adapters/`, `shared/tv/` | Metrics, input policy, D-pad coordinator, `TvFocusGraph` / `TvCatalogRow` / `TvChipStrip` / `TvGrid` / `TvOverlayScope` | Feature fetching |
 | Shared presentation | `shared/widgets/` | Reusable UI + callbacks | State machines, routing |
 | Feature modules | `features/<name>/` | Orchestrator &lt;800 lines, `widgets/`, `catalog/` | Cross-feature UI clones |
 

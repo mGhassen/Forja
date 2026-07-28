@@ -50,11 +50,9 @@ mixin _LiveMatchesData on ConsumerState<LiveMatchesScreen>, ShellTabRefresh<Live
   Widget _serversTopBarButton() {
     return _LiveMatchesServersTopBarButton(
       onTap: _openServerPicker,
-      onLeftEdge: shellTvChipLeftEdge(
+      onLeftEdge: shellTvNavLeftEdge(
         context,
-        tabId: _LiveMatchesScreenState._tabId,
-        rowId: _LiveMatchesScreenState._topBarRowId,
-        index: _LiveMatchesScreenState._topBarServersIndex,
+        listIndex: _LiveMatchesScreenState._topBarServersIndex,
       ),
       onRightEdge: () =>
           _focusTopBarItem(_LiveMatchesScreenState._topBarRefreshIndex),
@@ -148,27 +146,8 @@ mixin _LiveMatchesData on ConsumerState<LiveMatchesScreen>, ShellTabRefresh<Live
     return false;
   }
 
-  void _registerGridRow(int itemCount) {
-    for (final id in _s._timelineTvRowIds) {
-      shellTvUnregisterRow(
-        tabId: _LiveMatchesScreenState._tabId,
-        rowId: id,
-      );
-    }
+  void _clearTimelineTvRows() {
     _s._timelineTvRowIds.clear();
-    if (_s._server != _LiveMatchesServer.cdnLive) {
-      shellTvUnregisterRow(
-        tabId: _LiveMatchesScreenState._tabId,
-        rowId: _LiveMatchesScreenState._cdnModeRowId,
-      );
-    }
-    shellTvRegisterRow(
-      tabId: _LiveMatchesScreenState._tabId,
-      rowId: _LiveMatchesScreenState._gridRowId,
-      sortOrder: _s._gridSortOrder,
-      itemCount: itemCount,
-      onFocusUp: _gridFocusUp,
-    );
   }
 
   Future<void> _load() async {

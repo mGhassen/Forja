@@ -221,16 +221,7 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
     final servers = _servers;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (tv) {
-      shellTvRegisterRow(
-        tabId: 'live_matches',
-        rowId: _rowId,
-        sortOrder: 0,
-        itemCount: servers.length,
-        orientation: ShellTvRowOrientation.vertical,
-      );
-    }
-    return Padding(
+    final body = Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: maxHeight),
@@ -277,6 +268,15 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
           ),
         ),
       ),
+    );
+    if (!tv) return body;
+    return TvCatalogRow(
+      tabId: 'live_matches',
+      rowId: _rowId,
+      sortOrder: 0,
+      itemCount: servers.length,
+      orientation: ShellTvRowOrientation.vertical,
+      child: body,
     );
   }
 }
@@ -866,16 +866,7 @@ class _CdnChannelSheetState extends State<_CdnChannelSheet> {
     final channels = widget.event.channels;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (tv) {
-      shellTvRegisterRow(
-        tabId: 'live_matches',
-        rowId: _rowId,
-        sortOrder: 0,
-        itemCount: channels.length,
-        orientation: ShellTvRowOrientation.vertical,
-      );
-    }
-    return Padding(
+    final body = Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: maxHeight),
@@ -921,6 +912,15 @@ class _CdnChannelSheetState extends State<_CdnChannelSheet> {
           ),
         ),
       ),
+    );
+    if (!tv) return body;
+    return TvCatalogRow(
+      tabId: 'live_matches',
+      rowId: _rowId,
+      sortOrder: 0,
+      itemCount: channels.length,
+      orientation: ShellTvRowOrientation.vertical,
+      child: body,
     );
   }
 }
@@ -1068,12 +1068,6 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _tvFocus() =>
       ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
 
-  void _syncTvRows() {
-    if (!_tvFocus()) return;
-    iptvSyncRow(rowId: _topRowId, sortOrder: 0, itemCount: 1);
-    iptvSyncRow(rowId: _controlsRowId, sortOrder: 1, itemCount: 2);
-  }
-
   bool _focusEmbedRow(String rowId, [int index = 0]) {
     return iptvFocusRowItem(rowId, index);
   }
@@ -1082,7 +1076,6 @@ class _LiveMatchesEmbedPlayerScreenState
   /// Prefer Play so Select starts playback; fall back to Back.
   void _focusTvChrome({bool preferPlay = true}) {
     if (!mounted || !_tvFocus() || _isFullscreen) return;
-    _syncTvRows();
     if (preferPlay) {
       if (_focusEmbedRow(_controlsRowId, 0)) return;
       if (_playFocusNode.canRequestFocus) {
@@ -1218,7 +1211,6 @@ class _LiveMatchesEmbedPlayerScreenState
     }
     HardwareKeyboard.instance.addHandler(_handleEmbedKeyEvent);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncTvRows();
       _focusTvChrome(preferPlay: true);
     });
   }
@@ -1376,8 +1368,6 @@ class _LiveMatchesEmbedPlayerScreenState
     _loadingWatchdog?.cancel();
     _adWindowCloseTimer?.cancel();
     _androidHandoffWatchdog?.cancel();
-    shellTvUnregisterRow(tabId: _tvTabId, rowId: _topRowId);
-    shellTvUnregisterRow(tabId: _tvTabId, rowId: _controlsRowId);
     _backFocusNode.dispose();
     _playFocusNode.dispose();
     HardwareKeyboard.instance.removeHandler(_handleEmbedKeyEvent);
@@ -1444,7 +1434,6 @@ class _LiveMatchesEmbedPlayerScreenState
 
   Widget _buildTopBar() {
     final tv = _tvFocus();
-    if (tv) _syncTvRows();
     final bar = Material(
       color: Colors.transparent,
       child: Padding(
@@ -1496,18 +1485,23 @@ class _LiveMatchesEmbedPlayerScreenState
       ),
     );
     if (!tv) return bar;
-    return FocusScope(
-      debugLabel: 'live-embed-chrome',
-      child: FocusTraversalGroup(child: bar),
+    return TvCatalogRow(
+      tabId: _tvTabId,
+      rowId: _topRowId,
+      sortOrder: 0,
+      itemCount: 1,
+      child: FocusScope(
+        debugLabel: 'live-embed-chrome',
+        child: FocusTraversalGroup(child: bar),
+      ),
     );
   }
 
   /// TV-only bottom chrome: Play/Pause · Mute (WebView steals D-pad).
   /// Fullscreen is omitted on TV — the player is already immersive.
   Widget _buildTvControls() {
-    _syncTvRows();
     void upToBack() => _focusEmbedRow(_topRowId, 0);
-    return Material(
+    final row = Material(
       color: Colors.transparent,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
@@ -1535,6 +1529,13 @@ class _LiveMatchesEmbedPlayerScreenState
           ],
         ),
       ),
+    );
+    return TvCatalogRow(
+      tabId: _tvTabId,
+      rowId: _controlsRowId,
+      sortOrder: 1,
+      itemCount: 2,
+      child: row,
     );
   }
 
@@ -1571,15 +1572,17 @@ class _LiveMatchesEmbedPlayerScreenState
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ?chrome,
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ForjaInAppWebView(
+        body: Builder(
+          builder: (context) {
+            Widget body = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ?chrome,
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ForjaInAppWebView(
                     // Catalog-origin iframe wrapper on every platform (046).
                     // Windows opaque WebView2 via forjaWebViewSettings (053).
                     // Android: sniff HLS → native IPTV player (CORS / lock).
@@ -1754,8 +1757,14 @@ class _LiveMatchesEmbedPlayerScreenState
                 ],
               ),
             ),
-            if (_tvFocus() && !_isFullscreen) _buildTvControls(),
-          ],
+                if (_tvFocus() && !_isFullscreen) _buildTvControls(),
+              ],
+            );
+            if (_tvFocus()) {
+              body = TvFocusGraph(tabId: _tvTabId, child: body);
+            }
+            return body;
+          },
         ),
       ),
     );
@@ -1811,17 +1820,8 @@ class _MergedMatchStreamSheetState extends State<_MergedMatchStreamSheet> {
       ..sort((a, b) => b.viewers.compareTo(a.viewers));
     final count = sorted.length + (widget.ppv == null ? 0 : 1);
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (tv) {
-      shellTvRegisterRow(
-        tabId: 'live_matches',
-        rowId: _rowId,
-        sortOrder: 0,
-        itemCount: count,
-        orientation: ShellTvRowOrientation.vertical,
-      );
-    }
     final streamedOffset = widget.ppv == null ? 0 : 1;
-    return Padding(
+    final body = Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1887,6 +1887,15 @@ class _MergedMatchStreamSheetState extends State<_MergedMatchStreamSheet> {
           ),
         ],
       ),
+    );
+    if (!tv) return body;
+    return TvCatalogRow(
+      tabId: 'live_matches',
+      rowId: _rowId,
+      sortOrder: 0,
+      itemCount: count,
+      orientation: ShellTvRowOrientation.vertical,
+      child: body,
     );
   }
 }
@@ -2013,17 +2022,7 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
     final sorted = _sortedByViewers();
     final maxHeight = MediaQuery.sizeOf(context).height * 0.6;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (tv) {
-      shellTvRegisterRow(
-        tabId: 'live_matches',
-        rowId: _rowId,
-        sortOrder: 0,
-        itemCount: sorted.length,
-        orientation: ShellTvRowOrientation.vertical,
-      );
-    }
-
-    return Padding(
+    final body = Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2083,6 +2082,15 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
           ),
         ],
       ),
+    );
+    if (!tv) return body;
+    return TvCatalogRow(
+      tabId: 'live_matches',
+      rowId: _rowId,
+      sortOrder: 0,
+      itemCount: sorted.length,
+      orientation: ShellTvRowOrientation.vertical,
+      child: body,
     );
   }
 }

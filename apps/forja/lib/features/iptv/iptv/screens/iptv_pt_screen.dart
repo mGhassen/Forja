@@ -24,6 +24,7 @@ import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/features/iptv/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_portal_share.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
@@ -84,7 +85,7 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
       if (!mounted) return;
       final ctrl = ref.read(iptvControllerProvider);
       ctrl.addListener(_syncShellNav);
-      ShellTvFocusCoordinator.registerTabDefaults(
+      TvHeroActions.bind(
         'iptv',
         restoreFocus: iptvRestoreCatalogFocus,
         enterFromNavFocus: () => iptvEnterFromNav(ctrl),
@@ -107,7 +108,7 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
 
   @override
   void dispose() {
-    ShellTvFocusCoordinator.unregisterTabDefaults('iptv');
+    TvHeroActions.unbind('iptv');
     ShellTvFocusCoordinator.clearTab('iptv');
     _ctrl.removeListener(_syncShellNav);
     super.dispose();
@@ -119,26 +120,29 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
   @override
   Widget build(BuildContext context) {
     final ctrl = ref.watch(iptvControllerProvider);
-    return VisibilityDetector(
-      key: const Key('iptv_pt_screen'),
-      onVisibilityChanged: (info) {
-        if (info.visibleFraction > 0) {
-          _syncShellNav();
-          unawaited(SyncService.instance.pullAccountFeatures());
-        }
-      },
-      child: PopScope(
-        canPop: !ctrl.portalPanelOpen && ctrl.view != IptvView.episodeList,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) ctrl.back();
+    return TvFocusGraph(
+      tabId: 'iptv',
+      child: VisibilityDetector(
+        key: const Key('iptv_pt_screen'),
+        onVisibilityChanged: (info) {
+          if (info.visibleFraction > 0) {
+            _syncShellNav();
+            unawaited(SyncService.instance.pullAccountFeatures());
+          }
         },
-        child: AnimatedBuilder(
-          animation: ctrl,
-          builder: (_, _) => AnimatedSwitcher(
-            duration: const Duration(milliseconds: 250),
-            child: KeyedSubtree(
-              key: ValueKey(ctrl.view),
-              child: _buildView(context, ctrl),
+        child: PopScope(
+          canPop: !ctrl.portalPanelOpen && ctrl.view != IptvView.episodeList,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) ctrl.back();
+          },
+          child: AnimatedBuilder(
+            animation: ctrl,
+            builder: (_, _) => AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: KeyedSubtree(
+                key: ValueKey(ctrl.view),
+                child: _buildView(context, ctrl),
+              ),
             ),
           ),
         ),

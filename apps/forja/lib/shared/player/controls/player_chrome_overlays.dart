@@ -10,7 +10,7 @@ import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 
 export 'player_menu_return_focus.dart';
@@ -61,8 +61,7 @@ Widget playerOverlayShell({
   final padding = contentPadding ??
       TorrentSourcesPanel.defaultContentPadding(playerOverlay: !enableBlur);
 
-  return PlayerPopupPanel.tvFocusableOverlay(
-    overlayContext: context,
+  return TvOverlayScope(
     onDismiss: onClose,
     child: Stack(
       fit: StackFit.expand,
@@ -96,14 +95,7 @@ Widget playerOverlayShell({
                     borderRadius: BorderRadius.circular(
                       PlayerPopupTokens.shellRadius,
                     ),
-                    child: playerSidePanelTvScope(
-                      context: context,
-                      onClose: onClose,
-                      child: FocusTraversalGroup(
-                        policy: ReadingOrderTraversalPolicy(),
-                        child: Padding(padding: padding, child: child),
-                      ),
-                    ),
+                    child: Padding(padding: padding, child: child),
                   ),
                 ),
               ),
@@ -121,56 +113,10 @@ Widget playerSidePanelTvScope({
   required VoidCallback onClose,
   required Widget child,
 }) {
-  final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-  if (!tv) return child;
-  // FocusScope traps FocusableControl arrows here - not in player chrome.
-  return FocusScope(
-    debugLabel: 'player-tv-menu',
-    autofocus: true,
-    onKeyEvent: (node, event) {
-      if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-      final key = event.logicalKey;
-      if (key == LogicalKeyboardKey.escape ||
-          key == LogicalKeyboardKey.goBack) {
-        onClose();
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
-    },
-    child: ShellTvLinearFocusScope(
-      child: FocusTraversalGroup(
-        policy: ReadingOrderTraversalPolicy(),
-        child: _TvPanelFocusOnOpen(child: child),
-      ),
-    ),
+  return TvOverlayScope(
+    onDismiss: onClose,
+    child: child,
   );
-}
-
-class _TvPanelFocusOnOpen extends StatefulWidget {
-  const _TvPanelFocusOnOpen({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_TvPanelFocusOnOpen> createState() => _TvPanelFocusOnOpenState();
-}
-
-class _TvPanelFocusOnOpenState extends State<_TvPanelFocusOnOpen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      // Episode panel (and similar) own initial focus - don't steal to first chip.
-      if (ShellTvDisableLinearFocus.activeOf(context)) return;
-      final scope = FocusScope.of(context);
-      if (scope.focusedChild != null) return;
-      scope.nextFocus();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 /// Dismisses the topmost player chrome overlay (menus, panels) if any is open.

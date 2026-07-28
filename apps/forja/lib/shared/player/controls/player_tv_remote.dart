@@ -69,17 +69,8 @@ class PlayerTvRemoteKeyHandler {
       return true;
     }
 
-    // ←/→ while chrome is up: let focus traversal own the keys.
-    // ↑/↓ always reveal Back / Play when this handler sees them (chrome is
-    // not focused — [PlayerTvKeyScope] ignores us while a chrome control is).
-    if (showControls &&
-        (key == LogicalKeyboardKey.arrowLeft ||
-            key == LogicalKeyboardKey.arrowRight ||
-            key == LogicalKeyboardKey.mediaRewind ||
-            key == LogicalKeyboardKey.mediaFastForward)) {
-      return false;
-    }
-
+    // ←/→ always seek when this handler runs. [PlayerTvKeyScope] does not call
+    // us while a chrome control holds focus (then FocusableControl owns ←/→).
     if (key == LogicalKeyboardKey.arrowLeft ||
         key == LogicalKeyboardKey.mediaRewind) {
       onSeekBack();

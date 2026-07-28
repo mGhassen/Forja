@@ -11,6 +11,7 @@ import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -211,10 +212,6 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
 
   @override
   void dispose() {
-    shellTvUnregisterRow(
-      tabId: _kEpisodeTvTabId,
-      rowId: _kEpisodeTvListRowId,
-    );
     _seasonFocus.dispose();
     _searchFocus.dispose();
     _autoNextFocus.dispose();
@@ -419,16 +416,6 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
     final showSeason = (_seasonCount ?? 0) > 1;
     final tv = _tvFocus;
     final visible = _visibleEpisodes;
-    if (tv && !_loading && visible.isNotEmpty) {
-      shellTvRegisterRow(
-        tabId: _kEpisodeTvTabId,
-        rowId: _kEpisodeTvListRowId,
-        sortOrder: 1,
-        itemCount: visible.length,
-        orientation: ShellTvRowOrientation.vertical,
-        onFocusUp: _focusTopBarFromList,
-      );
-    }
 
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -562,8 +549,20 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
       ],
     );
 
-    if (!tv) return body;
-    return ShellTvDisableLinearFocus(child: body);
+    Widget result = body;
+    if (tv && !_loading && visible.isNotEmpty) {
+      result = TvCatalogRow(
+        tabId: _kEpisodeTvTabId,
+        rowId: _kEpisodeTvListRowId,
+        sortOrder: 1,
+        itemCount: visible.length,
+        orientation: ShellTvRowOrientation.vertical,
+        onFocusUp: _focusTopBarFromList,
+        child: body,
+      );
+    }
+    if (!tv) return result;
+    return ShellTvDisableLinearFocus(child: result);
   }
 }
 
@@ -931,10 +930,6 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
 
   @override
   void dispose() {
-    shellTvUnregisterRow(
-      tabId: _kEpisodeTvTabId,
-      rowId: _kEpisodeTvListRowId,
-    );
     _searchFocus.dispose();
     _autoNextFocus.dispose();
     _closeFocus.dispose();
@@ -989,16 +984,6 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
     final showRange = showEpisodeRangeBar(_episodeNumbers);
     final tv = _tvFocus;
     final visible = _visibleEpisodes;
-    if (tv && visible.isNotEmpty) {
-      shellTvRegisterRow(
-        tabId: _kEpisodeTvTabId,
-        rowId: _kEpisodeTvListRowId,
-        sortOrder: 1,
-        itemCount: visible.length,
-        orientation: ShellTvRowOrientation.vertical,
-        onFocusUp: _focusTopBarFromList,
-      );
-    }
 
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1105,8 +1090,20 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
       ],
     );
 
-    if (!tv) return body;
-    return ShellTvDisableLinearFocus(child: body);
+    Widget result = body;
+    if (tv && visible.isNotEmpty) {
+      result = TvCatalogRow(
+        tabId: _kEpisodeTvTabId,
+        rowId: _kEpisodeTvListRowId,
+        sortOrder: 1,
+        itemCount: visible.length,
+        orientation: ShellTvRowOrientation.vertical,
+        onFocusUp: _focusTopBarFromList,
+        child: body,
+      );
+    }
+    if (!tv) return result;
+    return ShellTvDisableLinearFocus(child: result);
   }
 }
 

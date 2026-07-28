@@ -3,6 +3,7 @@
 import 'dart:math' as math;
 
 import 'package:forja/features/home/widgets/home_widget_imports.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 class HomeMoodCircleLayout {
   const HomeMoodCircleLayout({
     required this.circleSize,
@@ -297,6 +298,7 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
     })> moods,
     required String selectedId,
     required ValueChanged<String> onSelect,
+    TvChipEdges? edges,
   }) {
     final m = moods[i];
     final isSelected = m.id == selectedId;
@@ -312,39 +314,14 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
       onTap: () {
         if (m.id != selectedId) {
           onSelect(m.id);
-        } else if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
-          ShellTvFocusCoordinator.focusFromChipStripDown(
-            tabId: 'home',
-            chipRowId: 'mood-chips',
-            resultsRowId: 'mood-results',
-          );
+        } else if (edges != null) {
+          edges.onSelectAlreadySelected();
         }
       },
-      onLeftEdge: shellTvChipLeftEdge(
-        context,
-        tabId: 'home',
-        rowId: 'mood-chips',
-        index: i,
-      ),
-      onRightEdge: shellTvChipRightEdge(
-        tabId: 'home',
-        rowId: 'mood-chips',
-        index: i,
-        itemCount: moods.length,
-      ),
-      onUpEdge: () {
-        ShellTvFocusCoordinator.moveVerticalInTab(
-          tabId: 'home',
-          rowId: 'mood-chips',
-          currentIndex: i,
-          down: false,
-        );
-      },
-      onDownEdge: shellTvChipDownToRow(
-        tabId: 'home',
-        chipRowId: 'mood-chips',
-        resultsRowId: 'mood-results',
-      ),
+      onLeftEdge: edges?.onLeft,
+      onRightEdge: edges?.onRight,
+      onUpEdge: edges?.onUp,
+      onDownEdge: edges?.onDown,
     );
   }
 
@@ -362,6 +339,7 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
     required String selectedId,
     required ValueChanged<String> onSelect,
     bool scaleToFit = false,
+    TvChipEdges Function(int index)? edgesFor,
   }) {
     final row = Row(
       mainAxisSize: MainAxisSize.min,
@@ -376,6 +354,7 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
             moods: moods,
             selectedId: selectedId,
             onSelect: onSelect,
+            edges: edgesFor?.call(i),
           ),
         ],
       ],
@@ -423,19 +402,10 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
             style: ShellSectionTitle.titleStyle,
           ),
         ),
-        // Mood circle strip - TV: always centered, no scroll; desktop: center or scroll
         Builder(
           builder: (context) {
             final tvNav =
                 ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-            if (tvNav) {
-              shellTvRegisterRow(
-                tabId: 'home',
-                rowId: 'mood-chips',
-                sortOrder: widget.tvRowOrder,
-                itemCount: moods.length,
-              );
-            }
             return LayoutBuilder(
               builder: (context, constraints) {
                 final layout = HomeMoodCircleLayout.resolve(
@@ -445,13 +415,20 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
                 );
 
                 if (tvNav) {
-                  return _centeredMoodRow(
-                    context: context,
-                    layout: layout,
-                    moods: moods,
-                    selectedId: selectedId,
-                    onSelect: onSelect,
-                    scaleToFit: true,
+                  return TvChipStrip(
+                    rowId: 'mood-chips',
+                    sortOrder: widget.tvRowOrder,
+                    itemCount: moods.length,
+                    resultsRowId: 'mood-results',
+                    builder: (context, edgesFor) => _centeredMoodRow(
+                      context: context,
+                      layout: layout,
+                      moods: moods,
+                      selectedId: selectedId,
+                      onSelect: onSelect,
+                      scaleToFit: true,
+                      edgesFor: edgesFor,
+                    ),
                   );
                 }
 
@@ -492,7 +469,6 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
           },
         ),
         const SizedBox(height: 16),
-        // Results row
         FutureBuilder<List<Movie>>(
           future: future,
           builder: (context, snap) {
@@ -516,11 +492,11 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
                       scrollDirection: Axis.horizontal,
                       physics: const NeverScrollableScrollPhysics(),
                       padding: EdgeInsets.symmetric(
-                  horizontal: shellHomeSectionHorizontalPadding(context),
-                ),
+                        horizontal: shellHomeSectionHorizontalPadding(context),
+                      ),
                       itemCount: 5,
                       separatorBuilder: (_, _) =>
-                SizedBox(width: shellMovieCardRowGap(context)),
+                          SizedBox(width: shellMovieCardRowGap(context)),
                       itemBuilder: (_, _) => homeCardSkeleton(context),
                     ),
                   ),
@@ -534,36 +510,35 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
                 child: Center(
                   child: Text(
                     'No matches for this mood',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               );
             }
             final count = movies.length.clamp(0, 20);
-            shellTvRegisterRow(
-              tabId: 'home',
+            return TvCatalogRow(
               rowId: 'mood-results',
               sortOrder: widget.tvRowOrder + 1,
               itemCount: count,
-            );
-            return FocusTraversalGroup(
-              child: HorizontalScroller(
-                height: HomeMovieCard.cardHeight(context),
-                padding: EdgeInsets.symmetric(
-                  horizontal: shellHomeSectionHorizontalPadding(context),
-                ),
-                itemCount: count,
-                separatorBuilder: (_, _) =>
-                    SizedBox(width: shellMovieCardRowGap(context)),
-                itemBuilder: (context, i) => HomeMovieCard(
-                  movie: movies[i],
-                  onTap: () => onMovieTap(movies[i]),
-                  listIndex: i,
-                  tvTabId: 'home',
-                  tvRowId: 'mood-results',
-                  onUpEdge: shellTvResultsUpToChips(
-                    tabId: 'home',
-                    chipRowId: 'mood-chips',
+              child: FocusTraversalGroup(
+                child: HorizontalScroller(
+                  height: HomeMovieCard.cardHeight(context),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: shellHomeSectionHorizontalPadding(context),
+                  ),
+                  itemCount: count,
+                  separatorBuilder: (_, _) =>
+                      SizedBox(width: shellMovieCardRowGap(context)),
+                  itemBuilder: (context, i) => HomeMovieCard(
+                    movie: movies[i],
+                    onTap: () => onMovieTap(movies[i]),
+                    listIndex: i,
+                    tvTabId: 'home',
+                    tvRowId: 'mood-results',
+                    onUpEdge: tvResultsUpToChips(context),
                   ),
                 ),
               ),

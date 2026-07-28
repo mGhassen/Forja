@@ -2,115 +2,131 @@
 
 import 'package:forja/features/home/widgets/home_movie_section.dart';
 import 'package:forja/features/home/widgets/home_widget_imports.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
-import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
-class HomeStremioCatalogSection extends StatefulWidget {
+
+class HomeStremioCatalogSection extends StatelessWidget {
   final Map<String, dynamic> catalog;
   final List<Map<String, dynamic>> items;
   final Function(Map<String, dynamic>) onItemTap;
   final VoidCallback onShowAll;
+  final int tvRowOrder;
 
   const HomeStremioCatalogSection({
+    super.key,
     required this.catalog,
     required this.items,
     required this.onItemTap,
     required this.onShowAll,
+    this.tvRowOrder = 15,
   });
 
-  @override
-  State<HomeStremioCatalogSection> createState() => HomeStremioCatalogSectionState();
-}
-
-class HomeStremioCatalogSectionState extends State<HomeStremioCatalogSection> {
   String get _rowId {
-    final cat = widget.catalog;
+    final cat = catalog;
     return 'stremio-${cat['addonBaseUrl']}-${cat['catalogId']}';
   }
 
   @override
-  void dispose() {
-    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final cat = widget.catalog;
+    final cat = catalog;
     final addonName = cat['addonName'] as String;
     final catalogName = cat['catalogName'] as String;
-    final itemCount = widget.items.length.clamp(0, 20);
-    shellTvRegisterRow(
-      tabId: 'home',
-      rowId: _rowId,
-      sortOrder: 15,
-      itemCount: itemCount,
-    );
+    final itemCount = items.length.clamp(0, 20);
+    // Cards occupy 0..itemCount-1; Show All is itemCount (in the title row).
+    final graphCount = itemCount + 1;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: shellHomeSectionTitlePadding(
-            context,
-            bottom: shellScaled(context, 14).clamp(4.0, 14.0),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$addonName · $catalogName',
-                      style: ShellSectionTitle.titleStyle,
-                    ),
-                  ],
-                ),
-              ),
-              FocusableControl(
-                onTap: widget.onShowAll,
-                borderRadius: 20,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: Colors.white.withValues(alpha: 0.08),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+    return TvCatalogRow(
+      rowId: _rowId,
+      sortOrder: tvRowOrder,
+      itemCount: graphCount,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: shellHomeSectionTitlePadding(
+              context,
+              bottom: shellScaled(context, 14).clamp(4.0, 14.0),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Show All', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 4),
-                      Icon(Icons.arrow_forward_ios, size: 11, color: Colors.white.withValues(alpha: 0.6)),
+                      Text(
+                        '$addonName · $catalogName',
+                        style: ShellSectionTitle.titleStyle,
+                      ),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        FocusTraversalGroup(
-          child: HorizontalScroller(
-            height: HomeMovieCard.cardHeight(context),
-            padding: EdgeInsets.symmetric(
-              horizontal: shellHomeSectionHorizontalPadding(context),
+                shellFocusableTap(
+                  context: context,
+                  onTap: onShowAll,
+                  borderRadius: 20,
+                  listIndex: itemCount,
+                  navLeftAlways: true,
+                  tvTabId: 'home',
+                  tvRowId: _rowId,
+                  tvItemIndex: itemCount,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white.withValues(alpha: 0.08),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Show All',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 11,
+                          color: Colors.white.withValues(alpha: 0.6),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            itemCount: itemCount,
-            separatorBuilder: (_, _) =>
-                SizedBox(width: shellMovieCardRowGap(context)),
-            itemBuilder: (context, index) {
-              final item = widget.items[index];
-              return HomeStremioCatalogCard(
-                item: item,
-                listIndex: index,
-                tvRowId: _rowId,
-                onTap: () => widget.onItemTap(item),
-              );
-            },
           ),
-        ),
-      ],
+          FocusTraversalGroup(
+            child: HorizontalScroller(
+              height: HomeMovieCard.cardHeight(context),
+              padding: EdgeInsets.symmetric(
+                horizontal: shellHomeSectionHorizontalPadding(context),
+              ),
+              itemCount: itemCount,
+              separatorBuilder: (_, _) =>
+                  SizedBox(width: shellMovieCardRowGap(context)),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return HomeStremioCatalogCard(
+                  item: item,
+                  listIndex: index,
+                  tvRowId: _rowId,
+                  onTap: () => onItemTap(item),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -122,6 +138,7 @@ class HomeStremioCatalogCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const HomeStremioCatalogCard({
+    super.key,
     required this.item,
     required this.onTap,
     this.listIndex,
@@ -152,7 +169,11 @@ class HomeStremioCatalogCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 6)),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
           ],
         ),
         child: ClipRRect(
@@ -171,57 +192,76 @@ class HomeStremioCatalogCard extends StatelessWidget {
                             ColoredBox(color: AppTheme.bgDark),
                         errorWidget: (_, _, _) => Container(
                           color: AppTheme.bgDark,
-                          child: Center(child: Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white38))),
+                          child: Center(
+                            child: Text(
+                              name,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white38,
+                              ),
+                            ),
+                          ),
                         ),
                       )
-                    : Center(child: Text(name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.white38))),
+                    : Center(
+                        child: Text(
+                          name,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white38,
+                          ),
+                        ),
+                      ),
               ),
-
-            // Improved gradient
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.7),
-                    Colors.black.withValues(alpha: 0.95),
-                  ],
-                  stops: const [0.0, 0.4, 0.75, 1.0],
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.7),
+                      Colors.black.withValues(alpha: 0.95),
+                    ],
+                    stops: const [0.0, 0.4, 0.75, 1.0],
+                  ),
                 ),
               ),
-            ),
-
-            // Rating badge - frosted glass
-            if (rating.isNotEmpty)
+              if (rating.isNotEmpty)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: homeRatingBadgeText(rating),
+                ),
               Positioned(
-                top: 8, right: 8,
-                child: homeRatingBadgeText(rating),
+                bottom: 10,
+                left: 10,
+                right: 10,
+                child: Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    height: 1.2,
+                  ),
+                ),
               ),
-
-            // Name
-            Positioned(
-              bottom: 10, left: 10, right: 10,
-              child: Text(
-                name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12, height: 1.2),
+              Positioned(
+                top: 8,
+                left: 8,
+                child: MyListButton.stremio(
+                  stremioItem: item,
+                  excludeFromTvTraversal: true,
+                ),
               ),
-            ),
-
-            // My List button
-            Positioned(
-              top: 8, left: 8,
-              child: MyListButton.stremio(
-                stremioItem: item,
-                excludeFromTvTraversal: true,
-              ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );

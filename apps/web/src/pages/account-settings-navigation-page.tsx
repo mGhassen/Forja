@@ -205,14 +205,14 @@ export function AccountSettingsNavigationPage() {
                   disabled={controlsLocked}
                   onClick={() => setVisible(id, !on)}
                   className={cn(
-                    'relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+                    'relative h-6 w-11 shrink-0 appearance-none border-0 p-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60',
                     on ? 'bg-forja-green' : 'bg-white/15',
                   )}
                 >
                   <span
                     className={cn(
-                      'absolute top-1 size-4 rounded-full bg-white shadow-sm transition-transform',
-                      on ? 'translate-x-6' : 'translate-x-1',
+                      'pointer-events-none absolute top-1 left-1 size-4 rounded-full bg-forja-bg transition-transform',
+                      on ? 'translate-x-5' : 'translate-x-0',
                     )}
                   />
                 </button>

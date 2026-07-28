@@ -23,11 +23,11 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/shell_mood_circle.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 part 'anime_screen_feed.dart';
 part 'anime_screen_build.dart';
@@ -158,7 +158,7 @@ class _AnimeScreenState extends ConsumerState<AnimeScreen>
   @override
   void initState() {
     super.initState();
-    ShellTvFocusCoordinator.registerTabDefaults(
+    TvHeroActions.bind(
       'anime',
       defaultFocus: () => ShellTvFocus.homeHeroPlay,
       heroReveal: () {

@@ -612,7 +612,6 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     final statsIdx = showStats ? next++ : null;
     final pipIdx = showPip ? next++ : null;
     final topCount = next;
-    iptvSyncRow(rowId: topRowId, sortOrder: 0, itemCount: topCount);
 
     void downFromTop() {
       if (_s._isVod && _s._seekFocus.canRequestFocus) {
@@ -631,7 +630,11 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
     // First trailing control after back (source chip or Player).
     final firstTrailingIdx = sourceIdx ?? playerIdx;
 
-    return Padding(
+    return iptvCatalogRow(
+      rowId: topRowId,
+      sortOrder: 0,
+      itemCount: topCount,
+      child: Padding(
       padding: EdgeInsets.fromLTRB(
         _topBarLeftPadding(context),
         _topBarTopPadding(context),
@@ -756,6 +759,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -916,7 +920,6 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
         (widget.channelGuide != null ? 2 : 0) +
         (_s._sources.length > 1 ? 1 : 0) +
         (tvFocus ? 0 : 1); // fullscreen (phone / desktop only)
-    iptvSyncRow(rowId: rowId, sortOrder: 1, itemCount: expectedCount);
     var i = 0;
     void upFromControls() {
       if (_s._isVod && _s._seekFocus.canRequestFocus) {
@@ -926,7 +929,11 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
       iptvFocusRowItem('iptv-player-top', 0);
     }
 
-    return Container(
+    return iptvCatalogRow(
+      rowId: rowId,
+      sortOrder: 1,
+      itemCount: expectedCount,
+      child: Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 16 : 24,
         vertical: compact ? 12 : 18,
@@ -1004,6 +1011,7 @@ mixin _IptvPtPlayerUi on State<IptvPtPlayerScreen> {
             ),
         ],
       ),
+    ),
     );
   }
 

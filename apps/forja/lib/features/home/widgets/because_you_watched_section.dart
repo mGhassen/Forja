@@ -1,7 +1,7 @@
 // Home tab section widgets - extracted from home_screen.dart (RFC-019 Phase B).
 
 import 'package:forja/features/home/widgets/home_widget_imports.dart';
-import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 class HomeBecauseYouWatchedSection extends StatefulWidget {
   final String seedTitle;
   final String seedPosterPath;
@@ -24,12 +24,6 @@ class HomeBecauseYouWatchedSection extends StatefulWidget {
 class HomeBecauseYouWatchedSectionState extends State<HomeBecauseYouWatchedSection> {
   static const _rowId = 'because-watched';
   static const _rowOrder = 14;
-
-  @override
-  void dispose() {
-    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
-    super.dispose();
-  }
 
   Widget _buildHeader() {
     final posterUrl = widget.seedPosterPath.isNotEmpty
@@ -136,41 +130,38 @@ class HomeBecauseYouWatchedSectionState extends State<HomeBecauseYouWatchedSecti
 
         if (!loading && movies.isEmpty) return const SizedBox.shrink();
 
-        if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
-          shellTvRegisterRow(
-            tabId: 'home',
-            rowId: _rowId,
-            sortOrder: _rowOrder,
-            itemCount: movies.length.clamp(0, 25),
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(),
-            if (loading)
-              _buildCardSkeletonRow()
-            else
-              FocusTraversalGroup(
-                child: HorizontalScroller(
-                  height: HomeMovieCard.cardHeight(context),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: shellHomeSectionHorizontalPadding(context),
-                  ),
-                  itemCount: movies.length.clamp(0, 25),
-                  separatorBuilder: (_, _) =>
-                      SizedBox(width: shellMovieCardRowGap(context)),
-                  itemBuilder: (context, i) => HomeMovieCard(
-                    movie: movies[i],
-                    onTap: () => widget.onMovieTap(movies[i]),
-                    listIndex: i,
-                    tvTabId: 'home',
-                    tvRowId: _rowId,
+        final count = movies.length.clamp(0, 25);
+        return TvCatalogRow(
+          rowId: _rowId,
+          sortOrder: _rowOrder,
+          itemCount: loading ? 0 : count,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              if (loading)
+                _buildCardSkeletonRow()
+              else
+                FocusTraversalGroup(
+                  child: HorizontalScroller(
+                    height: HomeMovieCard.cardHeight(context),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: shellHomeSectionHorizontalPadding(context),
+                    ),
+                    itemCount: count,
+                    separatorBuilder: (_, _) =>
+                        SizedBox(width: shellMovieCardRowGap(context)),
+                    itemBuilder: (context, i) => HomeMovieCard(
+                      movie: movies[i],
+                      onTap: () => widget.onMovieTap(movies[i]),
+                      listIndex: i,
+                      tvTabId: 'home',
+                      tvRowId: _rowId,
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         );
       },
     );

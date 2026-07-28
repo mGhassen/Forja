@@ -10,7 +10,6 @@ class _SearchFilmCard extends StatefulWidget {
     this.onLeftEdge,
     this.onUpEdge,
     this.gridIndex,
-    this.gridColumns,
   });
 
   final _FlatSearchResult result;
@@ -21,7 +20,6 @@ class _SearchFilmCard extends StatefulWidget {
   final VoidCallback? onLeftEdge;
   final VoidCallback? onUpEdge;
   final int? gridIndex;
-  final int? gridColumns;
 
   @override
   State<_SearchFilmCard> createState() => _SearchFilmCardState();
@@ -36,6 +34,9 @@ class _SearchFilmCardState extends State<_SearchFilmCard> {
     final tvActivateOpens = ShellScope.inputPolicyOf(
       context,
     ).useFocusableMoodChips;
+    final grid = TvGridScope.maybeOf(context);
+    final index = widget.gridIndex;
+    final meta = index != null ? grid?.metaFor(index) : null;
 
     return shellFocusableTap(
       context: context,
@@ -44,12 +45,12 @@ class _SearchFilmCardState extends State<_SearchFilmCard> {
       showFocusBorder: true,
       onLeftEdge: widget.onLeftEdge,
       onUpEdge: widget.onUpEdge,
-      gridIndex: widget.gridIndex,
-      gridColumns: widget.gridColumns,
-      tvTabId: 'search',
-      tvRowId: 'results',
-      tvZone: ShellTvZone.grid,
-      tvItemIndex: widget.gridIndex,
+      gridIndex: meta?.gridIndex ?? index,
+      gridColumns: meta?.gridColumns,
+      tvTabId: meta?.tvTabId ?? 'search',
+      tvRowId: meta?.tvRowId ?? 'results',
+      tvZone: meta?.tvZone ?? ShellTvZone.grid,
+      tvItemIndex: meta?.tvItemIndex ?? index,
       onFocusChange: widget.onFocusChange,
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: GestureDetector(

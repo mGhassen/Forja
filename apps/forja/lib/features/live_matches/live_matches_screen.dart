@@ -23,6 +23,7 @@ import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
@@ -144,7 +145,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   @override
   void initState() {
     super.initState();
-    ShellTvFocusCoordinator.registerTabDefaults(
+    TvHeroActions.bind(
       _tabId,
       enterFromNavFocus: () {
         _restoreLiveMatchesTvFocus();
@@ -176,7 +177,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     _refreshFocusNode.dispose();
     _viewFocusNode.dispose();
     _timelineScrollController.dispose();
-    ShellTvFocusCoordinator.unregisterTabDefaults(_tabId);
+    TvHeroActions.unbind(_tabId);
     ShellTvFocusCoordinator.clearTab(_tabId);
     _tabController?.dispose();
     super.dispose();

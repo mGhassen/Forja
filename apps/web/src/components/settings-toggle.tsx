@@ -20,7 +20,7 @@ export function SettingsToggle({
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`flex min-h-[58px] w-full cursor-pointer items-center justify-between gap-5 px-0.5 py-3 text-left disabled:cursor-not-allowed disabled:opacity-60`}
+      className="flex min-h-[58px] w-full cursor-pointer items-center justify-between gap-5 px-0.5 py-3 text-left disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span className="min-w-0">
         <span className="block text-sm font-medium">{label}</span>
@@ -35,8 +35,8 @@ export function SettingsToggle({
         }`}
       >
         <span
-          className={`absolute top-1 size-4 rounded-full bg-white shadow-sm transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-1'
+          className={`absolute top-1 left-1 size-4 rounded-full bg-forja-bg transition-transform ${
+            checked ? 'translate-x-5' : 'translate-x-0'
           }`}
         />
       </span>

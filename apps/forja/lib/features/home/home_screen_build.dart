@@ -26,7 +26,9 @@ SliverToBoxAdapter _homeRowSliver(
 mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
   _HomeScreenState get _s => this as _HomeScreenState;
 
-  static const int _kGenreRowOrderBase = 21;
+  static const int _kGenreRowOrderBase = 41;
+  static const int _kStremioRowOrderBase = 15;
+  static const int _kNewReleasesRowOrder = 40;
 
   void _listenHomeFeedSideEffects() {
     ref.listen(addonRevisionProvider, (prev, next) {
@@ -224,7 +226,9 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
                   ),
 
               if (_s._catalogsLoaded || _s._stremioCatalogs.isNotEmpty)
-                ..._s._stremioCatalogs.map((cat) {
+                ..._s._stremioCatalogs.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final cat = entry.value;
                   final key = '${cat['addonBaseUrl']}/${cat['catalogType']}/${cat['catalogId']}';
                   final items = _s._catalogItems[key];
                   if (items == null || items.isEmpty) {
@@ -245,6 +249,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
                       items: items,
                       onItemTap: _s._openStremioItem,
                       onShowAll: () => _s._openStremioCatalog(cat),
+                      tvRowOrder: _kStremioRowOrderBase + i,
                     ),
                     isFirstAfterHero: false,
                   );
@@ -316,7 +321,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
                   future: _s._nowPlayingFuture,
                   onMovieTap: _s._openDetails,
                   tvRowId: 'new-releases',
-                  tvRowOrder: 20,
+                  tvRowOrder: _kNewReleasesRowOrder,
                 ),
                 isFirstAfterHero: false,
               ),
@@ -329,20 +334,23 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
         );
 
     if (!usesShellHome) {
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          content,
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: HomeTopBar(),
-          ),
-        ],
+      return TvFocusGraph(
+        tabId: 'home',
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            content,
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: HomeTopBar(),
+            ),
+          ],
+        ),
       );
     }
 
-    return content;
+    return TvFocusGraph(tabId: 'home', child: content);
   }
 }

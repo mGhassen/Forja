@@ -442,33 +442,33 @@ class _M3uPlaylistsScreenState extends State<M3uPlaylistsScreen> {
   }
 
   Widget _buildList() {
-    iptvSyncRow(
+    return iptvCatalogRow(
       rowId: 'm3u-playlists',
       sortOrder: 0,
       itemCount: _playlists.length,
       orientation: ShellTvRowOrientation.vertical,
-    );
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      itemCount: _playlists.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 10),
-      itemBuilder: (_, i) {
-        final p = _playlists[i];
-        return _PlaylistCard(
-          playlist: p,
-          listIndex: i,
-          onTap: () {
-            pushShellRoute(
-              context,
-              AppRouter.slideShellRoute(
-                (_) => M3uChannelsScreen(playlist: p),
-              ),
-            );
-          },
-          onRefresh: p.sourceUrl == null ? null : () => _refresh(p),
-          onDelete: () => _delete(p),
-        );
-      },
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        itemCount: _playlists.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (_, i) {
+          final p = _playlists[i];
+          return _PlaylistCard(
+            playlist: p,
+            listIndex: i,
+            onTap: () {
+              pushShellRoute(
+                context,
+                AppRouter.slideShellRoute(
+                  (_) => M3uChannelsScreen(playlist: p),
+                ),
+              );
+            },
+            onRefresh: p.sourceUrl == null ? null : () => _refresh(p),
+            onDelete: () => _delete(p),
+          );
+        },
+      ),
     );
   }
 
@@ -767,26 +767,24 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
                           style: GoogleFonts.plusJakartaSans(color: Colors.white60),
                         ),
                       )
-                    : Builder(builder: (_) {
-                        iptvSyncRow(
-                          rowId: 'm3u-channels',
-                          sortOrder: 1,
-                          itemCount: list.length,
-                          orientation: ShellTvRowOrientation.vertical,
-                        );
-                        return ListView.separated(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                    : iptvCatalogRow(
+                        rowId: 'm3u-channels',
+                        sortOrder: 1,
                         itemCount: list.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 6),
-                        itemBuilder: (_, i) =>
-                            _ChannelTile(
-                              channel: list[i],
-                              listIndex: i,
-                              onTap: () => _play(list[i]),
-                            ),
-                      );
-                      }),
+                        orientation: ShellTvRowOrientation.vertical,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          itemCount: list.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 6),
+                          itemBuilder: (_, i) => _ChannelTile(
+                            channel: list[i],
+                            listIndex: i,
+                            onTap: () => _play(list[i]),
+                          ),
+                        ),
+                      ),
               ),
             ],
           ),
@@ -871,67 +869,68 @@ class _M3uChannelsScreenState extends State<M3uChannelsScreen> {
               height: 36,
               child: Builder(builder: (_) {
                 final chipCount = _groups.length + 1;
-                iptvSyncRow(
+                return iptvCatalogRow(
                   rowId: 'm3u-groups',
                   sortOrder: 0,
                   itemCount: chipCount,
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (_) {
+                      _updateScrollArrows();
+                      return false;
+                    },
+                    child: Stack(
+                      children: [
+                        ListView.separated(
+                          controller: _groupScrollCtrl,
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 28),
+                          itemCount: chipCount,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 6),
+                          itemBuilder: (_, i) {
+                            if (i == 0) {
+                              return _GroupChip(
+                                label: 'All',
+                                selected: _group == null,
+                                listIndex: i,
+                                onTap: () => setState(() => _group = null),
+                              );
+                            }
+                            final g = _groups[i - 1];
+                            return _GroupChip(
+                              label: g,
+                              selected: _group == g,
+                              listIndex: i,
+                              onTap: () => setState(() => _group = g),
+                            );
+                          },
+                        ),
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          child: _ScrollArrow(
+                            icon: Icons.chevron_left_rounded,
+                            visible: _canScrollLeft,
+                            onTap: () => _scrollGroups(forward: false),
+                            alignLeft: true,
+                          ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          child: _ScrollArrow(
+                            icon: Icons.chevron_right_rounded,
+                            visible: _canScrollRight,
+                            onTap: () => _scrollGroups(forward: true),
+                            alignLeft: false,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 );
-                return NotificationListener<ScrollNotification>(
-                onNotification: (_) {
-                  _updateScrollArrows();
-                  return false;
-                },
-                child: Stack(
-                  children: [
-                    ListView.separated(
-                      controller: _groupScrollCtrl,
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      itemCount: chipCount,
-                      separatorBuilder: (context, index) => const SizedBox(width: 6),
-                      itemBuilder: (_, i) {
-                        if (i == 0) {
-                          return _GroupChip(
-                            label: 'All',
-                            selected: _group == null,
-                            listIndex: i,
-                            onTap: () => setState(() => _group = null),
-                          );
-                        }
-                        final g = _groups[i - 1];
-                        return _GroupChip(
-                          label: g,
-                          selected: _group == g,
-                          listIndex: i,
-                          onTap: () => setState(() => _group = g),
-                        );
-                      },
-                    ),
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      child: _ScrollArrow(
-                        icon: Icons.chevron_left_rounded,
-                        visible: _canScrollLeft,
-                        onTap: () => _scrollGroups(forward: false),
-                        alignLeft: true,
-                      ),
-                    ),
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      child: _ScrollArrow(
-                        icon: Icons.chevron_right_rounded,
-                        visible: _canScrollRight,
-                        onTap: () => _scrollGroups(forward: true),
-                        alignLeft: false,
-                      ),
-                    ),
-                  ],
-                ),
-              );
               }),
             ),
           ],

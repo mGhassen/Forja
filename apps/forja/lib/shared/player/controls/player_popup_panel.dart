@@ -7,8 +7,8 @@ import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/player/controls/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/player_seek_scrub_cancel.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 enum PlayerSourceStatus { unchecked, ready, active, failed, checking }
 
@@ -344,59 +344,15 @@ class PlayerPopupPanel {
     required VoidCallback onDismiss,
     required Widget child,
   }) {
-    final tv =
-        ShellScope.maybeOf(overlayContext)?.inputPolicy.useFocusableMoodChips ??
-        false;
-    if (!tv) return child;
-    // FocusScope (not bare Focus) so FocusableControl D-pad stays inside the
-    // menu - otherwise FocusScope.of() resolves to the player chrome underneath.
-    return FocusScope(
-      debugLabel: 'player-tv-menu',
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-        final key = event.logicalKey;
-        if (key == LogicalKeyboardKey.escape ||
-            key == LogicalKeyboardKey.goBack) {
-          onDismiss();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: ShellTvLinearFocusScope(
-        child: FocusTraversalGroup(
-          policy: ReadingOrderTraversalPolicy(),
-          child: _TvMenuFocusOnOpen(child: child),
-        ),
-      ),
+    return TvOverlayScope(
+      enabled: ShellScope.maybeOf(overlayContext)
+              ?.inputPolicy
+              .useFocusableMoodChips ??
+          false,
+      onDismiss: onDismiss,
+      child: child,
     );
   }
-}
-
-/// After open: keep focus if a selected option already autofocused; else first control.
-class _TvMenuFocusOnOpen extends StatefulWidget {
-  const _TvMenuFocusOnOpen({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_TvMenuFocusOnOpen> createState() => _TvMenuFocusOnOpenState();
-}
-
-class _TvMenuFocusOnOpenState extends State<_TvMenuFocusOnOpen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final scope = FocusScope.of(context);
-      if (scope.focusedChild != null) return;
-      scope.nextFocus();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 /// Lets the selected list row claim autofocus once; otherwise open falls back

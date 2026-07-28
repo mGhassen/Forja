@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 /// Isolated TV coordinator tab for media details overlays.
 abstract final class MediaDetailsTv {
@@ -32,7 +33,7 @@ class _MediaDetailsTvScopeState extends State<MediaDetailsTvScope> {
   @override
   void initState() {
     super.initState();
-    ShellTvFocusCoordinator.registerTabDefaults(
+    TvHeroActions.bind(
       MediaDetailsTv.tabId,
       defaultFocus: () => widget.heroPlayFocus,
       heroReveal: _scrollHeroIntoView,
@@ -63,10 +64,15 @@ class _MediaDetailsTvScopeState extends State<MediaDetailsTvScope> {
   void dispose() {
     ShellTvFocusCoordinator.unregisterDetailBackFocus(widget.backFocus);
     ShellTvFocusCoordinator.clearTab(MediaDetailsTv.tabId);
-    ShellTvFocusCoordinator.unregisterTabDefaults(MediaDetailsTv.tabId);
+    TvHeroActions.unbind(MediaDetailsTv.tabId);
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) {
+    return TvFocusGraph(
+      tabId: MediaDetailsTv.tabId,
+      child: widget.child,
+    );
+  }
 }

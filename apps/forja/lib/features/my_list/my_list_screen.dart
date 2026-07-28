@@ -9,6 +9,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 class MyListScreen extends ConsumerStatefulWidget {
   const MyListScreen({super.key});
@@ -34,7 +35,7 @@ class _MyListScreenState extends ConsumerState<MyListScreen> with ShellTabRefres
   @override
   void initState() {
     super.initState();
-    ShellTvFocusCoordinator.registerTabDefaults(
+    TvHeroActions.bind(
       'mylist',
       enterFromNavFocus: () {
         ShellTvFocusCoordinator.focusRowItem('mylist', _gridRowId, 0);
@@ -47,7 +48,6 @@ class _MyListScreenState extends ConsumerState<MyListScreen> with ShellTabRefres
 
   @override
   void dispose() {
-    ShellTvFocusCoordinator.unregisterTabDefaults('mylist');
     ShellTvFocusCoordinator.clearTab('mylist');
     super.dispose();
   }
@@ -110,123 +110,117 @@ class _MyListScreenState extends ConsumerState<MyListScreen> with ShellTabRefres
     final items = ref.watch(myListItemsProvider);
     final crossAxisCount = shellGridCrossAxisCount(context);
 
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        SliverToBoxAdapter(
-          child: ShellTabHeader(
-            title: 'My List',
-            actions: [
-              Text(
-                '${items.length} items',
-                style: const TextStyle(
-                  color: Colors.white38,
-                  fontSize: 14,
-                  fontWeight: FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (items.isEmpty) ...[
-          Builder(
-            builder: (context) {
-              shellTvUnregisterRow(tabId: 'mylist', rowId: _gridRowId);
-              return const SliverToBoxAdapter(child: SizedBox.shrink());
-            },
-          ),
-          SliverFillRemaining(
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.bookmark_border, size: 80, color: Colors.white.withValues(alpha: 0.1)),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Your list is empty',
-                    style: TextStyle(color: Colors.white38, fontSize: 18),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Tap the + button on any movie or show to add it here',
-                    style: TextStyle(color: Colors.white24, fontSize: 13),
+    return TvFocusGraph(
+      tabId: 'mylist',
+      child: TvGrid(
+        rowId: _gridRowId,
+        sortOrder: 0,
+        columns: crossAxisCount,
+        itemCount: items.length,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: ShellTabHeader(
+                title: 'My List',
+                actions: [
+                  Text(
+                    '${items.length} items',
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 14,
+                      fontWeight: FontWeight.normal,
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-        ] else
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              ShellTokens.bodyHorizontalPadding,
-              0,
-              ShellTokens.bodyHorizontalPadding,
-              ShellTokens.bodyHorizontalPadding,
-            ),
-            sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 2 / 3,
+            if (items.isEmpty)
+              SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bookmark_border, size: 80, color: Colors.white.withValues(alpha: 0.1)),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Your list is empty',
+                        style: TextStyle(color: Colors.white38, fontSize: 18),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Tap the + button on any movie or show to add it here',
+                        style: TextStyle(color: Colors.white24, fontSize: 13),
+                      ),
+                    ],
+                  ),
                 ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (index == 0 && items.isNotEmpty) {
-                      shellTvRegisterRow(
-                        tabId: 'mylist',
-                        rowId: 'grid',
-                        sortOrder: 0,
-                        itemCount: items.length,
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  ShellTokens.bodyHorizontalPadding,
+                  0,
+                  ShellTokens.bodyHorizontalPadding,
+                  ShellTokens.bodyHorizontalPadding,
+                ),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 2 / 3,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final item = items[index];
+                      return _MyListCard(
+                        item: item,
+                        gridIndex: index,
+                        onTap: () => _openItem(item),
+                        onRemove: () async {
+                          await _myList.remove(item['uniqueId']);
+                          if (context.mounted) {
+                            ForjaToast.success(
+                              'Removed "${item['title']}" from My List',
+                              duration: const Duration(seconds: 2),
+                              actionLabel: 'UNDO',
+                              onAction: () {
+                                if (item['source'] == 'stremio') {
+                                  _myList.addStremioItem({
+                                    'name': item['title'],
+                                    'poster': item['posterPath'],
+                                    'type': item['stremioType'] ?? item['mediaType'],
+                                    'imdb_id': item['imdbId'],
+                                    'imdbRating': item['voteAverage']?.toString(),
+                                    'releaseInfo': item['releaseDate'],
+                                  });
+                                } else {
+                                  _myList.addMovie(
+                                    tmdbId: item['tmdbId'] ?? 0,
+                                    imdbId: item['imdbId'],
+                                    title: item['title'] ?? '',
+                                    posterPath: item['posterPath'] ?? '',
+                                    mediaType: item['mediaType'] ?? 'movie',
+                                    voteAverage:
+                                        (item['voteAverage'] as num?)?.toDouble() ??
+                                            0,
+                                    releaseDate: item['releaseDate'] ?? '',
+                                  );
+                                }
+                              },
+                            );
+                          }
+                        },
                       );
-                    }
-                    final item = items[index];
-                    return _MyListCard(
-                      item: item,
-                      gridIndex: index,
-                      gridColumns: crossAxisCount,
-                      onTap: () => _openItem(item),
-                      onRemove: () async {
-                        await _myList.remove(item['uniqueId']);
-                        if (context.mounted) {
-                          ForjaToast.success(
-                            'Removed "${item['title']}" from My List',
-                            duration: const Duration(seconds: 2),
-                            actionLabel: 'UNDO',
-                            onAction: () {
-                              if (item['source'] == 'stremio') {
-                                _myList.addStremioItem({
-                                  'name': item['title'],
-                                  'poster': item['posterPath'],
-                                  'type': item['stremioType'] ?? item['mediaType'],
-                                  'imdb_id': item['imdbId'],
-                                  'imdbRating': item['voteAverage']?.toString(),
-                                  'releaseInfo': item['releaseDate'],
-                                });
-                              } else {
-                                _myList.addMovie(
-                                  tmdbId: item['tmdbId'] ?? 0,
-                                  imdbId: item['imdbId'],
-                                  title: item['title'] ?? '',
-                                  posterPath: item['posterPath'] ?? '',
-                                  mediaType: item['mediaType'] ?? 'movie',
-                                  voteAverage:
-                                      (item['voteAverage'] as num?)?.toDouble() ??
-                                          0,
-                                  releaseDate: item['releaseDate'] ?? '',
-                                );
-                              }
-                            },
-                          );
-                        }
-                      },
-                    );
-                  },
-                  childCount: items.length,
+                    },
+                    childCount: items.length,
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -240,14 +234,12 @@ class _MyListCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onRemove;
   final int? gridIndex;
-  final int? gridColumns;
 
   const _MyListCard({
     required this.item,
     required this.onTap,
     required this.onRemove,
     this.gridIndex,
-    this.gridColumns,
   });
 
   @override
@@ -264,17 +256,21 @@ class _MyListCard extends StatelessWidget {
         : poster;
 
     final policy = ShellScope.inputPolicyOf(context);
+    final grid = TvGridScope.maybeOf(context);
+    final index = gridIndex;
+    final meta = index != null ? grid?.metaFor(index) : null;
+
     return shellFocusableTap(
       context: context,
       onTap: onTap,
       borderRadius: 12,
       showFocusBorder: true,
-      gridIndex: gridIndex,
-      gridColumns: gridColumns,
-      tvTabId: 'mylist',
-      tvRowId: 'grid',
-      tvZone: ShellTvZone.grid,
-      tvItemIndex: gridIndex,
+      gridIndex: meta?.gridIndex ?? index,
+      gridColumns: meta?.gridColumns,
+      tvTabId: meta?.tvTabId ?? 'mylist',
+      tvRowId: meta?.tvRowId ?? 'grid',
+      tvZone: meta?.tvZone ?? ShellTvZone.grid,
+      tvItemIndex: meta?.tvItemIndex ?? index,
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(

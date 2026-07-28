@@ -8,7 +8,7 @@ import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/iptv/widgets/iptv_live_favorite_button.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 /// Pure layout maths for the Live catalog EPG timeline.
 class IptvEpgTimeline {
@@ -371,21 +371,7 @@ class _IptvEpgGuideViewState extends State<IptvEpgGuideView> {
                 width: _channelColW,
                 child: Builder(
                   builder: (context) {
-                    if (iptvUseTvFocus(context) && streams.isNotEmpty) {
-                      shellTvRegisterRow(
-                        tabId: 'iptv',
-                        rowId: 'epg-channels',
-                        sortOrder: 10,
-                        itemCount: streams.length,
-                        orientation: ShellTvRowOrientation.vertical,
-                      );
-                    } else {
-                      shellTvUnregisterRow(
-                        tabId: 'iptv',
-                        rowId: 'epg-channels',
-                      );
-                    }
-                    return ListView.builder(
+                    final list = ListView.builder(
                       controller: _vChannels,
                       physics: const ClampingScrollPhysics(),
                       itemExtent: _rowH,
@@ -396,6 +382,17 @@ class _IptvEpgGuideViewState extends State<IptvEpgGuideView> {
                         listIndex: i,
                         onTap: () => widget.onPlay(streams[i]),
                       ),
+                    );
+                    if (!iptvUseTvFocus(context) || streams.isEmpty) {
+                      return list;
+                    }
+                    return TvCatalogRow(
+                      tabId: 'iptv',
+                      rowId: 'epg-channels',
+                      sortOrder: 10,
+                      itemCount: streams.length,
+                      orientation: ShellTvRowOrientation.vertical,
+                      child: list,
                     );
                   },
                 ),

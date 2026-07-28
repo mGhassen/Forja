@@ -4,11 +4,12 @@ import 'package:forja/shared/design/src/details_tokens.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
-class MediaDetailsCastSection extends StatefulWidget {
+class MediaDetailsCastSection extends StatelessWidget {
   const MediaDetailsCastSection({
     super.key,
     required this.cast,
@@ -41,39 +42,14 @@ class MediaDetailsCastSection extends StatefulWidget {
       _avatarSize + _avatarNameGap + 16 + _nameCharacterGap + 15;
 
   @override
-  State<MediaDetailsCastSection> createState() =>
-      _MediaDetailsCastSectionState();
-}
-
-class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
-  String get _rowId => widget.tvRowId ?? 'cast';
-
-  @override
-  void dispose() {
-    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
-    if (tabId != null && widget.tvRowId != null) {
-      shellTvUnregisterRow(tabId: tabId, rowId: _rowId);
-    }
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (widget.cast.isEmpty) return const SizedBox.shrink();
+    if (cast.isEmpty) return const SizedBox.shrink();
 
-    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
-    if (tabId != null && widget.tvRowId != null) {
-      shellTvRegisterRow(
-        tabId: tabId,
-        rowId: _rowId,
-        sortOrder: widget.tvRowOrder,
-        itemCount: widget.cast.length,
-        onFocusUp: widget.tvFocusUp,
-      );
-    }
+    final tabId = tvTabId ?? ShellTvFocus.currentNavTabId;
+    final rowId = tvRowId ?? 'cast';
 
     final homePad = ShellTokens.homeSectionHorizontalPadding;
-    final outdent = widget.outdentHorizontal;
+    final outdent = outdentHorizontal;
     final useHomeInsets = outdent > 0;
 
     final row = Column(
@@ -81,7 +57,7 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
       children: [
         if (useHomeInsets)
           ShellSectionTitle(
-            title: widget.title,
+            title: title,
             padding: EdgeInsets.fromLTRB(
               homePad,
               0,
@@ -90,33 +66,33 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
             ),
           )
         else ...[
-          Text(widget.title, style: ShellSectionTitle.titleStyle),
-          const SizedBox(height: MediaDetailsCastSection._titleGap),
+          Text(title, style: ShellSectionTitle.titleStyle),
+          const SizedBox(height: _titleGap),
         ],
         FocusTraversalGroup(
           child: HorizontalScroller(
-            height: MediaDetailsCastSection._rowHeight,
+            height: _rowHeight,
             padding: useHomeInsets
                 ? EdgeInsets.only(left: homePad)
                 : EdgeInsets.zero,
-            itemCount: widget.cast.length,
+            itemCount: cast.length,
             separatorBuilder: (_, _) => const SizedBox(
-              width: MediaDetailsCastSection._horizontalGap,
+              width: _horizontalGap,
             ),
             itemBuilder: (_, i) {
-              final m = widget.cast[i];
+              final m = cast[i];
               final profilePath = m['profilePath'] ?? '';
               final name = m['name'] ?? '';
               final character = m['character'] ?? '';
               return shellFocusableTap(
                 context: context,
-                borderRadius: MediaDetailsCastSection._avatarSize / 2,
+                borderRadius: _avatarSize / 2,
                 listIndex: i,
                 tvTabId: tabId,
-                tvRowId: widget.tvRowId != null ? _rowId : null,
+                tvRowId: tvRowId != null ? rowId : null,
                 tvItemIndex: i,
                 child: SizedBox(
-                  width: MediaDetailsCastSection._itemWidth,
+                  width: _itemWidth,
                   child: Column(
                     children: [
                       ClipOval(
@@ -125,13 +101,13 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
                                 imageUrl: profilePath.startsWith('http')
                                     ? profilePath
                                     : TmdbApi.getProfileUrl(profilePath),
-                                width: MediaDetailsCastSection._avatarSize,
-                                height: MediaDetailsCastSection._avatarSize,
+                                width: _avatarSize,
+                                height: _avatarSize,
                                 fit: BoxFit.cover,
                               )
                             : Container(
-                                width: MediaDetailsCastSection._avatarSize,
-                                height: MediaDetailsCastSection._avatarSize,
+                                width: _avatarSize,
+                                height: _avatarSize,
                                 color: Colors.white.withValues(alpha: 0.08),
                                 child: Icon(
                                   Icons.person,
@@ -140,9 +116,7 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
                                 ),
                               ),
                       ),
-                      const SizedBox(
-                        height: MediaDetailsCastSection._avatarNameGap,
-                      ),
+                      const SizedBox(height: _avatarNameGap),
                       Text(
                         name,
                         maxLines: 1,
@@ -156,9 +130,7 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
                         ),
                       ),
                       if (character.isNotEmpty) ...[
-                        const SizedBox(
-                          height: MediaDetailsCastSection._nameCharacterGap,
-                        ),
+                        const SizedBox(height: _nameCharacterGap),
                         Text(
                           character,
                           maxLines: 1,
@@ -181,18 +153,29 @@ class _MediaDetailsCastSectionState extends State<MediaDetailsCastSection> {
       ],
     );
 
-    if (outdent <= 0) return row;
+    final child = outdent <= 0
+        ? row
+        : LayoutBuilder(
+            builder: (context, constraints) {
+              return SizedBox(
+                width: constraints.maxWidth + outdent * 2,
+                child: Transform.translate(
+                  offset: Offset(-outdent, 0),
+                  child: row,
+                ),
+              );
+            },
+          );
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SizedBox(
-          width: constraints.maxWidth + outdent * 2,
-          child: Transform.translate(
-            offset: Offset(-outdent, 0),
-            child: row,
-          ),
-        );
-      },
+    if (tabId == null || tvRowId == null) return child;
+
+    return TvCatalogRow(
+      tabId: tabId,
+      rowId: rowId,
+      sortOrder: tvRowOrder,
+      itemCount: cast.length,
+      onFocusUp: tvFocusUp,
+      child: child,
     );
   }
 }

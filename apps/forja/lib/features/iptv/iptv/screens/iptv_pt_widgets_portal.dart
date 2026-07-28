@@ -173,42 +173,46 @@ class _PortalListView extends ConsumerWidget {
       builder: (context, c) {
         final cross = (c.maxWidth ~/ 320).clamp(1, 4);
         final count = ctrl.verified.length;
-        iptvSyncRow(rowId: 'portals', sortOrder: 0, itemCount: count);
-        return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: cross,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            mainAxisExtent: 120,
-          ),
+        return iptvCatalogRow(
+          rowId: 'portals',
+          sortOrder: 0,
           itemCount: count,
-          itemBuilder: (_, i) {
-            final v = ctrl.verified[i];
-            final selected = ctrl.selected.contains(v.key);
-            return _PortalCard(
-              v: v,
-              editMode: ctrl.editMode,
-              selected: selected,
-              isFavorite: ctrl.isFavoritePortal(v.key),
-              gridIndex: i,
-              gridColumns: cross,
-              onToggleFavorite: () => ctrl.toggleFavoritePortal(v.key),
-              onTap: () {
-                if (ctrl.editMode) {
-                  ctrl.toggleSelect(v.key);
-                } else {
-                  ctrl.openPortal(v);
-                }
-              },
-              onLongPress: () {
-                if (!ctrl.editMode) {
-                  ctrl.toggleEditMode();
-                  ctrl.toggleSelect(v.key);
-                }
-              },
-            );
-          },
+          child: GridView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: cross,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              mainAxisExtent: 120,
+            ),
+            itemCount: count,
+            itemBuilder: (_, i) {
+              final v = ctrl.verified[i];
+              final selected = ctrl.selected.contains(v.key);
+              return _PortalCard(
+                v: v,
+                editMode: ctrl.editMode,
+                selected: selected,
+                isFavorite: ctrl.isFavoritePortal(v.key),
+                gridIndex: i,
+                gridColumns: cross,
+                onToggleFavorite: () => ctrl.toggleFavoritePortal(v.key),
+                onTap: () {
+                  if (ctrl.editMode) {
+                    ctrl.toggleSelect(v.key);
+                  } else {
+                    ctrl.openPortal(v);
+                  }
+                },
+                onLongPress: () {
+                  if (!ctrl.editMode) {
+                    ctrl.toggleEditMode();
+                    ctrl.toggleSelect(v.key);
+                  }
+                },
+              );
+            },
+          ),
         );
       },
     );
@@ -260,19 +264,19 @@ class _PortalListView extends ConsumerWidget {
               onPressed: ctrl.runVerification,
             ),
         ];
-    iptvSyncRow(
+    return iptvCatalogRow(
       rowId: 'portal-actions',
       sortOrder: 2,
       itemCount: actions.length,
-    );
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          ),
         ),
+        child: _buildBottomBarActions(context, actions),
       ),
-      child: _buildBottomBarActions(context, actions),
     );
   }
 

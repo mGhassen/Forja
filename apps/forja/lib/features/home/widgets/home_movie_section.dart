@@ -1,6 +1,8 @@
 // Home tab section widgets - extracted from home_screen.dart (RFC-019 Phase B).
 
 import 'package:forja/features/home/widgets/home_widget_imports.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
+
 class HomeMovieSection extends StatefulWidget {
   final String title;
   final Future<List<Movie>> future;
@@ -42,12 +44,6 @@ class HomeMovieSectionState extends State<HomeMovieSection> {
   String get _rowId => widget.tvRowId ?? widget.title;
 
   @override
-  void dispose() {
-    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Movie>>(
       future: widget.future,
@@ -70,60 +66,60 @@ class HomeMovieSectionState extends State<HomeMovieSection> {
           return const SizedBox.shrink();
         }
 
-        shellTvRegisterRow(
-          tabId: 'home',
+        final sectionTop = shellHomeSectionTitleTop(
+          context,
+          compact: widget.compactTop,
+        );
+
+        return TvCatalogRow(
           rowId: _rowId,
           sortOrder: widget.tvRowOrder,
           itemCount: movies.length,
           onFocusUp: widget.tvFocusUp,
-        );
-
-        final sectionTop = shellHomeSectionTitleTop(context, compact: widget.compactTop,
-        );
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ShellSectionTitle(
-              title: widget.title,
-              padding: shellHomeSectionTitlePadding(
-                context,
-                top: sectionTop,
-              ),
-            ),
-            FocusTraversalGroup(
-              child: HorizontalScroller(
-                height: HomeMovieCard.cardHeight(context),
-                padding: EdgeInsets.symmetric(
-                  horizontal: shellHomeSectionHorizontalPadding(context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ShellSectionTitle(
+                title: widget.title,
+                padding: shellHomeSectionTitlePadding(
+                  context,
+                  top: sectionTop,
                 ),
-                itemCount: movies.length,
-                separatorBuilder: (_, _) => SizedBox(
-                  width: widget.showRank
-                      ? shellScaled(context, 6).clamp(3.0, 6.0)
-                      : shellMovieCardRowGap(context),
-                ),
-                itemBuilder: (context, index) {
-                  return HomeMovieCard(
-                    movie: movies[index],
-                    onTap: () => widget.onMovieTap(movies[index]),
-                    rank: widget.showRank ? index + 1 : null,
-                    listIndex: index,
-                    tvTabId: 'home',
-                    tvRowId: _rowId,
-                  );
-                },
               ),
-            ),
-          ],
+              FocusTraversalGroup(
+                child: HorizontalScroller(
+                  height: HomeMovieCard.cardHeight(context),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: shellHomeSectionHorizontalPadding(context),
+                  ),
+                  itemCount: movies.length,
+                  separatorBuilder: (_, _) => SizedBox(
+                    width: widget.showRank
+                        ? shellScaled(context, 6).clamp(3.0, 6.0)
+                        : shellMovieCardRowGap(context),
+                  ),
+                  itemBuilder: (context, index) {
+                    return HomeMovieCard(
+                      movie: movies[index],
+                      onTap: () => widget.onMovieTap(movies[index]),
+                      rank: widget.showRank ? index + 1 : null,
+                      listIndex: index,
+                      tvTabId: 'home',
+                      tvRowId: _rowId,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 }
 
-class HomeStaticMovieSection extends StatefulWidget {
+class HomeStaticMovieSection extends StatelessWidget {
   final String title;
   final List<Movie> movies;
   final Function(Movie) onMovieTap;
@@ -131,6 +127,7 @@ class HomeStaticMovieSection extends StatefulWidget {
   final int tvRowOrder;
 
   const HomeStaticMovieSection({
+    super.key,
     required this.title,
     required this.movies,
     required this.onMovieTap,
@@ -138,51 +135,39 @@ class HomeStaticMovieSection extends StatefulWidget {
     this.tvRowOrder = 10,
   });
 
-  @override
-  State<HomeStaticMovieSection> createState() => HomeStaticMovieSectionState();
-}
-
-class HomeStaticMovieSectionState extends State<HomeStaticMovieSection> {
-  String get _rowId => widget.tvRowId ?? widget.title;
-
-  @override
-  void dispose() {
-    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
-    super.dispose();
-  }
+  String get _rowId => tvRowId ?? title;
 
   @override
   Widget build(BuildContext context) {
-    if (widget.movies.isEmpty) return const SizedBox.shrink();
-    shellTvRegisterRow(
-      tabId: 'home',
+    if (movies.isEmpty) return const SizedBox.shrink();
+    return TvCatalogRow(
       rowId: _rowId,
-      sortOrder: widget.tvRowOrder,
-      itemCount: widget.movies.length,
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ShellSectionTitle(title: widget.title),
-        FocusTraversalGroup(
-          child: HorizontalScroller(
-            height: HomeMovieCard.cardHeight(context),
-            padding: EdgeInsets.symmetric(
-              horizontal: shellHomeSectionHorizontalPadding(context),
-            ),
-            itemCount: widget.movies.length,
-            separatorBuilder: (_, _) =>
-                SizedBox(width: shellMovieCardRowGap(context)),
-            itemBuilder: (context, index) => HomeMovieCard(
-              movie: widget.movies[index],
-              onTap: () => widget.onMovieTap(widget.movies[index]),
-              listIndex: index,
-              tvTabId: 'home',
-              tvRowId: _rowId,
+      sortOrder: tvRowOrder,
+      itemCount: movies.length,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ShellSectionTitle(title: title),
+          FocusTraversalGroup(
+            child: HorizontalScroller(
+              height: HomeMovieCard.cardHeight(context),
+              padding: EdgeInsets.symmetric(
+                horizontal: shellHomeSectionHorizontalPadding(context),
+              ),
+              itemCount: movies.length,
+              separatorBuilder: (_, _) =>
+                  SizedBox(width: shellMovieCardRowGap(context)),
+              itemBuilder: (context, index) => HomeMovieCard(
+                movie: movies[index],
+                onTap: () => onMovieTap(movies[index]),
+                listIndex: index,
+                tvTabId: 'home',
+                tvRowId: _rowId,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

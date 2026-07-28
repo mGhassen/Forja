@@ -11,6 +11,7 @@ import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -329,15 +330,6 @@ class _HomeTopBarState extends State<HomeTopBar> {
                         ? 20.0
                         : 36.0;
 
-                    if (tvFocus) {
-                      shellTvRegisterRow(
-                        tabId: 'home',
-                        rowId: 'top-bar',
-                        sortOrder: -2,
-                        itemCount: 4,
-                      );
-                    }
-
                     final tabs = FocusTraversalGroup(
                       policy: OrderedTraversalPolicy(),
                       child: Row(
@@ -385,8 +377,9 @@ class _HomeTopBarState extends State<HomeTopBar> {
                       ),
                     );
 
+                    Widget menuRow;
                     if (!compactNav || tvFocus) {
-                      return _wrapMenuRow(
+                      menuRow = _wrapMenuRow(
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           physics: const ClampingScrollPhysics(),
@@ -395,31 +388,39 @@ class _HomeTopBarState extends State<HomeTopBar> {
                         tvFocus: tvFocus,
                         tabGap: tabGap,
                       );
-                    }
-
-                    return _wrapMenuRow(
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const ClampingScrollPhysics(),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              height: 34,
-                              child: Center(
-                                child: ShellNavMenuButton(
-                                  onPressed: () =>
-                                      Scaffold.of(context).openDrawer(),
+                    } else {
+                      menuRow = _wrapMenuRow(
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const ClampingScrollPhysics(),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                height: 34,
+                                child: Center(
+                                  child: ShellNavMenuButton(
+                                    onPressed: () =>
+                                        Scaffold.of(context).openDrawer(),
+                                  ),
                                 ),
                               ),
-                            ),
-                            SizedBox(width: tabGap),
-                            tabs,
-                          ],
+                              SizedBox(width: tabGap),
+                              tabs,
+                            ],
+                          ),
                         ),
-                      ),
-                      tvFocus: tvFocus,
-                      tabGap: tabGap,
+                        tvFocus: tvFocus,
+                        tabGap: tabGap,
+                      );
+                    }
+
+                    return TvCatalogRow(
+                      tabId: 'home',
+                      rowId: 'top-bar',
+                      sortOrder: -2,
+                      itemCount: tvFocus ? 4 : 0,
+                      child: menuRow,
                     );
                   },
                 );

@@ -5,6 +5,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/episode_air_date.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
@@ -91,15 +92,6 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
 
   @override
   void dispose() {
-    final tabId = widget.tvTabId;
-    if (tabId != null) {
-      if (widget.tvSeasonRowId != null) {
-        shellTvUnregisterRow(tabId: tabId, rowId: _seasonRowId);
-      }
-      if (widget.tvEpisodeRowId != null) {
-        shellTvUnregisterRow(tabId: tabId, rowId: _episodeRowId);
-      }
-    }
     _episodePlayFocus.dispose();
     _episodeScrollController.dispose();
     _seasonScrollController.dispose();
@@ -475,27 +467,36 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     final hasMultiSeason = widget.seasonCount > 1;
     final episodeRowOrder = widget.tvRowOrderBase + (hasMultiSeason ? 1 : 0);
 
-    if (tabId != null && widget.tvSeasonRowId != null && hasMultiSeason) {
-      shellTvRegisterRow(
-        tabId: tabId,
-        rowId: _seasonRowId,
-        sortOrder: widget.tvRowOrderBase,
-        itemCount: widget.seasonCount,
-        onFocusUp: widget.tvFocusUp,
-      );
+    Widget? seasonSection;
+    if (hasMultiSeason) {
+      final seasonRow = _buildSeasonRow(tabId);
+      seasonSection = (tabId != null && widget.tvSeasonRowId != null)
+          ? TvCatalogRow(
+              tabId: tabId,
+              rowId: _seasonRowId,
+              sortOrder: widget.tvRowOrderBase,
+              itemCount: widget.seasonCount,
+              onFocusUp: widget.tvFocusUp,
+              child: seasonRow,
+            )
+          : seasonRow;
     }
 
-    if (tabId != null &&
-        widget.tvEpisodeRowId != null &&
-        !widget.isLoadingSeason &&
-        _visibleEpisodes.isNotEmpty) {
-      shellTvRegisterRow(
-        tabId: tabId,
-        rowId: _episodeRowId,
-        sortOrder: episodeRowOrder,
-        itemCount: _visibleEpisodes.length,
-        onFocusUp: hasMultiSeason ? null : widget.tvFocusUp,
-      );
+    Widget? episodeSection;
+    if (widget.isLoadingSeason) {
+      episodeSection = _buildEpisodeSkeletonRow();
+    } else if (_visibleEpisodes.isNotEmpty) {
+      final episodeRow = _buildEpisodeRow(tabId);
+      episodeSection = (tabId != null && widget.tvEpisodeRowId != null)
+          ? TvCatalogRow(
+              tabId: tabId,
+              rowId: _episodeRowId,
+              sortOrder: episodeRowOrder,
+              itemCount: _visibleEpisodes.length,
+              onFocusUp: hasMultiSeason ? null : widget.tvFocusUp,
+              child: episodeRow,
+            )
+          : episodeRow;
     }
 
     return Column(
@@ -525,17 +526,12 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
             ],
           ],
         ),
-        if (widget.seasonCount > 1) ...[
+        if (seasonSection != null) ...[
           const SizedBox(height: 16),
-          _buildSeasonRow(tabId),
+          seasonSection,
         ],
         const SizedBox(height: 20),
-        if (widget.isLoadingSeason)
-          _buildEpisodeSkeletonRow()
-        else if (_visibleEpisodes.isEmpty)
-          const SizedBox.shrink()
-        else
-          _buildEpisodeRow(tabId),
+        ?episodeSection,
       ],
     );
   }

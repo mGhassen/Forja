@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_tv_remote.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
@@ -7,6 +8,9 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 ///
 /// App-root [DirectionalFocusAction] (Android TV shell) otherwise consumes
 /// arrows with no effect when focus is not on a shell catalog item.
+///
+/// While chrome is hidden, a [HardwareKeyboard] handler owns ←/→ seek so keys
+/// still work even if focus claim races with [ExcludeFocus].
 class PlayerTvKeyScope extends StatefulWidget {
   const PlayerTvKeyScope({
     super.key,
@@ -68,9 +72,16 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_onHardwareKey);
     if (widget.enabled && !widget.showControls) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
     }
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onHardwareKey);
+    super.dispose();
   }
 
   @override
@@ -87,6 +98,15 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     if (widget.focusNode.canRequestFocus) {
       widget.focusNode.requestFocus();
     }
+  }
+
+  /// Chrome hidden: handle remote keys even when focus claim lost the race to
+  /// app-root [DirectionalFocusAction] (←/→ otherwise no-op).
+  bool _onHardwareKey(KeyEvent event) {
+    if (!widget.enabled || widget.showControls) return false;
+    if (playerChromeOverlayBlocksSeek()) return false;
+    if (!shellTvIsNavigationKey(event)) return false;
+    return _handler.handle(event, showControls: false);
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
@@ -111,6 +131,10 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     if (widget.showControls && playerTvChromeHasFocus(widget.focusNode)) {
       return KeyEventResult.ignored;
     }
+    // Chrome hidden: [_onHardwareKey] already handled navigation keys.
+    if (!widget.showControls && shellTvIsNavigationKey(event)) {
+      return KeyEventResult.handled;
+    }
     if (_handler.handle(event, showControls: widget.showControls)) {
       return KeyEventResult.handled;
     }
@@ -122,7 +146,7 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     if (!widget.enabled) return widget.child;
     // When chrome is hidden, only this node may hold focus. Otherwise an
     // invisible Play / Sources control can keep primary focus and FocusableControl
-    // eats ←/→ as traversal instead of [PlayerTvRemoteKeyHandler] seeking.
+    // eats ←/→ as traversal instead of seeking.
     return Focus(
       focusNode: widget.focusNode,
       autofocus: true,

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 class DetailsCollectionSection extends StatelessWidget {
@@ -24,18 +25,8 @@ class DetailsCollectionSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    if (policy.useFocusableMoodChips) {
-      shellTvRegisterRow(
-        tabId: MediaDetailsTv.tabId,
-        rowId: 'collection',
-        sortOrder: tvRowOrder,
-        itemCount: items.length,
-        orientation: ShellTvRowOrientation.vertical,
-        onFocusUp: tvFocusUp,
-      );
-    }
 
-    return Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -153,6 +144,18 @@ class DetailsCollectionSection extends StatelessWidget {
           },
         ),
       ],
+    );
+
+    if (!policy.useFocusableMoodChips) return column;
+
+    return TvCatalogRow(
+      tabId: MediaDetailsTv.tabId,
+      rowId: 'collection',
+      sortOrder: tvRowOrder,
+      itemCount: items.length,
+      orientation: ShellTvRowOrientation.vertical,
+      onFocusUp: tvFocusUp,
+      child: column,
     );
   }
 }

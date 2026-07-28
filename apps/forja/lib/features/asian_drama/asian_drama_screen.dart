@@ -23,6 +23,7 @@ import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:rust/rust.dart';
 
 class AsianDramaScreen extends ConsumerStatefulWidget {
@@ -111,7 +112,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
   @override
   void initState() {
     super.initState();
-    ShellTvFocusCoordinator.registerTabDefaults(
+    TvHeroActions.bind(
       'asian_drama',
       defaultFocus: () => ShellTvFocus.homeHeroPlay,
       heroReveal: () {
@@ -496,7 +497,9 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
       );
     });
     ref.watch(asianDramaFeedProvider);
-    return ValueListenableBuilder<AppThemePreset>(
+    return TvFocusGraph(
+      tabId: 'asian_drama',
+      child: ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
         final fullHero = hubIsFullCinematicHero(context);
@@ -714,6 +717,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                 ),
               );
       },
+    ),
     );
   }
 

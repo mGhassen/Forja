@@ -42,44 +42,45 @@ class _EpisodeListView extends StatelessWidget {
     }
     final seasons = bySeason.keys.toList()..sort();
     final total = ctrl.episodes.length;
-    iptvSyncRow(
+    var flatIndex = 0;
+    return iptvCatalogRow(
       rowId: 'episodes',
       sortOrder: 0,
       itemCount: total,
       orientation: ShellTvRowOrientation.vertical,
-    );
-    var flatIndex = 0;
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: seasons.length,
-      itemBuilder: (_, si) {
-        final season = seasons[si];
-        final eps = bySeason[season]!;
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                child: Text(
-                  'Season $season',
-                  style: IptvShellStyle.pageTitle.copyWith(fontSize: 22),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: seasons.length,
+        itemBuilder: (_, si) {
+          final season = seasons[si];
+          final eps = bySeason[season]!;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  child: Text(
+                    'Season $season',
+                    style: IptvShellStyle.pageTitle.copyWith(fontSize: 22),
+                  ),
                 ),
-              ),
-              ...eps.map((e) {
-                final tile = _EpisodeTile(
-                  episode: e,
-                  ctrl: ctrl,
-                  listIndex: flatIndex,
-                );
-                flatIndex++;
-                return tile;
-              }),
-            ],
-          ),
-        );
-      },
+                ...eps.map((e) {
+                  final tile = _EpisodeTile(
+                    episode: e,
+                    ctrl: ctrl,
+                    listIndex: flatIndex,
+                  );
+                  flatIndex++;
+                  return tile;
+                }),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

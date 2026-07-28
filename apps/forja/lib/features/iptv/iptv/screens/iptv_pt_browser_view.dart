@@ -51,7 +51,7 @@ class _BrowserViewState extends State<_BrowserView> {
     _wasPortalPanelOpen = widget.ctrl.portalPanelOpen;
     widget.ctrl.addListener(_onCtrlChanged);
     // Prefer this pageBack (scrolls the category rail) over the screen default.
-    ShellTvFocusCoordinator.registerTabDefaults(
+    TvHeroActions.bind(
       'iptv',
       pageBack: _handleCatalogPageBack,
     );
@@ -477,43 +477,47 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   Widget _buildChoosePortalEmpty(BuildContext context) {
-    iptvSyncRow(rowId: 'iptv-open-portal', sortOrder: 0, itemCount: 1);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.satellite_alt_rounded,
-              size: 72,
-              color: IptvShellStyle.accent,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Choose a portal',
-              style: IptvShellStyle.pageTitle.copyWith(fontSize: 32),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Select a provider to browse Live TV, Movies, and Series.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white60,
-                fontSize: 14,
+    return iptvCatalogRow(
+      rowId: 'iptv-open-portal',
+      sortOrder: 0,
+      itemCount: 1,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.satellite_alt_rounded,
+                size: 72,
+                color: IptvShellStyle.accent,
               ),
-            ),
-            const SizedBox(height: 28),
-            IptvPrimaryButton(
-              icon: Icons.dns_rounded,
-              label: 'Open portal',
-              focusNode: _openPortalFocus,
-              tvRowId: 'iptv-open-portal',
-              tvItemIndex: 0,
-              onPressed: widget.ctrl.openPortalPanel,
-            ),
-          ],
+              const SizedBox(height: 20),
+              Text(
+                'Choose a portal',
+                style: IptvShellStyle.pageTitle.copyWith(fontSize: 32),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Select a provider to browse Live TV, Movies, and Series.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white60,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 28),
+              IptvPrimaryButton(
+                icon: Icons.dns_rounded,
+                label: 'Open portal',
+                focusNode: _openPortalFocus,
+                tvRowId: 'iptv-open-portal',
+                tvItemIndex: 0,
+                onPressed: widget.ctrl.openPortalPanel,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -607,16 +611,6 @@ class _BrowserViewState extends State<_BrowserView> {
       child: Builder(
         builder: (_) {
           final cats = _filteredCategories;
-          iptvSyncRow(
-            rowId: 'browser-categories',
-            sortOrder: 2,
-            itemCount: cats.length,
-            orientation: ShellTvRowOrientation.vertical,
-            onFocusUp: () => iptvFocusRowItem(
-              'iptv-sections',
-              iptvActiveSectionShelfIndex(ctrl),
-            ),
-          );
           final live = ctrl.activeSection == IptvSection.live;
           final canReorder = ctrl.canReorderLiveCategories;
           final fixed = <IptvCategory>[];
@@ -689,28 +683,38 @@ class _BrowserViewState extends State<_BrowserView> {
 
           // Remount when search changes so a prior scroll offset doesn't leave
           // the short filtered list floating mid-viewport.
-          return IptvTvScrollbar(
-            controller: _categoryScroll,
-            child: CustomScrollView(
-              key: ValueKey('browser-cats|${ctrl.browserSearch.trim()}'),
+          return iptvCatalogRow(
+            rowId: 'browser-categories',
+            sortOrder: 2,
+            itemCount: cats.length,
+            orientation: ShellTvRowOrientation.vertical,
+            onFocusUp: () => iptvFocusRowItem(
+              'iptv-sections',
+              iptvActiveSectionShelfIndex(ctrl),
+            ),
+            child: IptvTvScrollbar(
               controller: _categoryScroll,
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  sliver: SliverMainAxisGroup(
-                    slivers: [
-                      if (fixed.isNotEmpty)
-                        SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, i) => rowFor(fixed[i], i),
-                            childCount: fixed.length,
+              child: CustomScrollView(
+                key: ValueKey('browser-cats|${ctrl.browserSearch.trim()}'),
+                controller: _categoryScroll,
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    sliver: SliverMainAxisGroup(
+                      slivers: [
+                        if (fixed.isNotEmpty)
+                          SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, i) => rowFor(fixed[i], i),
+                              childCount: fixed.length,
+                            ),
                           ),
-                        ),
-                      if (movable.isNotEmpty) movableSliver(),
-                    ],
+                        if (movable.isNotEmpty) movableSliver(),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
@@ -737,15 +741,6 @@ class _BrowserViewState extends State<_BrowserView> {
         _streamCrossAxisCount = cross;
         _streamTileExtent = cardH;
         _streamMainGap = gap;
-        iptvSyncRow(
-          rowId: 'browser-streams',
-          sortOrder: 3,
-          itemCount: list.length,
-          onFocusUp: () => iptvFocusRowItem(
-            'iptv-sections',
-            iptvActiveSectionShelfIndex(widget.ctrl),
-          ),
-        );
         // Fixed column count on TV so D-pad Left/Right match the visual row
         // (MaxCrossAxisExtent can disagree with our focus math and wrap).
         final grid = GridView.builder(
@@ -787,7 +782,16 @@ class _BrowserViewState extends State<_BrowserView> {
                 onNotification: _onScrollNotification,
                 child: grid,
               );
-        return IptvTvScrollbar(controller: _streamScroll, child: scrollable);
+        return iptvCatalogRow(
+          rowId: 'browser-streams',
+          sortOrder: 3,
+          itemCount: list.length,
+          onFocusUp: () => iptvFocusRowItem(
+            'iptv-sections',
+            iptvActiveSectionShelfIndex(widget.ctrl),
+          ),
+          child: IptvTvScrollbar(controller: _streamScroll, child: scrollable),
+        );
       },
     );
   }
@@ -798,15 +802,6 @@ class _BrowserViewState extends State<_BrowserView> {
     if (list.isEmpty) return _buildStreamsEmpty();
 
     final categoryNames = {for (final c in ctrl.categories) c.id: c.name};
-
-    iptvSyncRow(
-      rowId: 'browser-streams',
-      sortOrder: 3,
-      itemCount: list.length,
-      orientation: ShellTvRowOrientation.vertical,
-      onFocusUp: () =>
-          iptvFocusRowItem('iptv-sections', iptvActiveSectionShelfIndex(ctrl)),
-    );
 
     // Compact list tiles are ~58px thumb + padding + 8 bottom gap.
     _streamCrossAxisCount = 1;
@@ -841,7 +836,15 @@ class _BrowserViewState extends State<_BrowserView> {
             onNotification: _onScrollNotification,
             child: rows,
           );
-    return IptvTvScrollbar(controller: _streamScroll, child: scrollable);
+    return iptvCatalogRow(
+      rowId: 'browser-streams',
+      sortOrder: 3,
+      itemCount: list.length,
+      orientation: ShellTvRowOrientation.vertical,
+      onFocusUp: () =>
+          iptvFocusRowItem('iptv-sections', iptvActiveSectionShelfIndex(ctrl)),
+      child: IptvTvScrollbar(controller: _streamScroll, child: scrollable),
+    );
   }
 
   Widget _buildStreamsEmpty() {

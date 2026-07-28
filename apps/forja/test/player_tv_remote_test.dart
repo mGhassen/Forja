@@ -124,7 +124,7 @@ void main() {
       expect(forward, 1);
     });
 
-    test('arrow left/right defer to focus when chrome is visible', () {
+    test('arrow left/right always seek when handler runs', () {
       var back = 0;
       var forward = 0;
       final handler = _handler(
@@ -134,14 +134,14 @@ void main() {
 
       expect(
         handler.handle(_key(LogicalKeyboardKey.arrowLeft), showControls: true),
-        isFalse,
+        isTrue,
       );
       expect(
         handler.handle(_key(LogicalKeyboardKey.arrowRight), showControls: true),
-        isFalse,
+        isTrue,
       );
-      expect(back, 0);
-      expect(forward, 0);
+      expect(back, 1);
+      expect(forward, 1);
     });
 
     test('arrow up focuses back when chrome is hidden', () {

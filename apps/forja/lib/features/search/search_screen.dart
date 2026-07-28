@@ -15,6 +15,7 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/tv_search_browse_overlay.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 part 'search_models.dart';
 part 'search_widgets.dart';
@@ -78,7 +79,7 @@ class SearchScreenState extends ConsumerState<SearchScreen>
   @override
   void initState() {
     super.initState();
-    ShellTvFocusCoordinator.registerTabDefaults(
+    TvHeroActions.bind(
       'search',
       defaultFocus: () => _focusNode,
       enterFromNavFocus: _focusSearchFieldBrowse,

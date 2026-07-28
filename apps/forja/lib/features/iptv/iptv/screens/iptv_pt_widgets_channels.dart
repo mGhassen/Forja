@@ -108,29 +108,31 @@ class _ChannelsHubViewState extends State<_ChannelsHubView> {
                 : LayoutBuilder(
                     builder: (_, c) {
                       final cross = (c.maxWidth ~/ 160).clamp(2, 8);
-                      iptvSyncRow(
+                      return iptvCatalogRow(
                         rowId: 'channels-hub',
                         sortOrder: 0,
                         itemCount: results.length,
-                      );
-                      return GridView.builder(
-                        padding: const EdgeInsets.all(12),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: cross,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          childAspectRatio: 1.0,
+                        child: GridView.builder(
+                          padding: const EdgeInsets.all(12),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: cross,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 1.0,
+                          ),
+                          itemCount: results.length,
+                          itemBuilder: (_, i) {
+                            final ch = results[i];
+                            return _ChannelTile(
+                              channel: ch,
+                              gridIndex: i,
+                              gridColumns: cross,
+                              onTap: () =>
+                                  widget.ctrl.openHardcodedChannel(ch),
+                            );
+                          },
                         ),
-                        itemCount: results.length,
-                        itemBuilder: (_, i) {
-                          final ch = results[i];
-                          return _ChannelTile(
-                            channel: ch,
-                            gridIndex: i,
-                            gridColumns: cross,
-                            onTap: () => widget.ctrl.openHardcodedChannel(ch),
-                          );
-                        },
                       );
                     },
                   ),
@@ -501,75 +503,75 @@ class _ChannelResultsViewState extends State<_ChannelResultsView> {
     return LayoutBuilder(
       builder: (_, c) {
         final cross = (c.maxWidth ~/ 320).clamp(1, 4);
-        iptvSyncRow(
+        return iptvCatalogRow(
           rowId: 'channel-results',
           sortOrder: 0,
           itemCount: displayed.length,
-        );
-        return GridView.builder(
-          padding: const EdgeInsets.all(12),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: cross,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            mainAxisExtent: 132,
-          ),
-          itemCount: displayed.length,
-          itemBuilder: (_, i) {
-            final hit = displayed[i];
-            final selected = _selected.contains(hit.streamUrl);
-            return _ChannelHitCard(
-              hit: hit,
-              ctrl: ctrl,
-              editMode: _editMode,
-              selected: selected,
-              gridIndex: i,
-              gridColumns: cross,
-              isFavorite: ctrl.isFavoriteHit(
-                ctrl.activeHardcoded?.id ?? '',
-                hit,
-              ),
-              onToggleFavorite: () => ctrl.toggleFavoriteHit(hit),
-              onTap: () {
-                if (_editMode) {
-                  setState(() {
-                    if (selected) {
-                      _selected.remove(hit.streamUrl);
-                    } else {
-                      _selected.add(hit.streamUrl);
-                    }
-                  });
-                } else {
-                  // Put the tapped hit first so the player actually opens it,
-                  // and keep the rest as failover sources for the watchdog.
-                  // Use the full original results list (not filtered) so the
-                  // watchdog has every fallback available.
-                  final ordered = [
-                    hit,
-                    ...ctrl.channelResults.where((h) => h != hit),
-                  ];
-                  pushShellRoute(
-                    context,
-                    AppRouter.slideShellRoute(
-                      (_) => IptvPtPlayerScreen.fromHits(
-                        hits: ordered,
-                        title: ctrl.activeHardcoded?.name ?? hit.stream.name,
-                        logoUrl: hit.stream.icon,
+          child: GridView.builder(
+            padding: const EdgeInsets.all(12),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: cross,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              mainAxisExtent: 132,
+            ),
+            itemCount: displayed.length,
+            itemBuilder: (_, i) {
+              final hit = displayed[i];
+              final selected = _selected.contains(hit.streamUrl);
+              return _ChannelHitCard(
+                hit: hit,
+                ctrl: ctrl,
+                editMode: _editMode,
+                selected: selected,
+                gridIndex: i,
+                gridColumns: cross,
+                isFavorite: ctrl.isFavoriteHit(
+                  ctrl.activeHardcoded?.id ?? '',
+                  hit,
+                ),
+                onToggleFavorite: () => ctrl.toggleFavoriteHit(hit),
+                onTap: () {
+                  if (_editMode) {
+                    setState(() {
+                      if (selected) {
+                        _selected.remove(hit.streamUrl);
+                      } else {
+                        _selected.add(hit.streamUrl);
+                      }
+                    });
+                  } else {
+                    // Put the tapped hit first so the player actually opens it,
+                    // and keep the rest as failover sources for the watchdog.
+                    // Use the full original results list (not filtered) so the
+                    // watchdog has every fallback available.
+                    final ordered = [
+                      hit,
+                      ...ctrl.channelResults.where((h) => h != hit),
+                    ];
+                    pushShellRoute(
+                      context,
+                      AppRouter.slideShellRoute(
+                        (_) => IptvPtPlayerScreen.fromHits(
+                          hits: ordered,
+                          title: ctrl.activeHardcoded?.name ?? hit.stream.name,
+                          logoUrl: hit.stream.icon,
+                        ),
                       ),
-                    ),
-                  );
-                }
-              },
-              onLongPress: () {
-                if (!_editMode) {
-                  setState(() {
-                    _editMode = true;
-                    _selected.add(hit.streamUrl);
-                  });
-                }
-              },
-            );
-          },
+                    );
+                  }
+                },
+                onLongPress: () {
+                  if (!_editMode) {
+                    setState(() {
+                      _editMode = true;
+                      _selected.add(hit.streamUrl);
+                    });
+                  }
+                },
+              );
+            },
+          ),
         );
       },
     );

@@ -430,21 +430,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
         final checking = ctrl.isPortalHealthChecking(v.key);
         final title = v.displayLabel;
 
-        if (_reveal) {
-          iptvSyncRow(
-            rowId: _actionsRowId,
-            sortOrder: 200 + widget.listIndex,
-            itemCount: _confirmingDelete ? 3 : 4,
-          );
-        } else {
-          iptvSyncRow(
-            rowId: _actionsRowId,
-            sortOrder: 200 + widget.listIndex,
-            itemCount: 0,
-          );
-        }
-
-        return MouseRegion(
+        final tile = MouseRegion(
           onEnter: (_) {
             setState(() => _lineHover = true);
             if (isNew) ctrl.markPortalSeen(v.key);
@@ -737,6 +723,13 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
               ),
             ),
           ),
+        );
+
+        return iptvCatalogRow(
+          rowId: _actionsRowId,
+          sortOrder: 200 + widget.listIndex,
+          itemCount: _reveal ? (_confirmingDelete ? 3 : 4) : 0,
+          child: tile,
         );
       },
     );

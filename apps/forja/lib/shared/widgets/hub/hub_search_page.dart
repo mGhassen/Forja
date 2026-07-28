@@ -9,6 +9,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/tv_search_browse_overlay.dart';
@@ -173,12 +174,6 @@ class _HubSearchPageState extends State<HubSearchPage> {
       final titles = await widget.loadRecommendations();
       if (!mounted) return;
       setState(() => _recommendationTitles = titles);
-      shellTvRegisterRow(
-        tabId: widget.tvTabId,
-        rowId: _helpersRowId,
-        sortOrder: 0,
-        itemCount: titles.length,
-      );
       if (_query.isEmpty && _tvFocus(context)) {
         _scheduleEnsureSearchFieldFocused();
       }
@@ -236,9 +231,6 @@ class _HubSearchPageState extends State<HubSearchPage> {
     ShellBus.shellOverlayHasPage.removeListener(_onShellOverlayChanged);
     _detachRouteAnimationListener();
     _focusNode.removeListener(_onSearchFieldFocusChange);
-    shellTvUnregisterRow(tabId: widget.tvTabId, rowId: _helpersRowId);
-    shellTvUnregisterRow(tabId: widget.tvTabId, rowId: _helperResultsRowId);
-    shellTvUnregisterRow(tabId: widget.tvTabId, rowId: _resultsRowId);
     _debounce?.cancel();
     _controller.dispose();
     _focusNode.dispose();
@@ -315,19 +307,6 @@ class _HubSearchPageState extends State<HubSearchPage> {
     if (_results.isEmpty) return null;
     final index = _gridFocusedIndex.clamp(0, _results.length - 1);
     return _results[index];
-  }
-
-  void _syncHelperResultsRow(int count) {
-    if (count <= 0) {
-      shellTvUnregisterRow(tabId: widget.tvTabId, rowId: _helperResultsRowId);
-      return;
-    }
-    shellTvRegisterRow(
-      tabId: widget.tvTabId,
-      rowId: _helperResultsRowId,
-      sortOrder: 0,
-      itemCount: count,
-    );
   }
 
   void _focusResultCardAt(int index) {
@@ -690,21 +669,24 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<AppThemePreset>(
-      valueListenable: AppTheme.themeNotifier,
-      builder: (context, _, _) {
-        if (_isWideLayout(context)) {
-          return ColoredBox(
-            color: AppTheme.bgDark,
-            child: _buildWideLayout(context),
+    return TvFocusGraph(
+      tabId: widget.tvTabId,
+      child: ValueListenableBuilder<AppThemePreset>(
+        valueListenable: AppTheme.themeNotifier,
+        builder: (context, _, _) {
+          if (_isWideLayout(context)) {
+            return ColoredBox(
+              color: AppTheme.bgDark,
+              child: _buildWideLayout(context),
+            );
+          }
+          return Scaffold(
+            backgroundColor: AppTheme.bgDark,
+            appBar: _buildCompactAppBar(),
+            body: _buildCompactBody(context),
           );
-        }
-        return Scaffold(
-          backgroundColor: AppTheme.bgDark,
-          appBar: _buildCompactAppBar(),
-          body: _buildCompactBody(context),
-        );
-      },
+        },
+      ),
     );
   }
 
@@ -878,28 +860,95 @@ class _HubSearchPageState extends State<HubSearchPage> {
       }
       if (_results.isEmpty) return const SizedBox.shrink();
 
-      _syncHelperResultsRow(_results.length);
+      return TvCatalogRow(
+        tabId: widget.tvTabId,
+        rowId: _helperResultsRowId,
+        sortOrder: 0,
+        itemCount: _results.length,
+        orientation: ShellTvRowOrientation.vertical,
+        child: FocusTraversalGroup(
+          policy: OrderedTraversalPolicy(),
+          child: ListView.separated(
+            controller: _helpersScrollController,
+            clipBehavior: Clip.none,
+            padding: const EdgeInsets.only(right: 8, bottom: 8),
+            itemCount: _results.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 2),
+            itemBuilder: (context, index) {
+              final item = _results[index];
+              final count = _results.length;
+              return shellFocusableTap(
+                context: context,
+                onTap: () => _focusResultCardAt(index),
+                borderRadius: 4,
+                scaleOnFocus: 1.0,
+                navLeftAlways: true,
+                listIndex: index,
+                tvTabId: widget.tvTabId,
+                tvRowId: _helperResultsRowId,
+                tvZone: ShellTvZone.chipStrip,
+                tvItemIndex: index,
+                focusNode: index == 0 ? _firstHelperFocusNode : null,
+                onUpEdge: _helperUpEdge(index),
+                onDownEdge: _helperDownEdge(index, count),
+                onRightEdge: _helperRightEdge(index),
+                ensureVisibleMode: ShellTvEnsureVisibleMode.row,
+                onFocusChange: (focused) {
+                  setState(() {
+                    if (focused) {
+                      _helperFocusedIndex = index;
+                    } else if (_helperFocusedIndex == index) {
+                      _helperFocusedIndex = null;
+                    }
+                  });
+                },
+                child: _buildHelperTitle(
+                  item.title,
+                  selected: _helperFocusedIndex == index,
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
 
-      return FocusTraversalGroup(
+    if (_recommendationTitles.isEmpty) {
+      return const Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    return TvCatalogRow(
+      tabId: widget.tvTabId,
+      rowId: _helpersRowId,
+      sortOrder: 0,
+      itemCount: _recommendationTitles.length,
+      orientation: ShellTvRowOrientation.vertical,
+      child: FocusTraversalGroup(
         policy: OrderedTraversalPolicy(),
         child: ListView.separated(
           controller: _helpersScrollController,
           clipBehavior: Clip.none,
           padding: const EdgeInsets.only(right: 8, bottom: 8),
-          itemCount: _results.length,
+          itemCount: _recommendationTitles.length,
           separatorBuilder: (_, _) => const SizedBox(height: 2),
           itemBuilder: (context, index) {
-            final item = _results[index];
-            final count = _results.length;
+            final title = _recommendationTitles[index];
+            final count = _recommendationTitles.length;
             return shellFocusableTap(
               context: context,
-              onTap: () => _focusResultCardAt(index),
+              onTap: () => _applyHelperQuery(title),
               borderRadius: 4,
               scaleOnFocus: 1.0,
               navLeftAlways: true,
               listIndex: index,
               tvTabId: widget.tvTabId,
-              tvRowId: _helperResultsRowId,
+              tvRowId: _helpersRowId,
               tvZone: ShellTvZone.chipStrip,
               tvItemIndex: index,
               focusNode: index == 0 ? _firstHelperFocusNode : null,
@@ -917,67 +966,12 @@ class _HubSearchPageState extends State<HubSearchPage> {
                 });
               },
               child: _buildHelperTitle(
-                item.title,
+                title,
                 selected: _helperFocusedIndex == index,
               ),
             );
           },
         ),
-      );
-    }
-
-    if (_recommendationTitles.isEmpty) {
-      return const Center(
-        child: SizedBox(
-          width: 22,
-          height: 22,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      );
-    }
-
-    return FocusTraversalGroup(
-      policy: OrderedTraversalPolicy(),
-      child: ListView.separated(
-        controller: _helpersScrollController,
-        clipBehavior: Clip.none,
-        padding: const EdgeInsets.only(right: 8, bottom: 8),
-        itemCount: _recommendationTitles.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 2),
-        itemBuilder: (context, index) {
-          final title = _recommendationTitles[index];
-          final count = _recommendationTitles.length;
-          return shellFocusableTap(
-            context: context,
-            onTap: () => _applyHelperQuery(title),
-            borderRadius: 4,
-            scaleOnFocus: 1.0,
-            navLeftAlways: true,
-            listIndex: index,
-            tvTabId: widget.tvTabId,
-            tvRowId: _helpersRowId,
-            tvZone: ShellTvZone.chipStrip,
-            tvItemIndex: index,
-            focusNode: index == 0 ? _firstHelperFocusNode : null,
-            onUpEdge: _helperUpEdge(index),
-            onDownEdge: _helperDownEdge(index, count),
-            onRightEdge: _helperRightEdge(index),
-            ensureVisibleMode: ShellTvEnsureVisibleMode.row,
-            onFocusChange: (focused) {
-              setState(() {
-                if (focused) {
-                  _helperFocusedIndex = index;
-                } else if (_helperFocusedIndex == index) {
-                  _helperFocusedIndex = null;
-                }
-              });
-            },
-            child: _buildHelperTitle(
-              title,
-              selected: _helperFocusedIndex == index,
-            ),
-          );
-        },
       ),
     );
   }
@@ -1010,58 +1004,53 @@ class _HubSearchPageState extends State<HubSearchPage> {
     const gridColumns = 4;
     final tvFocus = _tvFocus(context);
 
-    if (tvFocus) {
-      shellTvRegisterRow(
-        tabId: widget.tvTabId,
-        rowId: _resultsRowId,
-        sortOrder: 1,
-        itemCount: _results.length,
-      );
-    }
-
-    return FocusTraversalGroup(
-      policy: OrderedTraversalPolicy(),
-      child: GridView.builder(
-        controller: _resultsScrollController,
-        clipBehavior: Clip.none,
-        padding: const EdgeInsets.only(bottom: 8),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: gridColumns,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 14,
-          childAspectRatio: 2 / 3,
+    return TvGrid(
+      tabId: widget.tvTabId,
+      rowId: _resultsRowId,
+      sortOrder: 1,
+      columns: gridColumns,
+      itemCount: _results.length,
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: GridView.builder(
+          controller: _resultsScrollController,
+          clipBehavior: Clip.none,
+          padding: const EdgeInsets.only(bottom: 8),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: gridColumns,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 14,
+            childAspectRatio: 2 / 3,
+          ),
+          itemCount: _results.length,
+          itemBuilder: (context, index) {
+            final item = _results[index];
+            final firstColumn = index % gridColumns == 0;
+            final firstRow = index ~/ gridColumns == 0;
+            return Padding(
+              padding: const EdgeInsets.all(4),
+              child: _HubSearchFilmCard(
+                result: item,
+                selected: index == _gridFocusedIndex,
+                gridIndex: index,
+                onTap: () => setState(() => _gridFocusedIndex = index),
+                onOpen: () => widget.onOpen(item),
+                onLeftEdge: firstColumn && tvFocus
+                    ? () => _focusHelperAtVisualLevelFromGrid(index)
+                    : null,
+                onUpEdge: firstRow && tvFocus ? _focusSearchFieldBrowse : null,
+                onFocusChange: (focused) {
+                  if (focused) {
+                    setState(() {
+                      _gridFocusedIndex = index;
+                      _helperFocusedIndex = null;
+                    });
+                  }
+                },
+              ),
+            );
+          },
         ),
-        itemCount: _results.length,
-        itemBuilder: (context, index) {
-          final item = _results[index];
-          final firstColumn = index % gridColumns == 0;
-          final firstRow = index ~/ gridColumns == 0;
-          return Padding(
-            padding: const EdgeInsets.all(4),
-            child: _HubSearchFilmCard(
-              result: item,
-              selected: index == _gridFocusedIndex,
-              gridIndex: index,
-              gridColumns: gridColumns,
-              tvTabId: widget.tvTabId,
-              resultsRowId: _resultsRowId,
-              onTap: () => setState(() => _gridFocusedIndex = index),
-              onOpen: () => widget.onOpen(item),
-              onLeftEdge: firstColumn && tvFocus
-                  ? () => _focusHelperAtVisualLevelFromGrid(index)
-                  : null,
-              onUpEdge: firstRow && tvFocus ? _focusSearchFieldBrowse : null,
-              onFocusChange: (focused) {
-                if (focused) {
-                  setState(() {
-                    _gridFocusedIndex = index;
-                    _helperFocusedIndex = null;
-                  });
-                }
-              },
-            ),
-          );
-        },
       ),
     );
   }
@@ -1142,26 +1131,20 @@ class _HubSearchFilmCard extends StatefulWidget {
     required this.selected,
     required this.onTap,
     required this.onOpen,
-    required this.tvTabId,
-    required this.resultsRowId,
     this.onFocusChange,
     this.onLeftEdge,
     this.onUpEdge,
     this.gridIndex,
-    this.gridColumns,
   });
 
   final HubSearchResult result;
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onOpen;
-  final String tvTabId;
-  final String resultsRowId;
   final ValueChanged<bool>? onFocusChange;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onUpEdge;
   final int? gridIndex;
-  final int? gridColumns;
 
   @override
   State<_HubSearchFilmCard> createState() => _HubSearchFilmCardState();
@@ -1175,6 +1158,9 @@ class _HubSearchFilmCardState extends State<_HubSearchFilmCard> {
     final titleSize = shellHubCardTitleFontSize(context);
     final tvActivateOpens =
         ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final grid = TvGridScope.maybeOf(context);
+    final index = widget.gridIndex;
+    final meta = index != null ? grid?.metaFor(index) : null;
 
     return shellFocusableTap(
       context: context,
@@ -1183,12 +1169,12 @@ class _HubSearchFilmCardState extends State<_HubSearchFilmCard> {
       showFocusBorder: true,
       onLeftEdge: widget.onLeftEdge,
       onUpEdge: widget.onUpEdge,
-      gridIndex: widget.gridIndex,
-      gridColumns: widget.gridColumns,
-      tvTabId: widget.tvTabId,
-      tvRowId: widget.resultsRowId,
-      tvZone: ShellTvZone.grid,
-      tvItemIndex: widget.gridIndex,
+      gridIndex: meta?.gridIndex ?? index,
+      gridColumns: meta?.gridColumns,
+      tvTabId: meta?.tvTabId,
+      tvRowId: meta?.tvRowId,
+      tvZone: meta?.tvZone ?? ShellTvZone.grid,
+      tvItemIndex: meta?.tvItemIndex ?? index,
       onFocusChange: widget.onFocusChange,
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: GestureDetector(

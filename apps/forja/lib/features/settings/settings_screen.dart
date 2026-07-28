@@ -9,6 +9,7 @@ import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 /// Settings tab - RFC-033 category hub; RFC-024 R24-A13: local prefs only.
 class SettingsScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    ShellTvFocusCoordinator.registerTabDefaults(
+    TvHeroActions.bind(
       'settings',
       defaultFocus: () => _firstHubFocus,
       enterFromNavFocus: () {
@@ -45,7 +46,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
-    ShellTvFocusCoordinator.unregisterTabDefaults('settings');
     ShellTvFocusCoordinator.clearTab('settings');
     _firstHubFocus.dispose();
     super.dispose();

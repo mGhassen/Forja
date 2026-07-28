@@ -192,6 +192,15 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
     widget.onDragStart?.call();
   }
 
+  void _seekRelativeTv(int direction) {
+    final total = widget.duration;
+    if (total <= Duration.zero || playerChromeOverlayBlocksSeek()) return;
+    var next = widget.position + widget.tvSeekStep * direction;
+    if (next < Duration.zero) next = Duration.zero;
+    if (next > total) next = total;
+    widget.onSeek?.call(next);
+  }
+
   void _commitTvScrub() {
     if (!_tvScrubArmed) return;
     final seekTo = Duration(milliseconds: _dragValue.toInt());
@@ -240,19 +249,23 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
       }
       return KeyEventResult.ignored;
     }
+    // Always move progress while the bar is focused — never let ←/→ leak to
+    // Play (left) or Sources/catalog (right) via focus traversal.
     if (key == LogicalKeyboardKey.arrowLeft) {
       if (_tvScrubArmed) {
         _nudgeTvScrub(-1);
-        return KeyEventResult.handled;
+      } else {
+        _seekRelativeTv(-1);
       }
-      return KeyEventResult.ignored;
+      return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowRight) {
       if (_tvScrubArmed) {
         _nudgeTvScrub(1);
-        return KeyEventResult.handled;
+      } else {
+        _seekRelativeTv(1);
       }
-      return KeyEventResult.ignored;
+      return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowUp) {
       if (_tvScrubArmed) {

@@ -4,6 +4,7 @@ import 'package:forja/shared/design/src/details_tokens.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/app_router.dart';
@@ -11,7 +12,7 @@ import 'package:rust/rust.dart';
 
 const _kTrailerCardWidth = 200.0;
 
-class MediaDetailsTrailersSection extends StatefulWidget {
+class MediaDetailsTrailersSection extends StatelessWidget {
   const MediaDetailsTrailersSection({
     super.key,
     required this.trailers,
@@ -34,39 +35,13 @@ class MediaDetailsTrailersSection extends StatefulWidget {
   final VoidCallback? tvFocusUp;
 
   @override
-  State<MediaDetailsTrailersSection> createState() =>
-      _MediaDetailsTrailersSectionState();
-}
-
-class _MediaDetailsTrailersSectionState
-    extends State<MediaDetailsTrailersSection> {
-  String get _rowId => widget.tvRowId ?? 'trailers';
-
-  @override
-  void dispose() {
-    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
-    if (tabId != null && widget.tvRowId != null) {
-      shellTvUnregisterRow(tabId: tabId, rowId: _rowId);
-    }
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (widget.trailers.isEmpty) return const SizedBox.shrink();
+    if (trailers.isEmpty) return const SizedBox.shrink();
 
-    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
-    if (tabId != null && widget.tvRowId != null) {
-      shellTvRegisterRow(
-        tabId: tabId,
-        rowId: _rowId,
-        sortOrder: widget.tvRowOrder,
-        itemCount: widget.trailers.length,
-        onFocusUp: widget.tvFocusUp,
-      );
-    }
+    final tabId = tvTabId ?? ShellTvFocus.currentNavTabId;
+    final rowId = tvRowId ?? 'trailers';
 
-    final outdent = widget.outdentHorizontal;
+    final outdent = outdentHorizontal;
     final useHomeInsets = outdent > 0;
     final homePad = ShellTokens.homeSectionHorizontalPadding;
     // Catalog focus scale (desktop hover / TV focus) needs vertical room on the thumb only.
@@ -96,33 +71,44 @@ class _MediaDetailsTrailersSectionState
           child: HorizontalScroller(
             height: trailerRowHeight,
             padding: useHomeInsets ? EdgeInsets.only(left: homePad) : EdgeInsets.zero,
-            itemCount: widget.trailers.length,
+            itemCount: trailers.length,
             separatorBuilder: (_, _) => const SizedBox(width: 12),
             itemBuilder: (context, index) => _TrailerCard(
-              trailers: widget.trailers,
+              trailers: trailers,
               index: index,
-              movie: widget.movie,
-              languageCode: widget.languageCode,
+              movie: movie,
+              languageCode: languageCode,
               tvTabId: tabId,
-              tvRowId: widget.tvRowId != null ? _rowId : null,
+              tvRowId: tvRowId != null ? rowId : null,
             ),
           ),
         ),
       ],
     );
 
-    if (outdent <= 0) return row;
+    final child = outdent <= 0
+        ? row
+        : LayoutBuilder(
+            builder: (context, constraints) {
+              return SizedBox(
+                width: constraints.maxWidth + outdent * 2,
+                child: Transform.translate(
+                  offset: Offset(-outdent, 0),
+                  child: row,
+                ),
+              );
+            },
+          );
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SizedBox(
-          width: constraints.maxWidth + outdent * 2,
-          child: Transform.translate(
-            offset: Offset(-outdent, 0),
-            child: row,
-          ),
-        );
-      },
+    if (tabId == null || tvRowId == null) return child;
+
+    return TvCatalogRow(
+      tabId: tabId,
+      rowId: rowId,
+      sortOrder: tvRowOrder,
+      itemCount: trailers.length,
+      onFocusUp: tvFocusUp,
+      child: child,
     );
   }
 }

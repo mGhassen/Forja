@@ -9,7 +9,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 /// Hub chrome: split sidebar on wide (incl. Android TV 1080p+), list→push on compact.
 class SettingsHubScaffold extends ConsumerStatefulWidget {
@@ -40,7 +40,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   void initState() {
     super.initState();
     // Back ladder: detail → selected category → first category → nav rail.
-    ShellTvFocusCoordinator.registerTabDefaults(
+    TvHeroActions.bind(
       'settings',
       pageBack: _handlePageBack,
     );
@@ -58,21 +58,8 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
 
   @override
   void dispose() {
-    shellTvUnregisterRow(tabId: 'settings', rowId: _categoryRowId);
     _detailScope.dispose();
     super.dispose();
-  }
-
-  void _registerCategoryRow(int count) {
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (!tv) return;
-    shellTvRegisterRow(
-      tabId: 'settings',
-      rowId: _categoryRowId,
-      sortOrder: 0,
-      itemCount: count,
-      orientation: ShellTvRowOrientation.vertical,
-    );
   }
 
   bool _focusSelectedCategory() {
@@ -179,61 +166,69 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     if (split) {
-      if (tv) _registerCategoryRow(categories.length);
-      return SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: SettingsTokens.sidebarWidth,
-              child: FocusTraversalGroup(
-                policy: OrderedTraversalPolicy(),
-                child: _CategorySidebar(
-                  categories: categories,
-                  selectedId: widget.selectedId,
-                  onSelect: widget.onSelect,
-                  firstTileFocusNode: widget.firstTileFocusNode,
-                  categoryRowId: tv ? _categoryRowId : null,
-                  onEnterDetail: tv ? _enterDetail : null,
+      return TvFocusGraph(
+        tabId: 'settings',
+        child: SafeArea(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: SettingsTokens.sidebarWidth,
+                child: FocusTraversalGroup(
+                  policy: OrderedTraversalPolicy(),
+                  child: TvCatalogRow(
+                    rowId: _categoryRowId,
+                    sortOrder: 0,
+                    itemCount: tv ? categories.length : 0,
+                    orientation: ShellTvRowOrientation.vertical,
+                    child: _CategorySidebar(
+                      categories: categories,
+                      selectedId: widget.selectedId,
+                      onSelect: widget.onSelect,
+                      firstTileFocusNode: widget.firstTileFocusNode,
+                      categoryRowId: tv ? _categoryRowId : null,
+                      onEnterDetail: tv ? _enterDetail : null,
+                    ),
+                  ),
                 ),
               ),
-            ),
-            Container(
-              width: 1,
-              color: ForjaShellColors.borderSubtle,
-            ),
-            Expanded(
-              child: tv
-                  ? FocusScope(
-                      node: _detailScope,
-                      child: ShellTvLinearFocusScope(
-                        child: ShellTvLinearFocusEdges(
-                          onBackwardEdge: _focusSelectedCategory,
-                          child: FocusTraversalGroup(
-                            policy: OrderedTraversalPolicy(),
-                            child: SettingsPageScaffold(
-                              title: selectedMeta?.title ?? 'Settings',
-                              scrollable:
-                                  !(selectedMeta?.fillViewport ?? false),
-                              child: buildSettingsCategoryBody(
-                                widget.selectedId,
-                                visibility,
+              Container(
+                width: 1,
+                color: ForjaShellColors.borderSubtle,
+              ),
+              Expanded(
+                child: tv
+                    ? FocusScope(
+                        node: _detailScope,
+                        child: ShellTvLinearFocusScope(
+                          child: ShellTvLinearFocusEdges(
+                            onBackwardEdge: _focusSelectedCategory,
+                            child: FocusTraversalGroup(
+                              policy: OrderedTraversalPolicy(),
+                              child: SettingsPageScaffold(
+                                title: selectedMeta?.title ?? 'Settings',
+                                scrollable:
+                                    !(selectedMeta?.fillViewport ?? false),
+                                child: buildSettingsCategoryBody(
+                                  widget.selectedId,
+                                  visibility,
+                                ),
                               ),
                             ),
                           ),
                         ),
+                      )
+                    : SettingsPageScaffold(
+                        title: selectedMeta?.title ?? 'Settings',
+                        scrollable: !(selectedMeta?.fillViewport ?? false),
+                        child: buildSettingsCategoryBody(
+                          widget.selectedId,
+                          visibility,
+                        ),
                       ),
-                    )
-                  : SettingsPageScaffold(
-                      title: selectedMeta?.title ?? 'Settings',
-                      scrollable: !(selectedMeta?.fillViewport ?? false),
-                      child: buildSettingsCategoryBody(
-                        widget.selectedId,
-                        visibility,
-                      ),
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       );
     }

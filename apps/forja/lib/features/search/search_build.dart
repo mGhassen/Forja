@@ -71,19 +71,10 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
     super.build(context);
     _s._watchSearchResultsProvider();
     ref.watch(searchAddonProvidersProvider);
-    final trendingTitles = ref.watch(searchTrendingTitlesProvider).valueOrNull;
-    if (trendingTitles != null && trendingTitles.isNotEmpty) {
-      shellTvRegisterRow(
-        tabId: 'search',
-        rowId: 'helpers',
-        sortOrder: 0,
-        itemCount: trendingTitles.length,
-        orientation: ShellTvRowOrientation.vertical,
-      );
-    }
 
+    Widget body;
     if (widget.overlay) {
-      return ValueListenableBuilder<AppThemePreset>(
+      body = ValueListenableBuilder<AppThemePreset>(
         valueListenable: AppTheme.themeNotifier,
         builder: (context, _, _) {
           if (_s._isDesktopLayout(context)) {
@@ -99,12 +90,13 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
           );
         },
       );
+    } else if (_s._isDesktopLayout(context)) {
+      body = _buildDesktopLayout(context);
+    } else {
+      body = _buildMobileBody(context);
     }
 
-    if (_s._isDesktopLayout(context)) {
-      return _buildDesktopLayout(context);
-    }
-    return _buildMobileBody(context);
+    return TvFocusGraph(tabId: 'search', child: body);
   }
 
   Widget _buildDesktopLayout(BuildContext context) {
@@ -273,50 +265,58 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
       );
     }
 
-    return FocusTraversalGroup(
-      policy: OrderedTraversalPolicy(),
-      child: ListView.separated(
-        controller: _s._helpersScrollController,
-        clipBehavior: Clip.none,
-        padding: const EdgeInsets.only(right: 8, bottom: 8),
-        physics: const ClampingScrollPhysics(),
-        itemCount: _s._trendingHelperTitles.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 1),
-        itemBuilder: (context, index) {
-          final title = _s._trendingHelperTitles[index];
-          final count = _s._trendingHelperTitles.length;
-          return FocusTraversalOrder(
-            order: NumericFocusOrder(index.toDouble()),
-            child: shellFocusableTap(
-              context: context,
-              onTap: () => _s._applyHelperQuery(title),
-              borderRadius: 4,
-              scaleOnFocus: 1.0,
-              navLeftAlways: true,
-              listIndex: index,
-              tvTabId: 'search',
-              tvRowId: 'helpers',
-              tvZone: ShellTvZone.chipStrip,
-              tvItemIndex: index,
-              focusNode: index == 0 ? _s._firstHelperFocusNode : null,
-              onUpEdge: _s._helperUpEdge(index),
-              onDownEdge: _s._helperDownEdge(index, count),
-              onRightEdge: _s._helperRightEdge(index),
-              ensureVisibleMode: ShellTvEnsureVisibleMode.row,
-              onFocusChange: (focused) {
-                if (focused) {
-                  _s._setHelperFocusedIndex(index);
-                } else {
-                  _s._clearHelperFocusedIndex(index);
-                }
-              },
-              child: _buildHelperTitle(
-                title,
-                selected: _s._helperFocusedIndex == index,
+    final titles = _s._trendingHelperTitles;
+    return TvCatalogRow(
+      tabId: 'search',
+      rowId: 'helpers',
+      sortOrder: 0,
+      itemCount: titles.length,
+      orientation: ShellTvRowOrientation.vertical,
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: ListView.separated(
+          controller: _s._helpersScrollController,
+          clipBehavior: Clip.none,
+          padding: const EdgeInsets.only(right: 8, bottom: 8),
+          physics: const ClampingScrollPhysics(),
+          itemCount: titles.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 1),
+          itemBuilder: (context, index) {
+            final title = titles[index];
+            final count = titles.length;
+            return FocusTraversalOrder(
+              order: NumericFocusOrder(index.toDouble()),
+              child: shellFocusableTap(
+                context: context,
+                onTap: () => _s._applyHelperQuery(title),
+                borderRadius: 4,
+                scaleOnFocus: 1.0,
+                navLeftAlways: true,
+                listIndex: index,
+                tvTabId: 'search',
+                tvRowId: 'helpers',
+                tvZone: ShellTvZone.chipStrip,
+                tvItemIndex: index,
+                focusNode: index == 0 ? _s._firstHelperFocusNode : null,
+                onUpEdge: _s._helperUpEdge(index),
+                onDownEdge: _s._helperDownEdge(index, count),
+                onRightEdge: _s._helperRightEdge(index),
+                ensureVisibleMode: ShellTvEnsureVisibleMode.row,
+                onFocusChange: (focused) {
+                  if (focused) {
+                    _s._setHelperFocusedIndex(index);
+                  } else {
+                    _s._clearHelperFocusedIndex(index);
+                  }
+                },
+                child: _buildHelperTitle(
+                  title,
+                  selected: _s._helperFocusedIndex == index,
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -346,58 +346,56 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
     const gridColumns = 4;
     final tvFocus = _s._tvFocus(context);
 
-    if (tvFocus && results.isNotEmpty) {
-      shellTvRegisterRow(
-        tabId: 'search',
-        rowId: 'results',
-        sortOrder: 1,
-        itemCount: results.length,
-      );
-    }
-
-    return FocusTraversalGroup(
-      policy: OrderedTraversalPolicy(),
-      child: GridView.builder(
-        controller: _s._resultsScrollController,
-        clipBehavior: Clip.none,
-        padding: const EdgeInsets.only(bottom: 8),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: gridColumns,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 14,
-          childAspectRatio: 2 / 3,
+    return TvGrid(
+      tabId: 'search',
+      rowId: 'results',
+      sortOrder: 1,
+      columns: gridColumns,
+      itemCount: results.length,
+      child: FocusTraversalGroup(
+        policy: OrderedTraversalPolicy(),
+        child: GridView.builder(
+          controller: _s._resultsScrollController,
+          clipBehavior: Clip.none,
+          padding: const EdgeInsets.only(bottom: 8),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: gridColumns,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 14,
+            childAspectRatio: 2 / 3,
+          ),
+          itemCount: results.length,
+          itemBuilder: (context, index) {
+            final item = results[index];
+            final firstColumn = index % gridColumns == 0;
+            final firstRow = index ~/ gridColumns == 0;
+            return Padding(
+              padding: const EdgeInsets.all(4),
+              child: _SearchFilmCard(
+                result: item,
+                selected: index == _s._gridFocusedIndex,
+                gridIndex: index,
+                onTap: () => _s._setGridFocusedIndex(index),
+                onOpen: () => _s._openResult(item),
+                onLeftEdge: firstColumn && tvFocus
+                    ? () => _s._focusHelperAtVisualLevelFromGrid(index)
+                    : null,
+                onUpEdge:
+                    firstRow && tvFocus ? _s._focusSearchFieldBrowse : null,
+                onFocusChange: (focused) {
+                  if (focused) {
+                    setState(() {
+                      _s._gridFocusedIndex = index;
+                      _s._helperFocusedIndex = null;
+                    });
+                  } else {
+                    _s._clearGridFocusedIndex(index);
+                  }
+                },
+              ),
+            );
+          },
         ),
-        itemCount: results.length,
-        itemBuilder: (context, index) {
-          final item = results[index];
-          final firstColumn = index % gridColumns == 0;
-          final firstRow = index ~/ gridColumns == 0;
-          return Padding(
-            padding: const EdgeInsets.all(4),
-            child: _SearchFilmCard(
-              result: item,
-              selected: index == _s._gridFocusedIndex,
-              gridIndex: index,
-              gridColumns: gridColumns,
-              onTap: () => _s._setGridFocusedIndex(index),
-              onOpen: () => _s._openResult(item),
-              onLeftEdge: firstColumn && tvFocus
-                  ? () => _s._focusHelperAtVisualLevelFromGrid(index)
-                  : null,
-              onUpEdge: firstRow && tvFocus ? _s._focusSearchFieldBrowse : null,
-              onFocusChange: (focused) {
-                if (focused) {
-                  setState(() {
-                    _s._gridFocusedIndex = index;
-                    _s._helperFocusedIndex = null;
-                  });
-                } else {
-                  _s._clearGridFocusedIndex(index);
-                }
-              },
-            ),
-          );
-        },
       ),
     );
   }

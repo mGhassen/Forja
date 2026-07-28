@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Scales hero action rows down on narrow viewports instead of overflowing.
 class DetailsHeroActionRowFit extends StatelessWidget {
@@ -23,7 +23,7 @@ class DetailsHeroActionRowFit extends StatelessWidget {
 }
 
 /// Registers [MediaDetailsTv.heroRowId] for hub-style hero action clusters.
-class DetailsHeroTvActionScope extends StatefulWidget {
+class DetailsHeroTvActionScope extends StatelessWidget {
   const DetailsHeroTvActionScope({
     super.key,
     required this.tabId,
@@ -40,30 +40,16 @@ class DetailsHeroTvActionScope extends StatefulWidget {
   final Widget child;
 
   @override
-  State<DetailsHeroTvActionScope> createState() =>
-      _DetailsHeroTvActionScopeState();
-}
-
-class _DetailsHeroTvActionScopeState extends State<DetailsHeroTvActionScope> {
-  @override
-  void dispose() {
-    shellTvUnregisterRow(tabId: widget.tabId, rowId: MediaDetailsTv.heroRowId);
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (widget.itemCount > 0) {
-      shellTvRegisterRow(
-        tabId: widget.tabId,
-        rowId: MediaDetailsTv.heroRowId,
-        sortOrder: MediaDetailsTv.heroRowSortOrder,
-        itemCount: widget.itemCount,
-        onFocusUp: widget.onFocusUp,
-        onFocusDown: widget.onFocusDown,
-      );
-    }
-    return widget.child;
+    return TvCatalogRow(
+      tabId: tabId,
+      rowId: MediaDetailsTv.heroRowId,
+      sortOrder: MediaDetailsTv.heroRowSortOrder,
+      itemCount: itemCount,
+      onFocusUp: onFocusUp,
+      onFocusDown: onFocusDown,
+      child: child,
+    );
   }
 }
 

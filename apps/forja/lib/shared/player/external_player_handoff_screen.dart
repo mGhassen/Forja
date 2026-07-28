@@ -5,7 +5,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
@@ -351,45 +351,12 @@ class _PlayerPickerBody extends StatelessWidget {
     );
     if (!tv) return body;
     // Ordered walk: Close(0) → engines/apps(1) → Cancel(2); no wrap to last.
-    return FocusScope(
+    return TvOverlayScope(
       debugLabel: 'handoff-choose-player',
-      autofocus: true,
-      child: ShellTvLinearFocusScope(
-        child: FocusTraversalGroup(
-          policy: OrderedTraversalPolicy(),
-          child: PlayerPopupListFocusScope(
-            child: _TvPickerFocusOnOpen(child: body),
-          ),
-        ),
-      ),
+      policy: OrderedTraversalPolicy(),
+      child: PlayerPopupListFocusScope(child: body),
     );
   }
-}
-
-/// Lands primary focus on the first picker control after open.
-class _TvPickerFocusOnOpen extends StatefulWidget {
-  const _TvPickerFocusOnOpen({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_TvPickerFocusOnOpen> createState() => _TvPickerFocusOnOpenState();
-}
-
-class _TvPickerFocusOnOpenState extends State<_TvPickerFocusOnOpen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final scope = FocusScope.of(context);
-      if (scope.focusedChild != null) return;
-      scope.nextFocus();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 class _LiveStatusBadge extends StatelessWidget {

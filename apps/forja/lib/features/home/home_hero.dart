@@ -10,6 +10,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
@@ -98,7 +99,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     super.initState();
     ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
     ShellTvFocus.homeHeroGallery = _tvHeroGalleryFocus;
-    ShellTvFocusCoordinator.registerTabDefaults(
+    TvHeroActions.bind(
       'home',
       defaultFocus: () => _tvHeroPlayFocus,
       heroReveal: _scrollHeroIntoView,

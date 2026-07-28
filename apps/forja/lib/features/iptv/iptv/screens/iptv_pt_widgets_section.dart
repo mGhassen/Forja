@@ -22,43 +22,43 @@ class _SectionPickView extends StatelessWidget {
                     ? 3
                     : (c.maxWidth >= 520 ? 3 : 1);
                 const sections = 3;
-                iptvSyncRow(
+                return iptvCatalogRow(
                   rowId: 'section-pick',
                   sortOrder: 0,
                   itemCount: sections,
-                );
-                return GridView.count(
-                  padding: const EdgeInsets.all(20),
-                  crossAxisCount: cross,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: cross == 1 ? 2.6 : 1.1,
-                  children: [
-                    _SectionTile(
-                      icon: Icons.live_tv_rounded,
-                      label: 'Live TV',
-                      colors: const [Color(0xFFEF4444), Color(0xFF7C2D12)],
-                      gridIndex: 0,
-                      gridColumns: cross,
-                      onTap: () => ctrl.openSection(IptvSection.live),
-                    ),
-                    _SectionTile(
-                      icon: Icons.movie_rounded,
-                      label: 'Movies',
-                      colors: const [Color(0xFFEC4899), Color(0xFF8B5CF6)],
-                      gridIndex: 1,
-                      gridColumns: cross,
-                      onTap: () => ctrl.openSection(IptvSection.vod),
-                    ),
-                    _SectionTile(
-                      icon: Icons.video_library_rounded,
-                      label: 'Series',
-                      colors: const [Color(0xFF374151), Color(0xFF1CE783)],
-                      gridIndex: 2,
-                      gridColumns: cross,
-                      onTap: () => ctrl.openSection(IptvSection.series),
-                    ),
-                  ],
+                  child: GridView.count(
+                    padding: const EdgeInsets.all(20),
+                    crossAxisCount: cross,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: cross == 1 ? 2.6 : 1.1,
+                    children: [
+                      _SectionTile(
+                        icon: Icons.live_tv_rounded,
+                        label: 'Live TV',
+                        colors: const [Color(0xFFEF4444), Color(0xFF7C2D12)],
+                        gridIndex: 0,
+                        gridColumns: cross,
+                        onTap: () => ctrl.openSection(IptvSection.live),
+                      ),
+                      _SectionTile(
+                        icon: Icons.movie_rounded,
+                        label: 'Movies',
+                        colors: const [Color(0xFFEC4899), Color(0xFF8B5CF6)],
+                        gridIndex: 1,
+                        gridColumns: cross,
+                        onTap: () => ctrl.openSection(IptvSection.vod),
+                      ),
+                      _SectionTile(
+                        icon: Icons.video_library_rounded,
+                        label: 'Series',
+                        colors: const [Color(0xFF374151), Color(0xFF1CE783)],
+                        gridIndex: 2,
+                        gridColumns: cross,
+                        onTap: () => ctrl.openSection(IptvSection.series),
+                      ),
+                    ],
+                  ),
                 );
               },
             ),

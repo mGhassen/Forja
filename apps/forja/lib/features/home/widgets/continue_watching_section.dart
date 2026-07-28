@@ -6,6 +6,7 @@ import 'package:forja/features/home/widgets/home_widget_imports.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 class HomeContinueWatchingSection extends StatefulWidget {
   final bool compactTop;
@@ -31,12 +32,6 @@ class HomeContinueWatchingSectionState extends State<HomeContinueWatchingSection
   void initState() {
     super.initState();
     _resolveMissingBackdrops(WatchHistoryService().current);
-  }
-
-  @override
-  void dispose() {
-    shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
-    super.dispose();
   }
 
   Future<void> _resolveMissingBackdrops(List<Map<String, dynamic>> items) async {
@@ -155,7 +150,6 @@ class HomeContinueWatchingSectionState extends State<HomeContinueWatchingSection
           );
         }
         if (snapshot.data!.isEmpty) {
-          shellTvUnregisterRow(tabId: 'home', rowId: _rowId);
           return const SizedBox.shrink();
         }
         final raw = snapshot.data!;
@@ -172,48 +166,46 @@ class HomeContinueWatchingSectionState extends State<HomeContinueWatchingSection
           if (seen.add(key)) history.add(item);
         }
 
-        shellTvRegisterRow(
-          tabId: 'home',
-          rowId: _rowId,
-          sortOrder: widget.tvRowOrder,
-          itemCount: history.length,
-        );
-
         final titleTop = shellHomeSectionTitleTop(context, compact: widget.compactTop,
         );
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ShellSectionTitle(
-              title: 'Continue Watching',
-              padding: shellHomeSectionTitlePadding(context, top: titleTop),
-            ),
-            HorizontalScroller(
-              height: HomeHistoryCard.cardHeight(context),
-              padding: EdgeInsets.symmetric(
-                horizontal: shellHomeSectionHorizontalPadding(context),
+        return TvCatalogRow(
+          rowId: _rowId,
+          sortOrder: widget.tvRowOrder,
+          itemCount: history.length,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ShellSectionTitle(
+                title: 'Continue Watching',
+                padding: shellHomeSectionTitlePadding(context, top: titleTop),
               ),
-              itemCount: history.length,
-              separatorBuilder: (_, _) =>
-                  SizedBox(width: shellMovieCardRowGap(context)),
-              itemBuilder: (context, index) {
-                final historyItem = history[index];
-                final itemId = historyItem['uniqueId'] as String;
-                return HomeHistoryCard(
-                  listIndex: index,
-                  tvRowId: _rowId,
-                  item: historyItem,
-                  resolvedBackdropPath:
-                      _resolvedBackdrops[historyItem['tmdbId'] as int?],
-                  onTap: () => _resumePlayback(historyItem),
-                  onRemove: () => _removeItem(historyItem),
-                  onInfo: () => _openHistoryItemDetails(historyItem),
-                  isLoading: _loadingItemId == itemId,
-                );
-              },
-            ),
-          ],
+              HorizontalScroller(
+                height: HomeHistoryCard.cardHeight(context),
+                padding: EdgeInsets.symmetric(
+                  horizontal: shellHomeSectionHorizontalPadding(context),
+                ),
+                itemCount: history.length,
+                separatorBuilder: (_, _) =>
+                    SizedBox(width: shellMovieCardRowGap(context)),
+                itemBuilder: (context, index) {
+                  final historyItem = history[index];
+                  final itemId = historyItem['uniqueId'] as String;
+                  return HomeHistoryCard(
+                    listIndex: index,
+                    tvRowId: _rowId,
+                    item: historyItem,
+                    resolvedBackdropPath:
+                        _resolvedBackdrops[historyItem['tmdbId'] as int?],
+                    onTap: () => _resumePlayback(historyItem),
+                    onRemove: () => _removeItem(historyItem),
+                    onInfo: () => _openHistoryItemDetails(historyItem),
+                    isLoading: _loadingItemId == itemId,
+                  );
+                },
+              ),
+            ],
+          ),
         );
       },
     );

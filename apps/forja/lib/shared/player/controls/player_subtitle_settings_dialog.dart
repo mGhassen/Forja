@@ -4,6 +4,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/player_seek_scrub_cancel.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
@@ -397,29 +398,10 @@ class PlayerSubtitleSettingsDialog {
 
             if (!tv) return dialogBody;
 
-            return ShellTvLinearFocusScope(
-              child: FocusTraversalGroup(
-                policy: OrderedTraversalPolicy(),
-                child: Focus(
-                  canRequestFocus: false,
-                  skipTraversal: true,
-                  onKeyEvent: (node, event) {
-                    if (!shellTvIsNavigationKey(event)) {
-                      return KeyEventResult.ignored;
-                    }
-                    if (event.logicalKey == LogicalKeyboardKey.escape ||
-                        event.logicalKey == LogicalKeyboardKey.goBack) {
-                      close();
-                      return KeyEventResult.handled;
-                    }
-                    return shellTvLinearMenuArrows(
-                      context: context,
-                      event: event,
-                    );
-                  },
-                  child: dialogBody,
-                ),
-              ),
+            return TvOverlayScope(
+              onDismiss: close,
+              policy: OrderedTraversalPolicy(),
+              child: dialogBody,
             );
           },
         );

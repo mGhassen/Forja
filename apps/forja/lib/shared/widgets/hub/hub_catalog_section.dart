@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
-class HubCatalogSection<T> extends StatefulWidget {
+class HubCatalogSection<T> extends StatelessWidget {
   const HubCatalogSection({
     super.key,
     required this.title,
@@ -37,7 +37,7 @@ class HubCatalogSection<T> extends StatefulWidget {
   final VoidCallback? tvFocusUp;
   final HubPosterAspect cardAspect;
   final HubPosterCard Function(BuildContext context, T item, int index)
-  cardBuilder;
+      cardBuilder;
 
   static double sectionHeight(
     BuildContext context, {
@@ -54,61 +54,32 @@ class HubCatalogSection<T> extends StatefulWidget {
         HubPosterCard.cardHeight(context, aspect: cardAspect);
   }
 
-  @override
-  State<HubCatalogSection<T>> createState() => _HubCatalogSectionState<T>();
-}
-
-class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
-  @override
-  void dispose() {
-    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
-    if (tabId != null && widget.tvRowId != null) {
-      shellTvUnregisterRow(tabId: tabId, rowId: widget.tvRowId!);
-    }
-    super.dispose();
-  }
-
-  void _syncTvRow(int itemCount) {
-    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
-    final rowId = widget.tvRowId;
-    if (tabId == null || rowId == null || itemCount <= 0) return;
-    shellTvRegisterRow(
-      tabId: tabId,
-      rowId: rowId,
-      sortOrder: widget.tvRowOrder,
-      itemCount: itemCount,
-      onFocusUp: widget.tvFocusUp,
-    );
-  }
-
   double _sectionTitleTop(BuildContext context) {
-    if (widget.embedded) return 0;
-    if (!widget.compactTop) return shellHomeSectionTitleTop(context);
+    if (embedded) return 0;
+    if (!compactTop) return shellHomeSectionTitleTop(context);
     return shellSectionTitleTopCompact(context);
   }
 
-  Widget _buildRow(List<T> list) {
+  Widget _buildRow(BuildContext context, List<T> list) {
     if (list.isEmpty) return const SizedBox.shrink();
-    _syncTvRow(list.length);
 
     final sectionTop = _sectionTitleTop(context);
     // Parent MediaDetailsBody owns the column edge; Cast/Trailers use 0 pad
     // when embedded - don't double-apply home insets.
-    final horizontalPad = widget.embedded
-        ? 0.0
-        : shellHomeSectionHorizontalPadding(context);
+    final horizontalPad =
+        embedded ? 0.0 : shellHomeSectionHorizontalPadding(context);
 
-    return Column(
+    final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         ShellSectionTitle(
-          title: widget.title,
+          title: title,
           padding: EdgeInsets.fromLTRB(
             horizontalPad,
             sectionTop,
             horizontalPad,
-            widget.embedded
+            embedded
                 ? DetailsTokens.sectionTitleGap
                 : shellHomeSectionBottomGap(context),
           ),
@@ -117,32 +88,45 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
           child: HorizontalScroller(
             height: HubPosterCard.cardHeight(
               context,
-              aspect: widget.cardAspect,
+              aspect: cardAspect,
             ),
             padding: EdgeInsets.symmetric(horizontal: horizontalPad),
             itemCount: list.length,
             separatorBuilder: (_, _) => SizedBox(
-              width: widget.showRank
+              width: showRank
                   ? shellScaled(context, 6).clamp(3.0, 6.0)
                   : shellMovieCardRowGap(context),
             ),
             itemBuilder: (context, index) =>
-                widget.cardBuilder(context, list[index], index),
+                cardBuilder(context, list[index], index),
           ),
         ),
       ],
+    );
+
+    final tabId = tvTabId ?? ShellTvFocus.currentNavTabId;
+    final rowId = tvRowId;
+    if (tabId == null || rowId == null) return column;
+
+    return TvCatalogRow(
+      tabId: tabId,
+      rowId: rowId,
+      sortOrder: tvRowOrder,
+      itemCount: list.length,
+      onFocusUp: tvFocusUp,
+      child: column,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final staticItems = widget.items;
+    final staticItems = items;
     if (staticItems != null) {
-      return _buildRow(staticItems);
+      return _buildRow(context, staticItems);
     }
 
     return FutureBuilder<List<T>>(
-      future: widget.future,
+      future: future,
       builder: (context, snapshot) {
         final loading = snapshot.connectionState == ConnectionState.waiting;
         final list = snapshot.data ?? <T>[];
@@ -152,17 +136,15 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
             return homeLoadingShimmer(
               homeMovieRowSkeleton(
                 context,
-                compactTop: widget.compactTop,
-                titleWidth: widget.title.length > 12
-                    ? 180
-                    : widget.title.length * 11.0,
+                compactTop: compactTop,
+                titleWidth: title.length > 12 ? 180 : title.length * 11.0,
                 cardWidth: HubPosterCard.cardWidth(
                   context,
-                  aspect: widget.cardAspect,
+                  aspect: cardAspect,
                 ),
                 cardHeight: HubPosterCard.cardHeight(
                   context,
-                  aspect: widget.cardAspect,
+                  aspect: cardAspect,
                 ),
               ),
             );
@@ -170,7 +152,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
           return const SizedBox.shrink();
         }
 
-        return _buildRow(list);
+        return _buildRow(context, list);
       },
     );
   }

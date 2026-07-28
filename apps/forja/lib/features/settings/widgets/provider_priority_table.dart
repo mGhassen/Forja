@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
@@ -175,52 +176,52 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
               final tv =
                   ShellScope.inputPolicyOf(context).useFocusableMoodChips;
               final reorderable = _tab != _ScoringTab.asianDrama;
-              if (tv && reorderable) {
-                shellTvRegisterRow(
-                  tabId: 'settings',
-                  rowId: 'scoring-move',
-                  sortOrder: 1,
-                  itemCount: order.length * 2,
-                  orientation: ShellTvRowOrientation.vertical,
-                );
-              }
-              return ReorderableListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                buildDefaultDragHandles: false,
-                itemCount: order.length,
-                onReorderItem: (oldIndex, newIndex) {
-                  if (_tab == _ScoringTab.asianDrama) return;
-                  final next = List<String>.from(order);
-                  final item = next.removeAt(oldIndex);
-                  next.insert(newIndex, item);
-                  _onOrderChanged(next);
-                },
-                itemBuilder: (context, index) {
-                  final id = order[index];
-                  final disabled = disabledProviders.contains(id);
-                  final row = rowById[id];
-                  final score =
-                      row?.reliabilityScore ??
-                      ProviderScoreMemory.globalScoreFor(id);
-                  final tries =
-                      row?.supported == true ? tryPositionById[id] : null;
-                  return _ServerRow(
-                    key: ValueKey('${_tab.name}-$id'),
-                    index: index,
-                    name: _catalog[id] ?? id,
-                    score: score,
-                    tries: disabled ? null : tries,
-                    disabled: disabled,
-                    reorderable: reorderable,
-                    onMoveUp: reorderable && index > 0
-                        ? () => _moveServer(order, index, index - 1)
-                        : null,
-                    onMoveDown: reorderable && index < order.length - 1
-                        ? () => _moveServer(order, index, index + 1)
-                        : null,
-                  );
-                },
+              final moveCount =
+                  tv && reorderable ? order.length * 2 : 0;
+              return TvCatalogRow(
+                tabId: 'settings',
+                rowId: 'scoring-move',
+                sortOrder: 1,
+                itemCount: moveCount,
+                orientation: ShellTvRowOrientation.vertical,
+                child: ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: false,
+                  itemCount: order.length,
+                  onReorderItem: (oldIndex, newIndex) {
+                    if (_tab == _ScoringTab.asianDrama) return;
+                    final next = List<String>.from(order);
+                    final item = next.removeAt(oldIndex);
+                    next.insert(newIndex, item);
+                    _onOrderChanged(next);
+                  },
+                  itemBuilder: (context, index) {
+                    final id = order[index];
+                    final disabled = disabledProviders.contains(id);
+                    final row = rowById[id];
+                    final score =
+                        row?.reliabilityScore ??
+                        ProviderScoreMemory.globalScoreFor(id);
+                    final tries =
+                        row?.supported == true ? tryPositionById[id] : null;
+                    return _ServerRow(
+                      key: ValueKey('${_tab.name}-$id'),
+                      index: index,
+                      name: _catalog[id] ?? id,
+                      score: score,
+                      tries: disabled ? null : tries,
+                      disabled: disabled,
+                      reorderable: reorderable,
+                      onMoveUp: reorderable && index > 0
+                          ? () => _moveServer(order, index, index - 1)
+                          : null,
+                      onMoveDown: reorderable && index < order.length - 1
+                          ? () => _moveServer(order, index, index + 1)
+                          : null,
+                    );
+                  },
+                ),
               );
             },
           ),
@@ -262,51 +263,57 @@ class _TabStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (tv) {
-      shellTvRegisterRow(
-        tabId: 'settings',
-        rowId: 'scoring-tabs',
-        sortOrder: 0,
-        itemCount: _tabs.length,
+    if (!tv) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (var i = 0; i < _tabs.length; i++)
+            ForjaShellChip(
+              label: _tabs[i].$2,
+              selected: tab == _tabs[i].$1,
+              listIndex: i,
+              onTap: () => onChanged(_tabs[i].$1),
+            ),
+        ],
       );
     }
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (var i = 0; i < _tabs.length; i++)
-          ForjaShellChip(
-            label: _tabs[i].$2,
-            selected: tab == _tabs[i].$1,
-            listIndex: i,
-            tvTabId: 'settings',
-            tvRowId: 'scoring-tabs',
-            onTap: () => onChanged(_tabs[i].$1),
-            onLeftEdge: () {
-              if (i > 0) {
-                ShellTvFocusCoordinator.focusAdjacentInRow(
-                  tabId: 'settings',
-                  rowId: 'scoring-tabs',
-                  currentIndex: i,
-                  right: false,
-                );
-                return;
-              }
-              // First scoring tab: back to category rail (not shell nav).
-              final edges = ShellTvLinearFocusEdges.maybeOf(context);
-              if (edges?.onBackwardEdge?.call() != true) {
-                ShellTvFocusCoordinator.focusActiveNavTab();
-              }
-            },
-            onRightEdge: shellTvChipRightEdge(
-              tabId: 'settings',
-              rowId: 'scoring-tabs',
-              index: i,
-              itemCount: _tabs.length,
-            ),
-          ),
-      ],
+    return TvChipStrip(
+      tabId: 'settings',
+      rowId: 'scoring-tabs',
+      sortOrder: 0,
+      itemCount: _tabs.length,
+      resultsRowId: 'scoring-move',
+      builder: (context, edgesFor) {
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var i = 0; i < _tabs.length; i++)
+              ForjaShellChip(
+                label: _tabs[i].$2,
+                selected: tab == _tabs[i].$1,
+                listIndex: i,
+                tvTabId: 'settings',
+                tvRowId: 'scoring-tabs',
+                onTap: () => onChanged(_tabs[i].$1),
+                onLeftEdge: i == 0
+                    ? () {
+                        // First scoring tab: back to category rail (not shell nav).
+                        final edges = ShellTvLinearFocusEdges.maybeOf(context);
+                        if (edges?.onBackwardEdge?.call() != true) {
+                          ShellTvFocusCoordinator.focusActiveNavTab();
+                        }
+                      }
+                    : edgesFor(i).onLeft,
+                onRightEdge: edgesFor(i).onRight,
+                onDownEdge: edgesFor(i).onDown,
+                onUpEdge: edgesFor(i).onUp,
+              ),
+          ],
+        );
+      },
     );
   }
 }

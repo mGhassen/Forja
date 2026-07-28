@@ -686,16 +686,6 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
     final tv = iptvUseTvFocus(context);
-    if (tv) {
-      iptvSyncRow(
-        rowId: 'iptv-portal-dialog',
-        sortOrder: 50,
-        itemCount: _dialogTvItemCount,
-        orientation: ShellTvRowOrientation.vertical,
-      );
-    } else {
-      iptvSyncRow(rowId: 'iptv-portal-dialog', sortOrder: 50, itemCount: 0);
-    }
     final labelIndex = _namingImported
         ? 0
         : (_editing ? 0 : (_showManualForm ? 2 : -1));
@@ -732,13 +722,18 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         : (_editing ? 'Edit Portal' : 'Add Portal');
     final expandBtnSize = _tv ? 34.0 : 38.0;
     final expandOverlap = expandBtnSize / 2;
-    return AnimatedBuilder(
-      animation: ctrl,
-      builder: (_, _) {
-        final adding = ctrl.isAdding || _submitInFlight;
-        final showExpandToggle =
-            !_editing && !_namingImported && !_addSucceeded && !adding;
-        return CallbackShortcuts(
+    return iptvCatalogRow(
+      rowId: 'iptv-portal-dialog',
+      sortOrder: 50,
+      itemCount: tv ? _dialogTvItemCount : 0,
+      orientation: ShellTvRowOrientation.vertical,
+      child: AnimatedBuilder(
+        animation: ctrl,
+        builder: (_, _) {
+          final adding = ctrl.isAdding || _submitInFlight;
+          final showExpandToggle =
+              !_editing && !_namingImported && !_addSucceeded && !adding;
+          return CallbackShortcuts(
           bindings: {
             const SingleActivator(LogicalKeyboardKey.enter):
                 _trySubmitFromEnter,
@@ -1030,7 +1025,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       ),
           ),
         );
-      },
+        },
+      ),
     );
   }
 
