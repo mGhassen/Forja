@@ -1,6 +1,6 @@
 part of 'mobile_player_screen.dart';
 
-mixin _MobilePlayerSourcesSettings on State<MobilePlayerScreen> {
+mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   Future<void> _applyAutoSubtitle() async {

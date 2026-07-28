@@ -1,6 +1,6 @@
 part of 'desktop_player_screen.dart';
 
-mixin _DesktopPlayerLifecycle on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   String? _initialCatalogSourceKind() {

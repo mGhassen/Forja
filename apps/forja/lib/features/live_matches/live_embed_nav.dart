@@ -55,3 +55,19 @@ bool liveEmbedIsCatalogOriginRoot({
   final path = Uri.tryParse(url)?.path ?? '';
   return path.isEmpty || path == '/';
 }
+
+/// PPV `embedindia.st` JW Player keeps tokenised HLS in the embed browsing
+/// context. Prefer Android native handoff with Referer/Cookie proxy (same as
+/// Streamed) — in-page WebView hits CORS / host-lock UI on System WebView.
+bool liveEmbedRequiresWebViewPlayback(String embedUrl) {
+  final host = Uri.tryParse(embedUrl)?.host.toLowerCase() ?? '';
+  return host.contains('embedindia.st');
+}
+
+/// Android System WebView cannot play Streamed / many PPV embeds in-page
+/// (CORS + host lock UI). Sniff HLS and hand off to the native IPTV player.
+bool liveEmbedAndroidNativeHandoff(String embedUrl) {
+  // All Android Live embeds use sniff → native; WebView-only is a dead end on
+  // System WebView (red lock / Uncaught play promise).
+  return embedUrl.trim().isNotEmpty;
+}

@@ -1,6 +1,6 @@
 part of 'mobile_player_screen.dart';
 
-mixin _MobilePlayerEpisodes on State<MobilePlayerScreen> {
+mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   // ─────────────────────────────────────────────────────────────────────────

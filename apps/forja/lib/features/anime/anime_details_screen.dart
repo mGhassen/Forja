@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/features/anime/providers/anime_details_providers.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
@@ -31,15 +33,15 @@ Future<T?> openAnimeDetails<T>(BuildContext context, AnimeCard anime) {
   );
 }
 
-class AnimeDetailsScreen extends StatefulWidget {
+class AnimeDetailsScreen extends ConsumerStatefulWidget {
   final AnimeCard anime;
   const AnimeDetailsScreen({super.key, required this.anime});
 
   @override
-  State<AnimeDetailsScreen> createState() => _AnimeDetailsScreenState();
+  ConsumerState<AnimeDetailsScreen> createState() => _AnimeDetailsScreenState();
 }
 
-class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
+class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
   final AnimeService _service = AnimeService();
   final EpisodeWatchedService _episodeWatchedService = EpisodeWatchedService();
   final ScrollController _detailsScrollController = ScrollController();
@@ -161,7 +163,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     setState(() => _error = null);
     _loadSeasonContent(_activeSeed);
 
-    _service.getSeasons(widget.anime.id).then((chain) {
+    ref.read(animeSeasonsProvider(widget.anime.id).future).then((chain) {
       if (!mounted || chain.isEmpty) return;
       final idx = chain.indexWhere((s) => s.id == widget.anime.id);
       setState(() {
@@ -204,7 +206,7 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
     });
 
     // Episodes load only after details for this opened season (thumbs + count).
-    _service.getDetails(seed.id).then((d) async {
+    ref.read(animeDetailsProvider(seed.id).future).then((d) async {
       if (!mounted || gen != _loadGen) return;
       final seeded = seed.tmdbBackdropUrl == null
           ? d
@@ -229,27 +231,27 @@ class _AnimeDetailsScreenState extends State<AnimeDetailsScreen> {
       });
     }
 
-    _service.getRelations(seed.id).then((r) {
+    ref.read(animeRelationsProvider(seed.id).future).then((r) {
       if (!mounted || gen != _loadGen) return;
       setState(() => _related = r);
     }).catchError((_) {});
 
-    _service.getCharacters(seed.id).then((c) {
+    ref.read(animeCharactersProvider(seed.id).future).then((c) {
       if (!mounted || gen != _loadGen) return;
       setState(() => _characters = c);
     }).catchError((_) {});
 
-    _service.getStaff(seed.id).then((s) {
+    ref.read(animeStaffProvider(seed.id).future).then((s) {
       if (!mounted || gen != _loadGen) return;
       setState(() => _staff = s);
     }).catchError((_) {});
 
-    _service.getRecommendations(seed.id).then((r) {
+    ref.read(animeRecommendationsProvider(seed.id).future).then((r) {
       if (!mounted || gen != _loadGen) return;
       setState(() => _recommendations = r);
     }).catchError((_) {});
 
-    _service.getProgress(seed.id).then((p) {
+    ref.read(animeProgressProvider(seed.id).future).then((p) {
       if (!mounted || gen != _loadGen) return;
       setState(() {
         _progress = p;

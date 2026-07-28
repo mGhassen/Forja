@@ -1,6 +1,6 @@
 part of 'mobile_player_screen.dart';
 
-mixin _MobilePlayerUi on State<MobilePlayerScreen> {
+mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   // ─────────────────────────────────────────────────────────────────────────

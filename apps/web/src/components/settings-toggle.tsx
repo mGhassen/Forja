@@ -20,7 +20,7 @@ export function SettingsToggle({
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="flex min-h-[58px] w-full cursor-pointer items-center justify-between gap-5 px-0.5 py-3 text-left disabled:cursor-not-allowed disabled:opacity-60"
+      className="group flex min-h-[58px] w-full cursor-pointer items-center justify-between gap-5 px-0.5 py-3 text-left transition-colors active:scale-100 active:filter-none disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span className="min-w-0">
         <span className="block text-sm font-medium">{label}</span>
@@ -30,12 +30,12 @@ export function SettingsToggle({
       </span>
       <span
         aria-hidden
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-[background-color,box-shadow,filter] duration-150 group-hover:brightness-110 group-hover:ring-2 group-hover:ring-forja-green/45 group-hover:ring-offset-2 group-hover:ring-offset-forja-bg group-active:scale-95 ${
           checked ? 'bg-forja-green' : 'bg-white/15'
         }`}
       >
         <span
-          className={`absolute top-1 left-1 size-4 rounded-full bg-forja-bg transition-transform ${
+          className={`absolute top-1 left-1 size-4 rounded-full bg-white shadow-sm transition-transform duration-150 group-hover:scale-105 ${
             checked ? 'translate-x-5' : 'translate-x-0'
           }`}
         />

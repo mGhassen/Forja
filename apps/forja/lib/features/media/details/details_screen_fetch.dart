@@ -27,14 +27,11 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
     return '';
   }
   Future<void> _fetchDetails() async {
-    final stremioItem = widget.stremioItem;
-    _s._playSourceTorrent = await _s._settings.isPlaySourceTorrentEnabled();
-    _s._playSourceStremio = await _s._settings.isPlaySourceStremioEnabled();
-    _s._playSourceNuvio = await _s._settings.isPlaySourceNuvioEnabled();
-    _s._playSourceWebstreaming = await _s._settings.isPlaySourceWebstreamingEnabled();
+    await _s._playN.loadPlaySources();
     _s._syncPanelKindFilterToPlaySources();
     if (!mounted) return;
 
+    final stremioItem = widget.stremioItem;
     final bool isCustomId = _s._isCustomStremioItem;
 
     try {

@@ -67,6 +67,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 
 part 'mobile_player_glass.dart';
@@ -86,7 +87,7 @@ part 'mobile_player_seekbar.dart';
 //  MOBILE PLAYER SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 
-class MobilePlayerScreen extends StatefulWidget {
+class MobilePlayerScreen extends ConsumerStatefulWidget {
   final String mediaPath;
   final String title;
   final String? audioUrl;
@@ -165,9 +166,9 @@ class MobilePlayerScreen extends StatefulWidget {
   });
 
   @override
-  State<MobilePlayerScreen> createState() => _MobilePlayerScreenState();
+  ConsumerState<MobilePlayerScreen> createState() => _MobilePlayerScreenState();
 }
-class _MobilePlayerScreenState extends State<MobilePlayerScreen>
+class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver,
         _MobilePlayerLifecycle,
         _MobilePlayerPlayback,

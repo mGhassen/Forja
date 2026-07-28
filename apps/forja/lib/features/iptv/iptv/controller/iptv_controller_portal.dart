@@ -260,12 +260,12 @@ mixin _IptvControllerPortal on ChangeNotifier {
     }
     _c.selected.clear();
     _c.editMode = false;
+    // Intentional delete - allow cloud assignment count to drop (issue 118).
+    await IptvStore.save(keep, scheduleSync: false);
     if (keep.isEmpty) {
-      // Intentional clear-all - sync empty to cloud (cache alone must not wipe).
-      await IptvStore.save(keep, scheduleSync: false);
       await SyncDomainBridge.instance.pushEmptyIptvInventory();
     } else {
-      await IptvStore.save(keep);
+      await SyncDomainBridge.instance.pushIptvInventoryAfterDelete();
     }
     notifyListeners();
   }

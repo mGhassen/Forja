@@ -1,6 +1,6 @@
 part of 'desktop_player_screen.dart';
 
-mixin _DesktopPlayerUi on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   /// Keep the pointer visible while CHECKING SOURCES / episode load is on screen.

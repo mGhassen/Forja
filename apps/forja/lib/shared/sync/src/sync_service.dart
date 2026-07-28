@@ -1037,6 +1037,30 @@ class SyncService {
     ];
   }
 
+  /// Assignment row count for the active profile (no credential decrypt).
+  ///
+  /// Used to refuse catastrophic `replace_user_iptv_portals` shrinks when the
+  /// local cache is a thin subset of cloud.
+  Future<int> countUserIptvPortals() async {
+    final client = ForjaSupabase.clientOrNull;
+    final userId = client?.auth.currentUser?.id;
+    if (client == null || userId == null) return 0;
+    final profile = await activeProfile();
+    if (profile == null) return 0;
+    try {
+      final rows = await client
+          .from('user_iptv_portals')
+          .select('id')
+          .eq('account_id', userId)
+          .eq('profile_id', profile.id);
+      return rows.length;
+    } catch (e) {
+      debugPrint('[Sync] countUserIptvPortals error: $e');
+      // Fail closed for shrink checks - caller should not replace.
+      return -1;
+    }
+  }
+
   /// Load this profile's portal assignments (`user_iptv_portals` + credentials).
   ///
   /// Throws when assignments exist but credentials cannot be loaded - callers

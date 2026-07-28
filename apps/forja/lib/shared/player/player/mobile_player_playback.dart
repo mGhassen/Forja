@@ -1,6 +1,6 @@
 part of 'mobile_player_screen.dart';
 
-mixin _MobilePlayerPlayback on State<MobilePlayerScreen> {
+mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   Future<bool> _trySourcesFromIndex(

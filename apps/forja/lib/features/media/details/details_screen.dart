@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/media/details/providers/details_providers.dart';
+import 'package:forja/features/media/details/providers/details_play_session.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -109,6 +110,12 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
         mediaType: widget.movie.mediaType,
       );
 
+  DetailsPlaySession get _play =>
+      ref.read(detailsPlaySessionProvider(_metaKey).notifier).session;
+
+  DetailsPlaySessionNotifier get _playN =>
+      ref.read(detailsPlaySessionProvider(_metaKey).notifier);
+
   bool get _isCustomStremioItem {
     final item = widget.stremioItem;
     return item != null && !(item['id']?.toString().startsWith('tt') ?? true);
@@ -128,66 +135,116 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   Set<String> _activeTechFilters = {};
   Set<String> _activeSizeFilters = {};
   String _sourceSearchQuery = '';
-  List<TorrentResult> _allTorrentResults = [];
-  bool _isSearching = false;
-  int _torrentSearchGen = 0;
-  int _stremioFetchGen = 0;
-  String? _errorMessage;
+
+  // ── play / resolve (owned by [detailsPlaySessionProvider]) ───────────────
+  List<TorrentResult> get _allTorrentResults => _play.torrents;
+  set _allTorrentResults(List<TorrentResult> v) => _play.torrents = v;
+
+  bool get _isSearching => _play.isSearching;
+  set _isSearching(bool v) => _play.isSearching = v;
+
+  int get _torrentSearchGen => _play.torrentSearchGen;
+  set _torrentSearchGen(int v) => _play.torrentSearchGen = v;
+
+  int get _stremioFetchGen => _play.stremioFetchGen;
+  set _stremioFetchGen(int v) => _play.stremioFetchGen = v;
+
+  String? get _errorMessage => _play.errorMessage;
+  set _errorMessage(String? v) => _play.errorMessage = v;
+
+  bool get _playSourceTorrent => _play.playSources.torrent;
+  bool get _playSourceNuvio => _play.playSources.nuvio;
+  bool get _playSourceStremio => _play.playSources.stremio;
+  bool get _playSourceWebstreaming => _play.playSources.webstreaming;
+
+  String get _panelKindFilter => _play.panelKindFilter;
+  set _panelKindFilter(String v) => _play.panelKindFilter = v;
+
+  String get _selectedSourceId => _play.selectedSourceId;
+  set _selectedSourceId(String v) => _play.selectedSourceId = v;
+
+  List<Map<String, dynamic>> get _streamAddons => _play.streamAddons;
+  set _streamAddons(List<Map<String, dynamic>> v) => _play.streamAddons = v;
+
+  List<dynamic> get _stremioStreams => _play.stremioStreams;
+  set _stremioStreams(List<dynamic> v) => _play.stremioStreams = v;
+
+  List<Map<String, dynamic>> get _allCombinedStremioStreams =>
+      _play.allCombinedStremioStreams;
+  set _allCombinedStremioStreams(List<Map<String, dynamic>> v) =>
+      _play.allCombinedStremioStreams = v;
+
+  bool get _isStremioFetching => _play.isStremioFetching;
+  set _isStremioFetching(bool v) => _play.isStremioFetching = v;
+
+  Set<String> get _loadedAddonBaseUrls => _play.loadedAddonBaseUrls;
+  Set<String> get _completedAddonBaseUrls => _play.completedAddonBaseUrls;
+
+  bool get _userPickedStremioProvider => _play.userPickedStremioProvider;
+  set _userPickedStremioProvider(bool v) =>
+      _play.userPickedStremioProvider = v;
+
+  List<Map<String, dynamic>> get _nuvioStreams => _play.nuvioStreams;
+  set _nuvioStreams(List<Map<String, dynamic>> v) => _play.nuvioStreams = v;
+
+  bool get _isNuvioFetching => _play.isNuvioFetching;
+  set _isNuvioFetching(bool v) => _play.isNuvioFetching = v;
+
+  bool get _hasNuvioAddons => _play.hasNuvioAddons;
+  set _hasNuvioAddons(bool v) => _play.hasNuvioAddons = v;
+
+  Set<String> get _nuvioFetchedScraperIds => _play.nuvioFetchedScraperIds;
+  set _nuvioFetchedScraperIds(Set<String> v) =>
+      _play.nuvioFetchedScraperIds = v;
+
+  int get _nuvioFetchGen => _play.nuvioFetchGen;
+  set _nuvioFetchGen(int v) => _play.nuvioFetchGen = v;
+
+  String? get _nuvioInFlightScraperId => _play.nuvioInFlightScraperId;
+  set _nuvioInFlightScraperId(String? v) => _play.nuvioInFlightScraperId = v;
+
+  List<NuvioAddon> get _nuvioAddons => _play.nuvioAddons;
+  set _nuvioAddons(List<NuvioAddon> v) => _play.nuvioAddons = v;
+
+  Set<String> get _nuvioSelectedScraperIds => _play.nuvioSelectedScraperIds;
+  set _nuvioSelectedScraperIds(Set<String> v) =>
+      _play.nuvioSelectedScraperIds = v;
+
+  bool get _nuvioSelectionHydrated => _play.nuvioSelectionHydrated;
+  set _nuvioSelectionHydrated(bool v) => _play.nuvioSelectionHydrated = v;
+
+  Map<String, dynamic> get _webstreamingProviders =>
+      _play.webstreamingProviders;
+
+  List<String> get _webstreamingProviderOrder =>
+      _play.webstreamingProviderOrder;
+  set _webstreamingProviderOrder(List<String> v) =>
+      _play.webstreamingProviderOrder = v;
+
+  List<StreamSource> get _webstreamingStreams => _play.webstreamingStreams;
+  set _webstreamingStreams(List<StreamSource> v) =>
+      _play.webstreamingStreams = v;
+
+  String? get _webstreamingActiveProviderId =>
+      _play.webstreamingActiveProviderId;
+  set _webstreamingActiveProviderId(String? v) =>
+      _play.webstreamingActiveProviderId = v;
+
+  bool get _isWebstreamingOnlyExtracting =>
+      _play.isWebstreamingOnlyExtracting;
+  set _isWebstreamingOnlyExtracting(bool v) =>
+      _play.isWebstreamingOnlyExtracting = v;
+
+  bool get _webstreamingOnlyExtractionCancelled =>
+      _play.webstreamingOnlyExtractionCancelled;
+  set _webstreamingOnlyExtractionCancelled(bool v) =>
+      _play.webstreamingOnlyExtractionCancelled = v;
+
   Map<String, dynamic>? _lastProgress;
   StreamSubscription<List<Map<String, dynamic>>>? _watchHistorySub;
   bool _sourcesPanelOpen = false;
   bool _autoPlayConsumed = false;
   bool _episodePlayPending = false;
-  bool _playSourceTorrent = true;
-  bool _playSourceNuvio = true;
-  bool _playSourceStremio = true;
-  bool _playSourceWebstreaming = true;
-
-  /// Panel list filter: `torrents` | `stremio` | `nuvio`.
-  String _panelKindFilter = 'torrents';
-
-  String _selectedSourceId = 'forja';
-  List<Map<String, dynamic>> _streamAddons = [];
-  List<dynamic> _stremioStreams = [];
-  List<Map<String, dynamic>> _allCombinedStremioStreams = [];
-  bool _isStremioFetching = false;
-
-  /// Tracks which addon baseUrls have returned results (for dynamic chip display).
-  final Set<String> _loadedAddonBaseUrls = {};
-
-  /// Addons that finished a stream fetch (success or empty/error) this round.
-  final Set<String> _completedAddonBaseUrls = {};
-
-  /// Manual Stremio provider chip tap - do not auto-leave an empty addon.
-  bool _userPickedStremioProvider = false;
-
-  // Nuvio addon results - kept independent from Stremio addons so the UI
-  // can show them under their own tab.
-  List<Map<String, dynamic>> _nuvioStreams = [];
-  bool _isNuvioFetching = false;
-  bool _hasNuvioAddons = false;
-  Set<String> _nuvioFetchedScraperIds = {};
-  int _nuvioFetchGen = 0;
-  String? _nuvioInFlightScraperId;
-
-  /// Cached list of installed Nuvio addons (refreshed when the Nuvio tab
-  /// is opened). Used to render the scraper filter chips.
-  List<NuvioAddon> _nuvioAddons = [];
-
-  /// Enabled Nuvio scraper ids currently included in the results filter.
-  /// Hydrated once from device KV (`nuvio_sources_selected_scrapers_v1`).
-  Set<String> _nuvioSelectedScraperIds = {};
-  bool _nuvioSelectionHydrated = false;
-
-  // Direct webstreaming providers (videasy, webstreamr, …) - no global mode toggle.
-  final Map<String, dynamic> _webstreamingProviders = {
-    ...StreamProviders.providers,
-  };
-  List<String> _webstreamingProviderOrder = [];
-  List<StreamSource> _webstreamingStreams = [];
-  String? _webstreamingActiveProviderId;
-  bool _isWebstreamingOnlyExtracting = false;
-  bool _webstreamingOnlyExtractionCancelled = false;
   int _selectedSeason = 1;
   int _selectedEpisode = 1;
   Map<String, dynamic>? _seasonData;
@@ -264,6 +321,27 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   }
 
   // ─── lifecycle ────────────────────────────────────────────────────────────
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    if (!mounted) return;
+    // Play/resolve fields live in [detailsPlaySessionProvider]; bump so
+    // watchers (hero buttons, panel) see the same bag the mixins mutate.
+    _playN.bump();
+    final status = _play.resolveStatus;
+    final resolve = ref.read(detailsResolveStatusProvider(_metaKey).notifier);
+    switch (status) {
+      case DetailsResolveStatus.idle:
+        break;
+      case DetailsResolveStatus.loading:
+        resolve.setLoading();
+      case DetailsResolveStatus.ready:
+        resolve.setReady();
+      case DetailsResolveStatus.error:
+        resolve.setError();
+    }
+  }
 
   @override
   void initState() {

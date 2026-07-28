@@ -1,6 +1,6 @@
 part of 'mobile_player_screen.dart';
 
-mixin _MobilePlayerSourcesProvider on State<MobilePlayerScreen> {
+mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   Future<List<StreamSource>?> _loadProvider(

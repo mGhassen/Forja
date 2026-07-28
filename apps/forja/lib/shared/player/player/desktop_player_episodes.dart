@@ -1,7 +1,7 @@
 part of 'desktop_player_screen.dart';
 
 mixin _DesktopPlayerEpisodes
-    on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+    on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   void _toggleLoop() {

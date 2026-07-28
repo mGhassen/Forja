@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rust/rust.dart';
 
 /// Source-list / server resolve lifecycle for built-in players.
 ///
@@ -66,8 +67,51 @@ final playerResolveStatusProvider =
   PlayerResolveNotifier.new,
 );
 
-/// For [StatefulWidget] players (desktop/mobile) that are not yet
-/// [ConsumerStatefulWidget] — reads the same autoDispose notifier.
+/// In-player Sources panel async bag (torrent / Stremio / Nuvio fetch flags).
+///
+/// Position/buffered ticks stay on [ValueNotifier] (R47-A20). Panel chrome
+/// filters stay local to [PlayerSourcesPanel].
+class PlayerSourcesSession {
+  bool isSearchingTorrents = false;
+  bool isFetchingStremio = false;
+  bool isFetchingNuvio = false;
+  List<TorrentResult> torrents = [];
+  List<dynamic> stremioStreams = [];
+  List<Map<String, dynamic>> nuvioStreams = [];
+  String? errorMessage;
+
+  bool get isBusy =>
+      isSearchingTorrents || isFetchingStremio || isFetchingNuvio;
+}
+
+class PlayerSourcesSessionNotifier extends AutoDisposeNotifier<int> {
+  late final PlayerSourcesSession session;
+
+  @override
+  int build() {
+    session = PlayerSourcesSession();
+    return 0;
+  }
+
+  void bump() => state++;
+
+  void mutate(void Function(PlayerSourcesSession s) fn) {
+    fn(session);
+    bump();
+  }
+}
+
+final playerSourcesSessionProvider =
+    NotifierProvider.autoDispose<PlayerSourcesSessionNotifier, int>(
+  PlayerSourcesSessionNotifier.new,
+);
+
+PlayerSourcesSession watchPlayerSourcesSession(WidgetRef ref) {
+  ref.watch(playerSourcesSessionProvider);
+  return ref.read(playerSourcesSessionProvider.notifier).session;
+}
+
+/// For legacy call sites that are not yet [ConsumerStatefulWidget].
 PlayerResolveNotifier readPlayerResolve(BuildContext context) {
   return ProviderScope.containerOf(context)
       .read(playerResolveStatusProvider.notifier);

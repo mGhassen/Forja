@@ -1,6 +1,6 @@
 part of 'mobile_player_screen.dart';
 
-mixin _MobilePlayerSources on State<MobilePlayerScreen> {
+mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   void _notifySourceMenuChanged() {
@@ -645,7 +645,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
     final currentPos = _s._positionNotifier.value;
     final statusId = 'source-switch-$index';
     final resolvePid = source.providerId ?? source.title;
-    readPlayerResolve(context).setLoading(resolvePid);
+    ref.read(playerResolveStatusProvider.notifier).setLoading(resolvePid);
     _s._statusController.upsert(
       statusId,
       source.title,
@@ -656,7 +656,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       final validated = await _resolveValidatedStream(source);
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       if (validated == null) {
-        readPlayerResolve(context).setError('Failed: ${source.title}');
+        ref.read(playerResolveStatusProvider.notifier).setError('Failed: ${source.title}');
         _s._statusController.upsert(
           statusId,
           source.title,
@@ -708,7 +708,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       if (!opened) {
-        readPlayerResolve(context).setError('Failed: ${source.title}');
+        ref.read(playerResolveStatusProvider.notifier).setError('Failed: ${source.title}');
         _s._statusController.upsert(
           statusId,
           source.title,
@@ -729,7 +729,7 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       if (!decoded) {
-        readPlayerResolve(context).setError('Failed: ${source.title}');
+        ref.read(playerResolveStatusProvider.notifier).setError('Failed: ${source.title}');
         _s._statusController.upsert(
           statusId,
           source.title,
@@ -783,14 +783,14 @@ mixin _MobilePlayerSources on State<MobilePlayerScreen> {
       );
       _s._markPlaybackConfirmed(true);
       _s._statusController.complete();
-      readPlayerResolve(context).setReady();
+      ref.read(playerResolveStatusProvider.notifier).setReady();
       _markSourceActive(index);
       _syncPanelAfterPlaybackConfirmed();
       unawaited(_recordStreamPlaySuccess(_s._currentProvider ?? ''));
       unawaited(widget.onSourcePinned?.call(source.url, source.title));
     } catch (_) {
       if (!mounted || _s._fallbackAborted(switchGen)) return;
-      readPlayerResolve(context).setError('Failed: ${source.title}');
+      ref.read(playerResolveStatusProvider.notifier).setError('Failed: ${source.title}');
       _s._statusController.upsert(
         statusId,
         source.title,

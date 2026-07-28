@@ -58,6 +58,26 @@ export function useUserIptvPortals() {
           'Refusing to save an empty portal list (would wipe cloud assignments). Delete portals individually or keep at least one.',
         )
       }
+
+      const { count: cloudCount, error: countError } = await supabase
+        .from('user_iptv_portals')
+        .select('id', { count: 'exact', head: true })
+        .eq('account_id', user.id)
+        .eq('profile_id', activeProfile.id)
+      if (countError) throw countError
+      // Thin client list must not replace a much larger cloud inventory (issue 118).
+      // Intentional single deletes still save; 5-over-600 style wipes do not.
+      const cloud = cloudCount ?? 0
+      if (
+        cloud > rows.length &&
+        rows.length * 2 < cloud &&
+        cloud - rows.length >= 10
+      ) {
+        throw new Error(
+          `Refusing to save ${rows.length} portals over ${cloud} cloud assignments (would wipe portals). Reload and try again.`,
+        )
+      }
+
       const portalIds: string[] = []
       const assignments: Array<{
         portal_id: string

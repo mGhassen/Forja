@@ -207,6 +207,11 @@ class ExoPlayerHost(
         options: ExoOpenOptions,
     ): MediaItem.Builder {
         val builder = MediaItem.Builder().setUri(Uri.parse(url))
+        // Force HLS/DASH when the URI path has no .m3u8/.mpd (e.g. local
+        // `/hls-proxy?url=…`). Without this, DefaultMediaSourceFactory picks
+        // ProgressiveMediaSource and fails with UnrecognizedInputFormatException
+        // on the playlist body — Live Matches Streamed handoff black screen.
+        mimeForAdaptiveUrl(url)?.let { builder.setMimeType(it) }
         if (subtitles.isNotEmpty()) {
             val configs = subtitles.mapNotNull { sub ->
                 subtitleConfiguration(sub)
@@ -228,6 +233,22 @@ class ExoPlayerHost(
             )
         }
         return builder
+    }
+
+    /** HLS/DASH mime when URI inference would wrongly choose progressive. */
+    private fun mimeForAdaptiveUrl(url: String): String? {
+        val lower = url.lowercase()
+        val nested = runCatching {
+            Uri.parse(url).getQueryParameter("url")?.lowercase().orEmpty()
+        }.getOrDefault("")
+        val haystack = "$lower $nested"
+        return when {
+            haystack.contains(".mpd") -> MimeTypes.APPLICATION_MPD
+            haystack.contains(".m3u8") ||
+                haystack.contains("/hls-proxy") ||
+                haystack.contains("strmd.st") -> MimeTypes.APPLICATION_M3U8
+            else -> null
+        }
     }
 
     private fun subtitleConfiguration(sub: Map<String, String>): MediaItem.SubtitleConfiguration? {

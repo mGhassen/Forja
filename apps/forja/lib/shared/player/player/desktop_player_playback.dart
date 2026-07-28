@@ -1,7 +1,7 @@
 part of 'desktop_player_screen.dart';
 
 mixin _DesktopPlayerPlayback
-    on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+    on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   Future<bool> _trySourcesFromIndex(

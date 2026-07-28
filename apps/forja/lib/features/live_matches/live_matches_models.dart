@@ -866,8 +866,8 @@ const _stripIframeSandboxJs = r'''
 ''';
 
 /// Report HLS / media URLs to Flutter. Android System WebView cannot play
-/// Streamed `embed.st` in-page (CORS on strmd.st + host lock UI). We sniff the
-/// playlist from the visible WebView and hand off to the native IPTV player.
+/// Streamed / PPV embeds in-page (CORS + host lock UI). We sniff the playlist
+/// from the visible WebView and hand off to the native IPTV player.
 const _liveEmbedMediaSpyJs = r'''
 (function () {
   if (window.__forjaLiveMediaSpy) return;
@@ -878,7 +878,11 @@ const _liveEmbedMediaSpyJs = r'''
       var s = String(u);
       if (s.indexOf('blob:') === 0) return;
       var low = s.toLowerCase();
-      if (low.indexOf('.m3u8') === -1 && low.indexOf('strmd.st') === -1) return;
+      if (low.indexOf('.m3u8') === -1 &&
+          low.indexOf('strmd.st') === -1 &&
+          low.indexOf('/playlist') === -1 &&
+          low.indexOf('/secure/') === -1 &&
+          low.indexOf('.mp4') === -1) return;
       window.flutter_inappwebview.callHandler('liveMediaUrl', s);
     } catch (_) {}
   }
@@ -917,10 +921,8 @@ String _streamedImageUrl(String path) {
 
 /// embedindia JW Player resolves tokenised HLS inside the embed browsing
 /// context. The sniffed m3u8 403s in mpv - same as copying the URL into VLC.
-bool _ppvEmbedRequiresWebView(String embedUrl) {
-  final host = Uri.tryParse(embedUrl)?.host.toLowerCase() ?? '';
-  return host.contains('embedindia.st');
-}
+bool _ppvEmbedRequiresWebView(String embedUrl) =>
+    liveEmbedRequiresWebViewPlayback(embedUrl);
 
 Map<String, String> _ppvEmbedStreamHeaders(String embedUrl) {
   final origin = Uri.tryParse(embedUrl)?.origin ?? 'https://embedindia.st';
@@ -932,10 +934,12 @@ Map<String, String> _ppvEmbedStreamHeaders(String embedUrl) {
 }
 
 Map<String, String> _liveEmbedStreamHeaders(String embedUrl) {
-  final origin = Uri.tryParse(embedUrl)?.origin ?? '';
+  final uri = Uri.tryParse(embedUrl);
+  final origin = uri?.origin ?? '';
   return {
     'User-Agent': _ua['User-Agent']!,
-    'Referer': embedUrl,
+    // CDN checks embed origin Referer; full path is less reliable than origin/.
+    'Referer': origin.isNotEmpty ? '$origin/' : embedUrl,
     if (origin.isNotEmpty) 'Origin': origin,
   };
 }
@@ -946,15 +950,63 @@ bool _liveEmbedIsSniffableMediaUrl(String url) {
   if (lower.contains('doubleclick') ||
       lower.contains('googlesyndication') ||
       lower.contains('therocketlanguages') ||
-      lower.contains('optimserve')) {
+      lower.contains('optimserve') ||
+      lower.contains('googleadservices')) {
     return false;
   }
   if (lower.contains('.m3u8')) return true;
+  if (lower.contains('.mp4') &&
+      (lower.contains('http://') || lower.contains('https://'))) {
+    return true;
+  }
   if (lower.contains('strmd.st/') &&
       (lower.contains('/secure/') || lower.contains('playlist'))) {
     return true;
   }
+  // embedindia / similar JW hosts often omit `.m3u8` in the path.
+  if ((lower.contains('/secure/') || lower.contains('/playlist')) &&
+      (lower.contains('http://') || lower.contains('https://'))) {
+    return true;
+  }
   return false;
+}
+
+/// Pull WebView cookies so proxied HLS matches the embed session (PPV tokens).
+Future<String?> _liveEmbedCollectCookieHeader({
+  required String embedUrl,
+  required String streamUrl,
+  String? catalogReferer,
+}) async {
+  try {
+    final manager = CookieManager.instance();
+    final urls = <String>{embedUrl, streamUrl};
+    if (catalogReferer != null && catalogReferer.isNotEmpty) {
+      urls.add(catalogReferer);
+    }
+    for (final raw in [embedUrl, streamUrl, catalogReferer ?? '']) {
+      final uri = Uri.tryParse(raw);
+      if (uri != null && uri.hasScheme && uri.host.isNotEmpty) {
+        urls.add(uri.origin);
+      }
+    }
+    final parts = <String>[];
+    final seen = <String>{};
+    for (final u in urls) {
+      if (u.isEmpty) continue;
+      final cookies = await manager.getCookies(url: WebUri(u));
+      for (final c in cookies) {
+        final key = '${c.name}=';
+        if (seen.add(key)) {
+          parts.add('${c.name}=${c.value}');
+        }
+      }
+    }
+    if (parts.isEmpty) return null;
+    return parts.join('; ');
+  } catch (e) {
+    debugPrint('[LiveMatches] Cookie harvest failed: $e');
+    return null;
+  }
 }
 
 /// Sniff the direct HLS/MP4 URL from a PPV embed, proxied so Referer applies

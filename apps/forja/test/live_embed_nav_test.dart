@@ -126,4 +126,27 @@ void main() {
       );
     });
   });
+
+  group('liveEmbedRequiresWebViewPlayback', () {
+    test('embedindia flagged; Android handoff still enabled for all embeds', () {
+      expect(
+        liveEmbedRequiresWebViewPlayback(
+          'https://embedindia.st/embed/mlb/x?gid=1',
+        ),
+        isTrue,
+      );
+      // System WebView cannot play in-page — hand off after sniff (with cookies).
+      expect(
+        liveEmbedAndroidNativeHandoff(
+          'https://embedindia.st/embed/mlb/x?gid=1',
+        ),
+        isTrue,
+      );
+      expect(
+        liveEmbedRequiresWebViewPlayback('https://embed.st/abc'),
+        isFalse,
+      );
+      expect(liveEmbedAndroidNativeHandoff('https://embed.st/abc'), isTrue);
+    });
+  });
 }

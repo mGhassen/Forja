@@ -221,11 +221,14 @@ class SyncDomainBridge {
   /// - Empty local Stremio/Nuvio never deletes cloud unless
   ///   [allowEmptyStremioWipe] / [allowEmptyNuvioWipe] (that domain's edit).
   /// - Empty IPTV cache never deletes assignments unless [allowEmptyIptvWipe].
+  /// - Local IPTV shorter than cloud never replaces unless [allowIptvShrink]
+  ///   (intentional delete) or [allowEmptyIptvWipe] (clear-all).
   /// [pushIptvIfLocalEmpty] false skips IPTV entirely when local is empty
   /// (profile switch / seed).
   Future<void> pushAllLocal({
     bool pushIptvIfLocalEmpty = true,
     bool allowEmptyIptvWipe = false,
+    bool allowIptvShrink = false,
     bool allowEmptyStremioWipe = false,
     bool allowEmptyNuvioWipe = false,
   }) async {
@@ -238,13 +241,28 @@ class SyncDomainBridge {
     await _pushUserIptvPortals(
       pushIfLocalEmpty: pushIptvIfLocalEmpty,
       allowEmptyWipe: allowEmptyIptvWipe,
+      allowShrink: allowIptvShrink,
     );
   }
 
   /// User intentionally cleared every portal - sync empty assignments to cloud.
   Future<void> pushEmptyIptvInventory() async {
     if (!SyncService.instance.isSignedIn) return;
-    await _pushUserIptvPortals(pushIfLocalEmpty: true, allowEmptyWipe: true);
+    await _pushUserIptvPortals(
+      pushIfLocalEmpty: true,
+      allowEmptyWipe: true,
+      allowShrink: true,
+    );
+  }
+
+  /// User deleted one or more portals - allow cloud assignment count to drop.
+  Future<void> pushIptvInventoryAfterDelete() async {
+    if (!SyncService.instance.isSignedIn) return;
+    await _pushUserIptvPortals(
+      pushIfLocalEmpty: true,
+      allowEmptyWipe: false,
+      allowShrink: true,
+    );
   }
 
   void schedulePush(String domain) {
@@ -252,9 +270,11 @@ class SyncDomainBridge {
     _pushTimers[domain]?.cancel();
     _pushTimers[domain] = Timer(const Duration(seconds: 3), () {
       // Debounced user edits - empty connected wipe only for that domain.
+      // IPTV: never shrink cloud from a thin local cache (issue 118).
       unawaited(
         pushAllLocal(
           pushIptvIfLocalEmpty: false,
+          allowIptvShrink: false,
           allowEmptyStremioWipe: domain == _domainStremio,
           allowEmptyNuvioWipe: domain == _domainNuvio,
         ),
@@ -437,6 +457,7 @@ class SyncDomainBridge {
   Future<void> _pushUserIptvPortals({
     required bool pushIfLocalEmpty,
     required bool allowEmptyWipe,
+    required bool allowShrink,
   }) async {
     final portals = await IptvStore.load();
     if (portals.isEmpty) {
@@ -451,6 +472,19 @@ class SyncDomainBridge {
         return;
       }
       await SyncService.instance.replaceUserIptvPortals(const []);
+      return;
+    }
+
+    final cloudCount = await SyncService.instance.countUserIptvPortals();
+    if (cloudCount < 0) {
+      debugPrint('[Sync] refuse IPTV replace - cloud count unavailable');
+      return;
+    }
+    // Thin local cache must never replace a larger cloud inventory (096 / 118).
+    if (!allowEmptyWipe && !allowShrink && cloudCount > portals.length) {
+      debugPrint(
+        '[Sync] refuse IPTV shrink - local ${portals.length} < cloud $cloudCount',
+      );
       return;
     }
 
@@ -481,6 +515,15 @@ class SyncDomainBridge {
     // Upserts failed entirely - do not delete cloud assignments.
     if (assignments.isEmpty) {
       debugPrint('[Sync] refuse IPTV replace - no portal ids resolved');
+      return;
+    }
+    if (!allowEmptyWipe &&
+        !allowShrink &&
+        cloudCount > assignments.length) {
+      debugPrint(
+        '[Sync] refuse IPTV shrink after upsert - '
+        'resolved ${assignments.length} < cloud $cloudCount',
+      );
       return;
     }
 

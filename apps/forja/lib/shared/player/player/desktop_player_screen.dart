@@ -80,7 +80,7 @@ part 'desktop_player_build.dart';
 //  DESKTOP PLAYER SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
 
-class DesktopPlayerScreen extends StatefulWidget {
+class DesktopPlayerScreen extends ConsumerStatefulWidget {
   final String mediaPath;
   final String title;
   final String? audioUrl;
@@ -157,9 +157,9 @@ class DesktopPlayerScreen extends StatefulWidget {
   });
 
   @override
-  State<DesktopPlayerScreen> createState() => _DesktopPlayerScreenState();
+  ConsumerState<DesktopPlayerScreen> createState() => _DesktopPlayerScreenState();
 }
-class _DesktopPlayerScreenState extends State<DesktopPlayerScreen>
+class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     with WindowListener, WidgetsBindingObserver,
         _DesktopPlayerLifecycle,
         _DesktopPlayerPlayback,

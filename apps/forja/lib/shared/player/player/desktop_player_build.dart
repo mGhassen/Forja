@@ -1,10 +1,11 @@
 part of 'desktop_player_screen.dart';
 
-mixin _DesktopPlayerBuild on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(playerResolveStatusProvider);
     // Mouse back / trackpad swipe / system pop must match the chrome Back
     // button ([_exitPlayer]) - never a bare Navigator.pop (issue 059).
     final Widget body;

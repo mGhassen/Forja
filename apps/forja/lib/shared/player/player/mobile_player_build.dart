@@ -1,10 +1,11 @@
 part of 'mobile_player_screen.dart';
 
-mixin _MobilePlayerBuild on State<MobilePlayerScreen> {
+mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(playerResolveStatusProvider);
     final body = PopScope(
       // Always false - exit via [_exitPlayer] manual pop + loading dismiss.
       // canPop:true raced a deferred system pop and skipped dismiss (I101).

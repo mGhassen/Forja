@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/features/asian_drama/providers/asian_drama_providers.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
@@ -37,16 +39,17 @@ Future<T?> replaceAsianDramaDetails<T>(BuildContext context, KdramaCard drama) {
   );
 }
 
-class AsianDramaDetailsScreen extends StatefulWidget {
+class AsianDramaDetailsScreen extends ConsumerStatefulWidget {
   final KdramaCard drama;
   const AsianDramaDetailsScreen({super.key, required this.drama});
 
   @override
-  State<AsianDramaDetailsScreen> createState() =>
+  ConsumerState<AsianDramaDetailsScreen> createState() =>
       _AsianDramaDetailsScreenState();
 }
 
-class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
+class _AsianDramaDetailsScreenState
+    extends ConsumerState<AsianDramaDetailsScreen> {
   final KissKhService _service = KissKhService();
   final EpisodeWatchedService _episodeWatchedService = EpisodeWatchedService();
   final ScrollController _detailsScrollController = ScrollController();
@@ -126,13 +129,12 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
       _error = null;
     });
     try {
-      final results = await Future.wait([
-        _service.getDetails(widget.drama.id),
-        _service.getProgress(widget.drama.id),
-      ]);
+      final bundle = await ref.read(
+        asianDramaDetailsProvider(widget.drama.id).future,
+      );
       if (!mounted) return;
-      final det = results[0] as KdramaDetails;
-      final p = results[1] as Map<String, dynamic>?;
+      final det = bundle.details;
+      final p = bundle.progress;
       setState(() {
         _details = det;
         _progress = p;
@@ -143,7 +145,10 @@ class _AsianDramaDetailsScreenState extends State<AsianDramaDetailsScreen> {
     } catch (e) {
       if (attempt == 0) {
         await Future.delayed(const Duration(milliseconds: 600));
-        if (mounted) return _load(attempt: 1);
+        if (mounted) {
+          ref.invalidate(asianDramaDetailsProvider(widget.drama.id));
+          return _load(attempt: 1);
+        }
       }
       if (!mounted) return;
       setState(() {

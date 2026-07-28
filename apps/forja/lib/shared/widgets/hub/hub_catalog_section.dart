@@ -37,7 +37,7 @@ class HubCatalogSection<T> extends StatelessWidget {
   final VoidCallback? tvFocusUp;
   final HubPosterAspect cardAspect;
   final HubPosterCard Function(BuildContext context, T item, int index)
-      cardBuilder;
+  cardBuilder;
 
   static double sectionHeight(
     BuildContext context, {
@@ -66,8 +66,9 @@ class HubCatalogSection<T> extends StatelessWidget {
     final sectionTop = _sectionTitleTop(context);
     // Parent MediaDetailsBody owns the column edge; Cast/Trailers use 0 pad
     // when embedded - don't double-apply home insets.
-    final horizontalPad =
-        embedded ? 0.0 : shellHomeSectionHorizontalPadding(context);
+    final horizontalPad = embedded
+        ? 0.0
+        : shellHomeSectionHorizontalPadding(context);
 
     final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -86,10 +87,7 @@ class HubCatalogSection<T> extends StatelessWidget {
         ),
         FocusTraversalGroup(
           child: HorizontalScroller(
-            height: HubPosterCard.cardHeight(
-              context,
-              aspect: cardAspect,
-            ),
+            height: HubPosterCard.cardHeight(context, aspect: cardAspect),
             padding: EdgeInsets.symmetric(horizontal: horizontalPad),
             itemCount: list.length,
             separatorBuilder: (_, _) => SizedBox(
@@ -138,10 +136,7 @@ class HubCatalogSection<T> extends StatelessWidget {
                 context,
                 compactTop: compactTop,
                 titleWidth: title.length > 12 ? 180 : title.length * 11.0,
-                cardWidth: HubPosterCard.cardWidth(
-                  context,
-                  aspect: cardAspect,
-                ),
+                cardWidth: HubPosterCard.cardWidth(context, aspect: cardAspect),
                 cardHeight: HubPosterCard.cardHeight(
                   context,
                   aspect: cardAspect,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
@@ -9,6 +10,7 @@ import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
@@ -150,7 +152,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
   }
 }
 
-class _PlayerSourcesBody extends StatefulWidget {
+class _PlayerSourcesBody extends ConsumerStatefulWidget {
   const _PlayerSourcesBody({
     required this.movie,
     required this.onTorrentSelected,
@@ -176,10 +178,10 @@ class _PlayerSourcesBody extends StatefulWidget {
   final VoidCallback onClose;
 
   @override
-  State<_PlayerSourcesBody> createState() => _PlayerSourcesBodyState();
+  ConsumerState<_PlayerSourcesBody> createState() => _PlayerSourcesBodyState();
 }
 
-class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
+class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   final _settings = SettingsService();
   final _stremio = StremioService();
   final _listScrollController = ScrollController();
@@ -239,6 +241,28 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
   void initState() {
     super.initState();
     _bootstrap();
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    if (!mounted) return;
+    ref.read(playerSourcesSessionProvider.notifier).mutate((s) {
+      s.isSearchingTorrents = _searching;
+      s.isFetchingStremio = _stremioFetching;
+      s.isFetchingNuvio = _nuvioFetching;
+      s.torrents = List<TorrentResult>.from(_results);
+      s.stremioStreams = List<dynamic>.from(_stremioStreams);
+      s.nuvioStreams = List<Map<String, dynamic>>.from(_nuvioStreams);
+    });
+    final resolve = ref.read(playerResolveStatusProvider.notifier);
+    if (_searching || _stremioFetching || _nuvioFetching) {
+      resolve.setLoading('sources');
+    } else if (_results.isNotEmpty ||
+        _stremioStreams.isNotEmpty ||
+        _nuvioStreams.isNotEmpty) {
+      resolve.setReady();
+    }
   }
 
   @override
@@ -1508,6 +1532,8 @@ class _PlayerSourcesBodyState extends State<_PlayerSourcesBody> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(playerSourcesSessionProvider);
+    ref.watch(playerResolveStatusProvider);
     final torrents = _showsTorrents ? _filteredTorrents : <TorrentResult>[];
     final stremio = _showsStremio
         ? _visibleStremioStreams

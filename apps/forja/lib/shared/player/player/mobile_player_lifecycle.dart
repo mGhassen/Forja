@@ -1,6 +1,6 @@
 part of 'mobile_player_screen.dart';
 
-mixin _MobilePlayerLifecycle on State<MobilePlayerScreen>, WidgetsBindingObserver {
+mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindingObserver {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   String? _initialCatalogSourceKind() {

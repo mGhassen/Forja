@@ -41,4 +41,4 @@ Streamed embeds under `embed.st` request HLS from `*.strmd.st`. In Android Syste
 
 **Root:** Third-party CDN CORS + WebView lock — cannot be fixed inside Chromium WebView without their ACAO headers. Native play is the correct product path on Android.
 
-**Related:** [046](046-[open]-streamed-live-embed-white-screen.md) · [104](104-[open]-android-tv-live-matches-embed-dpad.md)
+**Related:** [046](046-[open]-streamed-live-embed-white-screen.md) · [104](104-[open]-android-tv-live-matches-embed-dpad.md) · [117](117-[open]-android-live-embedindia-handoff-stuck.md) (Exo `/hls-proxy` mime + PPV cookie handoff)

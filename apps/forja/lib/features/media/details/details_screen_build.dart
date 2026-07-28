@@ -229,6 +229,9 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Own play/resolve bag — hero Direct/Play + Sources panel rebuild from this.
+    ref.watch(detailsPlaySessionProvider(_s._metaKey));
+    ref.watch(detailsResolveStatusProvider(_s._metaKey));
     final metaAsync = _s._isCustomStremioItem
         ? null
         : ref.watch(detailsMetaProvider(_s._metaKey));

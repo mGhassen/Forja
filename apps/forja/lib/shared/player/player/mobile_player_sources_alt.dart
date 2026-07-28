@@ -1,6 +1,6 @@
 part of 'mobile_player_screen.dart';
 
-mixin _MobilePlayerSourcesAlt on State<MobilePlayerScreen> {
+mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   Future<void> _showTorrentSourcesPanel() async {

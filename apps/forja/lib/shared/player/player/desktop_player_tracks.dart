@@ -1,6 +1,6 @@
 part of 'desktop_player_screen.dart';
 
-mixin _DesktopPlayerTracks on State<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+mixin _DesktopPlayerTracks on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   // ─────────────────────────────────────────────────────────────────────────

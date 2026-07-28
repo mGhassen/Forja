@@ -1131,14 +1131,19 @@ class _LiveMatchesEmbedPlayerScreenState
     ShellBus.enterPlayerSurface();
     final embedUrl = widget.embedUrl;
     // Catalog-origin iframe wrapper so document.referrer matches the site
-    // (issue 046). On Android, WebView still cannot play Streamed in-page
-    // (CORS on strmd.st + host lock UI) — sniff HLS and hand off to native.
-    _androidNativeHandoff = !kIsWeb && Platform.isAndroid;
+    // (issue 046). On Android, System WebView cannot play embeds in-page
+    // (CORS + host lock) — sniff HLS (with cookies) and hand off to native.
+    // Exo must treat `/hls-proxy` as HLS (MimeTypes.APPLICATION_M3U8).
+    _androidNativeHandoff = !kIsWeb &&
+        Platform.isAndroid &&
+        liveEmbedAndroidNativeHandoff(embedUrl);
     _initialUserScripts = UnmodifiableListView([
       UserScript(
         source: _stripIframeSandboxJs,
         injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
-        forMainFrameOnly: true,
+        // Inject into nested embed frames too — main-frame-only left sandbox
+        // on the player iframe (red “Remove sandbox attributes…” lock UI).
+        forMainFrameOnly: false,
       ),
       if (_androidNativeHandoff)
         UserScript(
@@ -1234,7 +1239,17 @@ class _LiveMatchesEmbedPlayerScreenState
       await _webViewController
           ?.evaluateJavascript(source: _embedMediaCommandJs('pause'));
     } catch (_) {}
-    final headers = _liveEmbedStreamHeaders(widget.embedUrl);
+    final headers = Map<String, String>.from(
+      _liveEmbedStreamHeaders(widget.embedUrl),
+    );
+    final cookie = await _liveEmbedCollectCookieHeader(
+      embedUrl: widget.embedUrl,
+      streamUrl: mediaUrl,
+      catalogReferer: widget.referer,
+    );
+    if (cookie != null && cookie.isNotEmpty) {
+      headers['Cookie'] = cookie;
+    }
     String playUrl = mediaUrl;
     try {
       final proxy = LocalServerService();
@@ -1245,6 +1260,7 @@ class _LiveMatchesEmbedPlayerScreenState
     } catch (e) {
       debugPrint('[LiveMatches] HLS proxy failed: $e');
     }
+    debugPrint('[LiveMatches] Android handoff → $playUrl');
     if (!mounted) return;
     final title = widget.title;
     final subtitle = widget.subtitle;
