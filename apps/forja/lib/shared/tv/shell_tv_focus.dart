@@ -148,8 +148,8 @@ class ShellTvDisableLinearFocus extends InheritedWidget {
 
 /// Optional edge handlers when linear traversal cannot move further.
 ///
-/// Used by Settings detail panes so ← on the first row returns to the category
-/// rail instead of trapping focus.
+/// Settings detail panes intentionally omit [onBackwardEdge] so ← stays in the
+/// right pane; [TvHeroActions.pageBack] returns focus to the category rail.
 class ShellTvLinearFocusEdges extends InheritedWidget {
   const ShellTvLinearFocusEdges({
     super.key,

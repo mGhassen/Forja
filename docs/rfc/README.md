@@ -48,12 +48,12 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [023-[fixed]-…](fixed/023-[fixed]-app-shell-redesign.md) | App shell redesign | v0.8.x | fixed | Complete · 5/5 · 18/18 | [0.8.1](../backlog/done/0.8.1-[done].md) |
 | [025-[fixed]-…](fixed/025-[fixed]-flat-cinematic-shell.md) | Flat cinematic shell & Home hero | v1.0.0 | fixed | Complete · 4/4 · 37/37 · 3/3 deferred | [1.0.0](../backlog/done/1.0.0-[done].md) |
 | [027-[draft]-…](027-[draft]-iptv-channel-guide.md) | IPTV in-player channel guide | v1.0.2 | draft | 4/4 · 1/4 | [1.0.2](../backlog/1.0.2-[draft].md) |
-| [028-[draft]-…](028-[draft]-adaptive-shell-profiles.md) | Adaptive shell profiles | v1.0.1 | draft | 6/6 · 10/10 · 4/4 · 4/4 · 3/4 · 1/1 · 1/1 · 1/1 · 0/4 ⏭️ | [1.0.1](../backlog/1.0.1-[open].md) — leanback blocks `[fixed]` |
+| [028-[draft]-…](028-[draft]-adaptive-shell-profiles.md) | Adaptive shell profiles | v1.0.1 | draft | 6/6 · 10/10 · 4/4 · 4/4 · 3/4 · 1/1 · 1/1 · 1/1 · 1/1 · 0/4 ⏭️ | [1.0.1](../backlog/1.0.1-[open].md) — leanback blocks `[fixed]` |
 | [029-[open]-…](029-[open]-dual-built-in-playback-engines.md) | Dual built-in engines (MediaKit + ExoPlayer) | v1.0.2 | open | 4/4 · 1/8 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [030-[open]-…](030-[open]-playback-selection-engine.md) | Playback selection engine | v1.0.2 | open | 4/4 · 16/16 · 0/5 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [031-[open]-…](031-[open]-source-engine-middleware.md) | Source Engine middleware | v1.0.2 | open | 3/3 · 8/8 · 4/4 · 2/10 | [1.0.2](../backlog/1.0.2-[draft].md) → [1.0.3](../backlog/1.0.3-[draft].md) |
 | [032-[open]-…](032-[open]-rust-resolver-engine.md) | Rust Resolver Engine | v1.0.3 | open | 8/8 · 12/15 | [1.0.3](../backlog/1.0.3-[draft].md) |
-| [033-[open]-…](033-[open]-settings-ux-redesign.md) | Settings category-hub UX | v1.0.2 | open | 8/8 · 10/10 hub · 6/6 visibility | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [033-[open]-…](033-[open]-settings-ux-redesign.md) | Settings category-hub UX | v1.0.2 | open | 8/8 · 10/10 hub · 6/6 visibility · 2/2 TV detail | [1.0.1](../backlog/1.0.1-[open].md) · [1.0.2](../backlog/1.0.2-[draft].md) |
 | [034-[partial]-…](034-[partial]-web-portal-landing.md) | Web portal + landing + Flutter APIs | v1.0.4 | partial | 6/6 · 11/11 · 3/3 · 3/3 · 1/1 · 7/7 reset+confirm · 6/7 passkeys · 0/1 mobile ⏭️ | [1.0.2](../backlog/1.0.2-[draft].md) · [1.0.4](../backlog/1.0.4-[draft].md) |
 | [035-[draft]-…](035-[draft]-design-system-controls.md) | Design-system controls consolidation | — | draft | 0/4 · 0/6 | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
 | [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 3/8 · 21/31 | [1.0.2](../backlog/1.0.2-[draft].md) |

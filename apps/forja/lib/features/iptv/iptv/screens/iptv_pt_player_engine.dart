@@ -214,17 +214,25 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           maxBitrate = maxHeight <= 720 ? 3_500_000 : 5_000_000;
         }
       }
+      final headers = <String, String>{
+        'User-Agent': _IptvPtPlayerScreenState._ua,
+        ...src.headers,
+      };
       await ExoPlayerBridge.open(
         viewId: _s._exoViewId!,
         url: src.url,
-        headers: const {'User-Agent': _IptvPtPlayerScreenState._ua},
+        headers: headers,
         live: live,
         maxVideoHeight: maxHeight,
         maxVideoBitrate: maxBitrate,
       );
     } else {
+      final headers = <String, String>{
+        'User-Agent': _IptvPtPlayerScreenState._ua,
+        ...src.headers,
+      };
       await _s._player!.open(
-        Media(src.url, httpHeaders: const {'User-Agent': _IptvPtPlayerScreenState._ua}),
+        Media(src.url, httpHeaders: headers),
       );
       await _s._player!.play();
     }
@@ -866,7 +874,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (player == null) return;
     MpvExclusiveSession.instance.untrackPlayer(player);
     // Timed stop/dispose - unbounded media_kit teardown freezes Windows.
-    final disposeFuture = teardownMediaKitPlayer(player);
+    // [fast]: Android / ATV **exit** path only — MediaCodec + mpv stop/dispose
+    // on the UI isolate can exceed the 5s input ANR window (issue 128). Prefer
+    // silence + short timeouts after the Video surface is already unmounted.
+    // Do **not** use fast for hot-swap / recreate: aborting early leaves a
+    // zombie that breaks the next MediaKit open.
+    final fast = _s._exitInProgress && !kIsWeb && Platform.isAndroid;
+    final disposeFuture = teardownMediaKitPlayer(player, fast: fast);
     MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
     await disposeFuture;
     _s._player = null;

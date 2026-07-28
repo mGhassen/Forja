@@ -57,7 +57,14 @@ bool iptvExoUrlLooksLive(String url) {
 class IptvPlaySource {
   final String url;
   final String label;
-  const IptvPlaySource({required this.url, required this.label});
+  /// Optional HTTP headers (Cookie / Referer / Origin) for Exo / MediaKit.
+  /// Live Matches Streamed handoff uses these instead of `/hls-proxy`.
+  final Map<String, String> headers;
+  const IptvPlaySource({
+    required this.url,
+    required this.label,
+    this.headers = const {},
+  });
 }
 
 /// Dedicated IPTV player. Android uses Settings → Built-in engine (ExoPlayer or
@@ -192,6 +199,14 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   final FocusNode _backFocus = FocusNode(debugLabel: 'iptv-player-back');
   final FocusNode _playFocus = FocusNode(debugLabel: 'iptv-player-play');
   final FocusNode _seekFocus = FocusNode(debugLabel: 'iptv-player-seek');
+  /// Top-right Player menu (Exo ↔ MediaKit). Explicit FocusNode so D-pad →
+  /// from Back can claim it — [FocusScope.focusInDirection] often fails across
+  /// the wide title gap on Android TV (issue 110).
+  final FocusNode _playerMenuFocus =
+      FocusNode(debugLabel: 'iptv-player-menu');
+  final FocusNode _statsFocus = FocusNode(debugLabel: 'iptv-player-stats');
+  final FocusNode _sourceChipFocus =
+      FocusNode(debugLabel: 'iptv-player-source');
 
   bool _guideVisible = false;
   bool _searchVisible = false;
@@ -268,6 +283,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
   bool _disposed = false;
   bool _playerAlive = false;
+  /// Instant mute/pause before route pop (mirrors VOD [_stopPlaybackForExit]).
+  bool _playbackStopped = false;
+  /// Prevents double pop from Back button + remote Back gate.
+  bool _exitInProgress = false;
 
   static const _playerConfiguration = PlayerConfiguration(
     bufferSize: 64 * 1024 * 1024,
@@ -316,7 +335,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       }
       if (_backFocus.hasFocus || _tvBackExitArmed) {
         _tvBackExitArmed = false;
-        return false;
+        // Consume Back and exit ourselves — silence + unmount Video before
+        // pop so MediaKit/MediaCodec teardown cannot ANR (issue 128).
+        unawaited(_exitIptvPlayer());
+        return true;
       }
       _tvBackExitArmed = true;
       setState(() => _controlsVisible = true);
@@ -434,6 +456,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         _statusBanner = 'Switching player…';
       });
     }
+    // Let Video / ExoPlayerView unmount before tearing down the engine —
+    // interleaved surface + mpv dispose ANRs on ATV (issue 128).
+    await WidgetsBinding.instance.endOfFrame;
+    if (_disposed || !mounted) return;
     await _disposePlayer();
     if (_disposed || !mounted) return;
 
@@ -444,6 +470,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _controller = null;
     _exoViewId = null;
     _retryAttempt = 0;
+    _playbackStopped = false;
 
     if (_exoBackend) {
       await _bootExoPlayer();
@@ -451,6 +478,42 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       await _bootPlayer();
     }
     if (mounted) setState(() => _statusBanner = null);
+  }
+
+  /// Instant mute/pause (native mpv props) — do not await hung stop before pop.
+  Future<void> _stopPlaybackForExit() async {
+    if (_playbackStopped) return;
+    _playbackStopped = true;
+    if (_exoBackend) {
+      final id = _exoViewId;
+      if (id != null) {
+        try {
+          await ExoPlayerBridge.pause(id);
+        } catch (_) {}
+      }
+      return;
+    }
+    final player = _player;
+    if (player == null) return;
+    await silenceMediaKitPlayer(player);
+  }
+
+  /// Silence + unmount the video surface, then pop. Matches VOD exit so
+  /// MediaKit/MediaCodec teardown is not on the Navigator.pop critical path.
+  Future<void> _exitIptvPlayer() async {
+    if (_disposed || _exitInProgress) return;
+    _exitInProgress = true;
+    final nav = Navigator.of(context);
+    await _stopPlaybackForExit();
+    if (!mounted || _disposed) return;
+    if (_playerReady) {
+      setState(() => _playerReady = false);
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (!mounted || _disposed) return;
+    if (nav.canPop()) {
+      nav.pop();
+    }
   }
 
   static bool _isUnrecognizedFormatError(String msg) {
@@ -496,6 +559,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     HardwareKeyboard.instance.removeHandler(_onRemoteControlsActivity);
     _backFocus.dispose();
     _playFocus.dispose();
+    _playerMenuFocus.dispose();
+    _statsFocus.dispose();
+    _sourceChipFocus.dispose();
     _pipSub?.cancel();
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();

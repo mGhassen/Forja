@@ -70,12 +70,16 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     return _s._epgCache!.load(stream, limit: 8);
   }
 
+  /// Android TV Exo: no bottom progress chrome (live track or VOD scrubber).
+  bool get _showProgressChrome =>
+      !(_s._exoBackend && PlatformInfo.isAndroidTv);
+
   double _floatingEpgBottomInset(BuildContext context, bool compact) {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
     final barPad = compact ? 12.0 : 18.0;
     const barHeight = 56.0;
-    // Progress row always present (VOD scrubber or live EPG / live-edge bar).
-    final seekbar = compact ? 48.0 : 56.0;
+    final seekbar =
+        _showProgressChrome ? (compact ? 48.0 : 56.0) : 0.0;
     return safeBottom + barPad + barHeight + seekbar + 12;
   }
 
@@ -198,7 +202,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             return;
           }
           if (dismissAnyPlayerChromeOverlay()) return;
-          if (Navigator.canPop(context)) Navigator.pop(context);
+          unawaited(_s._exitIptvPlayer());
         },
         onPlayPause: () {
           if (_s._playing) {
@@ -432,11 +436,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           children: [
             _buildTopBar(compact),
             const Spacer(),
-            // Always show progress chrome (VOD scrubber, or live EPG / live-edge).
-            if (_s._isVod)
-              _buildSeekbar(compact)
-            else
-              _buildLiveProgressBar(compact),
+            // VOD scrubber or live EPG / live-edge — hidden on Android TV Exo.
+            if (_showProgressChrome)
+              _s._isVod
+                  ? _buildSeekbar(compact)
+                  : _buildLiveProgressBar(compact),
             _buildBottomBar(compact),
           ],
         ),
@@ -578,6 +582,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     VoidCallback? onPressed,
     ValueChanged<BuildContext>? onPressedWithContext,
     VoidCallback? onDownEdge,
+    VoidCallback? onLeftEdge,
+    VoidCallback? onRightEdge,
     FocusNode? focusNode,
     int? tvFocusOrder,
   }) {
@@ -591,6 +597,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         onPressed: onPressed,
         onPressedWithContext: onPressedWithContext,
         onDownEdge: onDownEdge,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
       );
     } else {
       button = PlayerFlatIconButton(
@@ -624,6 +632,28 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       _claimPlayFocus();
     }
 
+    void claim(FocusNode node) {
+      if (node.canRequestFocus) node.requestFocus();
+    }
+
+    /// Explicit ←/→ edges — [focusInDirection] often fails across the title gap.
+    VoidCallback? rightFromBack() {
+      if (!tv) return null;
+      if (hasSources) return () => claim(_s._sourceChipFocus);
+      return () => claim(_s._playerMenuFocus);
+    }
+
+    VoidCallback? leftFromPlayer() {
+      if (!tv) return null;
+      if (hasSources) return () => claim(_s._sourceChipFocus);
+      return () => claim(_s._backFocus);
+    }
+
+    VoidCallback? rightFromPlayer() {
+      if (!tv || !showStats) return null;
+      return () => claim(_s._statsFocus);
+    }
+
     Widget wrapOrder(int order, Widget child) {
       if (!tv) return child;
       return FocusTraversalOrder(
@@ -654,10 +684,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               1,
               iptvBackButton(
                 context,
-                onTap: () => Navigator.of(context).maybePop(),
+                onTap: () => unawaited(_s._exitIptvPlayer()),
                 color: Colors.white,
                 size: 22,
                 focusNode: _s._backFocus,
+                onRightEdge: rightFromBack(),
                 onDownEdge: () {
                   _s._tvBackExitArmed = false;
                   downFromTop();
@@ -709,8 +740,13 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 sourceOrder!,
                 _SourceChip(
                   label: _s._sources[_s._sourceIdx].label,
+                  focusNode: _s._sourceChipFocus,
                   onTap: _showSourcePicker,
                   onDownEdge: downFromTop,
+                  onLeftEdge:
+                      tv ? () => claim(_s._backFocus) : null,
+                  onRightEdge:
+                      tv ? () => claim(_s._playerMenuFocus) : null,
                 ),
               ),
             ],
@@ -719,16 +755,22 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               icon: Icons.smart_display_outlined,
               tooltip: 'Player',
               tvFocusOrder: playerOrder,
+              focusNode: _s._playerMenuFocus,
               onPressedWithContext: (ctx) => unawaited(_showPlayerMenu(ctx)),
               onDownEdge: downFromTop,
+              onLeftEdge: leftFromPlayer(),
+              onRightEdge: rightFromPlayer(),
             ),
             if (showStats)
               _topBarFlatAction(
                 icon: Icons.monitor_heart_outlined,
                 tooltip: 'Stream stats',
                 tvFocusOrder: statsOrder,
+                focusNode: _s._statsFocus,
                 onPressedWithContext: _showStatsMenu,
                 onDownEdge: downFromTop,
+                onLeftEdge:
+                    tv ? () => claim(_s._playerMenuFocus) : null,
               ),
             if (showPip)
               _topBarFlatAction(
@@ -773,8 +815,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   }
 
   /// Live chrome: same logo + track + time row as VOD, driven by EPG when
-  /// available (read-only). Pure live with no guide still shows a full track
-  /// so Android TV Exo matches the progress chrome users expect.
+  /// available (read-only). Pure live with no guide still shows a full track.
+  /// Not used on Android TV Exo ([_showProgressChrome] is false there).
   Widget _buildLiveProgressBar(bool compact) {
     final future = _floatingEpgFuture();
     return Container(

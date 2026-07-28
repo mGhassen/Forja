@@ -793,6 +793,13 @@ class SyncService {
     }
   }
 
+  /// Lean `profile_settings.payload` for the active profile.
+  ///
+  /// - `null` — no row yet (caller may seed defaults).
+  /// - empty / non-empty map — existing row.
+  /// Throws on network / auth / PostgREST errors so callers never treat a
+  /// failed pull as "missing" and seed+push platform defaults over cloud
+  /// (issue 126).
   Future<Map<String, dynamic>?> pullProfileSettings() async {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
@@ -815,7 +822,7 @@ class SyncService {
       return <String, dynamic>{};
     } catch (e) {
       debugPrint('[Sync] pullProfileSettings error: $e');
-      return null;
+      rethrow;
     }
   }
 

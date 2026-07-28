@@ -128,14 +128,13 @@ void main() {
   });
 
   group('liveEmbedRequiresWebViewPlayback', () {
-    test('embedindia flagged; Android handoff still enabled for all embeds', () {
+    test('embedindia and Streamed both use native handoff on Android', () {
       expect(
         liveEmbedRequiresWebViewPlayback(
           'https://embedindia.st/embed/mlb/x?gid=1',
         ),
         isTrue,
       );
-      // System WebView cannot play in-page — hand off after sniff (with cookies).
       expect(
         liveEmbedAndroidNativeHandoff(
           'https://embedindia.st/embed/mlb/x?gid=1',
@@ -146,7 +145,72 @@ void main() {
         liveEmbedRequiresWebViewPlayback('https://embed.st/abc'),
         isFalse,
       );
+      // Streamed: sniff → native (WebView-only hits CORS / red sandbox lock).
       expect(liveEmbedAndroidNativeHandoff('https://embed.st/abc'), isTrue);
+      expect(
+        liveEmbedAndroidNativeHandoff(
+          'https://embedindia.st/embed/mlb/x?gid=1',
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  group('LiveEmbedAndroidHandoffProfile', () {
+    test('Streamed profile still describes catalog iframe load', () {
+      final p = LiveEmbedAndroidHandoffProfile.forEmbed(
+        'https://embed.st/embed/admin/foo/1',
+      );
+      expect(p.isStreamed, isTrue);
+      expect(p.topLevelEmbedLoad, isFalse);
+    });
+
+    test('PPV stays top-level with no soft recover', () {
+      final p = LiveEmbedAndroidHandoffProfile.forEmbed(
+        'https://embedindia.st/embed/mlb/x?gid=1',
+      );
+      expect(p.isPpv, isTrue);
+      expect(p.topLevelEmbedLoad, isTrue);
+      expect(p.maxSoftRecover, 0);
+      expect(p.maxProbeAttempts, 3);
+    });
+  });
+
+  group('liveEmbed nested embedindia peel', () {
+    test('mayNest only for Streamed wrapper hosts', () {
+      expect(
+        liveEmbedMayNestEmbedIndia(
+          'https://embed.st/embed/admin/admin-rally-tv/1',
+        ),
+        isTrue,
+      );
+      expect(
+        liveEmbedMayNestEmbedIndia(
+          'https://embedindia.st/embed-noads/rally-tv',
+        ),
+        isFalse,
+      );
+      expect(
+        liveEmbedMayNestEmbedIndia('https://strmd.st/playlist.m3u8'),
+        isFalse,
+      );
+    });
+
+    test('extracts iframe src from embed.st HTML', () {
+      const html =
+          '<iframe src="https://embedindia.st/embed-noads/rally-tv" '
+          'allowfullscreen></iframe>';
+      expect(
+        liveEmbedExtractNestedEmbedIndiaUrl(html),
+        'https://embedindia.st/embed-noads/rally-tv',
+      );
+      expect(liveEmbedExtractNestedEmbedIndiaUrl('<div></div>'), isNull);
+    });
+
+    test('peeled embedindia uses PPV native handoff', () {
+      const peeled = 'https://embedindia.st/embed-noads/rally-tv';
+      expect(liveEmbedAndroidNativeHandoff(peeled), isTrue);
+      expect(liveEmbedProviderKind(peeled), LiveEmbedProviderKind.ppv);
     });
   });
 }

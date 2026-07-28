@@ -402,9 +402,11 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
                 ),
               ),
               const SizedBox(height: 12),
-              TextButton(
+              SettingsFilledButton(
+                label: 'Retry',
+                icon: Icons.refresh_rounded,
+                secondary: true,
                 onPressed: _busy ? null : _refreshRemote,
-                child: const Text('Retry'),
               ),
             ],
           ),
@@ -549,17 +551,12 @@ class _SignedInAccountBody extends StatelessWidget {
                       color: ForjaShellColors.iconMuted,
                       size: 22,
                     ),
-                    trailing: IconButton(
-                      tooltip: 'Remove passkey',
-                      onPressed:
-                          busy ? null : () => onRemovePasskey(passkey.id),
-                      icon: const Icon(
-                        Icons.delete_outline_rounded,
-                        color: Color(0xFFF87171),
-                        size: 20,
-                      ),
+                    trailing: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Color(0xFFF87171),
+                      size: 20,
                     ),
-                    onTap: null,
+                    onTap: busy ? null : () => onRemovePasskey(passkey.id),
                   ),
               if (error != null)
                 Padding(
@@ -723,7 +720,8 @@ class _ActiveProfileStage extends StatelessWidget {
       context: context,
       onTap: onTap,
       scaleOnFocus: 1.0,
-      navLeftAlways: true,
+      showFocusBorder: true,
+      showFocusFill: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       child: content,

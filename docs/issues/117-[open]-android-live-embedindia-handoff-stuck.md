@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **14 / 14** fix · **0 / 3** acceptance |
+| **Progress** | **20 / 20** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -33,6 +33,12 @@
 | 12 | I117-T12 | Stop probe soft-recover loop; force-exit on abandon; Streamed catalog Referer on `/hls-proxy` | ✅ |
 | 13 | I117-T13 | Disable InAppWebView Fetch/Ajax intercept on PPV (reused Request kills JW); spy clones Request | ✅ |
 | 14 | I117-T14 | Split Android handoff: `LiveEmbedAndroidHandoffProfile` (PPV ≠ Streamed load/headers/soft-recover) | ✅ |
+| 15 | I117-T15 | Restore Streamed probe: catalog Referer first + 450ms settle + 3 attempts (T14 speed tweak caused ATV 403) | ✅ |
+| 16 | I117-T16 | PPV play gate: mute-first JW `play()` + center tap + playlist scrape; 1s sniff poll; cover `IgnorePointer` | ✅ |
+| 17 | I117-T17 | Streamed redesign: capture `#EXTM3U` body from WebView → local file + Exo headers (no `/hls-proxy` re-GET/probe) | ✅ |
+| 18 | I117-T18 | Streamed: WebView-backed loopback proxy for Exo (CDN fetch stays in Chromium; keep embed route mounted) | ✅ |
+| 19 | I117-T19 | Re-enable Streamed Android native handoff; do not set `_exiting` before playlist body; Dart/Cookie seed + `/hls-proxy` fallback; peel nested embedindia | ✅ |
+| 20 | I117-T20 | Streamed WebView proxy: fetch CDN with `credentials:omit` first (CDN ACAO:* forbids include → child m3u8 timeout / Exo reconnect) | ✅ |
 
 ---
 
@@ -68,7 +74,19 @@
 
 **PPV fetch broken (I117-T13):** Console `Cannot construct a Request with a Request object that has already been used` from embedindia — InAppWebView `shouldInterceptFetchRequest` wrapper. Disabled Fetch/Ajax intercept; sniff via `shouldInterceptRequest` + media spy (Request.clone).
 
-**Cross-contamination (I117-T14):** PPV and Streamed share one embed player but fail differently. Fixes for one kept applying to both. Added `LiveEmbedAndroidHandoffProfile` — PPV: top-level load, full-embed Referer, soft-recover 0; Streamed: catalog iframe, **embed-origin Referer first** (catalog only on retry), short settle (120ms), 2 probes. Shared only cover + `/hls-proxy` + Exo.
+**Cross-contamination (I117-T14):** PPV and Streamed share one embed player but fail differently. Fixes for one kept applying to both. Added `LiveEmbedAndroidHandoffProfile` — PPV: top-level load, full-embed Referer, soft-recover 0; Streamed: catalog iframe. Shared only cover + `/hls-proxy` + Exo. (T14 also shipped a Streamed “speed” tweak that T15 reverts.)
+
+**Streamed ATV 403 again (I117-T15):** After T14, Streamed probed with **embed-origin Referer first**, **120ms** cookie settle, and only **2** attempts. Logs: sniff OK → `/hls-proxy` probe `403 Forbidden` ×4 → abandon. Restore T12/T09 path: catalog `streamed.pk` Referer on attempts 1+3, 450ms settle, 3 probes.
+
+**PPV play gate (I117-T16):** Browser works after clicking JW big-play; ATV cover blocked that. Sniff timed out with `Uncaught (in promise)` and StreamExtractor only saw the embed page URL. Fix: mute-first `jwplayer().play()` + synthetic center tap + broader JW selectors; scrape `getPlaylist` / page HTML for `indianservers` / `.m3u8` before play; 1s poll; cover `IgnorePointer` so phone taps reach the WebView.
+
+**Streamed redesign (I117-T17):** Referer/settle tweaks still re-GETted `strmd.st` via Rust and hit 403. New path: JS spy forwards the `#EXTM3U` **body** WebView already downloaded → write local `file://…/playlist.m3u8` (absolute segment URIs) → Exo opens that file with catalog Cookie/Referer for CDN segments. **No** `/hls-proxy` probe gate for Streamed.
+
+**Streamed WebView proxy (I117-T18):** Captured-file + Exo headers still 403'd on CDN child playlist/segments (OkHttp ≠ Chromium). Exo now plays `http://127.0.0.1/playlist.m3u8`; every upstream URI is fetched **inside** the still-mounted embed WebView and returned over loopback.
+
+**Streamed ATV sandbox lock again (I117-T19):** A mid-slice regression turned Streamed native handoff **off** (WebView-only). Logs: `strmd.st` CORS from `embed.st` + red **Remove sandbox attributes…** UI with Flutter pause/mute chrome. Fix: handoff on for all Android Live embeds again; wait for `#EXTM3U` **before** `_exiting` (URL sniff used to block body capture); seed playlist via Dart+cookies / intercept ACAO; fall back to `/hls-proxy` when body never lands; peel nested `embedindia` under `embed.st`.
+
+**Streamed buffers then Reconnecting (I117-T20):** Master playlist captured and Exo opened on loopback, but child `…/high/mono.m3u8` fetch via the embed iframe used `credentials:include` while the CDN returns `Access-Control-Allow-Origin: *` — browser blocks that combo → proxy timeout → Exo reconnect loop. Fix: proxy fetch tries `credentials:omit` first (URL already carries the secure token), then `include`; empty CORS fails settle in 1.2s instead of hanging 20s.
 
 **Player button:** The in-player **Player** control (Exo ↔ MediaKit / external) lives on `IptvPtPlayerScreen` after handoff — it does not appear on the WebView “Opening stream…” cover.
 

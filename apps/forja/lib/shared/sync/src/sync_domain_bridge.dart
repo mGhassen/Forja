@@ -163,6 +163,9 @@ class SyncDomainBridge {
             pushIptvIfLocalEmpty: false,
             allowEmptyStremioWipe: pending.contains(_domainStremio),
             allowEmptyNuvioWipe: pending.contains(_domainNuvio),
+            // Only flush domains that were pending — never overlay stale
+            // navigation / playback from an unrelated edit (issue 126).
+            overlayDomains: pending,
           );
         }
         await pullAndMergeAll(resetLocalFirst: false);
@@ -185,9 +188,17 @@ class SyncDomainBridge {
       return;
     }
     await SyncService.instance.pullAccountFeatures();
-    final remote = await SyncService.instance.pullProfileSettings();
+    final Map<String, dynamic>? remote;
+    try {
+      remote = await SyncService.instance.pullProfileSettings();
+    } catch (e) {
+      // Failed pull ≠ missing row. Keep local cache; never seed+push defaults
+      // over a populated cloud row (Android TV JWT / network — issue 126).
+      debugPrint('[Sync] pullAndMergeAll aborted (keep local): $e');
+      return;
+    }
     if (remote == null) {
-      // Missing row - seed defaults under the active profile (never push prior prefs).
+      // Confirmed missing row - seed defaults under the active profile.
       await seedNewProfileDefaults();
       return;
     }
@@ -218,6 +229,9 @@ class SyncDomainBridge {
   /// Push lean settings + IPTV. Cloud is master:
   /// - Merges local cache into the existing cloud row (never replaces with a
   ///   partial local export that drops remote keys).
+  /// - [overlayDomains] null = full overlay (profile switch / seed / empty
+  ///   backfill). Non-null = only those domains (debounced UI edits) so a
+  ///   playback toggle cannot rewrite cloud navigation (issue 126).
   /// - Empty local Stremio/Nuvio never deletes cloud unless
   ///   [allowEmptyStremioWipe] / [allowEmptyNuvioWipe] (that domain's edit).
   /// - Empty IPTV cache never deletes assignments unless [allowEmptyIptvWipe].
@@ -231,18 +245,28 @@ class SyncDomainBridge {
     bool allowIptvShrink = false,
     bool allowEmptyStremioWipe = false,
     bool allowEmptyNuvioWipe = false,
+    Set<String>? overlayDomains,
   }) async {
     if (!SyncService.instance.isSignedIn) return;
     final payload = await _buildMergedCloudPayload(
       allowEmptyStremioWipe: allowEmptyStremioWipe,
       allowEmptyNuvioWipe: allowEmptyNuvioWipe,
+      overlayDomains: overlayDomains,
     );
+    if (payload == null) {
+      debugPrint('[Sync] pushAllLocal skipped (cloud pull failed)');
+      return;
+    }
     await SyncService.instance.pushProfileSettings(payload);
-    await _pushUserIptvPortals(
-      pushIfLocalEmpty: pushIptvIfLocalEmpty,
-      allowEmptyWipe: allowEmptyIptvWipe,
-      allowShrink: allowIptvShrink,
-    );
+    final pushIptv = overlayDomains == null ||
+        overlayDomains.contains(_domainIptv);
+    if (pushIptv) {
+      await _pushUserIptvPortals(
+        pushIfLocalEmpty: pushIptvIfLocalEmpty,
+        allowEmptyWipe: allowEmptyIptvWipe,
+        allowShrink: allowIptvShrink,
+      );
+    }
   }
 
   /// User intentionally cleared every portal - sync empty assignments to cloud.
@@ -269,14 +293,17 @@ class SyncDomainBridge {
     if (!SyncService.instance.isSignedIn) return;
     _pushTimers[domain]?.cancel();
     _pushTimers[domain] = Timer(const Duration(seconds: 3), () {
-      // Debounced user edits - empty connected wipe only for that domain.
+      // Debounced user edits - overlay only this domain onto cloud.
       // IPTV: never shrink cloud from a thin local cache (issue 118).
+      // Navigation / playback: never rewrite the other from a stale cache
+      // (issue 126).
       unawaited(
         pushAllLocal(
           pushIptvIfLocalEmpty: false,
           allowIptvShrink: false,
           allowEmptyStremioWipe: domain == _domainStremio,
           allowEmptyNuvioWipe: domain == _domainNuvio,
+          overlayDomains: {domain},
         ),
       );
     });
@@ -306,22 +333,47 @@ class SyncDomainBridge {
   }
 
   /// Cloud SoT: start from remote row, overlay intentional local cache.
-  Future<Map<String, dynamic>> _buildMergedCloudPayload({
+  ///
+  /// Returns `null` when the cloud pull failed — caller must not upsert
+  /// (would replace cloud with a local-only payload).
+  ///
+  /// [overlayDomains] null overlays every lean domain. Otherwise only the
+  /// listed domains (preferences → playback, navigation, stremio, nuvio).
+  Future<Map<String, dynamic>?> _buildMergedCloudPayload({
     required bool allowEmptyStremioWipe,
     required bool allowEmptyNuvioWipe,
+    Set<String>? overlayDomains,
   }) async {
-    final remote = await SyncService.instance.pullProfileSettings() ?? {};
+    final Map<String, dynamic> remote;
+    try {
+      remote = await SyncService.instance.pullProfileSettings() ?? {};
+    } catch (e) {
+      debugPrint('[Sync] merge aborted (cloud pull failed): $e');
+      return null;
+    }
     final local = await _buildLeanPayload();
     final next = Map<String, dynamic>.from(remote);
+    final overlayAll = overlayDomains == null;
+    final overlayPlayback =
+        overlayAll || overlayDomains.contains(_domainPreferences);
+    final overlayNavigation =
+        overlayAll || overlayDomains.contains(_domainNavigation);
+    final overlayStremio =
+        overlayAll || overlayDomains.contains(_domainStremio);
+    final overlayNuvio = overlayAll || overlayDomains.contains(_domainNuvio);
 
-    final playback = local['playback'];
-    if (playback is Map) {
-      next['playback'] = Map<String, dynamic>.from(playback);
+    if (overlayPlayback) {
+      final playback = local['playback'];
+      if (playback is Map) {
+        next['playback'] = Map<String, dynamic>.from(playback);
+      }
     }
 
-    final navigation = local['navigation'];
-    if (navigation is Map && navigation.isNotEmpty) {
-      next['navigation'] = Map<String, dynamic>.from(navigation);
+    if (overlayNavigation) {
+      final navigation = local['navigation'];
+      if (navigation is Map && navigation.isNotEmpty) {
+        next['navigation'] = Map<String, dynamic>.from(navigation);
+      }
     }
 
     final remoteConnected = remote['connectedServices'] is Map
@@ -332,16 +384,20 @@ class SyncDomainBridge {
         : <String, dynamic>{};
     final connected = Map<String, dynamic>.from(remoteConnected);
 
-    if (localConnected.containsKey('stremio')) {
-      connected['stremio'] = localConnected['stremio'];
-    } else if (allowEmptyStremioWipe) {
-      connected.remove('stremio');
+    if (overlayStremio) {
+      if (localConnected.containsKey('stremio')) {
+        connected['stremio'] = localConnected['stremio'];
+      } else if (allowEmptyStremioWipe) {
+        connected.remove('stremio');
+      }
     }
 
-    if (localConnected.containsKey('nuvio')) {
-      connected['nuvio'] = localConnected['nuvio'];
-    } else if (allowEmptyNuvioWipe) {
-      connected.remove('nuvio');
+    if (overlayNuvio) {
+      if (localConnected.containsKey('nuvio')) {
+        connected['nuvio'] = localConnected['nuvio'];
+      } else if (allowEmptyNuvioWipe) {
+        connected.remove('nuvio');
+      }
     }
 
     if (connected.isNotEmpty) {

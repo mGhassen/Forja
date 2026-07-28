@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+
 /// Main-frame navigation policy for the Live Matches embed WebView.
 ///
 /// Wrapper mode loads HTML via `loadData(baseUrl: catalog)` so `document.referrer`
@@ -84,10 +89,49 @@ LiveEmbedProviderKind liveEmbedProviderKind(String embedUrl) {
   return LiveEmbedProviderKind.streamed;
 }
 
+/// Turn relative playlist lines / URI="…" into absolute URLs so a local
+/// `file://` master can still fetch CDN segments (Streamed capture handoff).
+String liveEmbedRewriteM3u8Absolute(String body, String playlistUrl) {
+  final base = Uri.tryParse(playlistUrl);
+  if (base == null) return body;
+  final out = StringBuffer();
+  for (final raw in body.split('\n')) {
+    final line = raw.replaceAll('\r', '');
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) {
+      out.writeln(line);
+      continue;
+    }
+    if (trimmed.startsWith('#')) {
+      out.writeln(_liveEmbedRewriteM3u8TagUris(line, base));
+      continue;
+    }
+    out.writeln(base.resolve(trimmed).toString());
+  }
+  return out.toString();
+}
+
+String _liveEmbedRewriteM3u8TagUris(String line, Uri base) {
+  return line.replaceAllMapped(
+    RegExp(r'URI="([^"]+)"', caseSensitive: false),
+    (m) {
+      final raw = m.group(1) ?? '';
+      if (raw.isEmpty ||
+          raw.startsWith('http://') ||
+          raw.startsWith('https://') ||
+          raw.startsWith('data:')) {
+        return m.group(0)!;
+      }
+      return 'URI="${base.resolve(raw)}"';
+    },
+  );
+}
+
 /// Per-provider Android sniff → native handoff profile.
 ///
-/// Shared: black cover, Cookie harvest, `/hls-proxy`, Exo open, abandon/exit.
-/// Split: how the WebView loads, main-frame policy, proxy Referer, timing.
+/// Shared: black cover, Cookie harvest, Exo open, abandon/exit.
+/// Streamed: capture `#EXTM3U` body from WebView → local file (no `/hls-proxy`).
+/// PPV: Cookie + `/hls-proxy` probe (embedindia CDN).
 class LiveEmbedAndroidHandoffProfile {
   const LiveEmbedAndroidHandoffProfile._({
     required this.kind,
@@ -110,7 +154,7 @@ class LiveEmbedAndroidHandoffProfile {
   /// Extra probe→re-sniff attempts before abandon (Streamed cookie settle).
   final int maxSoftRecover;
 
-  /// Wait after sniff before Cookie harvest / probe (Streamed is usually warm).
+  /// Wait after sniff before Cookie harvest / probe.
   final Duration cookieSettle;
 
   final int maxProbeAttempts;
@@ -137,20 +181,83 @@ class LiveEmbedAndroidHandoffProfile {
           kind: LiveEmbedProviderKind.streamed,
           topLevelEmbedLoad: false,
           allowEmbedHostAsMainFrame: false,
-          // One Cookie settle retry — do not slow the happy path.
-          maxSoftRecover: 1,
-          cookieSettle: Duration(milliseconds: 120),
-          maxProbeAttempts: 2,
+          // Soft recover unused on Streamed capture path; probe used as fallback.
+          maxSoftRecover: 0,
+          cookieSettle: Duration(milliseconds: 450),
+          maxProbeAttempts: 3,
           logLabel: 'streamed',
         );
     }
   }
 }
 
-/// Android System WebView cannot play Streamed / many PPV embeds in-page
-/// (CORS + host lock UI). Sniff HLS and hand off to the native IPTV player.
+/// Android System WebView cannot play Streamed / PPV embeds in-page
+/// (CORS + red host-lock UI). Sniff HLS and hand off to the native IPTV player.
 bool liveEmbedAndroidNativeHandoff(String embedUrl) {
   // All Android Live embeds use sniff → native; WebView-only is a dead end on
-  // System WebView (red lock / Uncaught play promise).
+  // System WebView (red “Remove sandbox attributes…” / Uncaught play promise).
   return embedUrl.trim().isNotEmpty;
+}
+
+/// Streamed catalog URLs that often wrap `embedindia.st` in a nested iframe
+/// (e.g. Rally TV → `embed.st` → `embedindia.st/embed-noads/…`). Nested
+/// embedindia shows the red “Remove sandbox attributes…” lock under System
+/// WebView; peel to the inner player so Android uses PPV sniff→Exo.
+bool liveEmbedMayNestEmbedIndia(String embedUrl) {
+  final host = Uri.tryParse(embedUrl)?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  if (host.contains('embedindia')) return false;
+  return host == 'embed.st' ||
+      host.endsWith('.embed.st') ||
+      host.contains('embedsports');
+}
+
+/// First `embedindia.st` iframe `src` in [html], if any.
+String? liveEmbedExtractNestedEmbedIndiaUrl(String html) {
+  final re = RegExp(
+    r'''src\s*=\s*["'](https?://[^"']*embedindia\.st[^"']*)["']''',
+    caseSensitive: false,
+  );
+  final m = re.firstMatch(html);
+  final url = m?.group(1)?.trim();
+  if (url == null || url.isEmpty) return null;
+  return url;
+}
+
+/// If [embedUrl] is a Streamed wrapper that nests embedindia, return the
+/// inner player URL; otherwise return [embedUrl] unchanged.
+Future<String> liveEmbedResolveNestedPlayerUrl(
+  String embedUrl, {
+  String? catalogReferer,
+}) async {
+  final trimmed = embedUrl.trim();
+  if (trimmed.isEmpty || !liveEmbedMayNestEmbedIndia(trimmed)) {
+    return trimmed;
+  }
+  HttpClient? client;
+  try {
+    client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 6);
+    client.userAgent =
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    final req = await client.getUrl(Uri.parse(trimmed));
+    final referer = (catalogReferer ?? '').trim();
+    if (referer.isNotEmpty) {
+      req.headers.set('Referer', referer);
+    }
+    final resp = await req.close().timeout(const Duration(seconds: 8));
+    if (resp.statusCode >= 400) return trimmed;
+    final body = await resp.transform(utf8.decoder).join();
+    final nested = liveEmbedExtractNestedEmbedIndiaUrl(body);
+    if (nested != null) {
+      debugPrint('[LiveMatches] peeled nested embedindia: $nested');
+      return nested;
+    }
+  } catch (e) {
+    debugPrint('[LiveMatches] nest peel failed: $e');
+  } finally {
+    client?.close(force: true);
+  }
+  return trimmed;
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/player_tv_remote.dart';
@@ -265,4 +266,78 @@ void main() {
     keyFocus.dispose();
     playFocus.dispose();
   });
+
+  testWidgets(
+    'FocusableControl arrow moves focus inside full-screen player chrome scope',
+    (tester) async {
+      // Mirrors Exo/IPTV chrome: FocusScope expands to the full screen.
+      // focusInDirection on the *scope* finds no neighbors (scope rect is the
+      // whole display); the focused control node must drive traversal.
+      final play = FocusNode(debugLabel: 'exo-player-play');
+      final rewind = FocusNode(debugLabel: 'exo-player-rewind');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: ShellInputPolicy.maybeWrapFocusTraversal(
+                enabled: true,
+                child: Scaffold(
+                  body: SizedBox.expand(
+                    child: FocusScope(
+                      debugLabel: 'exo-player-chrome',
+                      child: FocusTraversalGroup(
+                        policy: ReadingOrderTraversalPolicy(),
+                        child: Row(
+                          children: [
+                            FocusableControl(
+                              focusNode: play,
+                              autoFocus: true,
+                              scaleOnFocus: 1.0,
+                              onTap: () {},
+                              child: const SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: Icon(Icons.play_arrow),
+                              ),
+                            ),
+                            FocusableControl(
+                              focusNode: rewind,
+                              scaleOnFocus: 1.0,
+                              onTap: () {},
+                              child: const SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: Icon(Icons.replay_10),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(play.hasFocus, isTrue);
+      expect(rewind.hasFocus, isFalse);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(rewind.hasFocus, isTrue, reason: '→ from Play must reach Rewind');
+      expect(play.hasFocus, isFalse);
+
+      play.dispose();
+      rewind.dispose();
+    },
+  );
 }

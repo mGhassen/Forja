@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
@@ -298,15 +297,8 @@ class _TabStrip extends StatelessWidget {
                 tvTabId: 'settings',
                 tvRowId: 'scoring-tabs',
                 onTap: () => onChanged(_tabs[i].$1),
-                onLeftEdge: i == 0
-                    ? () {
-                        // First scoring tab: back to category rail (not shell nav).
-                        final edges = ShellTvLinearFocusEdges.maybeOf(context);
-                        if (edges?.onBackwardEdge?.call() != true) {
-                          ShellTvFocusCoordinator.focusActiveNavTab();
-                        }
-                      }
-                    : edgesFor(i).onLeft,
+                // Stay in the detail pane — Back returns to the category rail.
+                onLeftEdge: edgesFor(i).onLeft,
                 onRightEdge: edgesFor(i).onRight,
                 onDownEdge: edgesFor(i).onDown,
                 onUpEdge: edgesFor(i).onUp,

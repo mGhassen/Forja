@@ -8,6 +8,8 @@ import 'package:forja/features/iptv/iptv/data/iptv_portal_csv.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Settings → Data & backup - export / import Xtream portals as CSV.
 class SettingsIptvPortalsSection extends StatefulWidget {
@@ -276,13 +278,22 @@ class _ImportLogPanel extends StatelessWidget {
                     ],
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Close import log',
-                  onPressed: onClose,
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: ForjaShellColors.iconMuted,
+                shellFocusableTap(
+                  context: context,
+                  onTap: onClose,
+                  borderRadius: 20,
+                  scaleOnFocus: 1.0,
+                  showFocusBorder: true,
+                  showFocusFill: true,
+                  tvTabId: 'settings',
+                  tvZone: ShellTvZone.settings,
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: ForjaShellColors.iconMuted,
+                    ),
                   ),
                 ),
               ],

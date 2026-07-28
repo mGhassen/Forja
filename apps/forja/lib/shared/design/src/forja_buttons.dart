@@ -224,8 +224,8 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
           } else if (key == LogicalKeyboardKey.arrowDown) {
             direction = TraversalDirection.down;
           }
-          if (direction != null &&
-              FocusScope.of(context).focusInDirection(direction)) {
+          // Focused node — not FocusScope (full-screen scopes find no neighbors).
+          if (direction != null && _effectiveNode.focusInDirection(direction)) {
             return KeyEventResult.handled;
           }
         }

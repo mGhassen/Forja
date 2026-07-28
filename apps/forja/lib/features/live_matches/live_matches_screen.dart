@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,6 +30,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/features/live_matches/live_embed_nav.dart';
 import 'package:forja/features/live_matches/live_matches_sport_filter.dart';
+import 'package:forja/features/live_matches/live_embed_webview_proxy.dart';
 import 'package:rust/rust.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -186,7 +188,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   void _syncTimelineLiveTick() {
     // Grid (including Android TV cards-only) also needs a minute tick so ● LIVE
     // badges flip when kickoff passes without a manual refresh.
-    final need = shellTabVisible &&
+    final need =
+        shellTabVisible &&
         (_view == _LiveMatchesView.timeline || _view == _LiveMatchesView.grid);
     if (need) {
       _timelineLiveTick ??= Timer.periodic(const Duration(minutes: 1), (_) {

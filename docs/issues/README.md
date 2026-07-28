@@ -131,14 +131,14 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [107-[fixed]-…](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) | Android ≤7.0 TMDB posters (Let's Encrypt trust) | P1 | High | fixed | Complete · 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [108-[open]-…](108-[open]-android-tv-iptv-exo-choppy-fps.md) | Android TV IPTV Exo choppy FPS (weak / Android 7) | P1 | High | open | 9/9 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [109-[open]-…](109-[open]-android-tv-boot-jwt-expired-discard-race.md) | ATV/desktop boot JWT expired (gotrue discard) | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [110-[open]-…](110-[open]-android-tv-iptv-player-top-bar-dpad.md) | ATV IPTV player top-right Player D-pad chrome | P1 | Medium | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [110-[open]-…](110-[open]-android-tv-iptv-player-top-bar-dpad.md) | ATV IPTV player top-right Player D-pad chrome | P1 | Medium | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [111-[open]-…](111-[open]-macos-keychain-consent-local-file.md) | macOS Keychain consent + local-file fallback | P1 | Medium | open | 5/5 · A 0/3 | — |
 | [112-[fixed]-…](fixed/112-[fixed]-iptv-share-self-contained-tokens.md) | IPTV share: self-contained `F1.` tokens | P1 | High | fixed | Complete · 5/5 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [113-[open]-…](113-[open]-android-tv-trailer-player-white-screen.md) | Android TV trailer player white screen | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [114-[open]-…](114-[open]-android-tv-movie-mediakit-audio-only.md) | Android TV movie MediaKit audio-only | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [115-[open]-…](115-[open]-android-tv-iptv-player-menu-mpv-sigsegv.md) | Android TV IPTV Player menu mpv SIGSEGV | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [116-[open]-…](116-[open]-android-tv-live-matches-embed-cors-native-handoff.md) | Android TV Live Matches embed CORS → native handoff | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [117-[open]-…](117-[open]-android-live-embedindia-handoff-stuck.md) | Android Live embedindia / Streamed Exo handoff black | P1 | High | open | 14/14 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [117-[open]-…](117-[open]-android-live-embedindia-handoff-stuck.md) | Android Live embedindia / Streamed Exo handoff black | P1 | High | open | 20/20 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [118-[open]-…](118-[open]-iptv-thin-local-cache-shrinks-cloud.md) | Thin local IPTV cache shrinks cloud portals | P0 | Critical | open | 8/8 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [119-[open]-…](119-[open]-android-tv-double-back-exit.md) | Android TV double Back / Exit to quit | P1 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [120-[open]-…](120-[open]-android-tv-player-memory-purge.md) | Player open: purge sibling tabs + image RAM | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -146,7 +146,11 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [122-[open]-…](122-[open]-android-tv-iptv-player-lost-dpad.md) | Android TV IPTV player lost D-pad | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [123-[open]-…](123-[open]-android-tv-iptv-catalog-focus-after-player.md) | Android TV IPTV catalog focus after player | P1 | Medium | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [124-[open]-…](124-[open]-android-tv-iptv-reconnect-banner-stuck.md) | Android TV IPTV reconnect banner stuck after recover | P1 | Medium | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [125-[open]-…](125-[open]-android-tv-iptv-exo-progress-bar-missing.md) | Android TV IPTV Exo progress bar missing | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [125-[open]-…](125-[open]-android-tv-iptv-exo-progress-bar-missing.md) | Android TV IPTV Exo progress bar missing | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [126-[open]-…](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) | ATV stale local settings push overwrites cloud Features/nav | P0 | Critical | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/src/shell_scope.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// Visual tone for [ForjaButton].
 ///
@@ -94,6 +98,10 @@ class _ForjaButtonState extends State<ForjaButton> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null && !widget.busy;
+    final tvFocus =
+        ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
+    final ownFocus =
+        tvFocus || ShellTvLinearFocusScope.activeOf(context);
     final active = _hovered || _focused;
     final accent = _accent;
 
@@ -162,9 +170,12 @@ class _ForjaButtonState extends State<ForjaButton> {
       child: InkWell(
         onTap: enabled ? widget.onPressed : null,
         onHover: (v) => setState(() => _hovered = v),
-        onFocusChange: (v) => setState(() => _focused = v),
-        focusNode: widget.focusNode,
-        autofocus: widget.autofocus,
+        onFocusChange: ownFocus ? null : (v) => setState(() => _focused = v),
+        // TV / linear menus: parent [Focus] owns the node so D-pad does not
+        // leak via InkWell geometry to siblings outside the pane.
+        canRequestFocus: !ownFocus,
+        focusNode: ownFocus ? null : widget.focusNode,
+        autofocus: ownFocus ? false : widget.autofocus,
         borderRadius: _radius,
         hoverColor: Colors.transparent,
         child: Container(
@@ -180,6 +191,36 @@ class _ForjaButtonState extends State<ForjaButton> {
       ),
     );
 
-    return widget.expand ? SizedBox(width: double.infinity, child: core) : core;
+    final sized =
+        widget.expand ? SizedBox(width: double.infinity, child: core) : core;
+
+    if (!ownFocus) return sized;
+
+    return Focus(
+      focusNode: widget.focusNode,
+      autofocus: widget.autofocus,
+      onFocusChange: (v) => setState(() => _focused = v),
+      onKeyEvent: (node, event) {
+        final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
+            !ShellTvDisableLinearFocus.activeOf(context);
+        final linear = shellTvLinearMenuArrows(context: context, event: event);
+        if (linear == KeyEventResult.handled) return linear;
+        if (linearScope && shellTvIsNavigationKey(event)) {
+          final key = event.logicalKey;
+          if (key == LogicalKeyboardKey.arrowUp ||
+              key == LogicalKeyboardKey.arrowDown ||
+              key == LogicalKeyboardKey.arrowLeft ||
+              key == LogicalKeyboardKey.arrowRight) {
+            return KeyEventResult.handled;
+          }
+        }
+        if (enabled && shellTvIsActivateKey(event)) {
+          widget.onPressed!();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: sized,
+    );
   }
 }

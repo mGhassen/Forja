@@ -128,12 +128,11 @@ bool _includeInSportFilter({
   required String category,
   required bool isAlwaysOn,
   required String sportFilter,
-}) =>
-    includeLiveMatchInSportFilter(
-      category: category,
-      isAlwaysOn: isAlwaysOn,
-      sportFilter: sportFilter,
-    );
+}) => includeLiveMatchInSportFilter(
+  category: category,
+  isAlwaysOn: isAlwaysOn,
+  sportFilter: sportFilter,
+);
 
 class _DamiTvStream {
   final String id;
@@ -150,6 +149,7 @@ class _DamiTvStream {
   final String? awayBadge;
   final int viewers;
   final String iframe;
+
   /// PPV `always_live` - 24/7 channels keep stale start/end windows.
   final bool alwaysLive;
 
@@ -252,6 +252,7 @@ class _StreamedMatch {
   final int dateMs;
   final String poster;
   final bool popular;
+
   /// From Streamed `/api/matches/live` (engine tags `airing: true`).
   final bool airing;
   final String? homeTeam;
@@ -464,19 +465,20 @@ String _matchTextKey(String raw) {
   for (final alias in aliases.entries) {
     value = value.replaceAll(alias.key, alias.value);
   }
-  final tokens = value
-      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where(
-        (token) =>
-            token.isNotEmpty &&
-            token != 'fc' &&
-            token != 'sc' &&
-            token != 'w',
-      )
-      .toList()
-    ..sort();
+  final tokens =
+      value
+          .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+          .trim()
+          .split(RegExp(r'\s+'))
+          .where(
+            (token) =>
+                token.isNotEmpty &&
+                token != 'fc' &&
+                token != 'sc' &&
+                token != 'w',
+          )
+          .toList()
+        ..sort();
   return tokens.join(' ');
 }
 
@@ -564,20 +566,80 @@ const _ua = {
   'Referer': 'https://ppv.is/',
 };
 
-/// Force play on embed players that gate behind a gesture / big-play overlay.
-/// One retry only - repeated clicks restart playback and cause visible stutter.
-const _autoplayJs = r'''
-(function () {
-  function clickPlay() {
+/// Shared play-nudge body for embedindia JW / Video.js overlays.
+///
+/// Android handoff keeps a black cover over the WebView — the user cannot
+/// press the site’s big-play button. Mute-first + `jwplayer().play()` + a
+/// synthetic center tap are what make the playlist XHR fire so sniff works.
+const _liveEmbedForcePlayBodyJs = r'''
+  function forjaTapCenter() {
+    try {
+      var x = Math.floor((window.innerWidth || 0) / 2) || 1;
+      var y = Math.floor((window.innerHeight || 0) / 2) || 1;
+      var el = document.elementFromPoint(x, y) || document.body;
+      if (!el) return;
+      var mouseOpts = {
+        bubbles: true, cancelable: true, view: window,
+        clientX: x, clientY: y, button: 0, buttons: 1
+      };
+      try { el.dispatchEvent(new PointerEvent('pointerdown', Object.assign({
+        pointerId: 1, pointerType: 'touch', isPrimary: true
+      }, mouseOpts))); } catch (_) {}
+      try { el.dispatchEvent(new MouseEvent('mousedown', mouseOpts)); } catch (_) {}
+      try { el.dispatchEvent(new PointerEvent('pointerup', Object.assign({
+        pointerId: 1, pointerType: 'touch', isPrimary: true
+      }, mouseOpts))); } catch (_) {}
+      try { el.dispatchEvent(new MouseEvent('mouseup', mouseOpts)); } catch (_) {}
+      try { el.dispatchEvent(new MouseEvent('click', mouseOpts)); } catch (_) {}
+      try { if (typeof el.click === 'function') el.click(); } catch (_) {}
+    } catch (_) {}
+  }
+
+  function forjaForceJwPlay() {
+    try {
+      var jw = window.jwplayer;
+      if (typeof jw !== 'function') return;
+      var tried = {};
+      function playOne(p) {
+        if (!p || typeof p.play !== 'function') return;
+        try { if (typeof p.setMute === 'function') p.setMute(true); } catch (_) {}
+        try { if (typeof p.setVolume === 'function') p.setVolume(0); } catch (_) {}
+        try { p.play(true); } catch (_) {
+          try { p.play(); } catch (__) {}
+        }
+      }
+      try { playOne(jw()); } catch (_) {}
+      try {
+        document.querySelectorAll('[id]').forEach(function (node) {
+          var id = node.id;
+          if (!id || tried[id]) return;
+          tried[id] = true;
+          try { playOne(jw(id)); } catch (_) {}
+        });
+      } catch (_) {}
+    } catch (_) {}
+  }
+
+  function forjaClickPlay() {
+    forjaForceJwPlay();
+    forjaTapCenter();
     var sels = [
       'video',
-      '.vjs-big-play-button',
+      'audio',
+      '.jw-display-icon-container',
       '.jw-icon-display',
+      '.jw-icon-playback',
+      '.jw-display',
+      '.vjs-big-play-button',
       '.plyr__control--overlaid',
-      'button[aria-label*="Play"]',
-      'button[title*="Play"]',
+      'button[aria-label*="Play" i]',
+      'button[title*="Play" i]',
       '.play-button',
-      '#big_play_button'
+      '.play-icon-main',
+      '#big_play_button',
+      '#play-button',
+      '[class*="play" i]',
+      '[id*="play" i]'
     ];
     for (var i = 0; i < sels.length; i++) {
       try {
@@ -585,74 +647,58 @@ const _autoplayJs = r'''
         for (var j = 0; j < nodes.length; j++) {
           var el = nodes[j];
           if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
-            el.setAttribute('autoplay', '');
-            el.muted = false;
-            var p = el.play();
-            if (p && p.catch) {
-              p.catch(function () {
-                el.muted = true;
-                el.play().catch(function () {});
-              });
-            }
+            try {
+              el.setAttribute('autoplay', '');
+              el.muted = true;
+              el.setAttribute('muted', '');
+              var p = el.play();
+              if (p && p.catch) p.catch(function () {});
+            } catch (_) {}
           } else if (typeof el.click === 'function') {
-            el.click();
+            try {
+              var rect = el.getBoundingClientRect();
+              if (rect.width <= 0 || rect.height <= 0) continue;
+            } catch (_) {}
+            try { el.click(); } catch (_) {}
           }
         }
       } catch (_) {}
     }
   }
-  clickPlay();
-  setTimeout(clickPlay, 1500);
+''';
+
+/// Force play on embed players that gate behind a gesture / big-play overlay.
+/// Immediate + one delayed retry (repeated polls also re-run from Dart).
+const _autoplayJs =
+    '''
+(function () {
+$_liveEmbedForcePlayBodyJs
+  forjaClickPlay();
+  setTimeout(forjaClickPlay, 1500);
 })();
 ''';
 
 /// Installs play / pause / mute handlers in every frame (wrapper + embed iframe)
 /// and bridges Flutter chrome via `postMessage({__forjaMedia: 'play'|…})`.
-const _embedMediaControlUserScript = r'''
+const _embedMediaControlUserScript =
+    '''
 (function () {
   if (window.__forjaMediaCtrl) return;
   window.__forjaMediaCtrl = true;
 
-  function clickPlay() {
-    var sels = [
-      'video',
-      'audio',
-      '.vjs-big-play-button',
-      '.jw-icon-display',
-      '.plyr__control--overlaid',
-      'button[aria-label*="Play"]',
-      'button[title*="Play"]',
-      '.play-button',
-      '#big_play_button'
-    ];
-    for (var i = 0; i < sels.length; i++) {
-      try {
-        var nodes = document.querySelectorAll(sels[i]);
-        for (var j = 0; j < nodes.length; j++) {
-          var el = nodes[j];
-          if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
-            el.setAttribute('autoplay', '');
-            el.muted = false;
-            var p = el.play();
-            if (p && p.catch) {
-              p.catch(function () {
-                el.muted = true;
-                el.play().catch(function () {});
-              });
-            }
-          } else if (typeof el.click === 'function') {
-            el.click();
-          }
-        }
-      } catch (_) {}
-    }
-  }
+$_liveEmbedForcePlayBodyJs
 
   function pauseAll() {
     try {
       document.querySelectorAll('video,audio').forEach(function (el) {
         try { el.pause(); } catch (e) {}
       });
+    } catch (_) {}
+    try {
+      var jw = window.jwplayer;
+      if (typeof jw === 'function') {
+        try { var p = jw(); if (p && p.pause) p.pause(); } catch (e) {}
+      }
     } catch (_) {}
   }
 
@@ -661,6 +707,15 @@ const _embedMediaControlUserScript = r'''
       document.querySelectorAll('video,audio').forEach(function (el) {
         try { el.muted = !!on; } catch (e) {}
       });
+    } catch (_) {}
+    try {
+      var jw = window.jwplayer;
+      if (typeof jw === 'function') {
+        try {
+          var p = jw();
+          if (p && typeof p.setMute === 'function') p.setMute(!!on);
+        } catch (e) {}
+      }
     } catch (_) {}
   }
 
@@ -683,7 +738,7 @@ const _embedMediaControlUserScript = r'''
   }
 
   function handle(cmd) {
-    if (cmd === 'play') clickPlay();
+    if (cmd === 'play') forjaClickPlay();
     else if (cmd === 'pause') pauseAll();
     else if (cmd === 'mute') setMute(true);
     else if (cmd === 'unmute') setMute(false);
@@ -926,13 +981,38 @@ const _liveEmbedMediaSpyJs = r'''
     } catch (_) {}
   }
 
+  // Forward the playlist BODY WebView already downloaded — native must not
+  // re-GET strmd.st (Rust/OkHttp often 403s the same URL).
+  function reportPlaylist(url, body) {
+    try {
+      if (!url || body == null) return;
+      var s = absUrl(url);
+      var text = String(body);
+      if (text.trim().indexOf('#EXTM3U') !== 0) return;
+      try {
+        if (window.flutter_inappwebview &&
+            typeof window.flutter_inappwebview.callHandler === 'function') {
+          window.flutter_inappwebview.callHandler('liveMediaPlaylist', s, text);
+          report(s);
+          return;
+        }
+      } catch (_) {}
+      try {
+        window.parent.postMessage(
+          { __forjaLivePlaylist: true, url: s, body: text }, '*');
+      } catch (_) {}
+      try {
+        window.top.postMessage(
+          { __forjaLivePlaylist: true, url: s, body: text }, '*');
+      } catch (_) {}
+      report(s);
+    } catch (_) {}
+  }
+
   function reportM3u8InText(text) {
     try {
       var t = String(text || '');
       if (!t) return;
-      if (t.indexOf('#EXTM3U') === 0 || t.indexOf('#EXTM3U') !== -1) {
-        // Body is the playlist itself — caller should have reported the request URL.
-      }
       var re = /https?:\/\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*/gi;
       var m;
       while ((m = re.exec(t)) !== null) report(m[0]);
@@ -949,6 +1029,112 @@ const _liveEmbedMediaSpyJs = r'''
         if (!d) return;
         if (typeof d === 'string') {
           if (looksMedia(d)) report(d);
+          return;
+        }
+        if (d.__forjaLivePlaylist && d.url && d.body) {
+          try {
+            if (window.flutter_inappwebview &&
+                typeof window.flutter_inappwebview.callHandler === 'function') {
+              window.flutter_inappwebview.callHandler(
+                'liveMediaPlaylist', d.url, d.body);
+            }
+          } catch (_) {}
+          report(d.url);
+          return;
+        }
+        if (d.__forjaProxyFetchResult && d.id) {
+          try {
+            if (window.flutter_inappwebview &&
+                typeof window.flutter_inappwebview.callHandler === 'function') {
+              window.flutter_inappwebview.callHandler(
+                'liveProxyFetchResult',
+                d.id,
+                d.status || 0,
+                d.body || '',
+                d.ct || '');
+            }
+          } catch (_) {}
+          return;
+        }
+        if (d.__forjaProxyFetch && d.id && d.url) {
+          // Embed iframe: fetch CDN bytes for the Exo loopback proxy.
+          // Streamed CDN often returns ACAO:* which forbids credentials:include
+          // — tokens live in the URL path, so omit first, then include.
+          try {
+            function reply(status, body, ct) {
+              try {
+                if (window.flutter_inappwebview &&
+                    typeof window.flutter_inappwebview.callHandler ===
+                        'function') {
+                  window.flutter_inappwebview.callHandler(
+                    'liveProxyFetchResult', d.id, status, body, ct);
+                  return;
+                }
+              } catch (_) {}
+              try {
+                window.parent.postMessage({
+                  __forjaProxyFetchResult: true,
+                  id: d.id,
+                  status: status,
+                  body: body,
+                  ct: ct
+                }, '*');
+              } catch (_) {}
+            }
+            function readBlob(r, blob) {
+              return new Promise(function (resolve) {
+                var reader = new FileReader();
+                reader.onloadend = function () {
+                  var dataUrl = String(reader.result || '');
+                  var b64 = '';
+                  var idx = dataUrl.indexOf(',');
+                  if (idx >= 0) b64 = dataUrl.substring(idx + 1);
+                  resolve({
+                    status: r.status,
+                    body: b64,
+                    ct: (r.headers && r.headers.get('content-type')) ||
+                        blob.type || ''
+                  });
+                };
+                reader.onerror = function () {
+                  resolve({ status: 0, body: '', ct: '' });
+                };
+                reader.readAsDataURL(blob);
+              });
+            }
+            function tryFetch(creds) {
+              return fetch(d.url, {
+                credentials: creds,
+                cache: 'no-store',
+                mode: 'cors'
+              }).then(function (r) {
+                return r.blob().then(function (blob) {
+                  return readBlob(r, blob);
+                });
+              });
+            }
+            tryFetch('omit').then(function (res) {
+              if (res && res.status > 0 && res.body) {
+                reply(res.status, res.body, res.ct);
+                return;
+              }
+              return tryFetch('include').then(function (res2) {
+                reply(
+                  (res2 && res2.status) || 0,
+                  (res2 && res2.body) || '',
+                  (res2 && res2.ct) || '');
+              });
+            }).catch(function () {
+              tryFetch('include').then(function (res2) {
+                reply(
+                  (res2 && res2.status) || 0,
+                  (res2 && res2.body) || '',
+                  (res2 && res2.ct) || '');
+              }).catch(function () {
+                reply(0, '', '');
+              });
+            });
+          } catch (_) {}
           return;
         }
         if (d.__forjaLiveMedia) report(d.__forjaLiveMedia);
@@ -990,7 +1176,7 @@ const _liveEmbedMediaSpyJs = r'''
             clone.text().then(function (text) {
               reportM3u8InText(text);
               if (text && text.trim().indexOf('#EXTM3U') === 0 && reqUrl) {
-                report(reqUrl);
+                reportPlaylist(reqUrl, text);
               }
             }).catch(function () {});
           } catch (_) {}
@@ -1019,7 +1205,7 @@ const _liveEmbedMediaSpyJs = r'''
             var text = this.responseText || '';
             reportM3u8InText(text);
             if (text && text.trim().indexOf('#EXTM3U') === 0 && this.__forjaUrl) {
-              report(this.__forjaUrl);
+              reportPlaylist(this.__forjaUrl, text);
             }
           } catch (_) {}
         });
@@ -1058,36 +1244,114 @@ const _liveEmbedMediaSpyJs = r'''
   } catch (_) {}
 
   // JW Player playlist / setup hooks (embedindia).
+  // Playlist `file` is often known before play — report it so Android sniff
+  // does not depend on the big-play gesture under the handoff cover.
+  function reportJwItem(item) {
+    try {
+      if (!item) return;
+      if (item.file) report(item.file);
+      if (item.sources && item.sources.length) {
+        for (var i = 0; i < item.sources.length; i++) {
+          var s = item.sources[i];
+          if (s && s.file) report(s.file);
+        }
+      }
+    } catch (_) {}
+  }
+  function reportJwPlayer(player) {
+    try {
+      if (!player) return;
+      try {
+        var pl = player.getPlaylist && player.getPlaylist();
+        if (pl && pl.length) {
+          for (var i = 0; i < pl.length; i++) reportJwItem(pl[i]);
+        }
+      } catch (_) {}
+      try {
+        var item = player.getPlaylistItem && player.getPlaylistItem();
+        reportJwItem(item);
+      } catch (_) {}
+      try {
+        var cfg = player.getConfig && player.getConfig();
+        if (cfg) {
+          if (cfg.file) report(cfg.file);
+          if (cfg.sources) reportJwItem({ sources: cfg.sources });
+          if (cfg.playlist && cfg.playlist.length) {
+            for (var j = 0; j < cfg.playlist.length; j++) {
+              reportJwItem(cfg.playlist[j]);
+            }
+          }
+        }
+      } catch (_) {}
+    } catch (_) {}
+  }
+  function hookJwPlayer(player) {
+    try {
+      if (!player || player.__forjaJwBound) return;
+      player.__forjaJwBound = true;
+      reportJwPlayer(player);
+      if (typeof player.on !== 'function') return;
+      player.on('ready', function () { reportJwPlayer(player); });
+      player.on('playlist', function (e) {
+        try {
+          var pl = (e && e.playlist) || [];
+          for (var i = 0; i < pl.length; i++) reportJwItem(pl[i]);
+        } catch (_) {}
+        reportJwPlayer(player);
+      });
+      player.on('playlistItem', function () { reportJwPlayer(player); });
+      player.on('meta', function (e) {
+        try {
+          if (e && e.metadata && e.metadata.file) report(e.metadata.file);
+        } catch (_) {}
+      });
+      try {
+        var origSetup = player.setup;
+        if (typeof origSetup === 'function' && !origSetup.__forjaSetup) {
+          var wrappedSetup = function (config) {
+            try {
+              if (config) {
+                if (config.file) report(config.file);
+                reportJwItem(config);
+                if (config.playlist && config.playlist.length) {
+                  for (var i = 0; i < config.playlist.length; i++) {
+                    reportJwItem(config.playlist[i]);
+                  }
+                }
+              }
+            } catch (_) {}
+            return origSetup.apply(this, arguments);
+          };
+          wrappedSetup.__forjaSetup = true;
+          player.setup = wrappedSetup;
+        }
+      } catch (_) {}
+    } catch (_) {}
+  }
+  function scanJwInstances() {
+    try {
+      var jw = window.jwplayer;
+      if (typeof jw !== 'function') return;
+      try { hookJwPlayer(jw()); } catch (_) {}
+      try {
+        document.querySelectorAll('[id]').forEach(function (node) {
+          if (!node.id) return;
+          try { hookJwPlayer(jw(node.id)); } catch (_) {}
+        });
+      } catch (_) {}
+    } catch (_) {}
+  }
   function hookJw() {
     try {
       var jw = window.jwplayer;
-      if (typeof jw !== 'function' || jw.__forjaHooked) return;
+      if (typeof jw !== 'function' || jw.__forjaHooked) {
+        scanJwInstances();
+        return;
+      }
       jw.__forjaHooked = true;
       var wrapped = function () {
         var player = jw.apply(this, arguments);
-        try {
-          if (player && typeof player.on === 'function') {
-            player.on('playlist', function (e) {
-              try {
-                var pl = (e && e.playlist) || [];
-                for (var i = 0; i < pl.length; i++) {
-                  if (pl[i] && pl[i].file) report(pl[i].file);
-                  if (pl[i] && pl[i].sources) {
-                    for (var j = 0; j < pl[i].sources.length; j++) {
-                      var s = pl[i].sources[j];
-                      if (s && s.file) report(s.file);
-                    }
-                  }
-                }
-              } catch (_) {}
-            });
-            player.on('meta', function (e) {
-              try {
-                if (e && e.metadata && e.metadata.file) report(e.metadata.file);
-              } catch (_) {}
-            });
-          }
-        } catch (_) {}
+        hookJwPlayer(player);
         return player;
       };
       wrapped.__forjaHooked = true;
@@ -1097,6 +1361,7 @@ const _liveEmbedMediaSpyJs = r'''
         }
       } catch (_) {}
       window.jwplayer = wrapped;
+      scanJwInstances();
     } catch (_) {}
   }
   try {
@@ -1121,6 +1386,18 @@ const _liveEmbedMediaSpyJs = r'''
       performance.getEntriesByType('resource').forEach(function (e) {
         if (e && e.name) report(e.name);
       });
+    } catch (_) {}
+    try {
+      scanJwInstances();
+    } catch (_) {}
+    // Page HTML often embeds the tokenised playlist before JW play.
+    try {
+      var html = document.documentElement && document.documentElement.innerHTML;
+      if (html && html.length) {
+        var re = /https?:\/\/[^"'\\\s<>]+(?:\.m3u8|indianservers\.st\/[^"'\\\s<>]*)/gi;
+        var m;
+        while ((m = re.exec(html)) !== null) report(m[0]);
+      }
     } catch (_) {}
   }
   try {
@@ -1187,6 +1464,7 @@ const _liveEmbedMediaSpyJs = r'''
 
 /// Poll performance / media elements from the catalog wrapper (and fan out to
 /// iframes via postMessage). Used while Android native handoff is waiting.
+/// Also pulls JW playlist `file` URLs that exist before a real play gesture.
 const _liveEmbedSniffPollJs = r'''
 (function () {
   var out = [];
@@ -1196,6 +1474,42 @@ const _liveEmbedSniffPollJs = r'''
       var s = String(u);
       if (s.indexOf('blob:') === 0 || s.indexOf('data:') === 0) return;
       out.push(s);
+    } catch (_) {}
+  }
+  function pushJwItem(item) {
+    try {
+      if (!item) return;
+      if (item.file) push(item.file);
+      if (item.sources && item.sources.length) {
+        for (var i = 0; i < item.sources.length; i++) {
+          var s = item.sources[i];
+          if (s && s.file) push(s.file);
+        }
+      }
+    } catch (_) {}
+  }
+  function pushJwPlayer(p) {
+    try {
+      if (!p) return;
+      try {
+        var pl = p.getPlaylist && p.getPlaylist();
+        if (pl && pl.length) {
+          for (var i = 0; i < pl.length; i++) pushJwItem(pl[i]);
+        }
+      } catch (_) {}
+      try { pushJwItem(p.getPlaylistItem && p.getPlaylistItem()); } catch (_) {}
+      try {
+        var cfg = p.getConfig && p.getConfig();
+        if (cfg) {
+          if (cfg.file) push(cfg.file);
+          pushJwItem(cfg);
+          if (cfg.playlist && cfg.playlist.length) {
+            for (var j = 0; j < cfg.playlist.length; j++) {
+              pushJwItem(cfg.playlist[j]);
+            }
+          }
+        }
+      } catch (_) {}
     } catch (_) {}
   }
   try {
@@ -1208,6 +1522,24 @@ const _liveEmbedSniffPollJs = r'''
       if (el.src) push(el.src);
       if (el.currentSrc) push(el.currentSrc);
     });
+  } catch (_) {}
+  try {
+    var jw = window.jwplayer;
+    if (typeof jw === 'function') {
+      try { pushJwPlayer(jw()); } catch (_) {}
+      document.querySelectorAll('[id]').forEach(function (node) {
+        if (!node.id) return;
+        try { pushJwPlayer(jw(node.id)); } catch (_) {}
+      });
+    }
+  } catch (_) {}
+  try {
+    var html = document.documentElement && document.documentElement.innerHTML;
+    if (html && html.length) {
+      var re = /https?:\/\/[^"'\\\s<>]+(?:\.m3u8|indianservers\.st\/[^"'\\\s<>]*)/gi;
+      var m;
+      while ((m = re.exec(html)) !== null) push(m[0]);
+    }
   } catch (_) {}
   try {
     document.querySelectorAll('iframe').forEach(function (frame) {
@@ -1256,11 +1588,10 @@ Map<String, String> _liveEmbedStreamHeaders(
   final catalogOrigin = catalogRoot == null
       ? null
       : Uri.tryParse(catalogRoot)?.origin;
-  // Streamed CDN (`strmd.st`) usually validates against the **embed** origin
-  // (what worked when handoff was fast). Pass [catalogReferer] only as a
-  // secondary probe attempt.
-  final referer = catalogRoot ??
-      (origin.isNotEmpty ? '$origin/' : embedUrl);
+  // Streamed CDN (`strmd.st`) usually validates against the catalog site
+  // (streamed.pk), not only the embed host. Pass [catalogReferer] on the
+  // primary probe; omit it to try embed-origin as a fallback.
+  final referer = catalogRoot ?? (origin.isNotEmpty ? '$origin/' : embedUrl);
   final headerOrigin = catalogOrigin ?? (origin.isNotEmpty ? origin : null);
   return {
     'User-Agent': _ua['User-Agent']!,

@@ -280,7 +280,8 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
         upNode.requestFocus();
         return KeyEventResult.handled;
       }
-      if (FocusScope.of(context).focusInDirection(TraversalDirection.up)) {
+      // Focused seek node — not FocusScope (full-screen chrome finds no neighbors).
+      if (node.focusInDirection(TraversalDirection.up)) {
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;
@@ -291,7 +292,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
         widget.onTvFocusDown!();
         return KeyEventResult.handled;
       }
-      if (FocusScope.of(context).focusInDirection(TraversalDirection.down)) {
+      if (node.focusInDirection(TraversalDirection.down)) {
         return KeyEventResult.handled;
       }
       return KeyEventResult.ignored;

@@ -14,9 +14,9 @@ On a fresh install, all available tabs are enabled in this order: Search, Home, 
 
 ## What you can do
 
-- Toggle visibility for each available tab (Home, Search, Asian Drama, Anime, IPTV, Live Matches, My List) — on **TV**, **OK** on a row toggles visibility (switch / star / drag handle are mouse-only)
-- Drag to reorder visible tabs (in the app); on the web portal use up/down controls under **Profile settings → Features**
-- Select the star beside a visible tab to make it the menu that opens when you launch the app (and after you switch to this profile mid-session) — mouse / desktop; use a pointer or the web portal for default-tab on TV
+- Toggle visibility for each available tab (Home, Search, Asian Drama, Anime, IPTV, Live Matches, My List) — on **TV**, **OK** on the tab name toggles visibility (same as the switch on desktop)
+- Reorder tabs — **drag** on desktop / phone; **↑/↓** on **TV** (same idea as server reliability order). On the web portal use up/down under **Profile settings → Features**
+- Select the **star** beside a visible tab (or Settings) to make it the menu that opens when you launch the app (and after you switch to this profile mid-session) — works with mouse and with **OK** on TV
 - Restore a cleaner bar by hiding unused hubs
 - Sync the same layout across devices via [cloud sync](cloud-sync.md) (visible tabs + default tab)
 

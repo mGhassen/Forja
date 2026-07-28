@@ -10,7 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** fix · **0 / 2** acceptance |
+| **Progress** | **4 / 4** fix · **0 / 3** acceptance |
+| **Current slice** | Hide progress chrome on ATV Exo (`I125-T04`) — smoke `I125-A03` |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +24,7 @@
 | 1 | I125-T01 | Exo progress: apply duration even when position is still 0; setState when duration first arrives | ✅ |
 | 2 | I125-T02 | Exo native: emit `contentDuration` / timeline window when `Player.duration` is unset | ✅ |
 | 3 | I125-T03 | IPTV chrome: always show progress row — VOD scrubber, live EPG (or live-edge) track + logo + time | ✅ |
+| 4 | I125-T04 | Android TV Exo: hide bottom progress row (live track and VOD scrubber); keep transport + ←/→ VOD seek | ✅ |
 
 ---
 
@@ -32,6 +34,7 @@
 |--:|----|-------------|--------|
 | 1 | I125-A01 | Android TV IPTV live (Exo): controls show logo + green progress track (EPG fill when guide exists) | ⬜ |
 | 2 | I125-A02 | Android TV IPTV movie/series (Exo): scrubber appears once duration is known (including at 0:00) | ⬜ |
+| 3 | I125-A03 | Android TV IPTV (Exo): bottom progress row is absent; transport controls remain; VOD ←/→ seek still works | ⬜ |
 
 ---
 
@@ -39,6 +42,8 @@
 
 On **Android TV** with **ExoPlayer**, IPTV chrome often had **no progress bar**: live hid the row entirely (`_isVod` false when duration is 0), and VOD could stay without a scrubber when Exo reported duration while position was still `0` (duration update was gated on position change).
 
-**Fix:** always show the progress row; live uses EPG progress (or a full live-edge track); Exo duration plumbing fixed so VOD mounts the scrubber as soon as duration is known.
+**Fix (duration plumbing):** Exo duration updates apply even at position 0 so VOD can mount a scrubber when duration is known (`I125-T01`–`T02`).
+
+**Product (ATV Exo chrome):** After always-showing the progress row (`I125-T03`), product chose **no** bottom progress bar on Android TV Exo — hide live track and VOD scrubber (`I125-T04`). Phone/desktop and MediaKit keep the progress row. `I125-A01`/`A02` describe the earlier always-show intent and are superseded by `I125-A03`.
 
 **Related:** [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) · [122](122-[open]-android-tv-iptv-player-lost-dpad.md) · [iptv-xtream](../features/live/iptv-xtream.md)

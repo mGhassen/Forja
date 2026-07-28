@@ -35,6 +35,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   SettingsVisibility? _visibility;
   final FocusScopeNode _detailScope =
       FocusScopeNode(debugLabel: 'settings-detail');
+  int _detailEnterToken = 0;
 
   @override
   void initState() {
@@ -75,32 +76,16 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     );
   }
 
-  bool _focusDetailFirst() {
-    if (!_detailScope.canRequestFocus) return false;
-    final first = OrderedTraversalPolicy().findFirstFocus(_detailScope);
-    if (first == null || !first.canRequestFocus) {
-      _detailScope.requestFocus();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_detailScope.hasFocus) return;
-        final retry = OrderedTraversalPolicy().findFirstFocus(_detailScope);
-        if (retry != null && retry.canRequestFocus) {
-          retry.requestFocus();
-        }
-      });
-      return _detailScope.hasFocus;
-    }
-    first.requestFocus();
-    return true;
-  }
-
+  /// OK / → from the category rail: bump [SettingsDetailEnter] so the detail
+  /// scaffold lands focus on the first right-pane control.
   void _enterDetail(String categoryId) {
     if (categoryId != widget.selectedId) {
       widget.onSelect(categoryId);
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _focusDetailFirst();
-    });
+    setState(() => _detailEnterToken++);
+    if (_detailScope.canRequestFocus) {
+      _detailScope.requestFocus();
+    }
   }
 
   int? _focusedCategoryIndex() {
@@ -119,6 +104,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return false;
 
     if (_detailScope.hasFocus) {
+      if (_detailEnterToken != 0) {
+        setState(() => _detailEnterToken = 0);
+      }
       return _focusSelectedCategory();
     }
 
@@ -200,9 +188,11 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                 child: tv
                     ? FocusScope(
                         node: _detailScope,
-                        child: ShellTvLinearFocusScope(
-                          child: ShellTvLinearFocusEdges(
-                            onBackwardEdge: _focusSelectedCategory,
+                        // D-pad stays in the detail pane. Back (_handlePageBack)
+                        // returns to the category rail — not ← / linear edge.
+                        child: SettingsDetailEnter(
+                          enterToken: _detailEnterToken,
+                          child: ShellTvLinearFocusScope(
                             child: FocusTraversalGroup(
                               policy: OrderedTraversalPolicy(),
                               child: SettingsPageScaffold(

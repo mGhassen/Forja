@@ -79,7 +79,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
         },
         onStreamedSelected: (stream) {
           Navigator.pop(context);
-          _openStreamedEmbed(streamed, stream);
+          unawaited(_openStreamedEmbed(streamed, stream));
         },
       ),
     );
@@ -93,18 +93,15 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     if (!mounted) return;
 
     final streams = <_StreamedStream>[];
-    final ok = await _runWithCancellableLoading(
-      'Loading streams…',
-      () async {
-        try {
-          for (final source in match.sources) {
-            streams.addAll(await _fetchStreamedStreams(source));
-          }
-        } catch (e) {
-          debugPrint('[LiveMatches] Streamed resolve error: $e');
+    final ok = await _runWithCancellableLoading('Loading streams…', () async {
+      try {
+        for (final source in match.sources) {
+          streams.addAll(await _fetchStreamedStreams(source));
         }
-      },
-    );
+      } catch (e) {
+        debugPrint('[LiveMatches] Streamed resolve error: $e');
+      }
+    });
     if (!ok) return;
 
     if (streams.isEmpty) {
@@ -113,7 +110,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     }
 
     if (streams.length == 1) {
-      _openStreamedEmbed(match, streams.first);
+      unawaited(_openStreamedEmbed(match, streams.first));
       return;
     }
 
@@ -128,18 +125,26 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
         streams: streams,
         onStreamSelected: (stream) {
           Navigator.pop(context);
-          _openStreamedEmbed(match, stream);
+          unawaited(_openStreamedEmbed(match, stream));
         },
       ),
     );
   }
 
-  void _openStreamedEmbed(_StreamedMatch match, _StreamedStream stream) {
-    Navigator.push(
+  Future<void> _openStreamedEmbed(
+    _StreamedMatch match,
+    _StreamedStream stream,
+  ) async {
+    final embedUrl = await liveEmbedResolveNestedPlayerUrl(
+      stream.embedUrl,
+      catalogReferer: _streamedReferer,
+    );
+    if (!mounted) return;
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => _LiveMatchesEmbedPlayerScreen(
-          embedUrl: stream.embedUrl,
+          embedUrl: embedUrl,
           title: match.title,
           subtitle: match.categoryLabel,
           badgeLabel: 'Streamed',

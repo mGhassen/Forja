@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Create a drag-to-Applications DMG from the release .app bundle.
+# Create a drag-to-Applications DMG (large icons, matrix-style light background).
 # Usage: package_macos_dmg.sh <version> [arch]
 #   arch: arm64 | x86_64 (default: host machine from uname -m)
 # Output: dist/Forja-<version>-macos-<arch>.dmg
@@ -9,9 +9,23 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="${1:?usage: package_macos_dmg.sh <version> [arch]}"
 APP="$ROOT/apps/forja"
-APP_BUNDLE="$APP/build/macos/Build/Products/Release/forja.app"
+RELEASE_DIR="$APP/build/macos/Build/Products/Release"
+BACKGROUND="$ROOT/scripts/dmg/background.png"
 DIST="$ROOT/dist"
 STAGING="$DIST/dmg-staging"
+RW_DMG="$DIST/dmg-rw-$$.dmg"
+MOUNT_ROOT="/Volumes"
+VOLNAME="Forja"
+APP_NAME="Forja.app"
+
+# Finder window (points). Background PNG is 2× (1320×800) for Retina.
+WIN_W=660
+WIN_H=400
+ICON_SIZE=128
+ICON_APP_X=180
+ICON_APP_Y=190
+ICON_APPS_X=480
+ICON_APPS_Y=190
 
 normalize_arch() {
   case "$1" in
@@ -24,12 +38,40 @@ normalize_arch() {
   esac
 }
 
+resolve_app_bundle() {
+  if [[ -d "$RELEASE_DIR/Forja.app" ]]; then
+    echo "$RELEASE_DIR/Forja.app"
+  elif [[ -d "$RELEASE_DIR/forja.app" ]]; then
+    echo "$RELEASE_DIR/forja.app"
+  else
+    echo ""
+  fi
+}
+
+detach_volume() {
+  local vol="$1"
+  local i
+  for i in 1 2 3 4 5; do
+    if hdiutil detach "$vol" -quiet 2>/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  hdiutil detach "$vol" -force -quiet 2>/dev/null || true
+}
+
 ARCH="$(normalize_arch "${2:-$(uname -m)}")"
 DMG_NAME="Forja-${VERSION}-macos-${ARCH}.dmg"
 DMG_PATH="$DIST/$DMG_NAME"
+APP_BUNDLE="$(resolve_app_bundle)"
 
-if [[ ! -d "$APP_BUNDLE" ]]; then
-  echo "error: missing $APP_BUNDLE — run flutter build macos --release first" >&2
+if [[ -z "$APP_BUNDLE" ]]; then
+  echo "error: missing Forja.app under $RELEASE_DIR — run flutter build macos --release first" >&2
+  exit 1
+fi
+
+if [[ ! -f "$BACKGROUND" ]]; then
+  echo "error: missing DMG background $BACKGROUND" >&2
   exit 1
 fi
 
@@ -38,9 +80,15 @@ if [[ ! -f "$APP_BUNDLE/Contents/Frameworks/libffi.dylib" ]]; then
   exit 1
 fi
 
-EXE="$APP_BUNDLE/Contents/MacOS/forja"
-if [[ ! -f "$EXE" ]]; then
-  echo "error: missing executable $EXE" >&2
+EXE=""
+for candidate in Forja forja; do
+  if [[ -f "$APP_BUNDLE/Contents/MacOS/$candidate" ]]; then
+    EXE="$APP_BUNDLE/Contents/MacOS/$candidate"
+    break
+  fi
+done
+if [[ -z "$EXE" ]]; then
+  echo "error: missing executable under $APP_BUNDLE/Contents/MacOS/" >&2
   exit 1
 fi
 
@@ -58,17 +106,94 @@ if command -v lipo >/dev/null 2>&1; then
   fi
 fi
 
-rm -rf "$STAGING" "$DMG_PATH"
-mkdir -p "$STAGING" "$DIST"
-cp -R "$APP_BUNDLE" "$STAGING/"
-ln -s /Applications "$STAGING/Applications"
+cleanup() {
+  if [[ -n "${VOLUME:-}" && -d "$VOLUME" ]]; then
+    detach_volume "$VOLUME" || true
+  fi
+  rm -rf "$STAGING"
+  rm -f "$RW_DMG"
+}
+trap cleanup EXIT
 
+rm -rf "$STAGING" "$DMG_PATH" "$RW_DMG"
+mkdir -p "$STAGING/.background" "$DIST"
+
+cp -R "$APP_BUNDLE" "$STAGING/$APP_NAME"
+ln -s /Applications "$STAGING/Applications"
+cp "$BACKGROUND" "$STAGING/.background/background.png"
+
+# Writable image so Finder can write .DS_Store (icon layout + background).
 hdiutil create \
-  -volname "Forja $VERSION" \
+  -volname "$VOLNAME" \
   -srcfolder "$STAGING" \
   -ov \
-  -format UDZO \
-  "$DMG_PATH"
+  -format UDRW \
+  -fs HFS+ \
+  "$RW_DMG"
 
-rm -rf "$STAGING"
+# Mount read-write; resolve the volume path Finder will use.
+ATTACH_OUT="$(hdiutil attach -readwrite -noverify -noautoopen "$RW_DMG")"
+DEVICE="$(echo "$ATTACH_OUT" | awk 'NR==1 {print $1}')"
+VOLUME="$MOUNT_ROOT/$VOLNAME"
+if [[ ! -d "$VOLUME" ]]; then
+  # Rare: volume name collision — pick the mount point from attach output.
+  VOLUME="$(echo "$ATTACH_OUT" | awk '/\/Volumes\// {print $3; exit}')"
+fi
+if [[ ! -d "$VOLUME" ]]; then
+  echo "error: failed to mount $RW_DMG" >&2
+  echo "$ATTACH_OUT" >&2
+  exit 1
+fi
+
+# Bless Finder window: matrix bg, large icons, app → Applications.
+# Retries absorb Finder flakiness on CI runners.
+configure_finder() {
+  osascript <<EOF
+tell application "Finder"
+  tell disk "$VOLNAME"
+    open
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set the bounds of container window to {200, 120, $((200 + WIN_W)), $((120 + WIN_H))}
+    set viewOptions to the icon view options of container window
+    set arrangement of viewOptions to not arranged
+    set icon size of viewOptions to $ICON_SIZE
+    set background picture of viewOptions to file ".background:background.png"
+    set position of item "$APP_NAME" to {$ICON_APP_X, $ICON_APP_Y}
+    set position of item "Applications" to {$ICON_APPS_X, $ICON_APPS_Y}
+    update without registering applications
+    delay 1
+    close
+    open
+    delay 1
+  end tell
+end tell
+EOF
+}
+
+ok=0
+for attempt in 1 2 3 4 5; do
+  if configure_finder; then
+    ok=1
+    break
+  fi
+  echo "warning: Finder DMG layout attempt $attempt failed; retrying…" >&2
+  sleep 2
+done
+if [[ "$ok" -ne 1 ]]; then
+  echo "error: could not apply DMG Finder layout via AppleScript" >&2
+  exit 1
+fi
+
+# Flush .DS_Store before detach.
+sync
+sleep 1
+detach_volume "$VOLUME"
+VOLUME=""
+
+# Compressed final image.
+hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG_PATH"
+rm -f "$RW_DMG"
+
 echo "Created $DMG_PATH"

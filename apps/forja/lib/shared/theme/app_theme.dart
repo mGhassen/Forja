@@ -359,8 +359,10 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       } else if (key == LogicalKeyboardKey.arrowDown) {
         direction = TraversalDirection.down;
       }
-      if (direction != null &&
-          FocusScope.of(context).focusInDirection(direction)) {
+      // Use the focused control node — NOT FocusScope.focusInDirection.
+      // Player chrome wraps a full-screen FocusScope; directional search from
+      // that scope's rect finds no neighbors, so D-pad looks dead on Play.
+      if (direction != null && _effectiveNode.focusInDirection(direction)) {
         return KeyEventResult.handled;
       }
     }

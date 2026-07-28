@@ -30,18 +30,22 @@ class MpvExclusiveSession {
     _trackedPlayers.remove(player);
   }
 
-  /// Release background audio players and wait for any in-flight video dispose.
+  /// Wait for any in-flight video dispose, then release background audio
+  /// players on macOS (exclusive [Player]).
+  ///
+  /// Pending dispose is tracked on **all** platforms: Android timed teardown
+  /// (issue 128) can leave mpv half-alive; opening a new IPTV/Live MediaKit
+  /// [Player] before that finishes yields black screen / format errors.
   Future<void> prepareForVideoPlayer() async {
-    if (!required) return;
     try {
       await _pendingVideoDispose?.timeout(const Duration(seconds: 2));
     } catch (_) {}
+    if (!required) return;
     await MusicPlayerService().releaseMpvForVideo();
     await AudiobookPlayerService().releaseMpvForVideo();
   }
 
   void trackVideoDispose(Future<void> disposeFuture) {
-    if (!required) return;
     _pendingVideoDispose = disposeFuture;
     unawaited(disposeFuture.whenComplete(() {
       if (identical(_pendingVideoDispose, disposeFuture)) {

@@ -3,12 +3,18 @@ part of 'iptv_pt_player_screen.dart';
 class _SourceChip extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
+  final FocusNode? focusNode;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   const _SourceChip({
     required this.label,
     required this.onTap,
+    this.focusNode,
     this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   @override
@@ -39,7 +45,10 @@ class _SourceChipState extends State<_SourceChip> {
       onTap: widget.onTap,
       borderRadius: 20,
       scaleOnFocus: 1.0,
+      focusNode: widget.focusNode,
       onDownEdge: widget.onDownEdge,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
       onFocusChange: tv ? (f) => setState(() => _focused = f) : null,
       onHoverChange: tv ? (h) => setState(() => _hovered = h) : null,
       child: AnimatedContainer(
@@ -90,6 +99,8 @@ class _IptvPlayerTopBarIcon extends StatefulWidget {
     this.onPressed,
     this.onPressedWithContext,
     this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
   }) : assert(onPressed != null || onPressedWithContext != null);
 
   final IconData icon;
@@ -98,6 +109,8 @@ class _IptvPlayerTopBarIcon extends StatefulWidget {
   final VoidCallback? onPressed;
   final ValueChanged<BuildContext>? onPressedWithContext;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   State<_IptvPlayerTopBarIcon> createState() => _IptvPlayerTopBarIconState();
@@ -164,6 +177,8 @@ class _IptvPlayerTopBarIconState extends State<_IptvPlayerTopBarIcon> {
             scaleOnFocus: 1.0,
             focusNode: widget.focusNode,
             onDownEdge: widget.onDownEdge,
+            onLeftEdge: widget.onLeftEdge,
+            onRightEdge: widget.onRightEdge,
             onFocusChange: (focused) => setState(() => _focused = focused),
             onHoverChange: (hovered) => setState(() => _hovered = hovered),
             child: child,

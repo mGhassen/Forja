@@ -13,7 +13,8 @@ import 'package:forja/shared/platform/platform_info.dart';
 /// **Android TV:** SurfaceView + hybrid composition — TextureView has poor
 /// frame timing and often cannot paint at full display resolution on leanback
 /// (UI layer is upscaled). Hybrid composition is required so SurfaceView is
-/// not mis-composited (issue 102 tiling).
+/// not mis-composited (issue 102 tiling). SurfaceView also enables Media3's
+/// Compose surface-sync workaround so frames are not zoomed/cropped (issue 129).
 class ExoPlayerView extends StatelessWidget {
   const ExoPlayerView({super.key, required this.viewId});
 

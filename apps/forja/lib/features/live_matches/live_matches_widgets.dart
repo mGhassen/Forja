@@ -26,16 +26,15 @@ class _LiveMatchesServersTopBarButtonState
   bool _focused = false;
   bool _hovered = false;
 
-  bool get _tv =>
-      ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+  bool get _tv => ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
   bool get _tvFocused => _tv && _focused;
 
   bool get _active => ShellInputPolicy.interactiveActive(
-        ShellScope.inputPolicyOf(context),
-        hovered: _hovered,
-        focused: _focused,
-      );
+    ShellScope.inputPolicyOf(context),
+    hovered: _hovered,
+    focused: _focused,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -126,10 +125,10 @@ class _LiveMatchesRefreshTopBarButtonState
   bool _hovered = false;
 
   bool get _active => ShellInputPolicy.interactiveActive(
-        ShellScope.inputPolicyOf(context),
-        hovered: _hovered,
-        focused: _focused,
-      );
+    ShellScope.inputPolicyOf(context),
+    hovered: _hovered,
+    focused: _focused,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -191,14 +190,16 @@ class _LiveMatchesServerSheet extends StatefulWidget {
 
 class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
   static const _rowId = 'live-server-sheet';
-  final FocusNode _firstFocus =
-      FocusNode(debugLabel: 'live-server-sheet-first');
+  final FocusNode _firstFocus = FocusNode(
+    debugLabel: 'live-server-sheet-first',
+  );
 
   List<_LiveMatchesServer> get _servers => [
-        _LiveMatchesServer.all,
-        ..._LiveMatchesServer.values
-            .where((server) => server != _LiveMatchesServer.all),
-      ];
+    _LiveMatchesServer.all,
+    ..._LiveMatchesServer.values.where(
+      (server) => server != _LiveMatchesServer.all,
+    ),
+  ];
 
   @override
   void initState() {
@@ -806,8 +807,9 @@ class _CdnSportCardState extends State<_CdnSportCard> {
       borderRadius: 14,
       scaleOnFocus: 1.0,
       gridIndex: widget.tvZone == ShellTvZone.grid ? widget.gridIndex : null,
-      gridColumns:
-          widget.tvZone == ShellTvZone.grid ? widget.gridColumns : null,
+      gridColumns: widget.tvZone == ShellTvZone.grid
+          ? widget.gridColumns
+          : null,
       listIndex: widget.tvZone == ShellTvZone.row ? widget.gridIndex : null,
       onUpEdge: widget.onUpEdge,
       onLeftEdge: widget.onLeftEdge,
@@ -842,8 +844,9 @@ class _CdnChannelSheet extends StatefulWidget {
 
 class _CdnChannelSheetState extends State<_CdnChannelSheet> {
   static const _rowId = 'live-cdn-channel-sheet';
-  final FocusNode _firstFocus =
-      FocusNode(debugLabel: 'live-cdn-channel-sheet-first');
+  final FocusNode _firstFocus = FocusNode(
+    debugLabel: 'live-cdn-channel-sheet-first',
+  );
 
   @override
   void initState() {
@@ -975,10 +978,7 @@ class _CdnChannelSheetRowState extends State<_CdnChannelSheetRow> {
                   color: ForjaShellColors.sectionAccent,
                 ),
               )
-            : Icon(
-                Icons.tv_rounded,
-                color: ForjaShellColors.sectionAccent,
-              ),
+            : Icon(Icons.tv_rounded, color: ForjaShellColors.sectionAccent),
         title: Text(
           widget.channel.name,
           style: TextStyle(
@@ -989,16 +989,10 @@ class _CdnChannelSheetRowState extends State<_CdnChannelSheetRow> {
         subtitle: widget.channel.viewers > 0
             ? Text(
                 '${widget.channel.viewers} viewers',
-                style: const TextStyle(
-                  color: Colors.white38,
-                  fontSize: 11,
-                ),
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
               )
             : null,
-        trailing: const Icon(
-          Icons.chevron_right,
-          color: Colors.white38,
-        ),
+        trailing: const Icon(Icons.chevron_right, color: Colors.white38),
       ),
     );
   }
@@ -1042,16 +1036,24 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _exiting = false;
   bool _playing = false;
   bool _muted = false;
+
   /// Android: cover the broken WebView lock UI while we sniff HLS for native.
   bool _androidNativeHandoff = false;
   bool _androidHandoffStarted = false;
   bool _androidFallbackStarted = false;
+
   /// Permanent failure — stop sniff/handoff and leave the route.
   bool _androidHandoffAbandoned = false;
+
   /// Last sniffed media/variant playlist if master was never seen.
   String? _androidVariantFallback;
-  /// Soft recover after Cookie/Referer probe fail (same URL may work next).
-  int _androidSoftRecoverCount = 0;
+
+  /// Streamed: `#EXTM3U` body captured from WebView (do not re-GET CDN).
+  String? _androidCapturedPlaylistUrl;
+  String? _androidCapturedPlaylistBody;
+
+  /// Streamed: loopback front that fetches via WebView (Exo never hits CDN).
+  LiveEmbedWebViewProxy? _streamedWebViewProxy;
   Timer? _loadingWatchdog;
   Timer? _adWindowCloseTimer;
   Timer? _androidHandoffWatchdog;
@@ -1068,6 +1070,7 @@ class _LiveMatchesEmbedPlayerScreenState
   /// so sniff is same-origin under the cover overlay.
   late final InAppWebViewInitialData? _initialData;
   late final URLRequest? _initialUrlRequest;
+
   /// Per-provider Android technique (PPV ≠ Streamed). Never cross settings.
   late final LiveEmbedAndroidHandoffProfile _androidProfile;
   late final InAppWebViewSettings _initialSettings;
@@ -1146,7 +1149,8 @@ class _LiveMatchesEmbedPlayerScreenState
     // (issue 046). On Android, System WebView cannot play embeds in-page
     // (CORS + host lock) — sniff HLS (with cookies) and hand off to native.
     // Exo must treat `/hls-proxy` as HLS (MimeTypes.APPLICATION_M3U8).
-    _androidNativeHandoff = !kIsWeb &&
+    _androidNativeHandoff =
+        !kIsWeb &&
         Platform.isAndroid &&
         liveEmbedAndroidNativeHandoff(embedUrl);
     // PPV and Streamed use different load + Referer strategies — pick once.
@@ -1201,10 +1205,7 @@ class _LiveMatchesEmbedPlayerScreenState
       _initialData = null;
       _initialUrlRequest = URLRequest(
         url: WebUri(embedUrl),
-        headers: {
-          'Referer': wrapperBase,
-          'User-Agent': _ua['User-Agent']!,
-        },
+        headers: {'Referer': wrapperBase, 'User-Agent': _ua['User-Agent']!},
       );
     } else {
       // Streamed (and desktop/iOS): catalog iframe wrapper.
@@ -1254,9 +1255,14 @@ class _LiveMatchesEmbedPlayerScreenState
         debugPrint('[LiveMatches] Android HLS sniff timed out');
         unawaited(_androidSniffTimeoutFallback());
       });
-      // Keep nudging play + polling resource URLs while the cover is up —
-      // JW embeds often only request HLS after a (muted) play attempt.
-      _androidSniffPoll = Timer.periodic(const Duration(seconds: 2), (_) {
+      // Keep nudging play + polling JW playlist / resource URLs while the
+      // cover is up. embedindia often only XHRs HLS after muted JW play /
+      // a synthetic center tap; playlist `file` may also be readable earlier.
+      _androidSniffPoll = Timer.periodic(const Duration(seconds: 1), (_) {
+        unawaited(_pollAndroidSniffCandidates());
+      });
+      // First nudge ASAP — do not wait a full poll period for JW setup.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_pollAndroidSniffCandidates());
       });
     }
@@ -1300,7 +1306,46 @@ class _LiveMatchesEmbedPlayerScreenState
     _androidHandoffWatchdog?.cancel();
     _androidSniffPoll?.cancel();
     debugPrint('[LiveMatches] Android sniffed media: $url');
-    unawaited(_handOffToNativePlayer(url));
+    if (_androidProfile.isStreamed) {
+      // New path: wait briefly for captured playlist body, never /hls-proxy probe.
+      unawaited(_handOffStreamedNative(url));
+    } else {
+      unawaited(_handOffToNativePlayer(url));
+    }
+  }
+
+  void _onCapturedPlaylist(String rawUrl, String body) {
+    // Do **not** gate on `_exiting`: Streamed handoff sets exiting while still
+    // waiting for the in-flight `#EXTM3U` body (URL often sniffs first).
+    if (!_androidNativeHandoff ||
+        _androidHandoffAbandoned ||
+        _androidFallbackStarted) {
+      return;
+    }
+    final url = rawUrl.trim();
+    final text = body.trimLeft();
+    if (url.isEmpty || !text.startsWith('#EXTM3U')) return;
+    if (!_liveEmbedIsSniffableMediaUrl(url)) return;
+    final low = url.toLowerCase();
+    if (low.contains('/tracks-') || low.contains('mono.ts.m3u8')) {
+      // Prefer master; keep variant body only if nothing better lands.
+      if (_androidCapturedPlaylistBody == null) {
+        _androidCapturedPlaylistUrl = url;
+        _androidCapturedPlaylistBody = text;
+        _androidVariantFallback ??= url;
+      }
+      return;
+    }
+    _androidCapturedPlaylistUrl = url;
+    _androidCapturedPlaylistBody = text;
+    debugPrint(
+      '[LiveMatches] captured playlist body '
+      '(${text.length} chars) $url',
+    );
+    // Kick handoff if sniff URL never arrived (body-only path).
+    if (!_androidHandoffStarted) {
+      _onSniffedMediaUrl(url);
+    }
   }
 
   Future<void> _pollAndroidSniffCandidates() async {
@@ -1315,9 +1360,10 @@ class _LiveMatchesEmbedPlayerScreenState
     final ctrl = _webViewController;
     if (ctrl == null) return;
     try {
-      // Mute: play is only to trigger HLS XHR; cover hides video but not audio.
-      await ctrl.evaluateJavascript(source: _autoplayJs);
+      // Mute-first JW / center-tap play — cover hides video; audio must stay off.
+      // Playlist may already be in jwplayer config before play succeeds.
       await ctrl.evaluateJavascript(source: _embedMediaCommandJs('mute'));
+      await ctrl.evaluateJavascript(source: _autoplayJs);
       await ctrl.evaluateJavascript(source: _embedMediaCommandJs('play'));
       final raw = await ctrl.evaluateJavascript(source: _liveEmbedSniffPollJs);
       if (raw is List) {
@@ -1367,9 +1413,8 @@ class _LiveMatchesEmbedPlayerScreenState
     _androidFallbackStarted = true;
     _androidSniffPoll?.cancel();
 
-    final blockedOnTv = !kIsWeb &&
-        Platform.isAndroid &&
-        isAndroidTvHeadlessWebViewBlocked;
+    final blockedOnTv =
+        !kIsWeb && Platform.isAndroid && isAndroidTvHeadlessWebViewBlocked;
     if (!blockedOnTv) {
       debugPrint('[LiveMatches] Android sniff timeout → StreamExtractor');
       try {
@@ -1442,16 +1487,14 @@ class _LiveMatchesEmbedPlayerScreenState
     await _exitPlayer(force: true);
   }
 
-  /// Proxy Referer/Origin — **provider-specific**, never mixed.
+  /// Proxy Referer/Origin — PPV only (Streamed no longer uses `/hls-proxy`).
   Map<String, String> _androidProxyHeadersForAttempt(int attempt) {
     switch (_androidProfile.kind) {
       case LiveEmbedProviderKind.ppv:
         // Always full embedindia URL — catalog-only Referer 403s the CDN.
         return _ppvEmbedStreamHeaders(widget.embedUrl);
       case LiveEmbedProviderKind.streamed:
-        // Happy path that worked when Streamed was fast: embed-origin Referer.
-        // Catalog streamed.pk only on the second probe attempt.
-        final useCatalog = attempt >= 2;
+        final useCatalog = attempt == 1 || attempt == 3;
         return _liveEmbedStreamHeaders(
           widget.embedUrl,
           catalogReferer: useCatalog ? widget.referer : null,
@@ -1459,19 +1502,285 @@ class _LiveMatchesEmbedPlayerScreenState
     }
   }
 
+  /// When CORS hides `#EXTM3U` from the JS spy, re-GET with WebView cookies.
+  Future<String?> _trySeedStreamedPlaylistBody(
+    String mediaUrl, {
+    int maxAttempts = 3,
+  }) async {
+    HttpClient? client;
+    try {
+      final attempts = maxAttempts < 1 ? 1 : maxAttempts;
+      for (var attempt = 1; attempt <= attempts; attempt++) {
+        if (_androidHandoffAbandoned || !mounted) return null;
+        final headers = Map<String, String>.from(
+          _androidProxyHeadersForAttempt(attempt),
+        );
+        final cookie = await _liveEmbedCollectCookieHeader(
+          embedUrl: widget.embedUrl,
+          streamUrl: mediaUrl,
+          catalogReferer: widget.referer,
+        );
+        if (cookie != null && cookie.isNotEmpty) {
+          headers['Cookie'] = cookie;
+        }
+        client?.close(force: true);
+        client = HttpClient();
+        client.connectionTimeout = const Duration(seconds: 8);
+        final req = await client.getUrl(Uri.parse(mediaUrl));
+        headers.forEach(req.headers.set);
+        final resp = await req.close().timeout(const Duration(seconds: 10));
+        final text = await resp.transform(utf8.decoder).join();
+        if (resp.statusCode < 400 && text.trimLeft().startsWith('#EXTM3U')) {
+          debugPrint(
+            '[LiveMatches] streamed playlist seeded via Dart '
+            '(attempt $attempt, ${text.length} chars)',
+          );
+          return text;
+        }
+        final snip = text.length > 60 ? text.substring(0, 60) : text;
+        debugPrint(
+          '[LiveMatches] streamed seed attempt $attempt '
+          'status=${resp.statusCode} body=${snip.replaceAll('\n', ' ')}',
+        );
+        if (attempt < attempts) {
+          await Future<void>.delayed(Duration(milliseconds: 200 * attempt));
+        }
+      }
+    } catch (e) {
+      debugPrint('[LiveMatches] streamed playlist seed failed: $e');
+    } finally {
+      client?.close(force: true);
+    }
+    return null;
+  }
+
+  /// Streamed Android/ATV: Exo never hits `strmd.st` directly (OkHttp 403s).
+  /// Capture `#EXTM3U` from WebView → local WebView-fetch proxy → Exo on
+  /// loopback. Keep this route mounted under the player so Chromium can fetch.
+  Future<void> _handOffStreamedNative(String mediaUrl) async {
+    if (_androidHandoffAbandoned) return;
+    // Do not set `_exiting` until the playlist body is ready — the spy still
+    // needs to deliver `liveMediaPlaylist` after the URL sniff.
+    _loadingWatchdog?.cancel();
+    _androidHandoffWatchdog?.cancel();
+    _androidSniffPoll?.cancel();
+
+    // Wait for body BEFORE pausing — pause can cancel an in-flight HLS fetch.
+    for (var i = 0; i < 50; i++) {
+      if (_androidCapturedPlaylistBody != null &&
+          _androidCapturedPlaylistBody!.trimLeft().startsWith('#EXTM3U')) {
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      if (!mounted || _androidHandoffAbandoned) return;
+    }
+
+    final capturedUrl = _androidCapturedPlaylistUrl ?? mediaUrl;
+    var body = _androidCapturedPlaylistBody;
+
+    // Last chance: ask the embed iframe to re-fetch the playlist via Chromium.
+    if (body == null || !body.trimLeft().startsWith('#EXTM3U')) {
+      debugPrint(
+        '[LiveMatches] streamed: no captured body yet — waiting on proxy seed',
+      );
+      // Soft nudge play once more so HLS.js refetches, then wait again.
+      try {
+        await _webViewController?.evaluateJavascript(
+          source: _embedMediaCommandJs('mute'),
+        );
+        await _webViewController?.evaluateJavascript(
+          source: _embedMediaCommandJs('play'),
+        );
+      } catch (_) {}
+      for (var i = 0; i < 30; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        if (_androidCapturedPlaylistBody != null &&
+            _androidCapturedPlaylistBody!.trimLeft().startsWith('#EXTM3U')) {
+          body = _androidCapturedPlaylistBody;
+          break;
+        }
+        if (!mounted || _androidHandoffAbandoned) return;
+      }
+    }
+
+    // CORS often hides the body from JS; seed via Dart + WebView cookies.
+    if (body == null || !body.trimLeft().startsWith('#EXTM3U')) {
+      body = await _trySeedStreamedPlaylistBody(capturedUrl);
+      if (body != null) {
+        _androidCapturedPlaylistUrl = capturedUrl;
+        _androidCapturedPlaylistBody = body;
+      }
+    }
+
+    if (body == null || !body.trimLeft().startsWith('#EXTM3U')) {
+      // Last resort: classic Cookie + `/hls-proxy` (may still 403 on some CDNs).
+      debugPrint(
+        '[LiveMatches] streamed: no body — falling back to /hls-proxy',
+      );
+      await _handOffStreamedViaHlsProxy(capturedUrl);
+      return;
+    }
+
+    final playlistBody = body;
+    _exiting = true;
+    _mediaStopped = true;
+    try {
+      await _webViewController?.evaluateJavascript(
+        source: _embedMediaCommandJs('pause'),
+      );
+    } catch (_) {}
+
+    final proxy = LiveEmbedWebViewProxy();
+    proxy.attachController(_webViewController);
+    try {
+      await proxy.start(
+        playlistBody: playlistBody,
+        playlistSourceUrl: capturedUrl,
+      );
+    } catch (e) {
+      debugPrint('[LiveMatches] WebView proxy start failed: $e');
+      await proxy.stop();
+      await _abandonAndroidHandoff('streamed: proxy start failed');
+      return;
+    }
+    if (proxy.playlistUrl.isEmpty) {
+      await proxy.stop();
+      await _abandonAndroidHandoff('streamed: proxy has no port');
+      return;
+    }
+    _streamedWebViewProxy = proxy;
+
+    if (!mounted || _androidHandoffAbandoned) {
+      await proxy.stop();
+      _streamedWebViewProxy = null;
+      return;
+    }
+
+    final playUrl = proxy.playlistUrl;
+    debugPrint(
+      '[LiveMatches] streamed Android handoff (webview-proxy) → $playUrl',
+    );
+    final title = widget.title;
+    final subtitle = widget.subtitle;
+    final label = widget.badgeLabel;
+    // push (not replacement): keep WebView alive for Chromium CDN fetches.
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => IptvPtPlayerScreen(
+          sources: [IptvPlaySource(url: playUrl, label: label)],
+          title: title,
+          subtitle: subtitle,
+          forceBuiltInEngine: BuiltInPlayerEngine.exoPlayer,
+        ),
+      ),
+    );
+    // Player popped — tear down proxy + embed.
+    await _streamedWebViewProxy?.stop();
+    _streamedWebViewProxy = null;
+    if (mounted) {
+      await _exitPlayer(force: true);
+    }
+  }
+
+  /// Streamed fallback when `#EXTM3U` body never lands — Cookie + `/hls-proxy`.
+  Future<void> _handOffStreamedViaHlsProxy(String mediaUrl) async {
+    if (_androidHandoffAbandoned) return;
+    _exiting = true;
+    _mediaStopped = true;
+    try {
+      await _webViewController?.evaluateJavascript(
+        source: _embedMediaCommandJs('pause'),
+      );
+    } catch (_) {}
+
+    await Future<void>.delayed(_androidProfile.cookieSettle);
+    if (!mounted || _androidHandoffAbandoned) return;
+
+    String? playUrl;
+    final maxAttempts = _androidProfile.maxProbeAttempts;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (_androidHandoffAbandoned || !mounted) return;
+      final headers = Map<String, String>.from(
+        _androidProxyHeadersForAttempt(attempt),
+      );
+      final cookie = await _liveEmbedCollectCookieHeader(
+        embedUrl: widget.embedUrl,
+        streamUrl: mediaUrl,
+        catalogReferer: widget.referer,
+      );
+      if (cookie != null && cookie.isNotEmpty) {
+        headers['Cookie'] = cookie;
+      } else {
+        debugPrint(
+          '[LiveMatches] streamed /hls-proxy attempt $attempt: no cookies yet',
+        );
+      }
+      playUrl = mediaUrl;
+      try {
+        final proxy = LocalServerService();
+        await proxy.start();
+        if (proxy.port > 0) {
+          playUrl = proxy.getHlsProxyUrl(mediaUrl, headers);
+        }
+      } catch (e) {
+        debugPrint('[LiveMatches] streamed HLS proxy failed: $e');
+      }
+      if (playUrl == null || !playUrl.contains('/hls-proxy')) {
+        break;
+      }
+      final ok = await _probeHlsProxyPlaylist(playUrl);
+      if (ok) break;
+      debugPrint(
+        '[LiveMatches] streamed HLS proxy probe failed '
+        '(attempt $attempt/$maxAttempts)',
+      );
+      playUrl = null;
+      if (attempt < maxAttempts) {
+        await Future<void>.delayed(Duration(milliseconds: 350 * attempt));
+        if (!mounted || _androidHandoffAbandoned) return;
+      }
+    }
+
+    if (playUrl == null || playUrl.isEmpty) {
+      await _abandonAndroidHandoff('streamed: body + /hls-proxy exhausted');
+      return;
+    }
+
+    debugPrint('[LiveMatches] streamed Android handoff (/hls-proxy) → $playUrl');
+    if (!mounted || _androidHandoffAbandoned) return;
+    final title = widget.title;
+    final subtitle = widget.subtitle;
+    final label = widget.badgeLabel;
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => IptvPtPlayerScreen(
+          sources: [IptvPlaySource(url: playUrl!, label: label)],
+          title: title,
+          subtitle: subtitle,
+          forceBuiltInEngine: BuiltInPlayerEngine.exoPlayer,
+        ),
+      ),
+    );
+  }
+
+  /// PPV Android handoff: Cookie harvest + `/hls-proxy` + probe (unchanged).
   Future<void> _handOffToNativePlayer(String mediaUrl) async {
     if (_exiting || _androidHandoffAbandoned) return;
+    if (_androidProfile.isStreamed) {
+      await _handOffStreamedNative(mediaUrl);
+      return;
+    }
     _exiting = true;
     _mediaStopped = true;
     _loadingWatchdog?.cancel();
     _androidHandoffWatchdog?.cancel();
     _androidSniffPoll?.cancel();
     try {
-      await _webViewController
-          ?.evaluateJavascript(source: _embedMediaCommandJs('pause'));
+      await _webViewController?.evaluateJavascript(
+        source: _embedMediaCommandJs('pause'),
+      );
     } catch (_) {}
 
-    // Streamed: short settle (cookies usually already set). PPV: longer.
     await Future<void>.delayed(_androidProfile.cookieSettle);
     if (!mounted || _androidHandoffAbandoned) return;
 
@@ -1516,64 +1825,15 @@ class _LiveMatchesEmbedPlayerScreenState
       );
       playUrl = null;
       if (attempt < maxAttempts) {
-        await Future<void>.delayed(
-          Duration(milliseconds: _androidProfile.isStreamed ? 200 : 350 * attempt),
-        );
+        await Future<void>.delayed(Duration(milliseconds: 350 * attempt));
         if (!mounted || _androidHandoffAbandoned) return;
       }
     }
 
     if (playUrl == null || playUrl.isEmpty) {
-      // Soft recover is Streamed-oriented (Cookie settle). PPV maxSoftRecover=0.
-      if (_androidSoftRecoverCount >= _androidProfile.maxSoftRecover) {
-        await _abandonAndroidHandoff(
-          '${_androidProfile.logLabel} probe exhausted',
-        );
-        return;
-      }
-      _androidSoftRecoverCount++;
-      debugPrint(
-        '[LiveMatches] ${_androidProfile.logLabel} probe exhausted — '
-        'resume sniff (soft $_androidSoftRecoverCount/'
-        '${_androidProfile.maxSoftRecover})',
+      await _abandonAndroidHandoff(
+        '${_androidProfile.logLabel} probe exhausted',
       );
-      if (!mounted) return;
-      _exiting = false;
-      _mediaStopped = false;
-      _androidHandoffStarted = false;
-      try {
-        await _webViewController?.evaluateJavascript(source: _autoplayJs);
-        await _webViewController
-            ?.evaluateJavascript(source: _embedMediaCommandJs('mute'));
-        await _webViewController
-            ?.evaluateJavascript(source: _embedMediaCommandJs('play'));
-      } catch (_) {}
-      await Future<void>.delayed(
-        Duration(milliseconds: _androidProfile.isStreamed ? 400 : 800),
-      );
-      if (!mounted ||
-          _exiting ||
-          _androidHandoffStarted ||
-          _androidHandoffAbandoned) {
-        return;
-      }
-      _androidSniffPoll?.cancel();
-      _androidSniffPoll = Timer.periodic(const Duration(seconds: 2), (_) {
-        unawaited(_pollAndroidSniffCandidates());
-      });
-      // Re-offer after settle (do not loop forever — abandon on next fail).
-      _onSniffedMediaUrl(mediaUrl);
-      _androidHandoffWatchdog?.cancel();
-      _androidHandoffWatchdog = Timer(const Duration(seconds: 18), () {
-        if (!mounted ||
-            _androidHandoffStarted ||
-            _androidHandoffAbandoned ||
-            _exiting) {
-          return;
-        }
-        debugPrint('[LiveMatches] Android HLS sniff timed out (after probe)');
-        unawaited(_androidSniffTimeoutFallback());
-      });
       return;
     }
 
@@ -1588,8 +1848,6 @@ class _LiveMatchesEmbedPlayerScreenState
           sources: [IptvPlaySource(url: playUrl!, label: label)],
           title: title,
           subtitle: subtitle,
-          // Live Matches /hls-proxy needs Exo MIME override; MediaKit often
-          // hits "Failed to recognize file format" when Settings preferred it.
           forceBuiltInEngine: BuiltInPlayerEngine.exoPlayer,
         ),
       ),
@@ -1716,6 +1974,8 @@ class _LiveMatchesEmbedPlayerScreenState
     _androidHandoffAbandoned = true;
     _androidSniffPoll?.cancel();
     _androidHandoffWatchdog?.cancel();
+    unawaited(_streamedWebViewProxy?.stop());
+    _streamedWebViewProxy = null;
     if (_isFullscreen) {
       unawaited(_exitFullscreen());
     }
@@ -1734,6 +1994,8 @@ class _LiveMatchesEmbedPlayerScreenState
     _adWindowCloseTimer?.cancel();
     _androidHandoffWatchdog?.cancel();
     _androidSniffPoll?.cancel();
+    unawaited(_streamedWebViewProxy?.stop());
+    _streamedWebViewProxy = null;
     _backFocusNode.dispose();
     _playFocusNode.dispose();
     HardwareKeyboard.instance.removeHandler(_handleEmbedKeyEvent);
@@ -1965,223 +2227,323 @@ class _LiveMatchesEmbedPlayerScreenState
                     fit: StackFit.expand,
                     children: [
                       ForjaInAppWebView(
-                    // Catalog iframe (Streamed) vs PPV top-level embedindia —
-                    // chosen by [_androidProfile], never cross-applied.
-                    initialData: _initialData,
-                    initialUrlRequest: _initialUrlRequest,
-                    initialUserScripts: _initialUserScripts,
-                    initialSettings: _initialSettings,
-                    onWebViewCreated: (controller) {
-                      _webViewController = controller;
-                      controller.addJavaScriptHandler(
-                        handlerName: 'toggleFullscreen',
-                        callback: (_) {
-                          unawaited(_toggleFullscreen());
+                        // Catalog iframe (Streamed) vs PPV top-level embedindia —
+                        // chosen by [_androidProfile], never cross-applied.
+                        initialData: _initialData,
+                        initialUrlRequest: _initialUrlRequest,
+                        initialUserScripts: _initialUserScripts,
+                        initialSettings: _initialSettings,
+                        onWebViewCreated: (controller) {
+                          _webViewController = controller;
+                          controller.addJavaScriptHandler(
+                            handlerName: 'toggleFullscreen',
+                            callback: (_) {
+                              unawaited(_toggleFullscreen());
+                            },
+                          );
+                          controller.addJavaScriptHandler(
+                            handlerName: 'embedReady',
+                            callback: (_) {
+                              _loadingWatchdog?.cancel();
+                              _clearLoading();
+                            },
+                          );
+                          if (_androidNativeHandoff) {
+                            controller.addJavaScriptHandler(
+                              handlerName: 'liveMediaUrl',
+                              callback: (args) {
+                                if (args.isEmpty) return null;
+                                _onSniffedMediaUrl(args.first.toString());
+                                return null;
+                              },
+                            );
+                            controller.addJavaScriptHandler(
+                              handlerName: 'liveMediaPlaylist',
+                              callback: (args) {
+                                if (args.length < 2) return null;
+                                _onCapturedPlaylist(
+                                  args[0].toString(),
+                                  args[1].toString(),
+                                );
+                                return null;
+                              },
+                            );
+                            controller.addJavaScriptHandler(
+                              handlerName: 'liveProxyFetchResult',
+                              callback: (args) {
+                                if (args.length < 3) return null;
+                                final id = args[0].toString();
+                                final status =
+                                    int.tryParse(args[1].toString()) ?? 0;
+                                final b64 = args[2].toString();
+                                final ct = args.length > 3
+                                    ? args[3].toString()
+                                    : '';
+                                _streamedWebViewProxy?.onFetchResult(
+                                  id,
+                                  status,
+                                  b64,
+                                  ct,
+                                );
+                                return null;
+                              },
+                            );
+                          }
                         },
-                      );
-                      controller.addJavaScriptHandler(
-                        handlerName: 'embedReady',
-                        callback: (_) {
+                        onLoadResource: _androidNativeHandoff
+                            ? (ctrl, resource) {
+                                _onSniffedMediaUrl(resource.url.toString());
+                              }
+                            : null,
+                        shouldInterceptRequest: _androidNativeHandoff
+                            ? (ctrl, request) async {
+                                final u = request.url.toString();
+                                _onSniffedMediaUrl(u);
+                                // Streamed: when Chromium would CORS-block the
+                                // playlist, re-GET with cookies and return the
+                                // body with ACAO so the spy can capture it.
+                                if (_androidProfile.isStreamed &&
+                                    !_androidHandoffAbandoned &&
+                                    _streamedWebViewProxy == null &&
+                                    (_androidCapturedPlaylistBody == null ||
+                                        !_androidCapturedPlaylistBody!
+                                            .trimLeft()
+                                            .startsWith('#EXTM3U'))) {
+                                  final low = u.toLowerCase();
+                                  final isPlaylist = low.contains('.m3u8') ||
+                                      (low.contains('strmd.st') &&
+                                          (low.contains('playlist') ||
+                                              low.contains('/secure/')));
+                                  if (isPlaylist &&
+                                      !low.contains('/tracks-') &&
+                                      !low.contains('mono.ts.m3u8')) {
+                                    final seeded =
+                                        await _trySeedStreamedPlaylistBody(
+                                      u,
+                                      maxAttempts: 1,
+                                    );
+                                    if (seeded != null) {
+                                      _onCapturedPlaylist(u, seeded);
+                                      final embedOrigin =
+                                          Uri.tryParse(widget.embedUrl)
+                                              ?.origin ??
+                                          'https://embed.st';
+                                      return WebResourceResponse(
+                                        contentType:
+                                            'application/vnd.apple.mpegurl',
+                                        data: Uint8List.fromList(
+                                          utf8.encode(seeded),
+                                        ),
+                                        statusCode: 200,
+                                        reasonPhrase: 'OK',
+                                        headers: {
+                                          // Reflect embed origin — never '*' with
+                                          // credentials (CDN ACAO:* breaks include).
+                                          'Access-Control-Allow-Origin':
+                                              embedOrigin,
+                                          'Access-Control-Allow-Credentials':
+                                              'true',
+                                          'Content-Type':
+                                              'application/vnd.apple.mpegurl',
+                                        },
+                                      );
+                                    }
+                                  }
+                                }
+                                // Observe only — never replace the response.
+                                return null;
+                              }
+                            : null,
+                        shouldInterceptAjaxRequest: null,
+                        shouldInterceptFetchRequest: null,
+                        onReceivedHttpError: _androidNativeHandoff
+                            ? (ctrl, request, response) {
+                                final u = request.url.toString();
+                                // CORS / 403 on the playlist still exposes the URL.
+                                _onSniffedMediaUrl(u);
+                              }
+                            : null,
+                        onLoadStart: (_, _) {
+                          // Ad main-frame hijack attempts can fire load-start; do not
+                          // setState after the player is ready (rebuild churn + WK crash).
+                          if (!mounted || _ready || _loading) return;
+                          setState(() => _loading = true);
+                        },
+                        onLoadStop: (ctrl, _) async {
+                          // Ignore about:blank teardown loads after exit started.
+                          if (_mediaStopped || _exiting) return;
                           _loadingWatchdog?.cancel();
                           _clearLoading();
+                          try {
+                            await ctrl.evaluateJavascript(
+                              source: _embedMediaControlUserScript,
+                            );
+                            if (_androidNativeHandoff) {
+                              await ctrl.evaluateJavascript(
+                                source: _liveEmbedMediaSpyJs,
+                              );
+                              // Sniffer only — keep silent under the handoff cover.
+                              // Mute → force play (JW API + center tap) so PPV
+                              // XHRs the playlist under the opaque cover.
+                              await ctrl.evaluateJavascript(
+                                source: _embedMediaCommandJs('mute'),
+                              );
+                              await ctrl.evaluateJavascript(
+                                source: _autoplayJs,
+                              );
+                              await ctrl.evaluateJavascript(
+                                source: _embedMediaCommandJs('play'),
+                              );
+                            } else {
+                              await ctrl.evaluateJavascript(
+                                source: _autoplayJs,
+                              );
+                            }
+                            await ctrl.evaluateJavascript(
+                              source: _dblclickFullscreenJs,
+                            );
+                            // Desktop / phone: opening the match is a user gesture —
+                            // force unmute after autoplay's muted fallback so Windows
+                            // / macOS are not stuck silent (TV has Mute chrome).
+                            if (!_tvFocus() && !_androidNativeHandoff) {
+                              await ctrl.evaluateJavascript(
+                                source: _embedMediaCommandJs('unmute'),
+                              );
+                              await ctrl.evaluateJavascript(
+                                source: _embedMediaCommandJs('play'),
+                              );
+                            }
+                            if (mounted) setState(() => _playing = true);
+                          } catch (_) {}
+                          WidgetsBinding.instance.addPostFrameCallback(
+                            (_) => _focusTvChrome(preferPlay: true),
+                          );
                         },
-                      );
-                      if (_androidNativeHandoff) {
-                        controller.addJavaScriptHandler(
-                          handlerName: 'liveMediaUrl',
-                          callback: (args) {
-                            if (args.isEmpty) return null;
-                            _onSniffedMediaUrl(args.first.toString());
-                            return null;
-                          },
-                        );
-                      }
-                    },
-                    onLoadResource: _androidNativeHandoff
-                        ? (ctrl, resource) {
-                            _onSniffedMediaUrl(resource.url.toString());
+                        onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
+                        onExitFullscreen: (_) => unawaited(_exitFullscreen()),
+                        onCreateWindow: (_, action) async {
+                          // Keep a single hidden child; ignore extra ad spawns.
+                          if (!mounted || _adWindowId != null) return false;
+                          setState(() => _adWindowId = action.windowId);
+                          _adWindowCloseTimer?.cancel();
+                          _adWindowCloseTimer = Timer(
+                            const Duration(seconds: 4),
+                            _dismissAdWindow,
+                          );
+                          return true;
+                        },
+                        shouldOverrideUrlLoading: (ctrl, action) async {
+                          // Player CDNs and nested iframes leave embed.st - never cancel
+                          // subframe navigations (that caused blank/white players).
+                          if (action.isForMainFrame != true) {
+                            final sub = action.request.url?.toString() ?? '';
+                            if (_androidNativeHandoff) {
+                              _onSniffedMediaUrl(sub);
+                            }
+                            return NavigationActionPolicy.ALLOW;
                           }
-                        : null,
-                    shouldInterceptRequest: _androidNativeHandoff
-                        ? (ctrl, request) async {
-                            final u = request.url.toString();
-                            _onSniffedMediaUrl(u);
-                            // Observe only — never replace the response.
-                            return null;
+                          final url = action.request.url?.toString() ?? '';
+                          if (liveEmbedAllowsMainFrameNavigation(
+                            url: url,
+                            embedUrl: embedUrl,
+                            allowEmbedHostAsMainFrame:
+                                _androidProfile.allowEmbedHostAsMainFrame,
+                            wrapperReferer: widget.referer,
+                          )) {
+                            return NavigationActionPolicy.ALLOW;
                           }
-                        : null,
-                    shouldInterceptAjaxRequest: null,
-                    shouldInterceptFetchRequest: null,
-                    onReceivedHttpError: _androidNativeHandoff
-                        ? (ctrl, request, response) {
-                            final u = request.url.toString();
-                            // CORS / 403 on the playlist still exposes the URL.
-                            _onSniffedMediaUrl(u);
-                          }
-                        : null,
-                    onLoadStart: (_, _) {
-                      // Ad main-frame hijack attempts can fire load-start; do not
-                      // setState after the player is ready (rebuild churn + WK crash).
-                      if (!mounted || _ready || _loading) return;
-                      setState(() => _loading = true);
-                    },
-                    onLoadStop: (ctrl, _) async {
-                      // Ignore about:blank teardown loads after exit started.
-                      if (_mediaStopped || _exiting) return;
-                      _loadingWatchdog?.cancel();
-                      _clearLoading();
-                      try {
-                        await ctrl.evaluateJavascript(
-                          source: _embedMediaControlUserScript,
-                        );
-                        if (_androidNativeHandoff) {
-                          await ctrl.evaluateJavascript(
-                            source: _liveEmbedMediaSpyJs,
+                          debugPrint(
+                            '[LiveMatches] blocked main-frame nav: $url',
                           );
-                          // Sniffer only — keep silent under the handoff cover.
-                          await ctrl.evaluateJavascript(
-                            source: _embedMediaCommandJs('mute'),
-                          );
-                        }
-                        await ctrl.evaluateJavascript(source: _autoplayJs);
-                        await ctrl.evaluateJavascript(
-                          source: _dblclickFullscreenJs,
-                        );
-                        // Desktop / phone: opening the match is a user gesture —
-                        // force unmute after autoplay's muted fallback so Windows
-                        // / macOS are not stuck silent (TV has Mute chrome).
-                        if (!_tvFocus() && !_androidNativeHandoff) {
-                          await ctrl.evaluateJavascript(
-                            source: _embedMediaCommandJs('unmute'),
-                          );
-                          await ctrl.evaluateJavascript(
-                            source: _embedMediaCommandJs('play'),
-                          );
-                        }
-                        if (mounted) setState(() => _playing = true);
-                      } catch (_) {}
-                      WidgetsBinding.instance.addPostFrameCallback(
-                        (_) => _focusTvChrome(preferPlay: true),
-                      );
-                    },
-                    onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
-                    onExitFullscreen: (_) => unawaited(_exitFullscreen()),
-                    onCreateWindow: (_, action) async {
-                      // Keep a single hidden child; ignore extra ad spawns.
-                      if (!mounted || _adWindowId != null) return false;
-                      setState(() => _adWindowId = action.windowId);
-                      _adWindowCloseTimer?.cancel();
-                      _adWindowCloseTimer = Timer(
-                        const Duration(seconds: 4),
-                        _dismissAdWindow,
-                      );
-                      return true;
-                    },
-                    shouldOverrideUrlLoading: (ctrl, action) async {
-                      // Player CDNs and nested iframes leave embed.st - never cancel
-                      // subframe navigations (that caused blank/white players).
-                      if (action.isForMainFrame != true) {
-                        final sub = action.request.url?.toString() ?? '';
-                        if (_androidNativeHandoff) {
-                          _onSniffedMediaUrl(sub);
-                        }
-                        return NavigationActionPolicy.ALLOW;
-                      }
-                      final url = action.request.url?.toString() ?? '';
-                      if (liveEmbedAllowsMainFrameNavigation(
-                        url: url,
-                        embedUrl: embedUrl,
-                        allowEmbedHostAsMainFrame:
-                            _androidProfile.allowEmbedHostAsMainFrame,
-                        wrapperReferer: widget.referer,
-                      )) {
-                        return NavigationActionPolicy.ALLOW;
-                      }
-                      debugPrint('[LiveMatches] blocked main-frame nav: $url');
-                      return NavigationActionPolicy.CANCEL;
-                    },
-                  ),
-                  // Android: keep this cover for the whole sniffer route.
-                  // Tying it to !_androidHandoffStarted uncovered JW mid-probe
-                  // (multi-cam PiP + audio) before pushReplacement to native.
-                  if (_androidNativeHandoff)
-                    const ColoredBox(
-                      color: Colors.black,
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 28,
-                              height: 28,
+                          return NavigationActionPolicy.CANCEL;
+                        },
+                      ),
+                      // Android: keep this cover for the whole sniffer route.
+                      // Tying it to !_androidHandoffStarted uncovered JW mid-probe
+                      // (multi-cam PiP + audio) before pushReplacement to native.
+                      // IgnorePointer: phone taps pass through so JW gets a real
+                      // gesture under the opaque cover; ATV relies on JS play nudge.
+                      if (_androidNativeHandoff)
+                        const IgnorePointer(
+                          child: ColoredBox(
+                            color: Colors.black,
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 28,
+                                    height: 28,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: ForjaShellColors.sectionAccent,
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Opening stream…',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Handing off to the native player',
+                                    style: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (_loading && !_androidNativeHandoff)
+                        Positioned(
+                          top: 12,
+                          right: 16,
+                          child: IgnorePointer(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
                                 color: ForjaShellColors.sectionAccent,
                               ),
                             ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Opening stream…',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Handing off to the native player',
-                              style: TextStyle(
-                                color: Colors.white38,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  if (_loading && !_androidNativeHandoff)
-                    Positioned(
-                      top: 12,
-                      right: 16,
-                      child: IgnorePointer(
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: ForjaShellColors.sectionAccent,
                           ),
                         ),
-                      ),
-                    ),
-                  // Off-screen host for ad window.open - required by some Streamed
-                  // embeds; never visible.
-                  if (_adWindowId != null)
-                    Positioned(
-                      left: -2,
-                      top: -2,
-                      width: 1,
-                      height: 1,
-                      child: IgnorePointer(
-                        child: Opacity(
-                          opacity: 0,
-                          child: InAppWebView(
-                            windowId: _adWindowId,
-                            initialSettings: forjaWebViewSettings(
-                              InAppWebViewSettings(
-                                transparentBackground: true,
-                                supportMultipleWindows: false,
-                                javaScriptCanOpenWindowsAutomatically: false,
+                      // Off-screen host for ad window.open - required by some Streamed
+                      // embeds; never visible.
+                      if (_adWindowId != null)
+                        Positioned(
+                          left: -2,
+                          top: -2,
+                          width: 1,
+                          height: 1,
+                          child: IgnorePointer(
+                            child: Opacity(
+                              opacity: 0,
+                              child: InAppWebView(
+                                windowId: _adWindowId,
+                                initialSettings: forjaWebViewSettings(
+                                  InAppWebViewSettings(
+                                    transparentBackground: true,
+                                    supportMultipleWindows: false,
+                                    javaScriptCanOpenWindowsAutomatically:
+                                        false,
+                                  ),
+                                ),
+                                onCloseWindow: (_) => _dismissAdWindow(),
                               ),
                             ),
-                            onCloseWindow: (_) => _dismissAdWindow(),
                           ),
                         ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+                    ],
+                  ),
+                ),
                 if (_tvFocus() && !_isFullscreen) _buildTvControls(),
               ],
             );
@@ -2220,8 +2582,9 @@ class _MergedMatchStreamSheet extends StatefulWidget {
 
 class _MergedMatchStreamSheetState extends State<_MergedMatchStreamSheet> {
   static const _rowId = 'live-merged-stream-sheet';
-  final FocusNode _firstFocus =
-      FocusNode(debugLabel: 'live-merged-stream-sheet-first');
+  final FocusNode _firstFocus = FocusNode(
+    debugLabel: 'live-merged-stream-sheet-first',
+  );
 
   @override
   void initState() {
@@ -2419,8 +2782,9 @@ class _StreamedStreamSheet extends StatefulWidget {
 
 class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
   static const _rowId = 'live-streamed-stream-sheet';
-  final FocusNode _firstFocus =
-      FocusNode(debugLabel: 'live-streamed-stream-sheet-first');
+  final FocusNode _firstFocus = FocusNode(
+    debugLabel: 'live-streamed-stream-sheet-first',
+  );
 
   @override
   void initState() {
@@ -2885,8 +3249,9 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
       borderRadius: 14,
       scaleOnFocus: 1.0,
       gridIndex: widget.tvZone == ShellTvZone.grid ? widget.gridIndex : null,
-      gridColumns:
-          widget.tvZone == ShellTvZone.grid ? widget.gridColumns : null,
+      gridColumns: widget.tvZone == ShellTvZone.grid
+          ? widget.gridColumns
+          : null,
       listIndex: widget.tvZone == ShellTvZone.row ? widget.gridIndex : null,
       onUpEdge: widget.onUpEdge,
       onLeftEdge: widget.onLeftEdge,
@@ -3095,11 +3460,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.circle,
-                          size: 7,
-                          color: Colors.red.shade400,
-                        ),
+                        Icon(Icons.circle, size: 7, color: Colors.red.shade400),
                         const SizedBox(width: 4),
                         Text(
                           '${s.viewers}',
@@ -3152,8 +3513,9 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       borderRadius: 14,
       scaleOnFocus: 1.0,
       gridIndex: widget.tvZone == ShellTvZone.grid ? widget.gridIndex : null,
-      gridColumns:
-          widget.tvZone == ShellTvZone.grid ? widget.gridColumns : null,
+      gridColumns: widget.tvZone == ShellTvZone.grid
+          ? widget.gridColumns
+          : null,
       listIndex: widget.tvZone == ShellTvZone.row ? widget.gridIndex : null,
       onUpEdge: widget.onUpEdge,
       onLeftEdge: widget.onLeftEdge,
@@ -3189,8 +3551,7 @@ class _LiveCancellableLoadingDialog extends StatefulWidget {
 
 class _LiveCancellableLoadingDialogState
     extends State<_LiveCancellableLoadingDialog> {
-  final FocusNode _cancelFocus =
-      FocusNode(debugLabel: 'live-loading-cancel');
+  final FocusNode _cancelFocus = FocusNode(debugLabel: 'live-loading-cancel');
 
   @override
   void initState() {
@@ -3217,16 +3578,12 @@ class _LiveCancellableLoadingDialogState
         decoration: BoxDecoration(
           color: ForjaShellColors.surfaceElevated,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: ForjaShellColors.cinematic.borderSubtle,
-          ),
+          border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(
-              color: ForjaShellColors.sectionAccent,
-            ),
+            CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
             const SizedBox(height: 16),
             Text(
               widget.message,

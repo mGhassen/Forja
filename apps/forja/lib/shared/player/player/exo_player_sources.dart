@@ -290,9 +290,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       if (_s._rate != 1.0) {
         await ExoPlayerBridge.setRate(_s._viewId, _s._rate);
       }
-      if (_s._resizeMode != 'fit') {
-        await ExoPlayerBridge.setResizeMode(_s._viewId, _s._resizeMode);
-      }
+      await ExoPlayerBridge.setResizeMode(_s._viewId, _s._resizeMode);
       _s._statusController.complete();
       widget.onPlaybackStarted?.call();
       if (_s._isTv) _s._claimPlayFocus();

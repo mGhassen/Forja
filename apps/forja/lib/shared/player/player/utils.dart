@@ -359,7 +359,15 @@ Future<void> silenceMediaKitPlayer(Player player) async {
 /// cleared mpv's `msg_wakeup` NativeCallable while `*/demux` was still in
 /// `demux_free` / `av_log` → SIGSEGV in `msg_wakeup` (issue 081). Quiet logs
 /// first, give stop longer to finish demux join, then dispose.
-Future<void> teardownMediaKitPlayer(Player player) async {
+///
+/// [fast]: Android / ATV **exit** path — MediaCodec + mpv stop/dispose on the UI
+/// isolate can exceed the 5s input ANR window (issue 128). Prefer silence +
+/// short timeouts after the Video surface is already unmounted. Do not use for
+/// hot-swap / recreate (zombie mpv breaks the next MediaKit open).
+Future<void> teardownMediaKitPlayer(
+  Player player, {
+  bool fast = false,
+}) async {
   await silenceMediaKitPlayer(player);
   try {
     if (player.platform is NativePlayer) {
@@ -374,13 +382,19 @@ Future<void> teardownMediaKitPlayer(Player player) async {
       }
     }
   } catch (_) {}
+  final stopTimeout =
+      fast ? const Duration(milliseconds: 400) : const Duration(seconds: 2);
+  final disposeTimeout =
+      fast ? const Duration(milliseconds: 500) : const Duration(seconds: 2);
   try {
-    await player.stop().timeout(const Duration(seconds: 2));
+    await player.stop().timeout(stopTimeout);
   } catch (_) {}
   // Let demux_thread finish demux_free before dispose clears wakeup.
-  await Future.delayed(const Duration(milliseconds: 80));
+  await Future.delayed(
+    Duration(milliseconds: fast ? 20 : 80),
+  );
   try {
-    await player.dispose().timeout(const Duration(seconds: 2));
+    await player.dispose().timeout(disposeTimeout);
   } catch (_) {}
 }
 

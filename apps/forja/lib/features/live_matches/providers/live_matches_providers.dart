@@ -3,17 +3,17 @@ part of '../live_matches_screen.dart';
 /// Primary match-list fetch keyed by server mode.
 final liveMatchesPrimaryLoadProvider = FutureProvider.autoDispose
     .family<LiveMatchesPrimaryLoad, _LiveMatchesServer>((ref, server) async {
-  switch (server) {
-    case _LiveMatchesServer.all:
-      return _fetchLiveMatchesAll();
-    case _LiveMatchesServer.ppv:
-      return _fetchLiveMatchesPpv();
-    case _LiveMatchesServer.streamed:
-      return _fetchLiveMatchesStreamed();
-    case _LiveMatchesServer.cdnLive:
-      return _fetchLiveMatchesCdn();
-  }
-});
+      switch (server) {
+        case _LiveMatchesServer.all:
+          return _fetchLiveMatchesAll();
+        case _LiveMatchesServer.ppv:
+          return _fetchLiveMatchesPpv();
+        case _LiveMatchesServer.streamed:
+          return _fetchLiveMatchesStreamed();
+        case _LiveMatchesServer.cdnLive:
+          return _fetchLiveMatchesCdn();
+      }
+    });
 
 class LiveMatchesPrimaryLoad {
   const LiveMatchesPrimaryLoad({
@@ -91,10 +91,7 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesPpv() async {
     if (id.isEmpty || !seenCats.add(id)) continue;
     cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
   }
-  return LiveMatchesPrimaryLoad(
-    sports: cats,
-    damiTvStreams: streams,
-  );
+  return LiveMatchesPrimaryLoad(sports: cats, damiTvStreams: streams);
 }
 
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStreamed() async {
@@ -105,8 +102,10 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStreamed() async {
   final sports = results[0] as List<_Sport>;
   final matches = results[1] as List<_StreamedMatch>;
 
-  final scheduledCats =
-      matches.where((m) => !m.isAlwaysOn).map((m) => m.category).toSet();
+  final scheduledCats = matches
+      .where((m) => !m.isAlwaysOn)
+      .map((m) => m.category)
+      .toSet();
   var cats = sports.where((s) => scheduledCats.contains(s.id)).toList();
   if (cats.isEmpty) {
     final seen = <String>{};
@@ -124,17 +123,11 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStreamed() async {
   }
   cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
-  return LiveMatchesPrimaryLoad(
-    sports: cats,
-    streamedMatches: matches,
-  );
+  return LiveMatchesPrimaryLoad(sports: cats, streamedMatches: matches);
 }
 
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesCdn() async {
-  final results = await Future.wait([
-    _fetchCdnChannels(),
-    _fetchCdnSports(),
-  ]);
+  final results = await Future.wait([_fetchCdnChannels(), _fetchCdnSports()]);
   final channels = results[0] as List<_CdnChannel>;
   final sports = results[1] as List<_CdnSportEvent>;
 

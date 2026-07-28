@@ -461,7 +461,11 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
       context: context,
       onTap: onTap,
       borderRadius: 0,
-      navLeftAlways: true,
+      // Standalone My List: Left from a card returns to the nav rail.
+      // Embedded in Settings detail: stay in the pane (Back exits).
+      navLeftAlways: !widget.embedded,
+      showFocusBorder: widget.embedded,
+      showFocusFill: widget.embedded,
       tvTabId: tvTabId,
       tvZone: widget.embedded ? ShellTvZone.settings : ShellTvZone.row,
       child: Padding(

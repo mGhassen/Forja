@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) |
-| **Current slice** | Profile-gated hub tiles + rows (VOD tabs + play sources + IPTV nav) |
+| **Progress** | **8 / 8** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) · **2 / 2** acceptance (TV detail focus) |
+| **Current slice** | TV detail pane: OK/→ enter · D-pad stays right · Back exits left |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -57,6 +57,15 @@
 | 4 | R33-A14 | Hide IPTV EPG, portals CSV, and IPTV portal cache clear when IPTV tab is hidden | ✅ |
 | 5 | R33-A15 | Hub list refreshes live when play-source or Navigation toggles change; selection falls back if tile disappears | ✅ |
 | 6 | R33-A16 | No VOD tab (Home/Search/Anime/Asian Drama/My List) → hide Sources, WebStreamr, Debrid, Connected services, Lists, and Playback play-source / scoring / episode extras | ✅ |
+
+---
+
+## Acceptance (TV detail focus)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R33-A17 | Split TV: OK/→ from category enters detail and lands on the first right-pane control; ↑/↓/←/→ stay in the right pane (no ← exit to rail) | ✅ |
+| 2 | R33-A18 | Back from detail → selected category → first category → nav rail | ✅ |
 
 ---
 

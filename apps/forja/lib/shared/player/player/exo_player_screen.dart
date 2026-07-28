@@ -323,9 +323,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       if (_rate != 1.0) {
         await ExoPlayerBridge.setRate(_viewId, _rate);
       }
-      if (_resizeMode != 'fit') {
-        await ExoPlayerBridge.setResizeMode(_viewId, _resizeMode);
-      }
+      // Always re-apply fit after open — engine switch / PlatformView remount
+      // can leave SurfaceView painted zoomed until resize mode is set again.
+      await ExoPlayerBridge.setResizeMode(_viewId, _resizeMode);
     } catch (e) {
       debugPrint('[ExoPlayer] open failed: $e');
       await _failCurrentSource('Failed to open stream');
@@ -1549,9 +1549,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           body: Stack(
             fit: StackFit.expand,
             children: [
-              ExoPlayerView(
-                key: ValueKey<int>(_viewId),
-                viewId: _viewId,
+              // Positioned.fill: same as MediaKit / IPTV — loose Stack children
+              // can get a zero or undersized PlatformView on Android after an
+              // engine remount (MediaKit → Exo), which looks like a zoomed crop.
+              Positioned.fill(
+                child: ExcludeFocus(
+                  child: ExoPlayerView(
+                    key: ValueKey<int>(_viewId),
+                    viewId: _viewId,
+                  ),
+                ),
               ),
               Positioned.fill(
                 child: GestureDetector(

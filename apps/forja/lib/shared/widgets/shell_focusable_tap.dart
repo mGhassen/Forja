@@ -58,6 +58,12 @@ VoidCallback? _resolveTvNavLeftEdge(
   String? tvTabId,
 }) {
   if (onLeftEdge != null) return onLeftEdge;
+  // Settings detail / overlay menus use linear ↑↓←→. Auto-wiring Left → nav
+  // would yank focus out of the pane (Back is the exit). Category rail sits
+  // outside [ShellTvLinearFocusScope], so listIndex:0 → nav still works there.
+  if (ShellTvLinearFocusScope.activeOf(context)) {
+    return null;
+  }
   if (tvTabId != null &&
       tvTabId != ShellTvFocus.currentNavTabId &&
       tvTabId != 'home' &&

@@ -65,6 +65,8 @@ class ExoPlayerHost(
     private var videoAuto = true
     private var lastUrl: String? = null
     private var lastOptions: ExoOpenOptions = ExoOpenOptions()
+    /** Last Dart resize mode — re-applied when Flutter remounts the PlatformView. */
+    private var resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -110,6 +112,9 @@ class ExoPlayerHost(
         playerView?.player = null
         playerView = view
         view.useController = false
+        // Remounted PlayerView defaults to FIT in XML — restore last mode so a
+        // mid-stream remount cannot leave Zoom/Fill stuck or drop a user Fit.
+        view.resizeMode = resizeMode
         player?.let { view.player = it }
     }
 
@@ -345,12 +350,12 @@ class ExoPlayerHost(
     }
 
     fun setResizeMode(mode: String) {
-        val view = playerView ?: return
-        view.resizeMode = when (mode) {
+        resizeMode = when (mode) {
             "fill" -> AspectRatioFrameLayout.RESIZE_MODE_FILL
             "zoom" -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
         }
+        playerView?.resizeMode = resizeMode
     }
 
     fun getTracks(): Map<String, Any?> {
@@ -725,6 +730,14 @@ class ExoPlayerPlatformView(
         playerView.isFocusable = false
         playerView.isFocusableInTouchMode = false
         playerView.descendantFocusability = android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
+        // Letterbox (FIT) — never inherit ZOOM/FILL from a remounted view.
+        playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+        // Media3 opt-in: SurfaceView inside Flutter hybrid composition / AndroidView
+        // otherwise paints zoomed/cropped on API 34+ (androidx/media#1237). ATV
+        // uses SurfaceView; phone TextureView does not need this.
+        if (surfaceType == "surface") {
+            playerView.setEnableComposeSurfaceSyncWorkaround(true)
+        }
         plugin.hostFor(hostId).attachView(playerView)
     }
 

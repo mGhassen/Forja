@@ -682,43 +682,16 @@ class _FlatListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
-      child: Row(
-        children: [
-          leading,
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: ForjaShellColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: ForjaShellColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFF87171)),
-            onPressed: onRemove,
-          ),
-        ],
+    return SettingsActionRow(
+      title: title,
+      subtitle: subtitle,
+      leading: leading,
+      trailing: const Icon(
+        Icons.delete_outline,
+        color: Color(0xFFF87171),
+        size: 20,
       ),
+      onTap: onRemove,
     );
   }
 }

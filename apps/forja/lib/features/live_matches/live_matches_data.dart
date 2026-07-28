@@ -1,6 +1,7 @@
 part of 'live_matches_screen.dart';
 
-mixin _LiveMatchesData on ConsumerState<LiveMatchesScreen>, ShellTabRefresh<LiveMatchesScreen> {
+mixin _LiveMatchesData
+    on ConsumerState<LiveMatchesScreen>, ShellTabRefresh<LiveMatchesScreen> {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   void _focusTopBarItem(int index) {
@@ -62,10 +63,17 @@ mixin _LiveMatchesData on ConsumerState<LiveMatchesScreen>, ShellTabRefresh<Live
 
   void _topBarDownEdge() {
     if (_s._hasSportChips) {
-      final chip = ShellTvFocusCoordinator.rowHandle(_LiveMatchesScreenState._tabId, _LiveMatchesScreenState._chipRowId);
+      final chip = ShellTvFocusCoordinator.rowHandle(
+        _LiveMatchesScreenState._tabId,
+        _LiveMatchesScreenState._chipRowId,
+      );
       if (chip != null && chip.itemCount > 0) {
         final idx = chip.lastFocusedIndex.clamp(0, chip.itemCount - 1);
-        ShellTvFocusCoordinator.focusRowItem(_LiveMatchesScreenState._tabId, _LiveMatchesScreenState._chipRowId, idx);
+        ShellTvFocusCoordinator.focusRowItem(
+          _LiveMatchesScreenState._tabId,
+          _LiveMatchesScreenState._chipRowId,
+          idx,
+        );
         return;
       }
     }
@@ -103,10 +111,17 @@ mixin _LiveMatchesData on ConsumerState<LiveMatchesScreen>, ShellTabRefresh<Live
   }
 
   bool _focusGridItem(int index) {
-    final handle = ShellTvFocusCoordinator.rowHandle(_LiveMatchesScreenState._tabId, _LiveMatchesScreenState._gridRowId);
+    final handle = ShellTvFocusCoordinator.rowHandle(
+      _LiveMatchesScreenState._tabId,
+      _LiveMatchesScreenState._gridRowId,
+    );
     if (handle == null || handle.itemCount <= 0) return false;
     final idx = index.clamp(0, handle.itemCount - 1);
-    return ShellTvFocusCoordinator.focusRowItem(_LiveMatchesScreenState._tabId, _LiveMatchesScreenState._gridRowId, idx);
+    return ShellTvFocusCoordinator.focusRowItem(
+      _LiveMatchesScreenState._tabId,
+      _LiveMatchesScreenState._gridRowId,
+      idx,
+    );
   }
 
   bool _restoreLiveMatchesTvFocus() {

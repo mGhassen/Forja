@@ -204,6 +204,28 @@ class SettingsGroup extends StatelessWidget {
   }
 }
 
+/// Broadcasts "user entered the Settings detail pane" so the right pane can
+/// land D-pad focus on its first control (OK / → from the category rail).
+class SettingsDetailEnter extends InheritedWidget {
+  const SettingsDetailEnter({
+    super.key,
+    required this.enterToken,
+    required super.child,
+  });
+
+  /// Increments on every OK / → enter from the category rail.
+  final int enterToken;
+
+  static SettingsDetailEnter? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<SettingsDetailEnter>();
+
+  static int tokenOf(BuildContext context) => maybeOf(context)?.enterToken ?? 0;
+
+  @override
+  bool updateShouldNotify(SettingsDetailEnter oldWidget) =>
+      enterToken != oldWidget.enterToken;
+}
+
 /// Scrollable detail page chrome (title + constrained body).
 class SettingsPageScaffold extends StatefulWidget {
   const SettingsPageScaffold({
@@ -229,11 +251,59 @@ class SettingsPageScaffold extends StatefulWidget {
 
 class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
   final ScrollController _scrollController = ScrollController();
+  int _handledEnterToken = 0;
+  int _focusAttempts = 0;
 
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final token = SettingsDetailEnter.tokenOf(context);
+    if (token > 0 && token != _handledEnterToken) {
+      _handledEnterToken = token;
+      _focusAttempts = 0;
+      _scheduleLandFocus();
+    }
+  }
+
+  void _scheduleLandFocus() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _landFocusOnFirst());
+  }
+
+  void _landFocusOnFirst() {
+    if (!mounted) return;
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+
+    final scope = FocusScope.of(context);
+    FocusNode? first;
+    for (final node in scope.traversalDescendants) {
+      if (identical(node, scope)) continue;
+      if (!node.canRequestFocus || node.skipTraversal) continue;
+      if (node.context == null) continue;
+      first = node;
+      break;
+    }
+
+    if (first != null) {
+      first.requestFocus();
+      final primary = FocusManager.instance.primaryFocus;
+      if (primary != null &&
+          !identical(primary, scope) &&
+          scope.hasFocus) {
+        return;
+      }
+    } else if (scope.canRequestFocus) {
+      scope.requestFocus();
+    }
+
+    if (_focusAttempts++ < 30) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _landFocusOnFirst());
+    }
   }
 
   @override
@@ -260,7 +330,6 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
                     scaleOnFocus: 1.0,
                     showFocusBorder: true,
                     showFocusFill: true,
-                    listIndex: 0,
                     tvTabId: 'settings',
                     tvZone: ShellTvZone.settings,
                     child: const Padding(
@@ -795,7 +864,7 @@ class SettingsTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    final field = TextField(
       controller: controller,
       obscureText: obscureText,
       enabled: enabled,
@@ -829,6 +898,24 @@ class SettingsTextField extends StatelessWidget {
           borderSide: BorderSide(color: ForjaShellColors.brandGreen, width: 2),
         ),
       ),
+    );
+
+    // TV detail panes: ↑/↓ walk settings rows; ←/→ keep caret editing.
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      return field;
+    }
+    if (!ShellTvLinearFocusScope.activeOf(context)) return field;
+
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onKeyEvent: (node, event) {
+        // EditableText handles ←/→ for the caret first. When it ignores
+        // (edge of text / empty), walk the linear settings list instead of
+        // leaking focus to the category rail.
+        return shellTvLinearMenuArrows(context: context, event: event);
+      },
+      child: field,
     );
   }
 }
