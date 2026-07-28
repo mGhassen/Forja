@@ -5,8 +5,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/my_list/lists_screen.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
+import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/sections/settings_about_panel.dart';
 import 'package:forja/features/settings/sections/settings_cache_data_section.dart';
 import 'package:forja/features/settings/sections/settings_debrid_section.dart';
@@ -65,49 +68,21 @@ Widget buildSettingsCategoryBody(
 }
 
 /// Pushed detail route for mobile / TV.
-class SettingsCategoryPage extends StatefulWidget {
+class SettingsCategoryPage extends ConsumerWidget {
   const SettingsCategoryPage({super.key, required this.categoryId});
 
   final String categoryId;
 
   @override
-  State<SettingsCategoryPage> createState() => _SettingsCategoryPageState();
-}
-
-class _SettingsCategoryPageState extends State<SettingsCategoryPage> {
-  SettingsVisibility? _visibility;
-
-  @override
-  void initState() {
-    super.initState();
-    SettingsService.playSourceChangeNotifier.addListener(_reload);
-    SettingsService.navbarChangeNotifier.addListener(_reload);
-    _reload();
-  }
-
-  @override
-  void dispose() {
-    SettingsService.playSourceChangeNotifier.removeListener(_reload);
-    SettingsService.navbarChangeNotifier.removeListener(_reload);
-    super.dispose();
-  }
-
-  Future<void> _reload() async {
-    final next = await SettingsVisibility.resolve();
-    if (!mounted) return;
-    setState(() => _visibility = next);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final visibility = _visibility;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final visibility = ref.watch(settingsVisibilityProvider).valueOrNull;
     if (visibility == null) {
       return const Scaffold(
         backgroundColor: Colors.transparent,
         body: SizedBox.expand(),
       );
     }
-    final meta = settingsCategoryById(widget.categoryId, visibility);
+    final meta = settingsCategoryById(categoryId, visibility);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: ShellTvLinearFocusScope(
@@ -117,7 +92,7 @@ class _SettingsCategoryPageState extends State<SettingsCategoryPage> {
             title: meta?.title ?? 'Settings',
             showBack: true,
             scrollable: !(meta?.fillViewport ?? false),
-            child: buildSettingsCategoryBody(widget.categoryId, visibility),
+            child: buildSettingsCategoryBody(categoryId, visibility),
           ),
         ),
       ),
@@ -331,16 +306,16 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
   }
 }
 
-class SettingsNavigationPageBody extends StatefulWidget {
+class SettingsNavigationPageBody extends ConsumerStatefulWidget {
   const SettingsNavigationPageBody({super.key});
 
   @override
-  State<SettingsNavigationPageBody> createState() =>
+  ConsumerState<SettingsNavigationPageBody> createState() =>
       _SettingsNavigationPageBodyState();
 }
 
 class _SettingsNavigationPageBodyState
-    extends State<SettingsNavigationPageBody> {
+    extends ConsumerState<SettingsNavigationPageBody> {
   final SettingsService _settings = SettingsService();
   final FocusNode _firstTabFocus =
       FocusNode(debugLabel: 'settings-features-tab-0');
@@ -350,21 +325,9 @@ class _SettingsNavigationPageBodyState
   bool _loaded = false;
 
   @override
-  void initState() {
-    super.initState();
-    SettingsService.navbarChangeNotifier.addListener(_onNavbarChanged);
-    _load();
-  }
-
-  @override
   void dispose() {
-    SettingsService.navbarChangeNotifier.removeListener(_onNavbarChanged);
     _firstTabFocus.dispose();
     super.dispose();
-  }
-
-  void _onNavbarChanged() {
-    _load();
   }
 
   /// Features loads tab rows async — if the user already entered the detail
@@ -385,37 +348,11 @@ class _SettingsNavigationPageBodyState
     });
   }
 
-  Future<void> _load() async {
-    var navVisible = await _settings.getNavbarConfig();
-    final defaultNavTab = await _settings.getDefaultNavTab();
-    final allIds = SettingsService.allNavIds
-        .where((id) => !temporarilyHiddenNavIds.contains(id))
-        .toList();
-    navVisible.removeWhere(temporarilyHiddenNavIds.contains);
-    final hidden = allIds.where((id) => !navVisible.contains(id)).toList();
-    var navOrder = [...navVisible, ...hidden];
-    if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
-      navOrder = navOrder
-          .where((id) => !PlatformPlayback.torrentNavIds.contains(id))
-          .toList();
-      navVisible.removeWhere(
-        (id) => PlatformPlayback.torrentNavIds.contains(id),
-      );
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _navbarVisible = navVisible;
-      _navbarOrder = navOrder;
-      _loaded = true;
-      final startupOptions = _startupTabOptionsFor(navOrder, navVisible);
-      _defaultNavTab = startupOptions.contains(defaultNavTab)
-          ? defaultNavTab
-          : (startupOptions.isNotEmpty ? startupOptions.first : 'settings');
-      if (_defaultNavTab != defaultNavTab) {
-        _settings.setDefaultNavTab(_defaultNavTab);
-      }
-    });
+  void _hydrate(SettingsNavigationSnapshot snap) {
+    _navbarVisible = List.of(snap.visible);
+    _navbarOrder = List.of(snap.order);
+    _defaultNavTab = snap.defaultTab;
+    _loaded = true;
     _focusFirstTabIfDetailActive();
   }
 
@@ -478,6 +415,19 @@ class _SettingsNavigationPageBodyState
 
   @override
   Widget build(BuildContext context) {
+    final async = ref.watch(settingsNavigationProvider);
+    ref.listen<AsyncValue<SettingsNavigationSnapshot>>(
+      settingsNavigationProvider,
+      (previous, next) {
+        final snap = next.valueOrNull;
+        if (snap != null) setState(() => _hydrate(snap));
+      },
+    );
+    if (!_loaded) {
+      final snap = async.valueOrNull;
+      if (snap != null) _hydrate(snap);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

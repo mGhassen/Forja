@@ -1,26 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:rust/rust.dart';
 
-class SettingsMdblistPanel extends StatefulWidget {
+class SettingsMdblistPanel extends ConsumerStatefulWidget {
   const SettingsMdblistPanel({super.key});
 
   @override
-  State<SettingsMdblistPanel> createState() => _SettingsMdblistPanelState();
+  ConsumerState<SettingsMdblistPanel> createState() =>
+      _SettingsMdblistPanelState();
 }
 
-class _SettingsMdblistPanelState extends State<SettingsMdblistPanel> {
+class _SettingsMdblistPanelState extends ConsumerState<SettingsMdblistPanel> {
   final MdblistService _service = MdblistService();
   final TextEditingController _apiKeyController = TextEditingController();
-  bool _isConfigured = false;
-  String? _username;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadStatus();
-  }
+  bool _hydrated = false;
 
   @override
   void dispose() {
@@ -28,20 +24,9 @@ class _SettingsMdblistPanelState extends State<SettingsMdblistPanel> {
     super.dispose();
   }
 
-  Future<void> _loadStatus() async {
-    final configured = await _service.isConfigured();
-    String? user;
-    final key = await _service.getApiKey();
-    if (configured) {
-      final info = await _service.getUserInfo();
-      user = info?['name']?.toString();
-    }
-    if (!mounted) return;
-    setState(() {
-      _isConfigured = configured;
-      _username = user;
-      _apiKeyController.text = key ?? '';
-    });
+  void _hydrate(TrackerAccountStatus status) {
+    _apiKeyController.text = status.apiKey ?? '';
+    _hydrated = true;
   }
 
   Future<void> _saveApiKey() async {
@@ -58,22 +43,17 @@ class _SettingsMdblistPanelState extends State<SettingsMdblistPanel> {
     // Validate by fetching user info
     final info = await _service.getUserInfo();
     if (info != null) {
+      ref.invalidate(mdblistStatusProvider);
       if (mounted) {
-        setState(() {
-          _isConfigured = true;
-          _username = info['name']?.toString();
-        });
+        final username = info['name']?.toString();
         ForjaToast.success(
-          'MDBlist connected${_username != null ? " as $_username" : ""}!',
+          'MDBlist connected${username != null ? " as $username" : ""}!',
         );
       }
     } else {
       await _service.logout();
+      ref.invalidate(mdblistStatusProvider);
       if (mounted) {
-        setState(() {
-          _isConfigured = false;
-          _username = null;
-        });
         ForjaToast.error('Invalid MDBlist API key');
       }
     }
@@ -81,18 +61,20 @@ class _SettingsMdblistPanelState extends State<SettingsMdblistPanel> {
 
   void _logout() async {
     await _service.logout();
+    _apiKeyController.clear();
+    ref.invalidate(mdblistStatusProvider);
     if (mounted) {
-      setState(() {
-        _isConfigured = false;
-        _username = null;
-        _apiKeyController.clear();
-      });
       ForjaToast.success('MDBlist API key removed');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final status = ref.watch(mdblistStatusProvider).valueOrNull;
+    final isConfigured = status?.loggedIn ?? false;
+    final username = status?.username;
+    if (status != null && !_hydrated) _hydrate(status);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
@@ -107,9 +89,9 @@ class _SettingsMdblistPanelState extends State<SettingsMdblistPanel> {
           ),
           const SizedBox(height: 12),
 
-          if (_isConfigured) ...[
+          if (isConfigured) ...[
             SettingsStatusRow(
-              title: 'Connected${_username != null ? " as $_username" : ""}',
+              title: 'Connected${username != null ? " as $username" : ""}',
               subtitle: 'MDBlist',
             ),
             const SizedBox(height: 12),

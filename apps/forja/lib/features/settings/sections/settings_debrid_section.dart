@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
@@ -8,32 +10,26 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Debrid service selection and API key configuration.
-class SettingsDebridSection extends StatefulWidget {
+class SettingsDebridSection extends ConsumerStatefulWidget {
   const SettingsDebridSection({super.key});
 
   @override
-  State<SettingsDebridSection> createState() => _SettingsDebridSectionState();
+  ConsumerState<SettingsDebridSection> createState() =>
+      _SettingsDebridSectionState();
 }
 
-class _SettingsDebridSectionState extends State<SettingsDebridSection> {
+class _SettingsDebridSectionState
+    extends ConsumerState<SettingsDebridSection> {
   final SettingsService _settings = SettingsService();
   final DebridApi _debrid = DebridApi();
 
-  bool _useDebrid = false;
-  String _debridService = 'None';
   final TextEditingController _torboxController = TextEditingController();
   final TextEditingController _alldebridController = TextEditingController();
   final TextEditingController _premiumizeController = TextEditingController();
   final TextEditingController _debridlinkController = TextEditingController();
-  bool _isRDLoggedIn = false;
   final TextEditingController _rdController = TextEditingController();
   bool _isVerifyingRD = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+  bool _hydrated = false;
 
   @override
   void dispose() {
@@ -45,28 +41,31 @@ class _SettingsDebridSectionState extends State<SettingsDebridSection> {
     super.dispose();
   }
 
-  Future<void> _load() async {
-    final useDebrid = await _settings.useDebridForStreams();
-    final service = await _settings.getDebridService();
-    final torboxKey = await _debrid.getTorBoxKey();
-    final alldebridKey = await _debrid.getAllDebridKey();
-    final premiumizeKey = await _debrid.getPremiumizeKey();
-    final debridlinkKey = await _debrid.getDebridLinkKey();
-    final rdToken = await _debrid.getRDAccessToken();
-    if (!mounted) return;
-    setState(() {
-      _useDebrid = useDebrid;
-      _debridService = service;
-      _torboxController.text = torboxKey ?? '';
-      _alldebridController.text = alldebridKey ?? '';
-      _premiumizeController.text = premiumizeKey ?? '';
-      _debridlinkController.text = debridlinkKey ?? '';
-      _isRDLoggedIn = rdToken != null;
-    });
+  void _hydrate(SettingsDebridSnapshot snap) {
+    _torboxController.text = snap.torboxKey;
+    _alldebridController.text = snap.alldebridKey;
+    _premiumizeController.text = snap.premiumizeKey;
+    _debridlinkController.text = snap.debridlinkKey;
+    _hydrated = true;
   }
 
   @override
   Widget build(BuildContext context) {
+    final snap = ref.watch(settingsDebridProvider).valueOrNull;
+    if (snap == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+    if (!_hydrated) _hydrate(snap);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -77,17 +76,19 @@ class _SettingsDebridSectionState extends State<SettingsDebridSection> {
               context,
               'Use Debrid for Streams',
               'Resolve torrents using your debrid account.',
-              _useDebrid,
+              snap.useDebrid,
               (val) async {
                 await _settings.setUseDebridForStreams(val);
-                setState(() => _useDebrid = val);
+                ref
+                    .read(settingsDebridProvider.notifier)
+                    .patch((s) => s.copyWith(useDebrid: val));
               },
             ),
             settingsFocusableDropdown(
               context,
               'Debrid Service',
               'Select your preferred provider.',
-              _debridService,
+              snap.service,
               const [
                 'None',
                 'Real-Debrid',
@@ -99,20 +100,23 @@ class _SettingsDebridSectionState extends State<SettingsDebridSection> {
               (val) async {
                 if (val != null) {
                   await _settings.setDebridService(val);
-                  setState(() => _debridService = val);
+                  ref
+                      .read(settingsDebridProvider.notifier)
+                      .patch((s) => s.copyWith(service: val));
                 }
               },
             ),
           ],
         ),
-        if (_debridService == 'Real-Debrid') _buildRDLogin(),
-        if (_debridService == 'TorBox') _buildTorBoxConfig(),
-        if (_debridService == 'AllDebrid') _buildAllDebridConfig(),
-        if (_debridService == 'Premiumize') _buildPremiumizeConfig(),
-        if (_debridService == 'Debrid-Link') _buildDebridLinkConfig(),
+        if (snap.service == 'Real-Debrid') _buildRDLogin(snap),
+        if (snap.service == 'TorBox') _buildTorBoxConfig(),
+        if (snap.service == 'AllDebrid') _buildAllDebridConfig(),
+        if (snap.service == 'Premiumize') _buildPremiumizeConfig(),
+        if (snap.service == 'Debrid-Link') _buildDebridLinkConfig(),
       ],
     );
   }
+
   Future<void> _saveRDApiKey() async {
     final key = _rdController.text.trim();
     if (key.isEmpty) {
@@ -127,20 +131,17 @@ class _SettingsDebridSectionState extends State<SettingsDebridSection> {
     // they'll find out the first time they try to stream.
     await _debrid.saveRDApiKey(key);
     if (!mounted) return;
-    setState(() {
-      _isRDLoggedIn = true;
-      _isVerifyingRD = false;
-      _rdController.clear();
-    });
+    _rdController.clear();
+    setState(() => _isVerifyingRD = false);
+    await ref.read(settingsDebridProvider.notifier).reload();
+    if (!mounted) return;
     ForjaToast.success('Real-Debrid API key saved');
   }
 
   void _logoutRD() async {
     await _debrid.logoutRD();
-    setState(() {
-      _isRDLoggedIn = false;
-      _rdController.clear();
-    });
+    _rdController.clear();
+    await ref.read(settingsDebridProvider.notifier).reload();
     if (mounted) {
       ForjaToast.success('Logged out of Real-Debrid');
     }
@@ -209,8 +210,8 @@ class _SettingsDebridSectionState extends State<SettingsDebridSection> {
     );
   }
 
-  Widget _buildRDLogin() {
-    if (_isRDLoggedIn) {
+  Widget _buildRDLogin(SettingsDebridSnapshot snap) {
+    if (snap.isRDLoggedIn) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
         child: SettingsFilledButton(

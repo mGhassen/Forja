@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
@@ -78,50 +80,33 @@ class _SettingsAboutPanelState extends State<SettingsAboutPanel> {
 }
 
 /// Opt-in Sentry crash reporting (RFC-043).
-class SettingsCrashReportingRow extends StatefulWidget {
+class SettingsCrashReportingRow extends ConsumerStatefulWidget {
   const SettingsCrashReportingRow({super.key});
 
   @override
-  State<SettingsCrashReportingRow> createState() =>
+  ConsumerState<SettingsCrashReportingRow> createState() =>
       _SettingsCrashReportingRowState();
 }
 
-class _SettingsCrashReportingRowState extends State<SettingsCrashReportingRow> {
-  bool _crashReporting = false;
-  bool _loaded = false;
-  final SettingsService _settings = SettingsService();
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_load());
-  }
-
-  Future<void> _load() async {
-    final enabled = await _settings.isCrashReportingEnabled();
-    if (!mounted) return;
-    setState(() {
-      _crashReporting = enabled;
-      _loaded = true;
-    });
-  }
-
+class _SettingsCrashReportingRowState
+    extends ConsumerState<SettingsCrashReportingRow> {
   @override
   Widget build(BuildContext context) {
-    if (!_loaded) return const SizedBox.shrink();
+    final enabled = ref.watch(crashReportingEnabledProvider).valueOrNull;
+    if (enabled == null) return const SizedBox.shrink();
     return SettingsToggleRow(
       title: 'Crash reporting',
       subtitle: Telemetry.isConfigured
           ? 'Send anonymized crash reports to help fix bugs. Off by default.'
           : 'Unavailable in this build (no Sentry DSN). Preference still saved.',
-      value: _crashReporting,
+      value: enabled,
       onChanged: _setCrashReporting,
     );
   }
 
   Future<void> _setCrashReporting(bool value) async {
-    setState(() => _crashReporting = value);
     await Telemetry.setEnabled(value);
+    ref.invalidate(crashReportingEnabledProvider);
     if (!mounted) return;
     if (value && !Telemetry.isConfigured) {
       ForjaToast.info(
@@ -136,51 +121,33 @@ class _SettingsCrashReportingRowState extends State<SettingsCrashReportingRow> {
 }
 
 /// Opt-in PostHog product analytics (RFC-043).
-class SettingsProductAnalyticsRow extends StatefulWidget {
+class SettingsProductAnalyticsRow extends ConsumerStatefulWidget {
   const SettingsProductAnalyticsRow({super.key});
 
   @override
-  State<SettingsProductAnalyticsRow> createState() =>
+  ConsumerState<SettingsProductAnalyticsRow> createState() =>
       _SettingsProductAnalyticsRowState();
 }
 
 class _SettingsProductAnalyticsRowState
-    extends State<SettingsProductAnalyticsRow> {
-  bool _enabled = false;
-  bool _loaded = false;
-  final SettingsService _settings = SettingsService();
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_load());
-  }
-
-  Future<void> _load() async {
-    final enabled = await _settings.isProductAnalyticsEnabled();
-    if (!mounted) return;
-    setState(() {
-      _enabled = enabled;
-      _loaded = true;
-    });
-  }
-
+    extends ConsumerState<SettingsProductAnalyticsRow> {
   @override
   Widget build(BuildContext context) {
-    if (!_loaded) return const SizedBox.shrink();
+    final enabled = ref.watch(productAnalyticsEnabledProvider).valueOrNull;
+    if (enabled == null) return const SizedBox.shrink();
     return SettingsToggleRow(
       title: 'Product analytics',
       subtitle: ProductAnalytics.isConfigured
           ? 'Anonymous usage events + session replay (text/images masked). Off by default.'
           : 'Unavailable in this build (no PostHog API key). Preference still saved.',
-      value: _enabled,
+      value: enabled,
       onChanged: _setEnabled,
     );
   }
 
   Future<void> _setEnabled(bool value) async {
-    setState(() => _enabled = value);
     await Telemetry.setAnalyticsEnabled(value);
+    ref.invalidate(productAnalyticsEnabledProvider);
     if (!mounted) return;
     if (value && !ProductAnalytics.isConfigured) {
       ForjaToast.info(
@@ -195,42 +162,27 @@ class _SettingsProductAnalyticsRowState
 }
 
 /// macOS only — opt into Keychain for secrets (default is local app file).
-class SettingsMacOsKeychainRow extends StatefulWidget {
+class SettingsMacOsKeychainRow extends ConsumerStatefulWidget {
   const SettingsMacOsKeychainRow({super.key});
 
   @override
-  State<SettingsMacOsKeychainRow> createState() =>
+  ConsumerState<SettingsMacOsKeychainRow> createState() =>
       _SettingsMacOsKeychainRowState();
 }
 
-class _SettingsMacOsKeychainRowState extends State<SettingsMacOsKeychainRow> {
-  bool _enabled = false;
-  bool _loaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_load());
-  }
-
-  Future<void> _load() async {
-    await ForjaPlatformSecureStore.ensureConsentLoaded();
-    if (!mounted) return;
-    setState(() {
-      _enabled = ForjaPlatformSecureStore.usesKeychain;
-      _loaded = true;
-    });
-  }
-
+class _SettingsMacOsKeychainRowState
+    extends ConsumerState<SettingsMacOsKeychainRow> {
   @override
   Widget build(BuildContext context) {
-    if (!_loaded || !Platform.isMacOS) return const SizedBox.shrink();
+    if (!Platform.isMacOS) return const SizedBox.shrink();
+    final enabled = ref.watch(macOsKeychainEnabledProvider).valueOrNull;
+    if (enabled == null) return const SizedBox.shrink();
     return SettingsToggleRow(
       title: 'Store secrets in Keychain',
       subtitle:
           'Off by default (local app file). Turn on to use the macOS Keychain — '
           'Forja explains first; the system may ask for your password once.',
-      value: _enabled,
+      value: enabled,
       onChanged: _setEnabled,
     );
   }
@@ -240,7 +192,7 @@ class _SettingsMacOsKeychainRowState extends State<SettingsMacOsKeychainRow> {
       final result = await showMacOsKeychainConsentDialog(context);
       if (!mounted) return;
       final accepted = result == ForjaKeychainConsent.accepted;
-      setState(() => _enabled = accepted);
+      ref.invalidate(macOsKeychainEnabledProvider);
       if (accepted) {
         ForjaToast.success('Keychain enabled for secrets');
       }
@@ -249,8 +201,8 @@ class _SettingsMacOsKeychainRowState extends State<SettingsMacOsKeychainRow> {
     await ForjaPlatformSecureStore.setKeychainConsent(
       ForjaKeychainConsent.declined,
     );
+    ref.invalidate(macOsKeychainEnabledProvider);
     if (!mounted) return;
-    setState(() => _enabled = false);
     ForjaToast.success('Using local file storage');
   }
 }

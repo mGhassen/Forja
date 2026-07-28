@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/providers/stremio_addons_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
@@ -30,7 +31,6 @@ class _SettingsProvidersSectionState
   final TextEditingController _addonController = TextEditingController();
   final TextEditingController _nuvioController = TextEditingController();
   bool _nuvioInstalling = false;
-  List<NuvioAddon> _nuvioAddons = [];
 
   final TextEditingController _jackettUrlController = TextEditingController();
   final TextEditingController _jackettApiKeyController = TextEditingController();
@@ -44,18 +44,10 @@ class _SettingsProvidersSectionState
   List<ProwlarrTag> _prowlarrAvailableTags = [];
   Set<int> _prowlarrSelectedTagIds = {};
   bool _prowlarrTagsLoaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadIndexerConfig();
-    _loadNuvioAddons();
-    NuvioService.changeNotifier.addListener(_loadNuvioAddons);
-  }
+  bool _indexersHydrated = false;
 
   @override
   void dispose() {
-    NuvioService.changeNotifier.removeListener(_loadNuvioAddons);
     _addonController.dispose();
     _nuvioController.dispose();
     _jackettUrlController.dispose();
@@ -67,29 +59,17 @@ class _SettingsProvidersSectionState
     super.dispose();
   }
 
-  Future<void> _loadNuvioAddons() async {
-    final list = await NuvioService.instance.listUserAddons();
-    if (!mounted) return;
-    setState(() => _nuvioAddons = list);
-  }
-
-  Future<void> _loadIndexerConfig() async {
-    final jackettUrl = await _settings.getJackettBaseUrl();
-    final jackettKey = await _settings.getJackettApiKey();
-    final prowlarrUrl = await _settings.getProwlarrBaseUrl();
-    final prowlarrKey = await _settings.getProwlarrApiKey();
-    final prowlarrTagIds = await _settings.getProwlarrTagIds();
-    if (!mounted) return;
-    setState(() {
-      _jackettUrlController.text = jackettUrl ?? '';
-      _jackettApiKeyController.text = jackettKey ?? '';
-      _prowlarrUrlController.text = prowlarrUrl ?? '';
-      _prowlarrApiKeyController.text = prowlarrKey ?? '';
-      _prowlarrSelectedTagIds = prowlarrTagIds.toSet();
-    });
-    if ((prowlarrUrl?.isNotEmpty ?? false) &&
-        (prowlarrKey?.isNotEmpty ?? false)) {
-      _tryLoadProwlarrTags();
+  void _hydrateIndexers(SettingsIndexerSnapshot snap) {
+    _jackettUrlController.text = snap.jackettUrl;
+    _jackettApiKeyController.text = snap.jackettApiKey;
+    _prowlarrUrlController.text = snap.prowlarrUrl;
+    _prowlarrApiKeyController.text = snap.prowlarrApiKey;
+    _prowlarrSelectedTagIds = Set.of(snap.prowlarrSelectedTagIds);
+    _indexersHydrated = true;
+    if (snap.prowlarrUrl.isNotEmpty && snap.prowlarrApiKey.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _tryLoadProwlarrTags(),
+      );
     }
   }
 
@@ -97,6 +77,11 @@ class _SettingsProvidersSectionState
   Widget build(BuildContext context) {
     final addonsAsync = ref.watch(stremioAddonsProvider);
     final installedAddons = addonsAsync.valueOrNull ?? const [];
+    final nuvioAddons = ref.watch(nuvioAddonsProvider).valueOrNull ?? const [];
+    final indexerSnap = ref.watch(settingsIndexerProvider).valueOrNull;
+    if (indexerSnap != null && !_indexersHydrated) {
+      _hydrateIndexers(indexerSnap);
+    }
     final v = widget.visibility;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,7 +108,7 @@ class _SettingsProvidersSectionState
         if (v.showNuvio)
           SettingsGroup(
             label: 'Nuvio addons',
-            children: [_buildNuvioAddonSection()],
+            children: [_buildNuvioAddonSection(nuvioAddons)],
           ),
         if (v.showTorrentEngine) ...[
           SettingsGroup(
@@ -226,7 +211,7 @@ class _SettingsProvidersSectionState
     );
   }
 
-  Widget _buildNuvioAddonSection() {
+  Widget _buildNuvioAddonSection(List<NuvioAddon> nuvioAddons) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
@@ -245,11 +230,11 @@ class _SettingsProvidersSectionState
             busy: _nuvioInstalling,
             onPressed: _installNuvioAddon,
           ),
-          if (_nuvioAddons.isNotEmpty) ...[
+          if (nuvioAddons.isNotEmpty) ...[
             const SizedBox(height: 20),
             const _MiniLabel('Nuvio addons'),
             const SizedBox(height: 4),
-            ..._nuvioAddons.map(
+            ...nuvioAddons.map(
               (addon) {
                 final builtIn = NuvioService.isBundled(addon.manifestUrl);
                 return Theme(
@@ -311,7 +296,6 @@ class _SettingsProvidersSectionState
                             scraperId: s.id,
                             enabled: val,
                           );
-                          await _loadNuvioAddons();
                         },
                       );
                     }).toList(),
@@ -336,7 +320,6 @@ class _SettingsProvidersSectionState
       ForjaToast.success(
         'Installed ${addon.name} (${addon.scrapers.length} scrapers)',
       );
-      await _loadNuvioAddons();
       scheduleNuvioSyncPush();
     } catch (e) {
       if (!mounted) return;
@@ -354,7 +337,6 @@ class _SettingsProvidersSectionState
     }
     try {
       await NuvioService.instance.remove(manifestUrl);
-      await _loadNuvioAddons();
       scheduleNuvioSyncPush();
       if (!mounted) return;
       ForjaToast.success('Nuvio addon removed');
@@ -580,6 +562,9 @@ class _SettingsProvidersSectionState
 
     await _settings.setJackettBaseUrl(url);
     await _settings.setJackettApiKey(apiKey);
+    ref
+        .read(settingsIndexerProvider.notifier)
+        .reload();
 
     if (mounted) {
       ForjaToast.success('Jackett settings saved!');
@@ -630,6 +615,9 @@ class _SettingsProvidersSectionState
     await _settings.setProwlarrBaseUrl(url);
     await _settings.setProwlarrApiKey(apiKey);
     await _settings.setProwlarrTagIds(_prowlarrSelectedTagIds.toList());
+    ref
+        .read(settingsIndexerProvider.notifier)
+        .reload();
 
     if (mounted) {
       ForjaToast.success('Prowlarr settings saved!');

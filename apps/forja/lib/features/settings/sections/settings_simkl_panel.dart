@@ -2,51 +2,32 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class SettingsSimklPanel extends StatefulWidget {
+class SettingsSimklPanel extends ConsumerStatefulWidget {
   const SettingsSimklPanel({super.key});
 
   @override
-  State<SettingsSimklPanel> createState() => _SettingsSimklPanelState();
+  ConsumerState<SettingsSimklPanel> createState() =>
+      _SettingsSimklPanelState();
 }
 
-class _SettingsSimklPanelState extends State<SettingsSimklPanel> {
+class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
   final SimklService _service = SimklService();
-  bool _isLoggedIn = false;
   String? _userCode;
   String? _verifyUrl;
   Timer? _pollTimer;
   bool _isSyncing = false;
-  String? _username;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadStatus();
-  }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
     super.dispose();
-  }
-
-  Future<void> _loadStatus() async {
-    final loggedIn = await _service.isLoggedIn();
-    String? user;
-    if (loggedIn) {
-      final profile = await _service.getUserProfile();
-      user = profile?['name']?.toString();
-    }
-    if (!mounted) return;
-    setState(() {
-      _isLoggedIn = loggedIn;
-      _username = user;
-    });
   }
 
   void _startLogin() async {
@@ -94,9 +75,8 @@ class _SettingsSimklPanelState extends State<SettingsSimklPanel> {
           setState(() {
             _userCode = null;
             _verifyUrl = null;
-            _isLoggedIn = true;
-            _username = username;
           });
+          ref.invalidate(simklStatusProvider);
           ForjaToast.success(
             'Logged in to Simkl${username != null ? " as $username" : ""}!',
           );
@@ -120,11 +100,8 @@ class _SettingsSimklPanelState extends State<SettingsSimklPanel> {
 
   void _logout() async {
     await _service.logout();
+    ref.invalidate(simklStatusProvider);
     if (mounted) {
-      setState(() {
-        _isLoggedIn = false;
-        _username = null;
-      });
       ForjaToast.success('Logged out of Simkl');
     }
   }
@@ -158,6 +135,10 @@ class _SettingsSimklPanelState extends State<SettingsSimklPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final status = ref.watch(simklStatusProvider).valueOrNull;
+    final isLoggedIn = status?.loggedIn ?? false;
+    final username = status?.username;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
@@ -172,9 +153,9 @@ class _SettingsSimklPanelState extends State<SettingsSimklPanel> {
           ),
           const SizedBox(height: 12),
 
-          if (_isLoggedIn) ...[
+          if (isLoggedIn) ...[
             SettingsStatusRow(
-              title: 'Connected${_username != null ? " as $_username" : ""}',
+              title: 'Connected${username != null ? " as $username" : ""}',
               subtitle: 'Simkl',
             ),
             const SizedBox(height: 12),

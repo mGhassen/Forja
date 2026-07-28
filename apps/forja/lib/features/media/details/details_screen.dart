@@ -110,11 +110,10 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
         mediaType: widget.movie.mediaType,
       );
 
-  DetailsPlaySession get _play =>
-      ref.read(detailsPlaySessionProvider(_metaKey).notifier).session;
-
-  DetailsPlaySessionNotifier get _playN =>
-      ref.read(detailsPlaySessionProvider(_metaKey).notifier);
+  /// Cached in [initState] — dispose must not call [ref] (Riverpod element
+  /// is already defunct by then; see cancel flags in [dispose]).
+  late final DetailsPlaySession _play;
+  late final DetailsPlaySessionNotifier _playN;
 
   bool get _isCustomStremioItem {
     final item = widget.stremioItem;
@@ -346,6 +345,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   @override
   void initState() {
     super.initState();
+    _playN = ref.read(detailsPlaySessionProvider(_metaKey).notifier);
+    _play = _playN.session;
     _movie = widget.movie;
     if (widget.initialSeason != null) _selectedSeason = widget.initialSeason!;
     if (widget.initialEpisode != null)

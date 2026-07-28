@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -6,17 +8,18 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// WebStreamr hub body - countries, extractors, resolutions, MFP, Flare, TMDB.
-class SettingsWebstreamrSection extends StatefulWidget {
+class SettingsWebstreamrSection extends ConsumerStatefulWidget {
   const SettingsWebstreamrSection({super.key});
 
   @override
-  State<SettingsWebstreamrSection> createState() =>
+  ConsumerState<SettingsWebstreamrSection> createState() =>
       _SettingsWebstreamrSectionState();
 }
 
-class _SettingsWebstreamrSectionState extends State<SettingsWebstreamrSection> {
-  bool _loading = true;
+class _SettingsWebstreamrSectionState
+    extends ConsumerState<SettingsWebstreamrSection> {
   bool _saving = false;
+  bool _hydrated = false;
   Set<String> _enabledCountries = {};
   Set<String> _disabledExtractors = {};
   Set<String> _excludedResolutions = {};
@@ -25,27 +28,15 @@ class _SettingsWebstreamrSectionState extends State<SettingsWebstreamrSection> {
   final _flareUrl = TextEditingController();
   final _tmdbTok = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final cc = await WebStreamrSettings.getEnabledCountryCodes();
-    final ex = await WebStreamrSettings.getDisabledExtractors();
-    final res = await WebStreamrSettings.getExcludedResolutions();
-    _mfpUrl.text = await WebStreamrSettings.getMediaFlowProxyUrl() ?? '';
-    _mfpPwd.text = await WebStreamrSettings.getMediaFlowProxyPassword() ?? '';
-    _flareUrl.text = await WebStreamrSettings.getFlareSolverrUrl() ?? '';
-    _tmdbTok.text = await WebStreamrSettings.getTmdbAccessToken() ?? '';
-    if (!mounted) return;
-    setState(() {
-      _enabledCountries = cc.toSet();
-      _disabledExtractors = ex.toSet();
-      _excludedResolutions = res.toSet();
-      _loading = false;
-    });
+  void _hydrate(SettingsWebstreamrSnapshot snap) {
+    _enabledCountries = Set.of(snap.enabledCountries);
+    _disabledExtractors = Set.of(snap.disabledExtractors);
+    _excludedResolutions = Set.of(snap.excludedResolutions);
+    _mfpUrl.text = snap.mfpUrl;
+    _mfpPwd.text = snap.mfpPwd;
+    _flareUrl.text = snap.flareUrl;
+    _tmdbTok.text = snap.tmdbTok;
+    _hydrated = true;
   }
 
   Future<void> _save() async {
@@ -66,6 +57,7 @@ class _SettingsWebstreamrSectionState extends State<SettingsWebstreamrSection> {
       await WebStreamrSettings.setFlareSolverrUrl(_flareUrl.text.trim());
       await WebStreamrSettings.setTmdbAccessToken(_tmdbTok.text.trim());
       await WebStreamrService.init();
+      await ref.read(settingsWebstreamrProvider.notifier).reload();
       if (!mounted) return;
       ForjaToast.success('WebStreamr settings saved.');
     } finally {
@@ -165,7 +157,9 @@ class _SettingsWebstreamrSectionState extends State<SettingsWebstreamrSection> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
+    final async = ref.watch(settingsWebstreamrProvider);
+    final snap = async.valueOrNull;
+    if (async.isLoading && snap == null) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 48),
         child: Center(
@@ -180,6 +174,8 @@ class _SettingsWebstreamrSectionState extends State<SettingsWebstreamrSection> {
         ),
       );
     }
+    if (snap == null) return const SizedBox.shrink();
+    if (!_hydrated) _hydrate(snap);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

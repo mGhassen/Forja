@@ -7,6 +7,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
@@ -25,78 +26,31 @@ class SettingsPlaybackSection extends ConsumerStatefulWidget {
       _SettingsPlaybackSectionState();
 }
 
-class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSection> {
+class _SettingsPlaybackSectionState
+    extends ConsumerState<SettingsPlaybackSection> {
   final SettingsService _settings = SettingsService();
 
-  bool _playSourceTorrent = true;
-  bool _playSourceStremio = true;
-  bool _playSourceNuvio = true;
-  bool _playSourceWebstreaming = true;
-  bool _simpleStreamingResolve = true;
-  BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
-  String _preferredAudioLang = 'None';
-  bool _avoidUnsupportedAudio = true;
-  bool _autoNextEpisode = true;
-  bool _autoSkipIntro = false;
-  bool _iptvEpgEnabled = true;
-  String _maxPlaybackHeightLabel = 'Auto';
-  String _animeTitleLanguageLabel = 'Romaji';
-  List<String> _streamProviderOrder = [];
-  List<String> _animeProviderOrder = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final playSourceTorrent = await _settings.isPlaySourceTorrentEnabled();
-    final playSourceStremio = await _settings.isPlaySourceStremioEnabled();
-    final playSourceNuvio = await _settings.isPlaySourceNuvioEnabled();
-    final playSourceWebstreaming = await _settings
-        .isPlaySourceWebstreamingEnabled();
-    final simpleStreamingResolve =
-        await _settings.isSimpleStreamingResolveEnabled();
-    final builtInEngine = await _settings.getBuiltInPlayerEngine();
-    final streamOrder = await _settings.getStreamProviderOrder();
-    final animeOrder = await _settings.getAnimeProviderOrder();
-    final preferredAudio = await _settings.getPreferredAudioLanguage();
-    final avoidUnsupported = await _settings.getAvoidUnsupportedAudio();
-    final autoNextEpisode = await _settings.getAutoNextEpisode();
-    final autoSkipIntro = await _settings.getAutoSkipIntro();
-    final iptvEpgEnabled = await _settings.isIptvEpgEnabled();
-    SettingsService.iptvEpgEnabledNotifier.value = iptvEpgEnabled;
-    final maxPlaybackHeight = await _settings.getMaxPlaybackHeight();
-    final animeTitleLanguage = await _settings.getAnimeTitleLanguage();
-    if (!mounted) return;
-    setState(() {
-      _playSourceTorrent = playSourceTorrent;
-      _playSourceStremio = playSourceStremio;
-      _playSourceNuvio = playSourceNuvio;
-      _playSourceWebstreaming = playSourceWebstreaming;
-      _simpleStreamingResolve = simpleStreamingResolve;
-      _builtInEngine = builtInEngine;
-      _streamProviderOrder = streamOrder;
-      _animeProviderOrder = animeOrder;
-      _preferredAudioLang = kTrackLanguageDisplayNames.contains(preferredAudio)
-          ? preferredAudio
-          : 'None';
-      _avoidUnsupportedAudio = avoidUnsupported;
-      _autoNextEpisode = autoNextEpisode;
-      _autoSkipIntro = autoSkipIntro;
-      _iptvEpgEnabled = iptvEpgEnabled;
-      _maxPlaybackHeightLabel = SettingsService.maxPlaybackHeightLabel(
-        maxPlaybackHeight,
-      );
-      _animeTitleLanguageLabel =
-          SettingsService.animeTitleLanguageLabel(animeTitleLanguage);
-    });
-  }
+  SettingsPlaybackNotifier get _playback =>
+      ref.read(settingsPlaybackProvider.notifier);
 
   @override
   Widget build(BuildContext context) {
     ref.watch(accountFeaturesProvider);
+    final async = ref.watch(settingsPlaybackProvider);
+    final snap = async.valueOrNull;
+    if (snap == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -104,19 +58,18 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
           SettingsGroup(
             label: 'Play sources',
             children: [
-              // Android TV: torrent / Stremio / Nuvio stay hidden for everyone
-              // (including admins) — platform capabilities, not account flags.
               if (PlatformPlayback.capabilities.playSourceTorrent)
                 settingsFocusableToggle(
                   context,
                   'Direct torrent',
                   'Search Forja indexers (Jackett / Prowlarr) in Sources.',
-                  _playSourceTorrent,
+                  snap.playSourceTorrent,
                   (val) async {
                     await _settings.setPlaySourceTorrentEnabled(val);
-                    setState(() => _playSourceTorrent = val);
+                    await _playback.patch(
+                      (s) => s.copyWith(playSourceTorrent: val),
+                    );
                     schedulePreferencesSyncPush();
-                    // Explicit toggle: start now even if no VOD tab is visible.
                     if (val &&
                         PlatformPlayback.capabilities.localTorrentEngine) {
                       debugPrint('[Init] TorrentStream start (settings toggle)');
@@ -129,10 +82,12 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
                   context,
                   'Stremio',
                   'Play from installed Stremio addon streams.',
-                  _playSourceStremio,
+                  snap.playSourceStremio,
                   (val) async {
                     await _settings.setPlaySourceStremioEnabled(val);
-                    setState(() => _playSourceStremio = val);
+                    await _playback.patch(
+                      (s) => s.copyWith(playSourceStremio: val),
+                    );
                     schedulePreferencesSyncPush();
                   },
                 ),
@@ -141,10 +96,12 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
                   context,
                   'Nuvio',
                   'Play from installed Nuvio scraper addons in Sources.',
-                  _playSourceNuvio,
+                  snap.playSourceNuvio,
                   (val) async {
                     await _settings.setPlaySourceNuvioEnabled(val);
-                    setState(() => _playSourceNuvio = val);
+                    await _playback.patch(
+                      (s) => s.copyWith(playSourceNuvio: val),
+                    );
                     schedulePreferencesSyncPush();
                     if (val) {
                       debugPrint('[Init] Nuvio refresh (settings toggle)');
@@ -156,10 +113,12 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
                 context,
                 'Webstreaming',
                 'Play from web stream extractors (Videasy, WebStreamr, …).',
-                _playSourceWebstreaming,
+                snap.playSourceWebstreaming,
                 (val) async {
                   await _settings.setPlaySourceWebstreamingEnabled(val);
-                  setState(() => _playSourceWebstreaming = val);
+                  await _playback.patch(
+                    (s) => s.copyWith(playSourceWebstreaming: val),
+                  );
                   schedulePreferencesSyncPush();
                   if (val) {
                     debugPrint('[Init] LocalServer start (settings toggle)');
@@ -169,21 +128,25 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
                   }
                 },
               ),
-              if (_playSourceWebstreaming && AccountFeatures.instance.isAdmin)
+              if (snap.playSourceWebstreaming &&
+                  AccountFeatures.instance.isAdmin)
                 settingsFocusableToggle(
                   context,
                   'Simple resolve (experimental)',
                   'One provider at a time: filter streams, probe, then open the player once. Leaves the old race path off.',
-                  _simpleStreamingResolve,
+                  snap.simpleStreamingResolve,
                   (val) async {
                     await _settings.setSimpleStreamingResolveEnabled(val);
-                    setState(() => _simpleStreamingResolve = val);
+                    await _playback.patch(
+                      (s) => s.copyWith(simpleStreamingResolve: val),
+                    );
                     schedulePreferencesSyncPush();
                   },
                 ),
             ],
           ),
-        if (widget.visibility.showProviderScoring) _buildProviderScoringSection(),
+        if (widget.visibility.showProviderScoring)
+          _buildProviderScoringSection(snap),
         SettingsGroup(
           label: 'Player',
           children: [
@@ -192,7 +155,7 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
                 context,
                 'Built-in engine',
                 'Decoder when Video Player is Built-in.',
-                _builtInEngine.displayName,
+                snap.builtInEngine.displayName,
                 builtInPlayerEngineOptions.map((e) => e.displayName).toList(),
                 (val) async {
                   if (val == null) return;
@@ -201,19 +164,23 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
                       .toList();
                   if (match.isEmpty) return;
                   await _settings.setBuiltInPlayerEngine(match.first);
-                  setState(() => _builtInEngine = match.first);
+                  await _playback.patch(
+                    (s) => s.copyWith(builtInEngine: match.first),
+                  );
                 },
               ),
             settingsFocusableDropdown(
               context,
               'Preferred Audio Language',
               'When a video starts, automatically switch to a matching audio track. Pick "None" to leave the default.',
-              _preferredAudioLang,
+              snap.preferredAudioLang,
               kTrackLanguageDisplayNames,
               (val) async {
                 if (val != null) {
                   await _settings.setPreferredAudioLanguage(val);
-                  setState(() => _preferredAudioLang = val);
+                  await _playback.patch(
+                    (s) => s.copyWith(preferredAudioLang: val),
+                  );
                   schedulePreferencesSyncPush();
                 }
               },
@@ -222,10 +189,12 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
               context,
               'Avoid unsupported audio (Atmos / TrueHD / 7.1)',
               'Switch to AC-3 / E-AC-3 / AAC when the original track\'s codec or channel layout isn\'t supported.',
-              _avoidUnsupportedAudio,
+              snap.avoidUnsupportedAudio,
               (val) async {
                 await _settings.setAvoidUnsupportedAudio(val);
-                setState(() => _avoidUnsupportedAudio = val);
+                await _playback.patch(
+                  (s) => s.copyWith(avoidUnsupportedAudio: val),
+                );
                 schedulePreferencesSyncPush();
               },
             ),
@@ -234,10 +203,12 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
                 context,
                 'Auto next episode',
                 'When an episode finishes, start the next one automatically. Also available in the player Episodes panel.',
-                _autoNextEpisode,
+                snap.autoNextEpisode,
                 (val) async {
                   await _settings.setAutoNextEpisode(val);
-                  setState(() => _autoNextEpisode = val);
+                  await _playback.patch(
+                    (s) => s.copyWith(autoNextEpisode: val),
+                  );
                   schedulePreferencesSyncPush();
                 },
               ),
@@ -245,10 +216,10 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
                 context,
                 'Auto skip intro',
                 'When IntroDB has intro or recap timestamps, skip them without tapping Skip.',
-                _autoSkipIntro,
+                snap.autoSkipIntro,
                 (val) async {
                   await _settings.setAutoSkipIntro(val);
-                  setState(() => _autoSkipIntro = val);
+                  await _playback.patch((s) => s.copyWith(autoSkipIntro: val));
                   schedulePreferencesSyncPush();
                 },
               ),
@@ -258,10 +229,10 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
                 context,
                 'IPTV programme guide (EPG)',
                 'Load and show NOW / NEXT programme info in the IPTV player and channel browser.',
-                _iptvEpgEnabled,
+                snap.iptvEpgEnabled,
                 (val) async {
                   await _settings.setIptvEpgEnabled(val);
-                  setState(() => _iptvEpgEnabled = val);
+                  await _playback.patch((s) => s.copyWith(iptvEpgEnabled: val));
                   schedulePreferencesSyncPush();
                 },
               ),
@@ -270,14 +241,16 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
                 context,
                 'Max stream quality',
                 'Cap automatic stream selection. Auto uses the best your device supports.',
-                _maxPlaybackHeightLabel,
+                snap.maxPlaybackHeightLabel,
                 SettingsService.maxPlaybackHeightOptions.keys.toList(),
                 (val) async {
                   if (val == null) return;
                   final height =
                       SettingsService.maxPlaybackHeightOptions[val] ?? 0;
                   await _settings.setMaxPlaybackHeight(height);
-                  setState(() => _maxPlaybackHeightLabel = val);
+                  await _playback.patch(
+                    (s) => s.copyWith(maxPlaybackHeightLabel: val),
+                  );
                   schedulePreferencesSyncPush();
                 },
               ),
@@ -286,14 +259,16 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
                 context,
                 'Anime title language',
                 'How anime titles appear in the Anime hub, details, and player. Default Romaji. Stream matching always tries romaji first, then English, native, and AniList synonyms.',
-                _animeTitleLanguageLabel,
+                snap.animeTitleLanguageLabel,
                 SettingsService.animeTitleLanguageOptions,
                 (val) async {
                   if (val == null) return;
                   await _settings.setAnimeTitleLanguage(
                     SettingsService.animeTitleLanguageStored(val),
                   );
-                  setState(() => _animeTitleLanguageLabel = val);
+                  await _playback.patch(
+                    (s) => s.copyWith(animeTitleLanguageLabel: val),
+                  );
                   schedulePreferencesSyncPush();
                 },
               ),
@@ -303,18 +278,19 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
     );
   }
 
-  Widget _buildProviderScoringSection() {
+  Widget _buildProviderScoringSection(SettingsPlaybackSnapshot snap) {
     final streamCatalog = <String, String>{
       for (final entry in StreamProviders.providers.entries)
         entry.key: (entry.value['name'] as String?) ?? entry.key,
     };
     final streamOrder = <String>[
-      ..._streamProviderOrder.where(streamCatalog.containsKey),
-      ...streamCatalog.keys.where((k) => !_streamProviderOrder.contains(k)),
+      ...snap.streamProviderOrder.where(streamCatalog.containsKey),
+      ...streamCatalog.keys
+          .where((k) => !snap.streamProviderOrder.contains(k)),
     ];
     final animeCatalog = AnimeStreamProviders.catalog;
     final animeOrder = SettingsService.mergeProviderOrder(
-      _animeProviderOrder,
+      snap.animeProviderOrder,
       animeCatalog.keys,
     );
     final asianDramaCatalog = KissKhService.settingsCatalog;
@@ -331,7 +307,7 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
         streamCatalog: streamCatalog,
         streamOrder: streamOrder,
         onStreamOrderChanged: (next) async {
-          setState(() => _streamProviderOrder = next);
+          await _playback.patch((s) => s.copyWith(streamProviderOrder: next));
           await _settings.setStreamProviderOrder(next);
           scheduleProvidersSyncPush();
         },
@@ -340,13 +316,15 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
             SettingsService.defaultStreamProviderOrder,
           );
           await _settings.setStreamProviderOrder(defaults);
-          setState(() => _streamProviderOrder = defaults);
+          await _playback.patch(
+            (s) => s.copyWith(streamProviderOrder: defaults),
+          );
           scheduleProvidersSyncPush();
         },
         animeCatalog: animeCatalog,
         animeOrder: animeOrder,
         onAnimeOrderChanged: (next) async {
-          setState(() => _animeProviderOrder = next);
+          await _playback.patch((s) => s.copyWith(animeProviderOrder: next));
           await _settings.setAnimeProviderOrder(next);
           scheduleProvidersSyncPush();
         },
@@ -355,7 +333,9 @@ class _SettingsPlaybackSectionState extends ConsumerState<SettingsPlaybackSectio
             SettingsService.defaultAnimeProviderOrder,
           );
           await _settings.setAnimeProviderOrder(defaults);
-          setState(() => _animeProviderOrder = defaults);
+          await _playback.patch(
+            (s) => s.copyWith(animeProviderOrder: defaults),
+          );
           scheduleProvidersSyncPush();
         },
         asianDramaCatalog: asianDramaCatalog,

@@ -2,57 +2,33 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Trakt login, sync, and stats - settings Accounts slice.
-class SettingsTraktPanel extends StatefulWidget {
+class SettingsTraktPanel extends ConsumerStatefulWidget {
   const SettingsTraktPanel({super.key});
 
   @override
-  State<SettingsTraktPanel> createState() => _SettingsTraktPanelState();
+  ConsumerState<SettingsTraktPanel> createState() =>
+      _SettingsTraktPanelState();
 }
 
-class _SettingsTraktPanelState extends State<SettingsTraktPanel> {
+class _SettingsTraktPanelState extends ConsumerState<SettingsTraktPanel> {
   final TraktService _trakt = TraktService();
-  bool _isLoggedIn = false;
   String? _userCode;
   String? _verifyUrl;
   Timer? _pollTimer;
   bool _isSyncing = false;
-  String? _username;
-  Map<String, dynamic>? _stats;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadStatus();
-  }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
     super.dispose();
-  }
-
-  Future<void> _loadStatus() async {
-    final loggedIn = await _trakt.isLoggedIn();
-    String? user;
-    Map<String, dynamic>? stats;
-    if (loggedIn) {
-      final profile = await _trakt.getUserProfile();
-      user = profile?['user']?['username']?.toString() ??
-          profile?['username']?.toString();
-      stats = await _trakt.getUserStats();
-    }
-    if (!mounted) return;
-    setState(() {
-      _isLoggedIn = loggedIn;
-      _username = user;
-      _stats = stats;
-    });
   }
 
   void _startLogin() async {
@@ -103,9 +79,8 @@ class _SettingsTraktPanelState extends State<SettingsTraktPanel> {
           setState(() {
             _userCode = null;
             _verifyUrl = null;
-            _isLoggedIn = true;
-            _username = username;
           });
+          ref.invalidate(traktStatusProvider);
           ForjaToast.success(
             'Logged in to Trakt${username != null ? " as $username" : ""}!',
           );
@@ -145,11 +120,8 @@ class _SettingsTraktPanelState extends State<SettingsTraktPanel> {
 
   void _logout() async {
     await _trakt.logout();
+    ref.invalidate(traktStatusProvider);
     if (mounted) {
-      setState(() {
-        _isLoggedIn = false;
-        _username = null;
-      });
       ForjaToast.success('Logged out of Trakt');
     }
   }
@@ -182,8 +154,7 @@ class _SettingsTraktPanelState extends State<SettingsTraktPanel> {
     }
   }
 
-  Widget _buildStatsWidget() {
-    final stats = _stats!;
+  Widget _buildStatsWidget(Map<String, dynamic> stats) {
     final movies = stats['movies'] as Map<String, dynamic>? ?? {};
     final episodes = stats['episodes'] as Map<String, dynamic>? ?? {};
     final moviesWatched = movies['watched'] as int? ?? 0;
@@ -232,6 +203,11 @@ class _SettingsTraktPanelState extends State<SettingsTraktPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final status = ref.watch(traktStatusProvider).valueOrNull;
+    final isLoggedIn = status?.loggedIn ?? false;
+    final username = status?.username;
+    final stats = status?.stats;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
@@ -246,12 +222,12 @@ class _SettingsTraktPanelState extends State<SettingsTraktPanel> {
           ),
           const SizedBox(height: 12),
 
-          if (_isLoggedIn) ...[
+          if (isLoggedIn) ...[
             SettingsStatusRow(
-              title: 'Connected${_username != null ? " as $_username" : ""}',
+              title: 'Connected${username != null ? " as $username" : ""}',
               subtitle: 'Trakt.tv',
             ),
-            if (_stats != null) _buildStatsWidget(),
+            if (stats != null) _buildStatsWidget(stats),
             const SizedBox(height: 12),
             SettingsFilledButton(
               label: _isSyncing ? 'Syncing...' : 'Sync Now',

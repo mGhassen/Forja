@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **5 / 5** acceptance (foundation) · **4 / 4** acceptance (shared) · **7 / 7** acceptance (tabs) · **2 / 2** acceptance (details meta) · **2 / 2** acceptance (players status) · **4 / 6** acceptance (deep play/resolve) |
-| **Current slice** | Deep play/resolve ownership — details session + desktop/mobile Consumer players in progress |
+| **Progress** | **6 / 6** components · **5 / 5** acceptance (foundation) · **4 / 4** acceptance (shared) · **7 / 7** acceptance (tabs) · **2 / 2** acceptance (details meta) · **2 / 2** acceptance (players status) · **5 / 6** acceptance (deep play/resolve) · **5 / 5** acceptance (settings panels) |
+| **Current slice** | Settings panels on Riverpod — resolve engine loops (R47-A26) remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -94,8 +94,20 @@ Thin status shells (A17–A19) were not enough — play buttons, torrent/Stremio
 | 22 | R47-A22 | Details hero Direct / Sources panel watch session (not dual local-only flags) | ✅ |
 | 23 | R47-A23 | Desktop + mobile players are `ConsumerStatefulWidget` and watch `playerResolveStatusProvider` | ✅ |
 | 24 | R47-A24 | In-player Sources panel publishes to `playerSourcesSessionProvider` | ✅ |
-| 25 | R47-A25 | Anime + Asian Drama details primary fetches via Riverpod providers | 🔄 |
+| 25 | R47-A25 | Anime + Asian Drama details primary fetches via Riverpod providers | ✅ |
 | 26 | R47-A26 | Move remaining resolve *engine* loops out of details mixins into notifiers (no setState dual-write) | ⬜ |
+
+---
+
+## Acceptance (settings panels)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 27 | R47-A27 | Playback + torrent engine prefs via `settingsPlaybackProvider` / `settingsTorrentProvider` | ✅ |
+| 28 | R47-A28 | Debrid + WebStreamr + Jackett/Prowlarr/Nuvio via panel providers | ✅ |
+| 29 | R47-A29 | Features navigation via `settingsNavigationProvider` | ✅ |
+| 30 | R47-A30 | Trakt / Simkl / MDBlist status via FutureProviders | ✅ |
+| 31 | R47-A31 | About crash/analytics/Keychain rows via FutureProviders | ✅ |
 
 ---
 
@@ -130,6 +142,8 @@ Migrate Forja’s Flutter host from ad-hoc `StatefulWidget` + `setState` / `Valu
 | Live Matches | `lib/features/live_matches/providers/live_matches_providers.dart` |
 | My List | `lib/features/my_list/providers/my_list_providers.dart` |
 | Settings visibility | `lib/features/settings/providers/settings_visibility_provider.dart` |
+| Settings panels (playback, debrid, webstreamr, nav, trackers, …) | `lib/features/settings/providers/settings_panel_providers.dart` |
+| Stremio addons | `lib/features/settings/providers/stremio_addons_provider.dart` |
 | Details meta / resolve | `lib/features/media/details/providers/details_providers.dart` |
 | Details play session (Direct / torrent / Stremio / Nuvio) | `lib/features/media/details/providers/details_play_session.dart` |
 | Player resolve status + sources session | `lib/shared/player/providers/player_resolve_providers.dart` |
