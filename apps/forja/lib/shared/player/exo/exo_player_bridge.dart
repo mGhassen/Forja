@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 
 /// One selectable Media3 track exposed to Dart menus.
 class ExoTrackInfo {
@@ -83,7 +84,41 @@ class ExoPlayerBridge {
   static const EventChannel _events =
       EventChannel('com.forjahq.app/exoplayer_events');
 
+  /// Process-lifetime: physical ATV prefers TextureView after SurfaceView
+  /// failed to paint (audio-only). [ExoPlayerView] listens and remounts.
+  static final ValueNotifier<bool> preferTextureSurface = ValueNotifier(false);
+
   static bool? _isTelevisionCache;
+
+  /// Creation param for the PlatformView factory (`texture` | `surface`).
+  static String creationSurfaceType() {
+    if (!PlatformInfo.isAndroidTv || PlatformInfo.isAndroidEmulator) {
+      return 'texture';
+    }
+    if (preferTextureSurface.value) return 'texture';
+    return 'surface';
+  }
+
+  static void markPreferTextureSurface({String reason = ''}) {
+    if (preferTextureSurface.value) return;
+    debugPrint(
+      '[ExoPlayer] ATV prefer TextureView'
+      '${reason.isEmpty ? '' : ': $reason'}',
+    );
+    preferTextureSurface.value = true;
+  }
+
+  /// MediaCodec / SurfaceView bind failures that leave audio-only black.
+  static bool isSurfaceAttachError(String message) {
+    final m = message.toLowerCase();
+    return m.contains('setoutputsurface') ||
+        m.contains('bad_index') ||
+        m.contains('null surface') ||
+        m.contains('surface was abandoned') ||
+        m.contains('surface is invalid') ||
+        (m.contains('dequeuinputbuffer') && m.contains('surface')) ||
+        (m.contains('mediacodec') && m.contains('surface'));
+  }
 
   static Future<bool> isTelevision() async {
     if (_isTelevisionCache != null) return _isTelevisionCache!;

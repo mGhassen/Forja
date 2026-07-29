@@ -26,6 +26,7 @@ import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dar
 import 'package:forja/shared/player/controls/player_touch_seekbar.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
+import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_menus.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
@@ -128,6 +129,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   StreamSubscription<Map<dynamic, dynamic>>? _eventSub;
   Timer? _hideTimer;
   Timer? _progressSaveTimer;
+  late final ExoAtvSurfaceFallback _surfaceFallback = ExoAtvSurfaceFallback(
+    onFallback: _reopenAfterSurfaceFallback,
+  );
 
   bool _disposed = false;
   /// Prefer boot-time [PlatformInfo] so TV key scope / ExcludeFocus work on the
@@ -286,12 +290,55 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     });
   }
 
+  Future<void> _reopenAfterSurfaceFallback() async {
+    if (_disposed || !mounted || _sources.isEmpty) return;
+    final pos = _position;
+    // Let ValueListenableBuilder remount TextureView PlatformView first.
+    await Future<void>.delayed(Duration.zero);
+    await WidgetsBinding.instance.endOfFrame;
+    if (_disposed || !mounted) return;
+    final source = _sources[_sourceIndex];
+    final caps = exoVodCapsForMaxPlaybackHeight(
+      await SettingsService().getMaxPlaybackHeight(),
+    );
+    final subs = _sideloadedSubtitles
+        .map(
+          (s) => {
+            'url': s['url']!,
+            'lang': s['lang'] ?? 'und',
+            'label': s['label'] ?? s['lang'] ?? 'und',
+          },
+        )
+        .toList();
+    try {
+      await ExoPlayerBridge.stop(_viewId);
+      await ExoPlayerBridge.open(
+        viewId: _viewId,
+        url: source.url,
+        headers: source.headers,
+        startPosition: pos,
+        subtitles: subs,
+        maxVideoHeight: caps.maxVideoHeight,
+        maxVideoBitrate: caps.maxVideoBitrate,
+      );
+      await ExoPlayerBridge.setVolume(_viewId, _volume / 100.0);
+      if (_rate != 1.0) {
+        await ExoPlayerBridge.setRate(_viewId, _rate);
+      }
+      await ExoPlayerBridge.setResizeMode(_viewId, _resizeMode);
+      await _applySubtitleStyle();
+    } catch (e) {
+      debugPrint('[ExoPlayer] surface fallback reopen failed: $e');
+    }
+  }
+
   Future<void> _openCurrentSource() async {
     if (_opening || _disposed) return;
     _opening = true;
     _preferredSubtitleApplied = false;
     _exoReady = false;
     _selectedExternalSubUrl = null;
+    _surfaceFallback.resetForNewOpen();
     setState(() {
       _hasError = false;
       _errorMessage = '';
@@ -383,6 +430,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _onNativeEvent(Map<dynamic, dynamic> event) {
     if (_disposed) return;
+    if (_surfaceFallback.handleNativeEvent(event)) {
+      // Surface attach failure — TextureView remount in progress; do not
+      // hop to the next source.
+      return;
+    }
     final type = event['type']?.toString() ?? '';
     switch (type) {
       case 'ready':
@@ -456,6 +508,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         if (_exoReady && _selectedExternalSubUrl != null) {
           unawaited(_selectSideloadedMatchingSelection());
         }
+        break;
+      case 'renderedFirstFrame':
         break;
     }
   }
@@ -1091,6 +1145,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _progressSaveTimer?.cancel();
+    _surfaceFallback.dispose();
     _eventSub?.cancel();
     unawaited(_teardownExoPlayer());
     WakelockPlus.disable();

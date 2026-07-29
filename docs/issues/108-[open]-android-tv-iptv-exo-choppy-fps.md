@@ -66,6 +66,7 @@ On **Android TV**, IPTV and Home/Search movies both use Media3 ExoPlayer by defa
 ## Related
 
 - [102](102-[open]-android-tv-exoplayer-tiled-frames.md) — SurfaceView tiling under TLHC; ATV now uses hybrid composition
+- [133](133-[open]-android-tv-exo-physical-audio-only.md) — physical ATV SurfaceView audio-only → TextureView fallback
 - [092](092-[open]-windows-iptv-stream-freeze-after-20s.md) — Windows MediaKit IPTV freeze (separate)
 - [107](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) — same Toshiba device, posters only
 - [IPTV Xtream](../features/live/iptv-xtream.md) · [Player](../features/playback/player.md)

@@ -33,6 +33,7 @@ import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
+import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
@@ -152,6 +153,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _exoBackend = false;
   int? _exoViewId;
   StreamSubscription<Map<dynamic, dynamic>>? _exoEventSub;
+  ExoAtvSurfaceFallback? _exoSurfaceFallback;
 
   Player? _player;
   VideoController? _controller;

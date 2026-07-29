@@ -153,6 +153,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [131-[open]-…](131-[open]-android-tv-live-matches-exo-dpad-dead.md) | ATV Live Matches Exo player D-pad dead after handoff | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [132-[open]-…](132-[open]-android-tv-exo-auto-subtitle-merging-crash.md) | ATV Exo auto subtitle select crashes / pops player | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

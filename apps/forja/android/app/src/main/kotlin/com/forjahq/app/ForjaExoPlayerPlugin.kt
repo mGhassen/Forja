@@ -111,6 +111,12 @@ class ExoPlayerHost(
             emitTracks()
         }
 
+        override fun onRenderedFirstFrame() {
+            // Physical ATV SurfaceView bind health — Dart falls back to
+            // TextureView when READY/playing never emits this (audio-only).
+            emit(mapOf("type" to "renderedFirstFrame"))
+        }
+
         override fun onPlayerError(error: PlaybackException) {
             emit(
                 mapOf(

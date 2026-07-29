@@ -49,6 +49,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
   Future<void> _bootExoPlayer() async {
     _s._exoViewId = _IptvPtPlayerScreenState._nextExoViewId++;
+    _s._exoSurfaceFallback?.dispose();
+    _s._exoSurfaceFallback = ExoAtvSurfaceFallback(
+      onFallback: _reopenAfterExoSurfaceFallback,
+    );
     _s._exoEventSub = ExoPlayerBridge.eventsFor(_s._exoViewId!).listen(_onExoEvent);
     if (mounted) setState(() => _s._playerReady = true);
     // Let ExoPlayerView attach before open() - same frame-delay as ExoPlayerScreen.
@@ -60,8 +64,27 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     _s._focusPlayerChrome();
   }
 
+  Future<void> _reopenAfterExoSurfaceFallback() async {
+    if (_s._disposed || !mounted || _s._sources.isEmpty) return;
+    final pos = _s._position;
+    await Future<void>.delayed(Duration.zero);
+    await WidgetsBinding.instance.endOfFrame;
+    if (_s._disposed || !mounted) return;
+    try {
+      await _engineOpenSource(_s._sources[_s._sourceIdx]);
+      if (pos > Duration.zero && _s._streamSeekable) {
+        await ExoPlayerBridge.seekTo(_s._exoViewId!, pos);
+      }
+    } catch (e) {
+      debugPrint('[IPTV Exo] surface fallback reopen failed: $e');
+    }
+  }
+
   void _onExoEvent(Map<dynamic, dynamic> event) {
     if (_s._disposed || !mounted) return;
+    if (_s._exoSurfaceFallback?.handleNativeEvent(event) == true) {
+      return;
+    }
     final type = event['type']?.toString() ?? '';
     switch (type) {
       case 'ready':
@@ -163,6 +186,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           return;
         }
         _triggerRecovery(reason: 'exo error: $msg', forceHard: true);
+        break;
+      case 'renderedFirstFrame':
+      case 'tracksChanged':
         break;
     }
   }
@@ -526,6 +552,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   Future<void> _openCurrent() async {
     final src = _s._sources[_s._sourceIdx];
     _playbackStarted = false;
+    _s._exoSurfaceFallback?.resetForNewOpen();
     // Connect silently - no banner. The buffering indicator (if any) will
     // appear naturally while the stream loads.
     try {
@@ -859,6 +886,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (_s._exoBackend) {
       await _s._exoEventSub?.cancel();
       _s._exoEventSub = null;
+      _s._exoSurfaceFallback?.dispose();
+      _s._exoSurfaceFallback = null;
       if (_s._exoViewId != null) {
         try {
           await ExoPlayerBridge.dispose(_s._exoViewId!);

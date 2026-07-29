@@ -1,4 +1,4 @@
-import 'package:rust/rust.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 
 /// Read-only host access to the boot-time platform profile.
 abstract final class PlatformInfo {
@@ -11,6 +11,7 @@ abstract final class PlatformInfo {
   static bool get isPhone => profile == PlatformProfile.phone;
 
   /// Set at [PlatformChannel.initialize] — goldfish/ranchu leanback emulators.
-  /// ATV Exo uses TextureView here (SurfaceView → audio-only / covered chrome).
+  /// Emulators force Exo TextureView; physical ATV uses SurfaceView unless
+  /// [ExoPlayerBridge.preferTextureSurface] flips after audio-only failure.
   static bool isAndroidEmulator = false;
 }

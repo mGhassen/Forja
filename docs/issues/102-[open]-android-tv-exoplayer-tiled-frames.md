@@ -51,5 +51,6 @@ Android TV Anime (and other ExoPlayer paths) showed a broken video surface: the 
 
 - [RFC-029](../rfc/029-[open]-dual-built-in-playback-engines.md) — ExoPlayer Android built-in
 - [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) — IPTV live choppy FPS (SurfaceView slice)
+- [133](133-[open]-android-tv-exo-physical-audio-only.md) — physical ATV SurfaceView audio-only → TextureView fallback
 - [031](031-[workaround]-android-tv-webview-gles-crash.md) — separate ATV WebView GLES track
 - [Player](../features/playback/player.md)
