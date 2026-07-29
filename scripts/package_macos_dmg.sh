@@ -60,6 +60,56 @@ detach_volume() {
   hdiutil detach "$vol" -force -quiet 2>/dev/null || true
 }
 
+# Wait until the RW image is no longer attached (detach can race DiskImages).
+wait_image_free() {
+  local image="$1"
+  local i
+  for i in 1 2 3 4 5 6 7 8; do
+    if ! hdiutil info 2>/dev/null | grep -F "$image" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  # Last resort: force-detach any mount of this image.
+  local dev
+  dev="$(hdiutil info 2>/dev/null | awk -v img="$image" '
+    $0 ~ /^image-path/ { keep = index($0, img) > 0 }
+    keep && /^\/dev\// { print $1; exit }
+  ')"
+  if [[ -n "$dev" ]]; then
+    hdiutil detach "$dev" -force -quiet 2>/dev/null || true
+    sleep 1
+  fi
+}
+
+convert_udzo() {
+  local src="$1"
+  local dst="$2"
+  local i
+  local err
+  for i in 1 2 3 4 5 6; do
+    err="$(mktemp -t dmg-convert)"
+    if hdiutil convert "$src" -format UDZO -imagekey zlib-level=9 -o "$dst" 2>"$err"; then
+      rm -f "$err"
+      return 0
+    fi
+    # Common flaky macOS failure when DiskImages is busy / image still settling.
+    if grep -qiE 'Resource temporarily unavailable|Resource busy|Device busy' "$err"; then
+      echo "warning: hdiutil convert attempt $i failed (busy); retrying…" >&2
+      cat "$err" >&2 || true
+      rm -f "$err" "$dst"
+      wait_image_free "$src"
+      sleep $((i * 2))
+      continue
+    fi
+    cat "$err" >&2 || true
+    rm -f "$err"
+    return 1
+  done
+  echo "error: hdiutil convert failed after retries (often too many mounted DMGs — eject old Forja volumes)" >&2
+  return 1
+}
+
 ARCH="$(normalize_arch "${2:-$(uname -m)}")"
 DMG_NAME="Forja-${VERSION}-macos-${ARCH}.dmg"
 DMG_PATH="$DIST/$DMG_NAME"
@@ -188,12 +238,15 @@ fi
 
 # Flush .DS_Store before detach.
 sync
-sleep 1
+sleep 2
 detach_volume "$VOLUME"
 VOLUME=""
+wait_image_free "$RW_DMG"
+sync
+sleep 1
 
-# Compressed final image.
-hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG_PATH"
+# Compressed final image (retries absorb DiskImages EAGAIN under load).
+convert_udzo "$RW_DMG" "$DMG_PATH"
 rm -f "$RW_DMG"
 
 echo "Created $DMG_PATH"
