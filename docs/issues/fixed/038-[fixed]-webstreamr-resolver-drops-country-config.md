@@ -37,7 +37,7 @@
 
 ## Summary
 
-Play opened via ResolverEngine → `WebstreamrProvider` with hard-coded `"config": {}`. Rust treated empty config as **multi+en only**, so DE sources (KinoGer / MegaKino) never ran — Playtorrio showed those streams; Forja did not. Separately, WebView sniffs accepted `/demo-video.mp4` as a successful extract.
+Play opened via ResolverEngine → `WebstreamrProvider` with hard-coded `"config": {}`. Rust treated empty config as **multi+en only**, so DE sources (KinoGer / MegaKino) never ran. Separately, WebView sniffs accepted `/demo-video.mp4` as a successful extract.
 
 ### Root fix
 

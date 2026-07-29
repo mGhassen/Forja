@@ -10,7 +10,9 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 /// arrows with no effect when focus is not on a shell catalog item.
 ///
 /// While chrome is hidden, a [HardwareKeyboard] handler owns ←/→ seek so keys
-/// still work even if focus claim races with [ExcludeFocus].
+/// still work even if focus claim races with [ExcludeFocus]. While chrome is
+/// visible, ←/→ never seek from this scope — only chrome focus traversal or
+/// the focused progress bar moves position.
 class PlayerTvKeyScope extends StatefulWidget {
   const PlayerTvKeyScope({
     super.key,
@@ -130,6 +132,17 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     }
     if (widget.showControls && playerTvChromeHasFocus(widget.focusNode)) {
       return KeyEventResult.ignored;
+    }
+    // Chrome visible but focus not on a control (race / platform view): ←/→
+    // must restore chrome focus — never seek. Progress-bar seek only when the
+    // bar itself holds focus (handled above via FocusableControl / seekbar).
+    if (widget.showControls && shellTvIsNavigationKey(event)) {
+      final key = event.logicalKey;
+      if (key == LogicalKeyboardKey.arrowLeft ||
+          key == LogicalKeyboardKey.arrowRight) {
+        widget.onFocusPlay();
+        return KeyEventResult.handled;
+      }
     }
     // Chrome hidden: [_onHardwareKey] already handled navigation keys.
     if (!widget.showControls && shellTvIsNavigationKey(event)) {

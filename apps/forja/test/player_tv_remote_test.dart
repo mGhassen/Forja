@@ -125,7 +125,7 @@ void main() {
       expect(forward, 1);
     });
 
-    test('arrow left/right always seek when handler runs', () {
+    test('arrow left/right do not seek when chrome is visible', () {
       var back = 0;
       var forward = 0;
       final handler = _handler(
@@ -135,10 +135,33 @@ void main() {
 
       expect(
         handler.handle(_key(LogicalKeyboardKey.arrowLeft), showControls: true),
-        isTrue,
+        isFalse,
       );
       expect(
         handler.handle(_key(LogicalKeyboardKey.arrowRight), showControls: true),
+        isFalse,
+      );
+      expect(back, 0);
+      expect(forward, 0);
+    });
+
+    test('media rewind/fast-forward seek even when chrome is visible', () {
+      var back = 0;
+      var forward = 0;
+      final handler = _handler(
+        onSeekBack: () => back++,
+        onSeekForward: () => forward++,
+      );
+
+      expect(
+        handler.handle(_key(LogicalKeyboardKey.mediaRewind), showControls: true),
+        isTrue,
+      );
+      expect(
+        handler.handle(
+          _key(LogicalKeyboardKey.mediaFastForward),
+          showControls: true,
+        ),
         isTrue,
       );
       expect(back, 1);
@@ -266,6 +289,75 @@ void main() {
     keyFocus.dispose();
     playFocus.dispose();
   });
+
+  testWidgets(
+    'PlayerTvKeyScope restores play focus on ←/→ when chrome is visible',
+    (tester) async {
+      final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');
+      final playFocus = FocusNode(debugLabel: 'test-play');
+      var seekBack = 0;
+      var seekForward = 0;
+      var focusPlay = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlayerTvKeyScope(
+              enabled: true,
+              focusNode: keyFocus,
+              showControls: true,
+              onBack: () {},
+              onPlayPause: () {},
+              onShowControls: () {},
+              onSeekBack: () => seekBack++,
+              onSeekForward: () => seekForward++,
+              onVolumeUp: () {},
+              onVolumeDown: () {},
+              onToggleControls: () {},
+              onFocusBack: () {},
+              onFocusPlay: () {
+                focusPlay++;
+                playFocus.requestFocus();
+              },
+              child: FocusScope(
+                debugLabel: 'player-chrome',
+                child: Focus(
+                  focusNode: playFocus,
+                  child: const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      keyFocus.requestFocus();
+      await tester.pump();
+
+      expect(keyFocus.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+
+      expect(seekBack, 0);
+      expect(seekForward, 0);
+      expect(focusPlay, 1);
+
+      keyFocus.requestFocus();
+      await tester.pump();
+      expect(keyFocus.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(seekBack, 0);
+      expect(seekForward, 0);
+      expect(focusPlay, 2);
+
+      keyFocus.dispose();
+      playFocus.dispose();
+    },
+  );
 
   testWidgets(
     'FocusableControl arrow moves focus inside full-screen player chrome scope',

@@ -288,14 +288,32 @@ jobs:
         with:
           ref: v${{ needs.resolve_version.outputs.version }}
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Sync CI helpers from workflow commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ github.sha }}"
+          if [[ -f scripts/ci_sync_helpers_from_workflow.sh ]]; then
+            chmod +x scripts/ci_sync_helpers_from_workflow.sh
+            ./scripts/ci_sync_helpers_from_workflow.sh "$sha"
+          else
+            paths=(.github/actions/setup-forja-build scripts/ci_with_heartbeat.sh)
+            missing=()
+            for p in "${paths[@]}"; do [[ -e "$p" ]] || missing+=("$p"); done
+            if ((${#missing[@]})); then
+              git fetch --depth=1 origin "$sha"
+              git checkout "$sha" -- "${missing[@]}"
+            fi
+            chmod +x scripts/ci_with_heartbeat.sh 2>/dev/null || true
+          fi
 
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/setup-forja-build
         with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter_channel: ${{ env.FLUTTER_CHANNEL }}
+          rust_cache_key: release-macos-arm64
 
       - name: Build Rust FFI
-        run: ./scripts/build_rust_release.sh
+        run: ./scripts/ci_with_heartbeat.sh "rust ffi" ./scripts/build_rust_release.sh
 
       - name: Build macOS app
         working-directory: ${{ env.APP_DIR }}
@@ -306,7 +324,8 @@ jobs:
           FLUTTER_XCODE_CODE_SIGNING_ALLOWED: "NO"
         run: |
           flutter pub get
-          flutter build macos --release \
+          ../../scripts/ci_with_heartbeat.sh "macos arm64 release" \
+            flutter build macos --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
@@ -341,14 +360,32 @@ jobs:
         with:
           ref: v${{ needs.resolve_version.outputs.version }}
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Sync CI helpers from workflow commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ github.sha }}"
+          if [[ -f scripts/ci_sync_helpers_from_workflow.sh ]]; then
+            chmod +x scripts/ci_sync_helpers_from_workflow.sh
+            ./scripts/ci_sync_helpers_from_workflow.sh "$sha"
+          else
+            paths=(.github/actions/setup-forja-build scripts/ci_with_heartbeat.sh)
+            missing=()
+            for p in "${paths[@]}"; do [[ -e "$p" ]] || missing+=("$p"); done
+            if ((${#missing[@]})); then
+              git fetch --depth=1 origin "$sha"
+              git checkout "$sha" -- "${missing[@]}"
+            fi
+            chmod +x scripts/ci_with_heartbeat.sh 2>/dev/null || true
+          fi
 
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/setup-forja-build
         with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter_channel: ${{ env.FLUTTER_CHANNEL }}
+          rust_cache_key: release-macos-x86_64
 
       - name: Build Rust FFI
-        run: ./scripts/build_rust_release.sh
+        run: ./scripts/ci_with_heartbeat.sh "rust ffi" ./scripts/build_rust_release.sh
 
       - name: Build macOS app
         working-directory: ${{ env.APP_DIR }}
@@ -356,7 +393,8 @@ jobs:
           FLUTTER_XCODE_CODE_SIGNING_ALLOWED: "NO"
         run: |
           flutter pub get
-          flutter build macos --release \
+          ../../scripts/ci_with_heartbeat.sh "macos x86_64 release" \
+            flutter build macos --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
@@ -390,22 +428,41 @@ jobs:
         with:
           ref: v${{ needs.resolve_version.outputs.version }}
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Sync CI helpers from workflow commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ github.sha }}"
+          if [[ -f scripts/ci_sync_helpers_from_workflow.sh ]]; then
+            chmod +x scripts/ci_sync_helpers_from_workflow.sh
+            ./scripts/ci_sync_helpers_from_workflow.sh "$sha"
+          else
+            paths=(.github/actions/setup-forja-build scripts/ci_with_heartbeat.sh)
+            missing=()
+            for p in "${paths[@]}"; do [[ -e "$p" ]] || missing+=("$p"); done
+            if ((${#missing[@]})); then
+              git fetch --depth=1 origin "$sha"
+              git checkout "$sha" -- "${missing[@]}"
+            fi
+            chmod +x scripts/ci_with_heartbeat.sh 2>/dev/null || true
+          fi
 
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/setup-forja-build
         with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter_channel: ${{ env.FLUTTER_CHANNEL }}
+          rust_cache_key: release-windows
 
       - name: Build Rust FFI
         shell: bash
-        run: ./scripts/build_rust_release.sh
+        run: ./scripts/ci_with_heartbeat.sh "rust ffi" ./scripts/build_rust_release.sh
 
       - name: Build Windows app
         working-directory: ${{ env.APP_DIR }}
         shell: bash
         run: |
           flutter pub get
-          flutter build windows --release \
+          ../../scripts/ci_with_heartbeat.sh "windows release" \
+            flutter build windows --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
@@ -455,11 +512,29 @@ jobs:
         with:
           ref: v${{ needs.resolve_version.outputs.version }}
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Sync CI helpers from workflow commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ github.sha }}"
+          if [[ -f scripts/ci_sync_helpers_from_workflow.sh ]]; then
+            chmod +x scripts/ci_sync_helpers_from_workflow.sh
+            ./scripts/ci_sync_helpers_from_workflow.sh "$sha"
+          else
+            paths=(.github/actions/setup-forja-build scripts/ci_with_heartbeat.sh)
+            missing=()
+            for p in "${paths[@]}"; do [[ -e "$p" ]] || missing+=("$p"); done
+            if ((${#missing[@]})); then
+              git fetch --depth=1 origin "$sha"
+              git checkout "$sha" -- "${missing[@]}"
+            fi
+            chmod +x scripts/ci_with_heartbeat.sh 2>/dev/null || true
+          fi
 
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/setup-forja-build
         with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter_channel: ${{ env.FLUTTER_CHANNEL }}
+          rust_cache_key: release-linux
 
       - name: Install Linux build dependencies
         run: |
@@ -472,13 +547,14 @@ jobs:
             file wget curl
 
       - name: Build Rust FFI
-        run: ./scripts/build_rust_release.sh
+        run: ./scripts/ci_with_heartbeat.sh "rust ffi" ./scripts/build_rust_release.sh
 
       - name: Build Linux app
         working-directory: ${{ env.APP_DIR }}
         run: |
           flutter pub get
-          flutter build linux --release \
+          ../../scripts/ci_with_heartbeat.sh "linux release" \
+            flutter build linux --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
@@ -524,6 +600,25 @@ jobs:
           chmod +x scripts/ci_free_disk_linux.sh
           ./scripts/ci_free_disk_linux.sh
 
+      - name: Sync CI helpers from workflow commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ github.sha }}"
+          if [[ -f scripts/ci_sync_helpers_from_workflow.sh ]]; then
+            chmod +x scripts/ci_sync_helpers_from_workflow.sh
+            ./scripts/ci_sync_helpers_from_workflow.sh "$sha"
+          else
+            paths=(.github/actions/setup-forja-build scripts/ci_with_heartbeat.sh)
+            missing=()
+            for p in "${paths[@]}"; do [[ -e "$p" ]] || missing+=("$p"); done
+            if ((${#missing[@]})); then
+              git fetch --depth=1 origin "$sha"
+              git checkout "$sha" -- "${missing[@]}"
+            fi
+            chmod +x scripts/ci_with_heartbeat.sh 2>/dev/null || true
+          fi
+
       - name: Verify Android signing secrets
         env:
           KEYSTORE_B64: ${{ secrets.FORJA_KEYSTORE_BASE64 }}
@@ -545,10 +640,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/setup-forja-build
         with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
+          with_rust: 'false'
+          flutter_channel: ${{ env.FLUTTER_CHANNEL }}
 
       - name: Decode release keystore
         env:
@@ -588,7 +685,8 @@ jobs:
           unset IFS
           echo "Building target-platform=$target_platform"
           flutter pub get
-          flutter build apk --release --split-per-abi \
+          ../../scripts/ci_with_heartbeat.sh "android tv release" \
+            flutter build apk --release --split-per-abi \
             --target-platform "$target_platform" \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \

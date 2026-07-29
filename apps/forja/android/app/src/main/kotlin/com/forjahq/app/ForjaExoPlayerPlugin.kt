@@ -456,7 +456,7 @@ class ExoPlayerHost(
                 .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
                 .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
                 .build()
-            emitTracks()
+            // onTracksChanged emits — do not double-emit (issue 132).
             return
         }
 
@@ -466,7 +466,6 @@ class ExoPlayerHost(
                 .clearOverridesOfType(C.TRACK_TYPE_TEXT)
                 .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                 .build()
-            emitTracks()
             return
         }
 
@@ -487,7 +486,6 @@ class ExoPlayerHost(
                 TrackSelectionOverride(group.mediaTrackGroup, listOf(parsed.third)),
             )
             .build()
-        emitTracks()
     }
 
     fun stop() {

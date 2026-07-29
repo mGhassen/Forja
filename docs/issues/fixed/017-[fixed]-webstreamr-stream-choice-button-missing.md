@@ -28,7 +28,7 @@ The button was **not deleted** — it was gated on `_currentSources.length > 1`.
 ## Root cause (before fix)
 
 1. **UI gate** — player overlays required `length > 1` to render `video_library` button.
-2. **Hubdrive extractor bug** — regex `href…HubCloud` matched the first stylesheet `<link href=…>` on hubdrive.tips pages, so HDHub4u embeds never chained to HubCloud (PlayTorrio showed 2160p/1080p FSL/FSLv2; Forja only got KinoGer).
+2. **Hubdrive extractor bug** — regex `href…HubCloud` matched the first stylesheet `<link href=…>` on hubdrive.tips pages, so HDHub4u embeds never chained to HubCloud (expected 2160p/1080p FSL/FSLv2; only KinoGer resolved).
 3. **Missing User-Agent** — Rust fetcher sent no browser UA (Dart fetcher always did).
 4. **Parsing** — `ytId`-only Rust entries were skipped (no `url` / `externalUrl`).
 5. **Resolver parity** — Rust ran all sources before country filter; old Dart pre-filtered `activeSources`.

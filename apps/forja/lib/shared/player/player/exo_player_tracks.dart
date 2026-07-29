@@ -28,6 +28,9 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     ];
     _s._sideloadedSubtitles = next;
     _s._selectedExternalSubUrl = url;
+    // Soft-reload remounts MergingMediaPeriod — wait for next READY before
+    // auto-select (issue 132).
+    _s._exoReady = false;
     _s._preferredSubtitleApplied = false;
 
     try {
@@ -191,9 +194,11 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
   }
 
   Future<void> _maybeAutoPickExternalSubtitle() async {
-    if (_s._disposed || !mounted) return;
+    if (_s._disposed || !mounted || _s._preferredSubtitleApplied) return;
+    // Soft-reload (setSubtitles) before READY races MergingMediaPeriod (issue 132).
+    if (!_s._exoReady) return;
     final preferred = await SettingsService().getPreferredSubtitleLanguage();
-    if (_s._disposed || !mounted) return;
+    if (_s._disposed || !mounted || _s._preferredSubtitleApplied) return;
     if (preferred == 'None' || preferred.isEmpty) return;
 
     // Already on a matching Media3 text track (embedded or previous sideload).

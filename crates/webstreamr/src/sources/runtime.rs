@@ -407,7 +407,7 @@ fn run_megakino(ids: &MediaIds, base_url: &str) -> Option<Vec<SourceEmbed>> {
     let imdb = ids.imdb_id.as_deref()?;
     let base = final_redirect_url(base_url, &FetchConfig::default()).unwrap_or_else(|_| base_url.into());
     let origin = url_origin(&base);
-    // PlayTorrio MegaKino: HEAD ?yg=token so the cookie jar stores the
+    // MegaKino: HEAD ?yg=token so the cookie jar stores the
     // challenge cookie before search POST.
     let token_url = format!(
         "{}{}yg=token",
@@ -861,7 +861,7 @@ fn run_hdhub4u(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
         }));
         // Direct hubdrive anchors on the page (older posts).
         out.extend(parse_source_html("hdhub4u", &html, &opts));
-        // PlayTorrio path: most posts only expose gadgetsweb redirects —
+        // Most posts only expose gadgetsweb redirects —
         // decode → hub-links page → hubdrive embeds.
         for a in doc_html.select(&Selector::parse(r#"a[href*="gadgetsweb"]"#).unwrap()) {
             let Some(href) = a.value().attr("href") else {

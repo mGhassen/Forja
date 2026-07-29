@@ -150,6 +150,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   String _resizeMode = 'fit';
   ExoTracksSnapshot _tracks = ExoTracksSnapshot.empty;
   bool _preferredSubtitleApplied = false;
+  /// True after Media3 STATE_READY. Selecting text tracks (or soft-reloading
+  /// sideloads) before ready races MergingMediaPeriod / ProgressiveMediaPeriod
+  /// and can throw IllegalStateException → player pops (issue 132).
+  bool _exoReady = false;
   List<Map<String, dynamic>> _externalSubtitles = [];
   final Map<String, String> _externalSubFileCache = {};
   /// Sideloaded Media3 payloads (`url` file://, `lang`, `label`, `sourceUrl`).
@@ -286,6 +290,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (_opening || _disposed) return;
     _opening = true;
     _preferredSubtitleApplied = false;
+    _exoReady = false;
     _selectedExternalSubUrl = null;
     setState(() {
       _hasError = false;
@@ -383,10 +388,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       case 'ready':
         _isBufferingNotifier.value = false;
         _statusController.complete();
+        _exoReady = true;
         if (!_playbackStartedNotified) {
           _playbackStartedNotified = true;
           widget.onPlaybackStarted?.call();
           _scrobbleStart();
+        }
+        // Apply preferred text track only after READY — earlier selectTrack
+        // races MergingMediaPeriod when sideloads are present (issue 132).
+        unawaited(_maybeApplyPreferredSubtitle());
+        if (_selectedExternalSubUrl != null) {
+          unawaited(_selectSideloadedMatchingSelection());
         }
         break;
       case 'playing':
@@ -436,9 +448,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           _tracks = ExoTracksSnapshot.fromMap(event);
           _rate = _tracks.rate;
         });
-        unawaited(_maybeApplyPreferredSubtitle());
-        // After soft-reload sideload, lock onto the user-selected external track.
-        if (_selectedExternalSubUrl != null) {
+        // Defer auto-select until READY (see ready handler). Re-apply only if
+        // we have not locked a preference yet and playback is already ready.
+        if (_exoReady && !_preferredSubtitleApplied) {
+          unawaited(_maybeApplyPreferredSubtitle());
+        }
+        if (_exoReady && _selectedExternalSubUrl != null) {
           unawaited(_selectSideloadedMatchingSelection());
         }
         break;
@@ -847,13 +862,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   Future<void> _maybeApplyPreferredSubtitle() async {
-    if (_disposed) return;
+    if (_disposed || _preferredSubtitleApplied) return;
+    // Wait for STATE_READY before selectTrack / setSubtitles (issue 132).
+    if (!_exoReady) return;
     // Prefer external catalog when Media3 text tracks are still empty.
     if (_tracks.text.isEmpty) {
       await _maybeAutoPickExternalSubtitle();
       return;
     }
     final preferred = await SettingsService().getPreferredSubtitleLanguage();
+    if (_disposed || _preferredSubtitleApplied) return;
     if (preferred == 'None' || preferred.isEmpty) return;
 
     ExoTrackInfo? preferredMatch;
@@ -887,15 +905,22 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       _preferredSubtitleApplied = true;
       return;
     }
-    // Already applied English fallback and preferred still missing - stop.
-    if (preferredMatch == null && _preferredSubtitleApplied) return;
+    // Already on English fallback with preferred still missing — stop.
+    if (preferredMatch == null &&
+        englishMatch != null &&
+        englishMatch.selected &&
+        !_tracks.textOff) {
+      _preferredSubtitleApplied = true;
+      return;
+    }
 
+    // Lock before await so concurrent tracksChanged cannot re-enter selectTrack.
+    _preferredSubtitleApplied = true;
     await ExoPlayerBridge.selectTrack(
       _viewId,
       type: 'text',
       trackId: match.id,
     );
-    _preferredSubtitleApplied = true;
     debugPrint(
       '[ExoPlayer] auto subtitle → ${match.label.isNotEmpty ? match.label : match.language}',
     );

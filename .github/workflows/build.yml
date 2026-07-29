@@ -59,11 +59,11 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/setup-forja-build
         with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
-      - run: ./scripts/build_rust_release.sh
+          flutter_channel: ${{ env.FLUTTER_CHANNEL }}
+          rust_cache_key: build-macos-arm64
+      - run: ./scripts/ci_with_heartbeat.sh "rust ffi" ./scripts/build_rust_release.sh
       - working-directory: ${{ env.APP_DIR }}
         env:
           # Compile without signing (no Apple certs on the runner). Frameworks are
@@ -72,7 +72,8 @@ jobs:
           FLUTTER_XCODE_CODE_SIGNING_ALLOWED: "NO"
         run: |
           flutter pub get
-          flutter build macos --release \
+          ../../scripts/ci_with_heartbeat.sh "macos arm64 release" \
+            flutter build macos --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
@@ -95,17 +96,18 @@ jobs:
     runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/setup-forja-build
         with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
-      - run: ./scripts/build_rust_release.sh
+          flutter_channel: ${{ env.FLUTTER_CHANNEL }}
+          rust_cache_key: build-macos-x86_64
+      - run: ./scripts/ci_with_heartbeat.sh "rust ffi" ./scripts/build_rust_release.sh
       - working-directory: ${{ env.APP_DIR }}
         env:
           FLUTTER_XCODE_CODE_SIGNING_ALLOWED: "NO"
         run: |
           flutter pub get
-          flutter build macos --release \
+          ../../scripts/ci_with_heartbeat.sh "macos x86_64 release" \
+            flutter build macos --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
@@ -127,17 +129,18 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/setup-forja-build
         with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter_channel: ${{ env.FLUTTER_CHANNEL }}
+          rust_cache_key: build-windows
       - shell: bash
-        run: ./scripts/build_rust_release.sh
+        run: ./scripts/ci_with_heartbeat.sh "rust ffi" ./scripts/build_rust_release.sh
       - working-directory: ${{ env.APP_DIR }}
         shell: bash
         run: |
           flutter pub get
-          flutter build windows --release \
+          ../../scripts/ci_with_heartbeat.sh "windows release" \
+            flutter build windows --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
@@ -163,20 +166,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: subosito/flutter-action@v2
+      - uses: ./.github/actions/setup-forja-build
         with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
+          flutter_channel: ${{ env.FLUTTER_CHANNEL }}
+          rust_cache_key: build-linux
       - run: |
           sudo apt-get update -y
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libmpv-dev \
             libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libsecret-1-dev \
             libcurl4-openssl-dev
-      - run: ./scripts/build_rust_release.sh
+      - run: ./scripts/ci_with_heartbeat.sh "rust ffi" ./scripts/build_rust_release.sh
       - working-directory: ${{ env.APP_DIR }}
         run: |
           flutter pub get
-          flutter build linux --release \
+          ../../scripts/ci_with_heartbeat.sh "linux release" \
+            flutter build linux --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
             --dart-define=RELEASE_CDN_URL="$RELEASE_CDN_URL" \
@@ -210,12 +214,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: subosito/flutter-action@v2
+          cache: gradle
+      - uses: ./.github/actions/setup-forja-build
         with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
+          with_rust: 'false'
+          flutter_channel: ${{ env.FLUTTER_CHANNEL }}
       - run: flutter pub get
       - run: |
-          flutter build apk --release --split-per-abi \
+          ../../scripts/ci_with_heartbeat.sh "android release" \
+            flutter build apk --release --split-per-abi \
             --target-platform android-arm,android-arm64 \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \

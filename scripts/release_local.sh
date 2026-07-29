@@ -501,12 +501,14 @@ tag_on_our_line() {
   git merge-base --is-ancestor "$parent" HEAD 2>/dev/null
 }
 
-# Newest v* tag that is an ancestor of ref (e.g. forjahq/main after CI release).
-# One git call — do not walk tags with merge-base (500+ tags ≈ multi-second stalls).
+# Newest v* tag that points exactly at ref tip (forjahq/main after CI release).
+# Never use --merged + version-sort here: ancient high-semver ancestors (e.g.
+# leftover v1.4.0) would beat a current v1.3.66 tip and get re-pushed.
 latest_tag_on_ref() {
   local ref="$1"
-  local t
-  t="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --merged "$ref" --sort=-v:refname 2>/dev/null | head -1)"
+  local tip t
+  tip="$(git rev-parse "${ref}^{commit}" 2>/dev/null)" || return 1
+  t="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --points-at "$tip" --sort=-v:refname 2>/dev/null | head -1)"
   [[ -n "$t" ]] || return 1
   echo "$t"
 }
@@ -518,9 +520,9 @@ version_tag_gt() {
   [[ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -1)" == "$a" ]]
 }
 
-# Newest release tag whose commit is on HEAD.
+# Newest release tag on our line (pubspec major.minor arc) — not global semver.
 latest_tag_on_head() {
-  latest_tag_on_ref HEAD
+  default_release_tag
 }
 
 # Newest CI release on our line that is NOT on HEAD and is newer than HEAD's tip tag.
@@ -610,11 +612,15 @@ sync_from_forjahq() {
     [[ "$tag" == v* ]] || tag="v${tag}"
     git rev-parse "$tag" >/dev/null 2>&1 || die "tag $tag not found after fetch from ${SYNC_REPO}"
   else
-    # Prefer orphaned CI release not yet on HEAD; else newest tag on remote tip.
+    # Prefer orphaned CI release not yet on HEAD; else tag that points at remote tip.
+    # Do not resurrect ancient high-semver ancestors already buried under main.
     tag="$(latest_pending_release_tag || true)"
     if [[ -z "$tag" ]]; then
-      tag="$(latest_tag_on_ref "$remote_ref")" \
-        || die "no v* tags found on ${remote_ref}"
+      tag="$(latest_tag_on_ref "$remote_ref" || true)"
+      if [[ -z "$tag" ]]; then
+        ok "No pending CI release on ${SYNC_REPO} — nothing to bring"
+        return 0
+      fi
     fi
   fi
 
@@ -623,6 +629,22 @@ sync_from_forjahq() {
 
   if git merge-base --is-ancestor "$release_sha" HEAD; then
     ok "${tag} already on ${branch}"
+    # Tag already on our history — only push the ref if origin is missing it
+    # AND it is not older (by commit date) than HEAD's newest tip tag.
+    if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+      ok "origin already has ${tag} — nothing to push"
+      return 0
+    fi
+    local on_head tip_date tag_date
+    on_head="$(latest_tag_on_head || true)"
+    if [[ -n "$on_head" ]]; then
+      tip_date="$(git log -1 --format=%ct "${on_head}^{commit}" 2>/dev/null || echo 0)"
+      tag_date="$(git log -1 --format=%ct "${tag}^{commit}" 2>/dev/null || echo 0)"
+      if (( tag_date < tip_date )); then
+        warn "Skip pushing ancient ${tag} (older than ${on_head} on HEAD) — delete leftover tags manually if needed"
+        return 0
+      fi
+    fi
   elif git merge-base --is-ancestor HEAD "$release_sha"; then
     info "Fast-forward ${branch} → ${tag}"
     git merge --ff-only "$release_sha"
@@ -1777,8 +1799,13 @@ wizard_sync_from() {
     || die "missing ${remote_ref} — does ${SYNC_REPO} have ${branch}?"
   tag="$(latest_pending_release_tag || true)"
   if [[ -z "$tag" ]]; then
-    tag="$(latest_tag_on_ref "$remote_ref")" \
-      || die "no v* tags found on ${remote_ref}"
+    tag="$(latest_tag_on_ref "$remote_ref" || true)"
+    if [[ -z "$tag" ]]; then
+      ui_raw_off
+      ui_clear
+      ok "No pending CI release on ${SYNC_REPO} — nothing to bring"
+      return 0
+    fi
   else
     note=" (pending — not on ${branch} yet)"
   fi

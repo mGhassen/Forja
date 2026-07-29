@@ -69,16 +69,24 @@ class PlayerTvRemoteKeyHandler {
       return true;
     }
 
-    // ←/→ always seek when this handler runs. [PlayerTvKeyScope] does not call
-    // us while a chrome control holds focus (then FocusableControl owns ←/→).
-    if (key == LogicalKeyboardKey.arrowLeft ||
-        key == LogicalKeyboardKey.mediaRewind) {
+    // Dedicated transport keys always seek. D-pad ←/→ seek only while chrome
+    // is hidden — when chrome is up, [PlayerTvKeyScope] / FocusableControl /
+    // the progress bar own left/right (never skip from the video key node).
+    if (key == LogicalKeyboardKey.mediaRewind) {
       onSeekBack();
       return true;
     }
-
-    if (key == LogicalKeyboardKey.arrowRight ||
-        key == LogicalKeyboardKey.mediaFastForward) {
+    if (key == LogicalKeyboardKey.mediaFastForward) {
+      onSeekForward();
+      return true;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      if (showControls) return false;
+      onSeekBack();
+      return true;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      if (showControls) return false;
       onSeekForward();
       return true;
     }

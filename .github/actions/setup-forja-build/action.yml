@@ -1,0 +1,36 @@
+name: Setup Forja build
+description: Rust toolchain + crates cache, Flutter SDK + pub cache
+
+inputs:
+  with_rust:
+    description: Install Rust and cache crates/target
+    required: false
+    default: 'true'
+  flutter_channel:
+    description: Flutter channel
+    required: false
+    default: 'stable'
+  rust_cache_key:
+    description: Extra shared-key for Swatinem/rust-cache (per job/arch)
+    required: false
+    default: forja
+
+runs:
+  using: composite
+  steps:
+    - name: Rust toolchain
+      if: inputs.with_rust == 'true'
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache Rust crates
+      if: inputs.with_rust == 'true'
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: crates -> target
+        shared-key: ${{ inputs.rust_cache_key }}
+
+    - name: Flutter SDK
+      uses: subosito/flutter-action@v2
+      with:
+        channel: ${{ inputs.flutter_channel }}
+        cache: true

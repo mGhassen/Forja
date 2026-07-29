@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 7** acceptance · **2** 🔄 · **1** ⏭️ notarize |
-| **Current slice** | CI ships ad-hoc unsigned-entitlements macOS DMG (sandbox off); Developer ID deferred |
+| **Progress** | **1 / 8** acceptance · **2** 🔄 · **1** ⏭️ notarize |
+| **Current slice** | CI ships ad-hoc DMG; Rust/Flutter caches + build heartbeats in release/build workflows |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -27,6 +27,7 @@
 | 6 | R21-A06 | In-app update finds release (RFC-015) | 🔄 |
 | 7 | R21-A07 | Icon + splash show Forja branding | ⬜ |
 | 8 | R21-A08 | Jellyfin login works on macOS (keychain) | ⬜ |
+| 9 | R21-A09 | Release/build CI caches Rust `crates/target` + Flutter pub; long builds emit heartbeats | ✅ |
 
 ---
 
@@ -47,7 +48,7 @@ Clean git history, automated release builds, macOS notarization, platform entitl
 
 - Reproducible `v*` tag → GitHub Release with platform artifacts
 - Notarized macOS `.dmg` users can open without Gatekeeper fights
-- Clean repo root (no legacy PlayTorrio paths)
+- Clean repo root (no legacy paths)
 - Consistent Forja branding on icon + splash + window chrome
 
 ---
@@ -102,6 +103,8 @@ flutter build macos --release
 | Android TV | `Forja-{version}-android-tv-arm64.apk` + `Forja-{version}-android-tv-armeabi-v7a.apk` |
 
 Attach selected assets to GitHub Release; [`AppUpdaterService`](../../apps/forja/lib/shared/services/app_updater_service.dart) matches asset filenames (Android TV by ABI).
+
+**Build speed (R21-A09):** shared [`.github/actions/setup-forja-build`](../../.github/actions/setup-forja-build/action.yml) enables `Swatinem/rust-cache` (`crates -> target`) and Flutter pub cache. Long Rust/Flutter steps wrap [`scripts/ci_with_heartbeat.sh`](../../scripts/ci_with_heartbeat.sh) so logs keep moving during silent MSVC/Xcode compiles. Existing-tag jobs sync those helpers from the workflow SHA via [`scripts/ci_sync_helpers_from_workflow.sh`](../../scripts/ci_sync_helpers_from_workflow.sh). Cold Flutter/Xcode/MSVC app compile remains the bulk of wall time — caches mainly cut Rust + pub download.
 
 ## 4. Platform entitlements and fixes
 

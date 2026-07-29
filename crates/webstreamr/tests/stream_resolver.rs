@@ -48,7 +48,7 @@ async fn tmdb_manual_mismatch_fix() {
     assert_eq!(ids.tmdb_id, Some(225634));
 }
 
-/// Live parity check vs PlayTorrio — HDHub4u hubdrive→hubcloud multi-stream set.
+/// Live parity check — HDHub4u hubdrive→hubcloud multi-stream set.
 #[test]
 #[ignore = "live network"]
 fn enola_holmes3_resolves_multiple_streams() {
@@ -70,7 +70,7 @@ fn enola_holmes3_resolves_multiple_streams() {
     let arr = decoded.as_array().expect("array");
     assert!(
         arr.len() > 1,
-        "expected HDHub4u multi-stream set like PlayTorrio, got {}",
+        "expected HDHub4u multi-stream set, got {}",
         arr.len()
     );
     let titles: Vec<_> = arr
@@ -83,7 +83,7 @@ fn enola_holmes3_resolves_multiple_streams() {
     );
 }
 
-/// Print full resolve for manual comparison (PlayTorrio / Forja UI).
+/// Print full resolve for manual comparison (Forja UI).
 #[test]
 #[ignore = "live network — run: cargo test dump_enola_streams -- --ignored --nocapture"]
 fn dump_enola_streams() {

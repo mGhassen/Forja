@@ -92,8 +92,8 @@ async fn fetch_text_post_async(
 }
 
 async fn final_redirect_url_async(url: &str, config: &FetchConfig) -> Result<String, String> {
-    // PlayTorrio getFinalRedirectUrl: HEAD with followRedirects=false and
-    // walk Location manually. MegaKino alone needs ~13 hops; reqwest's
+    // Manual redirect walk: HEAD with followRedirects=false and walk
+    // Location hop-by-hop. MegaKino alone needs ~13 hops; reqwest's
     // limited(10) policy dies mid-chain with "error following redirect".
     utils::engine_cancel::with_cancel(async {
         let client = reqwest::Client::builder()

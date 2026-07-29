@@ -1,4 +1,4 @@
-//! Port of webstreamr `hd-hub-helper.ts` / PlayTorrio `hd_hub_helper.dart`.
+//! Port of webstreamr `hd-hub-helper.ts`.
 //!
 //! Gadgetsweb / hub redirect pages embed `'o','<payload>'` where decoding
 //! (base64 ×2 → ROT13 → base64 → JSON `{"o":"<b64 url>"}` → base64) yields
@@ -73,7 +73,7 @@ mod tests {
         // Apply inverse of rot13 to simulate the stored form after atob(atob)
         let before_rot = step1.clone();
         let after_rot = rot13(&before_rot); // encode path: we rot13 before outer b64
-        // PlayTorrio decode: atob(rot13(atob(atob(payload))))
+        // Decode path: atob(rot13(atob(atob(payload))))
         // So encode: payload = b64(b64(rot13(b64(json))))
         let mid = STANDARD.encode(after_rot.as_bytes());
         let payload = STANDARD.encode(mid.as_bytes());

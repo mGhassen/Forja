@@ -39,7 +39,7 @@
 
 ## Goal
 
-Ship Forja as a full cinema app with all PlayTorrio nav tabs, clean monorepo layout, and macOS release build.
+Ship Forja as a full cinema app with the full nav tab set, clean monorepo layout, and macOS release build.
 
 ## Architecture (shipped)
 
