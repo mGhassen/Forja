@@ -1,4 +1,4 @@
-import 'package:forja/shared/platform/platform_info.dart';
+import 'package:rust/rust.dart';
 
 /// Read-only host access to the boot-time platform profile.
 abstract final class PlatformInfo {

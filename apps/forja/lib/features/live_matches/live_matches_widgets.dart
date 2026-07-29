@@ -1603,7 +1603,21 @@ class _LiveMatchesEmbedPlayerScreenState
       }
     }
 
-    // CORS often hides the body from JS; seed via Dart + WebView cookies.
+    // CORS often hides the body from JS. Seed inside Chromium (same path Exo
+    // will use) — Dart/OkHttp re-GETs of strmd.st almost always 403.
+    final proxy = LiveEmbedWebViewProxy();
+    proxy.attachController(_webViewController);
+    _streamedWebViewProxy = proxy;
+    if (body == null || !body.trimLeft().startsWith('#EXTM3U')) {
+      debugPrint('[LiveMatches] streamed: seeding playlist via WebView fetch');
+      body = await proxy.fetchPlaylistText(capturedUrl);
+      if (body != null) {
+        _androidCapturedPlaylistUrl = capturedUrl;
+        _androidCapturedPlaylistBody = body;
+      }
+    }
+
+    // Rare: cookie jar sometimes works when Chromium CORS fails entirely.
     if (body == null || !body.trimLeft().startsWith('#EXTM3U')) {
       body = await _trySeedStreamedPlaylistBody(capturedUrl);
       if (body != null) {
@@ -1617,6 +1631,8 @@ class _LiveMatchesEmbedPlayerScreenState
       debugPrint(
         '[LiveMatches] streamed: no body — falling back to /hls-proxy',
       );
+      await _streamedWebViewProxy?.stop();
+      _streamedWebViewProxy = null;
       await _handOffStreamedViaHlsProxy(capturedUrl);
       return;
     }
@@ -1630,8 +1646,6 @@ class _LiveMatchesEmbedPlayerScreenState
       );
     } catch (_) {}
 
-    final proxy = LiveEmbedWebViewProxy();
-    proxy.attachController(_webViewController);
     try {
       await proxy.start(
         playlistBody: playlistBody,
@@ -1640,15 +1654,16 @@ class _LiveMatchesEmbedPlayerScreenState
     } catch (e) {
       debugPrint('[LiveMatches] WebView proxy start failed: $e');
       await proxy.stop();
+      _streamedWebViewProxy = null;
       await _abandonAndroidHandoff('streamed: proxy start failed');
       return;
     }
     if (proxy.playlistUrl.isEmpty) {
       await proxy.stop();
+      _streamedWebViewProxy = null;
       await _abandonAndroidHandoff('streamed: proxy has no port');
       return;
     }
-    _streamedWebViewProxy = proxy;
 
     if (!mounted || _androidHandoffAbandoned) {
       await proxy.stop();
@@ -2309,58 +2324,10 @@ class _LiveMatchesEmbedPlayerScreenState
                             ? (ctrl, request) async {
                                 final u = request.url.toString();
                                 _onSniffedMediaUrl(u);
-                                // Streamed: when Chromium would CORS-block the
-                                // playlist, re-GET with cookies and return the
-                                // body with ACAO so the spy can capture it.
-                                if (_androidProfile.isStreamed &&
-                                    !_androidHandoffAbandoned &&
-                                    _streamedWebViewProxy == null &&
-                                    (_androidCapturedPlaylistBody == null ||
-                                        !_androidCapturedPlaylistBody!
-                                            .trimLeft()
-                                            .startsWith('#EXTM3U'))) {
-                                  final low = u.toLowerCase();
-                                  final isPlaylist = low.contains('.m3u8') ||
-                                      (low.contains('strmd.st') &&
-                                          (low.contains('playlist') ||
-                                              low.contains('/secure/')));
-                                  if (isPlaylist &&
-                                      !low.contains('/tracks-') &&
-                                      !low.contains('mono.ts.m3u8')) {
-                                    final seeded =
-                                        await _trySeedStreamedPlaylistBody(
-                                      u,
-                                      maxAttempts: 1,
-                                    );
-                                    if (seeded != null) {
-                                      _onCapturedPlaylist(u, seeded);
-                                      final embedOrigin =
-                                          Uri.tryParse(widget.embedUrl)
-                                              ?.origin ??
-                                          'https://embed.st';
-                                      return WebResourceResponse(
-                                        contentType:
-                                            'application/vnd.apple.mpegurl',
-                                        data: Uint8List.fromList(
-                                          utf8.encode(seeded),
-                                        ),
-                                        statusCode: 200,
-                                        reasonPhrase: 'OK',
-                                        headers: {
-                                          // Reflect embed origin — never '*' with
-                                          // credentials (CDN ACAO:* breaks include).
-                                          'Access-Control-Allow-Origin':
-                                              embedOrigin,
-                                          'Access-Control-Allow-Credentials':
-                                              'true',
-                                          'Content-Type':
-                                              'application/vnd.apple.mpegurl',
-                                        },
-                                      );
-                                    }
-                                  }
-                                }
-                                // Observe only — never replace the response.
+                                // Observe only — never await a Dart re-GET here.
+                                // Streamed CDN 403s OkHttp, and blocking this
+                                // callback delays Chromium's own playlist fetch
+                                // until handoff has already given up on the body.
                                 return null;
                               }
                             : null,

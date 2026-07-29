@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **9 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs, historical) · **2 / 3** acceptance (R2 changelog archive) · **4 / 4** acceptance (per-platform latest) |
-| **Current slice** | Per-platform `latest/` merge shipped; hosted smoke A37 / A45 still open |
+| **Progress** | **7 / 7** acceptance (v1.0) · **11 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs, historical) · **2 / 3** acceptance (R2 changelog archive) · **4 / 4** acceptance (per-platform latest) |
+| **Current slice** | In-session auto-check + dismiss/throttle shipped; hosted smoke A37 / A45 still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -47,8 +47,8 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R15-A08 | `update_dismissed_version` — respect Later | ⬜ |
-| 2 | R15-A09 | Auto-check throttle (max once per 24h) | ⬜ |
+| 1 | R15-A08 | `update_dismissed_version` — respect Later / Skip (no auto re-prompt until a newer version) | ✅ |
+| 2 | R15-A09 | In-session auto-check in `MainScreen` (periodic + resume, ≥1h throttle); deferred while a player is open | ✅ |
 | 3 | R15-A10 | Windows/Linux download with in-dialog progress | ✅ |
 | 4 | R15-A11 | macOS: download DMG to Downloads + open | ✅ |
 | 5 | R15-A12 | SHA256 verification before install | ⬜ |
@@ -257,9 +257,17 @@ Build number (`1.0.0+42` from pubspec) ignored for GitHub tag compare; optional 
 1. App launches → `DesktopStartupGate` → `AppUpdaterService.checkForUpdates()` (before account entry and before splash)
 2. If newer version → non-dismissible-on-first-show dialog (`UpdateDialog`); user dismisses before auth/splash continues
 3. User: **Update Now** | **Later**
-4. Historical: v1.0 also checked from `MainScreen` after splash dismiss (R15-A07) — superseded by R15-A39
+4. Historical: v1.0 also checked from `MainScreen` after splash dismiss (R15-A07) — superseded by R15-A39 for cold start
 
-Throttle: do not re-prompt same version within 24h if user tapped Later (v1.1 — persist in `SettingsService`).
+### Auto-check (in-session — R15-A08 / R15-A09)
+
+1. After the shell opens, `AppUpdateAutoCheck` runs in the background (first tick after paint, then every 1h, and on app resume)
+2. Network checks are throttled (`update_last_check_at`); silent on failure
+3. If a player is open, the prompt waits until playback chrome clears
+4. **Later** / closing the dialog sets `update_dismissed_version` — that version is not auto-prompted again until a newer release ships
+5. Manual **Settings → About → Check for updates** still always shows when an update exists
+
+Throttle: do not re-prompt the same dismissed version (v1.1 — persist in `SettingsService`).
 
 ### Manual check (Settings)
 

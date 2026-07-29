@@ -138,7 +138,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [114-[open]-…](114-[open]-android-tv-movie-mediakit-audio-only.md) | Android TV movie MediaKit audio-only | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [115-[open]-…](115-[open]-android-tv-iptv-player-menu-mpv-sigsegv.md) | Android TV IPTV Player menu mpv SIGSEGV | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [116-[open]-…](116-[open]-android-tv-live-matches-embed-cors-native-handoff.md) | Android TV Live Matches embed CORS → native handoff | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [117-[open]-…](117-[open]-android-live-embedindia-handoff-stuck.md) | Android Live embedindia / Streamed Exo handoff black | P1 | High | open | 20/20 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [117-[open]-…](117-[open]-android-live-embedindia-handoff-stuck.md) | Android Live embedindia / Streamed Exo handoff black | P1 | High | open | 21/21 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [118-[open]-…](118-[open]-iptv-thin-local-cache-shrinks-cloud.md) | Thin local IPTV cache shrinks cloud portals | P0 | Critical | open | 8/8 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [119-[open]-…](119-[open]-android-tv-double-back-exit.md) | Android TV double Back / Exit to quit | P1 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [120-[open]-…](120-[open]-android-tv-player-memory-purge.md) | Player open: purge sibling tabs + image RAM | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -154,6 +154,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [131-[open]-…](131-[open]-android-tv-live-matches-exo-dpad-dead.md) | ATV Live Matches Exo player D-pad dead after handoff | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [132-[open]-…](132-[open]-android-tv-exo-auto-subtitle-merging-crash.md) | ATV Exo auto subtitle select crashes / pops player | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [134-[fixed]-…](fixed/134-[fixed]-player-audio-continues-after-app-switch.md) | Player audio continues after app switch | P1 | High | fixed | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

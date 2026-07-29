@@ -10,6 +10,10 @@ import 'package:passkeys/exceptions.dart';
 /// (`webcredentials:www.forjahq.xyz`), which requires a paid Apple Developer
 /// team to sign - Personal Team builds omit that entitlement, so the button
 /// may fail with a domain-association error until a paid team is used.
+///
+/// On macOS, `passkeys_darwin` APIs are `@available(macOS 13.5, *)`. Older
+/// macOS still runs Forja — passkeys are simply unavailable (do **not** raise
+/// the app `MACOSX_DEPLOYMENT_TARGET` for this).
 /// Linux / mobile / TV: no native passkeys.
 class ForjaPasskeys {
   ForjaPasskeys._();
@@ -28,10 +32,25 @@ class ForjaPasskeys {
     if (!uiEnabled) return false;
     if (kIsWeb) return false;
     try {
-      return Platform.isMacOS || Platform.isWindows;
+      if (Platform.isWindows) return true;
+      if (Platform.isMacOS) return macosOsSupportsPasskeys;
+      return false;
     } catch (_) {
       return false;
     }
+  }
+
+  /// `passkeys_darwin` types require Ventura 13.5+. Parsed from
+  /// [Platform.operatingSystemVersion] (`Version 13.5.1 (Build …)`).
+  @visibleForTesting
+  static bool get macosOsSupportsPasskeys {
+    final match = RegExp(
+      r'Version (\d+)\.(\d+)',
+    ).firstMatch(Platform.operatingSystemVersion);
+    if (match == null) return false;
+    final major = int.tryParse(match.group(1)!) ?? 0;
+    final minor = int.tryParse(match.group(2)!) ?? 0;
+    return major > 13 || (major == 13 && minor >= 5);
   }
 
   /// Maps platform / WebAuthn failures to a short user-facing message.

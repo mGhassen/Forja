@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **20 / 20** fix · **0 / 3** acceptance |
+| **Progress** | **21 / 21** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -39,6 +39,7 @@
 | 18 | I117-T18 | Streamed: WebView-backed loopback proxy for Exo (CDN fetch stays in Chromium; keep embed route mounted) | ✅ |
 | 19 | I117-T19 | Re-enable Streamed Android native handoff; do not set `_exiting` before playlist body; Dart/Cookie seed + `/hls-proxy` fallback; peel nested embedindia | ✅ |
 | 20 | I117-T20 | Streamed WebView proxy: fetch CDN with `credentials:omit` first (CDN ACAO:* forbids include → child m3u8 timeout / Exo reconnect) | ✅ |
+| 21 | I117-T21 | Streamed: do not Dart-seed inside `shouldInterceptRequest` (blocks Chromium + always 403); seed playlist via WebView fetch before `/hls-proxy` | ✅ |
 
 ---
 
@@ -87,6 +88,8 @@
 **Streamed ATV sandbox lock again (I117-T19):** A mid-slice regression turned Streamed native handoff **off** (WebView-only). Logs: `strmd.st` CORS from `embed.st` + red **Remove sandbox attributes…** UI with Flutter pause/mute chrome. Fix: handoff on for all Android Live embeds again; wait for `#EXTM3U` **before** `_exiting` (URL sniff used to block body capture); seed playlist via Dart+cookies / intercept ACAO; fall back to `/hls-proxy` when body never lands; peel nested `embedindia` under `embed.st`.
 
 **Streamed buffers then Reconnecting (I117-T20):** Master playlist captured and Exo opened on loopback, but child `…/high/mono.m3u8` fetch via the embed iframe used `credentials:include` while the CDN returns `Access-Control-Allow-Origin: *` — browser blocks that combo → proxy timeout → Exo reconnect loop. Fix: proxy fetch tries `credentials:omit` first (URL already carries the secure token), then `include`; empty CORS fails settle in 1.2s instead of hanging 20s.
+
+**Streamed body + /hls-proxy exhausted (I117-T21):** Sniff fired from `shouldInterceptRequest`, which then **awaited** a Dart/OkHttp cookie re-GET of `strmd.st` (always 403) before returning null. That blocked Chromium’s own playlist download until handoff had already timed out waiting for `#EXTM3U`, then Dart seed + `/hls-proxy` also 403 → abandon. Fix: observe-only intercept (return null immediately); if the JS spy still misses the body, seed via Chromium `fetch` in the embed iframe before the OkHttp fallbacks.
 
 **Player button:** The in-player **Player** control (Exo ↔ MediaKit / external) lives on `IptvPtPlayerScreen` after handoff — it does not appear on the WebView “Opening stream…” cover.
 

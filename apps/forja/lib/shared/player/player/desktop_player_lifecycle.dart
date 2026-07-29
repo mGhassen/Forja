@@ -98,7 +98,10 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
     // Track desktop PiP state so we can hide all controls when active.
     _s._pipSub = PipService.instance.desktopPipChanges.listen((on) {
       if (!mounted) return;
-      setState(() => _s._isPipMode = on);
+      setState(() {
+        _s._isPipMode = on;
+        if (on) _s._pausedByLifecycle = false;
+      });
     });
 
     _s._loadHeroMetadata();
@@ -458,12 +461,19 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
     super.didChangeAppLifecycleState(state);
     // Save progress when app goes to background or is paused
     if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       _saveWatchHistory(isBgPause: true);
+      _pauseForAppBackground();
+    } else if (state == AppLifecycleState.inactive) {
+      if (!_s._disposed && !_s._isPipMode && _s._player.state.playing) {
+        _s._pausedByLifecycle = true;
+      }
+      // macOS focus blur fires inactive often — save only; pause on paused/hidden.
+      _saveWatchHistory(isBgPause: true);
     } else if (state == AppLifecycleState.resumed) {
       _s._historySaved = false;
+      _resumeAfterAppBackground();
       if (widget.movie != null && _s._isPlayingNotifier.value) {
         final pos = _s._positionNotifier.value.inMilliseconds;
         final dur = _s._durationNotifier.value.inMilliseconds;
@@ -477,6 +487,21 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
         );
       }
     }
+  }
+
+  void _pauseForAppBackground() {
+    if (_s._disposed || _s._isPipMode) return;
+    if (_s._player.state.playing) {
+      _s._pausedByLifecycle = true;
+      unawaited(_s._player.pause());
+    }
+  }
+
+  void _resumeAfterAppBackground() {
+    if (_s._disposed || !_s._pausedByLifecycle) return;
+    _s._pausedByLifecycle = false;
+    if (_s._isPipMode) return;
+    unawaited(_s._player.play());
   }
 
   Future<void> _saveWatchHistory({bool isBgPause = false}) =>

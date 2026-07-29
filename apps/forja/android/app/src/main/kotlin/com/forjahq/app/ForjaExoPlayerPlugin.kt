@@ -11,6 +11,7 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
@@ -192,6 +193,14 @@ class ExoPlayerHost(
             .setRenderersFactory(renderersFactory)
             .setLoadControl(loadControl)
             .build()
+        // Pause when another app takes audio focus (Netflix, etc.) — issue 134.
+        exo.setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build(),
+            /* handleAudioFocus= */ true,
+        )
         exo.addListener(listener)
         // Wake lock while playing live IPTV — weak TVs throttle decode in doze.
         exo.setWakeMode(

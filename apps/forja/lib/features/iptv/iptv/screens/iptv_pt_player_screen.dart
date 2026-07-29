@@ -258,6 +258,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _pipHover = false;
   StreamSubscription<bool>? _pipSub;
 
+  /// Paused because app left foreground — resume only if set (issue 134).
+  bool _pausedByLifecycle = false;
+
   // Retry state
   int _retryAttempt = 0;
   DateTime? _lastRecoveryAt;
@@ -384,6 +387,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
           _guideVisible = false;
           _searchVisible = false;
           _hideControlsTimer?.cancel();
+          _pausedByLifecycle = false;
         }
       });
       if (inPip && !_playing) {
@@ -565,6 +569,39 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     if (v > 0) _volumeBeforeMute = v;
     _engineSetVolume(v);
     unawaited(IptvStore.savePlayerVolume(v));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _pauseForAppBackground();
+    } else if (state == AppLifecycleState.inactive) {
+      if (!_disposed && !_isPipMode && _playing) {
+        _pausedByLifecycle = true;
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      _resumeAfterAppBackground();
+    }
+  }
+
+  void _pauseForAppBackground() {
+    if (_disposed || _isPipMode) return;
+    if (_playing) {
+      _pausedByLifecycle = true;
+      _userPlayWhenReady = false;
+      unawaited(_enginePause());
+    }
+  }
+
+  void _resumeAfterAppBackground() {
+    if (_disposed || !_pausedByLifecycle) return;
+    _pausedByLifecycle = false;
+    if (_isPipMode) return;
+    _userPlayWhenReady = true;
+    unawaited(_enginePlay());
   }
 
   @override

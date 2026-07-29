@@ -231,9 +231,10 @@ Supabase `service_role` / `sb_secret_…` key in a desktop build.
 - Per-domain merge by timestamp is still evolving — sign in after web edits to refresh the app.
 - Local **Backup & restore** still works for a full JSON export including device-only keys.
 - macOS passkeys on the **website** work with RP ID `www.forjahq.xyz`. Native
-  in-app passkeys on Mac need a paid Apple Developer team (Associated Domains);
-  on a Personal Team use password or **Web login**. Windows can use passkeys
-  in-app via Windows Hello.
+  in-app passkeys on Mac need **macOS 13.5+** and a paid Apple Developer team
+  (Associated Domains); older macOS still runs Forja — use password or **Web
+  login**. On a Personal Team use password or **Web login**. Windows can use
+  passkeys in-app via Windows Hello.
 
 ## Related
 

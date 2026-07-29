@@ -28,6 +28,7 @@ import 'package:forja/shell/macos_shell_channel.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/services/app_update_auto_check.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -52,6 +53,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
   int _selectedIndex = 0;
   Timer? _metricsDebounce;
   Timer? _metricsSafety;
+  final AppUpdateAutoCheck _updateAutoCheck = AppUpdateAutoCheck();
 
   final GlobalKey<SearchScreenState> _searchKey = GlobalKey<SearchScreenState>();
   final Map<String, GlobalKey<State<StatefulWidget>>> _tabKeys = {};
@@ -296,6 +298,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
     _loadNavbarConfig();
     _syncCurrentNavTab();
+    _updateAutoCheck.start(() => _shellScopedContext ?? context);
   }
 
   Future<void> _loadNavbarConfig() async {
@@ -393,6 +396,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       if (id != null) {
         _refreshTabIfStale(id);
       }
+      _updateAutoCheck.onResumed();
       if (Platform.isAndroid) {
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       }
@@ -455,6 +459,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
   void dispose() {
     _metricsDebounce?.cancel();
     _metricsSafety?.cancel();
+    _updateAutoCheck.dispose();
     WidgetsBinding.instance.removeObserver(this);
     ShellBus.stremioSearchNotifier.removeListener(_onStremioSearch);
     ShellBus.requestTab.removeListener(_onRequestTab);

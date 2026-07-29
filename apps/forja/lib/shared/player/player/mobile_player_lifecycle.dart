@@ -120,6 +120,8 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
         if (inPip) {
           _s._showControls = false;
           _s._hideTimer?.cancel();
+          // Lifecycle may have paused us before the PiP flag flipped — keep PiP alive.
+          _s._pausedByLifecycle = false;
         }
       });
       if (inPip) {
@@ -589,14 +591,25 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       // Save local history + send scrobblePause (not stop - user may return)
       _saveWatchHistory(isBgPause: true);
+      // Stop audio when another app takes the screen (e.g. Netflix on ATV).
+      // Skip PiP — that path is meant to keep playing (issue 134).
+      _pauseForAppBackground();
+    } else if (state == AppLifecycleState.inactive) {
+      // Capture play intent before focus/other apps pause us (inactive fires first).
+      if (!_s._disposed && !_s._isPipMode && _s._player.state.playing) {
+        _s._pausedByLifecycle = true;
+      }
+      // Phone control-center / brief blur: save progress only. Do not pause
+      // here — `paused`/`hidden` cover real backgrounding.
+      _saveWatchHistory(isBgPause: true);
     } else if (state == AppLifecycleState.resumed) {
       // Tell Trakt we're back
       _s._historySaved = false; // allow re-save on next exit
+      _resumeAfterAppBackground();
       if (widget.movie != null && _s._isPlayingNotifier.value) {
         final pos = _s._positionNotifier.value.inMilliseconds;
         final dur = _s._durationNotifier.value.inMilliseconds;
@@ -610,6 +623,21 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
         );
       }
     }
+  }
+
+  void _pauseForAppBackground() {
+    if (_s._disposed || _s._isPipMode) return;
+    if (_s._player.state.playing) {
+      _s._pausedByLifecycle = true;
+      unawaited(_s._player.pause());
+    }
+  }
+
+  void _resumeAfterAppBackground() {
+    if (_s._disposed || !_s._pausedByLifecycle) return;
+    _s._pausedByLifecycle = false;
+    if (_s._isPipMode) return;
+    unawaited(_s._player.play());
   }
 
   void _saveWatchHistory({bool isBgPause = false}) {

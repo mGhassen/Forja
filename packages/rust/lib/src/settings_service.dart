@@ -474,6 +474,41 @@ class SettingsService {
   Future<void> setCrashReportingEnabled(bool enabled) async =>
       kvSetBool(_crashReportingEnabledKey, enabled);
 
+  // --- In-app update auto-check (RFC-015 R15-A08 / R15-A09) ---
+  static const String _updateLastCheckAtKey = 'update_last_check_at';
+  static const String _updateDismissedVersionKey = 'update_dismissed_version';
+  static const String _updateAutoCheckEnabledKey = 'update_auto_check_enabled';
+
+  /// ISO8601 of the last auto/manual network update check, or null.
+  Future<DateTime?> getUpdateLastCheckAt() async {
+    final raw = await kvGetString(_updateLastCheckAtKey);
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  Future<void> setUpdateLastCheckAt(DateTime at) async =>
+      kvSetString(_updateLastCheckAtKey, at.toUtc().toIso8601String());
+
+  /// Version the user skipped ("Later" / "Skip for now"). Null = none.
+  Future<String?> getUpdateDismissedVersion() async {
+    final raw = await kvGetString(_updateDismissedVersionKey);
+    if (raw == null || raw.isEmpty) return null;
+    return raw.trim();
+  }
+
+  Future<void> setUpdateDismissedVersion(String? version) async {
+    final v = version?.trim() ?? '';
+    // Empty string = cleared (getUpdateDismissedVersion treats empty as null).
+    await kvSetString(_updateDismissedVersionKey, v);
+  }
+
+  /// When false, in-session auto-check is off (manual Settings check still works).
+  Future<bool> isUpdateAutoCheckEnabled() async =>
+      kvGetBool(_updateAutoCheckEnabledKey, fallback: true);
+
+  Future<void> setUpdateAutoCheckEnabled(bool enabled) async =>
+      kvSetBool(_updateAutoCheckEnabledKey, enabled);
+
   /// Opt-in product analytics to PostHog (RFC-043). Default off.
   Future<bool> isProductAnalyticsEnabled() async =>
       kvGetBool(_productAnalyticsEnabledKey, fallback: false);

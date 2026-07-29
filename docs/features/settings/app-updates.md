@@ -1,6 +1,6 @@
 # App updates
 
-> Check for new releases manually or on launch.
+> Check for new releases manually, on launch, or while the app is open.
 
 ## What it is
 
@@ -8,7 +8,7 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 
 ## How to open it
 
-**Settings → About** — manual check. Auto-check runs on launch **before** desktop sign-in (and before the splash), so an update prompt is not delayed until after authentication or Home.
+**Settings → About** — manual check. Auto-check runs on launch **before** desktop sign-in (and before the splash), and again in the background while you use the app (about every hour, and when you return to Forja). If you skip an update, that version is not auto-prompted again until a newer one ships.
 
 ## What you can do
 

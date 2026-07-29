@@ -252,6 +252,10 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   // ── PiP State ─────────────────────────────────────────────────────────────
   bool _isPipMode = false;
 
+  /// True when we paused because the app left the foreground (not user pause).
+  /// Resume only if this is set — keeps manual pause across app switch.
+  bool _pausedByLifecycle = false;
+
   // ── Value Notifiers ───────────────────────────────────────────────────────
   final ValueNotifier<Duration> _positionNotifier = ValueNotifier(
     Duration.zero,

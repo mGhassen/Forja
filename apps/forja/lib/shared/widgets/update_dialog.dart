@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/services/app_update_auto_check.dart';
 import 'package:forja/shared/services/app_update_download_service.dart';
 import 'package:forja/shared/services/app_updater_release_notes.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
@@ -178,33 +179,38 @@ class UpdateDialog extends StatefulWidget {
 
   const UpdateDialog({super.key, required this.updateInfo});
 
-  static Future<void> show(BuildContext hostContext, UpdateInfo updateInfo) {
-    return showGeneralDialog<void>(
-      context: hostContext,
-      barrierDismissible: false,
-      barrierColor: AppTheme.bgDark,
-      barrierLabel: 'Software update',
-      transitionDuration: const Duration(milliseconds: 480),
-      pageBuilder: (dialogContext, _, _) =>
-          _scopeHost(hostContext, UpdateDialog(updateInfo: updateInfo)),
-      transitionBuilder: (context, animation, _, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.08),
-              end: Offset.zero,
-            ).animate(curved),
-            child: child,
-          ),
-        );
-      },
-    );
+  static Future<void> show(BuildContext hostContext, UpdateInfo updateInfo) async {
+    try {
+      await showGeneralDialog<void>(
+        context: hostContext,
+        barrierDismissible: false,
+        barrierColor: AppTheme.bgDark,
+        barrierLabel: 'Software update',
+        transitionDuration: const Duration(milliseconds: 480),
+        pageBuilder: (dialogContext, _, _) =>
+            _scopeHost(hostContext, UpdateDialog(updateInfo: updateInfo)),
+        transitionBuilder: (context, animation, _, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.08),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      );
+    } finally {
+      // Later / Skip / close after install — don't auto-prompt this version again.
+      await AppUpdateAutoCheck.recordDismissed(updateInfo.latestVersion);
+    }
   }
 
   static Widget _scopeHost(BuildContext hostContext, Widget child) {

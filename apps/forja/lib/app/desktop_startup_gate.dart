@@ -8,6 +8,7 @@ import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/services/app_update_auto_check.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/providers/profile_settings_sync_provider.dart';
@@ -111,6 +112,7 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
   Future<void> _runUpdateGate() async {
     try {
       final result = await AppUpdaterService().checkForUpdates();
+      await AppUpdateAutoCheck.recordCheckCompleted();
       if (!mounted) return;
       if (result.isAvailable && result.info != null) {
         await UpdateDialog.show(context, result.info!);

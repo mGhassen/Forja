@@ -18,7 +18,7 @@ Use the **PiP** button in the player top-right (movie player or IPTV), next to *
 
 - Shrink video to a corner overlay while playback continues
 - Resume full screen when leaving PiP (tap the system PiP window on Android, or the hover PiP icon on desktop)
-- Continue audio/video while using other apps (Android) or other windows (desktop)
+- Continue audio/video while PiP is active (Android phone/tablet or desktop). Leaving Forja for another full-screen app **without** PiP pauses the main player so audio does not keep playing under that app.
 - On macOS, switch Mission Control Spaces and keep watching in the same floating window
 
 ## Tips

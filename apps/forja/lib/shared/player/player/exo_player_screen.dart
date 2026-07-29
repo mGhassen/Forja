@@ -140,6 +140,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _exitInProgress = false;
   bool _showControls = true;
   bool _isPlaying = false;
+  /// Paused because app left foreground — resume only if set (issue 134).
+  bool _pausedByLifecycle = false;
   bool _hasError = false;
   String _errorMessage = '';
   bool _playbackStartedNotified = false;
@@ -535,6 +537,38 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Future<void> _saveProgress() async {
     if (widget.onSaveProgress == null || _duration.inMilliseconds <= 0) return;
     await widget.onSaveProgress!(_position, _duration);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      unawaited(_saveProgress());
+      _pauseForAppBackground();
+    } else if (state == AppLifecycleState.inactive) {
+      if (!_disposed && _isPlaying) {
+        _pausedByLifecycle = true;
+      }
+      unawaited(_saveProgress());
+    } else if (state == AppLifecycleState.resumed) {
+      _resumeAfterAppBackground();
+    }
+  }
+
+  void _pauseForAppBackground() {
+    if (_disposed) return;
+    if (_isPlaying) {
+      _pausedByLifecycle = true;
+      unawaited(ExoPlayerBridge.pause(_viewId));
+    }
+  }
+
+  void _resumeAfterAppBackground() {
+    if (_disposed || !_pausedByLifecycle) return;
+    _pausedByLifecycle = false;
+    unawaited(ExoPlayerBridge.play(_viewId));
   }
 
   Future<void> _seekRelative(Duration delta) async {

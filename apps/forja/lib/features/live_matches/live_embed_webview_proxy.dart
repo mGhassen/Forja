@@ -191,6 +191,36 @@ class LiveEmbedWebViewProxy {
     await req.response.close();
   }
 
+  /// Re-GET an `#EXTM3U` body inside Chromium (embed iframe). Use when the
+  /// JS spy never saw the playlist text — Dart/OkHttp re-GETs get CDN 403.
+  Future<String?> fetchPlaylistText(String url) async {
+    final result = await _fetchViaWebView(url);
+    if (result.status < 200 || result.status >= 400 || result.bytes.isEmpty) {
+      debugPrint(
+        '[LiveMatches] WebView playlist seed status=${result.status} '
+        'bytes=${result.bytes.length}',
+      );
+      return null;
+    }
+    try {
+      final text = utf8.decode(result.bytes);
+      if (text.trimLeft().startsWith('#EXTM3U')) {
+        debugPrint(
+          '[LiveMatches] WebView playlist seeded (${text.length} chars)',
+        );
+        return text;
+      }
+      final snip = text.length > 60 ? text.substring(0, 60) : text;
+      debugPrint(
+        '[LiveMatches] WebView playlist seed not m3u8: '
+        '${snip.replaceAll('\n', ' ')}',
+      );
+    } catch (e) {
+      debugPrint('[LiveMatches] WebView playlist seed decode failed: $e');
+    }
+    return null;
+  }
+
   Future<_ProxyFetchResult> _fetchViaWebView(String url) async {
     final ctrl = _controller;
     if (ctrl == null) {

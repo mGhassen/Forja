@@ -202,6 +202,9 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   bool _pipHover = false;
   StreamSubscription<bool>? _pipSub;
 
+  /// True when we paused because the window left the foreground (not user pause).
+  bool _pausedByLifecycle = false;
+
   // ── Resume State ─────────────────────────────────────────────────────────
   bool _hasInitialSeek = false;
 
