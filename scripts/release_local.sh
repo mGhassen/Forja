@@ -109,12 +109,6 @@ ui_raw_off() {
   fi
 }
 
-ui_cleanup() {
-  ui_raw_off
-}
-
-trap 'ui_cleanup' EXIT INT TERM
-
 # Sets REPLY to key name: up|down|left|right|enter|space|back|quit|<char>
 ui_read_key() {
   local k="" rest=""
@@ -122,7 +116,9 @@ ui_read_key() {
   IFS= read -rsn1 k || { REPLY=quit; return 1; }
   case "$k" in
     $'\x1b')
-      IFS= read -rsn2 -t 0.1 rest || true
+      # Arrow bytes are usually already buffered; keep a tiny window so ↑↓ still work
+      # on slow TTYs, without the old ~100ms stall on every key.
+      IFS= read -rsn2 -t 0.01 rest || true
       case "$rest" in
         '[A') REPLY=up ;;
         '[B') REPLY=down ;;
@@ -147,24 +143,38 @@ ui_clear() {
   printf '\033[H\033[J' >&2
 }
 
-# Banner tag line is expensive (walks all v* tags). Cache for the interactive session;
-# invalidate after fetch / sync / bump so the label can change.
-_UI_TAGS_READY=0
+# Banner tag line — file-backed so it survives `$(ui_choose)` subshells (bash
+# command substitution cannot share in-memory globals across screens).
+_UI_TAG_CACHE="${TMPDIR:-/tmp}/forja-release-ui-tags-$$"
 _UI_CACHED_PENDING=""
 _UI_CACHED_LATEST=""
 
 ui_invalidate_tags() {
-  _UI_TAGS_READY=0
   _UI_CACHED_PENDING=""
   _UI_CACHED_LATEST=""
+  rm -f "$_UI_TAG_CACHE" 2>/dev/null || true
 }
 
 ui_cache_tags() {
-  ((_UI_TAGS_READY)) && return 0
+  if [[ -f "$_UI_TAG_CACHE" ]]; then
+    # shellcheck disable=SC1090
+    source "$_UI_TAG_CACHE"
+    return 0
+  fi
   _UI_CACHED_PENDING="$(latest_pending_release_tag 2>/dev/null || true)"
   _UI_CACHED_LATEST="$(default_release_tag 2>/dev/null || true)"
-  _UI_TAGS_READY=1
+  {
+    printf '_UI_CACHED_PENDING=%q\n' "$_UI_CACHED_PENDING"
+    printf '_UI_CACHED_LATEST=%q\n' "$_UI_CACHED_LATEST"
+  } >"$_UI_TAG_CACHE"
 }
+
+ui_cleanup() {
+  ui_raw_off
+  rm -f "$_UI_TAG_CACHE" 2>/dev/null || true
+}
+
+trap 'ui_cleanup' EXIT INT TERM
 
 ui_step_banner() {
   local step="$1" total="$2" title="$3"
@@ -440,17 +450,13 @@ tag_on_our_line() {
 }
 
 # Newest v* tag that is an ancestor of ref (e.g. forjahq/main after CI release).
+# One git call — do not walk tags with merge-base (500+ tags ≈ multi-second stalls).
 latest_tag_on_ref() {
   local ref="$1"
   local t
-  while IFS= read -r t; do
-    [[ -z "$t" ]] && continue
-    if git merge-base --is-ancestor "$t" "$ref" 2>/dev/null; then
-      echo "$t"
-      return 0
-    fi
-  done < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null || true)
-  return 1
+  t="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --merged "$ref" --sort=-v:refname 2>/dev/null | head -1)"
+  [[ -n "$t" ]] || return 1
+  echo "$t"
 }
 
 # True if tag $1 is a newer semver than tag $2 (vX.Y.Z).
@@ -467,20 +473,22 @@ latest_tag_on_head() {
 
 # Newest CI release on our line that is NOT on HEAD and is newer than HEAD's tip tag.
 # Ignores ancient orphaned tags (e.g. v1.3.0 still dangling after main moved to v1.3.33).
+# Only walks --no-merged tags (orphaned CI releases), not the full tag list.
 latest_pending_release_tag() {
-  local t tip on_head
+  local t tip parent on_head
   on_head="$(latest_tag_on_head || true)"
   while IFS= read -r t; do
     [[ -z "$t" ]] && continue
     tip="$(git rev-parse "${t}^{commit}" 2>/dev/null)" || continue
-    git merge-base --is-ancestor "$tip" HEAD 2>/dev/null && continue
-    tag_on_our_line "$t" || continue
+    # --no-merged ⇒ tip is not on HEAD; orphaned CI release = parent still is.
+    parent="$(git rev-parse "${tip}^" 2>/dev/null)" || continue
+    git merge-base --is-ancestor "$parent" HEAD 2>/dev/null || continue
     if [[ -n "$on_head" ]] && ! version_tag_gt "$t" "$on_head"; then
       continue
     fi
     echo "$t"
     return 0
-  done < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null || true)
+  done < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --no-merged HEAD --sort=-v:refname 2>/dev/null || true)
   return 1
 }
 
@@ -539,6 +547,8 @@ sync_from_forjahq() {
   info "Fetch ${SYNC_REPO} (bring CI release → origin)"
   git fetch "$SYNC_REMOTE" --tags --force
   git fetch origin --tags --force 2>/dev/null || true
+  _TAGS_FETCHED=1
+  ui_invalidate_tags
 
   remote_ref="${SYNC_REMOTE}/${branch}"
   git rev-parse "$remote_ref" >/dev/null 2>&1 \
@@ -676,8 +686,14 @@ confirm_yes() {
   [[ -z "$ans" || "$ans" =~ ^[Yy]$ ]]
 }
 
+# Session-scoped: interactive wizard fetches once. Pass --force after remote mutates.
+_TAGS_FETCHED=0
 fetch_tags() {
+  if ((_TAGS_FETCHED)) && [[ "${1:-}" != "--force" ]]; then
+    return 0
+  fi
   git fetch origin --tags --force 2>/dev/null || true
+  _TAGS_FETCHED=1
   ui_invalidate_tags
 }
 
@@ -689,26 +705,41 @@ latest_tag() {
 # (merged into HEAD, or a CI release commit that branched off HEAD's ancestors).
 # Ancestor-only missed forjahq "chore: release" tags after sync-to force-pushed past them.
 default_release_tag() {
-  local semver major minor t
+  local semver major minor t tip parent
   semver="$(grep '^version:' "$APP_DIR/pubspec.yaml" 2>/dev/null | sed 's/version: *//' | cut -d+ -f1 || true)"
   if [[ "$semver" =~ ^([0-9]+)\.([0-9]+)\. ]]; then
     major="${BASH_REMATCH[1]}"
     minor="${BASH_REMATCH[2]}"
-    while IFS= read -r t; do
-      [[ -z "$t" ]] && continue
-      if tag_on_our_line "$t"; then
-        echo "$t"
-        return
-      fi
-    done < <(git tag -l "v${major}.${minor}.*" --sort=-v:refname 2>/dev/null || true)
-  fi
-  while IFS= read -r t; do
-    [[ -z "$t" ]] && continue
-    if tag_on_our_line "$t"; then
+    t="$(git tag -l "v${major}.${minor}.*" --merged HEAD --sort=-v:refname 2>/dev/null | head -1)"
+    if [[ -n "$t" ]]; then
       echo "$t"
       return
     fi
-  done < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname 2>/dev/null || true)
+    # Orphaned on-arc CI release (tip not on HEAD, parent is).
+    while IFS= read -r t; do
+      [[ -z "$t" ]] && continue
+      tip="$(git rev-parse "${t}^{commit}" 2>/dev/null)" || continue
+      parent="$(git rev-parse "${tip}^" 2>/dev/null)" || continue
+      if git merge-base --is-ancestor "$parent" HEAD 2>/dev/null; then
+        echo "$t"
+        return
+      fi
+    done < <(git tag -l "v${major}.${minor}.*" --no-merged HEAD --sort=-v:refname 2>/dev/null || true)
+  fi
+  t="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --merged HEAD --sort=-v:refname 2>/dev/null | head -1)"
+  if [[ -n "$t" ]]; then
+    echo "$t"
+    return
+  fi
+  while IFS= read -r t; do
+    [[ -z "$t" ]] && continue
+    tip="$(git rev-parse "${t}^{commit}" 2>/dev/null)" || continue
+    parent="$(git rev-parse "${tip}^" 2>/dev/null)" || continue
+    if git merge-base --is-ancestor "$parent" HEAD 2>/dev/null; then
+      echo "$t"
+      return
+    fi
+  done < <(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --no-merged HEAD --sort=-v:refname 2>/dev/null || true)
 }
 
 list_tags() {
@@ -1834,6 +1865,8 @@ Mirror:  $([[ "$do_sync" == 1 ]] && echo "yes → ${SYNC_REPO}" || echo no)" 1; 
 
 interactive_menu() {
   fetch_tags
+  # Warm banner cache in the parent shell before any $(ui_*) subshell.
+  ui_cache_tags
 
   if ! ui_can; then
     # Non-TTY fallback (piped / NONINTERACTIVE).
