@@ -143,6 +143,42 @@ ui_clear() {
   printf '\033[H\033[J' >&2
 }
 
+# Rows available for a list body (banner + hint eat ~10 lines). Cursor panel
+# terminals are often short — without windowing, item 0 (latest tag) scrolls off.
+ui_term_rows() {
+  local r
+  r="$(tput lines 2>/dev/null || true)"
+  [[ "$r" =~ ^[0-9]+$ ]] || r=24
+  ((r >= 12)) || r=12
+  printf '%s\n' "$r"
+}
+
+ui_list_capacity() {
+  local overhead="${1:-10}"
+  local rows cap
+  rows="$(ui_term_rows)"
+  cap=$((rows - overhead))
+  ((cap >= 5)) || cap=5
+  printf '%s\n' "$cap"
+}
+
+# Keep [win, win+vis) covering cursor. Sets win via nameref-style global _UI_WIN.
+ui_window_for_cursor() {
+  local cursor="$1" n="$2" vis="$3"
+  local win="${4:-0}"
+  ((vis < 1)) && vis=1
+  if ((cursor < win)); then
+    win=$cursor
+  elif ((cursor >= win + vis)); then
+    win=$((cursor - vis + 1))
+  fi
+  if ((n > vis)) && ((win > n - vis)); then
+    win=$((n - vis))
+  fi
+  ((win < 0)) && win=0
+  _UI_WIN=$win
+}
+
 # Banner tag line — file-backed so it survives `$(ui_choose)` subshells (bash
 # command substitution cannot share in-memory globals across screens).
 _UI_TAG_CACHE="${TMPDIR:-/tmp}/forja-release-ui-tags-$$"
@@ -213,18 +249,26 @@ ui_choose() {
   done
   ((${#ids[@]} > 0)) || die "ui_choose: empty list"
 
-  local cursor=0 n=${#ids[@]}
+  local cursor=0 n=${#ids[@]} win=0 vis i end
   while true; do
+    vis="$(ui_list_capacity 10)"
+    ui_window_for_cursor "$cursor" "$n" "$vis" "$win"
+    win=$_UI_WIN
+    end=$((win + vis))
+    ((end > n)) && end=$n
+
     ui_clear
     ui_step_banner "$step" "$total" "$title"
-    local i
-    for ((i = 0; i < n; i++)); do
+    ((win > 0)) && ui_hint "… ${win} more above"
+    for ((i = win; i < end; i++)); do
       if ((i == cursor)); then
-        printf '  %s › %s %s\n' "${C_INV}${C_BOLD}" "${labels[$i]}" "${C_RESET}" >&2
+        # Cyan marker (not reverse-video) — C_INV vanishes in some IDE panels.
+        printf '  %s›%s %s%s%s\n' "${C_CYAN}${C_BOLD}" "${C_RESET}" "${C_BOLD}" "${labels[$i]}" "${C_RESET}" >&2
       else
         printf '    %s\n' "${labels[$i]}" >&2
       fi
     done
+    ((end < n)) && ui_hint "… $((n - end)) more below"
     echo >&2
     ui_hint "↑↓ navigate · Enter next · b back · q quit"
     ui_read_key
@@ -271,11 +315,18 @@ ui_checklist() {
   done
   ((${#ids[@]} > 0)) || die "ui_checklist: empty list"
 
-  local cursor=0 n=${#ids[@]} i box
+  local cursor=0 n=${#ids[@]} win=0 vis i end box
   while true; do
+    vis="$(ui_list_capacity 10)"
+    ui_window_for_cursor "$cursor" "$n" "$vis" "$win"
+    win=$_UI_WIN
+    end=$((win + vis))
+    ((end > n)) && end=$n
+
     ui_clear
     ui_step_banner "$step" "$total" "$title"
-    for ((i = 0; i < n; i++)); do
+    ((win > 0)) && ui_hint "… ${win} more above"
+    for ((i = win; i < end; i++)); do
       if ((checked[i])); then
         box="${C_GREEN}☑${C_RESET}"
       else
@@ -287,6 +338,7 @@ ui_checklist() {
         printf '    %s %s\n' "$box" "${labels[$i]}" >&2
       fi
     done
+    ((end < n)) && ui_hint "… $((n - end)) more below"
     echo >&2
     ui_hint "↑↓ navigate · Space toggle · Enter next · b back · q quit"
     ui_read_key
@@ -344,7 +396,7 @@ ui_confirm_screen() {
     local i
     for ((i = 0; i < 2; i++)); do
       if ((i == cursor)); then
-        printf '  %s › %s %s\n' "${C_INV}${C_BOLD}" "${labels[$i]}" "${C_RESET}" >&2
+        printf '  %s›%s %s%s%s\n' "${C_CYAN}${C_BOLD}" "${C_RESET}" "${C_BOLD}" "${labels[$i]}" "${C_RESET}" >&2
       else
         printf '    %s\n' "${labels[$i]}" >&2
       fi
