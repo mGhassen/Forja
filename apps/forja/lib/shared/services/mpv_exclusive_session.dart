@@ -38,7 +38,9 @@ class MpvExclusiveSession {
   /// [Player] before that finishes yields black screen / format errors.
   Future<void> prepareForVideoPlayer() async {
     try {
-      await _pendingVideoDispose?.timeout(const Duration(seconds: 2));
+      // Android MediaKit stop+dispose can take ~2s each; 2s was too short and
+      // let Exo mount over a live mediacodec_embed surface (issue 129 crop).
+      await _pendingVideoDispose?.timeout(const Duration(seconds: 5));
     } catch (_) {}
     if (!required) return;
     await MusicPlayerService().releaseMpvForVideo();

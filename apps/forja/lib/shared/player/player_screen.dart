@@ -14,6 +14,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 
@@ -115,6 +116,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   String? _externalStreamUrl;
   Map<String, String>? _externalHeaders;
   BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
+  /// True while MediaKit is unmounted and Exo (or the reverse) is not ready —
+  /// avoids mounting Exo over a live `mediacodec_embed` surface (issue 129).
+  bool _switchingBuiltInEngine = false;
   Duration? _resumePosition;
 
   /// Live playback session - updated when the user switches server/source in-player
@@ -290,19 +294,34 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
 
     if (builtInEngine == null) return;
+    if (builtInEngine == _builtInEngine && !_useExternalPlayer) return;
 
     await SettingsService().setBuiltInPlayerEngine(builtInEngine);
     if (!mounted) return;
+
+    // IPTV-style hot-swap: unmount the current engine, wait for MediaKit /
+    // MediaCodec surface release, then mount the new one. Instant setState
+    // MediaKit→Exo left Exo TextureView zoomed/cropped (issue 129).
     setState(() {
       _useExternalPlayer = false;
+      _switchingBuiltInEngine = true;
+    });
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    // mediacodec_embed needs a beat after Video unmount before Exo TLHC.
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (!mounted) return;
+    setState(() {
       _builtInEngine = builtInEngine;
+      _switchingBuiltInEngine = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Still checking settings
-    if (_checkingPlayer) {
+    // Still checking settings, or mid MediaKit↔Exo swap (surface must be gone).
+    if (_checkingPlayer || _switchingBuiltInEngine) {
       return PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
@@ -314,7 +333,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
         child: Scaffold(
           backgroundColor: DesignTokens.bgDark,
           body: Center(
-            child: CircularProgressIndicator(color: ForjaShellColors.brandGreen),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: ForjaShellColors.brandGreen),
+                if (_switchingBuiltInEngine) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Switching player…',
+                    style: TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       );

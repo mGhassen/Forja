@@ -40,6 +40,7 @@ import 'package:forja/shared/player/controls/player_menus.dart';
 import 'playback_recovery.dart';
 import 'playable_source_bridge.dart';
 import 'package:forja/shared/services/pip_service.dart';
+import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
@@ -505,6 +506,9 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   /// Full stop+dispose with timeouts after the route is gone.
   Future<void> _teardownMediaKitPlayer() async {
     _playbackStopped = true;
-    await teardownMediaKitPlayer(_player);
+    MpvExclusiveSession.instance.untrackPlayer(_player);
+    final disposeFuture = teardownMediaKitPlayer(_player);
+    MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
+    await disposeFuture;
   }
 }

@@ -127,6 +127,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   void _claimPlayFocus() {
     if (!iptvUseTvFocus(context) || !_s._controlsVisible) return;
     _s._tvBackExitArmed = false;
+    // Underlay WebView / Exo SurfaceView can re-take leanback focus after
+    // hybrid composition remounts — re-block before claiming Play.
+    if (PlatformInfo.isAndroidTv) {
+      unawaited(PlatformChannel.releaseUnderlayPlatformViewFocus());
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_s._controlsVisible) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
@@ -1045,6 +1050,10 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       _claimBackFocus();
     }
 
+    void claim(FocusNode node) {
+      if (node.canRequestFocus) node.requestFocus();
+    }
+
     Widget wrapOrder(int order, Widget child) {
       if (!tvFocus) return child;
       return FocusTraversalOrder(
@@ -1053,18 +1062,64 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       );
     }
 
+    final hasGuide = widget.channelGuide != null;
+    final hasSources = _s._sources.length > 1;
+
+    // Explicit ←/→ chain (issue 131) — Spacer / title-gap geometry fails on ATV.
+    FocusNode? rightOfPlay() {
+      if (!tvFocus) return null;
+      return _s._replayFocus;
+    }
+
+    FocusNode? rightOfReplay() {
+      if (!tvFocus) return null;
+      if (hasGuide) return _s._searchChromeFocus;
+      if (hasSources) return _s._bottomSourceFocus;
+      return null;
+    }
+
+    FocusNode? leftOfSearch() {
+      if (!tvFocus) return null;
+      return _s._replayFocus;
+    }
+
+    FocusNode? rightOfSearch() {
+      if (!tvFocus) return null;
+      return _s._guideFocus;
+    }
+
+    FocusNode? leftOfGuide() {
+      if (!tvFocus) return null;
+      return _s._searchChromeFocus;
+    }
+
+    FocusNode? rightOfGuide() {
+      if (!tvFocus || !hasSources) return null;
+      return _s._bottomSourceFocus;
+    }
+
+    FocusNode? leftOfBottomSource() {
+      if (!tvFocus) return null;
+      if (hasGuide) return _s._guideFocus;
+      return _s._replayFocus;
+    }
+
     var order = 10; // bottom row after top-bar orders
     Widget nextIcon({
       required IconData icon,
       required VoidCallback onTap,
       bool big = false,
       FocusNode? focusNode,
+      VoidCallback? onLeftEdge,
+      VoidCallback? onRightEdge,
     }) {
       final widget = IptvRoundIcon(
         icon: icon,
         big: big,
         focusNode: focusNode,
         onUpEdge: tvFocus ? upFromControls : null,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
         onTap: onTap,
       );
       return wrapOrder(order++, widget);
@@ -1081,6 +1136,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             icon: _s._playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
             big: true,
             focusNode: _s._playFocus,
+            onRightEdge: rightOfPlay() == null
+                ? null
+                : () => claim(rightOfPlay()!),
             onTap: () async {
               if (_s._playing) {
                 _s._userPlayWhenReady = false;
@@ -1097,6 +1155,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           const SizedBox(width: 14),
           nextIcon(
             icon: Icons.replay_rounded,
+            focusNode: _s._replayFocus,
+            onLeftEdge: tvFocus ? () => claim(_s._playFocus) : null,
+            onRightEdge: rightOfReplay() == null
+                ? null
+                : () => claim(rightOfReplay()!),
             onTap: () async {
               _s._retryAttempt = 0;
               await _s._openCurrent();
@@ -1180,24 +1243,40 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             ),
           ],
           const Spacer(),
-          if (widget.channelGuide != null) ...[
+          if (hasGuide) ...[
             nextIcon(
               icon: Icons.search_rounded,
+              focusNode: _s._searchChromeFocus,
+              onLeftEdge:
+                  leftOfSearch() == null ? null : () => claim(leftOfSearch()!),
+              onRightEdge: rightOfSearch() == null
+                  ? null
+                  : () => claim(rightOfSearch()!),
               onTap: _toggleSearch,
             ),
             const SizedBox(width: 14),
             nextIcon(
               icon: Icons.grid_view_rounded,
+              focusNode: _s._guideFocus,
+              onLeftEdge:
+                  leftOfGuide() == null ? null : () => claim(leftOfGuide()!),
+              onRightEdge: rightOfGuide() == null
+                  ? null
+                  : () => claim(rightOfGuide()!),
               onTap: _toggleGuide,
             ),
             const SizedBox(width: 14),
           ],
-          if (_s._sources.length > 1)
+          if (hasSources)
             nextIcon(
               icon: Icons.swap_horiz_rounded,
+              focusNode: _s._bottomSourceFocus,
+              onLeftEdge: leftOfBottomSource() == null
+                  ? null
+                  : () => claim(leftOfBottomSource()!),
               onTap: _showSourcePicker,
             ),
-          if (_s._sources.length > 1) const SizedBox(width: 14),
+          if (hasSources) const SizedBox(width: 14),
           if (!tvFocus)
             IptvRoundIcon(
               icon: _s._isFullscreen

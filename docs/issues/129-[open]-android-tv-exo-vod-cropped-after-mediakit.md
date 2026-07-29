@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 2** acceptance |
+| **Progress** | **7 / 7** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,9 @@
 | 2 | I129-T02 | Explicit `resize_mode=fit` in Exo layouts + re-assert FIT on PlatformView attach | ✅ |
 | 3 | I129-T03 | VOD `ExoPlayerScreen`: wrap `ExoPlayerView` in `Positioned.fill` (parity with IPTV / MediaKit) | ✅ |
 | 4 | I129-T04 | Always re-apply Dart resize mode after Exo `open` / source switch (not only when ≠ fit) | ✅ |
+| 5 | I129-T05 | VOD Player menu engine switch: unmount → `endOfFrame` → await MediaKit dispose → then mount Exo (IPTV parity) | ✅ |
+| 6 | I129-T06 | Mobile/TV MediaKit: `trackPlayer` + `trackVideoDispose` so hot-swap can await teardown | ✅ |
+| 7 | I129-T07 | `ExoPlayerScreen._boot` awaits `prepareForVideoPlayer` before open | ✅ |
 
 ---
 
@@ -38,18 +41,20 @@
 
 ## Summary
 
-On Android TV, switching the built-in engine from **MediaKit** to **ExoPlayer** in anime / movies / Asian Drama left the video **zoomed** — only part of the frame visible (looked cropped).
+On Android TV, switching the built-in engine from **MediaKit** to **ExoPlayer** in anime / movies / Asian Drama left the video **zoomed** — only part of the frame visible (bottom half / huge burned-in subs), chrome correct.
 
-**Root cause (two layers):**
+**Root cause (verified after T01–T04 alone failed):**
 
-1. **Media3 SurfaceView sync (primary)** — ATV Exo embeds `PlayerView` with `surface_type=surface_view` via Flutter hybrid composition. On API 34+, SurfaceView inside an AndroidView-style host can paint at the wrong scale until Media3’s opt-in `setEnableComposeSurfaceSyncWorkaround(true)` runs ([androidx/media#1237](https://github.com/androidx/media/issues/1237)). Forja ships Media3 **1.5.1** where the workaround is opt-in.
-2. **Layout remount** — VOD `ExoPlayerScreen` did not wrap the PlatformView in `Positioned.fill` (IPTV / MediaKit already did). After an engine swap, a loose Stack child can get a bad surface size that reads as a crop.
+VOD `PlayerScreen._switchPlayer` did an **instant** `setState` engine swap. MediaKit (`vo=mediacodec_embed`) dispose ran **fire-and-forget** while Exo’s TextureView/PlatformView mounted in the same turn. Exo attached over a half-dead MediaCodec surface → wrong scale (zoomed crop). IPTV already unmounted → `endOfFrame` → awaited dispose → boot; VOD did not. Mobile MediaKit also never called `trackVideoDispose`, so nothing could wait.
 
-**Not a workaround:** enabling the Media3 API is the supported fix for SurfaceView-in-AndroidView; FIT + `Positioned.fill` restore correct letterboxing after remount.
+**Earlier T01–T04** (Media3 surface-sync, FIT, `Positioned.fill`) remain correct hygiene but were **not** sufficient alone for this switch path.
+
+**Root fix (T05–T07):** IPTV-style switch gate + tracked MediaKit teardown + Exo boot waits on pending dispose.
 
 ## Related
 
 - [102](102-[open]-android-tv-exoplayer-tiled-frames.md) — SurfaceView tiling / hybrid composition
 - [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) — ATV SurfaceView for live FPS
+- [128](128-[open]-android-tv-iptv-mediakit-exit-anr.md) — MediaKit surface teardown races
 - [RFC-029](../rfc/029-[open]-dual-built-in-playback-engines.md)
 - [Player](../features/playback/player.md)

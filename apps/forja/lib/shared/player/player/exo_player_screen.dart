@@ -35,6 +35,7 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
+import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/platform/platform_info.dart';
@@ -257,6 +258,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   Future<void> _boot() async {
+    // Wait for any MediaKit teardown from a Player-menu engine swap so Exo
+    // does not attach over a half-dead mediacodec_embed surface (issue 129).
+    await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    if (!mounted || _disposed) return;
     final wasTv = _isTv;
     _isTv = await ExoPlayerBridge.isTelevision();
     if (mounted && _isTv != wasTv) setState(() {});

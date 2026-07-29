@@ -35,6 +35,7 @@ import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
+import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -198,6 +199,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
   final FocusNode _backFocus = FocusNode(debugLabel: 'iptv-player-back');
   final FocusNode _playFocus = FocusNode(debugLabel: 'iptv-player-play');
+  final FocusNode _replayFocus = FocusNode(debugLabel: 'iptv-player-replay');
   final FocusNode _seekFocus = FocusNode(debugLabel: 'iptv-player-seek');
   /// Top-right Player menu (Exo ↔ MediaKit). Explicit FocusNode so D-pad →
   /// from Back can claim it — [FocusScope.focusInDirection] often fails across
@@ -207,6 +209,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   final FocusNode _statsFocus = FocusNode(debugLabel: 'iptv-player-stats');
   final FocusNode _sourceChipFocus =
       FocusNode(debugLabel: 'iptv-player-source');
+  /// Bottom-row TV FocusNodes — explicit ←/→ like the top bar (Spacer gap
+  /// breaks geometric [focusInDirection] on Android TV).
+  final FocusNode _searchChromeFocus =
+      FocusNode(debugLabel: 'iptv-player-search');
+  final FocusNode _guideFocus = FocusNode(debugLabel: 'iptv-player-guide');
+  final FocusNode _bottomSourceFocus =
+      FocusNode(debugLabel: 'iptv-player-bottom-source');
 
   bool _guideVisible = false;
   bool _searchVisible = false;
@@ -415,6 +424,12 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     // On ATV slides are Duration.zero — this returns immediately.
     await waitForRouteTransition(context);
     if (_disposed || !mounted) return;
+    // Live Matches Streamed keeps an embed WebView under this route for CDN
+    // proxy fetches — that platform view steals leanback keys unless blocked.
+    if (PlatformInfo.isAndroidTv) {
+      await PlatformChannel.releaseUnderlayPlatformViewFocus();
+      if (_disposed || !mounted) return;
+    }
     final prefs = await ref.read(iptvPlayerBootPrefsProvider.future);
     if (_disposed || !mounted) return;
     final forced = widget.forceBuiltInEngine;
@@ -559,9 +574,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     HardwareKeyboard.instance.removeHandler(_onRemoteControlsActivity);
     _backFocus.dispose();
     _playFocus.dispose();
+    _replayFocus.dispose();
     _playerMenuFocus.dispose();
     _statsFocus.dispose();
     _sourceChipFocus.dispose();
+    _searchChromeFocus.dispose();
+    _guideFocus.dispose();
+    _bottomSourceFocus.dispose();
     _pipSub?.cancel();
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();

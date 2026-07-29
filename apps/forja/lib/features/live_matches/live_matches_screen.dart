@@ -15,6 +15,8 @@ import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/platform/platform_channel.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';

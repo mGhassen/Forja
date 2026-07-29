@@ -47,6 +47,10 @@ class MainActivity : AudioServiceActivity() {
                     WebViewTvWorkaround.warmUpSoftwareWebView(applicationContext)
                     result.success(null)
                 }
+                "releaseUnderlayPlatformViewFocus" -> {
+                    WebViewTvWorkaround.releaseUnderlayPlatformViewFocus(this)
+                    result.success(null)
+                }
                 "exitAppCompletely" -> {
                     // Double Back on nav / remote Exit — leave leanback and
                     // free process memory so the next open is a cold start.

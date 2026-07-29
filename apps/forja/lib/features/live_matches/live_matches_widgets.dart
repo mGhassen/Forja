@@ -1663,6 +1663,16 @@ class _LiveMatchesEmbedPlayerScreenState
     final title = widget.title;
     final subtitle = widget.subtitle;
     final label = widget.badgeLabel;
+    // Keep WebView for Chromium CDN fetches, but block leanback focus so Exo
+    // chrome receives D-pad (issue 131).
+    if (PlatformInfo.isAndroidTv) {
+      await PlatformChannel.releaseUnderlayPlatformViewFocus();
+    }
+    if (!mounted || _androidHandoffAbandoned) {
+      await proxy.stop();
+      _streamedWebViewProxy = null;
+      return;
+    }
     // push (not replacement): keep WebView alive for Chromium CDN fetches.
     await Navigator.of(context).push(
       MaterialPageRoute(

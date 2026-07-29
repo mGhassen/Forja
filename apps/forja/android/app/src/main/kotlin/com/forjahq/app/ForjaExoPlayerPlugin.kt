@@ -826,6 +826,14 @@ class ExoPlayerPlatformView(
         playerView.isFocusable = false
         playerView.isFocusableInTouchMode = false
         playerView.descendantFocusability = android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
+        playerView.clearFocus()
+        // Children (SurfaceView) can still accept focus on some API levels.
+        for (i in 0 until playerView.childCount) {
+            val child = playerView.getChildAt(i)
+            child.isFocusable = false
+            child.isFocusableInTouchMode = false
+            child.clearFocus()
+        }
         // Letterbox (FIT) — never inherit ZOOM/FILL from a remounted view.
         playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
         // Media3 opt-in: SurfaceView inside Flutter hybrid composition / AndroidView

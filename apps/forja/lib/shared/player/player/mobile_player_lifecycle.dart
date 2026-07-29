@@ -149,17 +149,22 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     }
 
     // ── Player ───────────────────────────────────────────────────────────
-    _s._player = Player(
-      configuration: const PlayerConfiguration(
-        logLevel: MPVLogLevel.warn,
-        // libass enabled so ASS/SSA subtitles render natively on the video.
-        // For SRT/VTT we dynamically set sub-visibility=no so our custom
-        // Flutter overlay still handles those.
-        libass: true,
-        // On Android, libass cannot access system fonts via fontconfig.
-        // We must bundle a default font in assets and provide it here.
-        libassAndroidFont: 'assets/fonts/Roboto-Regular.ttf',
-        libassAndroidFontName: 'Roboto',
+    // Track like IPTV/desktop so engine hot-swap can await MediaKit teardown
+    // before Exo mounts (issue 129 zoomed crop after MediaKit → Exo).
+    unawaited(MpvExclusiveSession.instance.prepareForVideoPlayer());
+    _s._player = MpvExclusiveSession.instance.trackPlayer(
+      Player(
+        configuration: const PlayerConfiguration(
+          logLevel: MPVLogLevel.warn,
+          // libass enabled so ASS/SSA subtitles render natively on the video.
+          // For SRT/VTT we dynamically set sub-visibility=no so our custom
+          // Flutter overlay still handles those.
+          libass: true,
+          // On Android, libass cannot access system fonts via fontconfig.
+          // We must bundle a default font in assets and provide it here.
+          libassAndroidFont: 'assets/fonts/Roboto-Regular.ttf',
+          libassAndroidFontName: 'Roboto',
+        ),
       ),
     );
 

@@ -149,8 +149,9 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [125-[open]-…](125-[open]-android-tv-iptv-exo-progress-bar-missing.md) | Android TV IPTV Exo progress bar missing | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [126-[open]-…](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) | ATV stale local settings push overwrites cloud Features/nav | P0 | Critical | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 7/7 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [131-[open]-…](131-[open]-android-tv-live-matches-exo-dpad-dead.md) | ATV Live Matches Exo player D-pad dead after handoff | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
