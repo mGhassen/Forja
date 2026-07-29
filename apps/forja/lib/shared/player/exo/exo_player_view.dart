@@ -37,10 +37,10 @@ class ExoPlayerView extends StatelessWidget {
     }
     return ValueListenableBuilder<bool>(
       valueListenable: ExoPlayerBridge.preferTextureSurface,
-      builder: (context, _, __) {
+      builder: (context, _, child) {
         final surfaceType = ExoPlayerBridge.creationSurfaceType();
         // Key forces PlatformView dispose+create when surface type flips.
-        final child = surfaceType == 'surface'
+        final view = surfaceType == 'surface'
             ? _AtvExoSurfaceView(viewId: viewId)
             : AndroidView(
                 viewType: _viewType,
@@ -53,7 +53,7 @@ class ExoPlayerView extends StatelessWidget {
               );
         return KeyedSubtree(
           key: ValueKey<String>('exo-$viewId-$surfaceType'),
-          child: child,
+          child: view,
         );
       },
     );
