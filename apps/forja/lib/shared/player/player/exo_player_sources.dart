@@ -325,6 +325,6 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       movie: widget.movie,
       anchorContext: anchorContext,
     );
-    if (_s._isTv) _s._claimPlayFocus();
+    // TV: opener (Sources) restored by playerMenuRestoreReturnFocus.
   }
 }

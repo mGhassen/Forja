@@ -107,10 +107,20 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
 
   /// Chrome hidden: handle remote keys even when focus claim lost the race to
   /// app-root [DirectionalFocusAction] (←/→ otherwise no-op).
+  ///
+  /// Chrome visible: do not consume — only ping [onControlsActivity]. Focused
+  /// [FocusableControl] returns [KeyEventResult.handled] for arrows, so the
+  /// Focus [onKeyEvent] never sees them and auto-hide would fire mid-nav.
   bool _onHardwareKey(KeyEvent event) {
-    if (!widget.enabled || widget.showControls) return false;
-    if (playerChromeOverlayBlocksSeek()) return false;
+    if (!widget.enabled) return false;
     if (!shellTvIsNavigationKey(event)) return false;
+    if (widget.showControls) {
+      if (event is KeyDownEvent || event is KeyRepeatEvent) {
+        widget.onControlsActivity?.call();
+      }
+      return false;
+    }
+    if (playerChromeOverlayBlocksSeek()) return false;
     return _handler.handle(event, showControls: false);
   }
 

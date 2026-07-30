@@ -211,6 +211,10 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
         _startHideTimer();
         return;
       }
+      if (_tvFocus && playerTvChromeHasFocus(_tvKeyFocus)) {
+        _startHideTimer();
+        return;
+      }
       setState(() => _showControls = false);
     });
   }

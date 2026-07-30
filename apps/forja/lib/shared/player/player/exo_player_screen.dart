@@ -187,6 +187,20 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   final Map<String, int> _providerLoadGens = {};
   int _fallbackGen = 0;
   final FocusNode _playFocus = FocusNode(debugLabel: 'exo-player-play');
+  final FocusNode _rewindFocus = FocusNode(debugLabel: 'exo-player-rewind');
+  final FocusNode _forwardFocus = FocusNode(debugLabel: 'exo-player-forward');
+  final FocusNode _transportStreamFocus =
+      FocusNode(debugLabel: 'exo-player-transport-stream');
+  final FocusNode _transportEpisodesFocus =
+      FocusNode(debugLabel: 'exo-player-transport-episodes');
+  final FocusNode _transportAudioFocus =
+      FocusNode(debugLabel: 'exo-player-transport-audio');
+  final FocusNode _transportSubsFocus =
+      FocusNode(debugLabel: 'exo-player-transport-subs');
+  final FocusNode _transportQualityFocus =
+      FocusNode(debugLabel: 'exo-player-transport-quality');
+  final FocusNode _transportSettingsFocus =
+      FocusNode(debugLabel: 'exo-player-transport-settings');
   final FocusNode _backFocus = FocusNode(debugLabel: 'exo-player-back');
   final FocusNode _seekFocus = FocusNode(debugLabel: 'exo-player-seek');
   final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'exo-player-menu');
@@ -653,6 +667,26 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     return null;
   }
 
+  void _focusFirstRightTransport() {
+    final nodes = <FocusNode>[
+      if (_hasStreamPicker) _transportStreamFocus,
+      if (_hasEpisodePicker) _transportEpisodesFocus,
+      _transportAudioFocus,
+    ];
+    for (final node in nodes) {
+      if (node.canRequestFocus) {
+        node.requestFocus();
+        return;
+      }
+    }
+  }
+
+  void _focusSeekFromTransport() {
+    if (_seekFocus.canRequestFocus) {
+      _seekFocus.requestFocus();
+    }
+  }
+
   void _startHideTimer() {
     _hideTimer?.cancel();
     if (!_isPlaying) return;
@@ -662,6 +696,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _hideTimer = Timer(hideAfter, () {
       if (!mounted || _disposed || !_isPlaying) return;
       if (playerChromeOverlayBlocksSeek()) {
+        _startHideTimer();
+        return;
+      }
+      // D-pad still on chrome — do not strip ExcludeFocus mid-traversal
+      // (leaves focus on Play with no ←/→ neighbors until Select).
+      if (_isTv && playerTvChromeHasFocus(_tvKeyFocus)) {
         _startHideTimer();
         return;
       }
@@ -733,7 +773,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         fallbackBackdropPath: widget.movie?.backdropPath,
         fallbackPosterPath: widget.movie?.posterPath,
       );
-      if (_isTv) _claimPlayFocus();
+      // TV: opener (Episodes) restored by playerMenuRestoreReturnFocus.
       return;
     }
     final movie = widget.movie;
@@ -746,7 +786,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       onEpisodeSelected: _switchToEpisode,
       anchorContext: anchorContext,
     );
-    if (_isTv) _claimPlayFocus();
+    // TV: opener restored by playerMenuRestoreReturnFocus.
   }
 
   Future<void> _switchToEpisode(int season, int episode) async {
@@ -863,7 +903,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         trackId: id,
       ),
     );
-    if (_isTv) _claimPlayFocus();
+    // TV: opener restored by playerMenuRestoreReturnFocus.
   }
 
   Future<void> _showSubtitlesMenu(BuildContext anchorContext) async {
@@ -919,7 +959,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         if (mounted) setState(() {});
       },
     );
-    if (_isTv) _claimPlayFocus();
+    // TV: opener restored by playerMenuRestoreReturnFocus.
   }
 
   Future<void> _loadSubtitlePrefs() async {
@@ -1058,7 +1098,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         trackId: id,
       ),
     );
-    if (_isTv) _claimPlayFocus();
+    // TV: opener restored by playerMenuRestoreReturnFocus.
   }
 
   void _showSettingsMenu(BuildContext anchorContext) {
@@ -1198,6 +1238,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     PlayerSubtitleDialog.dismiss();
     PlayerSubtitleSettingsDialog.dismissIfShowing();
     _playFocus.dispose();
+    _rewindFocus.dispose();
+    _forwardFocus.dispose();
+    _transportStreamFocus.dispose();
+    _transportEpisodesFocus.dispose();
+    _transportAudioFocus.dispose();
+    _transportSubsFocus.dispose();
+    _transportQualityFocus.dispose();
+    _transportSettingsFocus.dispose();
     _backFocus.removeListener(_onBackFocusChanged);
     _backFocus.dispose();
     _seekFocus.dispose();
@@ -1614,130 +1662,176 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
               ordered(
                 3,
                 PlayerFlatIconButton(
-                tvFocusable: true,
-                focusNode: _playFocus,
-                onUpEdge: () {
-                  if (_seekFocus.canRequestFocus) {
-                    _seekFocus.requestFocus();
-                  }
-                },
-                icon: _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                size: btnSize,
-                iconSize: iconSz,
-                onPressed: _togglePlayPause,
-              ),
-            ),
-            const SizedBox(width: 2),
-            ordered(
-              4,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                icon: Icons.replay_10_rounded,
-                size: btnSize,
-                iconSize: iconSz,
-                onPressed: () =>
-                    unawaited(_seekRelative(const Duration(seconds: -10))),
-              ),
-            ),
-            const SizedBox(width: 2),
-            ordered(
-              5,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                icon: Icons.forward_10_rounded,
-                size: btnSize,
-                iconSize: iconSz,
-                onPressed: () =>
-                    unawaited(_seekRelative(const Duration(seconds: 10))),
-              ),
-            ),
-            const SizedBox(width: 6),
-            ExcludeFocus(
-              child: PlayerTimeRange(
-                position: _position,
-                duration: _duration,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_hasStreamPicker)
-              ordered(
-                7,
-                PlayerStreamPickerButton(
                   tvFocusable: true,
-                  size: btnSize,
-                  iconSize: iconSz - 2,
-                  label: _streamPickerLabel(),
-                  onPressedWithContext: (ctx) =>
-                      unawaited(_showSourcesDialog(ctx)),
-                ),
-              ),
-            if (_hasStreamPicker) const SizedBox(width: 2),
-            if (_hasEpisodePicker)
-              ordered(
-                8,
-                PlayerFlatIconButton(
-                  tvFocusable: true,
-                  icon: Icons.video_library_outlined,
+                  focusNode: _playFocus,
+                  onUpEdge: _focusSeekFromTransport,
+                  onRightEdge: () {
+                    if (_rewindFocus.canRequestFocus) {
+                      _rewindFocus.requestFocus();
+                    }
+                  },
+                  icon: _isPlaying
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
                   size: btnSize,
                   iconSize: iconSz,
-                  onPressedWithContext: (ctx) => unawaited(_showEpisodesMenu(ctx)),
+                  onPressed: _togglePlayPause,
                 ),
               ),
-            if (_hasEpisodePicker) const SizedBox(width: 2),
-            ordered(
-              9,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                icon: Icons.audiotrack_rounded,
-                size: btnSize,
-                iconSize: iconSz,
-                tooltip: 'Audio',
-                onPressedWithContext: (ctx) => unawaited(_showAudioMenu(ctx)),
+              const SizedBox(width: 2),
+              ordered(
+                4,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  focusNode: _rewindFocus,
+                  onUpEdge: _focusSeekFromTransport,
+                  onLeftEdge: () => _playFocus.requestFocus(),
+                  onRightEdge: () => _forwardFocus.requestFocus(),
+                  icon: Icons.replay_10_rounded,
+                  size: btnSize,
+                  iconSize: iconSz,
+                  onPressed: () =>
+                      unawaited(_seekRelative(const Duration(seconds: -10))),
+                ),
               ),
-            ),
-            const SizedBox(width: 2),
-            ordered(
-              10,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                icon: Icons.subtitles_outlined,
-                size: btnSize,
-                iconSize: iconSz,
-                onPressedWithContext: (ctx) =>
-                    unawaited(_showSubtitlesMenu(ctx)),
+              const SizedBox(width: 2),
+              ordered(
+                5,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  focusNode: _forwardFocus,
+                  onUpEdge: _focusSeekFromTransport,
+                  onLeftEdge: () => _rewindFocus.requestFocus(),
+                  onRightEdge: _focusFirstRightTransport,
+                  icon: Icons.forward_10_rounded,
+                  size: btnSize,
+                  iconSize: iconSz,
+                  onPressed: () =>
+                      unawaited(_seekRelative(const Duration(seconds: 10))),
+                ),
               ),
-            ),
-            const SizedBox(width: 2),
-            ordered(
-              11,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                icon: Icons.hd_outlined,
-                size: btnSize,
-                iconSize: iconSz,
-                tooltip: 'Quality',
-                onPressedWithContext: (ctx) => unawaited(_showQualityMenu(ctx)),
+              const SizedBox(width: 6),
+              ExcludeFocus(
+                child: PlayerTimeRange(
+                  position: _position,
+                  duration: _duration,
+                  fontSize: 11,
+                ),
               ),
-            ),
-            const SizedBox(width: 2),
-            ordered(
-              12,
-              PlayerFlatIconButton(
-                tvFocusable: true,
-                icon: Icons.settings_outlined,
-                size: btnSize,
-                iconSize: iconSz,
-                onPressedWithContext: _showSettingsMenu,
+            ],
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_hasStreamPicker)
+                ordered(
+                  7,
+                  PlayerStreamPickerButton(
+                    tvFocusable: true,
+                    focusNode: _transportStreamFocus,
+                    onLeftEdge: () => _forwardFocus.requestFocus(),
+                    size: btnSize,
+                    iconSize: iconSz - 2,
+                    label: _streamPickerLabel(),
+                    onPressedWithContext: (ctx) =>
+                        unawaited(_showSourcesDialog(ctx)),
+                  ),
+                ),
+              if (_hasStreamPicker) const SizedBox(width: 2),
+              if (_hasEpisodePicker)
+                ordered(
+                  8,
+                  PlayerFlatIconButton(
+                    tvFocusable: true,
+                    focusNode: _transportEpisodesFocus,
+                    onLeftEdge: () {
+                      if (_hasStreamPicker &&
+                          _transportStreamFocus.canRequestFocus) {
+                        _transportStreamFocus.requestFocus();
+                      } else {
+                        _forwardFocus.requestFocus();
+                      }
+                    },
+                    icon: Icons.video_library_outlined,
+                    size: btnSize,
+                    iconSize: iconSz,
+                    onPressedWithContext: (ctx) =>
+                        unawaited(_showEpisodesMenu(ctx)),
+                  ),
+                ),
+              if (_hasEpisodePicker) const SizedBox(width: 2),
+              ordered(
+                9,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  focusNode: _transportAudioFocus,
+                  onLeftEdge: () {
+                    if (_hasEpisodePicker &&
+                        _transportEpisodesFocus.canRequestFocus) {
+                      _transportEpisodesFocus.requestFocus();
+                    } else if (_hasStreamPicker &&
+                        _transportStreamFocus.canRequestFocus) {
+                      _transportStreamFocus.requestFocus();
+                    } else {
+                      _forwardFocus.requestFocus();
+                    }
+                  },
+                  onRightEdge: () => _transportSubsFocus.requestFocus(),
+                  icon: Icons.audiotrack_rounded,
+                  size: btnSize,
+                  iconSize: iconSz,
+                  tooltip: 'Audio',
+                  onPressedWithContext: (ctx) =>
+                      unawaited(_showAudioMenu(ctx)),
+                ),
               ),
-            ),
-          ],
-        ),
-      ],
+              const SizedBox(width: 2),
+              ordered(
+                10,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  focusNode: _transportSubsFocus,
+                  onLeftEdge: () => _transportAudioFocus.requestFocus(),
+                  onRightEdge: () => _transportQualityFocus.requestFocus(),
+                  icon: Icons.subtitles_outlined,
+                  size: btnSize,
+                  iconSize: iconSz,
+                  onPressedWithContext: (ctx) =>
+                      unawaited(_showSubtitlesMenu(ctx)),
+                ),
+              ),
+              const SizedBox(width: 2),
+              ordered(
+                11,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  focusNode: _transportQualityFocus,
+                  onLeftEdge: () => _transportSubsFocus.requestFocus(),
+                  onRightEdge: () => _transportSettingsFocus.requestFocus(),
+                  icon: Icons.hd_outlined,
+                  size: btnSize,
+                  iconSize: iconSz,
+                  tooltip: 'Quality',
+                  onPressedWithContext: (ctx) =>
+                      unawaited(_showQualityMenu(ctx)),
+                ),
+              ),
+              const SizedBox(width: 2),
+              ordered(
+                12,
+                PlayerFlatIconButton(
+                  tvFocusable: true,
+                  focusNode: _transportSettingsFocus,
+                  onLeftEdge: () => _transportQualityFocus.requestFocus(),
+                  icon: Icons.settings_outlined,
+                  size: btnSize,
+                  iconSize: iconSz,
+                  onPressedWithContext: _showSettingsMenu,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -51,9 +51,18 @@ void playerMenuRestoreReturnFocus() {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     if (_anyPlayerMenuOpen()) return;
     final node = _playerMenuReturnFocus;
-    _playerMenuReturnFocus = null;
-    if (node == null || !node.canRequestFocus) return;
+    if (node == null || !node.canRequestFocus) {
+      _playerMenuReturnFocus = null;
+      return;
+    }
     node.requestFocus();
+    // Keep pending one more frame so a late `_claimPlayFocus` after `await`
+    // menu still sees [playerChromeHasPendingReturnFocus] and does not steal.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_playerMenuReturnFocus == node) {
+        _playerMenuReturnFocus = null;
+      }
+    });
   });
 }
 

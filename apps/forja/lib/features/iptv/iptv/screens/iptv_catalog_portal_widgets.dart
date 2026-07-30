@@ -127,6 +127,7 @@ class _PortalHoverTile extends StatefulWidget {
     required this.listIndex,
     required this.onEdit,
     this.onUpEdge,
+    this.onNearWindowEnd,
   });
 
   final VerifiedPortal portal;
@@ -135,6 +136,8 @@ class _PortalHoverTile extends StatefulWidget {
   final int listIndex;
   final VoidCallback onEdit;
   final VoidCallback? onUpEdge;
+  /// Prefetch next portal page when this row is near the end of the window.
+  final VoidCallback? onNearWindowEnd;
 
   @override
   State<_PortalHoverTile> createState() => _PortalHoverTileState();
@@ -234,6 +237,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       if (ctrl.isNewPortal(v.key)) {
         ctrl.markPortalSeen(v.key);
       }
+      widget.onNearWindowEnd?.call();
       // TV: skip focus-driven probes — each notifyListeners rebuilds the whole
       // IPTV shell and stutters D-pad scrolling through long portal lists.
       // Desktop hover still schedules; active portal uses ensurePortalHealth.

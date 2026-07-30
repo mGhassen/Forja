@@ -308,19 +308,10 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     if (!policy.ensureVisibleOnFocus) return;
     if (widget.ensureVisibleMode == ShellTvEnsureVisibleMode.off) return;
 
-    if (widget.ensureVisibleMode == ShellTvEnsureVisibleMode.row) {
-      final extraBottom = widget.showFocusBorder && widget.scaleOnFocus > 1.0
-          ? shellMovieCardFocusBleed(
-              context,
-              scaleOnFocus: widget.scaleOnFocus,
-              cardWidth: widget.focusBleedWidth,
-            )
-          : 0.0;
-      shellTvRevealCatalogRowFocus(context, extraBottomPx: extraBottom);
-      return;
-    }
-
-    // Menus / lists: only nudge when clipped at an edge.
+    // TV: jump instantly (no 200ms tween). Animated scroll leaves the focused
+    // control clipped / hidden until the tween ends, and stacks into stutter.
+    // Run start+end keepVisible so ↑ and ↓ only nudge by the clipped edge.
+    // Horizontal row ListViews still need this; vertical hub lift is below.
     const zero = Duration.zero;
     Scrollable.ensureVisible(
       context,
@@ -334,6 +325,24 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       duration: zero,
       alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
     );
+
+    // Catalog rows: nearest Scrollable is the horizontal ListView, so the
+    // keepVisible pair above often never moves the page. Lift in the vertical
+    // hub scroller when the card sits under the bottom inset (focus ring bleed).
+    if (widget.ensureVisibleMode == ShellTvEnsureVisibleMode.row) {
+      final box = context.findRenderObject();
+      final h = box is RenderBox && box.hasSize
+          ? box.size.height
+          : shellMovieCardHeight(context);
+      final bleed = widget.showFocusBorder && widget.scaleOnFocus > 1.0
+          ? h * (widget.scaleOnFocus - 1) / 2 + 2.5
+          : (widget.showFocusBorder ? 2.5 : 0.0);
+      shellTvRevealCatalogRowFocus(
+        context,
+        extraBottomPx: bleed,
+        extraTopPx: bleed,
+      );
+    }
   }
 
   KeyEventResult _handleArrow(KeyEvent event) {

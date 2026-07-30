@@ -361,6 +361,66 @@ void main() {
   );
 
   testWidgets(
+    'PlayerTvKeyScope pings onControlsActivity while chrome visible (even when FocusableControl handles arrows)',
+    (tester) async {
+      final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');
+      final play = FocusNode(debugLabel: 'exo-player-play');
+      var activity = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: Scaffold(
+                body: PlayerTvKeyScope(
+                  enabled: true,
+                  focusNode: keyFocus,
+                  showControls: true,
+                  onBack: () {},
+                  onPlayPause: () {},
+                  onShowControls: () {},
+                  onSeekBack: () {},
+                  onSeekForward: () {},
+                  onVolumeUp: () {},
+                  onVolumeDown: () {},
+                  onToggleControls: () {},
+                  onFocusBack: () {},
+                  onFocusPlay: () {},
+                  onControlsActivity: () => activity++,
+                  child: FocusScope(
+                    debugLabel: 'exo-player-chrome',
+                    child: FocusableControl(
+                      focusNode: play,
+                      autoFocus: true,
+                      scaleOnFocus: 1.0,
+                      onTap: () {},
+                      child: const SizedBox(width: 48, height: 48),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(play.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(activity, greaterThan(0),
+          reason: 'hide timer must reset while D-pad navigates chrome');
+
+      keyFocus.dispose();
+      play.dispose();
+    },
+  );
+
+  testWidgets(
     'FocusableControl arrow moves focus inside full-screen player chrome scope',
     (tester) async {
       // Mirrors Exo/IPTV chrome: FocusScope expands to the full screen.
