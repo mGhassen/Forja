@@ -16,15 +16,19 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.LivePlaybackSpeedControl
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
@@ -33,6 +37,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.abs
 
 /** Playback hints from Dart (IPTV live vs Home VOD). */
 data class ExoOpenOptions(
@@ -54,9 +59,17 @@ private const val LIVE_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 4_000
 private const val LIVE_TARGET_OFFSET_MS = 8_000L
 private const val LIVE_MIN_OFFSET_MS = 3_000L
 private const val LIVE_MAX_OFFSET_MS = 25_000L
+/** Live edge catch-up speed — HD/FHD only. 4K disables (audio stutter). */
+private const val LIVE_SPEED_MIN = 0.97f
+private const val LIVE_SPEED_MAX = 1.03f
+private const val LIVE_UHD_MIN_HEIGHT = 2160
+private const val LIVE_UHD_MIN_WIDTH = 3840
 
 private fun isTelevisionContext(context: Context): Boolean =
     PlatformUtils.isAndroidTv(context)
+
+private fun isUhdVideo(width: Int, height: Int): Boolean =
+    height >= LIVE_UHD_MIN_HEIGHT || width >= LIVE_UHD_MIN_WIDTH
 
 class ExoPlayerHost(
     private val context: Context,
@@ -74,6 +87,44 @@ class ExoPlayerHost(
     private var resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT
     /** Last subtitle appearance — re-applied when Flutter remounts the PlatformView. */
     private var subtitleStyle: SubtitleStyleParams? = null
+    /**
+     * Live playback-speed catch-up locked off for UHD. Null until first size
+     * sample so HD keeps 0.97–1.03 (issue 138).
+     */
+    private var liveSpeedDisabledForUhd: Boolean? = null
+
+    /**
+     * Live edge catch-up. Returns 1.0 for UHD so 4K does not warble audio;
+     * HD/FHD keep DefaultLivePlaybackSpeedControl (issue 138).
+     */
+    private val liveSpeedControl = object : LivePlaybackSpeedControl {
+        private val inner = DefaultLivePlaybackSpeedControl.Builder()
+            .setFallbackMinPlaybackSpeed(LIVE_SPEED_MIN)
+            .setFallbackMaxPlaybackSpeed(LIVE_SPEED_MAX)
+            .build()
+
+        override fun setLiveConfiguration(liveConfiguration: MediaItem.LiveConfiguration) {
+            inner.setLiveConfiguration(liveConfiguration)
+        }
+
+        override fun setTargetLiveOffsetOverrideUs(liveOffsetUs: Long) {
+            inner.setTargetLiveOffsetOverrideUs(liveOffsetUs)
+        }
+
+        override fun notifyRebuffer() {
+            inner.notifyRebuffer()
+        }
+
+        override fun getAdjustedPlaybackSpeed(
+            liveOffsetUs: Long,
+            bufferedDurationUs: Long,
+        ): Float {
+            if (liveSpeedDisabledForUhd == true) return 1f
+            return inner.getAdjustedPlaybackSpeed(liveOffsetUs, bufferedDurationUs)
+        }
+
+        override fun getTargetLiveOffsetUs(): Long = inner.targetLiveOffsetUs
+    }
 
     private data class SubtitleStyleParams(
         val sizeSp: Float,
@@ -95,6 +146,7 @@ class ExoPlayerHost(
                     emit(mapOf("type" to "ready"))
                     emit(mapOf("type" to "buffering", "value" to false))
                     emitTracks()
+                    player?.videoSize?.let { applyLiveSpeedForVideoSize(it) }
                 }
                 Player.STATE_ENDED -> emit(mapOf("type" to "ended"))
             }
@@ -110,6 +162,20 @@ class ExoPlayerHost(
 
         override fun onTracksChanged(tracks: Tracks) {
             emitTracks()
+            player?.videoSize?.let { applyLiveSpeedForVideoSize(it) }
+        }
+
+        override fun onVideoSizeChanged(videoSize: VideoSize) {
+            applyLiveSpeedForVideoSize(videoSize)
+        }
+
+        override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+            // Clamp if live catch-up still nudges while UHD-locked.
+            if (liveSpeedDisabledForUhd == true &&
+                abs(playbackParameters.speed - 1f) > 0.001f
+            ) {
+                player?.setPlaybackSpeed(1f)
+            }
         }
 
         override fun onRenderedFirstFrame() {
@@ -157,6 +223,7 @@ class ExoPlayerHost(
     ) {
         stopInternal(releasePlayer = true)
         videoAuto = true
+        liveSpeedDisabledForUhd = null
         lastUrl = url
         lastOptions = options
 
@@ -192,6 +259,7 @@ class ExoPlayerHost(
             .setMediaSourceFactory(mediaSourceFactory)
             .setRenderersFactory(renderersFactory)
             .setLoadControl(loadControl)
+            .setLivePlaybackSpeedControl(liveSpeedControl)
             .build()
         // Pause when another app takes audio focus (Netflix, etc.) — issue 134.
         exo.setAudioAttributes(
@@ -324,18 +392,39 @@ class ExoPlayerHost(
             }
         }
         // Live IPTV: sit behind the edge so TextureView + weak SoCs have cushion.
+        // Speed catch-up stays on; UHD locks it off via [liveSpeedControl].
         if (options.live) {
             builder.setLiveConfiguration(
                 MediaItem.LiveConfiguration.Builder()
                     .setTargetOffsetMs(LIVE_TARGET_OFFSET_MS)
                     .setMinOffsetMs(LIVE_MIN_OFFSET_MS)
                     .setMaxOffsetMs(LIVE_MAX_OFFSET_MS)
-                    .setMinPlaybackSpeed(0.97f)
-                    .setMaxPlaybackSpeed(1.03f)
+                    .setMinPlaybackSpeed(LIVE_SPEED_MIN)
+                    .setMaxPlaybackSpeed(LIVE_SPEED_MAX)
                     .build(),
             )
         }
         return builder
+    }
+
+    /**
+     * 4K live: disable Exo live edge speed-ramp (0.97–1.03) — that warble is
+     * the stutter. HD/FHD keep catch-up. Adaptive ladder can flip either way.
+     */
+    private fun applyLiveSpeedForVideoSize(videoSize: VideoSize) {
+        if (!lastOptions.live) return
+        if (videoSize.width <= 0 && videoSize.height <= 0) return
+        val wantDisable = isUhdVideo(videoSize.width, videoSize.height)
+        if (liveSpeedDisabledForUhd == wantDisable) return
+        liveSpeedDisabledForUhd = wantDisable
+        val p = player ?: return
+        if (wantDisable && abs(p.playbackParameters.speed - 1f) > 0.001f) {
+            p.setPlaybackSpeed(1f)
+        }
+        Log.i(
+            TAG,
+            "live speed ${if (wantDisable) "OFF (UHD ${videoSize.width}x${videoSize.height})" else "ON (sub-UHD)"}",
+        )
     }
 
     /** HLS/DASH mime when URI inference would wrongly choose progressive. */
@@ -592,6 +681,7 @@ class ExoPlayerHost(
             lastOptions = ExoOpenOptions()
         }
         videoAuto = true
+        liveSpeedDisabledForUhd = null
     }
 
     private fun startProgressLoop() {

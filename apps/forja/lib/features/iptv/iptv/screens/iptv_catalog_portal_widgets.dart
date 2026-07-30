@@ -676,11 +676,13 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                     child: Padding(
                       padding: const EdgeInsets.all(4),
                       child: Icon(
+                        // Favorited = solid gold. TV focus alone = yellow
+                        // outline (not solid / not brand-green rail tint).
                         isFav
                             ? Icons.star_rounded
                             : Icons.star_outline_rounded,
                         size: 16,
-                        color: isFav
+                        color: isFav || _favoriteFocus.hasFocus
                             ? const Color(0xFFFBBF24)
                             : Colors.white30,
                       ),

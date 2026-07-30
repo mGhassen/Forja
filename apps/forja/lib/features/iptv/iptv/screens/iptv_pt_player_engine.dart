@@ -261,10 +261,67 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         Media(src.url, httpHeaders: headers),
       );
       await _s._player!.play();
+      if (_s._atvMediaKit) {
+        unawaited(_tuneAtvMediaKitAfterOpen());
+      }
     }
     // Re-apply after every open/recreate - media_kit resets to 100, and
     // mute is volume=0 in Dart state only.
     _engineSetVolume(_s._volume);
+  }
+
+  /// ATV MediaKit: restore ao/mute, pick a real audio track, and on UHD switch
+  /// video-sync to audio-clock so 4K@50 does not starve sound (HD keeps
+  /// display-resample from [_applyMpvTunables]).
+  Future<void> _tuneAtvMediaKitAfterOpen() async {
+    if (_s._disposed || _s._exoBackend || !_s._atvMediaKit) return;
+    final player = _s._player;
+    final p = player?.platform;
+    if (player == null || p is! NativePlayer) return;
+
+    try {
+      await p.setProperty('ao', 'audiotrack');
+      await p.setProperty('mute', 'no');
+      _engineSetVolume(_s._volume);
+    } catch (e) {
+      debugPrint('[IPTV Player] ATV ao restore failed: $e');
+    }
+
+    for (var i = 0; i < 24; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (_s._disposed || _s._exoBackend || !_s._atvMediaKit) return;
+      if (!identical(_s._player, player)) return;
+
+      try {
+        final tracks = player.state.tracks.audio
+            .where((t) => t.id != 'auto' && t.id != 'no')
+            .toList();
+        final current = player.state.track.audio;
+        if (tracks.isNotEmpty &&
+            (current.id == 'auto' || current.id == 'no')) {
+          await player.setAudioTrack(tracks.first);
+        }
+
+        final h = int.tryParse((await p.getProperty('height')).toString()) ?? 0;
+        final w = int.tryParse((await p.getProperty('width')).toString()) ?? 0;
+        if (h <= 0 && w <= 0) continue;
+
+        final isUhd = h >= 2160 || w >= 3840;
+        if (isUhd) {
+          // Audio clock on 4K — display-resample + framedrop=vo can leave
+          // picture OK with silent / starved ao on leanback.
+          await p.setProperty('video-sync', 'audio');
+          await p.setProperty('framedrop', 'decoder');
+          await p.setProperty('mute', 'no');
+          _engineSetVolume(_s._volume);
+          debugPrint('[IPTV Player] ATV MediaKit UHD → video-sync=audio');
+        }
+        return;
+      } catch (e) {
+        debugPrint('[IPTV Player] ATV post-open tune failed: $e');
+        return;
+      }
+    }
   }
 
   Future<void> _applyMpvTunables() async {
@@ -277,7 +334,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // ATV MediaKit: pin mediacodec (matches VideoControllerConfiguration).
       if (_s._atvMediaKit) {
         await p.setProperty('hwdec', 'mediacodec');
+        // Default audio device — silenceMediaKitPlayer sets ao=null on exit;
+        // a soft reopen must not stay muted/null. audiotrack is Android's ao.
+        await p.setProperty('ao', 'audiotrack');
+        await p.setProperty('mute', 'no');
         // Match display refresh — smoother than audio-clock sync on leanback.
+        // UHD overrides to audio-clock in [_tuneAtvMediaKitAfterOpen] (issue 138).
         await p.setProperty('video-sync', 'display-resample');
         await p.setProperty('framedrop', 'vo');
       } else {
