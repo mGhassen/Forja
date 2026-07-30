@@ -86,23 +86,27 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   }
 
   Future<void> _openStreamedMatch(_StreamedMatch match) async {
-    if (match.sources.isEmpty) {
+    if (match.sources.isEmpty && match.inlineStreams.isEmpty) {
       ForjaToast.info('Stream not yet available for this event');
       return;
     }
     if (!mounted) return;
 
     final streams = <_StreamedStream>[];
-    final ok = await _runWithCancellableLoading('Loading streams…', () async {
-      try {
-        for (final source in match.sources) {
-          streams.addAll(await _fetchStreamedStreams(source));
+    if (match.inlineStreams.isNotEmpty) {
+      streams.addAll(match.inlineStreams);
+    } else {
+      final ok = await _runWithCancellableLoading('Loading streams…', () async {
+        try {
+          for (final source in match.sources) {
+            streams.addAll(await _fetchStreamedStreams(source));
+          }
+        } catch (e) {
+          debugPrint('[LiveMatches] Streamed resolve error: $e');
         }
-      } catch (e) {
-        debugPrint('[LiveMatches] Streamed resolve error: $e');
-      }
-    });
-    if (!ok) return;
+      });
+      if (!ok) return;
+    }
 
     if (streams.isEmpty) {
       ForjaToast.info('No streams available for this event');
@@ -135,9 +139,11 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     _StreamedMatch match,
     _StreamedStream stream,
   ) async {
+    final catalogBase = match.isMut ? _mutBase : _streamedBase;
+    final catalogReferer = match.isMut ? _mutReferer : _streamedReferer;
     final embedUrl = await liveEmbedResolveNestedPlayerUrl(
       stream.embedUrl,
-      catalogReferer: _streamedReferer,
+      catalogReferer: catalogReferer,
     );
     if (!mounted) return;
     await Navigator.push(
@@ -147,9 +153,9 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
           embedUrl: embedUrl,
           title: match.title,
           subtitle: match.categoryLabel,
-          badgeLabel: 'Streamed',
-          referer: _streamedReferer,
-          origin: _streamedBase,
+          badgeLabel: match.isMut ? 'Mut' : 'Streamed',
+          referer: catalogReferer,
+          origin: catalogBase,
         ),
       ),
     );

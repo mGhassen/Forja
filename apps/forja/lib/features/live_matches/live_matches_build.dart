@@ -513,7 +513,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     }
     if (_s._server == _LiveMatchesServer.all) return _buildAllBody();
     if (_s._server == _LiveMatchesServer.ppv) return _buildDamiTvBody();
-    if (_s._server == _LiveMatchesServer.streamed) return _buildStreamedBody();
+    if (_s._server == _LiveMatchesServer.streamed ||
+        _s._server == _LiveMatchesServer.mutStreams) {
+      return _buildStreamedBody();
+    }
     if (_s._server == _LiveMatchesServer.cdnLive) return _buildCdnBody();
 
     return const SizedBox.shrink();

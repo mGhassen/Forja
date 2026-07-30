@@ -145,7 +145,7 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 | Dart today | LOC | Target | Notes | Status |
 |------------|----:|--------|-------|--------|
 | `IptvScraper` (in `iptv_network.dart`) | thin | `iptv` | Host glue to Rust `scrape_page` / `extract_portals` | ✅ |
-| `live_matches_models.dart` fetch fns | ~200 | `live-matches` | Streamed.pk + CDN APIs | ✅ |
+| `live_matches_models.dart` fetch fns | ~200 | `live-matches` | Streamed.pk + MutStreams + CDN APIs | ✅ |
 | `JellyfinService` models + OAuth | ~400 of 1272 | stay host | API already `runJellyfinRequestJson`; optional: move models to `packages/rust/models` | ✅ split |
 
 ---

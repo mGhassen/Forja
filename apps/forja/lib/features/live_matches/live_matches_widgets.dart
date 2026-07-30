@@ -2835,7 +2835,7 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
                         sourceLabel: _StreamedStreamSheet.sourceLabel(
                           sorted[i].source,
                         ),
-                        serverLabel: 'Streamed',
+                        serverLabel: widget.match.isMut ? 'Mut' : 'Streamed',
                         onTap: () => widget.onStreamSelected(sorted[i]),
                         tvItemIndex: i,
                         tvRowId: _rowId,
@@ -3068,7 +3068,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
   @override
   Widget build(BuildContext context) {
     final m = widget.match;
-    final hasSources = m.sources.isNotEmpty;
+    final hasSources = m.sources.isNotEmpty || m.inlineStreams.isNotEmpty;
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
     final canPlay = hasSources && m.isLive;
     final policy = ShellScope.inputPolicyOf(context);

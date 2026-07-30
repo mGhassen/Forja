@@ -33,6 +33,7 @@ pub fn fetch_json(request_json: &str) -> String {
         "damitv_streams" => fetch::damitv_streams(),
         "cdn_channels" => fetch::cdn_channels(),
         "cdn_sports" => fetch::cdn_sports(),
+        "mut_matches" => fetch::mut_matches(),
         other => serde_json::json!({ "error": format!("unknown action: {other}") }).to_string(),
     }
 }

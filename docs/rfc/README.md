@@ -69,6 +69,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [046-[open]-…](046-[open]-android-tv-device-link.md) | Android TV device-code / QR account link | v1.0.7 | open | 5/5 · 0/8 | [1.0.7](../backlog/1.0.7-[draft].md) |
 | [047-[open]-…](047-[open]-riverpod-state-migration.md) | Riverpod state / async loading migration | v1.x | open | 6/6 · … · **5/5** settings · **8/8** TV | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
 | [048-[fixed]-…](fixed/048-[fixed]-tv-focus-graph.md) | TV focus graph + screen recipes | v1.0.1 | fixed | Complete · 6/6 historical · 1/1 spatial C · 4/4 spatial A | [1.0.1](../backlog/1.0.1-[open].md) — B101-S132 ✅ · B101-S169 ✅ |
+| [049-[open]-…](049-[open]-live-matches-mutstreams.md) | Live Matches MutStreams catalog | v1.0.1 | open | 3/3 · 4/5 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S173 · smoke R49-A05 ⬜ |
 
 ## Related
 

@@ -261,6 +261,12 @@ class _StreamedMatch {
   final String? awayBadge;
   final List<_StreamedSourceRef> sources;
 
+  /// MutStreams embeds are already on the schedule row — skip `/api/stream`.
+  final List<_StreamedStream> inlineStreams;
+
+  /// `mut` when from MutStreams; empty/streamed otherwise.
+  final String catalog;
+
   const _StreamedMatch({
     required this.id,
     required this.title,
@@ -274,7 +280,11 @@ class _StreamedMatch {
     this.awayTeam,
     this.awayBadge,
     required this.sources,
+    this.inlineStreams = const [],
+    this.catalog = '',
   });
+
+  bool get isMut => catalog == 'mut' || inlineStreams.isNotEmpty;
 
   factory _StreamedMatch.fromJson(Map<String, dynamic> j) {
     final teams = j['teams'] as Map<String, dynamic>?;
@@ -297,13 +307,26 @@ class _StreamedMatch {
           .map((s) => _StreamedSourceRef.fromJson(s as Map<String, dynamic>))
           .where((s) => s.source.isNotEmpty && s.id.isNotEmpty)
           .toList(),
+      inlineStreams: (j['streams'] as List? ?? [])
+          .map((s) {
+            try {
+              return _StreamedStream.fromJson(s as Map<String, dynamic>);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<_StreamedStream>()
+          .where((s) => s.embedUrl.isNotEmpty)
+          .toList(),
+      catalog: (j['catalog'] ?? '').toString(),
     );
   }
 
   String get categoryLabel =>
       category.isEmpty ? 'Other' : category.replaceAll('-', ' ');
 
-  bool get isAlwaysOn => dateMs == 0 && sources.isNotEmpty;
+  bool get isAlwaysOn =>
+      dateMs == 0 && (sources.isNotEmpty || inlineStreams.isNotEmpty);
 
   /// Hours after start that still count as live when Streamed did not tag
   /// `airing`. Popular rows (golf, cycling) often outlast the short window.
@@ -1553,6 +1576,8 @@ const _liveEmbedSniffPollJs = r'''
 const _ppvReferer = 'https://ppv.is/';
 const _streamedBase = 'https://streamed.pk';
 const _streamedReferer = 'https://streamed.pk/';
+const _mutBase = 'https://mut.st';
+const _mutReferer = 'https://mut.st/';
 
 String _streamedImageUrl(String path) {
   if (path.isEmpty) return '';
@@ -1749,6 +1774,29 @@ Future<List<_StreamedMatch>> _fetchStreamedMatches() async {
   }
 }
 
+Future<List<_StreamedMatch>> _fetchMutMatches() async {
+  try {
+    final raw = await runLiveMatchesFetchJson(
+      jsonEncode({'action': 'mut_matches'}),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) return [];
+    final list = parsed['items'] as List? ?? [];
+    return list
+        .map((m) {
+          try {
+            return _StreamedMatch.fromJson(m as Map<String, dynamic>);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<_StreamedMatch>()
+        .toList();
+  } catch (_) {
+    return [];
+  }
+}
+
 Future<List<_StreamedStream>> _fetchStreamedStreams(
   _StreamedSourceRef sourceRef,
 ) async {
@@ -1841,7 +1889,24 @@ Future<List<_CdnSportEvent>> _fetchCdnSports() async {
   }
 }
 
-enum _LiveMatchesServer { all, ppv, streamed, cdnLive }
+enum _LiveMatchesServer { all, ppv, streamed, mutStreams, cdnLive }
+
+String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
+  _LiveMatchesServer.all => 'All',
+  _LiveMatchesServer.ppv => 'PPV',
+  _LiveMatchesServer.streamed => 'Streamed',
+  _LiveMatchesServer.mutStreams => 'MutStreams',
+  _LiveMatchesServer.cdnLive => 'CDN Live',
+};
+
+String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
+    switch (server) {
+      _LiveMatchesServer.all => 'PPV · Streamed · CDN Live',
+      _LiveMatchesServer.ppv => 'ppv.is',
+      _LiveMatchesServer.streamed => 'streamed.pk',
+      _LiveMatchesServer.mutStreams => 'mut.st',
+      _LiveMatchesServer.cdnLive => 'cdn-live.tv',
+    };
 
 sealed class _LiveMatchGridEntry {
   const _LiveMatchGridEntry();
@@ -1881,18 +1946,3 @@ final class _LiveMatchGridEntryCdnSport extends _LiveMatchGridEntry {
   const _LiveMatchGridEntryCdnSport(this.event);
   final _CdnSportEvent event;
 }
-
-String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
-  _LiveMatchesServer.all => 'All',
-  _LiveMatchesServer.ppv => 'PPV',
-  _LiveMatchesServer.streamed => 'Streamed',
-  _LiveMatchesServer.cdnLive => 'CDN Live',
-};
-
-String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
-    switch (server) {
-      _LiveMatchesServer.all => 'PPV · Streamed · CDN Live',
-      _LiveMatchesServer.ppv => 'ppv.is',
-      _LiveMatchesServer.streamed => 'streamed.pk',
-      _LiveMatchesServer.cdnLive => 'cdn-live.tv',
-    };

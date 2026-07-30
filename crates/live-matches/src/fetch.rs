@@ -17,6 +17,16 @@ const CDN_SPORTS_URL: &str =
     "https://api.cdn-live.tv/api/v1/events/sports/?user=cdnlivetv&plan=free";
 const CDN_SPORT_KEYS: &[&str] = &["Soccer", "NFL", "NBA", "NHL"];
 
+/// Official MutStreams mirrors ([mutgo.link](https://mutgo.link/)). Only hosts
+/// that return JSON for `/api/streams` — `mutstreams.art` / `.su` currently
+/// serve HTML and are omitted.
+const MUT_BASES: &[&str] = &[
+    "https://mut.st",
+    "https://mutstreams.st",
+    "https://mutstreams.ch",
+    "https://mutstreams.pk",
+];
+
 static RUNTIME: LazyLock<Runtime> =
     LazyLock::new(|| Runtime::new().expect("live-matches tokio runtime"));
 
@@ -248,6 +258,233 @@ pub fn cdn_sports() -> String {
     ok_items(result)
 }
 
+fn mut_headers(base: &str) -> HashMap<String, String> {
+    let origin = base.trim_end_matches('/');
+    HashMap::from([
+        (
+            "User-Agent".into(),
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".into(),
+        ),
+        ("Accept".into(), "application/json".into()),
+        ("Origin".into(), origin.into()),
+        ("Referer".into(), format!("{origin}/")),
+    ])
+}
+
+/// Parse Mut time strings like `05:00 PM PST - (07/30/2026)`.
+/// Site always labels PST; treat as UTC−8.
+pub(crate) fn parse_mut_time(raw: &str) -> i64 {
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return 0;
+    }
+    let Some(open) = raw.rfind('(') else {
+        return 0;
+    };
+    let Some(close) = raw[open..].find(')') else {
+        return 0;
+    };
+    let date = raw[open + 1..open + close].trim();
+    let parts: Vec<&str> = date.split('/').collect();
+    if parts.len() != 3 {
+        return 0;
+    }
+    let (Ok(month), Ok(day), Ok(year)) = (
+        parts[0].parse::<u32>(),
+        parts[1].parse::<u32>(),
+        parts[2].parse::<i32>(),
+    ) else {
+        return 0;
+    };
+
+    let time_part = raw[..open]
+        .split("PST")
+        .next()
+        .unwrap_or("")
+        .trim()
+        .trim_end_matches('-')
+        .trim();
+    let mut bits = time_part.split_whitespace();
+    let Some(hm) = bits.next() else {
+        return 0;
+    };
+    let ampm = bits.next().unwrap_or("AM").to_ascii_uppercase();
+    let hm_parts: Vec<&str> = hm.split(':').collect();
+    if hm_parts.len() != 2 {
+        return 0;
+    }
+    let (Ok(mut hour), Ok(minute)) = (hm_parts[0].parse::<u32>(), hm_parts[1].parse::<u32>())
+    else {
+        return 0;
+    };
+    if ampm.starts_with('P') && hour < 12 {
+        hour += 12;
+    }
+    if ampm.starts_with('A') && hour == 12 {
+        hour = 0;
+    }
+
+    // Civil → unix via days since 1970-01-01 (UTC−8 for labeled PST).
+    let Some(day_num) = civil_days(year, month, day) else {
+        return 0;
+    };
+    let secs = (day_num as i64) * 86400 + (hour as i64) * 3600 + (minute as i64) * 60 + 8 * 3600;
+    secs * 1000
+}
+
+fn civil_days(year: i32, month: u32, day: u32) -> Option<i64> {
+    if !(1..=12).contains(&month) || day == 0 || day > 31 {
+        return None;
+    }
+    // Howard Hinnant civil_from_days inverse (days since 1970-01-01).
+    let y = if month <= 2 { year - 1 } else { year };
+    let era = y.div_euclid(400);
+    let yoe = (y - era * 400) as u32;
+    let m = month as i64;
+    let doy = (153 * (m + if m > 2 { -3 } else { 9 }) + 2) / 5 + day as i64 - 1;
+    let doe = (yoe as i64) * 365 + (yoe as i64) / 4 - (yoe as i64) / 100 + doy;
+    Some(era as i64 * 146097 + doe - 719468)
+}
+
+fn mut_stream_id(url: &str, title: &str) -> String {
+    let slug = url
+        .trim()
+        .trim_start_matches('/')
+        .strip_prefix("watch/")
+        .unwrap_or(url.trim().trim_start_matches('/'));
+    if !slug.is_empty() {
+        return slug.to_string();
+    }
+    title
+        .trim()
+        .to_ascii_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect::<String>()
+        .trim_matches('-')
+        .to_string()
+}
+
+fn flatten_mut_streams(body: &str) -> Option<Vec<Value>> {
+    let categories: Vec<Value> = serde_json::from_str(body).ok()?;
+    if categories.is_empty() {
+        return None;
+    }
+    // HTML error pages parse as null/object, not a category array with streams.
+    let first = categories.first()?;
+    if first.get("streams").is_none() && first.get("title").is_none() {
+        return None;
+    }
+
+    let mut result = Vec::new();
+    for cat in categories {
+        let streams = match cat.get("streams").and_then(|v| v.as_array()) {
+            Some(s) => s,
+            None => continue,
+        };
+        for s in streams {
+            let title = s
+                .get("title")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim()
+                .to_string();
+            if title.is_empty() {
+                continue;
+            }
+            let url = s.get("url").and_then(|v| v.as_str()).unwrap_or("");
+            let id = mut_stream_id(url, &title);
+            if id.is_empty() {
+                continue;
+            }
+            let category = s
+                .get("groupId")
+                .and_then(|v| v.as_str())
+                .or_else(|| cat.get("title").and_then(|v| v.as_str()))
+                .unwrap_or("other")
+                .to_ascii_lowercase()
+                .replace(' ', "-");
+            let poster = s.get("image").and_then(|v| v.as_str()).unwrap_or("");
+            let date_ms = parse_mut_time(s.get("time").and_then(|v| v.as_str()).unwrap_or(""));
+
+            let mut source_refs = Vec::new();
+            let mut inline_streams = Vec::new();
+            if let Some(sources) = s.get("sources").and_then(|v| v.as_array()) {
+                for src in sources {
+                    let embed = src
+                        .get("embedUrl")
+                        .or_else(|| src.get("embed_url"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    if embed.is_empty() {
+                        continue;
+                    }
+                    let source = src
+                        .get("source")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let sid = src
+                        .get("id")
+                        .map(|v| match v {
+                            Value::String(s) => s.clone(),
+                            other => other.to_string().trim_matches('"').to_string(),
+                        })
+                        .unwrap_or_default();
+                    if source.is_empty() || sid.is_empty() {
+                        continue;
+                    }
+                    source_refs.push(json!({ "source": source, "id": sid }));
+                    inline_streams.push(json!({
+                        "id": sid,
+                        "streamNo": src.get("streamNo").cloned().unwrap_or(Value::from(0)),
+                        "language": src.get("language").cloned().unwrap_or(Value::String(String::new())),
+                        "hd": src.get("hd").cloned().unwrap_or(Value::Bool(false)),
+                        "embedUrl": embed,
+                        "source": source,
+                        "viewers": src.get("viewers").cloned().unwrap_or(Value::from(0)),
+                    }));
+                }
+            }
+
+            let airing = !inline_streams.is_empty();
+            result.push(json!({
+                "id": id,
+                "title": title,
+                "category": category,
+                "date": date_ms,
+                "poster": poster,
+                "popular": false,
+                "airing": airing,
+                "sources": source_refs,
+                "streams": inline_streams,
+                "catalog": "mut",
+            }));
+        }
+    }
+    if result.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
+}
+
+/// MutStreams schedule + inline embed sources (`/api/streams`).
+/// Tries official mirrors until one returns a parseable category list.
+pub fn mut_matches() -> String {
+    for base in MUT_BASES {
+        let url = format!("{}/api/streams", base.trim_end_matches('/'));
+        let body = match http_get(&url, &mut_headers(base), 15) {
+            Some(b) => b,
+            None => continue,
+        };
+        if let Some(items) = flatten_mut_streams(&body) {
+            return ok_items(items);
+        }
+    }
+    ok_items(vec![])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -335,5 +572,55 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert_eq!(result[0]["sport"], "Soccer");
         assert_eq!(result[1]["sport"], "NBA");
+    }
+
+    #[test]
+    fn parse_mut_time_pst_date() {
+        let ms = parse_mut_time("05:00 PM PST - (07/30/2026)");
+        assert!(ms > 0);
+        // 2026-07-30 17:00 PST = 2026-07-31 01:00 UTC
+        assert_eq!(ms, 1_785_459_600_000);
+    }
+
+    #[test]
+    fn flatten_mut_streams_inline_embeds() {
+        let body = r#"[{
+            "title":"Basketball",
+            "streams":[{
+                "title":"Team A vs Team B",
+                "image":"https://example/icon.svg",
+                "time":"05:00 PM PST - (07/30/2026)",
+                "url":"/watch/team-a-vs-team-b",
+                "groupId":"basketball",
+                "sources":[{
+                    "id":"ppv-a-vs-b",
+                    "streamNo":1,
+                    "language":"English",
+                    "hd":true,
+                    "embedUrl":"https://embed.st/embed/admin/ppv-a-vs-b/1",
+                    "source":"admin",
+                    "viewers":12
+                }]
+            },{
+                "title":"Upcoming",
+                "time":"",
+                "url":"/watch/upcoming",
+                "groupId":"basketball",
+                "sources":[]
+            }]
+        }]"#;
+        let items = flatten_mut_streams(body).unwrap();
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0]["id"], "team-a-vs-team-b");
+        assert_eq!(items[0]["catalog"], "mut");
+        assert_eq!(items[0]["airing"], true);
+        assert_eq!(items[0]["streams"].as_array().unwrap().len(), 1);
+        assert_eq!(items[1]["airing"], false);
+        assert!(items[1]["streams"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn flatten_mut_streams_rejects_html() {
+        assert!(flatten_mut_streams("<!DOCTYPE html><html></html>").is_none());
     }
 }
