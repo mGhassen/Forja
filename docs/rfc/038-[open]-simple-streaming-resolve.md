@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **5 / 9** acceptance |
-| **Current slice** | Toggle + budgets (R38-A08) wired; default-on; admin-only Settings UI — device smoke pending |
+| **Progress** | **3 / 3** components · **6 / 10** acceptance |
+| **Current slice** | Toggle + budgets + Tries-order Auto; default-on; admin-only Settings UI — device smoke pending |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -38,6 +38,7 @@
 | 7 | R38-A07 | Settings toggle visible only for `accounts.is_admin` (app + web) | ✅ |
 | 8 | R38-A08 | Per-provider budgets: VSEmbed 25s · WebStreamr 90s · host API 35s · embed sniff 75s (not flat 25/12) | ✅ |
 | 9 | R38-A09 | Device smoke: pinned WebStreamr + one embed succeed under Simple resolve (see [091](../issues/091-[open]-simple-resolve-budgets-kill-webstreamr-embeds.md)) | ⬜ |
+| 10 | R38-A10 | Auto Simple resolve walks Settings **Tries** order (no natives-first reorder) | ✅ |
 
 ---
 
@@ -45,7 +46,7 @@
 
 The production webstreaming path races hosts, opens the player early, and probes/reloads per source. This RFC adds a **detached** experimental path:
 
-1. Pick provider (Auto order or pinned)
+1. Pick provider (Auto **Tries** order or pinned)
 2. Resolve that provider’s multi-streams
 3. Filter junk (wrong ep, zip, unplayable)
 4. Probe off-player until one is reachable

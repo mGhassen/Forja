@@ -101,7 +101,7 @@ export function AccountSettingsPlaybackPage() {
           {isAdmin && (draft.play_source_webstreaming_enabled ?? true) ? (
             <SettingsToggle
               label="Simple resolve (experimental)"
-              description="One provider at a time: filter, probe, then open the player once. Admin only."
+              description="One provider at a time in Tries order: filter, probe, then open the player once. Admin only."
               checked={draft.simple_streaming_resolve_enabled ?? true}
               onChange={(v) => setBool('simple_streaming_resolve_enabled', v)}
               disabled={controlsLocked}

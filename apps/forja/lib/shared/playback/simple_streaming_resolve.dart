@@ -9,9 +9,6 @@ import 'package:rust/rust.dart';
 ///
 /// Detached from the production race / player-reload failover loop.
 abstract final class SimpleStreamingResolve {
-  /// Rust-native scrapers - no WebView.
-  static const nativeIds = {'vidsrc', 'webstreamr'};
-
   /// Host HTTP APIs (may still fall back to WebView).
   static const hostApiIds = {'videasy', 'service111477'};
 
@@ -28,11 +25,11 @@ abstract final class SimpleStreamingResolve {
   /// 12s previously killed every template embed so only VSEmbed survived.
   static const _hostEmbedTimeout = Duration(seconds: 75);
 
-  /// Walk providers (Auto order or a single pinned id). Returns the first
+  /// Walk providers (Auto Tries order or a single pinned id). Returns the first
   /// provider that yields a reachable stream after filter+probe.
   ///
-  /// Auto: natives first, then host APIs, then embeds - so CF/WebView hosts
-  /// cannot block a working `vidsrc` forever.
+  /// Auto uses the same [SourceEngine] order as Settings → Server reliability
+  /// Tries (no natives-first reorder).
   static Future<PlaybackResolveHit?> resolve({
     required Movie movie,
     required Map<String, dynamic> providers,
@@ -45,15 +42,12 @@ abstract final class SimpleStreamingResolve {
   }) async {
     final cancelled = isCancelled ?? (() => false);
     final domain = SourceDomain.fromMediaType(movie.mediaType);
-    final baseline = SourceEngine.orderProviderIds(
+    final ordered = SourceEngine.orderProviderIds(
       domain: domain,
       candidateIds: providers.keys,
       preferred: preferredProvider,
       settingsOrder: settingsOrder,
     );
-    final ordered = SourceEngine.isAuto(preferredProvider)
-        ? preferFastProviders(baseline)
-        : baseline;
     if (ordered.isEmpty) return null;
 
     for (final providerId in ordered) {
@@ -153,25 +147,6 @@ abstract final class SimpleStreamingResolve {
       );
     }
     return null;
-  }
-
-  /// Natives → host APIs → embeds (keeps relative order inside each bucket).
-  @visibleForTesting
-  static List<String> preferFastProviders(List<String> ordered) {
-    if (ordered.length <= 1) return ordered;
-    final natives = <String>[];
-    final apis = <String>[];
-    final rest = <String>[];
-    for (final id in ordered) {
-      if (nativeIds.contains(id)) {
-        natives.add(id);
-      } else if (hostApiIds.contains(id)) {
-        apis.add(id);
-      } else {
-        rest.add(id);
-      }
-    }
-    return [...natives, ...apis, ...rest];
   }
 
   @visibleForTesting

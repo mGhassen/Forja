@@ -133,7 +133,7 @@ class _SettingsPlaybackSectionState
                 settingsFocusableToggle(
                   context,
                   'Simple resolve (experimental)',
-                  'One provider at a time: filter streams, probe, then open the player once. Leaves the old race path off.',
+                  'One provider at a time in Tries order: filter streams, probe, then open the player once. Leaves the old race path off.',
                   snap.simpleStreamingResolve,
                   (val) async {
                     await _settings.setSimpleStreamingResolveEnabled(val);

@@ -49,23 +49,6 @@ void main() {
     expect(out, isEmpty);
   });
 
-  test('preferFastProviders puts natives before embeds', () {
-    final ordered = SimpleStreamingResolve.preferFastProviders(const [
-      'vidlink',
-      'videasy',
-      'vixsrc',
-      'vidsrc',
-      'webstreamr',
-    ]);
-    expect(ordered, [
-      'vidsrc',
-      'webstreamr',
-      'videasy',
-      'vidlink',
-      'vixsrc',
-    ]);
-  });
-
   test('timeoutFor gives WebStreamr and embeds enough budget', () {
     expect(SimpleStreamingResolve.timeoutFor('vidsrc').inSeconds, 25);
     expect(SimpleStreamingResolve.timeoutFor('webstreamr').inSeconds, 90);

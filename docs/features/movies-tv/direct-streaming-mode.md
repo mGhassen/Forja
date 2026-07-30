@@ -20,7 +20,7 @@ The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent
 - Fall through extractors in the order you set in Settings
 - While servers are checking, the loading screen shows `N / M CHECKED · K UP` progress. Next to **Cancel**, tap the layers icon to open the **server list** — live Waiting / Checking / Up / Down status for each provider. Tap a waiting or down server to **check it manually** (stops Auto order and resolves that provider only)
 - Before mpv opens a link, Forja HTTP-probes it (every built-in provider) — dead CDNs fail fast and Auto continues to the next server
-- **Simple resolve** (default): each server gets a real budget — WebStreamr up to ~90s, embed sniffs ~75s, VSEmbed ~25s — so slower natives/embeds are not cut off empty while VSEmbed alone “works”
+- **Simple resolve** (default): walks **Tries** one server at a time with real budgets — WebStreamr up to ~90s, embed sniffs ~75s, VSEmbed ~25s — so slower natives/embeds are not cut off empty while VSEmbed alone “works”
 - A server only counts as streaming when video actually opens (not when extract alone returns a URL)
 - Leave the player and tap green **Play** again on the same title (or same TV episode) — Forja reuses the last **confirmed** webstreaming extract (session/disk cache, ~25 minutes) instead of re-racing providers. Stremio Direct / torrent / Amri sessions are not stored in that cache. Cached or Continue Watching links are probed before open; expired CDN tokens and dead segments drop the cache and re-resolve like first Play
 - In the player **Servers** menu, tapping a server reuses cache only when that provider already has a cached extract for this title/episode; otherwise it runs a fresh resolve for that server.
