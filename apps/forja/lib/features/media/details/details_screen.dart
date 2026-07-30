@@ -239,6 +239,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   set _webstreamingOnlyExtractionCancelled(bool v) =>
       _play.webstreamingOnlyExtractionCancelled = v;
 
+  int get _webstreamingPlayGen => _play.webstreamingPlayGen;
+  set _webstreamingPlayGen(int v) => _play.webstreamingPlayGen = v;
+
   Map<String, dynamic>? _lastProgress;
   StreamSubscription<List<Map<String, dynamic>>>? _watchHistorySub;
   bool _sourcesPanelOpen = false;

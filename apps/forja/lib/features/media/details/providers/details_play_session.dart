@@ -83,6 +83,7 @@ class DetailsPlaySession {
   String? webstreamingActiveProviderId;
   bool isWebstreamingOnlyExtracting = false;
   bool webstreamingOnlyExtractionCancelled = false;
+  int webstreamingPlayGen = 0;
 
   String selectedSourceId = 'forja';
   String panelKindFilter = 'torrents';

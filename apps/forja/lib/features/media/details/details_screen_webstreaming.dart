@@ -120,12 +120,18 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
   }) async {
     if (_s._isWebstreamingOnlyExtracting) return;
 
+    final playGen = ++_s._webstreamingPlayGen;
     if (mounted) {
       setState(() => _s._isWebstreamingOnlyExtracting = true);
     } else {
       _s._isWebstreamingOnlyExtracting = true;
     }
     _s._webstreamingOnlyExtractionCancelled = false;
+
+    bool playAborted() =>
+        !mounted ||
+        playGen != _s._webstreamingPlayGen ||
+        _s._webstreamingOnlyExtractionCancelled;
 
     final fadeOutNotifier = ValueNotifier(false);
     final messageNotifier = ValueNotifier('Loading stream…');
@@ -139,6 +145,18 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       if (ctx != null && ctx.mounted) dismissLoadingOverlayRoute(ctx);
     }
 
+    void cancelWebstreamingPlay() {
+      if (playGen != _s._webstreamingPlayGen) return;
+      _s._webstreamingOnlyExtractionCancelled = true;
+      PlaybackEngine.cancelAllPending();
+      dismissLoading();
+      if (mounted) {
+        setState(() => _s._isWebstreamingOnlyExtracting = false);
+      } else {
+        _s._isWebstreamingOnlyExtracting = false;
+      }
+    }
+
     showLoadingOverlayDialog(
       context,
       builder: (dialogContext) {
@@ -147,21 +165,13 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
           movie: _s._movie,
           messageNotifier: messageNotifier,
           fadeOutNotifier: fadeOutNotifier,
-          onCancel: () {
-            _s._webstreamingOnlyExtractionCancelled = true;
-            dismissLoading();
-            if (mounted) {
-              setState(() => _s._isWebstreamingOnlyExtracting = false);
-            } else {
-              _s._isWebstreamingOnlyExtracting = false;
-            }
-          },
+          onCancel: cancelWebstreamingPlay,
         );
       },
     );
     // Let the loading route paint before cache / probe work.
     await Future<void>.delayed(Duration.zero);
-    if (!mounted || _s._webstreamingOnlyExtractionCancelled) {
+    if (playAborted()) {
       dismissLoading();
       disposeLoadingOverlayNotifiers([fadeOutNotifier, messageNotifier]);
       _s._isWebstreamingOnlyExtracting = false;
@@ -171,7 +181,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
     try {
       if (hydrateCache) {
         await _hydrateWebstreamingFromCache();
-        if (!mounted || _s._webstreamingOnlyExtractionCancelled) return;
+        if (playAborted()) return;
       }
 
       final startPosition = _s._startPositionForAutoPlay(fromRoute: false);
@@ -185,7 +195,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
             (alreadyLive ||
                 await probeStreamSourceUrl(preferred.url, preferred.headers));
         if (playable) {
-          if (!mounted || _s._webstreamingOnlyExtractionCancelled) return;
+          if (playAborted()) return;
           final ctx = loadingDialogContext;
           if (ctx != null && ctx.mounted) {
             openedPlayer = true;
@@ -217,7 +227,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
         _webstreamingCacheKey(),
         probe: probeStreamSourceUrl,
       );
-      if (!mounted || _s._webstreamingOnlyExtractionCancelled) return;
+      if (playAborted()) return;
       if (cached != null && cached.sources.isNotEmpty) {
         setState(() => _applyWebstreamingCacheHit(cached));
         debugPrint(
@@ -247,9 +257,12 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
         loadingDialogContext: loadingDialogContext,
         fadeOutNotifier: fadeOutNotifier,
         onOpenedPlayer: () => openedPlayer = true,
+        isAborted: playAborted,
       )) {
         return;
       }
+
+      if (playAborted()) return;
 
       // Cold extract owns its own overlay + extracting flag.
       handedToExtraction = true;
@@ -260,7 +273,10 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       } else {
         _s._isWebstreamingOnlyExtracting = false;
       }
-      await _runWebstreamingOnlyExtraction(startPosition: startPosition);
+      await _runWebstreamingOnlyExtraction(
+        startPosition: startPosition,
+        playGen: playGen,
+      );
     } finally {
       if (!handedToExtraction) {
         if (!openedPlayer) dismissLoading();
@@ -281,6 +297,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
     BuildContext? loadingDialogContext,
     ValueNotifier<bool>? fadeOutNotifier,
     VoidCallback? onOpenedPlayer,
+    bool Function()? isAborted,
   }) async {
     final progress = _s._lastProgress;
     if (progress == null || progress['method'] != 'stream') return false;
@@ -292,7 +309,9 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
         isUnplayableCachedStreamUrl(savedUrl)) {
       return false;
     }
+    if (isAborted?.call() ?? false) return false;
     if (!await probeStreamSourceUrl(savedUrl, null)) return false;
+    if (isAborted?.call() ?? false) return false;
     final sourceId = isWebStreamProviderId(rawSourceId)
         ? rawSourceId
         : (_s._webstreamingActiveProviderId ?? 'stream');
@@ -375,13 +394,20 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
     if (_s._playSourceWebstreaming) await _startWebstreamingOnlyPlayback();
   }
 
-  Future<void> _runWebstreamingOnlyExtraction({Duration? startPosition}) async {
+  Future<void> _runWebstreamingOnlyExtraction({
+    Duration? startPosition,
+    required int playGen,
+  }) async {
+    if (!mounted ||
+        playGen != _s._webstreamingPlayGen ||
+        _s._webstreamingOnlyExtractionCancelled) {
+      return;
+    }
     if (mounted) {
       setState(() => _s._isWebstreamingOnlyExtracting = true);
     } else {
       _s._isWebstreamingOnlyExtracting = true;
     }
-    _s._webstreamingOnlyExtractionCancelled = false;
     final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
     final sourcesListNotifier = ValueNotifier<List<StreamSource>>(const []);
     final providerSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
@@ -402,8 +428,13 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       loadingDialogContext = null;
     }
 
+    bool playAborted() =>
+        !mounted ||
+        playGen != _s._webstreamingPlayGen ||
+        _s._webstreamingOnlyExtractionCancelled;
+
     void requestManualProviderCheck(String providerId) {
-      if (_s._webstreamingOnlyExtractionCancelled) return;
+      if (playAborted()) return;
       if (TvStreamFallback.isSkippedOnTv(providerId, _orderedWebstreamingProviders)) {
         return;
       }
@@ -422,11 +453,17 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
           fadeOutNotifier: fadeOutNotifier,
           failureNotifier: failureNotifier,
           onCancel: () {
+            if (playGen != _s._webstreamingPlayGen) return;
             _s._webstreamingOnlyExtractionCancelled = true;
             switchingManualProvider = false;
             pendingManualProviderId = null;
             PlaybackEngine.cancelAllPending();
             dismissLoading();
+            if (mounted) {
+              setState(() => _s._isWebstreamingOnlyExtracting = false);
+            } else {
+              _s._isWebstreamingOnlyExtracting = false;
+            }
           },
           onManualCheckProvider: requestManualProviderCheck,
         );
@@ -434,6 +471,20 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
     );
 
     await WidgetsBinding.instance.endOfFrame;
+    if (playAborted()) {
+      dismissLoading();
+      _s._isWebstreamingOnlyExtracting = false;
+      disposeLoadingOverlayNotifiers([
+        fadeOutNotifier,
+        failureNotifier,
+        probeNotifier,
+        sourcesListNotifier,
+        providerSourcesCache,
+      ]);
+      liveNotifiersDisposed = true;
+      overlayNotifiersDisposed = true;
+      return;
+    }
     if (!mounted) {
       dismissLoading();
       _s._isWebstreamingOnlyExtracting = false;
@@ -488,9 +539,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       }
 
       void syncResolvedHits(List<PlaybackResolveHit> hits) {
-        if (hits.isEmpty ||
-            _s._webstreamingOnlyExtractionCancelled ||
-            switchingManualProvider) {
+        if (hits.isEmpty || playAborted() || switchingManualProvider) {
           return;
         }
         providerSourcesCache.value = PlaybackEngine.hitsToProviderCache(hits);
@@ -598,15 +647,12 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
           await _s._settings.isSimpleStreamingResolveEnabled();
 
       PlaybackResolveHit? hit;
-      while (mounted && !_s._webstreamingOnlyExtractionCancelled) {
+      while (mounted && !playAborted()) {
         switchingManualProvider = false;
         final preferred = preferredProvider;
         prepareProbesForPreferred(preferred);
 
-        final cancelled = () =>
-            !mounted ||
-            _s._webstreamingOnlyExtractionCancelled ||
-            switchingManualProvider;
+        final cancelled = () => playAborted() || switchingManualProvider;
 
         hit = useSimpleResolve
             ? await SimpleStreamingResolve.resolve(
@@ -635,7 +681,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
           syncResolvedHits([hit]);
         }
 
-        if (_s._webstreamingOnlyExtractionCancelled) {
+        if (playAborted()) {
           hit = null;
           break;
         }
@@ -649,7 +695,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
 
       final manualPick = !SourceEngine.isAuto(preferredProvider);
 
-      if (!mounted || _s._webstreamingOnlyExtractionCancelled) {
+      if (playAborted()) {
         // cancelled
       } else if (hit != null) {
         found = true;
@@ -737,7 +783,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
         }
       }
 
-      if (!found && mounted && !_s._webstreamingOnlyExtractionCancelled) {
+      if (!found && mounted && !playAborted()) {
         final action = Completer<bool>();
         failureNotifier.value = ResolveFailure(
           title: 'Couldn’t start playback',
