@@ -328,7 +328,9 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
 
               ..._randomCategoryRowSlivers(),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              SliverToBoxAdapter(
+                child: SizedBox(height: shellTvCatalogScrollBottomGap(context)),
+              ),
             ],
           ),
         );

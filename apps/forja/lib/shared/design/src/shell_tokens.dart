@@ -253,6 +253,9 @@ abstract final class ShellTokens {
   static const double tvHomeSectionHorizontalPadding = 0;
   static const double tvHeroHeightFraction = 0.78;
   static const double tvHeroNextRowPeekFraction = 0.06;
+
+  /// Catalog row D-pad focus: keep this fraction of viewport below the row.
+  static const double tvCatalogRowFocusBottomInsetFraction = 0.10;
   static const double tvHomeSectionTitleTopCompact = 16;
   static const double tvHomeSectionTitleTop = 24;
   static const double tvHomeSectionHeaderHeight = 26;

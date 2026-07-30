@@ -188,6 +188,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   int _fallbackGen = 0;
   final FocusNode _playFocus = FocusNode(debugLabel: 'exo-player-play');
   final FocusNode _backFocus = FocusNode(debugLabel: 'exo-player-back');
+  final FocusNode _seekFocus = FocusNode(debugLabel: 'exo-player-seek');
   final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'exo-player-menu');
   final FocusNode _retryFocus = FocusNode(debugLabel: 'exo-player-retry');
   final FocusNode _streamActionFocus =
@@ -623,6 +624,33 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       if (playerChromeOverlayBlocksFocusClaim()) return;
       _backFocus.requestFocus();
     });
+  }
+
+  void _focusDownFromTopBar() {
+    if (!_isTv) return;
+    _tvBackExitArmed = false;
+    if (_seekFocus.canRequestFocus) {
+      _seekFocus.requestFocus();
+      return;
+    }
+    _claimPlayFocus();
+  }
+
+  void _focusDownFromSeekbar() => _claimPlayFocus();
+
+  void _focusUpFromSeekbar() {
+    if (_backFocus.canRequestFocus) {
+      _backFocus.requestFocus();
+    }
+  }
+
+  VoidCallback? _backOnRightEdge() {
+    if (!_isTv) return null;
+    if (_hasError) return () => _retryFocus.requestFocus();
+    if (widget.onSwitchPlayer != null) {
+      return () => _playerMenuFocus.requestFocus();
+    }
+    return null;
   }
 
   void _startHideTimer() {
@@ -1172,6 +1200,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _playFocus.dispose();
     _backFocus.removeListener(_onBackFocusChanged);
     _backFocus.dispose();
+    _seekFocus.dispose();
     _playerMenuFocus.dispose();
     _retryFocus.dispose();
     _streamActionFocus.dispose();
@@ -1277,8 +1306,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     onBack: () => unawaited(_exit()),
                     tvFocusable: true,
                     backFocusNode: _backFocus,
-                    backOnRightEdge:
-                        _hasError ? () => _retryFocus.requestFocus() : null,
+                    backOnRightEdge: _backOnRightEdge(),
+                    backOnDownEdge: _focusDownFromTopBar,
                     trailing: PlayerTopBarActions(
                       tvFocusable: true,
                       showPlayer: widget.onSwitchPlayer != null,
@@ -1418,7 +1447,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                             position: _position,
                             bufferedPosition: _buffered,
                             tvFocusable: true,
+                            focusNode: _seekFocus,
                             tvFocusUpNode: _backFocus,
+                            onTvFocusUp: _focusUpFromSeekbar,
+                            onTvFocusDown: _focusDownFromSeekbar,
                             onSeek: (t) {
                               unawaited(ExoPlayerBridge.seekTo(_viewId, t));
                             },
@@ -1584,6 +1616,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 PlayerFlatIconButton(
                 tvFocusable: true,
                 focusNode: _playFocus,
+                onUpEdge: () {
+                  if (_seekFocus.canRequestFocus) {
+                    _seekFocus.requestFocus();
+                  }
+                },
                 icon: _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                 size: btnSize,
                 iconSize: iconSz,

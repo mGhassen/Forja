@@ -142,6 +142,15 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     }
   }
 
+  void _focusDownFromTopBar() {
+    _s._tvBackExitArmed = false;
+    if (_s._seekbarFocus.canRequestFocus) {
+      _s._seekbarFocus.requestFocus();
+      return;
+    }
+    _focusDownFromSeekbar();
+  }
+
   void _focusFirstRightTransport() {
     final nodes = <FocusNode>[
       if (_s._usesCatalogSourcesPanel) _s._transportSourcesFocus,

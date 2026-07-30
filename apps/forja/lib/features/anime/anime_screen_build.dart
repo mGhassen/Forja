@@ -361,7 +361,9 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                               ),
                               ],
                               const SliverToBoxAdapter(
-                                child: SizedBox(height: 80),
+                                child: SizedBox(
+                                  height: shellTvCatalogScrollBottomGap(context),
+                                ),
                               ),
                             ],
                           ),

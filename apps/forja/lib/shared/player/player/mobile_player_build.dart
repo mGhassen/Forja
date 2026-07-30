@@ -383,7 +383,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                     backFocusNode: _s._backFocus,
                     backOnRightEdge: _s._hasError
                         ? () => _s._retryFocus.requestFocus()
-                        : null,
+                        : widget.onSwitchPlayer != null
+                            ? () => _s._playerMenuFocus.requestFocus()
+                            : null,
+                    backOnDownEdge: _s._focusDownFromTopBar,
                     trailing: PlayerTopBarActions(
                       tvFocusable: true,
                       showPlayer: widget.onSwitchPlayer != null,

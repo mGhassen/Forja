@@ -502,6 +502,7 @@ class PlayerTopBar extends StatelessWidget {
     this.tvFocusable = false,
     this.backFocusNode,
     this.backOnRightEdge,
+    this.backOnDownEdge,
   });
 
   final String title;
@@ -516,6 +517,8 @@ class PlayerTopBar extends StatelessWidget {
   final FocusNode? backFocusNode;
   /// TV: D-pad → from Back (e.g. to Retry when stream failure actions show).
   final VoidCallback? backOnRightEdge;
+  /// TV: D-pad ↓ from Back (seek bar or transport — geometry often fails).
+  final VoidCallback? backOnDownEdge;
 
   String? get _episodeLine {
     if (episodeLine != null && episodeLine!.isNotEmpty) return episodeLine;
@@ -621,6 +624,7 @@ class PlayerTopBar extends StatelessWidget {
                         tvFocusable: tvFocusable,
                         focusNode: backFocusNode,
                         onRightEdge: backOnRightEdge,
+                        onDownEdge: backOnDownEdge,
                       ),
                     ),
                     Positioned(

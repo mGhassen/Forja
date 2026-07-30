@@ -133,6 +133,15 @@ double shellHeroNextRowPeekFraction(BuildContext context) =>
     ? ShellTokens.tvHeroNextRowPeekFraction
     : ShellTokens.heroNextRowPeekFraction;
 
+/// Trailing scroll gap on hub catalog pages so the last TV row can lift on focus.
+double shellTvCatalogScrollBottomGap(BuildContext context) {
+  if (ShellScope.metricsOf(context).usesTvDensity) {
+    return MediaQuery.sizeOf(context).height *
+        ShellTokens.tvCatalogRowFocusBottomInsetFraction;
+  }
+  return 100;
+}
+
 double shellHeroMinHeight(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity ? 400.0 : 320.0;
 

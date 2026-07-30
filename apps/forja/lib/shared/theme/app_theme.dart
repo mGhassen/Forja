@@ -318,9 +318,13 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       duration: zero,
       alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
     );
+    final bottomAlignment =
+        widget.ensureVisibleMode == ShellTvEnsureVisibleMode.row
+        ? 1.0 - ShellTokens.tvCatalogRowFocusBottomInsetFraction
+        : 1.0;
     Scrollable.ensureVisible(
       context,
-      alignment: 1.0,
+      alignment: bottomAlignment,
       duration: zero,
       alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
     );
