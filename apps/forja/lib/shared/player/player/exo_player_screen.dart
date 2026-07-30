@@ -414,7 +414,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         kind: StatusRouletteKind.failed,
       );
     }
-    if (_sourceIndex + 1 < _sources.length) {
+    if (!_playbackStartedNotified && _sourceIndex + 1 < _sources.length) {
       _sourceIndex++;
       await ExoPlayerBridge.stop(_viewId);
       await _openCurrentSource();
@@ -423,10 +423,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (!mounted) return;
     setState(() {
       _hasError = true;
-      _errorMessage = message;
+      _errorMessage = _playbackStartedNotified
+          ? 'Playback stopped. Tap Retry to reload this server.'
+          : message;
       _showControls = true;
     });
-    widget.onAllSourcesExhausted?.call();
+    if (!_playbackStartedNotified) {
+      widget.onAllSourcesExhausted?.call();
+    }
   }
 
   void _onNativeEvent(Map<dynamic, dynamic> event) {
@@ -1241,7 +1245,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     statusActions: _hasError
                         ? PlayerTopStatusActions(
                             onRetry: () {
-                              _sourceIndex = 0;
+                              setState(() {
+                                _hasError = false;
+                                _errorMessage = '';
+                              });
                               unawaited(_openCurrentSource());
                             },
                             onStream: _hasStreamPicker
@@ -1304,7 +1311,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   statusActions: _hasError
                       ? PlayerTopStatusActions(
                           onRetry: () {
-                            _sourceIndex = 0;
+                            setState(() {
+                              _hasError = false;
+                              _errorMessage = '';
+                            });
                             unawaited(_openCurrentSource());
                           },
                           onStream: _hasStreamPicker

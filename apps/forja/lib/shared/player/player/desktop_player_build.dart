@@ -252,7 +252,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             episodeLine: _s._hubEpisodeLine,
             statusActions: _s._hasError
                 ? PlayerTopStatusActions(
-                    onRetry: _s._initPlayback,
+                    onRetry: _s._retryCurrentPlayback,
                     onStream: hasStreamPicker ? _s._showStreamMenu : null,
                   )
                 : null,

@@ -5,17 +5,17 @@ import 'package:forja/shared/player/player/utils.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
 
-/// VOD playback recovery - hw decode fallback + failed URL blocklist.
+/// VOD playback recovery - hw decode fallback on the same stream only.
 class PlaybackRecovery {
   PlaybackRecovery({
     required this.player,
-    required this.onRetryNextSource,
+    required this.onPlaybackFailed,
     this.onForceSoftwareDecode,
     this.onRecoverAudio,
   });
 
   final Player player;
-  final VoidCallback onRetryNextSource;
+  final VoidCallback onPlaybackFailed;
   final Future<void> Function()? onForceSoftwareDecode;
   final Future<void> Function()? onRecoverAudio;
 
@@ -53,7 +53,7 @@ class PlaybackRecovery {
         unawaited(_forceSoftwareDecode());
         return;
       }
-      onRetryNextSource();
+      onPlaybackFailed();
       return;
     }
     if (isAudioDecoderError(err)) {
@@ -62,7 +62,7 @@ class PlaybackRecovery {
     }
     if (currentUrl != null && isFatalPlayerOpenError(err)) {
       PlaybackSelection.recordFailedUrl(currentUrl);
-      onRetryNextSource();
+      onPlaybackFailed();
     }
   }
 

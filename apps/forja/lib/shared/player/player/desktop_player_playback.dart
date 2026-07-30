@@ -890,6 +890,40 @@ mixin _DesktopPlayerPlayback
     }
   }
 
+  /// Mid-playback failure — stop on the current server; never auto-hop.
+  Future<void> _showPlaybackFailureOnWatch({String? reason}) async {
+    if (_s._hasError || _s._disposed) return;
+    debugPrint(
+      '[Player] Playback stopped during watch - no auto failover'
+      '${reason != null ? ' ($reason)' : ''}',
+    );
+    _s._fallbackGen++;
+    try {
+      await _s._player.stop();
+    } catch (_) {}
+    _s._markPlaybackConfirmed(false);
+    if (!mounted || _s._disposed) return;
+    _s._finalizeProbeStatusesAfterPlayback();
+    _s._statusController.upsert(
+      'playback-failed',
+      'Failed to stream',
+      kind: StatusRouletteKind.failed,
+    );
+    setState(() {
+      _s._hasError = true;
+      _s._showControls = true;
+      _s._errorMessage =
+          'Playback stopped. Tap Retry to reload this server.';
+    });
+  }
+
+  Future<void> _retryCurrentPlayback() async {
+    final idx = _s._currentFallbackSourceIndex;
+    _s._failedSourceIndices.remove(idx);
+    await _invalidateWebstreamingCacheForCurrent();
+    await _initPlayback(sourceStartIndex: idx);
+  }
+
   /// Stop on failure - no silent hop to the next provider.
   /// Used when the user pinned a server/stream (or Auto server is Off).
   Future<void> _failPlaybackNoFailover({required String message}) async {
@@ -1127,19 +1161,12 @@ mixin _DesktopPlayerPlayback
     _s._logSub?.cancel();
     _s._autoTracksAppliedForSource = false;
 
-    _s._playbackRecovery = PlaybackRecovery(
-      player: _s._player,
-      onRetryNextSource: () {
-        if (_s._sourcePinned) return;
-        final next = _s._currentFallbackSourceIndex + 1;
-        if (_s._currentSources != null && next < _s._currentSources!.length) {
-          unawaited(
-            _initPlayback(sourceStartIndex: next, resetEofSession: false),
-          );
-        } else if (!_s._providerPinned) {
-          unawaited(_autoFallbackToNextProvider());
-        }
-      },
+      _s._playbackRecovery = PlaybackRecovery(
+        player: _s._player,
+        onPlaybackFailed: () {
+          if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return;
+          unawaited(_showPlaybackFailureOnWatch());
+        },
       onForceSoftwareDecode: () async {
         if (_s._player.platform is! NativePlayer) return;
         await (_s._player.platform as NativePlayer).setProperty('hwdec', 'no');
@@ -1330,32 +1357,14 @@ mixin _DesktopPlayerPlayback
 
       if (!isFatalPlayerOpenError(err)) return;
       if (_s._hasError) return;
-      // Drop stale extract whenever open dies - probe hop must not leave
-      // session/disk URLs that look "ready" on the next Play/reload.
-      unawaited(_invalidateWebstreamingCacheForCurrent());
       if (_s._isInitPlaybackRunning) {
+        unawaited(_invalidateWebstreamingCacheForCurrent());
         debugPrint(
           '[Player] Open failed during probe - hopping ($err)',
         );
         return;
       }
-      _s._markPlaybackConfirmed(false);
-      final idx = _s._currentFallbackSourceIndex;
-      _s._markSourceFailed(idx);
-      final pid = _s._currentProvider;
-      if (pid != null && pid.isNotEmpty) {
-        _s._markProviderLoadFailed(pid);
-      }
-      _s._statusController.upsert(
-        'playback-failed',
-        'Failed to stream',
-        kind: StatusRouletteKind.failed,
-      );
-      setState(() {
-        _s._hasError = true;
-        _s._showControls = true;
-        _s._errorMessage = 'Playback failed. Pick another server from Sources.';
-      });
+      unawaited(_showPlaybackFailureOnWatch(reason: err));
     });
 
     _s._logSub = _s._player.stream.log.listen((l) {
