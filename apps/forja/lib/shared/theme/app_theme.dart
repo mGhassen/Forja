@@ -308,9 +308,19 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     if (!policy.ensureVisibleOnFocus) return;
     if (widget.ensureVisibleMode == ShellTvEnsureVisibleMode.off) return;
 
-    // TV: jump instantly (no 200ms tween). Animated scroll leaves the focused
-    // control clipped / hidden until the tween ends, and stacks into stutter.
-    // Run start+end keepVisible so ↑ and ↓ only nudge by the clipped edge.
+    if (widget.ensureVisibleMode == ShellTvEnsureVisibleMode.row) {
+      final extraBottom = widget.showFocusBorder && widget.scaleOnFocus > 1.0
+          ? shellMovieCardFocusBleed(
+              context,
+              scaleOnFocus: widget.scaleOnFocus,
+              cardWidth: widget.focusBleedWidth,
+            )
+          : 0.0;
+      shellTvRevealCatalogRowFocus(context, extraBottomPx: extraBottom);
+      return;
+    }
+
+    // Menus / lists: only nudge when clipped at an edge.
     const zero = Duration.zero;
     Scrollable.ensureVisible(
       context,
@@ -318,13 +328,9 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       duration: zero,
       alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
     );
-    final bottomAlignment =
-        widget.ensureVisibleMode == ShellTvEnsureVisibleMode.row
-        ? 1.0 - ShellTokens.tvCatalogRowFocusBottomInsetFraction
-        : 1.0;
     Scrollable.ensureVisible(
       context,
-      alignment: bottomAlignment,
+      alignment: 1.0,
       duration: zero,
       alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
     );

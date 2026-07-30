@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/player_tv_remote.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -430,6 +431,75 @@ void main() {
 
       play.dispose();
       rewind.dispose();
+    },
+  );
+
+  testWidgets(
+    'PlayerTvKeyScope does not steal focus when popup is open and chrome hides',
+    (tester) async {
+      final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');
+      late BuildContext hostContext;
+
+      Widget build({required bool showControls}) {
+        return MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: Scaffold(
+                body: Builder(
+                  builder: (context) {
+                    hostContext = context;
+                    return PlayerTvKeyScope(
+                      enabled: true,
+                      focusNode: keyFocus,
+                      showControls: showControls,
+                      onBack: () {},
+                      onPlayPause: () {},
+                      onShowControls: () {},
+                      onSeekBack: () {},
+                      onSeekForward: () {},
+                      onVolumeUp: () {},
+                      onVolumeDown: () {},
+                      onToggleControls: () {},
+                      onFocusBack: () {},
+                      onFocusPlay: () {},
+                      child: const SizedBox.expand(),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(build(showControls: true));
+      await tester.pump();
+
+      PlayerPopupPanel.show(
+        context: hostContext,
+        title: 'Stream stats',
+        autofocusClose: true,
+        child: const Text('stats-body'),
+      );
+      await tester.pumpAndSettle();
+      expect(PlayerPopupPanel.isShowing, isTrue);
+      expect(keyFocus.hasFocus, isFalse);
+
+      // Chrome auto-hide used to call _claimFocus and yank D-pad off Close.
+      await tester.pumpWidget(build(showControls: false));
+      await tester.pump();
+      await tester.pump();
+
+      expect(keyFocus.hasFocus, isFalse);
+      expect(PlayerPopupPanel.isShowing, isTrue);
+      expect(find.text('stats-body'), findsOneWidget);
+
+      PlayerPopupPanel.dismiss();
+      await tester.pumpAndSettle();
+      keyFocus.dispose();
     },
   );
 }

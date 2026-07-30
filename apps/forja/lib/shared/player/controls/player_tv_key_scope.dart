@@ -97,6 +97,9 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
 
   void _claimFocus() {
     if (!mounted || !widget.enabled) return;
+    // Menus (stats, settings, …) own D-pad — do not yank focus when chrome
+    // auto-hides under an open overlay.
+    if (playerChromeOverlayBlocksFocusClaim()) return;
     if (widget.focusNode.canRequestFocus) {
       widget.focusNode.requestFocus();
     }

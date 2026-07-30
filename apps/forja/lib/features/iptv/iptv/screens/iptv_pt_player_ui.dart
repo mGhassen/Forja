@@ -114,6 +114,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     if (_s._guideVisible || _s._searchVisible) return;
     _s._hideControlsTimer = Timer(const Duration(seconds: 4), () {
       if (!mounted) return;
+      // Keep chrome (and its focus graph) while a menu owns D-pad.
+      if (playerChromeOverlayBlocksSeek()) {
+        _scheduleHideControls();
+        return;
+      }
       setState(() => _s._controlsVisible = false);
     });
   }

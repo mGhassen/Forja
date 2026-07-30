@@ -40,41 +40,45 @@ class ShellBottomNav extends StatelessWidget {
                   hoverColor: ForjaShellColors.inkHover,
                   splashColor: ForjaShellColors.inkSplash,
                   onTap: () => onItemTapped(idx),
-                  child: Container(
+                  child: SizedBox(
                     width: ShellTokens.bottomNavItemWidth,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedContainer(
-                          duration: ShellTokens.navSelectionAnimation,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: ShellTokens.bottomNavIconPaddingH,
-                            vertical: ShellTokens.bottomNavIconPaddingV,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedContainer(
+                            duration: ShellTokens.navSelectionAnimation,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: ShellTokens.bottomNavIconPaddingH,
+                              vertical: ShellTokens.bottomNavIconPaddingV,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? ForjaShellColors.chipSelectedBg
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(ShellTokens.navSelectionBorderRadius),
+                            ),
+                            child: NavDestinationIcon(
+                              destination: dest,
+                              selected: isSelected,
+                              color: isSelected ? Colors.white : Colors.white54,
+                              size: ShellTokens.navRailIconSize,
+                            ),
                           ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? ForjaShellColors.chipSelectedBg
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(ShellTokens.navSelectionBorderRadius),
+                          const SizedBox(height: 4),
+                          Text(
+                            dest.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.white54,
+                              fontSize: ShellTokens.bottomNavLabelSize,
+                              height: 1,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
                           ),
-                          child: NavDestinationIcon(
-                            destination: dest,
-                            selected: isSelected,
-                            color: isSelected ? Colors.white : Colors.white54,
-                            size: ShellTokens.navRailIconSize,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          dest.label,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.white54,
-                            fontSize: ShellTokens.bottomNavLabelSize,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
@@ -1189,3 +1191,47 @@ bool shellTvIsActivateKey(KeyEvent event) {
 
 /// Scroll visibility mode for TV focus.
 enum ShellTvEnsureVisibleMode { off, row, item }
+
+/// Scroll so a focused catalog card sits above the bottom edge with TV inset.
+///
+/// [Scrollable.ensureVisible] + keepVisibleAtEnd does nothing when the card
+/// bottom is already flush with the viewport — focus ring bleed still clips.
+void shellTvRevealCatalogRowFocus(
+  BuildContext context, {
+  double bottomInsetFraction = ShellTokens.tvCatalogRowFocusBottomInsetFraction,
+  double extraBottomPx = 0,
+}) {
+  final renderObject = context.findRenderObject();
+  if (renderObject is! RenderBox || !renderObject.hasSize || !renderObject.attached) {
+    return;
+  }
+
+  final scrollable = Scrollable.maybeOf(context);
+  if (scrollable == null) return;
+  final position = scrollable.position;
+
+  final viewport = RenderAbstractViewport.of(renderObject);
+  final topOffset = viewport.getOffsetToReveal(renderObject, 0.0).offset;
+  final bottomAlignment = (1.0 - bottomInsetFraction).clamp(0.0, 1.0);
+  var bottomOffset =
+      viewport.getOffsetToReveal(renderObject, bottomAlignment).offset;
+  if (extraBottomPx > 0) {
+    bottomOffset += extraBottomPx;
+  }
+
+  var target = position.pixels;
+  if (bottomOffset > topOffset) {
+    target = bottomOffset;
+  } else {
+    if (target < bottomOffset) target = bottomOffset;
+    if (target > topOffset) target = topOffset;
+  }
+
+  final clamped = target.clamp(
+    position.minScrollExtent,
+    position.maxScrollExtent,
+  );
+  if ((clamped - position.pixels).abs() > 0.5) {
+    position.jumpTo(clamped);
+  }
+}
