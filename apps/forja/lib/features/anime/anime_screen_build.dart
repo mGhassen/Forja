@@ -360,7 +360,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                                 isFirstAfterHero: false,
                               ),
                               ],
-                              const SliverToBoxAdapter(
+                              SliverToBoxAdapter(
                                 child: SizedBox(
                                   height: shellTvCatalogScrollBottomGap(context),
                                 ),
