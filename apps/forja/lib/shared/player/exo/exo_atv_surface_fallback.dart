@@ -7,16 +7,20 @@ import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 /// Detects physical ATV Exo SurfaceView bind failure (audio-only black) and
 /// flips [ExoPlayerBridge.preferTextureSurface] so [ExoPlayerView] remounts.
 ///
-/// Emulators already force TextureView in the view factory; phones always use
-/// TextureView. This watchdog only arms on physical leanback while SurfaceView
-/// is still preferred.
+/// Only arm when [enabled] — Home/VOD always uses TextureView and must leave
+/// this disabled. IPTV live may enable SurfaceView (issue 108) and needs the
+/// watchdog (issue 133).
 class ExoAtvSurfaceFallback {
   ExoAtvSurfaceFallback({
     required this.onFallback,
+    this.enabled = true,
   });
 
   /// Called once after the prefer-TextureView flag flips — reopen at position.
   final Future<void> Function() onFallback;
+
+  /// False for VOD (always TextureView). True for IPTV when SurfaceView is allowed.
+  final bool enabled;
 
   static const _watchdog = Duration(milliseconds: 2500);
 
@@ -25,9 +29,9 @@ class ExoAtvSurfaceFallback {
   bool _hasVideoTrack = true;
   bool _fallingBack = false;
   bool _ready = false;
-  bool _playing = false;
 
   bool get _shouldWatch =>
+      enabled &&
       PlatformInfo.isAndroidTv &&
       !PlatformInfo.isAndroidEmulator &&
       !ExoPlayerBridge.preferTextureSurface.value &&
@@ -39,7 +43,6 @@ class ExoAtvSurfaceFallback {
     _gotFirstFrame = false;
     _hasVideoTrack = true;
     _ready = false;
-    _playing = false;
     // Keep _fallingBack false so a later session can watch again only when
     // preferTexture is still false (SurfaceView path).
     _fallingBack = false;
@@ -65,8 +68,22 @@ class ExoAtvSurfaceFallback {
         _armIfNeeded();
         return false;
       case 'playing':
-        _playing = event['value'] == true;
-        if (_playing) _armIfNeeded();
+        // Playing alone is enough to arm once READY has landed.
+        if (event['value'] == true) _armIfNeeded();
+        return false;
+      case 'progress':
+        // Bind-dead SurfaceView: audio/position advance, no first frame.
+        final posMs = (event['position'] as num?)?.toInt() ?? 0;
+        if (_shouldWatch &&
+            _ready &&
+            _hasVideoTrack &&
+            !_gotFirstFrame &&
+            posMs >= 1500) {
+          unawaited(
+            _trigger(reason: 'progress ${posMs}ms without renderedFirstFrame'),
+          );
+          return true;
+        }
         return false;
       case 'tracksChanged':
         final snap = ExoTracksSnapshot.fromMap(event);
@@ -94,11 +111,18 @@ class ExoAtvSurfaceFallback {
   }
 
   void _armIfNeeded() {
-    if (!_shouldWatch || !_ready || !_playing || !_hasVideoTrack) return;
+    // Do not require playing — READY without a frame within the watchdog is
+    // already enough for bind-dead SurfaceView (audio may start slightly later).
+    if (!_shouldWatch || !_ready || !_hasVideoTrack) return;
     if (_gotFirstFrame || _timer != null) return;
     _timer = Timer(_watchdog, () {
       if (!_shouldWatch || _gotFirstFrame || !_hasVideoTrack) return;
-      unawaited(_trigger(reason: 'no renderedFirstFrame within ${_watchdog.inMilliseconds}ms'));
+      unawaited(
+        _trigger(
+          reason:
+              'no renderedFirstFrame within ${_watchdog.inMilliseconds}ms after ready',
+        ),
+      );
     });
   }
 

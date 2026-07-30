@@ -142,7 +142,8 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
     final tvFocus = ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ??
         false;
     final scrollCacheExtent =
-        tvFocus ? ScrollCacheExtent.pixels(2000) : null;
+        // Enough for ±1 card off-screen; 2000 kept too many live FocusableControls.
+        tvFocus ? ScrollCacheExtent.pixels(720) : null;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),

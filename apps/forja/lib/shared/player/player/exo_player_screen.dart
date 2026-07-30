@@ -129,7 +129,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   StreamSubscription<Map<dynamic, dynamic>>? _eventSub;
   Timer? _hideTimer;
   Timer? _progressSaveTimer;
+  // VOD always TextureView — SurfaceView HC audio-only black on physical ATV
+  // (issue 133). Watchdog stays for IPTV SurfaceView only.
   late final ExoAtvSurfaceFallback _surfaceFallback = ExoAtvSurfaceFallback(
+    enabled: false,
     onFallback: _reopenAfterSurfaceFallback,
   );
 

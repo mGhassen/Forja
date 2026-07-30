@@ -63,6 +63,10 @@ class ShellInputPolicy {
 
   bool get isInteractiveActive => scaleOnHover || scaleOnFocus;
 
+  /// TV leanback: snap focus chrome (no 200ms tweens). Weak SoCs stutter
+  /// when every D-pad step runs [AnimatedScale] / color / saturation tweens.
+  bool get instantFocusChrome => scaleOnFocus && !scaleOnHover;
+
   /// Policy-aware hover OR focus - use with [shellFocusableTap] callbacks.
   static bool interactiveActive(
     ShellInputPolicy policy, {

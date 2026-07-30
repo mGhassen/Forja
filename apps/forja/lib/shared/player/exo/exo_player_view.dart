@@ -7,22 +7,26 @@ import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 
 /// Embeds the native Media3 [PlayerView] (Android only).
 ///
-/// **Phone / ATV emulator / SurfaceView fallback:** TextureView + [AndroidView]
-/// (TLHC) — SurfaceView tiles under TLHC/VirtualDisplay; goldfish MediaCodec
-/// often fails `setOutputSurface` on SurfaceView (audio-only + chrome covered).
-/// Physical ATV SoCs that fail the same way flip
-/// [ExoPlayerBridge.preferTextureSurface] and remount here (issue 133).
+/// **Home / VOD (default):** always TextureView + [AndroidView] (TLHC).
+/// Physical ATV SurfaceView + hybrid composition went audio-only / black on
+/// real devices; the first-frame watchdog cannot detect composition-dead
+/// surfaces that still emit `renderedFirstFrame` (issue 133).
 ///
-/// **Physical Android TV (default):** SurfaceView + hybrid composition —
-/// TextureView has poor frame timing and often cannot paint at full display
-/// resolution on leanback (UI layer is upscaled). Hybrid composition is
-/// required so SurfaceView is not mis-composited (issue 102 tiling).
-/// SurfaceView also enables Media3's Compose surface-sync workaround so frames
-/// are not zoomed/cropped (issue 129).
+/// **IPTV live (`allowSurfaceView: true`):** physical ATV may use SurfaceView
+/// + hybrid composition for frame timing (issue 108). Emulators and the
+/// process-lifetime [ExoPlayerBridge.preferTextureSurface] flag force TextureView.
 class ExoPlayerView extends StatelessWidget {
-  const ExoPlayerView({super.key, required this.viewId});
+  const ExoPlayerView({
+    super.key,
+    required this.viewId,
+    this.allowSurfaceView = false,
+  });
 
   final int viewId;
+
+  /// When true on physical ATV, prefer SurfaceView unless TextureView fallback
+  /// already flipped. Home/VOD must leave this false.
+  final bool allowSurfaceView;
 
   static const _viewType = 'forja-exoplayer';
 
@@ -38,7 +42,9 @@ class ExoPlayerView extends StatelessWidget {
     return ValueListenableBuilder<bool>(
       valueListenable: ExoPlayerBridge.preferTextureSurface,
       builder: (context, _, child) {
-        final surfaceType = ExoPlayerBridge.creationSurfaceType();
+        final surfaceType = ExoPlayerBridge.creationSurfaceType(
+          allowSurfaceView: allowSurfaceView,
+        );
         // Key forces PlatformView dispose+create when surface type flips.
         final view = surfaceType == 'surface'
             ? _AtvExoSurfaceView(viewId: viewId)

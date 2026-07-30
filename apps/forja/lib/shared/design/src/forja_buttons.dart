@@ -148,7 +148,9 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     final body = AnimatedScale(
       scale: _scaleFor(policy),
       alignment: widget.scaleAlignment,
-      duration: const Duration(milliseconds: 140),
+      duration: policy.instantFocusChrome
+          ? Duration.zero
+          : const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       child: widget.builder(_activeFor(policy), _pressed),
     );
@@ -398,7 +400,9 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
         behavior: HitTestBehavior.opaque,
         child: AnimatedScale(
           scale: _scaleFor(policy),
-          duration: const Duration(milliseconds: 140),
+          duration: policy.instantFocusChrome
+              ? Duration.zero
+              : const Duration(milliseconds: 140),
           curve: Curves.easeOutCubic,
           child: SizedBox(
             width: _resolvedHitSize,

@@ -10,7 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 2** acceptance |
+| **Progress** | **6 / 6** fix · **0 / 2** acceptance |
+| **Current slice** | Home/VOD forced TextureView; IPTV SurfaceView + hardened watchdog |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +25,8 @@
 | 2 | I133-T02 | Process-lifetime ATV TextureView prefer flag + `ExoPlayerView` remount | ✅ |
 | 3 | I133-T03 | VOD Exo: watchdog / surface-error → TextureView remount + reopen | ✅ |
 | 4 | I133-T04 | IPTV Exo: same surface fallback path | ✅ |
+| 5 | I133-T05 | Home/VOD Exo: never request SurfaceView (`allowSurfaceView: false`) — TextureView only | ✅ |
+| 6 | I133-T06 | IPTV SurfaceView watchdog: arm on READY (no play gate) + progress-without-frame trigger | ✅ |
 
 ---
 
@@ -31,18 +34,20 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I133-A01 | Physical Android TV: Exo VOD cold-open shows video + audio (SurfaceView OK, or auto TextureView fallback) | ⬜ |
+| 1 | I133-A01 | Physical Android TV: Home/Search Exo VOD cold-open shows video + audio (TextureView) | ⬜ |
 | 2 | I133-A02 | Physical Android TV: Exo IPTV live shows video after fallback when SurfaceView is dead; phone / emulator path unchanged | ⬜ |
 
 ---
 
 ## Summary
 
-On **physical Android TV**, Exo uses **SurfaceView + hybrid composition** for frame timing (issues 102 / 108). Emulators already force **TextureView** because SurfaceView + MediaCodec often fails `setOutputSurface` → **audio continues, picture stays black**.
+On **physical Android TV**, Exo used **SurfaceView + hybrid composition** for frame timing (issues 102 / 108). Emulators already force **TextureView** because SurfaceView + MediaCodec often fails `setOutputSurface` → **audio continues, picture stays black**.
 
-Some **real** sticks/boxes hit the same silent surface bind failure. Physical ATV had no fallback — SurfaceView stayed selected forever.
+Some **real** sticks/boxes hit the same silent surface bind failure. A watchdog (T01–T04) remounts TextureView when READY/playing never gets `renderedFirstFrame`. That is **not enough** when the surface is composition-dead but still emits first-frame — Home/VOD stayed audio-only.
 
-**Root fix:** Keep SurfaceView as the ATV default. If playback reaches READY / playing with a video track but **no `renderedFirstFrame`** within a short watchdog (or a surface-attach decoder error), flip a process-lifetime **prefer TextureView** flag, remount the PlatformView, and reopen at the current position. Same path for VOD and IPTV Exo.
+**Root fix (VOD):** Home/Search/movies Exo **always** uses TextureView (`allowSurfaceView: false`). Do not wait for a watchdog.
+
+**IPTV:** May still opt into SurfaceView for live FPS; watchdog stays enabled and now arms on READY alone and triggers if position advances without a first frame.
 
 ## Related
 

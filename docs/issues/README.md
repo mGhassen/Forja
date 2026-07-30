@@ -66,7 +66,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [042-[fixed]-…](fixed/042-[fixed]-provider-reliability-not-global.md) | Provider reliability not global across titles | P1 | High | fixed | Complete · 5/5 · A 4/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [043-[fixed]-…](fixed/043-[fixed]-dead-cache-full-auto-reresolve.md) | Dead cache → full Auto re-resolve like first Play | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [044-[fixed]-…](fixed/044-[fixed]-settings-cache-data-cleaner.md) | Settings cache / data cleaner | P2 | Medium | fixed | — | — |
-| [045-[open]-…](045-[open]-kisskh-extract-cache-pageload-cancel-races.md) | KissKh extract: cache + page-load wait + cancel races | P1 | High | open | 21/21 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [045-[open]-…](045-[open]-kisskh-extract-cache-pageload-cancel-races.md) | KissKh extract: cache + page-load wait + cancel races | P1 | High | open | 23/23 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [046-[open]-…](046-[open]-streamed-live-embed-white-screen.md) | Streamed live embed white screen / unlimited loading | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [048-[open]-…](048-[open]-vidsrc-sbs-iframe-playback-restricted.md) | VidSrc.sbs iframe playback restricted | P1 | High | open | 1/1 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [047-[fixed]-…](fixed/047-[fixed]-vidsrc-vsembed-su-and-broken-plugin.md) | Vidsrc: broken plugin request + vsembed.su host | P1 | High | fixed | Complete · 3/3 · 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -153,12 +153,13 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 5/5 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [131-[open]-…](131-[open]-android-tv-live-matches-exo-dpad-dead.md) | ATV Live Matches Exo player D-pad dead after handoff | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [132-[open]-…](132-[open]-android-tv-exo-auto-subtitle-merging-crash.md) | ATV Exo auto subtitle select crashes / pops player | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 6/6 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [134-[fixed]-…](fixed/134-[fixed]-player-audio-continues-after-app-switch.md) | Player audio continues after app switch | P1 | High | fixed | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [135-[open]-…](135-[open]-android-tv-spatial-dpad-all-screens.md) | ATV spatial 2D D-pad (all screens) | P1 | High | open | 7/7 · A 1/8 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [136-[open]-…](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) | ATV IPTV catalog/guide scroll focus + logos | P1 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [137-[open]-…](137-[open]-android-tv-player-engine-not-remembered.md) | ATV in-player engine not remembered per surface | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [138-[open]-…](138-[open]-android-tv-iptv-4k-audio.md) | ATV IPTV 4K MediaKit silent / Exo audio stutter | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [139-[open]-…](139-[open]-android-tv-shell-focus-chrome-stutter.md) | ATV shell / catalog focus chrome stutter | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

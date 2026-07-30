@@ -297,6 +297,14 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   }
 
   void _updateState(bool active) {
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    // TV: snap scale — AnimationController.forward over 200ms janks every
+    // D-pad step across catalog cards on weak leanback SoCs.
+    if (policy.instantFocusChrome) {
+      _controller.value = active ? 1.0 : 0.0;
+      return;
+    }
     if (active) {
       _controller.forward();
     } else {

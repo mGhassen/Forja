@@ -148,7 +148,9 @@ class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
                 scale: active
                     ? ShellTokens.navRailIconHoverScale
                     : ShellTokens.navRailIconIdleScale,
-                duration: ShellTokens.navSelectionAnimation,
+                duration: policy.instantFocusChrome
+                    ? Duration.zero
+                    : ShellTokens.navSelectionAnimation,
                 curve: Curves.easeOutCubic,
                 child: Icon(
                   Icons.menu_rounded,
@@ -200,6 +202,10 @@ class _ShellNavRailState extends State<ShellNavRail> {
   }
 
   void _syncFocusInRail() {
+    // Desktop hover: rail-wide engage shrinks idle icons. TV must not —
+    // parent setState rebuilds every nav item on content↔rail focus moves.
+    final policy = ShellScope.maybeOf(context)?.inputPolicy;
+    if (policy != null && policy.instantFocusChrome) return;
     final engaged = ShellTvFocus.anyNavFocused;
     if (engaged != _focusInRail) {
       setState(() => _focusInRail = engaged);
@@ -603,13 +609,18 @@ class _AnimatedSaturation extends StatelessWidget {
     // Keep the avatar Element stable across grey↔color. A KeyedSubtree on the
     // avatar remounts [ForjaActiveProfileAvatar] and briefly flashes the default
     // forge face while the profile reloads - visible on quick hover.
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final anim = policy.instantFocusChrome
+        ? Duration.zero
+        : ShellTokens.navSelectionAnimation;
     return Stack(
       alignment: Alignment.center,
       clipBehavior: Clip.none,
       children: [
         TweenAnimationBuilder<double>(
           tween: Tween<double>(end: colorized ? 1 : 0),
-          duration: ShellTokens.navSelectionAnimation,
+          duration: anim,
           curve: Curves.easeOutCubic,
           child: child,
           builder: (context, saturation, child) => ColorFiltered(
@@ -734,9 +745,17 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       return 1;
     }
     if (itemActive) return _pressed ? big * 0.92 : big;
+    // TV: selected stays big, idle stays small — no rail-engage shrink cascade.
+    if (policy.instantFocusChrome) {
+      return widget.selected ? big : small;
+    }
     if (!widget.railEngaged) return widget.selected ? big : small;
     return small;
   }
+
+  Duration _chromeAnim(ShellInputPolicy policy) => policy.instantFocusChrome
+      ? Duration.zero
+      : ShellTokens.navSelectionAnimation;
 
   void _enterPageFromNav() {
     widget.onTap();
@@ -824,11 +843,12 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       height: 1,
     );
     final label = widget.label ?? widget.destination.label;
+    final chromeAnim = _chromeAnim(policy);
     Widget icon =
         widget.icon ??
         TweenAnimationBuilder<Color?>(
           tween: ColorTween(end: iconColor),
-          duration: ShellTokens.navSelectionAnimation,
+          duration: chromeAnim,
           curve: Curves.easeOutCubic,
           builder: (context, color, _) => NavDestinationIcon(
             destination: widget.destination,
@@ -911,7 +931,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                               child: AnimatedScale(
                                 alignment: Alignment.bottomCenter,
                                 scale: _scaleFor(policy),
-                                duration: ShellTokens.navSelectionAnimation,
+                                duration: chromeAnim,
                                 curve: Curves.easeOutCubic,
                                 child: SizedBox(
                                   width: renderedIconSize,
@@ -928,7 +948,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                             key: ValueKey(
                               'nav-${widget.destination.id}-underline',
                             ),
-                            duration: ShellTokens.navSelectionAnimation,
+                            duration: chromeAnim,
                             curve: Curves.easeOutCubic,
                             height: ShellTokens.shellNavUnderlineHeight,
                             width: widget.selected ? underlineWidth : 0,

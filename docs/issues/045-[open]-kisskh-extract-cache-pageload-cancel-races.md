@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **21 / 21** fix · **0 / 4** device smoke |
+| **Progress** | **23 / 23** fix · **0 / 5** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -40,6 +40,8 @@
 | 19 | I45-T19 | Disable mirror probes/failover; pin playback to `kisskh.nl`; show all other mirrors on hold in Settings | ✅ |
 | 20 | I45-T20 | Sticky `everRateLimited`: after rate-limit CLEAR, still never hard-nav / fail cleanly (second reload dug the ban) | ✅ |
 | 21 | I45-T21 | Stop home bulk `/Drama/{id}` enrich; throttle home list concurrency + sequential detail enrich | ✅ |
+| 22 | I45-T22 | Single-host pinned: do not abort at ~10s — hard-nav once ~15s then wait outer timeout (ATV WebView slower than desktop) | ✅ |
+| 23 | I45-T23 | Deliver Episode/Sub/rate-limit via `callHandler` (console.log fallback) — Android TV drops large console payloads | ✅ |
 
 ---
 
@@ -51,6 +53,7 @@
 | 2 | I45-A02 | With the active KissKh domain unavailable, catalog and episode extract select another compatible mirror and preserve matching IDs | ⬜ |
 | 3 | I45-A03 | When KissKH shows "Too many request.", Forja backs off (no mirror hop storm) and surfaces a clear rate-limit message | ⬜ |
 | 4 | I45-A04 | Play opens only `kisskh.nl` with no preflight mirror requests; Settings shows `.co` / `.ovh` / `.la` / `.do` disabled | ⬜ |
+| 5 | I45-A05 | Android TV: Asian Drama episode play retrieves stream key (logs `video payload` / `kkhVideo`) without ~10s empty fail | ⬜ |
 
 ---
 
@@ -131,3 +134,16 @@ still only cool-down + Retry; never hard-nav; fail with the rate-limit message.
 
 **Shipped (I45-T21):** home lists load two-at-a-time; hub enrich is hero synopsis
 only (≤8); detail enrich is sequential with a longer pause when still used.
+
+### Android TV pinned abort (2026-07-30)
+
+After I45-T19 pinned playback to a single host, I45-T17’s “fail at ~10s”
+path still ran: hard-nav at 5s, empty-complete at 10s. Desktop WebViews usually
+return Episode/`kkey` before that; Android TV System WebView often needs longer,
+so Asian Drama stuck on “Waiting for stream key…” then failed with no key while
+macOS worked.
+
+**Shipped (I45-T22 / I45-T23):** pinned single-host waits the outer timeout
+(60s Asian Drama); one hard-nav only after ~15s; Episode/Sub/rate-limit also
+delivered via `flutter_inappwebview.callHandler` (console fallback) because ATV
+drops large `console.log` payloads.

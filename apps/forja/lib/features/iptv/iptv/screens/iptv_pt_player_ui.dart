@@ -288,7 +288,10 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                   child: ExcludeFocus(
                     child: RepaintBoundary(
                       child: _s._exoBackend
-                          ? ExoPlayerView(viewId: _s._exoViewId!)
+                          ? ExoPlayerView(
+                              viewId: _s._exoViewId!,
+                              allowSurfaceView: true,
+                            )
                           : Video(
                               key: ValueKey(_s._videoEpoch),
                               controller: _s._controller!,

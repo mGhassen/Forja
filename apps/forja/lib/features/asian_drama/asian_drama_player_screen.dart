@@ -404,7 +404,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         episodeId: episode.id,
         episodeNumber: episode.number,
         forcedBaseUrl: KissKhService.baseUrlForHost(activeHost),
-        timeout: const Duration(seconds: 45),
+        timeout: const Duration(seconds: 60),
         isCancelled: () => _cancelled,
         onProgress: (phase, detail) {
           if (!mounted) return;

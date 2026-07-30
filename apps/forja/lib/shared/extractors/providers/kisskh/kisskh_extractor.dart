@@ -186,11 +186,68 @@ class KissKhExtractor {
     /// hard-nav even after the banner clears (that reload digs the hole).
     var everRateLimited = false;
     var rateLimitRetries = 0;
+    var pinnedHardNavDone = false;
     Timer? recoveryTimer;
     Timer? nudgeTimer;
     final pinBase =
         (forcedBaseUrl ?? '').trim().replaceFirst(RegExp(r'/$'), '');
     final pinned = pinBase.isNotEmpty;
+
+    void completeVideo(Map<String, dynamic> data) {
+      if (kDebugMode) {
+        final keys = data.keys.take(8).join(',');
+        debugPrint('[KissKhExtractor] video payload keys=[$keys]');
+      }
+      final c = _apiCompleter;
+      if (c != null && !c.isCompleted) c.complete(data);
+    }
+
+    void ingestSubs(dynamic data) {
+      if (data is! List) return;
+      for (final t in data) {
+        if (t is! Map) continue;
+        final src = (t['src'] ?? t['url'] ?? '').toString();
+        if (src.isEmpty) continue;
+        final label =
+            (t['label'] ?? t['language'] ?? 'Unknown').toString();
+        _subsBuffer.add({
+          'id': src,
+          'url': src,
+          'language': label,
+          'display': '$label - kisskh',
+          'sourceName': 'kisskh',
+        });
+      }
+    }
+
+    void onRateLimitSignal({required bool armed}) {
+      if (armed) {
+        if (!rateLimited) {
+          rateLimited = true;
+          everRateLimited = true;
+          rateLimitRetries = 0;
+          debugPrint(
+            '[KissKhExtractor] KissKH rate limit on $baseUrl - '
+            'backing off (no hard-nav / mirror hop)',
+          );
+        }
+        onProgress?.call(
+          'rate_limit',
+          'KissKH rate limited - cooling down…',
+        );
+        return;
+      }
+      if (rateLimited) {
+        rateLimited = false;
+        // Keep everRateLimited - CLEAR only means the banner left the
+        // DOM; Episode API may still be blocked. Do not reset retries
+        // into a hard-nav path.
+        debugPrint(
+          '[KissKhExtractor] rate limit cleared on $baseUrl '
+          '(still no hard-nav this resolve)',
+        );
+      }
+    }
 
     try {
       if (pinned) {
@@ -250,7 +307,40 @@ class KissKhExtractor {
           clearCache: true,
           incognito: true,
         ),
-        onWebViewCreated: (controller) => _controller = controller,
+        onWebViewCreated: (controller) {
+          _controller = controller;
+          // callHandler is more reliable than console.log on Android TV
+          // WebView (large Episode JSON often truncated / dropped).
+          controller.addJavaScriptHandler(
+            handlerName: 'kkhVideo',
+            callback: (args) {
+              if (gen != _resolveGen) return null;
+              if (args.isEmpty) return null;
+              final raw = args.first;
+              if (raw is! Map) return null;
+              completeVideo(Map<String, dynamic>.from(raw));
+              return null;
+            },
+          );
+          controller.addJavaScriptHandler(
+            handlerName: 'kkhSubs',
+            callback: (args) {
+              if (gen != _resolveGen) return null;
+              if (args.isEmpty) return null;
+              ingestSubs(args.first);
+              return null;
+            },
+          );
+          controller.addJavaScriptHandler(
+            handlerName: 'kkhRateLimit',
+            callback: (args) {
+              if (gen != _resolveGen) return null;
+              final armed = args.isEmpty || args.first != false;
+              onRateLimitSignal(armed: armed);
+              return null;
+            },
+          );
+        },
         onLoadStop: (controller, loadedUrl) async {
           if (gen != _resolveGen) return;
           onProgress?.call('loaded', 'Waiting for stream key…');
@@ -282,45 +372,18 @@ class KissKhExtractor {
             s = s.substring(1, s.length - 1).replaceAll(r'\"', '"');
           }
           if (s == 'KKH_RATE_LIMIT' || s.startsWith('KKH_RATE_LIMIT')) {
-            if (!rateLimited) {
-              rateLimited = true;
-              everRateLimited = true;
-              rateLimitRetries = 0;
-              debugPrint(
-                '[KissKhExtractor] KissKH rate limit on $baseUrl - '
-                'backing off (no hard-nav / mirror hop)',
-              );
-            }
-            onProgress?.call(
-              'rate_limit',
-              'KissKH rate limited - cooling down…',
-            );
+            onRateLimitSignal(armed: true);
             return;
           }
           if (s == 'KKH_RATE_CLEAR' || s.startsWith('KKH_RATE_CLEAR')) {
-            if (rateLimited) {
-              rateLimited = false;
-              // Keep everRateLimited - CLEAR only means the banner left the
-              // DOM; Episode API may still be blocked. Do not reset retries
-              // into a hard-nav path.
-              debugPrint(
-                '[KissKhExtractor] rate limit cleared on $baseUrl '
-                '(still no hard-nav this resolve)',
-              );
-            }
+            onRateLimitSignal(armed: false);
             return;
           }
           if (s.startsWith('KKH_VIDEO:')) {
             try {
               final raw = jsonDecode(s.substring('KKH_VIDEO:'.length));
               if (raw is! Map) return;
-              final data = Map<String, dynamic>.from(raw);
-              if (kDebugMode) {
-                final keys = data.keys.take(8).join(',');
-                debugPrint('[KissKhExtractor] video payload keys=[$keys]');
-              }
-              final c = _apiCompleter;
-              if (c != null && !c.isCompleted) c.complete(data);
+              completeVideo(Map<String, dynamic>.from(raw));
             } catch (e) {
               debugPrint('[KissKhExtractor] video parse failed: $e');
             }
@@ -329,21 +392,7 @@ class KissKhExtractor {
           if (s.startsWith('KKH_SUBS:')) {
             try {
               final data = jsonDecode(s.substring('KKH_SUBS:'.length));
-              if (data is! List) return;
-              for (final t in data) {
-                if (t is! Map) continue;
-                final src = (t['src'] ?? t['url'] ?? '').toString();
-                if (src.isEmpty) continue;
-                final label = (t['label'] ?? t['language'] ?? 'Unknown')
-                    .toString();
-                _subsBuffer.add({
-                  'id': src,
-                  'url': src,
-                  'language': label,
-                  'display': '$label - kisskh',
-                  'sourceName': 'kisskh',
-                });
-              }
+              ingestSubs(data);
             } catch (e) {
               debugPrint('[KissKhExtractor] subs parse failed: $e');
             }
@@ -370,10 +419,11 @@ class KissKhExtractor {
       // Once everRateLimited, never hard-nav even after the banner clears.
       //
       // Silent (no rate limit this resolve): when not pinned, hop mirrors
-      // every 8s. When pinned, hard-reload once; if still silent on the next
-      // tick, fail so the loader can stop cleanly.
-      final recoveryEvery =
-          pinned ? const Duration(seconds: 5) : const Duration(seconds: 8);
+      // every 8s. When pinned (single-host / Asian Drama): one hard-nav after
+      // ~15s, then keep waiting for the outer timeout. Do NOT abort at ~10s —
+      // that killed slow Android TV WebViews before kkey arrived (I45-T17
+      // multi-mirror failover leftover after I45-T19 pin).
+      final recoveryEvery = const Duration(seconds: 5);
       recoveryTimer = Timer.periodic(recoveryEvery, (timer) {
         if (cancelled() || recoveryInFlight) return;
         final c = _apiCompleter;
@@ -425,18 +475,34 @@ class KissKhExtractor {
           return;
         }
 
-        if (pinned && timer.tick >= 2) {
-          debugPrint(
-            '[KissKhExtractor] pinned $baseUrl still silent after recovery - '
-            'fail over',
-          );
-          onProgress?.call('retry', 'Trying next mirror…');
-          if (!c.isCompleted) c.complete(<String, dynamic>{});
+        if (pinned) {
+          // tick 1–2 (~5–10s): wait for SPA. tick 3 (~15s): hard-nav once.
+          if (!pinnedHardNavDone && timer.tick >= 3) {
+            pinnedHardNavDone = true;
+            final waited = timer.tick * recoveryEvery.inSeconds;
+            debugPrint(
+              '[KissKhExtractor] pinned $baseUrl silent after ${waited}s - '
+              'hard navigate once (then wait for timeout)',
+            );
+            onProgress?.call('retry', 'Retrying stream key…');
+            recoveryInFlight = true;
+            unawaited(
+              _hardNavigate(ctrl, pageUrl, baseUrl).whenComplete(() {
+                recoveryInFlight = false;
+              }),
+            );
+            return;
+          }
+          onProgress?.call('loaded', 'Waiting for stream key…');
           return;
         }
 
+        // Unpinned multi-mirror: hop / hard-nav on an 8s cadence (every other
+        // 5s tick ≈ 10s is close enough; keep tick*8 log for prior smoke).
+        if (timer.tick % 2 != 0) return;
+
         recoveryInFlight = true;
-        if (!pinned && mirrorIndex + 1 < mirrorUrls.length) {
+        if (mirrorIndex + 1 < mirrorUrls.length) {
           mirrorIndex++;
           baseUrl = mirrorUrls[mirrorIndex];
           pageUrl = KissKhService.episodePageUrl(
@@ -447,7 +513,7 @@ class KissKhExtractor {
             episodeNumber: episodeNumber,
           );
           debugPrint(
-            '[KissKhExtractor] no Episode API after ${timer.tick * 8}s - '
+            '[KissKhExtractor] no Episode API after ${timer.tick * 5}s - '
             'trying mirror $baseUrl',
           );
           onProgress?.call(
@@ -739,14 +805,28 @@ class KissKhExtractor {
   function log(msg) { console.log('KKH_LOG:' + msg); }
   function sendVideo(data) {
     window.__kkhGotVideo = true;
-    console.log('KKH_VIDEO:' + JSON.stringify(data));
+    try {
+      if (window.flutter_inappwebview &&
+          typeof window.flutter_inappwebview.callHandler === 'function') {
+        window.flutter_inappwebview.callHandler('kkhVideo', data);
+      }
+    } catch (e) {}
+    try { console.log('KKH_VIDEO:' + JSON.stringify(data)); } catch (e) {}
     try {
       document.querySelectorAll('video,audio').forEach(function (el) {
         try { el.muted = true; el.pause(); } catch (e) {}
       });
     } catch (e) {}
   }
-  function sendSubs(data)  { console.log('KKH_SUBS:'  + JSON.stringify(data)); }
+  function sendSubs(data) {
+    try {
+      if (window.flutter_inappwebview &&
+          typeof window.flutter_inappwebview.callHandler === 'function') {
+        window.flutter_inappwebview.callHandler('kkhSubs', data);
+      }
+    } catch (e) {}
+    try { console.log('KKH_SUBS:' + JSON.stringify(data)); } catch (e) {}
+  }
 
   function muteMedia(el) {
     try { el.muted = true; } catch (e) {}
@@ -934,10 +1014,22 @@ class KissKhExtractor {
       if (isRateLimited()) {
         if (!window.__kkhRateLimitArmed) {
           window.__kkhRateLimitArmed = true;
+          try {
+            if (window.flutter_inappwebview &&
+                typeof window.flutter_inappwebview.callHandler === 'function') {
+              window.flutter_inappwebview.callHandler('kkhRateLimit', true);
+            }
+          } catch (e) {}
           console.log('KKH_RATE_LIMIT');
         }
       } else if (window.__kkhRateLimitArmed) {
         window.__kkhRateLimitArmed = false;
+        try {
+          if (window.flutter_inappwebview &&
+              typeof window.flutter_inappwebview.callHandler === 'function') {
+            window.flutter_inappwebview.callHandler('kkhRateLimit', false);
+          }
+        } catch (e) {}
         console.log('KKH_RATE_CLEAR');
         nudgePlay();
       } else {

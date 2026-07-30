@@ -91,7 +91,11 @@ class ExoPlayerBridge {
   static bool? _isTelevisionCache;
 
   /// Creation param for the PlatformView factory (`texture` | `surface`).
-  static String creationSurfaceType() {
+  ///
+  /// Home/VOD must pass [allowSurfaceView] false — SurfaceView HC went
+  /// audio-only black on physical ATV (issue 133). IPTV live may opt in.
+  static String creationSurfaceType({bool allowSurfaceView = false}) {
+    if (!allowSurfaceView) return 'texture';
     if (!PlatformInfo.isAndroidTv || PlatformInfo.isAndroidEmulator) {
       return 'texture';
     }
