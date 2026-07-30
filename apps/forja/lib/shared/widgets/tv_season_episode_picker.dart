@@ -1,8 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/episode_air_date.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
@@ -83,15 +85,17 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   final ScrollController _episodeScrollController = ScrollController();
   final ScrollController _seasonScrollController = ScrollController();
 
-  /// TV two-step OK: first OK arms (select), second OK on same card plays.
-  /// Not tied to [selectedEpisode] — ep 1 is selected by default on open.
+  /// TV: which episode the in-card play control plays. Set on card OK only —
+  /// D-pad focus does not change it. Defaults to [selectedEpisode] (ep 1 or resume).
   int? _tvArmedEpisode;
+  final FocusNode _episodePlayFocus = FocusNode(debugLabel: 'episode-play');
 
   String get _seasonRowId => widget.tvSeasonRowId ?? 'seasons';
   String get _episodeRowId => widget.tvEpisodeRowId ?? 'episodes';
 
   @override
   void dispose() {
+    _episodePlayFocus.dispose();
     _episodeScrollController.dispose();
     _seasonScrollController.dispose();
     super.dispose();
@@ -103,6 +107,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   @override
   void initState() {
     super.initState();
+    _tvArmedEpisode = widget.selectedEpisode;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncEpisodeChunk();
       _scrollToSelectedSeason();
@@ -122,13 +127,18 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   void didUpdateWidget(covariant TvSeasonEpisodePicker oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selectedSeason != widget.selectedSeason) {
-      _tvArmedEpisode = null;
+      _tvArmedEpisode = widget.selectedEpisode;
       _episodeChunk = _chunkIndexForEpisode(widget.selectedEpisode);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToSelectedSeason();
         _scrollToSelectedEpisode();
       });
     } else if (oldWidget.selectedEpisode != widget.selectedEpisode) {
+      // Parent resolved resume S/E — keep default arm in sync until user picks a card.
+      if (_tvArmedEpisode == null ||
+          _tvArmedEpisode == oldWidget.selectedEpisode) {
+        _tvArmedEpisode = widget.selectedEpisode;
+      }
       final chunk = _chunkIndexForEpisode(widget.selectedEpisode);
       if (chunk != _episodeChunk) {
         setState(() => _episodeChunk = chunk);
@@ -366,30 +376,53 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           onTap: airDate.notShippedYet
               ? null
               : () {
-                  if (tvFocus && widget.onEpisodePlay != null) {
-                    if (armed) {
-                      setState(() => _tvArmedEpisode = null);
-                      widget.onEpisodePlay!(epNum);
-                      return;
-                    }
-                    setState(() => _tvArmedEpisode = epNum);
-                  }
                   widget.onEpisodeSelected(epNum);
+                  setState(() => _tvArmedEpisode = epNum);
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     _scrollToSelectedEpisode();
+                    if (tvFocus &&
+                        widget.onEpisodePlay != null &&
+                        _episodePlayFocus.canRequestFocus) {
+                      _episodePlayFocus.requestFocus();
+                    }
                   });
                 },
           onPlay: airDate.notShippedYet || widget.onEpisodePlay == null
               ? null
               : () => widget.onEpisodePlay!(epNum),
-          onFocusChange: (focused) {
-            if (focused) {
-              widget.onEpisodeFocused?.call(epNum);
-              if (_tvArmedEpisode != null && _tvArmedEpisode != epNum) {
-                setState(() => _tvArmedEpisode = null);
-              }
-            }
-          },
+          playFocusNode: tvFocus && armed && widget.onEpisodePlay != null
+              ? _episodePlayFocus
+              : null,
+          onPlayKeyEvent: tvFocus && armed
+              ? (node, event) {
+                  if (!shellTvIsNavigationKey(event)) {
+                    return KeyEventResult.ignored;
+                  }
+                  final key = event.logicalKey;
+                  if (key == LogicalKeyboardKey.arrowLeft ||
+                      key == LogicalKeyboardKey.arrowRight) {
+                    if (tabId != null && widget.tvEpisodeRowId != null) {
+                      ShellTvFocusCoordinator.focusAdjacentInRow(
+                        tabId: tabId,
+                        rowId: _episodeRowId,
+                        currentIndex: i,
+                        right: key == LogicalKeyboardKey.arrowRight,
+                      );
+                      return KeyEventResult.handled;
+                    }
+                  }
+                  if (key == LogicalKeyboardKey.arrowUp) {
+                    widget.tvFocusUp?.call();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                }
+              : null,
+          onFocusChange: widget.onEpisodeFocused == null
+              ? null
+              : (focused) {
+                  if (focused) widget.onEpisodeFocused!(epNum);
+                },
           onToggleWatched: () =>
               widget.onToggleWatched(_keysSeason, epNum),
           onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
@@ -762,6 +795,8 @@ class _EpisodeCard extends StatefulWidget {
     required this.durationMs,
     this.onTap,
     this.onPlay,
+    this.playFocusNode,
+    this.onPlayKeyEvent,
     required this.onToggleWatched,
     this.onFocusChange,
     this.onLeftEdge,
@@ -784,6 +819,8 @@ class _EpisodeCard extends StatefulWidget {
   final int durationMs;
   final VoidCallback? onTap;
   final VoidCallback? onPlay;
+  final FocusNode? playFocusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onPlayKeyEvent;
   final VoidCallback onToggleWatched;
   final ValueChanged<bool>? onFocusChange;
   final VoidCallback? onLeftEdge;
@@ -839,6 +876,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
         WatchProgressBar.isResumable(widget.positionMs, widget.durationMs);
     final durationLabel = widget.runtime > 0 ? '${widget.runtime}m' : null;
     final policy = ShellScope.inputPolicyOf(context);
+    final tvFocus = policy.useFocusableMoodChips;
     final active = ShellInputPolicy.interactiveActive(
       policy,
       hovered: _hovered,
@@ -846,9 +884,9 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     );
     final enabled = widget.onTap != null;
     final playEnabled = widget.onPlay != null;
-    final showPlayOverlay = (playEnabled || enabled) &&
-        (active || widget.selected || widget.armed);
-    final tvFocus = policy.useFocusableMoodChips;
+    final showPlayOverlay = tvFocus
+        ? (playEnabled || enabled) && (widget.armed || active)
+        : (playEnabled || enabled) && (active || widget.selected);
     final scale = tvFocus
         ? 1.0
         : (enabled && (active || widget.selected) ? _hoverScale : 1.0);
@@ -861,6 +899,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       onTap: widget.onTap,
       borderRadius: _EpisodeCard.thumbRadius,
       scaleOnFocus: 1.0,
+      allowNestedFocus: tvFocus && playEnabled,
       onFocusChange: (focused) {
         setState(() => _focused = focused);
         widget.onFocusChange?.call(focused);
@@ -962,11 +1001,15 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                             ),
                           ),
                         ShellCardPlayOverlay(
-                          active: active || widget.armed,
+                          active:
+                              active || widget.playFocusNode?.hasFocus == true,
                           visible: showPlayOverlay,
-                          onTap: playEnabled && showPlayOverlay && !tvFocus
+                          onTap: playEnabled &&
+                                  (tvFocus ? widget.armed : showPlayOverlay)
                               ? widget.onPlay
                               : null,
+                          focusNode: widget.playFocusNode,
+                          onKeyEvent: widget.onPlayKeyEvent,
                         ),
                       ],
                     ),
