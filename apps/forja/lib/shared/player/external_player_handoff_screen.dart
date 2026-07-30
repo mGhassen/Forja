@@ -353,7 +353,7 @@ class _PlayerPickerBody extends StatelessWidget {
     // Ordered walk: Close(0) → engines/apps(1) → Cancel(2); no wrap to last.
     return TvOverlayScope(
       debugLabel: 'handoff-choose-player',
-      policy: OrderedTraversalPolicy(),
+      policy: ReadingOrderTraversalPolicy(),
       child: PlayerPopupListFocusScope(child: body),
     );
   }

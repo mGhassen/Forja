@@ -155,6 +155,9 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [132-[open]-…](132-[open]-android-tv-exo-auto-subtitle-merging-crash.md) | ATV Exo auto subtitle select crashes / pops player | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [134-[fixed]-…](fixed/134-[fixed]-player-audio-continues-after-app-switch.md) | Player audio continues after app switch | P1 | High | fixed | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [135-[open]-…](135-[open]-android-tv-spatial-dpad-all-screens.md) | ATV spatial 2D D-pad (all screens) | P1 | High | open | 7/7 · A 1/8 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [136-[open]-…](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) | ATV IPTV catalog/guide scroll focus + logos | P1 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [137-[open]-…](137-[open]-android-tv-player-engine-not-remembered.md) | ATV in-player engine not remembered per surface | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

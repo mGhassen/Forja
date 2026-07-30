@@ -141,6 +141,7 @@ bool playerStatusOverlayVisible(
 
 bool isStatusRouletteEntry(StatusRouletteEntry entry) {
   if (entry.id == 'buffering') return true;
+  if (entry.id == 'playback-failed') return true;
   if (entry.id.startsWith('source-')) return true;
   if (entry.id.startsWith('provider-')) return true;
   if (entry.id == 'episode-switch') return true;

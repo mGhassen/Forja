@@ -449,7 +449,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
       height: layout.rowHeight,
       width: double.infinity,
       child: FocusTraversalGroup(
-        policy: OrderedTraversalPolicy(),
+        policy: ReadingOrderTraversalPolicy(),
         child: scaleToFit
             ? FittedBox(
                 fit: BoxFit.scaleDown,
@@ -520,7 +520,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                 }
 
                 return FocusTraversalGroup(
-                  policy: OrderedTraversalPolicy(),
+                  policy: ReadingOrderTraversalPolicy(),
                   child: HorizontalScroller(
                     height: layout.rowHeight,
                     padding: EdgeInsets.symmetric(
@@ -586,7 +586,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
           child: SizedBox(
             height: HubPosterCard.cardHeight(context),
             child: FocusTraversalGroup(
-              policy: OrderedTraversalPolicy(),
+              policy: ReadingOrderTraversalPolicy(),
               child: ListView.separated(
                 clipBehavior: Clip.none,
                 scrollDirection: Axis.horizontal,

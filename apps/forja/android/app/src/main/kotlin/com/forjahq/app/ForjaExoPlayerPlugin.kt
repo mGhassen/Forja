@@ -350,7 +350,11 @@ class ExoPlayerHost(
             haystack.contains(".m3u8") ||
                 haystack.contains("/hls-proxy") ||
                 haystack.contains("strmd.st") ||
-                haystack.contains("indianservers.st") -> MimeTypes.APPLICATION_M3U8
+                haystack.contains("indianservers.st") ||
+                // VixSrc (and similar embeds): tokenised HLS at /playlist/{id}?token=
+                // without a .m3u8 suffix — Exo defaults to progressive otherwise.
+                (haystack.contains("/playlist/") && !haystack.contains("webmanifest")) ->
+                MimeTypes.APPLICATION_M3U8
             else -> null
         }
     }

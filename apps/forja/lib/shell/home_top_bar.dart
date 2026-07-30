@@ -112,7 +112,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                           padding: EdgeInsets.zero,
                           physics: const ClampingScrollPhysics(),
                           child: FocusTraversalGroup(
-                            policy: OrderedTraversalPolicy(),
+                            policy: ReadingOrderTraversalPolicy(),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -331,7 +331,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
                         : 36.0;
 
                     final tabs = FocusTraversalGroup(
-                      policy: OrderedTraversalPolicy(),
+                      policy: ReadingOrderTraversalPolicy(),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

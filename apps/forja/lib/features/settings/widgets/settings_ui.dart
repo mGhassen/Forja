@@ -900,20 +900,43 @@ class SettingsTextField extends StatelessWidget {
       ),
     );
 
-    // TV detail panes: ↑/↓ walk settings rows; ←/→ keep caret editing.
+    // TV detail panes: ←/→ keep caret editing; ↑/↓ move spatially among
+    // neighboring controls (contained — not auto Left → nav).
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
       return field;
     }
-    if (!ShellTvLinearFocusScope.activeOf(context)) return field;
+    if (!ShellTvContainDpad.activeOf(context) &&
+        !ShellTvLinearFocusScope.activeOf(context)) {
+      return field;
+    }
 
     return Focus(
       canRequestFocus: false,
       skipTraversal: true,
       onKeyEvent: (node, event) {
-        // EditableText handles ←/→ for the caret first. When it ignores
-        // (edge of text / empty), walk the linear settings list instead of
-        // leaking focus to the category rail.
-        return shellTvLinearMenuArrows(context: context, event: event);
+        if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+        final key = event.logicalKey;
+        // Keep ←/→ for the caret (EditableText). Move focus only on ↑/↓.
+        if (key == LogicalKeyboardKey.arrowLeft ||
+            key == LogicalKeyboardKey.arrowRight) {
+          return KeyEventResult.ignored;
+        }
+        if (ShellTvLinearFocusScope.activeOf(context) &&
+            !ShellTvDisableLinearFocus.activeOf(context)) {
+          return shellTvLinearMenuArrows(context: context, event: event);
+        }
+        TraversalDirection? direction;
+        if (key == LogicalKeyboardKey.arrowUp) {
+          direction = TraversalDirection.up;
+        } else if (key == LogicalKeyboardKey.arrowDown) {
+          direction = TraversalDirection.down;
+        }
+        if (direction != null &&
+            (FocusManager.instance.primaryFocus ?? node)
+                .focusInDirection(direction)) {
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.handled;
       },
       child: field,
     );

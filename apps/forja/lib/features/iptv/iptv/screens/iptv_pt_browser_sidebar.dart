@@ -88,7 +88,9 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       },
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
+        duration: iptvUseTvFocus(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 140),
         curve: Curves.easeOutCubic,
         width: double.infinity,
         height: widget.compact ? 42 : 46,

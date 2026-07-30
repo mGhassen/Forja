@@ -98,7 +98,7 @@ class AnimeContinueWatchingSection extends StatelessWidget {
           SizedBox(
             height: AnimeContinueWatchingCard.cardHeight(context),
             child: FocusTraversalGroup(
-              policy: OrderedTraversalPolicy(),
+              policy: ReadingOrderTraversalPolicy(),
               child: ListView.separated(
                 controller: scrollController,
                 scrollDirection: Axis.horizontal,

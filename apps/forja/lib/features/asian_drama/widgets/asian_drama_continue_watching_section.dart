@@ -61,7 +61,7 @@ class AsianDramaContinueWatchingSection extends StatelessWidget {
           SizedBox(
             height: AsianDramaContinueWatchingCard.cardHeight(context),
             child: FocusTraversalGroup(
-              policy: OrderedTraversalPolicy(),
+              policy: ReadingOrderTraversalPolicy(),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),

@@ -400,7 +400,7 @@ class PlayerSubtitleSettingsDialog {
 
             return TvOverlayScope(
               onDismiss: close,
-              policy: OrderedTraversalPolicy(),
+              policy: ReadingOrderTraversalPolicy(),
               child: dialogBody,
             );
           },

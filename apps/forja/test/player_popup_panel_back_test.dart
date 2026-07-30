@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -67,6 +69,84 @@ void main() {
     expect(PlayerPopupPanel.isShowing, isFalse);
     expect(find.text('settings-body'), findsNothing);
   });
+
+  testWidgets(
+    'Back dismisses stats overlay only — does not pop player (exitReady armed)',
+    (tester) async {
+      ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
+      ShellTvFocusCoordinator.resetBackDebounceForTest();
+      ShellBus.enterPlayerSurface();
+      addTearDown(ShellBus.leavePlayerSurface);
+
+      var exitCalls = 0;
+      PlayerBackExitGate.setTryFocusBack(() {
+        exitCalls++;
+        return false;
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: const Stack(
+                children: [
+                  SizedBox.expand(),
+                  ShellOverlayNavigator(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      shellOverlayNavigatorKey.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  PlayerPopupPanel.show(
+                    context: context,
+                    title: 'Stream stats',
+                    autofocusClose: true,
+                    child: const Text('stats-body'),
+                  );
+                },
+                child: const Text('open-stats'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('open-stats'));
+      await tester.pumpAndSettle();
+      expect(find.text('stats-body'), findsOneWidget);
+      expect(PlayerPopupPanel.isShowing, isTrue);
+
+      // Simulate armed exit from an earlier Back (debounce would have been
+      // skipped before the overlay-first fix).
+      PlayerBackExitGate.exitReady = true;
+
+      expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text('stats-body'), findsNothing);
+      expect(PlayerPopupPanel.isShowing, isFalse);
+      expect(find.text('open-stats'), findsOneWidget);
+
+      // Same-press duplicate (didPopRoute) must not run the exit ladder.
+      expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+      await tester.pumpAndSettle();
+      expect(exitCalls, 0);
+      expect(find.text('open-stats'), findsOneWidget);
+      expect(PlayerBackExitGate.exitReady, isFalse);
+    },
+  );
 
   testWidgets(
     'handleShellBackKey dismisses popup while shell overlay is open',

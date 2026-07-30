@@ -85,9 +85,9 @@ class SettingsCategoryPage extends ConsumerWidget {
     final meta = settingsCategoryById(categoryId, visibility);
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: ShellTvLinearFocusScope(
+      body: ShellTvContainDpad(
         child: FocusTraversalGroup(
-          policy: OrderedTraversalPolicy(),
+          policy: ReadingOrderTraversalPolicy(),
           child: SettingsPageScaffold(
             title: meta?.title ?? 'Settings',
             showBack: true,

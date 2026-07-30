@@ -40,8 +40,8 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   focus ring; focusing a category selects it and updates the right pane, but
   focus stays on the left). **OK** or **→** opens that category’s right pane
   and moves focus to the first control there (each category’s detail is its own
-  focus zone). **↑/↓** (and **←/→**) move through detail rows, toggles, chips,
-  and buttons — D-pad stays in the right pane. **Back** returns to the selected
+  focus zone). **↑/↓/←/→** move to neighboring detail rows, toggles, chips,
+  and buttons by on-screen position — D-pad stays in the right pane. **Back** returns to the selected
   category, then first category, then the nav rail. **←** on the first category
   also returns to the nav rail. **OK** in the detail pane flips a toggle /
   cycles a dropdown; nested switches do not steal focus

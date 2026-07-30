@@ -122,9 +122,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   }
 
   Widget _wrapCompactTvFocus(Widget child) {
-    return ShellTvLinearFocusScope(
+    return ShellTvContainDpad(
       child: FocusTraversalGroup(
-        policy: OrderedTraversalPolicy(),
+        policy: ReadingOrderTraversalPolicy(),
         child: child,
       ),
     );
@@ -163,7 +163,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
               SizedBox(
                 width: SettingsTokens.sidebarWidth,
                 child: FocusTraversalGroup(
-                  policy: OrderedTraversalPolicy(),
+                  policy: ReadingOrderTraversalPolicy(),
                   child: TvCatalogRow(
                     rowId: _categoryRowId,
                     sortOrder: 0,
@@ -188,13 +188,13 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                 child: tv
                     ? FocusScope(
                         node: _detailScope,
-                        // D-pad stays in the detail pane. Back (_handlePageBack)
-                        // returns to the category rail — not ← / linear edge.
+                        // D-pad stays in the detail pane (spatial). Back
+                        // (_handlePageBack) returns to the category rail.
                         child: SettingsDetailEnter(
                           enterToken: _detailEnterToken,
-                          child: ShellTvLinearFocusScope(
+                          child: ShellTvContainDpad(
                             child: FocusTraversalGroup(
-                              policy: OrderedTraversalPolicy(),
+                              policy: ReadingOrderTraversalPolicy(),
                               child: SettingsPageScaffold(
                                 title: selectedMeta?.title ?? 'Settings',
                                 scrollable:

@@ -923,8 +923,11 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       _s._markProviderLoadFailed(pid);
     }
     _s._finalizeProbeStatusesAfterPlayback();
-    // Terminal error owns the center chrome - drop "Finding servers…" etc.
-    _s._statusController.clear();
+    _s._statusController.upsert(
+      'playback-failed',
+      'Failed to stream',
+      kind: StatusRouletteKind.failed,
+    );
     setState(() {
       _s._hasError = true;
       _s._showControls = true;
@@ -935,7 +938,11 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
 
   Future<void> _autoFallbackToNextProvider() async {
     if (widget.providers == null || widget.providers!.isEmpty) {
-      _s._statusController.clear();
+      _s._statusController.upsert(
+        'playback-failed',
+        'Failed to stream',
+        kind: StatusRouletteKind.failed,
+      );
       setState(() {
         _s._hasError = true;
         _s._showControls = true;
@@ -962,7 +969,11 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
 
     if (mounted && !_fallbackAborted(chainGen)) {
       _s._finalizeProbeStatusesAfterPlayback();
-      _s._statusController.clear();
+      _s._statusController.upsert(
+        'playback-failed',
+        'Failed to stream',
+        kind: StatusRouletteKind.failed,
+      );
       setState(() {
         _s._hasError = true;
         _s._showControls = true;
@@ -1352,12 +1363,16 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       if (pid != null && pid.isNotEmpty) {
         _s._markProviderLoadFailed(pid);
       }
+      _s._statusController.upsert(
+        'playback-failed',
+        'Failed to stream',
+        kind: StatusRouletteKind.failed,
+      );
       setState(() {
         _s._hasError = true;
         _s._showControls = true;
         _s._errorMessage = 'Playback failed. Pick another server from Sources.';
       });
-      _s._statusController.clear();
     });
 
     _s._logSub = _s._player.stream.log.listen((l) {

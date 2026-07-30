@@ -42,8 +42,10 @@ class _ShellScaffoldState extends State<ShellScaffold> {
   bool _compactNav(BuildContext context) {
     final metrics = ShellScope.metricsOf(context);
     final width = MediaQuery.sizeOf(context).width;
-    final showRail = widget.useNavRail && !widget.hideGlobalNav;
-    return showRail &&
+    // Compact drawer only when the rail would actually paint — not while the
+    // Offstage keep-alive rail is hidden for a player surface.
+    final railPainted = widget.useNavRail && !widget.hideGlobalNav;
+    return railPainted &&
         metrics.allowCompactNavDrawer &&
         width < ShellTokens.shellNavCompactMaxWidth;
   }
@@ -67,11 +69,15 @@ class _ShellScaffoldState extends State<ShellScaffold> {
     }
 
     final metrics = ShellScope.metricsOf(context);
-    final showRail = widget.useNavRail && !widget.hideGlobalNav;
     final compactNav = _compactNav(context);
+    // Keep the rail Element mounted whenever this profile uses a rail; only
+    // paint/layout width when not [hideGlobalNav]. Tearing the rail out for
+    // player surfaces caused a cold remount flash on Android TV exit.
+    final mountRail = widget.useNavRail && !compactNav;
+    final railPainted = mountRail && !widget.hideGlobalNav;
     final tvSafeLeft = shellTvSafeHorizontalInset(context);
     final tvSafeRight = shellTvSafeHorizontalInsetRight(context);
-    final railWidth = showRail && !compactNav ? metrics.navRailWidth : 0.0;
+    final railWidth = railPainted ? metrics.navRailWidth : 0.0;
     final contentLeftInset = tvSafeLeft + railWidth;
 
     Widget body = Stack(
@@ -129,15 +135,24 @@ class _ShellScaffoldState extends State<ShellScaffold> {
               ),
             ),
           ),
-        if (showRail && !compactNav)
+        if (mountRail)
           Positioned(
             left: tvSafeLeft,
             top: 0,
             bottom: 0,
-            child: ShellNavRail(
-              visibleIds: widget.visibleIds,
-              selectedIndex: widget.selectedIndex,
-              onDestinationSelected: _onNavSelected,
+            child: Offstage(
+              offstage: widget.hideGlobalNav,
+              child: ExcludeFocus(
+                excluding: widget.hideGlobalNav,
+                child: IgnorePointer(
+                  ignoring: widget.hideGlobalNav,
+                  child: ShellNavRail(
+                    visibleIds: widget.visibleIds,
+                    selectedIndex: widget.selectedIndex,
+                    onDestinationSelected: _onNavSelected,
+                  ),
+                ),
+              ),
             ),
           ),
       ],

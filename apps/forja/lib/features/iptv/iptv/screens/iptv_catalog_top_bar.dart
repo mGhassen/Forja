@@ -833,7 +833,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
           iptvFocusRowItem('iptv-top-tools', _portalToolIndex - 1);
         },
         onRightEdge:
-            selected ? () => iptvFocusRowItem('portals', 0) : null,
+            selected ? () => iptvFocusPortalList(ctrl) : null,
         onFocusChange: (focused) {
           setState(() => _portalToolFocused = focused);
           final p = ctrl.activePortal;

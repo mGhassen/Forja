@@ -576,8 +576,8 @@ class _ChannelLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     if (url.isEmpty) return _placeholder();
     final dpr = MediaQuery.devicePixelRatioOf(context);
+    // Only cacheWidth — both dims force a stretched decode.
     final cacheW = (width * dpr).round().clamp(1, 512);
-    final cacheH = (height * dpr).round().clamp(1, 512);
     final tv = iptvUseTvFocus(context);
     return SizedBox(
       width: width,
@@ -587,8 +587,8 @@ class _ChannelLogo extends StatelessWidget {
         width: width,
         height: height,
         fit: BoxFit.contain,
+        alignment: Alignment.center,
         cacheWidth: cacheW,
-        cacheHeight: cacheH,
         filterQuality: tv ? FilterQuality.low : FilterQuality.medium,
         gaplessPlayback: true,
         errorBuilder: (_, _, _) => _placeholder(),

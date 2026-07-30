@@ -122,7 +122,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                     ),
                   ),
 
-                if (!_s._isLoadingNextEp && !_s._hasError)
+                if (!_s._isLoadingNextEp)
                   PlayerStatusOverlay(
                     controller: _s._statusController,
                     bufferingListenable: _s._isBufferingNotifier,
@@ -222,7 +222,6 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
     final compact = MediaQuery.sizeOf(context).width < 900;
     final topBarHeight = PlayerTopBar.totalHeight(
       context,
-      hasStatusMessage: _s._hasError,
       hasStatusActions: _s._hasError,
     );
 
@@ -251,7 +250,6 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             season: widget.hubEpisodes != null ? null : widget.selectedSeason,
             episode: widget.hubEpisodes != null ? null : widget.selectedEpisode,
             episodeLine: _s._hubEpisodeLine,
-            statusMessage: _s._hasError ? _s._errorMessage : null,
             statusActions: _s._hasError
                 ? PlayerTopStatusActions(
                     onRetry: _s._initPlayback,

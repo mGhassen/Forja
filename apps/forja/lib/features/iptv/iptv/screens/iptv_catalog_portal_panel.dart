@@ -114,14 +114,19 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   }
 
   void _focusPortalsFromHeader() {
-    if (iptvFocusRowItem('portals', 0)) return;
-    // Lazy list / scrolled away — bring the first card into view and retry.
+    final index = iptvActivePortalFocusIndex(widget.ctrl, portals: _filtered);
+    if (iptvFocusPortalList(widget.ctrl, portals: _filtered)) return;
+    // Lazy list / scrolled away — bring the target card into view and retry.
     if (_listScroll.hasClients) {
-      _listScroll.jumpTo(0);
+      final target = (index * _portalRowHeight).clamp(
+        0.0,
+        _listScroll.position.maxScrollExtent,
+      );
+      _listScroll.jumpTo(target);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      iptvFocusRowItem('portals', 0);
+      iptvFocusPortalList(widget.ctrl, portals: _filtered);
     });
   }
 
@@ -529,21 +534,27 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
           controller: _listScroll,
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
           itemExtent: _portalRowHeight,
+          // Keep a few off-screen rows warm for smoother D-pad/list scroll.
+          scrollCacheExtent: ScrollCacheExtent.pixels(_portalRowHeight * 6),
+          addAutomaticKeepAlives: false,
           itemCount: list.length,
           itemBuilder: (_, i) {
             final v = list[i];
-            return _PortalHoverTile(
-              portal: v,
-              ctrl: ctrl,
-              isActive: v.key == activeKey,
-              listIndex: i,
-              onUpEdge: i == 0
-                  ? () => iptvFocusRowItem(
-                        'iptv-portal-header',
-                        _portalHeaderAddIndex(),
-                      )
-                  : null,
-              onEdit: () => _showPortalDialog(context, existing: v),
+            return RepaintBoundary(
+              key: ValueKey<String>(v.key),
+              child: _PortalHoverTile(
+                portal: v,
+                ctrl: ctrl,
+                isActive: v.key == activeKey,
+                listIndex: i,
+                onUpEdge: i == 0
+                    ? () => iptvFocusRowItem(
+                          'iptv-portal-header',
+                          _portalHeaderAddIndex(),
+                        )
+                    : null,
+                onEdit: () => _showPortalDialog(context, existing: v),
+              ),
             );
           },
         ),

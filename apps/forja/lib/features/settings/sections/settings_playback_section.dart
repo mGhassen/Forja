@@ -154,7 +154,7 @@ class _SettingsPlaybackSectionState
               settingsFocusableDropdown(
                 context,
                 'Built-in engine',
-                'Decoder when Video Player is Built-in.',
+                'Decoder for movies and series. IPTV and Live Matches each remember their own choice from the in-player Player menu.',
                 snap.builtInEngine.displayName,
                 builtInPlayerEngineOptionsForUi
                     .map((e) => e.displayName)

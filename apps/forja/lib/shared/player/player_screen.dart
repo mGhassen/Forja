@@ -161,7 +161,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Future<void> _checkPlayerSettings() async {
-    final engine = await SettingsService().getBuiltInPlayerEngine();
+    final engine = await SettingsService().getBuiltInPlayerEngine(
+      context: BuiltInPlayerContext.vod,
+    );
 
     if (!mounted) return;
 
@@ -296,7 +298,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (builtInEngine == null) return;
     if (builtInEngine == _builtInEngine && !_useExternalPlayer) return;
 
-    await SettingsService().setBuiltInPlayerEngine(builtInEngine);
+    await SettingsService().setBuiltInPlayerEngine(
+      builtInEngine,
+      context: BuiltInPlayerContext.vod,
+    );
     if (!mounted) return;
 
     // IPTV-style hot-swap: unmount the current engine, wait for MediaKit /

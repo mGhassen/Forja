@@ -26,7 +26,8 @@ class DesktopShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ShellScaffold(
-      useNavRail: !hideGlobalNav,
+      // Keep rail Element alive while [hideGlobalNav] (player / Music sidebar).
+      useNavRail: true,
       visibleIds: visibleIds,
       selectedIndex: selectedIndex,
       mountedTabIds: mountedTabIds,

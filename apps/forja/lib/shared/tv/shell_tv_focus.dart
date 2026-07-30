@@ -118,10 +118,25 @@ KeyEventResult shellTrapTvFocusHorizontalEdge(
   return KeyEventResult.ignored;
 }
 
-/// Marks a subtree where ↑/← / ↓/→ walk focus linearly (menus, dialogs).
+/// Marks a pane where D-pad must not auto-wire Left → shell nav
+/// (`listIndex: 0` / `navLeftAlways`). Use on settings detail and overlays;
+/// exit with Back / explicit edges instead.
+class ShellTvContainDpad extends InheritedWidget {
+  const ShellTvContainDpad({super.key, required super.child});
+
+  static bool activeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<ShellTvContainDpad>() != null;
+
+  @override
+  bool updateShouldNotify(covariant ShellTvContainDpad oldWidget) => false;
+}
+
+/// Opt-in subtree where ↑/← / ↓/→ walk focus linearly (reading order).
 ///
-/// Without this, [FocusScopeNode.focusInDirection] often fails inside overlay
-/// menus and arrows leak to the player chrome underneath.
+/// **Not the TV default.** Prefer nearest-neighbor [FocusNode.focusInDirection]
+/// (spatial 2D). Use this only for rare vertical lists that regress without it.
+/// Overlay / settings hosts keep a [FocusScope] + [ShellTvContainDpad] without
+/// this wrapper.
 class ShellTvLinearFocusScope extends InheritedWidget {
   const ShellTvLinearFocusScope({super.key, required super.child});
 
@@ -170,11 +185,12 @@ class ShellTvLinearFocusEdges extends InheritedWidget {
       onForwardEdge != oldWidget.onForwardEdge;
 }
 
-/// D-pad inside [ShellTvLinearFocusScope] - reading order, no wrap.
+/// D-pad inside opt-in [ShellTvLinearFocusScope] - reading order, no wrap.
 ///
 /// ↑/← → previous, ↓/→ → next, with [TraversalEdgeBehavior.stop] so the first
 /// item never jumps to the last (and last never wraps to first).
 /// When traversal stops, optional [ShellTvLinearFocusEdges] may handle the edge.
+/// Outside this scope, callers must use spatial [FocusNode.focusInDirection].
 KeyEventResult shellTvLinearMenuArrows({
   required BuildContext context,
   required KeyEvent event,

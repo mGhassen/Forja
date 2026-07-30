@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **6 / 6** components · **6 / 6** acceptance (Home) · **3 / 3** acceptance (hub / Search / overlay) · **2 / 2** acceptance (Live Matches / IPTV) · **4 / 4** acceptance (lists / settings / details / episodes) · **2 / 2** acceptance (embed / profile) · **1 / 1** acceptance (IPTV catalog chrome) |
-| **Current slice** | Kit shipped — in-scope TV tabs + IPTV lists/grids/player chrome on recipes; search-chrome + section-reload stay imperative |
+| **Progress** | **Complete · 6/6** historical · **1 / 1** spatial component · **4 / 4** spatial acceptance |
+| **Current slice** | Spatial D-pad default shipped (R48-C07 / R48-A19–A22) — device smoke on issue 135 |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -26,6 +26,7 @@
 | 4 | R48-C04 | `TvHeroActions` — tab defaults / hero reveal bind | ✅ |
 | 5 | R48-C05 | `TvGrid` — multi-column results grid (`ShellTvZone.grid` + `moveInGrid`) | ✅ |
 | 6 | R48-C06 | `TvOverlayScope` — player menus / sources / dialogs linear D-pad host | ✅ |
+| 7 | R48-C07 | Spatial D-pad default — `TvOverlayScope` / settings / chrome use focused-node `focusInDirection`; `ShellTvLinearFocusScope` opt-in only | ✅ |
 
 ---
 
@@ -86,6 +87,17 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 18 | R48-A18 | IPTV portals / sections / channels / episodes / M3U / portal panel+form / player top+controls / catalog sections+tools use `iptvCatalogRow`; only search-chrome + section-reload keep `iptvSyncRow` | ✅ |
+
+---
+
+## Acceptance (spatial D-pad default)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 19 | R48-A19 | `TvOverlayScope` defaults to spatial (no `ShellTvLinearFocusScope`); optional `linear: true` opt-in | ✅ |
+| 20 | R48-A20 | Settings detail / compact / category page: `FocusScope` + `ShellTvContainDpad` trap without linear next/prev arrows | ✅ |
+| 21 | R48-A21 | `FocusableControl` / `ForjaInteractive` / `ForjaButton`: arrows prefer `focusInDirection` outside opt-in linear scope | ✅ |
+| 22 | R48-A22 | Widget test: 2×2 under spatial `TvOverlayScope` — ↓ from top-left → bottom-left | ✅ |
 
 ---
 

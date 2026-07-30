@@ -91,13 +91,15 @@ class PlayerTvRemoteKeyHandler {
       return true;
     }
 
-    if (key == LogicalKeyboardKey.arrowUp) {
-      onFocusBack();
-      return true;
-    }
-
-    if (key == LogicalKeyboardKey.arrowDown) {
-      onFocusPlay();
+    // Chrome visible: FocusableControl / seekbar own ↑/↓ — never reclaim Back/Play
+    // from the video key scope (that traps focus on Play).
+    if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) {
+      if (showControls) return false;
+      if (key == LogicalKeyboardKey.arrowUp) {
+        onFocusBack();
+      } else {
+        onFocusPlay();
+      }
       return true;
     }
 

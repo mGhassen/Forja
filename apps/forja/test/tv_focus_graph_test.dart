@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -280,7 +281,8 @@ void main() {
     node.dispose();
   });
 
-  testWidgets('TvOverlayScope wraps child under TV policy', (tester) async {
+  testWidgets('TvOverlayScope wraps child under TV policy (spatial default)',
+      (tester) async {
     var dismissed = false;
     await tester.pumpWidget(
       _wrapTv(
@@ -293,9 +295,153 @@ void main() {
     await tester.pump();
 
     expect(find.byType(FocusScope), findsWidgets);
-    expect(ShellTvLinearFocusScope.activeOf(
-      tester.element(find.byType(SizedBox).first),
-    ), isTrue);
+    final boxCtx = tester.element(find.byType(SizedBox).first);
+    expect(ShellTvLinearFocusScope.activeOf(boxCtx), isFalse);
+    expect(ShellTvContainDpad.activeOf(boxCtx), isTrue);
     expect(dismissed, isFalse);
   });
+
+  testWidgets('TvOverlayScope linear:true still marks linear host', (tester) async {
+    await tester.pumpWidget(
+      _wrapTv(
+        const TvOverlayScope(
+          linear: true,
+          child: SizedBox(width: 40, height: 40),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(
+      ShellTvLinearFocusScope.activeOf(
+        tester.element(find.byType(SizedBox).first),
+      ),
+      isTrue,
+    );
+  });
+
+  testWidgets(
+    'allowNestedFocus: parent onRightEdge can focus nested control',
+    (tester) async {
+      final parent = FocusNode(debugLabel: 'parent');
+      final child = FocusNode(debugLabel: 'child');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: ShellInputPolicy.maybeWrapFocusTraversal(
+                enabled: true,
+                child: Scaffold(
+                  body: FocusableControl(
+                    focusNode: parent,
+                    autoFocus: true,
+                    allowNestedFocus: true,
+                    scaleOnFocus: 1.0,
+                    onTap: () {},
+                    onRightEdge: () => child.requestFocus(),
+                    child: FocusableControl(
+                      focusNode: child,
+                      scaleOnFocus: 1.0,
+                      onTap: () {},
+                      child: const SizedBox(width: 80, height: 48),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(parent.hasFocus, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(child.hasFocus, isTrue);
+
+      parent.dispose();
+      child.dispose();
+    },
+  );
+
+  testWidgets(
+    'TvOverlayScope spatial: ↓ from top-left reaches bottom-left (not reading next)',
+    (tester) async {
+      final topLeft = FocusNode(debugLabel: 'tl');
+      final topRight = FocusNode(debugLabel: 'tr');
+      final bottomLeft = FocusNode(debugLabel: 'bl');
+      final bottomRight = FocusNode(debugLabel: 'br');
+
+      Widget cell(FocusNode node, {bool autoFocus = false}) {
+        return FocusableControl(
+          focusNode: node,
+          autoFocus: autoFocus,
+          scaleOnFocus: 1.0,
+          onTap: () {},
+          child: const SizedBox(width: 80, height: 80),
+        );
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: ShellInputPolicy.maybeWrapFocusTraversal(
+                enabled: true,
+                child: Scaffold(
+                  body: TvOverlayScope(
+                    autofocusFirst: false,
+                    child: SizedBox(
+                      width: 200,
+                      height: 200,
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              cell(topLeft, autoFocus: true),
+                              cell(topRight),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              cell(bottomLeft),
+                              cell(bottomRight),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(topLeft.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+
+      expect(
+        bottomLeft.hasFocus,
+        isTrue,
+        reason: 'spatial ↓ must land below, not on reading-order next (topRight)',
+      );
+      expect(topRight.hasFocus, isFalse);
+
+      topLeft.dispose();
+      topRight.dispose();
+      bottomLeft.dispose();
+      bottomRight.dispose();
+    },
+  );
 }

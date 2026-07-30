@@ -195,19 +195,20 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
         if (custom == KeyEventResult.handled) return KeyEventResult.handled;
         final arrow = shellTvHandleRowArrows(event: event, tvMeta: widget.tvMeta);
         if (arrow == KeyEventResult.handled) return arrow;
-        // Menus / dialogs marked ShellTvLinearFocusScope - same as FocusableControl.
+        // Opt-in linear only; default TV D-pad is spatial focusInDirection.
         final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
             !ShellTvDisableLinearFocus.activeOf(context);
-        final linear = shellTvLinearMenuArrows(context: context, event: event);
-        if (linear == KeyEventResult.handled) return linear;
-        // Never also run focusInDirection inside linear menus (double-step).
-        if (linearScope && shellTvIsNavigationKey(event)) {
-          final key = event.logicalKey;
-          if (key == LogicalKeyboardKey.arrowUp ||
-              key == LogicalKeyboardKey.arrowDown ||
-              key == LogicalKeyboardKey.arrowLeft ||
-              key == LogicalKeyboardKey.arrowRight) {
-            return KeyEventResult.handled;
+        if (linearScope) {
+          final linear = shellTvLinearMenuArrows(context: context, event: event);
+          if (linear == KeyEventResult.handled) return linear;
+          if (shellTvIsNavigationKey(event)) {
+            final key = event.logicalKey;
+            if (key == LogicalKeyboardKey.arrowUp ||
+                key == LogicalKeyboardKey.arrowDown ||
+                key == LogicalKeyboardKey.arrowLeft ||
+                key == LogicalKeyboardKey.arrowRight) {
+              return KeyEventResult.handled;
+            }
           }
         }
         if (widget.tvMeta == null &&
@@ -224,7 +225,6 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
           } else if (key == LogicalKeyboardKey.arrowDown) {
             direction = TraversalDirection.down;
           }
-          // Focused node — not FocusScope (full-screen scopes find no neighbors).
           if (direction != null && _effectiveNode.focusInDirection(direction)) {
             return KeyEventResult.handled;
           }

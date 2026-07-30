@@ -273,7 +273,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
       itemCount: titles.length,
       orientation: ShellTvRowOrientation.vertical,
       child: FocusTraversalGroup(
-        policy: OrderedTraversalPolicy(),
+        policy: ReadingOrderTraversalPolicy(),
         child: ListView.separated(
           controller: _s._helpersScrollController,
           clipBehavior: Clip.none,
@@ -353,7 +353,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
       columns: gridColumns,
       itemCount: results.length,
       child: FocusTraversalGroup(
-        policy: OrderedTraversalPolicy(),
+        policy: ReadingOrderTraversalPolicy(),
         child: GridView.builder(
           controller: _s._resultsScrollController,
           clipBehavior: Clip.none,

@@ -241,7 +241,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                     ),
                   ),
 
-                if (!_s._isLoadingNextEp && !_s._hasError)
+                if (!_s._isLoadingNextEp)
                   PlayerStatusOverlay(
                     controller: _s._statusController,
                     bufferingListenable: _s._isBufferingNotifier,
@@ -317,7 +317,6 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
     final compact = MediaQuery.sizeOf(context).width < 700;
     final topBarHeight = PlayerTopBar.totalHeight(
       context,
-      hasStatusMessage: _s._hasError,
       hasStatusActions: _s._hasError,
     );
     final tvFocus = widget.tvRemoteEnabled;
@@ -352,7 +351,6 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                         ? null
                         : widget.selectedEpisode,
                     episodeLine: _s._hubEpisodeLine,
-                    statusMessage: _s._hasError ? _s._errorMessage : null,
                     statusActions: _s._hasError
                         ? PlayerTopStatusActions(
                             onRetry: _s._initPlayback,
@@ -418,7 +416,6 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                       ? null
                       : widget.selectedEpisode,
                   episodeLine: _s._hubEpisodeLine,
-                  statusMessage: _s._hasError ? _s._errorMessage : null,
                   statusActions: _s._hasError
                       ? PlayerTopStatusActions(
                           onRetry: _s._initPlayback,
@@ -593,7 +590,9 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                           position: position,
                                           bufferedPosition: buffered,
                                           tvFocusable: true,
+                                          focusNode: _s._seekbarFocus,
                                           onTvFocusUp: _s._focusUpFromSeekbar,
+                                          onTvFocusDown: _s._focusDownFromSeekbar,
                                           onSeek: (t) => unawaited(_s._seekTo(t)),
                                         ),
                                       )
@@ -841,6 +840,16 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                   PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _s._playFocus,
+                  onUpEdge: () {
+                    if (_s._seekbarFocus.canRequestFocus) {
+                      _s._seekbarFocus.requestFocus();
+                    }
+                  },
+                  onRightEdge: () {
+                    if (_s._rewindFocus.canRequestFocus) {
+                      _s._rewindFocus.requestFocus();
+                    }
+                  },
                   icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                   size: btnSize,
                   iconSize: iconSz,
@@ -856,6 +865,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
               iconSz: iconSz,
               tvFocusable: true,
               tvFocusOrder: 4,
+              focusNode: _s._rewindFocus,
+              onLeftEdge: () => _s._playFocus.requestFocus(),
+              onRightEdge: () => _s._forwardFocus.requestFocus(),
+              onUpEdge: () => _s._seekbarFocus.requestFocus(),
             ),
             const SizedBox(width: 2),
             _s._buildTransportForwardButton(
@@ -863,6 +876,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
               iconSz: iconSz,
               tvFocusable: true,
               tvFocusOrder: 5,
+              focusNode: _s._forwardFocus,
+              onLeftEdge: () => _s._rewindFocus.requestFocus(),
+              onRightEdge: _s._focusFirstRightTransport,
+              onUpEdge: () => _s._seekbarFocus.requestFocus(),
             ),
             if (_s._buildTransportPrevEpisodeButton(
                   btnSize: btnSize,
@@ -908,6 +925,8 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                 8,
                 PlayerFlatIconButton(
                   tvFocusable: true,
+                  focusNode: _s._transportSourcesFocus,
+                  onLeftEdge: () => _s._forwardFocus.requestFocus(),
                   icon: Icons.link_rounded,
                   size: btnSize,
                   iconSize: iconSz,
@@ -921,6 +940,15 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                 9,
                 PlayerStreamPickerButton(
                   tvFocusable: true,
+                  focusNode: _s._transportStreamFocus,
+                  onLeftEdge: () {
+                    if (_s._usesCatalogSourcesPanel &&
+                        _s._transportSourcesFocus.canRequestFocus) {
+                      _s._transportSourcesFocus.requestFocus();
+                    } else {
+                      _s._forwardFocus.requestFocus();
+                    }
+                  },
                   size: btnSize,
                   iconSize: iconSz - 2,
                   label: _s._streamPickerLabel(),

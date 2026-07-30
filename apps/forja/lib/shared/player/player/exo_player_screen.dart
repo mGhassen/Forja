@@ -421,7 +421,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       return;
     }
     if (!mounted) return;
-    _statusController.clear();
     setState(() {
       _hasError = true;
       _errorMessage = message;
@@ -1202,7 +1201,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final tvFocus = _isTv;
     final topBarHeight = PlayerTopBar.totalHeight(
       context,
-      hasStatusMessage: _hasError,
       hasStatusActions: _hasError,
     );
     final showCenterActions = !playerStatusOverlayVisible(
@@ -1240,7 +1238,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                         ? null
                         : widget.selectedEpisode,
                     episodeLine: _episodeLine,
-                    statusMessage: _hasError ? _errorMessage : null,
                     statusActions: _hasError
                         ? PlayerTopStatusActions(
                             onRetry: () {
@@ -1304,7 +1301,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                       ? null
                       : widget.selectedEpisode,
                   episodeLine: _episodeLine,
-                  statusMessage: _hasError ? _errorMessage : null,
                   statusActions: _hasError
                       ? PlayerTopStatusActions(
                           onRetry: () {
@@ -1828,7 +1824,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     failed: _episodeLoadingFailed,
                   ),
                 ),
-              if (!_loadingNextEp && !_hasError)
+              if (!_loadingNextEp)
                 PlayerStatusOverlay(
                   controller: _statusController,
                   bufferingListenable: _isBufferingNotifier,

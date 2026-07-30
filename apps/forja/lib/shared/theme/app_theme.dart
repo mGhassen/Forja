@@ -169,6 +169,10 @@ class FocusableControl extends StatefulWidget {
   /// Layout width used for focus-scale bleed. Defaults to poster card width.
   final double? focusBleedWidth;
 
+  /// When true, nested [FocusableControl] / [Focus] children can receive focus
+  /// (e.g. IPTV portal row → in-row favorite star). Default false.
+  final bool allowNestedFocus;
+
   const FocusableControl({
     super.key,
     required this.child,
@@ -179,6 +183,7 @@ class FocusableControl extends StatefulWidget {
     this.showFocusBorder = false,
     this.showFocusFill = true,
     this.focusBleedWidth,
+    this.allowNestedFocus = false,
     this.onLeftEdge,
     this.onUpEdge,
     this.onDownEdge,
@@ -303,13 +308,21 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     if (!policy.ensureVisibleOnFocus) return;
     if (widget.ensureVisibleMode == ShellTvEnsureVisibleMode.off) return;
 
-    final alignment =
-        widget.ensureVisibleMode == ShellTvEnsureVisibleMode.item ? 0.5 : 0.2;
+    // TV: jump instantly (no 200ms tween). Animated scroll leaves the focused
+    // control clipped / hidden until the tween ends, and stacks into stutter.
+    // Run start+end keepVisible so ↑ and ↓ only nudge by the clipped edge.
+    const zero = Duration.zero;
     Scrollable.ensureVisible(
       context,
-      alignment: alignment,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
+      alignment: 0.0,
+      duration: zero,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+    );
+    Scrollable.ensureVisible(
+      context,
+      alignment: 1.0,
+      duration: zero,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
     );
   }
 
@@ -326,22 +339,21 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     );
     if (handled == KeyEventResult.handled) return handled;
 
-    // Player / dialog menus: linear next/previous - geometric inDirection
-    // often fails across Overlay + Wrap/Column and leaks to chrome.
+    // Opt-in linear hosts only (rare). Default TV D-pad is spatial 2D below.
     final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
         !ShellTvDisableLinearFocus.activeOf(context);
-    final linear = shellTvLinearMenuArrows(context: context, event: event);
-    if (linear == KeyEventResult.handled) return linear;
-
-    // Linear menus already own ↑/↓/←/→. Never also run focusInDirection —
-    // that double-steps focus (sort dialog / player menus / settings).
-    if (linearScope && shellTvIsNavigationKey(event)) {
-      final key = event.logicalKey;
-      if (key == LogicalKeyboardKey.arrowUp ||
-          key == LogicalKeyboardKey.arrowDown ||
-          key == LogicalKeyboardKey.arrowLeft ||
-          key == LogicalKeyboardKey.arrowRight) {
-        return KeyEventResult.handled;
+    if (linearScope) {
+      final linear = shellTvLinearMenuArrows(context: context, event: event);
+      if (linear == KeyEventResult.handled) return linear;
+      // Linear already owns ↑/↓/←/→ — do not also run focusInDirection.
+      if (shellTvIsNavigationKey(event)) {
+        final key = event.logicalKey;
+        if (key == LogicalKeyboardKey.arrowUp ||
+            key == LogicalKeyboardKey.arrowDown ||
+            key == LogicalKeyboardKey.arrowLeft ||
+            key == LogicalKeyboardKey.arrowRight) {
+          return KeyEventResult.handled;
+        }
       }
     }
 
@@ -359,9 +371,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       } else if (key == LogicalKeyboardKey.arrowDown) {
         direction = TraversalDirection.down;
       }
-      // Use the focused control node — NOT FocusScope.focusInDirection.
-      // Player chrome wraps a full-screen FocusScope; directional search from
-      // that scope's rect finds no neighbors, so D-pad looks dead on Play.
+      // Focused control node — NOT FocusScope.focusInDirection (full-screen
+      // chrome scopes find no neighbors from the scope rect).
       if (direction != null && _effectiveNode.focusInDirection(direction)) {
         return KeyEventResult.handled;
       }
@@ -388,8 +399,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       autofocus: widget.autoFocus,
       // Own TV focus exclusively — nested InkWell/Material must not become
       // extra traversal stops (sort dialog double ↑/↓ per row).
-      descendantsAreFocusable: false,
-      descendantsAreTraversable: false,
+      descendantsAreFocusable: widget.allowNestedFocus,
+      descendantsAreTraversable: widget.allowNestedFocus,
       onFocusChange: (f) {
         setState(() => _isFocused = f);
         _updateState(f || (policy.scaleOnHover && _isHovered));

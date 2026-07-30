@@ -44,12 +44,14 @@ class IptvChannelGuidePanel extends StatefulWidget {
   /// Desktop fills from chrome inset to the bottom edge gap.
   static const double panelHeightFractionPhone = 0.72;
   static const double panelVerticalGap = 28;
-  /// Fixed channel row height (padding + logo).
-  static const double channelRowExtent = 72;
-  static const double channelListPaddingV = 6;
+  /// Fixed channel row height (padding + logo) — dense for TV D-pad lists.
+  static const double channelRowExtent = 52;
+  static const double channelListPaddingV = 10;
   /// Fixed group row height for reliable jump-to-index scrolling.
-  static const double groupRowExtent = 44;
-  static const double groupListPaddingV = 8;
+  static const double groupRowExtent = 40;
+  static const double groupListPaddingV = 10;
+  /// Keep focused row fully inside the viewport (focus bar not clipped).
+  static const double listFocusMargin = 8;
 
   @override
   State<IptvChannelGuidePanel> createState() => _IptvChannelGuidePanelState();
@@ -61,8 +63,6 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   final ScrollController _groupScroll = ScrollController();
   final ScrollController _channelScroll = ScrollController();
   final FocusNode _focusNode = FocusNode();
-  final Map<int, GlobalKey> _groupKeys = {};
-  final Map<int, GlobalKey> _channelKeys = {};
 
   int _focusedGroupIndex = 0;
   int _focusedChannelIndex = 0;
@@ -169,6 +169,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     return true;
   }
 
+  /// Scroll only when the focused row would be clipped — leap to keep it inside
+  /// [listFocusMargin]. Instant jump on TV (no tween stutter / missing focus).
   void _jumpListToIndex(
     ScrollController controller, {
     required int index,
@@ -180,14 +182,36 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     if (!controller.hasClients || index < 0) return;
     final position = controller.position;
     final viewport = position.viewportDimension;
-    final raw = paddingV +
-        index * itemExtent -
-        (viewport - itemExtent) * alignment;
-    final offset = raw.clamp(0.0, position.maxScrollExtent);
-    if (animate) {
+    if (viewport <= 0) return;
+    final margin = IptvChannelGuidePanel.listFocusMargin;
+    final itemTop = paddingV + index * itemExtent;
+    final itemBottom = itemTop + itemExtent;
+    final viewTop = position.pixels;
+    final viewBottom = viewTop + viewport;
+    double? target;
+    if (itemTop < viewTop + margin) {
+      target = itemTop - margin;
+    } else if (itemBottom > viewBottom - margin) {
+      target = itemBottom - viewport + margin;
+    }
+    // First reveal / open-on-playing still centers via [alignment].
+    if (target == null && alignment > 0) {
+      final preferred = paddingV +
+          index * itemExtent -
+          (viewport - itemExtent) * alignment;
+      final inView = itemTop >= viewTop + margin &&
+          itemBottom <= viewBottom - margin;
+      if (!inView) target = preferred;
+    }
+    if (target == null) return;
+    final offset = target.clamp(0.0, position.maxScrollExtent);
+    if ((offset - position.pixels).abs() < 0.5) return;
+    // TV D-pad: always jump. Animated scroll hides the focus highlight mid-tween.
+    final useAnimate = animate && !iptvUseTvFocus(context);
+    if (useAnimate) {
       controller.animateTo(
         offset,
-        duration: const Duration(milliseconds: 180),
+        duration: const Duration(milliseconds: 120),
         curve: Curves.easeOut,
       );
     } else {
@@ -263,11 +287,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       if (scroll) _scrollFocusedGroupIntoView(animate: animateScroll);
       return;
     }
-    setState(() => _focusedGroupIndex = next);
-    if (!scroll) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollFocusedGroupIntoView(animate: animateScroll);
-    });
+    // Jump before rebuild so focus chrome never paints off-screen for a frame.
+    _focusedGroupIndex = next;
+    if (scroll) _scrollFocusedGroupIntoView(animate: animateScroll);
+    setState(() {});
   }
 
   /// Local-only browse — updates channel list without parent player rebuild.
@@ -306,7 +329,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       index: _focusedGroupIndex,
       itemExtent: IptvChannelGuidePanel.groupRowExtent,
       paddingV: IptvChannelGuidePanel.groupListPaddingV,
-      alignment: 0.45,
+      alignment: 0,
       animate: animate,
     );
   }
@@ -416,12 +439,6 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   bool get _wide =>
       MediaQuery.sizeOf(context).width >= IptvChannelGuidePanel.wideBreakpoint;
 
-  GlobalKey _groupKey(int index) =>
-      _groupKeys.putIfAbsent(index, GlobalKey.new);
-
-  GlobalKey _channelKey(int index) =>
-      _channelKeys.putIfAbsent(index, GlobalKey.new);
-
   void _scrollToFocused({bool animate = true, bool groupsOnly = false}) {
     _scrollFocusedGroupIntoView(animate: animate);
     if (!groupsOnly && _focusColumn == _FocusColumn.channels) {
@@ -431,7 +448,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         index: _focusedChannelIndex,
         itemExtent: IptvChannelGuidePanel.channelRowExtent,
         paddingV: IptvChannelGuidePanel.channelListPaddingV,
-        alignment: 0.35,
+        alignment: 0,
         animate: animate,
       );
     }
@@ -492,9 +509,13 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       } else {
         final n = _visibleChannels.length;
         if (n == 0) return;
-        setState(() {
-          _focusedChannelIndex = (_focusedChannelIndex + delta).clamp(0, n - 1);
-        });
+        final next =
+            (_focusedChannelIndex + delta).clamp(0, n - 1);
+        if (next == _focusedChannelIndex) return;
+        _focusedChannelIndex = next;
+        _scrollToFocused();
+        setState(() {});
+        return;
       }
     } else if (_step == _GuideStep.groups) {
       final n = widget.guide.groups.length;
@@ -504,11 +525,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     } else {
       final n = _visibleChannels.length;
       if (n == 0) return;
-      setState(() {
-        _focusedChannelIndex = (_focusedChannelIndex + delta).clamp(0, n - 1);
-      });
+      final next = (_focusedChannelIndex + delta).clamp(0, n - 1);
+      if (next == _focusedChannelIndex) return;
+      _focusedChannelIndex = next;
+      _scrollToFocused();
+      setState(() {});
     }
-    _scrollToFocused();
   }
 
   String _headerGroupName() {
@@ -780,8 +802,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 children: [
                   _ChannelLogo(
                     url: playing.logoUrl ?? '',
-                    width: 42,
-                    height: 32,
+                    width: 36,
+                    height: 36,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -918,6 +940,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         ),
         itemCount: widget.guide.groups.length,
         itemExtent: IptvChannelGuidePanel.groupRowExtent,
+        addAutomaticKeepAlives: false,
         itemBuilder: (_, i) {
           final g = widget.guide.groups[i];
           final selected = g.id == _browseGroupId;
@@ -925,84 +948,81 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
               i == _focusedGroupIndex &&
               (_wide || _step == _GuideStep.groups);
           final hasPlaying = _groupHasPlayingChannel(g.id);
-          return KeyedSubtree(
-            key: _groupKey(i),
-            child: MouseRegion(
-              onEnter: (_) {
-                // Hover only highlights in place — never scrolls the list.
-                // Click / OK / → opens the group.
-                final colChanged =
-                    _wide && _focusColumn != _FocusColumn.groups;
-                if (colChanged) {
-                  setState(() => _focusColumn = _FocusColumn.groups);
+          return MouseRegion(
+            onEnter: (_) {
+              // Hover only highlights in place — never scrolls the list.
+              // Click / OK / → opens the group.
+              final colChanged =
+                  _wide && _focusColumn != _FocusColumn.groups;
+              if (colChanged) {
+                setState(() => _focusColumn = _FocusColumn.groups);
+              }
+              _focusGroupAt(i, scroll: false);
+            },
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (_wide) {
+                  _focusColumn = _FocusColumn.groups;
                 }
-                _focusGroupAt(i, scroll: false);
+                _selectGroup(g.id);
+                onPick?.call(g.id);
               },
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  if (_wide) {
-                    _focusColumn = _FocusColumn.groups;
-                  }
-                  _selectGroup(g.id);
-                  onPick?.call(g.id);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  alignment: Alignment.centerLeft,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? _accent.withValues(alpha: 0.18)
-                        : focused
-                            ? _accent.withValues(alpha: 0.10)
-                            : Colors.transparent,
-                    border: Border(
-                      left: BorderSide(
-                        color: selected || focused
-                            ? _accent
-                            : Colors.transparent,
-                        width: 3,
-                      ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                alignment: Alignment.centerLeft,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? _accent.withValues(alpha: 0.18)
+                      : focused
+                          ? _accent.withValues(alpha: 0.10)
+                          : Colors.transparent,
+                  border: Border(
+                    left: BorderSide(
+                      color: selected || focused
+                          ? _accent
+                          : Colors.transparent,
+                      width: 3,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          g.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
-                            color: focused
-                                ? _accent
-                                : selected
-                                    ? Colors.white
-                                    : Colors.white60,
-                            fontSize: 13,
-                            fontWeight: selected || focused
-                                ? FontWeight.w700
-                                : FontWeight.w400,
-                          ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        g.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: focused
+                              ? _accent
+                              : selected
+                                  ? Colors.white
+                                  : Colors.white60,
+                          fontSize: 13,
+                          fontWeight: selected || focused
+                              ? FontWeight.w700
+                              : FontWeight.w400,
                         ),
                       ),
-                      if (hasPlaying && !selected)
-                        Container(
-                          width: 7,
-                          height: 7,
-                          margin: const EdgeInsets.only(left: 6),
-                          decoration: BoxDecoration(
-                            color: _accent,
-                            shape: BoxShape.circle,
-                          ),
+                    ),
+                    if (hasPlaying && !selected)
+                      Container(
+                        width: 7,
+                        height: 7,
+                        margin: const EdgeInsets.only(left: 6),
+                        decoration: BoxDecoration(
+                          color: _accent,
+                          shape: BoxShape.circle,
                         ),
-                      if (selected)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 6),
-                          child: Icon(Icons.chevron_right_rounded,
-                              color: _accent, size: 18),
-                        ),
-                    ],
-                  ),
+                      ),
+                    if (selected)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Icon(Icons.chevron_right_rounded,
+                            color: _accent, size: 18),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -1032,39 +1052,37 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         ),
         itemCount: channels.length,
         itemExtent: IptvChannelGuidePanel.channelRowExtent,
+        addAutomaticKeepAlives: false,
         itemBuilder: (_, i) {
           final ch = channels[i];
           final active = ch.id == widget.currentChannelId;
           final focused = _focusColumn == _FocusColumn.channels &&
               i == _focusedChannelIndex &&
               (_wide || _step == _GuideStep.channels);
-          return KeyedSubtree(
-            key: _channelKey(i),
-            child: _GuideChannelTile(
-              channel: ch,
-              active: active,
-              focused: focused,
-              health: _health[ch.id],
-              onProbe: () => _scheduleHealthCheck(ch),
-              onCancelProbe: () => _cancelHealthCheck(ch.id),
-              onHover: () {
-                if (_focusColumn == _FocusColumn.channels &&
-                    _focusedChannelIndex == i) {
-                  return;
-                }
-                setState(() {
-                  _focusedChannelIndex = i;
-                  _focusColumn = _FocusColumn.channels;
-                });
-              },
-              onTap: () {
-                setState(() {
-                  _focusedChannelIndex = i;
-                  _focusColumn = _FocusColumn.channels;
-                });
-                widget.onChannelSelected(ch);
-              },
-            ),
+          return _GuideChannelTile(
+            channel: ch,
+            active: active,
+            focused: focused,
+            health: _health[ch.id],
+            onProbe: () => _scheduleHealthCheck(ch),
+            onCancelProbe: () => _cancelHealthCheck(ch.id),
+            onHover: () {
+              if (_focusColumn == _FocusColumn.channels &&
+                  _focusedChannelIndex == i) {
+                return;
+              }
+              setState(() {
+                _focusedChannelIndex = i;
+                _focusColumn = _FocusColumn.channels;
+              });
+            },
+            onTap: () {
+              setState(() {
+                _focusedChannelIndex = i;
+                _focusColumn = _FocusColumn.channels;
+              });
+              widget.onChannelSelected(ch);
+            },
           );
         },
       ),
@@ -1123,7 +1141,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(8, 8, 14, 8),
+          padding: const EdgeInsets.fromLTRB(8, 4, 12, 4),
           decoration: BoxDecoration(
             color: fill,
             border: Border(
@@ -1137,8 +1155,8 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                 children: [
                   _ChannelLogo(
                     url: widget.channel.logoUrl ?? '',
-                    width: 78,
-                    height: 48,
+                    width: 40,
+                    height: 40,
                   ),
                   if (widget.health != null)
                     Positioned(
@@ -1155,11 +1173,11 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                     ),
                 ],
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   widget.channel.name,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.plusJakartaSans(
                     color: focused
@@ -1167,14 +1185,14 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                         : active
                             ? Colors.white
                             : Colors.white70,
-                    fontSize: 13.5,
+                    fontSize: 13,
                     fontWeight:
                         active || focused ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ),
               if (active)
-                Icon(Icons.play_arrow_rounded, color: _accent, size: 22),
+                Icon(Icons.play_arrow_rounded, color: _accent, size: 20),
             ],
           ),
         ),
@@ -1186,7 +1204,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
 class _ChannelLogo extends StatelessWidget {
   const _ChannelLogo({
     required this.url,
-    this.width = 60,
+    this.width = 40,
     this.height = 40,
   });
 
@@ -1198,8 +1216,8 @@ class _ChannelLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     if (url.isEmpty) return _placeholder();
     final dpr = MediaQuery.devicePixelRatioOf(context);
+    // Only cacheWidth — setting both forces a stretched decode (deformed logos).
     final cacheW = (width * dpr).round().clamp(1, 512);
-    final cacheH = (height * dpr).round().clamp(1, 512);
     final tv = iptvUseTvFocus(context);
     return SizedBox(
       width: width,
@@ -1209,8 +1227,8 @@ class _ChannelLogo extends StatelessWidget {
         width: width,
         height: height,
         fit: BoxFit.contain,
+        alignment: Alignment.center,
         cacheWidth: cacheW,
-        cacheHeight: cacheH,
         filterQuality: tv ? FilterQuality.low : FilterQuality.medium,
         gaplessPlayback: true,
         errorBuilder: (_, _, _) => _placeholder(),

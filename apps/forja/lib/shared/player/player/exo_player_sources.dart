@@ -183,6 +183,10 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     int index,
   ) async {
     final switchGen = ++_s._fallbackGen;
+    setState(() {
+      _s._hasError = false;
+      _s._errorMessage = '';
+    });
     final resumeAt = _s._position;
     final statusId = 'source-switch-$index';
     final label = source.title.trim().isEmpty ? 'Stream' : source.title;

@@ -867,7 +867,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
         itemCount: _results.length,
         orientation: ShellTvRowOrientation.vertical,
         child: FocusTraversalGroup(
-          policy: OrderedTraversalPolicy(),
+          policy: ReadingOrderTraversalPolicy(),
           child: ListView.separated(
             controller: _helpersScrollController,
             clipBehavior: Clip.none,
@@ -930,7 +930,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
       itemCount: _recommendationTitles.length,
       orientation: ShellTvRowOrientation.vertical,
       child: FocusTraversalGroup(
-        policy: OrderedTraversalPolicy(),
+        policy: ReadingOrderTraversalPolicy(),
         child: ListView.separated(
           controller: _helpersScrollController,
           clipBehavior: Clip.none,
@@ -1011,7 +1011,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
       columns: gridColumns,
       itemCount: _results.length,
       child: FocusTraversalGroup(
-        policy: OrderedTraversalPolicy(),
+        policy: ReadingOrderTraversalPolicy(),
         child: GridView.builder(
           controller: _resultsScrollController,
           clipBehavior: Clip.none,

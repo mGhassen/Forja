@@ -562,10 +562,11 @@ class _TvGridState extends State<TvGrid> {
   }
 }
 
-/// Overlay D-pad host for player menus / sources / dialogs.
+/// Overlay D-pad host for player menus / sources / dialogs / profile chooser.
 ///
-/// FocusScope traps arrows inside the overlay (not player chrome), marks the
-/// subtree for linear ↑← / ↓→, and focuses the first control on open.
+/// FocusScope traps arrows inside the overlay (not player chrome) and focuses
+/// the first control on open. D-pad is **spatial** (nearest neighbor via
+/// [FocusNode.focusInDirection]) unless [linear] is true.
 /// [PlayerTvKeyScope] stays separate — chrome-hidden seek is not this recipe.
 ///
 /// Keep [debugLabel] as `player-tv-menu` so [playerTvChromeHasFocus] still
@@ -579,6 +580,7 @@ class TvOverlayScope extends StatelessWidget {
     this.debugLabel = 'player-tv-menu',
     this.policy,
     this.enabled,
+    this.linear = false,
   });
 
   final Widget child;
@@ -590,6 +592,9 @@ class TvOverlayScope extends StatelessWidget {
   /// When null, enables only under TV input policy.
   final bool? enabled;
 
+  /// Opt-in reading-order ↑←/↓→. Default false — spatial 2D.
+  final bool linear;
+
   static bool _isTv(BuildContext context) {
     final policy = ShellScope.maybeOf(context)?.inputPolicy;
     return policy?.useFocusableMoodChips ??
@@ -600,6 +605,17 @@ class TvOverlayScope extends StatelessWidget {
   Widget build(BuildContext context) {
     final active = enabled ?? _isTv(context);
     if (!active) return child;
+
+    Widget body = FocusTraversalGroup(
+      policy: policy ?? ReadingOrderTraversalPolicy(),
+      child: autofocusFirst
+          ? _TvOverlayFocusOnOpen(child: child)
+          : child,
+    );
+    if (linear) {
+      body = ShellTvLinearFocusScope(child: body);
+    }
+    body = ShellTvContainDpad(child: body);
 
     return FocusScope(
       debugLabel: debugLabel,
@@ -615,14 +631,7 @@ class TvOverlayScope extends StatelessWidget {
         }
         return KeyEventResult.ignored;
       },
-      child: ShellTvLinearFocusScope(
-        child: FocusTraversalGroup(
-          policy: policy ?? ReadingOrderTraversalPolicy(),
-          child: autofocusFirst
-              ? _TvOverlayFocusOnOpen(child: child)
-              : child,
-        ),
-      ),
+      child: body,
     );
   }
 }

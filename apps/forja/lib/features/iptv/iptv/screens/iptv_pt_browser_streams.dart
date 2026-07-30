@@ -129,7 +129,7 @@ class _StreamCardState extends State<_StreamCard> {
             : _buildDefaultBody(context, health: health, active: active);
         final radius = tv ? shellCardBorderRadius(context) : 12.0;
         Widget card = AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
+          duration: tv ? Duration.zero : const Duration(milliseconds: 150),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
             color: tv ? Colors.transparent : _surfaceColor(active, health),
@@ -490,19 +490,21 @@ class _StreamRowTileState extends State<_StreamRowTile> {
             : null;
         final active = _active(context);
         final tile = Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: EdgeInsets.zero,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+            duration: iptvUseTvFocus(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 150),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
               color: _surfaceColor(active, health),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: _borderColor(active, health)),
             ),
             child: iptvTap(
               context: context,
               onTap: widget.onTap,
-              borderRadius: 12,
+              borderRadius: 10,
               scaleOnFocus: 1.0,
               listIndex: widget.listIndex,
               tvItemIndex: widget.listIndex,
@@ -514,21 +516,21 @@ class _StreamRowTileState extends State<_StreamRowTile> {
               onFocusChange: _onFocus,
               onHoverChange: _onHover,
               child: Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 child: Row(
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(9),
+                      borderRadius: BorderRadius.circular(8),
                       child: SizedBox(
-                        width: 58,
-                        height: 58,
+                        width: 44,
+                        height: 44,
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
                             _streamIconThumb(
                               icon: widget.stream.icon,
                               contain: widget.stream.kind == 'live',
-                              padding: 6,
+                              padding: 4,
                             ),
                             _StreamThumbPlayHint(active: active),
                           ],

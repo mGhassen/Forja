@@ -202,6 +202,13 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   /// Guards re-entrant Back while [_exitPlayer] awaits stop/orientation.
   bool _exitInProgress = false;
   final FocusNode _playFocus = FocusNode(debugLabel: 'player-play');
+  final FocusNode _rewindFocus = FocusNode(debugLabel: 'player-rewind');
+  final FocusNode _forwardFocus = FocusNode(debugLabel: 'player-forward');
+  final FocusNode _seekbarFocus = FocusNode(debugLabel: 'player-seekbar');
+  final FocusNode _transportSourcesFocus =
+      FocusNode(debugLabel: 'player-transport-sources');
+  final FocusNode _transportStreamFocus =
+      FocusNode(debugLabel: 'player-transport-stream');
   final FocusNode _backFocus = FocusNode(debugLabel: 'player-back');
   /// First TV Back focused the Back control — next Back exits even before
   /// the post-frame [requestFocus] lands.
@@ -441,6 +448,11 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     _playFocus.dispose();
+    _rewindFocus.dispose();
+    _forwardFocus.dispose();
+    _seekbarFocus.dispose();
+    _transportSourcesFocus.dispose();
+    _transportStreamFocus.dispose();
     _backFocus.removeListener(_onTvBackFocusChanged);
     _backFocus.dispose();
     _playerMenuFocus.dispose();

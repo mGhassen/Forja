@@ -1451,7 +1451,7 @@ class _LiveMatchesEmbedPlayerScreenState
                   sources: [IptvPlaySource(url: url, label: label)],
                   title: title,
                   subtitle: subtitle,
-                  forceBuiltInEngine: BuiltInPlayerEngine.exoPlayer,
+                  engineContext: BuiltInPlayerContext.live,
                 ),
               ),
             );
@@ -1695,7 +1695,7 @@ class _LiveMatchesEmbedPlayerScreenState
           sources: [IptvPlaySource(url: playUrl, label: label)],
           title: title,
           subtitle: subtitle,
-          forceBuiltInEngine: BuiltInPlayerEngine.exoPlayer,
+          engineContext: BuiltInPlayerContext.live,
         ),
       ),
     );
@@ -1782,7 +1782,7 @@ class _LiveMatchesEmbedPlayerScreenState
           sources: [IptvPlaySource(url: playUrl!, label: label)],
           title: title,
           subtitle: subtitle,
-          forceBuiltInEngine: BuiltInPlayerEngine.exoPlayer,
+          engineContext: BuiltInPlayerContext.live,
         ),
       ),
     );
@@ -1873,7 +1873,7 @@ class _LiveMatchesEmbedPlayerScreenState
           sources: [IptvPlaySource(url: playUrl!, label: label)],
           title: title,
           subtitle: subtitle,
-          forceBuiltInEngine: BuiltInPlayerEngine.exoPlayer,
+          engineContext: BuiltInPlayerContext.live,
         ),
       ),
     );

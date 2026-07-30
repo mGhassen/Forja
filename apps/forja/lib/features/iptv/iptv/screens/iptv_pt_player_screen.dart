@@ -69,8 +69,8 @@ class IptvPlaySource {
   });
 }
 
-/// Dedicated IPTV player. Android uses Settings → Built-in engine (ExoPlayer or
-/// MediaKit); other platforms use libmpv (media_kit). Includes:
+/// Dedicated IPTV / Live native player. Android remembers Exo / MediaKit per
+/// [engineContext] (IPTV ≠ VOD ≠ Live); other platforms use libmpv. Includes:
 ///   • Watchdog (3 detectors): long buffering, frozen position, ready-but-not-playing
 ///   • Tiered recovery: seek-zero → reload → stop+open → recreate
 ///   • Multi-source rotation
@@ -84,8 +84,9 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   final IptvChannelGuide? channelGuide;
   /// Fired when the in-player guide tunes a different Xtream channel.
   final ValueChanged<IptvStream>? onChannelChanged;
-  /// When set on Android, boot with this engine instead of Settings.
-  /// Live Matches handoff forces Exo so MediaKit is not stuck on proxy HTML.
+  /// Which surface preference to read/write (default IPTV).
+  final BuiltInPlayerContext engineContext;
+  /// When set on Android, boot with this engine for this session only.
   final BuiltInPlayerEngine? forceBuiltInEngine;
 
   const IptvPtPlayerScreen({
@@ -96,6 +97,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     this.logoUrl,
     this.channelGuide,
     this.onChannelChanged,
+    this.engineContext = BuiltInPlayerContext.iptv,
     this.forceBuiltInEngine,
   });
 
@@ -107,15 +109,20 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     String? portalName,
     IptvChannelGuide? channelGuide,
     ValueChanged<IptvStream>? onChannelChanged,
-  }) => IptvPtPlayerScreen(
-    key: key,
-    sources: [IptvPlaySource(url: url, label: portalName ?? 'Source 1')],
-    title: stream.name,
-    subtitle: portalName,
-    logoUrl: stream.icon.isEmpty ? null : stream.icon,
-    channelGuide: channelGuide,
-    onChannelChanged: onChannelChanged,
-  );
+    BuiltInPlayerContext engineContext = BuiltInPlayerContext.iptv,
+    BuiltInPlayerEngine? forceBuiltInEngine,
+  }) =>
+      IptvPtPlayerScreen(
+        key: key,
+        sources: [IptvPlaySource(url: url, label: portalName ?? 'Source 1')],
+        title: stream.name,
+        subtitle: portalName,
+        logoUrl: stream.icon.isEmpty ? null : stream.icon,
+        channelGuide: channelGuide,
+        onChannelChanged: onChannelChanged,
+        engineContext: engineContext,
+        forceBuiltInEngine: forceBuiltInEngine,
+      );
 
   /// Convenience: build for a list of channel hits (multi-source).
   factory IptvPtPlayerScreen.fromHits({
@@ -123,21 +130,24 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     required List<ChannelHit> hits,
     required String title,
     String? logoUrl,
-  }) => IptvPtPlayerScreen(
-    key: key,
-    title: title,
-    logoUrl: logoUrl,
-    sources: hits
-        .asMap()
-        .entries
-        .map(
-          (e) => IptvPlaySource(
-            url: e.value.streamUrl,
-            label: e.value.portal.displayLabel,
-          ),
-        )
-        .toList(),
-  );
+    BuiltInPlayerContext engineContext = BuiltInPlayerContext.iptv,
+  }) =>
+      IptvPtPlayerScreen(
+        key: key,
+        title: title,
+        logoUrl: logoUrl,
+        engineContext: engineContext,
+        sources: hits
+            .asMap()
+            .entries
+            .map(
+              (e) => IptvPlaySource(
+                url: e.value.streamUrl,
+                label: e.value.portal.displayLabel,
+              ),
+            )
+            .toList(),
+      );
 
   @override
   ConsumerState<IptvPtPlayerScreen> createState() =>
@@ -149,7 +159,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   static int _nextExoViewId = 1;
 
   /// When true, IPTV uses Media3 ExoPlayer; otherwise media_kit.
-  /// Android reads [SettingsService.getBuiltInPlayerEngine] at boot / Player menu.
+  /// Android reads [engineContext] prefs at boot / Player menu.
   bool _exoBackend = false;
   int? _exoViewId;
   StreamSubscription<Map<dynamic, dynamic>>? _exoEventSub;
@@ -324,6 +334,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     PlayerBackExitGate.setTryFocusBack(() {
       if (_disposed || !mounted) return false;
       if (_isPipMode) return false;
+      // Menus (Stream stats, Player, …) own Back before the exit ladder.
+      if (dismissAnyPlayerChromeOverlay()) {
+        _tvBackExitArmed = false;
+        return true;
+      }
       // Guide / search own Back first (HardwareKeyboard steals Focus onKey).
       if (_guideVisible) {
         setState(() {
@@ -422,8 +437,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     return false;
   }
 
-  /// Boot prefs (engine choice + last volume + EPG toggle) come from
-  /// [iptvPlayerBootPrefsProvider] — Settings playback snapshot + cached volume.
+  /// Boot prefs: engine from [widget.engineContext] KV; volume/EPG from
+  /// [iptvPlayerBootPrefsProvider].
   Future<void> _bootWithCachedVolume() async {
     // Same contract as VOD [waitForRouteTransition]: do not open Exo/MediaKit
     // while a shell slide is still compositing (jank on weak Android 7 TVs).
@@ -441,8 +456,14 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     final forced = widget.forceBuiltInEngine;
     if (forced != null && !kIsWeb && Platform.isAndroid) {
       _exoBackend = forced == BuiltInPlayerEngine.exoPlayer;
+    } else if (!kIsWeb && Platform.isAndroid) {
+      final engine = await SettingsService().getBuiltInPlayerEngine(
+        context: widget.engineContext,
+      );
+      if (_disposed || !mounted) return;
+      _exoBackend = engine == BuiltInPlayerEngine.exoPlayer;
     } else {
-      _exoBackend = prefs.useExoBackend;
+      _exoBackend = false;
     }
     // Phone MediaKit: software-friendly. ATV MediaKit: HW + mediacodec_embed.
     _androidMediaKitSafeMode =
@@ -466,7 +487,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     if (kIsWeb || !Platform.isAndroid) return;
     final wantExo = engine == BuiltInPlayerEngine.exoPlayer;
     if (persist) {
-      await SettingsService().setBuiltInPlayerEngine(engine);
+      await SettingsService().setBuiltInPlayerEngine(
+        engine,
+        context: widget.engineContext,
+      );
     }
     if (_disposed || !mounted) return;
     if (wantExo == _exoBackend) return;
@@ -523,6 +547,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// MediaKit/MediaCodec teardown is not on the Navigator.pop critical path.
   Future<void> _exitIptvPlayer() async {
     if (_disposed || _exitInProgress) return;
+    if (dismissAnyPlayerChromeOverlay()) {
+      _tvBackExitArmed = false;
+      PlayerBackExitGate.exitReady = false;
+      return;
+    }
     _exitInProgress = true;
     final nav = Navigator.of(context);
     await _stopPlaybackForExit();

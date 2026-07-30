@@ -648,7 +648,7 @@ void main() {
     expect(railBox.localToGlobal(Offset.zero).dx, systemOverscan);
   });
 
-  testWidgets('ShellScaffold hides rail when hideGlobalNav is true', (
+  testWidgets('ShellScaffold keeps rail Offstage when hideGlobalNav is true', (
     tester,
   ) async {
     await pumpScaffold(
@@ -658,7 +658,15 @@ void main() {
       profile: ShellProfile.desktop,
     );
 
-    expect(find.byType(ShellNavRail), findsNothing);
+    // Keep-alive: rail Element stays mounted so player exit does not remount.
+    expect(find.byType(ShellNavRail), findsOneWidget);
+    final offstage = tester.widget<Offstage>(
+      find.ancestor(
+        of: find.byType(ShellNavRail),
+        matching: find.byType(Offstage),
+      ),
+    );
+    expect(offstage.offstage, isTrue);
     expect(find.byType(HomeTopBar), findsNothing);
   });
 

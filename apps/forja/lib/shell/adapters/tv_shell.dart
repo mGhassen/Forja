@@ -26,7 +26,9 @@ class TvShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ShellScaffold(
-      useNavRail: !hideGlobalNav,
+      // Always a rail profile — [hideGlobalNav] only hides it Offstage so player
+      // enter/exit does not dispose/recreate [ShellNavRail] (TV remount flash).
+      useNavRail: true,
       visibleIds: visibleIds,
       selectedIndex: selectedIndex,
       mountedTabIds: mountedTabIds,

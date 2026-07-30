@@ -302,7 +302,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       height: layout.rowHeight,
       width: double.infinity,
       child: FocusTraversalGroup(
-        policy: OrderedTraversalPolicy(),
+        policy: ReadingOrderTraversalPolicy(),
         child: scaleToFit
             ? FittedBox(
                 fit: BoxFit.scaleDown,
@@ -474,7 +474,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
           }
 
           return FocusTraversalGroup(
-            policy: OrderedTraversalPolicy(),
+            policy: ReadingOrderTraversalPolicy(),
             child: HorizontalScroller(
               height: layout.rowHeight,
               padding: EdgeInsets.zero,

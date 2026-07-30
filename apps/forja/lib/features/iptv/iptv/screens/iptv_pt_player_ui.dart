@@ -85,6 +85,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   void _showStatsMenu(BuildContext anchorContext) {
     if (_s._exoBackend || _s._player == null) return;
+    // Opening a menu cancels an armed player-exit Back.
+    _s._tvBackExitArmed = false;
+    PlayerBackExitGate.exitReady = false;
     _scheduleHideControls();
     IptvPlayerStatsPanel.show(
       context,
@@ -704,6 +707,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                     if (!mounted) return;
                     if (!_isPlayerBackFocused()) {
                       _s._tvBackExitArmed = false;
+                      PlayerBackExitGate.exitReady = false;
                     }
                   });
                 },

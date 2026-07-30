@@ -168,8 +168,17 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       _confirmYesFocus.hasFocus ||
       _confirmNoFocus.hasFocus;
 
-  bool get _reveal =>
-      _focused || _lineHover || _confirmingDelete || _actionChromeFocused;
+  /// Desktop: reveal on hover/focus. TV: keep closed while D-pad scrolls the
+  /// list — expand only when action chrome / delete is active so ↑/↓ does not
+  /// reflow every row.
+  bool get _reveal {
+    if (_confirmingDelete || _actionChromeFocused) return true;
+    if (_lineHover || (_focused && !_tvListScrollMode)) return true;
+    return false;
+  }
+
+  bool get _tvListScrollMode =>
+      mounted && iptvUseTvFocus(context);
 
   double get _rowHeight => _rowH;
 
@@ -225,7 +234,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       if (ctrl.isNewPortal(v.key)) {
         ctrl.markPortalSeen(v.key);
       }
-      ctrl.schedulePortalHealthCheck(v);
+      // TV: skip focus-driven probes — each notifyListeners rebuilds the whole
+      // IPTV shell and stutters D-pad scrolling through long portal lists.
+      // Desktop hover still schedules; active portal uses ensurePortalHealth.
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -236,7 +247,13 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   }
 
   void _focusAction(FocusNode node) {
+    if (!node.canRequestFocus) return;
     node.requestFocus();
+    if (!node.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) node.requestFocus();
+      });
+    }
   }
 
   /// Trap Left on the portal card - stay in the panel (Back exits to catalog).
@@ -418,320 +435,339 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     final ctrl = widget.ctrl;
     final v = widget.portal;
     final isActive = widget.isActive;
+    final tv = iptvUseTvFocus(context);
+    // Parent AnimatedBuilder(ctrl) already rebuilds on notify — no per-tile
+    // ListenableBuilder (that doubled work on every health/status tick).
+    final isFav = ctrl.isFavoritePortal(v.key);
+    final isNew = ctrl.isNewPortal(v.key);
+    final showStar = _reveal || isFav || _focused;
+    final showNewChrome = isNew && !_reveal && !_showShareCode;
+    final health = ctrl.portalHealthFor(v.key);
+    final checking = ctrl.isPortalHealthChecking(v.key);
+    final title = v.displayLabel;
+    final railAnim = tv
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
 
-    return ListenableBuilder(
-      listenable: ctrl,
-      builder: (context, _) {
-        final isFav = ctrl.isFavoritePortal(v.key);
-        final isNew = ctrl.isNewPortal(v.key);
-        final showStar = _reveal || isFav;
-        final showNewChrome = isNew && !_reveal && !_showShareCode;
-        final health = ctrl.portalHealthFor(v.key);
-        final checking = ctrl.isPortalHealthChecking(v.key);
-        final title = v.displayLabel;
-
-        final tile = MouseRegion(
-          onEnter: (_) {
-            setState(() => _lineHover = true);
-            if (isNew) ctrl.markPortalSeen(v.key);
-            ctrl.schedulePortalHealthCheck(v);
-          },
-          onExit: (_) {
-            _clearHover();
-            ctrl.cancelPortalHealthCheck(v.key);
-          },
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: isActive
-                  ? playerSourceStatusColor(
-                      PlayerSourceStatus.active,
-                    ).withValues(alpha: 0.07)
-                  : showNewChrome
-                  ? IptvShellStyle.accent.withValues(alpha: 0.1)
-                  : (_lineHover || _focused || _showShareCode)
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.transparent,
-              border: showNewChrome
-                  ? Border(
-                      left: BorderSide(color: IptvShellStyle.accent, width: 3),
-                    )
-                  : null,
-            ),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              height: _rowHeight,
-              alignment: Alignment.topCenter,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: iptvTap(
-                      context: context,
-                      onTap: _onRowTap,
-                      borderRadius: 0,
-                      listIndex: widget.listIndex,
-                      tvRowId: 'portals',
-                      tvItemIndex: widget.listIndex,
-                      focusNode: _rowFocus,
-                      onUpEdge: widget.onUpEdge,
-                      onLeftEdge: _trapLeftEdge,
-                      onRightEdge: _reveal
-                          ? () => _focusAction(
-                                _confirmingDelete
-                                    ? _confirmYesFocus
-                                    : _favoriteFocus,
-                              )
-                          : null,
-                      onFocusChange: _onRowFocusChange,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+    final tile = MouseRegion(
+      onEnter: (_) {
+        setState(() => _lineHover = true);
+        if (isNew) ctrl.markPortalSeen(v.key);
+        ctrl.schedulePortalHealthCheck(v);
+      },
+      onExit: (_) {
+        _clearHover();
+        ctrl.cancelPortalHealthCheck(v.key);
+      },
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isActive
+              ? playerSourceStatusColor(
+                  PlayerSourceStatus.active,
+                ).withValues(alpha: 0.07)
+              : showNewChrome
+              ? IptvShellStyle.accent.withValues(alpha: 0.1)
+              : (_lineHover || _focused || _showShareCode)
+              ? Colors.white.withValues(alpha: 0.04)
+              : Colors.transparent,
+          border: showNewChrome
+              ? Border(
+                  left: BorderSide(color: IptvShellStyle.accent, width: 3),
+                )
+              : null,
+        ),
+        child: SizedBox(
+          height: _rowHeight,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildPortalMainTap(
+                  ctrl: ctrl,
+                  v: v,
+                  isActive: isActive,
+                  isFav: isFav,
+                  showStar: showStar,
+                  showNewChrome: showNewChrome,
+                  health: health,
+                  checking: checking,
+                  title: title,
+                  instantStar: tv,
+                ),
+              ),
+              AnimatedContainer(
+                duration: railAnim,
+                curve: Curves.easeOutCubic,
+                width: _reveal ? _actionW : 0,
+                height: _rowHeight,
+                child: !_reveal
+                    ? const SizedBox.shrink()
+                    : ClipRect(
+                        child: OverflowBox(
+                          minWidth: _actionW,
+                          maxWidth: _actionW,
+                          alignment: Alignment.centerRight,
+                          child: SizedBox(
+                            width: _actionW,
+                            height: _rowHeight,
+                            child: _buildActionRail(),
+                          ),
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Only register the action row while revealed — itemCount 0↔4 on every
+    // focus step was thrashing the TV focus graph during D-pad scroll.
+    if (!_reveal) return tile;
+    return iptvCatalogRow(
+      rowId: _actionsRowId,
+      sortOrder: 200 + widget.listIndex,
+      itemCount: _confirmingDelete ? 3 : 4,
+      child: tile,
+    );
+  }
+
+  Widget _buildPortalMainTap({
+    required IptvController ctrl,
+    required VerifiedPortal v,
+    required bool isActive,
+    required bool isFav,
+    required bool showStar,
+    required bool showNewChrome,
+    required bool? health,
+    required bool checking,
+    required String title,
+    required bool instantStar,
+  }) {
+    return iptvTap(
+      context: context,
+      onTap: _onRowTap,
+      borderRadius: 0,
+      listIndex: widget.listIndex,
+      tvRowId: 'portals',
+      tvItemIndex: widget.listIndex,
+      focusNode: _rowFocus,
+      allowNestedFocus: iptvUseTvFocus(context),
+      onUpEdge: widget.onUpEdge,
+      onLeftEdge: _trapLeftEdge,
+      onRightEdge: () {
+        // TV: open chrome on demand (row stays full-width while ↑/↓ scrolling).
+        _focusAction(
+          _confirmingDelete ? _confirmYesFocus : _favoriteFocus,
+        );
+      },
+      onFocusChange: _onRowFocusChange,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              alignment: Alignment.center,
+              child: isActive
+                  ? _activePortalStatusGlyph(
+                      _activePortalStatus(
+                        checking: checking,
+                        health: health,
+                      ),
+                    )
+                  : _idlePortalHealthDot(
+                      checking: checking,
+                      health: health,
+                    ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _confirmingDelete
+                  ? _deleteConfirmLine()
+                  : _showShareCode || _sharing
+                  ? _shareCodeLine()
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _expiryLine(v.expiry),
+                        const SizedBox(height: 6),
+                        Row(
                           children: [
-                            Align(
-                              alignment: Alignment.center,
-                              child: isActive
-                                  ? _activePortalStatusGlyph(
-                                      _activePortalStatus(
-                                        checking: checking,
-                                        health: health,
-                                      ),
-                                    )
-                                  : _idlePortalHealthDot(
-                                      checking: checking,
-                                      health: health,
-                                    ),
-                            ),
-                            const SizedBox(width: 10),
+                            if (showNewChrome) ...[
+                              _newPortalBadge(),
+                              const SizedBox(width: 6),
+                            ],
                             Expanded(
-                              child: _confirmingDelete
-                                  ? _deleteConfirmLine()
-                                  : _showShareCode || _sharing
-                                  ? _shareCodeLine()
-                                  : Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _expiryLine(v.expiry),
-                                        const SizedBox(height: 6),
-                                        Row(
-                                          children: [
-                                            if (showNewChrome) ...[
-                                              _newPortalBadge(),
-                                              const SizedBox(width: 6),
-                                            ],
-                                            Expanded(
-                                              child: Text(
-                                                title,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: GoogleFonts.plusJakartaSans(
-                                                  color: isFav
-                                                      ? const Color(0xFFFBBF24)
-                                                      : isActive
-                                                      ? Colors.white
-                                                      : showNewChrome
-                                                      ? IptvShellStyle.accent
-                                                      : Colors.white.withValues(
-                                                          alpha: 0.88,
-                                                        ),
-                                                  fontSize: 13,
-                                                  fontWeight: isFav ||
-                                                          isActive ||
-                                                          showNewChrome
-                                                      ? FontWeight.w600
-                                                      : FontWeight.w500,
-                                                  height: 1.25,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: isFav
+                                      ? const Color(0xFFFBBF24)
+                                      : isActive
+                                      ? Colors.white
+                                      : showNewChrome
+                                      ? IptvShellStyle.accent
+                                      : Colors.white.withValues(
+                                          alpha: 0.88,
                                         ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          v.portal.url,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            color: showNewChrome
-                                                ? Colors.white54
-                                                : Colors.white38,
-                                            fontSize: 11,
-                                            height: 1.25,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        _seatsLine(
-                                          active: v.activeConnections,
-                                          max: v.maxConnections,
-                                        ),
-                                      ],
-                                    ),
-                            ),
-                            Align(
-                              alignment: Alignment.center,
-                              child: AnimatedOpacity(
-                                opacity: showStar ? 1 : 0,
-                                duration: const Duration(milliseconds: 120),
-                                child: IgnorePointer(
-                                  ignoring: !showStar,
-                                  child: iptvTap(
-                                    context: context,
-                                    onTap: () =>
-                                        ctrl.toggleFavoritePortal(v.key),
-                                    borderRadius: 16,
-                                    focusNode: _favoriteFocus,
-                                    tvRowId: _actionsRowId,
-                                    tvItemIndex: 0,
-                                    onLeftEdge: () => _focusAction(_rowFocus),
-                                    onRightEdge: _reveal
-                                        ? () => _focusAction(
-                                              _confirmingDelete
-                                                  ? _confirmYesFocus
-                                                  : _copyFocus,
-                                            )
-                                        : null,
-                                    onUpEdge: _upFromActions,
-                                    onDownEdge: _downFromActions,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(4),
-                                      child: Icon(
-                                        isFav
-                                            ? Icons.star_rounded
-                                            : Icons.star_outline_rounded,
-                                        size: 16,
-                                        color: isFav
-                                            ? const Color(0xFFFBBF24)
-                                            : Colors.white30,
-                                      ),
-                                    ),
-                                  ),
+                                  fontSize: 13,
+                                  fontWeight: isFav ||
+                                          isActive ||
+                                          showNewChrome
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  height: 1.25,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                  ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOutCubic,
-                    width: _reveal ? _actionW : 0,
-                    height: _rowHeight,
-                    child: ClipRect(
-                      child: OverflowBox(
-                        minWidth: _actionW,
-                        maxWidth: _actionW,
-                        alignment: Alignment.centerRight,
-                        child: SizedBox(
-                          width: _actionW,
-                          height: _rowHeight,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: _confirmingDelete
-                                ? [
-                                    _IptvRailAction(
-                                      tooltip: 'Yes',
-                                      icon: Icons.check_rounded,
-                                      color: const Color(0xFFEF4444),
-                                      onTap: _confirmDelete,
-                                      focusNode: _confirmYesFocus,
-                                      tvRowId: _actionsRowId,
-                                      tvItemIndex: 1,
-                                      onLeftEdge: () =>
-                                          _focusAction(_favoriteFocus),
-                                      onRightEdge: () =>
-                                          _focusAction(_confirmNoFocus),
-                                      onUpEdge: _upFromActions,
-                                      onDownEdge: _downFromActions,
-                                    ),
-                                    _IptvRailAction(
-                                      tooltip: 'No',
-                                      icon: Icons.close_rounded,
-                                      color: Colors.white60,
-                                      onTap: _cancelDelete,
-                                      focusNode: _confirmNoFocus,
-                                      tvRowId: _actionsRowId,
-                                      tvItemIndex: 2,
-                                      onLeftEdge: () =>
-                                          _focusAction(_confirmYesFocus),
-                                      onUpEdge: _upFromActions,
-                                      onDownEdge: _downFromActions,
-                                    ),
-                                  ]
-                                : [
-                                    _IptvRailAction(
-                                      tooltip: 'Copy share code',
-                                      icon: _sharing
-                                          ? Icons.hourglass_top_rounded
-                                          : Icons.copy_rounded,
-                                      color: Colors.white60,
-                                      onTap: _sharing ? null : _copy,
-                                      focusNode: _copyFocus,
-                                      tvRowId: _actionsRowId,
-                                      tvItemIndex: 1,
-                                      onLeftEdge: () =>
-                                          _focusAction(_favoriteFocus),
-                                      onRightEdge: () =>
-                                          _focusAction(_editFocus),
-                                      onUpEdge: _upFromActions,
-                                      onDownEdge: _downFromActions,
-                                    ),
-                                    _IptvRailAction(
-                                      tooltip: 'Edit',
-                                      icon: Icons.edit_rounded,
-                                      color: Colors.white60,
-                                      onTap: widget.onEdit,
-                                      focusNode: _editFocus,
-                                      tvRowId: _actionsRowId,
-                                      tvItemIndex: 2,
-                                      onLeftEdge: () =>
-                                          _focusAction(_copyFocus),
-                                      onRightEdge: () =>
-                                          _focusAction(_deleteFocus),
-                                      onUpEdge: _upFromActions,
-                                      onDownEdge: _downFromActions,
-                                    ),
-                                    _IptvRailAction(
-                                      tooltip: 'Delete',
-                                      icon: Icons.delete_rounded,
-                                      color: const Color(0xFFEF4444),
-                                      onTap: _askDelete,
-                                      focusNode: _deleteFocus,
-                                      tvRowId: _actionsRowId,
-                                      tvItemIndex: 3,
-                                      onLeftEdge: () =>
-                                          _focusAction(_editFocus),
-                                      onUpEdge: _upFromActions,
-                                      onDownEdge: _downFromActions,
-                                    ),
-                                  ],
+                        const SizedBox(height: 3),
+                        Text(
+                          v.portal.url,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: showNewChrome
+                                ? Colors.white54
+                                : Colors.white38,
+                            fontSize: 11,
+                            height: 1.25,
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        _seatsLine(
+                          active: v.activeConnections,
+                          max: v.maxConnections,
+                        ),
+                      ],
+                    ),
+            ),
+            Align(
+              alignment: Alignment.center,
+              child: AnimatedOpacity(
+                opacity: showStar ? 1 : 0,
+                duration: instantStar
+                    ? Duration.zero
+                    : const Duration(milliseconds: 120),
+                child: IgnorePointer(
+                  ignoring: !showStar,
+                  child: iptvTap(
+                    context: context,
+                    onTap: () => ctrl.toggleFavoritePortal(v.key),
+                    borderRadius: 16,
+                    focusNode: _favoriteFocus,
+                    tvRowId: _actionsRowId,
+                    tvItemIndex: 0,
+                    onLeftEdge: () => _focusAction(_rowFocus),
+                    onRightEdge: () => _focusAction(
+                      _confirmingDelete ? _confirmYesFocus : _copyFocus,
+                    ),
+                    onUpEdge: _upFromActions,
+                    onDownEdge: _downFromActions,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        isFav
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        size: 16,
+                        color: isFav
+                            ? const Color(0xFFFBBF24)
+                            : Colors.white30,
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        );
+          ],
+        ),
+      ),
+    );
+  }
 
-        return iptvCatalogRow(
-          rowId: _actionsRowId,
-          sortOrder: 200 + widget.listIndex,
-          itemCount: _reveal ? (_confirmingDelete ? 3 : 4) : 0,
-          child: tile,
-        );
-      },
+  Widget _buildActionRail() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: _confirmingDelete
+          ? [
+              _IptvRailAction(
+                tooltip: 'Yes',
+                icon: Icons.check_rounded,
+                color: const Color(0xFFEF4444),
+                onTap: _confirmDelete,
+                focusNode: _confirmYesFocus,
+                tvRowId: _actionsRowId,
+                tvItemIndex: 1,
+                onLeftEdge: () => _focusAction(_favoriteFocus),
+                onRightEdge: () => _focusAction(_confirmNoFocus),
+                onUpEdge: _upFromActions,
+                onDownEdge: _downFromActions,
+              ),
+              _IptvRailAction(
+                tooltip: 'No',
+                icon: Icons.close_rounded,
+                color: Colors.white60,
+                onTap: _cancelDelete,
+                focusNode: _confirmNoFocus,
+                tvRowId: _actionsRowId,
+                tvItemIndex: 2,
+                onLeftEdge: () => _focusAction(_confirmYesFocus),
+                onUpEdge: _upFromActions,
+                onDownEdge: _downFromActions,
+              ),
+            ]
+          : [
+              _IptvRailAction(
+                tooltip: 'Copy share code',
+                icon: _sharing
+                    ? Icons.hourglass_top_rounded
+                    : Icons.copy_rounded,
+                color: Colors.white60,
+                onTap: _sharing ? null : _copy,
+                focusNode: _copyFocus,
+                tvRowId: _actionsRowId,
+                tvItemIndex: 1,
+                onLeftEdge: () => _focusAction(_favoriteFocus),
+                onRightEdge: () => _focusAction(_editFocus),
+                onUpEdge: _upFromActions,
+                onDownEdge: _downFromActions,
+              ),
+              _IptvRailAction(
+                tooltip: 'Edit',
+                icon: Icons.edit_rounded,
+                color: Colors.white60,
+                onTap: widget.onEdit,
+                focusNode: _editFocus,
+                tvRowId: _actionsRowId,
+                tvItemIndex: 2,
+                onLeftEdge: () => _focusAction(_copyFocus),
+                onRightEdge: () => _focusAction(_deleteFocus),
+                onUpEdge: _upFromActions,
+                onDownEdge: _downFromActions,
+              ),
+              _IptvRailAction(
+                tooltip: 'Delete',
+                icon: Icons.delete_rounded,
+                color: const Color(0xFFEF4444),
+                onTap: _askDelete,
+                focusNode: _deleteFocus,
+                tvRowId: _actionsRowId,
+                tvItemIndex: 3,
+                onLeftEdge: () => _focusAction(_editFocus),
+                onUpEdge: _upFromActions,
+                onDownEdge: _downFromActions,
+              ),
+            ],
     );
   }
 

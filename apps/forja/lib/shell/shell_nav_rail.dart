@@ -314,7 +314,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
     }
 
     return FocusTraversalGroup(
-      policy: OrderedTraversalPolicy(),
+      policy: ReadingOrderTraversalPolicy(),
       child: Container(
         width: metrics.navRailWidth,
         color: AppTheme.bgDark,
@@ -895,52 +895,57 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                     child: SizedBox(
                       width: ShellTokens.navRailWidth,
                       height: contentHeight,
+                      // Top-pin icon stack so focus scale + label never shift the
+                      // icon baseline relative to unlabeled neighbors.
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           SizedBox(
+                            width: ShellTokens.navRailWidth,
                             height:
                                 renderedIconSize *
-                                    ShellTokens.navRailIconHoverScale +
-                                ShellTokens.navRailIconUnderlineGap +
-                                ShellTokens.shellNavUnderlineHeight,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Expanded(
-                                  child: Center(
-                                    child: AnimatedScale(
-                                      scale: _scaleFor(policy),
-                                      duration:
-                                          ShellTokens.navSelectionAnimation,
-                                      curve: Curves.easeOutCubic,
-                                      child: icon,
-                                    ),
-                                  ),
+                                ShellTokens.navRailIconHoverScale,
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: AnimatedScale(
+                                alignment: Alignment.bottomCenter,
+                                scale: _scaleFor(policy),
+                                duration: ShellTokens.navSelectionAnimation,
+                                curve: Curves.easeOutCubic,
+                                child: SizedBox(
+                                  width: renderedIconSize,
+                                  height: renderedIconSize,
+                                  child: Center(child: icon),
                                 ),
-                                AnimatedContainer(
-                                  key: ValueKey(
-                                    'nav-${widget.destination.id}-underline',
-                                  ),
-                                  duration: ShellTokens.navSelectionAnimation,
-                                  curve: Curves.easeOutCubic,
-                                  height: ShellTokens.shellNavUnderlineHeight,
-                                  width: widget.selected ? underlineWidth : 0,
-                                  decoration: BoxDecoration(
-                                    color: widget.selected
-                                        ? (useDestinationAccent
-                                              ? destinationAccent
-                                              : selectedFocused
-                                              ? Colors.white
-                                              : ForjaShellColors.navUnderline)
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
-                          SizedBox(height: ShellTokens.navRailIconLabelGap),
+                          const SizedBox(
+                            height: ShellTokens.navRailIconUnderlineGap,
+                          ),
+                          AnimatedContainer(
+                            key: ValueKey(
+                              'nav-${widget.destination.id}-underline',
+                            ),
+                            duration: ShellTokens.navSelectionAnimation,
+                            curve: Curves.easeOutCubic,
+                            height: ShellTokens.shellNavUnderlineHeight,
+                            width: widget.selected ? underlineWidth : 0,
+                            decoration: BoxDecoration(
+                              color: widget.selected
+                                  ? (useDestinationAccent
+                                        ? destinationAccent
+                                        : selectedFocused
+                                        ? Colors.white
+                                        : ForjaShellColors.navUnderline)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(
+                            height: ShellTokens.navRailIconLabelGap,
+                          ),
                           SizedBox(
                             height: labelFontSize,
                             width: ShellTokens.navRailWidth,

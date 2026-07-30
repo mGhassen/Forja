@@ -234,6 +234,18 @@ abstract final class ShellTvFocusCoordinator {
   /// Always returns true when [tvBackPolicyEnabled] (never finishes via a
   /// single Back — nav needs a second press; see [ShellTvAppExit]).
   static bool handleShellBackKey() {
+    // Player menus/panels are OverlayEntries (not routes). Dismiss them
+    // before debounce / exit arming — otherwise exitReady skips debounce and
+    // HW + didPopRoute on the same press closes the menu then pops the player
+    // (IPTV Stream stats → catalog). Stamp so the twin delivery is swallowed.
+    if (dismissAnyPlayerChromeOverlay()) {
+      PlayerBackExitGate.exitReady = false;
+      _backStepPending = false;
+      ShellTvAppExit.clear();
+      _lastBackHandledAt = DateTime.now();
+      return true;
+    }
+
     // Confirming exit / pop must not be swallowed by debounce.
     // When exit is armed, still debounce same-press duplicates
     // (HardwareKeyboard + didPopRoute); [ShellTvAppExit.minConfirmGap] also
@@ -244,14 +256,6 @@ abstract final class ShellTvFocusCoordinator {
       return true;
     }
     _backStepPending = false;
-
-    // Player menus/panels are OverlayEntries (not routes). Dismiss them before
-    // any navigator pop - including IPTV/trailer menus while level=detail.
-    if (dismissAnyPlayerChromeOverlay()) {
-      PlayerBackExitGate.exitReady = false;
-      ShellTvAppExit.clear();
-      return true;
-    }
 
     // TV players: first Back focuses the Back control; second exits.
     if (tvBackPolicyEnabled && PlayerBackExitGate.tryFocusBackStay()) {

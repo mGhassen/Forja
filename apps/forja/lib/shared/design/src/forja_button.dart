@@ -203,14 +203,32 @@ class _ForjaButtonState extends State<ForjaButton> {
       onKeyEvent: (node, event) {
         final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
             !ShellTvDisableLinearFocus.activeOf(context);
-        final linear = shellTvLinearMenuArrows(context: context, event: event);
-        if (linear == KeyEventResult.handled) return linear;
-        if (linearScope && shellTvIsNavigationKey(event)) {
+        if (linearScope) {
+          final linear = shellTvLinearMenuArrows(context: context, event: event);
+          if (linear == KeyEventResult.handled) return linear;
+          if (shellTvIsNavigationKey(event)) {
+            final key = event.logicalKey;
+            if (key == LogicalKeyboardKey.arrowUp ||
+                key == LogicalKeyboardKey.arrowDown ||
+                key == LogicalKeyboardKey.arrowLeft ||
+                key == LogicalKeyboardKey.arrowRight) {
+              return KeyEventResult.handled;
+            }
+          }
+        } else if (shellTvIsNavigationKey(event)) {
           final key = event.logicalKey;
-          if (key == LogicalKeyboardKey.arrowUp ||
-              key == LogicalKeyboardKey.arrowDown ||
-              key == LogicalKeyboardKey.arrowLeft ||
-              key == LogicalKeyboardKey.arrowRight) {
+          TraversalDirection? direction;
+          if (key == LogicalKeyboardKey.arrowLeft) {
+            direction = TraversalDirection.left;
+          } else if (key == LogicalKeyboardKey.arrowRight) {
+            direction = TraversalDirection.right;
+          } else if (key == LogicalKeyboardKey.arrowUp) {
+            direction = TraversalDirection.up;
+          } else if (key == LogicalKeyboardKey.arrowDown) {
+            direction = TraversalDirection.down;
+          }
+          final focusNode = widget.focusNode ?? node;
+          if (direction != null && focusNode.focusInDirection(direction)) {
             return KeyEventResult.handled;
           }
         }

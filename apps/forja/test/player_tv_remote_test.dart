@@ -200,7 +200,7 @@ void main() {
       expect(volumeDown, 0);
     });
 
-    test('arrow up/down focus back/play even when chrome is visible', () {
+    test('arrow up/down do not reclaim chrome when controls visible', () {
       var focusBack = 0;
       var focusPlay = 0;
       final handler = _handler(
@@ -210,14 +210,14 @@ void main() {
 
       expect(
         handler.handle(_key(LogicalKeyboardKey.arrowUp), showControls: true),
-        isTrue,
+        isFalse,
       );
       expect(
         handler.handle(_key(LogicalKeyboardKey.arrowDown), showControls: true),
-        isTrue,
+        isFalse,
       );
-      expect(focusBack, 1);
-      expect(focusPlay, 1);
+      expect(focusBack, 0);
+      expect(focusPlay, 0);
     });
   });
 

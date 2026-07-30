@@ -30,4 +30,40 @@ void main() {
     // On device Android the getter returns [exoPlayer, mediaKit].
     expect(ui.toSet(), builtInPlayerEngineOptions.toSet());
   });
+
+  test('defaultForContext: live is MediaKit; vod/iptv follow platform', () {
+    expect(
+      BuiltInPlayerEngine.defaultForContext(BuiltInPlayerContext.live),
+      BuiltInPlayerEngine.mediaKit,
+    );
+    expect(
+      BuiltInPlayerEngine.defaultForContext(BuiltInPlayerContext.vod),
+      BuiltInPlayerEngine.platformDefault(),
+    );
+    expect(
+      BuiltInPlayerEngine.defaultForContext(BuiltInPlayerContext.iptv),
+      BuiltInPlayerEngine.platformDefault(),
+    );
+  });
+
+  test('player contexts use distinct storage keys', () {
+    expect(
+      BuiltInPlayerContext.vod.storageKey,
+      'built_in_player_engine',
+    );
+    expect(
+      BuiltInPlayerContext.iptv.storageKey,
+      'built_in_player_engine_iptv',
+    );
+    expect(
+      BuiltInPlayerContext.live.storageKey,
+      'built_in_player_engine_live',
+    );
+    expect(
+      {
+        for (final c in BuiltInPlayerContext.values) c.storageKey,
+      }.length,
+      BuiltInPlayerContext.values.length,
+    );
+  });
 }

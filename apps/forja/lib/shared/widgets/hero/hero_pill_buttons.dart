@@ -448,7 +448,7 @@ class HeroPillIconSlot {
   String get resolvedLabel => label ?? tooltip ?? '';
 }
 
-/// Horizontal hero CTA cluster - ordered left→right on TV, no escape to catalog.
+/// Horizontal hero CTA cluster - spatial ←/→ on TV, no escape to catalog.
 class HeroPillActionRow extends StatelessWidget {
   const HeroPillActionRow({super.key, required this.children});
 
@@ -464,7 +464,7 @@ class HeroPillActionRow extends StatelessWidget {
       return row;
     }
     return FocusTraversalGroup(
-      policy: OrderedTraversalPolicy(),
+      policy: ReadingOrderTraversalPolicy(),
       child: row,
     );
   }

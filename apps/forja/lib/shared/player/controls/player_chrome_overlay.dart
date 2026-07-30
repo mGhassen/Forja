@@ -95,6 +95,8 @@ class PlayerFlatIconButton extends StatefulWidget {
     this.focusNode,
     this.onLeftEdge,
     this.onRightEdge,
+    this.onUpEdge,
+    this.onDownEdge,
   }) : assert(onPressed != null || onPressedWithContext != null);
 
   final IconData icon;
@@ -109,6 +111,8 @@ class PlayerFlatIconButton extends StatefulWidget {
   final FocusNode? focusNode;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   State<PlayerFlatIconButton> createState() => _PlayerFlatIconButtonState();
@@ -197,6 +201,8 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
             scaleOnFocus: 1.0,
             onLeftEdge: widget.onLeftEdge,
             onRightEdge: widget.onRightEdge,
+            onUpEdge: widget.onUpEdge,
+            onDownEdge: widget.onDownEdge,
             onFocusChange: (focused) => setState(() => _focused = focused),
             onHoverChange: (hovered) {
               if (hovered) playerChromeCancelSeekScrubs();
@@ -233,6 +239,7 @@ class PlayerStreamPickerButton extends StatefulWidget {
     this.iconSize = 20,
     this.tvFocusable = false,
     this.focusNode,
+    this.onLeftEdge,
   });
 
   final String label;
@@ -242,6 +249,7 @@ class PlayerStreamPickerButton extends StatefulWidget {
   final double iconSize;
   final bool tvFocusable;
   final FocusNode? focusNode;
+  final VoidCallback? onLeftEdge;
 
   @override
   State<PlayerStreamPickerButton> createState() =>
@@ -345,6 +353,7 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
             onTap: onTap,
             borderRadius: 8,
             scaleOnFocus: 1.0,
+            onLeftEdge: widget.onLeftEdge,
             onFocusChange: (focused) => setState(() => _focused = focused),
             onHoverChange: (hovered) {
               if (hovered) playerChromeCancelSeekScrubs();

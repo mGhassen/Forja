@@ -364,7 +364,7 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
       height: layout.rowHeight,
       width: double.infinity,
       child: FocusTraversalGroup(
-        policy: OrderedTraversalPolicy(),
+        policy: ReadingOrderTraversalPolicy(),
         child: scaleToFit
             ? FittedBox(
                 fit: BoxFit.scaleDown,
@@ -445,7 +445,7 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
                 }
 
                 return FocusTraversalGroup(
-                  policy: OrderedTraversalPolicy(),
+                  policy: ReadingOrderTraversalPolicy(),
                   child: HorizontalScroller(
                     height: layout.rowHeight,
                     padding: EdgeInsets.symmetric(

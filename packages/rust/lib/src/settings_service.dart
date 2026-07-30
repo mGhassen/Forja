@@ -713,16 +713,30 @@ class SettingsService {
   Future<void> setExternalPlayer(String player) async =>
       kvSetString(_externalPlayerKey, player);
 
-  Future<BuiltInPlayerEngine> getBuiltInPlayerEngine() async {
-    final raw = await kvGetString(_builtInPlayerEngineKey);
-    if (raw == null || raw.isEmpty) {
-      return BuiltInPlayerEngine.platformDefault();
+  /// Built-in engine for [context]. Unset IPTV falls back to the VOD key (legacy
+  /// single-key installs), then [BuiltInPlayerEngine.defaultForContext]. Live
+  /// Matches defaults to MediaKit and does not inherit VOD/IPTV.
+  Future<BuiltInPlayerEngine> getBuiltInPlayerEngine({
+    BuiltInPlayerContext context = BuiltInPlayerContext.vod,
+  }) async {
+    final raw = await kvGetString(context.storageKey);
+    if (raw != null && raw.isNotEmpty) {
+      return BuiltInPlayerEngine.fromStorage(raw);
     }
-    return BuiltInPlayerEngine.fromStorage(raw);
+    if (context == BuiltInPlayerContext.iptv) {
+      final vodRaw = await kvGetString(BuiltInPlayerContext.vod.storageKey);
+      if (vodRaw != null && vodRaw.isNotEmpty) {
+        return BuiltInPlayerEngine.fromStorage(vodRaw);
+      }
+    }
+    return BuiltInPlayerEngine.defaultForContext(context);
   }
 
-  Future<void> setBuiltInPlayerEngine(BuiltInPlayerEngine engine) async =>
-      kvSetString(_builtInPlayerEngineKey, engine.storageKey);
+  Future<void> setBuiltInPlayerEngine(
+    BuiltInPlayerEngine engine, {
+    BuiltInPlayerContext context = BuiltInPlayerContext.vod,
+  }) async =>
+      kvSetString(context.storageKey, engine.storageKey);
 
   Future<String?> getJackettBaseUrl() async => kvGetString(_jackettBaseUrlKey);
 

@@ -136,6 +136,25 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     }
   }
 
+  void _focusDownFromSeekbar() {
+    if (_s._playFocus.canRequestFocus) {
+      _s._playFocus.requestFocus();
+    }
+  }
+
+  void _focusFirstRightTransport() {
+    final nodes = <FocusNode>[
+      if (_s._usesCatalogSourcesPanel) _s._transportSourcesFocus,
+      if (_s._hasStreamPicker) _s._transportStreamFocus,
+    ];
+    for (final node in nodes) {
+      if (node.canRequestFocus) {
+        node.requestFocus();
+        return;
+      }
+    }
+  }
+
   void _beginEpisodeLoading({
     required String label,
     String status = 'Loading episode info…',
@@ -267,12 +286,18 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     bool tvFocusable = false,
     FocusNode? focusNode,
     int? tvFocusOrder,
+    VoidCallback? onLeftEdge,
+    VoidCallback? onRightEdge,
+    VoidCallback? onUpEdge,
   }) {
     return _wrapTvFocusOrder(
       tvFocusOrder,
       PlayerFlatIconButton(
         tvFocusable: tvFocusable,
         focusNode: focusNode,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        onUpEdge: onUpEdge,
         icon: Icons.replay_10_rounded,
         tooltip: 'Back 10s',
         size: btnSize,
@@ -286,12 +311,20 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     required double btnSize,
     required double iconSz,
     bool tvFocusable = false,
+    FocusNode? focusNode,
     int? tvFocusOrder,
+    VoidCallback? onLeftEdge,
+    VoidCallback? onRightEdge,
+    VoidCallback? onUpEdge,
   }) {
     return _wrapTvFocusOrder(
       tvFocusOrder,
       PlayerFlatIconButton(
         tvFocusable: tvFocusable,
+        focusNode: focusNode,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        onUpEdge: onUpEdge,
         icon: Icons.forward_10_rounded,
         tooltip: 'Forward 10s',
         size: btnSize,

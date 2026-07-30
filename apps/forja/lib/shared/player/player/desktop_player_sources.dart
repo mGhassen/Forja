@@ -643,6 +643,10 @@ mixin _DesktopPlayerSources on ConsumerState<DesktopPlayerScreen>, WidgetsBindin
     _s._sourcePinned = true;
     unawaited(SettingsService().setPlayerAutoSource(false));
     final switchGen = ++_s._fallbackGen;
+    setState(() {
+      _s._hasError = false;
+      _s._errorMessage = '';
+    });
     _markSourceChecking(index);
 
     final currentPos = _s._positionNotifier.value;

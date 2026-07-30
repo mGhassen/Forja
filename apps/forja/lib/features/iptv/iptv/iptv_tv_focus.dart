@@ -145,6 +145,28 @@ bool iptvFocusRowItem(String rowId, [int? index]) {
   return ShellTvFocusCoordinator.focusRowItem('iptv', rowId, idx);
 }
 
+/// List index of the active (playing) portal, or `0` when none is selected.
+int iptvActivePortalFocusIndex(
+  IptvController ctrl, {
+  List<VerifiedPortal>? portals,
+}) {
+  final key = ctrl.activePortal?.key;
+  if (key == null) return 0;
+  final list = portals ?? ctrl.verified;
+  final i = list.indexWhere((v) => v.key == key);
+  return i >= 0 ? i : 0;
+}
+
+/// Focus the active portal row in the Portals panel, or the first when none.
+/// Returns false when the target row is not mounted (caller should scroll / retry).
+bool iptvFocusPortalList(
+  IptvController ctrl, {
+  List<VerifiedPortal>? portals,
+}) {
+  final index = iptvActivePortalFocusIndex(ctrl, portals: portals);
+  return ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', index);
+}
+
 /// Channel focus memory is per selected category — reset when the group changes.
 void iptvResetBrowserStreamsFocusMemory() {
   ShellTvFocusCoordinator.setRowLastFocusedIndex('iptv', 'browser-streams', 0);
@@ -318,6 +340,7 @@ Widget iptvTap({
   ValueChanged<bool>? onHoverChange,
   bool showFocusBorder = false,
   bool suppressInkHover = false,
+  bool allowNestedFocus = false,
 }) {
   if (onTap == null) return child;
   final resolvedScale = scaleOnFocus ??
@@ -344,6 +367,7 @@ Widget iptvTap({
     onHoverChange: onHoverChange,
     showFocusBorder: showFocusBorder,
     suppressInkHover: suppressInkHover,
+    allowNestedFocus: allowNestedFocus,
     child: child,
   );
 }

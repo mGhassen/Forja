@@ -725,7 +725,7 @@ class _BrowserViewState extends State<_BrowserView> {
                 controller: _categoryScroll,
                 slivers: [
                   SliverPadding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     sliver: SliverMainAxisGroup(
                       slivers: [
                         if (fixed.isNotEmpty)
@@ -771,7 +771,8 @@ class _BrowserViewState extends State<_BrowserView> {
         // (MaxCrossAxisExtent can disagree with our focus math and wrap).
         final grid = GridView.builder(
           controller: _streamScroll,
-          padding: EdgeInsets.fromLTRB(tv ? 4 : 8, 4, 12, 12),
+          padding: EdgeInsets.fromLTRB(8, 8, 12, 12),
+          addAutomaticKeepAlives: false,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: cross,
             crossAxisSpacing: gap,
@@ -792,7 +793,7 @@ class _BrowserViewState extends State<_BrowserView> {
                   : null,
               onRightEdge: atRightEdge
                   ? (widget.ctrl.portalPanelOpen
-                      ? () => iptvFocusRowItem('portals', 0)
+                      ? () => iptvFocusPortalList(widget.ctrl)
                       : () {})
                   : null,
               onLeftEdge: i % cross == 0
@@ -829,15 +830,17 @@ class _BrowserViewState extends State<_BrowserView> {
 
     final categoryNames = {for (final c in ctrl.categories) c.id: c.name};
 
-    // Compact list tiles are ~58px thumb + padding + 8 bottom gap.
+    // Compact list: 44px thumb + vertical pad (no bottom gap — denser TV lists).
     _streamCrossAxisCount = 1;
-    _streamTileExtent = 74;
+    _streamTileExtent = 56;
     _streamMainGap = 0;
 
     final rows = ListView.builder(
       controller: _streamScroll,
-      padding: const EdgeInsets.fromLTRB(8, 6, 10, 12),
+      padding: const EdgeInsets.fromLTRB(8, 8, 10, 12),
       itemCount: list.length,
+      itemExtent: _streamTileExtent,
+      addAutomaticKeepAlives: false,
       itemBuilder: (_, i) {
         final stream = list[i];
         return _StreamRowTile(
@@ -847,7 +850,7 @@ class _BrowserViewState extends State<_BrowserView> {
           listIndex: i,
           onLeftEdge: iptvStreamLeftEdge(ctrl, stream),
           onRightEdge: ctrl.portalPanelOpen
-              ? () => iptvFocusRowItem('portals', 0)
+              ? () => iptvFocusPortalList(ctrl)
               : null,
           onUpEdge: i == 0
               ? iptvStreamUpEdge(ctrl, index: 0, columns: 1)
