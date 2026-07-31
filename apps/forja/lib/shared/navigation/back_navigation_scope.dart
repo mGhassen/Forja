@@ -4,6 +4,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shared/navigation/desktop_swipe_back_indicator.dart';
+import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/navigation/navigation_back_handler.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
@@ -19,6 +21,10 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 /// details/player are open - that used to quit to the leanback launcher.
 /// This scope always consumes Android pop-route and keeps
 /// [SystemNavigator.setFrameworkHandlesBack] true so Back never exits.
+///
+/// Desktop trackpad: progressive left-edge arrow (browser-style). Horizontal
+/// strips (catalog rows, addons, filters) suppress the gesture so scrolling
+/// wins. Back commits only when the indicator is fully filled.
 class BackNavigationScope extends StatefulWidget {
   const BackNavigationScope({super.key, required this.child});
 
@@ -32,11 +38,11 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
     with WidgetsBindingObserver {
   late final VoidCallback _boundBack = _onBack;
 
-  /// Global route - scrollables would otherwise eat [PointerPanZoom] before an
-  /// ancestor [Listener] can treat a strong horizontal swipe as Back.
   double _panDx = 0;
   double _panDy = 0;
   bool _panning = false;
+  bool _navSuppressed = false;
+  double _navProgress = 0;
 
   @override
   void initState() {
@@ -86,40 +92,84 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
     }
   }
 
+  void _setNavProgress(double value) {
+    final next = value.clamp(0.0, 1.0);
+    // Skip tiny mid-gesture noise; always apply clear / show transitions.
+    if ((next - _navProgress).abs() < 0.008 &&
+        next > 0 &&
+        _navProgress > 0) {
+      return;
+    }
+    if (!mounted) {
+      _navProgress = next;
+      return;
+    }
+    setState(() => _navProgress = next);
+  }
+
+  void _resetPan({bool commit = false}) {
+    final progress = _navProgress;
+    _panning = false;
+    _navSuppressed = false;
+    _panDx = 0;
+    _panDy = 0;
+    if (commit && progress >= 1.0 - 1e-6 && _canNavigateBack) {
+      _setNavProgress(0);
+      debugPrint('[NavBack] trackpad swipe-back committed');
+      _onBack();
+      return;
+    }
+    _setNavProgress(0);
+  }
+
   void _onGlobalPointer(PointerEvent event) {
     if (event is PointerPanZoomStartEvent) {
       if (!_canNavigateBack) {
         _panning = false;
+        _navSuppressed = true;
         return;
       }
       _panning = true;
       _panDx = 0;
       _panDy = 0;
+      _navSuppressed = desktopHorizontalScrollableUnder(
+        event.position,
+        viewId: event.viewId,
+      );
+      if (_navSuppressed) {
+        _setNavProgress(0);
+      }
       return;
     }
     if (event is PointerPanZoomUpdateEvent) {
-      if (!_panning) return;
+      if (!_panning || _navSuppressed) return;
       _panDx += event.panDelta.dx;
       _panDy += event.panDelta.dy;
+
+      final dx = _panDx;
+      final dy = _panDy;
+      final moved = dx.abs() + dy.abs();
+      if (moved < 12) return;
+
+      // Vertical-dominant pan → cancel back gesture.
+      if (dy.abs() > dx.abs() * 1.35) {
+        _setNavProgress(0);
+        return;
+      }
+
+      // Back only: finger moves right (positive dx).
+      if (dx <= 0) {
+        _setNavProgress(0);
+        return;
+      }
+
+      _setNavProgress(dx / kDesktopSwipeBackCommitPx);
       return;
     }
     if (event is PointerPanZoomEndEvent) {
       if (!_panning) return;
-      final dx = _panDx;
-      final dy = _panDy;
-      _panning = false;
-      _panDx = 0;
-      _panDy = 0;
-
-      final horizontal = dx.abs() > dy.abs() * 1.35;
-      final strong = dx.abs() >= 90;
-      if (horizontal && strong && _canNavigateBack) {
-        debugPrint(
-          '[NavBack] trackpad pan dx=${dx.toStringAsFixed(0)} '
-          'dy=${dy.toStringAsFixed(0)} → back',
-        );
-        _onBack();
-      }
+      final commit = !_navSuppressed && _navProgress >= 1.0 - 1e-6;
+      _resetPan(commit: commit);
     }
   }
 
@@ -230,6 +280,17 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
           },
           child: scope,
         ),
+      );
+    }
+
+    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+      scope = Stack(
+        fit: StackFit.expand,
+        children: [
+          scope,
+          if (_navProgress > 0)
+            DesktopSwipeBackIndicator(progress: _navProgress),
+        ],
       );
     }
 

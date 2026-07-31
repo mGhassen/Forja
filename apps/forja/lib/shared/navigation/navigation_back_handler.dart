@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// macOS trackpad swipe-back → Dart.
+/// Optional `forja/navigation` channel for native → Dart Back.
 ///
-/// Native embedder may call [MethodChannel] `forja/navigation` / `trackpadBack`.
-/// Bound from the app-wide [BackNavigationScope].
+/// Desktop trackpad Back is progressive [PointerPanZoom] in
+/// [BackNavigationScope] — macOS no longer invokes `trackpadBack` on AppKit
+/// swipe (that path stole horizontal scroll). Channel kept for future use.
 class NavigationBackHandler {
   NavigationBackHandler._();
 

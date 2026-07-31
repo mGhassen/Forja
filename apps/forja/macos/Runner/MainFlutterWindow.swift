@@ -44,41 +44,17 @@ class MainFlutterWindow: NSWindow {
   }
 }
 
-/// Optional native backup for system swipe gestures.
-///
-/// Primary path is Dart [PointerPanZoom] in BackNavigationScope - Flutter
-/// already converts two-finger trackpad pans. This catches AppKit
-/// `swipe(with:)` when System Settings uses swipe-with-fingers (not scroll).
+/// Navigation method channel (kept for Dart). Trackpad Back is progressive
+/// PointerPanZoom in BackNavigationScope — AppKit swipe must not instant-pop
+/// (it stole horizontal scroll on catalog/addon strips).
 final class ForjaFlutterViewController: FlutterViewController {
   private var navigationChannel: FlutterMethodChannel?
-  private var swipeMonitor: Any?
-
-  deinit {
-    if let swipeMonitor {
-      NSEvent.removeMonitor(swipeMonitor)
-    }
-  }
 
   func configureNavigationChannel() {
     navigationChannel = FlutterMethodChannel(
       name: "forja/navigation",
       binaryMessenger: engine.binaryMessenger
     )
-    swipeMonitor = NSEvent.addLocalMonitorForEvents(matching: .swipe) {
-      [weak self] event in
-      // Apple: deltaX -1 = swipe-right (back), +1 = swipe-left (forward).
-      if event.deltaX != 0 {
-        self?.navigationChannel?.invokeMethod("trackpadBack", arguments: nil)
-      }
-      return event
-    }
-  }
-
-  override func swipe(with event: NSEvent) {
-    if event.deltaX != 0 {
-      navigationChannel?.invokeMethod("trackpadBack", arguments: nil)
-      return
-    }
   }
 }
 
