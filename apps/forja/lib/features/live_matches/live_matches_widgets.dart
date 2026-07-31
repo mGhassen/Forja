@@ -2379,10 +2379,11 @@ class _LiveMatchesEmbedPlayerScreenState
                             await ctrl.evaluateJavascript(
                               source: _dblclickFullscreenJs,
                             );
-                            // Desktop / phone: opening the match is a user gesture —
-                            // force unmute after autoplay's muted fallback so Windows
-                            // / macOS are not stuck silent (TV has Mute chrome).
-                            if (!_tvFocus() && !_androidNativeHandoff) {
+                            // Opening the match is a user gesture — force unmute after
+                            // autoplay's muted fallback so MutStreams / JW are not stuck
+                            // on "CLICK UNMUTE STREAM". Android sniff stays muted under
+                            // the handoff cover. TV Mute chrome can still remute.
+                            if (!_androidNativeHandoff) {
                               await ctrl.evaluateJavascript(
                                 source: _embedMediaCommandJs('unmute'),
                               );

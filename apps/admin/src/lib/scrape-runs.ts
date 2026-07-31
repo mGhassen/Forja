@@ -122,16 +122,32 @@ export function markRunsStoppedInCache(
 }
 
 /** Live updates while a scrape is running (realtime + fast poll). */
+const scrapeRunListeners = new Set<() => void>()
+let scrapeRunsChannel: ReturnType<typeof supabase.channel> | null = null
+
 export function subscribeScrapeRuns(onChange: () => void): () => void {
-  const channel = supabase
-    .channel(`iptv_scrape_runs_${Date.now()}`)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'iptv_scrape_runs' },
-      () => onChange(),
-    )
-    .subscribe()
+  scrapeRunListeners.add(onChange)
+
+  if (!scrapeRunsChannel) {
+    // Fixed topic — never Date.now(): strip + scrape page mount same tick and
+    // would collide (second .on() after first subscribe → realtime throw).
+    scrapeRunsChannel = supabase
+      .channel('iptv_scrape_runs')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'iptv_scrape_runs' },
+        () => {
+          for (const fn of scrapeRunListeners) fn()
+        },
+      )
+      .subscribe()
+  }
+
   return () => {
-    void supabase.removeChannel(channel)
+    scrapeRunListeners.delete(onChange)
+    if (scrapeRunListeners.size === 0 && scrapeRunsChannel) {
+      void supabase.removeChannel(scrapeRunsChannel)
+      scrapeRunsChannel = null
+    }
   }
 }
