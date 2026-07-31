@@ -7,8 +7,10 @@ import {
   getLastScheduledScrapeStartedAt,
   getScrapeCronSettings,
   insertScrapeRun,
+  loadKnownScrapePostIds,
   patchScrapeRun,
   upsertCatalogCandidate,
+  upsertScrapeDeepRef,
   upsertScrapePostId,
 } from '@/server/iptv-catalog/supabase-admin'
 import type { CatalogPortal, PortalStatus } from '@/server/iptv-catalog/types'
@@ -18,9 +20,12 @@ import { verifyPortalStatus } from '@/server/iptv-catalog/verify'
 /**
  * player_api probes are slow (N Inngest steps). Off for now — still upserts
  * candidates with alive=null. Flip to true to restore verify-portal-status-*.
- * Code path kept intentionally.
+ * Verify is separate from scrape upsert volume (no upsert cap).
  */
 const VERIFY_PORTAL_STATUS = false
+
+/** Chunk size for Inngest upsert steps (timeout safety only — not a product cap). */
+const UPSERT_CHUNK = 50
 
 const UNVERIFIED_STATUS: PortalStatus = {
   alive: null,
@@ -37,12 +42,14 @@ type ScrapeData = {
   runId?: string
   maxPages?: number
   maxResultsPerPage?: number
+  /** Only when VERIFY_PORTAL_STATUS — how many to probe, not upsert limit. */
   maxVerify?: number
+  /** Ignore known post_ids (one-time deep_refs backfill). Default false. */
+  forceFull?: boolean
 }
 
 async function markRun(runId: string, error?: string) {
   const sb = createCatalogAdminClient()
-  // DB check: status in (running, ok, error) — no cancelled
   await patchScrapeRun(sb, runId, {
     status: 'error',
     finished_at: new Date().toISOString(),
@@ -52,11 +59,8 @@ async function markRun(runId: string, error?: string) {
 
 /**
  * Scheduled + on-demand catalog scrape.
- * Inngest: daily 06:00 UTC kick + every-minute tick. Real schedule is
- * iptv_ops_settings.scrape_cron (UTC) with due/catch-up (not exact-minute only).
- * Cancel with event `iptv/catalog.scrape.cancel` (same jobId).
- * When VERIFY_PORTAL_STATUS: each portal step verify-portal-status-* → player_api.
- * Otherwise: bulk upsert unverified (no portal HTTP).
+ * Walks /new newest-first until known post_id watermark (or maxPages).
+ * Persists deep refs (incl. unparsed payload for recheck). Upserts all portals.
  */
 export const iptvCatalogScrape = inngest.createFunction(
   {
@@ -64,13 +68,10 @@ export const iptvCatalogScrape = inngest.createFunction(
     concurrency: { limit: 1 },
     retries: 1,
     triggers: [
-      // Reliable default path (exact-minute every-minute ticks are easy to miss).
       { cron: '0 6 * * *' },
-      // Custom scrape_cron (hourly / every 6h / …) + catch-up after a late tick.
       { cron: '* * * * *' },
       { event: 'iptv/catalog.scrape' },
     ],
-    // concurrency 1 → any cancel event stops the active scrape
     cancelOn: [{ event: 'iptv/catalog.scrape.cancel' }],
     onFailure: async ({ error }) => {
       try {
@@ -109,7 +110,6 @@ export const iptvCatalogScrape = inngest.createFunction(
             reason: `invalid scrape_cron=${settings.cron}`,
           }
         }
-        // Prefer Inngest's scheduled time; fall back to wall clock.
         const ts = typeof event?.ts === 'number' ? event.ts : Date.now()
         const now = new Date(ts)
         const last = await getLastScheduledScrapeStartedAt(sb)
@@ -126,12 +126,13 @@ export const iptvCatalogScrape = inngest.createFunction(
       }
     }
 
-    const maxPages = Math.min(Math.max(data.maxPages ?? 5, 1), 20)
+    // Safety for cold DB only — watermark usually stops much earlier.
+    const maxPages = Math.min(Math.max(data.maxPages ?? 10, 1), 50)
     const maxResultsPerPage = Math.min(
-      Math.max(data.maxResultsPerPage ?? 50, 1),
-      100,
+      Math.max(data.maxResultsPerPage ?? 500, 1),
+      2000,
     )
-    const maxVerify = Math.min(Math.max(data.maxVerify ?? 40, 1), 200)
+    const maxVerify = Math.min(Math.max(data.maxVerify ?? 200, 1), 500)
 
     const runId = await step.run('create-scrape-run', async () => {
       const sb = createCatalogAdminClient()
@@ -147,38 +148,91 @@ export const iptvCatalogScrape = inngest.createFunction(
       return insertScrapeRun(sb, isCron ? 'inngest-cron' : 'inngest-admin')
     })
 
+    const knownIds = await step.run('load-known-post-ids', async () => {
+      if (data.forceFull) return [] as string[]
+      const sb = createCatalogAdminClient()
+      const set = await loadKnownScrapePostIds(sb)
+      return [...set]
+    })
+    const knownPostIds = new Set(knownIds)
+
     const portals = new Map<string, CatalogPortal>()
-    const seenPostIds = new Set<string>()
     let after: string | null = null
     let postsSeen = 0
     let deepRefCount = 0
     let l2FetchOk = 0
     let l2FetchFail = 0
     let l2ExtractCount = 0
+    let unparsedCount = 0
+    let l1OnlyCount = 0
+    let hitWatermark = false
 
     for (let page = 0; page < maxPages; page++) {
-      const result = await step.run(`scrape-reddit-page-${page}`, async () =>
-        scrapeCatalogPage(after, maxResultsPerPage),
-      )
+      const pageAfter = after
+      const knownSnapshot = [...knownPostIds]
+      // Persist posts + deep refs inside the step (payloads too big for step output).
+      const result = await step.run(`scrape-reddit-page-${page}`, async () => {
+        const known = new Set(knownSnapshot)
+        const pageResult = await scrapeCatalogPage(
+          pageAfter,
+          maxResultsPerPage,
+          known,
+        )
+        const sb = createCatalogAdminClient()
+        for (const postId of pageResult.postIds) {
+          await upsertScrapePostId(
+            sb,
+            postId,
+            runId,
+            pageResult.subreddit || 'IPTV_ZONENEW',
+          )
+        }
+        for (const ref of pageResult.deepRefs) {
+          await upsertScrapeDeepRef(sb, ref, runId)
+        }
+        return {
+          portals: pageResult.portals,
+          postIds: pageResult.postIds,
+          nextAfter: pageResult.nextAfter,
+          postsSeen: pageResult.postsSeen,
+          hitWatermark: pageResult.hitWatermark,
+          funnel: pageResult.funnel,
+        }
+      })
       postsSeen += result.postsSeen
       deepRefCount += result.funnel?.deepRefCount ?? 0
       l2FetchOk += result.funnel?.l2FetchOk ?? 0
       l2FetchFail += result.funnel?.l2FetchFail ?? 0
       l2ExtractCount += result.funnel?.l2ExtractCount ?? 0
-      for (const id of result.postIds) seenPostIds.add(id)
+      unparsedCount += result.funnel?.unparsedCount ?? 0
+      l1OnlyCount += result.funnel?.l1OnlyCount ?? 0
+      for (const id of result.postIds) knownPostIds.add(id)
       for (const p of result.portals) {
         portals.set(portalKey(p), p)
       }
       after = result.nextAfter
+      if (result.hitWatermark) {
+        hitWatermark = true
+        break
+      }
       if (!after) break
+
+      await step.run(`checkpoint-metrics-${page}`, async () => {
+        const sb = createCatalogAdminClient()
+        await patchScrapeRun(sb, runId, {
+          posts_seen: postsSeen,
+          l1_extract_count: portals.size,
+          deep_ref_count: deepRefCount,
+          l2_fetch_ok: l2FetchOk,
+          l2_fetch_fail: l2FetchFail,
+          l2_extract_count: l2ExtractCount,
+          unparsed_count: unparsedCount,
+        })
+      })
     }
 
     await step.run('checkpoint-after-reddit', async () => {
       const sb = createCatalogAdminClient()
-      // Id-only post rows (no title/body) + run counters.
-      for (const postId of seenPostIds) {
-        await upsertScrapePostId(sb, postId, runId)
-      }
       await patchScrapeRun(sb, runId, {
         posts_seen: postsSeen,
         l1_extract_count: portals.size,
@@ -186,18 +240,20 @@ export const iptvCatalogScrape = inngest.createFunction(
         l2_fetch_ok: l2FetchOk,
         l2_fetch_fail: l2FetchFail,
         l2_extract_count: l2ExtractCount,
+        unparsed_count: unparsedCount,
       })
     })
 
-    const list = [...portals.values()].slice(0, maxVerify)
+    const list = [...portals.values()]
     let aliveCount = 0
     let upserted = 0
     let deadCount = 0
     let verified = 0
 
     if (VERIFY_PORTAL_STATUS) {
-      for (let i = 0; i < list.length; i++) {
-        const portal = list[i]!
+      const toVerify = list.slice(0, maxVerify)
+      for (let i = 0; i < toVerify.length; i++) {
+        const portal = toVerify[i]!
         const outcome = await step.run(
           `verify-portal-status-${i}`,
           async () => {
@@ -218,7 +274,7 @@ export const iptvCatalogScrape = inngest.createFunction(
         if (outcome.alive) aliveCount++
         else deadCount++
 
-        if (i % 5 === 0 || i === list.length - 1) {
+        if (i % 5 === 0 || i === toVerify.length - 1) {
           await step.run(`progress-${i}`, async () => {
             const sb = createCatalogAdminClient()
             await patchScrapeRun(sb, runId, {
@@ -230,22 +286,39 @@ export const iptvCatalogScrape = inngest.createFunction(
               l2_fetch_ok: l2FetchOk,
               l2_fetch_fail: l2FetchFail,
               l2_extract_count: l2ExtractCount,
+              unparsed_count: unparsedCount,
             })
           })
         }
       }
     } else if (list.length > 0) {
-      // No player_api — one bulk step (verifyPortalStatus kept above for re-enable).
-      upserted = await step.run('upsert-candidates-unverified', async () => {
-        const sb = createCatalogAdminClient()
-        const region = classifyRegion(null, [])
-        let n = 0
-        for (const portal of list) {
-          await upsertCatalogCandidate(sb, portal, UNVERIFIED_STATUS, region)
-          n++
-        }
-        return n
-      })
+      for (let i = 0; i < list.length; i += UPSERT_CHUNK) {
+        const chunk = list.slice(i, i + UPSERT_CHUNK)
+        const n = await step.run(`upsert-candidates-${i}`, async () => {
+          const sb = createCatalogAdminClient()
+          const region = classifyRegion(null, [])
+          let count = 0
+          for (const portal of chunk) {
+            await upsertCatalogCandidate(sb, portal, UNVERIFIED_STATUS, region)
+            count++
+          }
+          return count
+        })
+        upserted += n
+        await step.run(`progress-upsert-${i}`, async () => {
+          const sb = createCatalogAdminClient()
+          await patchScrapeRun(sb, runId, {
+            candidates_upserted: upserted,
+            posts_seen: postsSeen,
+            l1_extract_count: portals.size,
+            deep_ref_count: deepRefCount,
+            l2_fetch_ok: l2FetchOk,
+            l2_fetch_fail: l2FetchFail,
+            l2_extract_count: l2ExtractCount,
+            unparsed_count: unparsedCount,
+          })
+        })
+      }
     }
 
     await step.run('finalize-scrape-run', async () => {
@@ -259,6 +332,7 @@ export const iptvCatalogScrape = inngest.createFunction(
         l2_fetch_ok: l2FetchOk,
         l2_fetch_fail: l2FetchFail,
         l2_extract_count: l2ExtractCount,
+        unparsed_count: unparsedCount,
         candidates_upserted: upserted,
         alive_count: aliveCount,
         error: null,
@@ -269,6 +343,7 @@ export const iptvCatalogScrape = inngest.createFunction(
       jobId,
       runId,
       scrapedUnique: portals.size,
+      l1OnlyCount,
       verified,
       verifyEnabled: VERIFY_PORTAL_STATUS,
       upserted,
@@ -278,7 +353,9 @@ export const iptvCatalogScrape = inngest.createFunction(
       l2FetchOk,
       l2FetchFail,
       l2ExtractCount,
+      unparsedCount,
       postsSeen,
+      hitWatermark,
     }
   },
 )
@@ -303,10 +380,15 @@ export const iptvCatalogScrapeCancelled = inngest.createFunction(
         .select('id')
         .eq('status', 'running')
         .order('started_at', { ascending: false })
-        .limit(3)
+        .limit(5)
       for (const row of rows ?? []) {
-        await markRun(row.id as string, 'Stopped / cancelled')
+        await patchScrapeRun(sb, row.id as string, {
+          status: 'error',
+          finished_at: new Date().toISOString(),
+          error: 'Cancelled (Inngest)',
+        })
       }
     })
+    return { ok: true }
   },
 )

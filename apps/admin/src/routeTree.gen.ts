@@ -14,6 +14,7 @@ import { Route as OpsRouteImport } from './routes/_ops'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as OpsIndexRouteImport } from './routes/_ops/index'
 import { Route as OpsAccountsRouteImport } from './routes/_ops/accounts'
+import { Route as OpsDeepRefsRouteImport } from './routes/_ops/deep-refs'
 import { Route as OpsPoolRouteImport } from './routes/_ops/pool'
 import { Route as OpsProvidersRouteImport } from './routes/_ops/providers'
 import { Route as OpsScrapeRouteImport } from './routes/_ops/scrape'
@@ -45,6 +46,11 @@ const OpsIndexRoute = OpsIndexRouteImport.update({
 const OpsAccountsRoute = OpsAccountsRouteImport.update({
   id: '/accounts',
   path: '/accounts',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsDeepRefsRoute = OpsDeepRefsRouteImport.update({
+  id: '/deep-refs',
+  path: '/deep-refs',
   getParentRoute: () => OpsRoute,
 } as any)
 const OpsPoolRoute = OpsPoolRouteImport.update({
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/': typeof OpsIndexRoute
   '/login': typeof AuthLoginRouteWithChildren
   '/accounts': typeof OpsAccountsRoute
+  '/deep-refs': typeof OpsDeepRefsRoute
   '/pool': typeof OpsPoolRoute
   '/providers': typeof OpsProvidersRoute
   '/scrape': typeof OpsScrapeRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/': typeof OpsIndexRoute
   '/login': typeof AuthLoginRouteWithChildren
   '/accounts': typeof OpsAccountsRoute
+  '/deep-refs': typeof OpsDeepRefsRoute
   '/pool': typeof OpsPoolRoute
   '/providers': typeof OpsProvidersRoute
   '/scrape': typeof OpsScrapeRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/_ops': typeof OpsRouteWithChildren
   '/_auth/login': typeof AuthLoginRouteWithChildren
   '/_ops/accounts': typeof OpsAccountsRoute
+  '/_ops/deep-refs': typeof OpsDeepRefsRoute
   '/_ops/pool': typeof OpsPoolRoute
   '/_ops/providers': typeof OpsProvidersRoute
   '/_ops/scrape': typeof OpsScrapeRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/accounts'
+    | '/deep-refs'
     | '/pool'
     | '/providers'
     | '/scrape'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/accounts'
+    | '/deep-refs'
     | '/pool'
     | '/providers'
     | '/scrape'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/_ops'
     | '/_auth/login'
     | '/_ops/accounts'
+    | '/_ops/deep-refs'
     | '/_ops/pool'
     | '/_ops/providers'
     | '/_ops/scrape'
@@ -230,6 +242,13 @@ declare module '@tanstack/react-router' {
       path: '/accounts'
       fullPath: '/accounts'
       preLoaderRoute: typeof OpsAccountsRouteImport
+      parentRoute: typeof OpsRoute
+    }
+    '/_ops/deep-refs': {
+      id: '/_ops/deep-refs'
+      path: '/deep-refs'
+      fullPath: '/deep-refs'
+      preLoaderRoute: typeof OpsDeepRefsRouteImport
       parentRoute: typeof OpsRoute
     }
     '/_ops/pool': {
@@ -322,6 +341,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface OpsRouteChildren {
   OpsAccountsRoute: typeof OpsAccountsRoute
+  OpsDeepRefsRoute: typeof OpsDeepRefsRoute
   OpsPoolRoute: typeof OpsPoolRoute
   OpsProvidersRoute: typeof OpsProvidersRoute
   OpsScrapeRoute: typeof OpsScrapeRoute
@@ -330,6 +350,7 @@ interface OpsRouteChildren {
 
 const OpsRouteChildren: OpsRouteChildren = {
   OpsAccountsRoute: OpsAccountsRoute,
+  OpsDeepRefsRoute: OpsDeepRefsRoute,
   OpsPoolRoute: OpsPoolRoute,
   OpsProvidersRoute: OpsProvidersRoute,
   OpsScrapeRoute: OpsScrapeRoute,

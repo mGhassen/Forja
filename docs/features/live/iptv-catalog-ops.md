@@ -15,10 +15,11 @@ Operators scrape Reddit IPTV posts, mark rows on shared **`iptv_portals`** with 
 
 ## What you can do
 
-- **Dashboard** — pool alive/dead/unchecked, credits, region breakdown, latest run funnel (posts / L1 / deep / L2 / upserted / duration), recent runs table. A stats strip under the nav shows **All** (every `iptv_portals` row) + pool health + latest run on every admin page
+- **Dashboard** — pool alive/dead/unchecked, credits, region breakdown, latest run funnel (new posts / portals / deep / L2 / unparsed / upserted), recent runs table. A stats strip under the nav shows **All** (every `iptv_portals` row) + pool health + latest run on every admin page
 - **Accounts** — search by email; credits stepper (−1 / +5); **Features** chip column opens a dialog with per-flag toggles (`iptvScrape` / Find Portals, `dealPortal` / Deal — each has its own admin RPC). Expand a row to see assigned portals (same card layout as Pool: expiry / status / username / pool badge / URL / max seats + profile pill), unassign, or **Assign portal** (any portal → pick profile; optional burn 1 credit / bump `dealt_count`)
 - **Pool** — lists **all** `iptv_portals`. Filter **Inventory** (All / Deal pool / Not in pool; default All). Catalog-pool rows show a **pool** badge; trash removes from catalog pool only (row stays). Host table (host / accounts / alive / scraped); expand for portal grid. **User+** opens who has that portal + assign/unassign. Also filter by **status** / **region**. **Check status** runs Xtream `player_api`. Header link jumps to **Scrape** for start/stop
-- **Scrape** — start/stop/mark stuck + run history (live; realtime + fast poll). Schedule under Automation
+- **Scrape** — start/stop/mark stuck + run history (live; realtime + fast poll). Schedule under Automation. One-time full rescan: Inngest event data `{ "forceFull": true }`
+- **Deep refs** — all base64 / paste refs from scrape. Expand a row to see raw base64/URL, decoded or paste body, and every portal found with **New insert** vs **Already in DB** (url+user existed before that hit)
 - **Providers** — edit remote provider runtime config (templates, APIs, WebStreamr bases, anime hosts/mirrors, CDN Referer rules) via flat editable tables or raw JSON
 
 ## Scrape (Inngest on admin)
@@ -29,10 +30,13 @@ Production scrape runs in **TypeScript** on `apps/admin` via Inngest (Rust `iptv
 2. Sync `https://<admin-host>/api/inngest` in the Inngest dashboard
 3. Scheduled scrape: Inngest has a **daily 06:00 UTC** kick plus a minute tick. The real schedule is **`iptv_ops_settings.scrape_cron`** (UTC 5-field cron, default `0 6 * * *`) with **due/catch-up** (a late tick still runs once per slot; source `inngest-cron`). Edit it in Scrape → Automation. Toggle **Scheduled scrape** via `scrape_cron_enabled` — off = ticks no-op; manual run still works
 4. Reddit listing today is **`r/IPTV_ZONENEW`** (other old catalog subs are banned). Posts are usually base64 → encrypted **paste.sh** links — scrape decrypts those (L2), then runs credential extract
-5. **Post storage is id-only** — `iptv_scrape_posts` is just `post_id` (+ subreddit / run). No title/body; deep_refs table removed.
-6. Extract upserts into **`iptv_portals`** with `catalog_pool = true`. **Xtream `player_api` verify is off** in the scrape job (`VERIFY_PORTAL_STATUS = false`); use Pool → Check status for manual probes. Deal only assigns `catalog_pool` rows with `alive = true`.
+5. **Watermark** — walks `/new` newest-first and **stops at the first `post_id` already in `iptv_scrape_posts`**. Only **new** posts are processed. `posts_seen` on a run = new posts this run (not “500 every time”)
+6. **Posts** store `post_id` + `subreddit` (no title/body). **Deep refs** live in `iptv_scrape_deep_refs` (base64 / paste URL, fetch ok, extract count). When extract finds **0** portals, `needs_recheck=true` and `payload_text` keeps the decoded/paste body (capped) for later techniques
+7. Extract upserts **all** unique portals into **`iptv_portals`** with `catalog_pool = true` (conflict on url+username). No product upsert cap. **Xtream `player_api` verify is off** in the scrape job (`VERIFY_PORTAL_STATUS = false`); use Pool → Check status for manual probes. Deal only assigns `catalog_pool` rows with `alive = true`
 
-If a run shows **posts > 0** but **L1 = 0**, paste decrypt / deep extract failed (not Inngest itself).
+If a run shows **new posts > 0** but **portals = 0**, paste decrypt / deep extract failed (not Inngest itself). Check `iptv_scrape_deep_refs` where `needs_recheck`.
+
+**Apply migrations** `20260731184207_iptv_scrape_watermark_deep_refs.sql` and `20260731184812_iptv_scrape_deep_ref_portals.sql` before deploying this scrape path (ask before `db push`).
 
 Local:
 
@@ -40,7 +44,7 @@ Local:
 cd apps/admin && pnpm dev   # :4000
 npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest
 # Invoke iptv-catalog-scrape or send event iptv/catalog.scrape
-# Optional data: { "maxPages": 5, "maxVerify": 40 }
+# Optional data: { "maxPages": 10 }  # cold-DB safety only; watermark usually stops earlier
 ```
 
 Optional local Rust (on hold for cron):

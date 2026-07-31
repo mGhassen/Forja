@@ -1,5 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { CatalogPortal, PortalStatus, RegionGuess } from './types'
+import type {
+  CatalogPortal,
+  DeepRefRecord,
+  PortalStatus,
+  RegionGuess,
+} from './types'
 
 /** Service-role client — server / Inngest only. Never expose to the browser. */
 export function createCatalogAdminClient(): SupabaseClient {
@@ -79,19 +84,44 @@ export async function patchScrapeRun(
   if (error) throw error
 }
 
-/** Persist Reddit post_id only — never title / body_excerpt. */
+/** All known Reddit post ids — watermark so we only process newer posts. */
+export async function loadKnownScrapePostIds(
+  sb: SupabaseClient,
+): Promise<Set<string>> {
+  const ids = new Set<string>()
+  const pageSize = 1000
+  let from = 0
+  for (;;) {
+    const { data, error } = await sb
+      .from('iptv_scrape_posts')
+      .select('post_id')
+      .range(from, from + pageSize - 1)
+    if (error) throw error
+    const rows = data ?? []
+    for (const row of rows) {
+      const id = String(row.post_id ?? '').trim()
+      if (id) ids.add(id)
+    }
+    if (rows.length < pageSize) break
+    from += pageSize
+  }
+  return ids
+}
+
+/** Persist Reddit post_id + subreddit — never title / body_excerpt. */
 export async function upsertScrapePostId(
   sb: SupabaseClient,
   postId: string,
   scrapeRunId: string,
-  subreddit = '',
+  subreddit: string,
 ): Promise<void> {
   const id = postId.trim()
   if (!id) return
+  const sub = subreddit.trim() || 'IPTV_ZONENEW'
   const { error } = await sb.from('iptv_scrape_posts').upsert(
     {
       post_id: id,
-      subreddit,
+      subreddit: sub,
       scrape_run_id: scrapeRunId,
     },
     { onConflict: 'post_id' },
@@ -99,18 +129,100 @@ export async function upsertScrapePostId(
   if (error) throw error
 }
 
-export async function upsertCatalogCandidate(
+export async function upsertScrapeDeepRef(
+  sb: SupabaseClient,
+  ref: DeepRefRecord,
+  scrapeRunId: string,
+): Promise<string> {
+  const { data, error } = await sb
+    .from('iptv_scrape_deep_refs')
+    .upsert(
+      {
+        post_id: ref.postId,
+        scrape_run_id: scrapeRunId,
+        ref_type: ref.refType,
+        ref_host: ref.refHost,
+        payload_hash: ref.payloadHash,
+        raw_ref: ref.rawRef,
+        payload_text: ref.payloadText,
+        fetch_ok: ref.fetchOk,
+        extract_count: ref.extractCount,
+        needs_recheck: ref.needsRecheck,
+      },
+      { onConflict: 'post_id,ref_type,payload_hash,ref_host' },
+    )
+    .select('id')
+    .single()
+  if (error) throw error
+  const deepRefId = data.id as string
+
+  // Replace portal hits for this ref (idempotent re-scrape).
+  const { error: delErr } = await sb
+    .from('iptv_scrape_deep_ref_portals')
+    .delete()
+    .eq('deep_ref_id', deepRefId)
+  if (delErr) throw delErr
+
+  for (const hit of ref.portals ?? []) {
+    const { data: existingId, error: findErr } = await sb.rpc(
+      'find_iptv_portal_id',
+      { p_url: hit.url, p_username: hit.username },
+    )
+    if (findErr) throw findErr
+    const wasExisting = Boolean(existingId)
+
+    const portal: CatalogPortal = {
+      url: hit.url,
+      username: hit.username,
+      password: hit.password,
+      source:
+        ref.refType === 'b64_text' ? 'catalog-decoded' : 'catalog-deep',
+      postId: ref.postId,
+    }
+    const portalId = await upsertCatalogCandidateReturningId(
+      sb,
+      portal,
+      {
+        alive: null,
+        status: 'unverified',
+        expiry: null,
+        maxConnections: null,
+        timezone: null,
+        categoryNames: [],
+      },
+      { primary: 'UNKNOWN', tags: [], confidence: 0 },
+    )
+
+    const { error: hitErr } = await sb.from('iptv_scrape_deep_ref_portals').insert({
+      deep_ref_id: deepRefId,
+      url: hit.url,
+      username: hit.username,
+      was_existing: wasExisting,
+      portal_id: portalId,
+    })
+    if (hitErr) throw hitErr
+  }
+
+  return deepRefId
+}
+
+function portalLayer(source: string): 'l1' | 'l2' {
+  if (source === 'catalog-deep' || source === 'catalog-decoded') return 'l2'
+  return 'l1'
+}
+
+async function upsertCatalogCandidateReturningId(
   sb: SupabaseClient,
   portal: CatalogPortal,
   status: PortalStatus,
   region: RegionGuess,
-): Promise<void> {
-  const { error } = await sb.rpc('upsert_iptv_catalog_candidate', {
+): Promise<string> {
+  const { data, error } = await sb.rpc('upsert_iptv_catalog_candidate', {
     p_url: portal.url,
     p_username: portal.username,
     p_password: portal.password,
     p_source: portal.source || 'catalog',
-    p_layer: 'l1',
+    p_layer: portalLayer(portal.source || 'catalog'),
     p_alive: status.alive,
     p_expiry: status.expiry,
     p_max_connections: status.maxConnections,
@@ -121,4 +233,14 @@ export async function upsertCatalogCandidate(
     p_region_confidence: region.confidence,
   })
   if (error) throw error
+  return data as string
+}
+
+export async function upsertCatalogCandidate(
+  sb: SupabaseClient,
+  portal: CatalogPortal,
+  status: PortalStatus,
+  region: RegionGuess,
+): Promise<void> {
+  await upsertCatalogCandidateReturningId(sb, portal, status, region)
 }

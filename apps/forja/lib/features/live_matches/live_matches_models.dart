@@ -594,7 +594,20 @@ const _ua = {
 /// Android handoff keeps a black cover over the WebView — the user cannot
 /// press the site’s big-play button. Mute-first + `jwplayer().play()` + a
 /// synthetic center tap are what make the playlist XHR fire so sniff works.
+///
+/// Desktop / iOS open is a user gesture: after the muted autoplay fallback we
+/// set `window.__forjaMediaMuted = false` and unmute. Play nudges (including
+/// the delayed retry) must honor that flag — otherwise JW remutes and sites
+/// like MutStreams keep the "CLICK UNMUTE STREAM" overlay up.
 const _liveEmbedForcePlayBodyJs = r'''
+  if (typeof window.__forjaMediaMuted !== 'boolean') {
+    window.__forjaMediaMuted = true;
+  }
+
+  function forjaWantMute() {
+    return window.__forjaMediaMuted !== false;
+  }
+
   function forjaTapCenter() {
     try {
       var x = Math.floor((window.innerWidth || 0) / 2) || 1;
@@ -618,15 +631,49 @@ const _liveEmbedForcePlayBodyJs = r'''
     } catch (_) {}
   }
 
+  function forjaClickUnmuteUi() {
+    try {
+      var nodes = document.querySelectorAll(
+        'button, a, [role="button"], div, span, p'
+      );
+      for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        var label = '';
+        try {
+          label = (
+            (el.innerText || el.textContent || '') +
+            ' ' +
+            (el.getAttribute('aria-label') || '') +
+            ' ' +
+            (el.getAttribute('title') || '')
+          ).toLowerCase();
+        } catch (_) { continue; }
+        if (label.indexOf('unmute') < 0) continue;
+        try {
+          var rect = el.getBoundingClientRect();
+          if (rect.width <= 0 || rect.height <= 0) continue;
+        } catch (_) {}
+        try { if (typeof el.click === 'function') el.click(); } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
   function forjaForceJwPlay() {
     try {
       var jw = window.jwplayer;
       if (typeof jw !== 'function') return;
+      var muted = forjaWantMute();
       var tried = {};
       function playOne(p) {
         if (!p || typeof p.play !== 'function') return;
-        try { if (typeof p.setMute === 'function') p.setMute(true); } catch (_) {}
-        try { if (typeof p.setVolume === 'function') p.setVolume(0); } catch (_) {}
+        try {
+          if (typeof p.setMute === 'function') p.setMute(!!muted);
+        } catch (_) {}
+        try {
+          if (typeof p.setVolume === 'function') {
+            p.setVolume(muted ? 0 : 100);
+          }
+        } catch (_) {}
         try { p.play(true); } catch (_) {
           try { p.play(); } catch (__) {}
         }
@@ -646,6 +693,7 @@ const _liveEmbedForcePlayBodyJs = r'''
   function forjaClickPlay() {
     forjaForceJwPlay();
     forjaTapCenter();
+    if (!forjaWantMute()) forjaClickUnmuteUi();
     var sels = [
       'video',
       'audio',
@@ -664,6 +712,7 @@ const _liveEmbedForcePlayBodyJs = r'''
       '[class*="play" i]',
       '[id*="play" i]'
     ];
+    var muted = forjaWantMute();
     for (var i = 0; i < sels.length; i++) {
       try {
         var nodes = document.querySelectorAll(sels[i]);
@@ -672,8 +721,10 @@ const _liveEmbedForcePlayBodyJs = r'''
           if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
             try {
               el.setAttribute('autoplay', '');
-              el.muted = true;
-              el.setAttribute('muted', '');
+              el.muted = !!muted;
+              if (muted) el.setAttribute('muted', '');
+              else el.removeAttribute('muted');
+              try { el.volume = muted ? 0 : 1; } catch (_) {}
               var p = el.play();
               if (p && p.catch) p.catch(function () {});
             } catch (_) {}
@@ -726,9 +777,15 @@ $_liveEmbedForcePlayBodyJs
   }
 
   function setMute(on) {
+    window.__forjaMediaMuted = !!on;
     try {
       document.querySelectorAll('video,audio').forEach(function (el) {
-        try { el.muted = !!on; } catch (e) {}
+        try {
+          el.muted = !!on;
+          if (on) el.setAttribute('muted', '');
+          else el.removeAttribute('muted');
+          try { el.volume = on ? 0 : 1; } catch (e) {}
+        } catch (e) {}
       });
     } catch (_) {}
     try {
@@ -737,17 +794,30 @@ $_liveEmbedForcePlayBodyJs
         try {
           var p = jw();
           if (p && typeof p.setMute === 'function') p.setMute(!!on);
+          if (p && typeof p.setVolume === 'function') {
+            p.setVolume(on ? 0 : 100);
+          }
         } catch (e) {}
       }
     } catch (_) {}
+    if (!on) {
+      forjaClickUnmuteUi();
+      // MutStreams (and similar) paint "CLICK UNMUTE STREAM" after JW starts.
+      [500, 1500, 3000].forEach(function (ms) {
+        setTimeout(function () {
+          if (window.__forjaMediaMuted === false) forjaClickUnmuteUi();
+        }, ms);
+      });
+    }
   }
 
   function toggleMute() {
+    var next = true;
     try {
-      document.querySelectorAll('video,audio').forEach(function (el) {
-        try { el.muted = !el.muted; } catch (e) {}
-      });
+      var vids = document.querySelectorAll('video,audio');
+      if (vids.length) next = !vids[0].muted;
     } catch (_) {}
+    setMute(next);
   }
 
   function dispatchToIframes(cmd) {

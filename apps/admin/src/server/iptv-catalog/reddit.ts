@@ -1,6 +1,7 @@
+import { createHash } from 'node:crypto'
 import { extractPortals } from './extract'
 import { decryptFromPasteResponse } from './pastesh'
-import type { CatalogPortal } from './types'
+import type { CatalogPortal, DeepRefPortalHit, DeepRefRecord } from './types'
 import { portalKey } from './types'
 
 const OAUTH_UA = 'Forja/1.3.6 (by /u/ForjaApp)'
@@ -24,6 +25,9 @@ const PASTE_DOMAINS = [
 const B64_HTTP = /aHR0c[a-zA-Z0-9+/=]{10,}/g
 const RAW_PASTE =
   /https?:\/\/(?:paste\.sh|pastebin\.com|justpaste\.it|controlc\.com|pastes\.dev|text\.is|rentry\.co)\/[a-zA-Z0-9#_=-]+/gi
+
+/** Cap stored paste / decoded body for later re-extract (bytes as UTF-16 length). */
+const PAYLOAD_TEXT_MAX = 64_000
 
 type Cursor = { subIdx: number; after: string | null }
 
@@ -114,6 +118,24 @@ function isPasteSite(url: string): boolean {
   return PASTE_DOMAINS.some((d) => lower.includes(d))
 }
 
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
+function hashPayload(s: string): string {
+  return createHash('sha256').update(s).digest('hex').slice(0, 40)
+}
+
+function truncatePayload(text: string | null | undefined): string | null {
+  if (!text) return null
+  if (text.length <= PAYLOAD_TEXT_MAX) return text
+  return text.slice(0, PAYLOAD_TEXT_MAX)
+}
+
 function lastPathSegment(url: string): string | null {
   let s = url
   const h = s.indexOf('#')
@@ -178,25 +200,47 @@ function addExtracted(
   source: string,
   maxResults: number,
   postId?: string,
-) {
+): DeepRefPortalHit[] {
+  const hits: DeepRefPortalHit[] = []
+  const seenHit = new Set<string>()
   for (const p of extractPortals(text, source)) {
-    if (acc.size >= maxResults) break
     const withPost: CatalogPortal = postId ? { ...p, postId } : p
+    const hitKey = `${withPost.url}|${withPost.username}`.toLowerCase()
+    if (!seenHit.has(hitKey)) {
+      seenHit.add(hitKey)
+      hits.push({
+        url: withPost.url,
+        username: withPost.username,
+        password: withPost.password,
+      })
+    }
     const key = portalKey(withPost)
     const prev = acc.get(key)
-    if (!prev) acc.set(key, withPost)
-    else if (!prev.postId && postId) acc.set(key, { ...prev, postId })
+    if (!prev) {
+      if (acc.size < maxResults) acc.set(key, withPost)
+    } else if (!prev.postId && postId) {
+      acc.set(key, { ...prev, postId })
+    }
   }
+  return hits
 }
 
-/** Collect paste / decoded payloads from post body (Rust process_oauth_deep_links). */
+/** Collect paste / decoded payloads from post body. Persist every ref. */
 async function extractDeepPortals(
   body: string,
   acc: Map<string, CatalogPortal>,
   maxResults: number,
-  postId?: string,
-) {
-  const deepLinks: string[] = []
+  postId: string,
+): Promise<{
+  deepRefCount: number
+  l2FetchOk: number
+  l2FetchFail: number
+  l2ExtractCount: number
+  unparsedCount: number
+  refs: DeepRefRecord[]
+}> {
+  const refs: DeepRefRecord[] = []
+  const deepLinks: Array<{ url: string; fromB64: string | null }> = []
 
   for (const m of body.matchAll(B64_HTTP)) {
     const raw = m[0] ?? ''
@@ -204,44 +248,131 @@ async function extractDeepPortals(
     try {
       decoded = Buffer.from(raw, 'base64').toString('utf8')
     } catch {
+      refs.push({
+        postId,
+        refType: 'b64_text',
+        refHost: '',
+        payloadHash: hashPayload(raw),
+        rawRef: raw,
+        payloadText: null,
+        fetchOk: null,
+        extractCount: 0,
+        needsRecheck: true,
+        portals: [],
+      })
       continue
     }
     if (decoded.startsWith('http') && isPasteSite(decoded)) {
-      deepLinks.push(decoded)
+      deepLinks.push({ url: decoded, fromB64: raw })
     } else if (!decoded.startsWith('http') && decoded.includes(':')) {
-      addExtracted(acc, decoded, 'catalog-decoded', maxResults, postId)
+      const hits = addExtracted(
+        acc,
+        decoded,
+        'catalog-decoded',
+        maxResults,
+        postId,
+      )
+      refs.push({
+        postId,
+        refType: 'b64_text',
+        refHost: '',
+        payloadHash: hashPayload(raw),
+        rawRef: raw,
+        payloadText: truncatePayload(decoded),
+        fetchOk: null,
+        extractCount: hits.length,
+        needsRecheck: hits.length === 0,
+        portals: hits,
+      })
+    } else {
+      refs.push({
+        postId,
+        refType: 'b64_text',
+        refHost: '',
+        payloadHash: hashPayload(raw),
+        rawRef: raw,
+        payloadText: truncatePayload(decoded),
+        fetchOk: null,
+        extractCount: 0,
+        needsRecheck: true,
+        portals: [],
+      })
     }
   }
 
   for (const m of body.matchAll(RAW_PASTE)) {
-    deepLinks.push(m[0] ?? '')
+    deepLinks.push({ url: m[0] ?? '', fromB64: null })
   }
 
   const seen = new Set<string>()
-  const unique = deepLinks.filter((u) => {
-    if (!u || seen.has(u)) return false
-    seen.add(u)
+  const unique = deepLinks.filter((d) => {
+    if (!d.url || seen.has(d.url)) return false
+    seen.add(d.url)
     return true
   }).slice(0, 4)
 
   let l2FetchOk = 0
   let l2FetchFail = 0
-  const sizeBefore = acc.size
+  let l2ExtractCount = 0
+
   for (const dl of unique) {
     if (acc.size >= maxResults) break
-    const text = await fetchPasteBody(dl)
+    if (dl.fromB64) {
+      refs.push({
+        postId,
+        refType: 'b64_url',
+        refHost: hostOf(dl.url),
+        payloadHash: hashPayload(dl.fromB64),
+        rawRef: dl.fromB64,
+        payloadText: truncatePayload(dl.url),
+        fetchOk: null,
+        extractCount: 0,
+        needsRecheck: false,
+        portals: [],
+      })
+    }
+    const text = await fetchPasteBody(dl.url)
     if (text) {
       l2FetchOk++
-      addExtracted(acc, text, 'catalog-deep', maxResults, postId)
+      const hits = addExtracted(acc, text, 'catalog-deep', maxResults, postId)
+      l2ExtractCount += hits.length
+      refs.push({
+        postId,
+        refType: 'paste_url',
+        refHost: hostOf(dl.url),
+        payloadHash: hashPayload(dl.url),
+        rawRef: dl.url,
+        payloadText: truncatePayload(text),
+        fetchOk: true,
+        extractCount: hits.length,
+        needsRecheck: hits.length === 0,
+        portals: hits,
+      })
     } else {
       l2FetchFail++
+      refs.push({
+        postId,
+        refType: 'paste_url',
+        refHost: hostOf(dl.url),
+        payloadHash: hashPayload(dl.url),
+        rawRef: dl.url,
+        payloadText: null,
+        fetchOk: false,
+        extractCount: 0,
+        needsRecheck: true,
+        portals: [],
+      })
     }
   }
+
+  const unparsedCount = refs.filter((r) => r.needsRecheck).length
   return {
-    deepRefCount: unique.length,
+    deepRefCount: refs.length,
     l2FetchOk,
     l2FetchFail,
-    l2ExtractCount: Math.max(0, acc.size - sizeBefore),
+    l2ExtractCount,
+    unparsedCount,
+    refs,
   }
 }
 
@@ -250,15 +381,22 @@ export type ScrapePageFunnel = {
   l2FetchOk: number
   l2FetchFail: number
   l2ExtractCount: number
+  unparsedCount: number
+  /** Portals from post body only (before deep). */
+  l1OnlyCount: number
 }
 
 export type ScrapePageResult = {
   portals: CatalogPortal[]
-  /** Reddit t3_ ids seen this page — for DB id-only rows (no title/body). */
+  /** New Reddit t3_ ids processed this page. */
   postIds: string[]
   nextAfter: string | null
   subreddit: string
+  /** New posts processed (not already in known set). */
   postsSeen: number
+  /** Hit a post_id already in DB — stop paginating older listings. */
+  hitWatermark: boolean
+  deepRefs: DeepRefRecord[]
   funnel: ScrapePageFunnel
 }
 
@@ -266,6 +404,7 @@ export type ScrapePageResult = {
 export async function scrapeCatalogPage(
   after: string | null | undefined,
   maxResults = 50,
+  knownPostIds: ReadonlySet<string> = new Set(),
 ): Promise<ScrapePageResult> {
   const cursor = parseCursor(after)
   let subIdx = cursor.subIdx
@@ -285,6 +424,8 @@ export async function scrapeCatalogPage(
     l2FetchOk: 0,
     l2FetchFail: 0,
     l2ExtractCount: 0,
+    unparsedCount: 0,
+    l1OnlyCount: 0,
   }
 
   if (!root?.data) {
@@ -296,6 +437,8 @@ export async function scrapeCatalogPage(
       nextAfter,
       subreddit: sub,
       postsSeen: 0,
+      hitWatermark: false,
+      deepRefs: [],
       funnel: emptyFunnel,
     }
   }
@@ -311,7 +454,10 @@ export async function scrapeCatalogPage(
 
   const acc = new Map<string, CatalogPortal>()
   const postIds: string[] = []
+  const deepRefs: DeepRefRecord[] = []
   const funnel: ScrapePageFunnel = { ...emptyFunnel }
+  let hitWatermark = false
+
   for (const child of posts) {
     if (acc.size >= maxResults) break
     const d = child.data
@@ -322,26 +468,37 @@ export async function scrapeCatalogPage(
       : rawId.startsWith('t3_')
         ? rawId
         : `t3_${rawId}`
+    if (postId && knownPostIds.has(postId)) {
+      hitWatermark = true
+      break
+    }
     if (postId) postIds.push(postId)
     const title = String(d.title ?? '')
     const selftext = String(d.selftext ?? '')
     // Extract in-memory only — never persist title/selftext.
     const body = `${title}\n${selftext}`
+    const beforeL1 = acc.size
     addExtracted(acc, body, 'catalog', maxResults, postId)
+    funnel.l1OnlyCount += Math.max(0, acc.size - beforeL1)
     if (acc.size >= maxResults) break
+    if (!postId) continue
     const deep = await extractDeepPortals(body, acc, maxResults, postId)
     funnel.deepRefCount += deep.deepRefCount
     funnel.l2FetchOk += deep.l2FetchOk
     funnel.l2FetchFail += deep.l2FetchFail
     funnel.l2ExtractCount += deep.l2ExtractCount
+    funnel.unparsedCount += deep.unparsedCount
+    deepRefs.push(...deep.refs)
   }
 
   return {
     portals: [...acc.values()],
     postIds,
-    nextAfter,
+    nextAfter: hitWatermark ? null : nextAfter,
     subreddit: sub,
-    postsSeen: posts.length,
+    postsSeen: postIds.length,
+    hitWatermark,
+    deepRefs,
     funnel,
   }
 }

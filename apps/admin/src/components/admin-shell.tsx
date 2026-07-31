@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import {
   Boxes,
+  FileCode2,
   LayoutDashboard,
   LogOut,
   Radar,
@@ -19,6 +20,7 @@ const NAV = [
   { to: '/accounts' as const, label: 'Accounts', icon: Users, end: false },
   { to: '/pool' as const, label: 'Pool', icon: Boxes, end: false },
   { to: '/scrape' as const, label: 'Scrape', icon: Radar, end: false },
+  { to: '/deep-refs' as const, label: 'Deep refs', icon: FileCode2, end: false },
   { to: '/providers' as const, label: 'Providers', icon: Server, end: false },
 ]
 

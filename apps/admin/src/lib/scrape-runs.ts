@@ -6,7 +6,7 @@ export const SCRAPE_RUNS_KEY = ['admin', 'scrape_runs'] as const
 export const SCRAPE_RUNS_LATEST_KEY = ['admin', 'scrape_runs', 'latest'] as const
 
 export const SCRAPE_RUN_SELECT =
-  'id, started_at, finished_at, status, source, posts_seen, l1_extract_count, deep_ref_count, l2_fetch_ok, l2_fetch_fail, l2_extract_count, candidates_upserted, alive_count, error'
+  'id, started_at, finished_at, status, source, posts_seen, l1_extract_count, deep_ref_count, l2_fetch_ok, l2_fetch_fail, l2_extract_count, unparsed_count, candidates_upserted, alive_count, error'
 
 export type ScrapeRunRow = {
   id: string
@@ -20,6 +20,7 @@ export type ScrapeRunRow = {
   l2_fetch_ok: number
   l2_fetch_fail: number
   l2_extract_count: number
+  unparsed_count: number
   candidates_upserted: number
   alive_count: number
   error?: string | null
@@ -40,6 +41,7 @@ export function emptyScrapeRun(
     l2_fetch_ok: 0,
     l2_fetch_fail: 0,
     l2_extract_count: 0,
+    unparsed_count: 0,
     candidates_upserted: 0,
     alive_count: 0,
     error: null,
@@ -72,6 +74,7 @@ export async function fetchScrapeRuns(limit = 50): Promise<ScrapeRunRow[]> {
     l2_fetch_ok: r.l2_fetch_ok ?? 0,
     l2_fetch_fail: r.l2_fetch_fail ?? 0,
     l2_extract_count: r.l2_extract_count ?? 0,
+    unparsed_count: r.unparsed_count ?? 0,
   }))
 }
 

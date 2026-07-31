@@ -242,6 +242,9 @@ export function AdminScrapePage() {
             <Button asChild variant="ghost" size="sm">
               <Link to="/pool">Pool</Link>
             </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/deep-refs">Deep refs</Link>
+            </Button>
             <Button asChild variant="secondary" size="sm">
               <a href={INNGEST_UI_URL} target="_blank" rel="noreferrer">
                 Inngest
@@ -265,9 +268,9 @@ export function AdminScrapePage() {
                     {latest.source ? ` · ${latest.source}` : ''}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
-                  <MetricChip label="Posts" value={latest.posts_seen} />
-                  <MetricChip label="L1" value={latest.l1_extract_count} />
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-9">
+                  <MetricChip label="New posts" value={latest.posts_seen} />
+                  <MetricChip label="Portals" value={latest.l1_extract_count} />
                   <MetricChip label="Deep" value={latest.deep_ref_count} />
                   <MetricChip
                     label="L2 ok"
@@ -278,8 +281,12 @@ export function AdminScrapePage() {
                     value={latest.l2_fetch_fail}
                   />
                   <MetricChip
-                    label="L2 extract"
+                    label="L2 portals"
                     value={latest.l2_extract_count}
+                  />
+                  <MetricChip
+                    label="Unparsed"
+                    value={latest.unparsed_count ?? 0}
                   />
                   <MetricChip
                     label="Upserted"
@@ -565,13 +572,26 @@ export function AdminScrapePage() {
                   <th className={thClassName}>Source</th>
                   <th className={thClassName}>Status</th>
                   <th className={thClassName}>Dur</th>
-                  <th className={thClassName}>Posts</th>
-                  <th className={thClassName}>L1</th>
-                  <th className={thClassName}>Deep</th>
+                  <th className={thClassName} title="New posts processed (stops at known post_id)">
+                    New
+                  </th>
+                  <th className={thClassName} title="Unique portals extracted this run">
+                    Portals
+                  </th>
+                  <th className={thClassName} title="Base64 + paste refs found">
+                    Deep
+                  </th>
                   <th className={thClassName}>L2 ok</th>
                   <th className={thClassName}>L2 fail</th>
-                  <th className={thClassName}>L2 ex</th>
-                  <th className={thClassName}>Up</th>
+                  <th className={thClassName} title="Portals added from paste bodies">
+                    L2 portals
+                  </th>
+                  <th className={thClassName} title="Refs kept for later re-extract">
+                    Unparsed
+                  </th>
+                  <th className={thClassName} title="Rows upserted into catalog pool">
+                    Upserted
+                  </th>
                   <th className={thClassName}>Alive</th>
                   <th className={thClassName}>Error</th>
                 </tr>
@@ -619,6 +639,9 @@ export function AdminScrapePage() {
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
                       {r.l2_extract_count}
+                    </td>
+                    <td className={cn(tdClassName, 'tabular-nums')}>
+                      {r.unparsed_count ?? 0}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
                       {r.candidates_upserted}

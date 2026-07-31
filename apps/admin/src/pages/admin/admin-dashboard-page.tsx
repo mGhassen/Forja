@@ -99,23 +99,23 @@ export function AdminDashboardPage() {
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <MetricChip label="Posts" value={latest.posts_seen} />
-                <MetricChip label="L1" value={latest.l1_extract_count} />
+                <MetricChip label="New posts" value={latest.posts_seen} />
+                <MetricChip label="Portals" value={latest.l1_extract_count} />
                 <MetricChip label="Deep refs" value={latest.deep_ref_count} />
                 <MetricChip
                   label="L2 ok/fail"
                   value={`${latest.l2_fetch_ok}/${latest.l2_fetch_fail}`}
                 />
-                <MetricChip label="L2 extract" value={latest.l2_extract_count} />
+                <MetricChip label="L2 portals" value={latest.l2_extract_count} />
+                <MetricChip
+                  label="Unparsed"
+                  value={latest.unparsed_count ?? 0}
+                />
                 <MetricChip
                   label="Upserted"
                   value={latest.candidates_upserted}
                 />
                 <MetricChip label="Alive" value={latest.alive_count} />
-                <MetricChip
-                  label="Duration"
-                  value={runDurationLabel(latest)}
-                />
               </div>
               {latest.error ? (
                 <p className="text-sm text-red-400">{latest.error}</p>
@@ -194,11 +194,11 @@ export function AdminDashboardPage() {
                   <th className={thClassName}>Status</th>
                   <th className={thClassName}>Source</th>
                   <th className={thClassName}>Dur</th>
-                  <th className={thClassName}>Posts</th>
-                  <th className={thClassName}>L1</th>
+                  <th className={thClassName}>New</th>
+                  <th className={thClassName}>Portals</th>
                   <th className={thClassName}>Deep</th>
                   <th className={thClassName}>L2</th>
-                  <th className={thClassName}>Up</th>
+                  <th className={thClassName}>Upserted</th>
                   <th className={thClassName}>Alive</th>
                 </tr>
               </thead>
