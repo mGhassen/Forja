@@ -17,7 +17,12 @@ export type ScrapeControlResult = {
 
 export async function scrapeControl(
   action: ScrapeAction,
-  body?: { runId?: string; maxPages?: number; maxVerify?: number },
+  body?: {
+    runId?: string
+    maxPages?: number
+    maxVerify?: number
+    forceFull?: boolean
+  },
 ): Promise<ScrapeControlResult> {
   const {
     data: { session },

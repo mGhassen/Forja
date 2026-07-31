@@ -69,7 +69,7 @@ export function AdminScrapePage() {
   const running = latest?.status === 'running'
 
   const start = useMutation({
-    mutationFn: () => scrapeControl('start'),
+    mutationFn: (forceFull: boolean) => scrapeControl('start', { forceFull }),
     onSuccess: async (res) => {
       if (res.run) {
         prependOptimisticRun(qc, res.run)
@@ -324,9 +324,26 @@ export function AdminScrapePage() {
             <Button
               type="button"
               disabled={busy || running}
-              onClick={() => start.mutate()}
+              onClick={() => start.mutate(false)}
             >
-              {start.isPending ? 'Starting…' : 'Run scrape'}
+              {start.isPending ? 'Starting…' : 'Run normal'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy || running}
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    'Full scrape ignores known posts and re-extracts all base64/pastes from Reddit /new. Continue?',
+                  )
+                ) {
+                  return
+                }
+                start.mutate(true)
+              }}
+            >
+              {start.isPending ? 'Starting…' : 'Run full'}
             </Button>
             <Button
               type="button"

@@ -106,9 +106,10 @@ export function OpsOverviewStrip() {
             <>
               <StatusBadge status={latest.status} />
               <span className="text-forja-muted">
-                posts {latest.posts_seen} · L1 {latest.l1_extract_count} · deep{' '}
-                {latest.deep_ref_count} · L2↑ {latest.l2_fetch_ok}/
-                {latest.l2_fetch_fail} · up {latest.candidates_upserted} ·{' '}
+                new {latest.posts_seen} · portals {latest.l1_extract_count} · deep{' '}
+                {latest.deep_ref_count} · L2 {latest.l2_fetch_ok}/
+                {latest.l2_fetch_fail} · unparsed {latest.unparsed_count ?? 0} ·
+                upserted {latest.candidates_upserted} ·{' '}
                 {runDurationLabel(latest)}
               </span>
             </>
