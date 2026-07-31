@@ -327,6 +327,35 @@ void main() {
     });
   });
 
+  group('sourceRequiresSeekableDurationBeforeConfirm', () {
+    test('HLS that requires decode does not hard-gate on duration', () {
+      expect(
+        sourceRequiresSeekableDurationBeforeConfirm(
+          'https://cdn.example/playlist.m3u8?token=1',
+          type: 'mp4',
+        ),
+        isFalse,
+      );
+      expect(
+        sourceRequiresSeekableDurationBeforeConfirm(
+          'https://cdn.example/playlist.m3u8',
+          type: 'hls',
+        ),
+        isFalse,
+      );
+    });
+
+    test('progressive mp4 still requires duration before confirm', () {
+      expect(
+        sourceRequiresSeekableDurationBeforeConfirm(
+          'https://cdn.example/video.mp4',
+          type: 'mp4',
+        ),
+        isTrue,
+      );
+    });
+  });
+
   group('isOpenReadyForStream', () {
     PlayerState state({
       int? videoW,

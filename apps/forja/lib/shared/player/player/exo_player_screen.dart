@@ -288,7 +288,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Future<void> _boot() async {
     // Wait for any MediaKit teardown from a Player-menu engine swap so Exo
     // does not attach over a half-dead mediacodec_embed surface (issue 129).
-    await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    // Cap on Android — full stop+dispose can exceed the ATV ANR window (128).
+    await MpvExclusiveSession.instance.prepareForVideoPlayer(
+      timeout: Platform.isAndroid
+          ? const Duration(milliseconds: 1200)
+          : const Duration(seconds: 5),
+    );
     if (!mounted || _disposed) return;
     final wasTv = _isTv;
     _isTv = await ExoPlayerBridge.isTelevision();

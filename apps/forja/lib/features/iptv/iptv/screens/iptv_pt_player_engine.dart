@@ -944,6 +944,42 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     _s._bufferSub = null;
   }
 
+  /// Player-menu Exo ↔ MediaKit: release the current engine after the surface
+  /// is unmounted. MediaKit stop+dispose is tracked and **not** awaited here —
+  /// same as VOD widget dispose — so the UI isolate is not stuck in FFI past
+  /// the ATV ANR window. When switching **to** MediaKit the caller awaits
+  /// [MpvExclusiveSession.prepareForVideoPlayer] before create.
+  Future<void> _releaseEngineForHotSwap() async {
+    if (_s._exoBackend) {
+      await _s._exoEventSub?.cancel();
+      _s._exoEventSub = null;
+      _s._exoSurfaceFallback?.dispose();
+      _s._exoSurfaceFallback = null;
+      final id = _s._exoViewId;
+      _s._exoViewId = null;
+      if (id == null) return;
+      try {
+        await ExoPlayerBridge.pause(id);
+      } catch (_) {}
+      try {
+        await ExoPlayerBridge.dispose(id);
+      } catch (_) {}
+      return;
+    }
+    if (!_s._playerAlive) return;
+    _s._playerAlive = false;
+    await _cancelPlayerSubscriptions();
+    final player = _s._player;
+    _s._player = null;
+    _s._controller = null;
+    if (player == null) return;
+    MpvExclusiveSession.instance.untrackPlayer(player);
+    // Kill audio immediately; full stop+dispose continues tracked in background.
+    await silenceMediaKitPlayer(player);
+    final disposeFuture = teardownMediaKitPlayer(player);
+    MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
+  }
+
   Future<void> _disposePlayer() async {
     if (_s._exoBackend) {
       await _s._exoEventSub?.cancel();

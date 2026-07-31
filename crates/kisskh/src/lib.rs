@@ -1,5 +1,6 @@
 mod catalog;
 mod http;
+mod kkey;
 
 use serde::Deserialize;
 use serde_json::json;
@@ -10,6 +11,7 @@ pub use catalog::{
     parse_card_list, search, slugify, year_from_release, KdramaCard, KdramaDetails, KdramaEpisode,
     KdramaExplorePage, KdramaHomeFeed,
 };
+pub use kkey::{generate_kkey, KkeyKind};
 
 #[derive(Debug, Deserialize)]
 struct CatalogRequest {
@@ -195,6 +197,18 @@ pub fn catalog_json(request_json: &str) -> String {
             };
             let matched = match_resume_episode(&episodes, req.episode_number, episode_id);
             catalog::ok_json(&json!({ "episode": matched }))
+        }
+        "resolve_stream" => {
+            let forced = req.base_url.trim();
+            let forced = if forced.is_empty() { None } else { Some(forced) };
+            match http::resolve_episode_stream(req.episode_id, forced) {
+                Ok((base_url, episode, subtitles)) => catalog::ok_json(&json!({
+                    "base_url": base_url,
+                    "episode": episode,
+                    "subtitles": subtitles,
+                })),
+                Err(e) => catalog::error_json(&e),
+            }
         }
         other => json!({ "error": format!("unknown action: {other}") }).to_string(),
     }

@@ -1,14 +1,8 @@
-// kisskh.co stream extractor - headless WebView based.
+// kisskh.co stream extractor.
 //
-// The site signs every Episode/{epId}.png and Sub/{epId} request with a
-// `kkey` parameter generated client-side by heavily obfuscated JS. Rather
-// than reverse the cipher in Dart, we let the page's own JS sign it for us
-// by hooking `fetch`/`XHR` and capturing the parsed JSON response bodies.
-//
-// Flow:
-//   1. Open the episode page in a fresh (no HTTP cache) headless WebView.
-//   2. Inject hooks at AT_DOCUMENT_START for Episode/*.png + Sub/*.
-//   3. Wait for KKH_VIDEO (soft-reload once if the SPA never requests it).
+// Primary path: Rust generates the Episode/Sub `kkey` (consumet-compatible
+// cipher) and GETs the JSON APIs over HTTP — same as a browser, ~1s, no
+// WebView. Headless WebView remains a fallback if the cipher ever drifts.
 
 import 'dart:async';
 import 'dart:collection';
@@ -132,6 +126,119 @@ class KissKhExtractor {
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
       };
+
+  Future<KissKhStream?> _resolveNative({
+    required int episodeId,
+    required String baseUrl,
+    required bool Function() cancelled,
+    void Function(String phase, String detail)? onProgress,
+  }) async {
+    onProgress?.call('init', 'Signing stream key…');
+    try {
+      final decoded = await kisskhCatalog({
+        'action': 'resolve_stream',
+        'episode_id': episodeId,
+        'base_url': baseUrl,
+      });
+      if (cancelled()) return null;
+
+      final epRaw = decoded['episode'];
+      if (epRaw is! Map) {
+        debugPrint('[KissKhExtractor] native: missing episode payload');
+        return null;
+      }
+      final api = Map<String, dynamic>.from(epRaw);
+      final resolvedBase =
+          (decoded['base_url'] as String?)?.trim().isNotEmpty == true
+              ? (decoded['base_url'] as String).trim().replaceFirst(RegExp(r'/$'), '')
+              : baseUrl;
+      final referer = '$resolvedBase/';
+      final mirrorHost = KissKhService.hostFromBaseUrl(resolvedBase);
+
+      final subsRaw = decoded['subtitles'];
+      final subs = <Map<String, dynamic>>[];
+      if (subsRaw is List) {
+        for (final t in subsRaw) {
+          if (t is! Map) continue;
+          subs.add(Map<String, dynamic>.from(t));
+        }
+      }
+
+      var streamUrl = _pickPlayableUrl(api);
+      var streamType = _streamTypeFor(streamUrl);
+      if (streamUrl == null) {
+        final embed = _thirdPartyEmbedUrl(api);
+        final rejected = (api['Video'] ?? api['video'] ?? '').toString().trim();
+        if (_isCountdownPlaceholder(rejected)) {
+          debugPrint(
+            '[KissKhExtractor] native countdown placeholder: $rejected',
+          );
+          onProgress?.call('countdown', 'Not available yet');
+          return null;
+        }
+        if (embed != null) {
+          onProgress?.call('embed', 'Extracting third-party stream…');
+          final extracted = await StreamExtractor().extract(
+            embed,
+            referer: referer,
+            timeout: const Duration(seconds: 30),
+            isCancelled: cancelled,
+          );
+          if (cancelled()) return null;
+          if (extracted != null && extracted.url.isNotEmpty) {
+            streamUrl = extracted.url;
+            streamType = _streamTypeFor(streamUrl);
+          }
+        }
+      }
+
+      if (streamUrl == null || streamUrl.isEmpty) {
+        debugPrint('[KissKhExtractor] native: no playable URL in episode');
+        return null;
+      }
+
+      if (subs.isNotEmpty) {
+        onProgress?.call(
+          'subs',
+          'Decrypting ${subs.length} subtitle track(s)…',
+        );
+        for (final s in subs) {
+          if (cancelled()) break;
+          final url = (s['url'] ?? '').toString();
+          if (url.isEmpty) continue;
+          final localUri = await KissKhSubtitleDecryptor.fetchAndDecrypt(
+            url: url,
+            episodeId: episodeId,
+            language: (s['language'] ?? 'sub').toString(),
+            userAgent: _userAgent,
+            referer: referer,
+          );
+          if (localUri != null) {
+            s['url'] = localUri;
+            s['id'] = localUri;
+          }
+        }
+      }
+      if (cancelled()) return null;
+
+      onProgress?.call('done', 'Stream ready');
+      debugPrint(
+        '[KissKhExtractor] native resolve ok host=$mirrorHost '
+        'type=$streamType',
+      );
+      return KissKhStream(
+        url: streamUrl,
+        type: streamType,
+        subtitles: subs,
+        headers: playbackHeaders(resolvedBase),
+        mirrorHost: mirrorHost,
+      );
+    } catch (e) {
+      debugPrint('[KissKhExtractor] native resolve failed: $e');
+      onProgress?.call('retry', 'Falling back to page extract…');
+      return null;
+    }
+  }
 
   Future<void> _purgeKissKhSiteData(String baseUrl) async {
     try {
@@ -276,6 +383,15 @@ class KissKhExtractor {
         episodeNumber: episodeNumber,
       );
       openUrl = _cacheBusted(pageUrl);
+
+      // Native kkey + HTTP (browser-speed). WebView only if cipher/API fails.
+      final native = await _resolveNative(
+        episodeId: episodeId,
+        baseUrl: baseUrl,
+        cancelled: cancelled,
+        onProgress: onProgress,
+      );
+      if (native != null || cancelled()) return native;
 
       // Incognito + no HTTP cache alone is not enough on WKWebView: a plain
       // reload() can reuse the SPA shell / skip UserScript reinjection, so the

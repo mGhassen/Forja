@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 2** acceptance |
+| **Progress** | **7 / 7** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,8 @@
 | 3 | I128-T03 | Android MediaKit teardown uses `fast:` short stop/dispose timeouts | ✅ |
 | 4 | I128-T04 | `fast:` only on exit (`_exitInProgress`); hot-swap / recreate keep full stop/dispose timeouts | ✅ |
 | 5 | I128-T05 | `MpvExclusiveSession` tracks + awaits pending video dispose on Android (not macOS-only) | ✅ |
+| 6 | I128-T06 | Hot-swap: VOD-style release — silence + tracked MediaKit dispose (do not await on switch); 250ms cool-down; `prepareForVideoPlayer` only when mounting MediaKit | ✅ |
+| 7 | I128-T07 | VOD movies/series/anime/drama: Player-menu switch cool-down + capped `prepareForVideoPlayer` (1.2s) when mounting Exo; Exo boot same cap on Android | ✅ |
 
 ---
 
@@ -56,9 +58,14 @@ Flutter logs showed Select on `iptv-player-back` → `[NavBack]` then Signal Cat
 
 **Regression (T04–T05):** Applying `fast:` to **every** Android dispose (including Player-menu hot-swap) aborted stop/dispose before mpv/MediaCodec finished, while `MpvExclusiveSession` only tracked pending dispose on macOS — the next MediaKit open raced a zombie and failed in IPTV / Live. `fast:` is exit-only; Android now waits on pending dispose before creating a new Player.
 
+**Hot-swap kill on physical ATV (T06):** Player menu Exo ↔ MediaKit still awaited full `_disposePlayer()` on the switch path after one `endOfFrame`, so MediaKit→Exo sat in FFI stop/dispose past the ANR window (process death, no exit toast). Align with VOD: silence + track dispose without awaiting on the switch critical path, 250ms surface cool-down, and `prepareForVideoPlayer` only when mounting MediaKit (Exo does not need the mpv handle gone). Live Matches uses the same `IptvPtPlayerScreen` path.
+
+**VOD same kill (T07):** Movies / series / anime / Asian Drama `PlayerScreen._switchPlayer` awaited full `prepareForVideoPlayer` (5s) after unmount, and `ExoPlayerScreen._boot` did the same — MediaKit→Exo on physical ATV ANR’d mid-switch. Cap Android Exo-side waits at 1.2s (trade-off vs issue 129 crop if MediaCodec is slower); MediaKit mounts keep the full wait.
+
 ## Related
 
 - [115](115-[open]-android-tv-iptv-player-menu-mpv-sigsegv.md) — Player menu SIGSEGV (null mpv handle)  
 - [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) — Exo ↔ MediaKit switch  
+- [129](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) — VOD Exo crop after MediaKit (await vs ANR trade-off)  
 - [059](fixed/059-[fixed]-vod-player-audio-continues-after-exit.md) — VOD stop-before-exit  
 - [IPTV Xtream](../features/live/iptv-xtream.md)

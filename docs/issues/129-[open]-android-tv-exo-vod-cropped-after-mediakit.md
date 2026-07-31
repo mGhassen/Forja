@@ -51,10 +51,12 @@ VOD `PlayerScreen._switchPlayer` did an **instant** `setState` engine swap. Medi
 
 **Root fix (T05–T07):** IPTV-style switch gate + tracked MediaKit teardown + Exo boot waits on pending dispose.
 
+**ANR trade-off (issue 128 T07):** Awaiting full MediaKit stop+dispose on physical ATV during Player-menu MediaKit→Exo exceeded the 5s input ANR window and killed the process. Android Exo-side `prepareForVideoPlayer` is now capped at **1.2s** (switch + Exo boot). Prefer no force-close; if a slow MediaCodec detach still crops once, re-check I129-A01 after the ANR fix.
+
 ## Related
 
 - [102](102-[open]-android-tv-exoplayer-tiled-frames.md) — SurfaceView tiling / hybrid composition
 - [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) — ATV SurfaceView for live FPS
-- [128](128-[open]-android-tv-iptv-mediakit-exit-anr.md) — MediaKit surface teardown races
+- [128](128-[open]-android-tv-iptv-mediakit-exit-anr.md) — MediaKit surface teardown / switch ANR
 - [RFC-029](../rfc/029-[open]-dual-built-in-playback-engines.md)
 - [Player](../features/playback/player.md)

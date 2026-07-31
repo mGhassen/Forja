@@ -480,6 +480,12 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
   /// Hot-swap Exo ↔ MediaKit from the in-player Player menu (Android).
   /// Set [persist] false for one-shot recovery so IPTV Settings stay unchanged.
+  ///
+  /// Matches VOD [PlayerScreen] switch: full surface unmount → release without
+  /// blocking the UI isolate on MediaKit stop+dispose → cool-down → boot.
+  /// Awaiting full MediaKit teardown on the switch critical path ANRs physical
+  /// ATV (issue 128). When switching **to** MediaKit we still await
+  /// [MpvExclusiveSession.prepareForVideoPlayer] so a prior dispose finishes.
   Future<void> _switchBuiltInEngine(
     BuiltInPlayerEngine engine, {
     bool persist = true,
@@ -501,12 +507,23 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         _statusBanner = 'Switching player…';
       });
     }
-    // Let Video / ExoPlayerView unmount before tearing down the engine —
-    // interleaved surface + mpv dispose ANRs on ATV (issue 128).
+    // Let Video / ExoPlayerView unmount before tearing down the engine.
     await WidgetsBinding.instance.endOfFrame;
     if (_disposed || !mounted) return;
-    await _disposePlayer();
+
+    await _releaseEngineForHotSwap();
     if (_disposed || !mounted) return;
+
+    // mediacodec_embed / Exo surface need a beat after unmount (issues 128/129).
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (_disposed || !mounted) return;
+
+    // Exo does not share the mpv handle — do not sit on full MediaKit dispose
+    // (ATV ANR). Next MediaKit open still waits via prepareForVideoPlayer.
+    if (!wantExo) {
+      await MpvExclusiveSession.instance.prepareForVideoPlayer();
+      if (_disposed || !mounted) return;
+    }
 
     _exoBackend = wantExo;
     _androidMediaKitSafeMode = !_exoBackend && !PlatformInfo.isAndroidTv;

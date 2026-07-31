@@ -579,6 +579,21 @@ bool sourceExpectsDuration(String url, {String? type}) {
       lower.contains('.mpd');
 }
 
+/// Progressive containers skip [confirmOpenedStreamVideoDecode] — require demuxer
+/// duration before confirm so empty/HTML probes do not look playable.
+///
+/// HLS/DASH already proved a decoded frame. Their playlist duration often
+/// arrives after confirm; the UI duration listener drops pre-confirm events, so
+/// a hard 5s gate falsely fails hosts like VixSrc while video is already up.
+bool sourceRequiresSeekableDurationBeforeConfirm(
+  String url, {
+  String? type,
+}) {
+  if (!sourceExpectsDuration(url, type: type)) return false;
+  if (sourceRequiresVideoDecode(url, type: type)) return false;
+  return true;
+}
+
 /// Adaptive playlists can report buffer/duration while serving HTML/empty
 /// segments. Progressive containers (mkv/mp4) get real demuxer duration -
 /// do not require a decoded frame or large remote files fail the 8s probe.

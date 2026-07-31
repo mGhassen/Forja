@@ -716,6 +716,9 @@ mixin _DesktopPlayerSources on ConsumerState<DesktopPlayerScreen>, WidgetsBindin
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       if (!opened) {
+        try {
+          await _s._player.stop();
+        } catch (_) {}
         ref.read(playerResolveStatusProvider.notifier).setError('Failed: ${source.title}');
         _s._statusController.upsert(
           statusId,
@@ -737,6 +740,9 @@ mixin _DesktopPlayerSources on ConsumerState<DesktopPlayerScreen>, WidgetsBindin
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       if (!decoded) {
+        try {
+          await _s._player.stop();
+        } catch (_) {}
         ref.read(playerResolveStatusProvider.notifier).setError('Failed: ${source.title}');
         _s._statusController.upsert(
           statusId,
@@ -790,6 +796,20 @@ mixin _DesktopPlayerSources on ConsumerState<DesktopPlayerScreen>, WidgetsBindin
         buffered: _s._bufferedNotifier,
       );
       _s._markPlaybackConfirmed(true);
+      if (_s._durationNotifier.value <= Duration.zero &&
+          sourceExpectsDuration(openUrl, type: resolved.type)) {
+        await waitForSeekableDuration(
+          _s._player,
+          timeout: const Duration(seconds: 8),
+        );
+        if (!mounted || _s._fallbackAborted(switchGen)) return;
+        syncPlayerProgressNotifiers(
+          _s._player,
+          duration: _s._durationNotifier,
+          position: _s._positionNotifier,
+          buffered: _s._bufferedNotifier,
+        );
+      }
       _s._statusController.complete();
       ref.read(playerResolveStatusProvider.notifier).setReady();
       _markSourceActive(index);

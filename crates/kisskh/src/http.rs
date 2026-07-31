@@ -244,6 +244,87 @@ pub fn select_base_url() -> Result<String, String> {
     Err("No compatible KissKh mirror responded".to_string())
 }
 
+/// Fetch signed Episode + Subtitle JSON for one episode (native kkey, no WebView).
+pub fn resolve_episode_stream(
+    episode_id: i32,
+    forced_base: Option<&str>,
+) -> Result<(String, serde_json::Value, Vec<serde_json::Value>), String> {
+    if episode_id <= 0 {
+        return Err("episode_id required".to_string());
+    }
+    let base = if let Some(raw) = forced_base {
+        let normalized = raw.trim().trim_end_matches('/');
+        if normalized.is_empty() {
+            select_base_url()?
+        } else {
+            activate_base_url(normalized)?
+        }
+    } else {
+        select_base_url()?
+    };
+
+    let vid_key = crate::generate_kkey(episode_id, crate::KkeyKind::Video);
+    let ep_path = format!(
+        "/DramaList/Episode/{episode_id}.png?err=false&ts=&time=&kkey={vid_key}"
+    );
+    // Do not cache stream payloads — CDN URLs go stale.
+    let ep_body = get_api_on_base(&base, &ep_path)?;
+    let episode: serde_json::Value = serde_json::from_str(&ep_body)
+        .map_err(|e| format!("Episode JSON parse failed: {e}"))?;
+
+    let mut subs = Vec::new();
+    let sub_key = crate::generate_kkey(episode_id, crate::KkeyKind::Subtitle);
+    let sub_path = format!("/Sub/{episode_id}?kkey={sub_key}");
+    if let Ok(sub_body) = get_api_on_base(&base, &sub_path) {
+        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&sub_body) {
+            if let Some(arr) = parsed.as_array() {
+                for item in arr {
+                    if let Some(obj) = item.as_object() {
+                        let src = obj
+                            .get("src")
+                            .or_else(|| obj.get("url"))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .trim();
+                        if src.is_empty() {
+                            continue;
+                        }
+                        let label = obj
+                            .get("label")
+                            .or_else(|| obj.get("language"))
+                            .or_else(|| obj.get("land"))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Unknown");
+                        subs.push(json!({
+                            "id": src,
+                            "url": src,
+                            "language": label,
+                            "display": format!("{label} - kisskh"),
+                            "sourceName": "kisskh",
+                        }));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok((base, episode, subs))
+}
+
+fn get_api_on_base(base: &str, path: &str) -> Result<String, String> {
+    let normalized = if path.starts_with('/') {
+        path.to_string()
+    } else {
+        format!("/{path}")
+    };
+    let url = format!("{base}/api{normalized}");
+    match fetch(base, &url, 15, 2) {
+        Ok(body) if is_json_body(&body) => Ok(body),
+        Ok(_) => Err(format!("{base}: API returned non-JSON content")),
+        Err(error) => Err(format!("{base}: {error}")),
+    }
+}
+
 /// Fetch a KissKh API path with sticky-domain failover. A failed active mirror
 /// is followed by every other verified mirror; the first successful request
 /// becomes active for catalog calls and the host WebView extractor.
@@ -306,5 +387,22 @@ mod tests {
     fn activation_rejects_unverified_domains() {
         assert!(activate_base_url("https://kisskh.ovh/").is_ok());
         assert!(activate_base_url("https://kisskh.buzz").is_err());
+    }
+
+    #[test]
+    fn resolve_stream_live_episode() {
+        let _ = activate_base_url("https://kisskh.nl");
+        let (base, episode, subs) =
+            resolve_episode_stream(171699, Some("https://kisskh.nl")).expect("resolve");
+        assert_eq!(base, "https://kisskh.nl");
+        let video = episode
+            .get("Video")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        assert!(
+            video.contains("http"),
+            "expected playable Video, got {episode}"
+        );
+        assert!(!subs.is_empty(), "expected subtitle tracks");
     }
 }

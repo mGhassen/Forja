@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **23 / 23** fix · **0 / 5** device smoke |
+| **Progress** | **24 / 24** fix · **0 / 6** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -42,6 +42,7 @@
 | 21 | I45-T21 | Stop home bulk `/Drama/{id}` enrich; throttle home list concurrency + sequential detail enrich | ✅ |
 | 22 | I45-T22 | Single-host pinned: do not abort at ~10s — hard-nav once ~15s then wait outer timeout (ATV WebView slower than desktop) | ✅ |
 | 23 | I45-T23 | Deliver Episode/Sub/rate-limit via `callHandler` (console.log fallback) — Android TV drops large console payloads | ✅ |
+| 24 | I45-T24 | Native Rust `kkey` + Episode/Sub HTTP resolve (no WebView for stream URL) — browser-speed path | ✅ |
 
 ---
 
@@ -54,6 +55,7 @@
 | 3 | I45-A03 | When KissKH shows "Too many request.", Forja backs off (no mirror hop storm) and surfaces a clear rate-limit message | ⬜ |
 | 4 | I45-A04 | Play opens only `kisskh.nl` with no preflight mirror requests; Settings shows `.co` / `.ovh` / `.la` / `.do` disabled | ⬜ |
 | 5 | I45-A05 | Android TV: Asian Drama episode play retrieves stream key (logs `video payload` / `kkhVideo`) without ~10s empty fail | ⬜ |
+| 6 | I45-A06 | Asian Drama play uses native `resolve_stream` (log `native resolve ok`) in under a few seconds on desktop and Android TV | ⬜ |
 
 ---
 
@@ -147,3 +149,15 @@ macOS worked.
 (60s Asian Drama); one hard-nav only after ~15s; Episode/Sub/rate-limit also
 delivered via `flutter_inappwebview.callHandler` (console fallback) because ATV
 drops large `console.log` payloads.
+
+### Native kkey (2026-07-31)
+
+A normal browser tab plays KissKH in under a second because the SPA computes
+`kkey` in JS and GETs `/api/DramaList/Episode/{id}.png`. Forja was waiting on a
+headless WebView to observe that request — slow/flaky on Android TV, and the
+wrong architecture when the cipher is known.
+
+**Shipped (I45-T24):** Rust ports the consumet-compatible `kkey` cipher and
+resolves Episode + Sub over HTTP (`action: resolve_stream`). Host extractor
+tries native first; WebView remains fallback only if the cipher drifts.
+Live smoke: episode `171699` returns Video URL in ~1s.

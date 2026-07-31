@@ -304,18 +304,32 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
     if (!mounted) return;
 
-    // IPTV-style hot-swap: unmount the current engine, wait for MediaKit /
-    // MediaCodec surface release, then mount the new one. Instant setState
-    // MediaKit→Exo left Exo TextureView zoomed/cropped (issue 129).
+    // Unmount the current engine (spinner), cool down the surface, then mount
+    // the new one. Instant MediaKit→Exo left Exo TextureView zoomed/cropped
+    // (issue 129). Awaiting full MediaKit dispose on the UI isolate ANRs
+    // physical ATV (issue 128) — cap that wait when mounting Exo.
     setState(() {
       _useExternalPlayer = false;
       _switchingBuiltInEngine = true;
     });
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
-    await MpvExclusiveSession.instance.prepareForVideoPlayer();
-    // mediacodec_embed needs a beat after Video unmount before Exo TLHC.
     await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (!mounted) return;
+
+    if (builtInEngine == BuiltInPlayerEngine.mediaKit) {
+      // Prior MediaKit zombie (if any) must finish; Exo already unmounted.
+      await MpvExclusiveSession.instance.prepareForVideoPlayer();
+      if (!mounted) return;
+      // Extra beat after Exo PlatformView release before mediacodec_embed.
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    } else {
+      // Mounting Exo after MediaKit: brief MediaCodec detach only — do not
+      // sit on full FFI stop/dispose (ATV ANR). Exo boot uses the same cap.
+      await MpvExclusiveSession.instance.prepareForVideoPlayer(
+        timeout: const Duration(milliseconds: 1200),
+      );
+    }
     if (!mounted) return;
     setState(() {
       _builtInEngine = builtInEngine;

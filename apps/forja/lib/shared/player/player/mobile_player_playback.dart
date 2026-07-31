@@ -179,8 +179,10 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             _s._currentFallbackSourceIndex++;
             continue;
           }
-          final needsDuration =
-              sourceExpectsDuration(openUrl, type: source.type);
+          final needsDurationGate = sourceRequiresSeekableDurationBeforeConfirm(
+            openUrl,
+            type: source.type,
+          );
           final decoded = await confirmOpenedStreamVideoDecode(
             _s._player,
             openUrl: openUrl,
@@ -204,7 +206,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             continue;
           }
           final hasDuration =
-              !needsDuration ||
+              !needsDurationGate ||
               await waitForSeekableDuration(
                 _s._player,
                 timeout: widget.tvRemoteEnabled
@@ -263,8 +265,11 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
               pipeline.report(StreamOpenStepResult.openFailed);
               continue;
             }
-            final needsDuration =
-                sourceExpectsDuration(openUrl, type: source.type);
+            final needsDurationGate =
+                sourceRequiresSeekableDurationBeforeConfirm(
+              openUrl,
+              type: source.type,
+            );
             final decoded = await confirmOpenedStreamVideoDecode(
               _s._player,
               openUrl: openUrl,
@@ -282,7 +287,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
               continue;
             }
             final hasDuration =
-                !needsDuration ||
+                !needsDurationGate ||
                 await waitForSeekableDuration(
                   _s._player,
                   timeout: widget.tvRemoteEnabled
@@ -344,6 +349,22 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
           _s._currentPlayingCatalogUrl = catalogIdentity ?? source.url;
           _s._markPlaybackConfirmed(true);
         });
+        if (_s._durationNotifier.value <= Duration.zero &&
+            sourceExpectsDuration(openUrl, type: source.type)) {
+          await waitForSeekableDuration(
+            _s._player,
+            timeout: widget.tvRemoteEnabled
+                ? const Duration(seconds: 15)
+                : const Duration(seconds: 8),
+          );
+          if (_fallbackAborted(runGen)) return false;
+          syncPlayerProgressNotifiers(
+            _s._player,
+            duration: _s._durationNotifier,
+            position: _s._positionNotifier,
+            buffered: _s._bufferedNotifier,
+          );
+        }
         _s._statusController.complete();
         _s._markSourceActive(i);
         _s._syncPanelAfterPlaybackConfirmed();

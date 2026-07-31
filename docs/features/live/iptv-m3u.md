@@ -16,7 +16,7 @@ Besides Xtream portals, Forja supports plain **M3U/M3U8 playlists**. Import from
 - Import playlist from a file on your device
 - Browse channels from each playlist
 - Play a channel in the IPTV player — shell nav hides Offstage while playing (full-width video; rail stays mounted); on desktop and phone, hover the volume icon to expand the volume bar (tap mutes; long-press pins the bar). On **Android TV**, volume uses hardware / system controls (no volume button in the IPTV chrome)
-- Use **Player** and **Picture-in-picture** from the IPTV player top-right on Android and desktop (same flat controls as the movie player). On **Android TV**, **Player** lists only ExoPlayer and MediaKit (no external apps)
+- Use **Player** and **Picture-in-picture** from the IPTV player top-right on Android and desktop (same flat controls as the movie player). On **Android TV**, **Player** lists only ExoPlayer and MediaKit (no external apps); switching between them mid-stream unmounts the old surface briefly so the app does not force-close
 - Change channels from the in-player guide (flat translucent groups + channel list overlay — no frosted blur over the live video)
 - Search channels from the in-player search overlay (flat translucent panel) — dismiss the overlay with the borderless **Close** control in the header (circular hover highlight, no box border). On **Android TV**, **OK** on the search field focuses the first result (does not open it); **↑/↓** move through results; **OK** on a result opens that channel
 - See the current channel logo at the bottom-left of the player; it sits immediately before the progress bar, with playback time on its right (live uses programme-guide fill when EPG is available)

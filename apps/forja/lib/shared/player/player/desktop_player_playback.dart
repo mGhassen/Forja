@@ -180,8 +180,10 @@ mixin _DesktopPlayerPlayback
             _s._currentFallbackSourceIndex++;
             continue;
           }
-          final needsDuration =
-              sourceExpectsDuration(openUrl, type: source.type);
+          final needsDurationGate = sourceRequiresSeekableDurationBeforeConfirm(
+            openUrl,
+            type: source.type,
+          );
           final decoded = await confirmOpenedStreamVideoDecode(
             _s._player,
             openUrl: openUrl,
@@ -204,8 +206,8 @@ mixin _DesktopPlayerPlayback
             _s._currentFallbackSourceIndex++;
             continue;
           }
-          final hasDuration =
-              !needsDuration || await waitForSeekableDuration(_s._player);
+          final hasDuration = !needsDurationGate ||
+              await waitForSeekableDuration(_s._player);
           if (_fallbackAborted(runGen)) return false;
           if (!hasDuration) {
             debugPrint('[Player] Source $i opened without duration: $openUrl');
@@ -258,8 +260,11 @@ mixin _DesktopPlayerPlayback
               pipeline.report(StreamOpenStepResult.openFailed);
               continue;
             }
-            final needsDuration =
-                sourceExpectsDuration(openUrl, type: source.type);
+            final needsDurationGate =
+                sourceRequiresSeekableDurationBeforeConfirm(
+              openUrl,
+              type: source.type,
+            );
             final decoded = await confirmOpenedStreamVideoDecode(
               _s._player,
               openUrl: openUrl,
@@ -276,8 +281,8 @@ mixin _DesktopPlayerPlayback
               pipeline.report(StreamOpenStepResult.decodeFailed);
               continue;
             }
-            final hasDuration =
-                !needsDuration || await waitForSeekableDuration(_s._player);
+            final hasDuration = !needsDurationGate ||
+                await waitForSeekableDuration(_s._player);
             if (_fallbackAborted(runGen)) return false;
             if (!hasDuration) {
               debugPrint(
@@ -336,6 +341,22 @@ mixin _DesktopPlayerPlayback
           _s._currentPlayingCatalogUrl = catalogIdentity ?? source.url;
           _s._markPlaybackConfirmed(true);
         });
+        // HLS duration often lands after confirm - soft-wait so the seek bar
+        // is not stuck at 0:00 while video already plays.
+        if (_s._durationNotifier.value <= Duration.zero &&
+            sourceExpectsDuration(openUrl, type: source.type)) {
+          await waitForSeekableDuration(
+            _s._player,
+            timeout: const Duration(seconds: 8),
+          );
+          if (_fallbackAborted(runGen)) return false;
+          syncPlayerProgressNotifiers(
+            _s._player,
+            duration: _s._durationNotifier,
+            position: _s._positionNotifier,
+            buffered: _s._bufferedNotifier,
+          );
+        }
         _s._statusController.complete();
         _s._markSourceActive(i);
         _s._syncPanelAfterPlaybackConfirmed();

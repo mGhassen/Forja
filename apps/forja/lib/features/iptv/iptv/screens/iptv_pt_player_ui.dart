@@ -191,9 +191,24 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   Widget _buildPlayer(BuildContext context) {
     if (!_s._playerReady) {
-      return const Scaffold(
+      final banner = _s._statusBanner;
+      return Scaffold(
         backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator(color: Colors.white54)),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: Colors.white54),
+              if (banner != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  banner,
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+              ],
+            ],
+          ),
+        ),
       );
     }
 

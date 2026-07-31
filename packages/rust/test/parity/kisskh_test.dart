@@ -77,6 +77,24 @@ void main() {
     expect(rejected['error'], contains('Unsupported KissKh mirror'));
   });
 
+  test('kisskhCatalogJson activate + resolve_stream rejects bad episode', () {
+    final activated =
+        jsonDecode(
+              RustLib.instance.kisskhCatalogJson(
+                '{"action":"activate_base_url","base_url":"https://kisskh.nl"}',
+              ),
+            )
+            as Map<String, dynamic>;
+    expect(activated['base_url'], 'https://kisskh.nl');
+
+    final bad = jsonDecode(
+      RustLib.instance.kisskhCatalogJson(
+        '{"action":"resolve_stream","episode_id":0,"base_url":"https://kisskh.nl"}',
+      ),
+    ) as Map<String, dynamic>;
+    expect(bad['error'], contains('episode_id'));
+  });
+
   test('kisskhCatalogJson enrich_cards empty', () async {
     final decoded = await kisskhCatalog({
       'action': 'enrich_cards',

@@ -36,11 +36,17 @@ class MpvExclusiveSession {
   /// Pending dispose is tracked on **all** platforms: Android timed teardown
   /// (issue 128) can leave mpv half-alive; opening a new IPTV/Live MediaKit
   /// [Player] before that finishes yields black screen / format errors.
-  Future<void> prepareForVideoPlayer() async {
+  ///
+  /// [timeout] caps how long we block the UI isolate. Full MediaKit stop+dispose
+  /// can exceed the ATV 5s ANR window — Exo mounts after MediaKit use a short
+  /// cap (issue 128); MediaKit mounts keep the default so zombies finish.
+  Future<void> prepareForVideoPlayer({
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
     try {
       // Android MediaKit stop+dispose can take ~2s each; 2s was too short and
       // let Exo mount over a live mediacodec_embed surface (issue 129 crop).
-      await _pendingVideoDispose?.timeout(const Duration(seconds: 5));
+      await _pendingVideoDispose?.timeout(timeout);
     } catch (_) {}
     if (!required) return;
     await MusicPlayerService().releaseMpvForVideo();
