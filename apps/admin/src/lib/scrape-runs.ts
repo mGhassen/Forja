@@ -121,7 +121,11 @@ export function markRunsStoppedInCache(
   qc.setQueryData<ScrapeRunRow[]>(SCRAPE_RUNS_LATEST_KEY, patch)
 }
 
-/** Live updates while a scrape is running (realtime + fast poll). */
+/**
+ * Shared realtime subscription for scrape runs.
+ * OpsOverviewStrip + Scrape page both call this — must be one channel.
+ * Date.now() topic names collided in the same tick (second .on after subscribe).
+ */
 const scrapeRunListeners = new Set<() => void>()
 let scrapeRunsChannel: ReturnType<typeof supabase.channel> | null = null
 
@@ -129,10 +133,14 @@ export function subscribeScrapeRuns(onChange: () => void): () => void {
   scrapeRunListeners.add(onChange)
 
   if (!scrapeRunsChannel) {
-    // Fixed topic — never Date.now(): strip + scrape page mount same tick and
-    // would collide (second .on() after first subscribe → realtime throw).
+    // Drop any leftover same-topic channels (HMR / Strict Mode).
+    for (const ch of supabase.getChannels()) {
+      if (ch.topic.includes('iptv_scrape_runs')) {
+        void supabase.removeChannel(ch)
+      }
+    }
     scrapeRunsChannel = supabase
-      .channel('iptv_scrape_runs')
+      .channel(`iptv_scrape_runs_${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'iptv_scrape_runs' },
