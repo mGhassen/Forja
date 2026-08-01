@@ -14,6 +14,8 @@ final liveMatchesPrimaryLoadProvider = FutureProvider.autoDispose
           return _fetchLiveMatchesMut();
         case _LiveMatchesServer.cdnLive:
           return _fetchLiveMatchesCdn();
+        case _LiveMatchesServer.stremio:
+          return _fetchLiveMatchesStremio();
       }
     });
 
@@ -164,4 +166,22 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesCdn() async {
     cdnChannels: channels,
     cdnSports: sports,
   );
+}
+
+Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStremio() async {
+  final matches = await _fetchStremioSportMatches();
+  final seen = <String>{};
+  final cats = <_Sport>[];
+  for (final m in matches) {
+    if (m.isAlwaysOn) continue;
+    if (m.category.isNotEmpty && seen.add(m.category)) {
+      cats.add(_Sport(id: m.category, name: m.categoryLabel));
+    }
+  }
+  if (matches.any((m) => m.isAlwaysOn) &&
+      !cats.any((c) => _normalizeSportId(c.id) == '24-7')) {
+    cats.add(const _Sport(id: '24-7', name: '24/7'));
+  }
+  cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  return LiveMatchesPrimaryLoad(sports: cats, streamedMatches: matches);
 }

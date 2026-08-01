@@ -3069,7 +3069,8 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
   @override
   Widget build(BuildContext context) {
     final m = widget.match;
-    final hasSources = m.sources.isNotEmpty || m.inlineStreams.isNotEmpty;
+    final hasSources =
+        m.sources.isNotEmpty || m.inlineStreams.isNotEmpty || m.isStremio;
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
     final canPlay = hasSources && m.isLive;
     final policy = ShellScope.inputPolicyOf(context);

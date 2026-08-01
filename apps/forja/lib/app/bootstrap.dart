@@ -485,34 +485,13 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 400));
 
     final needs = await BootNeeds.resolve();
-    if (!needs.torrent) {
-      if (!needs.playSourceTorrent) {
-        debugPrint('[Init] TorrentStream skip (direct torrent off)');
-      } else {
-        debugPrint('[Init] TorrentStream skip (no VOD tab)');
-      }
-      return;
-    }
-    if (!PlatformPlayback.capabilities.localTorrentEngine) {
-      debugPrint('[Init] TorrentStream skip (platform has no local engine)');
-      return;
-    }
-    debugPrint('[Init] TorrentStream start (post-splash)');
-    final ok = await TorrentStreamService()
-        .start()
-        .timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            debugPrint('[Init] TorrentStream timed out after 10s');
-            return false;
-          },
-        )
-        .catchError((e, st) {
-          debugPrint('[Init] TorrentStream error: $e');
-          debugPrint('[Init] Stack trace: $st');
-          return false;
-        });
-    debugPrint('[Init] TorrentStream ${ok ? "ready" : "failed"}');
+    // Sources engines (proxy, WebStreamr, Nuvio, torrent) — not splash work.
+    await ProfileEngineWarm.warm(
+      needs,
+      startTorrent: true,
+      startPlaySources: true,
+      reason: 'post-splash',
+    );
   }
 
   void _dismissSplash({bool showSlowBootToast = false}) {
@@ -593,19 +572,9 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _initOfflineBoot() async {
     debugPrint('[Init] offline boot - skip network catalog');
     final needs = await BootNeeds.resolve();
-    if (needs.webstreaming) {
-      _setBootStatus('Starting playback services…');
-      debugPrint('[Init] LocalServer start (webstreaming, offline)');
-      await LocalServerService().start().catchError((e) {
-        debugPrint('[Init] LocalServer error: $e');
-      });
-    } else if (!needs.playSourceWebstreaming) {
-      debugPrint('[Init] LocalServer skip (webstreaming off)');
-    } else {
-      debugPrint('[Init] LocalServer skip (no VOD tab)');
-    }
-    _setBootStatus('Ready offline…');
+    // Play-source engines start post-splash (same as online).
     debugPrint('[Init] offline boot complete ($needs)');
+    _setBootStatus(_splashOpeningStatus(needs));
   }
 
   Future<void> _initOnlineBoot() async {
@@ -614,10 +583,12 @@ class _SplashScreenState extends State<SplashScreen> {
     final needs = await BootNeeds.resolve();
     debugPrint('[Init] $needs');
 
-    // Webstreaming + Nuvio under splash; TorrentStream waits for post-splash.
+    // Splash floor: TMDB only. LocalServer / WebStreamr / Nuvio / torrent
+    // start after dismiss (Sources / details), not during the animation.
     await ProfileEngineWarm.warm(
       needs,
       startTorrent: false,
+      startPlaySources: false,
       reason: 'intro-splash',
       onStatus: _setBootStatus,
     );

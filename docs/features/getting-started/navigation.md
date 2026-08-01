@@ -40,7 +40,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 - **Hero:** UP from the first row scrolls the hero fully visible and focuses Play; LEFT from Play focuses the **active** nav tab (not a geometric neighbor)
 - **Home hero (TV):** DOWN from the top menu (Search / Films / TV Shows / Categories) focuses the **hero gallery** (backdrop carousel); **←/→** change the featured title and backdrop image; UP from the gallery returns to the top menu; DOWN from the gallery focuses **Play**; UP from **Play** (and the info / My List pills) focuses the gallery
 - **Home, Search, Anime, Asian Drama, My List, Settings, IPTV, and Live Matches** use the **same card sizes, spacing, and section layout as desktop**; D-pad focus and coordinator-registered rows/chips are unchanged
-- **Home (TV):** catalog rows, mood chips, and Stremio **Show All** use the shared `TvFocusGraph` recipes (same D-pad rules: left from first card → nav; mood ↓ → results; ↑ from results → moods)
+- **Home (TV):** catalog rows and mood chips use the shared `TvFocusGraph` recipes (same D-pad rules: left from first card → nav; mood ↓ → results; ↑ from results → moods)
 - **Anime / Asian Drama (TV):** same `TvFocusGraph` recipes as Home for catalog rows and continue watching; Anime vibe chips match Home mood D-pad
 - **Live Matches / IPTV (TV):** same `TvFocusGraph` recipes — Live Matches sport/CDN chips and card grids; IPTV category rail, stream grid, EPG channel list, portal/M3U lists, and player top/controls via `iptvCatalogRow` (search-field chrome still syncs before focus)
 - **Search (TV):** results use the `TvGrid` recipe (4 columns); trending helpers use a vertical `TvCatalogRow`; first-column Left still jumps to helpers, first-row Up to the search field
@@ -60,7 +60,7 @@ Discover, Similar, Media Downloader, Magnet, Audiobooks, Books, Music, Comics, M
 ## Tips
 
 - Hide tabs you never use to reduce clutter — they can be re-enabled anytime (among the available tabs)
-- Startup follows your profile: Home / Search / My List pull movie catalogs; torrent / Stremio / Webstreaming engines only start when those play sources are on **and** you have a VOD tab (Home, Search, Anime, Asian Drama, or My List). IPTV + Live Matches alone skip them at splash. After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches); guest / restored-session cold start uses the logo boot splash
+- Startup follows your profile: Home / Search / My List prefetch TMDB under the logo splash; torrent / Stremio / Nuvio / Webstreaming engines start **after** splash when those play sources are on **and** you have a VOD tab (Home, Search, Anime, Asian Drama, or My List). IPTV + Live Matches alone skip them. Restored-session cold start paints the logo splash immediately (update check + cloud sync run in the background). After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches).
 - Movie and series details open on top of the current tab; the player opens full-screen from there
 - On **desktop**, the mouse **Back** side button and **Escape** act like the in-app **Back** control — player first, then details, then in-tab screens. A two-finger trackpad swipe-right on page chrome (not over a horizontal strip like catalog rows or addons) shows a left-edge arrow; when the ring fills completely, Back commits. Swiping over horizontal rows only scrolls them.
 

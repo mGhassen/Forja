@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 6** acceptance (first-use lazy) ⏭️ · **8 / 8** acceptance (profile-gated splash) · **3 / 3** acceptance (profile-switch = intro) |
-| **Current slice** | Profile switch matches intro dismiss-when-ready + IPTV gated pull |
+| **Progress** | **0 / 6** acceptance (first-use lazy) ⏭️ · **8 / 8** acceptance (profile-gated splash) · **3 / 3** acceptance (profile-switch = intro) · **4 / 4** acceptance (instant splash + post-splash engines) |
+| **Current slice** | Instant splash paint; play-source engines post-dismiss; no Home Stremio rails |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -53,9 +53,20 @@
 
 ---
 
+## Acceptance (instant splash + post-splash engines)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R17-A18 | `DesktopStartupGate` paints splash/account from cached session on first frame (no blank update stage) | ✅ |
+| 2 | R17-A19 | Update check + `pullAndMergeAll` (incl. IPTV) run in background after first paint; soft-fail keeps local | ✅ |
+| 3 | R17-A20 | Intro / profile splash uses `startPlaySources: false`; LocalServer / WebStreamr / Nuvio / Torrent start post-dismiss | ✅ |
+| 4 | R17-A21 | Home does not fetch or render Stremio catalog rails | ✅ |
+
+---
+
 ## Summary
 
-Move heavy native and network engines off the uncritical always-on boot path. **Current slice:** profile switch matches intro splash timing (dismiss at floor, warm continues in background) and skips IPTV portal sync unless that profile shows IPTV.
+Move heavy native and network engines off the uncritical always-on boot path. **Current slice:** logo splash paints immediately; cloud sync / update check are background; Sources engines (proxy, WebStreamr, Nuvio, torrent) start after splash dismiss — not under the animation floor.
 
 ## Problem
 
@@ -147,11 +158,12 @@ Errors: catch, log `[EngineRegistry] $id failed: $e`, surface once via `ShellBus
 | Service | Activates when |
 |---------|----------------|
 | Host (Flutter, Engine, MediaKit, theme, splash sound) | process start |
+| Logo / account UI | **first frame** from cached session (update + cloud pull background) |
 | TMDB → BootCache | intro splash **or** profile splash if `home` \| `search` \| `mylist` |
-| LocalServer + WebStreamr | intro / profile splash if Webstreaming on **and** VOD tab; settings toggle always |
-| Nuvio refresh | intro / profile splash if Direct torrent on **and** VOD tab; settings toggle always |
-| TorrentStream | post intro-splash / profile splash if Direct torrent on **and** VOD tab (`home`/`search`/`anime`/`asian_drama`/`mylist`); settings toggle always |
-| Stremio Home catalogs | Home mount if Stremio on |
+| LocalServer + WebStreamr | **post** intro / profile splash if Webstreaming on **and** VOD tab; settings toggle always |
+| Nuvio refresh | **post** intro / profile splash if Nuvio on **and** VOD tab; settings toggle always |
+| TorrentStream | **post** intro / profile splash if Direct torrent on **and** VOD tab; settings toggle always |
+| Stremio Home catalogs | **removed** (Search / details / Live Matches only for now) |
 | AudioService / Music / Audiobook | never while tabs on hold |
 | Anime / Asian / IPTV / Live / Lists | first tab mount |
 

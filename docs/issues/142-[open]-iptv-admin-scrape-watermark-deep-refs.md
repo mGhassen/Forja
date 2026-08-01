@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 3** acceptance |
+| **Progress** | **8 / 8** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 5 | I142-T05 | Honest run metrics + admin Scrape table labels (`unparsed_count`) | ✅ |
 | 6 | I142-T06 | Persist portals per deep ref + `was_existing` (already in pool) | ✅ |
 | 7 | I142-T07 | Admin **Deep refs** page: show base64/payload + portals new vs already-in-DB | ✅ |
+| 8 | I142-T08 | Page-by-page scrape (10 posts/Reddit page per Inngest step) + paste fetch timeouts | ✅ |
 
 ---
 
@@ -45,4 +46,6 @@ Admin catalog scrape rewalked 500 posts every run, wrote empty `subreddit`, drop
 
 **Root fix:** resume from known `post_id`s, restore deep-ref storage with retry queue, upsert every portal found, fix subreddit.
 
-**Apply migration** `20260731184207_iptv_scrape_watermark_deep_refs.sql` before deploying admin (ask before `db push`).
+**Also (I142-T08):** a full scrape dying at ~10m with truncated error `Your server returned HTTP…` and all metrics `0` is Inngest/proxy killing a single long step. Fixed by **page-by-page** Reddit walk (`limit=10` per step) + paste fetch timeouts — not a Reddit auth failure.
+
+**Apply migrations** `20260731184207_…` + `20260731184812_…` before deploying admin (ask before `db push`).

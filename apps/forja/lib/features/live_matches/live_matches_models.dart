@@ -267,6 +267,10 @@ class _StreamedMatch {
   /// `mut` when from MutStreams; empty/streamed otherwise.
   final String catalog;
 
+  /// Non-empty → resolve via Stremio `/stream/{type}/{id}.json` (HLS).
+  final String stremioBaseUrl;
+  final String stremioType;
+
   const _StreamedMatch({
     required this.id,
     required this.title,
@@ -282,9 +286,13 @@ class _StreamedMatch {
     required this.sources,
     this.inlineStreams = const [],
     this.catalog = '',
+    this.stremioBaseUrl = '',
+    this.stremioType = 'sport',
   });
 
   bool get isMut => catalog == 'mut' || inlineStreams.isNotEmpty;
+
+  bool get isStremio => stremioBaseUrl.isNotEmpty;
 
   factory _StreamedMatch.fromJson(Map<String, dynamic> j) {
     final teams = j['teams'] as Map<String, dynamic>?;
@@ -319,6 +327,8 @@ class _StreamedMatch {
           .where((s) => s.embedUrl.isNotEmpty)
           .toList(),
       catalog: (j['catalog'] ?? '').toString(),
+      stremioBaseUrl: (j['stremioBaseUrl'] ?? '').toString(),
+      stremioType: (j['stremioType'] ?? 'sport').toString(),
     );
   }
 
@@ -1867,6 +1877,86 @@ Future<List<_StreamedMatch>> _fetchMutMatches() async {
   }
 }
 
+_StreamedMatch? _streamedMatchFromStremioMeta(
+  Map<String, dynamic> meta, {
+  required String addonBaseUrl,
+}) {
+  final id = meta['id']?.toString().trim() ?? '';
+  if (id.isEmpty) return null;
+  final title = meta['name']?.toString().trim() ?? '';
+  if (title.isEmpty) return null;
+  final genres = meta['genres'];
+  var category = '';
+  if (genres is List && genres.isNotEmpty) {
+    category = genres.first.toString().trim();
+  }
+  final release = meta['releaseInfo']?.toString().toUpperCase() ?? '';
+  final desc = meta['description']?.toString().toUpperCase() ?? '';
+  final live = release.contains('LIVE') || desc.contains('LIVE NOW');
+  final poster = meta['poster']?.toString() ?? '';
+  final type = meta['type']?.toString().trim();
+  // For leaf / 24/7 IPTV rows with LIVE but no kickoff, treat as always-on.
+  final alwaysOn = live &&
+      (id.startsWith('leaf:') || desc.contains('IPTV'));
+  return _StreamedMatch(
+    id: id,
+    title: title,
+    category: alwaysOn
+        ? '24/7'
+        : (category.isEmpty ? 'other' : category.toLowerCase()),
+    dateMs: 0,
+    poster: poster,
+    popular: desc.contains('POPULAR'),
+    airing: live,
+    sources: const [],
+    catalog: 'stremio',
+    stremioBaseUrl: addonBaseUrl,
+    stremioType: (type == null || type.isEmpty) ? 'sport' : type,
+  );
+}
+
+Future<List<_StreamedMatch>> _fetchStremioSportMatches() async {
+  final stremio = StremioService();
+  final addons = await stremio.getAddonsForFeature(StremioAddonFeatures.live);
+  if (addons.isEmpty) return [];
+
+  final seen = <String>{};
+  final out = <_StreamedMatch>[];
+  for (final addon in addons) {
+    final baseUrl = addon['baseUrl']?.toString() ?? '';
+    if (baseUrl.isEmpty) continue;
+    final catalogs = StremioService.sportCatalogsForLive(addon);
+    for (final cat in catalogs) {
+      final type = cat['type']?.toString() ?? 'sport';
+      final catalogId = cat['id']?.toString() ?? '';
+      if (catalogId.isEmpty) continue;
+      try {
+        final metas = await stremio.getCatalog(
+          baseUrl: baseUrl,
+          type: type,
+          id: catalogId,
+        );
+        for (final meta in metas) {
+          final match = _streamedMatchFromStremioMeta(
+            meta,
+            addonBaseUrl: baseUrl,
+          );
+          if (match == null) continue;
+          if (!seen.add(match.id)) continue;
+          out.add(match);
+        }
+      } catch (e) {
+        debugPrint('[LiveMatches] Stremio catalog error ($baseUrl/$catalogId): $e');
+      }
+    }
+  }
+  out.sort((a, b) {
+    if (a.isLive != b.isLive) return a.isLive ? -1 : 1;
+    return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+  });
+  return out;
+}
+
 Future<List<_StreamedStream>> _fetchStreamedStreams(
   _StreamedSourceRef sourceRef,
 ) async {
@@ -1959,7 +2049,7 @@ Future<List<_CdnSportEvent>> _fetchCdnSports() async {
   }
 }
 
-enum _LiveMatchesServer { all, ppv, streamed, mutStreams, cdnLive }
+enum _LiveMatchesServer { all, ppv, streamed, mutStreams, cdnLive, stremio }
 
 String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
   _LiveMatchesServer.all => 'All',
@@ -1967,6 +2057,7 @@ String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
   _LiveMatchesServer.streamed => 'Streamed',
   _LiveMatchesServer.mutStreams => 'MutStreams',
   _LiveMatchesServer.cdnLive => 'CDN Live',
+  _LiveMatchesServer.stremio => 'Stremio',
 };
 
 String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
@@ -1976,6 +2067,7 @@ String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
       _LiveMatchesServer.streamed => 'streamed.pk',
       _LiveMatchesServer.mutStreams => 'mut.st',
       _LiveMatchesServer.cdnLive => 'cdn-live.tv',
+      _LiveMatchesServer.stremio => 'Installed live addons',
     };
 
 sealed class _LiveMatchGridEntry {

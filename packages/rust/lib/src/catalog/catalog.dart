@@ -4,6 +4,7 @@ export 'mdblist_service.dart';
 export 'mysubs_service.dart';
 export 'paper2audio_service.dart';
 export 'subtitlecat_service.dart';
+export 'stremio_addon_features.dart';
 export 'stremio_service.dart';
 export 'tmdb_api.dart';
 export 'tmdb_watch_region.dart';

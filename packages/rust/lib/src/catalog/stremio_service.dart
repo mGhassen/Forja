@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
+import 'stremio_addon_features.dart';
 
 class _StremioHttpResponse {
   const _StremioHttpResponse(this.statusCode, this.body);
@@ -171,6 +172,7 @@ class StremioService {
           'manifest': manifest,
           'name': manifest['name'] ?? 'Unknown Addon',
           'icon': manifest['logo'] ?? '',
+          'features': StremioAddonFeatures.inferFromManifest(manifest),
         };
       }
     } catch (e) {
@@ -303,6 +305,14 @@ class StremioService {
       try {
         final fresh = await fetchManifest(baseUrl);
         if (fresh != null && _hasManifestResources(fresh)) {
+          // Keep user feature targets across lean-row rehydrate.
+          final kept = StremioAddonFeatures.normalize(
+            addon['features'],
+            manifest: fresh['manifest'] is Map
+                ? Map<String, dynamic>.from(fresh['manifest'] as Map)
+                : null,
+          );
+          fresh['features'] = kept;
           // Silent persist — notifying would re-enter Home catalog load forever.
           await _settings.saveStremioAddon(fresh, notify: false);
           _hydrateFailedUntil.remove(baseUrl);
@@ -321,9 +331,17 @@ class StremioService {
 
   /// Helper to get all installed addons that support a specific resource.
   /// Optionally filters by content [type] (e.g. 'movie', 'series').
-  Future<List<Map<String, dynamic>>> getAddonsForResource(String resourceName, {String? type}) async {
+  ///
+  /// [feature] defaults to [StremioAddonFeatures.vod] so Live-only sports
+  /// addons never leak into Details / Home stream chips.
+  Future<List<Map<String, dynamic>>> getAddonsForResource(
+    String resourceName, {
+    String? type,
+    String feature = StremioAddonFeatures.vod,
+  }) async {
     final allAddons = await hydrateInstalledAddons();
     return allAddons.where((addon) {
+      if (!StremioAddonFeatures.read(addon).contains(feature)) return false;
       final manifest = addon['manifest'];
       if (manifest is! Map) return false;
       final resources = manifest['resources'] as List?;
@@ -361,7 +379,10 @@ class StremioService {
   /// parent addon's baseUrl and name.
   /// Handles both the detailed `extra` format (objects) and the legacy
   /// `extraSupported` / `extraRequired` flat string arrays.
-  Future<List<Map<String, dynamic>>> getAllCatalogs() async {
+  /// Catalogs for Home / Search. Defaults to [StremioAddonFeatures.vod].
+  Future<List<Map<String, dynamic>>> getAllCatalogs({
+    String feature = StremioAddonFeatures.vod,
+  }) async {
     // Use all installed addons that declare at least one catalog.
     // We intentionally do NOT filter by getAddonsForResource('catalog')
     // because many addons omit 'catalog' from their resources array even
@@ -369,6 +390,7 @@ class StremioService {
     // list in the manifest is the authoritative signal.
     final allAddons = await hydrateInstalledAddons();
     final catalogAddons = allAddons.where((addon) {
+      if (!StremioAddonFeatures.read(addon).contains(feature)) return false;
       final manifest = addon['manifest'];
       if (manifest is! Map) return false;
       final cats = manifest['catalogs'];
@@ -668,5 +690,51 @@ class StremioService {
       return {'action': 'stremio_meta', 'meta': meta, 'type': type};
     }
     return null;
+  }
+
+  /// Installed addons targeting [feature] (after hydrate).
+  Future<List<Map<String, dynamic>>> getAddonsForFeature(String feature) async {
+    final all = await hydrateInstalledAddons();
+    return all
+        .where((a) => StremioAddonFeatures.read(a).contains(feature))
+        .toList();
+  }
+
+  /// Prefer live/today sport catalogs; else every `type: sport` catalog.
+  static List<Map<String, dynamic>> sportCatalogsForLive(
+    Map<String, dynamic> addon,
+  ) {
+    final manifest = addon['manifest'];
+    if (manifest is! Map) return const [];
+    final catalogs = manifest['catalogs'];
+    if (catalogs is! List) return const [];
+    final sport = <Map<String, dynamic>>[];
+    for (final c in catalogs) {
+      if (c is! Map) continue;
+      final type = c['type']?.toString() ?? '';
+      if (type != 'sport') continue;
+      sport.add(Map<String, dynamic>.from(c));
+    }
+    if (sport.isEmpty) return const [];
+    final preferred = sport
+        .where((c) {
+          final id = c['id']?.toString() ?? '';
+          return id == 'sports_live' || id == 'sports_today';
+        })
+        .toList();
+    return preferred.isNotEmpty ? preferred : sport;
+  }
+
+  /// True when a stream URL looks playable in the native IPTV player.
+  static bool isPlayableLiveUrl(String? url) {
+    final u = url?.trim() ?? '';
+    if (u.isEmpty) return false;
+    final lower = u.toLowerCase();
+    if (!lower.startsWith('http://') && !lower.startsWith('https://')) {
+      return false;
+    }
+    if (lower.contains('google.com')) return false;
+    if (lower.contains('upgrade to watch')) return false;
+    return true;
   }
 }

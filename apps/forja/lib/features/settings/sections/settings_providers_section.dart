@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
@@ -153,6 +155,24 @@ class _SettingsProvidersSectionState
     if (mounted) ForjaToast.success('Addon removed');
   }
 
+  Future<void> _setAddonFeatures(
+    Map<String, dynamic> addon,
+    String feature,
+  ) async {
+    final baseUrl = addon['baseUrl']?.toString() ?? '';
+    if (baseUrl.isEmpty) return;
+    final current = StremioAddonFeatures.read(addon);
+    final next = StremioAddonFeatures.toggle(current, feature);
+    if (next.length == current.length &&
+        next.every(current.contains)) {
+      return;
+    }
+    final updated = Map<String, dynamic>.from(addon);
+    updated['features'] = next;
+    await _settings.saveStremioAddon(updated);
+    scheduleStremioSyncPush();
+  }
+
   Widget _buildAddonInput(List<Map<String, dynamic>> installedAddons) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
@@ -177,32 +197,75 @@ class _SettingsProvidersSectionState
             const _MiniLabel('Installed addons'),
             const SizedBox(height: 4),
             ...installedAddons.map((addon) {
-              // Synced / web-installed addons may omit icon (or name).
-              // Never pass a null URL into Image.network.
               final icon = addon['icon']?.toString().trim() ?? '';
               final name = addon['name']?.toString().trim();
               final baseUrl = addon['baseUrl']?.toString().trim() ?? '';
-              return _FlatListRow(
-                leading: icon.isNotEmpty
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: Image.network(
-                          icon,
-                          width: 28,
-                          height: 28,
-                          errorBuilder: (c, e, s) => const Icon(
-                            Icons.extension,
-                            color: ForjaShellColors.iconActive,
+              final features = StremioAddonFeatures.read(addon);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _FlatListRow(
+                      leading: icon.isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: Image.network(
+                                icon,
+                                width: 28,
+                                height: 28,
+                                errorBuilder: (c, e, s) => const Icon(
+                                  Icons.extension,
+                                  color: ForjaShellColors.iconActive,
+                                ),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.extension,
+                              color: ForjaShellColors.iconActive,
+                            ),
+                      title: (name == null || name.isEmpty)
+                          ? 'Untitled addon'
+                          : name,
+                      subtitle: baseUrl,
+                      onRemove: () => _removeAddon(baseUrl),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 2),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _AddonFeatureChip(
+                            label: 'Sources',
+                            selected: features.contains(
+                              StremioAddonFeatures.vod,
+                            ),
+                            onTap: () => unawaited(
+                              _setAddonFeatures(
+                                addon,
+                                StremioAddonFeatures.vod,
+                              ),
+                            ),
                           ),
-                        ),
-                      )
-                    : const Icon(
-                        Icons.extension,
-                        color: ForjaShellColors.iconActive,
+                          _AddonFeatureChip(
+                            label: 'Live Matches',
+                            selected: features.contains(
+                              StremioAddonFeatures.live,
+                            ),
+                            onTap: () => unawaited(
+                              _setAddonFeatures(
+                                addon,
+                                StremioAddonFeatures.live,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                title: (name == null || name.isEmpty) ? 'Untitled addon' : name,
-                subtitle: baseUrl,
-                onRemove: () => _removeAddon(baseUrl),
+                    ),
+                  ],
+                ),
               );
             }),
           ],
@@ -692,6 +755,53 @@ class _FlatListRow extends StatelessWidget {
         size: 20,
       ),
       onTap: onRemove,
+    );
+  }
+}
+
+class _AddonFeatureChip extends StatelessWidget {
+  const _AddonFeatureChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? ForjaShellColors.chipSelectedBg
+          : ForjaShellColors.surfaceElevated,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected
+                  ? ForjaShellColors.chipSelectedBorder
+                  : ForjaShellColors.borderSubtle,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: selected
+                  ? ForjaShellColors.textPrimary
+                  : ForjaShellColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

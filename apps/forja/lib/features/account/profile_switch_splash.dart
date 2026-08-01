@@ -115,7 +115,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       BootCache.clear();
       final needs = await BootNeeds.resolve();
 
-      // Same as intro splash: warm under the floor; torrent after dismiss.
+      // Same as intro splash: TMDB under the floor; play sources after dismiss.
       final bootFuture = _warmLikeIntro(needs);
       if (widget.prepareCurrent) {
         _prepareShellForIncomingProfile();
@@ -128,11 +128,12 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     }
   }
 
-  /// Intro-equivalent warm: LocalServer/WebStreamr/Nuvio + TMDB; no torrent.
+  /// Intro-equivalent warm: TMDB only; play-source engines post-dismiss.
   Future<void> _warmLikeIntro(BootNeeds needs) async {
     await ProfileEngineWarm.warm(
       needs,
       startTorrent: false,
+      startPlaySources: false,
       reason: 'profile-splash',
       onStatus: _setStatus,
     );
@@ -163,7 +164,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       await minSplashFuture;
       if (!mounted || _finished) return;
       _finish(true);
-      unawaited(_startTorrentPostSplash(needs));
+      unawaited(_startPlaySourcesPostSplash(needs));
       return;
     }
 
@@ -180,28 +181,16 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       }),
     );
     _finish(true);
-    unawaited(_startTorrentPostSplash(needs));
+    unawaited(_startPlaySourcesPostSplash(needs));
   }
 
-  Future<void> _startTorrentPostSplash(BootNeeds needs) async {
-    if (!needs.torrent) return;
-    if (!PlatformPlayback.capabilities.localTorrentEngine) return;
-    debugPrint('[Init] TorrentStream start (post-profile-splash)');
-    final ok = await TorrentStreamService()
-        .start()
-        .timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            debugPrint('[Init] TorrentStream timed out after 10s');
-            return false;
-          },
-        )
-        .catchError((Object e, StackTrace st) {
-          debugPrint('[Init] TorrentStream error: $e');
-          debugPrint('[Init] Stack trace: $st');
-          return false;
-        });
-    debugPrint('[Init] TorrentStream ${ok ? "ready" : "failed"}');
+  Future<void> _startPlaySourcesPostSplash(BootNeeds needs) async {
+    await ProfileEngineWarm.warm(
+      needs,
+      startTorrent: true,
+      startPlaySources: true,
+      reason: 'post-profile-splash',
+    );
   }
 
   void _finish(bool ok) {

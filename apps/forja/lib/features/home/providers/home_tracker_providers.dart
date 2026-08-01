@@ -88,11 +88,3 @@ final homeTraktUpcomingMoviesProvider =
   }
   return movies;
 });
-
-/// Raw browsable Stremio catalogs (empty when the Stremio source is off).
-final homeStremioCatalogsProvider =
-    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final enabled = await SettingsService().isPlaySourceStremioEnabled();
-  if (!enabled) return const [];
-  return StremioService().getAllCatalogs();
-});

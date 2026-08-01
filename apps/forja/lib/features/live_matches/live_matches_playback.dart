@@ -86,6 +86,10 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   }
 
   Future<void> _openStreamedMatch(_StreamedMatch match) async {
+    if (match.isStremio) {
+      await _openStremioSportMatch(match);
+      return;
+    }
     if (match.sources.isEmpty && match.inlineStreams.isEmpty) {
       ForjaToast.info('Stream not yet available for this event');
       return;
@@ -131,6 +135,51 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
           Navigator.pop(context);
           unawaited(_openStreamedEmbed(match, stream));
         },
+      ),
+    );
+  }
+
+  Future<void> _openStremioSportMatch(_StreamedMatch match) async {
+    if (!mounted) return;
+    final sources = <IptvPlaySource>[];
+    final ok = await _runWithCancellableLoading('Loading streams…', () async {
+      try {
+        final raw = await StremioService().getStreams(
+          baseUrl: match.stremioBaseUrl,
+          type: match.stremioType,
+          id: match.id,
+        );
+        for (final s in raw) {
+          if (s is! Map) continue;
+          final url = s['url']?.toString();
+          if (!StremioService.isPlayableLiveUrl(url)) continue;
+          final name = (s['name'] ?? s['title'] ?? 'Stream').toString().trim();
+          sources.add(
+            IptvPlaySource(
+              url: url!,
+              label: name.isEmpty ? 'Stream' : name,
+            ),
+          );
+        }
+      } catch (e) {
+        debugPrint('[LiveMatches] Stremio stream error: $e');
+      }
+    });
+    if (!ok) return;
+    if (sources.isEmpty) {
+      ForjaToast.info('No playable streams for this event');
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => IptvPtPlayerScreen(
+          sources: sources,
+          title: match.title,
+          subtitle: match.categoryLabel,
+          engineContext: BuiltInPlayerContext.live,
+        ),
       ),
     );
   }

@@ -4,7 +4,7 @@
 
 ## What it is
 
-Home is the default tab when you first install Forja. It pulls metadata from TMDB for your device's country (falling back to the United States when no country is available) and shows a hero carousel, mood circles (icon + label), and scrollable rows: trending, popular, top rated, now playing, and more. On **desktop and TV**, the hero backdrop fills most of the viewport so **Featured This Month** can sit on the image with its title above the posters; the hero still shows title, metadata, synopsis, and Play/Info actions above that row. If you're logged into Trakt, you also get recommendations and TV/movie calendars. Stremio addon catalogs can appear as rails when addons are installed. You can change the startup tab by selecting its star in **Settings → Features**.
+Home is the default tab when you first install Forja. It pulls metadata from TMDB for your device's country (falling back to the United States when no country is available) and shows a hero carousel, mood circles (icon + label), and scrollable rows: trending, popular, top rated, now playing, and more. On **desktop and TV**, the hero backdrop fills most of the viewport so **Featured This Month** can sit on the image with its title above the posters; the hero still shows title, metadata, synopsis, and Play/Info actions above that row. If you're logged into Trakt, you also get recommendations and TV/movie calendars. You can change the startup tab by selecting its star in **Settings → Features**.
 
 ## How to open it
 
@@ -24,13 +24,12 @@ Tap **Home** in the navigation bar (first tab by default).
 - On **desktop**, **Cmd+F** (macOS) or **Ctrl+F** (Windows/Linux) opens the films search overlay (same as the search icon in the hero menu). On macOS this also enables **Edit → Find…**.
 - On **Android TV**, first open focuses the **Home** nav rail item; **RIGHT** or **Enter** moves into the page (hero Play). D-pad **←/→** on the hero gallery swaps the entire hero slide; **OK** on the gallery opens details for the current title. From a catalog row under the hero, **↑** focuses hero **Play** (not the gallery). **←** to the nav rail and **→** restores the same row/card you left.
 - Open any poster to view details and play
-- Jump into a Stremio addon catalog rail when configured (e.g. **Cinemeta · Top** after Popular / moods — needs Play source → Stremio on)
 - View Trakt recommendation and calendar sections when connected
 
 ## Setup (if needed)
 
 - **Trakt** (optional): Settings → Accounts → Trakt — unlocks recommendations and calendars on Home
-- **Stremio addons** (optional): Settings → Providers & Addons — catalog addons like Cinemeta add Home rails + Search sections; stream addons like Torrentio appear under Sources → Stremio
+- **Stremio addons** (optional): Settings → Sources — stream addons like Torrentio appear under Sources → Stremio on details; Search can still surface catalog sections when configured
 
 ## Tips
 
@@ -44,4 +43,4 @@ Tap **Home** in the navigation bar (first tab by default).
 - [Discover](discover.md)
 - [Watch history](watch-history.md)
 - [Trakt](../accounts/trakt.md)
-- [Stremio catalog](stremio-catalog.md)
+- [Stremio addons](../sources/stremio-addons.md)

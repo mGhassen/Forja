@@ -119,6 +119,8 @@ export type StremioAddonRow = {
   baseUrl: string
   name?: string
   description?: string
+  /** `vod` = Sources / Home / Search; `live` = Live Matches Stremio server */
+  features?: Array<'vod' | 'live'>
 }
 
 export type StremioPayload = {

@@ -15,6 +15,7 @@ class SettingsVisibility {
     required this.playSourceWebstreaming,
     required this.vodTab,
     required this.iptvNav,
+    required this.liveMatchesNav,
   });
 
   final bool playSourceTorrent;
@@ -25,6 +26,7 @@ class SettingsVisibility {
   /// Any tab that can open VOD details / Sources (same set as [BootNeeds]).
   final bool vodTab;
   final bool iptvNav;
+  final bool liveMatchesNav;
 
   /// Play-source toggles under Playback (need a VOD tab to matter).
   bool get showPlaySources => vodTab;
@@ -38,15 +40,18 @@ class SettingsVisibility {
   /// Nuvio scrapers (own play source). Hidden on Android TV for all accounts.
   bool get showNuvio => vodTab && playSourceNuvio;
 
-  /// Stremio addons. Hidden on Android TV for all accounts.
-  bool get showStremioAddons => vodTab && playSourceStremio;
+  /// Stremio addons — VOD Sources and/or Live Matches sport servers.
+  bool get showStremioAddons =>
+      (vodTab && playSourceStremio) || liveMatchesNav;
 
   /// Settings → Sources hub tile (torrent / Stremio / Nuvio only).
   ///
   /// Never true on Android TV — [resolve] ANDs platform capabilities so synced
-  /// phone prefs cannot reopen these tiles.
+  /// phone prefs cannot reopen these tiles. Live-only profiles still get
+  /// Stremio install for sport addons.
   bool get showSourcesCategory =>
-      vodTab && (playSourceTorrent || playSourceStremio || playSourceNuvio);
+      (vodTab && (playSourceTorrent || playSourceStremio || playSourceNuvio)) ||
+      liveMatchesNav;
 
   /// Debrid serves torrent + Stremio hashes (+ Nuvio magnets).
   bool get showDebrid =>
@@ -87,6 +92,7 @@ class SettingsVisibility {
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
       vodTab: nav.any(BootNeeds.vodNavIds.contains),
       iptvNav: nav.contains('iptv'),
+      liveMatchesNav: nav.contains('live_matches'),
     );
   }
 }

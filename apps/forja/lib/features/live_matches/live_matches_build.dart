@@ -514,7 +514,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     if (_s._server == _LiveMatchesServer.all) return _buildAllBody();
     if (_s._server == _LiveMatchesServer.ppv) return _buildDamiTvBody();
     if (_s._server == _LiveMatchesServer.streamed ||
-        _s._server == _LiveMatchesServer.mutStreams) {
+        _s._server == _LiveMatchesServer.mutStreams ||
+        _s._server == _LiveMatchesServer.stremio) {
       return _buildStreamedBody();
     }
     if (_s._server == _LiveMatchesServer.cdnLive) return _buildCdnBody();
@@ -659,8 +660,11 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   Widget _buildStreamedBody() {
     final matches = _s._filteredStreamed;
     if (matches.isEmpty) {
+      final emptyMsg = _s._server == _LiveMatchesServer.stremio
+          ? 'No live Stremio addons — install one in Settings → Sources and enable Live Matches'
+          : 'No streams available';
       return ShellErrorRetryPanel(
-        message: 'No streams available',
+        message: emptyMsg,
         onRetry: _s._load,
         label: 'Refresh',
         statusIcon: Icons.sports_rounded,

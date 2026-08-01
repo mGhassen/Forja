@@ -59,8 +59,8 @@ async function markRun(runId: string, error?: string) {
 
 /**
  * Scheduled + on-demand catalog scrape.
- * Walks /new newest-first until known post_id watermark (or maxPages).
- * Persists deep refs (incl. unparsed payload for recheck). Upserts all portals.
+ * Walks /new page-by-page (10 posts/page, newest → older) until known
+ * post_id watermark (or maxPages). Persists deep refs. Upserts all portals.
  */
 export const iptvCatalogScrape = inngest.createFunction(
   {
@@ -126,8 +126,9 @@ export const iptvCatalogScrape = inngest.createFunction(
       }
     }
 
-    // Safety for cold DB only — watermark usually stops much earlier.
-    const maxPages = Math.min(Math.max(data.maxPages ?? 10, 1), 50)
+    // One Reddit page (10 posts) per Inngest step — page 0, then older, …
+    // 100 pages × 10 ≈ 1000 posts for forceFull; watermark usually stops earlier.
+    const maxPages = Math.min(Math.max(data.maxPages ?? 100, 1), 200)
     const maxResultsPerPage = Math.min(
       Math.max(data.maxResultsPerPage ?? 500, 1),
       2000,

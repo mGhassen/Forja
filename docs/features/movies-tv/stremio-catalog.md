@@ -8,7 +8,7 @@ Beyond search snippets, you can open a dedicated catalog browser for any install
 
 ## How to open it
 
-From **Home**, tap a Stremio addon catalog rail (when addons are installed). You can also reach catalogs from addon-related flows in the app.
+From addon-related flows in the app (Search catalog sections, details Sources). Home no longer shows Stremio catalog rails.
 
 ## What you can do
 

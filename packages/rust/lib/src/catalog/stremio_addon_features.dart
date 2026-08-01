@@ -1,0 +1,93 @@
+/// Which Forja surfaces a Stremio addon is wired into.
+class StremioAddonFeatures {
+  StremioAddonFeatures._();
+
+  static const vod = 'vod';
+  static const live = 'live';
+
+  static const all = [vod, live];
+
+  static const _vodTypes = {
+    'movie',
+    'series',
+    'channel',
+    'tv',
+    'anime',
+    'other',
+  };
+
+  /// Infer targets from a Stremio manifest (`types` + catalog types).
+  static List<String> inferFromManifest(Map? manifest) {
+    if (manifest == null) return const [vod];
+    final types = <String>{};
+    final rawTypes = manifest['types'];
+    if (rawTypes is List) {
+      for (final t in rawTypes) {
+        final s = t?.toString().trim().toLowerCase() ?? '';
+        if (s.isNotEmpty) types.add(s);
+      }
+    }
+    final catalogs = manifest['catalogs'];
+    if (catalogs is List) {
+      for (final c in catalogs) {
+        if (c is! Map) continue;
+        final t = c['type']?.toString().trim().toLowerCase() ?? '';
+        if (t.isNotEmpty) types.add(t);
+      }
+    }
+
+    final hasSport = types.contains('sport');
+    final hasVod = types.any(_vodTypes.contains);
+    if (hasSport && hasVod) return [vod, live];
+    if (hasSport) return const [live];
+    return const [vod];
+  }
+
+  /// Normalize persisted / synced feature lists; infer when missing.
+  static List<String> normalize(
+    dynamic raw, {
+    Map? manifest,
+  }) {
+    final out = <String>[];
+    if (raw is List) {
+      for (final v in raw) {
+        final s = v?.toString().trim().toLowerCase() ?? '';
+        if (s == vod || s == live) {
+          if (!out.contains(s)) out.add(s);
+        }
+      }
+    }
+    if (out.isEmpty) return inferFromManifest(manifest);
+    return out;
+  }
+
+  static List<String> read(Map<String, dynamic> addon) {
+    final manifest = addon['manifest'];
+    return normalize(
+      addon['features'],
+      manifest: manifest is Map ? Map<String, dynamic>.from(manifest) : null,
+    );
+  }
+
+  static bool targetsVod(Map<String, dynamic> addon) =>
+      read(addon).contains(vod);
+
+  static bool targetsLive(Map<String, dynamic> addon) =>
+      read(addon).contains(live);
+
+  /// Toggle [feature]; keeps at least one target.
+  static List<String> toggle(List<String> current, String feature) {
+    final next = List<String>.from(current);
+    if (next.contains(feature)) {
+      if (next.length <= 1) return next;
+      next.remove(feature);
+    } else {
+      next.add(feature);
+    }
+    next.sort((a, b) {
+      const order = [vod, live];
+      return order.indexOf(a).compareTo(order.indexOf(b));
+    });
+    return next;
+  }
+}

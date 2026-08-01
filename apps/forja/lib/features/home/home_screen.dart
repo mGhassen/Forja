@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/home/providers/home_feed_providers.dart';
 import 'package:forja/features/home/providers/home_tracker_providers.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
-import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -17,12 +16,10 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/features/home/home_hero.dart';
-import 'package:forja/features/media/stremio_catalog_screen.dart';
 import 'package:forja/features/home/widgets/because_you_watched_section.dart';
 import 'package:forja/features/home/widgets/continue_watching_section.dart';
 import 'package:forja/features/home/widgets/home_mood_section.dart';
 import 'package:forja/features/home/widgets/home_movie_section.dart';
-import 'package:forja/features/home/widgets/stremio_catalog_section.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 
@@ -42,7 +39,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     with AutomaticKeepAliveClientMixin, ShellTabRefresh<HomeScreen>, _HomeScreenFeed, _HomeScreenBuild {
 
   final TmdbApi _api = TmdbApi();
-  final StremioService _stremio = StremioService();
   final ScrollController _homeScrollController = ScrollController();
   final HomeHeroController _homeHeroController = HomeHeroController();
   Future<List<Movie>> _trendingFuture = Future.value(const <Movie>[]);
@@ -53,14 +49,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   List<({String id, String label, Future<List<Movie>> future})>
       _randomCategoryRows = [];
   int _homeFeedEpoch = 0;
-
-
-  // Stremio catalog data
-  List<Map<String, dynamic>> _stremioCatalogs = [];
-  final Map<String, List<Map<String, dynamic>>> _catalogItems = {};
-  bool _catalogsLoaded = false;
-  bool _stremioCatalogsLoading = true;
-  int _stremioCatalogGen = 0;
 
   // Trakt personalized sections
   List<Movie> _traktRecommendations = [];
@@ -226,8 +214,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     super.initState();
     _homeScrollController.addListener(_syncHomeScrollOffset);
     _resetHomeCategoryFeeds();
-
-    _loadStremioCatalogs();
 
     _schedulePostSplashWork();
     markShellTabFresh();

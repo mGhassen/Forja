@@ -162,7 +162,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [139-[open]-…](139-[open]-android-tv-shell-focus-chrome-stutter.md) | ATV shell / catalog focus chrome stutter | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [140-[open]-…](140-[open]-hls-duration-gate-marks-playing-failed.md) | HLS duration gate → red Source / 0:00 seek | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [141-[open]-…](141-[open]-desktop-trackpad-swipe-steals-horizontal-scroll.md) | Desktop trackpad swipe steals horizontal scroll | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [142-[open]-…](142-[open]-iptv-admin-scrape-watermark-deep-refs.md) | IPTV admin scrape watermark + deep refs + no upsert cap | P1 | High | open | 7/7 · A 0/3 | [1.0.5](../backlog/1.0.5-[draft].md) |
+| [142-[open]-…](142-[open]-iptv-admin-scrape-watermark-deep-refs.md) | IPTV admin scrape watermark + deep refs + no upsert cap | P1 | High | open | 8/8 · A 0/3 | [1.0.5](../backlog/1.0.5-[draft].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

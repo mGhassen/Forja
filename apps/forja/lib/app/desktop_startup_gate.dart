@@ -11,9 +11,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/services/app_update_auto_check.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
-import 'package:forja/shared/sync/providers/profile_settings_sync_provider.dart';
 import 'package:forja/shared/sync/sync.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/update_dialog.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -56,17 +54,15 @@ bool shouldReturnToAccountOnSignOut({
   return true;
 }
 
-enum _StartupStage { update, account, profiles, splash }
+enum _StartupStage { account, profiles, splash }
 
-/// Cold-start gate: update check first, then optional account entry, then splash.
+/// Cold-start gate: paint account or splash **immediately** from the cached
+/// session, then run update check + cloud pull in the background.
 ///
-/// Desktop and Android TV: Guest and unconfigured builds skip account but still
-/// run the update gate before splash. Restored sessions skip account and go
-/// update → splash (with a forced cloud → local profile_settings pull — Who's
-/// watching is the only other path that merges settings). Fresh sign-in →
+/// Restored sessions skip Who's watching and land on the logo [SplashScreen]
+/// with last-active profile settings from local cache. Fresh sign-in →
 /// Who's watching → avatar [ProfileSwitchSplash] → app (no second logo intro).
-/// Guest / restored cold start still use the logo [SplashScreen]. Sign-out
-/// returns to account without re-running the update check.
+/// Sign-out returns to account without re-running the update check.
 class DesktopStartupGate extends ConsumerStatefulWidget {
   const DesktopStartupGate({super.key, required this.splash});
 
@@ -77,7 +73,7 @@ class DesktopStartupGate extends ConsumerStatefulWidget {
 }
 
 class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
-  _StartupStage _stage = _StartupStage.update;
+  late _StartupStage _stage;
   StreamSubscription<AuthState>? _authSub;
 
   bool get _isDesktopOs =>
@@ -90,6 +86,8 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
   @override
   void initState() {
     super.initState();
+    // First frame = splash or account. Never a blank "update" stage.
+    _stage = _stageFromCachedSession();
     _authSub = SyncService.instance.authChanges.listen(
       _onAuthState,
       onError: (Object e, StackTrace st) {
@@ -97,7 +95,7 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
       },
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_runUpdateGate());
+      unawaited(_runBackgroundStartup());
     });
   }
 
@@ -109,7 +107,25 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     super.dispose();
   }
 
-  Future<void> _runUpdateGate() async {
+  _StartupStage _stageFromCachedSession() {
+    final destination = resolveAuthStartupDestination(
+      needsAccountGate: _needsAccountGate,
+      supabaseConfigured: ForjaSupabase.isConfigured,
+      hasSession: SyncService.instance.isSignedIn,
+    );
+    return destination == DesktopStartupDestination.account
+        ? _StartupStage.account
+        : _StartupStage.splash;
+  }
+
+  /// Update dialog + session refresh + profile pull — never blocks first paint.
+  Future<void> _runBackgroundStartup() async {
+    await _runUpdateCheck();
+    if (!mounted) return;
+    await _syncRestoredSessionInBackground();
+  }
+
+  Future<void> _runUpdateCheck() async {
     try {
       final result = await AppUpdaterService().checkForUpdates();
       await AppUpdateAutoCheck.recordCheckCompleted();
@@ -124,17 +140,11 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     } catch (e) {
       debugPrint('[DesktopStartupGate] Update check failed: $e');
     }
-    if (!mounted) return;
-    _enterPostUpdateDestination();
   }
 
-  Future<void> _enterPostUpdateDestination() async {
-    // Restored sessions must skip the link screen and Who's watching - land
-    // on splash with the last active profile (SharedPreferences).
+  Future<void> _syncRestoredSessionInBackground() async {
     var hasSession = SyncService.instance.isSignedIn;
     if (ForjaSupabase.isConfigured) {
-      // Always force-refresh when signed in (expired AT, clock skew, gotrue
-      // discard). When unsigned, one refresh is a no-op until storage hydrates.
       try {
         await SyncService.instance.refreshSession(force: true);
       } catch (e) {
@@ -142,41 +152,38 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
       }
       hasSession = SyncService.instance.isSignedIn;
     }
-    if (hasSession) {
-      try {
-        // Ensure active profile row is resolved before splash/shell paint.
-        await SyncService.instance.activeProfile();
-        // Restored session skips Who's watching / ProfileSwitchSplash, so this
-        // is the only cold-start pull of nav, Stremio, IPTV, playback prefs,
-        // etc. into local cache (+ Riverpod revision invalidation).
-        // Account features are included inside pullAndMergeAll / syncFromCloud.
-        await ref
-            .read(profileSettingsSyncProvider.notifier)
-            .pullAndMergeAll();
-      } on SyncProfileFetchException catch (e) {
-        // Do not crash the startup gate - splash/shell still open; Settings
-        // Profile shows Retry. Session may still be valid after a soft fail.
-        debugPrint('[DesktopStartupGate] activeProfile: $e');
-      } catch (e) {
-        debugPrint('[DesktopStartupGate] post-update sync: $e');
+
+    if (!hasSession) {
+      if (!mounted) return;
+      // Painted splash from a stale cache; session gone → account gate.
+      if (_needsAccountGate &&
+          ForjaSupabase.isConfigured &&
+          _stage == _StartupStage.splash) {
+        debugPrint(
+          '[DesktopStartupGate] background: no session → account',
+        );
+        setState(() => _stage = _StartupStage.account);
       }
-      hasSession = SyncService.instance.isSignedIn;
+      return;
     }
+
+    try {
+      await SyncService.instance.activeProfile();
+      // Restored session skips Who's watching / ProfileSwitchSplash, so this
+      // is the cold-start pull of nav, Stremio, IPTV, playback prefs into
+      // local cache. Soft-fail keeps local (incl. IPTV connection resets).
+      await ref.read(profileSettingsSyncProvider.notifier).pullAndMergeAll();
+    } on SyncProfileFetchException catch (e) {
+      debugPrint('[DesktopStartupGate] activeProfile: $e');
+    } catch (e) {
+      debugPrint('[DesktopStartupGate] background sync: $e');
+    }
+
     if (!mounted) return;
-    final destination = resolveAuthStartupDestination(
-      needsAccountGate: _needsAccountGate,
-      supabaseConfigured: ForjaSupabase.isConfigured,
-      hasSession: hasSession,
-    );
     debugPrint(
-      '[DesktopStartupGate] post-update hasSession=$hasSession '
-      '→ ${destination.name}',
+      '[DesktopStartupGate] background sync done hasSession='
+      '${SyncService.instance.isSignedIn} stage=$_stage',
     );
-    setState(() {
-      _stage = destination == DesktopStartupDestination.account
-          ? _StartupStage.account
-          : _StartupStage.splash;
-    });
   }
 
   void _onAuthState(AuthState state) {
@@ -200,12 +207,10 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     if (!_needsAccountGate || !ForjaSupabase.isConfigured) return;
     if (_stage == _StartupStage.account) return;
 
-    // Wipe account-bound local state before showing login (portals, prefs).
     await SyncDomainBridge.instance.clearAccountBoundLocalState();
     SyncService.instance.clearIdentityAfterSignOut();
     if (!mounted) return;
 
-    // Fresh splash/main tree on next entry - do not keep prior dismiss flag.
     ShellBus.splashDismissed.value = false;
     ShellBus.hideGlobalNav.value = false;
     ShellBus.requestTab.value = null;
@@ -227,10 +232,6 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     // here - title bar is hidden app-wide, and WindowCaption only lives in
     // DesktopWindowChrome.wrapShell.
     final child = switch (_stage) {
-      _StartupStage.update => const ColoredBox(
-        color: AppTheme.appBackground,
-        child: SizedBox.expand(),
-      ),
       _StartupStage.account => _isAndroidTv
           ? TvAccountLinkScreen(
               onAuthenticated: () =>
@@ -244,8 +245,6 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
               onContinueAsGuest: () =>
                   setState(() => _stage = _StartupStage.splash),
             ),
-      // Same as mid-session desktop: avatar profile splash warms the profile,
-      // then the shell opens (no second logo intro).
       _StartupStage.profiles => ProfileChooserScreen(
         prepareCurrentOnSwitch: false,
         useLogoIntroSplash: false,

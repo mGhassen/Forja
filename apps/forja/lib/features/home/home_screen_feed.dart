@@ -147,12 +147,10 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   Future<void> _reloadHomeFeed() async {
     if (!mounted) return;
     refreshHomeFeed(ref);
-    ref.invalidate(homeStremioCatalogsProvider);
     ref.invalidate(homeTraktRecommendationsProvider);
     ref.invalidate(homeTraktUpcomingShowsProvider);
     ref.invalidate(homeTraktUpcomingMoviesProvider);
     setState(() => _resetHomeCategoryFeeds());
-    await _loadStremioCatalogs();
     // Re-roll "Because you watched" on every Home refresh.
     _pickBecauseSeed(WatchHistoryService().current);
   }
@@ -175,7 +173,6 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   /// Stop Home-scoped network work while another shell tab is selected.
   /// Keep-alive leaves [mounted] true — generation bumps abort in-flight loops.
   void _pauseHomeBackgroundWork() {
-    _s._stremioCatalogGen++;
     _s._homeBgWorkGen++;
     _s._historySeedSub?.cancel();
     _s._historySeedSub = null;
@@ -187,10 +184,6 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
 
   void _resumeHomeBackgroundWorkIfNeeded() {
     if (!mounted || !shellTabVisible) return;
-    // Incomplete Stremio rails: restart catalog load.
-    if (_s._stremioCatalogsLoading || !_s._catalogsLoaded) {
-      unawaited(_loadStremioCatalogs());
-    }
     // Post-splash personalization never started (left before splash / delay).
     if (!_s._postSplashWorkStarted) {
       _schedulePostSplashWork();
@@ -514,21 +507,6 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   }
 
 
-  void _onAddonsChanged() {
-    if (!mounted || !shellTabVisible) return;
-    // Clear stale data and schedule a rebuild so the old sliders disappear
-    // immediately while the new ones load.
-    _s._stremioCatalogGen++;
-    ref.invalidate(homeStremioCatalogsProvider);
-    setState(() {
-      _s._stremioCatalogs = [];
-      _s._catalogItems.clear();
-      _s._catalogsLoaded = false;
-      _s._stremioCatalogsLoading = true;
-    });
-    _loadStremioCatalogs();
-  }
-
   @override
   void dispose() {
     if (_s._splashDismissedListener != null) {
@@ -550,184 +528,5 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   Future<void> _watchNow(Movie movie) async {
     if (!mounted) return;
     await AppRouter.openMovie(context, movie: movie, autoPlay: true);
-  }
-
-  Future<void> _loadStremioCatalogs() async {
-    final gen = ++_s._stremioCatalogGen;
-    List<Map<String, dynamic>> catalogs;
-    try {
-      catalogs = await ref.read(homeStremioCatalogsProvider.future);
-    } catch (_) {
-      catalogs = const [];
-    }
-    if (!mounted || gen != _s._stremioCatalogGen) return;
-    if (catalogs.isEmpty) {
-      if (mounted && gen == _s._stremioCatalogGen) {
-        setState(() {
-          _s._stremioCatalogs = [];
-          _s._catalogItems.clear();
-          _s._stremioCatalogsLoading = false;
-          _s._catalogsLoaded = true;
-        });
-      }
-      return;
-    }
-    if (!shellTabVisible) return;
-    if (mounted && gen == _s._stremioCatalogGen) {
-      setState(() => _s._stremioCatalogsLoading = true);
-    }
-    try {
-      // Browse rails only - skip search-only / genre-required catalogs.
-      final Map<String, List<Map<String, dynamic>>> byAddon = {};
-      for (final c in catalogs) {
-        if (c['searchRequired'] == true) continue;
-        if (c['genreRequired'] == true) continue;
-        final key = c['addonBaseUrl'] as String;
-        byAddon.putIfAbsent(key, () => []).add(c);
-      }
-      if (byAddon.isEmpty) {
-        debugPrint('[HomeScreen] Stremio catalogs present but none browsable');
-        setState(() {
-          _s._stremioCatalogs = [];
-          _s._catalogItems.clear();
-          _s._catalogsLoaded = true;
-        });
-        return;
-      }
-
-      if (mounted && gen == _s._stremioCatalogGen) {
-        setState(() => _s._catalogsLoaded = true);
-      }
-
-      await Future.wait(byAddon.values.map((addonCatalogs) async {
-        for (final cat in addonCatalogs) {
-          if (!mounted || gen != _s._stremioCatalogGen || !shellTabVisible) {
-            return;
-          }
-          try {
-            final items = await _s._stremio.getCatalog(
-              baseUrl: cat['addonBaseUrl'],
-              type: cat['catalogType'],
-              id: cat['catalogId'],
-            );
-            if (items.isEmpty) continue;
-
-            for (final item in items) {
-              item['_addonBaseUrl'] = cat['addonBaseUrl'];
-              item['_addonName'] = cat['addonName'];
-            }
-            if (!mounted || gen != _s._stremioCatalogGen || !shellTabVisible) {
-              return;
-            }
-            final itemKey =
-                '${cat['addonBaseUrl']}/${cat['catalogType']}/${cat['catalogId']}';
-            setState(() {
-              if (!_s._stremioCatalogs.any(
-                (c) =>
-                    c['addonBaseUrl'] == cat['addonBaseUrl'] &&
-                    c['catalogId'] == cat['catalogId'],
-              )) {
-                _s._stremioCatalogs = [..._s._stremioCatalogs, cat];
-              }
-              _s._catalogItems[itemKey] = items;
-            });
-            debugPrint(
-              '[HomeScreen] Stremio rail ${cat['addonName']} / ${cat['catalogName']} (${items.length})',
-            );
-            return;
-          } catch (e) {
-            debugPrint('[HomeScreen] Stremio catalog fetch failed: $e');
-          }
-        }
-      }));
-    } catch (e) {
-      debugPrint('[HomeScreen] Error loading Stremio catalogs: $e');
-    } finally {
-      if (mounted && gen == _s._stremioCatalogGen) {
-        setState(() => _s._stremioCatalogsLoading = false);
-      }
-    }
-  }
-
-  void _openStremioCatalog(Map<String, dynamic> catalog) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => StremioCatalogScreen(initialCatalog: catalog)),
-    );
-  }
-
-  Future<void> _openStremioItem(Map<String, dynamic> item) async {
-    final id = item['id']?.toString() ?? '';
-    final type = item['type']?.toString() ?? 'movie';
-    final name = item['name']?.toString() ?? 'Unknown';
-    final poster = item['poster']?.toString() ?? '';
-    final isCustomId = !id.startsWith('tt');
-    
-    // Check if this is a collection by ID prefix
-    final isCollection = id.startsWith('ctmdb.') || type == 'collections';
-
-    // IMDB ID → TMDB lookup
-    if (!isCustomId && !isCollection) {
-      try {
-        final movie = await _s._api.findByImdbId(id, mediaType: type == 'series' ? 'tv' : 'movie');
-        if (movie != null && mounted) {
-          await AppRouter.openDetails(
-            context,
-            movie: movie,
-            stremioItem: item,
-          );
-          return;
-        }
-      } catch (_) {}
-    }
-
-    // For non-custom IDs that failed, try name search
-    if (!isCustomId && !isCollection) {
-      try {
-        final results = await _s._api.searchMulti(name);
-        if (results.isNotEmpty && mounted) {
-          final match = results.firstWhere(
-            (m) => m.title.toLowerCase() == name.toLowerCase(),
-            orElse: () => results.first,
-          );
-          await AppRouter.openDetails(
-            context,
-            movie: match,
-            stremioItem: item,
-          );
-          return;
-        }
-      } catch (_) {}
-    }
-
-    // Custom ID, collection, or all lookups failed
-    if (mounted) {
-      // Override type to 'collections' if it's a collection ID
-      final actualType = isCollection ? 'collections' : (type == 'series' ? 'tv' : 'movie');
-      
-      final movie = Movie(
-        id: id.hashCode,
-        imdbId: id.startsWith('tt') ? id : null,
-        title: name,
-        posterPath: poster,
-        backdropPath: item['background']?.toString() ?? poster,
-        voteAverage: double.tryParse(item['imdbRating']?.toString() ?? '') ?? 0,
-        releaseDate: item['releaseInfo']?.toString() ?? '',
-        overview: item['description']?.toString() ?? '',
-        mediaType: actualType,
-      );
-      
-      // Update the stremioItem type to collections if needed
-      final updatedItem = Map<String, dynamic>.from(item);
-      if (isCollection) {
-        updatedItem['type'] = 'collections';
-      }
-      
-      await AppRouter.openDetails(
-        context,
-        movie: movie,
-        stremioItem: updatedItem,
-      );
-    }
   }
 }

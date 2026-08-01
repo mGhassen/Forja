@@ -509,6 +509,8 @@ class SyncDomainBridge {
       if (description != null && description.isNotEmpty) {
         row['description'] = description;
       }
+      final features = StremioAddonFeatures.read(raw);
+      row['features'] = features;
       lean.add(row);
     }
     return lean.isEmpty ? {} : {'addons': lean};
@@ -822,9 +824,14 @@ class SyncDomainBridge {
       final lean = Map<String, dynamic>.from(raw as Map);
       final baseUrl = (lean['baseUrl'] as String?)?.trim() ?? '';
       if (baseUrl.isEmpty) continue;
+      final syncedFeatures = lean['features'] is List
+          ? StremioAddonFeatures.normalize(lean['features'])
+          : null;
       try {
         final fresh = await stremio.fetchManifest(baseUrl);
         if (fresh != null) {
+          fresh['features'] =
+              syncedFeatures ?? StremioAddonFeatures.read(fresh);
           await _settings.saveStremioAddon(fresh);
           continue;
         }
@@ -832,6 +839,7 @@ class SyncDomainBridge {
         debugPrint('[Sync] Stremio manifest fetch failed ($baseUrl): $e');
       }
       // Keep lean row so Settings still lists it; Sources hydrates later.
+      if (syncedFeatures != null) lean['features'] = syncedFeatures;
       await _settings.saveStremioAddon(lean);
     }
   }

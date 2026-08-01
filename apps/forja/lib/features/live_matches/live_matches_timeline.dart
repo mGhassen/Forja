@@ -80,6 +80,7 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
         entries.addAll(_s._filteredDamiTv.map(_LiveMatchGridEntry.ppv));
       case _LiveMatchesServer.streamed:
       case _LiveMatchesServer.mutStreams:
+      case _LiveMatchesServer.stremio:
         entries.addAll(_s._filteredStreamed.map(_LiveMatchGridEntry.streamed));
       case _LiveMatchesServer.cdnLive:
         entries.addAll(_s._filteredCdnSports.map(_LiveMatchGridEntry.cdnSport));

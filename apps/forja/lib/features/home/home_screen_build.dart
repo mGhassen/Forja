@@ -27,13 +27,9 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
   _HomeScreenState get _s => this as _HomeScreenState;
 
   static const int _kGenreRowOrderBase = 41;
-  static const int _kStremioRowOrderBase = 15;
   static const int _kNewReleasesRowOrder = 40;
 
   void _listenHomeFeedSideEffects() {
-    ref.listen(addonRevisionProvider, (prev, next) {
-      if (prev != next) _s._onAddonsChanged();
-    });
     ref.listen(shellWatchProviderIdProvider, (prev, next) {
       if (prev != next) _s._onWatchProviderChanged();
     });
@@ -210,50 +206,6 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
                   ),
                   isFirstAfterHero: false,
                 ),
-
-              // Stremio Addon Catalogs
-              if (_s._stremioCatalogsLoading && _s._stremioCatalogs.isEmpty)
-                for (var i = 0; i < 2; i++)
-                  _homeRowSliver(
-                    homeLoadingShimmer(
-                      homeMovieRowSkeleton(
-                        context,
-                        titleWidth: 180,
-                        showSubtitle: true,
-                      ),
-                    ),
-                    isFirstAfterHero: false,
-                  ),
-
-              if (_s._catalogsLoaded || _s._stremioCatalogs.isNotEmpty)
-                ..._s._stremioCatalogs.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final cat = entry.value;
-                  final key = '${cat['addonBaseUrl']}/${cat['catalogType']}/${cat['catalogId']}';
-                  final items = _s._catalogItems[key];
-                  if (items == null || items.isEmpty) {
-                    return _homeRowSliver(
-                      homeLoadingShimmer(
-                        homeMovieRowSkeleton(
-                          context,
-                          titleWidth: 180,
-                          showSubtitle: true,
-                        ),
-                      ),
-                      isFirstAfterHero: false,
-                    );
-                  }
-                  return _homeRowSliver(
-                    HomeStremioCatalogSection(
-                      catalog: cat,
-                      items: items,
-                      onItemTap: _s._openStremioItem,
-                      onShowAll: () => _s._openStremioCatalog(cat),
-                      tvRowOrder: _kStremioRowOrderBase + i,
-                    ),
-                    isFirstAfterHero: false,
-                  );
-                }),
 
               // Trakt Recommendations
               if (_s._traktRecsLoading)

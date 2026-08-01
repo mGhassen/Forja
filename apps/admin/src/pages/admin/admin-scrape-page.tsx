@@ -14,6 +14,7 @@ import {
   tdClassName,
   thClassName,
 } from '@/components/admin-ui'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -67,10 +68,12 @@ export function AdminScrapePage() {
 
   const latest = list.data?.[0] ?? null
   const running = latest?.status === 'running'
+  const [confirmFull, setConfirmFull] = useState(false)
 
   const start = useMutation({
     mutationFn: (forceFull: boolean) => scrapeControl('start', { forceFull }),
     onSuccess: async (res) => {
+      setConfirmFull(false)
       if (res.run) {
         prependOptimisticRun(qc, res.run)
       } else if (res.runId) {
@@ -332,16 +335,7 @@ export function AdminScrapePage() {
               type="button"
               variant="secondary"
               disabled={busy || running}
-              onClick={() => {
-                if (
-                  !window.confirm(
-                    'Full scrape ignores known posts and re-extracts all base64/pastes from Reddit /new. Continue?',
-                  )
-                ) {
-                  return
-                }
-                start.mutate(true)
-              }}
+              onClick={() => setConfirmFull(true)}
             >
               {start.isPending ? 'Starting…' : 'Run full'}
             </Button>
@@ -365,6 +359,27 @@ export function AdminScrapePage() {
         </div>
         {err ? <p className="mt-4 text-sm text-red-400">{err}</p> : null}
       </Panel>
+
+      <ConfirmDialog
+        open={confirmFull}
+        title="Run full scrape?"
+        description={
+          <>
+            Ignores known Reddit posts and re-walks{' '}
+            <code className="font-mono-ui text-forja-text">/r/IPTV_ZONENEW/new</code>
+            . Re-extracts base64 / pastes and portal hits. Use for backfill — normal
+            scrape is enough for day-to-day.
+          </>
+        }
+        confirmLabel="Run full scrape"
+        cancelLabel="Cancel"
+        danger
+        busy={start.isPending}
+        onClose={() => {
+          if (!start.isPending) setConfirmFull(false)
+        }}
+        onConfirm={() => start.mutate(true)}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel>

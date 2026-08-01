@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'built_in_player_engine.dart';
+import 'catalog/stremio_addon_features.dart';
 import 'kv.dart';
 import 'platform_defaults.dart';
 import 'platform_profile.dart';
@@ -364,6 +365,11 @@ class SettingsService {
     final base = normalizeStremioAddonBaseUrl(rawBase);
     if (base.isEmpty) return;
     normalized['baseUrl'] = base;
+    final manifest = normalized['manifest'];
+    normalized['features'] = StremioAddonFeatures.normalize(
+      normalized['features'],
+      manifest: manifest is Map ? Map<String, dynamic>.from(manifest) : null,
+    );
 
     final current = await getStremioAddons();
     current.removeWhere(

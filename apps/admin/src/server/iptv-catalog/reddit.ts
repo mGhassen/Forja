@@ -31,14 +31,30 @@ const PAYLOAD_TEXT_MAX = 64_000
 
 type Cursor = { subIdx: number; after: string | null }
 
+/** Posts per Reddit /new request = one Inngest step. */
+export const SCRAPE_PAGE_SIZE = 10
+
+/** `reddit:<subIdx>:<redditAfter>` — one listing page at a time. */
 export function parseCursor(after: string | null | undefined): Cursor {
   if (!after || after === 'null') return { subIdx: 0, after: null }
+  // Mid-skip format from earlier batching: reddit:0:12:t3_xxx → treat as page start at after
+  const withSkip = /^reddit:(\d+):(\d+):(.*)$/.exec(after)
+  if (withSkip) {
+    return {
+      subIdx: Math.min(Number(withSkip[1]) || 0, CATALOG_SUBS.length - 1),
+      after: withSkip[3] || null,
+    }
+  }
   const m = /^reddit:(\d+):(.*)$/.exec(after)
   if (!m) return { subIdx: 0, after: after || null }
   return {
     subIdx: Math.min(Number(m[1]) || 0, CATALOG_SUBS.length - 1),
     after: m[2] || null,
   }
+}
+
+function encodeCursor(subIdx: number, redditAfter: string | null): string {
+  return `reddit:${subIdx}:${redditAfter ?? ''}`
 }
 
 let cachedToken: { token: string; expiry: number; idx: number } | null = null
@@ -84,10 +100,12 @@ async function getOauthToken(): Promise<string | null> {
 async function fetchOauthListing(
   sub: string,
   after: string | null,
+  limit = SCRAPE_PAGE_SIZE,
 ): Promise<unknown | null> {
   const token = await getOauthToken()
   if (!token) return null
-  let url = `https://oauth.reddit.com/r/${sub}/new?limit=100&sort=new&raw_json=1`
+  const pageSize = Math.max(1, Math.min(limit, 100))
+  let url = `https://oauth.reddit.com/r/${sub}/new?limit=${pageSize}&sort=new&raw_json=1`
   if (after) url += `&after=${encodeURIComponent(after)}`
   const resp = await fetch(url, {
     headers: {
@@ -164,7 +182,11 @@ function rewritePasteUrl(url: string): string {
   return url
 }
 
+const PASTE_FETCH_TIMEOUT_MS = 12_000
+
 async function fetchPasteBody(url: string): Promise<string | null> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), PASTE_FETCH_TIMEOUT_MS)
   try {
     if (url.includes('paste.sh/') && url.includes('#')) {
       const hashIdx = url.indexOf('#')
@@ -172,6 +194,7 @@ async function fetchPasteBody(url: string): Promise<string | null> {
       const fetchUrl = `${baseUrl}.txt`
       const resp = await fetch(fetchUrl, {
         headers: { 'User-Agent': SCRAPE_UA },
+        signal: ctrl.signal,
       })
       if (!resp.ok) return null
       const raw = await resp.text()
@@ -185,12 +208,15 @@ async function fetchPasteBody(url: string): Promise<string | null> {
         'User-Agent': SCRAPE_UA,
         Accept: 'text/html,application/json,*/*',
       },
+      signal: ctrl.signal,
     })
     if (!resp.ok) return null
     const body = await resp.text()
     return body.length > 0 ? body : null
   } catch {
     return null
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -400,11 +426,15 @@ export type ScrapePageResult = {
   funnel: ScrapePageFunnel
 }
 
-/** One Reddit /new page → extracted portals + pagination cursor. */
+/**
+ * One Reddit /new page (SCRAPE_PAGE_SIZE posts) → extract + L2.
+ * One Inngest step per call; nextAfter advances to the older page.
+ */
 export async function scrapeCatalogPage(
   after: string | null | undefined,
   maxResults = 50,
   knownPostIds: ReadonlySet<string> = new Set(),
+  pageSize = SCRAPE_PAGE_SIZE,
 ): Promise<ScrapePageResult> {
   const cursor = parseCursor(after)
   let subIdx = cursor.subIdx
@@ -412,7 +442,7 @@ export async function scrapeCatalogPage(
   const sub = CATALOG_SUBS[subIdx]!
   const redditAfter = cursor.after
 
-  const root = (await fetchOauthListing(sub, redditAfter)) as {
+  const root = (await fetchOauthListing(sub, redditAfter, pageSize)) as {
     data?: {
       children?: Array<{ data?: Record<string, unknown> }>
       after?: string | null
@@ -430,7 +460,7 @@ export async function scrapeCatalogPage(
 
   if (!root?.data) {
     const nextAfter =
-      subIdx + 1 < CATALOG_SUBS.length ? `reddit:${subIdx + 1}:` : null
+      subIdx + 1 < CATALOG_SUBS.length ? encodeCursor(subIdx + 1, null) : null
     return {
       portals: [],
       postIds: [],
@@ -445,11 +475,11 @@ export async function scrapeCatalogPage(
 
   const posts = root.data.children ?? []
   const nextRaw = root.data.after
-  const hasMore = Boolean(nextRaw && nextRaw !== 'null')
-  const nextAfter = hasMore
-    ? `reddit:${subIdx}:${nextRaw}`
+  const hasMoreListing = Boolean(nextRaw && nextRaw !== 'null')
+  const nextListingAfter = hasMoreListing
+    ? encodeCursor(subIdx, nextRaw ?? null)
     : subIdx + 1 < CATALOG_SUBS.length
-      ? `reddit:${subIdx + 1}:`
+      ? encodeCursor(subIdx + 1, null)
       : null
 
   const acc = new Map<string, CatalogPortal>()
@@ -494,7 +524,7 @@ export async function scrapeCatalogPage(
   return {
     portals: [...acc.values()],
     postIds,
-    nextAfter: hitWatermark ? null : nextAfter,
+    nextAfter: hitWatermark ? null : nextListingAfter,
     subreddit: sub,
     postsSeen: postIds.length,
     hitWatermark,
