@@ -125,6 +125,37 @@ void main() {
         isFalse,
       );
     });
+
+    test('desktop wrapper keeps PPV embedindia off the main frame', () {
+      // Widget passes allowEmbedHostAsMainFrame=false outside Android handoff.
+      expect(
+        liveEmbedAllowsMainFrameNavigation(
+          url: 'https://embedindia.st/embed/mlb/x',
+          embedUrl: 'https://embedindia.st/embed/mlb/x',
+          allowEmbedHostAsMainFrame: false,
+          wrapperReferer: 'https://ppv.is/',
+        ),
+        isFalse,
+      );
+      expect(
+        liveEmbedAllowsMainFrameNavigation(
+          url: 'https://adscope.gotrackier.com/click?x=1',
+          embedUrl: 'https://embedindia.st/embed/mlb/x',
+          allowEmbedHostAsMainFrame: false,
+          wrapperReferer: 'https://ppv.is/',
+        ),
+        isFalse,
+      );
+      expect(
+        liveEmbedAllowsMainFrameNavigation(
+          url: 'https://ppv.is/',
+          embedUrl: 'https://embedindia.st/embed/mlb/x',
+          allowEmbedHostAsMainFrame: false,
+          wrapperReferer: 'https://ppv.is/',
+        ),
+        isTrue,
+      );
+    });
   });
 
   group('liveEmbedRequiresWebViewPlayback', () {

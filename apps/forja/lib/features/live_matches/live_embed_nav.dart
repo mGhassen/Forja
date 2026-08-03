@@ -149,6 +149,8 @@ class LiveEmbedAndroidHandoffProfile {
   /// Streamed: keep catalog `loadData` iframe wrapper (host lock).
   final bool topLevelEmbedLoad;
 
+  /// Android top-level PPV only. Desktop/iOS must pass `false` so a main-frame
+  /// jump to embedindia cannot replace the catalog wrapper (host lock).
   final bool allowEmbedHostAsMainFrame;
 
   /// Extra probe→re-sniff attempts before abandon (Streamed cookie settle).

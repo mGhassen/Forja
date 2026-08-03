@@ -119,6 +119,9 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     debugLabel: 'live-matches-view-toggle',
   );
 
+  /// Gate first catalog fetch — `ref` is unsafe in [initState].
+  bool _didInitialLoad = false;
+
   @override
   Duration get shellStaleAfter => ShellTokens.tabStaleDefault;
 
@@ -158,12 +161,16 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     );
     _syncTimelineLiveTick();
     unawaited(_restoreViewPreference());
-    unawaited(_load());
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // ref.invalidate needs ProviderScope — never call from initState.
+    if (!_didInitialLoad) {
+      _didInitialLoad = true;
+      unawaited(_load());
+    }
     // Android TV / leanback: cards only - no timeline canvas (mirrors IPTV).
     if (ShellScope.inputPolicyOf(context).useFocusableMoodChips &&
         _view != _LiveMatchesView.grid) {

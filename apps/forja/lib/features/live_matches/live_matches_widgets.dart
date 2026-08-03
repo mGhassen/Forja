@@ -2421,10 +2421,14 @@ class _LiveMatchesEmbedPlayerScreenState
                             return NavigationActionPolicy.ALLOW;
                           }
                           final url = action.request.url?.toString() ?? '';
+                          // Desktop/iOS stay on the catalog iframe wrapper —
+                          // never reuse Android PPV `allowEmbedHostAsMainFrame`
+                          // or a top jump to embedindia kills document.referrer
+                          // (host lock / "error" player).
                           if (liveEmbedAllowsMainFrameNavigation(
                             url: url,
                             embedUrl: embedUrl,
-                            allowEmbedHostAsMainFrame:
+                            allowEmbedHostAsMainFrame: _androidNativeHandoff &&
                                 _androidProfile.allowEmbedHostAsMainFrame,
                             wrapperReferer: widget.referer,
                           )) {

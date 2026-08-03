@@ -244,6 +244,8 @@ export const iptvCatalogScrape = inngest.createFunction(
     })
 
     // Phase 2 — PROCESS: pending deep_refs from DB → paste fetch + extract.
+    // Unparsed after process only (collect stubs are incomplete by design).
+    unparsedCount = 0
     const pending = await step.run('list-pending-deep-refs', async () => {
       const sb = createCatalogAdminClient()
       return listPendingDeepRefsForRun(sb, runId)

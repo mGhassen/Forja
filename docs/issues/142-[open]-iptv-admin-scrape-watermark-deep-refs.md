@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** fix · **0 / 3** acceptance |
+| **Progress** | **10 / 10** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,7 @@
 | 7 | I142-T07 | Admin **Deep refs** page: show base64/payload + portals new vs already-in-DB | ✅ |
 | 8 | I142-T08 | Page-by-page scrape; persist base64+paste_url before paste fetch | ✅ |
 | 9 | I142-T09 | Deep refs = base64+paste_url; portals = platform + get.php type/output | ✅ |
+| 10 | I142-T10 | Collect-all Reddit into DB stubs, then process pending deep_refs (no interleaved paste) | ✅ |
 
 ---
 
@@ -49,6 +50,6 @@ Admin catalog scrape rewalked 500 posts every run, wrote empty `subreddit`, drop
 
 **Also (I142-T08/T09):** one deep_ref row = **base64 + paste_url**. Portal hits store **`platform`** (xtream/m3u/stalker) and get.php **`type`/`output`** query params (e.g. `type=m3u_plus&output=m3u8`). Apply migration `20260801115640_…` (truncates old deep_ref rows — re-run full scrape).
 
-**HTTP 504 / “before the SDK responded”:** not Reddit — Vercel/proxy killed the Inngest step while it was still working. Paste fetch is now its own step (`fetch-pastes-page-N`) so the gateway does not sit idle through Reddit+pastes+upserts in one request.
+**HTTP 504 / “before the SDK responded”:** not Reddit — Vercel/proxy killed a long Inngest step. Pipeline is now **collect then process**: (1) all Reddit pages → `iptv_scrape_posts` + deep_ref stubs; (2) `listPendingDeepRefsForRun` → one step per pending ref (`process-deep-ref-N`: paste fetch + extract). Checkpoints after each collect page / every few process steps.
 
 **Apply migrations** `20260731184207_…` + `20260731184812_…` before deploying admin (ask before `db push`).
