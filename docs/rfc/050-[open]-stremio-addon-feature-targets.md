@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **5 / 7** acceptance |
-| **Current slice** | Per-addon Sources vs Live Matches targets + sport HLS; ATV Highfly reconnect fix landed (smoke R50-A07) |
+| **Progress** | **3 / 3** components · **6 / 8** acceptance |
+| **Current slice** | Per-addon Sources vs Live Matches targets + sport HLS; kickoff parse/sort landed; smoke R50-A06 / R50-A07 remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -36,6 +36,7 @@
 | 5 | R50-A05 | Playable `.m3u8` streams open native IPTV player; premium bait URLs skipped | ✅ |
 | 6 | R50-A06 | Manual smoke: install Highfly → Live Matches → play one live HLS | ⬜ |
 | 7 | R50-A07 | Android TV Exo: Highfly `recaps.dev` /leaf HLS plays (no forever Reconnecting…) — [issue 143](../issues/143-[open]-android-tv-stremio-live-reconnect.md) | ⬜ |
+| 8 | R50-A08 | Stremio sport metas parse kickoff (`releaseInfo` / `released` / description) into `dateMs`; grid + timeline sort live-first then chronological | ✅ |
 
 ---
 

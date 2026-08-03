@@ -336,7 +336,13 @@ class _StreamedMatch {
       category.isEmpty ? 'Other' : category.replaceAll('-', ' ');
 
   bool get isAlwaysOn =>
-      dateMs == 0 && (sources.isNotEmpty || inlineStreams.isNotEmpty);
+      dateMs == 0 &&
+      (sources.isNotEmpty ||
+          inlineStreams.isNotEmpty ||
+          (isStremio &&
+              (id.startsWith('leaf:') ||
+                  category == '24/7' ||
+                  category == '24-7')));
 
   /// Hours after start that still count as live when Streamed did not tag
   /// `airing`. Popular rows (golf, cycling) often outlast the short window.
@@ -1877,6 +1883,93 @@ Future<List<_StreamedMatch>> _fetchMutMatches() async {
   }
 }
 
+/// Kickoff epoch-ms from a Stremio sport meta (Highfly / similar).
+///
+/// Sources tried in order:
+/// 1. `released` — ISO-8601 or unix seconds/ms
+/// 2. `releaseInfo` — e.g. `06 Aug 2026 · 07:10 UTC` (Highfly)
+/// 3. `description` lines — same human date format
+int _stremioKickoffMsFromMeta(Map<String, dynamic> meta) {
+  final released = meta['released'];
+  final fromReleased = _stremioParseKickoffValue(released);
+  if (fromReleased > 0) return fromReleased;
+
+  final releaseInfo = meta['releaseInfo']?.toString() ?? '';
+  final fromInfo = _stremioParseHumanKickoff(releaseInfo);
+  if (fromInfo > 0) return fromInfo;
+
+  final desc = meta['description']?.toString() ?? '';
+  for (final line in desc.split('\n')) {
+    final fromLine = _stremioParseHumanKickoff(line.trim());
+    if (fromLine > 0) return fromLine;
+  }
+  return 0;
+}
+
+int _stremioParseKickoffValue(Object? raw) {
+  if (raw == null) return 0;
+  if (raw is num) {
+    final n = raw.toInt();
+    if (n <= 0) return 0;
+    // Seconds ~1.7e9 today; milliseconds ~1.7e12.
+    return n >= 1000000000000 ? n : n * 1000;
+  }
+  final s = raw.toString().trim();
+  if (s.isEmpty) return 0;
+  final asInt = int.tryParse(s);
+  if (asInt != null) return _stremioParseKickoffValue(asInt);
+  final iso = DateTime.tryParse(s);
+  if (iso != null) return iso.toUtc().millisecondsSinceEpoch;
+  return _stremioParseHumanKickoff(s);
+}
+
+/// `06 Aug 2026 · 07:10 UTC` / `06 Aug 2026 07:10` / `15 AUG 05:05 UTC`.
+int _stremioParseHumanKickoff(String raw) {
+  final t = raw.trim();
+  if (t.isEmpty) return 0;
+  // Skip bare LIVE badges with no clock.
+  if (RegExp(r'^LIVE\b', caseSensitive: false).hasMatch(t) &&
+      !RegExp(r'\d').hasMatch(t)) {
+    return 0;
+  }
+  final re = RegExp(
+    r'(\d{1,2})\s+'
+    r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+'
+    r'(\d{4})\s*[·•\-]?\s*'
+    r'(\d{1,2}):(\d{2})'
+    r'(?:\s*(?:UTC|GMT|Z))?',
+    caseSensitive: false,
+  );
+  final m = re.firstMatch(t);
+  if (m == null) return 0;
+  const months = {
+    'jan': 1,
+    'feb': 2,
+    'mar': 3,
+    'apr': 4,
+    'may': 5,
+    'jun': 6,
+    'jul': 7,
+    'aug': 8,
+    'sep': 9,
+    'oct': 10,
+    'nov': 11,
+    'dec': 12,
+  };
+  final month = months[m.group(2)!.toLowerCase().substring(0, 3)];
+  if (month == null) return 0;
+  final day = int.tryParse(m.group(1)!);
+  final year = int.tryParse(m.group(3)!);
+  final hour = int.tryParse(m.group(4)!);
+  final minute = int.tryParse(m.group(5)!);
+  if (day == null || year == null || hour == null || minute == null) return 0;
+  try {
+    return DateTime.utc(year, month, day, hour, minute).millisecondsSinceEpoch;
+  } catch (_) {
+    return 0;
+  }
+}
+
 _StreamedMatch? _streamedMatchFromStremioMeta(
   Map<String, dynamic> meta, {
   required String addonBaseUrl,
@@ -1892,11 +1985,13 @@ _StreamedMatch? _streamedMatchFromStremioMeta(
   }
   final release = meta['releaseInfo']?.toString().toUpperCase() ?? '';
   final desc = meta['description']?.toString().toUpperCase() ?? '';
+  final dateMs = _stremioKickoffMsFromMeta(meta);
   final live = release.contains('LIVE') || desc.contains('LIVE NOW');
   final poster = meta['poster']?.toString() ?? '';
   final type = meta['type']?.toString().trim();
   // For leaf / 24/7 IPTV rows with LIVE but no kickoff, treat as always-on.
   final alwaysOn = live &&
+      dateMs <= 0 &&
       (id.startsWith('leaf:') || desc.contains('IPTV'));
   return _StreamedMatch(
     id: id,
@@ -1904,10 +1999,10 @@ _StreamedMatch? _streamedMatchFromStremioMeta(
     category: alwaysOn
         ? '24/7'
         : (category.isEmpty ? 'other' : category.toLowerCase()),
-    dateMs: 0,
+    dateMs: dateMs,
     poster: poster,
     popular: desc.contains('POPULAR'),
-    airing: live,
+    airing: live && dateMs <= 0,
     sources: const [],
     catalog: 'stremio',
     stremioBaseUrl: addonBaseUrl,
@@ -1950,11 +2045,7 @@ Future<List<_StreamedMatch>> _fetchStremioSportMatches() async {
       }
     }
   }
-  out.sort((a, b) {
-    if (a.isLive != b.isLive) return a.isLive ? -1 : 1;
-    return a.title.toLowerCase().compareTo(b.title.toLowerCase());
-  });
-  return out;
+  return _sortStreamedLiveFirst(out);
 }
 
 Future<List<_StreamedStream>> _fetchStreamedStreams(
