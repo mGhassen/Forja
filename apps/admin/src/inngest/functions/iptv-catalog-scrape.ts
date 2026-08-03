@@ -1,6 +1,9 @@
 import { inngest } from '@/inngest/client'
 import { classifyRegion } from '@/server/iptv-catalog/region'
-import { scrapeCatalogPage } from '@/server/iptv-catalog/reddit'
+import {
+  resolvePendingPastes,
+  scrapeCatalogPage,
+} from '@/server/iptv-catalog/reddit'
 import { cronIsDueUtc, isValidScrapeCron } from '@/lib/scrape-cron'
 import {
   createCatalogAdminClient,
@@ -171,7 +174,8 @@ export const iptvCatalogScrape = inngest.createFunction(
     for (let page = 0; page < maxPages; page++) {
       const pageAfter = after
       const knownSnapshot = [...knownPostIds]
-      // Persist posts + deep refs inside the step (payloads too big for step output).
+      // Persist base64+paste_url first (short). Paste HTTP is a separate step —
+      // same Vercel request that does Reddit+pastes+upserts → HTTP 504.
       const result = await step.run(`scrape-reddit-page-${page}`, async () => {
         const known = new Set(knownSnapshot)
         const pageResult = await scrapeCatalogPage(
@@ -197,20 +201,55 @@ export const iptvCatalogScrape = inngest.createFunction(
           nextAfter: pageResult.nextAfter,
           postsSeen: pageResult.postsSeen,
           hitWatermark: pageResult.hitWatermark,
+          pendingPastes: pageResult.pendingPastes,
           funnel: pageResult.funnel,
         }
       })
+
       postsSeen += result.postsSeen
       deepRefCount += result.funnel?.deepRefCount ?? 0
-      l2FetchOk += result.funnel?.l2FetchOk ?? 0
-      l2FetchFail += result.funnel?.l2FetchFail ?? 0
-      l2ExtractCount += result.funnel?.l2ExtractCount ?? 0
       unparsedCount += result.funnel?.unparsedCount ?? 0
       l1OnlyCount += result.funnel?.l1OnlyCount ?? 0
       for (const id of result.postIds) knownPostIds.add(id)
       for (const p of result.portals) {
         portals.set(portalKey(p), p)
       }
+
+      const pending = result.pendingPastes ?? []
+      if (pending.length > 0) {
+        const portalSnapshot = [...portals.values()]
+        const paste = await step.run(`fetch-pastes-page-${page}`, async () => {
+          const acc = new Map(
+            portalSnapshot.map((p) => [portalKey(p), p] as const),
+          )
+          const resolved = await resolvePendingPastes(
+            pending,
+            acc,
+            maxResultsPerPage,
+          )
+          const sb = createCatalogAdminClient()
+          for (const ref of resolved.refs) {
+            await upsertScrapeDeepRef(sb, ref, runId)
+          }
+          return {
+            portals: [...acc.values()],
+            l2FetchOk: resolved.l2FetchOk,
+            l2FetchFail: resolved.l2FetchFail,
+            l2ExtractCount: resolved.l2ExtractCount,
+            unparsedExtra: resolved.refs.filter(
+              (r) => r.needsRecheck && r.fetchOk === false,
+            ).length,
+          }
+        })
+        l2FetchOk += paste.l2FetchOk
+        l2FetchFail += paste.l2FetchFail
+        l2ExtractCount += paste.l2ExtractCount
+        unparsedCount += paste.unparsedExtra
+        for (const p of paste.portals) {
+          portals.set(portalKey(p), p)
+        }
+      }
+
       after = result.nextAfter
       if (result.hitWatermark) {
         hitWatermark = true

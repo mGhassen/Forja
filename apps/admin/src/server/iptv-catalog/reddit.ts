@@ -230,16 +230,36 @@ function addExtracted(
   const hits: DeepRefPortalHit[] = []
   const seenHit = new Set<string>()
   for (const p of extractPortals(text, source)) {
-    const withPost: CatalogPortal = postId ? { ...p, postId } : p
-    const hitKey = `${withPost.url}|${withPost.username}`.toLowerCase()
+    const hitKey =
+      `${p.platform}|${p.url}|${p.username}|${p.type}|${p.output}`.toLowerCase()
     if (!seenHit.has(hitKey)) {
       seenHit.add(hitKey)
       hits.push({
-        url: withPost.url,
-        username: withPost.username,
-        password: withPost.password,
+        platform: p.platform,
+        type: p.type,
+        output: p.output,
+        url: p.url,
+        username: p.username,
+        password: p.password,
       })
     }
+    // Pool map: xtream + m3u creds (stalker ref-only).
+    if (p.platform === 'stalker') continue
+    if (!p.username || !p.password) continue
+    const withPost: CatalogPortal = postId
+      ? {
+          url: p.url,
+          username: p.username,
+          password: p.password,
+          source: p.source,
+          postId,
+        }
+      : {
+          url: p.url,
+          username: p.username,
+          password: p.password,
+          source: p.source,
+        }
     const key = portalKey(withPost)
     const prev = acc.get(key)
     if (!prev) {
@@ -251,22 +271,30 @@ function addExtracted(
   return hits
 }
 
-/** Collect paste / decoded payloads from post body. Persist every ref. */
-async function extractDeepPortals(
+/** Pending paste fetch — deep ref (base64+paste_url) already saved. */
+export type PendingPaste = {
+  postId: string
+  payloadHash: string
+  url: string
+  base64: string
+}
+
+/**
+ * One row per find: base64 + paste_url.
+ * Paste HTTP is separate so we persist the pair before slow fetches.
+ */
+function collectDeepRefs(
   body: string,
   acc: Map<string, CatalogPortal>,
   maxResults: number,
   postId: string,
-): Promise<{
-  deepRefCount: number
-  l2FetchOk: number
-  l2FetchFail: number
-  l2ExtractCount: number
-  unparsedCount: number
+): {
   refs: DeepRefRecord[]
-}> {
+  pendingPastes: PendingPaste[]
+} {
   const refs: DeepRefRecord[] = []
-  const deepLinks: Array<{ url: string; fromB64: string | null }> = []
+  const pendingPastes: PendingPaste[] = []
+  const seenPaste = new Set<string>()
 
   for (const m of body.matchAll(B64_HTTP)) {
     const raw = m[0] ?? ''
@@ -274,13 +302,14 @@ async function extractDeepPortals(
     try {
       decoded = Buffer.from(raw, 'base64').toString('utf8')
     } catch {
+      const hash = hashPayload(raw)
       refs.push({
         postId,
-        refType: 'b64_text',
+        base64: raw,
+        pasteUrl: '',
+        pasteBody: null,
+        payloadHash: hash,
         refHost: '',
-        payloadHash: hashPayload(raw),
-        rawRef: raw,
-        payloadText: null,
         fetchOk: null,
         extractCount: 0,
         needsRecheck: true,
@@ -288,8 +317,29 @@ async function extractDeepPortals(
       })
       continue
     }
+
     if (decoded.startsWith('http') && isPasteSite(decoded)) {
-      deepLinks.push({ url: decoded, fromB64: raw })
+      if (seenPaste.has(decoded)) continue
+      seenPaste.add(decoded)
+      const hash = hashPayload(`${raw}|${decoded}`)
+      refs.push({
+        postId,
+        base64: raw,
+        pasteUrl: decoded,
+        pasteBody: null,
+        payloadHash: hash,
+        refHost: hostOf(decoded),
+        fetchOk: null,
+        extractCount: 0,
+        needsRecheck: false,
+        portals: [],
+      })
+      pendingPastes.push({
+        postId,
+        payloadHash: hash,
+        url: decoded,
+        base64: raw,
+      })
     } else if (!decoded.startsWith('http') && decoded.includes(':')) {
       const hits = addExtracted(
         acc,
@@ -300,11 +350,11 @@ async function extractDeepPortals(
       )
       refs.push({
         postId,
-        refType: 'b64_text',
-        refHost: '',
+        base64: raw,
+        pasteUrl: '',
+        pasteBody: truncatePayload(decoded),
         payloadHash: hashPayload(raw),
-        rawRef: raw,
-        payloadText: truncatePayload(decoded),
+        refHost: '',
         fetchOk: null,
         extractCount: hits.length,
         needsRecheck: hits.length === 0,
@@ -313,11 +363,11 @@ async function extractDeepPortals(
     } else {
       refs.push({
         postId,
-        refType: 'b64_text',
-        refHost: '',
+        base64: raw,
+        pasteUrl: '',
+        pasteBody: truncatePayload(decoded),
         payloadHash: hashPayload(raw),
-        rawRef: raw,
-        payloadText: truncatePayload(decoded),
+        refHost: '',
         fetchOk: null,
         extractCount: 0,
         needsRecheck: true,
@@ -327,48 +377,69 @@ async function extractDeepPortals(
   }
 
   for (const m of body.matchAll(RAW_PASTE)) {
-    deepLinks.push({ url: m[0] ?? '', fromB64: null })
+    const url = m[0] ?? ''
+    if (!url || seenPaste.has(url)) continue
+    seenPaste.add(url)
+    const hash = hashPayload(`|${url}`)
+    refs.push({
+      postId,
+      base64: '',
+      pasteUrl: url,
+      pasteBody: null,
+      payloadHash: hash,
+      refHost: hostOf(url),
+      fetchOk: null,
+      extractCount: 0,
+      needsRecheck: true,
+      portals: [],
+    })
+    pendingPastes.push({
+      postId,
+      payloadHash: hash,
+      url,
+      base64: '',
+    })
   }
 
-  const seen = new Set<string>()
-  const unique = deepLinks.filter((d) => {
-    if (!d.url || seen.has(d.url)) return false
-    seen.add(d.url)
-    return true
-  }).slice(0, 4)
+  return { refs, pendingPastes: pendingPastes.slice(0, 4) }
+}
 
+/** Fetch paste body; return updated deep ref (same base64+paste_url row). */
+export async function resolvePendingPastes(
+  pending: PendingPaste[],
+  acc: Map<string, CatalogPortal>,
+  maxResults: number,
+): Promise<{
+  refs: DeepRefRecord[]
+  l2FetchOk: number
+  l2FetchFail: number
+  l2ExtractCount: number
+}> {
+  const refs: DeepRefRecord[] = []
   let l2FetchOk = 0
   let l2FetchFail = 0
   let l2ExtractCount = 0
 
-  for (const dl of unique) {
+  for (const dl of pending) {
     if (acc.size >= maxResults) break
-    if (dl.fromB64) {
-      refs.push({
-        postId,
-        refType: 'b64_url',
-        refHost: hostOf(dl.url),
-        payloadHash: hashPayload(dl.fromB64),
-        rawRef: dl.fromB64,
-        payloadText: truncatePayload(dl.url),
-        fetchOk: null,
-        extractCount: 0,
-        needsRecheck: false,
-        portals: [],
-      })
-    }
     const text = await fetchPasteBody(dl.url)
     if (text) {
       l2FetchOk++
-      const hits = addExtracted(acc, text, 'catalog-deep', maxResults, postId)
+      const hits = addExtracted(
+        acc,
+        text,
+        'catalog-deep',
+        maxResults,
+        dl.postId,
+      )
       l2ExtractCount += hits.length
       refs.push({
-        postId,
-        refType: 'paste_url',
+        postId: dl.postId,
+        base64: dl.base64,
+        pasteUrl: dl.url,
+        pasteBody: truncatePayload(text),
+        payloadHash: dl.payloadHash,
         refHost: hostOf(dl.url),
-        payloadHash: hashPayload(dl.url),
-        rawRef: dl.url,
-        payloadText: truncatePayload(text),
         fetchOk: true,
         extractCount: hits.length,
         needsRecheck: hits.length === 0,
@@ -377,12 +448,12 @@ async function extractDeepPortals(
     } else {
       l2FetchFail++
       refs.push({
-        postId,
-        refType: 'paste_url',
+        postId: dl.postId,
+        base64: dl.base64,
+        pasteUrl: dl.url,
+        pasteBody: null,
+        payloadHash: dl.payloadHash,
         refHost: hostOf(dl.url),
-        payloadHash: hashPayload(dl.url),
-        rawRef: dl.url,
-        payloadText: null,
         fetchOk: false,
         extractCount: 0,
         needsRecheck: true,
@@ -391,15 +462,7 @@ async function extractDeepPortals(
     }
   }
 
-  const unparsedCount = refs.filter((r) => r.needsRecheck).length
-  return {
-    deepRefCount: refs.length,
-    l2FetchOk,
-    l2FetchFail,
-    l2ExtractCount,
-    unparsedCount,
-    refs,
-  }
+  return { refs, l2FetchOk, l2FetchFail, l2ExtractCount }
 }
 
 export type ScrapePageFunnel = {
@@ -422,13 +485,16 @@ export type ScrapePageResult = {
   postsSeen: number
   /** Hit a post_id already in DB — stop paginating older listings. */
   hitWatermark: boolean
+  /** Base64 refs with type + decoded output — persist BEFORE paste fetch. */
   deepRefs: DeepRefRecord[]
+  /** Paste URLs to fetch after deepRefs are saved. */
+  pendingPastes: PendingPaste[]
   funnel: ScrapePageFunnel
 }
 
 /**
- * One Reddit /new page (SCRAPE_PAGE_SIZE posts) → extract + L2.
- * One Inngest step per call; nextAfter advances to the older page.
+ * One Reddit /new page (SCRAPE_PAGE_SIZE posts) → L1 + base64 decode.
+ * Does NOT fetch pastes — caller persists deepRefs then calls resolvePendingPastes.
  */
 export async function scrapeCatalogPage(
   after: string | null | undefined,
@@ -469,6 +535,7 @@ export async function scrapeCatalogPage(
       postsSeen: 0,
       hitWatermark: false,
       deepRefs: [],
+      pendingPastes: [],
       funnel: emptyFunnel,
     }
   }
@@ -485,6 +552,7 @@ export async function scrapeCatalogPage(
   const acc = new Map<string, CatalogPortal>()
   const postIds: string[] = []
   const deepRefs: DeepRefRecord[] = []
+  const pendingPastes: PendingPaste[] = []
   const funnel: ScrapePageFunnel = { ...emptyFunnel }
   let hitWatermark = false
 
@@ -512,13 +580,11 @@ export async function scrapeCatalogPage(
     funnel.l1OnlyCount += Math.max(0, acc.size - beforeL1)
     if (acc.size >= maxResults) break
     if (!postId) continue
-    const deep = await extractDeepPortals(body, acc, maxResults, postId)
-    funnel.deepRefCount += deep.deepRefCount
-    funnel.l2FetchOk += deep.l2FetchOk
-    funnel.l2FetchFail += deep.l2FetchFail
-    funnel.l2ExtractCount += deep.l2ExtractCount
-    funnel.unparsedCount += deep.unparsedCount
+    const deep = collectDeepRefs(body, acc, maxResults, postId)
+    funnel.deepRefCount += deep.refs.length
+    funnel.unparsedCount += deep.refs.filter((r) => r.needsRecheck).length
     deepRefs.push(...deep.refs)
+    pendingPastes.push(...deep.pendingPastes)
   }
 
   return {
@@ -529,6 +595,7 @@ export async function scrapeCatalogPage(
     postsSeen: postIds.length,
     hitWatermark,
     deepRefs,
+    pendingPastes,
     funnel,
   }
 }

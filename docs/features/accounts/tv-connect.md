@@ -33,6 +33,7 @@ Android TV cannot use desktop Web login (no loopback browser). Cold start is a c
 ## Tips
 
 - Codes expire after about 10 minutes — start again on the TV if needed
+- If the TV cannot reach Forja (no network / DNS), **Preparing a code…** fails within ~15s with an error — use **Retry** or **Continue as guest**
 - The portal stays signed in; the TV gets a separate session (like desktop Web login)
 - Prefer QR so `/connect` opens with the code prefilled
 

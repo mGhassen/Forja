@@ -140,16 +140,16 @@ export async function upsertScrapeDeepRef(
       {
         post_id: ref.postId,
         scrape_run_id: scrapeRunId,
-        ref_type: ref.refType,
-        ref_host: ref.refHost,
+        base64: ref.base64,
+        paste_url: ref.pasteUrl,
+        paste_body: ref.pasteBody,
         payload_hash: ref.payloadHash,
-        raw_ref: ref.rawRef,
-        payload_text: ref.payloadText,
+        ref_host: ref.refHost,
         fetch_ok: ref.fetchOk,
         extract_count: ref.extractCount,
         needs_recheck: ref.needsRecheck,
       },
-      { onConflict: 'post_id,ref_type,payload_hash,ref_host' },
+      { onConflict: 'post_id,payload_hash' },
     )
     .select('id')
     .single()
@@ -164,39 +164,52 @@ export async function upsertScrapeDeepRef(
   if (delErr) throw delErr
 
   for (const hit of ref.portals ?? []) {
-    const { data: existingId, error: findErr } = await sb.rpc(
-      'find_iptv_portal_id',
-      { p_url: hit.url, p_username: hit.username },
-    )
-    if (findErr) throw findErr
-    const wasExisting = Boolean(existingId)
+    let portalId: string | null = null
+    let wasExisting = false
 
-    const portal: CatalogPortal = {
-      url: hit.url,
-      username: hit.username,
-      password: hit.password,
-      source:
-        ref.refType === 'b64_text' ? 'catalog-decoded' : 'catalog-deep',
-      postId: ref.postId,
+    // Deal pool: xtream + m3u get.php creds (same panel). Stalker stays ref-only.
+    if (
+      (hit.platform === 'xtream' || hit.platform === 'm3u') &&
+      hit.username &&
+      hit.password
+    ) {
+      const { data: existingId, error: findErr } = await sb.rpc(
+        'find_iptv_portal_id',
+        { p_url: hit.url, p_username: hit.username },
+      )
+      if (findErr) throw findErr
+      wasExisting = Boolean(existingId)
+
+      const portal: CatalogPortal = {
+        url: hit.url,
+        username: hit.username,
+        password: hit.password,
+        source: ref.pasteUrl ? 'catalog-deep' : 'catalog-decoded',
+        postId: ref.postId,
+      }
+      portalId = await upsertCatalogCandidateReturningId(
+        sb,
+        portal,
+        {
+          alive: null,
+          status: 'unverified',
+          expiry: null,
+          maxConnections: null,
+          timezone: null,
+          categoryNames: [],
+        },
+        { primary: 'UNKNOWN', tags: [], confidence: 0 },
+      )
     }
-    const portalId = await upsertCatalogCandidateReturningId(
-      sb,
-      portal,
-      {
-        alive: null,
-        status: 'unverified',
-        expiry: null,
-        maxConnections: null,
-        timezone: null,
-        categoryNames: [],
-      },
-      { primary: 'UNKNOWN', tags: [], confidence: 0 },
-    )
 
     const { error: hitErr } = await sb.from('iptv_scrape_deep_ref_portals').insert({
       deep_ref_id: deepRefId,
+      platform: hit.platform,
+      type: hit.type,
+      output: hit.output,
       url: hit.url,
       username: hit.username,
+      password: hit.password,
       was_existing: wasExisting,
       portal_id: portalId,
     })

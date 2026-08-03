@@ -144,7 +144,12 @@ class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
         _focus(_retryFocus);
         return;
       case TvDeviceLinkPollStatus.error:
-        if (result.error?.toLowerCase().contains('already used') == true) {
+        final msg = (result.error ?? '').toLowerCase();
+        // Transient poll blips stay pending; hard failures need Retry / Guest.
+        final fatal = msg.contains('already used') ||
+            msg.contains('could not reach forja') ||
+            msg.contains('not configured');
+        if (fatal) {
           _pollTimer?.cancel();
           setState(() {
             _error = result.error;

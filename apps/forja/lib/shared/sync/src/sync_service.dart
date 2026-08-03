@@ -54,6 +54,8 @@ class SyncService {
   /// Desktop window left "resumed" never gets lifecycle resume - keep RT warm.
   static const _desktopKeepAliveInterval = Duration(minutes: 12);
   static const _profileFetchTimeout = Duration(seconds: 15);
+  /// Cap gotrue `/token` so DNS blips cannot hang Settings / boot forever.
+  static const _refreshTimeout = Duration(seconds: 12);
   /// Refresh access JWT when less than this remains before expiry.
   static const _accessTokenRefreshSkew = Duration(minutes: 5);
   DateTime? _lastRefreshAttempt;
@@ -103,8 +105,13 @@ class SyncService {
     run = () async {
       _lastRefreshAttempt = DateTime.now();
       try {
-        final response = await client.auth.refreshSession();
+        final response = await client.auth
+            .refreshSession()
+            .timeout(_refreshTimeout);
         return await _ensureCurrentSessionApplied(client, response.session);
+      } on TimeoutException catch (e) {
+        debugPrint('[Sync] refreshSession timed out: $e');
+        return false;
       } on AuthException catch (e) {
         debugPrint('[Sync] refreshSession failed: ${e.message}');
         return false;
@@ -415,7 +422,13 @@ class SyncService {
     final client = ForjaSupabase.clientOrNull;
     if (client == null) return;
     // Gate listens for signedOut and wipes account-bound local state (IPTV…).
-    await client.auth.signOut();
+    // gotrue clears local session first, then may throw on remote revoke when
+    // DNS/TLS is down — never leave Settings stuck on signed-in error chrome.
+    try {
+      await client.auth.signOut(scope: SignOutScope.local);
+    } catch (e) {
+      debugPrint('[Sync] signOut remote revoke failed (local cleared): $e');
+    }
     AccountFeatures.instance.clear();
     _notifyIdentityChanged();
   }
@@ -534,12 +547,19 @@ class SyncService {
       } else {
         await ensureFreshAccessToken();
       }
+      // Expired AT + failed refresh: PostgREST will block on another gotrue
+      // refresh — fail here so Settings can show Sign out instead of spinning.
+      final session = client.auth.currentSession;
+      if (session == null || session.isExpired) {
+        throw SyncProfileFetchException(
+          'Session expired and could not refresh. Sign out and sign in again.',
+        );
+      }
       final rows = await client
           .from('profiles')
           .select('id, name, color, avatar_key, created_at')
           .eq('account_id', userId)
-          .order('created_at')
-          .timeout(_profileFetchTimeout);
+          .order('created_at');
       return [
         for (final raw in rows as List)
           SyncProfile(
@@ -552,7 +572,7 @@ class SyncService {
     }
 
     try {
-      return await fetchOnce(forceRefresh: false);
+      return await fetchOnce(forceRefresh: false).timeout(_profileFetchTimeout);
     } on TimeoutException catch (e) {
       debugPrint('[Sync] listProfiles timeout: $e');
       throw SyncProfileFetchException(
@@ -566,7 +586,8 @@ class SyncService {
           '[Sync] listProfiles JWT expired - force refresh and retry',
         );
         try {
-          return await fetchOnce(forceRefresh: true);
+          return await fetchOnce(forceRefresh: true)
+              .timeout(_profileFetchTimeout);
         } on TimeoutException catch (e2) {
           debugPrint('[Sync] listProfiles timeout after JWT retry: $e2');
           throw SyncProfileFetchException(
@@ -574,6 +595,7 @@ class SyncService {
             cause: e2,
           );
         } catch (e2) {
+          if (e2 is SyncProfileFetchException) rethrow;
           debugPrint('[Sync] listProfiles error after JWT retry: $e2');
           throw SyncProfileFetchException(
             'Could not load profiles. Check your connection and retry.',

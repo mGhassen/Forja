@@ -157,4 +157,44 @@ void main() {
       expect(stremioStreamFileIdx({'title': 'x'}), isNull);
     });
   });
+
+  group('liveStreamRequestHeaders', () {
+    test('copies behaviorHints.proxyHeaders.request', () {
+      final h = StremioService.liveStreamRequestHeaders({
+        'url': 'https://cdn.example/a.m3u8',
+        'behaviorHints': {
+          'proxyHeaders': {
+            'request': {
+              'Referer': 'https://addon.example/',
+              'Origin': 'https://addon.example',
+            },
+          },
+        },
+      });
+      expect(h['Referer'], 'https://addon.example/');
+      expect(h['Origin'], 'https://addon.example');
+    });
+
+    test('recaps.dev gets streamed.pk Referer + browser UA when hints empty', () {
+      final h = StremioService.liveStreamRequestHeaders({
+        'url': 'https://cdn.recaps.dev/leaf/1/2/index.m3u8',
+      });
+      expect(h['Referer'], 'https://streamed.pk/');
+      expect(h['Origin'], 'https://streamed.pk');
+      expect(h['User-Agent'], contains('Chrome/'));
+    });
+
+    test('does not override existing Referer on strmd.st', () {
+      final h = StremioService.liveStreamRequestHeaders({
+        'url': 'https://lb.strmd.st/secure/x/playlist.m3u8',
+        'behaviorHints': {
+          'proxyHeaders': {
+            'request': {'Referer': 'https://custom.example/'},
+          },
+        },
+      });
+      expect(h['Referer'], 'https://custom.example/');
+      expect(h['User-Agent'], contains('Chrome/'));
+    });
+  });
 }

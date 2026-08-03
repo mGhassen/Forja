@@ -122,8 +122,9 @@ Not synced — device-specific or sensitive:
   timeout). Opening the app, focusing the desktop window, or leaving the app
   open refreshes the session on a timer so normal daily use stays signed in. If
   profiles fail to load (timeout / network), **Who’s watching** and
-  **Settings → Profile & account** show an error with **Retry** — they do not
-  pretend you have no profiles or keep a stale “Synced” hero. If the session is
+  **Settings → Profile & account** show an error with **Retry** and **Sign out**
+  — they do not pretend you have no profiles, keep a stale “Synced” hero, or
+  trap you without a way to clear the session when the network is down. If the session is
   lost while you are already using the app (for example after a failed token
   refresh), Forja returns to the desktop sign-in screen and clears the same
   account-bound local data — it does **not** stay open as Guest with your prior

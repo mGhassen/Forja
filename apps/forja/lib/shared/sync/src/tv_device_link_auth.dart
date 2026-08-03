@@ -72,6 +72,9 @@ class TvDeviceLinkAuth {
   /// Portal origin used for QR / on-screen URL (same define as desktop Web login).
   static String get webUrl => DesktopBrowserAuth.webUrl;
 
+  /// Cap Edge invoke so dead DNS cannot leave "Preparing a code…" forever.
+  static const _invokeTimeout = Duration(seconds: 15);
+
   static Future<TvDeviceLinkSession> create() async {
     await ForjaSupabase.ensureInitialized();
     final client = ForjaSupabase.clientOrNull;
@@ -80,18 +83,34 @@ class TvDeviceLinkAuth {
     }
 
     try {
-      final response = await client.functions.invoke(
-        'create-device-link',
-        body: <String, dynamic>{},
-      );
+      final response = await client.functions
+          .invoke(
+            'create-device-link',
+            body: <String, dynamic>{},
+          )
+          .timeout(_invokeTimeout);
       return _sessionFromData(response.data);
+    } on TimeoutException {
+      debugPrint('[TvDeviceLink] create timed out');
+      throw const AuthException(
+        'Could not reach Forja. Check this TV\'s network connection and try again.',
+      );
     } on FunctionException catch (e) {
       final message = _errorFromDetails(e.details) ??
           'Could not start TV linking (${e.status}).';
-      debugPrint('[TvDeviceLink] create FunctionException status=${e.status} $message');
+      debugPrint(
+        '[TvDeviceLink] create FunctionException status=${e.status} $message',
+      );
       throw AuthException(message);
+    } on AuthException {
+      rethrow;
     } catch (e, st) {
       debugPrint('[TvDeviceLink] create error: $e\n$st');
+      if (_isNetworkFailure(e)) {
+        throw const AuthException(
+          'Could not reach Forja. Check this TV\'s network connection and try again.',
+        );
+      }
       rethrow;
     }
   }
@@ -106,15 +125,27 @@ class TvDeviceLinkAuth {
     }
 
     try {
-      final response = await client.functions.invoke(
-        'poll-device-link',
-        body: <String, dynamic>{'device_code': deviceCode},
-      );
+      final response = await client.functions
+          .invoke(
+            'poll-device-link',
+            body: <String, dynamic>{'device_code': deviceCode},
+          )
+          .timeout(_invokeTimeout);
       return _pollFromData(response.status, response.data);
+    } on TimeoutException {
+      debugPrint('[TvDeviceLink] poll timed out');
+      return TvDeviceLinkPollResult.error(
+        'Could not reach Forja. Check this TV\'s network connection.',
+      );
     } on FunctionException catch (e) {
       return _pollFromData(e.status, e.details);
     } catch (e, st) {
       debugPrint('[TvDeviceLink] poll error: $e\n$st');
+      if (_isNetworkFailure(e)) {
+        return TvDeviceLinkPollResult.error(
+          'Could not reach Forja. Check this TV\'s network connection.',
+        );
+      }
       return TvDeviceLinkPollResult.error(e.toString());
     }
   }
@@ -191,5 +222,15 @@ class TvDeviceLinkAuth {
     if (error is String && error.trim().isNotEmpty) return error.trim();
     if (data is String && data.trim().isNotEmpty) return data.trim();
     return null;
+  }
+
+  static bool _isNetworkFailure(Object e) {
+    final s = e.toString().toLowerCase();
+    return s.contains('socketexception') ||
+        s.contains('failed host lookup') ||
+        s.contains('network is unreachable') ||
+        s.contains('connection refused') ||
+        s.contains('connection reset') ||
+        s.contains('clientexception');
   }
 }

@@ -737,4 +737,43 @@ class StremioService {
     if (lower.contains('upgrade to watch')) return false;
     return true;
   }
+
+  /// HTTP headers for native IPTV play of a Stremio live stream.
+  ///
+  /// Prefer addon `behaviorHints.proxyHeaders.request`. When missing, Highfly
+  /// Streamed-backed leaf CDNs (`recaps.dev` / `strmd.st`) still need a
+  /// browser UA + streamed.pk Referer on Exo (same as Live Matches Streamed).
+  static Map<String, String> liveStreamRequestHeaders(Map stream) {
+    final headers = <String, String>{};
+    final hints = stream['behaviorHints'];
+    final proxy = hints is Map ? hints['proxyHeaders'] : null;
+    final request = proxy is Map ? proxy['request'] : null;
+    if (request is Map) {
+      request.forEach((key, value) {
+        if (key == null || value == null) return;
+        final k = key.toString().trim();
+        final v = value.toString().trim();
+        if (k.isEmpty || v.isEmpty) return;
+        headers[k] = v;
+      });
+    }
+
+    final url = (stream['url']?.toString() ?? '').toLowerCase();
+    final needsStreamedCatalog = url.contains('recaps.dev') ||
+        url.contains('strmd.st');
+    if (!needsStreamedCatalog) return headers;
+
+    final hasReferer = headers.keys.any((k) => k.toLowerCase() == 'referer');
+    if (!hasReferer) {
+      headers['Referer'] = 'https://streamed.pk/';
+      headers.putIfAbsent('Origin', () => 'https://streamed.pk');
+    }
+    final hasUa = headers.keys.any((k) => k.toLowerCase() == 'user-agent');
+    if (!hasUa) {
+      headers['User-Agent'] =
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    }
+    return headers;
+  }
 }

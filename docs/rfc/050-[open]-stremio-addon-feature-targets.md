@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **5 / 6** acceptance |
-| **Current slice** | Per-addon Sources vs Live Matches targets + sport HLS server |
+| **Progress** | **3 / 3** components · **5 / 7** acceptance |
+| **Current slice** | Per-addon Sources vs Live Matches targets + sport HLS; ATV Highfly reconnect fix landed (smoke R50-A07) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -35,6 +35,7 @@
 | 4 | R50-A04 | Live Matches Servers lists Stremio; loads live-targeted sport catalogs | ✅ |
 | 5 | R50-A05 | Playable `.m3u8` streams open native IPTV player; premium bait URLs skipped | ✅ |
 | 6 | R50-A06 | Manual smoke: install Highfly → Live Matches → play one live HLS | ⬜ |
+| 7 | R50-A07 | Android TV Exo: Highfly `recaps.dev` /leaf HLS plays (no forever Reconnecting…) — [issue 143](../issues/143-[open]-android-tv-stremio-live-reconnect.md) | ⬜ |
 
 ---
 

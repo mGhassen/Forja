@@ -440,6 +440,12 @@ class ExoPlayerHost(
                 haystack.contains("/hls-proxy") ||
                 haystack.contains("strmd.st") ||
                 haystack.contains("indianservers.st") ||
+                // Highfly / Streamed leaf CDN (Live Matches Stremio): signed
+                // `/leaf/{id}/{token}/…` HLS without a `.m3u8` suffix — Exo
+                // otherwise picks Progressive → UnrecognizedInputFormat →
+                // IPTV watchdog "Reconnecting…" forever.
+                haystack.contains("recaps.dev") ||
+                haystack.contains("/leaf/") ||
                 // VixSrc (and similar embeds): tokenised HLS at /playlist/{id}?token=
                 // without a .m3u8 suffix — Exo defaults to progressive otherwise.
                 (haystack.contains("/playlist/") && !haystack.contains("webmanifest")) ->

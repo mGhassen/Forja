@@ -347,10 +347,28 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   }
 
   Future<void> _signOut() async {
+    if (_busy) return;
+    // Invalidate in-flight profile load so it cannot paint signed-in chrome
+    // after local session clear.
+    _refreshGen++;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _profileLoadError = null;
+    });
     SyncDomainBridge.instance.cancelPendingPushes();
-    await SyncService.instance.signOut();
-    if (!mounted) return;
-    setState(_clearProfileUi);
+    try {
+      await SyncService.instance.signOut();
+    } finally {
+      // Always drop signed-in chrome — session may already be local-cleared
+      // even when remote revoke threw (DNS / TLS).
+      if (mounted) {
+        setState(() {
+          _clearProfileUi();
+          _busy = false;
+        });
+      }
+    }
   }
 
   bool get _formLocked => _busy || _webBusy || _passkeyBusy;
@@ -388,39 +406,82 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     }
 
     if (signedIn) {
-      if (_profileLoadError != null && !_profileReady) {
+      // Loading OR load-failed: always keep Sign out reachable. Never spinner-only
+      // — refresh can hang on DNS while gotrue keeps "Refresh already pending".
+      if (!_profileReady || activeProfile == null) {
+        final loading = _profileLoadError == null;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(2, 24, 2, 24),
+          padding: const EdgeInsets.fromLTRB(2, 8, 2, 24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                _profileLoadError!,
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SettingsFilledButton(
-                label: 'Retry',
-                icon: Icons.refresh_rounded,
-                secondary: true,
-                onPressed: _busy ? null : _refreshRemote,
+              SettingsGroup(
+                label: 'Account',
+                children: [
+                  SettingsStatusRow(
+                    title: email ?? 'Signed in',
+                    subtitle: loading
+                        ? 'Loading cloud profile…'
+                        : 'Cloud profile could not load. Retry, or sign out to '
+                            'clear this session on the device.',
+                    icon: loading
+                        ? Icons.cloud_sync_rounded
+                        : Icons.cloud_off_rounded,
+                    iconColor: ForjaShellColors.iconMuted,
+                  ),
+                  if (loading)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(2, 8, 2, 12),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
+                      child: Text(
+                        _profileLoadError!,
+                        style: const TextStyle(
+                          color: Color(0xFFF87171),
+                          fontSize: 12.5,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  if (!loading)
+                    SettingsActionRow(
+                      title: 'Retry',
+                      subtitle: 'Reload profiles from the cloud',
+                      leading: const Icon(
+                        Icons.refresh_rounded,
+                        color: ForjaShellColors.iconMuted,
+                        size: 22,
+                      ),
+                      onTap: _busy ? null : () => unawaited(_refreshRemote()),
+                      trailing: const SizedBox.shrink(),
+                    ),
+                  SettingsActionRow(
+                    title: 'Sign out',
+                    subtitle:
+                        'Clear the session on this device even if the network '
+                        'is down',
+                    leading: const Icon(
+                      Icons.logout_rounded,
+                      color: Color(0xFFF87171),
+                      size: 22,
+                    ),
+                    destructive: true,
+                    onTap: _busy ? null : () => unawaited(_signOut()),
+                    trailing: const SizedBox.shrink(),
+                  ),
+                ],
               ),
             ],
-          ),
-        );
-      }
-      if (!_profileReady || activeProfile == null) {
-        return const Padding(
-          padding: EdgeInsets.fromLTRB(2, 24, 2, 24),
-          child: Center(
-            child: SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
           ),
         );
       }

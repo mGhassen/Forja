@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 3** acceptance |
+| **Progress** | **6 / 6** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -25,6 +25,7 @@
 | 3 | I106-T03 | Who’s watching + Settings Profile error + Retry (no fake “create profile” / stale Synced) | ✅ |
 | 4 | I106-T04 | Rail avatar keeps last profile on failed reload (no stuck Guest while signed in) | ✅ |
 | 5 | I106-T05 | About Check for Updates — failed check is an error toast, not “latest version” | ✅ |
+| 6 | I106-T06 | Settings profile load (loading + error) always offers Sign out; refresh/listProfiles fail-fast on hung DNS; `signOut` survives revoke failure | ✅ |
 
 ---
 
@@ -35,6 +36,7 @@
 | 1 | I106-A01 | Mac left open hours: session still refreshes; rail shows active profile name when signed in | ⬜ |
 | 2 | I106-A02 | Forced profile API hang/timeout → Who’s watching shows error + Retry (not infinite spinner / create copy) | ⬜ |
 | 3 | I106-A03 | About with CDN down / bad manifest → error toast (never “You’re running the latest version!”) | ⬜ |
+| 4 | I106-A04 | Profile load error in Settings → Sign out works offline and returns to signed-out / account entry (Retry alone not a dead end) | ⬜ |
 
 ---
 
@@ -43,5 +45,7 @@
 After leaving the Mac app open a long time, the rail could show **Guest** while Settings still showed **Streaming / Synced / email**, and **Who’s watching** spun forever with “Create a profile…” copy. Hard `signedOut` (issue 085) was not always the path — soft-fail hangs and chrome that only listens to `identityRevision` left a split UI.
 
 **Root (host):** macOS windows often stay `resumed` so lifecycle refresh never runs; `listProfiles` had no timeout and swallowed errors as `[]`; rail cleared profile chrome before reload finished; About treated every `null` update check as up-to-date.
+
+**Escape hatch (I106-T06):** Profile-load error chrome in Settings only offered **Retry**. With an expired access token and dead DNS, Retry kept failing and **Sign out** was hidden behind the successful Synced hero — user trapped “signed in” with no cloud and no logout. Worse: loading was **spinner-only** while `ensureFreshAccessToken` / gotrue refresh hung (timeout only wrapped PostgREST, not refresh), so Sign out never appeared. Fix: Sign out on loading + error chrome; `refreshSession` 12s cap; fail fast when AT still expired after refresh; `signOut` swallows remote revoke failures after gotrue local clear.
 
 **Related:** [085](085-[open]-desktop-involuntary-signout-dumps-login.md) (hard sign-out wipe) · [RFC-042](../rfc/042-[open]-unified-auth-system.md)

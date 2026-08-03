@@ -194,10 +194,16 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
 
   Future<void> _signOut() async {
     if (_busy) return;
+    setState(() => _busy = true);
     SyncDomainBridge.instance.cancelPendingPushes();
-    await SyncService.instance.signOut();
-    if (!mounted) return;
-    widget.onSignOut?.call();
+    try {
+      await SyncService.instance.signOut();
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+        widget.onSignOut?.call();
+      }
+    }
   }
 
   void _beginCreate() {
@@ -495,6 +501,13 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                                           .read(syncProfilesProvider.notifier)
                                           .reload(),
                                 ),
+                                if (widget.onSignOut != null) ...[
+                                  const SizedBox(height: 8),
+                                  _ChooserAction(
+                                    label: 'Use another account',
+                                    onTap: _busy ? null : _signOut,
+                                  ),
+                                ],
                               ],
                             ),
                           )

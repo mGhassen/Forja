@@ -7,24 +7,37 @@ export type CatalogPortal = {
   postId?: string
 }
 
-/** Persisted L2 / base64 / paste ref (retry queue when needsRecheck). */
+/**
+ * Portal hit under a deep ref.
+ * - platform: xtream | m3u | stalker
+ * - type / output: get.php query params (e.g. type=m3u_plus&output=m3u8)
+ */
 export type DeepRefPortalHit = {
+  platform: 'xtream' | 'm3u' | 'stalker'
+  type: string
+  output: string
   url: string
   username: string
   password: string
 }
 
+/**
+ * One Reddit find: base64 (if any) + paste.sh URL (if any).
+ * Never two rows for the same find.
+ */
 export type DeepRefRecord = {
   postId: string
-  refType: 'b64_url' | 'b64_text' | 'paste_url'
-  refHost: string
+  /** Raw base64 from the post (empty if paste URL was plain text in post). */
+  base64: string
+  /** Decoded / found paste URL (empty if base64 was inline credential text). */
+  pasteUrl: string
+  /** Fetched paste body (capped) for re-extract. */
+  pasteBody: string | null
   payloadHash: string
-  rawRef: string
-  payloadText: string | null
+  refHost: string
   fetchOk: boolean | null
   extractCount: number
   needsRecheck: boolean
-  /** Portals extracted from this ref's payload (empty for b64→paste pointer). */
   portals: DeepRefPortalHit[]
 }
 

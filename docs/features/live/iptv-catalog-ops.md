@@ -31,12 +31,12 @@ Production scrape runs in **TypeScript** on `apps/admin` via Inngest (Rust `iptv
 3. Scheduled scrape: Inngest has a **daily 06:00 UTC** kick plus a minute tick. The real schedule is **`iptv_ops_settings.scrape_cron`** (UTC 5-field cron, default `0 6 * * *`) with **due/catch-up** (a late tick still runs once per slot; source `inngest-cron`). Edit it in Scrape → Automation. Toggle **Scheduled scrape** via `scrape_cron_enabled` — off = ticks no-op; manual run still works
 4. Reddit listing today is **`r/IPTV_ZONENEW`** (other old catalog subs are banned). Posts are usually base64 → encrypted **paste.sh** links — scrape decrypts those (L2), then runs credential extract
 5. **Watermark** — walks `/new` **page by page** (10 posts per Inngest step, newest → older) and **stops at the first `post_id` already in `iptv_scrape_posts`**. Only **new** posts are processed. `posts_seen` on a run = new posts this run (not “500 every time”)
-6. **Posts** store `post_id` + `subreddit` (no title/body). **Deep refs** live in `iptv_scrape_deep_refs` (base64 / paste URL, fetch ok, extract count). When extract finds **0** portals, `needs_recheck=true` and `payload_text` keeps the decoded/paste body (capped) for later techniques
+6. **Posts** (`iptv_scrape_posts`) = `post_id` + `subreddit` only. **Deep refs** = **`base64` + `paste_url`**. **Portals** under a ref = **`platform`** (`xtream` / `m3u` / `stalker`) + get.php **`type`** / **`output`** (e.g. `m3u_plus` / `m3u8`) + url/user/pass. Only **xtream** hits upsert into the deal pool; m3u/stalker are saved on the ref for ops.
 7. Extract upserts **all** unique portals into **`iptv_portals`** with `catalog_pool = true` (conflict on url+username). No product upsert cap. **Xtream `player_api` verify is off** in the scrape job (`VERIFY_PORTAL_STATUS = false`); use Pool → Check status for manual probes. Deal only assigns `catalog_pool` rows with `alive = true`
 
 If a run shows **new posts > 0** but **portals = 0**, paste decrypt / deep extract failed (not Inngest itself). Check `iptv_scrape_deep_refs` where `needs_recheck`.
 
-**Apply migrations** `20260731184207_iptv_scrape_watermark_deep_refs.sql` and `20260731184812_iptv_scrape_deep_ref_portals.sql` before deploying this scrape path (ask before `db push`).
+**Apply migrations** `20260731184207_…`, `20260731184812_…`, and `20260801115640_iptv_scrape_deep_ref_base64_portal_output.sql` before deploying this scrape path (ask before `db push`).
 
 Local:
 

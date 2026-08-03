@@ -11,8 +11,8 @@ Link a Forja account to Android TV without typing email/password on the leanback
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **0 / 8** acceptance (manual smoke) |
-| **Current slice** | Implementation landed — web/TV acceptance smoke ⬜ |
+| **Progress** | **5 / 5** components · **0 / 8** acceptance (manual smoke) · **1 / 1** network fail-fast |
+| **Current slice** | Network fail-fast on create/poll landed — web/TV link smoke still ⬜ |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -49,6 +49,14 @@ Link a Forja account to Android TV without typing email/password on the leanback
 | 2 | R46-A06 | Continue as guest skips into the app without linking | ⬜ |
 | 3 | R46-A07 | After portal approve, TV poll receives tokens and signs in (profiles → avatar splash → app) | ⬜ |
 | 4 | R46-A08 | Sign-out on TV returns to the link screen (account-bound local state cleared) | ⬜ |
+
+---
+
+## Acceptance (network)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R46-A09 | Dead DNS / Edge timeout on create or poll leaves error + Retry / Guest — never infinite “Preparing a code…” | ✅ |
 
 ---
 

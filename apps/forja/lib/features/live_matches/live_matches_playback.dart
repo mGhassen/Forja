@@ -158,6 +158,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
             IptvPlaySource(
               url: url!,
               label: name.isEmpty ? 'Stream' : name,
+              headers: StremioService.liveStreamRequestHeaders(s),
             ),
           );
         }
