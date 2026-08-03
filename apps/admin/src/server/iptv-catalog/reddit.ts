@@ -1,7 +1,12 @@
 import { createHash } from 'node:crypto'
 import { extractPortals } from './extract'
 import { decryptFromPasteResponse } from './pastesh'
-import type { CatalogPortal, DeepRefPortalHit, DeepRefRecord } from './types'
+import type {
+  CatalogPortal,
+  DeepRefPortalHit,
+  DeepRefRecord,
+  PendingDeepRefRow,
+} from './types'
 import { portalKey } from './types'
 
 const OAUTH_UA = 'Forja/1.3.6 (by /u/ForjaApp)'
@@ -280,13 +285,13 @@ export type PendingPaste = {
 }
 
 /**
- * One row per find: base64 + paste_url.
- * Paste HTTP is separate so we persist the pair before slow fetches.
+ * One row per find: base64 + paste_url stubs only.
+ * No paste HTTP and no portal extract — that is the process phase.
  */
 function collectDeepRefs(
   body: string,
-  acc: Map<string, CatalogPortal>,
-  maxResults: number,
+  _acc: Map<string, CatalogPortal>,
+  _maxResults: number,
   postId: string,
 ): {
   refs: DeepRefRecord[]
@@ -341,13 +346,7 @@ function collectDeepRefs(
         base64: raw,
       })
     } else if (!decoded.startsWith('http') && decoded.includes(':')) {
-      const hits = addExtracted(
-        acc,
-        decoded,
-        'catalog-decoded',
-        maxResults,
-        postId,
-      )
+      // Collect only — extract portals in process phase from paste_body.
       refs.push({
         postId,
         base64: raw,
@@ -356,9 +355,9 @@ function collectDeepRefs(
         payloadHash: hashPayload(raw),
         refHost: '',
         fetchOk: null,
-        extractCount: hits.length,
-        needsRecheck: hits.length === 0,
-        portals: hits,
+        extractCount: 0,
+        needsRecheck: true,
+        portals: [],
       })
     } else {
       refs.push({
@@ -401,7 +400,7 @@ function collectDeepRefs(
     })
   }
 
-  return { refs, pendingPastes: pendingPastes.slice(0, 4) }
+  return { refs, pendingPastes }
 }
 
 /** Fetch paste body; return updated deep ref (same base64+paste_url row). */
@@ -463,6 +462,67 @@ export async function resolvePendingPastes(
   }
 
   return { refs, l2FetchOk, l2FetchFail, l2ExtractCount }
+}
+
+/** Process one collected deep_ref: fetch paste if needed, extract portals. */
+export async function processDeepRefRow(
+  row: PendingDeepRefRow,
+  maxResults = 500,
+): Promise<{
+  ref: DeepRefRecord
+  l2FetchOk: number
+  l2FetchFail: number
+  l2ExtractCount: number
+}> {
+  const acc = new Map<string, CatalogPortal>()
+  let pasteBody = row.paste_body
+  let fetchOk: boolean | null = row.fetch_ok
+  let l2FetchOk = 0
+  let l2FetchFail = 0
+
+  const pasteUrl = String(row.paste_url ?? '').trim()
+  if (pasteUrl && fetchOk == null) {
+    const text = await fetchPasteBody(pasteUrl)
+    if (text) {
+      pasteBody = truncatePayload(text)
+      fetchOk = true
+      l2FetchOk = 1
+    } else {
+      fetchOk = false
+      l2FetchFail = 1
+    }
+  } else if (!pasteUrl && pasteBody) {
+    // Inline base64 body already collected — mark processed so it leaves the queue.
+    fetchOk = true
+  }
+
+  const hits: DeepRefPortalHit[] = pasteBody
+    ? addExtracted(
+        acc,
+        pasteBody,
+        pasteUrl ? 'catalog-deep' : 'catalog-decoded',
+        maxResults,
+        row.post_id,
+      )
+    : []
+
+  return {
+    ref: {
+      postId: row.post_id,
+      base64: row.base64 ?? '',
+      pasteUrl,
+      pasteBody,
+      payloadHash: row.payload_hash,
+      refHost: row.ref_host ?? hostOf(pasteUrl),
+      fetchOk,
+      extractCount: hits.length,
+      needsRecheck: hits.length === 0,
+      portals: hits,
+    },
+    l2FetchOk,
+    l2FetchFail,
+    l2ExtractCount: hits.length,
+  }
 }
 
 export type ScrapePageFunnel = {

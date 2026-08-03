@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type {
   CatalogPortal,
   DeepRefRecord,
+  PendingDeepRefRow,
   PortalStatus,
   RegionGuess,
 } from './types'
@@ -133,7 +134,9 @@ export async function upsertScrapeDeepRef(
   sb: SupabaseClient,
   ref: DeepRefRecord,
   scrapeRunId: string,
+  opts?: { linkPortals?: boolean },
 ): Promise<string> {
+  const linkPortals = opts?.linkPortals !== false
   const { data, error } = await sb
     .from('iptv_scrape_deep_refs')
     .upsert(
@@ -156,7 +159,8 @@ export async function upsertScrapeDeepRef(
   if (error) throw error
   const deepRefId = data.id as string
 
-  // Replace portal hits for this ref (idempotent re-scrape).
+  if (!linkPortals) return deepRefId
+
   const { error: delErr } = await sb
     .from('iptv_scrape_deep_ref_portals')
     .delete()
@@ -167,7 +171,6 @@ export async function upsertScrapeDeepRef(
     let portalId: string | null = null
     let wasExisting = false
 
-    // Deal pool: xtream + m3u get.php creds (same panel). Stalker stays ref-only.
     if (
       (hit.platform === 'xtream' || hit.platform === 'm3u') &&
       hit.username &&
@@ -217,6 +220,32 @@ export async function upsertScrapeDeepRef(
   }
 
   return deepRefId
+}
+
+/** Deep refs for this run that still need paste fetch and/or portal extract. */
+export async function listPendingDeepRefsForRun(
+  sb: SupabaseClient,
+  scrapeRunId: string,
+): Promise<PendingDeepRefRow[]> {
+  const { data, error } = await sb
+    .from('iptv_scrape_deep_refs')
+    .select(
+      'id, post_id, base64, paste_url, paste_body, payload_hash, ref_host, fetch_ok, extract_count',
+    )
+    .eq('scrape_run_id', scrapeRunId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return ((data ?? []) as PendingDeepRefRow[]).filter((r) => {
+    const pasteUrl = String(r.paste_url ?? '').trim()
+    const body = r.paste_body
+    const fetchOk = r.fetch_ok
+    const extractCount = Number(r.extract_count ?? 0)
+    // Paste URL collected but not fetched yet.
+    if (pasteUrl && fetchOk == null) return true
+    // Inline body collected; extract not run (fetch_ok still null).
+    if (!pasteUrl && body && fetchOk == null && extractCount === 0) return true
+    return false
+  })
 }
 
 function portalLayer(source: string): 'l1' | 'l2' {

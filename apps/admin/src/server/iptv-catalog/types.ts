@@ -41,6 +41,19 @@ export type DeepRefRecord = {
   portals: DeepRefPortalHit[]
 }
 
+/** DB row waiting for process phase (paste fetch and/or portal extract). */
+export type PendingDeepRefRow = {
+  id: string
+  post_id: string
+  base64: string
+  paste_url: string
+  paste_body: string | null
+  payload_hash: string
+  ref_host: string
+  fetch_ok: boolean | null
+  extract_count: number
+}
+
 export type PortalStatus = {
   /** null = not probed (verify step disabled / skipped). */
   alive: boolean | null

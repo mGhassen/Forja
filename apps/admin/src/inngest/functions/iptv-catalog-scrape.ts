@@ -1,7 +1,7 @@
 import { inngest } from '@/inngest/client'
 import { classifyRegion } from '@/server/iptv-catalog/region'
 import {
-  resolvePendingPastes,
+  processDeepRefRow,
   scrapeCatalogPage,
 } from '@/server/iptv-catalog/reddit'
 import { cronIsDueUtc, isValidScrapeCron } from '@/lib/scrape-cron'
@@ -10,6 +10,7 @@ import {
   getLastScheduledScrapeStartedAt,
   getScrapeCronSettings,
   insertScrapeRun,
+  listPendingDeepRefsForRun,
   loadKnownScrapePostIds,
   patchScrapeRun,
   upsertCatalogCandidate,
@@ -62,8 +63,9 @@ async function markRun(runId: string, error?: string) {
 
 /**
  * Scheduled + on-demand catalog scrape.
- * Walks /new page-by-page (10 posts/page, newest → older) until known
- * post_id watermark (or maxPages). Persists deep refs. Upserts all portals.
+ * Phase 1: walk Reddit /new → posts + deep_ref stubs in DB.
+ * Phase 2: process pending deep_refs (paste fetch + extract).
+ * Then upsert portal candidates. Watermark / maxPages still apply.
  */
 export const iptvCatalogScrape = inngest.createFunction(
   {
@@ -171,12 +173,11 @@ export const iptvCatalogScrape = inngest.createFunction(
     let l1OnlyCount = 0
     let hitWatermark = false
 
+    // Phase 1 — COLLECT: Reddit pages → posts + deep_ref stubs (no paste HTTP).
     for (let page = 0; page < maxPages; page++) {
       const pageAfter = after
       const knownSnapshot = [...knownPostIds]
-      // Persist base64+paste_url first (short). Paste HTTP is a separate step —
-      // same Vercel request that does Reddit+pastes+upserts → HTTP 504.
-      const result = await step.run(`scrape-reddit-page-${page}`, async () => {
+      const result = await step.run(`collect-reddit-page-${page}`, async () => {
         const known = new Set(knownSnapshot)
         const pageResult = await scrapeCatalogPage(
           pageAfter,
@@ -193,7 +194,7 @@ export const iptvCatalogScrape = inngest.createFunction(
           )
         }
         for (const ref of pageResult.deepRefs) {
-          await upsertScrapeDeepRef(sb, ref, runId)
+          await upsertScrapeDeepRef(sb, ref, runId, { linkPortals: false })
         }
         return {
           portals: pageResult.portals,
@@ -201,7 +202,6 @@ export const iptvCatalogScrape = inngest.createFunction(
           nextAfter: pageResult.nextAfter,
           postsSeen: pageResult.postsSeen,
           hitWatermark: pageResult.hitWatermark,
-          pendingPastes: pageResult.pendingPastes,
           funnel: pageResult.funnel,
         }
       })
@@ -215,59 +215,15 @@ export const iptvCatalogScrape = inngest.createFunction(
         portals.set(portalKey(p), p)
       }
 
-      // Checkpoint ASAP so a later paste 504 still shows progress (not all zeros).
-      await step.run(`checkpoint-after-page-${page}`, async () => {
+      await step.run(`checkpoint-collect-${page}`, async () => {
         const sb = createCatalogAdminClient()
         await patchScrapeRun(sb, runId, {
           posts_seen: postsSeen,
           l1_extract_count: portals.size,
           deep_ref_count: deepRefCount,
-          l2_fetch_ok: l2FetchOk,
-          l2_fetch_fail: l2FetchFail,
-          l2_extract_count: l2ExtractCount,
           unparsed_count: unparsedCount,
         })
       })
-
-      // One paste per step — 4×12s + portal upserts in one request → 504.
-      const pending = result.pendingPastes ?? []
-      for (let pi = 0; pi < pending.length; pi++) {
-        const one = pending[pi]!
-        const portalSnapshot = [...portals.values()]
-        const paste = await step.run(
-          `fetch-paste-${page}-${pi}`,
-          async () => {
-            const acc = new Map(
-              portalSnapshot.map((p) => [portalKey(p), p] as const),
-            )
-            const resolved = await resolvePendingPastes(
-              [one],
-              acc,
-              maxResultsPerPage,
-            )
-            const sb = createCatalogAdminClient()
-            for (const ref of resolved.refs) {
-              await upsertScrapeDeepRef(sb, ref, runId)
-            }
-            return {
-              portals: [...acc.values()],
-              l2FetchOk: resolved.l2FetchOk,
-              l2FetchFail: resolved.l2FetchFail,
-              l2ExtractCount: resolved.l2ExtractCount,
-              unparsedExtra: resolved.refs.filter(
-                (r) => r.needsRecheck && r.fetchOk === false,
-              ).length,
-            }
-          },
-        )
-        l2FetchOk += paste.l2FetchOk
-        l2FetchFail += paste.l2FetchFail
-        l2ExtractCount += paste.l2ExtractCount
-        unparsedCount += paste.unparsedExtra
-        for (const p of paste.portals) {
-          portals.set(portalKey(p), p)
-        }
-      }
 
       after = result.nextAfter
       if (result.hitWatermark) {
@@ -275,6 +231,77 @@ export const iptvCatalogScrape = inngest.createFunction(
         break
       }
       if (!after) break
+    }
+
+    await step.run('checkpoint-collect-done', async () => {
+      const sb = createCatalogAdminClient()
+      await patchScrapeRun(sb, runId, {
+        posts_seen: postsSeen,
+        l1_extract_count: portals.size,
+        deep_ref_count: deepRefCount,
+        unparsed_count: unparsedCount,
+      })
+    })
+
+    // Phase 2 — PROCESS: pending deep_refs from DB → paste fetch + extract.
+    const pending = await step.run('list-pending-deep-refs', async () => {
+      const sb = createCatalogAdminClient()
+      return listPendingDeepRefsForRun(sb, runId)
+    })
+
+    for (let i = 0; i < pending.length; i++) {
+      const row = pending[i]!
+      const outcome = await step.run(`process-deep-ref-${i}`, async () => {
+        const processed = await processDeepRefRow(row, maxResultsPerPage)
+        const sb = createCatalogAdminClient()
+        await upsertScrapeDeepRef(sb, processed.ref, runId, {
+          linkPortals: true,
+        })
+        return {
+          portals: processed.ref.portals
+            .filter(
+              (h) =>
+                (h.platform === 'xtream' || h.platform === 'm3u') &&
+                h.username &&
+                h.password,
+            )
+            .map((h) => ({
+              url: h.url,
+              username: h.username,
+              password: h.password,
+              source: processed.ref.pasteUrl
+                ? 'catalog-deep'
+                : 'catalog-decoded',
+              postId: processed.ref.postId,
+            })),
+          l2FetchOk: processed.l2FetchOk,
+          l2FetchFail: processed.l2FetchFail,
+          l2ExtractCount: processed.l2ExtractCount,
+          needsRecheck: processed.ref.needsRecheck,
+        }
+      })
+      l2FetchOk += outcome.l2FetchOk
+      l2FetchFail += outcome.l2FetchFail
+      l2ExtractCount += outcome.l2ExtractCount
+      if (outcome.needsRecheck) unparsedCount++
+      for (const p of outcome.portals) {
+        portals.set(portalKey(p), p)
+      }
+
+      if (i % 5 === 0 || i === pending.length - 1) {
+        await step.run(`checkpoint-process-${i}`, async () => {
+          const sb = createCatalogAdminClient()
+          await patchScrapeRun(sb, runId, {
+            posts_seen: postsSeen,
+            l1_extract_count: portals.size,
+            deep_ref_count: deepRefCount,
+            l2_fetch_ok: l2FetchOk,
+            l2_fetch_fail: l2FetchFail,
+            l2_extract_count: l2ExtractCount,
+            unparsed_count: unparsedCount,
+          })
+        })
+      }
     }
 
     await step.run('checkpoint-after-reddit', async () => {
