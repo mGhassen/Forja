@@ -23,7 +23,7 @@ class _StreamThumbPlayHint extends StatelessWidget {
           ),
         ),
         ShellCardPlayOverlay(
-          active: true,
+          active: false,
           visible: active,
           diameter: 30,
           iconSize: 18,
@@ -208,7 +208,7 @@ class _StreamCardState extends State<_StreamCard> {
                   ),
                 ),
               ),
-              ShellCardPlayOverlay(active: true, visible: active),
+              ShellCardPlayOverlay(active: false, visible: active),
               if (widget.stream.kind == 'live')
                 Positioned(
                   top: 4,
@@ -315,7 +315,7 @@ class _StreamCardState extends State<_StreamCard> {
             ),
           ],
           ShellCardPlayOverlay(
-            active: true,
+            active: false,
             visible: active,
             diameter: isLive ? 28 : 48,
             iconSize: isLive ? 16 : 28,
