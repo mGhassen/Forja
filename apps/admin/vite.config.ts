@@ -109,6 +109,19 @@ export default defineConfig(({ mode }) => {
         '@forja/auth': path.resolve(forjaAuthRoot, 'src/index.ts'),
       },
     },
-    plugins: [tanstackStart(), nitro(), viteReact(), tailwindcss()],
+    plugins: [
+      tanstackStart(),
+      // Classic vercel.json `functions.api/*` matches nothing under Nitro —
+      // maxDuration must live here or the build fails unmatched-function-pattern.
+      nitro({
+        vercel: {
+          functions: {
+            maxDuration: 300,
+          },
+        },
+      }),
+      viteReact(),
+      tailwindcss(),
+    ],
   }
 })
