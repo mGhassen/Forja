@@ -447,7 +447,7 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
             ),
             
             ShellCardPlayOverlay(
-              active: _active(context),
+              active: false,
               visible: _active(context) && !widget.isLoading,
             ),
 

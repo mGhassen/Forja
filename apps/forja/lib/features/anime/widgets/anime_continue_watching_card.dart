@@ -236,7 +236,7 @@ class _AnimeContinueWatchingCardState extends State<AnimeContinueWatchingCard> {
                   ),
                 ),
                 ShellCardPlayOverlay(
-                  active: _activeFor(policy),
+                  active: false,
                   visible: _activeFor(policy) && !widget.isLoading,
                 ),
                 if (widget.isLoading)

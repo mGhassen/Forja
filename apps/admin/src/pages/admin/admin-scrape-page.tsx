@@ -14,7 +14,7 @@ import {
   tdClassName,
   thClassName,
 } from '@/components/admin-ui'
-import { ConfirmDialog } from '@/components/confirm-dialog'
+import { FullScrapeDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -71,7 +71,11 @@ export function AdminScrapePage() {
   const [confirmFull, setConfirmFull] = useState(false)
 
   const start = useMutation({
-    mutationFn: (forceFull: boolean) => scrapeControl('start', { forceFull }),
+    mutationFn: (opts: { forceFull: boolean; maxPages?: number }) =>
+      scrapeControl('start', {
+        forceFull: opts.forceFull,
+        maxPages: opts.maxPages,
+      }),
     onSuccess: async (res) => {
       setConfirmFull(false)
       if (res.run) {
@@ -327,7 +331,7 @@ export function AdminScrapePage() {
             <Button
               type="button"
               disabled={busy || running}
-              onClick={() => start.mutate(false)}
+              onClick={() => start.mutate({ forceFull: false })}
             >
               {start.isPending ? 'Starting…' : 'Run normal'}
             </Button>
@@ -360,25 +364,15 @@ export function AdminScrapePage() {
         {err ? <p className="mt-4 text-sm text-red-400">{err}</p> : null}
       </Panel>
 
-      <ConfirmDialog
+      <FullScrapeDialog
         open={confirmFull}
-        title="Run full scrape?"
-        description={
-          <>
-            Ignores known Reddit posts and re-walks{' '}
-            <code className="font-mono-ui text-forja-text">/r/IPTV_ZONENEW/new</code>
-            . Re-extracts base64 / pastes and portal hits. Use for backfill — normal
-            scrape is enough for day-to-day.
-          </>
-        }
-        confirmLabel="Run full scrape"
-        cancelLabel="Cancel"
-        danger
         busy={start.isPending}
         onClose={() => {
           if (!start.isPending) setConfirmFull(false)
         }}
-        onConfirm={() => start.mutate(true)}
+        onConfirm={(maxPages) =>
+          start.mutate({ forceFull: true, maxPages })
+        }
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -569,8 +563,8 @@ export function AdminScrapePage() {
             <ExternalLink className="size-3.5" />
           </a>
           <p className="mt-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted">
-            iptv-catalog-scrape · scrape-reddit-page-* ·
-            upsert-candidates-unverified
+            iptv-catalog-scrape · scrape-reddit-page-* · fetch-paste-* ·
+            upsert-candidates-*
           </p>
           {isInngestLocalUi ? (
             <pre className="mt-4 overflow-x-auto rounded-xl border border-forja-border bg-black/25 p-3 font-mono-ui text-[11px] text-forja-muted">

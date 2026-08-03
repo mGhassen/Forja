@@ -129,9 +129,9 @@ export const iptvCatalogScrape = inngest.createFunction(
       }
     }
 
-    // One Reddit page (10 posts) per Inngest step — page 0, then older, …
-    // 100 pages × 10 ≈ 1000 posts for forceFull; watermark usually stops earlier.
-    const maxPages = Math.min(Math.max(data.maxPages ?? 100, 1), 200)
+    // One Reddit page (10 posts) per Inngest step. Default 10 pages when unset
+    // (full dialog passes an explicit maxPages). Cap 200.
+    const maxPages = Math.min(Math.max(data.maxPages ?? 10, 1), 200)
     const maxResultsPerPage = Math.min(
       Math.max(data.maxResultsPerPage ?? 500, 1),
       2000,
@@ -215,32 +215,51 @@ export const iptvCatalogScrape = inngest.createFunction(
         portals.set(portalKey(p), p)
       }
 
-      const pending = result.pendingPastes ?? []
-      if (pending.length > 0) {
-        const portalSnapshot = [...portals.values()]
-        const paste = await step.run(`fetch-pastes-page-${page}`, async () => {
-          const acc = new Map(
-            portalSnapshot.map((p) => [portalKey(p), p] as const),
-          )
-          const resolved = await resolvePendingPastes(
-            pending,
-            acc,
-            maxResultsPerPage,
-          )
-          const sb = createCatalogAdminClient()
-          for (const ref of resolved.refs) {
-            await upsertScrapeDeepRef(sb, ref, runId)
-          }
-          return {
-            portals: [...acc.values()],
-            l2FetchOk: resolved.l2FetchOk,
-            l2FetchFail: resolved.l2FetchFail,
-            l2ExtractCount: resolved.l2ExtractCount,
-            unparsedExtra: resolved.refs.filter(
-              (r) => r.needsRecheck && r.fetchOk === false,
-            ).length,
-          }
+      // Checkpoint ASAP so a later paste 504 still shows progress (not all zeros).
+      await step.run(`checkpoint-after-page-${page}`, async () => {
+        const sb = createCatalogAdminClient()
+        await patchScrapeRun(sb, runId, {
+          posts_seen: postsSeen,
+          l1_extract_count: portals.size,
+          deep_ref_count: deepRefCount,
+          l2_fetch_ok: l2FetchOk,
+          l2_fetch_fail: l2FetchFail,
+          l2_extract_count: l2ExtractCount,
+          unparsed_count: unparsedCount,
         })
+      })
+
+      // One paste per step — 4×12s + portal upserts in one request → 504.
+      const pending = result.pendingPastes ?? []
+      for (let pi = 0; pi < pending.length; pi++) {
+        const one = pending[pi]!
+        const portalSnapshot = [...portals.values()]
+        const paste = await step.run(
+          `fetch-paste-${page}-${pi}`,
+          async () => {
+            const acc = new Map(
+              portalSnapshot.map((p) => [portalKey(p), p] as const),
+            )
+            const resolved = await resolvePendingPastes(
+              [one],
+              acc,
+              maxResultsPerPage,
+            )
+            const sb = createCatalogAdminClient()
+            for (const ref of resolved.refs) {
+              await upsertScrapeDeepRef(sb, ref, runId)
+            }
+            return {
+              portals: [...acc.values()],
+              l2FetchOk: resolved.l2FetchOk,
+              l2FetchFail: resolved.l2FetchFail,
+              l2ExtractCount: resolved.l2ExtractCount,
+              unparsedExtra: resolved.refs.filter(
+                (r) => r.needsRecheck && r.fetchOk === false,
+              ).length,
+            }
+          },
+        )
         l2FetchOk += paste.l2FetchOk
         l2FetchFail += paste.l2FetchFail
         l2ExtractCount += paste.l2ExtractCount
@@ -256,19 +275,6 @@ export const iptvCatalogScrape = inngest.createFunction(
         break
       }
       if (!after) break
-
-      await step.run(`checkpoint-metrics-${page}`, async () => {
-        const sb = createCatalogAdminClient()
-        await patchScrapeRun(sb, runId, {
-          posts_seen: postsSeen,
-          l1_extract_count: portals.size,
-          deep_ref_count: deepRefCount,
-          l2_fetch_ok: l2FetchOk,
-          l2_fetch_fail: l2FetchFail,
-          l2_extract_count: l2ExtractCount,
-          unparsed_count: unparsedCount,
-        })
-      })
     }
 
     await step.run('checkpoint-after-reddit', async () => {

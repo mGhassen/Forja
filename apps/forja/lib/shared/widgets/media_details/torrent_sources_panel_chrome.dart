@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
@@ -304,24 +305,26 @@ class _KindTabs extends StatelessWidget {
           ),
         ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (var i = 0; i < options.length; i++)
-              _KindTab(
-                label: options[i].label,
-                icon: options[i].icon,
-                iconData: options[i].iconData,
-                selected: selected == options[i].id,
-                tvItemIndex: i,
-                onTap: () => onChanged(options[i].id),
-                // Reload only the opened kind - never prefetch a hidden category.
-                onReload: onReloadKind == null || selected != options[i].id
-                    ? null
-                    : () => onReloadKind!(options[i].id),
-              ),
-          ],
+      child: DesktopSwipeBackIgnore(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var i = 0; i < options.length; i++)
+                _KindTab(
+                  label: options[i].label,
+                  icon: options[i].icon,
+                  iconData: options[i].iconData,
+                  selected: selected == options[i].id,
+                  tvItemIndex: i,
+                  onTap: () => onChanged(options[i].id),
+                  // Reload only the opened kind - never prefetch a hidden category.
+                  onReload: onReloadKind == null || selected != options[i].id
+                      ? null
+                      : () => onReloadKind!(options[i].id),
+                ),
+            ],
+          ),
         ),
       ),
     );

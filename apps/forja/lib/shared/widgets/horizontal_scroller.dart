@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Horizontal scrollable strip with overlaid left/right arrow buttons.
@@ -145,59 +146,61 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
         // Enough for ±1 card off-screen; 2000 kept too many live FocusableControls.
         tvFocus ? ScrollCacheExtent.pixels(720) : null;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovering = true),
-      onExit: (_) => setState(() => _hovering = false),
-      child: Listener(
-        onPointerSignal: _onPointerSignal,
-        child: SizedBox(
-          height: widget.height,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              NotificationListener<ScrollNotification>(
-                onNotification: (notification) {
-                  _updateEdges();
-                  return shellAbsorbHorizontalScroll(notification);
-                },
-                child: widget.separatorBuilder != null
-                    ? ListView.separated(
-                        controller: _ctrl,
-                        clipBehavior: widget.clipBehavior,
-                        scrollDirection: Axis.horizontal,
-                        physics: physics,
-                        padding: widget.padding,
-                        itemCount: widget.itemCount,
-                        scrollCacheExtent: scrollCacheExtent,
-                        separatorBuilder: widget.separatorBuilder!,
-                        itemBuilder: widget.itemBuilder,
-                      )
-                    : ListView.builder(
-                        controller: _ctrl,
-                        clipBehavior: widget.clipBehavior,
-                        scrollDirection: Axis.horizontal,
-                        physics: physics,
-                        padding: widget.padding,
-                        itemCount: widget.itemCount,
-                        scrollCacheExtent: scrollCacheExtent,
-                        itemBuilder: widget.itemBuilder,
-                      ),
-              ),
-              if (showArrows) ...[
-                _ArrowButton(
-                  visible: _hovering && _canLeft,
-                  left: true,
-                  offset: widget.arrowOffset,
-                  onTap: () => _scrollBy(-_pageStep(context)),
+    return DesktopSwipeBackIgnore(
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovering = true),
+        onExit: (_) => setState(() => _hovering = false),
+        child: Listener(
+          onPointerSignal: _onPointerSignal,
+          child: SizedBox(
+            height: widget.height,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    _updateEdges();
+                    return shellAbsorbHorizontalScroll(notification);
+                  },
+                  child: widget.separatorBuilder != null
+                      ? ListView.separated(
+                          controller: _ctrl,
+                          clipBehavior: widget.clipBehavior,
+                          scrollDirection: Axis.horizontal,
+                          physics: physics,
+                          padding: widget.padding,
+                          itemCount: widget.itemCount,
+                          scrollCacheExtent: scrollCacheExtent,
+                          separatorBuilder: widget.separatorBuilder!,
+                          itemBuilder: widget.itemBuilder,
+                        )
+                      : ListView.builder(
+                          controller: _ctrl,
+                          clipBehavior: widget.clipBehavior,
+                          scrollDirection: Axis.horizontal,
+                          physics: physics,
+                          padding: widget.padding,
+                          itemCount: widget.itemCount,
+                          scrollCacheExtent: scrollCacheExtent,
+                          itemBuilder: widget.itemBuilder,
+                        ),
                 ),
-                _ArrowButton(
-                  visible: _hovering && _canRight,
-                  left: false,
-                  offset: widget.arrowOffset,
-                  onTap: () => _scrollBy(_pageStep(context)),
-                ),
+                if (showArrows) ...[
+                  _ArrowButton(
+                    visible: _hovering && _canLeft,
+                    left: true,
+                    offset: widget.arrowOffset,
+                    onTap: () => _scrollBy(-_pageStep(context)),
+                  ),
+                  _ArrowButton(
+                    visible: _hovering && _canRight,
+                    left: false,
+                    offset: widget.arrowOffset,
+                    onTap: () => _scrollBy(_pageStep(context)),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

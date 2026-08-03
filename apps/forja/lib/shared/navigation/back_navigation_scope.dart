@@ -22,9 +22,10 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 /// This scope always consumes Android pop-route and keeps
 /// [SystemNavigator.setFrameworkHandlesBack] true so Back never exits.
 ///
-/// Desktop trackpad: progressive left-edge arrow (browser-style). Horizontal
-/// strips (catalog rows, addons, filters) suppress the gesture so scrolling
-/// wins. Back commits only when the indicator is fully filled.
+/// Desktop trackpad: progressive left-edge arrow (browser-style). Only arms
+/// when the pan starts near the **left window edge** and not over a scroll
+/// viewport — catalog rows, Sources/addon panels, and cards never commit Back.
+/// Back commits only when the indicator is fully filled.
 class BackNavigationScope extends StatefulWidget {
   const BackNavigationScope({super.key, required this.child});
 
@@ -132,7 +133,7 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
       _panning = true;
       _panDx = 0;
       _panDy = 0;
-      _navSuppressed = desktopHorizontalScrollableUnder(
+      _navSuppressed = desktopSwipeBackBlocked(
         event.position,
         viewId: event.viewId,
       );
@@ -142,7 +143,17 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
       return;
     }
     if (event is PointerPanZoomUpdateEvent) {
-      if (!_panning || _navSuppressed) return;
+      if (!_panning) return;
+
+      // Cursor can enter a chip row / Sources panel mid-gesture.
+      if (!_navSuppressed &&
+          desktopSwipeBackBlocked(event.position, viewId: event.viewId)) {
+        _navSuppressed = true;
+        _setNavProgress(0);
+        return;
+      }
+      if (_navSuppressed) return;
+
       _panDx += event.panDelta.dx;
       _panDy += event.panDelta.dy;
 

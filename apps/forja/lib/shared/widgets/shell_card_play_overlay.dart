@@ -3,7 +3,8 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 /// Centered play control for catalog / continue-watching cards.
-/// Fades in on hover/focus; active state uses brand green and floats upward.
+/// Fades in when [visible]; brand green + float + heartbeat only while the
+/// play control itself is hovered/focused (or [active] is forced by the parent).
 class ShellCardPlayOverlay extends StatefulWidget {
   const ShellCardPlayOverlay({
     super.key,
@@ -16,6 +17,9 @@ class ShellCardPlayOverlay extends StatefulWidget {
     this.iconSize = 28,
   });
 
+  /// When true, forces the green accent without a button hover (legacy /
+  /// parent-driven emphasis). Prefer leaving false for continue-watching
+  /// cards so only play-button hover accents.
   final bool active;
   final bool visible;
   final VoidCallback? onTap;
@@ -38,9 +42,11 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
   bool _buttonHovered = false;
   bool _buttonFocused = false;
 
+  bool get _accented =>
+      widget.active || _buttonHovered || _buttonFocused;
+
   bool get _pulseEnabled =>
       (_buttonHovered || _buttonFocused) &&
-      widget.active &&
       widget.visible &&
       !(MediaQuery.maybeOf(context)?.disableAnimations ?? false);
 
@@ -120,7 +126,7 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
     // play control must not win the gesture arena over the parent card
     // (episode select). Hover tracking stays enabled for the pulse.
     final interactive = widget.onTap != null && widget.visible;
-    final lifted = (widget.active || _buttonFocused) && widget.visible;
+    final lifted = _accented && widget.visible;
     final buttonFace = AnimatedSlide(
       offset: lifted ? const Offset(0, -0.1) : Offset.zero,
       duration: const Duration(milliseconds: 200),
@@ -138,17 +144,17 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
             width: widget.diameter,
             height: widget.diameter,
             decoration: BoxDecoration(
-              color: widget.active || _buttonFocused
+              color: lifted
                   ? ForjaShellColors.brandGreen
                   : Colors.black.withValues(alpha: 0.42),
               shape: BoxShape.circle,
               border: Border.all(
-                color: widget.active || _buttonFocused
+                color: lifted
                     ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
                     : Colors.white.withValues(alpha: 0.24),
                 width: _buttonFocused ? 2 : 1,
               ),
-              boxShadow: widget.active || _buttonFocused
+              boxShadow: lifted
                   ? [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.35),
@@ -163,9 +169,7 @@ class _ShellCardPlayOverlayState extends State<ShellCardPlayOverlay>
               scale: _pulse,
               child: Icon(
                 Icons.play_arrow_rounded,
-                color: widget.active || _buttonFocused
-                    ? const Color(0xFF111827)
-                    : Colors.white,
+                color: lifted ? const Color(0xFF111827) : Colors.white,
                 size: widget.iconSize,
               ),
             ),

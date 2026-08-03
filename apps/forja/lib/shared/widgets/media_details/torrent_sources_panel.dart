@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 
 /// Right-side sliding panel shell for torrent / addon source picking.
 class TorrentSourcesPanel extends StatelessWidget {
@@ -84,17 +85,19 @@ class TorrentSourcesPanel extends StatelessWidget {
           bottom: 0,
           right: isOpen ? 0 : -panelWidth,
           width: panelWidth,
-          child: ForjaFrostedPanel(
-            enableBlur: enableBlur,
-            frozenFrame: frozenFrame,
-            border: Border(
-              left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
-            ),
-            child: SafeArea(
-              left: false,
-              child: Padding(
-                padding: padding,
-                child: child,
+          child: DesktopSwipeBackIgnore(
+            child: ForjaFrostedPanel(
+              enableBlur: enableBlur,
+              frozenFrame: frozenFrame,
+              border: Border(
+                left: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
+              ),
+              child: SafeArea(
+                left: false,
+                child: Padding(
+                  padding: padding,
+                  child: child,
+                ),
               ),
             ),
           ),

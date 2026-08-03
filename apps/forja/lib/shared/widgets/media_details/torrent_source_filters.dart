@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
@@ -482,41 +483,43 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
     final showArrows = widget.options.length > 3;
 
     // Vertical pad + Clip.none so dense chip rows don't clip on hover/focus.
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          if (showArrows)
-            _ScrollArrow(
-              icon: Icons.arrow_back_ios_rounded,
-              onTap: () => _scrollBy(-120),
-            ),
-          Expanded(
-            child: SingleChildScrollView(
-              controller: _scroll,
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
-              child: Row(
-                children: [
-                  for (final option in widget.options)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: _ProviderChip(
-                        label: option.label,
-                        selected: _chipSelected(option),
-                        onTap: () => widget.onChipTap(option.id),
+    return DesktopSwipeBackIgnore(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            if (showArrows)
+              _ScrollArrow(
+                icon: Icons.arrow_back_ios_rounded,
+                onTap: () => _scrollBy(-120),
+              ),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _scroll,
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                child: Row(
+                  children: [
+                    for (final option in widget.options)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: _ProviderChip(
+                          label: option.label,
+                          selected: _chipSelected(option),
+                          onTap: () => widget.onChipTap(option.id),
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          if (showArrows)
-            _ScrollArrow(
-              icon: Icons.arrow_forward_ios_rounded,
-              onTap: () => _scrollBy(120),
-            ),
-        ],
+            if (showArrows)
+              _ScrollArrow(
+                icon: Icons.arrow_forward_ios_rounded,
+                onTap: () => _scrollBy(120),
+              ),
+          ],
+        ),
       ),
     );
   }

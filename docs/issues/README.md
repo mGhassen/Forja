@@ -161,7 +161,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [138-[open]-…](138-[open]-android-tv-iptv-4k-audio.md) | ATV IPTV 4K MediaKit silent / Exo audio stutter | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [139-[open]-…](139-[open]-android-tv-shell-focus-chrome-stutter.md) | ATV shell / catalog focus chrome stutter | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [140-[open]-…](140-[open]-hls-duration-gate-marks-playing-failed.md) | HLS duration gate → red Source / 0:00 seek | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [141-[open]-…](141-[open]-desktop-trackpad-swipe-steals-horizontal-scroll.md) | Desktop trackpad swipe steals horizontal scroll | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [141-[open]-…](141-[open]-desktop-trackpad-swipe-steals-horizontal-scroll.md) | Desktop trackpad swipe steals horizontal scroll | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [142-[open]-…](142-[open]-iptv-admin-scrape-watermark-deep-refs.md) | IPTV admin scrape watermark + deep refs + no upsert cap | P1 | High | open | 9/9 · A 0/3 | [1.0.5](../backlog/1.0.5-[draft].md) |
 | [143-[open]-…](143-[open]-android-tv-stremio-live-reconnect.md) | ATV Live Matches Stremio forever Reconnecting | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 

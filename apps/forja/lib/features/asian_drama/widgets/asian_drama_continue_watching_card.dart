@@ -240,7 +240,7 @@ class _AsianDramaContinueWatchingCardState
                   ),
                 ),
                 ShellCardPlayOverlay(
-                  active: _activeFor(policy),
+                  active: false,
                   visible: _activeFor(policy) && !widget.isLoading,
                 ),
                 if (widget.isLoading)
