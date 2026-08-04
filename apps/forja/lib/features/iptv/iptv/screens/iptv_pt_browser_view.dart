@@ -119,6 +119,14 @@ class _BrowserViewState extends State<_BrowserView> {
     });
   }
 
+  static double _categoryRowExtent(bool compact) => compact ? 42.0 : 46.0;
+
+  /// Matches [SliverPadding] vertical on the category rail.
+  static const _categoryListPadV = 10.0;
+
+  /// Warm neighbors so D-pad ↑/↓ usually hits a mounted node (portals pattern).
+  static const _categoryScrollCacheRows = 14;
+
   void _scrollCategorySidebarToSelected() {
     var tries = 0;
     void attempt() {
@@ -134,10 +142,10 @@ class _BrowserViewState extends State<_BrowserView> {
       if (selected == null) return;
       final idx = cats.indexWhere((c) => c.id == selected);
       if (idx < 0) return;
-      final rowH = widget.compact ? 42.0 : 46.0;
+      final rowH = _categoryRowExtent(widget.compact);
       // Leave 3 rows above so the selection lands as the 4th visible category.
       const keepAbove = 3;
-      final target = (6.0 + (idx - keepAbove) * rowH).clamp(
+      final target = (_categoryListPadV + (idx - keepAbove) * rowH).clamp(
         0.0,
         _categoryScroll.position.maxScrollExtent,
       );
@@ -272,14 +280,28 @@ class _BrowserViewState extends State<_BrowserView> {
 
   void _onCategoryTvFocus(String categoryId, bool focused) {
     if (!iptvUseTvFocus(context)) return;
-    setState(() {
-      if (focused) {
+    final selected = widget.ctrl.browserSelectedCategoryId;
+    final wasPending = _tvCategoryRailFocused &&
+        _tvFocusedCategoryId != null &&
+        _tvFocusedCategoryId != selected;
+
+    if (focused) {
+      final nowPending = categoryId != selected;
+      // Holding ↑/↓ across unopened groups: pane already shows "Press OK" —
+      // skip full browser rebuild (was fighting fixed-extent scroll).
+      if (wasPending && nowPending && _tvCategoryRailFocused) {
+        _tvFocusedCategoryId = categoryId;
+        return;
+      }
+      setState(() {
         _tvFocusedCategoryId = categoryId;
         _tvCategoryRailFocused = true;
-      } else if (_tvFocusedCategoryId == categoryId) {
-        _tvCategoryRailFocused = false;
-      }
-    });
+      });
+      return;
+    }
+
+    if (_tvFocusedCategoryId != categoryId) return;
+    setState(() => _tvCategoryRailFocused = false);
   }
 
   /// While D-pad is on an unopened group, keep logos off the channel pane.
@@ -624,6 +646,7 @@ class _BrowserViewState extends State<_BrowserView> {
 
   Widget _buildCategorySidebar({bool compact = false}) {
     final ctrl = widget.ctrl;
+    final rowExtent = _categoryRowExtent(compact);
     return Container(
       decoration: BoxDecoration(
         border: Border(right: BorderSide(color: ForjaShellColors.borderSubtle)),
@@ -684,15 +707,19 @@ class _BrowserViewState extends State<_BrowserView> {
             }
 
             if (!canReorder) {
-              return SliverList(
+              // Fixed extent: fast ↑ must not correct estimated heights (jitter).
+              return SliverFixedExtentList(
+                itemExtent: rowExtent,
                 delegate: SliverChildBuilderDelegate(
                   (context, i) => item(i),
                   childCount: movable.length,
+                  addAutomaticKeepAlives: false,
                 ),
               );
             }
             return SliverReorderableList(
               itemCount: movable.length,
+              itemExtent: rowExtent,
               proxyDecorator: _iptvCategoryReorderProxy,
               onReorderItem: (oldIndex, newIndex) {
                 unawaited(ctrl.reorderLiveCategories(oldIndex, newIndex));
@@ -717,16 +744,23 @@ class _BrowserViewState extends State<_BrowserView> {
               child: CustomScrollView(
                 key: ValueKey('browser-cats|${ctrl.browserSearch.trim()}'),
                 controller: _categoryScroll,
+                scrollCacheExtent: ScrollCacheExtent.pixels(
+                  rowExtent * _categoryScrollCacheRows,
+                ),
                 slivers: [
                   SliverPadding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: _categoryListPadV,
+                    ),
                     sliver: SliverMainAxisGroup(
                       slivers: [
                         if (fixed.isNotEmpty)
-                          SliverList(
+                          SliverFixedExtentList(
+                            itemExtent: rowExtent,
                             delegate: SliverChildBuilderDelegate(
                               (context, i) => rowFor(fixed[i], i),
                               childCount: fixed.length,
+                              addAutomaticKeepAlives: false,
                             ),
                           ),
                         if (movable.isNotEmpty) movableSliver(),

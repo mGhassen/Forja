@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 3** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I136-T02 | In-player channel guide: denser rows, square logos (`cacheWidth` only), edge-margin jump scroll | ✅ |
 | 3 | I136-T03 | IPTV catalog category/channel lists: denser list tiles, zero focus anim on TV, fixed `itemExtent` | ✅ |
 | 4 | I136-T04 | Feature docs + changelog | ✅ |
+| 5 | I136-T05 | Category rail: `SliverFixedExtentList` / reorderable `itemExtent` + scroll cache; skip pending-commit rebuild on ↑/↓; `ensureVisibleMode.item` | ✅ |
 
 ---
 
@@ -32,7 +33,7 @@
 |--:|----|-------------|--------|
 | 1 | I136-A01 | Android TV: ↑/↓ in IPTV category + channel (catalog) keeps focus chrome fully visible — no missing highlight while scrolling | ⬜ |
 | 2 | I136-A02 | Android TV: in-player channel guide groups/channels same; logos not stretched; rows feel denser | ⬜ |
-| 3 | I136-A03 | Android TV: hold ↑/↓ through long category/channel lists — scroll stays snappy (no obvious hitch per step) | ⬜ |
+| 3 | I136-A03 | Android TV: hold ↑/↓ through long category/channel lists — scroll stays snappy (no obvious hitch per step); category left-bar lines stay aligned when holding ↑ | ⬜ |
 
 ---
 
@@ -41,6 +42,8 @@
 D-pad focus on IPTV **catalog** (category rail + channel grid/list) and **in-player channel guide** felt cropped because focus scrolled with a **200ms** `ensureVisible` tween (highlight off-screen mid-animation). Channel logos looked deformed when decode used both `cacheWidth` and `cacheHeight`. Rows were oversized; list rebuilds fought animated containers.
 
 **Root fix:** Instant keepVisible scroll on TV; guide/catalog denser layout; logos decode with `cacheWidth` only + `BoxFit.contain`.
+
+**Follow-up (I136-T05):** Category sidebar still used `SliverList` without fixed extents (channels/portals already had `itemExtent`). Fast ↑ corrected estimated heights → green left-bar / rows jumped. Now `SliverFixedExtentList` + reorderable `itemExtent`, scroll cache, and no full-browser `setState` while D-pad walks unopened groups.
 
 ## Related
 

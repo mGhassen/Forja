@@ -32,6 +32,8 @@ mixin _IptvControllerLive on ChangeNotifier {
       onResult: (id, alive) async {
         if (alive) aliveSet.add(id);
         _c.streamHealth[id] = alive;
+        _c._streamHealthCheckedAtMs[id] =
+            DateTime.now().millisecondsSinceEpoch;
       },
       onProgress: (prog) async {
         _c.aliveChecked = prog.checked;
@@ -73,6 +75,7 @@ mixin _IptvControllerLive on ChangeNotifier {
     _c.aliveStreamIds = const {};
     _c.aliveCheckedAt = null;
     _c.streamHealth.clear();
+    _c._streamHealthCheckedAtMs.clear();
     _c._healthInFlight.clear();
     _c._healthQueue.clear();
     _c.cancelAllLazyChecks();

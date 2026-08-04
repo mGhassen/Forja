@@ -561,6 +561,8 @@ class IptvController extends ChangeNotifier
 
   /// Per-stream health for catalog tiles: true=alive, false=dead, absent=unknown.
   final Map<String, bool> streamHealth = {};
+  /// Wall-clock ms when [streamHealth] was last written (lazy / bulk probe).
+  final Map<String, int> _streamHealthCheckedAtMs = {};
   final Set<String> _healthInFlight = {};
   final List<IptvStream> _healthQueue = [];
   final Map<String, Timer> _healthDebounce = {};

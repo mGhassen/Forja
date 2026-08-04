@@ -236,9 +236,14 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       if (ctrl.isNewPortal(v.key)) {
         ctrl.markPortalSeen(v.key);
       }
-      // TV: skip focus-driven probes — each notifyListeners rebuilds the whole
-      // IPTV shell and stutters D-pad scrolling through long portal lists.
-      // Desktop hover still schedules; active portal uses ensurePortalHealth.
+      // TV: 2s dwell before probe — instant focus probes stutter D-pad scroll
+      // through long lists (notifyListeners rebuilds the IPTV shell).
+      if (iptvUseTvFocus(context)) {
+        ctrl.schedulePortalHealthCheck(
+          v,
+          delay: const Duration(seconds: 2),
+        );
+      }
       return;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -639,7 +644,10 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                         const SizedBox(height: 3),
                         Row(
                           children: [
-                            _platformBadge(v.portal.platform),
+                            _platformBadge(
+                              v.portal.platform,
+                              muted: showNewChrome,
+                            ),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
@@ -929,28 +937,18 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     );
   }
 
-  Widget _platformBadge(IptvPortalPlatform platform) {
-    final (label, color) = switch (platform) {
-      IptvPortalPlatform.xtream => ('Xtream', const Color(0xFF34D399)),
-      IptvPortalPlatform.m3u => ('M3U', const Color(0xFF60A5FA)),
-      IptvPortalPlatform.stalker => ('Stalker', const Color(0xFFFBBF24)),
+  Widget _platformBadge(IptvPortalPlatform platform, {required bool muted}) {
+    final label = switch (platform) {
+      IptvPortalPlatform.xtream => 'Xtream',
+      IptvPortalPlatform.m3u => 'M3U',
+      IptvPortalPlatform.stalker => 'Stalker',
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.plusJakartaSans(
-          color: color,
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-          height: 1,
-        ),
+    return Text(
+      label,
+      style: GoogleFonts.plusJakartaSans(
+        color: muted ? Colors.white54 : Colors.white38,
+        fontSize: 11,
+        height: 1.25,
       ),
     );
   }

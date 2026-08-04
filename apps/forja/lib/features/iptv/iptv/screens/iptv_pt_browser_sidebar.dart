@@ -78,6 +78,8 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       navLeftAlways: true,
       tvRowId: 'browser-categories',
       tvItemIndex: widget.listIndex,
+      // Vertical list — skip hub-row lift; keepVisible only in this scroll view.
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onUpEdge: widget.onUpEdge,
       onRightEdge: widget.onRightEdge,
       onFocusChange: (focused) {

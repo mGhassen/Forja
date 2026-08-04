@@ -71,11 +71,14 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   late String _browseGroupId;
 
   final Map<String, bool> _health = {};
+  final Map<String, int> _healthCheckedAtMs = {};
   final Set<String> _healthInFlight = {};
   final List<IptvGuideChannel> _healthQueue = [];
   final Map<String, Timer> _healthDebounce = {};
   static const _maxHealthChecks = 2;
   static const _healthCheckDelay = Duration(milliseconds: 450);
+  /// Match catalog stream health TTL (portal status dots use the same window).
+  static const _healthTtl = Duration(minutes: 2);
 
   static const Color _groupsTint = Color(0xE00C0C12);
   static const Color _channelsTint = Color(0xE016161F);
@@ -92,6 +95,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         widget.guide.groupIdForChannel(widget.currentChannelId) ??
             widget.selectedGroupId;
     _health.addAll(widget.guide.streamHealth);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final id in widget.guide.streamHealth.keys) {
+      _healthCheckedAtMs[id] = now;
+    }
     _syncFocusIndices();
     _focusNode.addListener(_reclaimFocusIfLost);
     _scheduleRevealPlaying();
@@ -383,8 +390,16 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     return url;
   }
 
+  bool _isHealthFresh(String id) {
+    if (!_health.containsKey(id)) return false;
+    final at = _healthCheckedAtMs[id];
+    if (at == null) return false;
+    return DateTime.now().millisecondsSinceEpoch - at <
+        _healthTtl.inMilliseconds;
+  }
+
   void _scheduleHealthCheck(IptvGuideChannel ch) {
-    if (_health.containsKey(ch.id)) return;
+    if (_isHealthFresh(ch.id)) return;
     if (_healthInFlight.contains(ch.id)) return;
     _healthDebounce[ch.id]?.cancel();
     _healthDebounce[ch.id] = Timer(_healthCheckDelay, () {
@@ -399,7 +414,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   void _enqueueHealthCheck(IptvGuideChannel ch) {
-    if (_health.containsKey(ch.id)) return;
+    if (_isHealthFresh(ch.id)) return;
     if (_healthInFlight.contains(ch.id)) return;
     if (_healthInFlight.length >= _maxHealthChecks) {
       if (!_healthQueue.any((x) => x.id == ch.id)) {
@@ -417,10 +432,16 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     try {
       final ok = await IptvAliveChecker.checkOne(url);
       if (!mounted) return;
-      setState(() => _health[ch.id] = ok);
+      setState(() {
+        _health[ch.id] = ok;
+        _healthCheckedAtMs[ch.id] = DateTime.now().millisecondsSinceEpoch;
+      });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _health[ch.id] = false);
+      setState(() {
+        _health[ch.id] = false;
+        _healthCheckedAtMs[ch.id] = DateTime.now().millisecondsSinceEpoch;
+      });
     } finally {
       _healthInFlight.remove(ch.id);
       _drainHealthQueue();
@@ -431,7 +452,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     while (_healthQueue.isNotEmpty &&
         _healthInFlight.length < _maxHealthChecks) {
       final next = _healthQueue.removeAt(0);
-      if (!_health.containsKey(next.id)) {
+      if (!_isHealthFresh(next.id)) {
         unawaited(_runHealthCheck(next));
       }
     }
@@ -1125,6 +1146,34 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
   static const Color _dead = Color(0xFFEF4444);
 
   @override
+  void initState() {
+    super.initState();
+    // TV guide focus is paint-only (no FocusNode) — probe when this row opens focused.
+    if (widget.focused) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.focused) widget.onProbe();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(_GuideChannelTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final was = oldWidget.focused;
+    final now = widget.focused;
+    final same = oldWidget.channel.id == widget.channel.id;
+    // Cancel closes over the old stream id (parent callback).
+    if (was && (!now || !same)) oldWidget.onCancelProbe();
+    if (now && (!was || !same)) widget.onProbe();
+  }
+
+  @override
+  void dispose() {
+    if (widget.focused) widget.onCancelProbe();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final active = widget.active;
     final focused = widget.focused;
@@ -1138,6 +1187,7 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
     return MouseRegion(
       onEnter: (_) {
         widget.onHover();
+        // Desktop: hover may no-op setState when already focused — still probe.
         widget.onProbe();
       },
       onExit: (_) => widget.onCancelProbe(),
