@@ -22,16 +22,14 @@ int nuvioProviderFilterActiveCount({
 
 /// Picks a Stremio provider chip id that actually has streams.
 ///
-/// Returns `null` when [currentId] should stay (preferred still loading, or
-/// current already has results). Callers apply the returned id.
+/// Returns `null` when [currentId] should stay (preferred still loading,
+/// current already has results, or the user explicitly tapped a chip).
+/// Callers apply the returned id.
 ///
 /// When the default/first addon (e.g. Torrentio) 403s and another addon (e.g.
 /// YTS) returns rows, this moves the selection off the empty provider so the
-/// list is not stuck blank while other addons succeeded.
-///
-/// [userPicked] is ignored when the current id has no streams and another
-/// addon does - otherwise tapping a dead provider permanently hides working
-/// addons.
+/// list is not stuck blank while other addons succeeded — but only for
+/// automatic selection. A manual chip tap must stick (empty state OK).
 String? promoteStremioProviderId({
   required String currentId,
   String? preferredId,
@@ -41,6 +39,8 @@ String? promoteStremioProviderId({
   required bool fetching,
   required bool userPicked,
 }) {
+  // Explicit chip tap always wins — never steal focus from empty addons.
+  if (userPicked) return null;
   if (preferredId != null && preferredId.isNotEmpty) {
     if (loadedIds.contains(preferredId)) {
       return preferredId == currentId ? null : preferredId;
@@ -49,9 +49,6 @@ String? promoteStremioProviderId({
     if (fetching && !completedIds.contains(preferredId)) return null;
   }
   if (loadedIds.contains(currentId)) return null;
-  // Current addon empty/failed - always move to one with rows (even after a
-  // manual tap on a dead provider). User can re-pick once it has streams.
-  if (userPicked && loadedIds.isEmpty) return null;
   for (final id in addonBaseUrlsInOrder) {
     if (loadedIds.contains(id)) return id;
   }

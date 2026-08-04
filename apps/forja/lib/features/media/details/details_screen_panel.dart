@@ -309,32 +309,16 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     } else if (id == 'prowlarr') {
       _s._searchProwlarr();
     } else if (_s._panelKindFilter == 'stremio') {
-      setState(() {
-        _s._applyStremioFilter();
-        // If this addon is empty but another has rows, bounce to the working one
-        // instead of a sticky red error that hides the whole list.
-        if (_s._stremioStreams.isEmpty &&
-            _s._allCombinedStremioStreams.isNotEmpty &&
-            !_s._isStremioFetching) {
-          _s._userPickedStremioProvider = false;
-          _s._syncStremioProviderSelection();
-          _s._applyStremioFilter();
-          _s._errorMessage = null;
-        } else {
-          _s._errorMessage =
-              _s._stremioStreams.isEmpty && !_s._isStremioFetching
-              ? 'No streams found in selected addon'
-              : null;
-        }
-      });
-    } else {
       final chip = _providerOptions().firstWhere(
         (c) => c.id == id,
         orElse: () => const SourcesPanelProviderOption(id: '', label: 'addon'),
       );
       setState(() {
         _s._applyStremioFilter();
-        _s._errorMessage = _s._stremioStreams.isEmpty && !_s._isStremioFetching
+        // Keep the tapped chip even when empty — auto-promote only runs
+        // while selection is still automatic (see promoteStremioProviderId).
+        _s._errorMessage =
+            _s._stremioStreams.isEmpty && !_s._isStremioFetching
             ? 'No streams found in ${chip.label}'
             : null;
       });
@@ -440,11 +424,14 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         ? _filteredPanelNuvioStreams
         : <Map<String, dynamic>>[];
 
-    // Dead provider selected (Torrentio 403) while another addon has rows -
-    // show the working addon's streams and fix selection after this frame.
+    // Auto-selected dead provider (Torrentio 403) while another addon has
+    // rows — show the working addon's streams and fix selection after this
+    // frame. Never override an explicit chip tap (user may want the empty
+    // addon and its "No streams" message).
     if (_panelShowsStremio &&
         stremio.isEmpty &&
-        _s._allCombinedStremioStreams.isNotEmpty) {
+        _s._allCombinedStremioStreams.isNotEmpty &&
+        !_s._userPickedStremioProvider) {
       final fallbackId = promoteStremioProviderId(
         currentId: _s._selectedSourceId,
         preferredId: null,
@@ -457,7 +444,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
               },
         completedIds: _s._completedAddonBaseUrls,
         fetching: _s._isStremioFetching,
-        userPicked: false,
+        userPicked: _s._userPickedStremioProvider,
       );
       if (fallbackId != null) {
         stremio = _s._allCombinedStremioStreams
@@ -467,13 +454,13 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
             .toList();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
+          if (_s._userPickedStremioProvider) return;
           if (_s._selectedSourceId == fallbackId &&
               _s._errorMessage == null) {
             return;
           }
           setState(() {
             _s._selectedSourceId = fallbackId;
-            _s._userPickedStremioProvider = false;
             _s._errorMessage = null;
             _s._applyStremioFilter();
           });
