@@ -60,6 +60,9 @@ function bridgeEnv(mode: string) {
     'INNGEST_EVENT_KEY',
     'INNGEST_SIGNING_KEY',
     'INNGEST_DEV',
+    'ANTHROPIC_API_KEY',
+    'IPTV_LLM_MODEL',
+    'IPTV_LLM_EXTRACT',
   ] as const) {
     const v = localEnv[k] || rootEnv[k] || ''
     // Always prefer apps/admin/.env over a stale shell export

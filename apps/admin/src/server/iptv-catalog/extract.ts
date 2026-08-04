@@ -32,9 +32,12 @@ const TABLE_TZ = /^[A-Za-z]+\/[A-Za-z_/+]+$/
 const TABLE_OUTPUTS = /^(?:m3u8?|ts|rtmp)(?:,(?:m3u8?|ts|rtmp))+$/i
 const TABLE_STATUS = /^(?:Active|Expired|Banned|Disabled|Trial)$/i
 
-/** Stalker / Ministra MAC lines. */
+/**
+ * Stalker / Ministra MAC lines.
+ * Accepts `mac=…`, `MAC: …`, `MAC Addr: …`, `Mac Address: …`.
+ */
 const STALKER_MAC =
-  /(?:mac|MAC)\s*[=:]\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})/g
+  /mac(?:\s*addr(?:ess)?)?\s*[=:]\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})/gi
 
 const STALKER_PORTAL =
   /(https?:\/\/[^<\s"']+?(?:\/c\/?|\/portal\.php|\/stalker_portal[^<\s"']*))/gi
@@ -78,7 +81,7 @@ export type ExtractedPortal = CatalogPortal & {
   output: string
 }
 
-type FileMeta = {
+export type FileMeta = {
   platformHint: PortalPlatform | null
   region: RegionGuess
 }
@@ -185,6 +188,11 @@ function parseFileMeta(cleaned: string): FileMeta {
     platformHint,
     region: classifyRegionFromNote(fallbackRegion),
   }
+}
+
+/** Public for LLM extract path. */
+export function parseNoteFileMeta(rawText: string): FileMeta {
+  return parseFileMeta(cleanHtmlish(rawText))
 }
 
 function parseCardMeta(block: string): CardMeta {
@@ -316,7 +324,7 @@ function finalizeXtreamOrM3u(
   const url = cleanPortalUrl(rawUrl)
   const username = cleanCred(rawUser)
   const password = cleanCred(rawPass)
-  if (!url || username.length < 3 || password.length < 3) return
+  if (!url || username.length < 1 || password.length < 1) return
   if (username.includes('http') || password.includes('http')) return
 
   const region = fileMeta?.region
@@ -397,6 +405,86 @@ function finalizeXtreamOrM3u(
     output,
     ...shared,
   })
+}
+
+export type LoosePortalHit = {
+  url: string
+  username: string
+  password: string
+  platform?: PortalPlatform
+  type?: string
+  output?: string
+  expiry?: string | null
+  maxConnections?: string | null
+  timezone?: string | null
+  allowedOutputs?: string | null
+  regionPrimary?: string
+  regionTags?: string[]
+  regionConfidence?: number
+}
+
+/** Normalize a loose hit (LLM or other) into the extract map. */
+export function ingestPortalHit(
+  acc: Map<string, ExtractedPortal>,
+  hit: LoosePortalHit,
+  source: string,
+  fileMeta?: FileMeta,
+) {
+  const type = hit.type ?? ''
+  const output = hit.output ?? ''
+  const allowed = hit.allowedOutputs ?? (output || null)
+  const meta: Partial<ExtractedPortal> = {
+    expiry: hit.expiry ?? null,
+    maxConnections: hit.maxConnections ?? null,
+    timezone: hit.timezone ?? null,
+    allowedOutputs: allowed,
+    regionPrimary: hit.regionPrimary,
+    regionTags: hit.regionTags,
+    regionConfidence: hit.regionConfidence,
+    type,
+  }
+
+  // LLM / explicit stalker (incl. MAC-only with empty password).
+  if (hit.platform === 'stalker') {
+    const url = cleanPortalUrl(hit.url)
+    if (!url) return
+    const username = cleanCred(hit.username)
+    const password = cleanCred(hit.password)
+    put(acc, {
+      url,
+      username,
+      password,
+      source,
+      platform: 'stalker',
+      type,
+      output: resolveOutput(output, allowed),
+      expiry: meta.expiry ?? null,
+      maxConnections: meta.maxConnections ?? null,
+      timezone: meta.timezone ?? null,
+      allowedOutputs: allowed,
+      regionPrimary: meta.regionPrimary ?? fileMeta?.region.primary,
+      regionTags: meta.regionTags?.length
+        ? meta.regionTags
+        : fileMeta?.region.tags,
+      regionConfidence:
+        meta.regionConfidence && meta.regionConfidence > 0
+          ? meta.regionConfidence
+          : fileMeta?.region.confidence,
+    })
+    return
+  }
+
+  finalizeXtreamOrM3u(
+    acc,
+    hit.url,
+    hit.username,
+    hit.password,
+    source,
+    type,
+    output,
+    meta,
+    fileMeta,
+  )
 }
 
 /** Pair each `👤 USERNAME` / `🔑 PASSWORD` block with the nearest prior `🔗` URL. */
@@ -481,10 +569,7 @@ function enrichPortalsFromCards(
           ? p.regionConfidence
           : fileMeta.region.confidence,
       platform:
-        !p.type &&
-        !p.output &&
-        fileMeta.platformHint &&
-        p.platform !== 'stalker'
+        !p.type && !p.output && fileMeta.platformHint
           ? fileMeta.platformHint
           : p.platform,
     })
@@ -571,14 +656,22 @@ export function extractPortals(
   enrichPortalsFromCards(cleaned, acc, fileMeta)
 
   // Stalker portals + MACs (even without user/pass pair).
-  const macs: string[] = []
-  for (const m of cleaned.matchAll(STALKER_MAC)) {
-    const mac = (m[1] ?? '').toUpperCase().replace(/-/g, ':')
-    if (mac) macs.push(mac)
-  }
-  for (const m of cleaned.matchAll(STALKER_PORTAL)) {
-    const portalUrl = cleanPortalUrl(m[1] ?? '')
-    if (!portalUrl) continue
+  // One row per unique portal×MAC (same host, many cards → many MACs).
+  const macs = [
+    ...new Set(
+      [...cleaned.matchAll(STALKER_MAC)].map((m) =>
+        (m[1] ?? '').toUpperCase().replace(/-/g, ':'),
+      ).filter(Boolean),
+    ),
+  ]
+  const portalUrls = [
+    ...new Set(
+      [...cleaned.matchAll(STALKER_PORTAL)]
+        .map((m) => cleanPortalUrl(m[1] ?? ''))
+        .filter(Boolean),
+    ),
+  ]
+  for (const portalUrl of portalUrls) {
     if (macs.length === 0) {
       put(acc, {
         url: portalUrl,
@@ -589,18 +682,18 @@ export function extractPortals(
         type: '',
         output: '',
       })
-    } else {
-      for (const mac of macs) {
-        put(acc, {
-          url: portalUrl,
-          username: mac,
-          password: '',
-          source,
-          platform: 'stalker',
-          type: '',
-          output: '',
-        })
-      }
+      continue
+    }
+    for (const mac of macs) {
+      put(acc, {
+        url: portalUrl,
+        username: mac,
+        password: '',
+        source,
+        platform: 'stalker',
+        type: '',
+        output: '',
+      })
     }
   }
 

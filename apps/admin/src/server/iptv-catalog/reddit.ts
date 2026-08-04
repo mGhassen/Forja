@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { extractPortals } from './extract'
+import { extractPortalsHybrid } from './llm-extract'
 import { decryptFromPasteResponse } from './pastesh'
 import type {
   CatalogPortal,
@@ -255,16 +256,21 @@ async function fetchPasteBody(url: string): Promise<string | null> {
   }
 }
 
-function addExtracted(
+async function addExtracted(
   acc: Map<string, CatalogPortal>,
   text: string,
   source: string,
   maxResults: number,
   postId?: string,
-): DeepRefPortalHit[] {
+): Promise<DeepRefPortalHit[]> {
   const hits: DeepRefPortalHit[] = []
   const seenHit = new Set<string>()
-  for (const p of extractPortals(text, source)) {
+  const { portals: extracted } = await extractPortalsHybrid(
+    text,
+    source,
+    extractPortals,
+  )
+  for (const p of extracted) {
     const hitKey =
       `${p.platform}|${p.url}|${p.username}|${p.type}|${p.output}`.toLowerCase()
     if (!seenHit.has(hitKey)) {
@@ -476,7 +482,7 @@ export async function resolvePendingPastes(
     const text = await fetchPasteBody(dl.url)
     if (text) {
       l2FetchOk++
-      const hits = addExtracted(
+      const hits = await addExtracted(
         acc,
         text,
         'catalog-deep',
@@ -549,7 +555,7 @@ export async function processDeepRefRow(
   }
 
   const hits: DeepRefPortalHit[] = pasteBody
-    ? addExtracted(
+    ? await addExtracted(
         acc,
         pasteBody,
         pasteUrl ? 'catalog-deep' : 'catalog-decoded',
@@ -688,7 +694,7 @@ export async function scrapeCatalogPage(
     // Extract in-memory only — never persist title/selftext.
     const body = `${title}\n${selftext}`
     const beforeL1 = acc.size
-    addExtracted(acc, body, 'catalog', maxResults, postId)
+    await addExtracted(acc, body, 'catalog', maxResults, postId)
     funnel.l1OnlyCount += Math.max(0, acc.size - beforeL1)
     if (acc.size >= maxResults) break
     if (!postId) continue
