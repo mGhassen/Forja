@@ -18,8 +18,10 @@ class IptvPortalPanel extends StatefulWidget {
 
 class _IptvPortalPanelState extends State<IptvPortalPanel> {
   static const _portalRowHeight = 98.0;
-  /// Cap initial mount + each scroll/focus page — long lists stay cheap.
-  static const _pageSize = 20;
+  /// Keep a tall cache so D-pad ↑/↓ finds the next FocusNode already mounted.
+  static const _scrollCacheRows = 14;
+  /// Edge margin when nudging the focused row into view (matches channel guide).
+  static const _listFocusMargin = 8.0;
 
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
@@ -31,14 +33,12 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   String? _scrolledToActiveKey;
   int? _scrolledToActiveIndex;
   late Set<String> _knownPortalKeys;
-  int _visibleCount = _pageSize;
 
   @override
   void initState() {
     super.initState();
     _knownPortalKeys = {for (final v in widget.ctrl.verified) v.key};
     widget.ctrl.addListener(_onCtrlChanged);
-    _listScroll.addListener(_onListScroll);
     if (widget.ctrl.portalPanelOpen) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _focusPanelHeader();
@@ -50,44 +50,11 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   @override
   void dispose() {
     widget.ctrl.removeListener(_onCtrlChanged);
-    _listScroll.removeListener(_onListScroll);
     _searchCtrl.dispose();
     _searchFocus.dispose();
     _panelFocus.dispose();
     _listScroll.dispose();
     super.dispose();
-  }
-
-  void _onListScroll() {
-    if (!_listScroll.hasClients) return;
-    if (_listScroll.position.extentAfter < _portalRowHeight * 4) {
-      _loadMore();
-    }
-  }
-
-  void _loadMore() {
-    final total = _filtered.length;
-    if (_visibleCount >= total) return;
-    setState(() {
-      _visibleCount = (_visibleCount + _pageSize).clamp(0, total);
-    });
-  }
-
-  /// Expand the window so [index] (and its page) is mountable.
-  void _ensureVisibleThrough(int index) {
-    if (index < 0) return;
-    final total = _filtered.length;
-    if (total == 0) return;
-    final need = (index + 1).clamp(1, total);
-    if (need <= _visibleCount) return;
-    final pages = (need + _pageSize - 1) ~/ _pageSize;
-    final next = (pages * _pageSize).clamp(0, total);
-    if (next == _visibleCount) return;
-    setState(() => _visibleCount = next);
-  }
-
-  void _resetVisibleWindow() {
-    _visibleCount = _pageSize;
   }
 
   void _onCtrlChanged() {
@@ -136,7 +103,6 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       _didFocusHeaderOnOpen = false;
       _scrolledToActiveKey = null;
       _scrolledToActiveIndex = null;
-      _resetVisibleWindow();
     }
   }
 
@@ -170,9 +136,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       final all = _filtered;
       if (all.isEmpty) return;
       final index = iptvActivePortalFocusIndex(widget.ctrl, portals: all);
-      _ensureVisibleThrough(index);
-      final portals = _visiblePortals;
-      if (iptvFocusPortalList(widget.ctrl, portals: portals)) return;
+      if (iptvFocusPortalList(widget.ctrl, portals: all)) return;
       if (scrolledFor != index) {
         _jumpPortalListToIndex(index);
         scrolledFor = index;
@@ -193,14 +157,52 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     attempt();
   }
 
+  /// D-pad ↑/↓: focus neighbor. Jump-then-retry when the lazy builder has not
+  /// mounted that row yet (long scraped lists).
+  void _focusPortalAt(int index) {
+    if (!mounted || !widget.ctrl.portalPanelOpen) return;
+    final total = _filtered.length;
+    if (index < 0 || index >= total) return;
+    if (ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', index)) {
+      return;
+    }
+    _jumpPortalListToIndex(index);
+    var tries = 0;
+    void attempt() {
+      if (!mounted || !widget.ctrl.portalPanelOpen) return;
+      if (ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', index)) {
+        return;
+      }
+      _jumpPortalListToIndex(index);
+      if (tries++ < 12) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  }
+
+  /// Instant jump so [index] is mountable — ListView.builder only builds a
+  /// window around the viewport.
   void _jumpPortalListToIndex(int index) {
-    _ensureVisibleThrough(index);
     if (!_listScroll.hasClients || index < 0) return;
-    final target = (index * _portalRowHeight).clamp(
-      0.0,
-      _listScroll.position.maxScrollExtent,
+    final position = _listScroll.position;
+    final viewport = position.viewportDimension;
+    if (viewport <= 0) return;
+    final itemTop = index * _portalRowHeight;
+    final itemBottom = itemTop + _portalRowHeight;
+    final viewTop = position.pixels;
+    final viewBottom = viewTop + viewport;
+    double? target;
+    if (itemTop < viewTop + _listFocusMargin) {
+      target = itemTop - _listFocusMargin;
+    } else if (itemBottom > viewBottom - _listFocusMargin) {
+      target = itemBottom - viewport + _listFocusMargin;
+    }
+    if (target == null) return;
+    _listScroll.jumpTo(
+      target.clamp(0.0, position.maxScrollExtent),
     );
-    _listScroll.jumpTo(target);
   }
 
   void _scrollToActivePortal() {
@@ -217,7 +219,6 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     if (_query.trim().isNotEmpty) return;
     final index = _filtered.indexWhere((v) => v.key == key);
     if (index < 0) return;
-    _ensureVisibleThrough(index);
     if (!_listScroll.hasClients) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _scrollToPortalKey(key, animate: animate),
@@ -228,7 +229,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       0.0,
       _listScroll.position.maxScrollExtent,
     );
-    if (animate) {
+    if (animate && !ShellTokens.isAndroidTvDevice) {
       _listScroll.animateTo(
         target,
         duration: const Duration(milliseconds: 280),
@@ -256,7 +257,6 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     setState(() {
       _searchOpen = false;
       _query = '';
-      _resetVisibleWindow();
     });
     _searchFocus.unfocus();
   }
@@ -281,26 +281,12 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     }).toList();
   }
 
-  /// Windowed slice of [_filtered] — grows by [_pageSize] on scroll/focus.
-  List<VerifiedPortal> get _visiblePortals {
-    final all = _filtered;
-    if (all.length <= _visibleCount) return all;
-    return all.sublist(0, _visibleCount);
-  }
-
   @override
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
-    final filtered = _filtered;
-    // Clamp if the source list shrank (delete / filter).
-    if (_visibleCount > filtered.length && filtered.isNotEmpty) {
-      _visibleCount = filtered.length;
-    } else if (filtered.isEmpty) {
-      _visibleCount = _pageSize;
-    }
-    final list = _visiblePortals;
+    final list = _filtered;
     final activeKey = ctrl.activePortal?.key;
-    final totalCount = filtered.length;
+    final totalCount = list.length;
 
     return Focus(
       focusNode: _panelFocus,
@@ -342,10 +328,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                     child: TvBrowseTextField(
                       controller: _searchCtrl,
                       focusNode: _searchFocus,
-                      onChanged: (v) => setState(() {
-                        _query = v;
-                        _resetVisibleWindow();
-                      }),
+                      onChanged: (v) => setState(() => _query = v),
                       onEscape: _closeSearch,
                       browsePlaceholder: 'Search portals…',
                       browseHintStyle: GoogleFonts.plusJakartaSans(
@@ -374,10 +357,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                                 context,
                                 onTap: () {
                                   _searchCtrl.clear();
-                                  setState(() {
-                                    _query = '';
-                                    _resetVisibleWindow();
-                                  });
+                                  setState(() => _query = '');
                                   _searchFocus.requestFocus();
                                 },
                               ),
@@ -408,9 +388,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 ),
                 child: Text(
                   ctrl.statusText.isEmpty
-                      ? (list.length < totalCount
-                          ? '${list.length} of $totalCount portals'
-                          : '$totalCount portal${totalCount == 1 ? '' : 's'}')
+                      ? '$totalCount portal${totalCount == 1 ? '' : 's'}'
                       : ctrl.statusText,
                   style: GoogleFonts.plusJakartaSans(
                     color: Colors.white54,
@@ -419,9 +397,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 ),
               ),
               Expanded(
-                child: filtered.isEmpty
+                child: list.isEmpty
                     ? _buildEmpty()
-                    : _buildPortalList(list, activeKey, totalCount),
+                    : _buildPortalList(list, activeKey),
               ),
             ],
           ),
@@ -624,9 +602,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   Widget _buildPortalList(
     List<VerifiedPortal> list,
     String? activeKey,
-    int totalCount,
   ) {
     final ctrl = widget.ctrl;
+    final last = list.length - 1;
     return iptvCatalogRow(
       rowId: 'portals',
       sortOrder: 2,
@@ -638,8 +616,10 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
           controller: _listScroll,
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
           itemExtent: _portalRowHeight,
-          // Keep a few off-screen rows warm for smoother D-pad/list scroll.
-          scrollCacheExtent: ScrollCacheExtent.pixels(_portalRowHeight * 6),
+          // Warm off-screen neighbors so D-pad ↑/↓ usually hits a mounted node.
+          scrollCacheExtent: ScrollCacheExtent.pixels(
+            _portalRowHeight * _scrollCacheRows,
+          ),
           addAutomaticKeepAlives: false,
           itemCount: list.length,
           itemBuilder: (_, i) {
@@ -651,17 +631,14 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                 ctrl: ctrl,
                 isActive: v.key == activeKey,
                 listIndex: i,
-                // Prefetch next page when D-pad reaches the last few rows.
-                onNearWindowEnd: list.length < totalCount &&
-                        i >= list.length - 5
-                    ? _loadMore
-                    : null,
                 onUpEdge: i == 0
                     ? () => iptvFocusRowItem(
                           'iptv-portal-header',
                           _portalHeaderAddIndex(),
                         )
-                    : null,
+                    : () => _focusPortalAt(i - 1),
+                onDownEdge:
+                    i >= last ? null : () => _focusPortalAt(i + 1),
                 onEdit: () => _showPortalDialog(context, existing: v),
               ),
             );

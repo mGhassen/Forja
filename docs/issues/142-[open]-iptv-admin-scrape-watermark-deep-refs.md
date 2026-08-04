@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** fix · **0 / 3** acceptance |
+| **Progress** | **11 / 11** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,6 +29,7 @@
 | 8 | I142-T08 | Page-by-page scrape; persist base64+paste_url before paste fetch | ✅ |
 | 9 | I142-T09 | Deep refs = base64+paste_url; portals = platform + get.php type/output | ✅ |
 | 10 | I142-T10 | Collect-all Reddit into DB stubs, then process pending deep_refs (no interleaved paste) | ✅ |
+| 11 | I142-T11 | Drop scrape provenance (`post_id`, `layer`) from `iptv_portals`; lineage via deep_ref_portals only | ✅ |
 
 ---
 
@@ -52,4 +53,4 @@ Admin catalog scrape rewalked 500 posts every run, wrote empty `subreddit`, drop
 
 **HTTP 504 / “before the SDK responded”:** not Reddit — Vercel/proxy killed a long Inngest step. Pipeline is now **collect then process**: (1) all Reddit pages → `iptv_scrape_posts` + deep_ref stubs; (2) `listPendingDeepRefsForRun` → one step per pending ref (`process-deep-ref-N`: paste fetch + extract). Checkpoints after each collect page / every few process steps.
 
-**Apply migrations** `20260731184207_…` + `20260731184812_…` before deploying admin (ask before `db push`).
+**Apply migrations** `20260731184207_…` + `20260731184812_…` + `20260801115640_…` + `20260804001433_iptv_portals_drop_scrape_provenance.sql` before deploying admin (ask before `db push`). The latest drops `iptv_portals.post_id` / `layer` — scrape lineage stays on `iptv_scrape_*` via `portal_id`.

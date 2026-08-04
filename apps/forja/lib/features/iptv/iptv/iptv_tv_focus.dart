@@ -341,6 +341,7 @@ Widget iptvTap({
   bool showFocusBorder = false,
   bool suppressInkHover = false,
   bool allowNestedFocus = false,
+  ShellTvEnsureVisibleMode ensureVisibleMode = ShellTvEnsureVisibleMode.row,
 }) {
   if (onTap == null) return child;
   final resolvedScale = scaleOnFocus ??
@@ -368,6 +369,7 @@ Widget iptvTap({
     showFocusBorder: showFocusBorder,
     suppressInkHover: suppressInkHover,
     allowNestedFocus: allowNestedFocus,
+    ensureVisibleMode: ensureVisibleMode,
     child: child,
   );
 }

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { serve } from 'inngest/edge'
+import { serve } from 'inngest/remix'
 import { inngest } from '@/inngest/client'
 import { functions } from '@/inngest/functions'
 
@@ -15,18 +15,27 @@ function resolveServeOrigin(): string | undefined {
   return undefined
 }
 
+/**
+ * Remix adapter (Request/Response + streaming). Edge adapter cannot stream —
+ * without streaming, a long multi-step invoke dies at Vercel maxDuration with
+ * "No step output" / FUNCTION_INVOCATION_TIMEOUT.
+ *
+ * defaultMaxRuntime: checkpoint budget per HTTP invoke (<< Vercel 300s).
+ */
 const handler = serve({
   client: inngest,
   functions,
   serveOrigin: resolveServeOrigin(),
+  streaming: true,
+  defaultMaxRuntime: 45_000,
 })
 
 export const Route = createFileRoute('/api/inngest')({
   server: {
     handlers: {
-      GET: async ({ request }) => handler(request),
-      POST: async ({ request }) => handler(request),
-      PUT: async ({ request }) => handler(request),
+      GET: async ({ request }) => handler({ request }),
+      POST: async ({ request }) => handler({ request }),
+      PUT: async ({ request }) => handler({ request }),
     },
   },
 })

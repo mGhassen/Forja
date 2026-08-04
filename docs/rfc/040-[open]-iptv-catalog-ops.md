@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **25 / 27** acceptance (dealPortal flag; AI + Stalker deferred) |
-| **Current slice** | Issue 142 — collect-then-process scrape; acceptance QA open |
+| **Progress** | **5 / 5** components · **26 / 28** acceptance (dealPortal flag; AI + Stalker deferred) |
+| **Current slice** | Issue 142 — portal provenance trim; acceptance QA open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -58,6 +58,7 @@
 | 25 | R40-A25 | Admin Deep refs page + per-ref portal hits with `was_existing` | ✅ |
 | 26 | R40-A26 | Deep ref = base64+paste_url; portal hits = platform + get.php type/output | ✅ |
 | 27 | R40-A27 | Collect all Reddit pages into DB stubs, then process pending deep_refs (paste/extract) | ✅ |
+| 28 | R40-A28 | `iptv_portals` product-only: drop `post_id` + `layer`; scrape lineage via deep_ref_portals | ✅ |
 
 ---
 
@@ -83,7 +84,7 @@ Per-user Find Portals hits the same `/new` posts, cannot filter catalog region, 
 
 - **Pool ≠ user assignment** — same `iptv_portals` row; `catalog_pool` marks deal inventory; `user_iptv_portals` is who has it.
 - **Deal gate** — `accounts.features.dealPortal` (lean JSON, default off) + `iptv_credits ≥ 1`. Flag checked in app UI and in `deal_iptv_portals`.
-- **L1 / L2** — extract-time; DB keeps Reddit `post_id` on portals / scrape_posts (never post title/body). Deep refs = **base64 + paste_url**; portal hits = **platform** + get.php **type/output** (R40-A24/A26). Scrape is **collect then process** (stubs in DB, then paste/extract) (R40-A27).
+- **L1 / L2** — extract-time only (not stored on `iptv_portals`). Reddit `post_id` lives on scrape_posts / deep_refs; product portals link via `iptv_scrape_deep_ref_portals.portal_id`. Deep refs = **base64 + paste_url**; portal hits = **platform** + get.php **type/output** (R40-A24/A26/A28). Scrape is **collect then process** (R40-A27).
 - **Scrape watermark** — stop at known `post_id`; upsert every extracted portal (R40-A24). Verify remains a separate probe path.
 - **Worker** uses service role; admin UI uses authenticated `is_admin` RPCs/RLS.
 - **No AI in foundation** — optional later on L2 miss samples only.

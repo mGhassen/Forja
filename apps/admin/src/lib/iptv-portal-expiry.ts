@@ -41,6 +41,25 @@ export function parsePortalExpiry(raw?: string | null): Date | null {
     return Number.isNaN(d.getTime()) ? null : d
   }
 
+  // Reddit cards: `24/01/2027 19:55:57` (DD/MM/YYYY). Skip unix-epoch placeholders.
+  const dmy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s)
+  if (dmy) {
+    const day = Number(dmy[1])
+    const month = Number(dmy[2]) - 1
+    const year = Number(dmy[3])
+    if (year <= 1970) return null
+    if (
+      Number.isInteger(day) &&
+      month >= 0 &&
+      month <= 11 &&
+      Number.isInteger(year) &&
+      day >= 1 &&
+      day <= 31
+    ) {
+      return new Date(year, month, day)
+    }
+  }
+
   const parts = s.split(/\s+/)
   if (parts.length === 3) {
     const day = Number(parts[0])
@@ -53,6 +72,7 @@ export function parsePortalExpiry(raw?: string | null): Date | null {
       day >= 1 &&
       day <= 31
     ) {
+      if (year <= 1970) return null
       return new Date(year, month, day)
     }
   }

@@ -171,11 +171,7 @@ export async function upsertScrapeDeepRef(
     let portalId: string | null = null
     let wasExisting = false
 
-    if (
-      (hit.platform === 'xtream' || hit.platform === 'm3u') &&
-      hit.username &&
-      hit.password
-    ) {
+    if (hit.username && (hit.password || hit.platform === 'stalker')) {
       const { data: existingId, error: findErr } = await sb.rpc(
         'find_iptv_portal_id',
         { p_url: hit.url, p_username: hit.username },
@@ -186,22 +182,34 @@ export async function upsertScrapeDeepRef(
       const portal: CatalogPortal = {
         url: hit.url,
         username: hit.username,
-        password: hit.password,
+        password: hit.password || '',
         source: ref.pasteUrl ? 'catalog-deep' : 'catalog-decoded',
         postId: ref.postId,
+        expiry: hit.expiry ?? null,
+        maxConnections: hit.maxConnections ?? null,
+        timezone: hit.timezone ?? null,
+        regionPrimary: hit.regionPrimary,
+        regionTags: hit.regionTags,
+        regionConfidence: hit.regionConfidence,
+        allowedOutputs: hit.allowedOutputs ?? null,
       }
       portalId = await upsertCatalogCandidateReturningId(
         sb,
         portal,
         {
+          // Never set alive from the note — player_api still owns that.
           alive: null,
           status: 'unverified',
-          expiry: null,
-          maxConnections: null,
-          timezone: null,
+          expiry: hit.expiry ?? null,
+          maxConnections: hit.maxConnections ?? null,
+          timezone: hit.timezone ?? null,
           categoryNames: [],
         },
-        { primary: 'UNKNOWN', tags: [], confidence: 0 },
+        {
+          primary: hit.regionPrimary ?? 'UNKNOWN',
+          tags: hit.regionTags ?? [],
+          confidence: hit.regionConfidence ?? 0,
+        },
       )
     }
 
@@ -209,7 +217,7 @@ export async function upsertScrapeDeepRef(
       deep_ref_id: deepRefId,
       platform: hit.platform,
       type: hit.type,
-      output: hit.output,
+      output: hit.output || hit.allowedOutputs || '',
       url: hit.url,
       username: hit.username,
       password: hit.password,
@@ -248,11 +256,6 @@ export async function listPendingDeepRefsForRun(
   })
 }
 
-function portalLayer(source: string): 'l1' | 'l2' {
-  if (source === 'catalog-deep' || source === 'catalog-decoded') return 'l2'
-  return 'l1'
-}
-
 async function upsertCatalogCandidateReturningId(
   sb: SupabaseClient,
   portal: CatalogPortal,
@@ -264,13 +267,11 @@ async function upsertCatalogCandidateReturningId(
     p_username: portal.username,
     p_password: portal.password,
     p_source: portal.source || 'catalog',
-    p_layer: portalLayer(portal.source || 'catalog'),
     p_alive: status.alive,
     p_expiry: status.expiry,
     p_max_connections: status.maxConnections,
     p_timezone: status.timezone,
     p_region_primary: region.primary,
-    p_post_id: portal.postId?.trim() || null,
     p_region_tags: region.tags,
     p_region_confidence: region.confidence,
   })

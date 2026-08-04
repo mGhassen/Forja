@@ -31,15 +31,6 @@ const VERIFY_PORTAL_STATUS = false
 /** Chunk size for Inngest upsert steps (timeout safety only — not a product cap). */
 const UPSERT_CHUNK = 50
 
-const UNVERIFIED_STATUS: PortalStatus = {
-  alive: null,
-  status: 'unverified',
-  expiry: null,
-  maxConnections: null,
-  timezone: null,
-  categoryNames: [],
-}
-
 type ScrapeData = {
   jobId?: string
   /** Pre-created by admin API so UI shows running immediately. */
@@ -72,6 +63,8 @@ export const iptvCatalogScrape = inngest.createFunction(
     id: 'iptv-catalog-scrape',
     concurrency: { limit: 1 },
     retries: 1,
+    // Checkpoint every step; bail well under Vercel maxDuration (300s).
+    checkpointing: { bufferedSteps: 1, maxRuntime: '45s' },
     triggers: [
       { cron: '0 6 * * *' },
       { cron: '* * * * *' },
@@ -224,6 +217,8 @@ export const iptvCatalogScrape = inngest.createFunction(
           unparsed_count: unparsedCount,
         })
       })
+      // Force new Vercel invoke — never chain 10 pages into one 300s request.
+      await step.sleep(`yield-collect-${page}`, '0s')
 
       after = result.nextAfter
       if (result.hitWatermark) {
@@ -261,20 +256,22 @@ export const iptvCatalogScrape = inngest.createFunction(
         })
         return {
           portals: processed.ref.portals
-            .filter(
-              (h) =>
-                (h.platform === 'xtream' || h.platform === 'm3u') &&
-                h.username &&
-                h.password,
-            )
+            .filter((h) => h.username && (h.password || h.platform === 'stalker'))
             .map((h) => ({
               url: h.url,
               username: h.username,
-              password: h.password,
+              password: h.password || '',
               source: processed.ref.pasteUrl
                 ? 'catalog-deep'
                 : 'catalog-decoded',
               postId: processed.ref.postId,
+              expiry: h.expiry ?? null,
+              maxConnections: h.maxConnections ?? null,
+              timezone: h.timezone ?? null,
+              regionPrimary: h.regionPrimary,
+              regionTags: h.regionTags,
+              regionConfidence: h.regionConfidence,
+              allowedOutputs: h.allowedOutputs ?? null,
             })),
           l2FetchOk: processed.l2FetchOk,
           l2FetchFail: processed.l2FetchFail,
@@ -304,6 +301,8 @@ export const iptvCatalogScrape = inngest.createFunction(
           })
         })
       }
+      // One paste per invoke budget — Vercel must not sit open across N pastes.
+      await step.sleep(`yield-process-${i}`, '0s')
     }
 
     await step.run('checkpoint-after-reddit', async () => {
@@ -371,10 +370,22 @@ export const iptvCatalogScrape = inngest.createFunction(
         const chunk = list.slice(i, i + UPSERT_CHUNK)
         const n = await step.run(`upsert-candidates-${i}`, async () => {
           const sb = createCatalogAdminClient()
-          const region = classifyRegion(null, [])
           let count = 0
           for (const portal of chunk) {
-            await upsertCatalogCandidate(sb, portal, UNVERIFIED_STATUS, region)
+            const status: PortalStatus = {
+              alive: null,
+              status: 'unverified',
+              expiry: portal.expiry ?? null,
+              maxConnections: portal.maxConnections ?? null,
+              timezone: portal.timezone ?? null,
+              categoryNames: [],
+            }
+            const region = {
+              primary: portal.regionPrimary ?? 'UNKNOWN',
+              tags: portal.regionTags ?? [],
+              confidence: portal.regionConfidence ?? 0,
+            }
+            await upsertCatalogCandidate(sb, portal, status, region)
             count++
           }
           return count
@@ -393,6 +404,7 @@ export const iptvCatalogScrape = inngest.createFunction(
             unparsed_count: unparsedCount,
           })
         })
+        await step.sleep(`yield-upsert-${i}`, '0s')
       }
     }
 

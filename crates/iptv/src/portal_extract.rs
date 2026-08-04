@@ -39,9 +39,27 @@ static TABLE_LINE: LazyLock<Regex> = LazyLock::new(|| {
     .expect("table_line regex")
 });
 
+/// IPTV_ZONENEW cards: `🔗 http://…` then `👤 USERNAME :` / `🔑 PASSWORD :`.
+static EMOJI_LINK: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(?:🔗|🌍|🌐)\s*(https?://[^\s<"']+)"#).expect("emoji_link regex")
+});
+
+/// Emoji-required so we never match `username=` inside get.php query strings.
+static EMOJI_CREDS: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"(?is)(?:👤|👑)\s*(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\s*[:=]\s*([^\s|<"'\n]+)[\s\S]{0,240}?(?:🔑|🔐)\s*(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\s*[:=]\s*([^\s|<"'\n]+)"#,
+    )
+    .expect("emoji_creds regex")
+});
+
 static BLOCK_TAGS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)<(?:p|br|div|li|h\d)[^>]*>").expect("block tags"));
 static ANY_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").expect("any tag"));
+static MARKDOWN_LINK: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\[([^\]]*)]\((https?://[^)\s]+)\)").expect("markdown_link regex")
+});
+static ANGLE_URL: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"<(https?://[^>\s]+)>").expect("angle_url regex"));
 static WHITESPACE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").expect("whitespace"));
 static PATH_SUFFIX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
@@ -51,6 +69,8 @@ static PATH_SUFFIX: LazyLock<Regex> = LazyLock::new(|| {
 });
 static CRED_SPLIT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[ \n&?]").expect("cred split"));
+static TRAILING_JUNK: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"[\]>"')]+$"#).expect("trailing_junk"));
 
 const JUNK_TOKENS: &[&str] = &[
     "type=m3u",
@@ -141,11 +161,62 @@ pub fn extract_portals(raw_text: &str, source: &str) -> Vec<Portal> {
             source,
         );
     }
+    extract_emoji_link_cards(&cleaned, &mut acc, source);
     acc.into_values().collect()
+}
+
+enum EmojiMark<'a> {
+    Url { index: usize, url: &'a str },
+    Cred { index: usize, user: &'a str, pass: &'a str },
+}
+
+fn extract_emoji_link_cards(cleaned: &str, acc: &mut BTreeMap<String, Portal>, source: &str) {
+    let mut marks: Vec<EmojiMark<'_>> = Vec::new();
+    for caps in EMOJI_LINK.captures_iter(cleaned) {
+        let full = caps.get(0).expect("full");
+        let url = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        if url.is_empty() {
+            continue;
+        }
+        marks.push(EmojiMark::Url {
+            index: full.start(),
+            url,
+        });
+    }
+    for caps in EMOJI_CREDS.captures_iter(cleaned) {
+        let full = caps.get(0).expect("full");
+        let user = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        let pass = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        if user.is_empty() || pass.is_empty() {
+            continue;
+        }
+        marks.push(EmojiMark::Cred {
+            index: full.start(),
+            user,
+            pass,
+        });
+    }
+    marks.sort_by_key(|m| match m {
+        EmojiMark::Url { index, .. } | EmojiMark::Cred { index, .. } => *index,
+    });
+
+    let mut last_url: Option<&str> = None;
+    for mark in marks {
+        match mark {
+            EmojiMark::Url { url, .. } => last_url = Some(url),
+            EmojiMark::Cred { user, pass, .. } => {
+                if let Some(url) = last_url {
+                    finalize(acc, url, user, pass, source);
+                }
+            }
+        }
+    }
 }
 
 fn clean_htmlish(raw: &str) -> String {
     let s = raw.replace("&amp;", "&").replace("&quot;", "\"");
+    let s = MARKDOWN_LINK.replace_all(&s, "$2");
+    let s = ANGLE_URL.replace_all(&s, "$1");
     let s = BLOCK_TAGS.replace_all(&s, "\n");
     ANY_TAG.replace_all(&s, "").into_owned()
 }
@@ -163,23 +234,6 @@ fn is_junk_code(text: &str) -> bool {
     false
 }
 
-fn is_stalker_junk(url: &str, user: &str, pass: &str) -> bool {
-    let lu = url.to_lowercase();
-    let lp = pass.to_lowercase();
-    let un = user.to_lowercase();
-    // Stalker/Ministra portal path or MAC-bridge fake M3U.
-    if lu.ends_with("/c") || lu.contains("/c/") {
-        return true;
-    }
-    if lp.contains("live.php") || lp.contains("mac=") || lp.starts_with("live.") {
-        return true;
-    }
-    if un == "play" && (lp.contains("live") || lp.contains("mac")) {
-        return true;
-    }
-    false
-}
-
 fn finalize(acc: &mut BTreeMap<String, Portal>, raw_url: &str, raw_user: &str, raw_pass: &str, source: &str) {
     let url = clean_portal_url(raw_url);
     let user = clean_cred(raw_user);
@@ -190,9 +244,7 @@ fn finalize(acc: &mut BTreeMap<String, Portal>, raw_url: &str, raw_user: &str, r
     if user.contains("http") || pass.contains("http") {
         return;
     }
-    if is_stalker_junk(&url, &user, &pass) {
-        return;
-    }
+    // Keep stalker / MAC-bridge portals — do not drop them.
     let lu = user.to_lowercase();
     let lp = pass.to_lowercase();
     for j in JUNK_TOKENS {
@@ -214,6 +266,7 @@ fn clean_portal_url(raw: &str) -> String {
     if let Some(q) = clean.find('?') {
         clean.truncate(q);
     }
+    clean = TRAILING_JUNK.replace(&clean, "").into_owned();
     clean = clean.trim().to_string();
     if let Some(at) = clean.rfind('@') {
         clean = format!("http://{}", &clean[at + 1..]);
@@ -233,12 +286,47 @@ fn clean_cred(raw: &str) -> String {
     while s.starts_with('=') {
         s = &s[1..];
     }
+    let decoded = percent_decode(s);
+    let trimmed = TRAILING_JUNK.replace(decoded.trim(), "");
     CRED_SPLIT
-        .split(s)
+        .split(trimmed.as_ref())
         .next()
         .unwrap_or("")
         .trim()
         .to_string()
+}
+
+fn percent_decode(raw: &str) -> String {
+    let bytes = raw.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            let h1 = from_hex(bytes[i + 1]);
+            let h2 = from_hex(bytes[i + 2]);
+            if let (Some(a), Some(b)) = (h1, h2) {
+                out.push((a << 4) | b);
+                i += 3;
+                continue;
+            }
+        }
+        if bytes[i] == b'+' {
+            out.push(b' ');
+        } else {
+            out.push(bytes[i]);
+        }
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+fn from_hex(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -305,22 +393,75 @@ mod tests {
     }
 
     #[test]
-    fn rejects_stalker_mac_bridge() {
+    fn keeps_stalker_mac_bridge() {
         let text = "\
 Real: http://dinofox.sbs:80/c/
 Mac: 00:1A:79:9C:3D:9D
 m3uLink:http://dinofox.sbs:80/get.php?username=play&password=live.php?mac=00:1A:79:9C:3D:9D&stream=1&type=m3u_plus
 ";
+        let portals = extract_portals(text, "Catalog");
         assert!(
-            extract_portals(text, "Catalog").is_empty(),
-            "stalker MAC bridge must not become Xtream portals"
+            !portals.is_empty(),
+            "stalker / MAC-bridge must be kept, not rejected"
         );
+        assert!(portals.iter().any(|p| p.username == "play"));
     }
 
     #[test]
     fn rejects_junk_js() {
         let text = "Array.isArray(x); function(y) { return!; window.foo }";
         assert!(extract_portals(text, "Catalog").is_empty());
+    }
+
+    #[test]
+    fn extracts_zonenew_emoji_link_cards() {
+        let text = r#"📡 M3U/XTREAM
+🔗 http://mediaiptv.tv/get.php?username=d0:d0:03:55:8e:67&password=APaY:6:7xMAGc5&type=m3u
+🚦 STATUS : Active
+👤 USERNAME : d0:d0:03:55:8e:67
+🔑 PASSWORD : APaY:6:7xMAGc5
+
+🚦 STATUS : Active
+👤 USERNAME : gxdcxnbf
+🔑 PASSWORD : 1eZr21rf1D
+
+🔗 http://fortv.cc:8080/get.php?username=Y3DvY8&password=934867&type=m3u_plus&output=m3u8
+👤 USERNAME : Y3DvY8
+🔑 PASSWORD : 934867
+"#;
+        let portals = extract_portals(text, "Catalog");
+        assert!(
+            portals.iter().any(|p| {
+                p.url == "http://mediaiptv.tv"
+                    && p.username == "d0:d0:03:55:8e:67"
+                    && p.password == "APaY:6:7xMAGc5"
+            }),
+            "got: {portals:?}"
+        );
+        assert!(
+            portals.iter().any(|p| p.username == "gxdcxnbf" && p.password == "1eZr21rf1D"),
+            "orphan after 🔗 must inherit prior host; got: {portals:?}"
+        );
+        assert!(portals.iter().any(|p| p.username == "Y3DvY8"), "got: {portals:?}");
+    }
+
+    #[test]
+    fn extracts_emoji_link_without_get_php_query() {
+        let text = "🔗 http://mediaiptv.tv:8080\n👤 USERNAME : aliceuser\n🔑 PASSWORD : secretpass99";
+        let portals = extract_portals(text, "Catalog");
+        assert_eq!(portals.len(), 1, "got: {portals:?}");
+        assert_eq!(portals[0].url, "http://mediaiptv.tv:8080");
+        assert_eq!(portals[0].username, "aliceuser");
+        assert_eq!(portals[0].password, "secretpass99");
+    }
+
+    #[test]
+    fn extracts_markdown_get_php_link() {
+        let text = "[http://x.tv/get.php?username=bobuser&password=bobpass99&type=m3u](http://x.tv/get.php?username=bobuser&password=bobpass99&type=m3u)";
+        let portals = extract_portals(text, "Catalog");
+        assert_eq!(portals.len(), 1, "got: {portals:?}");
+        assert_eq!(portals[0].username, "bobuser");
+        assert_eq!(portals[0].password, "bobpass99");
     }
 
     #[test]

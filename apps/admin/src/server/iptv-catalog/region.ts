@@ -53,8 +53,30 @@ export function classifyRegion(
   const [topCode, topScore] = ranked[0]!
   const confidence = Math.min(1, Math.max(0, topScore / total))
   const tags = ranked.filter(([, s]) => s >= 1).map(([k]) => k)
+  const tied =
+    ranked.length > 1 && Math.abs(ranked[0]![1] - ranked[1]![1]) < 0.01
   const primary =
-    confidence < 0.45 && tags.length > 1 ? 'MIXED' : topCode
+    tied || (confidence < 0.45 && tags.length > 1) ? 'MIXED' : topCode
 
   return { primary, tags, confidence }
+}
+
+/**
+ * Note header lines like `Mainly UK & US` / `UK USA DE`.
+ * Feeds the same category heuristics as live category names.
+ */
+export function classifyRegionFromNote(hint: string | null | undefined): RegionGuess {
+  const s = (hint ?? '').trim()
+  if (!s) return { primary: 'UNKNOWN', tags: [], confidence: 0 }
+  return classifyRegion(null, [s])
+}
+
+/** Prefer note guess when verify did not set a region. */
+export function mergeRegionGuess(
+  fromNote: RegionGuess | null | undefined,
+  fromVerify: RegionGuess,
+): RegionGuess {
+  if (!fromNote || fromNote.primary === 'UNKNOWN') return fromVerify
+  if (fromVerify.primary === 'UNKNOWN') return fromNote
+  return fromVerify
 }

@@ -29,15 +29,15 @@ Production scrape runs in **TypeScript** on `apps/admin` via Inngest (Rust `iptv
 1. Set on the admin deploy: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` — **do not** set `INNGEST_DEV` on Vercel (that forces localhost Inngest and 502s scrape start)
 2. Sync `https://<admin-host>/api/inngest` in the Inngest dashboard
 3. Scheduled scrape: Inngest has a **daily 06:00 UTC** kick plus a minute tick. The real schedule is **`iptv_ops_settings.scrape_cron`** (UTC 5-field cron, default `0 6 * * *`) with **due/catch-up** (a late tick still runs once per slot; source `inngest-cron`). Edit it in Scrape → Automation. Toggle **Scheduled scrape** via `scrape_cron_enabled` — off = ticks no-op; manual run still works
-4. Reddit listing today is **`r/IPTV_ZONENEW`** (other old catalog subs are banned). Posts are usually base64 → encrypted **paste.sh** links — scrape decrypts those (L2), then runs credential extract
+4. Reddit listing today is **`r/IPTV_ZONENEW`** (other old catalog subs are banned). Posts are usually base64 → encrypted **paste.sh** links — scrape decrypts those (L2), then runs credential extract. Extract also handles inline status cards and tabular dumps. **Every** platform (`xtream` / `m3u` / `stalker`) with credentials upserts into the deal pool; deep-ref rows keep **`type`** + full **`output`** (e.g. `m3u8,ts,rtmp`). Card / table fields also fill expiry / max_connections / timezone / region — **alive** stays null until Pool → Check status.
 5. **Watermark** — walks `/new` **page by page** (10 posts per Inngest step, newest → older) and **stops at the first `post_id` already in `iptv_scrape_posts`**. Only **new** posts are processed. `posts_seen` on a run = new posts this run (not “500 every time”)
 6. **Two phases** — **Collect:** Reddit pages → posts + deep_ref stubs (base64 + paste_url, no paste HTTP). **Process:** load pending stubs from DB → fetch pastes + extract portals (one Inngest step per ref). Avoids gateway 504s from Reddit+pastes in one request.
-7. **Posts** (`iptv_scrape_posts`) = `post_id` + `subreddit` only. **Deep refs** = **`base64` + `paste_url`**. **Portals** under a ref = **`platform`** (`xtream` / `m3u` / `stalker`) + get.php **`type`** / **`output`** (e.g. `m3u_plus` / `m3u8`) + url/user/pass. **xtream** and **m3u** creds upsert into the deal pool; **stalker** stays on the ref only.
+7. **Posts** (`iptv_scrape_posts`) = `post_id` + `subreddit` only. **Deep refs** = **`base64` + `paste_url`**. **Portals** under a ref = **`platform`** (`xtream` / `m3u` / `stalker`) + get.php **`type`** / **`output`** (full string, e.g. `m3u_plus` / `m3u8,ts,rtmp`) + url/user/pass. All three platforms upsert into the deal pool when credentials exist. `iptv_portals` is product-only (no `post_id` / `layer`); lineage is `deep_ref_portals.portal_id`.
 8. Extract upserts **all** unique portals into **`iptv_portals`** with `catalog_pool = true` (conflict on url+username). No product upsert cap. **Xtream `player_api` verify is off** in the scrape job (`VERIFY_PORTAL_STATUS = false`); use Pool → Check status for manual probes. Deal only assigns `catalog_pool` rows with `alive = true`
 
 If a run shows **new posts > 0** but **portals = 0**, paste decrypt / deep extract failed (not Inngest itself). Check `iptv_scrape_deep_refs` where `needs_recheck`.
 
-**Apply migrations** `20260731184207_…`, `20260731184812_…`, and `20260801115640_iptv_scrape_deep_ref_base64_portal_output.sql` before deploying this scrape path (ask before `db push`).
+**Apply migrations** `20260731184207_…`, `20260731184812_…`, `20260801115640_…`, and `20260804001433_iptv_portals_drop_scrape_provenance.sql` before deploying this scrape path (ask before `db push`). Apply `20260804001433` **before or with** admin code that stops sending `p_layer` / `p_post_id`.
 
 Local:
 
@@ -68,7 +68,7 @@ In the Forja app: IPTV → Portals → **Deal** (hidden unless `dealPortal` is o
 ## Tips
 
 - **Separate app** from the user portal (`apps/web`), but **same** TanStack Start stack, Forja design tokens/UI, AuthProvider, and Turnstile
-- Stalker/MAC notes are skipped by extract (Xtream only)
+- Stalker / MAC / M3U notes are kept (platform + type + full outputs on deep refs; all upsert into the pool)
 - With `scrape --verify`, region is guessed from timezone + live category names
 - Agents must **not** run `supabase db reset` or `db push` unless you explicitly approve in chat
 

@@ -34,6 +34,24 @@ const RAW_PASTE =
 /** Cap stored paste / decoded body for later re-extract (bytes as UTF-16 length). */
 const PAYLOAD_TEXT_MAX = 64_000
 
+const PASTE_FETCH_TIMEOUT_MS = 12_000
+/** Reddit OAuth / listing — no timeout hung the whole Vercel invoke until 300s kill. */
+const REDDIT_FETCH_TIMEOUT_MS = 15_000
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 type Cursor = { subIdx: number; after: string | null }
 
 /** Posts per Reddit /new request = one Inngest step. */
@@ -73,15 +91,19 @@ async function getOauthToken(): Promise<string | null> {
     const clientId = OAUTH_CLIENT_IDS[idx]!
     const auth = btoa(`${clientId}:`)
     try {
-      const resp = await fetch('https://www.reddit.com/api/v1/access_token', {
-        method: 'POST',
-        headers: {
-          'User-Agent': OAUTH_UA,
-          Authorization: `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+      const resp = await fetchWithTimeout(
+        'https://www.reddit.com/api/v1/access_token',
+        {
+          method: 'POST',
+          headers: {
+            'User-Agent': OAUTH_UA,
+            Authorization: `Basic ${auth}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: 'grant_type=https%3A%2F%2Foauth.reddit.com%2Fgrants%2Finstalled_client&device_id=DO_NOT_TRACK_THIS_DEVICE',
         },
-        body: 'grant_type=https%3A%2F%2Foauth.reddit.com%2Fgrants%2Finstalled_client&device_id=DO_NOT_TRACK_THIS_DEVICE',
-      })
+        REDDIT_FETCH_TIMEOUT_MS,
+      )
       if (!resp.ok) continue
       const json = (await resp.json()) as {
         access_token?: string
@@ -112,12 +134,22 @@ async function fetchOauthListing(
   const pageSize = Math.max(1, Math.min(limit, 100))
   let url = `https://oauth.reddit.com/r/${sub}/new?limit=${pageSize}&sort=new&raw_json=1`
   if (after) url += `&after=${encodeURIComponent(after)}`
-  const resp = await fetch(url, {
-    headers: {
-      'User-Agent': OAUTH_UA,
-      Authorization: `Bearer ${token}`,
-    },
-  })
+  let resp: Response
+  try {
+    resp = await fetchWithTimeout(
+      url,
+      {
+        headers: {
+          'User-Agent': OAUTH_UA,
+          Authorization: `Bearer ${token}`,
+        },
+      },
+      REDDIT_FETCH_TIMEOUT_MS,
+    )
+  } catch {
+    cachedToken = null
+    return null
+  }
   if (!resp.ok) {
     cachedToken = null
     return null
@@ -187,20 +219,17 @@ function rewritePasteUrl(url: string): string {
   return url
 }
 
-const PASTE_FETCH_TIMEOUT_MS = 12_000
-
 async function fetchPasteBody(url: string): Promise<string | null> {
-  const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), PASTE_FETCH_TIMEOUT_MS)
   try {
     if (url.includes('paste.sh/') && url.includes('#')) {
       const hashIdx = url.indexOf('#')
       const baseUrl = url.slice(0, hashIdx)
       const fetchUrl = `${baseUrl}.txt`
-      const resp = await fetch(fetchUrl, {
-        headers: { 'User-Agent': SCRAPE_UA },
-        signal: ctrl.signal,
-      })
+      const resp = await fetchWithTimeout(
+        fetchUrl,
+        { headers: { 'User-Agent': SCRAPE_UA } },
+        PASTE_FETCH_TIMEOUT_MS,
+      )
       if (!resp.ok) return null
       const raw = await resp.text()
       const decrypted = decryptFromPasteResponse(url, raw)
@@ -208,20 +237,21 @@ async function fetchPasteBody(url: string): Promise<string | null> {
     }
 
     const fetchUrl = rewritePasteUrl(url)
-    const resp = await fetch(fetchUrl, {
-      headers: {
-        'User-Agent': SCRAPE_UA,
-        Accept: 'text/html,application/json,*/*',
+    const resp = await fetchWithTimeout(
+      fetchUrl,
+      {
+        headers: {
+          'User-Agent': SCRAPE_UA,
+          Accept: 'text/html,application/json,*/*',
+        },
       },
-      signal: ctrl.signal,
-    })
+      PASTE_FETCH_TIMEOUT_MS,
+    )
     if (!resp.ok) return null
     const body = await resp.text()
     return body.length > 0 ? body : null
   } catch {
     return null
-  } finally {
-    clearTimeout(timer)
   }
 }
 
@@ -246,31 +276,53 @@ function addExtracted(
         url: p.url,
         username: p.username,
         password: p.password,
+        expiry: p.expiry ?? null,
+        maxConnections: p.maxConnections ?? null,
+        timezone: p.timezone ?? null,
+        regionPrimary: p.regionPrimary,
+        regionTags: p.regionTags,
+        regionConfidence: p.regionConfidence,
+        allowedOutputs: p.allowedOutputs ?? null,
       })
     }
-    // Pool map: xtream + m3u creds (stalker ref-only).
-    if (p.platform === 'stalker') continue
-    if (!p.username || !p.password) continue
-    const withPost: CatalogPortal = postId
-      ? {
-          url: p.url,
-          username: p.username,
-          password: p.password,
-          source: p.source,
-          postId,
-        }
-      : {
-          url: p.url,
-          username: p.username,
-          password: p.password,
-          source: p.source,
-        }
+    // Pool map: every platform with creds (xtream / m3u / stalker).
+    if (!p.username) continue
+    if (!p.password && p.platform !== 'stalker') continue
+    const withPost: CatalogPortal = {
+      url: p.url,
+      username: p.username,
+      password: p.password,
+      source: p.source,
+      ...(postId ? { postId } : {}),
+      expiry: p.expiry ?? null,
+      maxConnections: p.maxConnections ?? null,
+      timezone: p.timezone ?? null,
+      regionPrimary: p.regionPrimary,
+      regionTags: p.regionTags,
+      regionConfidence: p.regionConfidence,
+      allowedOutputs: p.allowedOutputs ?? null,
+    }
     const key = portalKey(withPost)
     const prev = acc.get(key)
     if (!prev) {
       if (acc.size < maxResults) acc.set(key, withPost)
-    } else if (!prev.postId && postId) {
-      acc.set(key, { ...prev, postId })
+    } else {
+      acc.set(key, {
+        ...prev,
+        postId: prev.postId || postId,
+        expiry: prev.expiry ?? withPost.expiry,
+        maxConnections: prev.maxConnections ?? withPost.maxConnections,
+        timezone: prev.timezone ?? withPost.timezone,
+        regionPrimary: prev.regionPrimary ?? withPost.regionPrimary,
+        regionTags: prev.regionTags?.length
+          ? prev.regionTags
+          : withPost.regionTags,
+        regionConfidence:
+          prev.regionConfidence && prev.regionConfidence > 0
+            ? prev.regionConfidence
+            : withPost.regionConfidence,
+        allowedOutputs: prev.allowedOutputs ?? withPost.allowedOutputs,
+      })
     }
   }
   return hits

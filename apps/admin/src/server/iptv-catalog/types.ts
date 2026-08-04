@@ -5,6 +5,15 @@ export type CatalogPortal = {
   source: string
   /** Reddit thing id (t3_…) — stored alone; never title/body. */
   postId?: string
+  /** From note card / get.php — filled on scrape upsert (alive stays null). */
+  expiry?: string | null
+  maxConnections?: string | null
+  timezone?: string | null
+  regionPrimary?: string
+  regionTags?: string[]
+  regionConfidence?: number
+  /** Allowed outputs line (e.g. m3u8,ts,rtmp) — also seeds deep_ref.output. */
+  allowedOutputs?: string | null
 }
 
 /**
@@ -19,6 +28,13 @@ export type DeepRefPortalHit = {
   url: string
   username: string
   password: string
+  expiry?: string | null
+  maxConnections?: string | null
+  timezone?: string | null
+  regionPrimary?: string
+  regionTags?: string[]
+  regionConfidence?: number
+  allowedOutputs?: string | null
 }
 
 /**
