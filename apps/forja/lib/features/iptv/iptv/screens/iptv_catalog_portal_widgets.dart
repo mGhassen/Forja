@@ -637,17 +637,25 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                           ],
                         ),
                         const SizedBox(height: 3),
-                        Text(
-                          v.portal.url,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
-                            color: showNewChrome
-                                ? Colors.white54
-                                : Colors.white38,
-                            fontSize: 11,
-                            height: 1.25,
-                          ),
+                        Row(
+                          children: [
+                            _platformBadge(v.portal.platform),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                v.portal.url,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: showNewChrome
+                                      ? Colors.white54
+                                      : Colors.white38,
+                                  fontSize: 11,
+                                  height: 1.25,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         _seatsLine(
@@ -915,6 +923,32 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
           fontSize: 9,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
+          height: 1,
+        ),
+      ),
+    );
+  }
+
+  Widget _platformBadge(IptvPortalPlatform platform) {
+    final (label, color) = switch (platform) {
+      IptvPortalPlatform.xtream => ('Xtream', const Color(0xFF34D399)),
+      IptvPortalPlatform.m3u => ('M3U', const Color(0xFF60A5FA)),
+      IptvPortalPlatform.stalker => ('Stalker', const Color(0xFFFBBF24)),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
           height: 1,
         ),
       ),
