@@ -941,8 +941,13 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                           SizedBox(height: gapBetweenFields),
                                           _portalField(
                                             _labelCtrl,
-                                            'Portal name',
-                                            hint: 'My provider',
+                                            _platform == IptvPortalPlatform.m3u
+                                                ? 'Portal name (required)'
+                                                : 'Portal name',
+                                            hint: _platform ==
+                                                    IptvPortalPlatform.m3u
+                                                ? 'France IPTV'
+                                                : 'My provider',
                                             focusNode: _labelFocus,
                                             dialogIndex: labelIndex,
                                           ),

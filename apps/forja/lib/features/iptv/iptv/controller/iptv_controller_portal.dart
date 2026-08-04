@@ -307,7 +307,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
       userAgent: userAgent.trim(),
     );
     if (p.credKey != existing.credKey && _c._verifiedKeys.contains(p.credKey)) {
-      _c.addError = 'Portal already added';
+      _c.addError = _duplicatePortalError(platform);
       _c.isAdding = false;
       notifyListeners();
       return;
@@ -376,6 +376,13 @@ mixin _IptvControllerPortal on ChangeNotifier {
           'Login failed - wrong credentials or dead portal.',
       };
 
+  static String _duplicatePortalError(IptvPortalPlatform platform) =>
+      switch (platform) {
+        IptvPortalPlatform.m3u => 'Portal already added (same playlist URL)',
+        IptvPortalPlatform.xtream || IptvPortalPlatform.stalker =>
+          'Portal already added (same username & password)',
+      };
+
   // ────────────────────────────────────────────────────────────────────────
   // Add manual portal
   // ────────────────────────────────────────────────────────────────────────
@@ -404,8 +411,16 @@ mixin _IptvControllerPortal on ChangeNotifier {
     final cleanUrl = normalizeUrl(url);
     final user = _normalizedUsername(platform, username);
     final pass = password.trim();
+    final name = label.trim();
     if (!_credentialsOk(platform, cleanUrl, user, pass)) {
       _c.addError = _credentialsError(platform);
+      notifyListeners();
+      return;
+    }
+    // M3U has no real credentials — require a display name so portals are
+    // distinguishable in the list (uniqueness itself is by playlist URL).
+    if (platform == IptvPortalPlatform.m3u && name.isEmpty) {
+      _c.addError = 'Portal name required for M3U playlists';
       notifyListeners();
       return;
     }
@@ -428,7 +443,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
       userAgent: userAgent.trim(),
     );
     if (_c._verifiedKeys.contains(p.credKey)) {
-      _c.addError = 'Portal already added (same username & password)';
+      _c.addError = _duplicatePortalError(platform);
       _c.isAdding = false;
       notifyListeners();
       return;
@@ -440,7 +455,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
       notifyListeners();
       return;
     }
-    final v = verified.withLabel(label);
+    final v = verified.withLabel(name);
     _c._registerPortalAdded(v.key);
     _c.verified = _c._sortPortals([v, ..._c.verified]);
     _c._verifiedKeys.add(v.credKey);

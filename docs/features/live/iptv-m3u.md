@@ -22,7 +22,7 @@ Forja treats **M3U/M3U8 playlists** as first-class portals next to Xtream and St
 ## Setup
 
 1. Obtain an M3U/M3U8 URL from your provider, or pick a local playlist file
-2. **Portals** → **Add** → **M3U** → paste the URL (or choose a file) → confirm
+2. **Portals** → **Add** → **M3U** → enter a **portal name** (required), paste the URL (or choose a file) → confirm
 3. Open the portal from the list
 
 ## Tips
@@ -35,6 +35,7 @@ Forja treats **M3U/M3U8 playlists** as first-class portals next to Xtream and St
 - Channel logos and groups depend on M3U metadata
 - Local file-only playlists from older builds are not migrated — re-add via URL or the file picker
 - Public GitHub playlists need the **raw** URL (`raw.githubusercontent.com/…`), not the `/blob/` page — or download the file and use the folder picker
+- Each M3U portal is unique by playlist URL (not username) — you can add many playlists; a portal name is required so they stay distinguishable in the list
 
 ## Related
 

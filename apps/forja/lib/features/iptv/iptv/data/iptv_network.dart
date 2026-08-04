@@ -132,11 +132,16 @@ class IptvClient {
       );
 
   static Future<Map<String, dynamic>?> login(IptvPortal p,
-      {Duration timeout = const Duration(seconds: 6)}) async {
+      {Duration? timeout}) async {
+    // M3U login downloads + parses the whole playlist (iptv-org index ≈ 3MB).
+    final effective = timeout ??
+        (p.platform == IptvPortalPlatform.m3u
+            ? const Duration(seconds: 90)
+            : const Duration(seconds: 6));
     final root = await _xtreamRequest(_portalBody(
       p,
       action: 'login',
-      timeoutSecs: timeout.inSeconds.clamp(1, 120),
+      timeoutSecs: effective.inSeconds.clamp(1, 120),
     ));
     if (root == null) return null;
     final info = root['user_info'];
@@ -145,7 +150,7 @@ class IptvClient {
   }
 
   static Future<VerifiedPortal?> verifyOrNull(IptvPortal p,
-      {Duration timeout = const Duration(seconds: 6)}) async {
+      {Duration? timeout}) async {
     final info = await login(p, timeout: timeout);
     if (info == null) return null;
     return VerifiedPortal(

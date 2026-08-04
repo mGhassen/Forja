@@ -71,10 +71,17 @@ class IptvPortal {
   String get key =>
       '${platform.wire}|$url|$username|$password'.toLowerCase();
 
-  /// Identity for duplicate-portal checks: ignores URL, since the same
-  /// account can be exposed on multiple host names.
-  String get credKey =>
-      '${platform.wire}|$username|$password'.toLowerCase();
+  /// Identity for duplicate-portal checks.
+  /// Xtream / Stalker: ignores URL (same account can live on multiple hosts).
+  /// M3U: includes URL — every playlist shares the `__m3u__` sentinel, so
+  /// username|password alone would collapse all playlists into one identity.
+  String get credKey {
+    final base = '${platform.wire}|$username|$password'.toLowerCase();
+    if (platform == IptvPortalPlatform.m3u) {
+      return '$base|${url.trim().toLowerCase()}';
+    }
+    return base;
+  }
 
   Map<String, dynamic> toJson() => {
         'url': url,
