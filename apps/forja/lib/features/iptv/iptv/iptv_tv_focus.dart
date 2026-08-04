@@ -213,6 +213,16 @@ int iptvActiveSectionShelfIndex(IptvController ctrl) {
   }
 }
 
+/// Focus the top-bar portal chip (last item in `iptv-top-tools`).
+bool iptvFocusPortalTool() {
+  final handle = ShellTvFocusCoordinator.rowHandle('iptv', 'iptv-top-tools');
+  if (handle != null && handle.itemCount > 0) {
+    return iptvFocusRowItem('iptv-top-tools', handle.itemCount - 1);
+  }
+  return iptvFocusRowItem('iptv-top-tools', 1) ||
+      iptvFocusRowItem('iptv-top-tools', 0);
+}
+
 /// Up from a channel tile: right column → portal tool; else → active shelf tab.
 VoidCallback iptvStreamUpEdge(
   IptvController ctrl, {
@@ -221,7 +231,7 @@ VoidCallback iptvStreamUpEdge(
 }) {
   return () {
     if (columns > 1 && index % columns == columns - 1) {
-      iptvFocusRowItem('iptv-top-tools', 1);
+      iptvFocusPortalTool();
     } else {
       iptvFocusRowItem(
         'iptv-sections',
@@ -261,15 +271,18 @@ bool iptvHandleCatalogPageBack(IptvController ctrl) {
     return true;
   }
   final onStreams = _iptvRowHasFocus('browser-streams');
+  final onReload = _iptvRowHasFocus('iptv-streams-reload');
   // After a failed restore, nothing is focused but memory still points at channels.
   final lostFocusOnStreams = !onStreams &&
+      !onReload &&
       !_iptvRowHasFocus('browser-categories') &&
       !_iptvRowHasFocus('iptv-sections') &&
       !_iptvRowHasFocus('iptv-top-tools') &&
       !_iptvRowHasFocus('iptv-search-chrome') &&
       !ShellTvFocus.anyNavFocused &&
-      _iptvMemoryRowIs('browser-streams');
-  if (onStreams || lostFocusOnStreams) {
+      (_iptvMemoryRowIs('browser-streams') ||
+          _iptvMemoryRowIs('iptv-streams-reload'));
+  if (onStreams || onReload || lostFocusOnStreams) {
     return iptvFocusBrowserCategories(ctrl);
   }
   return false;
@@ -728,6 +741,10 @@ class IptvPrimaryButton extends StatefulWidget {
   final int? tvItemIndex;
   final FocusNode? focusNode;
   final bool dense;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   const IptvPrimaryButton({
     super.key,
@@ -740,6 +757,10 @@ class IptvPrimaryButton extends StatefulWidget {
     this.tvItemIndex,
     this.focusNode,
     this.dense = false,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   @override
@@ -782,6 +803,10 @@ class _IptvPrimaryButtonState extends State<IptvPrimaryButton> {
           tvRowId: widget.tvRowId,
           tvItemIndex: widget.tvItemIndex,
           focusNode: widget.focusNode,
+          onUpEdge: widget.onUpEdge,
+          onDownEdge: widget.onDownEdge,
+          onLeftEdge: widget.onLeftEdge,
+          onRightEdge: widget.onRightEdge,
           onFocusChange: tv
               ? (focused) => setState(() => _focused = focused)
               : null,

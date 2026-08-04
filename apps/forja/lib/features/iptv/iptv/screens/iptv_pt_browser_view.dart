@@ -31,6 +31,7 @@ class _BrowserViewState extends State<_BrowserView> {
   double _streamMainGap = 10;
   Timer? _scrollSettleTimer;
   bool _didInitialFocus = false;
+  bool _didRequestReloadFocus = false;
   bool _wasLoading = false;
   bool _wasPortalPanelOpen = false;
   String _lastBrowserSearch = '';
@@ -81,6 +82,9 @@ class _BrowserViewState extends State<_BrowserView> {
     if (!mounted) return;
     final loading = widget.ctrl.isLoading;
     final finishedLoad = _wasLoading && !loading;
+    if (loading) {
+      _didRequestReloadFocus = false;
+    }
     _wasLoading = loading;
     final panelOpen = widget.ctrl.portalPanelOpen;
     final panelClosed = _wasPortalPanelOpen && !panelOpen;
@@ -467,16 +471,6 @@ class _BrowserViewState extends State<_BrowserView> {
                   : const Duration(milliseconds: 350),
               curve: Curves.easeOutCubic,
               child: _buildOverlaySearchBar(),
-            ),
-          ),
-        if (ctrl.error != null)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              ctrl.error!,
-              style: GoogleFonts.plusJakartaSans(
-                color: const Color(0xFFEF4444),
-              ),
             ),
           ),
         Expanded(
@@ -880,7 +874,12 @@ class _BrowserViewState extends State<_BrowserView> {
     final ctrl = widget.ctrl;
     if (ctrl.browserAllStreams.isEmpty) {
       final canReload = ctrl.activeSection != null;
-      if (canReload && iptvUseTvFocus(context)) {
+      final showError = ctrl.error != null;
+      if (canReload &&
+          iptvUseTvFocus(context) &&
+          !_didRequestReloadFocus &&
+          !_reloadEmptyFocus.hasFocus) {
+        _didRequestReloadFocus = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           if (_reloadEmptyFocus.canRequestFocus) {
@@ -888,14 +887,18 @@ class _BrowserViewState extends State<_BrowserView> {
           }
         });
       }
-      return Center(
+      final empty = Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               ctrl.error ?? 'Failed to load channels - check connection',
               textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(color: Colors.white60),
+              style: GoogleFonts.plusJakartaSans(
+                color: showError
+                    ? const Color(0xFFEF4444)
+                    : Colors.white60,
+              ),
             ),
             const SizedBox(height: 16),
             IptvPrimaryButton(
@@ -904,12 +907,24 @@ class _BrowserViewState extends State<_BrowserView> {
               focusNode: _reloadEmptyFocus,
               tvRowId: 'iptv-streams-reload',
               tvItemIndex: 0,
+              onUpEdge: iptvFocusPortalTool,
+              onLeftEdge: ctrl.categories.isNotEmpty
+                  ? () => iptvFocusBrowserCategories(ctrl)
+                  : null,
               onPressed: canReload
                   ? () => ctrl.reloadSection(ctrl.activeSection!)
                   : null,
             ),
           ],
         ),
+      );
+      if (!canReload) return empty;
+      return iptvCatalogRow(
+        rowId: 'iptv-streams-reload',
+        sortOrder: 3,
+        itemCount: 1,
+        onFocusUp: iptvFocusPortalTool,
+        child: empty,
       );
     }
     if (ctrl.activeSection == IptvSection.live && ctrl.liveOnly) {

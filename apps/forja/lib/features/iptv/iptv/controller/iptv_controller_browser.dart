@@ -239,6 +239,12 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       }
       if (!snap.ok) {
         _c.error = snap.error ?? 'Could not load catalog';
+        // Keep Favorites / Already watched focusable on Live even when the
+        // portal catalog fetch fails (empty channel pane + Reload).
+        if (section == IptvSection.live) {
+          _c.categories = IptvLiveCatalog.withPins(const []);
+          _c.browserSelectedCategoryId = _defaultCategoryId(_c.categories);
+        }
         return;
       }
       cats = snap.categories;
@@ -297,6 +303,10 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       if (loadId != _c._catalogLoadId) return;
       if (_c.activePortal?.key != p.key || _c.activeSection != section) return;
       _c.error = '$e';
+      if (section == IptvSection.live) {
+        _c.categories = IptvLiveCatalog.withPins(const []);
+        _c.browserSelectedCategoryId = _defaultCategoryId(_c.categories);
+      }
     } finally {
       if (loadId == _c._catalogLoadId &&
           _c.activePortal?.key == p.key &&
