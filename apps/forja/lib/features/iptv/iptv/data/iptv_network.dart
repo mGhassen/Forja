@@ -59,11 +59,17 @@ class IptvCatalogFetch {
     required this.categories,
     required this.streams,
     this.error,
+    this.epgUrl,
   });
 
   final List<IptvCategory> categories;
   final List<IptvStream> streams;
   final String? error;
+
+  /// XMLTV guide URL the portal embedded (M3U `url-tvg` / `x-tvg-url`).
+  /// Not persisted yet — surfaced for future EPG wiring (RFC-051 out of
+  /// scope item: "Stalker/M3U EPG parity").
+  final String? epgUrl;
 
   bool get ok => error == null;
 
@@ -197,6 +203,7 @@ class IptvClient {
     return IptvCatalogFetch(
       categories: _mapCategories(root['categories']),
       streams: _mapStreams(root['streams'], _sectionName(kind)),
+      epgUrl: root['epg_url']?.toString(),
     );
   }
 

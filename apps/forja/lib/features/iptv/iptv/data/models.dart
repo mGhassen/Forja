@@ -1,6 +1,35 @@
 // Models ported from Forja TV (Kotlin) IPTV system.
 // Pure data classes - no Flutter dependencies.
 
+import 'dart:math';
+
+/// Helpers for the MAC address a Stalker/Ministra portal authenticates
+/// against — MAG-style set-top-box MACs.
+abstract final class StalkerMac {
+  /// The MAG vendor OUI prefix portals expect. The trailing three octets
+  /// identify the (virtual) device and are what the provider binds the
+  /// subscription to.
+  static const prefix = '00:1A:79';
+
+  static final _random = Random.secure();
+
+  /// Generates a random MAG-style MAC, e.g. `00:1A:79:3F:A2:0B`. Offered as
+  /// the add-portal default so a user without a provider-issued MAC still
+  /// gets a well-formed one.
+  static String generate() {
+    final octets = List.generate(
+      3,
+      (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0').toUpperCase(),
+    );
+    return '$prefix:${octets.join(':')}';
+  }
+
+  /// Whether a string is a syntactically valid `XX:XX:XX:XX:XX:XX` MAC.
+  /// Accepts upper- or lower-case hex; the portal is case-insensitive.
+  static bool isValid(String mac) =>
+      RegExp(r'^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$').hasMatch(mac.trim());
+}
+
 /// Portal protocol — xtream player_api, M3U playlist, or Stalker/Ministra.
 enum IptvPortalPlatform {
   xtream,

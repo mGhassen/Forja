@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **11 / 12** acceptance (R51-A12 / R40-A12 after migration apply) |
-| **Current slice** | Code shipped — apply `iptv_portals_platform` migration to unlock cloud `platform` |
+| **Progress** | **6 / 6** components · **18 / 19** acceptance (R51-A12 / R40-A12 after migration apply) |
+| **Current slice** | Lume parity slice shipped (Stalker core + UX, M3U improvements) — apply `iptv_portals_platform` migration to unlock cloud `platform` |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -24,6 +24,7 @@
 | 3 | R51-C03 | Rust M3U fetch catalog (URL → groups/streams) | ✅ |
 | 4 | R51-C04 | Host: `IptvPortalPlatform`, unified form, controller resolve | ✅ |
 | 5 | R51-C05 | Migrate device-local M3U → portals; retire side playlists screen | ✅ |
+| 6 | R51-C06 | Host: Generate MAC (Stalker) + local-file picker (M3U) in Add Portal | ✅ |
 
 ---
 
@@ -43,6 +44,20 @@
 | 10 | R51-A10 | Feature guides + changelog for unified portals | ✅ |
 | 11 | R51-A11 | Rust golden + Dart parity for stalker normalize + m3u fetch catalog | ✅ |
 | 12 | R51-A12 | R40-A12 marked done when this acceptance ships | ⬜ |
+
+---
+
+## Acceptance (Lume parity slice — Stalker core + UX, M3U improvements)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 13 | R51-A13 | Stalker handshake tries candidate endpoints (`portal.php` / `server/load.php` / `stalker_portal/server/load.php`, ordered by pasted URL hint) and pins the winner | ✅ |
+| 14 | R51-A14 | Stalker session (token + endpoint) cached per `portal_origin|mac` across login/catalog/streams/create_link calls in-process; 401/403 clears cache and re-handshakes once | ✅ |
+| 15 | R51-A15 | Stalker `create_link` forwards embedded `cmd` query params (Xtream-UI-style Stalker emulations) and rejects links with an empty `stream=` | ✅ |
+| 16 | R51-A16 | Stalker VOD/Series ordered-list walk fetches pages ~6 at a time once `total_items` is known, instead of serially | ✅ |
+| 17 | R51-A17 | M3U parser reads the `#EXTM3U` header's `url-tvg`/`x-tvg-url` EPG URL and the per-entry `type=` attribute (loose VOD classification); Enigma2/Gigablue bouquet links get a distinct error instead of "no channels" | ✅ |
+| 18 | R51-A18 | M3U fetch supports local `file://` playlists and streams remote downloads to a temp file before parsing (no full-body double-buffering) | ✅ |
+| 19 | R51-A19 | Add Portal → Stalker has a **Generate MAC** button (MAG OUI); M3U has a **choose local file** picker that fills the URL field with `file://` | ✅ |
 
 ---
 

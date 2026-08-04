@@ -9,6 +9,8 @@ pub enum M3uError {
     Empty,
     #[error("No channels found — is this a valid M3U playlist?")]
     NoChannels,
+    #[error("enigma2_bouquet")]
+    Enigma2Bouquet,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -19,6 +21,20 @@ pub struct M3uChannel {
     pub group: String,
     pub tvg_id: String,
     pub tvg_name: String,
+    /// The provider's explicit `type="…"` attribute (e.g. `video` for VOD),
+    /// when present. Some providers serve live and on-demand through
+    /// identical playlists and only this attribute distinguishes them.
+    #[serde(default)]
+    pub entry_type: Option<String>,
+}
+
+/// The `#EXTM3U` header line plus every parsed entry.
+#[derive(Debug, Clone, Default)]
+pub struct ParseResult {
+    pub channels: Vec<M3uChannel>,
+    /// XMLTV guide URL from `url-tvg` / `x-tvg-url`, when the playlist
+    /// carries one.
+    pub epg_url: Option<String>,
 }
 
 static ATTR_RE: LazyLock<Regex> = LazyLock::new(|| {
@@ -64,18 +80,57 @@ fn parse_attrs(input: &str) -> std::collections::HashMap<String, String> {
     result
 }
 
-pub fn parse(content: &str) -> Result<Vec<M3uChannel>, M3uError> {
+fn nonempty(s: String) -> Option<String> {
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
+/// True when the playlist is actually an Enigma2 / Gigablue / Dreambox
+/// `userbouquet` export — these use `#SERVICE` / `#NAME` / `#DESCRIPTION`
+/// markers and never parse as an m3u. Providers hand one out when a
+/// `get.php` URL carries `type=gigablue` (or `dreambox`).
+fn looks_like_enigma2(content: &str) -> bool {
+    for raw in content.split(['\n', '\r']) {
+        let line = raw.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if line.starts_with("#EXTM3U") || line.starts_with("#EXTINF") {
+            return false;
+        }
+        if line.starts_with("#SERVICE") || line.starts_with("#NAME") {
+            return true;
+        }
+        // First meaningful line is something else entirely — not an m3u,
+        // but not recognizably Enigma2 either; let the normal parser fail
+        // with `NoChannels` instead of misreporting the format.
+        return false;
+    }
+    false
+}
+
+/// Parses an m3u/m3u8 playlist, returning every entry plus the `#EXTM3U`
+/// header's embedded EPG URL (`url-tvg` / `x-tvg-url`), when present.
+pub fn parse_with_header(content: &str) -> Result<ParseResult, M3uError> {
     if content.is_empty() {
         return Err(M3uError::Empty);
+    }
+    if looks_like_enigma2(content) {
+        return Err(M3uError::Enigma2Bouquet);
     }
     let text = content.replace("\r\n", "\n").replace('\r', "\n");
     let lines: Vec<&str> = text.split('\n').collect();
     let mut out = Vec::new();
+    let mut epg_url: Option<String> = None;
     let mut pending_name: Option<String> = None;
     let mut pending_logo = String::new();
     let mut pending_group = String::new();
     let mut pending_tvg_id = String::new();
     let mut pending_tvg_name = String::new();
+    let mut pending_type = String::new();
 
     for raw in lines {
         let line = raw.trim();
@@ -83,6 +138,14 @@ pub fn parse(content: &str) -> Result<Vec<M3uChannel>, M3uError> {
             continue;
         }
         if line.starts_with("#EXTM3U") {
+            if epg_url.is_none() {
+                let attrs = parse_attrs(line);
+                epg_url = attrs
+                    .get("url-tvg")
+                    .or_else(|| attrs.get("x-tvg-url"))
+                    .cloned()
+                    .and_then(nonempty);
+            }
             continue;
         }
         if let Some(rest) = line.strip_prefix("#EXTINF") {
@@ -97,6 +160,7 @@ pub fn parse(content: &str) -> Result<Vec<M3uChannel>, M3uError> {
             pending_tvg_name = attrs.get("tvg-name").cloned().unwrap_or_default();
             pending_logo = attrs.get("tvg-logo").cloned().unwrap_or_default();
             pending_group = attrs.get("group-title").cloned().unwrap_or_default();
+            pending_type = attrs.get("type").cloned().unwrap_or_default();
             pending_name = Some(if !name_part.is_empty() {
                 name_part.to_string()
             } else if !pending_tvg_name.is_empty() {
@@ -124,18 +188,29 @@ pub fn parse(content: &str) -> Result<Vec<M3uChannel>, M3uError> {
             group: pending_group.clone(),
             tvg_id: pending_tvg_id.clone(),
             tvg_name: pending_tvg_name.clone(),
+            entry_type: nonempty(pending_type.clone()),
         });
         pending_name = None;
         pending_logo.clear();
         pending_group.clear();
         pending_tvg_id.clear();
         pending_tvg_name.clear();
+        pending_type.clear();
     }
 
     if out.is_empty() {
         return Err(M3uError::NoChannels);
     }
-    Ok(out)
+    Ok(ParseResult {
+        channels: out,
+        epg_url,
+    })
+}
+
+/// Parses an m3u/m3u8 playlist into its channel list. Thin wrapper over
+/// [`parse_with_header`] for callers that don't need the EPG URL.
+pub fn parse(content: &str) -> Result<Vec<M3uChannel>, M3uError> {
+    parse_with_header(content).map(|r| r.channels)
 }
 
 #[cfg(test)]
@@ -152,5 +227,74 @@ http://stream.example/live
         assert_eq!(channels.len(), 1);
         assert_eq!(channels[0].name, "News HD");
         assert_eq!(channels[0].group, "News");
+    }
+
+    #[test]
+    fn parses_header_epg_url_tvg() {
+        let content = r#"#EXTM3U url-tvg="http://epg.example/guide.xml.gz"
+#EXTINF:-1,Channel 1
+http://stream.example/1
+"#;
+        let result = parse_with_header(content).unwrap();
+        assert_eq!(
+            result.epg_url.as_deref(),
+            Some("http://epg.example/guide.xml.gz")
+        );
+        assert_eq!(result.channels.len(), 1);
+    }
+
+    #[test]
+    fn parses_header_epg_x_tvg_url() {
+        let content = r#"#EXTM3U x-tvg-url="http://epg.example/x.xml"
+#EXTINF:-1,Channel 1
+http://stream.example/1
+"#;
+        let result = parse_with_header(content).unwrap();
+        assert_eq!(result.epg_url.as_deref(), Some("http://epg.example/x.xml"));
+    }
+
+    #[test]
+    fn no_header_epg_url_is_none() {
+        let content = r#"#EXTM3U
+#EXTINF:-1,Channel 1
+http://stream.example/1
+"#;
+        let result = parse_with_header(content).unwrap();
+        assert_eq!(result.epg_url, None);
+    }
+
+    #[test]
+    fn parses_type_attribute() {
+        let content = r#"#EXTM3U
+#EXTINF:-1 type="video" tvg-name="Movie",Some Movie
+http://stream.example/movie
+#EXTINF:-1,Channel 1
+http://stream.example/live
+"#;
+        let channels = parse(content).unwrap();
+        assert_eq!(channels[0].entry_type.as_deref(), Some("video"));
+        assert_eq!(channels[1].entry_type, None);
+    }
+
+    #[test]
+    fn rejects_empty_playlist() {
+        let err = parse("").unwrap_err();
+        assert!(err.to_string().contains("empty") || err.to_string().contains("Empty"));
+    }
+
+    #[test]
+    fn detects_enigma2_bouquet() {
+        let content = "#NAME Sports\n#SERVICE 1:0:1:0:0:0:0:0:0:0:http://x.example/1:Channel\n";
+        let err = parse(content).unwrap_err();
+        assert!(matches!(err, M3uError::Enigma2Bouquet));
+    }
+
+    #[test]
+    fn does_not_misdetect_normal_playlist_as_enigma2() {
+        let content = r#"#EXTM3U
+#EXTINF:-1,Channel 1
+http://stream.example/1
+"#;
+        assert!(parse(content).is_ok());
     }
 }

@@ -1,10 +1,11 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type {
-  CatalogPortal,
-  DeepRefRecord,
-  PendingDeepRefRow,
-  PortalStatus,
-  RegionGuess,
+import {
+  dedupeDeepRefPortalHits,
+  type CatalogPortal,
+  type DeepRefRecord,
+  type PendingDeepRefRow,
+  type PortalStatus,
+  type RegionGuess,
 } from './types'
 
 /** Service-role client — server / Inngest only. Never expose to the browser. */
@@ -167,7 +168,8 @@ export async function upsertScrapeDeepRef(
     .eq('deep_ref_id', deepRefId)
   if (delErr) throw delErr
 
-  for (const hit of ref.portals ?? []) {
+  // DB unique is (deep_ref_id, url, username); extract may emit type/output variants.
+  for (const hit of dedupeDeepRefPortalHits(ref.portals ?? [])) {
     let portalId: string | null = null
     let wasExisting = false
 

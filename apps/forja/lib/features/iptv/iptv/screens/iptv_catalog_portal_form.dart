@@ -557,6 +557,16 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     });
   }
 
+  Future<void> _pickPlaylistFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['m3u', 'm3u8'],
+    );
+    final path = result?.files.single.path;
+    if (path == null || !mounted) return;
+    setState(() => _urlCtrl.text = Uri.file(path).toString());
+  }
+
   void _cancel() {
     if (_addSucceeded) {
       Navigator.of(context).pop();
@@ -952,6 +962,19 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                                     : 'http://portal.example.com:8080',
                                             focusNode: _urlFocus,
                                             dialogIndex: urlIndex,
+                                            suffix: _platform ==
+                                                    IptvPortalPlatform.m3u
+                                                ? ForjaPlainIcon(
+                                                    icon: Icons
+                                                        .folder_open_rounded,
+                                                    tooltip:
+                                                        'Choose local file',
+                                                    color: IptvShellStyle
+                                                        .iconMuted,
+                                                    size: 20,
+                                                    onTap: _pickPlaylistFile,
+                                                  )
+                                                : null,
                                           ),
                                           if (_platform !=
                                               IptvPortalPlatform.m3u) ...[
@@ -965,10 +988,28 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                               hint: _platform ==
                                                       IptvPortalPlatform
                                                           .stalker
-                                                  ? '00:1A:79:XX:XX:XX'
+                                                  ? '00:1A:79:XX:XX:XX (MAG OUI)'
                                                   : 'username',
                                               focusNode: _userFocus,
                                               dialogIndex: userIndex,
+                                              suffix: _platform ==
+                                                      IptvPortalPlatform
+                                                          .stalker
+                                                  ? ForjaPlainIcon(
+                                                      icon: Icons
+                                                          .autorenew_rounded,
+                                                      tooltip:
+                                                          'Generate MAC',
+                                                      color: IptvShellStyle
+                                                          .iconMuted,
+                                                      size: 20,
+                                                      onTap: () => setState(
+                                                        () => _userCtrl.text =
+                                                            StalkerMac
+                                                                .generate(),
+                                                      ),
+                                                    )
+                                                  : null,
                                             ),
                                             SizedBox(height: gapBetweenFields),
                                             _portalField(

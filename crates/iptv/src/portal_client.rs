@@ -1,6 +1,6 @@
 //! Unified IPTV portal request — dispatches by `platform` (xtream | m3u | stalker).
 
-use serde_json::{json, Value};
+use serde_json::Value;
 
 /// Async entry for engine jobs.
 pub async fn request_json_async(request_json: &str) -> String {
@@ -26,6 +26,7 @@ fn extract_platform(request_json: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn defaults_xtream() {

@@ -39,6 +39,47 @@ export type DeepRefPortalHit = {
   allowedOutputs?: string | null
 }
 
+/** Matches iptv_scrape_deep_ref_portals unique (deep_ref_id, url, username). */
+export function deepRefPortalHitKey(h: DeepRefPortalHit): string {
+  return `${h.url}|${h.username}`.toLowerCase()
+}
+
+/** Collapse type/output/platform variants; keep richest row for DB unique. */
+export function dedupeDeepRefPortalHits(
+  hits: DeepRefPortalHit[],
+): DeepRefPortalHit[] {
+  const acc = new Map<string, DeepRefPortalHit>()
+  for (const hit of hits) {
+    const key = deepRefPortalHitKey(hit)
+    const prev = acc.get(key)
+    if (!prev) {
+      acc.set(key, hit)
+      continue
+    }
+    acc.set(key, {
+      ...prev,
+      platform: prev.platform || hit.platform,
+      type: prev.type || hit.type,
+      output: prev.output || hit.output,
+      password:
+        (hit.password?.length ?? 0) > (prev.password?.length ?? 0)
+          ? hit.password
+          : prev.password,
+      expiry: prev.expiry ?? hit.expiry ?? null,
+      maxConnections: prev.maxConnections ?? hit.maxConnections ?? null,
+      timezone: prev.timezone ?? hit.timezone ?? null,
+      regionPrimary: prev.regionPrimary ?? hit.regionPrimary,
+      regionTags: prev.regionTags?.length ? prev.regionTags : hit.regionTags,
+      regionConfidence:
+        (prev.regionConfidence ?? 0) > 0
+          ? prev.regionConfidence
+          : hit.regionConfidence,
+      allowedOutputs: prev.allowedOutputs ?? hit.allowedOutputs ?? null,
+    })
+  }
+  return [...acc.values()]
+}
+
 /**
  * One Reddit find: base64 (if any) + paste.sh URL (if any).
  * Never two rows for the same find.

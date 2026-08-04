@@ -8,7 +8,11 @@ import type {
   DeepRefRecord,
   PendingDeepRefRow,
 } from './types'
-import { portalKey } from './types'
+import {
+  deepRefPortalHitKey,
+  dedupeDeepRefPortalHits,
+  portalKey,
+} from './types'
 
 const OAUTH_UA = 'Forja/1.3.6 (by /u/ForjaApp)'
 const SCRAPE_UA =
@@ -295,34 +299,37 @@ async function addExtracted(
   maxResults: number,
   postId?: string,
 ): Promise<DeepRefPortalHit[]> {
-  const hits: DeepRefPortalHit[] = []
-  const seenHit = new Set<string>()
+  const hitAcc = new Map<string, DeepRefPortalHit>()
   const { portals: extracted } = await extractPortalsHybrid(
     text,
     source,
     extractPortals,
   )
   for (const p of extracted) {
-    const hitKey =
-      `${p.platform}|${p.url}|${p.username}|${p.type}|${p.output}`.toLowerCase()
-    if (!seenHit.has(hitKey)) {
-      seenHit.add(hitKey)
-      hits.push({
-        platform: p.platform,
-        type: p.type,
-        output: p.output,
-        url: p.url,
-        username: p.username,
-        password: p.password,
-        expiry: p.expiry ?? null,
-        maxConnections: p.maxConnections ?? null,
-        timezone: p.timezone ?? null,
-        regionPrimary: p.regionPrimary,
-        regionTags: p.regionTags,
-        regionConfidence: p.regionConfidence,
-        allowedOutputs: p.allowedOutputs ?? null,
-      })
+    const incoming: DeepRefPortalHit = {
+      platform: p.platform,
+      type: p.type,
+      output: p.output,
+      url: p.url,
+      username: p.username,
+      password: p.password,
+      expiry: p.expiry ?? null,
+      maxConnections: p.maxConnections ?? null,
+      timezone: p.timezone ?? null,
+      regionPrimary: p.regionPrimary,
+      regionTags: p.regionTags,
+      regionConfidence: p.regionConfidence,
+      allowedOutputs: p.allowedOutputs ?? null,
     }
+    // Match DB unique (deep_ref_id, url, username) — type/output variants collapse.
+    const hitKey = deepRefPortalHitKey(incoming)
+    const prevHit = hitAcc.get(hitKey)
+    hitAcc.set(
+      hitKey,
+      prevHit
+        ? dedupeDeepRefPortalHits([prevHit, incoming])[0]!
+        : incoming,
+    )
     // Pool map: every platform that can become a catalog row.
     // m3u playlist URLs use sentinel `__m3u__` + empty password (matches app).
     const isM3uPlaylist =
@@ -369,7 +376,7 @@ async function addExtracted(
       })
     }
   }
-  return hits
+  return [...hitAcc.values()]
 }
 
 /** Pending paste fetch — deep ref (base64+paste_url) already saved. */

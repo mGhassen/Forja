@@ -1,4 +1,12 @@
 //! Stalker / Ministra portal client — handshake → catalog → create_link.
+//!
+//! Mirrors the shape of Lume's Swift `StalkerClient`: candidate middleware
+//! endpoints are tried in order until one handshakes, the winning
+//! (endpoint, token) pair is cached per `portal_origin|mac` for the life of
+//! the process (catalog sync issues many separate `request_json` calls —
+//! login / categories / streams / create_link — and re-handshaking every
+//! one would be both slow and rude to the portal), and a 401/403 clears the
+//! cache and re-handshakes once before failing the request.
 
 use crate::xtream::{
     merge_orphan_categories, parse_section, ParsedCategory, ParsedSeriesEpisode, XtreamSection,
@@ -6,10 +14,26 @@ use crate::xtream::{
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Duration;
+use tokio::sync::RwLock;
+use tokio::task::JoinSet;
 
 const UA: &str = "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3";
 const X_UA: &str = "Model: MAG250; Link: WiFi";
+
+/// Ordered-list pages fetched concurrently during a VOD/series catalog
+/// walk. Portals serve a fixed ~14-item page, so a large catalog is
+/// hundreds to thousands of ~1-2s requests — only parallelism keeps that
+/// inside a usable sync duration. Empirically portals tolerate ~8 parallel
+/// middleware requests and start 503-rejecting above ~10; 6 leaves
+/// headroom.
+const WALK_CONCURRENCY: usize = 6;
+
+/// Safety valve so a portal reporting a bogus `total_items` (or none at
+/// all) can't page forever.
+const MAX_WALK_PAGES: u32 = 2000;
 
 #[derive(Debug, Deserialize)]
 struct StalkerRequest {
@@ -35,12 +59,44 @@ struct StalkerRequest {
     timeout_secs: u64,
 }
 
+/// A successful handshake: the middleware endpoint that answered and the
+/// bearer token it issued.
+#[derive(Debug, Clone)]
+struct Endpoint {
+    url: String,
+    token: String,
+}
+
+/// In-memory session cache keyed by `portal_origin|mac`, shared by every
+/// `Session` in this process. A handshake pins both the winning endpoint
+/// path (`portal.php` vs `server/load.php` vs `stalker_portal/...`) and the
+/// bearer token; both are reused across the separate login / catalog /
+/// streams / create_link calls a single sync issues. Tokens are
+/// session-scoped and intentionally not persisted to disk — they expire,
+/// and re-handshaking is cheap.
+static SESSION_CACHE: LazyLock<Mutex<HashMap<String, Endpoint>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+#[derive(Clone)]
 struct Session {
-    portal_url: String,
+    /// `scheme://host:port` — no path.
+    origin: String,
+    /// `scheme://host:port/c/` — the `Referer` portals expect.
+    referer: String,
     mac: String,
     serial: String,
-    token: String,
     client: reqwest::Client,
+    /// `origin|mac` — the session cache key.
+    cache_key: String,
+    /// Candidate middleware paths, ordered by how the user pasted the URL.
+    candidate_paths: Arc<Vec<String>>,
+    endpoint: Arc<RwLock<Option<Endpoint>>>,
+}
+
+struct OrderedPage {
+    items: Vec<XtreamStreamRow>,
+    total: Option<u64>,
+    page_size: u32,
 }
 
 pub fn request_json(request_json: &str) -> String {
@@ -70,7 +126,7 @@ async fn handle(request_json: &str) -> Result<Value, String> {
     } else {
         req.timeout_secs.clamp(1, 180)
     });
-    let mut session = Session::connect(&req.url, &req.username, &req.password, timeout).await?;
+    let session = Session::connect(&req.url, &req.username, &req.password, timeout).await?;
 
     match req.action.as_str() {
         "login" => session.login().await,
@@ -94,7 +150,7 @@ impl Session {
         serial: &str,
         timeout: Duration,
     ) -> Result<Self, String> {
-        let portal_url = normalize_portal_url(url)?;
+        let (origin, pasted_path) = split_origin_and_path(url)?;
         let mac = normalize_mac(mac)?;
         let serial = if serial.trim().is_empty() {
             derive_serial(&mac)
@@ -107,14 +163,18 @@ impl Session {
             .cookie_store(true)
             .build()
             .map_err(|e| e.to_string())?;
-        let mut session = Self {
-            portal_url,
+        let cache_key = format!("{origin}|{mac}");
+        let session = Self {
+            referer: format!("{origin}/c/"),
+            origin,
             mac,
             serial,
-            token: String::new(),
             client,
+            cache_key,
+            candidate_paths: Arc::new(candidate_paths(&pasted_path)),
+            endpoint: Arc::new(RwLock::new(None)),
         };
-        session.handshake(timeout).await?;
+        session.ensure_session(timeout, false).await?;
         Ok(session)
     }
 
@@ -125,41 +185,131 @@ impl Session {
         )
     }
 
-    fn headers(&self) -> reqwest::header::HeaderMap {
-        let mut h = reqwest::header::HeaderMap::new();
-        h.insert(
-            reqwest::header::USER_AGENT,
-            UA.parse().unwrap_or_else(|_| reqwest::header::HeaderValue::from_static("MAG250")),
-        );
-        h.insert(
-            reqwest::header::HeaderName::from_static("x-user-agent"),
-            X_UA.parse().unwrap_or_else(|_| reqwest::header::HeaderValue::from_static("MAG250")),
-        );
-        if let Ok(v) = self.cookie_header().parse() {
-            h.insert(reqwest::header::COOKIE, v);
-        }
-        if !self.token.is_empty() {
-            if let Ok(v) = format!("Bearer {}", self.token).parse() {
-                h.insert(reqwest::header::AUTHORIZATION, v);
+    // ── Session / handshake ────────────────────────────────────────────
+
+    /// Returns the cached (endpoint, token), handshaking if none is cached
+    /// (or `force_refresh` discards one first — used after a 401/403).
+    async fn ensure_session(&self, timeout: Duration, force_refresh: bool) -> Result<Endpoint, String> {
+        if !force_refresh {
+            if let Some(ep) = self.cached_endpoint().await {
+                return Ok(ep);
             }
         }
-        h
+        self.clear_cached_endpoint();
+        let ep = self.handshake(timeout).await?;
+        self.store_endpoint(ep.clone()).await;
+        Ok(ep)
     }
 
-    async fn get_js(&self, query: &str, timeout: Duration) -> Result<Value, String> {
+    async fn cached_endpoint(&self) -> Option<Endpoint> {
+        if let Some(ep) = self.endpoint.read().await.clone() {
+            return Some(ep);
+        }
+        let global = SESSION_CACHE.lock().unwrap().get(&self.cache_key).cloned();
+        if let Some(ep) = &global {
+            *self.endpoint.write().await = Some(ep.clone());
+        }
+        global
+    }
+
+    fn clear_cached_endpoint(&self) {
+        SESSION_CACHE.lock().unwrap().remove(&self.cache_key);
+    }
+
+    async fn store_endpoint(&self, ep: Endpoint) {
+        *self.endpoint.write().await = Some(ep.clone());
+        SESSION_CACHE.lock().unwrap().insert(self.cache_key.clone(), ep);
+    }
+
+    /// Handshakes against each candidate endpoint in order until one
+    /// returns a token, then primes the session with `get_profile` (some
+    /// portals only activate the token once the profile is fetched).
+    async fn handshake(&self, timeout: Duration) -> Result<Endpoint, String> {
+        let mut last_err = "handshake_failed".to_string();
+        for path in self.candidate_paths.iter() {
+            if utils::engine_cancel::is_requested() {
+                return Err(utils::engine_cancel::cancelled_message().into());
+            }
+            let endpoint_url = format!("{}{path}", self.origin);
+            match self
+                .perform_get(
+                    &endpoint_url,
+                    "type=stb&action=handshake&token=&JsHttpRequest=1-xml",
+                    None,
+                    timeout,
+                )
+                .await
+            {
+                Ok(js) => {
+                    let token = js
+                        .get("token")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if token.is_empty() {
+                        last_err = "handshake_failed".into();
+                        continue;
+                    }
+                    // Prime the profile; ignore failures — many portals
+                    // don't require it and some return a sparse profile
+                    // that still authorizes.
+                    let _ = self
+                        .perform_get(
+                            &endpoint_url,
+                            "type=stb&action=get_profile&JsHttpRequest=1-xml",
+                            Some(&token),
+                            timeout,
+                        )
+                        .await;
+                    return Ok(Endpoint {
+                        url: endpoint_url,
+                        token,
+                    });
+                }
+                Err(e) => {
+                    last_err = e;
+                    continue;
+                }
+            }
+        }
+        Err(last_err)
+    }
+
+    // ── Request plumbing ────────────────────────────────────────────────
+
+    /// A single request attempt against a resolved endpoint. Sets the MAC
+    /// cookie, bearer token and MAG headers the portal requires.
+    /// `auth_failed` on a 401/403 lets the caller decide whether to
+    /// re-handshake.
+    async fn perform_get(
+        &self,
+        endpoint_url: &str,
+        query: &str,
+        token: Option<&str>,
+        timeout: Duration,
+    ) -> Result<Value, String> {
         if utils::engine_cancel::is_requested() {
             return Err(utils::engine_cancel::cancelled_message().into());
         }
-        let url = format!("{}?{}&JsHttpRequest=1-xml", self.portal_url, query);
-        let resp = self
+        let url = format!("{endpoint_url}?{query}");
+        let mut req = self
             .client
             .get(&url)
-            .headers(self.headers())
             .timeout(timeout)
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
+            .header("User-Agent", UA)
+            .header("X-User-Agent", X_UA)
+            .header("Referer", self.referer.as_str())
+            .header("Cookie", self.cookie_header());
+        if let Some(t) = token {
+            if !t.is_empty() {
+                req = req.header("Authorization", format!("Bearer {t}"));
+            }
+        }
+        let resp = req.send().await.map_err(|e| e.to_string())?;
         let status = resp.status().as_u16();
+        if status == 401 || status == 403 {
+            return Err("auth_failed".into());
+        }
         if !(200..300).contains(&status) {
             return Err(format!("HTTP {status}"));
         }
@@ -168,23 +318,22 @@ impl Session {
         Ok(root.get("js").cloned().unwrap_or(root))
     }
 
-    async fn handshake(&mut self, timeout: Duration) -> Result<(), String> {
-        let js = self
-            .get_js("type=stb&action=handshake", timeout)
-            .await?;
-        let token = js
-            .get("token")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-        if token.is_empty() {
-            return Err("handshake_failed".into());
+    /// Issues an authorized request, retrying once with a fresh handshake
+    /// on a 401/403.
+    async fn get_js(&self, query: &str, timeout: Duration) -> Result<Value, String> {
+        let ep = self.ensure_session(timeout, false).await?;
+        match self.perform_get(&ep.url, query, Some(&ep.token), timeout).await {
+            Err(e) if e == "auth_failed" => {
+                let ep = self.ensure_session(timeout, true).await?;
+                self.perform_get(&ep.url, query, Some(&ep.token), timeout).await
+            }
+            other => other,
         }
-        self.token = token;
-        Ok(())
     }
 
-    async fn login(&mut self) -> Result<Value, String> {
+    // MARK: - Profile / login
+
+    async fn login(&self) -> Result<Value, String> {
         let timeout = Duration::from_secs(15);
         let sn = urlencoding::encode(&self.serial);
         let js = self
@@ -228,7 +377,9 @@ impl Session {
         }))
     }
 
-    async fn catalog(&mut self, section: &str, timeout: Duration) -> Result<Value, String> {
+    // MARK: - Catalog
+
+    async fn catalog(&self, section: &str, timeout: Duration) -> Result<Value, String> {
         let section = parse_section(section).ok_or_else(|| "invalid_section".to_string())?;
         let cats = self.fetch_categories(section, timeout).await?;
         let streams = self.fetch_all_streams(section, &cats, timeout).await?;
@@ -236,14 +387,14 @@ impl Session {
         Ok(json!({ "categories": cats, "streams": streams }))
     }
 
-    async fn categories_only(&mut self, section: &str, timeout: Duration) -> Result<Value, String> {
+    async fn categories_only(&self, section: &str, timeout: Duration) -> Result<Value, String> {
         let section = parse_section(section).ok_or_else(|| "invalid_section".to_string())?;
         let cats = self.fetch_categories(section, timeout).await?;
         Ok(json!({ "categories": cats }))
     }
 
     async fn streams(
-        &mut self,
+        &self,
         section: &str,
         category_id: &str,
         timeout: Duration,
@@ -260,7 +411,7 @@ impl Session {
     }
 
     async fn fetch_categories(
-        &mut self,
+        &self,
         section: XtreamSection,
         timeout: Duration,
     ) -> Result<Vec<ParsedCategory>, String> {
@@ -276,7 +427,7 @@ impl Session {
     }
 
     async fn fetch_all_streams(
-        &mut self,
+        &self,
         section: XtreamSection,
         cats: &[ParsedCategory],
         timeout: Duration,
@@ -284,14 +435,11 @@ impl Session {
         match section {
             XtreamSection::Live => {
                 // Prefer get_all_channels when available.
-                match self.get_js("type=itv&action=get_all_channels", timeout).await {
-                    Ok(js) => {
-                        let rows = parse_stalker_streams(&js, section);
-                        if !rows.is_empty() {
-                            return Ok(rows);
-                        }
+                if let Ok(js) = self.get_js("type=itv&action=get_all_channels", timeout).await {
+                    let rows = parse_stalker_streams(&js, section);
+                    if !rows.is_empty() {
+                        return Ok(rows);
                     }
-                    Err(_) => {}
                 }
                 let mut all = Vec::new();
                 for c in cats {
@@ -319,8 +467,12 @@ impl Session {
         }
     }
 
+    /// Fetches every page of a `get_ordered_list` (used by itv/vod/series
+    /// alike). The first page is fetched alone — it validates the session
+    /// and reports the totals that size the walk — then the remaining
+    /// pages are fetched `WALK_CONCURRENCY` at a time.
     async fn fetch_ordered_list(
-        &mut self,
+        &self,
         section: XtreamSection,
         category_id: &str,
         timeout: Duration,
@@ -330,41 +482,171 @@ impl Session {
             XtreamSection::Vod => ("vod", "category"),
             XtreamSection::Series => ("series", "category"),
         };
-        let mut out = Vec::new();
-        let mut page = 1u32;
-        loop {
-            let q = format!(
-                "type={ty}&action=get_ordered_list&{cat_key}={}&force_ch_link_check=&fav=0&sortby=number&hd=0&p={page}",
-                urlencoding::encode(category_id)
-            );
-            let js = self.get_js(&q, timeout).await?;
-            let rows = parse_stalker_streams(&js, section);
-            let total = js
-                .get("total_items")
-                .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())))
-                .unwrap_or(0);
-            let max_page = js
-                .get("max_page_items")
-                .and_then(|v| v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok())))
-                .unwrap_or(0);
-            out.extend(rows);
-            if max_page == 0 || out.len() as u64 >= total || page >= 50 {
+        let first = self.fetch_ordered_page(ty, cat_key, category_id, 1, timeout).await?;
+        if first.items.is_empty() {
+            return Ok(first.items);
+        }
+        let page_size = if first.page_size > 0 { first.page_size } else { 14 };
+
+        let Some(total) = first.total else {
+            // No reported total (rare): page serially until a short page.
+            return self
+                .sequential_walk_tail(ty, cat_key, category_id, page_size, first.items, timeout)
+                .await;
+        };
+
+        let last_page = ((total as f64) / (page_size as f64)).ceil().max(1.0) as u32;
+        let last_page = last_page.min(MAX_WALK_PAGES);
+        if last_page <= 1 {
+            return Ok(first.items);
+        }
+        let tail = self
+            .parallel_walk_tail(ty, cat_key, category_id, 2, last_page, timeout)
+            .await?;
+        let mut out = first.items;
+        out.extend(tail);
+        Ok(out)
+    }
+
+    async fn fetch_ordered_page(
+        &self,
+        ty: &str,
+        cat_key: &str,
+        category_id: &str,
+        page: u32,
+        timeout: Duration,
+    ) -> Result<OrderedPage, String> {
+        let q = format!(
+            "type={ty}&action=get_ordered_list&{cat_key}={}&force_ch_link_check=&fav=0&sortby=number&hd=0&p={page}",
+            urlencoding::encode(category_id)
+        );
+        let js = self.get_js(&q, timeout).await?;
+        let section = match ty {
+            "itv" => XtreamSection::Live,
+            "vod" => XtreamSection::Vod,
+            _ => XtreamSection::Series,
+        };
+        let items = parse_stalker_streams(&js, section);
+        let total = js.get("total_items").and_then(|v| {
+            v.as_u64()
+                .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+        });
+        let page_size = js
+            .get("max_page_items")
+            .and_then(|v| {
+                v.as_u64()
+                    .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+            })
+            .unwrap_or(0) as u32;
+        Ok(OrderedPage {
+            items,
+            total,
+            page_size,
+        })
+    }
+
+    /// Fetches pages `first_page..=last_page`, `WALK_CONCURRENCY` at a
+    /// time, and reassembles them in page order. A page failing mid-walk
+    /// (after `get_js`'s own auth-retry) doesn't discard pages already
+    /// fetched — a large catalog is hundreds of requests deep by then — it
+    /// just leaves a gap, matching Lume's "keep what we got" behavior.
+    async fn parallel_walk_tail(
+        &self,
+        ty: &str,
+        cat_key: &str,
+        category_id: &str,
+        first_page: u32,
+        last_page: u32,
+        timeout: Duration,
+    ) -> Result<Vec<XtreamStreamRow>, String> {
+        fn spawn_page(
+            set: &mut JoinSet<(u32, Result<OrderedPage, String>)>,
+            session: &Session,
+            ty: &str,
+            cat_key: &str,
+            category_id: &str,
+            page: u32,
+            timeout: Duration,
+        ) {
+            let session = session.clone();
+            let ty = ty.to_string();
+            let cat_key = cat_key.to_string();
+            let category_id = category_id.to_string();
+            set.spawn(async move {
+                let r = session
+                    .fetch_ordered_page(&ty, &cat_key, &category_id, page, timeout)
+                    .await;
+                (page, r)
+            });
+        }
+
+        let mut set: JoinSet<(u32, Result<OrderedPage, String>)> = JoinSet::new();
+        let mut next_page = first_page;
+        let initial = WALK_CONCURRENCY.min((last_page - first_page + 1) as usize);
+        for _ in 0..initial {
+            spawn_page(&mut set, self, ty, cat_key, category_id, next_page, timeout);
+            next_page += 1;
+        }
+
+        let mut pages_out: BTreeMap<u32, Vec<XtreamStreamRow>> = BTreeMap::new();
+        while let Some(joined) = set.join_next().await {
+            if utils::engine_cancel::is_requested() {
+                set.abort_all();
+                return Err(utils::engine_cancel::cancelled_message().into());
+            }
+            if let Ok((page, Ok(result))) = joined {
+                pages_out.insert(page, result.items);
+            }
+            // A page error (network / join panic) just leaves that page's
+            // slice out of the walk instead of failing the whole catalog.
+            if next_page <= last_page {
+                spawn_page(&mut set, self, ty, cat_key, category_id, next_page, timeout);
+                next_page += 1;
+            }
+        }
+        Ok(pages_out.into_values().flatten().collect())
+    }
+
+    /// Serial page walk used when the portal doesn't report `total_items`,
+    /// so the end of the list is only discoverable by hitting a short page.
+    async fn sequential_walk_tail(
+        &self,
+        ty: &str,
+        cat_key: &str,
+        category_id: &str,
+        page_size: u32,
+        seed: Vec<XtreamStreamRow>,
+        timeout: Duration,
+    ) -> Result<Vec<XtreamStreamRow>, String> {
+        let mut all = seed;
+        let mut page = 2u32;
+        while page <= MAX_WALK_PAGES {
+            if utils::engine_cancel::is_requested() {
+                return Err(utils::engine_cancel::cancelled_message().into());
+            }
+            let result = match self
+                .fetch_ordered_page(ty, cat_key, category_id, page, timeout)
+                .await
+            {
+                Ok(r) => r,
+                Err(_) => break,
+            };
+            let got = result.items.len() as u32;
+            all.extend(result.items);
+            if got < page_size.max(1) {
                 break;
             }
             page += 1;
         }
-        Ok(out)
+        Ok(all)
     }
 
-    async fn series_episodes(
-        &mut self,
-        series_id: &str,
-        timeout: Duration,
-    ) -> Result<Value, String> {
+    // MARK: - Series episodes
+
+    async fn series_episodes(&self, series_id: &str, timeout: Duration) -> Result<Value, String> {
         if series_id.is_empty() {
             return Ok(json!({ "episodes": [] }));
         }
-        // series get_ordered_list with movie_id often returns seasons; try get_ordered_list seasons.
         let q = format!(
             "type=series&action=get_ordered_list&movie_id={}&season_id=0&episode_id=0&p=1",
             urlencoding::encode(series_id)
@@ -374,12 +656,9 @@ impl Session {
         Ok(json!({ "episodes": episodes }))
     }
 
-    async fn create_link(
-        &mut self,
-        cmd: &str,
-        section: &str,
-        timeout: Duration,
-    ) -> Result<Value, String> {
+    // MARK: - Stream resolution
+
+    async fn create_link(&self, cmd: &str, section: &str, timeout: Duration) -> Result<Value, String> {
         if cmd.trim().is_empty() {
             return Err("empty_cmd".into());
         }
@@ -388,50 +667,84 @@ impl Session {
             XtreamSection::Vod => "vod",
             XtreamSection::Series => "series",
         };
-        let q = format!(
+        let mut q = format!(
             "type={ty}&action=create_link&cmd={}&series=&forced_storage=undefined&disable_ad=0&download=0",
             urlencoding::encode(cmd)
         );
+        for (k, v) in forwarded_query_items(cmd) {
+            q.push('&');
+            q.push_str(&urlencoding::encode(&k));
+            q.push('=');
+            q.push_str(&urlencoding::encode(&v));
+        }
         let js = self.get_js(&q, timeout).await?;
         let stream_url = extract_stream_url(&js, cmd);
         if stream_url.is_empty() {
             return Err("create_link_failed".into());
         }
+        if has_empty_stream_param(&stream_url) {
+            // The portal minted a link without a channel id — unplayable
+            // (405s). Fail here rather than letting every engine burn
+            // through it.
+            return Err("no_stream_url".into());
+        }
         Ok(json!({ "url": stream_url }))
     }
 }
 
-fn normalize_portal_url(url: &str) -> Result<String, String> {
-    let mut u = url.trim().trim_end_matches('/').to_string();
-    if u.is_empty() {
+// ── URL / endpoint helpers ───────────────────────────────────────────────
+
+/// Reduces a user-pasted portal URL to `scheme://host:port` plus the
+/// (lowercased) path they pasted — the path is only used as a hint for
+/// [`candidate_paths`], never dereferenced directly, since portals expose
+/// the API at a handful of well-known paths regardless of what page the
+/// user copied the URL from.
+fn split_origin_and_path(raw: &str) -> Result<(String, String), String> {
+    let mut s = raw.trim().to_string();
+    if s.is_empty() {
         return Err("empty url".into());
     }
-    if !u.contains("://") {
-        u = format!("http://{u}");
+    if !s.contains("://") {
+        s = format!("http://{s}");
     }
-    // Accept bare host, /c/, stalker_portal, or direct portal.php / load.php.
-    let lower = u.to_ascii_lowercase();
-    if lower.ends_with("portal.php") || lower.ends_with("load.php") {
-        return Ok(u);
+    let scheme_end = s.find("://").ok_or_else(|| "invalid_url".to_string())?;
+    let scheme = &s[..scheme_end];
+    let after_scheme = &s[scheme_end + 3..];
+    let path_start = after_scheme
+        .find(['/', '?', '#'])
+        .unwrap_or(after_scheme.len());
+    let host_port = after_scheme[..path_start].trim_end_matches('/');
+    if host_port.is_empty() {
+        return Err("invalid_url".into());
     }
-    if lower.contains("/stalker_portal") {
-        if lower.ends_with("/c") || lower.contains("/c/") {
-            // strip /c/... → stalker_portal base + server/load.php
-            if let Some(idx) = lower.find("/stalker_portal") {
-                let base = &u[..idx + "/stalker_portal".len()];
-                return Ok(format!("{base}/server/load.php"));
-            }
+    let rest = &after_scheme[path_start..];
+    let path_only = rest.split(['?', '#']).next().unwrap_or("");
+    let origin = format!("{scheme}://{host_port}");
+    Ok((origin, path_only.to_string()))
+}
+
+/// Candidate middleware endpoint paths, in the order the handshake should
+/// try them. If the pasted path already names an exact `portal.php` /
+/// `load.php` endpoint, that exact path is tried first; otherwise (or in
+/// addition), the standard Ministra layouts are tried in an order picked
+/// by whether the pasted path hints at a `/stalker_portal/` install.
+fn candidate_paths(pasted_path: &str) -> Vec<String> {
+    let lower = pasted_path.to_ascii_lowercase();
+    let mut out = Vec::new();
+    if !pasted_path.is_empty() && (lower.ends_with("portal.php") || lower.ends_with("load.php")) {
+        out.push(pasted_path.to_string());
+    }
+    let defaults: [&str; 3] = if lower.contains("stalker_portal") {
+        ["/stalker_portal/server/load.php", "/portal.php", "/server/load.php"]
+    } else {
+        ["/portal.php", "/server/load.php", "/stalker_portal/server/load.php"]
+    };
+    for p in defaults {
+        if !out.iter().any(|existing| existing.as_str() == p) {
+            out.push(p.to_string());
         }
-        return Ok(format!("{u}/server/load.php"));
     }
-    if lower.ends_with("/c") || lower.contains("/c/") {
-        let base = u
-            .trim_end_matches('/')
-            .trim_end_matches("/c")
-            .trim_end_matches("/C");
-        return Ok(format!("{base}/portal.php"));
-    }
-    Ok(format!("{u}/portal.php"))
+    out
 }
 
 fn normalize_mac(mac: &str) -> Result<String, String> {
@@ -460,6 +773,84 @@ fn derive_serial(mac: &str) -> String {
     let hex: String = mac.chars().filter(|c| c.is_ascii_hexdigit()).collect();
     format!("012{hex}N")
 }
+
+// ── create_link helpers ───────────────────────────────────────────────────
+
+/// Query parameters excluded when forwarding a direct-URL `cmd`'s query
+/// string onto `create_link` — the portal derives these itself (a stale
+/// `mac`/token by playback time), or they'd collide with `create_link`'s
+/// own request parameters.
+const EXCLUDED_FORWARD_PARAMS: [&str; 7] = [
+    "mac",
+    "play_token",
+    "token",
+    "type",
+    "action",
+    "cmd",
+    "jshttprequest",
+];
+
+/// Extracts a playable URL from a `create_link` `cmd` (or a raw cmd used
+/// as its own probe target). Portals commonly prefix the URL with an
+/// engine token (`ffmpeg `, `ffrt `, `rtp `) and may append params after a
+/// space, so the first `http(s)` token is taken rather than trusting the
+/// whole string.
+fn resolved_url_from_cmd(raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    let idx = trimmed.find("http://").or_else(|| trimmed.find("https://"))?;
+    let rest = &trimmed[idx..];
+    let url = rest.split_whitespace().next().unwrap_or(rest);
+    Some(url.to_string())
+}
+
+/// Query parameters embedded in a direct-URL `cmd`, re-exposed as
+/// top-level `create_link` parameters. Xtream-UI-style Stalker emulations
+/// hand out channel cmds that are full stream URLs
+/// (`ffmpeg http://host/play/live.php?mac=…&stream=933136&extension=ts&play_token=…`)
+/// and their `create_link` never parses the percent-encoded `cmd` it
+/// receives — it reads `stream` / `extension` from the request's own query
+/// string and answers with an empty `stream=` (an unplayable URL) when
+/// they're missing. Forwarding the embedded parameters satisfies those
+/// portals, while genuine Ministra portals resolve the full `cmd` and
+/// ignore the extras.
+fn forwarded_query_items(cmd: &str) -> Vec<(String, String)> {
+    let Some(url) = resolved_url_from_cmd(cmd) else {
+        return vec![];
+    };
+    if !(url.starts_with("http://") || url.starts_with("https://")) {
+        return vec![];
+    }
+    let Some(q_idx) = url.find('?') else {
+        return vec![];
+    };
+    let query = &url[q_idx + 1..];
+    let excluded: HashSet<&str> = EXCLUDED_FORWARD_PARAMS.into_iter().collect();
+    let mut out = Vec::new();
+    for pair in query.split('&') {
+        let Some((k, v)) = pair.split_once('=') else {
+            continue;
+        };
+        if excluded.contains(k.to_ascii_lowercase().as_str()) {
+            continue;
+        }
+        let key = urlencoding::decode(k).map(|c| c.into_owned()).unwrap_or_else(|_| k.to_string());
+        let value = urlencoding::decode(v).map(|c| c.into_owned()).unwrap_or_else(|_| v.to_string());
+        out.push((key, value));
+    }
+    out
+}
+
+/// True when a resolved stream URL carries an empty `stream=` query param
+/// — the portal minted a link without a channel id, which the server
+/// answers with HTTP 405.
+fn has_empty_stream_param(url: &str) -> bool {
+    let Some(idx) = url.find('?') else { return false };
+    url[idx + 1..]
+        .split('&')
+        .any(|pair| pair == "stream=" || pair.split_once('=') == Some(("stream", "")))
+}
+
+// ── Response parsing ───────────────────────────────────────────────────────
 
 fn parse_stalker_categories(js: &Value) -> Vec<ParsedCategory> {
     let arr = if let Some(a) = js.as_array() {
@@ -638,11 +1029,11 @@ fn extract_stream_url(js: &Value, fallback_cmd: &str) -> String {
             break;
         }
     }
-    // Some portals return "cmd URL" with space-separated options.
     if let Some(idx) = url.find("http://").or_else(|| url.find("https://")) {
         url = url[idx..].to_string();
     }
-    url
+    // Params after a space aren't part of the URL.
+    url.split_whitespace().next().unwrap_or("").to_string()
 }
 
 fn field_string(o: &serde_json::Map<String, Value>, key: &str) -> String {
@@ -668,18 +1059,15 @@ mod tests {
     }
 
     #[test]
-    fn normalize_portal_c_path() {
-        let u = normalize_portal_url("http://example.com:8080/c/").unwrap();
-        assert_eq!(u, "http://example.com:8080/portal.php");
+    fn extract_ffmpeg_cmd() {
+        let js = json!({ "cmd": "ffmpeg http://cdn/live.ts" });
+        assert_eq!(extract_stream_url(&js, ""), "http://cdn/live.ts");
     }
 
     #[test]
-    fn extract_ffmpeg_cmd() {
-        let js = json!({ "cmd": "ffmpeg http://cdn/live.ts" });
-        assert_eq!(
-            extract_stream_url(&js, ""),
-            "http://cdn/live.ts"
-        );
+    fn extract_cmd_drops_trailing_params_after_space() {
+        let js = json!({ "cmd": "ffmpeg http://cdn/live.ts extra=1" });
+        assert_eq!(extract_stream_url(&js, ""), "http://cdn/live.ts");
     }
 
     #[test]
@@ -691,5 +1079,99 @@ mod tests {
         let cats = parse_stalker_categories(&js);
         assert_eq!(cats.len(), 1);
         assert_eq!(cats[0].name, "News");
+    }
+
+    // ── candidate endpoint ordering ──────────────────────────────────
+
+    #[test]
+    fn split_origin_strips_path_and_query() {
+        let (origin, path) = split_origin_and_path("http://example.com:8080/c/?x=1").unwrap();
+        assert_eq!(origin, "http://example.com:8080");
+        assert_eq!(path, "/c/");
+    }
+
+    #[test]
+    fn split_origin_defaults_to_http_scheme() {
+        let (origin, _path) = split_origin_and_path("example.com:8080/c/").unwrap();
+        assert_eq!(origin, "http://example.com:8080");
+    }
+
+    #[test]
+    fn referer_is_origin_slash_c_slash() {
+        let (origin, _) = split_origin_and_path("http://example.com:8080/c/").unwrap();
+        assert_eq!(format!("{origin}/c/"), "http://example.com:8080/c/");
+    }
+
+    #[test]
+    fn candidate_paths_default_order() {
+        let paths = candidate_paths("/c/");
+        assert_eq!(
+            paths,
+            vec![
+                "/portal.php".to_string(),
+                "/server/load.php".to_string(),
+                "/stalker_portal/server/load.php".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn candidate_paths_stalker_portal_hint_reorders() {
+        let paths = candidate_paths("/stalker_portal/c/");
+        assert_eq!(
+            paths,
+            vec![
+                "/stalker_portal/server/load.php".to_string(),
+                "/portal.php".to_string(),
+                "/server/load.php".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn candidate_paths_exact_match_tried_first() {
+        let paths = candidate_paths("/custom/portal.php");
+        assert_eq!(paths[0], "/custom/portal.php");
+        assert_eq!(paths.len(), 4);
+    }
+
+    #[test]
+    fn candidate_paths_exact_load_php_match_tried_first() {
+        let paths = candidate_paths("/stalker_portal/server/load.php");
+        // Already equal to the first default — no duplicate entry.
+        assert_eq!(paths[0], "/stalker_portal/server/load.php");
+        assert_eq!(paths.len(), 3);
+    }
+
+    // ── create_link forwarding ────────────────────────────────────────
+
+    #[test]
+    fn forwards_non_excluded_query_items() {
+        let cmd = "ffmpeg http://host/play/live.php?mac=00:1A&stream=933136&extension=ts&play_token=xyz";
+        let items = forwarded_query_items(cmd);
+        assert_eq!(
+            items,
+            vec![
+                ("stream".to_string(), "933136".to_string()),
+                ("extension".to_string(), "ts".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn forwards_nothing_for_non_url_cmd() {
+        assert!(forwarded_query_items("533").is_empty());
+    }
+
+    #[test]
+    fn forwards_nothing_when_cmd_has_no_query() {
+        assert!(forwarded_query_items("ffmpeg http://host/live.ts").is_empty());
+    }
+
+    #[test]
+    fn detects_empty_stream_param() {
+        assert!(has_empty_stream_param("http://host/live.php?stream=&extension=ts"));
+        assert!(!has_empty_stream_param("http://host/live.php?stream=5"));
+        assert!(!has_empty_stream_param("http://host/live.php"));
     }
 }
