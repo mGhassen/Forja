@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
-import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:rust/rust.dart';
 
 /// Starts profile-activated engines. Idempotent - safe from post-splash,
@@ -48,13 +47,9 @@ class ProfileEngineWarm {
       }
 
       if (needs.nuvio) {
-        onStatus?.call('Refreshing Nuvio addons…');
-        debugPrint('[Init] Nuvio refresh');
-        unawaited(
-          NuvioService.instance.refreshAllInstalled().catchError((e) {
-            debugPrint('[Init] Nuvio refresh error (non-fatal): $e');
-          }),
-        );
+        // Lean list from cloud sync is enough at warm — fetch scrapers only
+        // when Settings / Sources actually opens Nuvio (not while on IPTV).
+        debugPrint('[Init] Nuvio defer hydrate to first Sources/Settings use');
       } else if (!needs.playSourceNuvio) {
         debugPrint('[Init] Nuvio skip (play source off)');
       } else {

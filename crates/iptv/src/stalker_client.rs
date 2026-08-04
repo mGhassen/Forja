@@ -5,8 +5,10 @@
 //! (endpoint, token) pair is cached per `portal_origin|mac` for the life of
 //! the process (catalog sync issues many separate `request_json` calls —
 //! login / categories / streams / create_link — and re-handshaking every
-//! one would be both slow and rude to the portal), and a 401/403 clears the
-//! cache and re-handshakes once before failing the request.
+//! one would be both slow and rude to the portal), a 401/403 clears the
+//! cache and re-handshakes once before failing the request, and transient
+//! gateway / transport failures (HTTP 5xx, timeouts, connection drops)
+//! retry with short backoff so flaky CDNs don't surface as a Reload prompt.
 
 use crate::xtream::{
     merge_orphan_categories, parse_section, ParsedCategory, ParsedSeriesEpisode, XtreamSection,
@@ -34,6 +36,15 @@ const WALK_CONCURRENCY: usize = 6;
 /// Safety valve so a portal reporting a bogus `total_items` (or none at
 /// all) can't page forever.
 const MAX_WALK_PAGES: u32 = 2000;
+
+/// Lume `StalkerClient.maxAttempts` — handshake and authorized requests
+/// retry this many times on retriable failures before surfacing the error.
+const TRANSIENT_MAX_ATTEMPTS: u32 = 3;
+
+/// Backoff after failed attempt 1 / 2 (ms) before the next try. Short on
+/// purpose: Cloudflare 520 / origin 502 usually recover in under a second,
+/// and the Flutter catalog open keeps its spinner across the whole wait.
+const TRANSIENT_BACKOFF_MS: [u64; 2] = [300, 800];
 
 #[derive(Debug, Deserialize)]
 struct StalkerRequest {
@@ -224,6 +235,8 @@ impl Session {
     /// Handshakes against each candidate endpoint in order until one
     /// returns a token, then primes the session with `get_profile` (some
     /// portals only activate the token once the profile is fetched).
+    /// Each path retries on transient 5xx / transport errors before the
+    /// next candidate is tried.
     async fn handshake(&self, timeout: Duration) -> Result<Endpoint, String> {
         let mut last_err = "handshake_failed".to_string();
         for path in self.candidate_paths.iter() {
@@ -231,44 +244,58 @@ impl Session {
                 return Err(utils::engine_cancel::cancelled_message().into());
             }
             let endpoint_url = format!("{}{path}", self.origin);
-            match self
-                .perform_get(
-                    &endpoint_url,
-                    "type=stb&action=handshake&token=&JsHttpRequest=1-xml",
-                    None,
-                    timeout,
-                )
-                .await
-            {
-                Ok(js) => {
-                    let token = js
-                        .get("token")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("")
-                        .to_string();
-                    if token.is_empty() {
-                        last_err = "handshake_failed".into();
-                        continue;
-                    }
-                    // Prime the profile; ignore failures — many portals
-                    // don't require it and some return a sparse profile
-                    // that still authorizes.
-                    let _ = self
-                        .perform_get(
-                            &endpoint_url,
-                            "type=stb&action=get_profile&JsHttpRequest=1-xml",
-                            Some(&token),
-                            timeout,
-                        )
-                        .await;
-                    return Ok(Endpoint {
-                        url: endpoint_url,
-                        token,
-                    });
+            let mut attempt = 0u32;
+            loop {
+                attempt += 1;
+                if utils::engine_cancel::is_requested() {
+                    return Err(utils::engine_cancel::cancelled_message().into());
                 }
-                Err(e) => {
-                    last_err = e;
-                    continue;
+                match self
+                    .perform_get(
+                        &endpoint_url,
+                        "type=stb&action=handshake&token=&JsHttpRequest=1-xml",
+                        None,
+                        timeout,
+                    )
+                    .await
+                {
+                    Ok(js) => {
+                        let token = js
+                            .get("token")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        if token.is_empty() {
+                            last_err = "handshake_failed".into();
+                            break;
+                        }
+                        // Prime the profile; ignore failures — many portals
+                        // don't require it and some return a sparse profile
+                        // that still authorizes.
+                        let _ = self
+                            .perform_get(
+                                &endpoint_url,
+                                "type=stb&action=get_profile&JsHttpRequest=1-xml",
+                                Some(&token),
+                                timeout,
+                            )
+                            .await;
+                        return Ok(Endpoint {
+                            url: endpoint_url,
+                            token,
+                        });
+                    }
+                    Err(e) => {
+                        last_err = e.clone();
+                        if is_retriable(&e) && attempt < TRANSIENT_MAX_ATTEMPTS {
+                            tokio::time::sleep(Duration::from_millis(
+                                transient_backoff_ms(attempt),
+                            ))
+                            .await;
+                            continue;
+                        }
+                        break;
+                    }
                 }
             }
         }
@@ -319,15 +346,30 @@ impl Session {
     }
 
     /// Issues an authorized request, retrying once with a fresh handshake
-    /// on a 401/403.
+    /// on a 401/403, and with short backoff on transient gateway / transport
+    /// errors (Lume `StalkerClient.request` parity).
     async fn get_js(&self, query: &str, timeout: Duration) -> Result<Value, String> {
-        let ep = self.ensure_session(timeout, false).await?;
-        match self.perform_get(&ep.url, query, Some(&ep.token), timeout).await {
-            Err(e) if e == "auth_failed" => {
-                let ep = self.ensure_session(timeout, true).await?;
-                self.perform_get(&ep.url, query, Some(&ep.token), timeout).await
+        let mut refreshed_auth = false;
+        let mut attempt = 0u32;
+        loop {
+            attempt += 1;
+            let ep = self.ensure_session(timeout, refreshed_auth).await?;
+            match self
+                .perform_get(&ep.url, query, Some(&ep.token), timeout)
+                .await
+            {
+                Ok(v) => return Ok(v),
+                Err(e) if e == "auth_failed" && !refreshed_auth => {
+                    refreshed_auth = true;
+                    continue;
+                }
+                Err(e) if is_retriable(&e) && attempt < TRANSIENT_MAX_ATTEMPTS => {
+                    tokio::time::sleep(Duration::from_millis(transient_backoff_ms(attempt)))
+                        .await;
+                    continue;
+                }
+                Err(e) => return Err(e),
             }
-            other => other,
         }
     }
 
@@ -774,6 +816,46 @@ fn derive_serial(mac: &str) -> String {
     format!("012{hex}N")
 }
 
+/// Milliseconds to sleep after a failed attempt before the next try.
+fn transient_backoff_ms(failed_attempt: u32) -> u64 {
+    let idx = (failed_attempt.saturating_sub(1) as usize).min(TRANSIENT_BACKOFF_MS.len() - 1);
+    TRANSIENT_BACKOFF_MS[idx]
+}
+
+/// Whether a `perform_get` error is worth retrying — Lume `StalkerError.isRetriable`
+/// (`networkError` + HTTP ≥ 500). Auth / empty-token / cancel / JSON decode are not.
+fn is_retriable(err: &str) -> bool {
+    if let Some(code) = err
+        .strip_prefix("HTTP ")
+        .and_then(|s| s.parse::<u16>().ok())
+    {
+        return code >= 500;
+    }
+    if err == "auth_failed"
+        || err == "handshake_failed"
+        || err == "cancelled"
+        || err.contains("cancel")
+    {
+        return false;
+    }
+    // serde_json::Error Display is typically "… at line N column M"
+    if err.contains(" at line ") || err.contains("expected ") || err.contains("EOF while parsing")
+    {
+        return false;
+    }
+    // reqwest transport / timeout / DNS / TLS
+    let lower = err.to_ascii_lowercase();
+    lower.contains("timeout")
+        || lower.contains("timed out")
+        || lower.contains("connection")
+        || lower.contains("dns")
+        || lower.contains("tls")
+        || lower.contains("reset")
+        || lower.contains("broken pipe")
+        || lower.contains("error sending request")
+        || lower.contains("error decoding response body")
+}
+
 // ── create_link helpers ───────────────────────────────────────────────────
 
 /// Query parameters excluded when forwarding a direct-URL `cmd`'s query
@@ -1173,5 +1255,34 @@ mod tests {
         assert!(has_empty_stream_param("http://host/live.php?stream=&extension=ts"));
         assert!(!has_empty_stream_param("http://host/live.php?stream=5"));
         assert!(!has_empty_stream_param("http://host/live.php"));
+    }
+
+    // ── transient retry classification ────────────────────────────────
+
+    #[test]
+    fn retriable_http_5xx() {
+        assert!(is_retriable("HTTP 502"));
+        assert!(is_retriable("HTTP 503"));
+        assert!(is_retriable("HTTP 520"));
+        assert!(is_retriable("HTTP 524"));
+        assert!(!is_retriable("HTTP 404"));
+        assert!(!is_retriable("HTTP 401"));
+    }
+
+    #[test]
+    fn retriable_network_not_auth_or_decode() {
+        assert!(is_retriable("error sending request for url (http://x): connection reset"));
+        assert!(is_retriable("operation timed out"));
+        assert!(!is_retriable("auth_failed"));
+        assert!(!is_retriable("handshake_failed"));
+        assert!(!is_retriable("cancelled"));
+        assert!(!is_retriable("expected value at line 1 column 1"));
+    }
+
+    #[test]
+    fn transient_backoff_schedule() {
+        assert_eq!(transient_backoff_ms(1), 300);
+        assert_eq!(transient_backoff_ms(2), 800);
+        assert_eq!(transient_backoff_ms(3), 800);
     }
 }

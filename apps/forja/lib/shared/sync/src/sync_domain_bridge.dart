@@ -803,84 +803,94 @@ class SyncDomainBridge {
     return {'addons': await _settings.getStremioAddons()};
   }
 
-  /// Install / refresh manifests from cloud lean rows (`baseUrl` only).
-  /// Same contract as [importNuvio] - cloud never stores full manifests.
+  /// Apply cloud lean rows (`baseUrl` + optional name/features). **No network** —
+  /// [StremioService.hydrateInstalledAddons] fills manifests on first Stremio
+  /// use (Details / Home / Settings). Tab sync / cold pull must not hit addon
+  /// hosts while the user is in IPTV or anywhere else.
   Future<void> importStremio(Map<String, dynamic> payload) async {
     final addons = payload['addons'] as List? ?? const [];
-    final remoteUrls = <String>{
-      for (final raw in addons)
-        if ((raw as Map)['baseUrl'] is String)
-          ((raw)['baseUrl'] as String).trim(),
-    }..removeWhere((u) => u.isEmpty);
-
-    final current = await _settings.getStremioAddons();
-    for (final addon in current) {
-      final baseUrl = (addon['baseUrl'] as String?)?.trim() ?? '';
-      if (baseUrl.isNotEmpty && !remoteUrls.contains(baseUrl)) {
-        await _settings.removeStremioAddon(baseUrl);
-      }
-    }
-
-    final stremio = StremioService();
+    final remoteByBase = <String, Map<String, dynamic>>{};
     for (final raw in addons) {
       final lean = Map<String, dynamic>.from(raw as Map);
-      final baseUrl = (lean['baseUrl'] as String?)?.trim() ?? '';
+      final baseUrl = SettingsService.normalizeStremioAddonBaseUrl(
+        lean['baseUrl']?.toString() ?? '',
+      );
       if (baseUrl.isEmpty) continue;
+      lean['baseUrl'] = baseUrl;
+      remoteByBase[baseUrl] = lean;
+    }
+
+    final current = await _settings.getStremioAddons();
+    final localByBase = <String, Map<String, dynamic>>{};
+    for (final addon in current) {
+      final base = SettingsService.normalizeStremioAddonBaseUrl(
+        addon['baseUrl']?.toString() ?? '',
+      );
+      if (base.isEmpty) continue;
+      localByBase[base] = Map<String, dynamic>.from(addon);
+    }
+
+    var changed = false;
+    for (final base in localByBase.keys.toList()) {
+      if (remoteByBase.containsKey(base)) continue;
+      await _settings.removeStremioAddon(base, notify: false);
+      localByBase.remove(base);
+      changed = true;
+    }
+
+    for (final entry in remoteByBase.entries) {
+      final baseUrl = entry.key;
+      final lean = entry.value;
       final syncedFeatures = lean['features'] is List
           ? StremioAddonFeatures.normalize(lean['features'])
           : null;
-      try {
-        final fresh = await stremio.fetchManifest(baseUrl);
-        if (fresh != null) {
-          fresh['features'] =
-              syncedFeatures ?? StremioAddonFeatures.read(fresh);
-          await _settings.saveStremioAddon(fresh);
-          continue;
+
+      final existing = localByBase[baseUrl];
+      if (existing != null && _stremioHasManifestResources(existing)) {
+        // Keep hydrated local manifest; overlay synced feature targets + meta.
+        if (syncedFeatures != null) {
+          existing['features'] = syncedFeatures;
         }
-      } catch (e) {
-        debugPrint('[Sync] Stremio manifest fetch failed ($baseUrl): $e');
+        final name = (lean['name'] as String?)?.trim();
+        if (name != null && name.isNotEmpty) existing['name'] = name;
+        final description = (lean['description'] as String?)?.trim();
+        if (description != null && description.isNotEmpty) {
+          existing['description'] = description;
+        }
+        await _settings.saveStremioAddon(existing, notify: false);
+        changed = true;
+        continue;
       }
-      // Keep lean row so Settings still lists it; Sources hydrates later.
+
       if (syncedFeatures != null) lean['features'] = syncedFeatures;
-      await _settings.saveStremioAddon(lean);
+      await _settings.saveStremioAddon(lean, notify: false);
+      changed = true;
     }
+
+    if (changed) SettingsService.addonChangeNotifier.value++;
+  }
+
+  static bool _stremioHasManifestResources(Map<String, dynamic> addon) {
+    final manifest = addon['manifest'];
+    if (manifest is! Map) return false;
+    final resources = manifest['resources'];
+    return resources is List && resources.isNotEmpty;
   }
 
   Future<Map<String, dynamic>> exportNuvio() async {
     return _exportNuvioCompact();
   }
 
-  /// Install / refresh manifests from cloud; drop user addons not in remote.
-  /// Built-in All-in-One is never removed even if omitted from the payload.
+  /// Apply cloud lean rows (`manifestUrl` + optional name). **No network** —
+  /// [NuvioService.hydrateLeanInstalled] fills scrapers on first Settings /
+  /// Sources use. Built-in All-in-One is never removed.
   Future<void> importNuvio(Map<String, dynamic> payload) async {
     final addons = payload['addons'] as List? ?? const [];
-    final remoteUrls = <String>{
+    final rows = <Map<String, dynamic>>[
       for (final raw in addons)
-        if ((raw as Map)['manifestUrl'] is String)
-          ((raw)['manifestUrl'] as String).trim(),
-    }..removeWhere((u) => u.isEmpty);
-
-    final current = await NuvioService.instance.listAddons();
-    for (final addon in current) {
-      if (NuvioService.isBundled(addon.manifestUrl)) continue;
-      if (!remoteUrls.contains(addon.manifestUrl)) {
-        try {
-          await NuvioService.instance.remove(addon.manifestUrl);
-        } catch (_) {}
-      }
-    }
-    for (final url in remoteUrls) {
-      try {
-        await NuvioService.instance.refreshFromUrl(url);
-      } catch (_) {
-        try {
-          await NuvioService.instance.install(url);
-        } catch (e) {
-          debugPrint('[Sync] Nuvio import failed ($url): $e');
-        }
-      }
-    }
-    await NuvioService.instance.ensureBundledInstalled();
+        if (raw is Map) Map<String, dynamic>.from(raw),
+    ];
+    await NuvioService.instance.applyLeanManifestUrls(rows);
   }
 }
 

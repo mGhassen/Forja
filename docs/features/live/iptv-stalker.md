@@ -31,6 +31,7 @@ Forja tries the common middleware paths automatically (`portal.php`, `server/loa
 - Programme guide (EPG) for Stalker is not wired yet — Live cards skip Xtream EPG calls
 - Deal / Find Portals still focus on Xtream pool portals; add Stalker manually for now
 - MACs are stored like usernames; keep share codes and CSV exports private
+- First open can take a moment on flaky portals (Cloudflare 520 / origin 502) — Forja retries handshake and catalog fetch automatically before showing an error
 
 ## Related
 

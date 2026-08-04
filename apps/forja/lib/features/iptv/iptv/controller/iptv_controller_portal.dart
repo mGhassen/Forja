@@ -315,7 +315,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     final verified = await IptvClient.verifyOrNull(p);
     _c.isAdding = false;
     if (verified == null) {
-      _c.addError = 'Login failed - wrong credentials or dead portal.';
+      _c.addError = _verifyFailedError(platform);
       notifyListeners();
       return;
     }
@@ -366,6 +366,14 @@ mixin _IptvControllerPortal on ChangeNotifier {
         IptvPortalPlatform.xtream => 'URL, username, and password required',
         IptvPortalPlatform.m3u => 'Playlist URL required',
         IptvPortalPlatform.stalker => 'Portal URL and MAC address required',
+      };
+
+  static String _verifyFailedError(IptvPortalPlatform platform) =>
+      switch (platform) {
+        IptvPortalPlatform.m3u =>
+          'Could not load playlist — check the URL or local file.',
+        IptvPortalPlatform.xtream || IptvPortalPlatform.stalker =>
+          'Login failed - wrong credentials or dead portal.',
       };
 
   // ────────────────────────────────────────────────────────────────────────
@@ -428,7 +436,7 @@ mixin _IptvControllerPortal on ChangeNotifier {
     final verified = await IptvClient.verifyOrNull(p);
     _c.isAdding = false;
     if (verified == null) {
-      _c.addError = 'Login failed - wrong credentials or dead portal.';
+      _c.addError = _verifyFailedError(platform);
       notifyListeners();
       return;
     }
@@ -442,10 +450,21 @@ mixin _IptvControllerPortal on ChangeNotifier {
     await _c.selectPortal(v, closePanel: closePanel);
   }
 
+  /// Host/base URL for portals. Preserves `file://` (M3U local pick) and
+  /// promotes absolute filesystem paths to `file://` so they are not mangled
+  /// into `http://file://…` / `http:///Users/…`.
   String normalizeUrl(String raw) {
     var s = raw.trim();
     if (s.isEmpty) return '';
-    if (!s.startsWith('http://') && !s.startsWith('https://')) {
+    final lower = s.toLowerCase();
+    if (lower.startsWith('file://')) {
+      return s;
+    }
+    // Absolute local path pasted without a scheme (macOS/Linux).
+    if (s.startsWith('/') && !s.startsWith('//')) {
+      return Uri.file(s).toString();
+    }
+    if (!lower.startsWith('http://') && !lower.startsWith('https://')) {
       s = 'http://$s';
     }
     while (s.endsWith('/')) {

@@ -246,9 +246,92 @@ class NuvioService {
     await _bundledEnsureFuture;
   }
 
+  Future<void>? _hydrateLeanInFlight;
+
+  /// Sync / cloud lean rows — URL (+ optional name) only. **No network.**
+  /// Full scrapers land via [hydrateLeanInstalled] on first Settings/Sources use.
+  Future<void> applyLeanManifestUrls(
+    Iterable<Map<String, dynamic>> rows, {
+    bool removeMissingUserAddons = true,
+  }) async {
+    final remote = <String, String?>{};
+    for (final raw in rows) {
+      final url = (raw['manifestUrl'] as String?)?.trim() ?? '';
+      if (url.isEmpty) continue;
+      final name = (raw['name'] as String?)?.trim();
+      remote[url] = (name != null && name.isNotEmpty) ? name : null;
+    }
+
+    final all = await listAddons();
+    final next = <NuvioAddon>[];
+    var changed = false;
+
+    for (final addon in all) {
+      if (isBundled(addon.manifestUrl)) {
+        next.add(addon);
+        continue;
+      }
+      if (removeMissingUserAddons && !remote.containsKey(addon.manifestUrl)) {
+        changed = true;
+        continue;
+      }
+      final leanName = remote[addon.manifestUrl];
+      if (leanName != null &&
+          addon.scrapers.isEmpty &&
+          addon.name != leanName) {
+        next.add(NuvioAddon(
+          manifestUrl: addon.manifestUrl,
+          name: leanName,
+          version: addon.version,
+          scrapers: addon.scrapers,
+        ));
+        changed = true;
+      } else {
+        next.add(addon);
+      }
+    }
+
+    final present = next.map((a) => a.manifestUrl).toSet();
+    for (final entry in remote.entries) {
+      if (present.contains(entry.key)) continue;
+      next.add(NuvioAddon(
+        manifestUrl: entry.key,
+        name: entry.value ?? 'Nuvio Addon',
+        version: '0.0.0',
+        scrapers: const [],
+      ));
+      changed = true;
+    }
+
+    if (changed) await _saveAddons(next);
+  }
+
+  /// Fetch manifests for lean stubs (`scrapers` empty). Idempotent; no-op when
+  /// every listed addon already has scrapers.
+  Future<void> hydrateLeanInstalled() {
+    return _hydrateLeanInFlight ??= _hydrateLeanInstalledImpl().whenComplete(() {
+      _hydrateLeanInFlight = null;
+    });
+  }
+
+  Future<void> _hydrateLeanInstalledImpl() async {
+    final all = await listAddons();
+    for (final addon in all) {
+      if (addon.scrapers.isNotEmpty) continue;
+      try {
+        await refreshFromUrl(addon.manifestUrl);
+      } catch (e) {
+        debugPrint(
+          '[NuvioService] lean hydrate failed (${addon.manifestUrl}): $e',
+        );
+      }
+    }
+  }
+
   /// Settings + Sources - same store, including the built-in addon.
   Future<List<NuvioAddon>> listUserAddons() async {
     await ensureBundledInstalled();
+    await hydrateLeanInstalled();
     return listAddons();
   }
 
@@ -256,6 +339,7 @@ class NuvioService {
   /// falls back to an in-memory bundled fetch only if ensure failed offline.
   Future<List<NuvioAddon>> listScrapingAddons() async {
     await ensureBundledInstalled();
+    await hydrateLeanInstalled();
     final user = await listAddons();
     if (user.any((a) => isBundled(a.manifestUrl))) return user;
     final virt = await _getBundledVirtual();

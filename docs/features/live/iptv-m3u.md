@@ -34,6 +34,7 @@ Forja treats **M3U/M3U8 playlists** as first-class portals next to Xtream and St
 - A link that returns an Enigma2/Gigablue set-top-box bouquet (not an m3u) fails with a clear error instead of "no channels"
 - Channel logos and groups depend on M3U metadata
 - Local file-only playlists from older builds are not migrated — re-add via URL or the file picker
+- Public GitHub playlists need the **raw** URL (`raw.githubusercontent.com/…`), not the `/blob/` page — or download the file and use the folder picker
 
 ## Related
 

@@ -133,11 +133,29 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
         playGen != _s._webstreamingPlayGen ||
         _s._webstreamingOnlyExtractionCancelled;
 
+    // One overlay for cache probe + cold extract. Dismissing then re-showing
+    // looked like Cancel "didn't work" (flash off → CANCEL again).
     final fadeOutNotifier = ValueNotifier(false);
     final messageNotifier = ValueNotifier('Loading stream…');
+    final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
+    final failureNotifier = ValueNotifier<ResolveFailure?>(null);
+    final sourcesListNotifier = ValueNotifier<List<StreamSource>>(const []);
+    final providerSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
+      {},
+    );
     BuildContext? loadingDialogContext;
     var openedPlayer = false;
     var handedToExtraction = false;
+    void Function(String)? onManualProviderCheck;
+
+    List<ChangeNotifier> overlayNotifiers() => [
+      fadeOutNotifier,
+      messageNotifier,
+      failureNotifier,
+      probeNotifier,
+      sourcesListNotifier,
+      providerSourcesCache,
+    ];
 
     void dismissLoading() {
       final ctx = loadingDialogContext;
@@ -150,6 +168,9 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       _s._webstreamingOnlyExtractionCancelled = true;
       PlaybackEngine.cancelAllPending();
       dismissLoading();
+      // Extraction finally owns the flag after handoff — clearing here lets a
+      // concurrent Play spawn a second overlay while the first resolve unwinds.
+      if (handedToExtraction) return;
       if (mounted) {
         setState(() => _s._isWebstreamingOnlyExtracting = false);
       } else {
@@ -164,8 +185,11 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
         return LoadingOverlay(
           movie: _s._movie,
           messageNotifier: messageNotifier,
+          providerProbesNotifier: probeNotifier,
           fadeOutNotifier: fadeOutNotifier,
+          failureNotifier: failureNotifier,
           onCancel: cancelWebstreamingPlay,
+          onManualCheckProvider: (id) => onManualProviderCheck?.call(id),
         );
       },
     );
@@ -173,7 +197,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
     await Future<void>.delayed(Duration.zero);
     if (playAborted()) {
       dismissLoading();
-      disposeLoadingOverlayNotifiers([fadeOutNotifier, messageNotifier]);
+      disposeLoadingOverlayNotifiers(overlayNotifiers());
       _s._isWebstreamingOnlyExtracting = false;
       return;
     }
@@ -264,23 +288,25 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
 
       if (playAborted()) return;
 
-      // Cold extract owns its own overlay + extracting flag.
+      // Keep the same overlay — fill probes in place (no dismiss → re-show).
       handedToExtraction = true;
-      dismissLoading();
-      disposeLoadingOverlayNotifiers([fadeOutNotifier, messageNotifier]);
-      if (mounted) {
-        setState(() => _s._isWebstreamingOnlyExtracting = false);
-      } else {
-        _s._isWebstreamingOnlyExtracting = false;
-      }
       await _runWebstreamingOnlyExtraction(
         startPosition: startPosition,
         playGen: playGen,
+        loadingDialogContext: loadingDialogContext,
+        fadeOutNotifier: fadeOutNotifier,
+        messageNotifier: messageNotifier,
+        probeNotifier: probeNotifier,
+        failureNotifier: failureNotifier,
+        sourcesListNotifier: sourcesListNotifier,
+        providerSourcesCache: providerSourcesCache,
+        bindManualProviderCheck: (fn) => onManualProviderCheck = fn,
+        onLoadingDialogContextChanged: (ctx) => loadingDialogContext = ctx,
       );
     } finally {
       if (!handedToExtraction) {
         if (!openedPlayer) dismissLoading();
-        disposeLoadingOverlayNotifiers([fadeOutNotifier, messageNotifier]);
+        disposeLoadingOverlayNotifiers(overlayNotifiers());
         if (mounted) {
           setState(() => _s._isWebstreamingOnlyExtracting = false);
         } else {
@@ -397,10 +423,42 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
   Future<void> _runWebstreamingOnlyExtraction({
     Duration? startPosition,
     required int playGen,
+    required BuildContext? loadingDialogContext,
+    required ValueNotifier<bool> fadeOutNotifier,
+    required ValueNotifier<String> messageNotifier,
+    required ValueNotifier<List<StreamProviderProbe>> probeNotifier,
+    required ValueNotifier<ResolveFailure?> failureNotifier,
+    required ValueNotifier<List<StreamSource>> sourcesListNotifier,
+    required ValueNotifier<Map<String, List<StreamSource>>>
+        providerSourcesCache,
+    required void Function(void Function(String)?) bindManualProviderCheck,
+    required void Function(BuildContext?) onLoadingDialogContextChanged,
   }) async {
+    List<ChangeNotifier> allNotifiers() => [
+      fadeOutNotifier,
+      messageNotifier,
+      failureNotifier,
+      probeNotifier,
+      sourcesListNotifier,
+      providerSourcesCache,
+    ];
+
+    void abandonSharedOverlay(BuildContext? ctx) {
+      bindManualProviderCheck(null);
+      if (ctx != null && ctx.mounted) dismissLoadingOverlayRoute(ctx);
+      onLoadingDialogContextChanged(null);
+      if (mounted) {
+        setState(() => _s._isWebstreamingOnlyExtracting = false);
+      } else {
+        _s._isWebstreamingOnlyExtracting = false;
+      }
+      disposeLoadingOverlayNotifiers(allNotifiers());
+    }
+
     if (!mounted ||
         playGen != _s._webstreamingPlayGen ||
         _s._webstreamingOnlyExtractionCancelled) {
+      abandonSharedOverlay(loadingDialogContext);
       return;
     }
     if (mounted) {
@@ -408,24 +466,18 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
     } else {
       _s._isWebstreamingOnlyExtracting = true;
     }
-    final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
-    final sourcesListNotifier = ValueNotifier<List<StreamSource>>(const []);
-    final providerSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
-      {},
-    );
-    final fadeOutNotifier = ValueNotifier(false);
-    final failureNotifier = ValueNotifier<ResolveFailure?>(null);
     var liveNotifiersDisposed = false;
     var overlayNotifiersDisposed = false;
-    BuildContext? loadingDialogContext;
+    var dialogContext = loadingDialogContext;
     var switchingManualProvider = false;
     String? pendingManualProviderId;
     var preferredProvider = SourceEngine.auto;
 
     void dismissLoading() {
-      final ctx = loadingDialogContext;
+      final ctx = dialogContext;
       if (ctx != null && ctx.mounted) dismissLoadingOverlayRoute(ctx);
-      loadingDialogContext = null;
+      dialogContext = null;
+      onLoadingDialogContextChanged(null);
     }
 
     bool playAborted() =>
@@ -443,58 +495,13 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       PlaybackEngine.cancelAllPending();
     }
 
-    showLoadingOverlayDialog(
-      context,
-      builder: (dialogContext) {
-        loadingDialogContext = dialogContext;
-        return LoadingOverlay(
-          movie: _s._movie,
-          providerProbesNotifier: probeNotifier,
-          fadeOutNotifier: fadeOutNotifier,
-          failureNotifier: failureNotifier,
-          onCancel: () {
-            if (playGen != _s._webstreamingPlayGen) return;
-            _s._webstreamingOnlyExtractionCancelled = true;
-            switchingManualProvider = false;
-            pendingManualProviderId = null;
-            PlaybackEngine.cancelAllPending();
-            dismissLoading();
-            if (mounted) {
-              setState(() => _s._isWebstreamingOnlyExtracting = false);
-            } else {
-              _s._isWebstreamingOnlyExtracting = false;
-            }
-          },
-          onManualCheckProvider: requestManualProviderCheck,
-        );
-      },
-    );
+    bindManualProviderCheck(requestManualProviderCheck);
+    messageNotifier.value = 'Finding servers…';
 
     await WidgetsBinding.instance.endOfFrame;
-    if (playAborted()) {
-      dismissLoading();
-      _s._isWebstreamingOnlyExtracting = false;
-      disposeLoadingOverlayNotifiers([
-        fadeOutNotifier,
-        failureNotifier,
-        probeNotifier,
-        sourcesListNotifier,
-        providerSourcesCache,
-      ]);
-      liveNotifiersDisposed = true;
-      overlayNotifiersDisposed = true;
-      return;
-    }
-    if (!mounted) {
-      dismissLoading();
-      _s._isWebstreamingOnlyExtracting = false;
-      disposeLoadingOverlayNotifiers([
-        fadeOutNotifier,
-        failureNotifier,
-        probeNotifier,
-        sourcesListNotifier,
-        providerSourcesCache,
-      ]);
+    if (playAborted() || !mounted) {
+      abandonSharedOverlay(dialogContext);
+      dialogContext = null;
       liveNotifiersDisposed = true;
       overlayNotifiersDisposed = true;
       return;
@@ -731,7 +738,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
           final title = isTv
               ? '${_s._movie.title} - S${_s._selectedSeason} E${_s._selectedEpisode}'
               : _s._movie.title;
-          final ctx = loadingDialogContext;
+          final ctx = dialogContext;
           if (ctx != null && ctx.mounted) {
             final playerFuture = crossfadeLoadingOverlayToPlayer(
               loadingDialogContext: ctx,
@@ -808,6 +815,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
         }
       }
     } finally {
+      bindManualProviderCheck(null);
       if (mounted) {
         setState(() => _s._isWebstreamingOnlyExtracting = false);
       } else {
@@ -819,6 +827,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       if (!overlayNotifiersDisposed) {
         final pending = <ChangeNotifier>[
           fadeOutNotifier,
+          messageNotifier,
           failureNotifier,
           if (!liveNotifiersDisposed) ...[
             sourcesListNotifier,
