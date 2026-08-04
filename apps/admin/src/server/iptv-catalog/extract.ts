@@ -1,5 +1,9 @@
 import { formatPortalExpiry } from '@/lib/iptv-portal-expiry'
-import { classifyRegion, classifyRegionFromNote } from './region'
+import {
+  classifyRegion,
+  classifyRegionFromNote,
+  regionFromChannelGeoBracket,
+} from './region'
 import type { CatalogPortal, RegionGuess } from './types'
 import { portalKey } from './types'
 
@@ -7,10 +11,10 @@ import { portalKey } from './types'
 const URL_PARAM = /(https?:\/\/[^?\s"'<]+)\?([^\s"'<)\]]*)/gi
 
 const LABEL_HOST_FIRST =
-  /(?:(?:🔗|🌍|🌐)\s*)?(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Server|S[ᴇe]rv[ᴇe]r|ꜱᴇʀᴠᴇʀ|URL)\W+(https?:\/\/[^<\s"']+).{1,500}?(?:(?:👤|👑)\s*)?(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\W+([^\s|<"'\n]+).{1,200}?(?:(?:🔑|🔐)\s*)?(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\W+([^\s|<"'\n]+)/gis
+  /(?:(?:🔗|🌍|🌐)\s*)?(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Server|S[ᴇe]rv[ᴇe]r|ꜱᴇʀᴠᴇʀ|URL)\W+(https?:\/\/[^<\s"']+).{1,500}?(?:(?:👤|👑)\s*)?(?<![?&\w])(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\W+([^\s|<"'\n&]+).{1,200}?(?:(?:🔑|🔐)\s*)?(?<![?&\w])(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\W+([^\s|<"'\n&]+)/gis
 
 const LABEL_USER_FIRST =
-  /(?:(?:👤|👑)\s*)?(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\W+([^\s|<"'\n]+).{1,400}?(?:(?:🔑|🔐)\s*)?(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\W+([^\s|<"'\n]+).{1,400}?(?:(?:🔗|🌍|🌐)\s*)?(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Server|S[ᴇe]rv[ᴇe]r|ꜱᴇʀᴠᴇʀ|URL)\W+(https?:\/\/[^<\s"']+)/gis
+  /(?:(?:👤|👑)\s*)?(?<![?&\w])(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\W+([^\s|<"'\n&]+).{1,400}?(?:(?:🔑|🔐)\s*)?(?<![?&\w])(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\W+([^\s|<"'\n&]+).{1,400}?(?:(?:🔗|🌍|🌐)\s*)?(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Server|S[ᴇe]rv[ᴇe]r|ꜱᴇʀᴠᴇʀ|URL)\W+(https?:\/\/[^<\s"']+)/gis
 
 /**
  * IPTV_ZONENEW status cards: `🔗 http://…` then later `👤 USERNAME :` / `🔑 PASSWORD :`.
@@ -32,6 +36,19 @@ const TABLE_TZ = /^[A-Za-z]+\/[A-Za-z_/+]+$/
 const TABLE_OUTPUTS = /^(?:m3u8?|ts|rtmp)(?:,(?:m3u8?|ts|rtmp))+$/i
 const TABLE_STATUS = /^(?:Active|Expired|Banned|Disabled|Trial)$/i
 
+/** App sentinel — same as `IptvPortalPlatform.m3uUsernameSentinel`. */
+const M3U_USER_SENTINEL = '__m3u__'
+
+/**
+ * Direct playlist URLs (not get.php with user/pass — those stay URL_PARAM).
+ * From notes or inside `#EXTM3U` (master / leaf playlists only — not every #EXTINF media).
+ */
+const PLAYLIST_FILE_URL =
+  /https?:\/\/[^\s<"'\)\]>]+?\.(?:m3u8?|m3u)(?:\?[^\s<"'\)\]>]*)?/gi
+
+const LABELED_PLAYLIST_URL =
+  /(?:🔗\s*)?(?:Playlist|M3U8?|Liste)\s*[:=]\s*(https?:\/\/[^\s<"']+)/gi
+
 /**
  * Stalker / Ministra MAC lines.
  * Accepts `mac=…`, `MAC: …`, `MAC Addr: …`, `Mac Address: …`.
@@ -40,7 +57,7 @@ const STALKER_MAC =
   /mac(?:\s*addr(?:ess)?)?\s*[=:]\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})/gi
 
 const STALKER_PORTAL =
-  /(https?:\/\/[^<\s"']+?(?:\/c\/?|\/portal\.php|\/stalker_portal[^<\s"']*))/gi
+  /(https?:\/\/[^<\s"']+?(?:\/c\/?(?=[?\s"'<]|$)|\/portal\.php(?:[^\s"'<]*)?|\/stalker_portal[^<\s"']*))/gi
 
 const BLOCK_TAGS = /<(?:p|br|div|li|h\d)[^>]*>/gi
 const ANY_TAG = /<[^>]+>/g
@@ -53,8 +70,39 @@ const MAXCONN_RE = /(?:👥\s*)?MAXCONN\s*[:=]\s*(\d+)/i
 const OUTPUTS_RE =
   /(?:📺\s*)?Allowed\s*Outputs?\s*[:=]\s*([^\n\r]+)/i
 const EXPIRED_RE = /(?:📆\s*)?Expired\s*on\s*[:=]\s*([^\n\r]+)/i
+/** Stalker / dump cards: `Exp date: April 27, 2027, 2:00 pm` or `Expiry: …`. */
+const EXP_DATE_RE =
+  /(?:📆\s*)?Exp(?:iry|ired)?(?:\s*date|\s*on)?\s*[:=]\s*([^\n\r]+)/i
 const REGION_HINT_RE =
   /(?:mainly|mostly|focus|region)\s*[:\-]?\s*([^\n\r]{2,80})/i
+
+/** Placeholder tokens that LABEL_* / headers falsely capture as creds. */
+const JUNK_CRED =
+  /^(?:name|user|username|password|pass|null|undefined|admin|test|xxx+|host|portal|server|url|expiry|biti[sş]|g[uü]n)$/i
+
+/**
+ * Dump sheets under a portal host:
+ * `AliErdoTV jypCCT5A7hhp 226 Gün (Bitiş: 01/02/2027)`
+ */
+const DUMP_CRED_LINE =
+  /^([A-Za-z0-9@._+-]{3,64})\s+(\S{3,64})(?:\s+\d+\s*G[uü]n)?(?:\s*\([^)]*Biti[sş]:\s*(\d{1,2}\/\d{1,2}\/\d{4})[^)]*\))?/i
+
+/** `Portal : http://…/c/` + `MAC Addr:` + optional `Exp date:` card. */
+const STALKER_CARD =
+  /Portal\s*:\s*(https?:\/\/[^\s\n]+)[\t ]*\n[\t ]*MAC\s*Addr(?:ess)?\s*:\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})(?:[\t ]*\n[\t ]*Exp(?:iry|ired)?\s*date\s*:\s*([^\n]+))?/gi
+
+/**
+ * Scan dumps: portal URL alone, then lines
+ * `00:1A:79:… [Total: …] [March 28, 2027, 12:00 am]`
+ */
+const BARE_MAC_LINE =
+  /^((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})\b(.*)$/
+
+const DATE_IN_BRACKETS =
+  /\[((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s*\d{4}[^\]]*)\]/gi
+
+const STALKER_PORTAL_ONLY_LINE =
+  /^(https?:\/\/\S+?(?:\/c\/?|\/portal\.php(?:\S*)?|\/stalker_portal\S*))\/?\s*$/i
 
 const JUNK_CODE = [
   'Array.isArray',
@@ -153,6 +201,10 @@ function cleanCred(raw: string): string {
   return (s.split(/[ \n&?]/)[0] ?? '').trim()
 }
 
+function isJunkCred(s: string): boolean {
+  return !s || JUNK_CRED.test(s)
+}
+
 function isMacBridgePass(pass: string): boolean {
   const lp = pass.toLowerCase()
   return lp.includes('live.php') || lp.includes('mac=') || lp.startsWith('live.')
@@ -198,7 +250,10 @@ export function parseNoteFileMeta(rawText: string): FileMeta {
 function parseCardMeta(block: string): CardMeta {
   const max = MAXCONN_RE.exec(block)?.[1]?.trim() ?? null
   const allowed = OUTPUTS_RE.exec(block)?.[1]?.trim() ?? null
-  const expiredRaw = EXPIRED_RE.exec(block)?.[1]?.trim() ?? null
+  const expiredRaw =
+    EXPIRED_RE.exec(block)?.[1]?.trim() ??
+    EXP_DATE_RE.exec(block)?.[1]?.trim() ??
+    null
   const expiry = expiredRaw ? formatPortalExpiry(expiredRaw) : null
   return {
     maxConnections: max,
@@ -325,6 +380,7 @@ function finalizeXtreamOrM3u(
   const username = cleanCred(rawUser)
   const password = cleanCred(rawPass)
   if (!url || username.length < 1 || password.length < 1) return
+  if (isJunkCred(username) || isJunkCred(password)) return
   if (username.includes('http') || password.includes('http')) return
 
   const region = fileMeta?.region
@@ -653,26 +709,226 @@ export function extractPortals(
   }
 
   extractEmojiLinkCards(cleaned, acc, source, fileMeta)
+  extractPortalDumpLines(cleaned, acc, source, fileMeta)
+  extractM3uPlaylistUrls(cleaned, acc, source, fileMeta)
   enrichPortalsFromCards(cleaned, acc, fileMeta)
+  extractStalkerPortals(cleaned, acc, source, fileMeta)
 
-  // Stalker portals + MACs (even without user/pass pair).
-  // One row per unique portal×MAC (same host, many cards → many MACs).
+  return [...acc.values()]
+}
+
+/**
+ * Bare / labeled playlist URLs → platform=m3u with username `__m3u__` (no login).
+ * Skips get.php (handled via username/password query extract).
+ * Inside `#EXTM3U` notes: only `.m3u` / `.m3u8` URLs (playlist files), not every #EXTINF media.
+ */
+function extractM3uPlaylistUrls(
+  cleaned: string,
+  acc: Map<string, ExtractedPortal>,
+  source: string,
+  fileMeta: FileMeta,
+) {
+  const urls = new Set<string>()
+  const labeledUrls = new Set<string>()
+
+  for (const m of cleaned.matchAll(LABELED_PLAYLIST_URL)) {
+    const u = (m[1] ?? '').replace(/[.,;]+$/, '')
+    if (u) {
+      urls.add(u)
+      labeledUrls.add(u)
+    }
+  }
+  for (const m of cleaned.matchAll(PLAYLIST_FILE_URL)) {
+    const u = (m[0] ?? '').replace(/[.,;]+$/, '')
+    if (u) urls.add(u)
+  }
+
+  for (const raw of urls) {
+    if (/\/get\.php\?/i.test(raw) || /[?&]username=/i.test(raw)) continue
+    if (/\/c\/?$/i.test(raw) || /stalker_portal|portal\.php/i.test(raw)) continue
+    const url = cleanPortalUrl(raw)
+    if (!url || !/^https?:\/\//i.test(url)) continue
+    if (
+      !labeledUrls.has(raw) &&
+      !/\.(?:m3u8?|m3u)(?:$|\?)/i.test(url)
+    ) {
+      continue
+    }
+    put(acc, {
+      url,
+      username: M3U_USER_SENTINEL,
+      password: '',
+      source,
+      platform: 'm3u',
+      type: '',
+      output: '',
+      regionPrimary: fileMeta.region.primary,
+      regionTags: fileMeta.region.tags,
+      regionConfidence: fileMeta.region.confidence,
+    })
+  }
+}
+
+/**
+ * Sheets like j_1vsS7a: `Portal: http://host` then many
+ * `user pass N Gün (Bitiş: dd/mm/yyyy)` lines.
+ */
+function extractPortalDumpLines(
+  cleaned: string,
+  acc: Map<string, ExtractedPortal>,
+  source: string,
+  fileMeta: FileMeta,
+) {
+  const lines = cleaned.split(/\n/)
+  let currentPortal: string | null = null
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const portalLine = /^Portal\s*:\s*(https?:\/\/\S+)/i.exec(trimmed)
+    if (portalLine?.[1]) {
+      const url = cleanPortalUrl(portalLine[1])
+      // Don't attach user/pass dump rows to stalker /c/ portals.
+      if (
+        !url ||
+        /\/c\/?$/i.test(url) ||
+        /portal\.php|stalker_portal/i.test(url)
+      ) {
+        currentPortal = null
+      } else {
+        currentPortal = url
+      }
+      continue
+    }
+    if (!currentPortal) continue
+    if (/user\s*name|password|expiry|subject:|allowed\s*outputs|maxconn/i.test(trimmed)) {
+      continue
+    }
+    if (/^https?:\/\//i.test(trimmed)) continue
+    const m = DUMP_CRED_LINE.exec(trimmed)
+    if (!m?.[1] || !m[2]) continue
+    const expiry = m[3] ? formatPortalExpiry(m[3]) : null
+    finalizeXtreamOrM3u(
+      acc,
+      currentPortal,
+      m[1],
+      m[2],
+      source,
+      '',
+      '',
+      { expiry },
+      fileMeta,
+    )
+  }
+}
+
+/**
+ * Prefer Portal+MAC(+Exp) cards and bare MAC dumps under a portal URL line;
+ * fall back to unique portal×MAC cartesian for leftover labeled macs.
+ */
+function extractStalkerPortals(
+  cleaned: string,
+  acc: Map<string, ExtractedPortal>,
+  source: string,
+  _fileMeta: FileMeta,
+) {
+  const pairedMacs = new Set<string>()
+  const pairedPortals = new Set<string>()
+
+  for (const m of cleaned.matchAll(STALKER_CARD)) {
+    const portalUrl = cleanPortalUrl(m[1] ?? '')
+    const mac = (m[2] ?? '').toUpperCase().replace(/-/g, ':')
+    if (!portalUrl || !mac) continue
+    const expiryRaw = m[3]?.trim() ?? null
+    const expiry = expiryRaw ? formatPortalExpiry(expiryRaw) : null
+    pairedMacs.add(mac)
+    pairedPortals.add(portalUrl)
+    put(acc, {
+      url: portalUrl,
+      username: mac,
+      password: '',
+      source,
+      platform: 'stalker',
+      type: '',
+      output: '',
+      expiry,
+    })
+  }
+
+  // Line dumps: http://host/c/ then bare MAC lines with optional [date] brackets.
+  let currentPortal: string | null = null
+  for (const line of cleaned.split(/\n/)) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+
+    const portalOnly = STALKER_PORTAL_ONLY_LINE.exec(trimmed)
+    if (portalOnly?.[1]) {
+      const url = cleanPortalUrl(portalOnly[1])
+      if (url) currentPortal = url
+      continue
+    }
+    // Also accept "Portal: http://…/c/"
+    const portalLabeled = /^Portal\s*:\s*(https?:\/\/\S+)/i.exec(trimmed)
+    if (portalLabeled?.[1]) {
+      const url = cleanPortalUrl(portalLabeled[1])
+      if (
+        url &&
+        (/\/c\/?$/i.test(url) ||
+          /portal\.php|stalker_portal/i.test(url))
+      ) {
+        currentPortal = url
+      }
+      continue
+    }
+
+    if (!currentPortal) continue
+    const macLine = BARE_MAC_LINE.exec(trimmed)
+    if (!macLine?.[1]) continue
+    const mac = macLine[1].toUpperCase().replace(/-/g, ':')
+    if (pairedMacs.has(mac)) continue
+    const rest = macLine[2] ?? ''
+    let expiry: string | null = null
+    for (const dm of rest.matchAll(DATE_IN_BRACKETS)) {
+      const raw = (dm[1] ?? '').trim()
+      const formatted = raw ? formatPortalExpiry(raw) : null
+      if (formatted) expiry = formatted
+    }
+    const geo = regionFromChannelGeoBracket(rest)
+    pairedMacs.add(mac)
+    pairedPortals.add(currentPortal)
+    put(acc, {
+      url: currentPortal,
+      username: mac,
+      password: '',
+      source,
+      platform: 'stalker',
+      type: '',
+      output: '',
+      expiry,
+      regionPrimary: geo?.primary,
+      regionTags: geo?.tags,
+      regionConfidence: geo?.confidence,
+    })
+  }
+
   const macs = [
     ...new Set(
-      [...cleaned.matchAll(STALKER_MAC)].map((m) =>
-        (m[1] ?? '').toUpperCase().replace(/-/g, ':'),
-      ).filter(Boolean),
+      [...cleaned.matchAll(STALKER_MAC)]
+        .map((m) => (m[1] ?? '').toUpperCase().replace(/-/g, ':'))
+        .filter((mac) => mac && !pairedMacs.has(mac)),
     ),
   ]
   const portalUrls = [
     ...new Set(
       [...cleaned.matchAll(STALKER_PORTAL)]
         .map((m) => cleanPortalUrl(m[1] ?? ''))
-        .filter(Boolean),
+        .filter((u): u is string => Boolean(u)),
     ),
   ]
-  for (const portalUrl of portalUrls) {
-    if (macs.length === 0) {
+
+  if (macs.length === 0) {
+    // Don't leave empty-user stalker shells when MACs were paired.
+    for (const portalUrl of portalUrls) {
+      if (pairedPortals.has(portalUrl)) continue
       put(acc, {
         url: portalUrl,
         username: '',
@@ -682,8 +938,11 @@ export function extractPortals(
         type: '',
         output: '',
       })
-      continue
     }
+    return
+  }
+
+  for (const portalUrl of portalUrls) {
     for (const mac of macs) {
       put(acc, {
         url: portalUrl,
@@ -696,6 +955,4 @@ export function extractPortals(
       })
     }
   }
-
-  return [...acc.values()]
 }

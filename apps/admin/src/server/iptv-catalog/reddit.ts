@@ -323,14 +323,20 @@ async function addExtracted(
         allowedOutputs: p.allowedOutputs ?? null,
       })
     }
-    // Pool map: every platform with creds (xtream / m3u / stalker).
-    if (!p.username) continue
-    if (!p.password && p.platform !== 'stalker') continue
+    // Pool map: every platform that can become a catalog row.
+    // m3u playlist URLs use sentinel `__m3u__` + empty password (matches app).
+    const isM3uPlaylist =
+      p.platform === 'm3u' && p.username === '__m3u__' && Boolean(p.url)
+    if (!isM3uPlaylist) {
+      if (!p.username) continue
+      if (!p.password && p.platform !== 'stalker') continue
+    }
     const withPost: CatalogPortal = {
       url: p.url,
-      username: p.username,
+      username: isM3uPlaylist ? '__m3u__' : p.username,
       password: p.password,
       source: p.source,
+      platform: p.platform,
       ...(postId ? { postId } : {}),
       expiry: p.expiry ?? null,
       maxConnections: p.maxConnections ?? null,

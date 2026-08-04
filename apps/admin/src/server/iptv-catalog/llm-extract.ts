@@ -1,6 +1,7 @@
 /**
  * Hybrid IPTV extract entrypoint.
- * Mechanical first; on 0 hits → tool-use agent (sample → layout → local full parse).
+ * Mechanical first; LLM agent is **opt-in** (`IPTV_LLM_EXTRACT=1`) + API key.
+ * Agent errors never fail the scrape — fall back to mechanical.
  */
 import type { ExtractedPortal } from './extract'
 import {
@@ -8,9 +9,10 @@ import {
   runIptvExtractAgent,
 } from './agent/run-extract-agent'
 
+/** Off unless explicitly enabled — key alone must not arm prod. */
 function llmEnabled(): boolean {
   const flag = process.env.IPTV_LLM_EXTRACT?.trim().toLowerCase()
-  if (flag === '0' || flag === 'false' || flag === 'off') return false
+  if (flag !== '1' && flag !== 'true' && flag !== 'on') return false
   return Boolean(process.env.ANTHROPIC_API_KEY?.trim())
 }
 
@@ -22,8 +24,13 @@ export async function extractPortalsWithLlm(
   source = 'catalog-llm',
 ): Promise<ExtractedPortal[]> {
   if (!llmEnabled() || !looksLikeIptvBlob(rawText)) return []
-  const { portals } = await runIptvExtractAgent(rawText, source)
-  return portals
+  try {
+    const { portals } = await runIptvExtractAgent(rawText, source)
+    return portals
+  } catch (e) {
+    console.error('[iptv-extract] LLM agent failed:', e)
+    return []
+  }
 }
 
 export async function extractPortalsHybrid(
@@ -36,6 +43,14 @@ export async function extractPortalsHybrid(
   if (!llmEnabled() || !looksLikeIptvBlob(rawText)) {
     return { portals: first, usedLlm: false }
   }
-  const { portals } = await runIptvExtractAgent(rawText, `${source}-agent`)
-  return { portals, usedLlm: portals.length > 0 }
+  try {
+    const { portals } = await runIptvExtractAgent(rawText, `${source}-agent`)
+    return {
+      portals: portals.length > 0 ? portals : first,
+      usedLlm: portals.length > 0,
+    }
+  } catch (e) {
+    console.error('[iptv-extract] LLM agent failed, using mechanical:', e)
+    return { portals: first, usedLlm: false }
+  }
 }

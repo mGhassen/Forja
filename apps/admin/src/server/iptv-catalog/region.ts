@@ -71,6 +71,58 @@ export function classifyRegionFromNote(hint: string | null | undefined): RegionG
   return classifyRegion(null, [s])
 }
 
+/**
+ * Stalker scan lines:
+ * `[Total: 460, US: 72, CA: 19, UK: 77, Other: 292]`
+ * → region_tags for buckets with count > 0; primary = largest share of Total.
+ */
+const CHANNEL_GEO_BRACKET =
+  /\[\s*Total:\s*(\d+)((?:\s*,\s*[A-Za-z][\w]*:\s*\d+)*)\s*\]/i
+
+export function regionFromChannelGeoBracket(
+  lineRest: string,
+): RegionGuess | null {
+  const m = CHANNEL_GEO_BRACKET.exec(lineRest)
+  if (!m) return null
+  const total = Number(m[1] ?? 0)
+  const scores = new Map<string, number>()
+  for (const p of (m[2] ?? '').matchAll(/([A-Za-z][\w]*):\s*(\d+)/g)) {
+    const raw = (p[1] ?? '').toUpperCase()
+    const n = Number(p[2] ?? 0)
+    if (!(n > 0)) continue
+    const code =
+      raw === 'USA' || raw === 'UNITEDSTATES'
+        ? 'US'
+        : raw === 'GB' || raw === 'BRITAIN'
+          ? 'UK'
+          : raw === 'CANADA'
+            ? 'CA'
+            : raw === 'OTHERS'
+              ? 'OTHER'
+              : raw
+    scores.set(code, (scores.get(code) ?? 0) + n)
+  }
+  if (scores.size === 0) {
+    return total > 0
+      ? { primary: 'UNKNOWN', tags: [], confidence: 0 }
+      : null
+  }
+  const ranked = [...scores.entries()].sort((a, b) => b[1] - a[1])
+  const tags = ranked.map(([k]) => k)
+  const [topCode, topScore] = ranked[0]!
+  const denom = total > 0 ? total : ranked.reduce((s, [, v]) => s + v, 0)
+  const confidence =
+    denom > 0 ? Math.min(1, Math.max(0, topScore / denom)) : 0
+  const second = ranked[1]?.[1] ?? 0
+  const primary =
+    ranked.length > 1 && topScore === second
+      ? 'MIXED'
+      : topCode === 'OTHER' && confidence < 0.55
+        ? 'MIXED'
+        : topCode
+  return { primary, tags, confidence }
+}
+
 /** Prefer note guess when verify did not set a region. */
 export function mergeRegionGuess(
   fromNote: RegionGuess | null | undefined,

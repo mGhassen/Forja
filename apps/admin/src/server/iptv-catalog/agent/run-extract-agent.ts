@@ -33,7 +33,7 @@ function modelId(): string {
 
 function llmEnabled(): boolean {
   const flag = process.env.IPTV_LLM_EXTRACT?.trim().toLowerCase()
-  if (flag === '0' || flag === 'false' || flag === 'off') return false
+  if (flag !== '1' && flag !== 'true' && flag !== 'on') return false
   return Boolean(process.env.ANTHROPIC_API_KEY?.trim())
 }
 

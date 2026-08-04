@@ -25,7 +25,7 @@ npx inngest-cli@latest dev -u http://127.0.0.1:4000/api/inngest
 
 Needs `SUPABASE_SERVICE_ROLE_KEY` + Inngest keys (see `.env.example`). Inngest ticks every minute; schedule is `iptv_ops_settings.scrape_cron` (edit in Scrape → Automation). Manual: event `iptv/catalog.scrape`.
 
-**LLM hybrid extract (optional):** set `ANTHROPIC_API_KEY`. When mechanical extract returns **0** portals, a **tool-use agent** runs (`read_sample` → `run_mechanical` / `peek_lines` / `apply_layout` → `commit_portals` → `finish`). Claude never ingests the full paste — only samples/peeks; layout apply runs locally on the full note. Skill/rules: `src/server/iptv-catalog/agent/skill.ts`. Model default `claude-haiku-4-5-20251001` (`IPTV_LLM_MODEL`). Disable with `IPTV_LLM_EXTRACT=0`.
+**LLM hybrid extract (opt-in, off by default):** only when `IPTV_LLM_EXTRACT=1` **and** `ANTHROPIC_API_KEY`. Mechanical extract always runs first; agent only if mechanical returns **0**. Agent failures are logged and ignored (scrape continues). Default prod path = mechanical only.
 
 **Production (Vercel):** set `INNGEST_SERVE_ORIGIN=https://admin.forjahq.xyz` so Inngest syncs the custom domain. `*.vercel.app` is Deployment-Protected and returns 401 to Inngest. Or sync manually in Inngest → Apps → `https://admin.forjahq.xyz/api/inngest`.
 

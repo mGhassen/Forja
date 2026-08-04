@@ -171,7 +171,14 @@ export async function upsertScrapeDeepRef(
     let portalId: string | null = null
     let wasExisting = false
 
-    if (hit.username && (hit.password || hit.platform === 'stalker')) {
+    const canPromote =
+      (hit.platform === 'm3u' &&
+        hit.username === '__m3u__' &&
+        Boolean(hit.url)) ||
+      (Boolean(hit.username) &&
+        (Boolean(hit.password) || hit.platform === 'stalker'))
+
+    if (canPromote) {
       const { data: existingId, error: findErr } = await sb.rpc(
         'find_iptv_portal_id',
         { p_url: hit.url, p_username: hit.username },
