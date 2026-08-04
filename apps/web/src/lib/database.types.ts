@@ -95,6 +95,7 @@ export type Database = {
           id: string
           max_connections: string | null
           password: string
+          platform: string
           source: string | null
           updated_at: string
           updated_by: string | null
@@ -108,6 +109,7 @@ export type Database = {
           id?: string
           max_connections?: string | null
           password: string
+          platform?: string
           source?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -121,6 +123,7 @@ export type Database = {
           id?: string
           max_connections?: string | null
           password?: string
+          platform?: string
           source?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -388,6 +391,7 @@ export type Database = {
           id: string
           max_connections: string | null
           password: string
+          platform: string
           source: string | null
           updated_at: string
           updated_by: string | null
@@ -435,6 +439,7 @@ export type Database = {
           p_expiry?: string
           p_max_connections?: string
           p_password: string
+          p_platform?: string
           p_source?: string
           p_url: string
           p_username: string
@@ -1031,3 +1036,7 @@ export const Constants = {
     },
   },
 } as const
+
+export type IptvPortal = Database['public']['Tables']['iptv_portals']['Row']
+export type UserIptvPortal =
+  Database['public']['Tables']['user_iptv_portals']['Row']

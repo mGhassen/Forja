@@ -1038,7 +1038,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     String url;
     String label;
     if (ch.xtreamStream != null && guide.xtreamPortal != null) {
-      url = IptvClient.streamUrl(guide.xtreamPortal!.portal, ch.xtreamStream!);
+      final resolved = await IptvClient.resolvePlayUrl(
+        guide.xtreamPortal!.portal,
+        ch.xtreamStream!,
+        section: 'live',
+      );
+      if (resolved == null || resolved.isEmpty) return;
+      url = resolved;
       label = guide.xtreamPortal!.displayLabel;
     } else if (ch.playUrl != null && ch.playUrl!.isNotEmpty) {
       url = ch.playUrl!;

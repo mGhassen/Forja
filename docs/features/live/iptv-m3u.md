@@ -1,43 +1,39 @@
 # IPTV — M3U
 
-> Add M3U playlists by URL or file — browse and play channels.
+> Add M3U/M3U8 playlist portals by URL — browse live channels in the main IPTV catalog.
 
 ## What it is
 
-Besides Xtream portals, Forja supports plain **M3U/M3U8 playlists**. Import from a URL or local file, then browse channels and play them in the IPTV player.
+Forja treats **M3U/M3U8 playlists** as first-class portals next to Xtream and Stalker. Add a playlist URL (optional User-Agent), then browse groups as categories on the **Live** shelf.
 
 ## How to open it
 
-**IPTV** tab → M3U playlists section (alongside Xtream).
+**IPTV** → **Portals** → **Add** → choose **M3U**.
 
 ## What you can do
 
-- Add playlist by URL
-- Import playlist from a file on your device
-- Browse channels from each playlist
-- Play a channel in the IPTV player — shell nav hides Offstage while playing (full-width video; rail stays mounted); on desktop and phone, hover the volume icon to expand the volume bar (tap mutes; long-press pins the bar). On **Android TV**, volume uses hardware / system controls (no volume button in the IPTV chrome)
-- Use **Player** and **Picture-in-picture** from the IPTV player top-right on Android and desktop (same flat controls as the movie player). On **Android TV**, **Player** lists only ExoPlayer and MediaKit (no external apps); switching between them mid-stream unmounts the old surface briefly so the app does not force-close
-- Change channels from the in-player guide (flat translucent groups + channel list overlay — no frosted blur over the live video)
-- Search channels from the in-player search overlay (flat translucent panel) — dismiss the overlay with the borderless **Close** control in the header (circular hover highlight, no box border). On **Android TV**, **OK** on the search field focuses the first result (does not open it); **↑/↓** move through results; **OK** on a result opens that channel
-- See the current channel logo at the bottom-left of the player; it sits immediately before the progress bar, with playback time on its right (live uses programme-guide fill when EPG is available)
-- Manage multiple playlists
-- Double-click the video (desktop) to enter/exit fullscreen — same as the fullscreen button. On **Android TV**, the fullscreen button is hidden (already immersive)
+- Add a playlist by URL (optional custom User-Agent for hosts that reject the default)
+- Browse live channels by `group-title` in the same catalog browser as Xtream
+- Play a channel in the IPTV player — in-player guide and search work for live
+- Manage M3U portals in the Portals panel (edit, favorite, delete, share/CSV)
+- Sync M3U portals to your signed-in profile (same cloud list as Xtream)
 
 ## Setup
 
-Obtain an M3U URL from your provider or export a `.m3u` file.
+1. Obtain an M3U/M3U8 URL from your provider
+2. **Portals** → **Add** → **M3U** → paste the URL → confirm
+3. Open the portal from the list
 
 ## Tips
 
-- M3U playlists stay on this device — they are not synced to your Forja account (unlike Xtream portals)
-- While watching, tap the grid icon in the player to open groups and channels from your playlist
-- Tap the **search** icon next to the guide to find a channel by name or group
-- On **Android TV**, search fields focus in browse mode first — press **Enter** on the remote to open the keyboard, then type
-- On **Android TV**, with no playlists yet, **Add from URL** autofocuses in the bottom bar
-- Large playlists may take a moment to parse
-- Channel logos and groups depend on what's in the M3U metadata
+- **Movies** and **Series** shelf chips are hidden for M3U (playlists are live-only)
+- Existing device-local playlists with a URL are migrated into portal entries once
+- Large playlists may take a moment to fetch and parse
+- Channel logos and groups depend on M3U metadata
+- Local file-only playlists from older builds are not migrated — re-add via URL
 
 ## Related
 
 - [IPTV — Xtream](iptv-xtream.md)
-- [Live Matches](live-matches.md)
+- [IPTV — Stalker](iptv-stalker.md)
+- [Player](../playback/player.md)

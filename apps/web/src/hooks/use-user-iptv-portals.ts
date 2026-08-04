@@ -47,6 +47,7 @@ export function useUserIptvPortals() {
         source?: string
         expiry?: string
         maxConnections?: string
+        platform?: 'xtream' | 'm3u' | 'stalker'
         portalName: string
         favorite?: boolean
       }>,
@@ -94,6 +95,7 @@ export function useUserIptvPortals() {
           source: row.source,
           expiry: row.expiry,
           maxConnections: row.maxConnections,
+          platform: row.platform ?? 'xtream',
         })
         portalIds.push(portalId)
         assignments.push({

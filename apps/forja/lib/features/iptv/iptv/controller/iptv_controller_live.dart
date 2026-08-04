@@ -7,12 +7,15 @@ mixin _IptvControllerLive on ChangeNotifier {
     final p = _c.activePortal;
     final section = _c.activeSection;
     if (p == null || section != IptvSection.live) return;
+    // Stalker create_link is per-stream and expires — no bulk URL probe.
+    if (p.platform == IptvPortalPlatform.stalker) return;
     if (_c.isVerifyingAlive) return;
     if (!force && _c.aliveCheckedAt != null) return;
 
     final pkey = IptvAliveStore.portalKey(p.portal);
     final entries = _c.browserAllStreams
         .map((s) => MapEntry(s.streamId, IptvClient.streamUrl(p.portal, s)))
+        .where((e) => e.value.isNotEmpty)
         .toList();
     if (entries.isEmpty) return;
 

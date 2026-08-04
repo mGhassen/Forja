@@ -7,6 +7,7 @@ const CSV_HEADERS = [
   'username',
   'password',
   'source',
+  'platform',
   'expiry',
   'max',
   'active',
@@ -24,6 +25,8 @@ const HEADER_ALIASES: Record<string, CsvHeader> = {
   password: 'password',
   pass: 'password',
   source: 'source',
+  platform: 'platform',
+  type: 'platform',
   expiry: 'expiry',
   expires: 'expiry',
   max: 'max',
@@ -178,15 +181,22 @@ export function parsePortalsCsv(text: string): ParsePortalsCsvResult {
     const url = cell('url')
     const username = cell('username')
     const password = cell('password')
-    if (!url || !username || !password) {
+    const platformRaw = cell('platform').toLowerCase()
+    const platform =
+      platformRaw === 'm3u' || platformRaw === 'stalker' ? platformRaw : 'xtream'
+    const userOk =
+      platform === 'm3u' ? Boolean(url) : Boolean(url && username)
+    const passOk = platform === 'xtream' ? Boolean(password) : true
+    if (!userOk || !passOk) {
       skipped++
       continue
     }
     const portal: IptvPortalRow = {
       url,
-      username,
+      username: platform === 'm3u' ? '__m3u__' : username,
       password,
-      portalName: cell('label') || cell('name') || username,
+      platform,
+      portalName: cell('label') || cell('name') || username || 'M3U',
       source: cell('source') || 'csv',
       expiry: cell('expiry') || undefined,
       max: cell('max') || undefined,
@@ -292,6 +302,7 @@ export function portalsToCsv(
         portal.username ?? '',
         portal.password ?? '',
         portal.source?.trim() ?? '',
+        portal.platform ?? 'xtream',
         portal.expiry?.trim() ?? '',
         portal.max?.trim() ?? '',
         portal.active?.trim() ?? '',

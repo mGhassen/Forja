@@ -103,8 +103,38 @@ export function ConfirmDialog({
 
 const PAGE_PRESETS = [1, 5, 10, 20, 50] as const
 const POSTS_PER_PAGE = 10
+const MAX_PAGE = 200
 
-/** Full scrape dialog: pick Reddit page count (= POSTS_PER_PAGE posts each). */
+export type ScrapePageRange = { startPage: number; endPage: number }
+
+/** `10` → pages 1–10; `5-10` → pages 5–10 inclusive. */
+export function parseScrapePageRange(
+  custom: string,
+  presetEnd: number,
+): ScrapePageRange | null {
+  const t = custom.trim()
+  if (!t) {
+    const end = Math.min(MAX_PAGE, Math.max(1, presetEnd))
+    return { startPage: 1, endPage: end }
+  }
+  const range = /^(\d+)\s*-\s*(\d+)$/.exec(t)
+  if (range) {
+    let a = Math.floor(Number(range[1]))
+    let b = Math.floor(Number(range[2]))
+    if (!Number.isFinite(a) || !Number.isFinite(b) || a < 1 || b < 1) return null
+    if (a > b) [a, b] = [b, a]
+    return {
+      startPage: Math.min(MAX_PAGE, a),
+      endPage: Math.min(MAX_PAGE, b),
+    }
+  }
+  const n = Math.floor(Number(t))
+  if (!Number.isFinite(n) || n < 1) return null
+  const end = Math.min(MAX_PAGE, n)
+  return { startPage: 1, endPage: end }
+}
+
+/** Full scrape: presets = pages 1..N; custom accepts `N` or `A-B` (e.g. 5-10). */
 export function FullScrapeDialog({
   open,
   busy,
@@ -114,7 +144,7 @@ export function FullScrapeDialog({
   open: boolean
   busy?: boolean
   onClose: () => void
-  onConfirm: (maxPages: number) => void
+  onConfirm: (range: ScrapePageRange) => void
 }) {
   const [pages, setPages] = useState(10)
   const [custom, setCustom] = useState('')
@@ -136,11 +166,17 @@ export function FullScrapeDialog({
 
   if (!open) return null
 
-  const effective = Math.min(
-    200,
-    Math.max(1, custom.trim() ? Number(custom) || pages : pages),
-  )
-  const approxPosts = effective * POSTS_PER_PAGE
+  const parsed = parseScrapePageRange(custom, pages)
+  const startPage = parsed?.startPage ?? 1
+  const endPage = parsed?.endPage ?? pages
+  const pageCount = endPage - startPage + 1
+  const approxPosts = pageCount * POSTS_PER_PAGE
+  const rangeLabel =
+    startPage === endPage
+      ? `page ${startPage}`
+      : startPage === 1
+        ? `pages 1–${endPage}`
+        : `pages ${startPage}–${endPage}`
 
   return (
     <div
@@ -181,11 +217,13 @@ export function FullScrapeDialog({
           <code className="font-mono-ui text-forja-text">
             /r/IPTV_ZONENEW/new
           </code>
-          . Pick how many Reddit pages (newest → older). Each page ≈{' '}
-          {POSTS_PER_PAGE} posts.
+          . Newest → older. Presets = pages <span className="text-forja-text">1–N</span>
+          . Custom: <code className="font-mono-ui text-forja-text">5-10</code> =
+          start at the 5th page through the 10th. Each page ≈ {POSTS_PER_PAGE}{' '}
+          posts.
         </p>
         <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
-          Pages
+          Pages (from newest)
         </div>
         <div className="mb-3 flex flex-wrap gap-2">
           {PAGE_PRESETS.map((n) => (
@@ -199,36 +237,47 @@ export function FullScrapeDialog({
               }}
               className={cn(
                 'rounded-md border px-3 py-1.5 text-sm tabular-nums transition-colors',
-                !custom && pages === n
+                !custom.trim() && pages === n
                   ? 'border-forja-green bg-forja-green/15 text-forja-green'
                   : 'border-forja-border text-forja-muted hover:bg-white/5',
               )}
             >
-              {n}
+              1–{n}
             </button>
           ))}
         </div>
         <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-forja-muted">
-          Custom pages
+          Custom range
         </label>
         <input
-          type="number"
-          min={1}
-          max={200}
+          type="text"
+          inputMode="numeric"
           disabled={busy}
-          placeholder="1–200"
+          placeholder="e.g. 5-10 or 10"
           value={custom}
           onChange={(e) => setCustom(e.target.value)}
           className="mb-3 w-full rounded-md border border-forja-border bg-black/30 px-3 py-2 font-mono-ui text-sm text-forja-text outline-none focus:border-forja-green"
         />
-        <p className="mb-5 text-sm text-forja-text">
-          <span className="font-semibold tabular-nums text-forja-green">
-            {effective}
-          </span>{' '}
-          page{effective === 1 ? '' : 's'} ≈{' '}
-          <span className="font-semibold tabular-nums">{approxPosts}</span>{' '}
-          posts
-        </p>
+        {parsed ? (
+          <p className="mb-5 text-sm text-forja-text">
+            <span className="font-semibold text-forja-green">{rangeLabel}</span>
+            {' · '}
+            <span className="tabular-nums">{pageCount}</span> page
+            {pageCount === 1 ? '' : 's'} ≈{' '}
+            <span className="font-semibold tabular-nums">{approxPosts}</span>{' '}
+            posts
+            {startPage > 1 ? (
+              <span className="text-forja-muted">
+                {' '}
+                (skip first {startPage - 1})
+              </span>
+            ) : null}
+          </p>
+        ) : (
+          <p className="mb-5 text-sm text-red-400">
+            Use a number (e.g. 10) or range (e.g. 5-10), max {MAX_PAGE}.
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <Button
             type="button"
@@ -243,13 +292,13 @@ export function FullScrapeDialog({
             type="button"
             variant="secondary"
             size="sm"
-            disabled={busy}
+            disabled={busy || !parsed}
             className="text-amber-300"
-            onClick={() => onConfirm(effective)}
+            onClick={() => {
+              if (parsed) onConfirm(parsed)
+            }}
           >
-            {busy
-              ? 'Starting…'
-              : `Run ${effective} page${effective === 1 ? '' : 's'}`}
+            {busy ? 'Starting…' : `Run ${rangeLabel}`}
           </Button>
         </div>
       </div>

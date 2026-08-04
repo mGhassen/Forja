@@ -284,10 +284,14 @@ mixin _IptvControllerPortal on ChangeNotifier {
     required String username,
     required String password,
     String label = '',
+    IptvPortalPlatform platform = IptvPortalPlatform.xtream,
+    String userAgent = '',
   }) async {
     final cleanUrl = normalizeUrl(url);
-    if (cleanUrl.isEmpty || username.isEmpty || password.isEmpty) {
-      _c.addError = 'All fields required';
+    final user = _normalizedUsername(platform, username);
+    final pass = password.trim();
+    if (!_credentialsOk(platform, cleanUrl, user, pass)) {
+      _c.addError = _credentialsError(platform);
       notifyListeners();
       return;
     }
@@ -296,12 +300,14 @@ mixin _IptvControllerPortal on ChangeNotifier {
     notifyListeners();
     final p = IptvPortal(
       url: cleanUrl,
-      username: username.trim(),
-      password: password.trim(),
+      username: user,
+      password: pass,
       source: existing.portal.source.isEmpty ? 'Manual' : existing.portal.source,
+      platform: platform,
+      userAgent: userAgent.trim(),
     );
     if (p.credKey != existing.credKey && _c._verifiedKeys.contains(p.credKey)) {
-      _c.addError = 'Portal already added (same username & password)';
+      _c.addError = 'Portal already added';
       _c.isAdding = false;
       notifyListeners();
       return;
@@ -331,6 +337,37 @@ mixin _IptvControllerPortal on ChangeNotifier {
     }
   }
 
+  static String _normalizedUsername(IptvPortalPlatform platform, String username) {
+    if (platform == IptvPortalPlatform.m3u) {
+      return IptvPortalPlatform.m3uUsernameSentinel;
+    }
+    return username.trim();
+  }
+
+  static bool _credentialsOk(
+    IptvPortalPlatform platform,
+    String url,
+    String username,
+    String password,
+  ) {
+    if (url.isEmpty) return false;
+    switch (platform) {
+      case IptvPortalPlatform.xtream:
+        return username.isNotEmpty && password.isNotEmpty;
+      case IptvPortalPlatform.m3u:
+        return true;
+      case IptvPortalPlatform.stalker:
+        return username.isNotEmpty;
+    }
+  }
+
+  static String _credentialsError(IptvPortalPlatform platform) =>
+      switch (platform) {
+        IptvPortalPlatform.xtream => 'URL, username, and password required',
+        IptvPortalPlatform.m3u => 'Playlist URL required',
+        IptvPortalPlatform.stalker => 'Portal URL and MAC address required',
+      };
+
   // ────────────────────────────────────────────────────────────────────────
   // Add manual portal
   // ────────────────────────────────────────────────────────────────────────
@@ -353,10 +390,14 @@ mixin _IptvControllerPortal on ChangeNotifier {
     required String password,
     String label = '',
     bool closePanel = true,
+    IptvPortalPlatform platform = IptvPortalPlatform.xtream,
+    String userAgent = '',
   }) async {
     final cleanUrl = normalizeUrl(url);
-    if (cleanUrl.isEmpty || username.isEmpty || password.isEmpty) {
-      _c.addError = 'All fields required';
+    final user = _normalizedUsername(platform, username);
+    final pass = password.trim();
+    if (!_credentialsOk(platform, cleanUrl, user, pass)) {
+      _c.addError = _credentialsError(platform);
       notifyListeners();
       return;
     }
@@ -372,9 +413,11 @@ mixin _IptvControllerPortal on ChangeNotifier {
     notifyListeners();
     final p = IptvPortal(
       url: cleanUrl,
-      username: username.trim(),
-      password: password.trim(),
+      username: user,
+      password: pass,
       source: 'Manual',
+      platform: platform,
+      userAgent: userAgent.trim(),
     );
     if (_c._verifiedKeys.contains(p.credKey)) {
       _c.addError = 'Portal already added (same username & password)';

@@ -478,6 +478,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   }
 
   Widget _buildShelf(BuildContext context) {
+    final shelves = _visibleSectionShelves;
     return Container(
       height: _kShelfTabHeight,
       decoration: BoxDecoration(
@@ -488,17 +489,17 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (var i = 0; i < _kSectionShelf.length; i++)
+          for (var i = 0; i < shelves.length; i++)
             _IptvSectionShelfTab(
-              spec: _kSectionShelf[i],
-              selected: ctrl.activeSection == _kSectionShelf[i].section,
+              spec: shelves[i],
+              selected: ctrl.activeSection == shelves[i].section,
               listIndex: i,
               isFirst: i == 0,
-              isLast: i == _kSectionShelf.length - 1,
-              onTap: () => widget.onSection(_kSectionShelf[i].section),
-              onReload: () => ctrl.reloadSection(_kSectionShelf[i].section),
+              isLast: i == shelves.length - 1,
+              onTap: () => widget.onSection(shelves[i].section),
+              onReload: () => ctrl.reloadSection(shelves[i].section),
               onDownEdge: _focusDownFromShelf,
-              onRightEdge: i == _kSectionShelf.length - 1
+              onRightEdge: i == shelves.length - 1
                   ? () {
                       if (ctrl.browserSearchOpen) {
                         _focusSearchField(edit: false);
@@ -511,6 +512,15 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         ],
       ),
     );
+  }
+
+  List<_IptvSectionShelfSpec> get _visibleSectionShelves {
+    final platform =
+        ctrl.activePortal?.platform ?? IptvPortalPlatform.xtream;
+    if (platform.supportsVodSeries) return _kSectionShelf;
+    return _kSectionShelf
+        .where((s) => s.section == IptvSection.live)
+        .toList(growable: false);
   }
 
   Widget _buildExpandingSearch(BuildContext context) {

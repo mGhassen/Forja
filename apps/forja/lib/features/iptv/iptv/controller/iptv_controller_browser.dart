@@ -486,15 +486,14 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   /// Live/movie direct URL; series resolves first episode via get_series_info.
   Future<String?> _resolveProbeUrl(IptvPortal portal, IptvStream s) async {
     if (s.kind == 'live' || s.kind == 'vod') {
-      final url = IptvClient.streamUrl(portal, s);
-      return url.isEmpty ? null : url;
+      return IptvClient.resolvePlayUrl(portal, s, section: s.kind);
     }
     if (s.kind != 'series') return null;
     final eps = await IptvClient.seriesEpisodes(portal, s.streamId);
     for (final e in eps) {
       if (e.id.isEmpty) continue;
-      final url = IptvClient.episodeUrl(portal, e);
-      if (url.isNotEmpty) return url;
+      final url = await IptvClient.resolveEpisodeUrl(portal, e);
+      if (url != null && url.isNotEmpty) return url;
     }
     return null;
   }

@@ -184,6 +184,7 @@ export async function upsertScrapeDeepRef(
         username: hit.username,
         password: hit.password || '',
         source: ref.pasteUrl ? 'catalog-deep' : 'catalog-decoded',
+        platform: hit.platform,
         postId: ref.postId,
         expiry: hit.expiry ?? null,
         maxConnections: hit.maxConnections ?? null,
@@ -274,6 +275,7 @@ async function upsertCatalogCandidateReturningId(
     p_region_primary: region.primary,
     p_region_tags: region.tags,
     p_region_confidence: region.confidence,
+    p_platform: portal.platform ?? 'xtream',
   })
   if (error) throw error
   return data as string

@@ -71,8 +71,9 @@ How Forja finds torrents, streams, and subtitles from the web.
 
 - [Live Matches](live/live-matches.md)
 - [IPTV — Xtream](live/iptv-xtream.md)
-- [IPTV — Catalog ops (admin)](live/iptv-catalog-ops.md) — operators: pool, credits, scrape worker
 - [IPTV — M3U](live/iptv-m3u.md)
+- [IPTV — Stalker](live/iptv-stalker.md)
+- [IPTV — Catalog ops (admin)](live/iptv-catalog-ops.md) — operators: pool, credits, scrape worker
 
 ---
 

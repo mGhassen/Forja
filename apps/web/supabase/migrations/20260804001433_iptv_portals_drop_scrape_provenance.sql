@@ -1,11 +1,31 @@
--- Product table iptv_portals must not carry scrape provenance.
+-- Product table: drop scrape provenance (post_id, layer).
 -- Lineage stays on iptv_scrape_deep_refs / iptv_scrape_deep_ref_portals.portal_id.
--- Safe on prod: rewrite RPC first, then drop columns (data discarded on purpose — regenerable via scrape).
+-- Owns upsert_iptv_catalog_candidate (catalog scrape promote) — not user upsert_iptv_portal.
+
+-- Platform col needed for promote (default xtream). Idempotent if RFC-051 already added it.
+alter table public.iptv_portals
+  add column if not exists platform text not null default 'xtream';
+
+alter table public.iptv_portals
+  drop constraint if exists iptv_portals_platform_check;
+
+alter table public.iptv_portals
+  add constraint iptv_portals_platform_check
+  check (platform in ('xtream', 'm3u', 'stalker'));
 
 -- Old signature (includes p_layer + p_post_id). Must drop before recreating —
 -- Postgres overloads; leaving both would break PostgREST arg matching.
 drop function if exists public.upsert_iptv_catalog_candidate(
   text, text, text, text, text, boolean, text, text, text, text, text, text[], real
+);
+
+-- Mid signatures if a partial deploy left an intermediate overload.
+drop function if exists public.upsert_iptv_catalog_candidate(
+  text, text, text, text, boolean, text, text, text, text, text[], real
+);
+
+drop function if exists public.upsert_iptv_catalog_candidate(
+  text, text, text, text, boolean, text, text, text, text, text[], real, text
 );
 
 create function public.upsert_iptv_catalog_candidate(
@@ -19,7 +39,8 @@ create function public.upsert_iptv_catalog_candidate(
   p_timezone text default null,
   p_region_primary text default 'UNKNOWN',
   p_region_tags text[] default null,
-  p_region_confidence real default null
+  p_region_confidence real default null,
+  p_platform text default 'xtream'
 )
 returns uuid
 language plpgsql
@@ -28,15 +49,20 @@ set search_path = public
 as $$
 declare
   pid uuid;
+  plat text := lower(trim(coalesce(nullif(trim(p_platform), ''), 'xtream')));
 begin
   if auth.uid() is not null and not public.is_admin() then
     raise exception 'admin or service role only';
   end if;
 
+  if plat not in ('xtream', 'm3u', 'stalker') then
+    raise exception 'invalid platform: %', plat;
+  end if;
+
   insert into public.iptv_portals (
     url, username, password, source, catalog_pool, alive, expiry,
     max_connections, timezone, region_primary, region_tags, region_confidence,
-    last_checked_at
+    platform, last_checked_at
   )
   values (
     trim(p_url),
@@ -51,6 +77,7 @@ begin
     coalesce(nullif(trim(p_region_primary), ''), 'UNKNOWN'),
     coalesce(p_region_tags, '{}'::text[]),
     coalesce(p_region_confidence, 0),
+    plat,
     case when p_alive is null then null else now() end
   )
   on conflict ((lower(trim(url))), (lower(trim(username))))
@@ -78,6 +105,7 @@ begin
       nullif(excluded.region_confidence, 0),
       public.iptv_portals.region_confidence
     ),
+    platform = excluded.platform,
     last_checked_at = coalesce(
       excluded.last_checked_at,
       public.iptv_portals.last_checked_at
@@ -90,7 +118,7 @@ end;
 $$;
 
 grant execute on function public.upsert_iptv_catalog_candidate(
-  text, text, text, text, boolean, text, text, text, text, text[], real
+  text, text, text, text, boolean, text, text, text, text, text[], real, text
 ) to authenticated, service_role;
 
 alter table public.iptv_portals

@@ -102,12 +102,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   late final TextEditingController _urlCtrl;
   late final TextEditingController _userCtrl;
   late final TextEditingController _passCtrl;
+  late final TextEditingController _uaCtrl;
   late final TextEditingController _pasteCtrl;
   late final FocusNode _pasteFocus;
   late final FocusNode _labelFocus;
   late final FocusNode _urlFocus;
   late final FocusNode _userFocus;
   late final FocusNode _passFocus;
+  late final FocusNode _uaFocus;
   late final FocusNode _expandFocus;
   late final FocusNode _submitFocus;
   late final FocusNode _cancelFocus;
@@ -124,6 +126,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   bool _expandFocused = false;
   bool _expandHovered = false;
   bool _pasteEditing = false;
+  IptvPortalPlatform _platform = IptvPortalPlatform.xtream;
 
   bool get _editing => widget.existing != null;
 
@@ -160,16 +163,24 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   void initState() {
     super.initState();
     final e = widget.existing;
+    _platform = e?.portal.platform ?? IptvPortalPlatform.xtream;
     _labelCtrl = TextEditingController(text: e?.label ?? '');
     _urlCtrl = TextEditingController(text: e?.portal.url ?? '');
-    _userCtrl = TextEditingController(text: e?.portal.username ?? '');
+    final initialUser = e?.portal.username ?? '';
+    _userCtrl = TextEditingController(
+      text: initialUser == IptvPortalPlatform.m3uUsernameSentinel
+          ? ''
+          : initialUser,
+    );
     _passCtrl = TextEditingController(text: e?.portal.password ?? '');
+    _uaCtrl = TextEditingController(text: e?.portal.userAgent ?? '');
     _pasteCtrl = TextEditingController();
     _pasteFocus = FocusNode(debugLabel: 'iptv-share-paste');
     _labelFocus = FocusNode(debugLabel: 'iptv-portal-label');
     _urlFocus = FocusNode(debugLabel: 'iptv-portal-url');
     _userFocus = FocusNode(debugLabel: 'iptv-portal-user');
     _passFocus = FocusNode(debugLabel: 'iptv-portal-pass');
+    _uaFocus = FocusNode(debugLabel: 'iptv-portal-ua');
     _expandFocus = FocusNode(debugLabel: 'iptv-portal-expand');
     _submitFocus = FocusNode(debugLabel: 'iptv-portal-submit');
     _cancelFocus = FocusNode(debugLabel: 'iptv-portal-cancel');
@@ -311,12 +322,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _urlCtrl.dispose();
     _userCtrl.dispose();
     _passCtrl.dispose();
+    _uaCtrl.dispose();
     _pasteCtrl.dispose();
     _pasteFocus.dispose();
     _labelFocus.dispose();
     _urlFocus.dispose();
     _userFocus.dispose();
     _passFocus.dispose();
+    _uaFocus.dispose();
     _expandFocus.dispose();
     _submitFocus.dispose();
     _cancelFocus.dispose();
@@ -504,6 +517,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         username: _userCtrl.text,
         password: _passCtrl.text,
         label: label,
+        platform: _platform,
+        userAgent: _uaCtrl.text,
       );
       if (!mounted) return;
       setState(() => _submitInFlight = false);
@@ -520,6 +535,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       label: label,
       // Keep panel (and this dialog) mounted; select portal without dismissing.
       closePanel: false,
+      platform: _platform,
+      userAgent: _uaCtrl.text,
     );
     if (!mounted) return;
     if (ctrl.addError != null) {
@@ -910,6 +927,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                         children: [
                                           if (!_editing)
                                             SizedBox(height: gapBeforeManual),
+                                          _platformChips(),
+                                          SizedBox(height: gapBetweenFields),
                                           _portalField(
                                             _labelCtrl,
                                             'Portal name',
@@ -920,44 +939,89 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                           SizedBox(height: gapBetweenFields),
                                           _portalField(
                                             _urlCtrl,
-                                            'URL',
-                                            hint:
-                                                'http://portal.example.com:8080',
+                                            _platform == IptvPortalPlatform.m3u
+                                                ? 'Playlist URL'
+                                                : 'URL',
+                                            hint: _platform ==
+                                                    IptvPortalPlatform.m3u
+                                                ? 'https://example.com/playlist.m3u'
+                                                : _platform ==
+                                                        IptvPortalPlatform
+                                                            .stalker
+                                                    ? 'http://portal.example.com/c/'
+                                                    : 'http://portal.example.com:8080',
                                             focusNode: _urlFocus,
                                             dialogIndex: urlIndex,
                                           ),
-                                          SizedBox(height: gapBetweenFields),
-                                          _portalField(
-                                            _userCtrl,
-                                            'Username',
-                                            hint: 'username',
-                                            focusNode: _userFocus,
-                                            dialogIndex: userIndex,
-                                          ),
-                                          SizedBox(height: gapBetweenFields),
-                                          _portalField(
-                                            _passCtrl,
-                                            'Password',
-                                            hint: 'password',
-                                            obscure: _obscurePassword,
-                                            focusNode: _passFocus,
-                                            dialogIndex: passIndex,
-                                            suffix: ForjaPlainIcon(
-                                              icon: _obscurePassword
-                                                  ? Icons.visibility_outlined
-                                                  : Icons
-                                                      .visibility_off_outlined,
-                                              tooltip: _obscurePassword
-                                                  ? 'Show password'
-                                                  : 'Hide password',
-                                              color: IptvShellStyle.iconMuted,
-                                              size: 20,
-                                              onTap: () => setState(
-                                                () => _obscurePassword =
-                                                    !_obscurePassword,
-                                              ),
+                                          if (_platform !=
+                                              IptvPortalPlatform.m3u) ...[
+                                            SizedBox(height: gapBetweenFields),
+                                            _portalField(
+                                              _userCtrl,
+                                              _platform ==
+                                                      IptvPortalPlatform.stalker
+                                                  ? 'MAC address'
+                                                  : 'Username',
+                                              hint: _platform ==
+                                                      IptvPortalPlatform
+                                                          .stalker
+                                                  ? '00:1A:79:XX:XX:XX'
+                                                  : 'username',
+                                              focusNode: _userFocus,
+                                              dialogIndex: userIndex,
                                             ),
-                                          ),
+                                            SizedBox(height: gapBetweenFields),
+                                            _portalField(
+                                              _passCtrl,
+                                              _platform ==
+                                                      IptvPortalPlatform.stalker
+                                                  ? 'Serial (optional)'
+                                                  : 'Password',
+                                              hint: _platform ==
+                                                      IptvPortalPlatform
+                                                          .stalker
+                                                  ? 'device serial'
+                                                  : 'password',
+                                              obscure: _platform ==
+                                                      IptvPortalPlatform
+                                                          .xtream &&
+                                                  _obscurePassword,
+                                              focusNode: _passFocus,
+                                              dialogIndex: passIndex,
+                                              suffix: _platform ==
+                                                      IptvPortalPlatform.xtream
+                                                  ? ForjaPlainIcon(
+                                                      icon: _obscurePassword
+                                                          ? Icons
+                                                              .visibility_outlined
+                                                          : Icons
+                                                              .visibility_off_outlined,
+                                                      tooltip: _obscurePassword
+                                                          ? 'Show password'
+                                                          : 'Hide password',
+                                                      color: IptvShellStyle
+                                                          .iconMuted,
+                                                      size: 20,
+                                                      onTap: () => setState(
+                                                        () =>
+                                                            _obscurePassword =
+                                                                !_obscurePassword,
+                                                      ),
+                                                    )
+                                                  : null,
+                                            ),
+                                          ],
+                                          if (_platform ==
+                                              IptvPortalPlatform.m3u) ...[
+                                            SizedBox(height: gapBetweenFields),
+                                            _portalField(
+                                              _uaCtrl,
+                                              'User-Agent (optional)',
+                                              hint: 'VLC/3.0.20 LibVLC/3.0.20',
+                                              focusNode: _uaFocus,
+                                              dialogIndex: userIndex,
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ),
@@ -1260,6 +1324,55 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _platformChips() {
+    Widget chip(IptvPortalPlatform p, String label) {
+      final selected = _platform == p;
+      return iptvTap(
+        context: context,
+        onTap: () {
+          if (_editing) return;
+          setState(() => _platform = p);
+        },
+        borderRadius: 8,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? ForjaShellColors.brandGreen.withValues(alpha: 0.2)
+                : Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected
+                  ? ForjaShellColors.brandGreen
+                  : Colors.white.withValues(alpha: 0.1),
+            ),
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              color: selected
+                  ? ForjaShellColors.brandGreen
+                  : IptvShellStyle.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        chip(IptvPortalPlatform.xtream, 'Xtream'),
+        const SizedBox(width: 8),
+        chip(IptvPortalPlatform.m3u, 'M3U'),
+        const SizedBox(width: 8),
+        chip(IptvPortalPlatform.stalker, 'Stalker'),
+      ],
     );
   }
 

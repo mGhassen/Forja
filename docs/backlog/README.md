@@ -100,6 +100,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | [1.0.5-[draft].md](1.0.5-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — IPTV catalog ops + Inngest scrape (18/19; RFC-040) |
 | [1.0.6-[draft].md](1.0.6-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — IPTV Live EPG guide (4/5; RFC-041) |
 | [1.0.7-[draft].md](1.0.7-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — unified auth + TV connect (11/14; RFC-042 · RFC-046) |
+| [1.0.8-[draft].md](1.0.8-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — IPTV multi-protocol portals (7/8; RFC-051) |
 | `apps/forja` (`feat/android-tv`) | **1.2.x** | **Dabaghin** | shipping — leanback + D-pad |
 
 ## Done — v1

@@ -602,6 +602,7 @@ class SyncDomainBridge {
         source: v.portal.source.isEmpty ? null : v.portal.source,
         expiry: v.expiry.isEmpty ? null : v.expiry,
         maxConnections: v.maxConnections.isEmpty ? null : v.maxConnections,
+        platform: v.portal.platform.wire,
       );
       if (portalId == null) continue;
       final portalName = v.label.trim().isNotEmpty
@@ -667,6 +668,7 @@ class SyncDomainBridge {
           username: username,
           password: password,
           source: g['source'] as String? ?? '',
+          platform: IptvPortalPlatform.fromString(g['platform'] as String?),
         ),
         // Per-profile label from user_iptv_portals.portal_name
         label: (row['portal_name'] as String?)?.trim() ?? '',

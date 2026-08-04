@@ -7,6 +7,7 @@ import 'package:forja/features/iptv/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
+import 'package:forja/features/iptv/iptv/m3u/m3u_store.dart';
 import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
@@ -660,7 +661,11 @@ class IptvController extends ChangeNotifier
   Future<List<EpgEntry>> guideEpgFor(IptvStream s) {
     if (!_epgEnabled) return Future.value(const []);
     final p = activePortal;
-    if (p == null || s.kind != 'live') return Future.value(const []);
+    if (p == null ||
+        s.kind != 'live' ||
+        p.platform != IptvPortalPlatform.xtream) {
+      return Future.value(const []);
+    }
     if (s.streamId.isEmpty && s.epgChannelId.isEmpty) {
       return Future.value(const []);
     }
@@ -739,7 +744,9 @@ class IptvController extends ChangeNotifier
   Future<List<EpgEntry>> epgFor(IptvStream s, {int limit = 2}) {
     if (!_epgEnabled) return Future.value(const []);
     final p = activePortal;
-    if (p == null || s.kind != 'live') {
+    if (p == null ||
+        s.kind != 'live' ||
+        p.platform != IptvPortalPlatform.xtream) {
       return Future.value(const []);
     }
     if (s.streamId.isEmpty && s.epgChannelId.isEmpty) {
@@ -772,7 +779,8 @@ class IptvController extends ChangeNotifier
   /// [epgFor] but keyed per (portal, stream).
   Future<List<EpgEntry>> epgForHit(ChannelHit h, {int limit = 2}) {
     if (!_epgEnabled) return Future.value(const []);
-    if (h.stream.kind != 'live') {
+    if (h.stream.kind != 'live' ||
+        h.portal.platform != IptvPortalPlatform.xtream) {
       return Future.value(const []);
     }
     final streamId = h.stream.streamId;
@@ -828,7 +836,16 @@ class IptvController extends ChangeNotifier
   Future<void> init() async {
     // Fresh flags/credits from cloud (admin toggles) before portal chrome builds.
     unawaited(SyncService.instance.pullAccountFeatures());
-    final stored = await IptvStore.load();
+    var stored = await IptvStore.load();
+    final migrated = await M3uStore.migrateToPortalsIfNeeded();
+    if (migrated.isNotEmpty) {
+      final byCred = {for (final v in stored) v.credKey: v};
+      for (final v in migrated) {
+        byCred.putIfAbsent(v.credKey, () => v);
+      }
+      stored = byCred.values.toList();
+      await IptvStore.save(stored);
+    }
     _favoritePortals
       ..clear()
       ..addAll(await IptvStore.loadFavorites());
@@ -866,7 +883,10 @@ class IptvController extends ChangeNotifier
     }
     activePortal = portal;
     ensurePortalHealth(portal);
-    final section = await IptvStore.loadLastSection();
+    var section = await IptvStore.loadLastSection();
+    if (!portal.platform.supportsVodSeries && section != IptvSection.live) {
+      section = IptvSection.live;
+    }
     await openSection(section, persistSection: false);
   }
 
@@ -895,6 +915,10 @@ class IptvController extends ChangeNotifier
       notifyListeners();
       return;
     }
+    if (!activePortal!.platform.supportsVodSeries &&
+        section != IptvSection.live) {
+      section = IptvSection.live;
+    }
     if (activeSection == section && !isLoading) return;
     if (activeSection != section) {
       activeSection = section;
@@ -920,7 +944,10 @@ class IptvController extends ChangeNotifier
     ensurePortalHealth(p);
     await IptvStore.saveLastPortalKey(p.key);
     if (closePanel) closePortalPanel();
-    final section = await IptvStore.loadLastSection();
+    var section = await IptvStore.loadLastSection();
+    if (!p.platform.supportsVodSeries && section != IptvSection.live) {
+      section = IptvSection.live;
+    }
     await openSection(section);
   }
 

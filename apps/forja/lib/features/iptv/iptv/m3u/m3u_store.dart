@@ -10,9 +10,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'm3u_models.dart';
 import 'm3u_parser.dart';
+import 'package:forja/features/iptv/iptv/data/models.dart';
 
 class M3uStore {
   static const _key = 'pt_iptv_m3u_playlists_v1';
+  static const _migratedKey = 'pt_iptv_m3u_migrated_v1';
 
   static Future<List<M3uPlaylist>> loadAll() async {
     final prefs = await SharedPreferences.getInstance();
@@ -35,7 +37,37 @@ class M3uStore {
       _key,
       json.encode(list.map((p) => p.toJson()).toList()),
     );
-    // M3U is device-local - do not push to profile_settings / cloud.
+  }
+
+  /// One-shot: URL playlists → [VerifiedPortal] (platform m3u). Clears store.
+  static Future<List<VerifiedPortal>> migrateToPortalsIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_migratedKey) == true) return const [];
+    final playlists = await loadAll();
+    final out = <VerifiedPortal>[];
+    for (final p in playlists) {
+      final url = p.sourceUrl?.trim() ?? '';
+      if (url.isEmpty) continue;
+      out.add(
+        VerifiedPortal(
+          portal: IptvPortal(
+            url: url,
+            username: IptvPortalPlatform.m3uUsernameSentinel,
+            password: '',
+            source: 'm3u-migrate',
+            platform: IptvPortalPlatform.m3u,
+          ),
+          label: p.name.trim(),
+          name: p.name.trim().isEmpty ? 'M3U' : p.name.trim(),
+          expiry: '',
+          maxConnections: '1',
+          activeConnections: '0',
+        ),
+      );
+    }
+    await prefs.setBool(_migratedKey, true);
+    await prefs.remove(_key);
+    return out;
   }
 
   static String newId() {

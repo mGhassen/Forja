@@ -8,6 +8,7 @@ const iptvPortalCsvHeaders = <String>[
   'username',
   'password',
   'source',
+  'platform',
   'expiry',
   'max',
   'active',
@@ -23,6 +24,8 @@ const _headerAliases = <String, String>{
   'password': 'password',
   'pass': 'password',
   'source': 'source',
+  'platform': 'platform',
+  'type': 'platform',
   'expiry': 'expiry',
   'expires': 'expiry',
   'max': 'max',
@@ -222,16 +225,26 @@ ParsePortalsCsvResult parsePortalsCsv(String text) {
     final url = cell(cells, 'url');
     final username = cell(cells, 'username');
     final password = cell(cells, 'password');
-    if (url.isEmpty || username.isEmpty || password.isEmpty) {
+    final platform = IptvPortalPlatform.fromString(cell(cells, 'platform'));
+    final userOk = platform == IptvPortalPlatform.m3u
+        ? url.isNotEmpty
+        : (url.isNotEmpty && username.isNotEmpty);
+    final passOk = platform == IptvPortalPlatform.xtream
+        ? password.isNotEmpty
+        : true;
+    if (!userOk || !passOk) {
       skipped++;
       continue;
     }
     final portal = VerifiedPortal(
       portal: IptvPortal(
         url: url,
-        username: username,
+        username: platform == IptvPortalPlatform.m3u
+            ? IptvPortalPlatform.m3uUsernameSentinel
+            : username,
         password: password,
         source: cell(cells, 'source').isEmpty ? 'csv' : cell(cells, 'source'),
+        platform: platform,
       ),
       label: cell(cells, 'label'),
       name: cell(cells, 'name'),
@@ -325,6 +338,7 @@ String portalsToCsv({
         portal.portal.username,
         portal.portal.password,
         portal.portal.source.trim(),
+        portal.portal.platform.wire,
         portal.expiry.trim(),
         portal.maxConnections.trim(),
         portal.activeConnections.trim(),

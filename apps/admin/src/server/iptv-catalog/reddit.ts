@@ -81,6 +81,38 @@ function encodeCursor(subIdx: number, redditAfter: string | null): string {
   return `reddit:${subIdx}:${redditAfter ?? ''}`
 }
 
+/**
+ * Advance Reddit /new cursor by one listing page — no extract / no persist.
+ * Used to skip to startPage before collect.
+ */
+export async function advanceCatalogListing(
+  after: string | null | undefined,
+  pageSize = SCRAPE_PAGE_SIZE,
+): Promise<{ nextAfter: string | null; subreddit: string }> {
+  const cursor = parseCursor(after)
+  let subIdx = cursor.subIdx
+  if (subIdx >= CATALOG_SUBS.length) subIdx = 0
+  const sub = CATALOG_SUBS[subIdx]!
+  const root = (await fetchOauthListing(sub, cursor.after, pageSize)) as {
+    data?: { after?: string | null }
+  } | null
+
+  if (!root?.data) {
+    const nextAfter =
+      subIdx + 1 < CATALOG_SUBS.length ? encodeCursor(subIdx + 1, null) : null
+    return { nextAfter, subreddit: sub }
+  }
+
+  const nextRaw = root.data.after
+  const hasMoreListing = Boolean(nextRaw && nextRaw !== 'null')
+  const nextAfter = hasMoreListing
+    ? encodeCursor(subIdx, nextRaw ?? null)
+    : subIdx + 1 < CATALOG_SUBS.length
+      ? encodeCursor(subIdx + 1, null)
+      : null
+  return { nextAfter, subreddit: sub }
+}
+
 let cachedToken: { token: string; expiry: number; idx: number } | null = null
 
 async function getOauthToken(): Promise<string | null> {

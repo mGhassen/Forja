@@ -99,16 +99,20 @@ class IptvClient {
     String? section,
     String? categoryId,
     String? seriesId,
+    String? cmd,
   }) =>
       {
         'action': action,
+        'platform': p.platform.wire,
         'url': p.url,
         'username': p.username,
         'password': p.password,
         'timeout_secs': timeoutSecs,
+        if (p.userAgent.isNotEmpty) 'user_agent': p.userAgent,
         if (section != null) 'section': section,
         if (categoryId != null) 'category_id': categoryId,
         if (seriesId != null) 'series_id': seriesId,
+        if (cmd != null && cmd.isNotEmpty) 'cmd': cmd,
       };
 
   static Future<String?> _httpGet(String url, {Duration? timeout}) =>
@@ -303,21 +307,89 @@ class IptvClient {
     ];
   }
 
+  /// Sync path URL for Xtream. For M3U returns [IptvStream.streamId] (the
+  /// channel URL). For Stalker returns empty — use [resolvePlayUrl].
   static String streamUrl(IptvPortal p, IptvStream s) {
-    final user = _enc(p.username);
-    final pass = _enc(p.password);
-    switch (s.kind) {
-      case 'live':
-        return '${p.url}/live/$user/$pass/${s.streamId}.${s.containerExt}';
-      case 'vod':
-        return '${p.url}/movie/$user/$pass/${s.streamId}.${s.containerExt}';
-      default:
+    switch (p.platform) {
+      case IptvPortalPlatform.m3u:
+        return s.streamId;
+      case IptvPortalPlatform.stalker:
         return '';
+      case IptvPortalPlatform.xtream:
+        final user = _enc(p.username);
+        final pass = _enc(p.password);
+        switch (s.kind) {
+          case 'live':
+            return '${p.url}/live/$user/$pass/${s.streamId}.${s.containerExt}';
+          case 'vod':
+            return '${p.url}/movie/$user/$pass/${s.streamId}.${s.containerExt}';
+          default:
+            return '';
+        }
     }
   }
 
-  static String episodeUrl(IptvPortal p, IptvEpisode e) =>
-      '${p.url}/series/${_enc(p.username)}/${_enc(p.password)}/${e.id}.${e.containerExt}';
+  static String episodeUrl(IptvPortal p, IptvEpisode e) {
+    switch (p.platform) {
+      case IptvPortalPlatform.m3u:
+        return e.id;
+      case IptvPortalPlatform.stalker:
+        return '';
+      case IptvPortalPlatform.xtream:
+        return '${p.url}/series/${_enc(p.username)}/${_enc(p.password)}/${e.id}.${e.containerExt}';
+    }
+  }
+
+  /// Resolve a playable URL for any platform (Stalker create_link when needed).
+  static Future<String?> resolvePlayUrl(
+    IptvPortal p,
+    IptvStream s, {
+    String? section,
+  }) async {
+    switch (p.platform) {
+      case IptvPortalPlatform.m3u:
+        return s.streamId.isEmpty ? null : s.streamId;
+      case IptvPortalPlatform.xtream:
+        final u = streamUrl(p, s);
+        return u.isEmpty ? null : u;
+      case IptvPortalPlatform.stalker:
+        return createLink(
+          p,
+          cmd: s.streamId,
+          section: section ?? s.kind,
+        );
+    }
+  }
+
+  static Future<String?> resolveEpisodeUrl(IptvPortal p, IptvEpisode e) async {
+    switch (p.platform) {
+      case IptvPortalPlatform.m3u:
+        return e.id.isEmpty ? null : e.id;
+      case IptvPortalPlatform.xtream:
+        final u = episodeUrl(p, e);
+        return u.isEmpty ? null : u;
+      case IptvPortalPlatform.stalker:
+        return createLink(p, cmd: e.id, section: 'series');
+    }
+  }
+
+  static Future<String?> createLink(
+    IptvPortal p, {
+    required String cmd,
+    String section = 'live',
+  }) async {
+    if (cmd.trim().isEmpty) return null;
+    final root = await _xtreamRequest(_portalBody(
+      p,
+      action: 'create_link',
+      timeoutSecs: 20,
+      section: section,
+      cmd: cmd,
+    ));
+    if (root == null) return null;
+    final url = root['url']?.toString() ?? '';
+    return url.isEmpty ? null : url;
+  }
 
   /// Fetches the next [limit] EPG programmes for [streamId] via Xtream's
   /// `get_short_epg`. Returns an empty list on any failure (no panel EPG,

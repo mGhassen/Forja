@@ -1,10 +1,10 @@
 # IPTV — Xtream
 
-> Connect Xtream Codes portals — live TV, VOD, series, and EPG.
+> Connect Xtream Codes, M3U playlists, and Stalker portals — live TV, VOD, series, and EPG (Xtream).
 
 ## What it is
 
-The IPTV tab supports **Xtream Codes** portals. The tab opens on the **catalog** (categories + channels). Pick a portal from the side panel, switch **Live / Movies / Series** from the top bar, and play in the IPTV player.
+The IPTV tab supports **Xtream Codes**, **M3U/M3U8** playlist portals, and **Stalker / Ministra**. The tab opens on the **catalog** (categories + channels). Pick a portal from the side panel, switch **Live / Movies / Series** from the top bar (Movies/Series for Xtream and Stalker), and play in the IPTV player.
 
 ## How to open it
 
@@ -40,13 +40,15 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 
 1. Get portal URL, username, and password from your IPTV provider
 2. Open **Portals** → **Add**, **Deal** when your account has Deal unlocked (spends 1 catalog credit for up to 5 pool portals), or **Scrape** / **Find Portals** when scrape is unlocked
-3. To import from a share code: in the portal dialog (**Share code** title), paste a share token — either a new self-contained `F1.…` string, or a legacy **XXXX-XXXX** 8-character code into the tall squares — when the code resolves, the dialog asks for an optional **Portal name**, then connects after you confirm (or cancel to go back). Tap the **↓** control on the bottom edge to expand manual entry (title becomes **Add Portal**; optional **Portal name**, then URL, username, password as underline fields) — confirm with the green check icon or dismiss with the muted close icon at the bottom-right (only when expanded); use the header **X** to close without saving. **Edit portal** includes the same **Portal name** field. On the **web** remote settings page, add portals with the manual form, or **Export CSV** to download portals (credentials included) as a spreadsheet file; **Save** to sync.
+3. To import from a share code: in the portal dialog (**Share code** title), paste a share token — either a new self-contained `F1.…` string, or a legacy **XXXX-XXXX** 8-character code into the tall squares — when the code resolves, the dialog asks for an optional **Portal name**, then connects after you confirm (or cancel to go back). Tap the **↓** control on the bottom edge to expand manual entry (title becomes **Add Portal**). Choose **Xtream**, **M3U**, or **Stalker**, optional **Portal name**, then the fields for that type (Xtream: URL / username / password; M3U: playlist URL + optional User-Agent; Stalker: portal URL + MAC [+ optional serial]) — confirm with the green check icon or dismiss with the muted close icon at the bottom-right (only when expanded); use the header **X** to close without saving. **Edit portal** includes the same **Portal name** field. On the **web** remote settings page, add portals with the manual form, or **Export CSV** to download portals (credentials included) as a spreadsheet file; **Save** to sync.
 4. Tap a portal in the list to load its catalog
 
 ## Tips
 
-- Signed-in **Xtream portals sync from the cloud** for your active profile — the device list is a cache. Cloud wins on sign-in / profile switch; only an explicit delete (or clear-all) removes portals from the account
-- Portal passwords on this device use Keychain / Keystore when allowed (macOS can choose a local app-file vault instead — no login-Keychain password prompts); CSV import/export files still contain passwords in plain text — keep those files private
+- Signed-in **portals sync from the cloud** for your active profile (Xtream, M3U, and Stalker) — the device list is a cache. Cloud wins on sign-in / profile switch; only an explicit delete (or clear-all) removes portals from the account
+- Portal passwords / Stalker MAC secrets on this device use Keychain / Keystore when allowed (macOS can choose a local app-file vault instead — no login-Keychain password prompts); CSV import/export files still contain secrets in plain text — keep those files private
+- See also [IPTV — M3U](iptv-m3u.md) and [IPTV — Stalker](iptv-stalker.md) for type-specific setup
+- **Scrape** / **Find Portals** is available only when your signed-in account has `iptvScrape` enabled in cloud account features (default off; guests never see it). When enabled, scrape walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now), and the web **Account → IPTV** page shows a VIP **Activated** banner for that perk. Scrape understands plain `get.php` links, Host/User/Pass cards (including common unicode spellings), and tabular `host:port user:pass` dumps — Stalker/MAC portal posts are still skipped by client scrape (add Stalker manually). Operators fill the shared pool via [Catalog ops](iptv-catalog-ops.md).
 - **Portals** panel on the right (desktop / Android TV) holds add and the portal list (plus scrape when the account feature is on) — search filters by portal name, account name, or URL; the list stays lazy (only visible rows mount) so large scraped catalogs stay responsive
 - Section chips (**Live** / **Movies** / **Series**) switch the catalog; data stays on this device until you hit **Reload** on the selected shelf (or the centered **Reload** button when the catalog failed to load — autofocused on **Android TV**), or clear **IPTV portal cache** in Settings
 - On **Android TV**, empty portals autofocus the first available CTA (**Deal** / **Find Portals** / **Add portal**)
@@ -64,15 +66,15 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - While watching **live TV**, tap the grid icon in the player controls to open the channel guide
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests
 - **Deal** is available only when your signed-in account has `dealPortal` enabled (default off). It spends **1 credit** for up to **5** alive portals from the shared catalog pool (weighted lottery — less-dealt / recently checked hosts preferred, diverse hosts when possible; region `ANY`), and never more than your remaining portal slots. Credits are granted by admins; balance shows in Portals and on web **Account → IPTV** only when Deal is unlocked.
-- Each profile may hold up to **5** Xtream portals by default (`features.maxIptvPortals`). Operators can raise that number per account in Features; **admin** accounts are unlimited. Add / import / scrape / Deal stop at the limit and show a toast.
-- **Scrape** / **Find Portals** is available only when your signed-in account has `iptvScrape` enabled in cloud account features (default off; guests never see it). When enabled, scrape walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now), and the web **Account → IPTV** page shows a VIP **Activated** banner for that perk. Scrape understands plain `get.php` links, Host/User/Pass cards (including common unicode spellings), and tabular `host:port user:pass` dumps — Stalker/MAC portal posts are ignored (Forja uses Xtream login, not device MAC). Operators fill the shared pool via [Catalog ops](iptv-catalog-ops.md).
+- Each profile may hold up to **5** portals by default (`features.maxIptvPortals`). Operators can raise that number per account in Features; **admin** accounts are unlimited. Add / import / scrape / Deal stop at the limit and show a toast.
 - Portal quality varies — timeouts usually mean provider or network issues
 - Clear stale alive checks / channel scan hits / **cached catalogs** from **Settings → Data & backup → IPTV portal cache** (portals and favorites stay; next IPTV open re-fetches catalogs)
-- Export or import Xtream portals as CSV from **Settings → Data & backup → IPTV portals** when the IPTV tab is visible (same format as the web remote settings page; import adds only portals that are not already saved)
+- Export or import portals as CSV from **Settings → Data & backup → IPTV portals** when the IPTV tab is visible (same format as the web remote settings page; includes `platform`; import adds only portals that are not already saved)
 - Series VOD uses the same player as live with seek support when the stream allows — the VOD seek bar uses Forja brand green for the played fill and thumb
 
 ## Related
 
 - [IPTV — M3U](iptv-m3u.md)
+- [IPTV — Stalker](iptv-stalker.md)
 - [Cache & data](../settings/cache-data.md)
 - [Player](../playback/player.md)

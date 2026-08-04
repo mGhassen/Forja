@@ -951,7 +951,12 @@ class _BrowserViewState extends State<_BrowserView> {
     }
     var focusStream = s;
     ctrl.noteBrowserSearchPlayedStream(s);
-    final url = IptvClient.streamUrl(p.portal, s);
+    final url = await IptvClient.resolvePlayUrl(p.portal, s, section: s.kind);
+    if (!mounted) return;
+    if (url == null || url.isEmpty) {
+      ForjaToast.error('Could not open stream');
+      return;
+    }
     final channelGuide = s.kind == 'live'
         ? IptvChannelGuide.fromXtreamLive(
             portal: p,

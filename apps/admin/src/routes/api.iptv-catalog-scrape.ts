@@ -19,6 +19,8 @@ export const Route = createFileRoute('/api/iptv-catalog-scrape')({
             action?: 'start' | 'stop' | 'mark_stuck'
             jobId?: string
             maxPages?: number
+            startPage?: number
+            endPage?: number
             maxVerify?: number
             forceFull?: boolean
             runId?: string
@@ -115,6 +117,8 @@ export const Route = createFileRoute('/api/iptv-catalog-scrape')({
                 jobId,
                 runId: run.id,
                 maxPages: body.maxPages,
+                startPage: body.startPage,
+                endPage: body.endPage,
                 maxVerify: body.maxVerify,
                 forceFull: body.forceFull === true,
               },

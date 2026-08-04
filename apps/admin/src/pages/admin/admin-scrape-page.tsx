@@ -71,10 +71,17 @@ export function AdminScrapePage() {
   const [confirmFull, setConfirmFull] = useState(false)
 
   const start = useMutation({
-    mutationFn: (opts: { forceFull: boolean; maxPages?: number }) =>
+    mutationFn: (opts: {
+      forceFull: boolean
+      maxPages?: number
+      startPage?: number
+      endPage?: number
+    }) =>
       scrapeControl('start', {
         forceFull: opts.forceFull,
         maxPages: opts.maxPages,
+        startPage: opts.startPage,
+        endPage: opts.endPage,
       }),
     onSuccess: async (res) => {
       setConfirmFull(false)
@@ -370,8 +377,12 @@ export function AdminScrapePage() {
         onClose={() => {
           if (!start.isPending) setConfirmFull(false)
         }}
-        onConfirm={(maxPages) =>
-          start.mutate({ forceFull: true, maxPages })
+        onConfirm={(range) =>
+          start.mutate({
+            forceFull: true,
+            startPage: range.startPage,
+            endPage: range.endPage,
+          })
         }
       />
 

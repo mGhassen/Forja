@@ -107,6 +107,7 @@ export async function upsertIptvPortal(args: {
   source?: string | null
   expiry?: string | null
   maxConnections?: string | null
+  platform?: 'xtream' | 'm3u' | 'stalker' | null
 }): Promise<string> {
   const { data, error } = await supabase.rpc('upsert_iptv_portal', {
     p_url: args.url,
@@ -115,6 +116,7 @@ export async function upsertIptvPortal(args: {
     p_source: args.source ?? null,
     p_expiry: args.expiry ?? null,
     p_max_connections: args.maxConnections ?? null,
+    p_platform: args.platform ?? 'xtream',
   })
   if (error) throw error
   return data as string

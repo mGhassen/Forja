@@ -225,6 +225,10 @@ export function AccountSettingsIptvPage() {
       username: a.portal.username,
       password: a.portal.password,
       source: a.portal.source ?? undefined,
+      platform:
+        a.portal.platform === 'm3u' || a.portal.platform === 'stalker'
+          ? a.portal.platform
+          : 'xtream',
       portalName: a.portal_name,
       expiry: a.portal.expiry ?? undefined,
       max: a.portal.max_connections ?? undefined,
@@ -376,6 +380,7 @@ export function AccountSettingsIptvPage() {
         source: portal.source,
         expiry: portal.expiry,
         maxConnections: portal.max,
+        platform: portal.platform ?? 'xtream',
         portalName: portal.portalName?.trim() || portal.username,
         favorite: portal.favorite === true,
       })),

@@ -1031,6 +1031,7 @@ class SyncService {
     String? source,
     String? expiry,
     String? maxConnections,
+    String platform = 'xtream',
   }) async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null) return null;
@@ -1044,6 +1045,7 @@ class SyncService {
           'p_source': source,
           'p_expiry': expiry,
           'p_max_connections': maxConnections,
+          'p_platform': platform,
         },
       );
       return id as String?;

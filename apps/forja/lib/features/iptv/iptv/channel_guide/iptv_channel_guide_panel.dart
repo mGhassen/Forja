@@ -369,10 +369,14 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     return null;
   }
 
-  String? _playUrlFor(IptvGuideChannel ch) {
+  Future<String?> _playUrlFor(IptvGuideChannel ch) async {
     final portal = widget.guide.xtreamPortal;
     if (ch.xtreamStream != null && portal != null) {
-      return IptvClient.streamUrl(portal.portal, ch.xtreamStream!);
+      return IptvClient.resolvePlayUrl(
+        portal.portal,
+        ch.xtreamStream!,
+        section: 'live',
+      );
     }
     final url = ch.playUrl;
     if (url == null || url.isEmpty) return null;
@@ -407,8 +411,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   Future<void> _runHealthCheck(IptvGuideChannel ch) async {
-    final url = _playUrlFor(ch);
-    if (url == null) return;
+    final url = await _playUrlFor(ch);
+    if (url == null || url.isEmpty) return;
     _healthInFlight.add(ch.id);
     try {
       final ok = await IptvAliveChecker.checkOne(url);

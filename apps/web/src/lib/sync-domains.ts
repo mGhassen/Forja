@@ -202,6 +202,8 @@ export type IptvPortalRow = {
   username: string
   password: string
   source?: string
+  /** xtream | m3u | stalker — default xtream when omitted. */
+  platform?: 'xtream' | 'm3u' | 'stalker'
   /** Per-profile display name (user_iptv_portals.portal_name). */
   portalName: string
   /** @deprecated use portalName */

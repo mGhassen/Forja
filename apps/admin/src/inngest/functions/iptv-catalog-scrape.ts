@@ -1,6 +1,7 @@
 import { inngest } from '@/inngest/client'
 import { classifyRegion } from '@/server/iptv-catalog/region'
 import {
+  advanceCatalogListing,
   processDeepRefRow,
   scrapeCatalogPage,
 } from '@/server/iptv-catalog/reddit'
@@ -36,6 +37,10 @@ type ScrapeData = {
   /** Pre-created by admin API so UI shows running immediately. */
   runId?: string
   maxPages?: number
+  /** 1-indexed Reddit /new page to start at (after skipping startPage-1). */
+  startPage?: number
+  /** 1-indexed inclusive end page. */
+  endPage?: number
   maxResultsPerPage?: number
   /** Only when VERIFY_PORTAL_STATUS — how many to probe, not upsert limit. */
   maxVerify?: number
@@ -124,9 +129,25 @@ export const iptvCatalogScrape = inngest.createFunction(
       }
     }
 
-    // One Reddit page (10 posts) per Inngest step. Default 10 pages when unset
-    // (full dialog passes an explicit maxPages). Cap 200.
-    const maxPages = Math.min(Math.max(data.maxPages ?? 10, 1), 200)
+    // One Reddit page (10 posts) per Inngest step.
+    // Range: startPage..endPage (1-indexed). Legacy maxPages alone → pages 1..maxPages.
+    const startPage = Math.min(
+      200,
+      Math.max(1, Math.floor(data.startPage ?? 1)),
+    )
+    let endPage = Math.min(
+      200,
+      Math.max(
+        1,
+        Math.floor(
+          data.endPage ??
+            startPage + Math.min(Math.max(data.maxPages ?? 10, 1), 200) - 1,
+        ),
+      ),
+    )
+    if (endPage < startPage) endPage = startPage
+    const maxPages = endPage - startPage + 1
+    const skipPages = startPage - 1
     const maxResultsPerPage = Math.min(
       Math.max(data.maxResultsPerPage ?? 500, 1),
       2000,
@@ -165,6 +186,16 @@ export const iptvCatalogScrape = inngest.createFunction(
     let unparsedCount = 0
     let l1OnlyCount = 0
     let hitWatermark = false
+
+    // Skip listing pages (no extract) so startPage is the first we collect.
+    for (let s = 0; s < skipPages; s++) {
+      const pageAfter = after
+      const skipped = await step.run(`skip-reddit-page-${s}`, async () => {
+        return advanceCatalogListing(pageAfter)
+      })
+      after = skipped.nextAfter
+      if (!after) break
+    }
 
     // Phase 1 — COLLECT: Reddit pages → posts + deep_ref stubs (no paste HTTP).
     for (let page = 0; page < maxPages; page++) {

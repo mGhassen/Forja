@@ -20,6 +20,8 @@ export async function scrapeControl(
   body?: {
     runId?: string
     maxPages?: number
+    startPage?: number
+    endPage?: number
     maxVerify?: number
     forceFull?: boolean
   },

@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
-import 'package:forja/features/iptv/iptv/m3u/m3u_models.dart';
-import 'package:forja/features/iptv/iptv/m3u/m3u_store.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:rust/rust.dart';
 
@@ -35,23 +33,3 @@ final iptvEpgEnabledProvider = Provider.autoDispose<bool>((ref) {
   if (snap != null) return snap.iptvEpgEnabled;
   return SettingsService.iptvEpgEnabledNotifier.value;
 });
-
-final m3uPlaylistsProvider =
-    AsyncNotifierProvider<M3uPlaylistsNotifier, List<M3uPlaylist>>(
-  M3uPlaylistsNotifier.new,
-);
-
-class M3uPlaylistsNotifier extends AsyncNotifier<List<M3uPlaylist>> {
-  @override
-  Future<List<M3uPlaylist>> build() => M3uStore.loadAll();
-
-  Future<void> reload() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(M3uStore.loadAll);
-  }
-
-  Future<void> save(List<M3uPlaylist> list) async {
-    await M3uStore.saveAll(list);
-    state = AsyncData(list);
-  }
-}

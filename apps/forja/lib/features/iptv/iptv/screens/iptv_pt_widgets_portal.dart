@@ -18,16 +18,6 @@ class _PortalListView extends ConsumerWidget {
                 : ctrl.statusText,
             actions: [
               IptvIconAction(
-                tooltip: 'M3U Playlists',
-                onPressed: () => pushShellRoute(
-                  context,
-                  AppRouter.slideShellRoute(
-                    (_) => const M3uPlaylistsScreen(),
-                  ),
-                ),
-                icon: Icons.playlist_play_rounded,
-              ),
-              IptvIconAction(
                 tooltip: features.canAddIptvPortal(ctrl.verified.length)
                     ? 'Add portal'
                     : 'Portal limit reached (${features.iptvPortalLimitLabel()})',

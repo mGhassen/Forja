@@ -549,6 +549,7 @@ impl Supabase {
             "p_region_primary": row.get("region_primary").and_then(|v| v.as_str()).unwrap_or("UNKNOWN"),
             "p_region_tags": row.get("region_tags"),
             "p_region_confidence": row.get("region_confidence"),
+            "p_platform": row.get("platform").and_then(|v| v.as_str()).unwrap_or("xtream"),
         });
         let res = self
             .http

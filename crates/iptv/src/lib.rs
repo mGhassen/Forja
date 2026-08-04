@@ -1,9 +1,12 @@
 pub mod m3u;
+pub mod m3u_client;
 pub mod pastesh;
+pub mod portal_client;
 pub mod portal_extract;
 pub mod portal_share;
 pub mod reddit_catalog;
 pub mod region;
+pub mod stalker_client;
 pub mod stream_probe;
 pub mod xtream;
 pub mod xtream_client;

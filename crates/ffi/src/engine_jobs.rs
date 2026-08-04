@@ -273,7 +273,7 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
                 serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
             let request_json = req.request_json;
             utils::engine_cancel::with_cancel(async {
-                Ok(iptv::xtream_client::request_json_async(&request_json).await)
+                Ok(iptv::portal_client::request_json_async(&request_json).await)
             })
             .await
         }

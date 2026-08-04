@@ -1,31 +1,59 @@
 // Models ported from Forja TV (Kotlin) IPTV system.
 // Pure data classes - no Flutter dependencies.
 
+/// Portal protocol — xtream player_api, M3U playlist, or Stalker/Ministra.
+enum IptvPortalPlatform {
+  xtream,
+  m3u,
+  stalker;
+
+  static const m3uUsernameSentinel = '__m3u__';
+
+  static IptvPortalPlatform fromString(String? raw) => switch (raw?.trim().toLowerCase()) {
+        'm3u' => m3u,
+        'stalker' => stalker,
+        _ => xtream,
+      };
+
+  String get wire => name;
+
+  bool get supportsVodSeries => this == xtream || this == stalker;
+}
+
 /// Raw scraped Xtream-Codes portal credentials (unverified).
 class IptvPortal {
   final String url;
   final String username;
   final String password;
   final String source;
+  final IptvPortalPlatform platform;
+  /// Optional User-Agent for M3U fetch / play.
+  final String userAgent;
 
   const IptvPortal({
     required this.url,
     required this.username,
     required this.password,
     this.source = '',
+    this.platform = IptvPortalPlatform.xtream,
+    this.userAgent = '',
   });
 
-  String get key => '$url|$username|$password'.toLowerCase();
+  String get key =>
+      '${platform.wire}|$url|$username|$password'.toLowerCase();
 
   /// Identity for duplicate-portal checks: ignores URL, since the same
   /// account can be exposed on multiple host names.
-  String get credKey => '$username|$password'.toLowerCase();
+  String get credKey =>
+      '${platform.wire}|$username|$password'.toLowerCase();
 
   Map<String, dynamic> toJson() => {
         'url': url,
         'username': username,
         'password': password,
         'source': source,
+        'platform': platform.wire,
+        if (userAgent.isNotEmpty) 'userAgent': userAgent,
       };
 
   factory IptvPortal.fromJson(Map<String, dynamic> j) => IptvPortal(
@@ -33,6 +61,8 @@ class IptvPortal {
         username: j['username'] as String? ?? '',
         password: j['password'] as String? ?? '',
         source: j['source'] as String? ?? '',
+        platform: IptvPortalPlatform.fromString(j['platform'] as String?),
+        userAgent: j['userAgent'] as String? ?? j['user_agent'] as String? ?? '',
       );
 }
 
@@ -67,6 +97,8 @@ class VerifiedPortal {
     final u = portal.username.trim();
     return u.isEmpty ? 'Portal' : u;
   }
+
+  IptvPortalPlatform get platform => portal.platform;
 
   VerifiedPortal withLabel(String label) => VerifiedPortal(
         portal: portal,

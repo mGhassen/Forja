@@ -3,7 +3,9 @@ export type CatalogPortal = {
   username: string
   password: string
   source: string
-  /** Reddit thing id (t3_…) — stored alone; never title/body. */
+  /** Product protocol — written to iptv_portals.platform on promote. */
+  platform?: 'xtream' | 'm3u' | 'stalker'
+  /** Reddit thing id (t3_…) — scrape lineage only; never written to iptv_portals. */
   postId?: string
   /** From note card / get.php — filled on scrape upsert (alive stays null). */
   expiry?: string | null

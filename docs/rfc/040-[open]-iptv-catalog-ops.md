@@ -42,7 +42,7 @@
 | 9 | R40-A09 | Region tags on candidates (TR/EU/US/UK/MIXED/UNKNOWN) | ✅ |
 | 10 | R40-A10 | Forja Deal UX (credit burn + region picker) | ✅ |
 | 11 | R40-A11 | AI extract fallback on L2 misses | ⏭️ |
-| 12 | R40-A12 | Stalker/Ministra portal type in Forja | ⏭️ |
+| 12 | R40-A12 | Stalker/Ministra portal type in Forja — see [RFC-051](051-[open]-iptv-multi-protocol-portals.md) | ⏭️ |
 | 13 | R40-A13 | Ops console under web `/admin` (shared AuthProvider + Forja UI; no separate `apps/admin`) | ✅ |
 | 14 | R40-A14 | Separate `apps/admin` TanStack Start app (same stack/auth/design as web; not portal routes) | ✅ |
 | 15 | R40-A15 | Inngest TS scrape on `apps/admin` (cron + per-portal `verify-portal-status` step; Rust worker on hold) | ✅ |

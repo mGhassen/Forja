@@ -101,10 +101,12 @@ class _EpisodeTile extends StatelessWidget {
       color: Colors.transparent,
       child: iptvTap(
         context: context,
-        onTap: () {
+        onTap: () async {
           final p = ctrl.activePortal;
           if (p == null) return;
-          final url = IptvClient.episodeUrl(p.portal, episode);
+          final url = await IptvClient.resolveEpisodeUrl(p.portal, episode);
+          if (url == null || url.isEmpty) return;
+          if (!context.mounted) return;
           pushShellRoute(
             context,
             AppRouter.slideShellRoute(
