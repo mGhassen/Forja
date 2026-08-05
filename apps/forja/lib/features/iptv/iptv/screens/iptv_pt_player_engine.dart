@@ -101,9 +101,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           _s._buffering = false;
         }
         _s._bufferingSince = null;
-        if (!_playbackStarted) {
-          _playbackStarted = true;
-        }
+        _noteVideoFrame(reason: 'exo ready');
         break;
       case 'playing':
         final playing = event['value'] == true;
@@ -120,6 +118,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         if (playing) {
           _s._readyNotPlayingSince = null;
           _s._bufferingSince = null;
+          // Live Exo often reports position 0 forever while frames paint —
+          // keep the watchdog heartbeat alive.
+          _noteVideoFrame(reason: 'exo playing');
         } else if (_s._userPlayWhenReady) {
           _s._readyNotPlayingSince = DateTime.now();
         }
@@ -171,6 +172,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         if (pos != _s._lastPos) {
           _s._lastPos = pos;
           _s._lastPosChange = DateTime.now();
+          if (!_playbackStarted && pos > Duration.zero) {
+            _playbackStarted = true;
+          }
+        } else if (_playbackStarted || _s._playing) {
+          // Live Exo: position often stuck at 0 while frames flow — progress
+          // ticks still prove the pipeline is alive.
+          _s._lastPosChange = DateTime.now();
         }
         break;
       case 'ended':
@@ -188,12 +196,29 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _triggerRecovery(reason: 'exo error: $msg', forceHard: true);
         break;
       case 'renderedFirstFrame':
+        _noteVideoFrame(reason: 'exo first frame');
+        break;
       case 'tracksChanged':
         break;
     }
   }
 
   bool _playbackStarted = false;
+
+  /// Live IPTV (especially Exo) often keeps demuxer position at 0 while video
+  /// paints. Mark the stream alive so detector 4 does not hard-recreate after
+  /// 30s and ANR the ATV process.
+  void _noteVideoFrame({String reason = 'frame'}) {
+    final wasCold = !_playbackStarted || _s._lastPos == Duration.zero;
+    _playbackStarted = true;
+    _s._lastPosChange = DateTime.now();
+    if (_s._lastPos == Duration.zero) {
+      _s._lastPos = const Duration(milliseconds: 1);
+    }
+    if (wasCold) {
+      debugPrint('[IPTV] video alive ($reason)');
+    }
+  }
 
   Future<void> _enginePlay() async {
     if (_s._exoBackend) {
@@ -565,6 +590,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (b) {
         _s._bufferingSince ??= DateTime.now();
       } else {
+        // First buffer fill completed — live may keep position at 0.
+        if (!_playbackStarted) {
+          _noteVideoFrame(reason: 'buffering done');
+        }
         final since = _s._bufferingSince;
         _s._bufferingSince = null;
         // After a real mid-stream underrun, snap to live so we don't replay
@@ -867,8 +896,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       //   • detector 1 needs buffering=true (mpv may not set it)
       //   • detector 2 is gated on _s._lastPos > 0
       //   • detector 3 needs playing=false (mpv stays true)
+      // Gate on !_playbackStarted — live Exo often keeps position at 0 while
+      // actually painting (ready / renderedFirstFrame / progress heartbeat).
       // 30 s is well past the 25 s initial-connect grace in detector 1.
       if (_s._userPlayWhenReady &&
+          !_playbackStarted &&
           _s._lastPos == Duration.zero &&
           now.difference(_s._openedAt) > const Duration(seconds: 30)) {
         _triggerRecovery(
@@ -954,9 +986,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (_s._disposed) return;
 
       // Hard recreate is expensive and fragile on Windows (unbounded mpv
-      // dispose - issue 062). Prefer soft reopen for early stalls; only
-      // recreate after several soft failures (or non-Windows forceHard).
+      // dispose - issue 062) and ANRs ATV (issue 128). Prefer soft reopen for
+      // early stalls; only recreate after several soft failures.
       final allowHardRecreate = forceHard &&
+          _s._retryAttempt > 2 &&
           (!_s._windowsSoftwareDecode || _s._retryAttempt > 4);
       if (allowHardRecreate) {
         try {
@@ -966,10 +999,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         } catch (e) {
           debugPrint('[IPTV] hard recreate failed: $e');
         }
-      } else if (_s._retryAttempt <= 2 || (forceHard && _s._windowsSoftwareDecode)) {
+      } else if (_s._retryAttempt <= 2 || forceHard) {
         // Live MediaKit: snap to edge — full reopen is slow (desktop "stuck")
         // and ANR-prone on ATV. Exo / VOD still soft-reopen.
-        if (!_s._exoBackend && _currentSourceIsLive) {
+        // forceHard on attempt 1–2 also soft-reopens (ATV ANR if we recreate).
+        if (!_s._exoBackend && _currentSourceIsLive && !forceHard) {
           _scheduleJumpToLive(reason: 'soft recovery');
           try {
             await _enginePlay();

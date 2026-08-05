@@ -222,22 +222,29 @@ class PipService {
           true,
           visibleOnFullScreen: true,
         );
+        // Native DesktopPipChannel already applied borderless chrome.
+        // Never call window_manager setAsFrameless / setTitleBarStyle after
+        // that — both force-unwrap closeButton.superview and SIGTRAP when
+        // styleMask has no .titled (Dart try/catch cannot catch it).
+        try {
+          await windowManager.setHasShadow(true);
+        } catch (_) {}
+      } else {
+        try {
+          await windowManager.setAsFrameless();
+        } catch (_) {}
+        try {
+          await windowManager.setHasShadow(true);
+        } catch (_) {}
+        try {
+          await windowManager.setTitleBarStyle(
+            TitleBarStyle.hidden,
+            windowButtonVisibility: false,
+          );
+        } catch (_) {}
+        await _setNativePipChrome(true);
       }
-      try {
-        await windowManager.setAsFrameless();
-      } catch (_) {}
-      try {
-        await windowManager.setHasShadow(true);
-      } catch (_) {}
-      try {
-        await windowManager.setTitleBarStyle(
-          TitleBarStyle.hidden,
-          windowButtonVisibility: false,
-        );
-      } catch (_) {}
 
-      // Re-assert native chrome after window_manager style flips.
-      await _setNativePipChrome(true);
       await _dockBottomRight();
 
       _desktopActive = true;
@@ -269,12 +276,16 @@ class PipService {
       try {
         await windowManager.setMinimumSize(const Size(640, 480));
       } catch (_) {}
-      try {
-        await windowManager.setTitleBarStyle(
-          _savedTitleBarStyle,
-          windowButtonVisibility: true,
-        );
-      } catch (_) {}
+      // macOS: native restoreChrome already restored styleMask / traffic lights.
+      // setTitleBarStyle would SIGTRAP if closeButton is still missing.
+      if (Platform.isWindows) {
+        try {
+          await windowManager.setTitleBarStyle(
+            _savedTitleBarStyle,
+            windowButtonVisibility: true,
+          );
+        } catch (_) {}
+      }
       await windowManager.setAlwaysOnTop(_savedAlwaysOnTop);
       if (Platform.isMacOS) {
         await windowManager.setVisibleOnAllWorkspaces(
