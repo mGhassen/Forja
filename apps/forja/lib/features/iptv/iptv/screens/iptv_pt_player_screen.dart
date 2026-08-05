@@ -168,6 +168,14 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   StreamSubscription<Map<dynamic, dynamic>>? _exoEventSub;
   ExoAtvSurfaceFallback? _exoSurfaceFallback;
 
+  /// Exo mounted after MediaKit ran in this route (Player menu / format swap).
+  /// ATV then forces TextureView: SurfaceView + hybrid composition binds over
+  /// the just-released `mediacodec_embed` surface and goes audio-only black,
+  /// with the native Surface covering the player chrome so the Player menu is
+  /// unreachable. `renderedFirstFrame` still fires, so the surface watchdog
+  /// cannot see it (issue 133).
+  bool _exoAfterMediaKit = false;
+
   Player? _player;
   VideoController? _controller;
   bool _playerReady = false;
@@ -520,9 +528,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   ///
   /// Matches VOD [PlayerScreen] switch: full surface unmount → release without
   /// blocking the UI isolate on MediaKit stop+dispose → cool-down → boot.
-  /// Awaiting full MediaKit teardown on the switch critical path ANRs physical
-  /// ATV (issue 128). When switching **to** MediaKit we still await
-  /// [MpvExclusiveSession.prepareForVideoPlayer] so a prior dispose finishes.
+  /// Both directions then await [MpvExclusiveSession.prepareForVideoPlayer] —
+  /// unbounded for MediaKit, capped at 1.2s for Exo so the MediaCodec detach is
+  /// done without crossing the ATV input-ANR window (issue 128).
   Future<void> _switchBuiltInEngine(
     BuiltInPlayerEngine engine, {
     bool persist = true,
@@ -555,9 +563,17 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     await Future<void>.delayed(const Duration(milliseconds: 250));
     if (_disposed || !mounted) return;
 
-    // Exo does not share the mpv handle — do not sit on full MediaKit dispose
-    // (ATV ANR). Next MediaKit open still waits via prepareForVideoPlayer.
-    if (!wantExo) {
+    if (wantExo) {
+      // Exo does not share the mpv handle, but ATV MediaCodec is shared: Exo
+      // mounting over a live mediacodec_embed surface plays audio with a black
+      // picture (issue 129 / 133). Capped at 1.2s like the VOD switch so the
+      // wait cannot cross the ATV input-ANR window (issue 128).
+      await MpvExclusiveSession.instance.prepareForVideoPlayer(
+        timeout: const Duration(milliseconds: 1200),
+      );
+      if (_disposed || !mounted) return;
+      _exoAfterMediaKit = true;
+    } else {
       await MpvExclusiveSession.instance.prepareForVideoPlayer();
       if (_disposed || !mounted) return;
     }

@@ -153,7 +153,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 5/5 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [131-[open]-…](131-[open]-android-tv-live-matches-exo-dpad-dead.md) | ATV Live Matches Exo player D-pad dead after handoff | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [132-[open]-…](132-[open]-android-tv-exo-auto-subtitle-merging-crash.md) | ATV Exo auto subtitle select crashes / pops player | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 6/6 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 8/8 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [134-[fixed]-…](fixed/134-[fixed]-player-audio-continues-after-app-switch.md) | Player audio continues after app switch | P1 | High | fixed | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [135-[open]-…](135-[open]-android-tv-spatial-dpad-all-screens.md) | ATV spatial 2D D-pad (all screens) | P1 | High | open | 7/7 · A 1/8 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [136-[open]-…](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) | ATV IPTV catalog/guide scroll focus + logos | P1 | Medium | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |

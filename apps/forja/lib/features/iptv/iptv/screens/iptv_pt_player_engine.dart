@@ -51,6 +51,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     _s._exoViewId = _IptvPtPlayerScreenState._nextExoViewId++;
     _s._exoSurfaceFallback?.dispose();
     _s._exoSurfaceFallback = ExoAtvSurfaceFallback(
+      // Only the SurfaceView path can bind dead. On TextureView (post-MediaKit
+      // swap) a slow first frame would otherwise trigger a pointless reopen.
+      enabled: !_s._exoAfterMediaKit,
       onFallback: _reopenAfterExoSurfaceFallback,
     );
     _s._exoEventSub = ExoPlayerBridge.eventsFor(_s._exoViewId!).listen(_onExoEvent);

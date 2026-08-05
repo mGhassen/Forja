@@ -308,7 +308,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                       child: _s._exoBackend
                           ? ExoPlayerView(
                               viewId: _s._exoViewId!,
-                              allowSurfaceView: true,
+                              allowSurfaceView: !_s._exoAfterMediaKit,
                             )
                           : Video(
                               key: ValueKey(_s._videoEpoch),
