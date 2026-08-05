@@ -282,6 +282,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   DateTime? _pausedAt;
   /// Throttle live-edge snaps after underrun / soft recovery.
   DateTime? _lastLiveJumpAt;
+  /// Consecutive position-freeze snaps that never got frames moving again.
+  /// Bounds the snap path so a dead feed still escalates to a real reconnect.
+  int _frozenSnapAttempts = 0;
   /// After [drop-buffers], VideoToolbox often logs a one-shot hw fail while
   /// re-initing — ignore those so we don't thrash into software decode.
   DateTime? _ignoreHwDecodeFailUntil;
@@ -301,6 +304,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   // probing every N seconds forever - live IPTV channels routinely come
   // back from short outages, so we don't want to give up.
   static const Duration _coldRetryInterval = Duration(seconds: 15);
+  /// Only shed demuxer backlog when we are genuinely this far behind the live
+  /// edge. On a realtime feed `demuxer-cache-duration` stays near zero unless
+  /// mpv kept downloading through a stall, so a low value means we are already
+  /// at the edge and dropping would just empty the cushion.
+  static const double _liveDriftSecs = 6.0;
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 

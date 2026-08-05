@@ -534,6 +534,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (pos != _s._lastPos) {
         _s._lastPos = pos;
         _s._lastPosChange = DateTime.now();
+        _s._frozenSnapAttempts = 0;
         if (!_playbackStarted && pos > Duration.zero) {
           _playbackStarted = true;
         }
@@ -770,11 +771,22 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     await _openCurrent();
   }
 
+  /// Seconds of already-downloaded data sitting ahead of the playback
+  /// position — the only honest live-drift signal on a non-seekable TS.
+  Future<double> _demuxerCacheAhead(NativePlayer p) async {
+    try {
+      final raw = await p.getProperty('demuxer-cache-duration');
+      return double.tryParse(raw.toString()) ?? 0.0;
+    } catch (_) {
+      return 0.0;
+    }
+  }
+
   /// Best-effort jump to the live edge after open / underrun / pause-resume.
-  /// Seekable: seek only. Mid-stream [drop-buffers] re-inits VideoToolbox /
-  /// MediaCodec and often trips "hardware accelerator failed" → software
-  /// decode on UHD after a few good seconds. Non-seekable pure-TS still
-  /// drops demuxer backlog (only way to kill silent ~15s replay).
+  /// Mid-stream this only runs when [_demuxerCacheAhead] shows real drift —
+  /// see the note at the drift gate below. Seekable: seek. Non-seekable
+  /// pure-TS: [drop-buffers] (also re-inits VideoToolbox / MediaCodec, hence
+  /// the [_ignoreHwDecodeFailUntil] window).
   void _scheduleJumpToLive({String reason = 'open'}) {
     if (_s._exoBackend || !_currentSourceIsLive) return;
     // Fresh open: only snap when there's a DVR window. drop-buffers on a
@@ -793,13 +805,34 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final p = _s._player?.platform;
         if (p is! NativePlayer) return;
 
-        debugPrint('[IPTV Player] live-edge snap ($reason)');
-        if (_s._streamSeekable) {
+        // Mid-stream: only shed backlog when there is backlog. Flushing an
+        // already-empty cache fed a reconnect loop — the flush leaves mpv with
+        // nothing decoded, `core-idle` flips true, media_kit reports that as
+        // buffering, and the buffering-exit handler flushed again. Every cycle
+        // restarted a realtime refill, so one upstream hiccup grew past the
+        // 12s watchdog grace and surfaced as "Reconnecting… (1/8)".
+        if (reason != 'open') {
+          final ahead = await _demuxerCacheAhead(p);
+          if (ahead < _IptvPtPlayerScreenState._liveDriftSecs) {
+            debugPrint('[IPTV Player] live-edge snap skipped ($reason) - '
+                '${ahead.toStringAsFixed(1)}s buffered, already at edge');
+            if (_s._userPlayWhenReady && !_s._playing) {
+              await _enginePlay();
+            }
+            return;
+          }
+          debugPrint('[IPTV Player] live-edge snap ($reason) - '
+              '${ahead.toStringAsFixed(1)}s behind edge');
+          if (_s._streamSeekable) {
+            await p.command(['seek', '99999', 'absolute']);
+          } else {
+            _s._ignoreHwDecodeFailUntil =
+                DateTime.now().add(const Duration(seconds: 3));
+            await p.command(['drop-buffers']);
+          }
+        } else {
+          debugPrint('[IPTV Player] live-edge snap (open)');
           await p.command(['seek', '99999', 'absolute']);
-        } else if (reason != 'open') {
-          _s._ignoreHwDecodeFailUntil =
-              DateTime.now().add(const Duration(seconds: 3));
-          await p.command(['drop-buffers']);
         }
         if (_s._userPlayWhenReady && !_s._playing) {
           await _enginePlay();
@@ -867,8 +900,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (_s._userPlayWhenReady &&
           _s._lastPos > Duration.zero &&
           now.difference(_s._lastPosChange) > const Duration(milliseconds: 8000)) {
-        if (!_s._exoBackend && _currentSourceIsLive) {
-          debugPrint('[IPTV Watchdog] position frozen → live-edge snap');
+        if (!_s._exoBackend &&
+            _currentSourceIsLive &&
+            _s._frozenSnapAttempts < 2) {
+          _s._frozenSnapAttempts++;
+          debugPrint('[IPTV Watchdog] position frozen -> live-edge snap '
+              '(${_s._frozenSnapAttempts}/2)');
           _s._lastPosChange = now;
           _s._readyNotPlayingSince = null;
           _scheduleJumpToLive(reason: 'position frozen');
