@@ -12,7 +12,7 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 ## What you can do
 
-- Floating subtitle picker: on **MediaKit**, Off, embedded in-stream tracks, **Load from file**, then online language folders (drill-in). On **ExoPlayer**, a two-column dialog like Sources — left = groups (Off, In-stream, languages, Load from file); right = tracks inside the selected group. Tapping **Off** turns subtitles off immediately (no second tap). Language names use native script (e.g. العربية, Français, தமிழ்)
+- Floating subtitle picker: header has **Off**, **File** (load SRT/ASS/SSA/VTT — hidden on **Android TV**), and tune. Body is one language list — in-stream and online tracks share a folder (drill-in on MediaKit; two-column on ExoPlayer). Tapping **Off** turns subtitles off immediately. Language names use native script (e.g. العربية, Français, தமிழ்)
 - Enable, disable, or switch tracks
 - Change appearance (size, color, font, opacity, position) — tune icon next to Close in the Subtitles header on **MediaKit** and **ExoPlayer**. On **TV**, focus a slider and use **Left/Right** to adjust (no OK first). Sync **delay** applies on MediaKit only
 - Adjust sync delay if dialogue is early/late (MediaKit)
@@ -21,7 +21,8 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 ## Tips
 
-- Stream tracks and Wyzie/online tracks share one language folder (English, Français, …) — open the folder to see both sources
+- In-stream and online tracks share one language folder (English, Français, …) — open the folder to see both (In-stream rows first)
+- **File** in the Subtitles header loads a local subtitle file; it is hidden on Android TV
 - Anime / Asian Drama still search by title (SubtitleCat / MySubs); Wyzie needs a real TMDB id (movies / TV)
 - Subtitle search works best when the title and year match TMDB metadata
 - Stremio subtitle addons require IMDB id and installed addons with a subtitles resource

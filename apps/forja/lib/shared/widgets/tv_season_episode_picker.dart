@@ -1001,8 +1001,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                             ),
                           ),
                         ShellCardPlayOverlay(
-                          active:
-                              active || widget.playFocusNode?.hasFocus == true,
+                          active: widget.playFocusNode?.hasFocus == true,
                           visible: showPlayOverlay,
                           onTap: playEnabled &&
                                   (tvFocus ? widget.armed : showPlayOverlay)

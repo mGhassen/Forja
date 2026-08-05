@@ -32,6 +32,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   bool _didFocusHeaderOnOpen = false;
   String? _scrolledToActiveKey;
   int? _scrolledToActiveIndex;
+  /// Row the user last reached with ↑/↓ — ↓ from the header returns here
+  /// instead of snapping back to the active portal.
+  int? _lastFocusedPortalIndex;
   late Set<String> _knownPortalKeys;
 
   @override
@@ -40,6 +43,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     _knownPortalKeys = {for (final v in widget.ctrl.verified) v.key};
     widget.ctrl.addListener(_onCtrlChanged);
     if (widget.ctrl.portalPanelOpen) {
+      _didFocusHeaderOnOpen = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _focusPanelHeader();
         _scrollToActivePortal();
@@ -65,13 +69,17 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
         _didFocusHeaderOnOpen = true;
         WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelHeader());
       }
+      // Portal health probes notify while the user scrolls — never move the
+      // viewport out from under a focused row.
+      final listFocused = iptvRowHasFocus('portals');
       final activeKey = widget.ctrl.activePortal?.key;
       final activeIndex = activeKey == null
           ? -1
-          : widget.ctrl.verified.indexWhere((v) => v.key == activeKey);
+          : _filtered.indexWhere((v) => v.key == activeKey);
       // Same active key can move after favorite / deal / scrape sort — keep it
       // in view so header ↓ can focus a mounted row.
       final willScrollActive = activeKey != null &&
+          !listFocused &&
           (activeKey != _scrolledToActiveKey ||
               activeIndex != _scrolledToActiveIndex);
       if (willScrollActive) {
@@ -79,7 +87,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       }
       final added = currentKeys.difference(_knownPortalKeys);
       _knownPortalKeys = currentKeys;
-      if (added.isNotEmpty && _query.trim().isEmpty) {
+      if (added.isNotEmpty && _query.trim().isEmpty && !listFocused) {
         // Sorted list puts newest non-favorites first after favorites - scroll
         // to the first newly added key in that order (e.g. scrape hits).
         String? scrollKey;
@@ -103,11 +111,15 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       _didFocusHeaderOnOpen = false;
       _scrolledToActiveKey = null;
       _scrolledToActiveIndex = null;
+      _lastFocusedPortalIndex = null;
     }
   }
 
   void _focusPanelHeader() {
     if (!mounted || !widget.ctrl.portalPanelOpen || _searchOpen) return;
+    // Only the open handoff may claim focus — a later notify must not pull the
+    // user out of the list they are scrolling.
+    if (_panelFocus.hasFocus) return;
     // Prefer Add (+), which is the last header action.
     final addIndex = _portalHeaderAddIndex();
     if (iptvFocusRowItem('iptv-portal-header', addIndex)) return;
@@ -135,8 +147,11 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       if (!mounted || !widget.ctrl.portalPanelOpen) return;
       final all = _filtered;
       if (all.isEmpty) return;
-      final index = iptvActivePortalFocusIndex(widget.ctrl, portals: all);
-      if (iptvFocusPortalList(widget.ctrl, portals: all)) return;
+      final index = _portalEntryIndex(all);
+      if (ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', index)) {
+        _lastFocusedPortalIndex = index;
+        return;
+      }
       if (scrolledFor != index) {
         _jumpPortalListToIndex(index);
         scrolledFor = index;
@@ -157,12 +172,21 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     attempt();
   }
 
+  /// Row ↓ from the header lands on: where the user left the list, else the
+  /// active (playing) portal on first entry.
+  int _portalEntryIndex(List<VerifiedPortal> all) {
+    final last = _lastFocusedPortalIndex;
+    if (last != null && last >= 0 && last < all.length) return last;
+    return iptvActivePortalFocusIndex(widget.ctrl, portals: all);
+  }
+
   /// D-pad ↑/↓: focus neighbor. Jump-then-retry when the lazy builder has not
   /// mounted that row yet (long scraped lists).
   void _focusPortalAt(int index) {
     if (!mounted || !widget.ctrl.portalPanelOpen) return;
     final total = _filtered.length;
     if (index < 0 || index >= total) return;
+    _lastFocusedPortalIndex = index;
     if (ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', index)) {
       return;
     }
@@ -254,6 +278,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   void _closeSearch() {
     if (!_searchOpen && _query.isEmpty) return;
     _searchCtrl.clear();
+    _lastFocusedPortalIndex = null;
     setState(() {
       _searchOpen = false;
       _query = '';
@@ -328,7 +353,10 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                     child: TvBrowseTextField(
                       controller: _searchCtrl,
                       focusNode: _searchFocus,
-                      onChanged: (v) => setState(() => _query = v),
+                      onChanged: (v) {
+                        _lastFocusedPortalIndex = null;
+                        setState(() => _query = v);
+                      },
                       onEscape: _closeSearch,
                       browsePlaceholder: 'Search portals…',
                       browseHintStyle: GoogleFonts.plusJakartaSans(
@@ -357,6 +385,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                                 context,
                                 onTap: () {
                                   _searchCtrl.clear();
+                                  _lastFocusedPortalIndex = null;
                                   setState(() => _query = '');
                                   _searchFocus.requestFocus();
                                 },

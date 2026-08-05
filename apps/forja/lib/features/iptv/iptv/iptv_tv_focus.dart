@@ -265,20 +265,20 @@ bool iptvRestoreCatalogFocus({int? portalIndex}) {
 /// Returns false so the shell can move focus to the nav rail.
 bool iptvHandleCatalogPageBack(IptvController ctrl) {
   if (ctrl.browserSearchOpen &&
-      (_iptvRowHasFocus('iptv-search-chrome') ||
+      (iptvRowHasFocus('iptv-search-chrome') ||
           _iptvMemoryRowIs('iptv-search-chrome'))) {
     ctrl.closeBrowserSearch();
     return true;
   }
-  final onStreams = _iptvRowHasFocus('browser-streams');
-  final onReload = _iptvRowHasFocus('iptv-streams-reload');
+  final onStreams = iptvRowHasFocus('browser-streams');
+  final onReload = iptvRowHasFocus('iptv-streams-reload');
   // After a failed restore, nothing is focused but memory still points at channels.
   final lostFocusOnStreams = !onStreams &&
       !onReload &&
-      !_iptvRowHasFocus('browser-categories') &&
-      !_iptvRowHasFocus('iptv-sections') &&
-      !_iptvRowHasFocus('iptv-top-tools') &&
-      !_iptvRowHasFocus('iptv-search-chrome') &&
+      !iptvRowHasFocus('browser-categories') &&
+      !iptvRowHasFocus('iptv-sections') &&
+      !iptvRowHasFocus('iptv-top-tools') &&
+      !iptvRowHasFocus('iptv-search-chrome') &&
       !ShellTvFocus.anyNavFocused &&
       (_iptvMemoryRowIs('browser-streams') ||
           _iptvMemoryRowIs('iptv-streams-reload'));
@@ -288,7 +288,8 @@ bool iptvHandleCatalogPageBack(IptvController ctrl) {
   return false;
 }
 
-bool _iptvRowHasFocus(String rowId) {
+/// True when any mounted item of [rowId] currently holds focus.
+bool iptvRowHasFocus(String rowId) {
   final handle = ShellTvFocusCoordinator.rowHandle('iptv', rowId);
   if (handle == null || handle.itemCount <= 0) return false;
   for (var i = 0; i < handle.itemCount; i++) {

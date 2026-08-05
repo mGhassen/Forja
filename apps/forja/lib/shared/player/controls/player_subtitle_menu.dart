@@ -47,6 +47,44 @@ class PlayerSubtitleMenu {
     );
   }
 
+  static Future<void> _pickLocalFile({
+    required Player player,
+    required void Function(SubtitleTrack track) updateSubVisibility,
+    required void Function(String? url) onExternalUrlChanged,
+    required void Function(bool isNative) onNativeSubtitleChanged,
+    PlayerSubtitleSelectionCallback? onSubtitleSelected,
+  }) async {
+    // Dismiss before the native picker — overlays can block the dialog,
+    // and file_picker returns null when the sheet stays up.
+    PlayerPopupPanel.dismiss();
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['srt', 'ass', 'ssa', 'vtt'],
+    );
+    if (result == null || result.files.single.path == null) return;
+    onSubtitleSelected?.call(off: false);
+    final path = result.files.single.path!;
+    final name = result.files.single.name;
+    final subTrack = SubtitleTrack.uri(
+      Uri.file(path).toString(),
+      title: name,
+      language: 'und',
+    );
+    player.setSubtitleTrack(subTrack);
+    updateSubVisibility(subTrack);
+    final isAssFile =
+        name.toLowerCase().endsWith('.ass') ||
+        name.toLowerCase().endsWith('.ssa');
+    onExternalUrlChanged(null);
+    onNativeSubtitleChanged(isAssFile);
+    if (player.platform is NativePlayer) {
+      (player.platform as NativePlayer).setProperty(
+        'sub-visibility',
+        isAssFile ? 'yes' : 'no',
+      );
+    }
+  }
+
   static Future<void> _openRoot(
     BuildContext context, {
     required Player player,
@@ -67,7 +105,7 @@ class PlayerSubtitleMenu {
     final selectedSubtitleId = selectedExternalSubUrl == null
         ? (active?.id ?? current.id)
         : null;
-    // In-stream tracks only - skip Off/auto and http URI tracks (online picker).
+    // In-stream tracks only — skip Off/auto and http URI tracks (online picker).
     final embedded = player.state.tracks.subtitle
         .where(
           (t) =>
@@ -86,16 +124,30 @@ class PlayerSubtitleMenu {
       PlayerPopupPanel.dismiss();
     }
 
-    final byLang = <String, List<Map<String, dynamic>>>{};
+    final byLangOnline = <String, List<Map<String, dynamic>>>{};
     for (final s in externalSubtitles) {
       final key = languageGroupKey(
         (s['language'] ?? s['lang'])?.toString(),
       );
-      byLang.putIfAbsent(key, () => []).add(s);
+      byLangOnline.putIfAbsent(key, () => []).add(s);
     }
-    final folderKeys = byLang.keys.toList()..sort(compareLanguageCodes);
+
+    final byLangEmbedded = <String, List<SubtitleTrack>>{};
+    for (final t in embedded) {
+      final key = languageGroupKey(t.language ?? t.title);
+      byLangEmbedded.putIfAbsent(key, () => []).add(t);
+    }
+
+    final folderKeys = <String>{
+      ...byLangOnline.keys,
+      ...byLangEmbedded.keys,
+    }.toList()
+      ..sort(compareLanguageCodes);
 
     if (!context.mounted) return;
+
+    final hideLoadFile =
+        ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     await PlayerPopupPanel.show(
       context: context,
@@ -109,7 +161,26 @@ class PlayerSubtitleMenu {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _SubtitleOffChip(selected: subtitlesOff, onTap: turnOffSubtitles),
+          _SubtitleHeaderChip(
+            label: 'Off',
+            selected: subtitlesOff,
+            onTap: turnOffSubtitles,
+          ),
+          if (!hideLoadFile) ...[
+            const SizedBox(width: 6),
+            _SubtitleHeaderChip(
+              label: 'File',
+              icon: Icons.upload_file_rounded,
+              selected: false,
+              onTap: () => _pickLocalFile(
+                player: player,
+                updateSubVisibility: updateSubVisibility,
+                onExternalUrlChanged: onExternalUrlChanged,
+                onNativeSubtitleChanged: onNativeSubtitleChanged,
+                onSubtitleSelected: onSubtitleSelected,
+              ),
+            ),
+          ],
           const SizedBox(width: 6),
           ForjaPlainIcon(
             icon: Icons.tune_rounded,
@@ -134,90 +205,35 @@ class PlayerSubtitleMenu {
                 backgroundColor: Colors.white10,
               ),
             ),
-          for (var i = 0; i < embedded.length; i++) ...[
+          for (var i = 0; i < folderKeys.length; i++) ...[
             if (i != 0) const SizedBox(height: 8),
-            PlayerPopupOptionChip(
-              label: formatPlayerTrackLabel(
-                id: embedded[i].id,
-                title: embedded[i].title,
-                language: embedded[i].language,
-              ),
-              selected:
-                  selectedExternalSubUrl == null &&
-                  embedded[i].id == selectedSubtitleId,
-              expanded: true,
-              onTap: () {
-                onSubtitleSelected?.call(
-                  off: false,
-                  language: embedded[i].language,
-                  title: embedded[i].title,
-                );
-                player.setSubtitleTrack(embedded[i]);
-                updateSubVisibility(embedded[i]);
-                onExternalUrlChanged(null);
-                PlayerPopupPanel.dismiss();
-              },
-            ),
-          ],
-          if (embedded.isNotEmpty) const SizedBox(height: 10),
-          PlayerPopupNavRow(
-            icon: Icons.upload_file_rounded,
-            title: 'Load from file',
-            subtitle: 'SRT · ASS · SSA · VTT',
-            onTap: () async {
-              // Dismiss before the native picker - overlays can block the
-              // dialog, and file_picker returns null when the sheet stays up.
-              PlayerPopupPanel.dismiss();
-              final result = await FilePicker.platform.pickFiles(
-                type: FileType.custom,
-                allowedExtensions: ['srt', 'ass', 'ssa', 'vtt'],
-              );
-              if (result == null || result.files.single.path == null) return;
-              // Local file - keep existing preferred language.
-              onSubtitleSelected?.call(off: false);
-              final path = result.files.single.path!;
-              final name = result.files.single.name;
-              final subTrack = SubtitleTrack.uri(
-                Uri.file(path).toString(),
-                title: name,
-                language: 'und',
-              );
-              player.setSubtitleTrack(subTrack);
-              updateSubVisibility(subTrack);
-              final isAssFile =
-                  name.toLowerCase().endsWith('.ass') ||
-                  name.toLowerCase().endsWith('.ssa');
-              onExternalUrlChanged(null);
-              onNativeSubtitleChanged(isAssFile);
-              if (player.platform is NativePlayer) {
-                (player.platform as NativePlayer).setProperty(
-                  'sub-visibility',
-                  isAssFile ? 'yes' : 'no',
-                );
-              }
-            },
-          ),
-          for (final key in folderKeys) ...[
-            const SizedBox(height: 8),
             Builder(
               builder: (_) {
-                final list = byLang[key]!;
-                final hasSelected = list.any(
-                  (s) => s['url'] == selectedExternalSubUrl,
-                );
+                final key = folderKeys[i];
+                final online = byLangOnline[key] ?? const [];
+                final stream = byLangEmbedded[key] ?? const [];
+                final hasSelected = online.any(
+                      (s) => s['url'] == selectedExternalSubUrl,
+                    ) ||
+                    (selectedExternalSubUrl == null &&
+                        stream.any((t) => t.id == selectedSubtitleId));
                 return PlayerPopupNavRow(
                   title: languageDisplayName(key),
-                  value: '${list.length}',
+                  value: '${stream.length + online.length}',
                   selected: hasSelected,
                   onTap: () async {
                     PlayerPopupPanel.dismiss();
                     await _openLanguage(
                       context,
                       langKey: key,
-                      subs: list,
+                      embedded: stream,
+                      online: online,
+                      selectedSubtitleId: selectedSubtitleId,
                       selectedExternalSubUrl: selectedExternalSubUrl,
-                      loadOnlineSubtitle: loadOnlineSubtitle,
+                      player: player,
+                      updateSubVisibility: updateSubVisibility,
                       onExternalUrlChanged: onExternalUrlChanged,
+                      loadOnlineSubtitle: loadOnlineSubtitle,
                       onSubtitleSelected: onSubtitleSelected,
                       onRoot: () => _openRoot(
                         context,
@@ -250,10 +266,14 @@ class PlayerSubtitleMenu {
   static Future<void> _openLanguage(
     BuildContext context, {
     required String langKey,
-    required List<Map<String, dynamic>> subs,
+    required List<SubtitleTrack> embedded,
+    required List<Map<String, dynamic>> online,
+    required String? selectedSubtitleId,
     required String? selectedExternalSubUrl,
-    required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
+    required Player player,
+    required void Function(SubtitleTrack track) updateSubVisibility,
     required void Function(String? url) onExternalUrlChanged,
+    required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     PlayerSubtitleSelectionCallback? onSubtitleSelected,
     required Future<void> Function() onRoot,
     required EdgeInsets margin,
@@ -273,39 +293,65 @@ class PlayerSubtitleMenu {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
         shrinkWrap: true,
-        children: subs.map((s) {
-          final sel = s['url'] == selectedExternalSubUrl;
-          final source =
-              (s['translated'] == true ? 'Translated · ' : '') +
-              (s['sourceName']?.toString() ?? 'opensubtitles');
-          return PlayerPopupListTile(
-            label: s['display']?.toString() ?? languageDisplayName(langKey),
-            subtitle: source,
-            selected: sel,
-            onTap: () async {
-              onSubtitleSelected?.call(
-                off: false,
-                language: s['language']?.toString() ?? langKey,
-                title: s['display']?.toString(),
-              );
-              await loadOnlineSubtitle(s);
-              onExternalUrlChanged(s['url']?.toString());
-              if (context.mounted) PlayerPopupPanel.dismiss();
-            },
-          );
-        }).toList(),
+        children: [
+          for (final t in embedded)
+            PlayerPopupListTile(
+              label: formatPlayerTrackLabel(
+                id: t.id,
+                title: t.title,
+                language: t.language,
+              ),
+              subtitle: 'In-stream',
+              selected: selectedExternalSubUrl == null &&
+                  t.id == selectedSubtitleId,
+              onTap: () {
+                onSubtitleSelected?.call(
+                  off: false,
+                  language: t.language,
+                  title: t.title,
+                );
+                player.setSubtitleTrack(t);
+                updateSubVisibility(t);
+                onExternalUrlChanged(null);
+                PlayerPopupPanel.dismiss();
+              },
+            ),
+          for (final s in online)
+            PlayerPopupListTile(
+              label: s['display']?.toString() ?? languageDisplayName(langKey),
+              subtitle: (s['translated'] == true ? 'Translated · ' : '') +
+                  (s['sourceName']?.toString() ?? 'opensubtitles'),
+              selected: s['url'] == selectedExternalSubUrl,
+              onTap: () async {
+                onSubtitleSelected?.call(
+                  off: false,
+                  language: s['language']?.toString() ?? langKey,
+                  title: s['display']?.toString(),
+                );
+                await loadOnlineSubtitle(s);
+                onExternalUrlChanged(s['url']?.toString());
+                if (context.mounted) PlayerPopupPanel.dismiss();
+              },
+            ),
+        ],
       ),
     );
   }
 }
 
-/// Compact "Off" toggle shown in the Subtitles menu header, beside Settings.
-/// Green (brand accent) when subtitles are currently off.
-class _SubtitleOffChip extends StatelessWidget {
-  const _SubtitleOffChip({required this.selected, required this.onTap});
+/// Compact header chip (Off / File) beside Settings in the Subtitles menu.
+class _SubtitleHeaderChip extends StatelessWidget {
+  const _SubtitleHeaderChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
 
+  final String label;
   final bool selected;
   final VoidCallback onTap;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -313,7 +359,7 @@ class _SubtitleOffChip extends StatelessWidget {
     final face = Container(
       height: 28,
       alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: selected ? PlayerPopupTokens.accent : Colors.transparent,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
@@ -323,15 +369,30 @@ class _SubtitleOffChip extends StatelessWidget {
               : PlayerPopupTokens.border,
         ),
       ),
-      child: Text(
-        'Off',
-        style: TextStyle(
-          color: selected
-              ? PlayerPopupTokens.accentFg
-              : PlayerPopupTokens.muted,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(
+              icon,
+              size: 14,
+              color: selected
+                  ? PlayerPopupTokens.accentFg
+                  : PlayerPopupTokens.muted,
+            ),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: selected
+                  ? PlayerPopupTokens.accentFg
+                  : PlayerPopupTokens.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
     if (!tvFocus) {
