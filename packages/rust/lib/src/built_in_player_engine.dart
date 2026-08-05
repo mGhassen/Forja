@@ -32,6 +32,7 @@ enum BuiltInPlayerEngine {
   }
 
   /// Per-surface default when no KV value exists (and legacy VOD fallback does not apply).
+  /// Live Matches → MediaKit.
   static BuiltInPlayerEngine defaultForContext(BuiltInPlayerContext context) {
     if (context == BuiltInPlayerContext.live) return mediaKit;
     return platformDefault();

@@ -495,6 +495,72 @@ void main() {
   );
 
   testWidgets(
+    'stream picker → reaches the next transport control',
+    (tester) async {
+      final stream = FocusNode(debugLabel: 'player-transport-stream');
+      final audio = FocusNode(debugLabel: 'player-transport-audio');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: ShellInputPolicy.maybeWrapFocusTraversal(
+                enabled: true,
+                child: Scaffold(
+                  body: SizedBox.expand(
+                    child: FocusScope(
+                      debugLabel: 'exo-player-chrome',
+                      child: FocusTraversalGroup(
+                        policy: ReadingOrderTraversalPolicy(),
+                        child: Row(
+                          children: [
+                            PlayerStreamPickerButton(
+                              tvFocusable: true,
+                              focusNode: stream,
+                              onRightEdge: audio.requestFocus,
+                              label: 'VidSrc',
+                              onPressedWithContext: (_) {},
+                            ),
+                            FocusableControl(
+                              focusNode: audio,
+                              scaleOnFocus: 1.0,
+                              onTap: () {},
+                              child: const SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: Icon(Icons.audiotrack_rounded),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      stream.requestFocus();
+      await tester.pump();
+      expect(stream.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+
+      expect(audio.hasFocus, isTrue, reason: '→ from Source must not dead-end');
+      expect(stream.hasFocus, isFalse);
+
+      stream.dispose();
+      audio.dispose();
+    },
+  );
+
+  testWidgets(
     'PlayerTvKeyScope does not steal focus when popup is open and chrome hides',
     (tester) async {
       final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');

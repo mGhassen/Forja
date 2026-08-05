@@ -155,6 +155,8 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     final nodes = <FocusNode>[
       if (_s._usesCatalogSourcesPanel) _s._transportSourcesFocus,
       if (_s._hasStreamPicker) _s._transportStreamFocus,
+      if (_s._hasEpisodePicker) _s._transportEpisodesFocus,
+      _s._transportAudioFocus,
     ];
     for (final node in nodes) {
       if (node.canRequestFocus) {
@@ -162,6 +164,32 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         return;
       }
     }
+  }
+
+  /// Right-hand cluster ← : next/prev episode (when shown) → Forward 10s.
+  void _focusLeftOfRightTransport() {
+    if (_s._hasNextEpisodeAdjacent && _s._transportNextEpFocus.canRequestFocus) {
+      _s._transportNextEpFocus.requestFocus();
+      return;
+    }
+    if (_s._hasPrevEpisodeAdjacent && _s._transportPrevEpFocus.canRequestFocus) {
+      _s._transportPrevEpFocus.requestFocus();
+      return;
+    }
+    _s._forwardFocus.requestFocus();
+  }
+
+  /// Forward 10s → prev/next episode (when shown) → right-hand action cluster.
+  void _focusRightOfForward() {
+    if (_s._hasPrevEpisodeAdjacent && _s._transportPrevEpFocus.canRequestFocus) {
+      _s._transportPrevEpFocus.requestFocus();
+      return;
+    }
+    if (_s._hasNextEpisodeAdjacent && _s._transportNextEpFocus.canRequestFocus) {
+      _s._transportNextEpFocus.requestFocus();
+      return;
+    }
+    _focusFirstRightTransport();
   }
 
   void _beginEpisodeLoading({
@@ -347,13 +375,21 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     required double btnSize,
     required double iconSz,
     bool tvFocusable = false,
+    FocusNode? focusNode,
     int? tvFocusOrder,
+    VoidCallback? onLeftEdge,
+    VoidCallback? onRightEdge,
+    VoidCallback? onUpEdge,
   }) {
     if (!_s._hasPrevEpisodeAdjacent) return null;
     return _wrapTvFocusOrder(
       tvFocusOrder,
       PlayerFlatIconButton(
         tvFocusable: tvFocusable,
+        focusNode: focusNode,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        onUpEdge: onUpEdge,
         icon: Icons.skip_previous_rounded,
         tooltip: 'Previous Episode',
         size: btnSize,
@@ -370,13 +406,21 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     required double btnSize,
     required double iconSz,
     bool tvFocusable = false,
+    FocusNode? focusNode,
     int? tvFocusOrder,
+    VoidCallback? onLeftEdge,
+    VoidCallback? onRightEdge,
+    VoidCallback? onUpEdge,
   }) {
     if (!_s._hasNextEpisodeAdjacent) return null;
     return _wrapTvFocusOrder(
       tvFocusOrder,
       PlayerFlatIconButton(
         tvFocusable: tvFocusable,
+        focusNode: focusNode,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        onUpEdge: onUpEdge,
         icon: Icons.skip_next_rounded,
         tooltip: 'Next Episode',
         size: btnSize,

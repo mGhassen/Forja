@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** fix · **0 / 4** acceptance |
-| **Current slice** | Emulator TextureView fallback (I108-T10) — physical ATV keeps SurfaceView |
+| **Progress** | **13 / 13** fix · **0 / 5** acceptance |
+| **Current slice** | Exo-side fluidity on TextureView: live frame-rate matching, async codec queueing, frame-health logging |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -31,6 +31,9 @@
 | 8 | I108-T08 | IPTV Exo: skip no-op buffering/playing setState; skip progress setState when chrome hidden | ✅ |
 | 9 | I108-T09 | Settings → **IPTV live max quality** (Auto default = no cap; 1080/720/480 opt-in only) | ✅ |
 | 10 | I108-T10 | ATV **emulator**: force Exo TextureView + TLHC (goldfish SurfaceView → audio-only / chrome covered); physical ATV unchanged | ✅ |
+| 11 | I108-T11 | Display frame-rate matching now covers **live** (was VOD-only, issue 151 T03): a 50/25 fps channel on a fixed 60 Hz panel judders exactly like low FPS. One switch per open, so a ladder flip cannot re-trigger an HDMI re-sync | ✅ |
+| 12 | I108-T12 | `forceEnableMediaCodecAsynchronousQueueing()` — Media3 only enables async queueing by default on API 31+, so Android 7 TVs queued codec work on the playback thread | ✅ |
+| 13 | I108-T13 | Frame-health logging to `logcat -s ForjaExo` (decoder name, input format + fps, dropped-frame counts) — `setEnableDecoderFallback(true)` can silently swap in a software decoder, which is indistinguishable from a compositing stutter from the couch | ✅ |
 
 ---
 
@@ -42,6 +45,7 @@
 | 2 | I108-A02 | Default Auto: live IPTV plays full portal quality (no forced downscale); opt-in 720p/1080p only when user sets **IPTV live max quality** | ⬜ |
 | 3 | I108-A03 | Android TV IPTV **Player** menu switches Exo ↔ MediaKit and shows video (not black) on MediaKit | ⬜ |
 | 4 | I108-A04 | Android TV **emulator**: IPTV Exo shows video + player chrome (not audio-only black / covered UI) | ⬜ |
+| 5 | I108-A05 | Toshiba Android 7: a 50/25 fps live channel on Exo plays fluidly; `logcat -s ForjaExo` shows a hardware decoder and no sustained dropped-frame lines | ⬜ |
 
 ---
 
@@ -63,7 +67,15 @@ On **Android TV**, IPTV and Home/Search movies both use Media3 ExoPlayer by defa
 
 **Limit:** single-variant TS above what the SoC can decode may still hitch — try **MediaKit** from the Player menu, or optionally set **IPTV live max quality** when the feed has adaptive variants.
 
-**Update (issue 133 T07):** the SurfaceView path (T06) is now **parked**. Physical sets reported IPTV Exo audio-only black even on cold open, and the composition-dead surface still fires `renderedFirstFrame` so the watchdog cannot fall back. IPTV Exo now **always** uses TextureView (matching VOD). This may reduce live FPS smoothness on weak SoCs — use **MediaKit** from the Player menu there. The SurfaceView machinery stays wired for a possible per-device opt-in.
+**Update (issue 133 T07):** the SurfaceView path (T06) is now **parked**. Physical sets reported IPTV Exo audio-only black even on cold open, and the composition-dead surface still fires `renderedFirstFrame` so the watchdog cannot fall back. IPTV Exo now **always** uses TextureView (matching VOD). The SurfaceView machinery stays wired for a possible per-device opt-in.
+
+**Fluid Exo on TextureView (T11–T13).** Defaulting Android TV IPTV to MediaKit was tried and **reverted** — it abandoned Exo instead of fixing it, and the unset IPTV key inherits the VOD engine again. The remaining judder was attacked on the Exo side:
+
+- **Frame-rate matching was never reaching live.** `applyContentFrameRate()` returned early on `lastOptions.live`, so a 50 or 25 fps channel stayed on the TV's fixed 60 Hz mode — an uneven cadence that reads as "less FPS" even when every frame is delivered on time. The `frameRateApplied` one-shot already prevents a ladder flip from re-triggering an HDMI re-sync, so the live exclusion was unnecessarily blunt.
+- **Async MediaCodec queueing was off.** Media3 enables it by default only on API 31+, leaving Android 7 TVs queueing codec work on the playback thread.
+- **Software decode was invisible.** `setEnableDecoderFallback(true)` can silently drop to a software decoder; from the couch that looks identical to a compositing stutter. Decoder name, input format/fps, and dropped-frame counts now log under `ForjaExo`.
+
+**Still true:** TextureView costs a per-frame copy into a Flutter texture that SurfaceView and mpv's `mediacodec_embed` both avoid. The architectural fix is rendering Exo into a Flutter external texture (`TextureRegistry`) instead of a PlatformView — the path the official `video_player` plugin uses. Not attempted here; it would drop `PlayerView` and move subtitle rendering into Flutter.
 
 ## Related
 

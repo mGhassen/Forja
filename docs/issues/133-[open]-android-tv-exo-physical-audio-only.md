@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 3** acceptance |
-| **Current slice** | Home/VOD **and** IPTV both forced TextureView; SurfaceView path kept wired but unused |
+| **Progress** | **10 / 10** fix · **0 / 3** acceptance |
+| **Current slice** | Home/VOD **and** IPTV both TextureView; ATV IPTV keeps ExoPlayer (T09 MediaKit default reverted by T10) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,6 +29,8 @@
 | 6 | I133-T06 | IPTV SurfaceView watchdog: arm on READY (no play gate) + progress-without-frame trigger | ✅ |
 | 7 | I133-T07 | IPTV Exo: always TextureView (`allowSurfaceView: false`) + surface watchdog off — SurfaceView was audio-only black even on cold open, same as VOD (T05) | ✅ |
 | 8 | I133-T08 | IPTV switch to Exo awaits the tracked MediaKit dispose (capped 1.2s) before Exo mounts — parity with the VOD switch | ✅ |
+| 9 | I133-T09 | ATV unset IPTV engine → MediaKit (do not inherit VOD Exo); TextureView Exo live is soft / low-FPS on leanback — **reverted by T10, never released** | ✅ |
+| 10 | I133-T10 | Revert T09: unset ATV IPTV inherits the VOD engine again. Defaulting away from Exo abandoned the engine instead of fixing it; the TextureView judder is addressed on the Exo side in issue 108 (T11–T13) | ✅ |
 
 ---
 
@@ -65,7 +67,9 @@ Reported again on a **released** build: physical ATV, IPTV, Player menu **MediaK
 
 **Fix (T08):** the Exo direction of the Player-menu switch now awaits the tracked MediaKit dispose, capped at 1.2 s so it cannot cross the ATV input-ANR window (issue 128).
 
-**Trade-off:** issue 108 chose SurfaceView for smoother live FPS on weak / Android 7 SoCs (I108-T06). TextureView may feel less fluid there — but a black picture is worse, and **MediaKit** stays available from the Player menu for FPS-sensitive feeds. Issue 108's SurfaceView FPS slice is effectively parked until a per-device opt-in exists.
+**Trade-off:** issue 108 chose SurfaceView for smoother live FPS on weak / Android 7 SoCs (I108-T06). TextureView may feel less fluid there — but a black picture is worse. Issue 108's SurfaceView FPS slice stays parked until a per-device SurfaceView opt-in exists.
+
+**T09 reverted (T10).** T09 made unset ATV IPTV default to **MediaKit** so the TextureView judder would not be the first thing a user meets. That was the wrong call: it routed users away from ExoPlayer rather than making Exo fluid, and it never shipped in a tag. Unset ATV IPTV inherits the VOD engine again (Exo on Android). The judder itself is now attacked on the Exo side — live display frame-rate matching, async MediaCodec queueing, and frame-health logging — in [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) T11–T13.
 
 ## Related
 

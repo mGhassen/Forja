@@ -144,6 +144,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final posMs = (event['position'] as num?)?.toInt() ?? 0;
         final durMs = (event['duration'] as num?)?.toInt() ?? 0;
         final bufMs = (event['buffered'] as num?)?.toInt() ?? 0;
+        // Straight off the event: `_buffered` below is only assigned when
+        // duration > 0, and live streams never report one.
+        _noteFeedProgress(bufMs);
         final pos = Duration(milliseconds: posMs);
         final durChanged =
             durMs > 0 && durMs != _s._duration.inMilliseconds;
@@ -348,6 +351,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           await p.setProperty('mute', 'no');
           _engineSetVolume(_s._volume);
           debugPrint('[IPTV Player] ATV MediaKit UHD → video-sync=audio');
+          _startUhdDiagnostics();
         }
         return;
       } catch (e) {
@@ -355,6 +359,48 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         return;
       }
     }
+  }
+
+  /// Periodic UHD telemetry for issue 150 (4K stutter on ATV MediaKit).
+  ///
+  /// The UHD branch above swaps in `video-sync=audio` + `framedrop=decoder` to
+  /// keep audio alive (issue 138), and both cost motion smoothness. These
+  /// counters say which one is actually hurting: pre-decode drops show up in
+  /// `decoder-frame-drop-count`, VO drops in `frame-drop-count`, and a cadence
+  /// mismatch shows as `container-fps` ≠ `display-fps` with both counts flat.
+  ///
+  /// Debug builds only — this polls nine properties every 5 s.
+  void _startUhdDiagnostics() {
+    if (!kDebugMode || _s._uhdDiag != null) return;
+    const props = <String>[
+      'container-fps',
+      'display-fps',
+      'estimated-vf-fps',
+      'avsync',
+      'frame-drop-count',
+      'decoder-frame-drop-count',
+      'video-bitrate',
+      'demuxer-cache-duration',
+      'hwdec-current',
+    ];
+    _s._uhdDiag = Timer.periodic(const Duration(seconds: 5), (t) async {
+      if (!mounted || _s._disposed || _s._exoBackend) {
+        t.cancel();
+        _s._uhdDiag = null;
+        return;
+      }
+      final p = _s._player?.platform;
+      if (p is! NativePlayer) return;
+      final out = <String>[];
+      for (final k in props) {
+        try {
+          out.add('$k=${await p.getProperty(k)}');
+        } catch (_) {
+          // Property missing on this build — keep the rest of the line.
+        }
+      }
+      if (out.isNotEmpty) debugPrint('[IPTV UHD] ${out.join(' ')}');
+    });
   }
 
   Future<void> _applyMpvTunables() async {
@@ -534,6 +580,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     _s._bufferSub = player.stream.buffer.listen((buf) {
       if (!mounted || _s._disposed) return;
       _s._buffered = buf;
+      _noteFeedProgress(buf.inMilliseconds);
     });
     _s._playingSub = player.stream.playing.listen((p) {
       if (!mounted || _s._disposed) return;
@@ -811,38 +858,64 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final raw = await p.getProperty('demuxer-cache-time');
         final t = double.tryParse(raw.toString());
         if (!mounted || _s._disposed || t == null || !t.isFinite) return;
-        final prev = _s._cacheTime;
-        // Any forward movement means bytes arrived and parsed since the last
-        // tick. Treat a backwards jump (discontinuity / PTS wrap) as progress
-        // too — the demuxer only re-anchors when it is being fed.
-        if (prev == null || (t - prev).abs() > 0.001) {
-          _s._cacheAdvancedAt = DateTime.now();
-        }
-        _s._cacheTime = t;
+        _noteFeedProgress((t * 1000).round());
       } catch (_) {
         // Property unavailable (Exo, torn-down player) — leave the last sample.
       } finally {
         _s._cacheProbeInFlight = false;
       }
-    }());
+    }()
+        // A wedged mpv can leave a property read pending forever. Without this
+        // the in-flight guard would latch and the probe would go permanently
+        // blind — the exact condition the detectors need it most.
+        .timeout(const Duration(seconds: 4), onTimeout: () {
+      _s._cacheProbeInFlight = false;
+    }));
+  }
+
+  /// Record that the buffered end moved, from whichever backend reported it.
+  ///
+  /// Movement in either direction counts: the mark only changes when the
+  /// demuxer is being fed, and a live stream re-anchors it on discontinuities.
+  void _noteFeedProgress(int markMs) {
+    if (markMs <= 0) return;
+    if (_s._feedMarkMs != markMs) {
+      _s._feedMarkMs = markMs;
+      _s._feedAdvancedAt = DateTime.now();
+      _s._everSawFeed = true;
+    }
   }
 
   /// Clear the probe across a (re)open. A sample carried over from the previous
   /// socket would otherwise vouch for a feed that no longer exists.
   void _resetDemuxerProbe() {
-    _s._cacheTime = null;
-    _s._cacheAdvancedAt = null;
+    _s._feedMarkMs = null;
+    _s._feedAdvancedAt = null;
+    _s._everSawFeed = false;
   }
 
-  /// Whether the demuxer advanced recently enough to call the feed alive.
-  ///
-  /// Unknown (Exo, or no sample yet) counts as **dead** so the detectors keep
-  /// their original behaviour wherever the probe cannot see anything.
+  /// Whether the feed advanced recently enough to be called alive.
   bool get _networkStillFeeding {
-    final at = _s._cacheAdvancedAt;
+    final at = _s._feedAdvancedAt;
     if (at == null) return false;
     return DateTime.now().difference(at) <
         _IptvPtPlayerScreenState._networkAliveWindow;
+  }
+
+  /// How long a frozen picture is tolerated before recovery. When the probe has
+  /// never reported (blind backend), stay patient enough to outlast a refill of
+  /// the 30 s cache rather than falling back to the old 8 s trigger.
+  Duration get _freezeGrace => _s._everSawFeed
+      ? const Duration(milliseconds: 8000)
+      : _IptvPtPlayerScreenState._blindFreezeGrace;
+
+  /// Trace a suppressed recovery once every 5 s so a stall that rides through
+  /// is visible in logs — without this the gate is indistinguishable from a
+  /// detector that simply never fired.
+  void _logStallSuppressed(String kind, Duration held) {
+    if (held.inSeconds % 5 != 0) return;
+    debugPrint('[IPTV Watchdog] $kind ${held.inSeconds}s - feed alive, '
+        'holding (mark=${_s._feedMarkMs}ms)');
   }
 
   void _startWatchdog() {
@@ -891,12 +964,14 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         // Refilling is not failing. With cache-secs=30 a deep underrun can
         // legitimately buffer past this grace, and reopening mid-refill throws
         // away the data already pulled — the reopen then underruns again.
+        final bufferingFor = now.difference(_s._bufferingSince!);
         if (_networkStillFeeding &&
-            now.difference(_s._bufferingSince!) <
-                _IptvPtPlayerScreenState._feedingWedgeCeiling) {
+            bufferingFor < _IptvPtPlayerScreenState._feedingWedgeCeiling) {
+          _logStallSuppressed('buffering', bufferingFor);
           return;
         }
-        _triggerRecovery(reason: 'buffering > ${bufferGrace.inSeconds}s');
+        _triggerRecovery(
+            reason: 'buffering ${bufferingFor.inSeconds}s, feed stalled');
         return;
       }
       // Detector 2: position frozen while user wants playback.
@@ -908,24 +983,25 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // (detector 4 covers that hang).
       // Live MediaKit: snap to the edge first — soft reopen looks like a
       // long freeze (desktop) and can ANR on ATV.
+      final frozenFor = now.difference(_s._lastPosChange);
       if (_s._userPlayWhenReady &&
           _s._lastPos > Duration.zero &&
-          now.difference(_s._lastPosChange) > const Duration(milliseconds: 8000)) {
-        // 8 s of frozen position is not evidence of a dead stream: mpv is
-        // allowed to buffer 30 s, so any upstream hiccup longer than 8 s used
-        // to force a reopen and raise "Reconnecting…" on a feed that was
-        // recovering on its own. Only recover once the demuxer has actually
-        // gone quiet, or the feed keeps flowing while the picture stays stuck
-        // (wedged decoder — a reopen is the only thing that clears that).
-        final frozenFor = now.difference(_s._lastPosChange);
+          frozenFor > _freezeGrace) {
+        // A frozen position is not evidence of a dead stream: mpv is allowed to
+        // buffer 30 s, so any upstream hiccup longer than the grace used to
+        // force a reopen and raise "Reconnecting…" on a feed that was
+        // recovering on its own. Only recover once the feed has actually gone
+        // quiet, or it keeps flowing while the picture stays stuck (wedged
+        // decoder — a reopen is the only thing that clears that).
         if (_networkStillFeeding &&
             frozenFor < _IptvPtPlayerScreenState._feedingWedgeCeiling) {
+          _logStallSuppressed('frozen', frozenFor);
           return;
         }
         _triggerRecovery(
           reason: _networkStillFeeding
               ? 'picture frozen ${frozenFor.inSeconds}s while feed alive'
-              : 'position frozen > 8s, demuxer stalled',
+              : 'position frozen ${frozenFor.inSeconds}s, feed stalled',
         );
         return;
       }
@@ -941,7 +1017,19 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           _s._readyNotPlayingSince != null &&
           now.difference(_s._readyNotPlayingSince!) >
               const Duration(milliseconds: 3000)) {
-        _triggerRecovery(reason: 'silent self-pause > 3s', forceHard: true);
+        // A feed that is still delivering has not "ended" — Exo reports
+        // playing=false during a rebuffer and does not always raise its
+        // buffering event in time, which turned a routine stall into a hard
+        // reconnect three seconds later.
+        final pausedFor = now.difference(_s._readyNotPlayingSince!);
+        if (_networkStillFeeding &&
+            pausedFor < _IptvPtPlayerScreenState._feedingWedgeCeiling) {
+          _logStallSuppressed('self-pause', pausedFor);
+          return;
+        }
+        _triggerRecovery(
+            reason: 'silent self-pause ${pausedFor.inSeconds}s, feed stalled',
+            forceHard: true);
         return;
       }
       // Detector 4: opened but never produced a first frame. The classic

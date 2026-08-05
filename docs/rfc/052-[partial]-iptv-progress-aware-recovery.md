@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 4** components · **1 / 6** acceptance (progress-gate slice) |
-| **Current slice** | Demuxer progress probe + gated stall detectors landed — backoff controller not started |
+| **Progress** | **7 / 8** components · **1 / 8** acceptance (progress-gate slice) |
+| **Current slice** | Backend-agnostic feed probe + gated detectors 1–3 landed; `v1.3.148` shipped an mpv-only probe that was a no-op on Exo — backoff controller not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,7 +22,11 @@
 | 1 | R52-C01 | `demuxer-cache-time` probe sampled once per watchdog tick, fire-and-forget so a wedged mpv cannot block the tick | ✅ |
 | 2 | R52-C02 | `_networkStillFeeding` predicate + probe reset on every (re)open | ✅ |
 | 3 | R52-C03 | Bounded exponential-backoff reconnect controller replacing the fixed `_backoffMs` ladder, collapsing bursts into one pending attempt | ⬜ |
-| 4 | R52-C04 | Unify the Exo backend onto the same signal (ExoPlayer buffered-position delta stands in for `demuxer-cache-time`) | ⬜ |
+| 4 | R52-C04 | Unify the Exo backend onto the same signal — `_noteFeedProgress` fed from the Exo progress heartbeat, the mpv `buffer` stream, and `demuxer-cache-time` | ✅ |
+| 5 | R52-C05 | Blind-probe fallback: `_everSawFeed` false ⇒ `_blindFreezeGrace` (20 s) instead of the 8 s trigger, so a backend the probe cannot read degrades to patient rather than to the original bug | ✅ |
+| 6 | R52-C06 | Timeout on the property read so a wedged mpv cannot latch `_cacheProbeInFlight` and blind the probe permanently | ✅ |
+| 7 | R52-C07 | Gate detector 3 (silent self-pause, 3 s → hard reconnect) on the same signal | ✅ |
+| 8 | R52-C08 | `_logStallSuppressed` traces held stalls every 5 s so the gate is observable in logs | ✅ |
 
 ---
 
@@ -35,7 +39,9 @@
 | 3 | R52-A03 | Genuinely dead socket (pull the network) still recovers — demuxer goes quiet, detector fires within ~11 s | ⬜ |
 | 4 | R52-A04 | Wedged decoder (feed alive, picture frozen) still reopens at the `_feedingWedgeCeiling` | ⬜ |
 | 5 | R52-A05 | Android TV MediaKit: no regression in exit ANR (`I128-A01`) or reconnect banner (`I124-A01`) | ⬜ |
-| 6 | R52-A06 | Exo backend unchanged — probe returns unknown, detectors keep pre-RFC behaviour | ⬜ |
+| 6 | R52-A06 | Exo backend live channel gets the same protection — `[IPTV Watchdog] … feed alive, holding` appears instead of a reconnect | ⬜ |
+| 7 | R52-A07 | Detector 3 no longer hard-reconnects an Exo rebuffer after 3 s | ⬜ |
+| 8 | R52-A08 | Logs show `mark=` advancing on both backends, confirming the probe is not blind | ⬜ |
 
 ---
 
@@ -82,8 +88,21 @@ into the two cases that need opposite handling:
 | Frozen | Quiet | Socket dead | Recover (existing ladder) |
 | Frozen | Advancing past `_feedingWedgeCeiling` | Wedged decoder | Reopen — nothing else clears it |
 
-Unknown (Exo backend, or no sample yet) counts as **dead**, so the probe can
-only ever suppress a recovery it has positive evidence against.
+The probe can only ever suppress a recovery it has positive evidence against.
+
+### Why the v1.3.148 slice did not fix the report
+
+The first cut read `demuxer-cache-time` only, and `_sampleDemuxerProgress`
+returns early when `_exoBackend` is set — so on ExoPlayer the gate never
+engaged and the 8 s trigger stayed exactly as it was. Two further holes made it
+fragile even on mpv:
+
+| Hole | Effect | Fix |
+|---|----|---|
+| Exo never sampled | Gate inert on Exo | `R52-C04` — feed from the Exo progress heartbeat. `_buffered` could not be reused: it is only assigned when `duration > 0`, and live streams report none. |
+| No sample ⇒ "dead" | A blind probe reproduced the original bug exactly | `R52-C05` — blind ⇒ 20 s grace |
+| `_cacheProbeInFlight` latch | A hung property read blinded the probe for the rest of the session | `R52-C06` — 4 s timeout |
+| Detector 3 ungated | 3 s of `playing=false` ⇒ hard reconnect | `R52-C07` |
 
 ## Related
 

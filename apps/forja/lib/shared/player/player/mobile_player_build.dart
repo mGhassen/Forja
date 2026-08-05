@@ -306,10 +306,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
   }
 
   Widget _buildControlsOverlay() {
-    final isTv = widget.movie?.mediaType == 'tv';
-    final hasEpisodePicker =
-        (isTv && widget.movie != null) ||
-        (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty);
+    final hasEpisodePicker = _s._hasEpisodePicker;
     final hasStreamPicker = _s._hasStreamPicker;
     final hasTorrentSources = _s._usesCatalogSourcesPanel;
     final btnSize = 38.0;
@@ -827,6 +824,53 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
           child: child,
         );
 
+    // Every control wires its own neighbours - TV D-pad must never fall back
+    // to Flutter geometry for ←/→ (the app-root policy no-ops both).
+    void focusUp() {
+      if (_s._seekbarFocus.canRequestFocus) _s._seekbarFocus.requestFocus();
+    }
+
+    void focusAudio() => _s._transportAudioFocus.requestFocus();
+    void focusEpisodesOrAudio() {
+      if (hasEpisodePicker) {
+        _s._transportEpisodesFocus.requestFocus();
+      } else {
+        focusAudio();
+      }
+    }
+
+    void focusStreamOrAfter() {
+      if (hasStreamPicker) {
+        _s._transportStreamFocus.requestFocus();
+      } else {
+        focusEpisodesOrAudio();
+      }
+    }
+
+    void focusSourcesOrBefore() {
+      if (hasTorrentSources) {
+        _s._transportSourcesFocus.requestFocus();
+      } else {
+        _s._focusLeftOfRightTransport();
+      }
+    }
+
+    void focusStreamOrBefore() {
+      if (hasStreamPicker) {
+        _s._transportStreamFocus.requestFocus();
+      } else {
+        focusSourcesOrBefore();
+      }
+    }
+
+    void focusEpisodesOrBefore() {
+      if (hasEpisodePicker) {
+        _s._transportEpisodesFocus.requestFocus();
+      } else {
+        focusStreamOrBefore();
+      }
+    }
+
     return SizedBox(
       width: double.infinity,
       child: Row(
@@ -881,14 +925,25 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
               tvFocusOrder: 5,
               focusNode: _s._forwardFocus,
               onLeftEdge: () => _s._rewindFocus.requestFocus(),
-              onRightEdge: _s._focusFirstRightTransport,
-              onUpEdge: () => _s._seekbarFocus.requestFocus(),
+              onRightEdge: _s._focusRightOfForward,
+              onUpEdge: focusUp,
             ),
             if (_s._buildTransportPrevEpisodeButton(
                   btnSize: btnSize,
                   iconSz: iconSz,
                   tvFocusable: true,
                   tvFocusOrder: 6,
+                  focusNode: _s._transportPrevEpFocus,
+                  onLeftEdge: () => _s._forwardFocus.requestFocus(),
+                  onRightEdge: () {
+                    if (_s._hasNextEpisodeAdjacent &&
+                        _s._transportNextEpFocus.canRequestFocus) {
+                      _s._transportNextEpFocus.requestFocus();
+                    } else {
+                      _s._focusFirstRightTransport();
+                    }
+                  },
+                  onUpEdge: focusUp,
                 )
                 case final prevEp?) ...[
               const SizedBox(width: 2),
@@ -899,6 +954,17 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                   iconSz: iconSz,
                   tvFocusable: true,
                   tvFocusOrder: 7,
+                  focusNode: _s._transportNextEpFocus,
+                  onLeftEdge: () {
+                    if (_s._hasPrevEpisodeAdjacent &&
+                        _s._transportPrevEpFocus.canRequestFocus) {
+                      _s._transportPrevEpFocus.requestFocus();
+                    } else {
+                      _s._forwardFocus.requestFocus();
+                    }
+                  },
+                  onRightEdge: _s._focusFirstRightTransport,
+                  onUpEdge: focusUp,
                 )
                 case final nextEp?) ...[
               const SizedBox(width: 2),
@@ -929,7 +995,9 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _s._transportSourcesFocus,
-                  onLeftEdge: () => _s._forwardFocus.requestFocus(),
+                  onUpEdge: focusUp,
+                  onLeftEdge: _s._focusLeftOfRightTransport,
+                  onRightEdge: focusStreamOrAfter,
                   icon: Icons.link_rounded,
                   size: btnSize,
                   iconSize: iconSz,
@@ -944,14 +1012,9 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                 PlayerStreamPickerButton(
                   tvFocusable: true,
                   focusNode: _s._transportStreamFocus,
-                  onLeftEdge: () {
-                    if (_s._usesCatalogSourcesPanel &&
-                        _s._transportSourcesFocus.canRequestFocus) {
-                      _s._transportSourcesFocus.requestFocus();
-                    } else {
-                      _s._forwardFocus.requestFocus();
-                    }
-                  },
+                  onUpEdge: focusUp,
+                  onLeftEdge: focusSourcesOrBefore,
+                  onRightEdge: focusEpisodesOrAudio,
                   size: btnSize,
                   iconSize: iconSz - 2,
                   label: _s._streamPickerLabel(),
@@ -964,9 +1027,14 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                 10,
                 PlayerFlatIconButton(
                   tvFocusable: true,
+                  focusNode: _s._transportEpisodesFocus,
+                  onUpEdge: focusUp,
+                  onLeftEdge: focusStreamOrBefore,
+                  onRightEdge: focusAudio,
                   icon: Icons.video_library_outlined,
                   size: btnSize,
                   iconSize: iconSz,
+                  tooltip: 'Episodes',
                   onPressedWithContext: _s._showEpisodesMenu,
                 ),
               ),
@@ -975,6 +1043,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
               11,
               PlayerFlatIconButton(
                 tvFocusable: true,
+                focusNode: _s._transportAudioFocus,
+                onUpEdge: focusUp,
+                onLeftEdge: focusEpisodesOrBefore,
+                onRightEdge: () => _s._transportSubsFocus.requestFocus(),
                 icon: Icons.audiotrack_rounded,
                 size: btnSize,
                 iconSize: iconSz,
@@ -987,9 +1059,14 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
               12,
               PlayerFlatIconButton(
                 tvFocusable: true,
+                focusNode: _s._transportSubsFocus,
+                onUpEdge: focusUp,
+                onLeftEdge: focusAudio,
+                onRightEdge: () => _s._transportQualityFocus.requestFocus(),
                 icon: Icons.subtitles_outlined,
                 size: btnSize,
                 iconSize: iconSz,
+                tooltip: 'Subtitles',
                 onPressedWithContext: _s._showSubtitlesMenu,
               ),
             ),
@@ -998,6 +1075,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
               13,
               PlayerFlatIconButton(
                 tvFocusable: true,
+                focusNode: _s._transportQualityFocus,
+                onUpEdge: focusUp,
+                onLeftEdge: () => _s._transportSubsFocus.requestFocus(),
+                onRightEdge: () => _s._transportSettingsFocus.requestFocus(),
                 icon: Icons.hd_outlined,
                 size: btnSize,
                 iconSize: iconSz,
@@ -1010,9 +1091,13 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
               14,
               PlayerFlatIconButton(
                 tvFocusable: true,
+                focusNode: _s._transportSettingsFocus,
+                onUpEdge: focusUp,
+                onLeftEdge: () => _s._transportQualityFocus.requestFocus(),
                 icon: Icons.settings_outlined,
                 size: btnSize,
                 iconSize: iconSz,
+                tooltip: 'Settings',
                 onPressedWithContext: _s._showSettingsMenu,
               ),
             ),

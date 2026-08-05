@@ -99,4 +99,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-dash:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
     implementation("androidx.media3:media3-datasource:$media3Version")
+    // StandaloneDatabaseProvider for the VOD disk cache. media3-datasource only
+    // pulls this at runtime scope, so it must be declared to compile against.
+    implementation("androidx.media3:media3-database:$media3Version")
 }

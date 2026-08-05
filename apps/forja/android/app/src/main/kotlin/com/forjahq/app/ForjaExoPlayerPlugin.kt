@@ -1,5 +1,6 @@
 package com.forjahq.app
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -29,6 +30,8 @@ import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LivePlaybackSpeedControl
+import androidx.media3.exoplayer.SeekParameters
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
@@ -36,6 +39,7 @@ import androidx.media3.ui.PlayerView
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
 
@@ -65,6 +69,16 @@ private const val LIVE_SPEED_MAX = 1.03f
 private const val LIVE_UHD_MIN_HEIGHT = 2160
 private const val LIVE_UHD_MIN_WIDTH = 3840
 
+// Home VOD. Media3 stock gives no back buffer at all, so every backward seek
+// re-fetched from the CDN (issue 151). The byte allocator still caps the real
+// depth, so the generous max only pays off on low-bitrate streams.
+private const val VOD_MIN_BUFFER_MS = 30_000
+private const val VOD_MAX_BUFFER_MS = 120_000
+private const val VOD_BUFFER_FOR_PLAYBACK_MS = 2_500
+private const val VOD_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5_000
+/** Small enough not to crowd 4K MediaCodec surfaces on a TV box. */
+private const val VOD_BACK_BUFFER_MS = 15_000
+
 private fun isTelevisionContext(context: Context): Boolean =
     PlatformUtils.isAndroidTv(context)
 
@@ -74,6 +88,7 @@ private fun isUhdVideo(width: Int, height: Int): Boolean =
 class ExoPlayerHost(
     private val context: Context,
     private val viewId: Int,
+    private val activityProvider: () -> Activity?,
     private val emitEvent: (Map<String, Any?>) -> Unit,
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -84,6 +99,10 @@ class ExoPlayerHost(
     private var lastUrl: String? = null
     private var lastOptions: ExoOpenOptions = ExoOpenOptions()
     private var lastHeaders: Map<String, String> = emptyMap()
+    /** Whether the current pipeline was built with the disk cache in front. */
+    private var lastCached = false
+    /** One display mode switch per media — [Format.frameRate] can re-fire. */
+    private var frameRateApplied = false
     /** Last Dart resize mode — re-applied when Flutter remounts the PlatformView. */
     private var resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT
     /** Last subtitle appearance — re-applied when Flutter remounts the PlatformView. */
@@ -148,6 +167,7 @@ class ExoPlayerHost(
                     emit(mapOf("type" to "buffering", "value" to false))
                     emitTracks()
                     player?.videoSize?.let { applyLiveSpeedForVideoSize(it) }
+                    applyContentFrameRate()
                 }
                 Player.STATE_ENDED -> emit(mapOf("type" to "ended"))
             }
@@ -168,6 +188,7 @@ class ExoPlayerHost(
 
         override fun onVideoSizeChanged(videoSize: VideoSize) {
             applyLiveSpeedForVideoSize(videoSize)
+            applyContentFrameRate()
         }
 
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
@@ -192,6 +213,42 @@ class ExoPlayerHost(
                     "message" to (error.message ?: error.toString()),
                 ),
             )
+        }
+    }
+
+    /**
+     * Frame-health telemetry to `logcat -s ForjaExo`. Needed because
+     * `setEnableDecoderFallback(true)` can silently swap in a software decoder,
+     * which looks identical to a compositing stutter from the couch (issue 108).
+     */
+    private val frameHealthListener = object : AnalyticsListener {
+        override fun onVideoDecoderInitialized(
+            eventTime: AnalyticsListener.EventTime,
+            decoderName: String,
+            initializedTimestampMs: Long,
+            initializationDurationMs: Long,
+        ) {
+            Log.i("ForjaExo", "video decoder=$decoderName")
+        }
+
+        override fun onVideoInputFormatChanged(
+            eventTime: AnalyticsListener.EventTime,
+            format: androidx.media3.common.Format,
+            decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
+        ) {
+            Log.i(
+                "ForjaExo",
+                "video format=${format.sampleMimeType} " +
+                    "${format.width}x${format.height} fps=${format.frameRate}",
+            )
+        }
+
+        override fun onDroppedVideoFrames(
+            eventTime: AnalyticsListener.EventTime,
+            droppedFrames: Int,
+            elapsedMs: Long,
+        ) {
+            Log.w("ForjaExo", "dropped $droppedFrames frames in ${elapsedMs}ms")
         }
     }
 
@@ -224,6 +281,8 @@ class ExoPlayerHost(
     ) {
         videoAuto = true
         liveSpeedDisabledForUhd = null
+        frameRateApplied = false
+        val cached = !options.live && ForjaExoMediaCache.isCacheable(url)
         val existing = player
         // Soft reopen: reuse the ExoPlayer when the pipeline shape matches.
         // Full release+recreate on every IPTV reload / recovery ANRs ATV — goldfish
@@ -232,10 +291,12 @@ class ExoPlayerHost(
             lastOptions.live == options.live &&
             lastOptions.maxVideoHeight == options.maxVideoHeight &&
             lastOptions.maxVideoBitrate == options.maxVideoBitrate &&
-            lastHeaders == headers
+            lastHeaders == headers &&
+            lastCached == cached
         lastUrl = url
         lastOptions = options
         lastHeaders = headers
+        lastCached = cached
         if (canReuse) {
             applyLiveTrackCaps(existing!!, options)
             existing.setMediaItem(
@@ -255,7 +316,12 @@ class ExoPlayerHost(
 
         val httpFactory = buildHttpFactory(headers)
         // DefaultDataSource handles file:// / content:// / asset; HTTP goes through [httpFactory].
-        val dataSourceFactory = DefaultDataSource.Factory(context, httpFactory)
+        val baseFactory = DefaultDataSource.Factory(context, httpFactory)
+        val dataSourceFactory = if (cached) {
+            ForjaExoMediaCache.wrap(context, baseFactory)
+        } else {
+            baseFactory
+        }
         val mediaSourceFactory = DefaultMediaSourceFactory(context)
             .setDataSourceFactory(dataSourceFactory)
 
@@ -272,7 +338,18 @@ class ExoPlayerHost(
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build()
         } else {
-            DefaultLoadControl.Builder().build()
+            DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                    VOD_MIN_BUFFER_MS,
+                    VOD_MAX_BUFFER_MS,
+                    VOD_BUFFER_FOR_PLAYBACK_MS,
+                    VOD_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+                )
+                .setBackBuffer(VOD_BACK_BUFFER_MS, /* retainBackBufferFromKeyframe= */ true)
+                // Left false on purpose: the byte allocator stays the hard cap so
+                // a 4K remux cannot buffer 120s into RAM on a TV box.
+                .setPrioritizeTimeOverSizeThresholds(false)
+                .build()
         }
 
         // Prefer HW decode; fall back to software if MediaCodec rejects the
@@ -280,13 +357,22 @@ class ExoPlayerHost(
         val renderersFactory = DefaultRenderersFactory(context)
             .setEnableDecoderFallback(true)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
+            // Media3 only enables async MediaCodec queueing by default on API 31+.
+            // Older leanback SoCs (Android 7 TVs) queue on the playback thread and
+            // drop frames under load — force it on for even frame pacing (issue 108).
+            .forceEnableMediaCodecAsynchronousQueueing()
 
-        val exo = ExoPlayer.Builder(context)
+        val exoBuilder = ExoPlayer.Builder(context)
             .setMediaSourceFactory(mediaSourceFactory)
             .setRenderersFactory(renderersFactory)
             .setLoadControl(loadControl)
             .setLivePlaybackSpeedControl(liveSpeedControl)
-            .build()
+        if (!options.live && isTelevisionContext(context)) {
+            // D-pad ±10s on a remote must feel instant. PREVIOUS_SYNC (not
+            // CLOSEST_SYNC) so a resume never lands past unwatched footage.
+            exoBuilder.setSeekParameters(SeekParameters.PREVIOUS_SYNC)
+        }
+        val exo = exoBuilder.build()
         // Pause when another app takes audio focus (Netflix, etc.) — issue 134.
         exo.setAudioAttributes(
             AudioAttributes.Builder()
@@ -296,9 +382,15 @@ class ExoPlayerHost(
             /* handleAudioFocus= */ true,
         )
         exo.addListener(listener)
-        // Wake lock while playing live IPTV — weak TVs throttle decode in doze.
+        exo.addAnalyticsListener(frameHealthListener)
+        // Weak TVs throttle decode when nothing holds a wake lock. A two-hour
+        // movie needs this at least as much as a live channel does (issue 151).
         exo.setWakeMode(
-            if (options.live) C.WAKE_MODE_NETWORK else C.WAKE_MODE_NONE,
+            if (ForjaExoMediaCache.isCacheable(url)) {
+                C.WAKE_MODE_NETWORK
+            } else {
+                C.WAKE_MODE_LOCAL
+            },
         )
         player = exo
         playerView?.player = exo
@@ -451,6 +543,26 @@ class ExoPlayerHost(
             TAG,
             "live speed ${if (wantDisable) "OFF (UHD ${videoSize.width}x${videoSize.height})" else "ON (sub-UHD)"}",
         )
+    }
+
+    /**
+     * Ask the display for a refresh rate that divides cleanly into the content
+     * frame rate (issues 151 / 108). Live is included: a 50 or 25 fps channel on
+     * a fixed 60 Hz TV judders exactly like low FPS. [frameRateApplied] makes this
+     * one switch per open, so an adaptive ladder flip cannot re-trigger an HDMI
+     * re-sync mid-channel.
+     *
+     * `Format.frameRate` is unset on many HLS variants; those get no switch
+     * rather than a guess.
+     */
+    private fun applyContentFrameRate() {
+        if (frameRateApplied) return
+        val activity = activityProvider() ?: return
+        if (!isTelevisionContext(context)) return
+        val fps = player?.videoFormat?.frameRate ?: return
+        if (fps <= 0f) return
+        frameRateApplied = true
+        ForjaDisplayFrameRate.apply(activity, fps)
     }
 
     /** HLS/DASH mime when URI inference would wrongly choose progressive. */
@@ -632,6 +744,7 @@ class ExoPlayerHost(
         // Soft stop — keep the ExoPlayer instance so the next open can soft-reuse
         // without a MediaCodec release on the main thread (ATV ANR).
         stopProgressLoop()
+        clearDisplayFrameRate()
         try {
             player?.stop()
             player?.clearMediaItems()
@@ -712,7 +825,9 @@ class ExoPlayerHost(
 
     private fun stopInternal(releasePlayer: Boolean) {
         stopProgressLoop()
+        clearDisplayFrameRate()
         player?.removeListener(listener)
+        player?.removeAnalyticsListener(frameHealthListener)
         playerView?.player = null
         if (releasePlayer) {
             player?.release()
@@ -720,9 +835,16 @@ class ExoPlayerHost(
             lastUrl = null
             lastOptions = ExoOpenOptions()
             lastHeaders = emptyMap()
+            lastCached = false
         }
         videoAuto = true
         liveSpeedDisabledForUhd = null
+    }
+
+    private fun clearDisplayFrameRate() {
+        if (!frameRateApplied) return
+        frameRateApplied = false
+        activityProvider()?.let { ForjaDisplayFrameRate.clear(it) }
     }
 
     private fun startProgressLoop() {
@@ -779,11 +901,14 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
     private var methodChannel: MethodChannel? = null
     private var eventChannel: EventChannel? = null
     private var appContext: Context? = null
+    /** Weak: the display frame-rate switch needs a window, not the app context. */
+    private var activityRef: WeakReference<Activity>? = null
     private val hosts = ConcurrentHashMap<Int, ExoPlayerHost>()
     private var eventSink: EventChannel.EventSink? = null
 
     fun bindEngine(context: Context, messenger: io.flutter.plugin.common.BinaryMessenger, registry: io.flutter.plugin.platform.PlatformViewRegistry) {
         appContext = context.applicationContext
+        (context as? Activity)?.let { activityRef = WeakReference(it) }
         methodChannel = MethodChannel(messenger, CHANNEL)
         methodChannel?.setMethodCallHandler(this)
         eventChannel = EventChannel(messenger, EVENT_CHANNEL)
@@ -794,7 +919,11 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
     internal fun hostFor(viewId: Int): ExoPlayerHost {
         val ctx = appContext ?: throw IllegalStateException("ExoPlayer plugin not initialized")
         return hosts.getOrPut(viewId) {
-            ExoPlayerHost(ctx, viewId) { event -> eventSink?.success(event) }
+            ExoPlayerHost(
+                ctx,
+                viewId,
+                { activityRef?.get()?.takeUnless { it.isFinishing } },
+            ) { event -> eventSink?.success(event) }
         }
     }
 

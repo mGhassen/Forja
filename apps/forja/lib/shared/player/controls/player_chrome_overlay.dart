@@ -240,6 +240,9 @@ class PlayerStreamPickerButton extends StatefulWidget {
     this.tvFocusable = false,
     this.focusNode,
     this.onLeftEdge,
+    this.onRightEdge,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final String label;
@@ -250,6 +253,9 @@ class PlayerStreamPickerButton extends StatefulWidget {
   final bool tvFocusable;
   final FocusNode? focusNode;
   final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   State<PlayerStreamPickerButton> createState() =>
@@ -354,6 +360,9 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
             borderRadius: 8,
             scaleOnFocus: 1.0,
             onLeftEdge: widget.onLeftEdge,
+            onRightEdge: widget.onRightEdge,
+            onUpEdge: widget.onUpEdge,
+            onDownEdge: widget.onDownEdge,
             onFocusChange: (focused) => setState(() => _focused = focused),
             onHoverChange: (hovered) {
               if (hovered) playerChromeCancelSeekScrubs();

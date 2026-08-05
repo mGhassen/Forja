@@ -755,9 +755,9 @@ class SettingsService {
   Future<void> setExternalPlayer(String player) async =>
       kvSetString(_externalPlayerKey, player);
 
-  /// Built-in engine for [context]. Unset IPTV falls back to the VOD key (legacy
-  /// single-key installs), then [BuiltInPlayerEngine.defaultForContext]. Live
-  /// Matches defaults to MediaKit and does not inherit VOD/IPTV.
+  /// Built-in engine for [context]. Unset IPTV falls back to the VOD key
+  /// (legacy single-key installs), then [BuiltInPlayerEngine.defaultForContext].
+  /// Live never inherits VOD/IPTV.
   Future<BuiltInPlayerEngine> getBuiltInPlayerEngine({
     BuiltInPlayerContext context = BuiltInPlayerContext.vod,
   }) async {

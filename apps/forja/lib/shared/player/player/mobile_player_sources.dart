@@ -372,6 +372,10 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     return hasProviders || hasSources;
   }
 
+  bool get _hasEpisodePicker =>
+      (widget.movie?.mediaType == 'tv' && widget.movie != null) ||
+      (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty);
+
   /// Magnet or Stremio/Nuvio catalog play - link button opens Sources panel.
   bool get _usesCatalogSourcesPanel {
     if (widget.movie == null) return false;

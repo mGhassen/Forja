@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/foundation.dart'
+    show kDebugMode, kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -302,25 +303,44 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// escalating to a real reopen. Covers the flush's own 700ms delay.
   static const Duration _reloadEscalateAfter = Duration(seconds: 3);
 
-  // ---- Demuxer progress probe (issue 148 / RFC-052) -------------------
+  // ---- Feed progress probe (issue 148 / RFC-052) ----------------------
   // The stall detectors are timers, so on their own they cannot tell a dead
-  // socket from a live feed that is simply refilling. mpv's `demuxer-cache-time`
-  // is the last demuxed packet timestamp: it only advances when bytes are still
-  // arriving and parsing. Sampling it turns "position stopped" into the two
-  // cases that need opposite handling.
+  // socket from a live feed that is simply refilling. The buffered-end mark
+  // only advances while bytes are still arriving, which splits "position
+  // stopped" into the two cases that need opposite handling.
+  //
+  // Fed from all three sources so neither backend is left blind:
+  //   • Exo — `buffered` in the progress heartbeat. Live streams have no
+  //           duration, and `_buffered` is only assigned when duration > 0, so
+  //           this must be read straight off the event.
+  //   • mpv — the `buffer` stream.
+  //   • mpv — `demuxer-cache-time`, as a backstop.
 
-  /// Last sampled `demuxer-cache-time`, or `null` before the first sample.
-  double? _cacheTime;
+  /// Last observed buffered-end mark in ms, or `null` before the first sample.
+  int? _feedMarkMs;
 
-  /// When [_cacheTime] last moved forward — i.e. the socket last delivered.
-  DateTime? _cacheAdvancedAt;
+  /// When [_feedMarkMs] last moved — i.e. when the socket last delivered.
+  DateTime? _feedAdvancedAt;
+
+  /// Whether any feed signal arrived since the current open. False means the
+  /// probe is blind on this backend, and the detectors fall back to
+  /// [_blindFreezeGrace] instead of silently acting as if the feed were dead.
+  bool _everSawFeed = false;
 
   /// Guards against overlapping property reads when a sample is slow.
   bool _cacheProbeInFlight = false;
 
-  /// How recently the demuxer must have advanced to count the feed as alive.
-  /// Two watchdog ticks of slack so one slow property read cannot look dead.
+  /// Debug-only UHD telemetry timer (issue 150).
+  Timer? _uhdDiag;
+
+  /// How recently the feed must have advanced to count as alive. Two watchdog
+  /// ticks of slack so one slow sample cannot look dead.
   static const Duration _networkAliveWindow = Duration(seconds: 3);
+
+  /// Freeze tolerated when the probe never reported anything. Must outlast a
+  /// legitimate refill of the 30 s cache — the old 8 s limit did not, which is
+  /// exactly what reopened healthy feeds.
+  static const Duration _blindFreezeGrace = Duration(seconds: 20);
 
   /// Hard ceiling on tolerating a frozen picture while the demuxer keeps
   /// advancing. That combination is a wedged decoder rather than a network
@@ -726,6 +746,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _pipSub?.cancel();
     PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
     _watchdog?.cancel();
+    _uhdDiag?.cancel();
     _hideControlsTimer?.cancel();
     _hideVolumeTimer?.cancel();
     _playerTvKeyFocus.dispose();

@@ -52,6 +52,39 @@ void main() {
   });
 
   test(
+    'ATV unset IPTV engine inherits VOD Exo; Live stays MediaKit',
+    () async {
+      addTearDown(() {
+        SettingsService.configurePlatformProfile(PlatformProfile.phone);
+      });
+      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+      final service = SettingsService();
+      await service.setBuiltInPlayerEngine(
+        BuiltInPlayerEngine.exoPlayer,
+        context: BuiltInPlayerContext.vod,
+      );
+      expect(
+        await service.getBuiltInPlayerEngine(
+          context: BuiltInPlayerContext.vod,
+        ),
+        BuiltInPlayerEngine.exoPlayer,
+      );
+      expect(
+        await service.getBuiltInPlayerEngine(
+          context: BuiltInPlayerContext.iptv,
+        ),
+        BuiltInPlayerEngine.exoPlayer,
+      );
+      expect(
+        await service.getBuiltInPlayerEngine(
+          context: BuiltInPlayerContext.live,
+        ),
+        BuiltInPlayerEngine.mediaKit,
+      );
+    },
+  );
+
+  test(
     'Android TV play sources stay off even when stored prefs are on',
     () async {
       addTearDown(() {

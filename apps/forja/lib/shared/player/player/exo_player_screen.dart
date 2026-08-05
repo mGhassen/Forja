@@ -510,12 +510,15 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         final nearEnd = widget.hasNextEpisode &&
             widget.onNextEpisode != null &&
             isNearEndOfEpisode(pos, dur);
-        setState(() {
-          _position = pos;
-          if (durMs > 0) _duration = Duration(milliseconds: durMs);
-          _buffered = Duration(milliseconds: bufMs);
-          _nearEndOfEpisode = nearEnd;
-        });
+        // The controls overlay is always built (hidden via AnimatedOpacity, not
+        // removed), so an unconditional setState here re-laid-out the whole
+        // player tree twice a second over the platform view (issue 151).
+        final needsRepaint = _showControls || nearEnd != _nearEndOfEpisode;
+        _position = pos;
+        if (durMs > 0) _duration = Duration(milliseconds: durMs);
+        _buffered = Duration(milliseconds: bufMs);
+        _nearEndOfEpisode = nearEnd;
+        if (needsRepaint) setState(() {});
         break;
       case 'ended':
         setState(() {
@@ -1748,7 +1751,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   PlayerStreamPickerButton(
                     tvFocusable: true,
                     focusNode: _transportStreamFocus,
+                    onUpEdge: _focusSeekFromTransport,
                     onLeftEdge: () => _forwardFocus.requestFocus(),
+                    onRightEdge: () {
+                      if (_hasEpisodePicker &&
+                          _transportEpisodesFocus.canRequestFocus) {
+                        _transportEpisodesFocus.requestFocus();
+                      } else {
+                        _transportAudioFocus.requestFocus();
+                      }
+                    },
                     size: btnSize,
                     iconSize: iconSz - 2,
                     label: _streamPickerLabel(),
@@ -1763,6 +1775,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   PlayerFlatIconButton(
                     tvFocusable: true,
                     focusNode: _transportEpisodesFocus,
+                    onUpEdge: _focusSeekFromTransport,
                     onLeftEdge: () {
                       if (_hasStreamPicker &&
                           _transportStreamFocus.canRequestFocus) {
@@ -1771,6 +1784,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                         _forwardFocus.requestFocus();
                       }
                     },
+                    onRightEdge: () => _transportAudioFocus.requestFocus(),
                     icon: Icons.video_library_outlined,
                     size: btnSize,
                     iconSize: iconSz,
@@ -1784,6 +1798,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _transportAudioFocus,
+                  onUpEdge: _focusSeekFromTransport,
                   onLeftEdge: () {
                     if (_hasEpisodePicker &&
                         _transportEpisodesFocus.canRequestFocus) {
@@ -1810,6 +1825,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _transportSubsFocus,
+                  onUpEdge: _focusSeekFromTransport,
                   onLeftEdge: () => _transportAudioFocus.requestFocus(),
                   onRightEdge: () => _transportQualityFocus.requestFocus(),
                   icon: Icons.subtitles_outlined,
@@ -1825,6 +1841,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _transportQualityFocus,
+                  onUpEdge: _focusSeekFromTransport,
                   onLeftEdge: () => _transportSubsFocus.requestFocus(),
                   onRightEdge: () => _transportSettingsFocus.requestFocus(),
                   icon: Icons.hd_outlined,
@@ -1841,6 +1858,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   focusNode: _transportSettingsFocus,
+                  onUpEdge: _focusSeekFromTransport,
                   onLeftEdge: () => _transportQualityFocus.requestFocus(),
                   icon: Icons.settings_outlined,
                   size: btnSize,

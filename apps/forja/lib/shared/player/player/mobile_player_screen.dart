@@ -209,6 +209,20 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
       FocusNode(debugLabel: 'player-transport-sources');
   final FocusNode _transportStreamFocus =
       FocusNode(debugLabel: 'player-transport-stream');
+  final FocusNode _transportPrevEpFocus =
+      FocusNode(debugLabel: 'player-transport-prev-ep');
+  final FocusNode _transportNextEpFocus =
+      FocusNode(debugLabel: 'player-transport-next-ep');
+  final FocusNode _transportEpisodesFocus =
+      FocusNode(debugLabel: 'player-transport-episodes');
+  final FocusNode _transportAudioFocus =
+      FocusNode(debugLabel: 'player-transport-audio');
+  final FocusNode _transportSubsFocus =
+      FocusNode(debugLabel: 'player-transport-subs');
+  final FocusNode _transportQualityFocus =
+      FocusNode(debugLabel: 'player-transport-quality');
+  final FocusNode _transportSettingsFocus =
+      FocusNode(debugLabel: 'player-transport-settings');
   final FocusNode _backFocus = FocusNode(debugLabel: 'player-back');
   /// First TV Back focused the Back control — next Back exits even before
   /// the post-frame [requestFocus] lands.
@@ -453,6 +467,13 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     _seekbarFocus.dispose();
     _transportSourcesFocus.dispose();
     _transportStreamFocus.dispose();
+    _transportPrevEpFocus.dispose();
+    _transportNextEpFocus.dispose();
+    _transportEpisodesFocus.dispose();
+    _transportAudioFocus.dispose();
+    _transportSubsFocus.dispose();
+    _transportQualityFocus.dispose();
+    _transportSettingsFocus.dispose();
     _backFocus.removeListener(_onTvBackFocusChanged);
     _backFocus.dispose();
     _playerMenuFocus.dispose();
