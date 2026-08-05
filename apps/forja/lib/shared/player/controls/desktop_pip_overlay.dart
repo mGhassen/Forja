@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// Compact PiP chrome: free drag (no corner snap), hover play/pause + restore.
+/// Compact PiP chrome: free drag, hover restore (top-left) + play/pause (center).
 class DesktopPipOverlay extends StatelessWidget {
   const DesktopPipOverlay({
     super.key,
@@ -42,32 +42,37 @@ class DesktopPipOverlay extends StatelessWidget {
           Positioned(
             top: 8,
             left: 8,
-            right: 8,
             child: AnimatedOpacity(
               opacity: hovering ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 160),
               child: IgnorePointer(
                 ignoring: !hovering,
-                child: Row(
-                  children: [
-                    _PipChip(
-                      icon: playing
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      onTap: onTogglePlay,
-                    ),
-                    const Spacer(),
-                    _PipChip(
-                      icon: Icons.picture_in_picture_alt_rounded,
-                      onTap: () async {
-                        if (onRestore != null) {
-                          onRestore!();
-                        } else {
-                          await PipService.instance.leave();
-                        }
-                      },
-                    ),
-                  ],
+                child: _PipChip(
+                  icon: Icons.picture_in_picture_alt_rounded,
+                  onTap: () async {
+                    if (onRestore != null) {
+                      onRestore!();
+                    } else {
+                      await PipService.instance.leave();
+                    }
+                  },
+                ),
+              ),
+            ),
+          ),
+          Center(
+            child: AnimatedOpacity(
+              opacity: hovering ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 160),
+              child: IgnorePointer(
+                ignoring: !hovering,
+                child: _PipChip(
+                  icon: playing
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
+                  size: 28,
+                  padding: 12,
+                  onTap: onTogglePlay,
                 ),
               ),
             ),
@@ -79,10 +84,17 @@ class DesktopPipOverlay extends StatelessWidget {
 }
 
 class _PipChip extends StatelessWidget {
-  const _PipChip({required this.icon, required this.onTap});
+  const _PipChip({
+    required this.icon,
+    required this.onTap,
+    this.size = 18,
+    this.padding = 8,
+  });
 
   final IconData icon;
   final VoidCallback onTap;
+  final double size;
+  final double padding;
 
   @override
   Widget build(BuildContext context) {
@@ -90,18 +102,18 @@ class _PipChip extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         child: Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(padding),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.18),
               width: 0.8,
             ),
           ),
-          child: Icon(icon, color: Colors.white, size: 18),
+          child: Icon(icon, color: Colors.white, size: size),
         ),
       ),
     );

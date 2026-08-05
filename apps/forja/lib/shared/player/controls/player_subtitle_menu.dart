@@ -88,7 +88,9 @@ class PlayerSubtitleMenu {
 
     final byLang = <String, List<Map<String, dynamic>>>{};
     for (final s in externalSubtitles) {
-      final key = languageGroupKey(s['language'] as String?);
+      final key = languageGroupKey(
+        (s['language'] ?? s['lang'])?.toString(),
+      );
       byLang.putIfAbsent(key, () => []).add(s);
     }
     final folderKeys = byLang.keys.toList()..sort(compareLanguageCodes);

@@ -382,9 +382,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         .toList();
     final prepared = await _prepareOpenSubtitles(rawSubs);
     _sideloadedSubtitles = prepared;
-    if (rawSubs.isNotEmpty && mounted) {
+    if (mounted) {
+      // Keep Wyzie / online rows across failover reopen — only refresh provider.
+      final providerUrls = {
+        for (final s in rawSubs) (s['url'] ?? '').toString(),
+      }..remove('');
+      final preservedOnline = [
+        for (final s in _externalSubtitles)
+          if (!providerUrls.contains((s['url'] ?? '').toString())) s,
+      ];
       setState(
-        () => _externalSubtitles = List<Map<String, dynamic>>.from(rawSubs),
+        () => _externalSubtitles = [...rawSubs, ...preservedOnline],
       );
     }
     final subs = prepared

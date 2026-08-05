@@ -417,10 +417,65 @@ String languageDisplayName(String? code) {
       .join(' ');
 }
 
+/// Alias → canonical ISO group key (`en`, `fr`, `pt-br`, …).
+/// Built once so `en` / `eng` / `english` (and provider labels) share one folder.
+Map<String, String>? _aliasToGroupKey;
+
+Map<String, String> _languageAliasToGroupKey() {
+  final cached = _aliasToGroupKey;
+  if (cached != null) return cached;
+
+  final byEndonym = <String, String>{};
+  for (final p in _kLanguagePriority) {
+    final endonym = _kLanguageNames[p];
+    if (endonym != null) byEndonym.putIfAbsent(endonym, () => p);
+  }
+  for (final e in _kLanguageNames.entries) {
+    if (RegExp(r'^[a-z]{2}$').hasMatch(e.key)) {
+      byEndonym.putIfAbsent(e.value, () => e.key);
+    }
+  }
+  for (final e in _kLanguageNames.entries) {
+    byEndonym.putIfAbsent(e.value, () => e.key);
+  }
+
+  final out = <String, String>{};
+  for (final e in _kLanguageNames.entries) {
+    out[e.key] = byEndonym[e.value] ?? e.key;
+  }
+  _aliasToGroupKey = out;
+  return out;
+}
+
 /// Normalizes a language code for use as a grouping key.
+///
+/// Provider sideloads often use `English` / freeform labels; Wyzie uses `en`.
+/// Both must collapse to the same folder key so the picker merges them.
 String languageGroupKey(String? code) {
   if (code == null || code.trim().isEmpty) return 'unknown';
-  return code.trim().toLowerCase();
+  var raw = code.trim().toLowerCase();
+  // "English [Forced]" / "en - wyzie" / "English 1" → first token
+  final token = raw
+      .split(RegExp(r'[\s\[\(\,/]+'))
+      .firstWhere((p) => p.isNotEmpty, orElse: () => raw);
+  if (token.isEmpty) return 'unknown';
+
+  final aliases = _languageAliasToGroupKey();
+  final exact = aliases[token];
+  if (exact != null) return exact;
+
+  final normalizedLocale = token.replaceAll('_', '-');
+  final localeHit = aliases[normalizedLocale];
+  if (localeHit != null) return localeHit;
+
+  final dash = normalizedLocale.indexOf('-');
+  if (dash > 0) {
+    final base = normalizedLocale.substring(0, dash);
+    final baseHit = aliases[base];
+    if (baseHit != null) return baseHit;
+  }
+
+  return token;
 }
 
 /// Preferred display order for the subtitle language picker. Languages

@@ -131,23 +131,26 @@ mixin _DesktopPlayerTracks on ConsumerState<DesktopPlayerScreen>, WidgetsBinding
       }
     }
 
-    // Anime / Asian Drama use negative hub movie ids - still auto-pick from
-    // the episode's provider subs even when online search is skipped.
-    if (widget.movie == null || widget.movie!.id <= 0) {
+    // Anime / Asian Drama use negative hub ids — Wyzie/Levrx need TMDB > 0
+    // (skipped inside SubtitleApi), but title scrapers still run. Always merge
+    // provider sideloads with online results in the picker.
+    final movie = widget.movie;
+    final title = movie?.title.trim() ?? '';
+    final tmdbId = (movie != null && movie.id > 0) ? movie.id : 0;
+    if (tmdbId <= 0 && title.isEmpty) {
       await _maybeAutoPickExternalSubtitle();
       return;
     }
     if (mounted) setState(() => _s._isFetchingSubs = true);
 
+    final release = movie?.releaseDate ?? '';
     final stream = SubtitleApi.fetchSubtitlesStream(
-      tmdbId: widget.movie!.id,
-      imdbId: widget.movie!.imdbId,
+      tmdbId: tmdbId,
+      imdbId: movie?.imdbId,
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
-      title: widget.movie!.title,
-      year: widget.movie!.releaseDate.length >= 4
-          ? int.tryParse(widget.movie!.releaseDate.substring(0, 4))
-          : null,
+      title: title.isEmpty ? null : title,
+      year: release.length >= 4 ? int.tryParse(release.substring(0, 4)) : null,
     );
 
     stream.listen(
