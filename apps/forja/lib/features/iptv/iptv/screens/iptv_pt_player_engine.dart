@@ -593,6 +593,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       } else {
         final since = _s._bufferingSince;
         _s._bufferingSince = null;
+        if (since != null) {
+          final ms = DateTime.now().difference(since).inMilliseconds;
+          if (ms >= 500) debugPrint('[IPTV Player] buffering window ${ms}ms');
+        }
         // Capture before marking alive — initial buffer fill must not look like
         // a mid-stream underrun (that snap freezes frame 1, then seeks →
         // "stuck image, stuck image, then play" on desktop).
