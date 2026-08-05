@@ -1173,8 +1173,21 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 await _s._enginePause();
               } else {
                 _s._userPlayWhenReady = true;
+                final pausedAt = _s._pausedAt;
                 _s._pausedAt = null;
                 await _s._enginePlay();
+                // Live: after a real pause, rejoin the edge (don't resume
+                // from the frozen demuxer position seconds behind).
+                if (pausedAt != null &&
+                    iptvExoUrlLooksLive(
+                      _s._sources.isEmpty
+                          ? ''
+                          : _s._sources[_s._sourceIdx].url,
+                    ) &&
+                    DateTime.now().difference(pausedAt) >=
+                        const Duration(seconds: 2)) {
+                  _s._scheduleJumpToLive(reason: 'pause resume');
+                }
               }
               _scheduleHideControls();
             },

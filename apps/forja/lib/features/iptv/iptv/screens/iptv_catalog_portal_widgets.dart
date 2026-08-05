@@ -943,12 +943,23 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       IptvPortalPlatform.m3u => 'M3U',
       IptvPortalPlatform.stalker => 'Stalker',
     };
-    return Text(
-      label,
-      style: GoogleFonts.plusJakartaSans(
-        color: muted ? Colors.white54 : Colors.white38,
-        fontSize: 11,
-        height: 1.25,
+    final color = muted ? Colors.white54 : Colors.white38;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+          height: 1,
+        ),
       ),
     );
   }

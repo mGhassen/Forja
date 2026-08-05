@@ -253,6 +253,20 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         maxVideoBitrate: maxBitrate,
       );
     } else {
+      final p = _s._player?.platform;
+      if (p is NativePlayer) {
+        final live = iptvExoUrlLooksLive(src.url);
+        await _applyDemuxerLavfOpts(p, hlsLive: live && _urlLooksHls(src.url));
+        // Live: tiny back-buffer + cache-pause so underrun can't replay.
+        // VOD: keep a real back-buffer for scrubbing.
+        try {
+          await p.setProperty(
+            'demuxer-max-back-bytes',
+            live ? '5000000' : '25000000',
+          );
+          await p.setProperty('cache-pause', live ? 'yes' : 'no');
+        } catch (_) {}
+      }
       final headers = <String, String>{
         'User-Agent': _IptvPtPlayerScreenState._ua,
         ...src.headers,
@@ -353,16 +367,18 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // Network: fail fast so the watchdog can step in
       await p.setProperty('network-timeout', '15');
 
-      // Cache: prioritise SMOOTHNESS over live-edge latency. We aggressively
-      // pre-buffer ~30 s of forward data and let mpv hold up to 150 MB so
-      // brief upstream hiccups never reach the screen. cache-pause stays
-      // OFF - we'd rather let the decoder skip frames than show a spinner.
+      // Cache: keep a healthy forward window, but do not hold a large
+      // back-buffer — after underrun that stale window used to replay ~15s
+      // of already-watched live silently. cache-pause=yes freezes on empty
+      // so we can snap to live on unpause / underrun exit instead of
+      // resuming from demuxer history.
       await p.setProperty('cache', 'yes');
       await p.setProperty('cache-secs', '30');
       await p.setProperty('demuxer-readahead-secs', '20');
       await p.setProperty('demuxer-max-bytes', '150000000');
-      await p.setProperty('demuxer-max-back-bytes', '25000000');
-      await p.setProperty('cache-pause', 'no');
+      await p.setProperty('demuxer-max-back-bytes', '5000000');
+      await p.setProperty('cache-pause', 'yes');
+      // Snappy first frame; mid-stream underruns still pause via cache-pause.
       await p.setProperty('cache-pause-initial', 'no');
       // Larger audio buffer too - audio underruns are the most jarring
       // form of buffering on IPTV feeds.
@@ -395,28 +411,40 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
             'reconnect_on_http_error=4xx\\,5xx',
       );
 
-      // MPEG-TS / HLS demux tuning.
-      //   probesize=5MB, analyzeduration=5s - big enough for ffmpeg to
-      //                                       detect real codec params.
-      //   discardcorrupt                    - drop junk packets silently.
-      // We deliberately DO NOT set fflags=+nobuffer here. +nobuffer tells
-      // ffmpeg to push frames the instant they arrive, which is great for
-      // sub-second-latency live but means any upstream jitter ⇒ visible
-      // buffer underrun. For IPTV we'd rather have ~1–2 s of demuxer
-      // smoothing than a spinner every 30 s.
-      // HLS-only options (live_start_index, m3u8_hold_counters, etc.) are
-      // intentionally not set - when the stream isn't HLS, libavformat
-      // rejects them and mpv prints noisy errors the watchdog mistakes
-      // for stream failures.
-      await p.setProperty(
-        'demuxer-lavf-o',
-        'fflags=+discardcorrupt+genpts,'
-            'probesize=5000000,'
-            'analyzeduration=5000000',
-      );
+      // Base demuxer opts (HLS live_start_index applied per-open when URL is m3u8).
+      await _applyDemuxerLavfOpts(p, hlsLive: false);
     } catch (e) {
       debugPrint('[IPTV Player] tunables failed: $e');
     }
+  }
+
+  /// MPEG-TS / HLS demux tuning. HLS-only opts (`live_start_index`) must not be
+  /// set on non-HLS — libavformat rejects them and the watchdog mistakes the
+  /// log spam for stream failure.
+  Future<void> _applyDemuxerLavfOpts(
+    NativePlayer p, {
+    required bool hlsLive,
+  }) async {
+    final buf = StringBuffer(
+      'fflags=+discardcorrupt+genpts,'
+      'probesize=5000000,'
+      'analyzeduration=5000000',
+    );
+    // Newest segment — default join is often 2–3 segments (~12–18s) behind.
+    if (hlsLive) {
+      buf.write(',live_start_index=-1');
+    }
+    await p.setProperty('demuxer-lavf-o', buf.toString());
+  }
+
+  bool _urlLooksHls(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('.m3u8') || lower.contains('m3u8');
+  }
+
+  bool get _currentSourceIsLive {
+    if (_s._sources.isEmpty) return true;
+    return iptvExoUrlLooksLive(_s._sources[_s._sourceIdx].url);
   }
 
   Future<void> _initOrientationAndChrome() async {
@@ -477,6 +505,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (pos != _s._lastPos) {
         _s._lastPos = pos;
         _s._lastPosChange = DateTime.now();
+        if (!_playbackStarted && pos > Duration.zero) {
+          _playbackStarted = true;
+        }
         // Healthy streak - reset retry count if we've been ticking smoothly
         if (_s._retryAttempt > 0 &&
             DateTime.now().difference(_s._lastPosChange) <
@@ -509,11 +540,15 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       } else if (_s._userPlayWhenReady) {
         // libmpv silently went paused while the user wants playback. On a
         // live IPTV stream this is the classic "feed died, mpv hit EOF and
-        // toggled pause=yes" symptom. Poke play() once immediately - if it
-        // takes, great; if it doesn't, the watchdog will hard-reload us.
+        // toggled pause=yes" symptom. Skip while buffering — cache-pause
+        // legitimately pauses on underrun; fighting it with play() just
+        // churns. Poke play() once when not buffering; if it doesn't take,
+        // the watchdog will hard-reload us.
         _s._readyNotPlayingSince = DateTime.now();
+        if (_s._buffering) return;
         Future.microtask(() async {
           if (!mounted || !_s._userPlayWhenReady || _s._playing) return;
+          if (_s._buffering) return;
           try {
             await _enginePlay();
           } catch (_) {}
@@ -526,7 +561,21 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (b) {
         _s._bufferingSince ??= DateTime.now();
       } else {
+        final since = _s._bufferingSince;
         _s._bufferingSince = null;
+        // After a real mid-stream underrun, snap to live so we don't replay
+        // the stale demuxer window (~15s) that piled up behind the edge.
+        if (since != null &&
+            _playbackStarted &&
+            _currentSourceIsLive &&
+            _s._userPlayWhenReady &&
+            !_s._isSeeking &&
+            DateTime.now().difference(since) >=
+                const Duration(milliseconds: 800)) {
+          // Cancel silent-self-pause watchdog — we're rejoining live.
+          _s._readyNotPlayingSince = null;
+          _scheduleJumpToLive(reason: 'underrun exit');
+        }
       }
     });
     _s._errorSub = player.stream.error.listen((err) {
@@ -642,21 +691,39 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     }
   }
 
-  /// Best-effort jump to the live edge after a (re)open.
-  /// Only fires when [_s._streamSeekable] - pure-live MPEG-TS / direct HTTP
-  /// feeds must not be seek()'d (mpv prints noisy errors and it can't help).
-  void _scheduleJumpToLive() {
-    if (_s._exoBackend || !_s._streamSeekable) return;
+  /// Best-effort jump to the live edge after open / underrun / pause-resume.
+  /// Always drops demuxer backlog on mid-stream recovery (kills silent ~15s
+  /// replay). Seek only when [_s._streamSeekable] — pure MPEG-TS rejects seek.
+  void _scheduleJumpToLive({String reason = 'open'}) {
+    if (_s._exoBackend || !_currentSourceIsLive) return;
+    // Fresh open: only snap when there's a DVR window. drop-buffers on a
+    // pure-live TS right after connect just discards the first buffer.
+    if (reason == 'open' && !_s._streamSeekable) return;
+    final now = DateTime.now();
+    if (_s._lastLiveJumpAt != null &&
+        now.difference(_s._lastLiveJumpAt!) <
+            const Duration(milliseconds: 2500)) {
+      return;
+    }
+    _s._lastLiveJumpAt = now;
     Future.delayed(const Duration(milliseconds: 700), () async {
-      if (!mounted || !_s._streamSeekable) return;
+      if (!mounted || _s._disposed || !_currentSourceIsLive) return;
       try {
         final p = _s._player?.platform;
         if (p is! NativePlayer) return;
 
-        // Drop any data that piled up while paused / mid-recovery, then
-        // jump to the live edge of the DVR window.
-        await p.command(['drop-buffers']);
-        await p.command(['seek', '99999', 'absolute']);
+        debugPrint('[IPTV Player] live-edge snap ($reason)');
+        // Mid-stream / seekable open: drop stale cache so we don't resume
+        // mid-window. Skip the drop on non-seekable open (handled above).
+        if (reason != 'open' || _s._streamSeekable) {
+          await p.command(['drop-buffers']);
+        }
+        if (_s._streamSeekable) {
+          await p.command(['seek', '99999', 'absolute']);
+        }
+        if (_s._userPlayWhenReady && !_s._playing) {
+          await _enginePlay();
+        }
       } catch (_) {
         // Best-effort - ignore.
       }
@@ -724,10 +791,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // Detector 3: should be playing but isn't. For LIVE IPTV, a sustained
       // self-pause (mpv flipped to pause=yes on its own) almost always means
       // the upstream feed ended - live TV doesn't end, ever, so this is
-      // dead. Skip the gradual seek→reload backoff and go straight to a hard
+      // dead. Skip while buffering (cache-pause underrun is not a dead feed).
+      // Skip the gradual reopen backoff and go straight to a hard
       // reopen (forceHard:true).
       if (_s._userPlayWhenReady &&
           !_s._playing &&
+          !_s._buffering &&
           _s._readyNotPlayingSince != null &&
           now.difference(_s._readyNotPlayingSince!) >
               const Duration(milliseconds: 3000)) {
@@ -841,13 +910,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           debugPrint('[IPTV] hard recreate failed: $e');
         }
       } else if (_s._retryAttempt <= 2 || (forceHard && _s._windowsSoftwareDecode)) {
-        // Seek-to-zero only helps on DVR/HLS windows. Pure-live feeds reject
-        // every seek and spam "Cannot seek in this stream" on each recovery.
-        if (_s._streamSeekable && !_s._exoBackend) {
-          try {
-            await _engineSeek(Duration.zero);
-          } catch (_) {}
-        }
+        // Soft reopen — never seek(0) on live (anchors to DVR start / spam).
         try {
           await _engineOpenSource(_s._sources[_s._sourceIdx]);
           await _enginePlay();
@@ -878,7 +941,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       _s._lastPos = Duration.zero;
       _s._lastPosChange = DateTime.now();
       _s._openedAt = DateTime.now();
-      unawaited(_probeStreamCapabilities());
+      unawaited(_probeStreamCapabilities().then((_) {
+        if (mounted) _scheduleJumpToLive(reason: 'soft recovery');
+      }));
       // Soft recovery skips [_openCurrent]'s delayed clear — schedule one here
       // so a successful reopen does not leave "Reconnecting…" up forever.
       Future.delayed(const Duration(seconds: 2), () {

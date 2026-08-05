@@ -72,7 +72,8 @@ class IptvPlaySource {
 /// Dedicated IPTV / Live native player. Android remembers Exo / MediaKit per
 /// [engineContext] (IPTV ≠ VOD ≠ Live); other platforms use libmpv. Includes:
 ///   • Watchdog (3 detectors): long buffering, frozen position, ready-but-not-playing
-///   • Tiered recovery: seek-zero → reload → stop+open → recreate
+///   • Tiered recovery: reopen + live-edge → stop+open → recreate
+///   • Mid-stream underrun → drop stale buffers / jump live (no silent 15s replay)
 ///   • Multi-source rotation
 ///   • Backoff retries with healthy-streak reset
 ///   • Pretty responsive overlay UI
@@ -276,9 +277,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   DateTime? _lastRecoveryAt;
   /// One-shot Exo ↔ MediaKit swap after unrecognized-format errors.
   bool _formatEngineSwapped = false;
-  // When the user explicitly paused (so play-after-pause can rejoin live edge)
-  // ignore: unused_field
+  // When the user explicitly paused (play-after-pause rejoins live edge).
   DateTime? _pausedAt;
+  /// Throttle live-edge snaps after underrun / soft recovery.
+  DateTime? _lastLiveJumpAt;
   final List<int> _backoffMs = const [
     500,
     1000,
