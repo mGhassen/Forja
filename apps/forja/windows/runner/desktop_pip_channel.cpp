@@ -3,7 +3,6 @@
 #include <flutter/method_channel.h>
 #include <flutter/standard_method_codec.h>
 
-#include <cmath>
 #include <utility>
 
 namespace {
@@ -18,39 +17,6 @@ RECT WorkAreaFor(HWND hwnd) {
   RECT work{};
   SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
   return work;
-}
-
-void SnapToNearestCorner(HWND hwnd) {
-  if (hwnd == nullptr || !IsWindow(hwnd)) return;
-  RECT frame{};
-  GetWindowRect(hwnd, &frame);
-  const int width = frame.right - frame.left;
-  const int height = frame.bottom - frame.top;
-  const RECT work = WorkAreaFor(hwnd);
-  constexpr int pad = 12;
-
-  const POINT corners[4] = {
-      {work.left + pad, work.top + pad},
-      {work.right - width - pad, work.top + pad},
-      {work.left + pad, work.bottom - height - pad},
-      {work.right - width - pad, work.bottom - height - pad},
-  };
-
-  const int cx = frame.left + width / 2;
-  const int cy = frame.top + height / 2;
-  POINT best = corners[0];
-  double best_dist = 1e18;
-  for (const auto& c : corners) {
-    const double dx = static_cast<double>(c.x + width / 2 - cx);
-    const double dy = static_cast<double>(c.y + height / 2 - cy);
-    const double d = dx * dx + dy * dy;
-    if (d < best_dist) {
-      best_dist = d;
-      best = c;
-    }
-  }
-  SetWindowPos(hwnd, HWND_TOPMOST, best.x, best.y, width, height,
-               SWP_NOACTIVATE | SWP_SHOWWINDOW);
 }
 
 void DockBottomRight(HWND hwnd) {
@@ -99,9 +65,6 @@ std::unique_ptr<DesktopPipChannel> DesktopPipChannel::Register(
         const auto& method = call.method_name();
         if (method == "setEnabled") {
           // Dart/window_manager owns always-on-top; nothing extra required.
-          result->Success();
-        } else if (method == "snapToNearestCorner") {
-          SnapToNearestCorner(raw->hwnd());
           result->Success();
         } else if (method == "dockBottomRight") {
           DockBottomRight(raw->hwnd());

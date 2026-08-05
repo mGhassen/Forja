@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// Compact Safari-style PiP chrome: drag (throw snaps to corner), hover
-/// play/pause + restore. No double-tap maximize (that was breaking PiP).
+/// Compact PiP chrome: free drag (no corner snap), hover play/pause + restore.
 class DesktopPipOverlay extends StatelessWidget {
   const DesktopPipOverlay({
     super.key,
@@ -38,13 +36,6 @@ class DesktopPipOverlay extends StatelessWidget {
               onPanStart: (_) {
                 unawaited(windowManager.startDragging());
               },
-              // macOS snaps via native mouse-up monitor (more reliable after
-              // startDragging). Windows relies on this Flutter end event.
-              onPanEnd: Platform.isMacOS
-                  ? null
-                  : (_) {
-                      unawaited(PipService.instance.snapToNearestCorner());
-                    },
               child: const SizedBox.expand(),
             ),
           ),

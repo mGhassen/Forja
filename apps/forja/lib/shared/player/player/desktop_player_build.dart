@@ -17,6 +17,9 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         ),
       );
     } else {
+      // Include enter-pending: window shrinks before the stream sets _isPipMode.
+      final pipMode =
+          _s._isPipMode || PipService.instance.isDesktopActive;
       body = Theme(
         data: ThemeData.dark(),
         child: Scaffold(
@@ -47,7 +50,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
 
                 // Double-click empty video area → toggle fullscreen
                 // (controls chrome sits above and keeps its own hit targets).
-                if (!_s._isPipMode)
+                if (!pipMode)
                   Positioned.fill(
                     child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
@@ -94,7 +97,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                 // ── Controls Overlay ─────────────────────────────────────
                 // Hidden entirely while PiP is active - replaced by the
                 // floating revert button below.
-                if (!_s._isPipMode)
+                if (!pipMode)
                   AnimatedOpacity(
                     opacity: _s._showControls ? 1.0 : 0.0,
                     duration: const Duration(milliseconds: 220),
@@ -105,7 +108,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                   ),
 
                 // ── PiP chrome (drag + throw snap + hover controls) ─────
-                if (_s._isPipMode) _buildPipRevertOverlay(),
+                if (pipMode) _buildPipRevertOverlay(),
 
                 if (_s._isLoadingNextEp)
                   Positioned(

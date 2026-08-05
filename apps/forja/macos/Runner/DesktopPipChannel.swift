@@ -1,10 +1,9 @@
 import Cocoa
 import FlutterMacOS
-import QuartzCore
 
-/// Safari-like PiP chrome for the main Flutter window: floating level,
-/// rounded clip, shadow, Space/fullscreen join, and AX opt-out so Magnet /
-/// Rectangle / tiling tools do not steal throw/drag gestures.
+/// Compact PiP chrome for the main Flutter window: floating level, rounded
+/// clip, shadow, Space/fullscreen join, and AX opt-out so Magnet / Rectangle
+/// do not steal the drag. Free positioning — no corner snap.
 final class DesktopPipController: NSObject {
   private weak var window: NSWindow?
   private var pipEnabled = false
@@ -15,17 +14,12 @@ final class DesktopPipController: NSObject {
   private var savedHasShadow = true
   private var savedBackground: NSColor = .black
   private var savedMovableByBackground = false
-  private var localMouseUpMonitor: Any?
-  private var localMouseDownMonitor: Any?
-  private var dragStartOrigin: NSPoint?
+  /// Saved level/collection already captured by [prepareForSpaceLeave].
+  private var spaceLeavePrepared = false
 
   init(window: NSWindow) {
     self.window = window
     super.init()
-  }
-
-  deinit {
-    stopDragMonitors()
   }
 
   func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -34,9 +28,11 @@ final class DesktopPipController: NSObject {
       let enabled = (call.arguments as? [String: Any])?["enabled"] as? Bool ?? false
       setPipEnabled(enabled)
       result(nil)
-    case "snapToNearestCorner":
-      snapToNearestCorner(animated: true)
-      result(nil)
+    case "enterPip":
+      let args = call.arguments as? [String: Any] ?? [:]
+      let width = (args["width"] as? Double) ?? 360
+      let height = (args["height"] as? Double) ?? 203
+      result(enterPipAtomic(width: width, height: height))
     case "dockBottomRight":
       dockBottomRight()
       result(nil)
@@ -47,64 +43,88 @@ final class DesktopPipController: NSObject {
     }
   }
 
+  /// One-shot PiP enter. Returns saved frame so Dart can restore on leave.
+  private func enterPipAtomic(width: Double, height: Double) -> [String: Double] {
+    guard let window else {
+      return [:]
+    }
+    let frame = window.frame
+    let saved: [String: Double] = [
+      "x": frame.origin.x,
+      "y": frame.origin.y,
+      "width": frame.size.width,
+      "height": frame.size.height,
+    ]
+
+    if window.styleMask.contains(.fullScreen) {
+      window.toggleFullScreen(nil)
+    }
+
+    if !pipEnabled {
+      if !spaceLeavePrepared {
+        savedLevel = window.level
+        savedCollection = window.collectionBehavior
+      }
+      savedStyleMask = window.styleMask
+      savedOpaque = window.isOpaque
+      savedHasShadow = window.hasShadow
+      savedBackground = window.backgroundColor ?? .black
+      savedMovableByBackground = window.isMovableByWindowBackground
+      pipEnabled = true
+      spaceLeavePrepared = false
+    }
+    applyPipChrome()
+
+    let work = visibleFrame()
+    let pad: CGFloat = 12
+    let size = NSSize(width: width, height: height)
+    let origin = NSPoint(
+      x: work.maxX - size.width - pad,
+      y: work.minY + pad
+    )
+    window.setFrame(NSRect(origin: origin, size: size), display: true, animate: false)
+    window.orderFrontRegardless()
+    return saved
+  }
+
   private func setPipEnabled(_ enabled: Bool) {
     guard let window else { return }
     if enabled {
       if !pipEnabled {
-        savedLevel = window.level
-        savedCollection = window.collectionBehavior
+        if !spaceLeavePrepared {
+          savedLevel = window.level
+          savedCollection = window.collectionBehavior
+        }
         savedStyleMask = window.styleMask
         savedOpaque = window.isOpaque
         savedHasShadow = window.hasShadow
         savedBackground = window.backgroundColor ?? .black
         savedMovableByBackground = window.isMovableByWindowBackground
         pipEnabled = true
+        spaceLeavePrepared = false
       }
       applyPipChrome()
-      startDragMonitors()
     } else if pipEnabled {
       pipEnabled = false
-      stopDragMonitors()
+      spaceLeavePrepared = false
       restoreChrome()
     }
   }
 
-  private func startDragMonitors() {
-    stopDragMonitors()
-    dragStartOrigin = nil
-    localMouseDownMonitor = NSEvent.addLocalMonitorForEvents(
-      matching: [.leftMouseDown]
-    ) { [weak self] event in
-      self?.dragStartOrigin = self?.window?.frame.origin
-      return event
+  /// Join all Spaces + floating so a Space swipe does not occlude/pause.
+  func prepareForSpaceLeave() {
+    guard let window, !pipEnabled else { return }
+    if !spaceLeavePrepared {
+      savedLevel = window.level
+      savedCollection = window.collectionBehavior
+      spaceLeavePrepared = true
     }
-    localMouseUpMonitor = NSEvent.addLocalMonitorForEvents(
-      matching: [.leftMouseUp]
-    ) { [weak self] event in
-      guard let self, self.pipEnabled, let start = self.dragStartOrigin else {
-        return event
-      }
-      self.dragStartOrigin = nil
-      let now = self.window?.frame.origin ?? start
-      let moved = abs(now.x - start.x) > 8 || abs(now.y - start.y) > 8
-      guard moved else { return event }
-      DispatchQueue.main.async {
-        self.snapToNearestCorner(animated: true)
-      }
-      return event
-    }
-  }
-
-  private func stopDragMonitors() {
-    if let localMouseDownMonitor {
-      NSEvent.removeMonitor(localMouseDownMonitor)
-      self.localMouseDownMonitor = nil
-    }
-    if let localMouseUpMonitor {
-      NSEvent.removeMonitor(localMouseUpMonitor)
-      self.localMouseUpMonitor = nil
-    }
-    dragStartOrigin = nil
+    var behavior = savedCollection
+    behavior.insert(.canJoinAllSpaces)
+    behavior.insert(.fullScreenAuxiliary)
+    window.collectionBehavior = behavior
+    window.level = .floating
+    window.orderFrontRegardless()
   }
 
   private func applyPipChrome() {
@@ -189,51 +209,13 @@ final class DesktopPipController: NSObject {
     )
     window.setFrame(NSRect(origin: origin, size: size), display: true, animate: false)
   }
-
-  private func snapToNearestCorner(animated: Bool) {
-    guard let window else { return }
-    let work = visibleFrame()
-    let pad: CGFloat = 12
-    let size = window.frame.size
-    let center = NSPoint(x: window.frame.midX, y: window.frame.midY)
-
-    let corners: [NSPoint] = [
-      NSPoint(x: work.minX + pad, y: work.maxY - size.height - pad),
-      NSPoint(x: work.maxX - size.width - pad, y: work.maxY - size.height - pad),
-      NSPoint(x: work.minX + pad, y: work.minY + pad),
-      NSPoint(x: work.maxX - size.width - pad, y: work.minY + pad),
-    ]
-
-    var best = corners[0]
-    var bestDist = CGFloat.greatestFiniteMagnitude
-    for c in corners {
-      let dx = (c.x + size.width / 2) - center.x
-      let dy = (c.y + size.height / 2) - center.y
-      let d = dx * dx + dy * dy
-      if d < bestDist {
-        bestDist = d
-        best = c
-      }
-    }
-
-    let target = NSRect(origin: best, size: size)
-    if animated {
-      NSAnimationContext.runAnimationGroup { ctx in
-        ctx.duration = 0.22
-        ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
-        window.animator().setFrame(target, display: true)
-      }
-    } else {
-      window.setFrame(target, display: true)
-    }
-  }
 }
 
-private var _desktopPipController: DesktopPipController?
+var desktopPipController: DesktopPipController?
 
 func registerDesktopPipChannel(_ controller: FlutterViewController, window: NSWindow) {
   let pip = DesktopPipController(window: window)
-  _desktopPipController = pip
+  desktopPipController = pip
   let channel = FlutterMethodChannel(
     name: "forja/desktop_pip",
     binaryMessenger: controller.engine.binaryMessenger

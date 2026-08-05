@@ -480,6 +480,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
       if (!_s._disposed &&
           !_s._isPipMode &&
           !PipService.instance.isDesktopActive &&
+          !PipService.instance.autoPipArmed &&
           _s._player.state.playing) {
         _s._pausedByLifecycle = true;
       }
@@ -507,6 +508,13 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
     if (_s._disposed ||
         _s._isPipMode ||
         PipService.instance.isDesktopActive) {
+      return;
+    }
+    // Space / desktop switch: enter PiP instead of pausing (fluid).
+    if (PipService.instance.autoPipArmed &&
+        _s._playerReady &&
+        (_s._player.state.playing || _s._pausedByLifecycle)) {
+      unawaited(PipService.instance.enterInsteadOfPause());
       return;
     }
     if (_s._player.state.playing) {

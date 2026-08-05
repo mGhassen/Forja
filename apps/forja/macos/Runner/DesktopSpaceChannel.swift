@@ -35,6 +35,11 @@ final class DesktopSpaceStreamHandler: NSObject, FlutterStreamHandler {
       ?? NSApp.windows.first(where: { $0.isVisible })
       ?? NSApp.keyWindow
     let onActive = window?.isOnActiveSpace ?? false
+    // Join all Spaces immediately when leaving — before Dart round-trips —
+    // so the window never vanishes mid-swipe (audio/video stay alive).
+    if !onActive {
+      desktopPipController?.prepareForSpaceLeave()
+    }
     eventSink?(["onActiveSpace": onActive])
   }
 }

@@ -18,6 +18,13 @@ class _IptvCatalogShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Player overlay stays mounted over this shell. Desktop PiP shrinks the
+    // whole window — skip catalog layout so top bar / grids do not assert.
+    if ((Platform.isMacOS || Platform.isWindows) &&
+        PipService.instance.isDesktopActive) {
+      return const ColoredBox(color: Colors.black);
+    }
+
     return Column(
       children: [
         IptvCatalogTopBar(

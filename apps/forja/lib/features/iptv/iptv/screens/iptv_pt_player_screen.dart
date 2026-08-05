@@ -639,6 +639,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       if (!_disposed &&
           !_isPipMode &&
           !PipService.instance.isDesktopActive &&
+          !PipService.instance.autoPipArmed &&
           _playing) {
         _pausedByLifecycle = true;
       }
@@ -651,6 +652,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     if (_disposed ||
         _isPipMode ||
         PipService.instance.isDesktopActive) {
+      return;
+    }
+    if (PipService.instance.autoPipArmed && (_playing || _pausedByLifecycle)) {
+      unawaited(PipService.instance.enterInsteadOfPause());
       return;
     }
     if (_playing) {

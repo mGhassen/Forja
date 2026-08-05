@@ -410,23 +410,34 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
                 ),
               ),
               const SizedBox(width: 8),
-              iptvCatalogRow(
-                rowId: 'iptv-top-tools',
-                sortOrder: 1,
-                itemCount: _topToolsCount,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    compact
-                        ? _buildSearchIcon(context, compact: true)
-                        : _buildExpandingSearch(context),
-                    if (_showLiveSort) ...[
-                      const SizedBox(width: 8),
-                      _buildSortButton(context),
-                    ],
-                    const SizedBox(width: 8),
-                    _buildPortalButton(context, compact: compact),
-                  ],
+              // Flexible + scroll: tools (portal chip ~156+) must not force the
+              // parent Row past remaining width (PiP / narrow desktop).
+              Flexible(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    reverse: true,
+                    child: iptvCatalogRow(
+                      rowId: 'iptv-top-tools',
+                      sortOrder: 1,
+                      itemCount: _topToolsCount,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          compact
+                              ? _buildSearchIcon(context, compact: true)
+                              : _buildExpandingSearch(context),
+                          if (_showLiveSort) ...[
+                            const SizedBox(width: 8),
+                            _buildSortButton(context),
+                          ],
+                          const SizedBox(width: 8),
+                          _buildPortalButton(context, compact: compact),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],

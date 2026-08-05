@@ -590,22 +590,26 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (b) {
         _s._bufferingSince ??= DateTime.now();
       } else {
-        // First buffer fill completed — live may keep position at 0.
+        final since = _s._bufferingSince;
+        _s._bufferingSince = null;
+        // Capture before marking alive — initial buffer fill must not look like
+        // a mid-stream underrun (that snap freezes frame 1, then seeks →
+        // "stuck image, stuck image, then play" on desktop).
+        final midStream = _playbackStarted &&
+            DateTime.now().difference(_s._openedAt) >=
+                const Duration(seconds: 4);
         if (!_playbackStarted) {
           _noteVideoFrame(reason: 'buffering done');
         }
-        final since = _s._bufferingSince;
-        _s._bufferingSince = null;
-        // After a real mid-stream underrun, snap to live so we don't replay
-        // the stale demuxer window (~15s) that piled up behind the edge.
-        if (since != null &&
-            _playbackStarted &&
+        // Mid-stream underrun only: snap to live so we don't replay ~15s of
+        // stale demuxer history. Skip the cold open buffer fill.
+        if (midStream &&
+            since != null &&
             _currentSourceIsLive &&
             _s._userPlayWhenReady &&
             !_s._isSeeking &&
             DateTime.now().difference(since) >=
                 const Duration(milliseconds: 800)) {
-          // Cancel silent-self-pause watchdog — we're rejoining live.
           _s._readyNotPlayingSince = null;
           _scheduleJumpToLive(reason: 'underrun exit');
         }

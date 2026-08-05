@@ -214,6 +214,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
     final size = MediaQuery.sizeOf(context);
     final compact = size.shortestSide < 600;
+    // Include enter-pending: window shrinks before the stream sets _isPipMode.
+    final pipMode =
+        _s._isPipMode || PipService.instance.isDesktopActive;
     final epgFuture = (!_s._guideVisible && !_s._searchVisible)
         ? _floatingEpgFuture()
         : null;
@@ -282,11 +285,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               : SystemMouseCursors.none,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: _s._isPipMode ? null : _toggleControls,
+            onTap: pipMode ? null : _toggleControls,
             // Double-click / double-tap video → toggle fullscreen (same as films).
             // Android TV is already immersive — no fullscreen toggle.
             onDoubleTap: () {
-              if (_s._isPipMode ||
+              if (pipMode ||
                   _s._guideVisible ||
                   _s._searchVisible ||
                   iptvUseTvFocus(context)) {
@@ -318,13 +321,13 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                   ),
                 ),
                 // Reconnect/buffering banner - hidden in PiP
-                if (!_s._isPipMode &&
+                if (!pipMode &&
                     (_s._buffering || _s._statusBanner != null))
                   _buildBanner(),
                 // Top bar + bottom controls (below guide when open).
                 // Hidden entirely while PiP is active - replaced by the
                 // floating revert button below on desktop.
-                if (!_s._isPipMode)
+                if (!pipMode)
                   AnimatedOpacity(
                     duration: const Duration(milliseconds: 220),
                     opacity: _s._controlsVisible ? 1 : 0,
@@ -343,11 +346,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                       ),
                     ),
                   ),
-                if (_s._isPipMode) _buildPipRevertOverlay(),
+                if (pipMode) _buildPipRevertOverlay(),
                 // Positioned.fill must be a direct Stack child — wrapping the
                 // overlay (which used to return Positioned) in RepaintBoundary
                 // caused ParentDataWidget spam on every frame.
-                if (!_s._isPipMode &&
+                if (!pipMode &&
                     _s._searchVisible &&
                     widget.channelGuide != null)
                   Positioned.fill(
@@ -363,7 +366,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                       ),
                     ),
                   ),
-                if (!_s._isPipMode &&
+                if (!pipMode &&
                     _s._guideVisible &&
                     widget.channelGuide != null)
                   Positioned.fill(
@@ -380,7 +383,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                       ),
                     ),
                   ),
-                if (!_s._isPipMode && epgFuture != null)
+                if (!pipMode && epgFuture != null)
                   Positioned(
                     right: 16,
                     bottom: _floatingEpgBottomInset(context, compact),

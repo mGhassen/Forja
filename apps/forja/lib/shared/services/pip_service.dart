@@ -3,9 +3,13 @@
 // Android: real OS PiP via the `floating` package.
 //
 // Desktop (Windows / macOS): media_kit/mpv has no AVKit/WinUI PiP surface, so
-// we shrink to a compact always-on-top window with Safari-like behavior:
-// rounded floating chrome, aspect lock, dock to bottom-right, throw-to-corner
-// snap, and (macOS) AX opt-out so Magnet/Rectangle do not hijack the throw.
+// we shrink to a compact always-on-top window with Safari-like chrome:
+// rounded floating window, aspect lock, dock to bottom-right on enter,
+// and (macOS) AX opt-out so Magnet/Rectangle do not hijack the drag.
+// Free drag — no corner snap.
+//
+// Space / virtual-desktop switch: never pause — arm PiP pending synchronously
+// and (macOS) enter via one native call so playback stays fluid.
 //
 // Linux/iOS: no-op (returns false).
 
@@ -35,7 +39,6 @@ class PipService {
   Rect? _savedBounds;
   bool _savedAlwaysOnTop = false;
   bool _savedVisibleOnAllWorkspaces = false;
-  final TitleBarStyle _savedTitleBarStyle = TitleBarStyle.hidden;
 
   final StreamController<bool> _desktopController =
       StreamController<bool>.broadcast();
@@ -53,6 +56,9 @@ class PipService {
   }
 
   bool get isDesktopActive => _desktopActive || _desktopEnterPending;
+
+  /// Player bound for Space-switch auto-PiP — lifecycle must not pause.
+  bool get autoPipArmed => _shouldAutoEnterPip != null;
 
   Future<bool> enter({
     int width = 16,
@@ -118,14 +124,13 @@ class PipService {
     _shouldAutoEnterPip = null;
   }
 
-  /// Safari-style throw: settle to the nearest screen corner.
-  Future<void> snapToNearestCorner() async {
-    if (!_desktopActive) return;
-    try {
-      await _desktopPipChannel.invokeMethod('snapToNearestCorner');
-    } catch (e) {
-      debugPrint('[PipService] snapToNearestCorner failed: $e');
-    }
+  /// Lifecycle / Space switch: enter PiP instead of pausing. Arms pending
+  /// synchronously so a concurrent pause check sees [isDesktopActive].
+  Future<void> enterInsteadOfPause({int width = 16, int height = 9}) async {
+    if (_desktopActive || _desktopEnterPending) return;
+    final check = _shouldAutoEnterPip;
+    if (check != null && !check()) return;
+    await _enterDesktop(width: width, height: height);
   }
 
   void _ensureDesktopSpaceWatch() {
@@ -141,7 +146,7 @@ class PipService {
   }
 
   Future<void> _onDesktopSpaceEvent(dynamic event) async {
-    if (_desktopActive) return;
+    if (_desktopActive || _desktopEnterPending) return;
     final shouldEnter = _shouldAutoEnterPip;
     if (shouldEnter == null) return;
 
@@ -169,36 +174,51 @@ class PipService {
     }
   }
 
-  Future<void> _dockBottomRight() async {
-    try {
-      await _desktopPipChannel.invokeMethod('dockBottomRight');
-    } catch (e) {
-      debugPrint('[PipService] dockBottomRight failed: $e');
-    }
-  }
-
   // ── Desktop implementation ─────────────────────────────────────────────
 
   Future<bool> _enterDesktop({required int width, required int height}) async {
     if (_desktopActive) return true;
     if (_desktopEnterPending) return true;
+    // Sync arm BEFORE any await — lifecycle pause must see this.
     _desktopEnterPending = true;
+    _desktopController.add(true);
+
+    const pipWidth = 360.0;
+    final aspect = width / height;
+    final pipHeight = pipWidth / aspect;
+
     try {
-      final pos = await windowManager.getPosition();
-      final size = await windowManager.getSize();
-      _savedBounds = Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height);
       _savedAlwaysOnTop = await windowManager.isAlwaysOnTop();
       if (Platform.isMacOS) {
         _savedVisibleOnAllWorkspaces =
             await windowManager.isVisibleOnAllWorkspaces();
+        // One native turn: all-spaces → chrome → size → dock.
+        final saved = await _desktopPipChannel.invokeMethod<dynamic>(
+          'enterPip',
+          {'width': pipWidth, 'height': pipHeight},
+        );
+        if (saved is Map) {
+          _savedBounds = Rect.fromLTWH(
+            (saved['x'] as num?)?.toDouble() ?? 0,
+            (saved['y'] as num?)?.toDouble() ?? 0,
+            (saved['width'] as num?)?.toDouble() ?? 1280,
+            (saved['height'] as num?)?.toDouble() ?? 720,
+          );
+        }
+        try {
+          await windowManager.setMinimumSize(Size(240, 240 / aspect));
+          await windowManager.setMaximumSize(Size(640, 640 / aspect));
+          await windowManager.setAspectRatio(aspect);
+        } catch (_) {}
+        await windowManager.setAlwaysOnTop(true);
+        _desktopActive = true;
+        return true;
       }
 
-      // Safari PiP-ish size (~360 wide), locked aspect.
-      const pipWidth = 360.0;
-      final aspect = width / height;
-      final pipHeight = pipWidth / aspect;
-      final maxW = 640.0;
-      final maxH = maxW / aspect;
+      // Windows: stepwise (no atomic native enter yet).
+      final pos = await windowManager.getPosition();
+      final size = await windowManager.getSize();
+      _savedBounds = Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height);
 
       if (await windowManager.isFullScreen()) {
         await windowManager.setFullScreen(false);
@@ -209,50 +229,24 @@ class PipService {
 
       await windowManager.setResizable(true);
       await windowManager.setMinimumSize(Size(240, 240 / aspect));
-      await windowManager.setMaximumSize(Size(maxW, maxH));
+      await windowManager.setMaximumSize(Size(640, 640 / aspect));
       await windowManager.setAspectRatio(aspect);
       await windowManager.setSize(Size(pipWidth, pipHeight));
-
-      // Native floating chrome (rounded, Magnet opt-out) before dock.
       await _setNativePipChrome(true);
-
       await windowManager.setAlwaysOnTop(true);
-      if (Platform.isMacOS) {
-        await windowManager.setVisibleOnAllWorkspaces(
-          true,
-          visibleOnFullScreen: true,
-        );
-        // Native DesktopPipChannel already applied borderless chrome.
-        // Never call window_manager setAsFrameless / setTitleBarStyle after
-        // that — both force-unwrap closeButton.superview and SIGTRAP when
-        // styleMask has no .titled (Dart try/catch cannot catch it).
-        try {
-          await windowManager.setHasShadow(true);
-        } catch (_) {}
-      } else {
-        try {
-          await windowManager.setAsFrameless();
-        } catch (_) {}
-        try {
-          await windowManager.setHasShadow(true);
-        } catch (_) {}
-        try {
-          await windowManager.setTitleBarStyle(
-            TitleBarStyle.hidden,
-            windowButtonVisibility: false,
-          );
-        } catch (_) {}
-        await _setNativePipChrome(true);
-      }
-
-      await _dockBottomRight();
+      try {
+        await windowManager.setHasShadow(true);
+      } catch (_) {}
+      try {
+        await _desktopPipChannel.invokeMethod('dockBottomRight');
+      } catch (_) {}
 
       _desktopActive = true;
-      _desktopController.add(true);
       return true;
     } catch (e) {
       debugPrint('[PipService] _enterDesktop failed: $e');
       await _setNativePipChrome(false);
+      _desktopController.add(false);
       return false;
     } finally {
       _desktopEnterPending = false;
@@ -276,16 +270,6 @@ class PipService {
       try {
         await windowManager.setMinimumSize(const Size(640, 480));
       } catch (_) {}
-      // macOS: native restoreChrome already restored styleMask / traffic lights.
-      // setTitleBarStyle would SIGTRAP if closeButton is still missing.
-      if (Platform.isWindows) {
-        try {
-          await windowManager.setTitleBarStyle(
-            _savedTitleBarStyle,
-            windowButtonVisibility: true,
-          );
-        } catch (_) {}
-      }
       await windowManager.setAlwaysOnTop(_savedAlwaysOnTop);
       if (Platform.isMacOS) {
         await windowManager.setVisibleOnAllWorkspaces(
