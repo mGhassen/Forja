@@ -390,6 +390,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     _trackAutoSelectTimer?.cancel();
     _trackAutoSelectTimer = null;
     _pipSub?.cancel();
+    PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
     _torrentStatsSub?.cancel();
     PlayerSubtitleSettingsDialog.dismissIfShowing();
     PlayerTorrentFilePanel.dismiss();

@@ -9,14 +9,16 @@
 //          macOS also sets collectionBehavior.canJoinAllSpaces (+ fullScreen
 //          auxiliary) so the window follows Spaces / fullscreen apps.
 //          Toggling off restores the previous bounds and decorations.
+//          While a player is bound, switching Mission Control Space /
+//          Windows virtual desktop auto-enters PiP if playback is active.
 //
 // Linux/iOS: no-op (returns false).
 
 import 'dart:async';
 import 'dart:io' show Platform;
-import 'dart:ui' show Size, Offset;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:floating/floating.dart' as fp;
 import 'package:window_manager/window_manager.dart';
 
@@ -24,11 +26,16 @@ class PipService {
   PipService._();
   static final PipService instance = PipService._();
 
+  static const _desktopSpaceChannel = EventChannel('forja/desktop_space');
+
   // ── Android state ──
   final fp.Floating _floating = fp.Floating();
 
   // ── Desktop state ──
   bool _desktopActive = false;
+  /// Set as soon as auto/manual enter starts so lifecycle pause cannot win
+  /// the race against async window chrome changes.
+  bool _desktopEnterPending = false;
   Rect? _savedBounds; // pre-PiP window bounds
   bool _savedAlwaysOnTop = false;
   bool _savedVisibleOnAllWorkspaces = false;
@@ -39,6 +46,10 @@ class PipService {
       StreamController<bool>.broadcast();
   Stream<bool> get desktopPipChanges => _desktopController.stream;
 
+  Object? _autoPipToken;
+  bool Function()? _shouldAutoEnterPip;
+  StreamSubscription<dynamic>? _desktopSpaceSub;
+
   bool get isSupported {
     if (kIsWeb) return false;
     if (Platform.isAndroid) return true;
@@ -46,7 +57,7 @@ class PipService {
     return false;
   }
 
-  bool get isDesktopActive => _desktopActive;
+  bool get isDesktopActive => _desktopActive || _desktopEnterPending;
 
   /// Enter PiP. Returns true on success.
   Future<bool> enter({
@@ -101,9 +112,60 @@ class PipService {
         .map((s) => s == fp.PiPStatus.enabled);
   }
 
+  /// While [token] is bound, Space / virtual-desktop switches that leave the
+  /// Forja window auto-enter desktop PiP when [shouldEnter] is true (playing).
+  void bindAutoEnterOnDesktopSwitch({
+    required Object token,
+    required bool Function() shouldEnter,
+  }) {
+    if (kIsWeb || !(Platform.isMacOS || Platform.isWindows)) return;
+    _autoPipToken = token;
+    _shouldAutoEnterPip = shouldEnter;
+    _ensureDesktopSpaceWatch();
+  }
+
+  void unbindAutoEnterOnDesktopSwitch(Object token) {
+    if (_autoPipToken != token) return;
+    _autoPipToken = null;
+    _shouldAutoEnterPip = null;
+  }
+
+  void _ensureDesktopSpaceWatch() {
+    if (_desktopSpaceSub != null) return;
+    _desktopSpaceSub = _desktopSpaceChannel.receiveBroadcastStream().listen(
+      (event) {
+        unawaited(_onDesktopSpaceEvent(event));
+      },
+      onError: (Object e) {
+        debugPrint('[PipService] desktop_space stream error: $e');
+      },
+    );
+  }
+
+  Future<void> _onDesktopSpaceEvent(dynamic event) async {
+    if (_desktopActive) return;
+    final shouldEnter = _shouldAutoEnterPip;
+    if (shouldEnter == null) return;
+
+    var leftActiveSpace = true;
+    if (event is Map) {
+      final onActive = event['onActiveSpace'];
+      if (onActive is bool) {
+        leftActiveSpace = !onActive;
+      }
+    }
+    if (!leftActiveSpace) return;
+    if (!shouldEnter()) return;
+
+    await _enterDesktop(width: 16, height: 9);
+  }
+
   // ── Desktop implementation ─────────────────────────────────────────────
 
   Future<bool> _enterDesktop({required int width, required int height}) async {
+    if (_desktopActive) return true;
+    if (_desktopEnterPending) return true;
+    _desktopEnterPending = true;
     try {
       // Save current state so we can restore.
       final pos = await windowManager.getPosition();
@@ -156,10 +218,13 @@ class PipService {
     } catch (e) {
       debugPrint('[PipService] _enterDesktop failed: $e');
       return false;
+    } finally {
+      _desktopEnterPending = false;
     }
   }
 
   Future<void> _leaveDesktop() async {
+    if (!_desktopActive && _savedBounds == null) return;
     try {
       // Restore window chrome first so the resize/move below feels natural.
       try {

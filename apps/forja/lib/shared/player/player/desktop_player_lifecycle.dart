@@ -102,7 +102,18 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
         _s._isPipMode = on;
         if (on) _s._pausedByLifecycle = false;
       });
+      // Space-switch auto-PiP can race lifecycle pause — keep video alive.
+      if (on && !_s._disposed && !_s._player.state.playing) {
+        unawaited(_s._player.play());
+      }
     });
+    PipService.instance.bindAutoEnterOnDesktopSwitch(
+      token: this,
+      shouldEnter: () {
+        if (_s._disposed || !mounted || !_s._playerReady) return false;
+        return _s._player.state.playing || _s._pausedByLifecycle;
+      },
+    );
 
     _s._loadHeroMetadata();
     unawaited(_s._refreshAdjacentEpisodeFlags());
@@ -466,7 +477,10 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
       _saveWatchHistory(isBgPause: true);
       _pauseForAppBackground();
     } else if (state == AppLifecycleState.inactive) {
-      if (!_s._disposed && !_s._isPipMode && _s._player.state.playing) {
+      if (!_s._disposed &&
+          !_s._isPipMode &&
+          !PipService.instance.isDesktopActive &&
+          _s._player.state.playing) {
         _s._pausedByLifecycle = true;
       }
       // macOS focus blur fires inactive often — save only; pause on paused/hidden.
@@ -490,7 +504,11 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
   }
 
   void _pauseForAppBackground() {
-    if (_s._disposed || _s._isPipMode) return;
+    if (_s._disposed ||
+        _s._isPipMode ||
+        PipService.instance.isDesktopActive) {
+      return;
+    }
     if (_s._player.state.playing) {
       _s._pausedByLifecycle = true;
       unawaited(_s._player.pause());
@@ -500,7 +518,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
   void _resumeAfterAppBackground() {
     if (_s._disposed || !_s._pausedByLifecycle) return;
     _s._pausedByLifecycle = false;
-    if (_s._isPipMode) return;
+    if (_s._isPipMode || PipService.instance.isDesktopActive) return;
     unawaited(_s._player.play());
   }
 

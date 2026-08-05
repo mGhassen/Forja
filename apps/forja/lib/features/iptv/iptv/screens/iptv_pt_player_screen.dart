@@ -417,6 +417,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       _pipSub = PipService.instance.androidPipChanges.listen(onPipChanged);
     } else if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
       _pipSub = PipService.instance.desktopPipChanges.listen(onPipChanged);
+      PipService.instance.bindAutoEnterOnDesktopSwitch(
+        token: this,
+        shouldEnter: () =>
+            !_disposed && mounted && (_playing || _pausedByLifecycle),
+      );
     }
     // Same as VOD: [waitForRouteTransition] uses ModalRoute.of — illegal in
     // initState. Defer until after the first frame so the modal scope exists.
@@ -627,7 +632,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         state == AppLifecycleState.detached) {
       _pauseForAppBackground();
     } else if (state == AppLifecycleState.inactive) {
-      if (!_disposed && !_isPipMode && _playing) {
+      if (!_disposed &&
+          !_isPipMode &&
+          !PipService.instance.isDesktopActive &&
+          _playing) {
         _pausedByLifecycle = true;
       }
     } else if (state == AppLifecycleState.resumed) {
@@ -636,7 +644,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   }
 
   void _pauseForAppBackground() {
-    if (_disposed || _isPipMode) return;
+    if (_disposed ||
+        _isPipMode ||
+        PipService.instance.isDesktopActive) {
+      return;
+    }
     if (_playing) {
       _pausedByLifecycle = true;
       _userPlayWhenReady = false;
@@ -647,7 +659,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   void _resumeAfterAppBackground() {
     if (_disposed || !_pausedByLifecycle) return;
     _pausedByLifecycle = false;
-    if (_isPipMode) return;
+    if (_isPipMode || PipService.instance.isDesktopActive) return;
     _userPlayWhenReady = true;
     unawaited(_enginePlay());
   }
@@ -669,6 +681,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _guideFocus.dispose();
     _bottomSourceFocus.dispose();
     _pipSub?.cancel();
+    PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
     _watchdog?.cancel();
     _hideControlsTimer?.cancel();
     _hideVolumeTimer?.cancel();
