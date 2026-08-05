@@ -168,14 +168,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   StreamSubscription<Map<dynamic, dynamic>>? _exoEventSub;
   ExoAtvSurfaceFallback? _exoSurfaceFallback;
 
-  /// Exo mounted after MediaKit ran in this route (Player menu / format swap).
-  /// ATV then forces TextureView: SurfaceView + hybrid composition binds over
-  /// the just-released `mediacodec_embed` surface and goes audio-only black,
-  /// with the native Surface covering the player chrome so the Player menu is
-  /// unreachable. `renderedFirstFrame` still fires, so the surface watchdog
-  /// cannot see it (issue 133).
-  bool _exoAfterMediaKit = false;
-
   Player? _player;
   VideoController? _controller;
   bool _playerReady = false;
@@ -572,7 +564,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         timeout: const Duration(milliseconds: 1200),
       );
       if (_disposed || !mounted) return;
-      _exoAfterMediaKit = true;
     } else {
       await MpvExclusiveSession.instance.prepareForVideoPlayer();
       if (_disposed || !mounted) return;

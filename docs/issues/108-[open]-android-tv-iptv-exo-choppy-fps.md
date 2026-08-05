@@ -63,10 +63,12 @@ On **Android TV**, IPTV and Home/Search movies both use Media3 ExoPlayer by defa
 
 **Limit:** single-variant TS above what the SoC can decode may still hitch — try **MediaKit** from the Player menu, or optionally set **IPTV live max quality** when the feed has adaptive variants.
 
+**Update (issue 133 T07):** the SurfaceView path (T06) is now **parked**. Physical sets reported IPTV Exo audio-only black even on cold open, and the composition-dead surface still fires `renderedFirstFrame` so the watchdog cannot fall back. IPTV Exo now **always** uses TextureView (matching VOD). This may reduce live FPS smoothness on weak SoCs — use **MediaKit** from the Player menu there. The SurfaceView machinery stays wired for a possible per-device opt-in.
+
 ## Related
 
 - [102](102-[open]-android-tv-exoplayer-tiled-frames.md) — SurfaceView tiling under TLHC; ATV now uses hybrid composition
-- [133](133-[open]-android-tv-exo-physical-audio-only.md) — physical ATV SurfaceView audio-only → TextureView fallback
+- [133](133-[open]-android-tv-exo-physical-audio-only.md) — physical ATV SurfaceView audio-only (even cold open) → IPTV Exo forced to TextureView; T06 SurfaceView FPS slice parked
 - [092](092-[open]-windows-iptv-stream-freeze-after-20s.md) — Windows MediaKit IPTV freeze (separate)
 - [107](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) — same Toshiba device, posters only
 - [IPTV Xtream](../features/live/iptv-xtream.md) · [Player](../features/playback/player.md)

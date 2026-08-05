@@ -11,7 +11,7 @@
 | | |
 |--|--|
 | **Progress** | **8 / 8** fix · **0 / 3** acceptance |
-| **Current slice** | Home/VOD forced TextureView; IPTV SurfaceView on cold open only, TextureView after a MediaKit hot swap |
+| **Current slice** | Home/VOD **and** IPTV both forced TextureView; SurfaceView path kept wired but unused |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,7 +27,7 @@
 | 4 | I133-T04 | IPTV Exo: same surface fallback path | ✅ |
 | 5 | I133-T05 | Home/VOD Exo: never request SurfaceView (`allowSurfaceView: false`) — TextureView only | ✅ |
 | 6 | I133-T06 | IPTV SurfaceView watchdog: arm on READY (no play gate) + progress-without-frame trigger | ✅ |
-| 7 | I133-T07 | IPTV Player menu MediaKit → Exo: force TextureView for the rest of the route (`allowSurfaceView: false`) and skip the surface watchdog | ✅ |
+| 7 | I133-T07 | IPTV Exo: always TextureView (`allowSurfaceView: false`) + surface watchdog off — SurfaceView was audio-only black even on cold open, same as VOD (T05) | ✅ |
 | 8 | I133-T08 | IPTV switch to Exo awaits the tracked MediaKit dispose (capped 1.2s) before Exo mounts — parity with the VOD switch | ✅ |
 
 ---
@@ -37,7 +37,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I133-A01 | Physical Android TV: Home/Search Exo VOD cold-open shows video + audio (TextureView) | ⬜ |
-| 2 | I133-A02 | Physical Android TV: Exo IPTV live shows video after fallback when SurfaceView is dead; phone / emulator path unchanged | ⬜ |
+| 2 | I133-A02 | Physical Android TV: Exo IPTV live **cold open** shows video + audio (TextureView); phone / emulator path unchanged | ⬜ |
 | 3 | I133-A03 | Physical Android TV: IPTV Player menu MediaKit → ExoPlayer shows video + audio and the player chrome stays reachable (Player menu can switch back) | ⬜ |
 
 ---
@@ -50,20 +50,22 @@ Some **real** sticks/boxes hit the same silent surface bind failure. A watchdog 
 
 **Root fix (VOD):** Home/Search/movies Exo **always** uses TextureView (`allowSurfaceView: false`). Do not wait for a watchdog.
 
-**IPTV:** May still opt into SurfaceView for live FPS; watchdog stays enabled and now arms on READY alone and triggers if position advances without a first frame.
+**IPTV (initial):** kept SurfaceView for live FPS with the watchdog armed on READY alone (T06). **Superseded by T07** — see below.
 
-## MediaKit → Exo hot swap (T07–T08)
+## IPTV also drops SurfaceView (T07–T08)
 
-Reported again on a **released** build: physical ATV, IPTV, Player menu **MediaKit → ExoPlayer** → sound plays, picture stays black, and the player chrome is unreachable (the native SurfaceView covers it, so the Player menu cannot switch back).
+Reported again on a **released** build: physical ATV, IPTV, Player menu **MediaKit → ExoPlayer** → sound plays, picture stays black, and the player chrome is unreachable (the native SurfaceView covers it, so the Player menu cannot switch back). The reporter confirmed the **same on IPTV Exo cold open** (engine set to ExoPlayer in Settings, channel opened fresh with no MediaKit in the session) — so this is the SurfaceView path itself, not only the swap.
 
-**Root cause (code-verified, device smoke pending):** the swap mounted a SurfaceView + hybrid-composition Exo view over the MediaKit surface that was still being released.
+**Root cause (code-verified, device smoke pending):**
 
-- `IptvPtPlayerScreen._switchBuiltInEngine` awaited `MpvExclusiveSession.prepareForVideoPlayer()` only when switching **to** MediaKit — the Exo direction had just a 250 ms cool-down, while `_releaseEngineForHotSwap` leaves MediaKit `stop`+`dispose` tracked and unawaited. VOD (`player_screen.dart`, issue 129 T05 / 128 T07) already awaits it with a 1.2 s cap. ATV MediaCodec is shared even though the mpv handle is not, so Exo bound over a half-dead `mediacodec_embed` surface.
-- The surface watchdog cannot rescue this: `onRenderedFirstFrame` still fires, so `ExoAtvSurfaceFallback` stands down and never remounts TextureView (same blind spot as the VOD case above).
+- **SurfaceView is dead on this device.** SurfaceView + hybrid composition never paints (audio-only black) and its Surface covers the Flutter overlay. The watchdog cannot rescue it: `onRenderedFirstFrame` still fires on the composition-dead surface, so `ExoAtvSurfaceFallback` stands down and never remounts TextureView — the same blind spot that forced VOD to TextureView in T05.
+- **The MediaKit → Exo swap made it worse.** `IptvPtPlayerScreen._switchBuiltInEngine` awaited `MpvExclusiveSession.prepareForVideoPlayer()` only when switching **to** MediaKit — the Exo direction had just a 250 ms cool-down, while `_releaseEngineForHotSwap` leaves MediaKit `stop`+`dispose` tracked and unawaited. VOD (`player_screen.dart`, issue 129 T05 / 128 T07) already awaits it with a 1.2 s cap. ATV MediaCodec is shared even though the mpv handle is not, so Exo bound over a half-dead `mediacodec_embed` surface.
 
-**Fix:** IPTV keeps SurfaceView only on a **cold** Exo open. Once MediaKit has run in that route (`_exoAfterMediaKit`), Exo mounts as TextureView — composited by Flutter, so it can neither bind dead nor cover the chrome — and the surface watchdog is disabled for that session (a slow TextureView first frame would otherwise force a pointless reopen). The Exo direction of the switch now awaits the tracked MediaKit dispose, capped at 1.2 s so it cannot cross the ATV input-ANR window (issue 128).
+**Fix (T07):** IPTV Exo now **always** uses TextureView on ATV (`allowSurfaceView: false`) — composited by Flutter, so it can neither bind dead nor cover the chrome — and the surface watchdog is disabled (`ExoAtvSurfaceFallback(enabled: false)`; a slow TextureView first frame would otherwise trigger a pointless reopen). This matches VOD (T05). The `SurfaceView` machinery (`ExoPlayerView.allowSurfaceView`, `_AtvExoSurfaceView`, `forja_exo_player_view_surface`, the watchdog) is kept wired for a possible **per-device opt-in** later, but nothing requests it now.
 
-**Not fixed by this:** a device where **cold-open** IPTV Exo is also audio-only black. That is still the SurfaceView path guarded only by the watchdog (A02). If it reproduces, IPTV must drop SurfaceView entirely like VOD (T05) and issue 108 loses its FPS slice.
+**Fix (T08):** the Exo direction of the Player-menu switch now awaits the tracked MediaKit dispose, capped at 1.2 s so it cannot cross the ATV input-ANR window (issue 128).
+
+**Trade-off:** issue 108 chose SurfaceView for smoother live FPS on weak / Android 7 SoCs (I108-T06). TextureView may feel less fluid there — but a black picture is worse, and **MediaKit** stays available from the Player menu for FPS-sensitive feeds. Issue 108's SurfaceView FPS slice is effectively parked until a per-device opt-in exists.
 
 ## Related
 

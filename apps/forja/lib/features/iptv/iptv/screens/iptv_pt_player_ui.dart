@@ -308,7 +308,12 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                       child: _s._exoBackend
                           ? ExoPlayerView(
                               viewId: _s._exoViewId!,
-                              allowSurfaceView: !_s._exoAfterMediaKit,
+                              // IPTV Exo always TextureView on ATV: physical
+                              // SurfaceView + hybrid composition went audio-only
+                              // black (even cold-open) and the composition-dead
+                              // surface still fires renderedFirstFrame, so the
+                              // watchdog cannot rescue it (issue 133).
+                              allowSurfaceView: false,
                             )
                           : Video(
                               key: ValueKey(_s._videoEpoch),
