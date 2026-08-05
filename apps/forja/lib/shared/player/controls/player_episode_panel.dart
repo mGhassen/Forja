@@ -1755,20 +1755,12 @@ class _EpisodeAutoNextFocus extends StatelessWidget {
             children: [
               Icon(Icons.skip_next_rounded, size: 20, color: accent),
               const SizedBox(width: 4),
-              Theme(
-                data: Theme.of(context).copyWith(
-                  switchTheme: forjaSwitchThemeData.copyWith(
-                    overlayColor:
-                        const WidgetStatePropertyAll(Colors.transparent),
-                  ),
-                ),
-                child: ExcludeFocus(
-                  child: IgnorePointer(
-                    child: ForjaSwitch(
-                      value: autoNext,
-                      onChanged: onChanged,
-                      scale: ForjaSwitch.settingsScale,
-                    ),
+              ExcludeFocus(
+                child: IgnorePointer(
+                  child: ForjaSwitch(
+                    value: autoNext,
+                    onChanged: onChanged,
+                    scale: ForjaSwitch.settingsScale,
                   ),
                 ),
               ),

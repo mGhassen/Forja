@@ -74,11 +74,6 @@ final WidgetStateProperty<Color?> forjaSwitchTrackOutlineColor =
   return ForjaShellColors.borderSubtle;
 });
 
-final WidgetStateProperty<Color?> forjaSwitchOverlayColor =
-    WidgetStateProperty.resolveWith((states) {
-  if (states.contains(WidgetState.hovered) ||
-      states.contains(WidgetState.focused)) {
-    return ForjaShellColors.textPrimary.withValues(alpha: 0.08);
-  }
-  return Colors.transparent;
-});
+/// No hover/focus halo - the thumb turning white is the only feedback.
+const WidgetStateProperty<Color?> forjaSwitchOverlayColor =
+    WidgetStatePropertyAll<Color?>(Colors.transparent);
