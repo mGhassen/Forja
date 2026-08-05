@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 8** components · **1 / 8** acceptance (progress-gate slice) |
-| **Current slice** | Backend-agnostic feed probe + gated detectors 1–3 landed; `v1.3.148` shipped an mpv-only probe that was a no-op on Exo — backoff controller not started |
+| **Progress** | **10 / 11** components · **1 / 10** acceptance (progress-gate slice) |
+| **Current slice** | Retry ownership handed to ffmpeg first (`R52-C09`–`C11`) on top of the backend-agnostic feed probe — backoff controller not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -27,6 +27,9 @@
 | 6 | R52-C06 | Timeout on the property read so a wedged mpv cannot latch `_cacheProbeInFlight` and blind the probe permanently | ✅ |
 | 7 | R52-C07 | Gate detector 3 (silent self-pause, 3 s → hard reconnect) on the same signal | ✅ |
 | 8 | R52-C08 | `_logStallSuppressed` traces held stalls every 5 s so the gate is observable in logs | ✅ |
+| 9 | R52-C09 | **Single owner of retry** — `_noteSocketTrouble` defers to ffmpeg's own reconnect for `_ffmpegReconnectGrace` (8 s) instead of force-recreating the player on an ffmpeg *warning* | ✅ |
+| 10 | R52-C10 | Watchdog holds all detectors while `_socketTroublePending`, so the timers cannot recreate the player mid-reconnect | ✅ |
+| 11 | R52-C11 | Deferred escalation aborts when `_openedAt` changed, so it cannot fire against a session that was already replaced | ✅ |
 
 ---
 
@@ -42,6 +45,8 @@
 | 6 | R52-A06 | Exo backend live channel gets the same protection — `[IPTV Watchdog] … feed alive, holding` appears instead of a reconnect | ⬜ |
 | 7 | R52-A07 | Detector 3 no longer hard-reconnects an Exo rebuffer after 3 s | ⬜ |
 | 8 | R52-A08 | Logs show `mark=` advancing on both backends, confirming the probe is not blind | ⬜ |
+| 9 | R52-A09 | A dropped socket that ffmpeg recovers logs `ffmpeg reconnected on its own - no restart` and shows **no** banner | ⬜ |
+| 10 | R52-A10 | A socket ffmpeg cannot recover still reconnects, ~8 s later than before | ⬜ |
 
 ---
 
@@ -103,6 +108,35 @@ fragile even on mpv:
 | No sample ⇒ "dead" | A blind probe reproduced the original bug exactly | `R52-C05` — blind ⇒ 20 s grace |
 | `_cacheProbeInFlight` latch | A hung property read blinded the probe for the rest of the session | `R52-C06` — 4 s timeout |
 | Detector 3 ungated | 3 s of `playing=false` ⇒ hard reconnect | `R52-C07` |
+
+## Three layers owned retry; the top one kept winning
+
+This is the cause that survived both earlier slices, because it never goes
+through the watchdog at all.
+
+| Layer | Retry policy | Set where |
+|---|----|----|
+| libavformat | `reconnect=1`, `reconnect_at_eof=1`, `reconnect_streamed=1`, `reconnect_delay_max=5`, `reconnect_on_network_error=1` | `stream-lavf-o` in `_applyMpvTunables` |
+| mpv | `keep-open=yes`, `network-timeout=15` | `_applyMpvTunables` |
+| Forja | 4 watchdog detectors + error listener + log listener → `_triggerRecovery` | `iptv_pt_player_engine.dart` |
+
+When an IPTV socket drops, ffmpeg logs
+
+```
+[ffmpeg/network] http: Will reconnect at 12345, error=Connection reset by peer.
+```
+
+at **warning** level and then reconnects transparently, usually within a second
+or two. The log listener matched `connection reset` on any `warn` line and
+called `_triggerRecovery(forceHard: true)` — recreating the whole player on top
+of a recovery that was already succeeding. The user-visible result is a channel
+that plays fine and then drops into "Reconnecting…" for no reason, on a
+schedule set by how often the portal cycles its sockets.
+
+**Contract now:** the lowest layer that can fix a drop gets to try first. The
+app only escalates once ffmpeg's window has expired *and* the feed probe still
+shows nothing arriving. Matches the rule Lume states for its own engine — the
+engine never retries on its own schedule, exactly one layer owns retry.
 
 ## Related
 

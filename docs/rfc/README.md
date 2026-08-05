@@ -72,7 +72,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [049-[open]-…](049-[open]-live-matches-mutstreams.md) | Live Matches MutStreams catalog | v1.0.1 | open | 3/3 · 4/5 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S173 · smoke R49-A05 ⬜ |
 | [050-[open]-…](050-[open]-stremio-addon-feature-targets.md) | Stremio feature targets + Live Matches sports | v1.0.1 | open | 3/3 · 6/8 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S180 · B101-S182 · B101-S183 · smoke R50-A06 ⬜ · R50-A07 ⬜ |
 | [051-[open]-…](051-[open]-iptv-multi-protocol-portals.md) | IPTV multi-protocol portals (Xtream / M3U / Stalker) | v1.0.8 | open | 5/5 · 11/12 | [1.0.8](../backlog/1.0.8-[draft].md) |
-| [052-[partial]-…](052-[partial]-iptv-progress-aware-recovery.md) | Progress-aware IPTV playback recovery (feed probe + backoff) | v1.0.1 | partial | 7/8 · 1/8 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [052-[partial]-…](052-[partial]-iptv-progress-aware-recovery.md) | Progress-aware IPTV playback recovery (retry ownership + feed probe) | v1.0.1 | partial | 10/11 · 1/10 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 ## Related
 

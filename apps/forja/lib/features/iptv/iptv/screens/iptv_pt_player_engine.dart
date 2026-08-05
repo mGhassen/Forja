@@ -657,7 +657,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (lower.contains('ends prematurely') ||
           lower.contains('end of file') ||
           lower.contains('connection reset')) {
-        _triggerRecovery(reason: 'connection dropped: $msg', forceHard: true);
+        // ffmpeg reconnects these itself — see [_noteSocketTrouble].
+        _noteSocketTrouble(msg);
         return;
       }
       _triggerRecovery(reason: 'error: $msg');
@@ -693,9 +694,43 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           text.contains('connection refused') ||
           text.contains('connection timed out')) {
         debugPrint('[IPTV Player] mpv log: ${l.level} ${l.prefix}: ${l.text}');
-        _triggerRecovery(
-            reason: 'mpv log: ${l.text}', forceHard: true);
+        // `Will reconnect at …, error=…` is ffmpeg announcing its own retry.
+        // Never restart on that — wait and see whether the feed comes back.
+        _noteSocketTrouble(l.text);
       }
+    });
+  }
+
+  /// Socket trouble reported by mpv/ffmpeg — escalate only if ffmpeg's own
+  /// reconnect fails to bring the feed back.
+  ///
+  /// `stream-lavf-o` enables `reconnect`/`reconnect_at_eof`/`reconnect_streamed`,
+  /// so libavformat retries transparently and logs `Will reconnect at …,
+  /// error=Connection reset by peer` at **warning** level while doing it.
+  /// Treating that line as fatal tore down a stream that was already
+  /// recovering, which is the "plays fine, then Reconnecting…" report: the app
+  /// and ffmpeg were both owning retry, and the app won by destroying the
+  /// player mid-retry. Give the lower layer its window, then check the feed.
+  void _noteSocketTrouble(String what) {
+    if (_s._socketTroublePending) return;
+    _s._socketTroublePending = true;
+    // A reopen during the window invalidates this check — the escalation would
+    // otherwise fire against a session that has already been replaced.
+    final openedAt = _s._openedAt;
+    debugPrint('[IPTV Player] socket trouble ($what) - '
+        'allowing ${_IptvPtPlayerScreenState._ffmpegReconnectGrace.inSeconds}s '
+        'for ffmpeg reconnect');
+    Future.delayed(_IptvPtPlayerScreenState._ffmpegReconnectGrace, () async {
+      _s._socketTroublePending = false;
+      if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+      if (_s._openedAt != openedAt) return;
+      if (_networkStillFeeding) {
+        debugPrint('[IPTV Player] ffmpeg reconnected on its own - no restart');
+        return;
+      }
+      await _triggerRecovery(
+          reason: 'socket dead after ffmpeg retry window: $what',
+          forceHard: true);
     });
   }
 
@@ -951,6 +986,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           setState(() => _s._statusBanner = null);
         }
       }
+
+      // ffmpeg owns the retry until its grace expires. Without this the stall
+      // detectors would recreate the player a few seconds into a reconnect
+      // that was already in progress — the same collision [_noteSocketTrouble]
+      // exists to prevent.
+      if (_s._socketTroublePending) return;
 
       // Detector 1: long buffering. Mid-stream stalls with a 30 s buffer
       // shouldn't last more than ~10 s; before the first frame, the slow

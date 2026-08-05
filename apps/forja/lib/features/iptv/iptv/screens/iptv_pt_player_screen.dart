@@ -348,6 +348,16 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// refill of the 30 s cache, which the old 8 s detector did not.
   static const Duration _feedingWedgeCeiling = Duration(seconds: 45);
 
+  /// How long ffmpeg gets to finish its own reconnect before the app steps in.
+  /// `stream-lavf-o` sets `reconnect_delay_max=5`, so a transparent retry can
+  /// legitimately take several seconds — recreating the player inside that
+  /// window destroys a recovery that was already succeeding.
+  static const Duration _ffmpegReconnectGrace = Duration(seconds: 8);
+
+  /// Set while a deferred socket-trouble escalation is pending, so a burst of
+  /// ffmpeg log lines collapses into one check instead of one restart each.
+  bool _socketTroublePending = false;
+
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
   static bool _isBenignMpvError(String msg) {
