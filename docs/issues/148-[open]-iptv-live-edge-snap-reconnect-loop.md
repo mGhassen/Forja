@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** fix · **0 / 3** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 6** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,8 @@
 | 1 | I148-T01 | Gate mid-stream live-edge snap on measured drift (`demuxer-cache-duration` ≥ `_liveDriftSecs`) — never flush an empty cache | ✅ |
 | 2 | I148-T02 | Bound watchdog detector 2 to 2 consecutive snaps, then escalate to `_triggerRecovery` (`_frozenSnapAttempts`) | ✅ |
 | 3 | I148-T03 | Reset `_frozenSnapAttempts` when the position stream ticks again | ✅ |
+| 4 | I148-T04 | Exempt user intent from the drift gate — `_scheduleJumpToLive(force:)`; manual reload also bypasses the 2.5 s throttle | ✅ |
+| 5 | I148-T05 | Manual reload escalates to a real reopen when the flush leaves frames frozen (`_escalateReloadIfStalled` → `_triggerRecovery` reopen tier) | ✅ |
 
 ---
 
@@ -33,6 +35,9 @@
 | 1 | I148-A01 | Desktop MediaKit: live Xtream channel plays 10+ minutes; brief upstream hiccups stay sub-second, no "Reconnecting… (1/8)" banner | ⬜ |
 | 2 | I148-A02 | Log shows `live-edge snap skipped (underrun exit)` after a hiccup, not a repeating `live-edge snap` | ⬜ |
 | 3 | I148-A03 | Genuinely dead feed still escalates: banner appears, retry ladder runs, source rotates | ⬜ |
+| 4 | I148-A04 | Player **Reload** on a healthy live channel still flushes and rejoins the edge (drift gate does not swallow user intent) | ⬜ |
+| 5 | I148-A05 | Android TV MediaKit: **Reload** on a stalled channel reconnects within ~4 s and the app stays alive (no ANR — issue 128 T08 regression watch) | ⬜ |
+| 6 | I148-A06 | Android TV MediaKit: Exo → MediaKit via Player menu, then **Reload** — no ANR (`I128-A01` path) | ⬜ |
 
 ---
 
@@ -53,6 +58,12 @@ So one ordinary upstream hiccup was amplified into a 12 s+ stall plus a reconnec
 Watchdog detector 2 (position frozen > 8 s) called the same snap, so it compounded the loop and — once the snap became conditional — could retry forever on a dead feed without ever escalating.
 
 **Fix:** Read `demuxer-cache-duration` before snapping. On a realtime feed it stays near zero unless mpv kept downloading through a stall, so it is the only honest drift signal on a non-seekable TS. Below `_liveDriftSecs` (6 s) we are already at the edge and the flush is skipped. Detector 2 now gets two snap attempts before escalating to a real reconnect, and the counter resets as soon as the position stream ticks.
+
+**Shipped regression (I148-T04) — reached users in `v1.3.141`.** The first cut of the drift gate matched on `reason != 'open'`, which also caught `'manual reload'`. On a healthy stream `demuxer-cache-duration` is near zero, so the player **Reload** button became a silent no-op. `v1.3.141` contains the drift gate but **not** the `force:` exemption, so Reload is dead for live channels on that build. The gate is now opt-out via `force:`, and user intent bypasses both the gate and the 2.5 s throttle — this needs a patch release to reach users.
+
+**Reload now reconnects for real (I148-T05).** Previously **Reload** on live MediaKit only flushed buffers — it never reopened the HTTP connection, so it could not revive a dead channel. It cannot simply call `Player.open`: [128](128-[open]-android-tv-iptv-mediakit-exit-anr.md) T08 recorded an ATV ANR from exactly that, and the T08 follow-up recorded a second ANR from a pre-open `stop()` on a virgin player.
+
+The compromise: keep the cheap flush as the first move, then check whether the position stream resumed. If it did (the healthy case, and the one that ANR'd in T08) nothing further happens. If frames are still frozen, escalate into `_triggerRecovery(forceHard: true)` — which at `_retryAttempt == 1` performs `_engineOpenSource` + play with **no** pre-open `stop()`, and hands off to the existing retry ladder if it keeps failing. So the reopen only runs on an already-stalled player, which is precisely when the watchdog would have reopened anyway; no new risk class is introduced, and the virgin-`stop()` path is never taken.
 
 **Not fixed here:** the upstream hiccup itself. On a pure realtime feed the cushion is only whatever the panel bursts ahead of realtime, so a genuine multi-second upstream stall is still visible. This issue is about not amplifying it.
 

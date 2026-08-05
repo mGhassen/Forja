@@ -758,21 +758,40 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     }
   }
 
-  /// Manual reload control: live MediaKit rejoins the edge (no second
-  /// [Player.open] — that path ANRs ATV after an Exo→MediaKit switch).
+  /// Manual reload control: live MediaKit rejoins the edge first, then falls
+  /// back to a real reopen only if that did not restore frames.
+  ///
+  /// An unconditional [Player.open] here ANRs ATV (issue 128 T08) and a
+  /// pre-open `stop()` hangs a virgin player (T08 follow-up), so the reopen is
+  /// deferred behind [_reloadEscalateAfter] and routed through the recovery
+  /// ladder — the same path the watchdog would take on a stalled feed.
   Future<void> _reloadCurrent() async {
     _s._retryAttempt = 0;
     if (!_s._exoBackend && _s._playerAlive && _currentSourceIsLive) {
       final inFlight = _openInFlight;
       if (inFlight != null) await inFlight;
       if (_s._disposed || !_s._playerAlive) return;
-      _scheduleJumpToLive(reason: 'manual reload');
+      _scheduleJumpToLive(reason: 'manual reload', force: true);
       try {
         await _enginePlay();
       } catch (_) {}
+      await _escalateReloadIfStalled();
       return;
     }
     await _openCurrent();
+  }
+
+  /// The live-edge flush cannot revive a feed whose socket is gone. Give it a
+  /// beat, and if the position stream is still frozen, escalate to the reopen
+  /// tier of [_triggerRecovery] so the user's Reload actually reconnects.
+  Future<void> _escalateReloadIfStalled() async {
+    final before = _s._lastPos;
+    await Future<void>.delayed(_IptvPtPlayerScreenState._reloadEscalateAfter);
+    if (!mounted || _s._disposed || !_s._playerAlive) return;
+    if (!_s._userPlayWhenReady) return;
+    if (_s._playing && _s._lastPos != before) return;
+    debugPrint('[IPTV Player] manual reload did not restore frames - reopening');
+    await _triggerRecovery(reason: 'manual reload stalled', forceHard: true);
   }
 
   /// Seconds of already-downloaded data sitting ahead of the playback
@@ -787,17 +806,18 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   }
 
   /// Best-effort jump to the live edge after open / underrun / pause-resume.
-  /// Mid-stream this only runs when [_demuxerCacheAhead] shows real drift —
-  /// see the note at the drift gate below. Seekable: seek. Non-seekable
+  /// Automatic callers are drift-gated (see the note below); [force] is user
+  /// intent (reload button) and always runs. Seekable: seek. Non-seekable
   /// pure-TS: [drop-buffers] (also re-inits VideoToolbox / MediaCodec, hence
   /// the [_ignoreHwDecodeFailUntil] window).
-  void _scheduleJumpToLive({String reason = 'open'}) {
+  void _scheduleJumpToLive({String reason = 'open', bool force = false}) {
     if (_s._exoBackend || !_currentSourceIsLive) return;
     // Fresh open: only snap when there's a DVR window. drop-buffers on a
     // pure-live TS right after connect just discards the first buffer.
     if (reason == 'open' && !_s._streamSeekable) return;
     final now = DateTime.now();
-    if (_s._lastLiveJumpAt != null &&
+    if (!force &&
+        _s._lastLiveJumpAt != null &&
         now.difference(_s._lastLiveJumpAt!) <
             const Duration(milliseconds: 2500)) {
       return;
@@ -809,13 +829,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final p = _s._player?.platform;
         if (p is! NativePlayer) return;
 
-        // Mid-stream: only shed backlog when there is backlog. Flushing an
-        // already-empty cache fed a reconnect loop — the flush leaves mpv with
-        // nothing decoded, `core-idle` flips true, media_kit reports that as
-        // buffering, and the buffering-exit handler flushed again. Every cycle
-        // restarted a realtime refill, so one upstream hiccup grew past the
-        // 12s watchdog grace and surfaced as "Reconnecting… (1/8)".
-        if (reason != 'open') {
+        // Automatic recovery only sheds backlog when there is backlog.
+        // Flushing an already-empty cache fed a reconnect loop — the flush
+        // leaves mpv with nothing decoded, `core-idle` flips true, media_kit
+        // reports that as buffering, and the buffering-exit handler flushed
+        // again, growing one hiccup past the 12s watchdog grace.
+        var drift = '';
+        if (reason != 'open' && !force) {
           final ahead = await _demuxerCacheAhead(p);
           if (ahead < _IptvPtPlayerScreenState._liveDriftSecs) {
             debugPrint('[IPTV Player] live-edge snap skipped ($reason) - '
@@ -825,18 +845,16 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
             }
             return;
           }
-          debugPrint('[IPTV Player] live-edge snap ($reason) - '
-              '${ahead.toStringAsFixed(1)}s behind edge');
-          if (_s._streamSeekable) {
-            await p.command(['seek', '99999', 'absolute']);
-          } else {
-            _s._ignoreHwDecodeFailUntil =
-                DateTime.now().add(const Duration(seconds: 3));
-            await p.command(['drop-buffers']);
-          }
-        } else {
-          debugPrint('[IPTV Player] live-edge snap (open)');
+          drift = ' - ${ahead.toStringAsFixed(1)}s behind edge';
+        }
+
+        debugPrint('[IPTV Player] live-edge snap ($reason)$drift');
+        if (_s._streamSeekable) {
           await p.command(['seek', '99999', 'absolute']);
+        } else if (reason != 'open') {
+          _s._ignoreHwDecodeFailUntil =
+              DateTime.now().add(const Duration(seconds: 3));
+          await p.command(['drop-buffers']);
         }
         if (_s._userPlayWhenReady && !_s._playing) {
           await _enginePlay();

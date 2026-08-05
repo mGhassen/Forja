@@ -615,7 +615,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final showPip =
         PipService.instance.isSupported && !iptvUseTvFocus(context);
     final showStats = !_s._exoBackend;
-    final hasSources = _s._sources.length > 1;
     final tv = iptvUseTvFocus(context);
 
     void downFromTop() {
@@ -633,13 +632,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     /// Explicit ←/→ edges — [focusInDirection] often fails across the title gap.
     VoidCallback? rightFromBack() {
       if (!tv) return null;
-      if (hasSources) return () => claim(_s._sourceChipFocus);
       return () => claim(_s._playerMenuFocus);
     }
 
     VoidCallback? leftFromPlayer() {
       if (!tv) return null;
-      if (hasSources) return () => claim(_s._sourceChipFocus);
       return () => claim(_s._backFocus);
     }
 
@@ -657,7 +654,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     }
 
     var next = 1; // 1 = Back
-    final sourceOrder = hasSources ? ++next : null;
     final playerOrder = ++next;
     final statsOrder = showStats ? ++next : null;
     final pipOrder = showPip ? ++next : null;
@@ -729,22 +725,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 ],
               ),
             ),
-            if (hasSources) ...[
-              const SizedBox(width: 8),
-              wrapOrder(
-                sourceOrder!,
-                _SourceChip(
-                  label: _s._sources[_s._sourceIdx].label,
-                  focusNode: _s._sourceChipFocus,
-                  onTap: _showSourcePicker,
-                  onDownEdge: downFromTop,
-                  onLeftEdge:
-                      tv ? () => claim(_s._backFocus) : null,
-                  onRightEdge:
-                      tv ? () => claim(_s._playerMenuFocus) : null,
-                ),
-              ),
-            ],
             const SizedBox(width: 4),
             _topBarFlatAction(
               icon: Icons.smart_display_outlined,
@@ -1270,13 +1250,15 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             const SizedBox(width: 14),
           ],
           if (hasSources)
-            nextIcon(
-              icon: Icons.swap_horiz_rounded,
-              focusNode: _s._bottomSourceFocus,
-              onLeftEdge: leftOfBottomSource() == null
-                  ? null
-                  : () => claim(leftOfBottomSource()!),
-              onTap: _showSourcePicker,
+            Builder(
+              builder: (anchorContext) => nextIcon(
+                icon: Icons.swap_horiz_rounded,
+                focusNode: _s._bottomSourceFocus,
+                onLeftEdge: leftOfBottomSource() == null
+                    ? null
+                    : () => claim(leftOfBottomSource()!),
+                onTap: () => _showSourcePicker(anchorContext: anchorContext),
+              ),
             ),
           if (hasSources) const SizedBox(width: 14),
           if (!tvFocus)
@@ -1315,77 +1297,40 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     });
   }
 
-  void _showSourcePicker() {
-    showModalBottomSheet(
+  String _sourceHost(String url) {
+    final host = Uri.tryParse(url)?.host ?? '';
+    return host.isEmpty ? url : host;
+  }
+
+  /// Floating panel (not a bottom sheet) so TV gets D-pad focus + autofocus on
+  /// the active source, same chrome as the Player / Stats menus.
+  void _showSourcePicker({BuildContext? anchorContext}) {
+    _scheduleHideControls();
+    PlayerPopupPanel.show(
       context: context,
-      backgroundColor: IptvShellStyle.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  'Choose source',
-                  style: IptvShellStyle.pageTitle.copyWith(fontSize: 22),
-                ),
+      title: 'Source',
+      leadingIcon: Icons.swap_horiz_rounded,
+      anchorContext: anchorContext,
+      alignment: Alignment.bottomRight,
+      margin: const EdgeInsets.only(right: 16, bottom: 96),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < _s._sources.length; i++)
+              PlayerPopupListTile(
+                label: _s._sources[i].label,
+                // Host only — full URLs wrap the tile to several lines.
+                subtitle: _sourceHost(_s._sources[i].url),
+                selected: i == _s._sourceIdx,
+                onTap: () {
+                  PlayerPopupPanel.dismiss();
+                  _s._switchSource(i);
+                },
               ),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.sizeOf(context).height * 0.5,
-                ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _s._sources.length,
-                  itemBuilder: (_, i) {
-                    final s = _s._sources[i];
-                    final active = i == _s._sourceIdx;
-                    return iptvTap(
-                      context: ctx,
-                      onTap: () {
-                        Navigator.of(ctx).pop();
-                        _s._switchSource(i);
-                      },
-                      borderRadius: 0,
-                      listIndex: i,
-                      child: ListTile(
-                        leading: Icon(
-                          active
-                              ? Icons.radio_button_checked
-                              : Icons.radio_button_off,
-                          color:
-                              active ? IptvShellStyle.accent : Colors.white54,
-                        ),
-                        title: Text(
-                          s.label,
-                          style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white,
-                            fontWeight: active
-                                ? FontWeight.w600
-                                : FontWeight.w400,
-                          ),
-                        ),
-                        subtitle: Text(
-                          s.url,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white54,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );

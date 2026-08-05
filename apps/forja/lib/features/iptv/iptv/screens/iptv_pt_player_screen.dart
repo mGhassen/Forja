@@ -33,6 +33,7 @@ import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/desktop_pip_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
@@ -221,8 +222,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   final FocusNode _playerMenuFocus =
       FocusNode(debugLabel: 'iptv-player-menu');
   final FocusNode _statsFocus = FocusNode(debugLabel: 'iptv-player-stats');
-  final FocusNode _sourceChipFocus =
-      FocusNode(debugLabel: 'iptv-player-source');
   /// Bottom-row TV FocusNodes — explicit ←/→ like the top bar (Spacer gap
   /// breaks geometric [focusInDirection] on Android TV).
   final FocusNode _searchChromeFocus =
@@ -309,6 +308,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// mpv kept downloading through a stall, so a low value means we are already
   /// at the edge and dropping would just empty the cushion.
   static const double _liveDriftSecs = 6.0;
+  /// How long a manual reload's live-edge flush gets to restore frames before
+  /// escalating to a real reopen. Covers the flush's own 700ms delay.
+  static const Duration _reloadEscalateAfter = Duration(seconds: 3);
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
@@ -695,7 +697,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _replayFocus.dispose();
     _playerMenuFocus.dispose();
     _statsFocus.dispose();
-    _sourceChipFocus.dispose();
     _searchChromeFocus.dispose();
     _guideFocus.dispose();
     _bottomSourceFocus.dispose();
