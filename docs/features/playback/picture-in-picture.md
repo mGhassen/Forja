@@ -27,7 +27,7 @@ Forja supports picture-in-picture in the **movie player** and the **IPTV player*
 
 - PiP availability depends on Android version and OEM behavior
 - Desktop PiP is Forja’s own compact window (not Apple/Windows system media PiP) — required because playback uses media_kit/mpv. Title-bar chrome is applied by the native PiP channel, not by flipping window_manager title-bar style after the window is borderless
-- Auto PiP only fires when the setting is on and playback is actually playing (paused video stays on the Space you left)
+- Auto PiP only fires when the setting is on and playback is actually playing (paused video stays on the Space you left). With Auto PiP off, Space switches never promote the window to floating / all-Spaces
 - Linux, iOS, and Android TV do not show the PiP button
 - Controls and channel guide hide while IPTV PiP is active
 

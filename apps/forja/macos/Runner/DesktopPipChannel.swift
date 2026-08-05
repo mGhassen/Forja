@@ -16,10 +16,23 @@ final class DesktopPipController: NSObject {
   private var savedMovableByBackground = false
   /// Saved level/collection already captured by [prepareForSpaceLeave].
   private var spaceLeavePrepared = false
+  /// Dart gates this — only when Auto PiP is armed. Otherwise Space swipes
+  /// must not leave the window floating / on all Spaces forever.
+  private var spaceLeavePrepAllowed = false
 
   init(window: NSWindow) {
     self.window = window
     super.init()
+    // Recover leaked Space-leave prep (floating + all Spaces with no PiP).
+    if window.level == .floating {
+      window.level = .normal
+    }
+    var behavior = window.collectionBehavior
+    if behavior.contains(.canJoinAllSpaces) {
+      behavior.remove(.canJoinAllSpaces)
+      behavior.remove(.fullScreenAuxiliary)
+      window.collectionBehavior = behavior
+    }
   }
 
   func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -27,6 +40,14 @@ final class DesktopPipController: NSObject {
     case "setEnabled":
       let enabled = (call.arguments as? [String: Any])?["enabled"] as? Bool ?? false
       setPipEnabled(enabled)
+      result(nil)
+    case "setSpaceLeavePrepAllowed":
+      let allowed =
+        (call.arguments as? [String: Any])?["allowed"] as? Bool ?? false
+      setSpaceLeavePrepAllowed(allowed)
+      result(nil)
+    case "cancelSpaceLeavePrep":
+      cancelSpaceLeavePrep()
       result(nil)
     case "enterPip":
       let args = call.arguments as? [String: Any] ?? [:]
@@ -41,6 +62,26 @@ final class DesktopPipController: NSObject {
     default:
       result(FlutterMethodNotImplemented)
     }
+  }
+
+  func setSpaceLeavePrepAllowed(_ allowed: Bool) {
+    spaceLeavePrepAllowed = allowed
+    if !allowed {
+      cancelSpaceLeavePrep()
+    }
+  }
+
+  /// Undo floating / all-Spaces prep when Auto PiP did not actually enter.
+  func cancelSpaceLeavePrep() {
+    guard let window, spaceLeavePrepared, !pipEnabled else {
+      if !pipEnabled {
+        spaceLeavePrepared = false
+      }
+      return
+    }
+    window.level = savedLevel
+    window.collectionBehavior = savedCollection
+    spaceLeavePrepared = false
   }
 
   /// One-shot PiP enter. Returns saved frame so Dart can restore on leave.
@@ -108,12 +149,16 @@ final class DesktopPipController: NSObject {
       pipEnabled = false
       spaceLeavePrepared = false
       restoreChrome()
+    } else {
+      // Leave without PiP — still clear a leaked Space-leave prep.
+      cancelSpaceLeavePrep()
     }
   }
 
   /// Join all Spaces + floating so a Space swipe does not occlude/pause.
+  /// No-op unless Dart armed Auto PiP — otherwise the window sticks on top.
   func prepareForSpaceLeave() {
-    guard let window, !pipEnabled else { return }
+    guard let window, !pipEnabled, spaceLeavePrepAllowed else { return }
     if !spaceLeavePrepared {
       savedLevel = window.level
       savedCollection = window.collectionBehavior

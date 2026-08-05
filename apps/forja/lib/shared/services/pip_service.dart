@@ -48,6 +48,7 @@ class PipService {
   Object? _autoPipToken;
   bool Function()? _shouldAutoEnterPip;
   StreamSubscription<dynamic>? _desktopSpaceSub;
+  VoidCallback? _autoPipSettingListener;
 
   bool get isSupported {
     if (kIsWeb) return false;
@@ -120,21 +121,31 @@ class PipService {
     _autoPipToken = token;
     _shouldAutoEnterPip = shouldEnter;
     _ensureDesktopSpaceWatch();
+    _ensureAutoPipSettingListener();
+    _syncSpaceLeavePrepAllowed();
   }
 
   void unbindAutoEnterOnDesktopSwitch(Object token) {
     if (_autoPipToken != token) return;
     _autoPipToken = null;
     _shouldAutoEnterPip = null;
+    _syncSpaceLeavePrepAllowed();
+    unawaited(_cancelSpaceLeavePrep());
   }
 
   /// Lifecycle / Space switch: enter PiP instead of pausing. Arms pending
   /// synchronously so a concurrent pause check sees [isDesktopActive].
   Future<void> enterInsteadOfPause({int width = 16, int height = 9}) async {
     if (_desktopActive || _desktopEnterPending) return;
-    if (!SettingsService.autoPipOnDesktopSwitchNotifier.value) return;
+    if (!SettingsService.autoPipOnDesktopSwitchNotifier.value) {
+      unawaited(_cancelSpaceLeavePrep());
+      return;
+    }
     final check = _shouldAutoEnterPip;
-    if (check != null && !check()) return;
+    if (check != null && !check()) {
+      unawaited(_cancelSpaceLeavePrep());
+      return;
+    }
     await _enterDesktop(width: width, height: height);
   }
 
@@ -150,11 +161,39 @@ class PipService {
     );
   }
 
+  void _ensureAutoPipSettingListener() {
+    if (_autoPipSettingListener != null) return;
+    void onChanged() => _syncSpaceLeavePrepAllowed();
+    _autoPipSettingListener = onChanged;
+    SettingsService.autoPipOnDesktopSwitchNotifier.addListener(onChanged);
+  }
+
+  void _syncSpaceLeavePrepAllowed() {
+    if (kIsWeb || !Platform.isMacOS) return;
+    unawaited(_setSpaceLeavePrepAllowed(autoPipArmed));
+  }
+
+  Future<void> _setSpaceLeavePrepAllowed(bool allowed) async {
+    try {
+      await _desktopPipChannel.invokeMethod('setSpaceLeavePrepAllowed', {
+        'allowed': allowed,
+      });
+    } catch (e) {
+      debugPrint('[PipService] setSpaceLeavePrepAllowed failed: $e');
+    }
+  }
+
+  Future<void> _cancelSpaceLeavePrep() async {
+    if (kIsWeb || !Platform.isMacOS) return;
+    try {
+      await _desktopPipChannel.invokeMethod('cancelSpaceLeavePrep');
+    } catch (e) {
+      debugPrint('[PipService] cancelSpaceLeavePrep failed: $e');
+    }
+  }
+
   Future<void> _onDesktopSpaceEvent(dynamic event) async {
     if (_desktopActive || _desktopEnterPending) return;
-    if (!SettingsService.autoPipOnDesktopSwitchNotifier.value) return;
-    final shouldEnter = _shouldAutoEnterPip;
-    if (shouldEnter == null) return;
 
     var leftActiveSpace = true;
     if (event is Map) {
@@ -163,8 +202,17 @@ class PipService {
         leftActiveSpace = !onActive;
       }
     }
-    if (!leftActiveSpace) return;
-    if (!shouldEnter()) return;
+    // Back on this Space or Auto PiP not taking over — undo floating prep.
+    if (!leftActiveSpace ||
+        !SettingsService.autoPipOnDesktopSwitchNotifier.value) {
+      await _cancelSpaceLeavePrep();
+      return;
+    }
+    final shouldEnter = _shouldAutoEnterPip;
+    if (shouldEnter == null || !shouldEnter()) {
+      await _cancelSpaceLeavePrep();
+      return;
+    }
 
     await _enterDesktop(width: 16, height: 9);
   }
@@ -260,7 +308,10 @@ class PipService {
   }
 
   Future<void> _leaveDesktop() async {
-    if (!_desktopActive && _savedBounds == null) return;
+    if (!_desktopActive && _savedBounds == null) {
+      await _cancelSpaceLeavePrep();
+      return;
+    }
     try {
       await _setNativePipChrome(false);
       try {
