@@ -279,11 +279,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _formatEngineSwapped = false;
   // When the user explicitly paused (play-after-pause rejoins live edge).
   DateTime? _pausedAt;
-  /// Throttle live-edge snaps after underrun / soft recovery.
-  DateTime? _lastLiveJumpAt;
-  /// Consecutive position-freeze snaps that never got frames moving again.
-  /// Bounds the snap path so a dead feed still escalates to a real reconnect.
-  int _frozenSnapAttempts = 0;
   /// After [drop-buffers], VideoToolbox often logs a one-shot hw fail while
   /// re-initing — ignore those so we don't thrash into software decode.
   DateTime? _ignoreHwDecodeFailUntil;
@@ -303,14 +298,35 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   // probing every N seconds forever - live IPTV channels routinely come
   // back from short outages, so we don't want to give up.
   static const Duration _coldRetryInterval = Duration(seconds: 15);
-  /// Only shed demuxer backlog when we are genuinely this far behind the live
-  /// edge. On a realtime feed `demuxer-cache-duration` stays near zero unless
-  /// mpv kept downloading through a stall, so a low value means we are already
-  /// at the edge and dropping would just empty the cushion.
-  static const double _liveDriftSecs = 6.0;
   /// How long a manual reload's live-edge flush gets to restore frames before
   /// escalating to a real reopen. Covers the flush's own 700ms delay.
   static const Duration _reloadEscalateAfter = Duration(seconds: 3);
+
+  // ---- Demuxer progress probe (issue 148 / RFC-052) -------------------
+  // The stall detectors are timers, so on their own they cannot tell a dead
+  // socket from a live feed that is simply refilling. mpv's `demuxer-cache-time`
+  // is the last demuxed packet timestamp: it only advances when bytes are still
+  // arriving and parsing. Sampling it turns "position stopped" into the two
+  // cases that need opposite handling.
+
+  /// Last sampled `demuxer-cache-time`, or `null` before the first sample.
+  double? _cacheTime;
+
+  /// When [_cacheTime] last moved forward — i.e. the socket last delivered.
+  DateTime? _cacheAdvancedAt;
+
+  /// Guards against overlapping property reads when a sample is slow.
+  bool _cacheProbeInFlight = false;
+
+  /// How recently the demuxer must have advanced to count the feed as alive.
+  /// Two watchdog ticks of slack so one slow property read cannot look dead.
+  static const Duration _networkAliveWindow = Duration(seconds: 3);
+
+  /// Hard ceiling on tolerating a frozen picture while the demuxer keeps
+  /// advancing. That combination is a wedged decoder rather than a network
+  /// stall, and only a reopen clears it — but it must outlast a legitimate
+  /// refill of the 30 s cache, which the old 8 s detector did not.
+  static const Duration _feedingWedgeCeiling = Duration(seconds: 45);
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 

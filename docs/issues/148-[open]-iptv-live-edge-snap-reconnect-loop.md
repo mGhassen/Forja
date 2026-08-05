@@ -10,7 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 6** acceptance |
+| **Progress** | **7 / 7** fix · **0 / 7** acceptance |
+| **Current slice** | Reverted to `v1.3.114` playback, then fixed the real cause in [RFC-052](../rfc/052-[partial]-iptv-progress-aware-recovery.md) — device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +26,8 @@
 | 3 | I148-T03 | Reset `_frozenSnapAttempts` when the position stream ticks again | ✅ |
 | 4 | I148-T04 | Exempt user intent from the drift gate — `_scheduleJumpToLive(force:)`; manual reload also bypasses the 2.5 s throttle | ✅ |
 | 5 | I148-T05 | Manual reload escalates to a real reopen when the flush leaves frames frozen (`_escalateReloadIfStalled` → `_triggerRecovery` reopen tier) | ✅ |
+| 6 | I148-T06 | **Revert** T01–T03: drift gate did not fix the reported stall in `v1.3.141`. Restore `v1.3.114` playback semantics — `demuxer-max-back-bytes` 25 MB, no per-open override, no `live_start_index`, no mid-stream live-edge snap, detector 2 back to `_triggerRecovery`, recovery tier ≤2 back to soft reopen | ✅ |
+| 7 | I148-T07 | **Root cause found** — the 8 s frozen-position detector contradicts `cache-secs=30`, so any hiccup deeper than 8 s reopened a feed that was still refilling. Fixed in [RFC-052](../rfc/052-[partial]-iptv-progress-aware-recovery.md) by gating the stall detectors on `demuxer-cache-time` progress | ✅ |
 
 ---
 
@@ -38,6 +41,7 @@
 | 4 | I148-A04 | Player **Reload** on a healthy live channel still flushes and rejoins the edge (drift gate does not swallow user intent) | ⬜ |
 | 5 | I148-A05 | Android TV MediaKit: **Reload** on a stalled channel reconnects within ~4 s and the app stays alive (no ANR — issue 128 T08 regression watch) | ⬜ |
 | 6 | I148-A06 | Android TV MediaKit: Exo → MediaKit via Player menu, then **Reload** — no ANR (`I128-A01` path) | ⬜ |
+| 7 | I148-A07 | Android TV MediaKit: live channel plays as steadily as it did on `v1.3.114` — no periodic buffering / "Reconnecting…" | ⬜ |
 
 ---
 
@@ -45,7 +49,18 @@
 
 **Symptom (1.3.135):** A live IPTV channel plays normally, then after ~1 minute the picture stalls, the buffering spinner shows `Reconnecting… (attempt 1/8)`, and playback resumes on its own a few seconds later. The upstream feed is alive — the stream comes back without changing source.
 
-**Root cause — the recovery path fed itself.** Introduced by commit `893dfaeb` ("Improve IPTV player behavior"), which added a mid-stream live-edge snap on every buffering exit:
+> **Root cause (I148-T07).** The 8 s frozen-position detector contradicted
+> `cache-secs=30`: mpv was told to hold a 30 s cache, then declared dead after
+> 8 s of frozen position, so every upstream hiccup deeper than 8 s forced a
+> reopen **mid-refill**. The reopen threw away the partly-filled cache and
+> underran again — the "plays a minute, then Reconnecting…" loop. Fixed in
+> [RFC-052](../rfc/052-[partial]-iptv-progress-aware-recovery.md) by gating the
+> stall detectors on `demuxer-cache-time` progress. Predates 2026-08-05; the
+> live-edge snap work only made it fire more often.
+
+> **Status update (I148-T06).** The theory below was **not confirmed**. The drift gate shipped in `v1.3.141` and the reporter's stall was unchanged, so flushing an empty cache was not the cause — or not the only one. All playback tuning and recovery semantics have been reverted to `v1.3.114` (the last build the reporter considered good). The analysis is kept because the mechanism is real and reachable; it just is not the reported bug. **Do not re-apply any of it without a log capture first.**
+
+**Original (unconfirmed) theory — the recovery path fed itself.** Traced to commit `893dfaeb` ("Improve IPTV player behavior"), which added a mid-stream live-edge snap on every buffering exit:
 
 1. `_scheduleJumpToLive(reason: 'underrun exit')` fires whenever `buffering` clears after ≥ 800 ms mid-stream.
 2. On a non-seekable pure-live TS (every Xtream `.ts` feed — `_probeStreamCapabilities` needs `seekable=yes` **and** `duration > 0`) the snap runs `drop-buffers`, discarding mpv's entire demuxer cache.
@@ -57,7 +72,7 @@ So one ordinary upstream hiccup was amplified into a 12 s+ stall plus a reconnec
 
 Watchdog detector 2 (position frozen > 8 s) called the same snap, so it compounded the loop and — once the snap became conditional — could retry forever on a dead feed without ever escalating.
 
-**Fix:** Read `demuxer-cache-duration` before snapping. On a realtime feed it stays near zero unless mpv kept downloading through a stall, so it is the only honest drift signal on a non-seekable TS. Below `_liveDriftSecs` (6 s) we are already at the edge and the flush is skipped. Detector 2 now gets two snap attempts before escalating to a real reconnect, and the counter resets as soon as the position stream ticks.
+**Attempted fix (reverted in T06):** Read `demuxer-cache-duration` before snapping. On a realtime feed it stays near zero unless mpv kept downloading through a stall, so it is the only honest drift signal on a non-seekable TS. Below `_liveDriftSecs` (6 s) we are already at the edge and the flush is skipped. Detector 2 now gets two snap attempts before escalating to a real reconnect, and the counter resets as soon as the position stream ticks.
 
 **Shipped regression (I148-T04) — reached users in `v1.3.141`.** The first cut of the drift gate matched on `reason != 'open'`, which also caught `'manual reload'`. On a healthy stream `demuxer-cache-duration` is near zero, so the player **Reload** button became a silent no-op. `v1.3.141` contains the drift gate but **not** the `force:` exemption, so Reload is dead for live channels on that build. The gate is now opt-out via `force:`, and user intent bypasses both the gate and the 2.5 s throttle — this needs a patch release to reach users.
 

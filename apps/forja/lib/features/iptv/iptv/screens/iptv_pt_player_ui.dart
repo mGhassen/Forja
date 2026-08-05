@@ -1129,7 +1129,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                     ) &&
                     DateTime.now().difference(pausedAt) >=
                         const Duration(seconds: 2)) {
-                  _s._scheduleJumpToLive(reason: 'pause resume');
+                  _s._scheduleJumpToLive(force: true);
                 }
               }
               _scheduleHideControls();
