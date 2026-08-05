@@ -156,7 +156,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             providerId: source.providerId ?? _s._currentProvider,
           );
           if (_fallbackAborted(runGen)) return false;
-          _s._player.setVolume(_s._volume);
+          _s._player.setVolume(_s._mpvVolume);
           final opened = await waitForMediaOpen(
             _s._player,
             streamUrl: openUrl,
@@ -250,7 +250,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
               providerId: source.providerId ?? _s._currentProvider,
             );
             if (_fallbackAborted(runGen)) return false;
-            _s._player.setVolume(_s._volume);
+            _s._player.setVolume(_s._mpvVolume);
             final opened = await waitForMediaOpen(
               _s._player,
               streamUrl: openUrl,
@@ -586,7 +586,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
               providerId: _s._currentProvider,
             );
             if (_fallbackAborted(initGen)) return;
-            _s._player.setVolume(_s._volume);
+            _s._player.setVolume(_s._mpvVolume);
             final opened = await waitForMediaOpen(
               _s._player,
               streamUrl: openedUrl,
@@ -1586,8 +1586,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     // ── Decoding ─────────────────────────────────────────────────────────
     // Phone safe-mode: hwdec=no. ATV: keep mediacodec (matches VideoController
     // vo=mediacodec_embed - do not overwrite with auto-safe/software).
-    final tvMediaKit =
-        widget.tvRemoteEnabled || PlatformInfo.isAndroidTv;
+    final tvMediaKit = _s._tvMediaKit;
     if (tvMediaKit) {
       await safeSet('hwdec', 'mediacodec');
     } else {
@@ -1660,8 +1659,9 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     // We supply our own URL - no yt-dlp needed.
     await safeSet('ytdl', 'no');
 
-    // Allow volume boosting up to 150% for quiet sources.
-    await safeSet('volume-max', '150');
+    // Allow volume boosting up to 150% for quiet sources. TV MediaKit needs
+    // room for [kAtvMediaKitVolumeGain] on top of that (150 × 1.3 = 195).
+    await safeSet('volume-max', tvMediaKit ? '200' : '150');
 
     // ── External Audio ────────────────────────────────────────────────────
     if (widget.audioUrl != null) {

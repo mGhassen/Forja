@@ -87,7 +87,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         headers: resolved.headers,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
-      _s._player.setVolume(_s._volume);
+      _s._player.setVolume(_s._mpvVolume);
 
       final opened = await waitForMediaOpen(
         _s._player,

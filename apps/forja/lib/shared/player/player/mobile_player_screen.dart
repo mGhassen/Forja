@@ -290,12 +290,22 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   final ValueNotifier<bool> _isPlayingNotifier = ValueNotifier(false);
   final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier(false);
 
+  /// MediaKit on leanback — `vo=mediacodec_embed`, `ao=audiotrack`, softvol
+  /// gain. `tvRemoteEnabled` covers [TvPlayerScreen] before the async
+  /// `isTelevision` probe lands.
+  bool get _tvMediaKit =>
+      Platform.isAndroid && (widget.tvRemoteEnabled || PlatformInfo.isAndroidTv);
+
   // ── Gesture State ─────────────────────────────────────────────────────────
   double _volume = 100.0; // 0–150 (mpv supports >100%; 100 = full)
   double _brightness = 0.5; // 0.0..1.0 (screen brightness)
   bool _showVolumeIndicator = false;
   bool _showBrightnessIndicator = false;
   Timer? _indicatorHideTimer;
+
+  /// mpv softvol for [_volume] — boosted on TV so MediaKit matches Exo
+  /// loudness (issue 152).
+  double get _mpvVolume => mpvVolumeForUi(_volume, atvMediaKit: _tvMediaKit);
 
   // ── Double-tap ripple ─────────────────────────────────────────────────────
   late final AnimationController _rippleController;

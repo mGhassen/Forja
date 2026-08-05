@@ -101,7 +101,7 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
   void _nudgeTvVolume(double delta) {
     final next = (_s._volume + delta).clamp(0.0, 150.0);
     _s._volume = next;
-    _s._player.setVolume(next);
+    _s._player.setVolume(_s._mpvVolume);
     setState(() {
       _s._showVolumeIndicator = true;
       _s._showBrightnessIndicator = false;
@@ -163,7 +163,7 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
 
     if (isRight) {
       _s._volume = (_s._volume + delta).clamp(0.0, 150.0);
-      _s._player.setVolume(_s._volume);
+      _s._player.setVolume(_s._mpvVolume);
       setState(() {
         _s._showVolumeIndicator = true;
         _s._showBrightnessIndicator = false;

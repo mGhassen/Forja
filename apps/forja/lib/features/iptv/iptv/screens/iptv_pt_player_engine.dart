@@ -255,7 +255,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (_s._exoBackend) {
       unawaited(ExoPlayerBridge.setVolume(_s._exoViewId!, volume / 100.0));
     } else {
-      _s._player!.setVolume(volume);
+      _s._player!.setVolume(
+        mpvVolumeForUi(volume, atvMediaKit: _s._atvMediaKit),
+      );
     }
   }
 
@@ -417,6 +419,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         // a soft reopen must not stay muted/null. audiotrack is Android's ao.
         await p.setProperty('ao', 'audiotrack');
         await p.setProperty('mute', 'no');
+        // Headroom for [kAtvMediaKitVolumeGain] — UI 100 asks mpv for 130.
+        await p.setProperty('volume-max', '150');
         // Match display refresh — smoother than audio-clock sync on leanback.
         // UHD overrides to audio-clock in [_tuneAtvMediaKitAfterOpen] (issue 138).
         await p.setProperty('video-sync', 'display-resample');

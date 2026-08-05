@@ -670,7 +670,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                               compact: compact,
                               onVolumeChanged: (v) {
                                 setState(() => _s._volume = v);
-                                _s._player.setVolume(v);
+                                _s._player.setVolume(_s._mpvVolume);
                               },
                               onInteraction: _s._startHideTimer,
                               onDragStart: () => _s._hideTimer?.cancel(),

@@ -23,6 +23,23 @@ const kDefaultStreamUserAgent =
 const kHlsBitrateAutoSoftCeiling = '5000000';
 const kExoBitrateAutoSoftCeiling = 5_000_000;
 
+/// Softvol gain applied to Android TV MediaKit so it matches ExoPlayer loudness
+/// (issue 152).
+///
+/// mpv decodes to PCM and pushes it straight at `ao=audiotrack`, while Exo goes
+/// through MediaCodec and the TV's media DSP (dialog lift / stream DRC), and
+/// mpv's software 5.1→stereo downmix attenuates more than Exo's. At the same UI
+/// level MediaKit therefore lands audibly quieter on leanback. ~+2.3 dB is a
+/// deliberate compromise: enough to stop the engine swap feeling broken,
+/// small enough that boosted peaks rarely clip (softvol has no limiter).
+///
+/// Requires mpv `volume-max` ≥ gain × the surface's UI max.
+const double kAtvMediaKitVolumeGain = 1.3;
+
+/// mpv `volume` for a UI level. TV MediaKit gets [kAtvMediaKitVolumeGain].
+double mpvVolumeForUi(double uiVolume, {required bool atvMediaKit}) =>
+    atvMediaKit ? uiVolume * kAtvMediaKitVolumeGain : uiVolume;
+
 /// mpv `hls-bitrate` from Settings → Max stream quality (`0` = Auto).
 String hlsBitrateForMaxPlaybackHeight(int maxHeight) {
   if (maxHeight <= 0) return kHlsBitrateAutoSoftCeiling;

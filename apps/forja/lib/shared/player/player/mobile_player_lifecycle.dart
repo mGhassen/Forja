@@ -174,8 +174,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     // EGL_BAD_ATTRIBUTE (audio OK, black frame). mediacodec_embed paints
     // MediaCodec straight into the Flutter Surface (no mpv GL). Same knobs
     // as IPTV [_IptvPtPlayerEngine._initPlayerInstances].
-    final tvMediaKit =
-        widget.tvRemoteEnabled || PlatformInfo.isAndroidTv;
+    final tvMediaKit = _s._tvMediaKit;
     _s._controller = VideoController(
       _s._player,
       configuration: VideoControllerConfiguration(
