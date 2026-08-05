@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 2** acceptance |
+| **Progress** | **8 / 8** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,6 +27,7 @@
 | 5 | I128-T05 | `MpvExclusiveSession` tracks + awaits pending video dispose on Android (not macOS-only) | ✅ |
 | 6 | I128-T06 | Hot-swap: VOD-style release — silence + tracked MediaKit dispose (do not await on switch); 250ms cool-down; `prepareForVideoPlayer` only when mounting MediaKit | ✅ |
 | 7 | I128-T07 | VOD movies/series/anime/drama: Player-menu switch cool-down + capped `prepareForVideoPlayer` (1.2s) when mounting Exo; Exo boot same cap on Android | ✅ |
+| 8 | I128-T08 | IPTV reload after Exo→MediaKit: live MediaKit reload = live-edge snap (no second `Player.open`); serialize opens; Exo soft reopen without MediaCodec release | ✅ |
 
 ---
 
@@ -61,6 +62,10 @@ Flutter logs showed Select on `iptv-player-back` → `[NavBack]` then Signal Cat
 **Hot-swap kill on physical ATV (T06):** Player menu Exo ↔ MediaKit still awaited full `_disposePlayer()` on the switch path after one `endOfFrame`, so MediaKit→Exo sat in FFI stop/dispose past the ANR window (process death, no exit toast). Align with VOD: silence + track dispose without awaiting on the switch critical path, 250ms surface cool-down, and `prepareForVideoPlayer` only when mounting MediaKit (Exo does not need the mpv handle gone). Live Matches uses the same `IptvPtPlayerScreen` path.
 
 **VOD same kill (T07):** Movies / series / anime / Asian Drama `PlayerScreen._switchPlayer` awaited full `prepareForVideoPlayer` (5s) after unmount, and `ExoPlayerScreen._boot` did the same — MediaKit→Exo on physical ATV ANR’d mid-switch. Cap Android Exo-side waits at 1.2s (trade-off vs issue 129 crop if MediaCodec is slower); MediaKit mounts keep the full wait.
+
+**Reload after switch (T08, emu64a 2026-08-05):** Player menu Exo → MediaKit succeeded (`ExoPlayerImpl Release`), then Select on `iptv-player-replay` ~7s later ANR’d (`Waited 5001ms for KeyEvent`, `mpv/audiotrack` ~98% CPU). Reload called `Player.open` on a live mpv instance on the UI isolate. Fix: live MediaKit reload snaps to the live edge instead of re-`open`; opens are serialized; Exo `open` soft-reuses the player (`setMediaItem`) and `stop` no longer `release()`s (dispose still does).
+
+**Regression (T08 follow-up):** An early T08 draft called `player.stop()` before every MediaKit open. On a virgin player that hung the UI isolate — first channel open after a persisted MediaKit preference ANR’d (~30s later on KeyEvent). Removed pre-open `stop`; ATV MediaKit keeps `cache-pause=no` (Lume-style pause-on-empty stays desktop/phone only).
 
 ## Related
 

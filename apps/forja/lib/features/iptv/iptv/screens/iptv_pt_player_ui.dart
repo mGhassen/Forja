@@ -1200,9 +1200,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             onRightEdge: rightOfReplay() == null
                 ? null
                 : () => claim(rightOfReplay()!),
-            onTap: () async {
-              _s._retryAttempt = 0;
-              await _s._openCurrent();
+            onTap: () {
+              unawaited(_s._reloadCurrent());
               _scheduleHideControls();
             },
           ),

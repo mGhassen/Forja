@@ -229,7 +229,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
   Future<void> _engineOpenSource(IptvPlaySource src) async {
     if (_s._exoBackend) {
-      await ExoPlayerBridge.stop(_s._exoViewId!);
+      // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
       final live = iptvExoUrlLooksLive(src.url);
       // Opt-in only (Settings → IPTV live max quality). Default 0 = full quality.
       var maxHeight = 0;
@@ -253,28 +253,33 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         maxVideoBitrate: maxBitrate,
       );
     } else {
-      final p = _s._player?.platform;
+      final player = _s._player;
+      if (player == null) return;
+      // Do NOT stop() before first open — virgin mpv stop hangs the UI isolate
+      // on ATV (ANR). Live reload uses [_reloadCurrent] (live-edge snap).
+      final p = player.platform;
       if (p is NativePlayer) {
         final live = iptvExoUrlLooksLive(src.url);
         await _applyDemuxerLavfOpts(p, hlsLive: live && _urlLooksHls(src.url));
-        // Live: tiny back-buffer + cache-pause so underrun can't replay.
+        // Live: tiny back-buffer so underrun can't silently rewind ~15s.
         // VOD: keep a real back-buffer for scrubbing.
+        // Never flip cache-pause here — pause-on-empty freezes position and
+        // trips the watchdog into a slow soft-reopen.
         try {
           await p.setProperty(
             'demuxer-max-back-bytes',
             live ? '5000000' : '25000000',
           );
-          await p.setProperty('cache-pause', live ? 'yes' : 'no');
         } catch (_) {}
       }
       final headers = <String, String>{
         'User-Agent': _IptvPtPlayerScreenState._ua,
         ...src.headers,
       };
-      await _s._player!.open(
+      await player.open(
         Media(src.url, httpHeaders: headers),
       );
-      await _s._player!.play();
+      await player.play();
       if (_s._atvMediaKit) {
         unawaited(_tuneAtvMediaKitAfterOpen());
       }
@@ -367,18 +372,17 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // Network: fail fast so the watchdog can step in
       await p.setProperty('network-timeout', '15');
 
-      // Cache: keep a healthy forward window, but do not hold a large
-      // back-buffer — after underrun that stale window used to replay ~15s
-      // of already-watched live silently. cache-pause=yes freezes on empty
-      // so we can snap to live on unpause / underrun exit instead of
-      // resuming from demuxer history.
+      // Cache: healthy forward window, small back-buffer (large back-buffer
+      // used to silently replay ~15s after underrun). Keep cache-pause=no —
+      // pause-on-empty freezes position and the watchdog soft-reopens after
+      // 8s (desktop looks "stuck", ATV ANRs). Live-edge snap on underrun
+      // exit / frozen position handles rejoining without a full reopen.
       await p.setProperty('cache', 'yes');
       await p.setProperty('cache-secs', '30');
       await p.setProperty('demuxer-readahead-secs', '20');
       await p.setProperty('demuxer-max-bytes', '150000000');
       await p.setProperty('demuxer-max-back-bytes', '5000000');
-      await p.setProperty('cache-pause', 'yes');
-      // Snappy first frame; mid-stream underruns still pause via cache-pause.
+      await p.setProperty('cache-pause', 'no');
       await p.setProperty('cache-pause-initial', 'no');
       // Larger audio buffer too - audio underruns are the most jarring
       // form of buffering on IPTV feeds.
@@ -660,35 +664,70 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     }
   }
 
+  Future<void>? _openInFlight;
+
   Future<void> _openCurrent() async {
-    final src = _s._sources[_s._sourceIdx];
-    _playbackStarted = false;
-    _s._exoSurfaceFallback?.resetForNewOpen();
-    // Connect silently - no banner. The buffering indicator (if any) will
-    // appear naturally while the stream loads.
-    try {
-      await _engineOpenSource(src);
-      _s._userPlayWhenReady = true;
-      _s._pausedAt = null;
-      _s._lastPos = Duration.zero;
-      _s._lastPosChange = DateTime.now();
-      _s._openedAt = DateTime.now();
-      unawaited(_probeStreamCapabilities().then((_) {
-        if (mounted) _scheduleJumpToLive();
-      }));
-      // Clear banner after a short successful run (do not require !_buffering —
-      // Exo live prefetch used to keep isLoading true and leave reconnect UI up).
-      Future.delayed(const Duration(seconds: 2), () {
-        if (!mounted) return;
-        if (_s._statusBanner == null) return;
-        if (_s._playing &&
-            (_s._lastPos > Duration.zero || !_s._buffering)) {
-          setState(() => _s._statusBanner = null);
-        }
-      });
-    } catch (e) {
-      _triggerRecovery(reason: 'open failed: $e');
+    // Serialize opens — Player-menu switch sets _playerReady before the first
+    // open finishes; a second open (reload) on a busy mpv ANRs ATV.
+    final existing = _openInFlight;
+    if (existing != null) {
+      await existing;
+      return;
     }
+    final gate = Completer<void>();
+    _openInFlight = gate.future;
+    try {
+      final src = _s._sources[_s._sourceIdx];
+      _playbackStarted = false;
+      _s._exoSurfaceFallback?.resetForNewOpen();
+      // Connect silently - no banner. The buffering indicator (if any) will
+      // appear naturally while the stream loads.
+      try {
+        await _engineOpenSource(src);
+        _s._userPlayWhenReady = true;
+        _s._pausedAt = null;
+        _s._lastPos = Duration.zero;
+        _s._lastPosChange = DateTime.now();
+        _s._openedAt = DateTime.now();
+        unawaited(_probeStreamCapabilities().then((_) {
+          if (mounted) _scheduleJumpToLive();
+        }));
+        // Clear banner after a short successful run (do not require !_buffering —
+        // Exo live prefetch used to keep isLoading true and leave reconnect UI up).
+        Future.delayed(const Duration(seconds: 2), () {
+          if (!mounted) return;
+          if (_s._statusBanner == null) return;
+          if (_s._playing &&
+              (_s._lastPos > Duration.zero || !_s._buffering)) {
+            setState(() => _s._statusBanner = null);
+          }
+        });
+      } catch (e) {
+        _triggerRecovery(reason: 'open failed: $e');
+      }
+    } finally {
+      gate.complete();
+      if (identical(_openInFlight, gate.future)) {
+        _openInFlight = null;
+      }
+    }
+  }
+
+  /// Manual reload control: live MediaKit rejoins the edge (no second
+  /// [Player.open] — that path ANRs ATV after an Exo→MediaKit switch).
+  Future<void> _reloadCurrent() async {
+    _s._retryAttempt = 0;
+    if (!_s._exoBackend && _s._playerAlive && _currentSourceIsLive) {
+      final inFlight = _openInFlight;
+      if (inFlight != null) await inFlight;
+      if (_s._disposed || !_s._playerAlive) return;
+      _scheduleJumpToLive(reason: 'manual reload');
+      try {
+        await _enginePlay();
+      } catch (_) {}
+      return;
+    }
+    await _openCurrent();
   }
 
   /// Best-effort jump to the live edge after open / underrun / pause-resume.
@@ -776,15 +815,25 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         return;
       }
       // Detector 2: position frozen while user wants playback.
-      // Do NOT gate on !_buffering - Windows live feeds often flicker
+      // Do NOT gate on !_buffering alone - Windows live feeds often flicker
       // buffering true/false while the last frame is stuck, which resets
       // detector 1's timer and previously left the stream dead forever
       // with no "Reconnecting…" banner.
       // Gate: _lastPos > 0 - avoid false positives before first frame
       // (detector 4 covers that hang).
+      // Live MediaKit: snap to the edge first — soft reopen looks like a
+      // long freeze (desktop) and can ANR on ATV.
       if (_s._userPlayWhenReady &&
           _s._lastPos > Duration.zero &&
           now.difference(_s._lastPosChange) > const Duration(milliseconds: 8000)) {
+        if (!_s._exoBackend && _currentSourceIsLive) {
+          debugPrint('[IPTV Watchdog] position frozen → live-edge snap');
+          _s._lastPosChange = now;
+          _s._readyNotPlayingSince = null;
+          _scheduleJumpToLive(reason: 'position frozen');
+          unawaited(_enginePlay());
+          return;
+        }
         _triggerRecovery(reason: 'position frozen > 8s');
         return;
       }
@@ -910,11 +959,19 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           debugPrint('[IPTV] hard recreate failed: $e');
         }
       } else if (_s._retryAttempt <= 2 || (forceHard && _s._windowsSoftwareDecode)) {
-        // Soft reopen — never seek(0) on live (anchors to DVR start / spam).
-        try {
-          await _engineOpenSource(_s._sources[_s._sourceIdx]);
-          await _enginePlay();
-        } catch (_) {}
+        // Live MediaKit: snap to edge — full reopen is slow (desktop "stuck")
+        // and ANR-prone on ATV. Exo / VOD still soft-reopen.
+        if (!_s._exoBackend && _currentSourceIsLive) {
+          _scheduleJumpToLive(reason: 'soft recovery');
+          try {
+            await _enginePlay();
+          } catch (_) {}
+        } else {
+          try {
+            await _engineOpenSource(_s._sources[_s._sourceIdx]);
+            await _enginePlay();
+          } catch (_) {}
+        }
       } else if (_s._retryAttempt <= 4) {
         try {
           if (!_s._exoBackend) {

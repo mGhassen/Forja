@@ -83,6 +83,7 @@ class ExoPlayerHost(
     private var videoAuto = true
     private var lastUrl: String? = null
     private var lastOptions: ExoOpenOptions = ExoOpenOptions()
+    private var lastHeaders: Map<String, String> = emptyMap()
     /** Last Dart resize mode — re-applied when Flutter remounts the PlatformView. */
     private var resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT
     /** Last subtitle appearance — re-applied when Flutter remounts the PlatformView. */
@@ -221,11 +222,36 @@ class ExoPlayerHost(
         subtitles: List<Map<String, String>>,
         options: ExoOpenOptions = ExoOpenOptions(),
     ) {
-        stopInternal(releasePlayer = true)
         videoAuto = true
         liveSpeedDisabledForUhd = null
+        val existing = player
+        // Soft reopen: reuse the ExoPlayer when the pipeline shape matches.
+        // Full release+recreate on every IPTV reload / recovery ANRs ATV — goldfish
+        // / MediaCodec release often exceeds the 5s input window (issue 128).
+        val canReuse = existing != null &&
+            lastOptions.live == options.live &&
+            lastOptions.maxVideoHeight == options.maxVideoHeight &&
+            lastOptions.maxVideoBitrate == options.maxVideoBitrate &&
+            lastHeaders == headers
         lastUrl = url
         lastOptions = options
+        lastHeaders = headers
+        if (canReuse) {
+            applyLiveTrackCaps(existing!!, options)
+            existing.setMediaItem(
+                mediaItemBuilder(url, subtitles, options).build(),
+                /* resetPosition= */ startMs <= 0,
+            )
+            existing.prepare()
+            if (startMs > 0) {
+                existing.seekTo(startMs)
+            }
+            existing.playWhenReady = true
+            startProgressLoop()
+            return
+        }
+
+        stopInternal(releasePlayer = true)
 
         val httpFactory = buildHttpFactory(headers)
         // DefaultDataSource handles file:// / content:// / asset; HTTP goes through [httpFactory].
@@ -603,7 +629,15 @@ class ExoPlayerHost(
     }
 
     fun stop() {
-        stopInternal(releasePlayer = true)
+        // Soft stop — keep the ExoPlayer instance so the next open can soft-reuse
+        // without a MediaCodec release on the main thread (ATV ANR).
+        stopProgressLoop()
+        try {
+            player?.stop()
+            player?.clearMediaItems()
+        } catch (_: Exception) {
+        }
+        lastUrl = null
     }
 
     fun dispose() {
@@ -685,6 +719,7 @@ class ExoPlayerHost(
             player = null
             lastUrl = null
             lastOptions = ExoOpenOptions()
+            lastHeaders = emptyMap()
         }
         videoAuto = true
         liveSpeedDisabledForUhd = null
