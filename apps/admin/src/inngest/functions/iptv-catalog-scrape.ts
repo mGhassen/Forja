@@ -8,17 +8,23 @@ import {
 import { cronIsDueUtc, isValidScrapeCron } from '@/lib/scrape-cron'
 import {
   createCatalogAdminClient,
+  getDeepRefRowById,
   getLastScheduledScrapeStartedAt,
   getScrapeCronSettings,
   insertScrapeRun,
-  listPendingDeepRefsForRun,
+  linkScrapeDeepRefPortals,
+  listPendingDeepRefIdsForRun,
   loadKnownScrapePostIds,
   patchScrapeRun,
   upsertCatalogCandidate,
   upsertScrapeDeepRef,
   upsertScrapePostId,
 } from '@/server/iptv-catalog/supabase-admin'
-import type { CatalogPortal, PortalStatus } from '@/server/iptv-catalog/types'
+import type {
+  CatalogPortal,
+  DeepRefPortalHit,
+  PortalStatus,
+} from '@/server/iptv-catalog/types'
 import { portalKey } from '@/server/iptv-catalog/types'
 import { verifyPortalStatus } from '@/server/iptv-catalog/verify'
 
@@ -57,10 +63,42 @@ async function markRun(runId: string, error?: string) {
   })
 }
 
+function hitsToCatalogPortals(
+  hits: DeepRefPortalHit[],
+  pasteUrl: string,
+  postId: string,
+): CatalogPortal[] {
+  return hits
+    .filter(
+      (h) =>
+        (h.platform === 'm3u' &&
+          h.username === '__m3u__' &&
+          Boolean(h.url)) ||
+        (Boolean(h.username) &&
+          (Boolean(h.password) || h.platform === 'stalker')),
+    )
+    .map((h) => ({
+      url: h.url,
+      username: h.username,
+      password: h.password || '',
+      source: pasteUrl ? 'catalog-deep' : 'catalog-decoded',
+      platform: h.platform,
+      postId,
+      expiry: h.expiry ?? null,
+      maxConnections: h.maxConnections ?? null,
+      timezone: h.timezone ?? null,
+      regionPrimary: h.regionPrimary,
+      regionTags: h.regionTags,
+      regionConfidence: h.regionConfidence,
+      allowedOutputs: h.allowedOutputs ?? null,
+    }))
+}
+
 /**
  * Scheduled + on-demand catalog scrape.
  * Phase 1: walk Reddit /new → posts + deep_ref stubs in DB.
  * Phase 2: process pending deep_refs (paste fetch + extract).
+ * Phase 2b: link deep_ref_portals (own step — N RPCs).
  * Then upsert portal candidates. Watermark / maxPages still apply.
  */
 export const iptvCatalogScrape = inngest.createFunction(
@@ -68,8 +106,9 @@ export const iptvCatalogScrape = inngest.createFunction(
     id: 'iptv-catalog-scrape',
     concurrency: { limit: 1 },
     retries: 1,
-    // Checkpoint every step; bail well under Vercel maxDuration (300s).
-    checkpointing: { bufferedSteps: 1, maxRuntime: '45s' },
+    // Classic one-step-per-invoke — matches step.sleep('0s') yields.
+    // v4 checkpointing + streaming caused empty JSON parse failures on Vercel.
+    checkpointing: false,
     triggers: [
       { cron: '0 6 * * *' },
       { cron: '* * * * *' },
@@ -272,38 +311,46 @@ export const iptvCatalogScrape = inngest.createFunction(
     // Phase 2 — PROCESS: pending deep_refs from DB → paste fetch + extract.
     // Unparsed after process only (collect stubs are incomplete by design).
     unparsedCount = 0
-    const pending = await step.run('list-pending-deep-refs', async () => {
+    const pendingIds = await step.run('list-pending-deep-refs', async () => {
       const sb = createCatalogAdminClient()
-      return listPendingDeepRefsForRun(sb, runId)
+      return listPendingDeepRefIdsForRun(sb, runId)
     })
 
-    for (let i = 0; i < pending.length; i++) {
-      const row = pending[i]!
+    for (let i = 0; i < pendingIds.length; i++) {
+      const deepRefRowId = pendingIds[i]!
       const outcome = await step.run(`process-deep-ref-${i}`, async () => {
-        const processed = await processDeepRefRow(row, maxResultsPerPage)
         const sb = createCatalogAdminClient()
-        await upsertScrapeDeepRef(sb, processed.ref, runId, {
-          linkPortals: true,
-        })
+        const row = await getDeepRefRowById(sb, deepRefRowId)
+        if (!row) {
+          return {
+            deepRefId: null as string | null,
+            hits: [] as DeepRefPortalHit[],
+            pasteUrl: '',
+            postId: '',
+            portals: [] as CatalogPortal[],
+            l2FetchOk: 0,
+            l2FetchFail: 0,
+            l2ExtractCount: 0,
+            needsRecheck: true,
+          }
+        }
+        const processed = await processDeepRefRow(row, maxResultsPerPage)
+        const deepRefId = await upsertScrapeDeepRef(
+          sb,
+          processed.ref,
+          runId,
+          { linkPortals: false },
+        )
         return {
-          portals: processed.ref.portals
-            .filter((h) => h.username && (h.password || h.platform === 'stalker'))
-            .map((h) => ({
-              url: h.url,
-              username: h.username,
-              password: h.password || '',
-              source: processed.ref.pasteUrl
-                ? 'catalog-deep'
-                : 'catalog-decoded',
-              postId: processed.ref.postId,
-              expiry: h.expiry ?? null,
-              maxConnections: h.maxConnections ?? null,
-              timezone: h.timezone ?? null,
-              regionPrimary: h.regionPrimary,
-              regionTags: h.regionTags,
-              regionConfidence: h.regionConfidence,
-              allowedOutputs: h.allowedOutputs ?? null,
-            })),
+          deepRefId,
+          hits: processed.ref.portals,
+          pasteUrl: processed.ref.pasteUrl,
+          postId: processed.ref.postId,
+          portals: hitsToCatalogPortals(
+            processed.ref.portals,
+            processed.ref.pasteUrl,
+            processed.ref.postId,
+          ),
           l2FetchOk: processed.l2FetchOk,
           l2FetchFail: processed.l2FetchFail,
           l2ExtractCount: processed.l2ExtractCount,
@@ -318,7 +365,36 @@ export const iptvCatalogScrape = inngest.createFunction(
         portals.set(portalKey(p), p)
       }
 
-      if (i % 5 === 0 || i === pending.length - 1) {
+      // Junction rows in a separate step — never N× find/upsert inside paste fetch.
+      if (outcome.deepRefId && outcome.hits.length > 0) {
+        const linkId = outcome.deepRefId
+        const linkHits = outcome.hits
+        const linkPasteUrl = outcome.pasteUrl
+        const linkPostId = outcome.postId
+        await step.run(`link-deep-ref-portals-${i}`, async () => {
+          const sb = createCatalogAdminClient()
+          return linkScrapeDeepRefPortals(
+            sb,
+            linkId,
+            {
+              postId: linkPostId,
+              base64: '',
+              pasteUrl: linkPasteUrl,
+              pasteBody: null,
+              payloadHash: '',
+              refHost: '',
+              fetchOk: true,
+              extractCount: linkHits.length,
+              needsRecheck: false,
+              portals: linkHits,
+            },
+            // Catalog promote stays in upsert-candidates-* (chunked).
+            { promoteCatalog: false },
+          )
+        })
+      }
+
+      if (i % 5 === 0 || i === pendingIds.length - 1) {
         await step.run(`checkpoint-process-${i}`, async () => {
           const sb = createCatalogAdminClient()
           await patchScrapeRun(sb, runId, {
@@ -332,7 +408,7 @@ export const iptvCatalogScrape = inngest.createFunction(
           })
         })
       }
-      // One paste per invoke budget — Vercel must not sit open across N pastes.
+      // One paste (+ link) per invoke — Vercel must not sit open across N pastes.
       await step.sleep(`yield-process-${i}`, '0s')
     }
 

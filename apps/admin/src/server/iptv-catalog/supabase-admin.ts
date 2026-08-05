@@ -160,16 +160,32 @@ export async function upsertScrapeDeepRef(
   if (error) throw error
   const deepRefId = data.id as string
 
-  if (!linkPortals) return deepRefId
+  if (linkPortals) {
+    await linkScrapeDeepRefPortals(sb, deepRefId, ref)
+  }
 
+  return deepRefId
+}
+
+/**
+ * Write `iptv_scrape_deep_ref_portals` (+ optional catalog promote).
+ * Own Inngest step — never fold into paste fetch (N RPCs per hit).
+ */
+export async function linkScrapeDeepRefPortals(
+  sb: SupabaseClient,
+  deepRefId: string,
+  ref: DeepRefRecord,
+  opts?: { promoteCatalog?: boolean },
+): Promise<number> {
+  const promoteCatalog = opts?.promoteCatalog !== false
   const { error: delErr } = await sb
     .from('iptv_scrape_deep_ref_portals')
     .delete()
     .eq('deep_ref_id', deepRefId)
   if (delErr) throw delErr
 
-  // DB unique is (deep_ref_id, url, username); extract may emit type/output variants.
-  for (const hit of dedupeDeepRefPortalHits(ref.portals ?? [])) {
+  const hits = dedupeDeepRefPortalHits(ref.portals ?? [])
+  for (const hit of hits) {
     let portalId: string | null = null
     let wasExisting = false
 
@@ -188,39 +204,43 @@ export async function upsertScrapeDeepRef(
       if (findErr) throw findErr
       wasExisting = Boolean(existingId)
 
-      const portal: CatalogPortal = {
-        url: hit.url,
-        username: hit.username,
-        password: hit.password || '',
-        source: ref.pasteUrl ? 'catalog-deep' : 'catalog-decoded',
-        platform: hit.platform,
-        postId: ref.postId,
-        expiry: hit.expiry ?? null,
-        maxConnections: hit.maxConnections ?? null,
-        timezone: hit.timezone ?? null,
-        regionPrimary: hit.regionPrimary,
-        regionTags: hit.regionTags,
-        regionConfidence: hit.regionConfidence,
-        allowedOutputs: hit.allowedOutputs ?? null,
-      }
-      portalId = await upsertCatalogCandidateReturningId(
-        sb,
-        portal,
-        {
-          // Never set alive from the note — player_api still owns that.
-          alive: null,
-          status: 'unverified',
+      if (promoteCatalog) {
+        const portal: CatalogPortal = {
+          url: hit.url,
+          username: hit.username,
+          password: hit.password || '',
+          source: ref.pasteUrl ? 'catalog-deep' : 'catalog-decoded',
+          platform: hit.platform,
+          postId: ref.postId,
           expiry: hit.expiry ?? null,
           maxConnections: hit.maxConnections ?? null,
           timezone: hit.timezone ?? null,
-          categoryNames: [],
-        },
-        {
-          primary: hit.regionPrimary ?? 'UNKNOWN',
-          tags: hit.regionTags ?? [],
-          confidence: hit.regionConfidence ?? 0,
-        },
-      )
+          regionPrimary: hit.regionPrimary,
+          regionTags: hit.regionTags,
+          regionConfidence: hit.regionConfidence,
+          allowedOutputs: hit.allowedOutputs ?? null,
+        }
+        portalId = await upsertCatalogCandidateReturningId(
+          sb,
+          portal,
+          {
+            // Never set alive from the note — player_api still owns that.
+            alive: null,
+            status: 'unverified',
+            expiry: hit.expiry ?? null,
+            maxConnections: hit.maxConnections ?? null,
+            timezone: hit.timezone ?? null,
+            categoryNames: [],
+          },
+          {
+            primary: hit.regionPrimary ?? 'UNKNOWN',
+            tags: hit.regionTags ?? [],
+            confidence: hit.regionConfidence ?? 0,
+          },
+        )
+      } else if (existingId) {
+        portalId = existingId as string
+      }
     }
 
     const { error: hitErr } = await sb.from('iptv_scrape_deep_ref_portals').insert({
@@ -237,10 +257,60 @@ export async function upsertScrapeDeepRef(
     if (hitErr) throw hitErr
   }
 
-  return deepRefId
+  return hits.length
 }
 
-/** Deep refs for this run that still need paste fetch and/or portal extract. */
+function isPendingDeepRefRow(r: {
+  paste_url?: string | null
+  paste_body?: string | null
+  fetch_ok?: boolean | null
+  extract_count?: number | null
+}): boolean {
+  const pasteUrl = String(r.paste_url ?? '').trim()
+  const body = r.paste_body
+  const fetchOk = r.fetch_ok
+  const extractCount = Number(r.extract_count ?? 0)
+  if (pasteUrl && fetchOk == null) return true
+  if (!pasteUrl && body && fetchOk == null && extractCount === 0) return true
+  return false
+}
+
+/**
+ * Pending deep_ref ids only — never ship paste_body through Inngest memo.
+ * Process steps re-fetch the full row by id.
+ */
+export async function listPendingDeepRefIdsForRun(
+  sb: SupabaseClient,
+  scrapeRunId: string,
+): Promise<string[]> {
+  const { data, error } = await sb
+    .from('iptv_scrape_deep_refs')
+    .select('id, paste_url, paste_body, fetch_ok, extract_count')
+    .eq('scrape_run_id', scrapeRunId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data ?? [])
+    .filter((r) => isPendingDeepRefRow(r))
+    .map((r) => String(r.id))
+    .filter(Boolean)
+}
+
+export async function getDeepRefRowById(
+  sb: SupabaseClient,
+  id: string,
+): Promise<PendingDeepRefRow | null> {
+  const { data, error } = await sb
+    .from('iptv_scrape_deep_refs')
+    .select(
+      'id, post_id, base64, paste_url, paste_body, payload_hash, ref_host, fetch_ok, extract_count',
+    )
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return (data as PendingDeepRefRow | null) ?? null
+}
+
+/** @deprecated Prefer listPendingDeepRefIdsForRun + getDeepRefRowById. */
 export async function listPendingDeepRefsForRun(
   sb: SupabaseClient,
   scrapeRunId: string,
@@ -253,17 +323,9 @@ export async function listPendingDeepRefsForRun(
     .eq('scrape_run_id', scrapeRunId)
     .order('created_at', { ascending: true })
   if (error) throw error
-  return ((data ?? []) as PendingDeepRefRow[]).filter((r) => {
-    const pasteUrl = String(r.paste_url ?? '').trim()
-    const body = r.paste_body
-    const fetchOk = r.fetch_ok
-    const extractCount = Number(r.extract_count ?? 0)
-    // Paste URL collected but not fetched yet.
-    if (pasteUrl && fetchOk == null) return true
-    // Inline body collected; extract not run (fetch_ok still null).
-    if (!pasteUrl && body && fetchOk == null && extractCount === 0) return true
-    return false
-  })
+  return ((data ?? []) as PendingDeepRefRow[]).filter((r) =>
+    isPendingDeepRefRow(r),
+  )
 }
 
 async function upsertCatalogCandidateReturningId(
