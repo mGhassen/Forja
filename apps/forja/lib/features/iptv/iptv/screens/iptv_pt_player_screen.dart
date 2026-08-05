@@ -31,6 +31,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/desktop_pip_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
@@ -281,6 +282,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   DateTime? _pausedAt;
   /// Throttle live-edge snaps after underrun / soft recovery.
   DateTime? _lastLiveJumpAt;
+  /// After [drop-buffers], VideoToolbox often logs a one-shot hw fail while
+  /// re-initing — ignore those so we don't thrash into software decode.
+  DateTime? _ignoreHwDecodeFailUntil;
   final List<int> _backoffMs = const [
     500,
     1000,

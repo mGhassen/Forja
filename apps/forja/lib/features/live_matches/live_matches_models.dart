@@ -893,6 +893,16 @@ String _embedMediaCommandJs(String cmd) {
 /// `video`/`audio` alone is not enough for the iframe wrapper - blank iframes too.
 const _stopEmbedMediaJs = r'''
 (function () {
+  try {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  } catch (e) {}
+  try {
+    if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+  } catch (e) {}
   document.querySelectorAll('video,audio').forEach(function (el) {
     try {
       el.pause();
@@ -936,11 +946,21 @@ const _dblclickFullscreenJs = r'''
 /// successful open keep playing. Same wrapper on **all** platforms including
 /// Android / Android TV — top-level + Referer headers do not set
 /// `document.referrer` the way the lock expects.
-String _buildLiveEmbedWrapperHtml(String embedUrl) {
+/// [allowHtmlFullscreen]: on macOS false — HTML5/WK fullscreen races
+/// `windowManager.setFullScreen` and PAC-traps in `WKFullScreenWindowController`
+/// dealloc (issue 145). Host fullscreen stays on chrome / dblclick.
+String _buildLiveEmbedWrapperHtml(
+  String embedUrl, {
+  bool allowHtmlFullscreen = true,
+}) {
   final safe = embedUrl
       .replaceAll('&', '&amp;')
       .replaceAll('"', '&quot;')
       .replaceAll('<', '&lt;');
+  final allow = allowHtmlFullscreen
+      ? 'autoplay; fullscreen; encrypted-media'
+      : 'autoplay; encrypted-media';
+  final allowFsAttr = allowHtmlFullscreen ? ' allowfullscreen' : '';
   return '''<!doctype html>
 <html><head>
 <meta charset="utf-8">
@@ -951,7 +971,7 @@ html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
 iframe{border:0;width:100%;height:100%;display:block}
 </style>
 </head><body>
-<iframe id="p" src="$safe" allow="autoplay; fullscreen; encrypted-media" allowfullscreen referrerpolicy="unsafe-url"></iframe>
+<iframe id="p" src="$safe" allow="$allow"$allowFsAttr referrerpolicy="unsafe-url"></iframe>
 <script>
 (function () {
   function ready() {

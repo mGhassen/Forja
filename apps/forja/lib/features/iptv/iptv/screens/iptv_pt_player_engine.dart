@@ -623,6 +623,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           (text.contains('hardware accelerator failed') ||
               text.contains('vt decoder cb') ||
               text.contains('output image buffer is null'))) {
+        final until = _s._ignoreHwDecodeFailUntil;
+        if (until != null && DateTime.now().isBefore(until)) {
+          debugPrint(
+            '[IPTV Player] ignoring transient hw fail after live-edge snap',
+          );
+          return;
+        }
         debugPrint('[IPTV Player] hw decode failed - falling back to software');
         unawaited(_forceSoftwareDecode());
         return;
@@ -731,8 +738,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   }
 
   /// Best-effort jump to the live edge after open / underrun / pause-resume.
-  /// Always drops demuxer backlog on mid-stream recovery (kills silent ~15s
-  /// replay). Seek only when [_s._streamSeekable] — pure MPEG-TS rejects seek.
+  /// Seekable: seek only. Mid-stream [drop-buffers] re-inits VideoToolbox /
+  /// MediaCodec and often trips "hardware accelerator failed" → software
+  /// decode on UHD after a few good seconds. Non-seekable pure-TS still
+  /// drops demuxer backlog (only way to kill silent ~15s replay).
   void _scheduleJumpToLive({String reason = 'open'}) {
     if (_s._exoBackend || !_currentSourceIsLive) return;
     // Fresh open: only snap when there's a DVR window. drop-buffers on a
@@ -752,13 +761,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         if (p is! NativePlayer) return;
 
         debugPrint('[IPTV Player] live-edge snap ($reason)');
-        // Mid-stream / seekable open: drop stale cache so we don't resume
-        // mid-window. Skip the drop on non-seekable open (handled above).
-        if (reason != 'open' || _s._streamSeekable) {
-          await p.command(['drop-buffers']);
-        }
         if (_s._streamSeekable) {
           await p.command(['seek', '99999', 'absolute']);
+        } else if (reason != 'open') {
+          _s._ignoreHwDecodeFailUntil =
+              DateTime.now().add(const Duration(seconds: 3));
+          await p.command(['drop-buffers']);
         }
         if (_s._userPlayWhenReady && !_s._playing) {
           await _enginePlay();

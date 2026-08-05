@@ -1,16 +1,11 @@
 // Cross-platform Picture-in-Picture service.
 //
-// Android: real OS PiP via the `floating` package. The Activity manifest
-//          has `android:supportsPictureInPicture="true"` and
-//          `android:resizeableActivity="true"`.
+// Android: real OS PiP via the `floating` package.
 //
 // Desktop (Windows / macOS): media_kit/mpv has no AVKit/WinUI PiP surface, so
-//          we shrink the app window to ~480x270, frameless + always-on-top.
-//          macOS also sets collectionBehavior.canJoinAllSpaces (+ fullScreen
-//          auxiliary) so the window follows Spaces / fullscreen apps.
-//          Toggling off restores the previous bounds and decorations.
-//          While a player is bound, switching Mission Control Space /
-//          Windows virtual desktop auto-enters PiP if playback is active.
+// we shrink to a compact always-on-top window with Safari-like behavior:
+// rounded floating chrome, aspect lock, dock to bottom-right, throw-to-corner
+// snap, and (macOS) AX opt-out so Magnet/Rectangle do not hijack the throw.
 //
 // Linux/iOS: no-op (returns false).
 
@@ -27,6 +22,7 @@ class PipService {
   static final PipService instance = PipService._();
 
   static const _desktopSpaceChannel = EventChannel('forja/desktop_space');
+  static const _desktopPipChannel = MethodChannel('forja/desktop_pip');
 
   // ── Android state ──
   final fp.Floating _floating = fp.Floating();
@@ -36,12 +32,11 @@ class PipService {
   /// Set as soon as auto/manual enter starts so lifecycle pause cannot win
   /// the race against async window chrome changes.
   bool _desktopEnterPending = false;
-  Rect? _savedBounds; // pre-PiP window bounds
+  Rect? _savedBounds;
   bool _savedAlwaysOnTop = false;
   bool _savedVisibleOnAllWorkspaces = false;
   final TitleBarStyle _savedTitleBarStyle = TitleBarStyle.hidden;
 
-  // Broadcasts desktop PiP on/off so the player UI can re-render.
   final StreamController<bool> _desktopController =
       StreamController<bool>.broadcast();
   Stream<bool> get desktopPipChanges => _desktopController.stream;
@@ -59,7 +54,6 @@ class PipService {
 
   bool get isDesktopActive => _desktopActive || _desktopEnterPending;
 
-  /// Enter PiP. Returns true on success.
   Future<bool> enter({
     int width = 16,
     int height = 9,
@@ -83,15 +77,12 @@ class PipService {
     return false;
   }
 
-  /// Leave desktop PiP. Android leaves PiP automatically when the user
-  /// taps the window or fullscreens it; this is a no-op there.
   Future<void> leave() async {
     if (Platform.isWindows || Platform.isMacOS) {
       await _leaveDesktop();
     }
   }
 
-  /// Toggle desktop PiP on/off. On Android just enters (the OS handles exit).
   Future<bool> toggle({int width = 16, int height = 9}) async {
     if (Platform.isWindows || Platform.isMacOS) {
       if (_desktopActive) {
@@ -103,7 +94,6 @@ class PipService {
     return enter(width: width, height: height);
   }
 
-  /// Stream of Android PiP transitions (entered/exited). Empty on desktop.
   Stream<bool> get androidPipChanges {
     if (!Platform.isAndroid) {
       return const Stream<bool>.empty();
@@ -112,8 +102,6 @@ class PipService {
         .map((s) => s == fp.PiPStatus.enabled);
   }
 
-  /// While [token] is bound, Space / virtual-desktop switches that leave the
-  /// Forja window auto-enter desktop PiP when [shouldEnter] is true (playing).
   void bindAutoEnterOnDesktopSwitch({
     required Object token,
     required bool Function() shouldEnter,
@@ -128,6 +116,16 @@ class PipService {
     if (_autoPipToken != token) return;
     _autoPipToken = null;
     _shouldAutoEnterPip = null;
+  }
+
+  /// Safari-style throw: settle to the nearest screen corner.
+  Future<void> snapToNearestCorner() async {
+    if (!_desktopActive) return;
+    try {
+      await _desktopPipChannel.invokeMethod('snapToNearestCorner');
+    } catch (e) {
+      debugPrint('[PipService] snapToNearestCorner failed: $e');
+    }
   }
 
   void _ensureDesktopSpaceWatch() {
@@ -160,6 +158,25 @@ class PipService {
     await _enterDesktop(width: 16, height: 9);
   }
 
+  Future<void> _setNativePipChrome(bool enabled) async {
+    if (!(Platform.isMacOS || Platform.isWindows)) return;
+    try {
+      await _desktopPipChannel.invokeMethod('setEnabled', {
+        'enabled': enabled,
+      });
+    } catch (e) {
+      debugPrint('[PipService] setEnabled failed: $e');
+    }
+  }
+
+  Future<void> _dockBottomRight() async {
+    try {
+      await _desktopPipChannel.invokeMethod('dockBottomRight');
+    } catch (e) {
+      debugPrint('[PipService] dockBottomRight failed: $e');
+    }
+  }
+
   // ── Desktop implementation ─────────────────────────────────────────────
 
   Future<bool> _enterDesktop({required int width, required int height}) async {
@@ -167,7 +184,6 @@ class PipService {
     if (_desktopEnterPending) return true;
     _desktopEnterPending = true;
     try {
-      // Save current state so we can restore.
       final pos = await windowManager.getPosition();
       final size = await windowManager.getSize();
       _savedBounds = Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height);
@@ -177,14 +193,12 @@ class PipService {
             await windowManager.isVisibleOnAllWorkspaces();
       }
 
-      // Pick a reasonable PiP size based on the requested aspect ratio.
-      const pipWidth = 480.0;
-      final pipHeight = pipWidth * height / width;
-
-      // Stay near the user's current top-left so we don't fight a
-      // multi-monitor setup.
-      final dockX = pos.dx;
-      final dockY = pos.dy;
+      // Safari PiP-ish size (~360 wide), locked aspect.
+      const pipWidth = 360.0;
+      final aspect = width / height;
+      final pipHeight = pipWidth / aspect;
+      final maxW = 640.0;
+      final maxH = maxW / aspect;
 
       if (await windowManager.isFullScreen()) {
         await windowManager.setFullScreen(false);
@@ -194,29 +208,44 @@ class PipService {
       }
 
       await windowManager.setResizable(true);
-      await windowManager.setMinimumSize(const Size(240, 135));
+      await windowManager.setMinimumSize(Size(240, 240 / aspect));
+      await windowManager.setMaximumSize(Size(maxW, maxH));
+      await windowManager.setAspectRatio(aspect);
       await windowManager.setSize(Size(pipWidth, pipHeight));
-      await windowManager.setPosition(Offset(dockX, dockY));
+
+      // Native floating chrome (rounded, Magnet opt-out) before dock.
+      await _setNativePipChrome(true);
+
       await windowManager.setAlwaysOnTop(true);
       if (Platform.isMacOS) {
-        // Follow Mission Control Spaces + float over other fullscreen apps.
         await windowManager.setVisibleOnAllWorkspaces(
           true,
           visibleOnFullScreen: true,
         );
       }
-      // Hide the OS title bar / window chrome so only video shows.
+      try {
+        await windowManager.setAsFrameless();
+      } catch (_) {}
+      try {
+        await windowManager.setHasShadow(true);
+      } catch (_) {}
       try {
         await windowManager.setTitleBarStyle(
           TitleBarStyle.hidden,
           windowButtonVisibility: false,
         );
       } catch (_) {}
+
+      // Re-assert native chrome after window_manager style flips.
+      await _setNativePipChrome(true);
+      await _dockBottomRight();
+
       _desktopActive = true;
       _desktopController.add(true);
       return true;
     } catch (e) {
       debugPrint('[PipService] _enterDesktop failed: $e');
+      await _setNativePipChrome(false);
       return false;
     } finally {
       _desktopEnterPending = false;
@@ -226,7 +255,20 @@ class PipService {
   Future<void> _leaveDesktop() async {
     if (!_desktopActive && _savedBounds == null) return;
     try {
-      // Restore window chrome first so the resize/move below feels natural.
+      await _setNativePipChrome(false);
+      try {
+        await windowManager.setAspectRatio(0);
+      } catch (_) {}
+      try {
+        await windowManager.setMaximumSize(Size.infinite);
+      } catch (_) {
+        try {
+          await windowManager.setMaximumSize(const Size(10000, 10000));
+        } catch (_) {}
+      }
+      try {
+        await windowManager.setMinimumSize(const Size(640, 480));
+      } catch (_) {}
       try {
         await windowManager.setTitleBarStyle(
           _savedTitleBarStyle,
@@ -256,7 +298,6 @@ class PipService {
   }
 }
 
-/// Local Rect type - avoid pulling dart:ui.Rect into the service public API.
 class Rect {
   final double left;
   final double top;

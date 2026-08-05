@@ -104,7 +104,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                     ),
                   ),
 
-                // ── PiP revert button (hover-only) ───────────────────────
+                // ── PiP chrome (drag + throw snap + hover controls) ─────
                 if (_s._isPipMode) _buildPipRevertOverlay(),
 
                 if (_s._isLoadingNextEp)
@@ -145,70 +145,24 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
     );
   }
 
-  /// Floating revert button shown only while desktop PiP is active.
-  /// Transparent hover region across the whole window; the button itself
-  /// fades in only when the cursor is over the PiP, so the picture stays
-  /// clean otherwise. Click exits PiP and restores the window chrome.
+  /// Safari-style PiP chrome — throw snaps to corner; hover play + restore.
   Widget _buildPipRevertOverlay() {
-    return MouseRegion(
-      opaque: false,
-      onEnter: (_) {
-        if (mounted && !_s._pipHover) setState(() => _s._pipHover = true);
+    return DesktopPipOverlay(
+      hovering: _s._pipHover,
+      onHoverChanged: (on) {
+        if (!mounted) return;
+        if (_s._pipHover == on) return;
+        setState(() => _s._pipHover = on);
       },
-      onExit: (_) {
-        if (mounted && _s._pipHover) setState(() => _s._pipHover = false);
+      playing: _s._player.state.playing,
+      onTogglePlay: () {
+        if (_s._player.state.playing) {
+          unawaited(_s._player.pause());
+        } else {
+          unawaited(_s._player.play());
+        }
+        setState(() {});
       },
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Full-window drag handle so the user can click+drag the
-          // frameless PiP window around the desktop. DragToMoveArea
-          // listens for primary-button drags and forwards them to the
-          // OS via window_manager.
-          const Positioned.fill(
-            child: DragToMoveArea(child: SizedBox.expand()),
-          ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: AnimatedOpacity(
-              opacity: _s._pipHover ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 180),
-              child: IgnorePointer(
-                ignoring: !_s._pipHover,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () async {
-                      await PipService.instance.leave();
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.55),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.picture_in_picture_alt_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

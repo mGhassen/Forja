@@ -29,6 +29,8 @@ bool FlutterWindow::OnCreate() {
 
   desktop_space_channel_ = DesktopSpaceChannel::Register(
       flutter_controller_->engine()->messenger(), GetHandle());
+  desktop_pip_channel_ = DesktopPipChannel::Register(
+      flutter_controller_->engine()->messenger(), GetHandle());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -43,6 +45,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  desktop_pip_channel_.reset();
   desktop_space_channel_.reset();
   if (flutter_controller_) {
     flutter_controller_ = nullptr;

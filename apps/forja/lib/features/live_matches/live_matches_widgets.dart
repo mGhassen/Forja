@@ -1211,13 +1211,20 @@ class _LiveMatchesEmbedPlayerScreenState
       // Streamed (and desktop/iOS): catalog iframe wrapper.
       _initialUrlRequest = null;
       _initialData = InAppWebViewInitialData(
-        data: _buildLiveEmbedWrapperHtml(embedUrl),
+        data: _buildLiveEmbedWrapperHtml(
+          embedUrl,
+          // macOS: block HTML5/WK fullscreen — see issue 145.
+          allowHtmlFullscreen: kIsWeb || !Platform.isMacOS,
+        ),
         baseUrl: WebUri(wrapperBase),
         historyUrl: WebUri(wrapperBase),
         mimeType: 'text/html',
         encoding: 'utf-8',
       );
     }
+    // macOS WK HTML5 fullscreen + windowManager.setFullScreen PAC-traps
+    // (WKFullScreenWindowController dealloc / beganEnterFullScreen).
+    final allowHtmlFullscreen = kIsWeb || !Platform.isMacOS;
     _initialSettings = InAppWebViewSettings(
       userAgent: _ua['User-Agent'],
       domStorageEnabled: true,
@@ -1228,8 +1235,10 @@ class _LiveMatchesEmbedPlayerScreenState
       allowsAirPlayForMediaPlayback: true,
       // PiP can keep OS media sessions alive after the Flutter route pops.
       allowsPictureInPictureMediaPlayback: false,
-      iframeAllow: 'autoplay; fullscreen; encrypted-media',
-      iframeAllowFullscreen: true,
+      iframeAllow: allowHtmlFullscreen
+          ? 'autoplay; fullscreen; encrypted-media'
+          : 'autoplay; encrypted-media',
+      iframeAllowFullscreen: allowHtmlFullscreen,
       useShouldOverrideUrlLoading: true,
       useOnLoadResource: _androidNativeHandoff,
       useShouldInterceptRequest: _androidNativeHandoff,
@@ -2397,8 +2406,27 @@ class _LiveMatchesEmbedPlayerScreenState
                             (_) => _focusTvChrome(preferPlay: true),
                           );
                         },
-                        onEnterFullscreen: (_) => unawaited(_enterFullscreen()),
-                        onExitFullscreen: (_) => unawaited(_exitFullscreen()),
+                        onEnterFullscreen: (_) {
+                          // Desktop host fullscreen is chrome / dblclick only.
+                          // Driving windowManager from WK HTML5 fullscreen races
+                          // WKFullScreenWindowController (issue 145 SIGTRAP).
+                          if (DesktopWindowChrome.isDesktop) {
+                            if (mounted) {
+                              setState(() => _isFullscreen = true);
+                            }
+                            return;
+                          }
+                          unawaited(_enterFullscreen());
+                        },
+                        onExitFullscreen: (_) {
+                          if (DesktopWindowChrome.isDesktop) {
+                            if (mounted) {
+                              setState(() => _isFullscreen = false);
+                            }
+                            return;
+                          }
+                          unawaited(_exitFullscreen());
+                        },
                         onCreateWindow: (_, action) async {
                           // Keep a single hidden child; ignore extra ad spawns.
                           if (!mounted || _adWindowId != null) return false;

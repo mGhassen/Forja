@@ -496,66 +496,26 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   double _topBarLeftPadding(BuildContext context) => 16;
 
-  /// Floating revert button shown only while desktop PiP is active.
-  /// Transparent hover region across the whole window; the button itself
-  /// fades in only when the cursor is over the PiP, so the picture stays
-  /// clean otherwise. Click exits PiP and restores the window chrome.
+  /// Safari-style PiP chrome — throw snaps to corner; hover play + restore.
   Widget _buildPipRevertOverlay() {
-    return MouseRegion(
-      opaque: false,
-      onEnter: (_) {
-        if (mounted && !_s._pipHover) setState(() => _s._pipHover = true);
+    return DesktopPipOverlay(
+      hovering: _s._pipHover,
+      onHoverChanged: (on) {
+        if (!mounted) return;
+        if (_s._pipHover == on) return;
+        setState(() => _s._pipHover = on);
       },
-      onExit: (_) {
-        if (mounted && _s._pipHover) setState(() => _s._pipHover = false);
+      playing: _s._playing,
+      onTogglePlay: () {
+        if (_s._playing) {
+          _s._userPlayWhenReady = false;
+          unawaited(_s._enginePause());
+        } else {
+          _s._userPlayWhenReady = true;
+          unawaited(_s._enginePlay());
+        }
+        setState(() {});
       },
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          const Positioned.fill(
-            child: DragToMoveArea(child: SizedBox.expand()),
-          ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: AnimatedOpacity(
-              opacity: _s._pipHover ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 180),
-              child: IgnorePointer(
-                ignoring: !_s._pipHover,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () async {
-                      await PipService.instance.leave();
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.55),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.picture_in_picture_alt_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

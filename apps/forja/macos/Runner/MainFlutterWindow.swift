@@ -13,6 +13,7 @@ class MainFlutterWindow: NSWindow {
     flutterViewController.configureNavigationChannel()
     registerExternalPlayerChannel(flutterViewController)
     registerDesktopSpaceChannel(flutterViewController)
+    registerDesktopPipChannel(flutterViewController, window: self)
     if let appDelegate = NSApp.delegate as? AppDelegate {
       appDelegate.configureShellChannel(with: flutterViewController)
     }
