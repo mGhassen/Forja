@@ -25,6 +25,8 @@ class SettingsPlaybackSnapshot {
     required this.avoidUnsupportedAudio,
     required this.autoNextEpisode,
     required this.autoSkipIntro,
+    required this.autoPipOnDesktopSwitch,
+    required this.playInBackground,
     required this.iptvEpgEnabled,
     required this.iptvLiveMaxHeightLabel,
     required this.maxPlaybackHeightLabel,
@@ -43,6 +45,8 @@ class SettingsPlaybackSnapshot {
   final bool avoidUnsupportedAudio;
   final bool autoNextEpisode;
   final bool autoSkipIntro;
+  final bool autoPipOnDesktopSwitch;
+  final bool playInBackground;
   final bool iptvEpgEnabled;
   final String iptvLiveMaxHeightLabel;
   final String maxPlaybackHeightLabel;
@@ -61,6 +65,8 @@ class SettingsPlaybackSnapshot {
     bool? avoidUnsupportedAudio,
     bool? autoNextEpisode,
     bool? autoSkipIntro,
+    bool? autoPipOnDesktopSwitch,
+    bool? playInBackground,
     bool? iptvEpgEnabled,
     String? iptvLiveMaxHeightLabel,
     String? maxPlaybackHeightLabel,
@@ -82,6 +88,9 @@ class SettingsPlaybackSnapshot {
           avoidUnsupportedAudio ?? this.avoidUnsupportedAudio,
       autoNextEpisode: autoNextEpisode ?? this.autoNextEpisode,
       autoSkipIntro: autoSkipIntro ?? this.autoSkipIntro,
+      autoPipOnDesktopSwitch:
+          autoPipOnDesktopSwitch ?? this.autoPipOnDesktopSwitch,
+      playInBackground: playInBackground ?? this.playInBackground,
       iptvEpgEnabled: iptvEpgEnabled ?? this.iptvEpgEnabled,
       iptvLiveMaxHeightLabel:
           iptvLiveMaxHeightLabel ?? this.iptvLiveMaxHeightLabel,
@@ -126,6 +135,8 @@ class SettingsPlaybackNotifier
       avoidUnsupportedAudio: await s.getAvoidUnsupportedAudio(),
       autoNextEpisode: await s.getAutoNextEpisode(),
       autoSkipIntro: await s.getAutoSkipIntro(),
+      autoPipOnDesktopSwitch: await s.getAutoPipOnDesktopSwitch(),
+      playInBackground: await s.getPlayInBackground(),
       iptvEpgEnabled: iptvEpgEnabled,
       iptvLiveMaxHeightLabel: SettingsService.iptvLiveMaxHeightLabel(
         await s.getIptvLiveMaxHeight(),

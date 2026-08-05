@@ -13,26 +13,27 @@ Forja supports picture-in-picture in the **movie player** and the **IPTV player*
 ## How to open it
 
 - Use the **PiP** button in the player top-right (movie player or IPTV), next to **Player**. Availability is platform-gated (Android phone/tablet, Windows, macOS). **Android TV** does not show Cast or PiP — only **Player**.
-- **Desktop auto PiP** — while video is playing, switching Mission Control Space (macOS) enters PiP automatically and the window follows you across Spaces. On Windows, switching virtual desktop also enters PiP (the compact window stays on the desktop you left — OS limit). Exit with the hover restore control.
+- **Desktop auto PiP** (opt-in) — enable **Settings → Playback → Auto picture-in-picture**. While video is playing, switching Mission Control Space (macOS) enters PiP automatically and the window follows you across Spaces. On Windows, switching virtual desktop also enters PiP (the compact window stays on the desktop you left — OS limit). Off by default. Exit with the hover restore control.
 
 ## What you can do
 
 - Shrink video to a corner overlay while playback continues
 - Drag freely anywhere on screen
 - Hover: play/pause or restore full player
-- Continue audio/video while PiP is active (Android phone/tablet or desktop). Leaving Forja for another full-screen app **without** PiP pauses the main player so audio does not keep playing under that app.
+- Continue audio/video while PiP is active (Android phone/tablet or desktop). Leaving Forja for another full-screen app **without** PiP pauses the main player by default so audio does not keep playing under that app — turn on **Settings → Playback → Play in background** to keep going without PiP
 - On macOS, switch Mission Control Spaces and keep watching in the same floating window (auto or manual PiP)
 
 ## Tips
 
 - PiP availability depends on Android version and OEM behavior
 - Desktop PiP is Forja’s own compact window (not Apple/Windows system media PiP) — required because playback uses media_kit/mpv. Title-bar chrome is applied by the native PiP channel, not by flipping window_manager title-bar style after the window is borderless
-- Auto PiP only fires when playback is actually playing (paused video stays on the Space you left)
+- Auto PiP only fires when the setting is on and playback is actually playing (paused video stays on the Space you left)
 - Linux, iOS, and Android TV do not show the PiP button
 - Controls and channel guide hide while IPTV PiP is active
 
 ## Related
 
 - [Player](player.md)
+- [Playback settings](../settings/playback-settings.md)
 - [IPTV — Xtream](../live/iptv-xtream.md)
 - [Platforms](../getting-started/platforms.md)

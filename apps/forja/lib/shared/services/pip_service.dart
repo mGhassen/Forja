@@ -19,6 +19,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:floating/floating.dart' as fp;
+import 'package:rust/rust.dart';
 import 'package:window_manager/window_manager.dart';
 
 class PipService {
@@ -58,7 +59,10 @@ class PipService {
   bool get isDesktopActive => _desktopActive || _desktopEnterPending;
 
   /// Player bound for Space-switch auto-PiP — lifecycle must not pause.
-  bool get autoPipArmed => _shouldAutoEnterPip != null;
+  /// Also requires Settings → Auto picture-in-picture.
+  bool get autoPipArmed =>
+      _shouldAutoEnterPip != null &&
+      SettingsService.autoPipOnDesktopSwitchNotifier.value;
 
   Future<bool> enter({
     int width = 16,
@@ -128,6 +132,7 @@ class PipService {
   /// synchronously so a concurrent pause check sees [isDesktopActive].
   Future<void> enterInsteadOfPause({int width = 16, int height = 9}) async {
     if (_desktopActive || _desktopEnterPending) return;
+    if (!SettingsService.autoPipOnDesktopSwitchNotifier.value) return;
     final check = _shouldAutoEnterPip;
     if (check != null && !check()) return;
     await _enterDesktop(width: width, height: height);
@@ -147,6 +152,7 @@ class PipService {
 
   Future<void> _onDesktopSpaceEvent(dynamic event) async {
     if (_desktopActive || _desktopEnterPending) return;
+    if (!SettingsService.autoPipOnDesktopSwitchNotifier.value) return;
     final shouldEnter = _shouldAutoEnterPip;
     if (shouldEnter == null) return;
 

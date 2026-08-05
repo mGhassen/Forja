@@ -80,6 +80,10 @@ class SettingsService {
   static const String _autoNextEpisodeKey = 'auto_next_episode';
   static const String _legacyAutoNextKey = 'forja_auto_next';
   static const String _autoSkipIntroKey = 'auto_skip_intro';
+  /// Desktop Space / virtual-desktop switch → enter PiP (default off).
+  static const String _autoPipOnDesktopSwitchKey = 'auto_pip_on_desktop_switch';
+  /// Keep VOD/IPTV playing when the app leaves the foreground (default off).
+  static const String _playInBackgroundKey = 'play_in_background';
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
   /// IPTV live Exo only: 0 = full portal quality (default). Never auto-cap.
   static const String _iptvLiveMaxHeightKey = 'iptv_live_max_height';
@@ -144,6 +148,10 @@ class SettingsService {
   static final ValueNotifier<bool> autoSkipIntroNotifier = ValueNotifier<bool>(
     false,
   );
+  static final ValueNotifier<bool> autoPipOnDesktopSwitchNotifier =
+      ValueNotifier<bool>(false);
+  static final ValueNotifier<bool> playInBackgroundNotifier =
+      ValueNotifier<bool>(false);
 
   Future<String> getPreferredAudioLanguage() async =>
       await kvGetString(_preferredAudioLangKey) ?? 'None';
@@ -220,6 +228,34 @@ class SettingsService {
   Future<void> setAutoSkipIntro(bool v) async {
     await kvSetBool(_autoSkipIntroKey, v);
     autoSkipIntroNotifier.value = v;
+  }
+
+  /// When on (desktop), Space / virtual-desktop switch auto-enters PiP.
+  Future<bool> getAutoPipOnDesktopSwitch() async {
+    final v = await kvGetBool(_autoPipOnDesktopSwitchKey, fallback: false);
+    if (autoPipOnDesktopSwitchNotifier.value != v) {
+      autoPipOnDesktopSwitchNotifier.value = v;
+    }
+    return v;
+  }
+
+  Future<void> setAutoPipOnDesktopSwitch(bool v) async {
+    await kvSetBool(_autoPipOnDesktopSwitchKey, v);
+    autoPipOnDesktopSwitchNotifier.value = v;
+  }
+
+  /// When on, VOD/IPTV keep playing after the app leaves the foreground.
+  Future<bool> getPlayInBackground() async {
+    final v = await kvGetBool(_playInBackgroundKey, fallback: false);
+    if (playInBackgroundNotifier.value != v) {
+      playInBackgroundNotifier.value = v;
+    }
+    return v;
+  }
+
+  Future<void> setPlayInBackground(bool v) async {
+    await kvSetBool(_playInBackgroundKey, v);
+    playInBackgroundNotifier.value = v;
   }
 
   Future<bool> getPlayerWebViewUseEmbed() async {

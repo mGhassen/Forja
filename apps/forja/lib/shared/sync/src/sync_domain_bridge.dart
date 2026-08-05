@@ -704,6 +704,8 @@ class SyncDomainBridge {
       'avoid_unsupported_audio': await _settings.getAvoidUnsupportedAudio(),
       'auto_next_episode': await _settings.getAutoNextEpisode(),
       'auto_skip_intro': await _settings.getAutoSkipIntro(),
+      'auto_pip_on_desktop_switch': await _settings.getAutoPipOnDesktopSwitch(),
+      'play_in_background': await _settings.getPlayInBackground(),
       'iptv_epg_enabled': await _settings.isIptvEpgEnabled(),
       'max_playback_height': await _settings.getMaxPlaybackHeight(),
       'anime_title_language': await _settings.getAnimeTitleLanguage(),
@@ -756,6 +758,16 @@ class SyncDomainBridge {
     }
     if (payload.containsKey('auto_skip_intro')) {
       await _settings.setAutoSkipIntro(payload['auto_skip_intro'] as bool);
+    }
+    if (payload.containsKey('auto_pip_on_desktop_switch')) {
+      await _settings.setAutoPipOnDesktopSwitch(
+        payload['auto_pip_on_desktop_switch'] as bool,
+      );
+    }
+    if (payload.containsKey('play_in_background')) {
+      await _settings.setPlayInBackground(
+        payload['play_in_background'] as bool,
+      );
     }
     if (payload.containsKey('iptv_epg_enabled')) {
       await _settings.setIptvEpgEnabled(payload['iptv_epg_enabled'] as bool);

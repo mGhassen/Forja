@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
@@ -226,6 +227,33 @@ class _SettingsPlaybackSectionState
                 },
               ),
             ],
+            settingsFocusableToggle(
+              context,
+              'Play in background',
+              'Keep movies, series, and IPTV playing when Forja leaves the foreground (another app, Home, or Space switch without PiP). Off by default.',
+              snap.playInBackground,
+              (val) async {
+                await _settings.setPlayInBackground(val);
+                await _playback.patch(
+                  (s) => s.copyWith(playInBackground: val),
+                );
+                schedulePreferencesSyncPush();
+              },
+            ),
+            if (!kIsWeb && (Platform.isMacOS || Platform.isWindows))
+              settingsFocusableToggle(
+                context,
+                'Auto picture-in-picture',
+                'On Space (macOS) or virtual-desktop (Windows) switch while playing, shrink into PiP automatically. Off by default — use the player PiP button anytime.',
+                snap.autoPipOnDesktopSwitch,
+                (val) async {
+                  await _settings.setAutoPipOnDesktopSwitch(val);
+                  await _playback.patch(
+                    (s) => s.copyWith(autoPipOnDesktopSwitch: val),
+                  );
+                  schedulePreferencesSyncPush();
+                },
+              ),
             if (widget.visibility.showIptvSettings) ...[
               settingsFocusableToggle(
                 context,
