@@ -10,6 +10,8 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/sync/sync.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr.
 class SettingsProvidersSection extends ConsumerStatefulWidget {
@@ -149,7 +151,7 @@ class _SettingsProvidersSectionState
     }
   }
 
-  void _removeAddon(String baseUrl) async {
+  Future<void> _removeAddon(String baseUrl) async {
     await _settings.removeStremioAddon(baseUrl);
     scheduleStremioSyncPush();
     if (mounted) ForjaToast.success('Addon removed');
@@ -206,7 +208,7 @@ class _SettingsProvidersSectionState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _FlatListRow(
+                    _AddonRemoveRow(
                       leading: icon.isNotEmpty
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(4),
@@ -328,19 +330,9 @@ class _SettingsProvidersSectionState
                     ),
                     trailing: builtIn
                         ? null
-                        : ExcludeFocus(
-                            excluding: ShellScope.inputPolicyOf(context)
-                                .useFocusableMoodChips,
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                color: Color(0xFFF87171),
-                                size: 20,
-                              ),
-                              onPressed: () =>
-                                  _removeNuvioAddon(addon.manifestUrl),
-                              tooltip: 'Remove addon',
-                            ),
+                        : _AddonRemoveActions(
+                            onRemove: () =>
+                                _removeNuvioAddon(addon.manifestUrl),
                           ),
                     children: addon.scrapers.map((s) {
                       final subtitle = [
@@ -729,9 +721,9 @@ class _MiniLabel extends StatelessWidget {
   }
 }
 
-/// Flat installed-item row with a leading widget and a remove button.
-class _FlatListRow extends StatelessWidget {
-  const _FlatListRow({
+/// Installed addon row — trash opens inline Yes/No (portal-style).
+class _AddonRemoveRow extends StatefulWidget {
+  const _AddonRemoveRow({
     required this.leading,
     required this.title,
     required this.subtitle,
@@ -741,20 +733,155 @@ class _FlatListRow extends StatelessWidget {
   final Widget leading;
   final String title;
   final String subtitle;
-  final VoidCallback onRemove;
+  final Future<void> Function() onRemove;
+
+  @override
+  State<_AddonRemoveRow> createState() => _AddonRemoveRowState();
+}
+
+class _AddonRemoveRowState extends State<_AddonRemoveRow> {
+  bool _confirming = false;
 
   @override
   Widget build(BuildContext context) {
-    return SettingsActionRow(
-      title: title,
-      subtitle: subtitle,
-      leading: leading,
-      trailing: const Icon(
-        Icons.delete_outline,
-        color: Color(0xFFF87171),
-        size: 20,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+      child: Row(
+        children: [
+          widget.leading,
+          const SizedBox(width: 12),
+          Expanded(
+            child: _confirming
+                ? const Text(
+                    'Remove this addon?',
+                    style: TextStyle(
+                      color: Color(0xFFF87171),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: ForjaShellColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.subtitle,
+                        style: const TextStyle(
+                          color: ForjaShellColors.textSecondary,
+                          fontSize: 12.5,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          _AddonRemoveActions(
+            confirming: _confirming,
+            onConfirmingChanged: (v) => setState(() => _confirming = v),
+            onRemove: widget.onRemove,
+          ),
+        ],
       ),
-      onTap: onRemove,
+    );
+  }
+}
+
+/// Trash → Yes/No in place (same pattern as IPTV portal delete).
+class _AddonRemoveActions extends StatefulWidget {
+  const _AddonRemoveActions({
+    required this.onRemove,
+    this.confirming,
+    this.onConfirmingChanged,
+  });
+
+  final Future<void> Function() onRemove;
+  final bool? confirming;
+  final ValueChanged<bool>? onConfirmingChanged;
+
+  @override
+  State<_AddonRemoveActions> createState() => _AddonRemoveActionsState();
+}
+
+class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
+  bool _localConfirming = false;
+
+  bool get _confirming => widget.confirming ?? _localConfirming;
+
+  void _setConfirming(bool value) {
+    if (widget.onConfirmingChanged != null) {
+      widget.onConfirmingChanged!(value);
+    } else {
+      setState(() => _localConfirming = value);
+    }
+  }
+
+  Future<void> _confirm() async {
+    _setConfirming(false);
+    await widget.onRemove();
+  }
+
+  Widget _action({
+    required String tooltip,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final child = Icon(icon, color: color, size: 20);
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      return shellFocusableTap(
+        context: context,
+        onTap: onTap,
+        borderRadius: 8,
+        scaleOnFocus: 1.0,
+        showFocusBorder: true,
+        showFocusFill: true,
+        tvTabId: 'settings',
+        tvZone: ShellTvZone.settings,
+        child: SizedBox(width: 40, height: 40, child: Center(child: child)),
+      );
+    }
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onTap,
+      icon: child,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_confirming) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _action(
+            tooltip: 'Yes',
+            icon: Icons.check_rounded,
+            color: const Color(0xFFEF4444),
+            onTap: () => unawaited(_confirm()),
+          ),
+          _action(
+            tooltip: 'No',
+            icon: Icons.close_rounded,
+            color: ForjaShellColors.iconMuted,
+            onTap: () => _setConfirming(false),
+          ),
+        ],
+      );
+    }
+    return _action(
+      tooltip: 'Remove addon',
+      icon: Icons.delete_outline,
+      color: const Color(0xFFF87171),
+      onTap: () => _setConfirming(true),
     );
   }
 }

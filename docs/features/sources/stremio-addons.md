@@ -23,7 +23,7 @@ Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highf
 
 - Paste a manifest URL and install
 - Toggle **Sources** / **Live Matches** per addon (at least one stays on)
-- View installed addons and remove them
+- View installed addons and remove them (trash → Yes / No confirm, same as IPTV portal delete)
 - Browse catalogs ([Stremio catalog](../movies-tv/stremio-catalog.md)) when targeting Sources
 - Search addon content ([Search](../movies-tv/search.md))
 - Play addon streams from [Media details](../movies-tv/media-details.md) — Sources → **Stremio** shows one chip per Sources-targeted addon that declares a `stream` resource

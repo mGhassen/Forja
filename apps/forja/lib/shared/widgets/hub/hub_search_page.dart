@@ -1033,7 +1033,6 @@ class _HubSearchPageState extends State<HubSearchPage> {
                 result: item,
                 selected: index == _gridFocusedIndex,
                 gridIndex: index,
-                onTap: () => setState(() => _gridFocusedIndex = index),
                 onOpen: () => widget.onOpen(item),
                 onLeftEdge: firstColumn && tvFocus
                     ? () => _focusHelperAtVisualLevelFromGrid(index)
@@ -1125,11 +1124,10 @@ class _HubSearchPageState extends State<HubSearchPage> {
   }
 }
 
-class _HubSearchFilmCard extends StatefulWidget {
+class _HubSearchFilmCard extends StatelessWidget {
   const _HubSearchFilmCard({
     required this.result,
     required this.selected,
-    required this.onTap,
     required this.onOpen,
     this.onFocusChange,
     this.onLeftEdge,
@@ -1139,7 +1137,6 @@ class _HubSearchFilmCard extends StatefulWidget {
 
   final HubSearchResult result;
   final bool selected;
-  final VoidCallback onTap;
   final VoidCallback onOpen;
   final ValueChanged<bool>? onFocusChange;
   final VoidCallback? onLeftEdge;
@@ -1147,84 +1144,57 @@ class _HubSearchFilmCard extends StatefulWidget {
   final int? gridIndex;
 
   @override
-  State<_HubSearchFilmCard> createState() => _HubSearchFilmCardState();
-}
-
-class _HubSearchFilmCardState extends State<_HubSearchFilmCard> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final titleSize = shellHubCardTitleFontSize(context);
-    final tvActivateOpens =
-        ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final grid = TvGridScope.maybeOf(context);
-    final index = widget.gridIndex;
+    final index = gridIndex;
     final meta = index != null ? grid?.metaFor(index) : null;
 
     return shellFocusableTap(
       context: context,
-      onTap: tvActivateOpens ? widget.onOpen : widget.onTap,
+      onTap: onOpen,
       borderRadius: 14,
       showFocusBorder: true,
-      onLeftEdge: widget.onLeftEdge,
-      onUpEdge: widget.onUpEdge,
+      onLeftEdge: onLeftEdge,
+      onUpEdge: onUpEdge,
       gridIndex: meta?.gridIndex ?? index,
       gridColumns: meta?.gridColumns,
       tvTabId: meta?.tvTabId,
       tvRowId: meta?.tvRowId,
       tvZone: meta?.tvZone ?? ShellTvZone.grid,
       tvItemIndex: meta?.tvItemIndex ?? index,
-      onFocusChange: widget.onFocusChange,
-      onHoverChange: (hovered) => setState(() => _hovered = hovered),
-      child: GestureDetector(
-        onDoubleTap: widget.onOpen,
-        child: SizedBox.expand(
-          child: AnimatedContainer(
-            duration: ShellTokens.navSelectionAnimation,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: widget.selected
-                  ? Border.all(color: Colors.white, width: 2)
-                  : null,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(
-                    alpha: widget.selected ? 0.65 : 0.5,
-                  ),
-                  blurRadius: widget.selected ? 20 : 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ColoredBox(
-                    color: AppTheme.bgDark,
-                    child: widget.result.posterUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: widget.result.posterUrl,
-                            fit: BoxFit.cover,
-                            filterQuality: FilterQuality.medium,
-                            placeholder: (_, _) =>
-                                ColoredBox(color: AppTheme.bgDark),
-                            errorWidget: (_, _, _) => Center(
-                              child: Text(
-                                widget.result.title,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.white24,
-                                ),
-                              ),
-                            ),
-                          )
-                        : Center(
+      onFocusChange: onFocusChange,
+      child: SizedBox.expand(
+        child: AnimatedContainer(
+          duration: ShellTokens.navSelectionAnimation,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: selected ? Border.all(color: Colors.white, width: 2) : null,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: selected ? 0.65 : 0.5),
+                blurRadius: selected ? 20 : 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ColoredBox(
+                  color: AppTheme.bgDark,
+                  child: result.posterUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: result.posterUrl,
+                          fit: BoxFit.cover,
+                          filterQuality: FilterQuality.medium,
+                          placeholder: (_, _) =>
+                              ColoredBox(color: AppTheme.bgDark),
+                          errorWidget: (_, _, _) => Center(
                             child: Text(
-                              widget.result.title,
+                              result.title,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 10,
@@ -1232,129 +1202,104 @@ class _HubSearchFilmCardState extends State<_HubSearchFilmCard> {
                               ),
                             ),
                           ),
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.7),
-                          Colors.black.withValues(alpha: 0.95),
-                        ],
-                        stops: const [0.0, 0.45, 0.8, 1.0],
-                      ),
-                    ),
-                  ),
-                  if (_hovered)
-                    Positioned.fill(
-                      child: ColoredBox(
-                        color: Colors.black.withValues(alpha: 0.35),
-                        child: Center(
-                          child: Material(
-                            color: Colors.transparent,
-                            shape: const CircleBorder(),
-                            clipBehavior: Clip.antiAlias,
-                            child: InkWell(
-                              customBorder: const CircleBorder(),
-                              hoverColor: ForjaShellColors.inkHover,
-                              splashColor: ForjaShellColors.inkSplash,
-                              highlightColor: ForjaShellColors.inkSplash,
-                              onTap: widget.onOpen,
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.55),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.2),
-                                  ),
-                                ),
-                                child: const Icon(
-                                  Icons.info_outline_rounded,
-                                  color: Colors.white,
-                                  size: 28,
-                                ),
-                              ),
+                        )
+                      : Center(
+                          child: Text(
+                            result.title,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.white24,
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  if (widget.result.rating != null)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.55),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.08),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 12,
-                              color: Colors.amber,
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              widget.result.rating!.toStringAsFixed(1),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  Positioned(
-                    bottom: 10,
-                    left: 10,
-                    right: 10,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.result.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: titleSize,
-                            height: 1.2,
-                          ),
-                        ),
-                        if (widget.result.subtitle != null &&
-                            widget.result.subtitle!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.result.subtitle!,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.7),
+                        Colors.black.withValues(alpha: 0.95),
                       ],
+                      stops: const [0.0, 0.45, 0.8, 1.0],
                     ),
                   ),
-                ],
-              ),
+                ),
+                if (result.rating != null)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 12,
+                            color: Colors.amber,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            result.rating!.toStringAsFixed(1),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  bottom: 10,
+                  left: 10,
+                  right: 10,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        result.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: titleSize,
+                          height: 1.2,
+                        ),
+                      ),
+                      if (result.subtitle != null &&
+                          result.subtitle!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          result.subtitle!,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),

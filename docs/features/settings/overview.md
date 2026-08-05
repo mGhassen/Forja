@@ -44,7 +44,10 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   and buttons by on-screen position — D-pad stays in the right pane. **Back** returns to the selected
   category, then first category, then the nav rail. **←** on the first category
   also returns to the nav rail. **OK** in the detail pane flips a toggle /
-  cycles a dropdown; nested switches do not steal focus
+  cycles a dropdown; nested switches do not steal focus. Text fields
+  (API keys, URLs, etc.) take **focus** with the D-pad without opening the
+  keyboard — press **OK** to type; **Back** leaves typing and keeps the field
+  focused
 - Theme / appearance picker is not shipped yet — see [Appearance](appearance.md)
 
 ## Related

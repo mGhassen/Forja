@@ -93,12 +93,6 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
     });
   }
 
-  void _setGridFocusedIndex(int index) {
-    final count = _flatResults().length;
-    if (count == 0) return;
-    setState(() => _s._gridFocusedIndex = index.clamp(0, count - 1));
-  }
-
   int _helperItemCount() => _s._trendingHelperTitles.length;
 
   void _focusResultCardAt(int index) {

@@ -844,7 +844,11 @@ class SettingsFilledButton extends StatelessWidget {
 }
 
 /// Flat underline text field - no filled box.
-class SettingsTextField extends StatelessWidget {
+///
+/// On Android TV: focus highlights the field; OK/Select opens the keyboard.
+/// Back / focus loss leaves edit mode without losing browse focus highlight
+/// until focus moves elsewhere.
+class SettingsTextField extends StatefulWidget {
   const SettingsTextField({
     super.key,
     required this.controller,
@@ -863,12 +867,117 @@ class SettingsTextField extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
 
   @override
+  State<SettingsTextField> createState() => _SettingsTextFieldState();
+}
+
+class _SettingsTextFieldState extends State<SettingsTextField> {
+  late final FocusNode _focusNode =
+      FocusNode(debugLabel: 'settings-text-field');
+  bool _editing = false;
+
+  bool get _tv => ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+  bool get _browseOnly => _tv && !_editing;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.onKeyEvent = _handleTvKey;
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.onKeyEvent = null;
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus && _editing && mounted) {
+      setState(() => _editing = false);
+    } else if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _beginEditing() {
+    if (!_editing && mounted) setState(() => _editing = true);
+    if (!_focusNode.hasFocus) _focusNode.requestFocus();
+  }
+
+  void _endEditing() {
+    if (_editing && mounted) setState(() => _editing = false);
+  }
+
+  KeyEventResult _handleTvKey(FocusNode node, KeyEvent event) {
+    if (!_tv) return KeyEventResult.ignored;
+
+    if (_browseOnly && shellTvIsActivateKey(event)) {
+      _beginEditing();
+      return KeyEventResult.handled;
+    }
+
+    if (event is KeyDownEvent &&
+        _editing &&
+        (event.logicalKey == LogicalKeyboardKey.escape ||
+            event.logicalKey == LogicalKeyboardKey.goBack)) {
+      _endEditing();
+      return KeyEventResult.handled;
+    }
+
+    final inContain = ShellTvContainDpad.activeOf(context);
+    final inLinear = ShellTvLinearFocusScope.activeOf(context);
+    if (!inContain && !inLinear) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+
+    final key = event.logicalKey;
+    // Editing: ←/→ keep the caret; browse: all arrows move focus.
+    if (!_browseOnly &&
+        (key == LogicalKeyboardKey.arrowLeft ||
+            key == LogicalKeyboardKey.arrowRight)) {
+      return KeyEventResult.ignored;
+    }
+
+    if (inLinear && !ShellTvDisableLinearFocus.activeOf(context)) {
+      return shellTvLinearMenuArrows(context: context, event: event);
+    }
+
+    TraversalDirection? direction;
+    if (key == LogicalKeyboardKey.arrowUp) {
+      direction = TraversalDirection.up;
+    } else if (key == LogicalKeyboardKey.arrowDown) {
+      direction = TraversalDirection.down;
+    } else if (_browseOnly && key == LogicalKeyboardKey.arrowLeft) {
+      direction = TraversalDirection.left;
+    } else if (_browseOnly && key == LogicalKeyboardKey.arrowRight) {
+      direction = TraversalDirection.right;
+    }
+    if (direction != null &&
+        (FocusManager.instance.primaryFocus ?? node)
+            .focusInDirection(direction)) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.handled;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final field = TextField(
-      controller: controller,
-      obscureText: obscureText,
+    final enabled = widget.enabled;
+    return TextField(
+      controller: widget.controller,
+      focusNode: _focusNode,
+      obscureText: widget.obscureText,
       enabled: enabled,
-      onSubmitted: onSubmitted,
+      readOnly: _browseOnly,
+      showCursor: !_browseOnly,
+      enableInteractiveSelection: !_browseOnly,
+      onTap: _tv && !_editing ? _beginEditing : null,
+      onSubmitted: (value) {
+        if (_tv) _endEditing();
+        widget.onSubmitted?.call(value);
+      },
       style: TextStyle(
         color: enabled
             ? ForjaShellColors.textPrimary
@@ -877,8 +986,8 @@ class SettingsTextField extends StatelessWidget {
       ),
       cursorColor: ForjaShellColors.brandGreen,
       decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
+        labelText: widget.label,
+        hintText: widget.hint,
         isDense: true,
         floatingLabelStyle: const TextStyle(color: ForjaShellColors.brandGreen),
         labelStyle: const TextStyle(color: ForjaShellColors.textSecondary),
@@ -898,47 +1007,6 @@ class SettingsTextField extends StatelessWidget {
           borderSide: BorderSide(color: ForjaShellColors.brandGreen, width: 2),
         ),
       ),
-    );
-
-    // TV detail panes: ←/→ keep caret editing; ↑/↓ move spatially among
-    // neighboring controls (contained — not auto Left → nav).
-    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
-      return field;
-    }
-    if (!ShellTvContainDpad.activeOf(context) &&
-        !ShellTvLinearFocusScope.activeOf(context)) {
-      return field;
-    }
-
-    return Focus(
-      canRequestFocus: false,
-      skipTraversal: true,
-      onKeyEvent: (node, event) {
-        if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
-        final key = event.logicalKey;
-        // Keep ←/→ for the caret (EditableText). Move focus only on ↑/↓.
-        if (key == LogicalKeyboardKey.arrowLeft ||
-            key == LogicalKeyboardKey.arrowRight) {
-          return KeyEventResult.ignored;
-        }
-        if (ShellTvLinearFocusScope.activeOf(context) &&
-            !ShellTvDisableLinearFocus.activeOf(context)) {
-          return shellTvLinearMenuArrows(context: context, event: event);
-        }
-        TraversalDirection? direction;
-        if (key == LogicalKeyboardKey.arrowUp) {
-          direction = TraversalDirection.up;
-        } else if (key == LogicalKeyboardKey.arrowDown) {
-          direction = TraversalDirection.down;
-        }
-        if (direction != null &&
-            (FocusManager.instance.primaryFocus ?? node)
-                .focusInDirection(direction)) {
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.handled;
-      },
-      child: field,
     );
   }
 }

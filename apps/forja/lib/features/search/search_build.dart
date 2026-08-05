@@ -375,7 +375,6 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                 result: item,
                 selected: index == _s._gridFocusedIndex,
                 gridIndex: index,
-                onTap: () => _s._setGridFocusedIndex(index),
                 onOpen: () => _s._openResult(item),
                 onLeftEdge: firstColumn && tvFocus
                     ? () => _s._focusHelperAtVisualLevelFromGrid(index)
