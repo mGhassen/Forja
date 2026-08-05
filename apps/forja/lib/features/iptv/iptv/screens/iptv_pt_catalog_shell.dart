@@ -18,66 +18,73 @@ class _IptvCatalogShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Player overlay stays mounted over this shell. Desktop PiP shrinks the
-    // whole window — skip catalog layout so top bar / grids do not assert.
-    if ((Platform.isMacOS || Platform.isWindows) &&
-        PipService.instance.isDesktopActive) {
-      return const ColoredBox(color: Colors.black);
-    }
+    // PiP shrinks the whole window; skip heavy catalog layout in a tiny
+    // frame (avoids top-bar/grid asserts). Key off *size*, not sticky
+    // [PipService.isDesktopActive] — that flag can lag after leave and left
+    // IPTV as a permanent black screen.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final pipSized = (Platform.isMacOS || Platform.isWindows) &&
+            (constraints.maxWidth < 520 || constraints.maxHeight < 400);
+        if (pipSized) {
+          return const ColoredBox(color: Colors.black);
+        }
 
-    return Column(
-      children: [
-        IptvCatalogTopBar(
-          ctrl: ctrl,
-          onTogglePanel: ctrl.togglePortalPanel,
-          onSection: ctrl.requestSection,
-        ),
-        Expanded(
-          child: Stack(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+        return Column(
+          children: [
+            IptvCatalogTopBar(
+              ctrl: ctrl,
+              onTogglePanel: ctrl.togglePortalPanel,
+              onSection: ctrl.requestSection,
+            ),
+            Expanded(
+              child: Stack(
                 children: [
-                  Expanded(
-                    child: _BrowserView(
-                      ctrl: ctrl,
-                      compact: compact,
-                      wide: wide,
-                      embedded: true,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _BrowserView(
+                          ctrl: ctrl,
+                          compact: compact,
+                          wide: wide,
+                          embedded: true,
+                        ),
+                      ),
+                      if (ctrl.portalPanelOpen && _useSidePanel(context))
+                        IptvPortalPanel(
+                          ctrl: ctrl,
+                          width: _panelWidth,
+                          onClose: ctrl.closePortalPanel,
+                        ),
+                    ],
                   ),
-                  if (ctrl.portalPanelOpen && _useSidePanel(context))
-                    IptvPortalPanel(
-                      ctrl: ctrl,
-                      width: _panelWidth,
-                      onClose: ctrl.closePortalPanel,
-                    ),
-                ],
-              ),
-              if (ctrl.portalPanelOpen && !_useSidePanel(context))
-                Positioned.fill(
-                  child: GestureDetector(
-                    onTap: ctrl.closePortalPanel,
-                    child: ColoredBox(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: () {},
-                          child: IptvPortalPanel(
-                            ctrl: ctrl,
-                            width: MediaQuery.sizeOf(context).width * 0.92,
-                            onClose: ctrl.closePortalPanel,
+                  if (ctrl.portalPanelOpen && !_useSidePanel(context))
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: ctrl.closePortalPanel,
+                        child: ColoredBox(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: GestureDetector(
+                              onTap: () {},
+                              child: IptvPortalPanel(
+                                ctrl: ctrl,
+                                width: MediaQuery.sizeOf(context).width * 0.92,
+                                onClose: ctrl.closePortalPanel,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
