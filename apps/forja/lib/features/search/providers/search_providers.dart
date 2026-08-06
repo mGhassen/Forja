@@ -42,18 +42,43 @@ final searchAddonProvidersProvider =
   return providers.values.toList();
 });
 
-/// Trending titles for empty-state helper chips.
+/// Large title pool for empty-state helpers (UI takes ≤16 after recent exclude).
 final searchTrendingTitlesProvider =
     FutureProvider.autoDispose<List<String>>((ref) async {
   final api = TmdbApi();
   try {
-    final movies = await api.getTrending();
-    final shows = await api.getTrendingTv();
+    final lists = await Future.wait([
+      api.getTrending(),
+      api.getTrendingTv(),
+      api.getPopular(),
+      api.getPopularTv(),
+      api.getNowPlaying(),
+      api.getOnTheAir(),
+      api.getTopRated(),
+    ]);
+
+    // Round-robin across feeds so later picks stay varied (not one list's tail).
+    final queues = [
+      for (final list in lists) List<Movie>.from(list),
+    ];
     final titles = <String>[];
-    for (final item in [...movies, ...shows]) {
-      if (item.title.isEmpty || titles.contains(item.title)) continue;
-      titles.add(item.title);
-      if (titles.length >= 12) break;
+    final seen = <String>{};
+    const poolCap = 64;
+    var madeProgress = true;
+    while (madeProgress && titles.length < poolCap) {
+      madeProgress = false;
+      for (final queue in queues) {
+        while (queue.isNotEmpty) {
+          final item = queue.removeAt(0);
+          final title = item.title.trim();
+          if (title.isEmpty) continue;
+          if (!seen.add(title.toLowerCase())) continue;
+          titles.add(title);
+          madeProgress = true;
+          break;
+        }
+        if (titles.length >= poolCap) break;
+      }
     }
     return titles;
   } catch (_) {

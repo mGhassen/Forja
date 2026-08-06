@@ -203,8 +203,9 @@ class _HubSearchPageState extends State<HubSearchPage> {
     final recentLower = {for (final q in _recentQueries) q.toLowerCase()};
 
     if (_query.trim().isEmpty) {
-      final recs = _recommendationTitles.where(
-        (t) => !recentLower.contains(t.toLowerCase()),
+      final recs = SearchRecentQueries.pickRecommendations(
+        _recommendationTitles,
+        exclude: _recentQueries,
       );
       return [
         ...recent,
@@ -212,7 +213,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
       ];
     }
 
-    // Keep recent pinned while searching; result titles follow.
+    // Keep recent pinned while searching; matching result titles follow.
     return [
       ...recent,
       for (var i = 0; i < _results.length; i++)

@@ -41,8 +41,13 @@ class _FlatSearchResult {
 }
 
 class _SearchHelperEntry {
-  const _SearchHelperEntry(this.title, {required this.isRecent});
+  const _SearchHelperEntry(
+    this.title, {
+    required this.isRecent,
+    this.resultIndex,
+  });
 
   final String title;
   final bool isRecent;
+  final int? resultIndex;
 }

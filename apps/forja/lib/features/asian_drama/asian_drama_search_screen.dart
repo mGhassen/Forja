@@ -23,17 +23,16 @@ class AsianDramaSearchScreen extends StatelessWidget {
   Future<List<String>> _loadRecommendations() async {
     final feed = await _service.getHome();
     final titles = <String>[];
-    for (final drama in feed.trending) {
-      if (drama.title.isEmpty || titles.contains(drama.title)) continue;
-      titles.add(drama.title);
-      if (titles.length >= 12) break;
-    }
-    if (titles.length < 12) {
-      for (final drama in feed.mostViewed) {
-        if (drama.title.isEmpty || titles.contains(drama.title)) continue;
-        titles.add(drama.title);
-        if (titles.length >= 12) break;
-      }
+    final seen = <String>{};
+    for (final drama in [
+      ...feed.trending,
+      ...feed.mostViewed,
+      ...feed.latest,
+    ]) {
+      final title = drama.title.trim();
+      if (title.isEmpty || !seen.add(title.toLowerCase())) continue;
+      titles.add(title);
+      if (titles.length >= 64) break;
     }
     return titles;
   }

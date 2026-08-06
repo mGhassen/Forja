@@ -27,13 +27,17 @@ class AnimeSearchScreen extends StatelessWidget {
   }
 
   Future<List<String>> _loadRecommendations() async {
-    final trending = await _service.getTrending(perPage: 12);
+    final batches = await Future.wait([
+      _service.getTrending(perPage: 50),
+      _service.browse(sort: 'POPULARITY_DESC', perPage: 50),
+    ]);
     final titles = <String>[];
-    for (final anime in trending) {
-      final title = anime.displayTitle;
-      if (title.isEmpty || titles.contains(title)) continue;
+    final seen = <String>{};
+    for (final anime in [...batches[0], ...batches[1]]) {
+      final title = anime.displayTitle.trim();
+      if (title.isEmpty || !seen.add(title.toLowerCase())) continue;
       titles.add(title);
-      if (titles.length >= 12) break;
+      if (titles.length >= 64) break;
     }
     return titles;
   }

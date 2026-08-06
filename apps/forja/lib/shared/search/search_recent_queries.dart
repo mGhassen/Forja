@@ -6,6 +6,9 @@ class SearchRecentQueries {
 
   static const int maxEntries = 5;
 
+  /// Max suggestion titles under recent searches (left column).
+  static const int maxRecommendations = 16;
+
   static const String scopeSearch = 'search';
   static const String scopeAnime = 'anime';
   static const String scopeAsianDrama = 'asian_drama';
@@ -42,5 +45,26 @@ class SearchRecentQueries {
     }
     await kvSetStringList(_key(scope), next);
     return next;
+  }
+
+  /// Unique titles from [candidates], skipping [exclude], capped at [max].
+  static List<String> pickRecommendations(
+    Iterable<String> candidates, {
+    Iterable<String> exclude = const [],
+    int max = maxRecommendations,
+  }) {
+    final seen = <String>{
+      for (final e in exclude)
+        if (e.trim().isNotEmpty) e.trim().toLowerCase(),
+    };
+    final out = <String>[];
+    for (final raw in candidates) {
+      final title = raw.trim();
+      if (title.isEmpty) continue;
+      if (!seen.add(title.toLowerCase())) continue;
+      out.add(title);
+      if (out.length >= max) break;
+    }
+    return out;
   }
 }
