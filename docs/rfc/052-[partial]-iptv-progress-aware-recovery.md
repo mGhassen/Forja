@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 12** components · **1 / 10** acceptance (progress-gate slice) |
-| **Current slice** | **Live mid-stream auto-reconnect removed** — engine owns retry; app only cold-open / Reload / hard errors |
+| **Progress** | **12 / 13** components · **1 / 10** acceptance |
+| **Current slice** | **Live recovery redesigned** — `_triggerRecovery` hard-blocks all auto mid-stream restarts; Reload only |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -31,6 +31,7 @@
 | 10 | R52-C10 | Watchdog holds all detectors while `_socketTroublePending`, so the timers cannot recreate the player mid-reconnect | ✅ |
 | 11 | R52-C11 | Deferred escalation aborts when `_openedAt` changed, so it cannot fire against a session that was already replaced | ✅ |
 | 12 | R52-C12 | **Live mid-stream: no timer recovery** — after first frame, skip detectors 1–3; live socket notes never escalate; Exo `ended` on live does not forceHard | ✅ |
+| 13 | R52-C13 | **Hard chokepoint** — `_triggerRecovery` refuses live auto-restart after first frame unless `userInitiated`; live mid-stream mpv/Exo errors and hw-decode blips are ignored (no reopen) | ✅ |
 
 ---
 
@@ -134,11 +135,12 @@ of a recovery that was already succeeding. The user-visible result is a channel
 that plays fine and then drops into "Reconnecting…" for no reason, on a
 schedule set by how often the portal cycles its sockets.
 
-**Contract now:** on live, after the first frame, the app does not auto-reconnect
-at all. Grace periods and feed probes only delayed the banner (~1 min → ~2 min);
-they did not stop the restart. Mid-stream detectors 1–3 are skipped for live,
-ffmpeg socket notes never escalate, and Exo `STATE_ENDED` on live is ignored.
-Reload / cold-open hang / hard non-socket errors still recover.
+**Contract now:** after the first frame on live, `_triggerRecovery` is a hard
+no for every automatic caller. Reload sets `userInitiated: true`. Mid-stream
+mpv/Exo errors and hw-decode chatter are ignored — they used to reopen a
+working stream. Cold open hang / open-failed may still recover. Dead live
+feeds stay dead until the user hits Reload (same as Lume when the engine gives
+up).
 
 ## Related
 

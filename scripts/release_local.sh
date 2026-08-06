@@ -1081,8 +1081,8 @@ pick_platforms() {
     "macos_x86_64|macOS — Intel only (x86_64) · CI only on Apple Silicon host|0" \
     "windows|${win_hint}|${win_default}" \
     "linux|Linux (use release_ci.sh)|0" \
-    "android_tv_arm64|Android TV — arm64 only|0" \
-    "android_tv_armeabi_v7a|Android TV — armeabi-v7a only|0")" || {
+    "android_tv_arm64|Android TV — arm64 only · Downloader code at R2|0" \
+    "android_tv_armeabi_v7a|Android TV — armeabi-v7a only · Downloader code at R2|0")" || {
     rc=$?
     ((rc == 2)) && return 2
     ui_abort
@@ -1366,6 +1366,8 @@ publish_r2() {
     cp -f "$f" "$flat/"
   done < <(collect_assets "$ver")
   # AFTVnews Downloader codes for Android TV → R2 manifest (website).
+  # Always prompt on a TTY here — wizards set NONINTERACTIVE=1 after confirm,
+  # but codes still need to be typed before the upload.
   collect_android_tv_downloader_codes "$ver" "$flat"
   echo "==> Upload to R2"
   export R2_BUCKET="${R2_BUCKET:-forja-releases}"
@@ -1373,21 +1375,46 @@ publish_r2() {
   ./scripts/upload_release_to_r2.sh "$ver" "$flat"
 }
 
-# Prompt / env for AFTVnews Downloader short codes (Android TV APKs only).
+# Prompt for AFTVnews Downloader short codes (Android TV APKs only).
 # Sets FORJA_DOWNLOADER_CODES for upload_release_to_r2.py (arch=digits,…).
+# Ignores NONINTERACTIVE when stdin is a TTY (wizard still needs this step).
 collect_android_tv_downloader_codes() {
   local ver="$1"
-  local flat="$2"
-  local -a apks=()
+  local flat="${2:-}"
+  local -a apks=() arches=()
   local apk arch cdn url code label
   local -a parts=()
 
-  shopt -s nullglob
-  apks=("$flat"/Forja-*-android-tv-*.apk)
-  shopt -u nullglob
-  ((${#apks[@]} > 0)) || return 0
+  if [[ -n "$flat" && -d "$flat" ]]; then
+    shopt -s nullglob
+    apks=("$flat"/Forja-*-android-tv-*.apk)
+    shopt -u nullglob
+  fi
+  if ((${#apks[@]} == 0)); then
+    # No flat dir / no APKs yet — derive from selected platforms + version.
+    want_platform android_tv_arm64 && arches+=(arm64)
+    want_platform android_tv_armeabi_v7a && arches+=(armeabi-v7a)
+    # Or from dist/ for this version.
+    if ((${#arches[@]} == 0)); then
+      shopt -s nullglob
+      apks=("$DIST"/Forja-"${ver}"-android-tv-*.apk)
+      shopt -u nullglob
+    fi
+  fi
+  for apk in "${apks[@]+"${apks[@]}"}"; do
+    case "$(basename "$apk")" in
+      *armeabi-v7a*) arches+=(armeabi-v7a) ;;
+      *arm64*) arches+=(arm64) ;;
+    esac
+  done
+  # Dedupe
+  if ((${#arches[@]} > 0)); then
+    local IFS=$'\n'
+    arches=($(printf '%s\n' "${arches[@]}" | awk 'NF && !seen[$0]++'))
+    unset IFS
+  fi
+  ((${#arches[@]} > 0)) || return 0
 
-  # Already set (CI / NONINTERACTIVE) — pass through.
   if [[ -n "${FORJA_DOWNLOADER_CODES:-}" ]]; then
     ok "Downloader codes from env: $FORJA_DOWNLOADER_CODES"
     export FORJA_DOWNLOADER_CODES
@@ -1398,35 +1425,30 @@ collect_android_tv_downloader_codes() {
   cdn="${cdn%/}"
   [[ -n "$cdn" ]] || die "RELEASE_CDN_URL missing — needed for Downloader code URLs"
 
+  # True headless (no TTY) — require env.
+  if [[ ! -t 0 ]]; then
+    warn "No TTY — set FORJA_DOWNLOADER_CODES=arm64=…,armeabi-v7a=… before R2 upload"
+    return 0
+  fi
+
+  ui_raw_off
   echo
-  info "Android TV Downloader codes (AFTVnews) for ${ver}"
-  echo "  Create a code per APK at https://go.aftvnews.com/ (paste the CDN URL)."
-  echo "  The website shows these numbers on /download for Android TV."
+  hr
+  info "Android TV Downloader codes (AFTVnews) — v${ver}"
+  echo "  1) Open https://go.aftvnews.com/"
+  echo "  2) Paste each CDN URL below → get a numeric code"
+  echo "  3) Type the code here (Enter = skip that arch)"
+  echo "  Website /download shows these numbers for Android TV."
   echo
 
-  for apk in "${apks[@]}"; do
-    arch="$(basename "$apk")"
+  for arch in "${arches[@]}"; do
     case "$arch" in
-      *armeabi-v7a*) arch=armeabi-v7a; label=ARMv7 ;;
-      *arm64*) arch=arm64; label=ARM64 ;;
-      *)
-        warn "skip unknown Android TV APK: $(basename "$apk")"
-        continue
-        ;;
+      armeabi-v7a) label=ARMv7; url="${cdn}/latest/Forja-${ver}-android-tv-armeabi-v7a.apk" ;;
+      arm64) label=ARM64; url="${cdn}/latest/Forja-${ver}-android-tv-arm64.apk" ;;
+      *) continue ;;
     esac
-    url="${cdn}/latest/$(basename "$apk")"
-    echo "  ${C_BOLD}${label}${C_RESET} (${arch})"
-    echo "  ${C_DIM}${url}${C_RESET}"
-    if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
-      warn "NONINTERACTIVE — no Downloader code for ${arch} (set FORJA_DOWNLOADER_CODES)"
-      continue
-    fi
-    if ui_can; then
-      code="$(ui_input 1 1 "Downloader code · ${label}" \
-        "Numeric code from go.aftvnews.com (empty = skip)" "")" || true
-    else
-      read -r -p "  Downloader code for ${label} (empty = skip): " code || true
-    fi
+    echo "  ${C_BOLD}${label}${C_RESET}  ${C_DIM}${url}${C_RESET}"
+    read -r -p "  Downloader code for ${label}: " code || true
     code="$(printf '%s' "${code:-}" | tr -d '[:space:]')"
     if [[ -z "$code" ]]; then
       warn "skipped ${arch}"
@@ -1436,14 +1458,15 @@ collect_android_tv_downloader_codes() {
     parts+=("${arch}=${code}")
     ok "${label}: ${code}"
   done
+  echo
 
   if ((${#parts[@]} > 0)); then
     local IFS=,
     FORJA_DOWNLOADER_CODES="${parts[*]}"
     export FORJA_DOWNLOADER_CODES
-    ok "Will write downloader_codes into R2 manifest: $FORJA_DOWNLOADER_CODES"
+    ok "R2 manifest will include downloader_codes: $FORJA_DOWNLOADER_CODES"
   else
-    warn "No Downloader codes — website will not show numbers for this Android TV upload"
+    warn "No Downloader codes — /download will not show numbers for this Android TV upload"
     unset FORJA_DOWNLOADER_CODES || true
   fi
 }
@@ -1810,7 +1833,7 @@ cmd_bump() {
 }
 
 wizard_release_tag() {
-  local tag detail rc do_sync=1
+  local tag ver detail rc do_sync=1
   while true; do
     pick_platforms || {
       rc=$?
@@ -1822,6 +1845,14 @@ wizard_release_tag() {
       ((rc == 2)) && continue
       ui_abort
     }
+    ver="$(version_from_tag "$tag")"
+    # Ask for Downloader codes up front when Android TV is in the platform set.
+    if want_platform android_tv_arm64 || want_platform android_tv_armeabi_v7a; then
+      ui_raw_off
+      ui_clear
+      unset FORJA_DOWNLOADER_CODES || true
+      collect_android_tv_downloader_codes "$ver"
+    fi
     do_sync=1
     if ui_confirm_screen 3 5 "Sync to ${SYNC_REPO} after publish?" \
       "Pushes this branch + ${tag} from mGhassen/Forja → ${SYNC_REPO}." 1; then
@@ -1834,6 +1865,7 @@ wizard_release_tag() {
     fi
     detail="Tag:       ${tag}
 Platforms: $(platforms)
+Downloader: ${FORJA_DOWNLOADER_CODES:-none (Android TV codes asked again at R2 if APKs present)}
 Action:    build + publish → GitHub + R2
 Mirror:    $([[ "$do_sync" == 1 ]] && echo "yes → ${SYNC_REPO}" || echo no)"
     if ui_confirm_screen 4 5 "Confirm release" "$detail" 1; then
@@ -1900,7 +1932,8 @@ wizard_new_version() {
 Platforms: $(platforms)
 Backfill:  $([[ "$do_backfill" == 1 ]] && echo yes || echo no)
 Mirror:    $([[ "$do_sync" == 1 ]] && echo "yes → ${SYNC_REPO}" || echo no)
-Action:    freeze changelog → commit → tag → push → build + publish"
+Action:    freeze changelog → commit → tag → push → build + publish
+Note:      Android TV selected → Downloader codes prompted right before R2 upload"
     if ui_confirm_screen 5 6 "Confirm new version" "$detail" 1; then
       :
     else
@@ -2094,6 +2127,7 @@ wizard_tools() {
     "build_android_tv|Build Android TV APKs (per selected ABI)" \
     "publish|Publish dist/…" \
     "publish_r2|Upload dist/ → R2 only (retry)" \
+    "downloader_codes|Set Android TV Downloader codes (then R2 upload)" \
     "clean_gh_assets|Clean old GitHub release assets…" \
     "setup_windows|Setup Windows VM")" || {
     rc=$?
@@ -2105,6 +2139,32 @@ wizard_tools() {
       ui_raw_off
       ui_clear
       cmd_setup_windows
+      ;;
+    downloader_codes)
+      tag="$(pick_tag_interactive)" || {
+        rc=$?
+        ((rc == 2)) && return 2
+        ui_abort
+      }
+      ver="$(version_from_tag "$tag")"
+      ui_raw_off
+      ui_clear
+      unset FORJA_DOWNLOADER_CODES || true
+      collect_android_tv_downloader_codes "$ver"
+      if [[ -z "${FORJA_DOWNLOADER_CODES:-}" ]]; then
+        warn "No codes entered — aborting R2 upload"
+        return 0
+      fi
+      if ui_confirm_screen 2 2 "Upload ${tag} to R2 with these Downloader codes?" \
+        "$FORJA_DOWNLOADER_CODES" 1; then
+        ui_raw_off
+        ui_clear
+        NONINTERACTIVE=1 cmd_publish_r2 "$tag"
+      else
+        rc=$?
+        ((rc == 2)) && return 2
+        ui_abort
+      fi
       ;;
     clean_gh_assets)
       wizard_clean_gh_assets || {

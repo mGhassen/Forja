@@ -211,6 +211,15 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           unawaited(_s._autoSwapEngineForFormatError(msg));
           return;
         }
+        // Live mid-stream: Exo can emit transient errors during segment
+        // refresh. Auto-reopen was the reconnect banner on a working stream.
+        if (_currentSourceIsLive && _playbackStarted) {
+          debugPrint('[IPTV Exo] live mid-stream error ignored: $msg');
+          if (_s._userPlayWhenReady) {
+            unawaited(_enginePlay());
+          }
+          break;
+        }
         _triggerRecovery(reason: 'exo error: $msg', forceHard: true);
         break;
       case 'renderedFirstFrame':
@@ -610,12 +619,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (p) {
         _s._readyNotPlayingSince = null;
       } else if (_s._userPlayWhenReady) {
-        // libmpv silently went paused while the user wants playback. On a
-        // live IPTV stream this is the classic "feed died, mpv hit EOF and
-        // toggled pause=yes" symptom. Skip while buffering — cache-pause
-        // legitimately pauses on underrun; fighting it with play() just
-        // churns. Poke play() once when not buffering; if it doesn't take,
-        // the watchdog will hard-reload us.
+        // Soft poke only — live mid-stream never auto-reopens.
         _s._readyNotPlayingSince = DateTime.now();
         if (_s._buffering) return;
         Future.microtask(() async {
@@ -649,40 +653,30 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     });
     _s._errorSub = player.stream.error.listen((err) {
       final msg = err.toString();
-      // Benign mpv chatter we don't want to restart the stream over:
-      //  - "Cannot seek in this stream" / "force-seekable=yes"  → pure-live
-      //    stream, the live-edge seek failed (harmless).
-      //  - "Expected '=' and a value"                          → libav option
-      //    parser warning for HLS-only opts on a non-HLS stream.
       if (_IptvPtPlayerScreenState._isBenignMpvError(msg)) {
         return;
       }
       debugPrint('[IPTV Player] error: $msg');
-      // "Stream ends prematurely" / "End of file" on a live HTTP feed means
-      // the CDN dropped the TCP connection mid-stream. mpv's reconnect_at_eof
-      // only fires on clean EOF, not on premature close, so we have to force
-      // a full player recreation to get a fresh socket - gentle seek/reopen
-      // attempts will just keep failing on the same dead connection.
       final lower = msg.toLowerCase();
       if (!_s._formatEngineSwapped &&
           _IptvPtPlayerScreenState._isUnrecognizedFormatError(msg)) {
         unawaited(_s._autoSwapEngineForFormatError(msg));
         return;
       }
+      // Live mid-stream: never reopen on mpv errors / EOF / reset. ffmpeg
+      // reconnects; app reopen was killing working sessions.
+      if (_currentSourceIsLive && _playbackStarted) {
+        debugPrint('[IPTV Player] live mid-stream error ignored: $msg');
+        return;
+      }
       if (lower.contains('ends prematurely') ||
           lower.contains('end of file') ||
           lower.contains('connection reset')) {
-        // ffmpeg reconnects these itself — see [_noteSocketTrouble].
         _noteSocketTrouble(msg);
         return;
       }
       _triggerRecovery(reason: 'error: $msg');
     });
-    // mpv log stream catches conditions that don't surface as `error`
-    // events - most importantly, ffmpeg's "http: Stream ends prematurely"
-    // (CDN dropped the TCP connection mid-stream). Without this, the
-    // watchdog only sees the resulting position freeze and tries gentle
-    // recoveries that can't fix a dead socket.
     _s._logSub = player.stream.log.listen((l) {
       final text = l.text.toLowerCase();
       if (!_s._softwareDecodeForced &&
@@ -694,6 +688,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           debugPrint(
             '[IPTV Player] ignoring transient hw fail after live-edge snap',
           );
+          return;
+        }
+        // Live: do not recreate the player for a hw decode blip.
+        if (_currentSourceIsLive && _playbackStarted) {
+          debugPrint('[IPTV Player] live hw fail ignored (no recreate)');
           return;
         }
         debugPrint('[IPTV Player] hw decode failed - falling back to software');
@@ -709,24 +708,16 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           text.contains('connection refused') ||
           text.contains('connection timed out')) {
         debugPrint('[IPTV Player] mpv log: ${l.level} ${l.prefix}: ${l.text}');
-        // `Will reconnect at …, error=…` is ffmpeg announcing its own retry.
-        // Never restart on that — wait and see whether the feed comes back.
         _noteSocketTrouble(l.text);
       }
     });
   }
 
-  /// Socket trouble from mpv/ffmpeg on a live feed.
-  ///
-  /// ffmpeg already has `reconnect*` in `stream-lavf-o`. Escalating to
-  /// `_triggerRecovery` here is what produced "plays, then Reconnecting…" —
-  /// the app tore down a stream mid-retry. For live we log and leave it alone.
-  /// Dead streams: Reload, or the cold open hang detector if nothing ever
-  /// started. VOD still escalates after the grace window.
+  /// Live: log only. VOD: escalate after ffmpeg's reconnect window if the feed
+  /// never came back.
   void _noteSocketTrouble(String what) {
     if (_currentSourceIsLive) {
-      debugPrint('[IPTV Player] live socket note ($what) — '
-          'ffmpeg owns reconnect, app will not restart');
+      debugPrint('[IPTV Player] live socket note ($what) — engine owns reconnect');
       return;
     }
     if (_s._socketTroublePending) return;
@@ -854,7 +845,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (!_s._userPlayWhenReady) return;
     if (_s._playing && _s._lastPos != before) return;
     debugPrint('[IPTV Player] manual reload did not restore frames - reopening');
-    await _triggerRecovery(reason: 'manual reload stalled', forceHard: true);
+    await _triggerRecovery(
+      reason: 'manual reload stalled',
+      forceHard: true,
+      userInitiated: true,
+    );
   }
 
   /// Best-effort jump to the live edge after a (re)open.
@@ -1002,16 +997,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         }
       }
 
-      // Mid-stream live: the app does **not** auto-reconnect.
-      //
-      // Detectors 1–3 + soft recovery were the bug introduced with the IPTV
-      // "improvements": they reopen/recreate the player on buffering or a
-      // frozen clock, which destroys ffmpeg/Exo's own reconnect and shows
-      // "Reconnecting…". Delaying those detectors (grace / feed probe) only
-      // moved the banner from ~1 min to ~2 min. After the first frame, leave
-      // live recovery to the engine; Reload still forces a restart.
-      //
-      // Still watch cold open (detector 4) and clear banners / retry counters.
+      // Live after first frame: no stall detectors. Single chokepoint in
+      // [_triggerRecovery] also blocks any stray auto-restart.
       if (_currentSourceIsLive && _playbackStarted) {
         return;
       }
@@ -1092,11 +1079,27 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   }
 
   bool _recoveryInFlight = false;
+
+  /// Single chokepoint for every player reopen / recreate.
+  ///
+  /// ## Live policy (redesign)
+  /// After the first frame, the app **never** auto-restarts a live session.
+  /// Stall timers, socket logs, Exo ended/error noise, and hw-decode chatter
+  /// all look like failure while the stream is still fine or mid-reconnect —
+  /// reopening was the bug. Engines own live reconnect (`stream-lavf-o` /
+  /// Exo). The only mid-stream restart is [userInitiated] (Reload).
+  ///
+  /// Cold open (`!_playbackStarted`) may still recover (hang / open failed).
   Future<void> _triggerRecovery({
     required String reason,
     bool forceHard = false,
+    bool userInitiated = false,
   }) async {
     if (_s._disposed || _recoveryInFlight) return;
+    if (_currentSourceIsLive && _playbackStarted && !userInitiated) {
+      debugPrint('[IPTV] live auto-recovery blocked: $reason');
+      return;
+    }
     final now = DateTime.now();
     if (_s._lastRecoveryAt != null &&
         now.difference(_s._lastRecoveryAt!) <
@@ -1107,7 +1110,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     _s._lastRecoveryAt = now;
     _s._streamSeekable = false;
     debugPrint(
-        '[IPTV Watchdog] recovery (#${_s._retryAttempt + 1}, hard=$forceHard): $reason');
+        '[IPTV Watchdog] recovery (#${_s._retryAttempt + 1}, hard=$forceHard'
+        '${userInitiated ? ', user' : ''}): $reason');
 
     try {
       if (_s._disposed) return;
@@ -1236,12 +1240,15 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
   Future<void> _forceSoftwareDecode() async {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
+    if (_currentSourceIsLive && _playbackStarted) {
+      debugPrint('[IPTV Player] live hw→sw skip (would recreate working stream)');
+      return;
+    }
     _s._softwareDecodeForced = true;
     _s._retryAttempt = 0;
     if (mounted) {
       setState(() => _s._statusBanner = 'Switching to software decode…');
     }
-    // If a recovery is already running it will pick up the flag on recreate.
     if (_recoveryInFlight) return;
     await _triggerRecovery(reason: 'hardware decode failed', forceHard: true);
   }
