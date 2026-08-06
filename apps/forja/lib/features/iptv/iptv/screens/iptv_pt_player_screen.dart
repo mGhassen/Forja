@@ -175,8 +175,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _softwareDecodeForced = false;
 
   /// Phone MediaKit: software decode (some MediaCodec paths flake).
-  /// Android TV MediaKit: HW + [vo=mediacodec_embed] on physical sets; emulator
-  /// goldfish HEVC MediaCodec ANRs on 1080p so safe mode applies there too.
+  /// Android TV MediaKit: keep HW + [vo=mediacodec_embed] (Impeller off in app).
   bool _androidMediaKitSafeMode = false;
 
   bool get _atvMediaKit =>
@@ -373,21 +372,12 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         _tvBackExitArmed = false;
         return true;
       }
-      // Guide / search own Back first (HardwareKeyboard steals Focus onKey).
+      // Guide owns Back first (HardwareKeyboard steals Focus onKey).
+      // Search is handled by [setTryConsumePlayerOverlay] (results → field →
+      // close) before this ladder runs.
       if (_guideVisible) {
         setState(() {
           _guideVisible = false;
-          _controlsVisible = true;
-        });
-        _tvBackExitArmed = false;
-        _hideControlsTimer?.cancel();
-        _scheduleHideControls();
-        _focusPlayerBack();
-        return true;
-      }
-      if (_searchVisible) {
-        setState(() {
-          _searchVisible = false;
           _controlsVisible = true;
         });
         _tvBackExitArmed = false;
@@ -405,6 +395,25 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       }
       _tvBackExitArmed = true;
       setState(() => _controlsVisible = true);
+      _hideControlsTimer?.cancel();
+      _scheduleHideControls();
+      _focusPlayerBack();
+      return true;
+    });
+    PlayerBackExitGate.setTryConsumePlayerOverlay(() {
+      if (_disposed || !mounted || _isPipMode) return false;
+      if (!_searchVisible) return false;
+      // Results list → search field (HardwareKeyboard steals Focus onKey).
+      if (IptvChannelSearchOverlay.tryConsumeBackToField()) {
+        _tvBackExitArmed = false;
+        return true;
+      }
+      // Field (or empty results) → close overlay; stay in player.
+      setState(() {
+        _searchVisible = false;
+        _controlsVisible = true;
+      });
+      _tvBackExitArmed = false;
       _hideControlsTimer?.cancel();
       _scheduleHideControls();
       _focusPlayerBack();
@@ -504,11 +513,29 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     } else {
       _exoBackend = false;
     }
-    // Phone + ATV emulator MediaKit: software. Physical ATV: HW + mediacodec_embed.
-    _androidMediaKitSafeMode = !_exoBackend &&
-        !kIsWeb &&
+    // ATV emulator + MediaKit HEVC: goldfish decoder hangs until ANR (SIGQUIT).
+    // Exo TextureView path works. Force Exo and rewrite the IPTV engine pref so
+    // a prior MediaKit pick cannot keep killing channel opens. Physical ATV OK.
+    if (!kIsWeb &&
         Platform.isAndroid &&
-        (!PlatformInfo.isAndroidTv || PlatformInfo.isAndroidEmulator);
+        PlatformInfo.isAndroidTv &&
+        PlatformInfo.isAndroidEmulator) {
+      if (!_exoBackend) {
+        debugPrint(
+          '[IPTV] ATV emulator: MediaKit ANRs on HEVC — forcing Exo',
+        );
+        unawaited(
+          SettingsService().setBuiltInPlayerEngine(
+            BuiltInPlayerEngine.exoPlayer,
+            context: widget.engineContext,
+          ),
+        );
+      }
+      _exoBackend = true;
+    }
+    // Phone MediaKit: software-friendly. ATV MediaKit: HW + mediacodec_embed.
+    _androidMediaKitSafeMode =
+        !_exoBackend && !kIsWeb && Platform.isAndroid && !PlatformInfo.isAndroidTv;
     _volume = prefs.volume;
     _volumeBeforeMute = prefs.volume > 0 ? prefs.volume : 100.0;
     _muted = prefs.volume == 0;
@@ -533,6 +560,16 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   }) async {
     if (kIsWeb || !Platform.isAndroid) return;
     final wantExo = engine == BuiltInPlayerEngine.exoPlayer;
+    if (!wantExo &&
+        PlatformInfo.isAndroidTv &&
+        PlatformInfo.isAndroidEmulator) {
+      debugPrint('[IPTV] ATV emulator: MediaKit switch blocked (HEVC ANR)');
+      if (mounted) {
+        setState(() => _statusBanner = 'Use ExoPlayer on TV emulator');
+        _scheduleHideControls();
+      }
+      return;
+    }
     if (persist) {
       await SettingsService().setBuiltInPlayerEngine(
         engine,
@@ -574,8 +611,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     }
 
     _exoBackend = wantExo;
-    _androidMediaKitSafeMode = !_exoBackend &&
-        (!PlatformInfo.isAndroidTv || PlatformInfo.isAndroidEmulator);
+    _androidMediaKitSafeMode = !_exoBackend && !PlatformInfo.isAndroidTv;
     _softwareDecodeForced = _windowsSoftwareDecode;
     _player = null;
     _controller = null;
@@ -643,6 +679,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// After format errors on `/hls-proxy`, try the other Android engine once.
   Future<void> _autoSwapEngineForFormatError(String reason) async {
     if (_disposed || _formatEngineSwapped || kIsWeb || !Platform.isAndroid) {
+      return;
+    }
+    if (_exoBackend &&
+        PlatformInfo.isAndroidTv &&
+        PlatformInfo.isAndroidEmulator) {
       return;
     }
     _formatEngineSwapped = true;
@@ -716,6 +757,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   @override
   void dispose() {
     PlayerBackExitGate.setTryFocusBack(null);
+    PlayerBackExitGate.setTryConsumePlayerOverlay(null);
     ShellBus.leavePlayerSurface();
     _disposed = true;
     WidgetsBinding.instance.removeObserver(this);

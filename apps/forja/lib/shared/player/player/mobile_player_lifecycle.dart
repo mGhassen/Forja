@@ -139,12 +139,13 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     // the widget tree is still building.
     WakelockPlus.enable();
 
-    // Phone + ATV emulator MediaKit: software decode (goldfish HEVC MediaCodec
-    // ANRs on 1080p). Physical ATV: MediaCodec HW — Impeller is disabled in
-    // ForjaApplication / MainActivity so the SurfaceProducer shows frames.
+    // Phone MediaKit: software-friendly decode (some MediaCodec paths flake).
+    // ATV MediaKit: keep MediaCodec HW - Impeller is disabled in
+    // ForjaApplication / MainActivity so the SurfaceProducer shows frames
+    // (not audio-only).
     if (Platform.isAndroid &&
-        ((!widget.tvRemoteEnabled && !PlatformInfo.isAndroidTv) ||
-            PlatformInfo.isAndroidEmulator)) {
+        !widget.tvRemoteEnabled &&
+        !PlatformInfo.isAndroidTv) {
       _s._androidMediaKitSafeMode = true;
       _s._hwDecMode = _HwDecMode.software;
     }
@@ -169,18 +170,18 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       ),
     );
 
-    // ATV physical: vo=gpu needs EGL (black / audio-only). mediacodec_embed
-    // paints MediaCodec into the Flutter Surface. ATV emulator safe mode skips
-    // mediacodec entirely (same as IPTV). Same knobs as
-    // [_IptvPtPlayerEngine._initPlayerInstances].
-    final tvHw = _s._tvMediaKit && !_s._androidMediaKitSafeMode;
+    // ATV: vo=gpu needs an EGL context - ATV emulators die with
+    // EGL_BAD_ATTRIBUTE (audio OK, black frame). mediacodec_embed paints
+    // MediaCodec straight into the Flutter Surface (no mpv GL). Same knobs
+    // as IPTV [_IptvPtPlayerEngine._initPlayerInstances].
+    final tvMediaKit = _s._tvMediaKit;
     _s._controller = VideoController(
       _s._player,
       configuration: VideoControllerConfiguration(
-        vo: tvHw ? 'mediacodec_embed' : null,
+        vo: tvMediaKit ? 'mediacodec_embed' : null,
         enableHardwareAcceleration:
-            tvHw || !_s._androidMediaKitSafeMode,
-        hwdec: tvHw
+            tvMediaKit || !_s._androidMediaKitSafeMode,
+        hwdec: tvMediaKit
             ? 'mediacodec'
             : (_s._androidMediaKitSafeMode ? 'no' : null),
         androidAttachSurfaceAfterVideoParameters: false,

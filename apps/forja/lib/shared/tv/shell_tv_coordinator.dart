@@ -247,6 +247,16 @@ abstract final class ShellTvFocusCoordinator {
       return true;
     }
 
+    // In-player overlays (IPTV search ladder, …). Same twin stamp as chrome
+    // OverlayEntries — HardwareKeyboard steals Focus onKey for goBack.
+    if (PlayerBackExitGate.tryConsumePlayerOverlay()) {
+      PlayerBackExitGate.exitReady = false;
+      _backStepPending = false;
+      ShellTvAppExit.clear();
+      _lastBackHandledAt = DateTime.now();
+      return true;
+    }
+
     // Confirming exit / pop must not be swallowed by debounce.
     // When exit is armed, still debounce same-press duplicates
     // (HardwareKeyboard + didPopRoute); [ShellTvAppExit.minConfirmGap] also

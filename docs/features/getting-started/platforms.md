@@ -47,7 +47,7 @@ flutter emulators --launch <tv_avd_id>
 flutter run -d <tv_avd_id>
 ```
 
-Leanback launcher + full D-pad matrix: [issue 025](../../issues/025-[open]-android-tv-leanback-smoke-unverified.md) (`I25-M01`–`M08`). WebView GLES workaround: [issue 031](../../issues/031-[workaround]-android-tv-webview-gles-crash.md). Prefer **`scripts/atv-run.sh`** on emulator (sets `--disable-gpu` for embedded WebViews). Emulator MediaKit uses software decode (goldfish HEVC hardware decode can kill the process on 1080p); prefer Exo or a real device for HW-decode QA:
+Leanback launcher + full D-pad matrix: [issue 025](../../issues/025-[open]-android-tv-leanback-smoke-unverified.md) (`I25-M01`–`M08`). WebView GLES workaround: [issue 031](../../issues/031-[workaround]-android-tv-webview-gles-crash.md). Prefer **`scripts/atv-run.sh`** on emulator (sets `--disable-gpu` for embedded WebViews):
 
 ```bash
 ./scripts/atv-run.sh emulator-5554

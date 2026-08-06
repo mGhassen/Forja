@@ -12,17 +12,15 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     _s._videoEpoch++;
     final player = Player(configuration: _IptvPtPlayerScreenState._playerConfiguration);
     _s._player = MpvExclusiveSession.instance.trackPlayer(player);
-    // ATV physical: vo=gpu needs EGL (black / audio-only). mediacodec_embed
+    // ATV: vo=gpu needs EGL (black / audio-only on leanback). mediacodec_embed
     // paints MediaCodec into the Flutter Surface — same as VOD TvPlayerScreen.
-    // ATV emulator: goldfish HEVC MediaCodec ANRs on 1080p — software path
-    // (safe mode) skips mediacodec / mediacodec_embed entirely.
-    final atvHw = _s._atvMediaKit && !_useSoftwareDecode;
+    final atv = _s._atvMediaKit;
     _s._controller = VideoController(
       _s._player!,
       configuration: VideoControllerConfiguration(
-        vo: atvHw ? 'mediacodec_embed' : null,
-        enableHardwareAcceleration: atvHw || !_useSoftwareDecode,
-        hwdec: atvHw
+        vo: atv ? 'mediacodec_embed' : null,
+        enableHardwareAcceleration: atv || !_useSoftwareDecode,
+        hwdec: atv
             ? 'mediacodec'
             : (_useSoftwareDecode ? 'no' : 'auto-safe'),
         // Avoid blank video when the surface attaches before mpv negotiates
@@ -415,13 +413,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
       // Prefer safe GPU decode with software fallback - raw `auto` can stick on
       // a broken VideoToolbox session on macOS (black texture, audio OK).
-      // ATV MediaKit (physical): pin mediacodec (matches VideoControllerConfiguration).
-      // ATV emulator safe mode: hwdec=no — goldfish HEVC hangs until ANR.
+      // ATV MediaKit: pin mediacodec (matches VideoControllerConfiguration).
       if (_s._atvMediaKit) {
-        await p.setProperty(
-          'hwdec',
-          _useSoftwareDecode ? 'no' : 'mediacodec',
-        );
+        await p.setProperty('hwdec', 'mediacodec');
         // Default audio device — silenceMediaKitPlayer sets ao=null on exit;
         // a soft reopen must not stay muted/null. audiotrack is Android's ao.
         await p.setProperty('ao', 'audiotrack');

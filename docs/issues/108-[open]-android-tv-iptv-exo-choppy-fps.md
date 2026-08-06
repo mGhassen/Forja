@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **14 / 14** fix · **0 / 6** acceptance |
-| **Current slice** | Emulator MediaKit: skip goldfish HEVC mediacodec (software) so channel open does not ANR |
+| **Progress** | **17 / 17** fix · **0 / 6** acceptance |
+| **Current slice** | ATV emulator IPTV: force Exo (MediaKit HEVC ANR); physical ATV MediaKit unchanged |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -35,6 +35,9 @@
 | 12 | I108-T12 | `forceEnableMediaCodecAsynchronousQueueing()` — Media3 only enables async queueing by default on API 31+, so Android 7 TVs queued codec work on the playback thread | ✅ |
 | 13 | I108-T13 | Frame-health logging to `logcat -s ForjaExo` (decoder name, input format + fps, dropped-frame counts) — `setEnableDecoderFallback(true)` can silently swap in a software decoder, which is indistinguishable from a compositing stutter from the couch | ✅ |
 | 14 | I108-T14 | ATV **emulator** MediaKit: force software decode (`hwdec=no`, no `mediacodec_embed`) — goldfish HEVC 1080p hangs MediaCodec until input ANR; physical ATV unchanged | ✅ |
+| 15 | I108-T15 | ATV **emulator** IPTV: force **Exo** at boot + hide/block MediaKit in Player menu — T14 software path hits `EGL_BAD_ATTRIBUTE` (black / empty cache); format-error auto-swap must not bounce into MediaKit | ✅ |
+| 16 | I108-T16 | **Revert T14–T15** — restore ATV MediaKit `vo=mediacodec_embed` + `hwdec=mediacodec` on emulator (T14 killed paint via EGL; T15 was a workaround for that self-inflicted regression). Goldfish HEVC ANR on some channels remains an emulator limit, not a ship blocker | ✅ |
+| 17 | I108-T17 | ATV **emulator** IPTV: force Exo + rewrite IPTV engine pref + hide MediaKit in Player menu — restored MediaKit HW (T16) still ANRs on 1080p HEVC (`c2.goldfish.hevc.decoder`); Exo TextureView path is the working engine on this AVD | ✅ |
 
 ---
 
@@ -47,7 +50,7 @@
 | 3 | I108-A03 | Android TV IPTV **Player** menu switches Exo ↔ MediaKit and shows video (not black) on MediaKit | ⬜ |
 | 4 | I108-A04 | Android TV **emulator**: IPTV Exo shows video + player chrome (not audio-only black / covered UI) | ⬜ |
 | 5 | I108-A05 | Toshiba Android 7: a 50/25 fps live channel on Exo plays fluidly; `logcat -s ForjaExo` shows a hardware decoder and no sustained dropped-frame lines | ⬜ |
-| 6 | I108-A06 | Android TV **emulator**: IPTV MediaKit opens a 1080p HEVC channel without ANR / process kill (software decode; picture may be soft) | ⬜ |
+| 6 | I108-A06 | Android TV **emulator**: IPTV boots Exo (MediaKit not offered); HEVC channel stays alive (no SIGQUIT) | ⬜ |
 
 ---
 
@@ -63,7 +66,9 @@ On **Android TV**, IPTV and Home/Search movies both use Media3 ExoPlayer by defa
 
 **Surface / sync (T06–T08):** TextureView inside Flutter’s platform view has poor frame timing and often cannot paint at full leanback display resolution (UI layer upscaled — Google Media3 guidance prefers SurfaceView on ATV). ATV Exo now inflates **SurfaceView** and embeds via **hybrid composition** (`initExpensiveAndroidView`) so frames are not tiled (issue 102). Phone keeps TextureView + TLHC. MediaKit IPTV on ATV uses display-resample sync; Exo skips redundant Dart rebuilds during live.
 
-**Emulator fallback (T10 / T14):** On goldfish/ranchu leanback emulators, SurfaceView + MediaCodec often fails `setOutputSurface` (`BAD_INDEX`) → audio continues, picture stays black, and the separate Surface can cover Flutter player chrome. Emulators force **TextureView** + phone TLHC path for Exo; physical ATVs keep SurfaceView. Separately, ATV MediaKit’s `hwdec=mediacodec` + `vo=mediacodec_embed` picks `c2.goldfish.hevc.decoder` for 1080p HEVC — that decoder advertises max 320×240, then hangs until the input ANR window kills the process (SIGQUIT / Lost connection). Emulators therefore force MediaKit **software** decode (same as phone safe mode) and skip `mediacodec_embed`; physical ATVs keep HW.
+**Emulator fallback (T10):** On goldfish/ranchu leanback emulators, SurfaceView + MediaCodec often fails `setOutputSurface` (`BAD_INDEX`) → audio continues, picture stays black, and the separate Surface can cover Flutter player chrome. Emulators force **TextureView** + phone TLHC path for Exo; physical ATVs keep SurfaceView.
+
+**Emulator MediaKit (T14–T17):** T14 software decode dropped `mediacodec_embed` → `EGL_BAD_ATTRIBUTE` / black. T15 forced Exo; T16 restored MediaKit HW. Restored MediaKit still ANRs on 1080p HEVC (`c2.goldfish.hevc.decoder`, SIGQUIT). **T17:** ATV emulator IPTV forces **Exo**, rewrites the IPTV engine pref away from MediaKit, and hides MediaKit in the Player menu. Physical ATVs keep MediaKit HW.
 
 **Opt-in quality (T09):** **Settings → Playback → IPTV live max quality** defaults to **Auto (full quality)**. Choosing 1080p / 720p / 480p applies an Exo track ceiling for live adaptive feeds only — never automatic.
 

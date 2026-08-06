@@ -28,12 +28,20 @@ class IptvChannelSearchOverlay extends StatefulWidget {
   static const double panelRadius = 12;
   static const double panelWidth = 400;
 
+  /// HardwareKeyboard steals Focus onKey for goBack — player overlay gate
+  /// calls this. Returns `true` when Back moved from the result list back to
+  /// the search field (caller should not close the overlay).
+  static bool tryConsumeBackToField() =>
+      _IptvChannelSearchOverlayState.tryConsumeBackToField();
+
   @override
   State<IptvChannelSearchOverlay> createState() =>
       _IptvChannelSearchOverlayState();
 }
 
 class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
+  static _IptvChannelSearchOverlayState? _active;
+
   final TextEditingController _queryCtrl = TextEditingController();
   final FocusNode _queryFocus = FocusNode();
   final FocusNode _overlayFocus = FocusNode();
@@ -44,6 +52,14 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
   /// When true, D-pad / OK target the result list (not the search field).
   bool _listFocused = false;
 
+  static bool tryConsumeBackToField() {
+    final s = _active;
+    if (s == null || !s.mounted) return false;
+    if (!s._listFocused) return false;
+    s._focusSearchField();
+    return true;
+  }
+
   static const Color _panelTint = Color(0xE016161F);
   static Color get _accent => ForjaShellColors.brandGreen;
   static Color get _panelSurface =>
@@ -52,6 +68,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
   @override
   void initState() {
     super.initState();
+    _active = this;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _queryFocus.requestFocus();
     });
@@ -59,6 +76,7 @@ class _IptvChannelSearchOverlayState extends State<IptvChannelSearchOverlay> {
 
   @override
   void dispose() {
+    if (_active == this) _active = null;
     _queryCtrl.dispose();
     _queryFocus.dispose();
     _overlayFocus.dispose();

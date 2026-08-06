@@ -129,7 +129,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [105-[open]-…](105-[open]-exoplayer-sources-dialog-missing.md) | ExoPlayer Sources button / 2-column dialog | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [106-[open]-…](106-[open]-desktop-session-profile-chrome-desync.md) | Long-idle session / profile chrome desync | P1 | High | open | 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [107-[fixed]-…](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) | Android ≤7.0 TMDB posters (Let's Encrypt trust) | P1 | High | fixed | Complete · 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [108-[open]-…](108-[open]-android-tv-iptv-exo-choppy-fps.md) | Android TV IPTV Exo choppy FPS (weak / Android 7) | P1 | High | open | 14/14 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [108-[open]-…](108-[open]-android-tv-iptv-exo-choppy-fps.md) | Android TV IPTV Exo choppy FPS (weak / Android 7) | P1 | High | open | 17/17 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [109-[open]-…](109-[open]-android-tv-boot-jwt-expired-discard-race.md) | ATV/desktop boot JWT expired (gotrue discard) | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [110-[open]-…](110-[open]-android-tv-iptv-player-top-bar-dpad.md) | ATV IPTV player top-right Player D-pad chrome | P1 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [111-[open]-…](111-[open]-macos-keychain-consent-local-file.md) | macOS Keychain consent + local-file fallback | P1 | Medium | open | 5/5 · A 0/3 | — |

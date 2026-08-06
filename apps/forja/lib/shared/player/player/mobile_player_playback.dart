@@ -1674,18 +1674,17 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     }
 
     // ── Decoding ─────────────────────────────────────────────────────────
-    // Phone / ATV emulator safe-mode: hwdec=no. Physical ATV: mediacodec
-    // (matches VideoController vo=mediacodec_embed).
+    // Phone safe-mode: hwdec=no. ATV: keep mediacodec (matches VideoController
+    // vo=mediacodec_embed - do not overwrite with auto-safe/software).
     final tvMediaKit = _s._tvMediaKit;
-    final tvHw = tvMediaKit && !_s._androidMediaKitSafeMode;
-    if (tvHw) {
+    if (tvMediaKit) {
       await safeSet('hwdec', 'mediacodec');
     } else {
       await safeSet('hwdec', _s._hwDecMode.mpvValue);
     }
-    final softSafeMode = _s._androidMediaKitSafeMode;
-    await safeSet('vd-lavc-dr', softSafeMode ? 'no' : 'yes');
-    if (Platform.isAndroid && (tvMediaKit || softSafeMode)) {
+    final phoneSafeMode = _s._androidMediaKitSafeMode && !tvMediaKit;
+    await safeSet('vd-lavc-dr', phoneSafeMode ? 'no' : 'yes');
+    if (Platform.isAndroid && (tvMediaKit || phoneSafeMode)) {
       // OpenSLES misconfigures on some ATV images (0 frames delivered).
       await safeSet('ao', 'audiotrack');
     }

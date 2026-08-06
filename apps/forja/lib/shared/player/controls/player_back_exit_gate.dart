@@ -3,10 +3,12 @@ import 'package:forja/shell/shell_bus.dart';
 
 /// TV remote Back while a player surface is active:
 /// 1. Menus/panels dismiss first ([dismissAnyPlayerChromeOverlay]).
-/// 2. First Back shows chrome and focuses the player Back control.
-/// 3. Second Back (Back already focused) exits the player.
+/// 2. In-player overlays (search ladder, …) via [tryConsumePlayerOverlay].
+/// 3. First Back shows chrome and focuses the player Back control.
+/// 4. Second Back (Back already focused) exits the player.
 abstract final class PlayerBackExitGate {
   static bool Function()? _tryFocusBack;
+  static bool Function()? _tryConsumePlayerOverlay;
   static bool _listening = false;
 
   /// True after a Back that focused the Back control — next Back may exit
@@ -19,6 +21,7 @@ abstract final class PlayerBackExitGate {
     ShellBus.playerSurfaceActive.addListener(() {
       if (!ShellBus.playerSurfaceActive.value) {
         _tryFocusBack = null;
+        _tryConsumePlayerOverlay = null;
         exitReady = false;
       }
     });
@@ -32,6 +35,28 @@ abstract final class PlayerBackExitGate {
   static void setTryFocusBack(bool Function()? callback) {
     _ensureSurfaceListener();
     _tryFocusBack = callback;
+  }
+
+  /// Multi-step overlays that own Back before the exit ladder (e.g. IPTV
+  /// channel search: results → field → close). Handled like chrome Overlay
+  /// dismiss so HW + didPopRoute twins are stamped away.
+  static void setTryConsumePlayerOverlay(bool Function()? callback) {
+    _ensureSurfaceListener();
+    _tryConsumePlayerOverlay = callback;
+  }
+
+  /// Returns `true` when this Back was consumed by an in-player overlay step.
+  static bool tryConsumePlayerOverlay() {
+    _ensureSurfaceListener();
+    if (!ShellBus.playerSurfaceActive.value) return false;
+    final cb = _tryConsumePlayerOverlay;
+    if (cb == null) return false;
+    try {
+      return cb();
+    } catch (e, st) {
+      debugPrint('[PlayerBackExitGate] tryConsumePlayerOverlay failed: $e\n$st');
+      return false;
+    }
   }
 
   /// Returns `true` when this Back should keep the player open.
@@ -60,6 +85,7 @@ abstract final class PlayerBackExitGate {
   /// Test-only.
   static void resetForTest() {
     _tryFocusBack = null;
+    _tryConsumePlayerOverlay = null;
     exitReady = false;
   }
 }
