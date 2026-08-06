@@ -230,11 +230,33 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
           }
         } else {
           // RFC-045: pipeline owns identity + classify - no separate probe.
-          final catalogUrl = hlsProxyTargetUrl(source.url) ?? source.url;
+          final pid = source.providerId ?? _s._currentProvider;
+          var catalogUrl = hlsProxyTargetUrl(source.url) ?? source.url;
+          final hdrs = resolvePlaybackHttpHeaders(
+            srcHeaders,
+            streamUrl: catalogUrl,
+            providerId: pid,
+          );
+          if (isKissKhProviderId(pid)) {
+            final maxH = await SettingsService().getMaxPlaybackHeight();
+            final cap = kissKhHlsMaxHeight(maxH);
+            final capped = await preferHlsVariantUnderHeight(
+              catalogUrl,
+              headers: hdrs,
+              maxHeight: cap,
+            );
+            if (capped != catalogUrl) {
+              debugPrint(
+                '[Player] KissKh HLS cap ≤${cap}p → variant '
+                '(avoid 4K buffer stall)',
+              );
+              catalogUrl = capped;
+            }
+          }
           final pipeline = await StreamOpenPipeline.start(
             catalogUrl: catalogUrl,
-            headers: srcHeaders,
-            providerId: source.providerId ?? _s._currentProvider,
+            headers: hdrs,
+            providerId: pid,
           );
           var branchOk = false;
           while (true) {
@@ -243,28 +265,10 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             if (step == null) break;
 
             await resetPlayerForOpen(_s._player);
-            final pid = source.providerId ?? _s._currentProvider;
-            var playUrl = step.playUrl;
-            if (isKissKhProviderId(pid)) {
-              final maxH = await SettingsService().getMaxPlaybackHeight();
-              final cap = kissKhHlsMaxHeight(maxH);
-              playUrl = await kissKhPlayUrlAfterHlsCap(
-                catalogUrl: step.catalogUrl,
-                playUrl: step.playUrl,
-                headers: step.headers,
-                maxHeight: cap,
-                buildPngStripProxy: (url, hdrs) async {
-                  final ls = LocalServerService();
-                  if (ls.port == 0) await ls.start();
-                  if (ls.port == 0) return null;
-                  return ls.getHlsProxyUrl(url, hdrs, stripMode: 'png');
-                },
-              );
-            }
             openUrl = await openPlayerStream(
               _s._player,
-              url: playUrl,
-              headers: step.headers,
+              url: step.playUrl,
+              headers: step.headers ?? hdrs,
               providerId: pid,
             );
             if (_fallbackAborted(runGen)) return false;
@@ -1670,17 +1674,18 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     }
 
     // ── Decoding ─────────────────────────────────────────────────────────
-    // Phone safe-mode: hwdec=no. ATV: keep mediacodec (matches VideoController
-    // vo=mediacodec_embed - do not overwrite with auto-safe/software).
+    // Phone / ATV emulator safe-mode: hwdec=no. Physical ATV: mediacodec
+    // (matches VideoController vo=mediacodec_embed).
     final tvMediaKit = _s._tvMediaKit;
-    if (tvMediaKit) {
+    final tvHw = tvMediaKit && !_s._androidMediaKitSafeMode;
+    if (tvHw) {
       await safeSet('hwdec', 'mediacodec');
     } else {
       await safeSet('hwdec', _s._hwDecMode.mpvValue);
     }
-    final phoneSafeMode = _s._androidMediaKitSafeMode && !tvMediaKit;
-    await safeSet('vd-lavc-dr', phoneSafeMode ? 'no' : 'yes');
-    if (Platform.isAndroid && (tvMediaKit || phoneSafeMode)) {
+    final softSafeMode = _s._androidMediaKitSafeMode;
+    await safeSet('vd-lavc-dr', softSafeMode ? 'no' : 'yes');
+    if (Platform.isAndroid && (tvMediaKit || softSafeMode)) {
       // OpenSLES misconfigures on some ATV images (0 frames delivered).
       await safeSet('ao', 'audiotrack');
     }

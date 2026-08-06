@@ -170,6 +170,26 @@ void main() {
     });
   });
 
+  group('Torrent session cache', () {
+    test('does not stick empty torrent hits', () {
+      const key = 'tv:1:S1:E3';
+      CatalogSourcesSessionCache.writeTorrents(key, const []);
+      expect(CatalogSourcesSessionCache.readTorrents(key), isNull);
+
+      CatalogSourcesSessionCache.writeTorrents(key, [
+        TorrentResult(
+          name: 'Show.S01E03',
+          magnet: 'magnet:?xt=urn:btih:abc',
+          seeders: '10',
+          size: '1 GB',
+          source: 'YTS',
+        ),
+      ]);
+      expect(CatalogSourcesSessionCache.readTorrents(key), isNotEmpty);
+      CatalogSourcesSessionCache.invalidate(key, kind: 'torrents');
+    });
+  });
+
   test('torrent provider chips include All and enabled providers', () {
     final options = torrentProviderChipOptions(
       enabledProviders: const [

@@ -106,5 +106,22 @@ void main() {
       pipe.report(StreamOpenStepResult.openFailed);
       expect(await pipe.next(), isNull);
     });
+
+    test('kisskh force → strip only; no openDirect fallback', () async {
+      final pipe = await StreamOpenPipeline.start(
+        catalogUrl: 'https://cdn.example/x/master.m3u8',
+        providerId: 'kisskh',
+        mediaClassOverride: StreamMediaClass.plainMedia,
+        buildStripProxy: (u, hdrs) {
+          expect(hdrs, isNotEmpty);
+          return 'http://127.0.0.1:9/hls-proxy?url=$u&strip=png';
+        },
+      );
+      expect(pipe.pngMode, AnimePngStripMode.force);
+      final a = await pipe.next();
+      expect(a?.action, StreamOpenAction.openPngStrip);
+      pipe.report(StreamOpenStepResult.openFailed);
+      expect(await pipe.next(), isNull);
+    });
   });
 }

@@ -73,25 +73,50 @@ pub fn png_wraps_mpeg_ts(raw: &[u8]) -> bool {
 
 fn resolve_url(relative: &str, base_path: &str, server_base: &str) -> String {
     let trimmed = relative.trim();
-    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-        return trimmed.to_string();
-    }
-    // Protocol-relative (`//cdn.example/seg`) — must NOT be treated as a path
-    // under server_base (that produced `https://hls19…shop//hls20…shop/…`).
-    if let Some(rest) = trimmed.strip_prefix("//") {
+    let resolved = if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        trimmed.to_string()
+    } else if let Some(rest) = trimmed.strip_prefix("//") {
+        // Protocol-relative (`//cdn.example/seg`) — must NOT be treated as a
+        // path under server_base (that produced `https://hostA//hostB/…`).
         let scheme = if base_path.starts_with("https://") || server_base.starts_with("https://")
         {
             "https"
         } else {
             "http"
         };
-        return format!("{scheme}://{rest}");
-    }
-    if trimmed.starts_with('/') {
+        format!("{scheme}://{rest}")
+    } else if trimmed.starts_with('/') {
         format!("{server_base}{trimmed}")
     } else {
         format!("{base_path}{trimmed}")
+    };
+    collapse_double_authority(&resolved)
+}
+
+/// Repair `https://hostA//hostB/path` (and `https://hostA//https://hostB/…`)
+/// from bad protocol-relative joins or CDN quirks.
+fn collapse_double_authority(url: &str) -> String {
+    let Some(scheme_end) = url.find("://") else {
+        return url.to_string();
+    };
+    let after_scheme = &url[scheme_end + 3..];
+    let Some(dbl) = after_scheme.find("//") else {
+        return url.to_string();
+    };
+    let second = after_scheme[dbl + 2..].trim_start_matches('/');
+    if second.is_empty() {
+        return url.to_string();
     }
+    if second.starts_with("http://") || second.starts_with("https://") {
+        return second.to_string();
+    }
+    // Second authority looks like a host (has a dot before first slash).
+    let host_part = second.split('/').next().unwrap_or("");
+    if !host_part.contains('.') {
+        return url.to_string();
+    }
+    let scheme = &url[..scheme_end];
+    format!("{scheme}://{second}")
 }
 
 pub fn build_hls_proxy_url(
@@ -368,6 +393,17 @@ mod tests {
             "https://hls19.cdnvideo11.shop",
         );
         assert_eq!(out, "https://hls20.cdnvideo11.shop/child/2160/x.m3u8");
+    }
+
+    #[test]
+    fn collapse_double_authority_repairs_bad_join() {
+        let out = collapse_double_authority(
+            "https://hls20.cdnvideo11.shop//hls19.videotradercdn.site/segment/x.png",
+        );
+        assert_eq!(
+            out,
+            "https://hls19.videotradercdn.site/segment/x.png"
+        );
     }
 
     #[test]

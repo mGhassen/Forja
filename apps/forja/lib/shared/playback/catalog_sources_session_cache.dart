@@ -45,10 +45,19 @@ class CatalogSourcesSessionCache {
       _torrents.remove(key);
       return null;
     }
+    // Empty hits are not reusable — scrapers flake; force a fresh search.
+    if (entry.results.isEmpty) {
+      _torrents.remove(key);
+      return null;
+    }
     return List<TorrentResult>.from(entry.results);
   }
 
   static void writeTorrents(String key, List<TorrentResult> results) {
+    if (results.isEmpty) {
+      _torrents.remove(key);
+      return;
+    }
     _torrents[key] = (at: DateTime.now(), results: List.from(results));
     _trim(_torrents);
   }

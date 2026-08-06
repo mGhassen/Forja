@@ -88,40 +88,6 @@ Future<String> preferHlsVariantUnderHeight(
   return ranked.last.q.url;
 }
 
-/// Cap a KissKh catalog URL, then re-apply PNG-strip proxy when [playUrl] was stripped.
-Future<String> kissKhPlayUrlAfterHlsCap({
-  required String catalogUrl,
-  required String playUrl,
-  Map<String, String>? headers,
-  required int maxHeight,
-  required Future<String?> Function(
-    String url,
-    Map<String, String> headers,
-  ) buildPngStripProxy,
-}) async {
-  final catalog = (hlsProxyTargetUrl(catalogUrl) ?? catalogUrl).trim();
-  if (!catalog.toLowerCase().contains('.m3u8')) return playUrl;
-
-  final capped = await preferHlsVariantUnderHeight(
-    catalog,
-    headers: headers,
-    maxHeight: maxHeight,
-  );
-  if (capped == catalog) return playUrl;
-
-  debugPrint(
-    '[Player] KissKh HLS cap ≤${maxHeight}p → variant '
-    '(avoid 4K buffer stall)',
-  );
-
-  final wasStrip = playUrl.contains('/hls-proxy') &&
-      playUrl.toLowerCase().contains('strip=png');
-  if (!wasStrip) return capped;
-
-  final proxied = await buildPngStripProxy(capped, headers ?? const {});
-  return (proxied != null && proxied.isNotEmpty) ? proxied : capped;
-}
-
 /// Prefer catalog/master URL for the quality menu when play opened a media playlist.
 String catalogUrlForHlsQualities({
   String? catalogUrl,

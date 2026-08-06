@@ -175,7 +175,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _softwareDecodeForced = false;
 
   /// Phone MediaKit: software decode (some MediaCodec paths flake).
-  /// Android TV MediaKit: keep HW + [vo=mediacodec_embed] (Impeller off in app).
+  /// Android TV MediaKit: HW + [vo=mediacodec_embed] on physical sets; emulator
+  /// goldfish HEVC MediaCodec ANRs on 1080p so safe mode applies there too.
   bool _androidMediaKitSafeMode = false;
 
   bool get _atvMediaKit =>
@@ -503,9 +504,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     } else {
       _exoBackend = false;
     }
-    // Phone MediaKit: software-friendly. ATV MediaKit: HW + mediacodec_embed.
-    _androidMediaKitSafeMode =
-        !_exoBackend && !kIsWeb && Platform.isAndroid && !PlatformInfo.isAndroidTv;
+    // Phone + ATV emulator MediaKit: software. Physical ATV: HW + mediacodec_embed.
+    _androidMediaKitSafeMode = !_exoBackend &&
+        !kIsWeb &&
+        Platform.isAndroid &&
+        (!PlatformInfo.isAndroidTv || PlatformInfo.isAndroidEmulator);
     _volume = prefs.volume;
     _volumeBeforeMute = prefs.volume > 0 ? prefs.volume : 100.0;
     _muted = prefs.volume == 0;
@@ -571,7 +574,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     }
 
     _exoBackend = wantExo;
-    _androidMediaKitSafeMode = !_exoBackend && !PlatformInfo.isAndroidTv;
+    _androidMediaKitSafeMode = !_exoBackend &&
+        (!PlatformInfo.isAndroidTv || PlatformInfo.isAndroidEmulator);
     _softwareDecodeForced = _windowsSoftwareDecode;
     _player = null;
     _controller = null;
