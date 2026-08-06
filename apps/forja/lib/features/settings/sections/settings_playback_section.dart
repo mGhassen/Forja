@@ -5,18 +5,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
-import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/sync/sync.dart';
 
-/// Playback sources, scoring, and audio prefs.
+/// Playback sources and player prefs.
 class SettingsPlaybackSection extends ConsumerStatefulWidget {
   const SettingsPlaybackSection({super.key, required this.visibility});
 
@@ -146,8 +143,6 @@ class _SettingsPlaybackSectionState
                 ),
             ],
           ),
-        if (widget.visibility.showProviderScoring)
-          _buildProviderScoringSection(snap),
         SettingsGroup(
           label: 'Player',
           children: [
@@ -341,75 +336,6 @@ class _SettingsPlaybackSectionState
           ],
         ),
       ],
-    );
-  }
-
-  Widget _buildProviderScoringSection(SettingsPlaybackSnapshot snap) {
-    final streamCatalog = <String, String>{
-      for (final entry in StreamProviders.providers.entries)
-        entry.key: (entry.value['name'] as String?) ?? entry.key,
-    };
-    final streamOrder = <String>[
-      ...snap.streamProviderOrder.where(streamCatalog.containsKey),
-      ...streamCatalog.keys
-          .where((k) => !snap.streamProviderOrder.contains(k)),
-    ];
-    final animeCatalog = AnimeStreamProviders.catalog;
-    final animeOrder = SettingsService.mergeProviderOrder(
-      snap.animeProviderOrder,
-      animeCatalog.keys,
-    );
-    final asianDramaCatalog = KissKhService.settingsCatalog;
-    final asianDramaOrder = <String>[
-      KissKhService.activeMirrorHost,
-      ...asianDramaCatalog.keys.where(
-        (host) => host != KissKhService.activeMirrorHost,
-      ),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: ProviderScoringPanel(
-        streamCatalog: streamCatalog,
-        streamOrder: streamOrder,
-        onStreamOrderChanged: (next) async {
-          await _playback.patch((s) => s.copyWith(streamProviderOrder: next));
-          await _settings.setStreamProviderOrder(next);
-          scheduleProvidersSyncPush();
-        },
-        onStreamOrderReset: () async {
-          final defaults = List<String>.from(
-            SettingsService.defaultStreamProviderOrder,
-          );
-          await _settings.setStreamProviderOrder(defaults);
-          await _playback.patch(
-            (s) => s.copyWith(streamProviderOrder: defaults),
-          );
-          scheduleProvidersSyncPush();
-        },
-        animeCatalog: animeCatalog,
-        animeOrder: animeOrder,
-        onAnimeOrderChanged: (next) async {
-          await _playback.patch((s) => s.copyWith(animeProviderOrder: next));
-          await _settings.setAnimeProviderOrder(next);
-          scheduleProvidersSyncPush();
-        },
-        onAnimeOrderReset: () async {
-          final defaults = List<String>.from(
-            SettingsService.defaultAnimeProviderOrder,
-          );
-          await _settings.setAnimeProviderOrder(defaults);
-          await _playback.patch(
-            (s) => s.copyWith(animeProviderOrder: defaults),
-          );
-          scheduleProvidersSyncPush();
-        },
-        asianDramaCatalog: asianDramaCatalog,
-        asianDramaOrder: asianDramaOrder,
-        disabledAsianDramaProviders: KissKhService.disabledMirrorHosts,
-        onAsianDramaOrderChanged: (_) {},
-        onAsianDramaOrderReset: () {},
-      ),
     );
   }
 }

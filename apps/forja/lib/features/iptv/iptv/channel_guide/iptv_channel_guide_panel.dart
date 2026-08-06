@@ -485,7 +485,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is KeyUpEvent) {
+      ShellTvHoldAccel.note(event);
+      return KeyEventResult.ignored;
+    }
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    ShellTvHoldAccel.note(event);
 
     final key = event.logicalKey;
     if (key == LogicalKeyboardKey.escape ||
@@ -500,11 +505,11 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     }
 
     if (key == LogicalKeyboardKey.arrowUp) {
-      _moveFocus(-1);
+      _moveFocus(-ShellTvHoldAccel.lastStep);
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowDown) {
-      _moveFocus(1);
+      _moveFocus(ShellTvHoldAccel.lastStep);
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowLeft) {

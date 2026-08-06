@@ -48,8 +48,11 @@ On **Android TV** IPTV, some **4K** live channels (e.g. 3840×2160 h264 @ 50fps)
 
 **Fix:** Exo wraps `LivePlaybackSpeedControl` and returns `1.0` only when decoded size is UHD (no mid-stream `replaceMediaItem`). MediaKit restores `ao=audiotrack` / unmute after open; UHD only flips to `video-sync=audio`.
 
+**Follow-up ([issue 155](155-[open]-android-tv-iptv-4k-mediakit-crash.md)):** MediaKit UHD mid-open `video-sync=audio` (+ `framedrop=decoder`) was reverted — restored ≤v1.3.80 `display-resample` / `framedrop=vo` for all resolutions after 4K process death reports. Exo UHD speed lock (`I138-T01`) stays. Ao restore stays. If picture-only 4K returns, fix without reintroducing the sync retune.
+
 ## Related
 
+- [155](155-[open]-android-tv-iptv-4k-mediakit-crash.md) — 4K MediaKit crash; UHD sync retune reverted
 - [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) — live LoadControl / display-resample
 - [114](114-[open]-android-tv-movie-mediakit-audio-only.md) — opposite: sound, black picture
 - [IPTV Xtream](../features/live/iptv-xtream.md) · [Player](../features/playback/player.md)

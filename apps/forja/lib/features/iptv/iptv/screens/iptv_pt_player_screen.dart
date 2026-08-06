@@ -321,6 +321,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// Have at least this much cache ⇒ stream is healthy, never auto-recover.
   static const double _minHealthyCacheSecs = 2.0;
 
+  /// Tunables ask for ~30 s readahead. Anything far above that is almost
+  /// always a live PTS discontinuity (mpv reports multi-hour "cache"), not
+  /// real buffered media — reject for the Stable recovery gate.
+  static const double _maxSaneCacheAheadSecs = 90.0;
+
   /// Feed mark moved within this window ⇒ still downloading.
   static const Duration _networkAliveWindow = Duration(seconds: 3);
 

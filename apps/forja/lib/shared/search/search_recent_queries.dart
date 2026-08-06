@@ -25,9 +25,44 @@ class SearchRecentQueries {
       final key = trimmed.toLowerCase();
       if (!seen.add(key)) continue;
       out.add(trimmed);
-      if (out.length >= maxEntries) break;
     }
-    return out;
+    final cleaned = _collapseTypingPartials(out);
+    if (cleaned.length > maxEntries) {
+      cleaned.removeRange(maxEntries, cleaned.length);
+    }
+    final changed = cleaned.length != out.length ||
+        !_sameSequence(cleaned, out.take(maxEntries).toList());
+    if (changed) {
+      await kvSetStringList(_key(scope), cleaned);
+    }
+    return cleaned;
+  }
+
+  /// Drop shorter prefixes left by TV IME debounce (M, Mi, Mic → Michael).
+  static List<String> _collapseTypingPartials(List<String> entries) {
+    return [
+      for (final q in entries)
+        if (!_isStrictPrefixOfAny(q, entries)) q,
+    ];
+  }
+
+  static bool _isStrictPrefixOfAny(String candidate, List<String> entries) {
+    final lower = candidate.toLowerCase();
+    for (final other in entries) {
+      final o = other.toLowerCase();
+      if (o != lower && o.startsWith(lower) && o.length > lower.length) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool _sameSequence(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].toLowerCase() != b[i].toLowerCase()) return false;
+    }
+    return true;
   }
 
   /// Push [query] to the front (case-insensitive dedupe). Returns the new list.
@@ -35,10 +70,20 @@ class SearchRecentQueries {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return load(scope);
 
+    final trimmedLower = trimmed.toLowerCase();
     final current = await load(scope);
     final next = <String>[
       trimmed,
-      ...current.where((q) => q.toLowerCase() != trimmed.toLowerCase()),
+      // Drop case-insensitive dupes and shorter prefixes (TV typing partials).
+      ...current.where((q) {
+        final lower = q.toLowerCase();
+        if (lower == trimmedLower) return false;
+        if (trimmedLower.startsWith(lower) &&
+            lower.length < trimmedLower.length) {
+          return false;
+        }
+        return true;
+      }),
     ];
     if (next.length > maxEntries) {
       next.removeRange(maxEntries, next.length);

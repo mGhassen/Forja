@@ -21,13 +21,13 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
-| [Playback](playback-settings.md) | Play sources, server reliability, audio, auto next/skip, quality, IPTV EPG | Always (play sources / scoring / episode extras need a VOD tab; IPTV EPG needs the IPTV tab) |
-| [Sources](torrent-settings.md) | Torrents, Stremio / Nuvio / Jackett / Prowlarr | VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
-| [WebStreamr](../scrapers/webstreamr-settings.md) | Country sources, extractors, resolutions, MFP, FlareSolverr, TMDB | VOD tab + Webstreaming on |
+| [Playback](playback-settings.md) | Play sources, audio, auto next/skip, quality, IPTV EPG | Always (play sources / episode extras need a VOD tab; IPTV EPG needs the IPTV tab) |
+| [Sources](torrent-settings.md) | Server reliability, torrents, Stremio / Nuvio / Jackett / Prowlarr | VOD tab + Webstreaming / Direct torrent / Stremio / Nuvio on — never on Android TV |
+| [WebStreamr](../scrapers/webstreamr-settings.md) | Country sources, extractors, resolutions, MFP, FlareSolverr, TMDB | VOD tab + Webstreaming on — never on Android TV |
 | Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link | VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
 | Connected services | Trakt, Simkl, MDBlist | VOD tab |
-| [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists | VOD tab |
-| [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Always (IPTV portals CSV / portal cache only if IPTV tab is on) |
+| [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists | VOD tab — never on Android TV |
+| [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
 | [Navigation](navigation-bar.md) | Tab visibility, order, default menu | Always |
 | [About](app-updates.md) | Check for updates, crash reporting + product analytics opt-in, app version | Always |
 
@@ -40,8 +40,11 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   focus ring; focusing a category selects it and updates the right pane, but
   focus stays on the left). **OK** or **→** opens that category’s right pane
   and moves focus to the first control there (each category’s detail is its own
-  focus zone). **↑/↓/←/→** move to neighboring detail rows, toggles, chips,
-  and buttons by on-screen position — D-pad stays in the right pane. **Back** returns to the selected
+  focus zone). **↑/↓** (and **←/→** as the same prev/next) walk the detail
+  controls in a **vertical list** — not sideways between neighbors; long lists
+  (e.g. Playback) scroll so the focused row stays visible; holding **↑/↓**
+  speeds up the further you hold; D-pad stays in the
+  right pane. **Back** returns to the selected
   category, then first category, then the nav rail. **←** on the first category
   also returns to the nav rail. **OK** in the detail pane flips a toggle /
   cycles a dropdown; nested switches do not steal focus. Text fields

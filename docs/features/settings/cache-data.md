@@ -8,7 +8,7 @@ A category under **Settings → Data & backup** to free disk and reset local lea
 
 ## How to open it
 
-**Settings → Data & backup** (Cache section)
+**Settings → Data & backup** (Cache section) — phone / desktop only (hidden on Android TV)
 
 ## What you can do
 

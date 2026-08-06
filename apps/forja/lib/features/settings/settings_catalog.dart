@@ -52,7 +52,11 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       ? (visibility.showStremioAddons
           ? 'Torrents, extractors, addons'
           : 'Torrents and scrapers')
-      : 'Extractors and addons';
+      : visibility.showProviderScoring
+          ? (visibility.showStremioAddons
+              ? 'Server reliability, addons'
+              : 'Server reliability')
+          : 'Extractors and addons';
 
   return [
     const SettingsCategoryMeta(
@@ -64,7 +68,7 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
     const SettingsCategoryMeta(
       id: SettingsCategoryId.playback,
       title: 'Playback',
-      subtitle: 'Sources, quality, audio, auto-play',
+      subtitle: 'Play sources, quality, audio, auto-play',
       icon: Icons.play_circle_outline_rounded,
     ),
     if (visibility.showSourcesCategory)
@@ -103,12 +107,13 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
         icon: Icons.list_alt_rounded,
         fillViewport: true,
       ),
-    const SettingsCategoryMeta(
-      id: SettingsCategoryId.data,
-      title: 'Data & backup',
-      subtitle: 'Clear cache, export, import',
-      icon: Icons.folder_outlined,
-    ),
+    if (visibility.showDataCategory)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.data,
+        title: 'Data & backup',
+        subtitle: 'Clear cache, export, import',
+        icon: Icons.folder_outlined,
+      ),
     const SettingsCategoryMeta(
       id: SettingsCategoryId.navigation,
       title: 'Features',

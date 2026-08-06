@@ -362,6 +362,15 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   KeyEventResult _handleArrow(KeyEvent event) {
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+
+    if (event is KeyUpEvent) {
+      ShellTvHoldAccel.note(event);
+      return KeyEventResult.ignored;
+    }
+    if (shellTvIsNavigationKey(event)) {
+      ShellTvHoldAccel.note(event);
+    }
+
     final handled = shellTvHandleRowArrows(
       event: event,
       tvMeta: widget.tvMeta,
@@ -390,9 +399,11 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       }
     }
 
-    if (widget.tvMeta == null &&
-        policy.useFocusableMoodChips &&
-        shellTvIsNavigationKey(event)) {
+    // Spatial nearest-neighbor when catalog row/grid edges did not claim the
+    // arrow. Settings / overlay controls attach tvMeta (zone) for memory but
+    // have no rowId — requiring tvMeta==null skipped focusInDirection and left
+    // D-pad dead while DirectionalFocusAction no-ops ←/→ at the app root.
+    if (policy.useFocusableMoodChips && shellTvIsNavigationKey(event)) {
       final key = event.logicalKey;
       TraversalDirection? direction;
       if (key == LogicalKeyboardKey.arrowLeft) {
@@ -406,8 +417,18 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       }
       // Focused control node — NOT FocusScope.focusInDirection (full-screen
       // chrome scopes find no neighbors from the scope rect).
-      if (direction != null && _effectiveNode.focusInDirection(direction)) {
-        return KeyEventResult.handled;
+      if (direction != null) {
+        final vertical = direction == TraversalDirection.up ||
+            direction == TraversalDirection.down;
+        final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
+        var node = _effectiveNode;
+        var movedAny = false;
+        for (var i = 0; i < steps; i++) {
+          if (!node.focusInDirection(direction)) break;
+          movedAny = true;
+          node = FocusManager.instance.primaryFocus ?? node;
+        }
+        if (movedAny) return KeyEventResult.handled;
       }
     }
 

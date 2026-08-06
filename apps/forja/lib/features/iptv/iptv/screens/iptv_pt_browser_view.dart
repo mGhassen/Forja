@@ -39,6 +39,8 @@ class _BrowserViewState extends State<_BrowserView> {
   /// this matches [IptvController.browserSelectedCategoryId].
   String? _tvFocusedCategoryId;
   bool _tvCategoryRailFocused = false;
+  /// TV floating reorder — sticky on this category until OK / Back / ← drops.
+  String? _tvFloatingCategoryId;
 
   bool get _searchOpen => widget.ctrl.browserSearchOpen;
   bool get _needsPortal => widget.ctrl.activePortal == null;
@@ -94,6 +96,10 @@ class _BrowserViewState extends State<_BrowserView> {
     final search = widget.ctrl.browserSearch.trim();
     final clearedSearch = _lastBrowserSearch.isNotEmpty && search.isEmpty;
     _lastBrowserSearch = search;
+    if (_tvFloatingCategoryId != null &&
+        !widget.ctrl.canReorderLiveCategories) {
+      _tvFloatingCategoryId = null;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (clearedSearch) {
@@ -248,7 +254,7 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   void _focusCatalogGroup() {
-    if (!iptvFocusCatalogGroupRow(0)) {
+    if (!iptvFocusFirstPortalGroup(widget.ctrl)) {
       if (widget.ctrl.browserSidebarCategories.isEmpty) {
         iptvFocusRowItem('browser-streams', 0);
       }
@@ -671,6 +677,7 @@ class _BrowserViewState extends State<_BrowserView> {
           Widget rowFor(IptvCategory cat, int listIndex, {int? reorderIndex}) {
             final synthetic = IptvLiveCatalog.isSyntheticId(cat.id);
             final movableIndex = canReorder ? reorderIndex : null;
+            final floating = _tvFloatingCategoryId == cat.id;
             return _CategorySidebarRow(
               key: ValueKey(cat.id),
               label: cat.name.isEmpty ? 'Uncategorized' : cat.name,
@@ -684,6 +691,19 @@ class _BrowserViewState extends State<_BrowserView> {
                   ? () => ctrl.toggleLiveCategoryPin(cat.id)
                   : null,
               reorderIndex: movableIndex,
+              floating: floating,
+              onEnterFloating: movableIndex != null
+                  ? () {
+                      if (!mounted) return;
+                      setState(() => _tvFloatingCategoryId = cat.id);
+                    }
+                  : null,
+              onExitFloating: () {
+                if (!mounted) return;
+                if (_tvFloatingCategoryId == cat.id) {
+                  setState(() => _tvFloatingCategoryId = null);
+                }
+              },
               onTvReorderUp: movableIndex != null && movableIndex > 0
                   ? () => unawaited(
                         ctrl.reorderLiveCategories(
@@ -708,7 +728,7 @@ class _BrowserViewState extends State<_BrowserView> {
                       iptvActiveSectionShelfIndex(ctrl),
                     )
                   : null,
-              // → commits the focused group first (TV no longer selects on focus).
+              // → opens channels when not pinnable (pinnable uses → for pin).
               onRightEdge: () =>
                   _commitBrowserCategory(cat.id, enterStreams: true),
               onTvFocusChange: (focused) =>

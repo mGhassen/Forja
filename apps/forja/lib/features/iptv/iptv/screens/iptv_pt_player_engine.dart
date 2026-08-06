@@ -309,9 +309,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     _engineSetVolume(_s._volume);
   }
 
-  /// ATV MediaKit: restore ao/mute, pick a real audio track, and on UHD switch
-  /// video-sync to audio-clock so 4K@50 does not starve sound (HD keeps
-  /// display-resample from [_applyMpvTunables]).
+  /// ATV MediaKit: restore ao/mute and pick a real audio track after open.
+  ///
+  /// Do **not** retune `video-sync` / `framedrop` for UHD — known-good 4K
+  /// playback (≤v1.3.80) kept `display-resample` + `framedrop=vo` for all
+  /// resolutions. The I138 mid-open `video-sync=audio` (+ `framedrop=decoder`)
+  /// path is the regression window for 4K process death (issue 155).
   Future<void> _tuneAtvMediaKitAfterOpen() async {
     if (_s._disposed || _s._exoBackend || !_s._atvMediaKit) return;
     final player = _s._player;
@@ -345,15 +348,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final w = int.tryParse((await p.getProperty('width')).toString()) ?? 0;
         if (h <= 0 && w <= 0) continue;
 
-        final isUhd = h >= 2160 || w >= 3840;
-        if (isUhd) {
-          // Audio clock on 4K — display-resample + framedrop=vo can leave
-          // picture OK with silent / starved ao on leanback.
-          await p.setProperty('video-sync', 'audio');
-          await p.setProperty('framedrop', 'decoder');
-          await p.setProperty('mute', 'no');
-          _engineSetVolume(_s._volume);
-          debugPrint('[IPTV Player] ATV MediaKit UHD → video-sync=audio');
+        // Observe-only — leave video-sync=display-resample from tunables.
+        if (h >= 2160 || w >= 3840) {
           _startUhdDiagnostics();
         }
         return;
@@ -366,13 +362,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
   /// Periodic UHD telemetry for issue 150 (4K stutter on ATV MediaKit).
   ///
-  /// The UHD branch above swaps in `video-sync=audio` + `framedrop=decoder` to
-  /// keep audio alive (issue 138), and both cost motion smoothness. These
-  /// counters say which one is actually hurting: pre-decode drops show up in
-  /// `decoder-frame-drop-count`, VO drops in `frame-drop-count`, and a cadence
-  /// mismatch shows as `container-fps` ≠ `display-fps` with both counts flat.
-  ///
-  /// Debug builds only — this polls nine properties every 5 s.
+  /// Observe-only while UHD plays with known-good `video-sync=display-resample`
+  /// + `framedrop=vo` (issue 155 restored ≤v1.3.80). Debug builds only.
   void _startUhdDiagnostics() {
     if (!kDebugMode || _s._uhdDiag != null) return;
     const props = <String>[
@@ -422,8 +413,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         await p.setProperty('mute', 'no');
         // Headroom for [kAtvMediaKitVolumeGain] — UI 100 asks mpv for 130.
         await p.setProperty('volume-max', '150');
-        // Match display refresh — smoother than audio-clock sync on leanback.
-        // UHD overrides to audio-clock in [_tuneAtvMediaKitAfterOpen] (issue 138).
+        // Match display refresh — same for HD and UHD (known-good ≤v1.3.80).
+        // Do not override to audio-clock on 4K (issue 155 / I138 regression).
         await p.setProperty('video-sync', 'display-resample');
         await p.setProperty('framedrop', 'vo');
       } else {
@@ -437,10 +428,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // Network: fail fast so the watchdog can step in
       await p.setProperty('network-timeout', '15');
 
-      // Cache: prioritise SMOOTHNESS over live-edge latency. We aggressively
-      // pre-buffer ~30 s of forward data and let mpv hold up to 150 MB so
-      // brief upstream hiccups never reach the screen. cache-pause stays
-      // OFF - we'd rather let the decoder skip frames than show a spinner.
+      // Cache: prioritise SMOOTHNESS over live-edge latency. Same 30 s / 150 MB
+      // window that played 4K on ATV MediaKit before I138 (≤v1.3.80). Keep
+      // cache-pause OFF — we'd rather skip frames than show a spinner.
       await p.setProperty('cache', 'yes');
       await p.setProperty('cache-secs', '30');
       await p.setProperty('demuxer-readahead-secs', '20');
@@ -873,7 +863,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   /// Sample cache health every watchdog tick (MediaKit).
   ///
   /// `demuxer-cache-duration` = seconds of media already downloaded ahead of
-  /// the playhead. That is the honest "is the stream working?" signal.
+  /// the playhead — when mpv reports a sane value. Live MPEG-TS PTS jumps can
+  /// spike this into hours; those samples are discarded so Stable recovery
+  /// does not treat a dead socket as "working".
   void _sampleDemuxerProgress() {
     if (!_bufferedRecovery) return;
     if (_s._exoBackend || _s._cacheProbeInFlight) return;
@@ -885,7 +877,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final aheadRaw = await p.getProperty('demuxer-cache-duration');
         final ahead = double.tryParse(aheadRaw.toString());
         if (ahead != null && ahead.isFinite && ahead >= 0) {
-          _s._cacheAheadSecs = ahead;
+          _applyCacheAheadSample(ahead, source: 'demuxer-cache-duration');
         }
         final timeRaw = await p.getProperty('demuxer-cache-time');
         final t = double.tryParse(timeRaw.toString());
@@ -901,7 +893,24 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     }));
   }
 
+  /// Accept only plausible ahead values (see [_maxSaneCacheAheadSecs]).
+  void _applyCacheAheadSample(double aheadSecs, {required String source}) {
+    if (aheadSecs > _IptvPtPlayerScreenState._maxSaneCacheAheadSecs) {
+      debugPrint(
+        '[IPTV] ignore absurd $source=${aheadSecs.toStringAsFixed(1)}s '
+        '(PTS discontinuity) — not counting as healthy cache',
+      );
+      // Do not leave a stale healthy cushion after a discontinuity spike.
+      _s._cacheAheadSecs = 0;
+      return;
+    }
+    _s._cacheAheadSecs = aheadSecs;
+  }
+
   /// Exo / mpv buffer stream: keep feed mark + approximate ahead when possible.
+  ///
+  /// [markMs] from media_kit `stream.buffer` is an **absolute** buffer-end
+  /// timestamp, not seconds ahead — only derive ahead when [positionMs] is set.
   void _noteFeedProgress(int markMs, {int? positionMs}) {
     if (!_bufferedRecovery) return;
     if (markMs <= 0) return;
@@ -911,7 +920,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     }
     // Exo often reports absolute buffered end; ahead ≈ buffered - position.
     if (positionMs != null && markMs > positionMs) {
-      _s._cacheAheadSecs = (markMs - positionMs) / 1000.0;
+      _applyCacheAheadSample(
+        (markMs - positionMs) / 1000.0,
+        source: 'buffer-end',
+      );
     }
   }
 
@@ -1203,6 +1215,19 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
     if (_streamWorking) {
       _logHealthyHold('hw→sw');
+      return;
+    }
+    // ATV MediaKit must stay on MediaCodec. Software decode of FHD/UHD on
+    // leanback OOMs / ANRs the process (looks like a 4K-only crash — issue 155).
+    // Soft-reopen keeps hwdec=mediacodec; never flip safe-mode / hwdec=no.
+    if (_s._atvMediaKit) {
+      debugPrint(
+        '[IPTV Player] ATV MediaKit: ignore hw→sw — soft reopen on MediaCodec',
+      );
+      if (_recoveryInFlight) return;
+      await _triggerRecovery(
+        reason: 'hardware decode failed (ATV keep MediaCodec)',
+      );
       return;
     }
     _s._softwareDecodeForced = true;

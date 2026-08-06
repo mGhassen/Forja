@@ -318,33 +318,47 @@ export async function linkScrapeDeepRefPortals(
   return hits.length
 }
 
-/** Junction row ids for a scrape run — slim Inngest memo (ids only). */
+/**
+ * One page of junction row ids for a scrape run.
+ * Prefer this inside promote steps — never memoize the full id list.
+ */
+export async function listDeepRefPortalIdsPage(
+  sb: SupabaseClient,
+  scrapeRunId: string,
+  offset: number,
+  limit: number,
+): Promise<string[]> {
+  if (limit <= 0) return []
+  const from = Math.max(0, Math.floor(offset))
+  const to = from + Math.max(1, Math.floor(limit)) - 1
+  const { data, error } = await sb
+    .from('iptv_scrape_deep_ref_portals')
+    .select('id, iptv_scrape_deep_refs!inner(scrape_run_id)')
+    .eq('iptv_scrape_deep_refs.scrape_run_id', scrapeRunId)
+    .order('created_at', { ascending: true })
+    .range(from, to)
+  if (error) throw error
+  return (data ?? [])
+    .map((row) => String(row.id ?? '').trim())
+    .filter(Boolean)
+}
+
+/** @deprecated Prefer listDeepRefPortalIdsPage inside each promote step. */
 export async function listDeepRefPortalIdsForRun(
   sb: SupabaseClient,
   scrapeRunId: string,
 ): Promise<string[]> {
-  const { data: refs, error: refErr } = await sb
-    .from('iptv_scrape_deep_refs')
-    .select('id')
-    .eq('scrape_run_id', scrapeRunId)
-  if (refErr) throw refErr
-  const refIds = (refs ?? []).map((r) => String(r.id)).filter(Boolean)
-  if (refIds.length === 0) return []
-
   const ids: string[] = []
-  const chunk = 100
-  for (let i = 0; i < refIds.length; i += chunk) {
-    const slice = refIds.slice(i, i + chunk)
-    const { data, error } = await sb
-      .from('iptv_scrape_deep_ref_portals')
-      .select('id')
-      .in('deep_ref_id', slice)
-      .order('created_at', { ascending: true })
-    if (error) throw error
-    for (const row of data ?? []) {
-      const id = String(row.id ?? '').trim()
-      if (id) ids.push(id)
-    }
+  const pageSize = 200
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await listDeepRefPortalIdsPage(
+      sb,
+      scrapeRunId,
+      offset,
+      pageSize,
+    )
+    ids.push(...page)
+    if (page.length < pageSize) break
   }
   return ids
 }
@@ -492,8 +506,33 @@ function isPendingDeepRefRow(r: {
 }
 
 /**
+ * Next pending deep_ref id for this run — claim inside process step.
+ * Never ship the full pending id list through Inngest memo.
+ */
+export async function getNextPendingDeepRefId(
+  sb: SupabaseClient,
+  scrapeRunId: string,
+): Promise<string | null> {
+  // fetch_ok IS NULL covers both paste-pending and base64-only pending.
+  const { data, error } = await sb
+    .from('iptv_scrape_deep_refs')
+    .select('id, paste_url, base64, fetch_ok, extract_count')
+    .eq('scrape_run_id', scrapeRunId)
+    .is('fetch_ok', null)
+    .order('created_at', { ascending: true })
+    .limit(40)
+  if (error) throw error
+  for (const row of data ?? []) {
+    if (!isPendingDeepRefRow(row)) continue
+    const id = String(row.id ?? '').trim()
+    if (id) return id
+  }
+  return null
+}
+
+/**
  * Pending deep_ref ids only — never ship paste bodies through Inngest memo.
- * Process steps re-fetch the full row by id, then fetch paste.sh on demand.
+ * Prefer getNextPendingDeepRefId inside each process step.
  */
 export async function listPendingDeepRefIdsForRun(
   sb: SupabaseClient,

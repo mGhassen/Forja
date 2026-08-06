@@ -213,9 +213,9 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
             }
           }
         }
-        if (widget.tvMeta == null &&
-            policy.useFocusableMoodChips &&
-            shellTvIsNavigationKey(event)) {
+        // Same as FocusableControl: zone-only tvMeta (settings/overlays) must
+        // still get spatial focusInDirection after row edges ignore the arrow.
+        if (policy.useFocusableMoodChips && shellTvIsNavigationKey(event)) {
           final key = event.logicalKey;
           TraversalDirection? direction;
           if (key == LogicalKeyboardKey.arrowLeft) {

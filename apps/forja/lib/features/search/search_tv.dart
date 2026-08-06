@@ -429,7 +429,6 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
     final query = _s._controller.text.trim();
     if (query.isEmpty) return;
 
-    final hadPendingDebounce = _s._debounce?.isActive ?? false;
     _s._debounce?.cancel();
 
     if (_s._searchFieldEditing && mounted) {
@@ -438,11 +437,8 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
     }
 
     _s._pendingGridFocusIndex = 0;
-
-    if (hadPendingDebounce) {
-      (this as _SearchSearch)._runSearchNow(query);
-    }
-
+    // Always commit — debounce may already have fetched without recording.
+    (this as _SearchSearch)._runSearchNow(query);
     _scheduleFocusOnResultCardIfPending();
   }
 

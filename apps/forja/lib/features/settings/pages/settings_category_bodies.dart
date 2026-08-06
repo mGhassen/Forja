@@ -17,6 +17,7 @@ import 'package:forja/features/settings/sections/settings_forja_account_panel.da
 import 'package:forja/features/settings/sections/settings_iptv_portals_section.dart';
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
 import 'package:forja/features/settings/sections/settings_playback_section.dart';
+import 'package:forja/features/settings/sections/settings_provider_scoring_section.dart';
 import 'package:forja/features/settings/sections/settings_providers_section.dart';
 import 'package:forja/features/settings/sections/settings_search_torrents_section.dart';
 import 'package:forja/features/settings/sections/settings_simkl_panel.dart';
@@ -86,13 +87,15 @@ class SettingsCategoryPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: ShellTvContainDpad(
-        child: FocusTraversalGroup(
-          policy: ReadingOrderTraversalPolicy(),
-          child: SettingsPageScaffold(
-            title: meta?.title ?? 'Settings',
-            showBack: true,
-            scrollable: !(meta?.fillViewport ?? false),
-            child: buildSettingsCategoryBody(categoryId, visibility),
+        child: ShellTvLinearFocusScope(
+          child: FocusTraversalGroup(
+            policy: ReadingOrderTraversalPolicy(),
+            child: SettingsPageScaffold(
+              title: meta?.title ?? 'Settings',
+              showBack: true,
+              scrollable: !(meta?.fillViewport ?? false),
+              child: buildSettingsCategoryBody(categoryId, visibility),
+            ),
           ),
         ),
       ),
@@ -110,6 +113,8 @@ class SettingsSourcesPageBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (visibility.showProviderScoring)
+          const SettingsProviderScoringSection(),
         if (visibility.showTorrentEngine)
           const SettingsSearchTorrentsSection(),
         SettingsProvidersSection(visibility: visibility),

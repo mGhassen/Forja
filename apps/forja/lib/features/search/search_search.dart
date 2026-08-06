@@ -147,7 +147,10 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
         _s._isSearching = true;
         _s._gridFocusedIndex = null;
       });
-      _recordRecentQuery(trimmed);
+      // TV: only persist on OK/submit — debounce would save every IME partial.
+      if (!_s._tvFocus(context) || !_s._searchFieldEditing) {
+        _recordRecentQuery(trimmed);
+      }
       (_s._container ?? ProviderScope.containerOf(context, listen: false))
           .invalidate(searchResultsProvider(trimmed));
     });

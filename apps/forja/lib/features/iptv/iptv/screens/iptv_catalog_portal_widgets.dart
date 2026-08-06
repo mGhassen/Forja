@@ -277,10 +277,18 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       iptvFocusRowItem('iptv-portal-header', 0);
       return;
     }
+    if (widget.onUpEdge != null) {
+      widget.onUpEdge!();
+      return;
+    }
     iptvFocusRowItem('portals', widget.listIndex - 1);
   }
 
   void _downFromActions() {
+    if (widget.onDownEdge != null) {
+      widget.onDownEdge!();
+      return;
+    }
     final handle = ShellTvFocusCoordinator.rowHandle('iptv', 'portals');
     final count = handle?.itemCount ?? 0;
     if (widget.listIndex + 1 < count) {

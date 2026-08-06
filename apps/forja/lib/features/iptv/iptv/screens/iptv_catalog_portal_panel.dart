@@ -180,24 +180,29 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     return iptvActivePortalFocusIndex(widget.ctrl, portals: all);
   }
 
-  /// D-pad ↑/↓: focus neighbor. Jump-then-retry when the lazy builder has not
-  /// mounted that row yet (long scraped lists).
+  /// D-pad ↑/↓: focus neighbor (or accelerated stride while holding). Jump-then-
+  /// retry when the lazy builder has not mounted that row yet.
   void _focusPortalAt(int index) {
     if (!mounted || !widget.ctrl.portalPanelOpen) return;
     final total = _filtered.length;
-    if (index < 0 || index >= total) return;
-    _lastFocusedPortalIndex = index;
-    if (ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', index)) {
+    if (total <= 0) return;
+    final clamped = index.clamp(0, total - 1);
+    _lastFocusedPortalIndex = clamped;
+    if (ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', clamped)) {
       return;
     }
-    _jumpPortalListToIndex(index);
+    _jumpPortalListToIndex(clamped);
     var tries = 0;
     void attempt() {
       if (!mounted || !widget.ctrl.portalPanelOpen) return;
-      if (ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', index)) {
+      if (ShellTvFocusCoordinator.focusRowItemExact(
+        'iptv',
+        'portals',
+        clamped,
+      )) {
         return;
       }
-      _jumpPortalListToIndex(index);
+      _jumpPortalListToIndex(clamped);
       if (tries++ < 12) {
         WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
       }
@@ -665,9 +670,10 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                           'iptv-portal-header',
                           _portalHeaderAddIndex(),
                         )
-                    : () => _focusPortalAt(i - 1),
-                onDownEdge:
-                    i >= last ? null : () => _focusPortalAt(i + 1),
+                    : () => _focusPortalAt(i - ShellTvHoldAccel.lastStep),
+                onDownEdge: i >= last
+                    ? null
+                    : () => _focusPortalAt(i + ShellTvHoldAccel.lastStep),
                 onEdit: () => _showPortalDialog(context, existing: v),
               ),
             );

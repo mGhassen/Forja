@@ -43,14 +43,16 @@ void main() {
     SettingsService.configurePlatformProfile(PlatformProfile.phone);
   });
 
-  test('Android TV hides Sources, Debrid, and torrent play sources', () async {
+  test('Android TV hides Sources, WebStreamr, Lists, Data, Debrid, torrent',
+      () async {
     PlatformPlayback.override = PlaybackProfile.androidTv;
     SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
 
     final service = SettingsService();
+    // Seed shell migration markers so getNavbarConfig won't rewrite our nav.
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
     await service.setNavbarConfig([
       'home',
-      'search',
       'anime',
       'iptv',
       'mylist',
@@ -66,16 +68,26 @@ void main() {
     expect(v.playSourceStremio, isFalse);
     expect(v.playSourceNuvio, isFalse);
     expect(v.playSourceWebstreaming, isTrue);
+    expect(v.showProviderScoring, isFalse);
     expect(v.showSourcesCategory, isFalse);
+    expect(v.showWebstreamr, isFalse);
+    expect(v.showLists, isFalse);
+    expect(v.showDataCategory, isFalse);
     expect(v.showDebrid, isFalse);
     expect(v.showTorrentEngine, isFalse);
     expect(v.showStremioAddons, isFalse);
     expect(v.showNuvio, isFalse);
-    expect(v.showWebstreamr, isTrue);
+    expect(v.showAccounts, isTrue);
 
     final ids = settingsCategories(v).map((c) => c.id).toSet();
     expect(ids.contains(SettingsCategoryId.sources), isFalse);
+    expect(ids.contains(SettingsCategoryId.webstreamr), isFalse);
+    expect(ids.contains(SettingsCategoryId.lists), isFalse);
+    expect(ids.contains(SettingsCategoryId.data), isFalse);
     expect(ids.contains(SettingsCategoryId.debrid), isFalse);
-    expect(ids.contains(SettingsCategoryId.webstreamr), isTrue);
+    expect(ids.contains(SettingsCategoryId.playback), isTrue);
+    expect(ids.contains(SettingsCategoryId.accounts), isTrue);
+    expect(ids.contains(SettingsCategoryId.navigation), isTrue);
+    expect(ids.contains(SettingsCategoryId.about), isTrue);
   });
 }

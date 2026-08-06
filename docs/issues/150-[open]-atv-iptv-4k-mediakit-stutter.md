@@ -9,9 +9,9 @@
 
 | | |
 |--|--|
-| **Progress** | **1 / 5** investigation · **0 / 4** acceptance |
+| **Progress** | **1 / 4** investigation · **1** ⏭️ · **0 / 4** acceptance |
 
-**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
 ---
 
@@ -21,8 +21,8 @@
 |--:|----|----|-----|
 | 1 | I150-T01 | UHD diagnostic snapshot — log `container-fps`, `display-fps`, `estimated-vf-fps`, `avsync`, `frame-drop-count`, `decoder-frame-drop-count`, `video-bitrate`, `demuxer-cache-duration`, `hwdec-current` on a timer while UHD is playing | ✅ |
 | 2 | I150-T02 | Capture a stutter session on the box; classify against the decision table below | ⬜ |
-| 3 | I150-T03 | A/B `framedrop=decoder` vs `framedrop=vo` on UHD with audio verified (must not regress `I138-A03`) | ⬜ |
-| 4 | I150-T04 | A/B `video-sync=audio` vs `display-resample` on UHD once audio is known good | ⬜ |
+| 3 | I150-T03 | A/B `framedrop=decoder` vs `framedrop=vo` on UHD with audio verified (must not regress `I138-A03`) — **`framedrop=decoder` removed in [issue 155](155-[open]-android-tv-iptv-4k-mediakit-crash.md)** (crash path); re-open only if stutter remains with `vo` | ⏭️ |
+| 4 | I150-T04 | A/B `video-sync=audio` vs `display-resample` on UHD once audio is known good — **do not re-enable `audio` without crash smoke (`I155-A01`)**; known-good is `display-resample` | ⬜ |
 | 5 | I150-T05 | Bitrate-aware cache sizing if `demuxer-max-bytes` is the binding limit at 4K | ⬜ |
 
 ---
@@ -45,31 +45,24 @@ non-fluid. HD/FHD on the same box and the same portal are smooth.
 
 ## Suspected cause — the UHD path trades smoothness for audio
 
-`_tuneAtvMediaKitAfterOpen` changes two settings when it detects UHD, and HD
-never takes either branch:
+`_tuneAtvMediaKitAfterOpen` **used to** change sync on UHD. [Issue 155](155-[open]-android-tv-iptv-4k-mediakit-crash.md) restored known-good ≤v1.3.80: **no** mid-open UHD retune — HD and UHD both stay on `display-resample` + `framedrop=vo`.
 
 ```dart
-final isUhd = h >= 2160 || w >= 3840;
-if (isUhd) {
-  await p.setProperty('video-sync', 'audio');
-  await p.setProperty('framedrop', 'decoder');
-}
+// tunables (all resolutions, including UHD):
+await p.setProperty('video-sync', 'display-resample');
+await p.setProperty('framedrop', 'vo');
 ```
 
-| Setting | HD | UHD | Effect on motion |
-|---|---|---|----|
-| `video-sync` | `display-resample` | `audio` | Frames no longer land on display refreshes. 50 fps content on a 60 Hz output judders with a repeating 5-frame cadence. |
-| `framedrop` | `vo` | `decoder` | `decoder` drops frames **before** decode; mpv documents this as the unsafe mode. Produces visibly jerky output rather than clean VO drops. |
+| Setting | HD / UHD (now) | Effect |
+|---|---|----|
+| `video-sync` | `display-resample` | Matches display refresh (known-good 4K path) |
+| `framedrop` | `vo` | Clean VO drops |
 
-Both came from [issue 138](138-[open]-android-tv-iptv-4k-audio.md) (4K played
-picture-only, no sound). Note that `I138-T02` specifies **only** the
-`video-sync=audio` change — `framedrop=decoder` was added beyond that task, so
-it is the first candidate to remove, and doing so may not touch the audio fix at
-all.
+I138’s `video-sync=audio` + `framedrop=decoder` are gone from the live path. If 4K motion still stutters under `display-resample`, capture diagnostics (`I150-T02`) before changing sync again.
 
 ## Second candidate — byte cap binds before the seconds target at 4K
 
-`cache-secs=30` with `demuxer-max-bytes=150000000`:
+ATV MediaKit uses the known-good `cache-secs=30` / `demuxer-max-bytes=150000000` again ([issue 155](155-[open]-android-tv-iptv-4k-mediakit-crash.md) T04).
 
 | Bitrate | 30 s wants | Hits 150 MB cap? |
 |---|---|---|
@@ -80,8 +73,7 @@ all.
 When mpv reaches `demuxer-max-bytes` it stops reading the socket until the cache
 drains. On a live feed that presents as a stalled reader to the server, and some
 portals throttle or drop at that point. Only 4K reaches the cap, which matches
-the HD/UHD split. Also relevant as memory pressure — 150 MB of demuxer plus 4K
-MediaCodec surfaces is heavy on a TV box.
+the HD/UHD split.
 
 ## Decision table for I150-T02
 
@@ -89,13 +81,14 @@ Read the diagnostic line during a stutter and classify:
 
 | Observation | Conclusion | Next |
 |----|----|---|
-| `decoder-frame-drop-count` climbing, `frame-drop-count` flat | `framedrop=decoder` is dropping frames pre-decode | `I150-T03` |
+| `decoder-frame-drop-count` climbing, `frame-drop-count` flat | pre-decode drops (legacy `framedrop=decoder`) | `I150-T03` ⏭️ — removed in 155 |
 | Both drop counts flat, `container-fps` ≠ `display-fps`, `avsync` small | Cadence judder from `video-sync=audio` | `I150-T04` |
 | `frame-drop-count` climbing, `avsync` drifting | Decoder cannot keep up — check `hwdec-current` is `mediacodec`, not a software fallback | new task |
-| `demuxer-cache-duration` sawtoothing well under 30 s | Byte cap binding — feed is being throttled | `I150-T05` |
+| `demuxer-cache-duration` sawtoothing well under target secs | Byte cap binding — feed is being throttled | `I150-T05` |
 
 ## Related
 
 - [issue 138](138-[open]-android-tv-iptv-4k-audio.md) — origin of the UHD branch; any change here must keep `I138-A03`
+- [issue 155](155-[open]-android-tv-iptv-4k-mediakit-crash.md) — 4K MediaKit process death; removed `framedrop=decoder` + ATV demuxer cap
 - [issue 108](108-[open]-atv-iptv-exo-choppy-fps.md) — Exo-side choppy FPS on the same surface
 - [RFC-052](../rfc/canceled/052-[canceled]-iptv-progress-aware-recovery.md) — canceled; cache sizing notes remain historical for `I150-T05`

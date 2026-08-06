@@ -122,10 +122,14 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   }
 
   Widget _wrapCompactTvFocus(Widget child) {
+    // Settings lists are vertical reading-order (↑/← prev, ↓/→ next) — not
+    // spatial sideways jumps between side-by-side controls.
     return ShellTvContainDpad(
-      child: FocusTraversalGroup(
-        policy: ReadingOrderTraversalPolicy(),
-        child: child,
+      child: ShellTvLinearFocusScope(
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: child,
+        ),
       ),
     );
   }
@@ -188,20 +192,22 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                 child: tv
                     ? FocusScope(
                         node: _detailScope,
-                        // D-pad stays in the detail pane (spatial). Back
-                        // (_handlePageBack) returns to the category rail.
+                        // D-pad stays in the detail pane (vertical reading
+                        // order). Back (_handlePageBack) → category rail.
                         child: SettingsDetailEnter(
                           enterToken: _detailEnterToken,
                           child: ShellTvContainDpad(
-                            child: FocusTraversalGroup(
-                              policy: ReadingOrderTraversalPolicy(),
-                              child: SettingsPageScaffold(
-                                title: selectedMeta?.title ?? 'Settings',
-                                scrollable:
-                                    !(selectedMeta?.fillViewport ?? false),
-                                child: buildSettingsCategoryBody(
-                                  widget.selectedId,
-                                  visibility,
+                            child: ShellTvLinearFocusScope(
+                              child: FocusTraversalGroup(
+                                policy: ReadingOrderTraversalPolicy(),
+                                child: SettingsPageScaffold(
+                                  title: selectedMeta?.title ?? 'Settings',
+                                  scrollable:
+                                      !(selectedMeta?.fillViewport ?? false),
+                                  child: buildSettingsCategoryBody(
+                                    widget.selectedId,
+                                    visibility,
+                                  ),
                                 ),
                               ),
                             ),

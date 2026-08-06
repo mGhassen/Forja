@@ -16,19 +16,18 @@ function resolveServeOrigin(): string | undefined {
 }
 
 /**
- * Remix adapter (Request/Response + streaming). Heartbeats keep the Vercel
- * connection alive while a single step runs (paste fetch / bulk insert).
- * Scrape itself uses checkpointing:false + sleep('0s') so each HTTP invoke
- * finishes one step — never return fat portal arrays from step.run (that
- * truncated the stream body → unexpected end of JSON input).
+ * Remix Request/Response adapter on Nitro/Vercel Node (not Edge).
  *
- * defaultMaxRuntime only applies when checkpointing is on; kept for other fns.
+ * streaming:false — Remix streaming is Edge-only; on Node the heartbeat
+ * stream routinely truncates → Inngest "unexpected end of JSON input".
+ * Classic scrape (checkpointing:false + sleep('0s')) finishes one step per
+ * invoke under maxDuration=300 — no stream needed.
  */
 const handler = serve({
   client: inngest,
   functions,
   serveOrigin: resolveServeOrigin(),
-  streaming: true,
+  streaming: false,
   defaultMaxRuntime: 45_000,
 })
 

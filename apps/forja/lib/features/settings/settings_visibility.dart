@@ -6,7 +6,8 @@ import 'package:rust/rust.dart';
 ///
 /// VOD tabs ([BootNeeds.vodNavIds]) gate movie/series Settings the same way boot
 /// gates engines. IPTV-only / Live-only profiles keep Profile, Playback (IPTV +
-/// player), Data, Navigation, About.
+/// player), Navigation, About. Android TV also hides Sources, WebStreamr, Lists,
+/// and Data & backup (lean leanback Settings).
 class SettingsVisibility {
   const SettingsVisibility({
     required this.playSourceTorrent,
@@ -28,6 +29,9 @@ class SettingsVisibility {
   final bool iptvNav;
   final bool liveMatchesNav;
 
+  static bool get _isAndroidTv =>
+      SettingsService.platformProfile == PlatformProfile.androidTv;
+
   /// Play-source toggles under Playback (need a VOD tab to matter).
   bool get showPlaySources => vodTab;
 
@@ -44,29 +48,39 @@ class SettingsVisibility {
   bool get showStremioAddons =>
       (vodTab && playSourceStremio) || liveMatchesNav;
 
-  /// Settings → Sources hub tile (torrent / Stremio / Nuvio only).
+  /// Settings → Sources hub tile (torrent / Stremio / Nuvio / server reliability).
   ///
-  /// Never true on Android TV — [resolve] ANDs platform capabilities so synced
-  /// phone prefs cannot reopen these tiles. Live-only profiles still get
-  /// Stremio install for sport addons.
+  /// Never on Android TV — phone/desktop only. Torrent / Stremio / Nuvio stay
+  /// gated by [resolve] platform caps as well.
   bool get showSourcesCategory =>
-      (vodTab && (playSourceTorrent || playSourceStremio || playSourceNuvio)) ||
-      liveMatchesNav;
+      !_isAndroidTv &&
+      ((vodTab &&
+              (playSourceTorrent ||
+                  playSourceStremio ||
+                  playSourceNuvio ||
+                  playSourceWebstreaming)) ||
+          liveMatchesNav);
 
   /// Debrid serves torrent + Stremio hashes (+ Nuvio magnets).
   bool get showDebrid =>
       vodTab && (playSourceTorrent || playSourceStremio || playSourceNuvio);
 
-  bool get showWebstreamr => vodTab && playSourceWebstreaming;
+  bool get showWebstreamr =>
+      !_isAndroidTv && vodTab && playSourceWebstreaming;
 
   /// Server reliability / provider order (webstreaming extractors).
-  bool get showProviderScoring => vodTab && playSourceWebstreaming;
+  /// Lives under Sources — hidden with that category on Android TV.
+  bool get showProviderScoring =>
+      !_isAndroidTv && vodTab && playSourceWebstreaming;
 
   /// Trakt / Simkl / MDBlist.
   bool get showAccounts => vodTab;
 
   /// Embedded Lists screen.
-  bool get showLists => vodTab;
+  bool get showLists => !_isAndroidTv && vodTab;
+
+  /// Settings → Data & backup (cache clear, export/import, IPTV portals CSV).
+  bool get showDataCategory => !_isAndroidTv;
 
   /// Auto next / auto skip (episode flow).
   bool get showVodPlayerExtras => vodTab;

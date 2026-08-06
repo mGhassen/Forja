@@ -444,4 +444,179 @@ void main() {
       bottomRight.dispose();
     },
   );
+
+  testWidgets(
+    'settings-zone tvMeta: ↓ still moves focus (not blocked by zone-only meta)',
+    (tester) async {
+      final top = FocusNode(debugLabel: 'settings-top');
+      final bottom = FocusNode(debugLabel: 'settings-bottom');
+      const meta = ShellTvFocusMeta(
+        tabId: 'settings',
+        zone: ShellTvZone.settings,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: ShellInputPolicy.maybeWrapFocusTraversal(
+                enabled: true,
+                child: Scaffold(
+                  body: ShellTvContainDpad(
+                    child: FocusTraversalGroup(
+                      policy: ReadingOrderTraversalPolicy(),
+                      child: Column(
+                        children: [
+                          FocusableControl(
+                            focusNode: top,
+                            autoFocus: true,
+                            tvMeta: meta,
+                            scaleOnFocus: 1.0,
+                            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                            onTap: () {},
+                            child: const SizedBox(width: 200, height: 48),
+                          ),
+                          FocusableControl(
+                            focusNode: bottom,
+                            tvMeta: meta,
+                            scaleOnFocus: 1.0,
+                            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                            onTap: () {},
+                            child: const SizedBox(width: 200, height: 48),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(top.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+
+      expect(
+        bottom.hasFocus,
+        isTrue,
+        reason: 'settings zone meta must not skip spatial focusInDirection',
+      );
+
+      top.dispose();
+      bottom.dispose();
+    },
+  );
+
+  testWidgets(
+    'settings linear scope: ↓ and → both walk next (vertical list, not sideways)',
+    (tester) async {
+      final a = FocusNode(debugLabel: 'a');
+      final b = FocusNode(debugLabel: 'b');
+      final c = FocusNode(debugLabel: 'c');
+      const meta = ShellTvFocusMeta(
+        tabId: 'settings',
+        zone: ShellTvZone.settings,
+      );
+
+      Widget row(FocusNode node, {bool autoFocus = false}) {
+        return FocusableControl(
+          focusNode: node,
+          autoFocus: autoFocus,
+          tvMeta: meta,
+          scaleOnFocus: 1.0,
+          ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+          onTap: () {},
+          child: const SizedBox(width: 240, height: 40),
+        );
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: ShellInputPolicy.maybeWrapFocusTraversal(
+                enabled: true,
+                child: Scaffold(
+                  body: ShellTvContainDpad(
+                    child: ShellTvLinearFocusScope(
+                      child: FocusTraversalGroup(
+                        policy: ReadingOrderTraversalPolicy(),
+                        child: Column(
+                          children: [
+                            row(a, autoFocus: true),
+                            row(b),
+                            row(c),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(a.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(b.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(c.hasFocus, isTrue, reason: '→ aliases next in linear settings');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      expect(b.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pump();
+      expect(a.hasFocus, isTrue, reason: '← aliases previous in linear settings');
+
+      a.dispose();
+      b.dispose();
+      c.dispose();
+    },
+  );
+
+  testWidgets(
+    'settings detail wraps ShellTvLinearFocusScope (vertical list)',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: const Scaffold(
+                body: ShellTvContainDpad(
+                  child: ShellTvLinearFocusScope(
+                    child: SizedBox(width: 100, height: 100),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      final boxCtx = tester.element(find.byType(SizedBox));
+      expect(ShellTvLinearFocusScope.activeOf(boxCtx), isTrue);
+      expect(ShellTvContainDpad.activeOf(boxCtx), isTrue);
+    },
+  );
 }

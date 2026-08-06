@@ -195,9 +195,23 @@ VoidCallback iptvStreamLeftEdge(IptvController ctrl, IptvStream stream) {
 bool iptvFocusBrowserCategories(IptvController ctrl) =>
     iptvFocusRowItem('browser-categories', ctrl.browserCategoryFocusIndex);
 
-/// First catalog group row (sidebar) - preferred TV landing focus.
+/// Sidebar index of the first portal group — skips Favorites / Already watched.
+int iptvFirstPortalGroupFocusIndex(IptvController ctrl) {
+  final cats = ctrl.browserSidebarCategories;
+  final idx = cats.indexWhere(
+    (c) => c.id.isNotEmpty && !IptvLiveCatalog.isSyntheticId(c.id),
+  );
+  return idx >= 0 ? idx : ctrl.browserCategoryFocusIndex;
+}
+
+/// Catalog group row (sidebar). Prefer [iptvFocusFirstPortalGroup] on open.
 bool iptvFocusCatalogGroupRow([int index = 0]) =>
     iptvFocusRowItem('browser-categories', index);
+
+/// TV landing focus when opening a portal / entering from nav — first portal
+/// group, not Favorites or Already watched.
+bool iptvFocusFirstPortalGroup(IptvController ctrl) =>
+    iptvFocusCatalogGroupRow(iptvFirstPortalGroupFocusIndex(ctrl));
 
 /// Shelf index for the active Live / Movies / Series tab.
 int iptvActiveSectionShelfIndex(IptvController ctrl) {
@@ -243,7 +257,7 @@ VoidCallback iptvStreamUpEdge(
 
 /// Restore IPTV catalog focus when returning from the nav rail (RIGHT / Enter).
 /// Prefers the last focused channel or group — not always the first category.
-bool iptvRestoreCatalogFocus({int? portalIndex}) {
+bool iptvRestoreCatalogFocus(IptvController ctrl, {int? portalIndex}) {
   final mem = ShellTvFocusCoordinator.memoryFor('iptv');
   if (mem != null &&
       mem.zone == ShellTvZone.row &&
@@ -252,7 +266,7 @@ bool iptvRestoreCatalogFocus({int? portalIndex}) {
     if (iptvFocusRowItem(mem.rowId!, mem.itemIndex)) return true;
   }
   if (iptvFocusRowItem('browser-streams')) return true;
-  if (iptvFocusCatalogGroupRow()) return true;
+  if (iptvFocusFirstPortalGroup(ctrl)) return true;
   if (iptvFocusRowItem('iptv-sections', 0)) return true;
   if (iptvFocusRowItem('iptv-top-tools', 0)) return true;
   if (iptvFocusRowItem('iptv-top-tools', 1)) return true;
@@ -303,14 +317,14 @@ bool _iptvMemoryRowIs(String rowId) {
   return mem?.rowId == rowId;
 }
 
-/// Nav Enter on IPTV - land on the first group row once catalog is ready.
+/// Nav Enter on IPTV - land on the first portal group once catalog is ready.
 void iptvEnterFromNav(IptvController ctrl) {
   if (ctrl.activePortal == null) {
     iptvFocusRowItem('iptv-open-portal', 0);
     return;
   }
   if (!ctrl.isLoading) {
-    iptvFocusCatalogGroupRow(0);
+    iptvFocusFirstPortalGroup(ctrl);
   }
 }
 

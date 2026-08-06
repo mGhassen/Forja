@@ -1,10 +1,10 @@
 # Playback settings
 
-> Play sources, external player, audio, webstreaming provider order, and anime provider order.
+> Play sources, external player, audio, and anime title language.
 
 ## What it is
 
-Core playback preferences: which backends **Play** tries on the media details screen, external player, preferred audio language, unsupported codec avoidance, webstreaming extractor priority, and anime stream source priority.
+Core playback preferences: which backends **Play** tries on the media details screen, external player, preferred audio language, unsupported codec avoidance, and anime title language.
 
 ## How to open it
 
@@ -12,7 +12,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 
 ## What you can do
 
-- Enable **Play sources**: **Direct torrent** (**All** / per-provider chips / Jackett / Prowlarr in **Sources**), **Stremio**, **Nuvio**, and **Webstreaming** (torrent / Stremio / Nuvio / webstreaming on by default on phone and desktop; **Android TV** shows **Webstreaming** only — Direct torrent, Stremio, and Nuvio are not available there, including for admin accounts, and the **Sources** / **Debrid** Settings categories stay hidden)
+- Enable **Play sources**: **Direct torrent** (**All** / per-provider chips / Jackett / Prowlarr in **Sources**), **Stremio**, **Nuvio**, and **Webstreaming** (torrent / Stremio / Nuvio / webstreaming on by default on phone and desktop; **Android TV** shows **Webstreaming** only — Direct torrent, Stremio, and Nuvio are not available there, including for admin accounts, and **Sources**, **WebStreamr**, **Debrid**, **Lists**, and **Data & backup** stay hidden)
 - When **Nuvio** is off: **Settings → Nuvio addons** and the **Sources → Nuvio** tab stay hidden
 - When **Webstreaming** is on and the signed-in account is an **admin**: toggle **Simple resolve (experimental)** (on by default) — tries one provider at a time in **Tries** order, filters/probes streams, then opens the player once (old multi-provider race stays when this is off). Non-admin accounts do not see this row
 - On **Android**, choose **Built-in engine** — **MediaKit (libmpv)** (default on phone and Android TV) or **ExoPlayer (Media3)** — in Settings for **movies/series**, or from the **Player** button in playback controls. **IPTV** follows the movies engine until you change it in-player. **Live Matches** defaults to **MediaKit**. Each surface remembers its own in-player choice. On **Android TV**, the in-player **Player** menu only lists those two engines (no external apps)
@@ -25,7 +25,6 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - Toggle **IPTV programme guide (EPG)** when the IPTV tab is visible — load and show NOW / NEXT guide data in IPTV player and browser (on by default)
 - Set **IPTV live max quality** when the IPTV tab is visible — **Auto (full quality)** by default (no downscale). Optional **1080p / 720p / 480p** caps ExoPlayer adaptive live variants only if you choose them
 - Set **IPTV live recovery** when the IPTV tab is visible — **Stable — buffer-aware (1.3.170)** by default (only reconnect when the live buffer is empty); **Classic — stall timers (1.3.114)** reconnects on freeze/buffering timers. Applies the next time you open the IPTV player
-- Reorder **Server reliability** when **Webstreaming** is on — Movies, Series, and Anime: drag preference (desktop) or **↑/↓** (TV); **Reset order** is D-pad focusable on TV; **Score** is live reliability; **Tries** is Auto check order. Asian Drama currently keeps one KissKH host enabled and shows the others **On hold**
 - Set **Max stream quality** to cap automatic source ranking and HLS Auto start bitrate (Auto, 4K, 1080p, 720p, …)
 - Choose **Anime title language** — **Romaji** (default), **English**, or **Native** — for Anime hub / details / player titles. Stream matching still searches romaji first, then English, native, and AniList synonyms
 
@@ -35,7 +34,7 @@ Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URL
 
 - Play sources appear only when a **VOD tab** (Home, Search, Anime, Asian Drama, or My List) is visible. Turning a play source **on** starts its engine for this session (Direct torrent → torrent engine; Nuvio → scraper refresh; Webstreaming → local stream proxy). Sources left **off** are not loaded at splash, and related Settings tiles (Sources, Debrid, WebStreamr, Nuvio addons) hide until you turn the source back on here
 - Play source toggles: green **Play** (play icon) uses **Webstreaming** extractors only; white link **Play** / **Sources** use **Direct torrent**, **Stremio**, and **Nuvio** when each is enabled (see [Webstreaming](../movies-tv/direct-streaming-mode.md)). The **Sources** panel uses **Torrents / Stremio / Nuvio** for the play sources you turned on.
-- **Server reliability**: tabs for Movies / Series / Anime / Asian Drama (one list at a time). Drag (desktop) or **↑/↓** (TV) to prefer a server where ordering is enabled. **Score** rises when a check **finishes** with linked server+stream outcomes (extract+stream OK → +4; extract OK but streams dead → net 0; never below **0**). Cancel / extract-only does not add a lone +2. **Tries** (1st, 2nd, …) is the order Auto tries them. Asian Drama enables only `kisskh.nl`; `.co`, `.ovh`, `.la`, and `.do` remain visible as **On hold** and cannot be reordered, preventing automatic mirror checks from triggering KissKH's shared-IP rate limit. In the player Source panel, the **badge number** is the same Score; **+/−** prefixes are this film/episode only (see [Stream providers](../sources/stream-providers.md)). Stream quality (codec, resolution, latency) is scored **after** resolve.
+- Reorder webstreaming extractors under **Settings → [Sources](torrent-settings.md)** → **Server reliability** (see [Stream providers](../sources/stream-providers.md))
 - **Max stream quality** caps which sources the engine prefers when ranking (device probe still applies under Auto). HLS Auto also uses that cap for start bitrate — Auto is a mid-high soft ceiling for a faster first frame; **4K** opens the top ladder rung. Lock a Quality chip in the player to force a specific variant.
 - Anime uses the same resolve + Rust scoring pipeline as movies; saved source pin still wins when set. Default Anime **Tries** order starts with Megaplay (AniList + MAL id embeds) before Miruro Cloudflare pipes; **VidLink** (MAL from relations/Jikan) sits after AllAnime — Reset in Server reliability restores that if you customized the list
 - External player is chosen per stream from the in-player **Player** menu on phone and desktop — playback always starts in the built-in player. **Android TV** has no external-app handoff from that menu
@@ -46,6 +45,7 @@ Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URL
 - [Media details](../movies-tv/media-details.md)
 - [Webstreaming](../movies-tv/direct-streaming-mode.md)
 - [Stream providers](../sources/stream-providers.md)
+- [Sources settings](torrent-settings.md)
 - [Cache & data](cache-data.md)
 - [Anime](../hubs/anime.md)
 - [External players](../playback/external-players.md)

@@ -155,26 +155,28 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [132-[open]-…](132-[open]-android-tv-exo-auto-subtitle-merging-crash.md) | ATV Exo auto subtitle select crashes / pops player | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 10/10 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [134-[fixed]-…](fixed/134-[fixed]-player-audio-continues-after-app-switch.md) | Player audio continues after app switch | P1 | High | fixed | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [135-[open]-…](135-[open]-android-tv-spatial-dpad-all-screens.md) | ATV spatial 2D D-pad (all screens) | P1 | High | open | 7/7 · A 1/8 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [135-[open]-…](135-[open]-android-tv-spatial-dpad-all-screens.md) | ATV spatial 2D D-pad (all screens) | P1 | High | open | 9/9 · A 1/8 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [136-[open]-…](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) | ATV IPTV catalog/guide scroll focus + logos | P1 | Medium | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [137-[open]-…](137-[open]-android-tv-player-engine-not-remembered.md) | ATV in-player engine not remembered per surface | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [138-[open]-…](138-[open]-android-tv-iptv-4k-audio.md) | ATV IPTV 4K MediaKit silent / Exo audio stutter | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [139-[open]-…](139-[open]-android-tv-shell-focus-chrome-stutter.md) | ATV shell / catalog focus chrome stutter | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [140-[open]-…](140-[open]-hls-duration-gate-marks-playing-failed.md) | HLS duration gate → red Source / 0:00 seek | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [141-[open]-…](141-[open]-desktop-trackpad-swipe-steals-horizontal-scroll.md) | Desktop trackpad swipe steals horizontal scroll | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [142-[open]-…](142-[open]-iptv-admin-scrape-watermark-deep-refs.md) | IPTV admin scrape watermark + deep refs + no upsert cap | P1 | High | open | 15/15 · A 0/3 | [1.0.5](../backlog/1.0.5-[draft].md) |
+| [142-[open]-…](142-[open]-iptv-admin-scrape-watermark-deep-refs.md) | IPTV admin scrape watermark + deep refs + no upsert cap | P1 | High | open | 16/16 · A 0/3 | [1.0.5](../backlog/1.0.5-[draft].md) |
 | [143-[open]-…](143-[open]-android-tv-stremio-live-reconnect.md) | ATV Live Matches Stremio forever Reconnecting | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [144-[open]-…](144-[open]-iptv-catalog-stream-health-never-reprobes.md) | IPTV catalog/guide stream health never re-probes | P2 | Medium | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [145-[open]-…](145-[open]-macos-live-embed-webkit-fullscreen-crash.md) | macOS Live embed WK fullscreen SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [146-[open]-…](146-[open]-macos-pip-settitlebarstyle-sigtrap.md) | Desktop PiP setTitleBarStyle SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [147-[open]-…](147-[open]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable (1.3.170) + Classic (1.3.114) recovery modes | P1 | High | open | 9/9 · A 0/9 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable/Classic modes + sane cache samples | P1 | High | open | 10/10 · A 0/10 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [149-[open]-…](149-[open]-iptv-player-source-picker-dpad.md) | IPTV/Live player source picker has no D-pad; duplicate source control | P2 | Medium | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (UHD `framedrop=decoder` / `video-sync=audio`) | P2 | Medium | open | 1/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (sync restored to display-resample in 155) | P2 | Medium | open | 1/4 · 1⏭️ · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [151-[open]-…](151-[open]-android-tv-exo-vod-stutter-no-cache.md) | ATV movie player (Exo VOD): 24fps judder + no back buffer / disk cache | P2 | Medium | open | 6/6 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [152-[open]-…](152-[open]-android-tv-mediakit-quieter-than-exo.md) | ATV MediaKit plays quieter than ExoPlayer at the same level | P2 | Medium | open | 3/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [153-[open]-…](153-[open]-kisskh-hls-4k-indefinite-buffer.md) | KissKh HLS: first frame then indefinite BUFFERING (4K ladder) | P1 | High | open | 11/11 · A 0/2 · 2⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
 | [154-[open]-…](154-[open]-android-tv-trailer-player-dpad.md) | ATV trailer player D-pad / Back / Exit | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [155-[open]-…](155-[open]-android-tv-iptv-4k-mediakit-crash.md) | ATV IPTV MediaKit: 4K live crashes app | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [156-[open]-…](156-[open]-android-tv-hold-scroll-accel.md) | ATV hold ↑/↓ scroll acceleration | P2 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

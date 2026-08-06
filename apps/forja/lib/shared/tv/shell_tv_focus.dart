@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_hold_accel.dart';
+
+export 'package:forja/shared/tv/shell_tv_hold_accel.dart' show ShellTvHoldAccel;
 
 /// D-pad navigation key - first press and OS key-repeat.
 bool shellTvIsNavigationKey(KeyEvent event) =>
@@ -191,6 +194,9 @@ class ShellTvLinearFocusEdges extends InheritedWidget {
 /// item never jumps to the last (and last never wraps to first).
 /// When traversal stops, optional [ShellTvLinearFocusEdges] may handle the edge.
 /// Outside this scope, callers must use spatial [FocusNode.focusInDirection].
+///
+/// Vertical holds use [ShellTvHoldAccel.lastStep] (set by the caller via
+/// [ShellTvHoldAccel.note]) so long ↑/↓ accelerates through Settings / menus.
 KeyEventResult shellTvLinearMenuArrows({
   required BuildContext context,
   required KeyEvent event,
@@ -207,11 +213,11 @@ KeyEventResult shellTvLinearMenuArrows({
   final forward = key == LogicalKeyboardKey.arrowDown ||
       key == LogicalKeyboardKey.arrowRight;
   if (!backward && !forward) return KeyEventResult.ignored;
+  if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
 
-  // Consume KeyRepeat so Flutter geometry / default traversal cannot also step
-  // (short TV remote presses often emit Down + Repeat).
-  if (event is KeyRepeatEvent) return KeyEventResult.handled;
-  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+  final vertical = key == LogicalKeyboardKey.arrowUp ||
+      key == LogicalKeyboardKey.arrowDown;
+  final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
 
   final scope = FocusScope.of(context);
   final edges = ShellTvLinearFocusEdges.maybeOf(context);
@@ -219,15 +225,22 @@ KeyEventResult shellTvLinearMenuArrows({
   final edge = scope.traversalEdgeBehavior;
   scope.traversalEdgeBehavior = TraversalEdgeBehavior.stop;
   try {
-    final moved = backward ? scope.previousFocus() : scope.nextFocus();
-    if (!moved) {
-      final edgeHandler =
-          backward ? edges?.onBackwardEdge : edges?.onForwardEdge;
-      if (edgeHandler != null) {
-        return edgeHandler()
-            ? KeyEventResult.handled
-            : KeyEventResult.ignored;
+    var movedAny = false;
+    for (var i = 0; i < steps; i++) {
+      final moved = backward ? scope.previousFocus() : scope.nextFocus();
+      if (!moved) {
+        if (!movedAny) {
+          final edgeHandler =
+              backward ? edges?.onBackwardEdge : edges?.onForwardEdge;
+          if (edgeHandler != null) {
+            return edgeHandler()
+                ? KeyEventResult.handled
+                : KeyEventResult.ignored;
+          }
+        }
+        break;
       }
+      movedAny = true;
     }
   } finally {
     scope.traversalEdgeBehavior = edge;
@@ -236,6 +249,8 @@ KeyEventResult shellTvLinearMenuArrows({
 }
 
 /// Coordinator-first D-pad arrows for catalog rows - traps horizontal edges.
+///
+/// Call [ShellTvHoldAccel.note] before this when ↑/↓ should accelerate.
 KeyEventResult shellTvHandleRowArrows({
   required KeyEvent event,
   ShellTvFocusMeta? tvMeta,

@@ -13,6 +13,9 @@ class _CategorySidebarRow extends StatefulWidget {
     this.pinned = false,
     this.onTogglePin,
     this.reorderIndex,
+    this.floating = false,
+    this.onEnterFloating,
+    this.onExitFloating,
     this.onTvReorderUp,
     this.onTvReorderDown,
     this.onUpEdge,
@@ -31,6 +34,10 @@ class _CategorySidebarRow extends StatefulWidget {
   final VoidCallback? onTogglePin;
   /// Non-null → whole row is a reorder drag target.
   final int? reorderIndex;
+  /// Parent-owned TV floating-reorder session (sticky across ↑/↓ moves).
+  final bool floating;
+  final VoidCallback? onEnterFloating;
+  final VoidCallback? onExitFloating;
   /// TV floating-reorder: move this row up / down in the movable list.
   final VoidCallback? onTvReorderUp;
   final VoidCallback? onTvReorderDown;
@@ -55,7 +62,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       s._focusRow();
       return true;
     }
-    if (s._floating) {
+    if (s.widget.floating) {
       s._exitFloating();
       return true;
     }
@@ -64,17 +71,15 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
 
   bool _focused = false;
   bool _hovered = false;
-  bool _floating = false;
   bool _okHoldFired = false;
-  int _okTapCount = 0;
   Timer? _okHoldTimer;
-  Timer? _okTapTimer;
 
   late final FocusNode _rowFocus;
   late final FocusNode _pinFocus;
 
-  static const Duration _okHoldDelay = Duration(seconds: 2);
-  static const Duration _okDoubleTapWindow = Duration(milliseconds: 380);
+  static const Duration _okHoldDelay = Duration(seconds: 1);
+
+  bool get _floating => widget.floating;
 
   bool get _chromeLit =>
       _focused || _pinFocus.hasFocus || _floating;
@@ -102,6 +107,24 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     _rowFocus = FocusNode(debugLabel: 'iptv-category-row-${widget.listIndex}');
     _pinFocus = FocusNode(debugLabel: 'iptv-category-pin-${widget.listIndex}');
     _pinFocus.addListener(_onPinFocusChanged);
+    if (_floating || _pinFocus.hasFocus) _claimChrome();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CategorySidebarRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_floating != oldWidget.floating) {
+      _syncChromeClaim();
+    }
+    // Sticky float: after ↑/↓ reorder the row moves — keep focus on it.
+    if (_floating &&
+        (widget.listIndex != oldWidget.listIndex ||
+            widget.reorderIndex != oldWidget.reorderIndex)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_floating) return;
+        _focusRow();
+      });
+    }
   }
 
   @override
@@ -161,22 +184,19 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   void _cancelOkGestures() {
     _okHoldTimer?.cancel();
     _okHoldTimer = null;
-    _okTapTimer?.cancel();
-    _okTapTimer = null;
-    _okTapCount = 0;
     _okHoldFired = false;
   }
 
   void _enterFloating() {
     if (!_canTvReorder || _floating) return;
     _cancelOkGestures();
-    setState(() => _floating = true);
     _claimChrome();
+    widget.onEnterFloating?.call();
   }
 
   void _exitFloating() {
     if (!_floating) return;
-    setState(() => _floating = false);
+    widget.onExitFloating?.call();
     _syncChromeClaim();
   }
 
@@ -224,11 +244,23 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
         _exitFloating();
         return KeyEventResult.handled;
       }
+      // Trap → while floating (drop with OK / ← / Back).
+      if (key == LogicalKeyboardKey.arrowRight) {
+        return KeyEventResult.handled;
+      }
       return KeyEventResult.ignored;
     }
 
-    // Long-press OK → floating reorder (KeyDown starts timer; KeyUp cancels /
-    // commits short press). Suppress default OK → open.
+    // → focuses pin when pinnable (channels open via OK).
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.arrowRight &&
+        _canTvPin) {
+      _cancelOkGestures();
+      _focusPin();
+      return KeyEventResult.handled;
+    }
+
+    // Long-press OK → floating reorder. Short OK → open channels.
     if (_canTvReorder || _canTvPin) {
       if (event is KeyDownEvent &&
           shellTvIsActivateLogicalKey(event.logicalKey)) {
@@ -238,8 +270,6 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
           _okHoldTimer = Timer(_okHoldDelay, () {
             if (!mounted) return;
             _okHoldFired = true;
-            _okTapTimer?.cancel();
-            _okTapCount = 0;
             _enterFloating();
           });
         }
@@ -253,24 +283,6 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
           _okHoldFired = false;
           return KeyEventResult.handled;
         }
-        if (_canTvPin) {
-          _okTapCount++;
-          if (_okTapCount >= 2) {
-            _okTapTimer?.cancel();
-            _okTapTimer = null;
-            _okTapCount = 0;
-            _focusPin();
-            return KeyEventResult.handled;
-          }
-          _okTapTimer?.cancel();
-          _okTapTimer = Timer(_okDoubleTapWindow, () {
-            if (!mounted) return;
-            _okTapCount = 0;
-            _fireOpen();
-          });
-          return KeyEventResult.handled;
-        }
-        // Reorderable but not pinnable — short OK opens immediately.
         _fireOpen();
         return KeyEventResult.handled;
       }
@@ -311,12 +323,13 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     return iptvTap(
       context: context,
       onTap: () {
+        // Stay on the pin — refocusing the row would ensureVisible-scroll.
         widget.onTogglePin?.call();
-        _focusRow();
       },
       borderRadius: 6,
       focusNode: _pinFocus,
       // Nested chrome — not a catalog row item (Back handled via tryConsumeBack).
+      ensureVisibleMode: ShellTvEnsureVisibleMode.off,
       onLeftEdge: _focusRow,
       onUpEdge: _focusRow,
       onDownEdge: _focusRow,
@@ -344,6 +357,17 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
             : ForjaShellColors.textSecondary;
     final tv = iptvUseTvFocus(context);
 
+    // Floating = same row chrome, slightly brighter green (no card / border lift).
+    final fillColor = _floating
+        ? ForjaShellColors.brandGreen.withValues(alpha: 0.28)
+        : _tvFocused
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+            : selected
+                ? ForjaShellColors.inkHover
+                : _active
+                    ? ForjaShellColors.inkHover
+                    : Colors.transparent;
+
     Widget rowBody = AnimatedContainer(
       duration: tv ? Duration.zero : const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
@@ -354,16 +378,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
         right: widget.compact ? 6 : 8,
       ),
       decoration: BoxDecoration(
-        color: _tvFocused
-            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-            : selected
-                ? ForjaShellColors.inkHover
-                : _active
-                    ? ForjaShellColors.inkHover
-                    : Colors.transparent,
+        color: fillColor,
         border: Border(
           left: BorderSide(
-            color: highlight
+            color: highlight || _floating
                 ? ForjaShellColors.brandGreen
                 : _active
                     ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
@@ -386,7 +404,9 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
               style: GoogleFonts.plusJakartaSans(
                 color: titleColor,
                 fontSize: widget.compact ? 13 : 14,
-                fontWeight: emphatic ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: emphatic || _floating
+                    ? FontWeight.w700
+                    : FontWeight.w500,
               ),
             ),
           ),
@@ -394,10 +414,6 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
         ],
       ),
     );
-
-    if (_floating) {
-      rowBody = _iptvCategoryFloatingChrome(rowBody);
-    }
 
     Widget row = iptvTap(
       context: context,
@@ -426,6 +442,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
         _cancelOkGestures();
         if (_floating) {
           _exitFloating();
+          return;
+        }
+        if (_canTvPin) {
+          _focusPin();
           return;
         }
         widget.onRightEdge?.call();
@@ -460,49 +480,6 @@ class _CategoryReorderDragStartListener extends ReorderableDragStartListener {
       debugOwner: this,
     );
   }
-}
-
-/// Static floating chrome (TV long-press reorder / same look as drag proxy).
-Widget _iptvCategoryFloatingChrome(Widget child) {
-  return Transform.translate(
-    offset: const Offset(6, -6),
-    child: Transform.scale(
-      scale: 1.04,
-      alignment: Alignment.centerLeft,
-      child: Material(
-        elevation: 12,
-        color: Colors.transparent,
-        shadowColor: Colors.black.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(10),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Stack(
-            fit: StackFit.passthrough,
-            children: [
-              const Positioned.fill(
-                child: ColoredBox(color: Color(0xFF1E2A22)),
-              ),
-              child,
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: ForjaShellColors.brandGreen.withValues(alpha: 0.8),
-                        width: 1.5,
-                      ),
-                      color: ForjaShellColors.brandGreen.withValues(alpha: 0.10),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
 }
 
 /// Floating drag proxy: lifted card, elevated surface, brand-green accent.

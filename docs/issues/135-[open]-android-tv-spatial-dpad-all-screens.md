@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **1 / 8** acceptance |
+| **Progress** | **9 / 9** fix · **1 / 8** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,8 @@
 | 5 | I135-T05 | Widget tests: spatial 2×2 overlay ↓; chrome Play→Rewind / ↑ seek still pass | ✅ |
 | 6 | I135-T06 | Feature docs + changelog: TV D-pad is spatial nearest-neighbor app-wide | ✅ |
 | 7 | I135-T07 | IPTV portal row: `allowNestedFocus` so **→** reaches favorite → copy → edit → delete | ✅ |
+| 8 | I135-T08 | Settings detail rows: spatial `focusInDirection` with zone-only `tvMeta` + `ensureVisibleMode.item` so long lists (Playback) scroll with ↓/↑ | ✅ |
+| 9 | I135-T09 | Settings detail opt-in `ShellTvLinearFocusScope` again — vertical reading-order ↑←/↓→ (no spatial sideways between rows); split + compact + category page | ✅ |
 
 ---
 
@@ -35,7 +37,7 @@
 |--:|----|-------------|--------|
 | 1 | I135-A01 | Home / Anime / Asian Drama: ↑/↓/←/→ move to on-screen neighbors (catalog coordinator rows/grids); not a single next/prev line across the page | ⬜ |
 | 2 | I135-A02 | Search / Lists / Live Matches / IPTV catalog: same spatial rule for chrome + grids | ⬜ |
-| 3 | I135-A03 | Settings detail: ←/→/↑/↓ move among detail controls by layout; Back (not ←) returns to category rail | ⬜ |
+| 3 | I135-A03 | Settings detail: ↑/↓ (and ←/→ as prev/next) walk controls in a vertical reading-order list; Back (not ←) returns to category rail | ⬜ |
 | 4 | I135-A04 | Player overlays (Sources / Audio / Subs / Settings): spatial inside panel; Back dismisses; no leak to chrome | ⬜ |
 | 5 | I135-A05 | Exo / film / IPTV chrome: band ↑/↓ and neighbor ←/→ (seek scrub exception) | ⬜ |
 | 6 | I135-A06 | Profile chooser: spatial D-pad among profiles / actions | ⬜ |
@@ -48,7 +50,7 @@
 
 Recent TV focus work made many surfaces feel like a **1D line** (`↑/←` = previous, `↓/→` = next via `ShellTvLinearFocusScope` / `shellTvLinearMenuArrows`). Catalog rows already use the coordinator (screen-space shelves). Everything else — settings, overlays, profile chooser, non-meta chrome — now defaults to **nearest-neighbor `focusInDirection`**.
 
-**Root fix:** Spatial is the default; linear scope becomes rare opt-in (`TvOverlayScope(linear: true)`). Keep `FocusScope` + `ShellTvContainDpad` traps (settings detail, overlays) so Left does not auto-jump to nav; keep catalog coordinator + seek scrub exceptions.
+**Root fix:** Spatial is the default; linear scope becomes rare opt-in (`TvOverlayScope(linear: true)`, **Settings detail** lists). Keep `FocusScope` + `ShellTvContainDpad` traps (settings detail, overlays) so Left does not auto-jump to nav; keep catalog coordinator + seek scrub exceptions.
 
 ## Related
 

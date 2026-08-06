@@ -318,11 +318,20 @@ class _HubSearchPageState extends State<HubSearchPage> {
       return;
     }
     _debounce = Timer(Duration(milliseconds: widget.debounceMs), () {
-      _performSearch(query.trim());
+      final trimmed = query.trim();
+      if (trimmed.isEmpty) return;
+      // TV: only persist on OK/submit — debounce would save every IME partial.
+      _performSearch(
+        trimmed,
+        recordRecent: !_tvFocus(context) || !_searchFieldEditing,
+      );
     });
   }
 
-  Future<void> _performSearch(String query) async {
+  Future<void> _performSearch(
+    String query, {
+    bool recordRecent = true,
+  }) async {
     if (query.isEmpty) return;
     final gen = ++_searchGeneration;
     setState(() {
@@ -332,7 +341,9 @@ class _HubSearchPageState extends State<HubSearchPage> {
       _helperFocusedIndex = null;
       _gridFocusedIndex = 0;
     });
-    _recordRecentQuery(query);
+    if (recordRecent) {
+      _recordRecentQuery(query);
+    }
     try {
       final results = await widget.onSearch(query);
       if (gen != _searchGeneration || !mounted) return;
@@ -348,6 +359,22 @@ class _HubSearchPageState extends State<HubSearchPage> {
         _error = 'Search failed';
       });
     }
+  }
+
+  void _submitSearchField() {
+    if (!_tvFocus(context)) return;
+    final query = _controller.text.trim();
+    if (query.isEmpty) return;
+
+    _debounce?.cancel();
+
+    if (_searchFieldEditing && mounted) {
+      setState(() => _searchFieldEditing = false);
+    }
+
+    _pendingGridFocusIndex = 0;
+    _performSearch(query, recordRecent: true);
+    _scheduleFocusOnResultCardIfPending();
   }
 
   void _applyHelperQuery(String title) {
@@ -663,6 +690,10 @@ class _HubSearchPageState extends State<HubSearchPage> {
       _focusSearchClose();
       return KeyEventResult.handled;
     }
+    if (shellTvIsActivateKey(event) && _searchFieldEditing) {
+      _submitSearchField();
+      return KeyEventResult.handled;
+    }
     if (shellTvIsActivateKey(event) && !_searchFieldEditing) {
       _beginSearchFieldEditing();
       return KeyEventResult.handled;
@@ -830,6 +861,16 @@ class _HubSearchPageState extends State<HubSearchPage> {
           showCursor: !browseOnly || _query.isNotEmpty,
           enableInteractiveSelection: !browseOnly,
           onChanged: _onSearchChanged,
+          onSubmitted: (v) {
+            if (_tvFocus(context)) {
+              _submitSearchField();
+            } else {
+              final trimmed = v.trim();
+              if (trimmed.isEmpty) return;
+              _debounce?.cancel();
+              _performSearch(trimmed, recordRecent: true);
+            }
+          },
           style: TextStyle(
             color: ForjaShellColors.textPrimary,
             fontSize: 32,

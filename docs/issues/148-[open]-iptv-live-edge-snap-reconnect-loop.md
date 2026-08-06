@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** fix · **0 / 9** acceptance |
-| **Current slice** | Dual recovery modes — Stable (1.3.170 buffer-aware, default) + Classic (1.3.114 timers) via Settings; device smoke outstanding |
+| **Progress** | **10 / 10** fix · **0 / 10** acceptance |
+| **Current slice** | Dual recovery + sane cache samples (reject PTS spikes); device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -30,6 +30,7 @@
 | 7 | I148-T07 | **Hypothesis shipped then abandoned** — assumed 8 s freeze vs 30 s cache; [RFC-052](../rfc/canceled/052-[canceled]-iptv-progress-aware-recovery.md) gated detectors on feed/cache progress. Did not stop the reporter's reconnect loop | ✅ |
 | 8 | I148-T08 | **Abandon RFC-052 as sole path** — strip progress/cache gates from default; cancel RFC-052 as mandatory approach | ✅ |
 | 9 | I148-T09 | **Dual mode** — restore 1.3.170 buffer-aware recovery as default; keep 1.3.114 classic timers; Settings → Playback → IPTV live recovery; applies on next player open | ✅ |
+| 10 | I148-T10 | Reject absurd `demuxer-cache-duration` / buffer-ahead samples (>90 s) as PTS garbage — stats show `— (invalid PTS)`; Stable gate does not treat spikes as healthy cache | ✅ |
 
 ---
 
@@ -46,6 +47,7 @@
 | 7 | I148-A07 | Android TV MediaKit + **Stable**: live channel matches 1.3.170 steadiness | ⬜ |
 | 8 | I148-A08 | Settings dropdown switches modes; next player open logs `live recovery mode=buffered|classic` | ⬜ |
 | 9 | I148-A09 | **Classic** mode: frozen-position detector reopens within ~8s without requiring empty cache | ⬜ |
+| 10 | I148-A10 | Stream stats: Cache stays in the seconds–tens range on healthy live; a PTS spike shows `— (invalid PTS)` not thousands of minutes; no multi-hour Buffered ahead | ⬜ |
 
 ---
 

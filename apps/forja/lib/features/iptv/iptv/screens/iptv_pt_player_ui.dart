@@ -105,6 +105,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         retryAttempt: _s._retryAttempt,
         volume: _s._volume,
         buffered: _s._buffered,
+        position: _s._lastPos,
       ),
     );
   }

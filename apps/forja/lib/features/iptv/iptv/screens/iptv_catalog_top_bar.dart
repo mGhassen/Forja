@@ -1343,6 +1343,7 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
 
 /// Shelf tab - section gradient when selected / hovered.
 /// Hover sequence: color paints first, then the tab expands to reveal reload.
+/// TV: hold OK ~1s to reveal reload; → focuses it; leaving the tab hides it.
 class _IptvSectionShelfTab extends StatefulWidget {
   const _IptvSectionShelfTab({
     required this.spec,
@@ -1376,21 +1377,31 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
   /// Pause after color so expand never leads the hover feedback.
   static const _colorThenExpandDelay = Duration(milliseconds: 90);
   static const _expandDuration = Duration(milliseconds: 200);
+  static const _tvReloadHoldDelay = Duration(seconds: 1);
 
   bool _hover = false;
   bool _focused = false;
+  bool _reloadChipFocused = false;
   bool _reloadArmed = false;
+  bool _tvReloadRevealed = false;
+  bool _okHoldFired = false;
   Timer? _revealTimer;
+  Timer? _okHoldTimer;
 
   bool get _tv => iptvUseTvFocus(context);
 
   /// Section color on mouse hover and D-pad focus (TV included).
-  bool get _paintActive => _hover || _focused;
+  bool get _paintActive =>
+      _hover || _focused || _reloadChipFocused || _tvReloadRevealed;
 
-  /// Reload chip expand is mouse / desktop-keyboard only - not TV focus.
-  bool get _expandActive => _hover || (_focused && !_tv);
+  /// Desktop: expand on hover/keyboard focus. TV: only after hold OK.
+  bool get _expandActive =>
+      _hover ||
+      (_focused && !_tv) ||
+      (_tv && (_tvReloadRevealed || _reloadChipFocused));
 
-  bool get _revealReload => _expandActive && _reloadArmed;
+  bool get _revealReload =>
+      _expandActive && (_reloadArmed || _tvReloadRevealed || _reloadChipFocused);
 
   void _setHover(bool value) {
     if (_hover == value) return;
@@ -1404,6 +1415,49 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
     if (_focused == value) return;
     setState(() {
       _focused = value;
+      if (!value) {
+        _cancelOkHold();
+        // Reload chip may take focus on → — hide only if chrome left entirely.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_focused || _reloadChipFocused) return;
+          _hideTvReload();
+        });
+      }
+      _syncReveal();
+    });
+  }
+
+  void _setReloadChipFocused(bool value) {
+    if (_reloadChipFocused == value) return;
+    setState(() {
+      _reloadChipFocused = value;
+      if (!value) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_focused || _reloadChipFocused) return;
+          _hideTvReload();
+        });
+      } else {
+        _tvReloadRevealed = true;
+        _reloadArmed = true;
+      }
+      _syncReveal();
+    });
+  }
+
+  void _cancelOkHold() {
+    _okHoldTimer?.cancel();
+    _okHoldTimer = null;
+    _okHoldFired = false;
+  }
+
+  void _hideTvReload() {
+    _cancelOkHold();
+    if (!_tvReloadRevealed && !_reloadArmed) return;
+    setState(() {
+      _tvReloadRevealed = false;
+      if (_tv) _reloadArmed = false;
       _syncReveal();
     });
   }
@@ -1411,7 +1465,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
   /// Color is applied immediately in [build]; expand arms after a short delay.
   void _syncReveal() {
     if (_expandActive) {
-      if (_reloadArmed) return;
+      if (_reloadArmed || _tvReloadRevealed) return;
       _revealTimer?.cancel();
       _revealTimer = Timer(_colorThenExpandDelay, () {
         if (mounted && _expandActive) setState(() => _reloadArmed = true);
@@ -1423,9 +1477,44 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
     }
   }
 
+  KeyEventResult _onShelfKey(FocusNode node, KeyEvent event) {
+    if (!_tv) return KeyEventResult.ignored;
+
+    if (event is KeyDownEvent &&
+        shellTvIsActivateLogicalKey(event.logicalKey)) {
+      _okHoldFired = false;
+      _okHoldTimer?.cancel();
+      _okHoldTimer = Timer(_tvReloadHoldDelay, () {
+        if (!mounted || !_focused) return;
+        _okHoldFired = true;
+        setState(() {
+          _tvReloadRevealed = true;
+          _reloadArmed = true;
+        });
+      });
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent &&
+        shellTvIsActivateLogicalKey(event.logicalKey)) {
+      _okHoldTimer?.cancel();
+      _okHoldTimer = null;
+      if (_okHoldFired) {
+        _okHoldFired = false;
+        return KeyEventResult.handled;
+      }
+      // Short OK → switch section.
+      widget.onTap();
+      return KeyEventResult.handled;
+    }
+
+    // → while reload revealed focuses the reload chip (onRightEdge).
+    return KeyEventResult.ignored;
+  }
+
   @override
   void dispose() {
     _revealTimer?.cancel();
+    _cancelOkHold();
     super.dispose();
   }
 
@@ -1496,6 +1585,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                   : widget.onRightEdge,
               onLeftEdge: widget.onLeftEdge,
               onFocusChange: _setFocused,
+              onKeyEvent: _tv ? _onShelfKey : null,
               child: SizedBox(
                 height: _kShelfTabHeight,
                 child: Padding(
@@ -1546,8 +1636,20 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                     tvItemIndex: widget.listIndex,
                     onLeftEdge: () =>
                         iptvFocusRowItem('iptv-sections', widget.listIndex),
-                    onRightEdge: widget.onRightEdge,
+                    onRightEdge: () {
+                      // Leaving reload → next shelf (or tools) hides this chip.
+                      _hideTvReload();
+                      if (widget.onRightEdge != null) {
+                        widget.onRightEdge!();
+                      } else {
+                        iptvFocusRowItem(
+                          'iptv-sections',
+                          widget.listIndex + 1,
+                        );
+                      }
+                    },
                     onDownEdge: widget.onDownEdge,
+                    onFocusChange: _setReloadChipFocused,
                     child: Center(
                       child: Padding(
                         padding: const EdgeInsets.only(right: 8),

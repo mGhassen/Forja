@@ -14,6 +14,7 @@ class IptvPlayerStatsSnapshot {
     required this.retryAttempt,
     required this.volume,
     this.buffered,
+    this.position,
   });
 
   final bool playing;
@@ -21,7 +22,10 @@ class IptvPlayerStatsSnapshot {
   final String sourceLabel;
   final int retryAttempt;
   final double volume;
+
+  /// Absolute buffer-end from media_kit (not "seconds ahead").
   final Duration? buffered;
+  final Duration? position;
 }
 
 class IptvPlayerStatsPanel {
@@ -68,7 +72,11 @@ class _IptvStatsBody extends StatefulWidget {
 }
 
 class _IptvStatsBodyState extends State<_IptvStatsBody> {
+  /// Matches IPTV player Stable gate — above this is PTS garbage, not cache.
+  static const double _maxSaneCacheAheadSecs = 90.0;
+
   Timer? _timer;
+  StreamSubscription<Duration>? _bufferSub;
   Map<String, String> _mpv = const {};
   Duration? _buffered;
 
@@ -76,7 +84,7 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
   void initState() {
     super.initState();
     _buffered = widget.snapshot().buffered;
-    widget.player.stream.buffer.listen((b) {
+    _bufferSub = widget.player.stream.buffer.listen((b) {
       if (!mounted) return;
       setState(() => _buffered = b);
     });
@@ -87,6 +95,7 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
   @override
   void dispose() {
     _timer?.cancel();
+    unawaited(_bufferSub?.cancel());
     super.dispose();
   }
 
@@ -143,12 +152,26 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
     return '${(n / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  static String _fmtSeconds(String raw) {
+  /// demuxer-cache-duration in seconds — hide PTS discontinuity spikes.
+  static String _fmtCacheAhead(String raw) {
     if (raw == '-') return raw;
     final n = double.tryParse(raw);
     if (n == null || n < 0) return raw;
+    if (n > _maxSaneCacheAheadSecs) return '— (invalid PTS)';
     if (n < 60) return '${n.toStringAsFixed(1)} s';
     return '${(n / 60).toStringAsFixed(1)} min';
+  }
+
+  /// True seconds ahead of playhead when buffer-end and position are sane.
+  String? _fmtBufferedAhead(Duration? position) {
+    final end = _buffered;
+    if (end == null || position == null) return null;
+    final aheadSecs = end.inMilliseconds - position.inMilliseconds;
+    if (aheadSecs <= 0) return null;
+    final secs = aheadSecs / 1000.0;
+    if (secs > _maxSaneCacheAheadSecs) return null; // absolute TS, not ahead
+    if (secs < 60) return '${secs.toStringAsFixed(1)} s';
+    return '${(secs / 60).toStringAsFixed(1)} min';
   }
 
   @override
@@ -158,6 +181,8 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
     final video = state.track.video;
     final audio = state.track.audio;
     final subtitle = state.track.subtitle;
+    final position = snap.position ?? state.position;
+    final bufferedAhead = _fmtBufferedAhead(position);
 
     final w = _mpv['width'] ?? '-';
     final h = _mpv['height'] ?? '-';
@@ -185,10 +210,10 @@ class _IptvStatsBodyState extends State<_IptvStatsBody> {
       _StatRow('Subtitle', subtitle.id == 'no'
           ? 'Off'
           : (subtitle.title ?? subtitle.language ?? subtitle.id)),
-      _StatRow('Cache', _fmtSeconds(_mpv['cacheDuration'] ?? '-')),
+      _StatRow('Cache', _fmtCacheAhead(_mpv['cacheDuration'] ?? '-')),
       _StatRow('Cache used', _fmtBytes(_mpv['cacheBytes'] ?? '-')),
-      if (_buffered != null && _buffered!.inSeconds > 0)
-        _StatRow('Buffered ahead', '${_buffered!.inSeconds} s'),
+      if (bufferedAhead != null)
+        _StatRow('Buffered ahead', bufferedAhead),
       _StatRow('Volume', '${snap.volume.round()}%'),
       _StatRow('Speed', _mpv['speed'] ?? '-'),
       if ((_mpv['drops'] ?? '-') != '-' && _mpv['drops'] != '0')

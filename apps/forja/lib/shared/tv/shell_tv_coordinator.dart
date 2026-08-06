@@ -789,14 +789,26 @@ abstract final class ShellTvFocusCoordinator {
     required String rowId,
     required int currentIndex,
     required bool right,
+    int step = 1,
   }) {
     final handle = _rowHandle(tabId, rowId);
     if (handle == null || handle.itemCount <= 0) return false;
-    final step = right ? 1 : -1;
-    var next = currentIndex + step;
-    while (next >= 0 && next < handle.itemCount) {
-      if (focusRowItem(tabId, rowId, next)) return true;
-      next += step;
+    final stride = step < 1 ? 1 : step;
+    final delta = (right ? 1 : -1) * stride;
+    final target = (currentIndex + delta).clamp(0, handle.itemCount - 1);
+    if (target == currentIndex) return false;
+    final dir = right ? 1 : -1;
+    // Prefer the accelerated target; walk back toward current if unmounted.
+    for (var i = target; i != currentIndex; i -= dir) {
+      if (focusRowItemExact(tabId, rowId, i)) return true;
+    }
+    // Step-1 fallback: keep walking past the neighbor (sparse registration).
+    if (stride <= 1) {
+      var next = target + dir;
+      while (next >= 0 && next < handle.itemCount) {
+        if (focusRowItemExact(tabId, rowId, next)) return true;
+        next += dir;
+      }
     }
     return false;
   }
@@ -815,12 +827,29 @@ abstract final class ShellTvFocusCoordinator {
     }
     final row = currentIndex ~/ columns;
     final col = currentIndex % columns;
-    final nextRow = row + rowDelta;
+    var nextRow = row + rowDelta;
     final nextCol = col + colDelta;
     if (nextCol < 0 || nextCol >= columns) return false;
-    final nextIndex = nextRow * columns + nextCol;
-    if (nextIndex < 0 || nextIndex >= handle.itemCount) return false;
-    return focusRowItem(tabId, rowId, nextIndex);
+    final maxRow = (handle.itemCount - 1) ~/ columns;
+    // Accel overshoot: clamp inside the grid (first-row exit uses onUpEdge).
+    if (rowDelta.abs() > 1) {
+      if (nextRow < 0) nextRow = 0;
+      if (nextRow > maxRow) nextRow = maxRow;
+    } else {
+      if (nextRow < 0 || nextRow > maxRow) return false;
+    }
+    var nextIndex = nextRow * columns + nextCol;
+    if (nextIndex < 0) return false;
+    if (nextIndex >= handle.itemCount) {
+      nextIndex = handle.itemCount - 1;
+    }
+    if (nextIndex == currentIndex) return false;
+    if (focusRowItemExact(tabId, rowId, nextIndex)) return true;
+    final step = nextIndex > currentIndex ? -1 : 1;
+    for (var i = nextIndex; i != currentIndex; i += step) {
+      if (focusRowItemExact(tabId, rowId, i)) return true;
+    }
+    return false;
   }
 
   static void onRowItemFocused({
@@ -975,7 +1004,7 @@ class ShellTvFocusMeta {
             rowId: rid,
             currentIndex: idx,
             columns: cols,
-            rowDelta: 1,
+            rowDelta: ShellTvHoldAccel.lastStep,
             colDelta: 0,
           );
     }
@@ -986,6 +1015,7 @@ class ShellTvFocusMeta {
     final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
     if (handle?.orientation == ShellTvRowOrientation.vertical) {
       return () {
+        final step = ShellTvHoldAccel.lastStep;
         if (idx >= handle!.itemCount - 1) {
           return ShellTvFocusCoordinator.moveVerticalInTab(
             tabId: tid,
@@ -999,6 +1029,7 @@ class ShellTvFocusMeta {
           rowId: rid,
           currentIndex: idx,
           right: true,
+          step: step,
         );
       };
     }
@@ -1022,7 +1053,7 @@ class ShellTvFocusMeta {
             rowId: rid,
             currentIndex: idx,
             columns: cols,
-            rowDelta: -1,
+            rowDelta: -ShellTvHoldAccel.lastStep,
             colDelta: 0,
           );
     }
@@ -1033,6 +1064,7 @@ class ShellTvFocusMeta {
     final handle = ShellTvFocusCoordinator.rowHandle(tid, rid);
     if (handle?.orientation == ShellTvRowOrientation.vertical) {
       return () {
+        final step = ShellTvHoldAccel.lastStep;
         if (idx <= 0) {
           return ShellTvFocusCoordinator.moveVerticalInTab(
             tabId: tid,
@@ -1046,6 +1078,7 @@ class ShellTvFocusMeta {
           rowId: rid,
           currentIndex: idx,
           right: false,
+          step: step,
         );
       };
     }

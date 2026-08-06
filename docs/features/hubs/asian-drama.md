@@ -20,7 +20,7 @@ Tap **Asian Drama** in the navigation bar.
 - In the player, **Sources** lists only the enabled KissKH host
 - Resume from continue watching — **same player launch as details → Resume** (saved episode list + seek position; no extra kisskh call); clear progress with the trash icon next to **Resume** on details. On **TV**, D-pad order matches the page: **↓** from hero **Play** → **Latest Update** → **Continue Watching** → catalog rails; **↑** from Continue Watching lands on Latest (then Play); empty Continue Watching leaves the D-pad graph; close/info chips on the card are mouse-only
 - Mark episodes watched / unwatched on details — auto at **≥85%** playback, or right-click (secondary tap) an episode card; local only (not Trakt / Simkl). Cleared with **Settings → Cache & data → Watched episode marks**. Details hero shows series progress (`N of T · %` or **Completed**)
-- Under **Settings → Playback → Server reliability → Asian Drama**, `kisskh.nl` is enabled and the other verified mirrors are shown **On hold**
+- Under **Settings → Sources → Server reliability → Asian Drama**, `kisskh.nl` is enabled and the other verified mirrors are shown **On hold**
 - Hover a continue watching card (desktop) to scale it and show a play button; hover the play button to turn it brand-green, float it upward, and pulse the icon
 
 ## Tips

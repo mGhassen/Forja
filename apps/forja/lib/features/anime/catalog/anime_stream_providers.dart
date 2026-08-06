@@ -3,7 +3,7 @@ import 'package:rust/rust.dart';
 /// Flat catalog of every anime stream source the player can race.
 ///
 /// Keys match [AnimeEmbed.sourceKey]. Display names are real upstream labels -
-/// used in Settings → Playback → Anime provider order and the anime player.
+/// used in Settings → Sources → Server reliability and the anime player.
 class AnimeStreamProviders {
   AnimeStreamProviders._();
 

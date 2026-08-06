@@ -475,6 +475,7 @@ class SettingsToggleRow extends StatelessWidget {
       showFocusFill: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       child: content,
     );
   }
@@ -581,6 +582,7 @@ class SettingsSelectRow extends StatelessWidget {
       showFocusFill: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       child: content,
     );
   }
@@ -674,6 +676,7 @@ class SettingsActionRow extends StatelessWidget {
       showFocusFill: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       child: content,
     );
   }
@@ -769,10 +772,30 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
     return Focus(
       onFocusChange: (f) {
         setState(() => _focused = f);
-        if (!f) widget.onChangeEnd?.call(widget.value);
+        if (f) {
+          Scrollable.ensureVisible(
+            context,
+            alignment: 0.0,
+            duration: Duration.zero,
+            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+          );
+          Scrollable.ensureVisible(
+            context,
+            alignment: 1.0,
+            duration: Duration.zero,
+            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+          );
+        } else {
+          widget.onChangeEnd?.call(widget.value);
+        }
       },
       onKeyEvent: (node, event) {
+        if (event is KeyUpEvent) {
+          ShellTvHoldAccel.note(event);
+          return KeyEventResult.ignored;
+        }
         if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+        ShellTvHoldAccel.note(event);
         if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
           _nudge(-1);
           return KeyEventResult.handled;
@@ -781,7 +804,29 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
           _nudge(1);
           return KeyEventResult.handled;
         }
-        return shellTvLinearMenuArrows(context: context, event: event);
+        // Settings panes are linear vertical lists — ↑/↓ = prev/next row.
+        if (ShellTvLinearFocusScope.activeOf(context) &&
+            !ShellTvDisableLinearFocus.activeOf(context)) {
+          return shellTvLinearMenuArrows(context: context, event: event);
+        }
+        TraversalDirection? direction;
+        if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+          direction = TraversalDirection.up;
+        } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+          direction = TraversalDirection.down;
+        }
+        if (direction != null) {
+          final steps = ShellTvHoldAccel.lastStep;
+          var n = node;
+          var moved = false;
+          for (var i = 0; i < steps; i++) {
+            if (!n.focusInDirection(direction)) break;
+            moved = true;
+            n = FocusManager.instance.primaryFocus ?? n;
+          }
+          if (moved) return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
       },
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -914,6 +959,11 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
   KeyEventResult _handleTvKey(FocusNode node, KeyEvent event) {
     if (!_tv) return KeyEventResult.ignored;
 
+    if (event is KeyUpEvent) {
+      ShellTvHoldAccel.note(event);
+      return KeyEventResult.ignored;
+    }
+
     if (_browseOnly && shellTvIsActivateKey(event)) {
       _beginEditing();
       return KeyEventResult.handled;
@@ -931,6 +981,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
     final inLinear = ShellTvLinearFocusScope.activeOf(context);
     if (!inContain && !inLinear) return KeyEventResult.ignored;
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    ShellTvHoldAccel.note(event);
 
     final key = event.logicalKey;
     // Editing: ←/→ keep the caret; browse: all arrows move focus.
@@ -954,10 +1005,18 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
     } else if (_browseOnly && key == LogicalKeyboardKey.arrowRight) {
       direction = TraversalDirection.right;
     }
-    if (direction != null &&
-        (FocusManager.instance.primaryFocus ?? node)
-            .focusInDirection(direction)) {
-      return KeyEventResult.handled;
+    if (direction != null) {
+      final vertical = direction == TraversalDirection.up ||
+          direction == TraversalDirection.down;
+      final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
+      var n = FocusManager.instance.primaryFocus ?? node;
+      var moved = false;
+      for (var i = 0; i < steps; i++) {
+        if (!n.focusInDirection(direction)) break;
+        moved = true;
+        n = FocusManager.instance.primaryFocus ?? n;
+      }
+      if (moved) return KeyEventResult.handled;
     }
     return KeyEventResult.handled;
   }

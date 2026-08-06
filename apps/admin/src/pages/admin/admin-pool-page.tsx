@@ -41,7 +41,8 @@ type Cand = {
   dealt_count: number
   catalog_pool: boolean
   updated_at: string
-  last_checked_at: string | null
+  created_at: string
+  last_scraped_at: string | null
 }
 
 type HostGroup = {
@@ -74,7 +75,8 @@ function groupByHost(rows: Cand[]): HostGroup[] {
   return [...map.entries()].map(([host, groupRows]) => {
     let lastScrapedAt: string | null = null
     for (const r of groupRows) {
-      const t = r.last_checked_at || r.updated_at
+      // Prefer scrape stamp; never last_checked_at / updated_at (verify / edits).
+      const t = r.last_scraped_at || r.created_at
       if (
         t &&
         (!lastScrapedAt ||
@@ -177,7 +179,7 @@ export function AdminPoolPage() {
         const { data, error } = await adminDb
           .from('iptv_portals')
           .select(
-            'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, catalog_pool, updated_at, last_checked_at',
+            'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, catalog_pool, updated_at, created_at, last_scraped_at',
           )
           .order('updated_at', { ascending: false })
           .range(from, to)

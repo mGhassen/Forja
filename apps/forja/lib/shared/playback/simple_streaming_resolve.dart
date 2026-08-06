@@ -28,7 +28,7 @@ abstract final class SimpleStreamingResolve {
   /// Walk providers (Auto Tries order or a single pinned id). Returns the first
   /// provider that yields a reachable stream after filter+probe.
   ///
-  /// Auto uses the same [SourceEngine] order as Settings → Server reliability
+  /// Auto uses the same [SourceEngine] order as Settings → Sources → Server reliability
   /// Tries (no natives-first reorder).
   static Future<PlaybackResolveHit?> resolve({
     required Movie movie,

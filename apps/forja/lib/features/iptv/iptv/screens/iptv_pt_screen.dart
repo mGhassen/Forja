@@ -100,7 +100,7 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
       ctrl.addListener(_syncShellNav);
       TvHeroActions.bind(
         'iptv',
-        restoreFocus: iptvRestoreCatalogFocus,
+        restoreFocus: () => iptvRestoreCatalogFocus(ctrl),
         enterFromNavFocus: () => iptvEnterFromNav(ctrl),
         pageBack: () => iptvHandleCatalogPageBack(ctrl),
       );
