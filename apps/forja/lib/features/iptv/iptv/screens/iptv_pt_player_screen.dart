@@ -302,59 +302,31 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// escalating to a real reopen. Covers the flush's own 700ms delay.
   static const Duration _reloadEscalateAfter = Duration(seconds: 3);
 
-  // ---- Feed progress probe (issue 148 / RFC-052) ----------------------
-  // The stall detectors are timers, so on their own they cannot tell a dead
-  // socket from a live feed that is simply refilling. The buffered-end mark
-  // only advances while bytes are still arriving, which splits "position
-  // stopped" into the two cases that need opposite handling.
-  //
-  // Fed from all three sources so neither backend is left blind:
-  //   • Exo — `buffered` in the progress heartbeat. Live streams have no
-  //           duration, and `_buffered` is only assigned when duration > 0, so
-  //           this must be read straight off the event.
-  //   • mpv — the `buffer` stream.
-  //   • mpv — `demuxer-cache-time`, as a backstop.
+  /// Seconds of demuxer/buffer ahead of the playhead. Updated every watchdog
+  /// tick (MediaKit) or from Exo progress. The recovery gate: if this is above
+  /// [_minHealthyCacheSecs], the stream is working — do not reopen.
+  double _cacheAheadSecs = 0;
 
-  /// Last observed buffered-end mark in ms, or `null` before the first sample.
+  /// Last observed buffered-end mark in ms (Exo / mpv buffer stream).
   int? _feedMarkMs;
 
-  /// When [_feedMarkMs] last moved — i.e. when the socket last delivered.
+  /// When [_feedMarkMs] last moved — socket still delivering.
   DateTime? _feedAdvancedAt;
 
-  /// Whether any feed signal arrived since the current open. False means the
-  /// probe is blind on this backend, and the detectors fall back to
-  /// [_blindFreezeGrace] instead of silently acting as if the feed were dead.
-  bool _everSawFeed = false;
-
-  /// Guards against overlapping property reads when a sample is slow.
   bool _cacheProbeInFlight = false;
 
   /// Debug-only UHD telemetry timer (issue 150).
   Timer? _uhdDiag;
 
-  /// How recently the feed must have advanced to count as alive. Two watchdog
-  /// ticks of slack so one slow sample cannot look dead.
+  /// Have at least this much cache ⇒ stream is healthy, never auto-recover.
+  static const double _minHealthyCacheSecs = 2.0;
+
+  /// Feed mark moved within this window ⇒ still downloading.
   static const Duration _networkAliveWindow = Duration(seconds: 3);
 
-  /// Freeze tolerated when the probe never reported anything. Must outlast a
-  /// legitimate refill of the 30 s cache — the old 8 s limit did not, which is
-  /// exactly what reopened healthy feeds.
-  static const Duration _blindFreezeGrace = Duration(seconds: 20);
-
-  /// Hard ceiling on tolerating a frozen picture while the demuxer keeps
-  /// advancing. That combination is a wedged decoder rather than a network
-  /// stall, and only a reopen clears it — but it must outlast a legitimate
-  /// refill of the 30 s cache, which the old 8 s detector did not.
-  static const Duration _feedingWedgeCeiling = Duration(seconds: 45);
-
-  /// How long ffmpeg gets to finish its own reconnect before the app steps in.
-  /// `stream-lavf-o` sets `reconnect_delay_max=5`, so a transparent retry can
-  /// legitimately take several seconds — recreating the player inside that
-  /// window destroys a recovery that was already succeeding.
+  /// How long ffmpeg gets on VOD before app escalates (live uses cache gate).
   static const Duration _ffmpegReconnectGrace = Duration(seconds: 8);
 
-  /// Set while a deferred socket-trouble escalation is pending, so a burst of
-  /// ffmpeg log lines collapses into one check instead of one restart each.
   bool _socketTroublePending = false;
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';

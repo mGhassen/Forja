@@ -144,19 +144,19 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final posMs = (event['position'] as num?)?.toInt() ?? 0;
         final durMs = (event['duration'] as num?)?.toInt() ?? 0;
         final bufMs = (event['buffered'] as num?)?.toInt() ?? 0;
-        // Straight off the event: `_buffered` below is only assigned when
-        // duration > 0, and live streams never report one.
-        _noteFeedProgress(bufMs);
+        // Straight off the event: `_buffered` is only assigned when duration > 0.
+        _noteFeedProgress(bufMs, positionMs: posMs);
         final pos = Duration(milliseconds: posMs);
         final durChanged =
             durMs > 0 && durMs != _s._duration.inMilliseconds;
         final posChanged = !_s._isSeeking && pos != _s._position;
         if (posChanged || durChanged) {
           if (durMs > 0) {
-            // Rebuild when chrome is up, or when duration first arrives so the
-            // VOD seekbar mounts (do not gate duration on position — Exo often
-            // reports duration while still at 0:00).
-            final needUi = _s._controlsVisible || durChanged;
+            // Rebuild when chrome is up, PiP scrubber is shown, or duration
+            // first arrives so the VOD seekbar mounts (do not gate duration on
+            // position — Exo often reports duration while still at 0:00).
+            final needUi =
+                _s._controlsVisible || _s._isPipMode || durChanged;
             if (needUi) {
               setState(() {
                 if (posChanged) _s._position = pos;
@@ -190,17 +190,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         break;
       case 'ended':
         setState(() => _s._playing = false);
-        // Live IPTV never "ends" — Exo can emit STATE_ENDED on a brief
-        // playlist/segment glitch. Treating that as fatal is what started
-        // the reconnect banner loop after the "IPTV improvements" work.
-        // Let the engine recover; Reload is still there if it is truly dead.
-        if (_currentSourceIsLive) {
-          debugPrint('[IPTV Exo] ended on live — not restarting');
-          if (_s._userPlayWhenReady) {
-            unawaited(_enginePlay());
-          }
-          break;
-        }
+        // Gated by cache/feed health inside [_triggerRecovery].
         _triggerRecovery(reason: 'exo ended', forceHard: true);
         break;
       case 'error':
@@ -210,15 +200,6 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
             _IptvPtPlayerScreenState._isUnrecognizedFormatError(msg)) {
           unawaited(_s._autoSwapEngineForFormatError(msg));
           return;
-        }
-        // Live mid-stream: Exo can emit transient errors during segment
-        // refresh. Auto-reopen was the reconnect banner on a working stream.
-        if (_currentSourceIsLive && _playbackStarted) {
-          debugPrint('[IPTV Exo] live mid-stream error ignored: $msg');
-          if (_s._userPlayWhenReady) {
-            unawaited(_enginePlay());
-          }
-          break;
         }
         _triggerRecovery(reason: 'exo error: $msg', forceHard: true);
         break;
@@ -663,15 +644,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         unawaited(_s._autoSwapEngineForFormatError(msg));
         return;
       }
-      // Live mid-stream: never reopen on mpv errors / EOF / reset. ffmpeg
-      // reconnects; app reopen was killing working sessions.
-      if (_currentSourceIsLive && _playbackStarted) {
-        debugPrint('[IPTV Player] live mid-stream error ignored: $msg');
-        return;
-      }
       if (lower.contains('ends prematurely') ||
           lower.contains('end of file') ||
           lower.contains('connection reset')) {
+        // Cache/feed gate inside recovery — do not reopen if still working.
         _noteSocketTrouble(msg);
         return;
       }
@@ -690,9 +666,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           );
           return;
         }
-        // Live: do not recreate the player for a hw decode blip.
-        if (_currentSourceIsLive && _playbackStarted) {
-          debugPrint('[IPTV Player] live hw fail ignored (no recreate)');
+        if (_streamWorking) {
+          _logHealthyHold('hw decode fail');
           return;
         }
         debugPrint('[IPTV Player] hw decode failed - falling back to software');
@@ -713,30 +688,27 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     });
   }
 
-  /// Live: log only. VOD: escalate after ffmpeg's reconnect window if the feed
-  /// never came back.
+  /// Socket blip: recover only if cache/feed says the stream is dead.
   void _noteSocketTrouble(String what) {
-    if (_currentSourceIsLive) {
-      debugPrint('[IPTV Player] live socket note ($what) — engine owns reconnect');
+    if (_streamWorking) {
+      _logHealthyHold('socket $what');
       return;
     }
     if (_s._socketTroublePending) return;
     _s._socketTroublePending = true;
     final openedAt = _s._openedAt;
     debugPrint('[IPTV Player] socket trouble ($what) - '
-        'allowing ${_IptvPtPlayerScreenState._ffmpegReconnectGrace.inSeconds}s '
-        'for ffmpeg reconnect');
+        'allowing ${_IptvPtPlayerScreenState._ffmpegReconnectGrace.inSeconds}s');
     Future.delayed(_IptvPtPlayerScreenState._ffmpegReconnectGrace, () async {
       _s._socketTroublePending = false;
       if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
       if (_s._openedAt != openedAt) return;
-      if (_networkStillFeeding) {
-        debugPrint('[IPTV Player] ffmpeg reconnected on its own - no restart');
+      if (_streamWorking) {
+        _logHealthyHold('socket after grace');
         return;
       }
       await _triggerRecovery(
-          reason: 'socket dead after ffmpeg retry window: $what',
-          forceHard: true);
+          reason: 'socket dead, cache empty: $what', forceHard: true);
     });
   }
 
@@ -887,12 +859,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     });
   }
 
-  /// Sample mpv's `demuxer-cache-time` so the stall detectors can tell a dead
-  /// socket from a feed that is still delivering.
+  /// Sample cache health every watchdog tick (MediaKit).
   ///
-  /// Fire-and-forget: the watchdog is a synchronous tick and must not await a
-  /// property read (a wedged mpv can leave that pending indefinitely). The
-  /// detectors read the last sample instead, which is at most one tick stale.
+  /// `demuxer-cache-duration` = seconds of media already downloaded ahead of
+  /// the playhead. That is the honest "is the stream working?" signal.
   void _sampleDemuxerProgress() {
     if (_s._exoBackend || _s._cacheProbeInFlight) return;
     final p = _s._player?.platform;
@@ -900,46 +870,44 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     _s._cacheProbeInFlight = true;
     unawaited(() async {
       try {
-        final raw = await p.getProperty('demuxer-cache-time');
-        final t = double.tryParse(raw.toString());
-        if (!mounted || _s._disposed || t == null || !t.isFinite) return;
-        _noteFeedProgress((t * 1000).round());
+        final aheadRaw = await p.getProperty('demuxer-cache-duration');
+        final ahead = double.tryParse(aheadRaw.toString());
+        if (ahead != null && ahead.isFinite && ahead >= 0) {
+          _s._cacheAheadSecs = ahead;
+        }
+        final timeRaw = await p.getProperty('demuxer-cache-time');
+        final t = double.tryParse(timeRaw.toString());
+        if (t != null && t.isFinite) {
+          _noteFeedProgress((t * 1000).round());
+        }
       } catch (_) {
-        // Property unavailable (Exo, torn-down player) — leave the last sample.
       } finally {
         _s._cacheProbeInFlight = false;
       }
-    }()
-        // A wedged mpv can leave a property read pending forever. Without this
-        // the in-flight guard would latch and the probe would go permanently
-        // blind — the exact condition the detectors need it most.
-        .timeout(const Duration(seconds: 4), onTimeout: () {
+    }().timeout(const Duration(seconds: 4), onTimeout: () {
       _s._cacheProbeInFlight = false;
     }));
   }
 
-  /// Record that the buffered end moved, from whichever backend reported it.
-  ///
-  /// Movement in either direction counts: the mark only changes when the
-  /// demuxer is being fed, and a live stream re-anchors it on discontinuities.
-  void _noteFeedProgress(int markMs) {
+  /// Exo / mpv buffer stream: keep feed mark + approximate ahead when possible.
+  void _noteFeedProgress(int markMs, {int? positionMs}) {
     if (markMs <= 0) return;
     if (_s._feedMarkMs != markMs) {
       _s._feedMarkMs = markMs;
       _s._feedAdvancedAt = DateTime.now();
-      _s._everSawFeed = true;
+    }
+    // Exo often reports absolute buffered end; ahead ≈ buffered - position.
+    if (positionMs != null && markMs > positionMs) {
+      _s._cacheAheadSecs = (markMs - positionMs) / 1000.0;
     }
   }
 
-  /// Clear the probe across a (re)open. A sample carried over from the previous
-  /// socket would otherwise vouch for a feed that no longer exists.
   void _resetDemuxerProbe() {
     _s._feedMarkMs = null;
     _s._feedAdvancedAt = null;
-    _s._everSawFeed = false;
+    _s._cacheAheadSecs = 0;
   }
 
-  /// Whether the feed advanced recently enough to be called alive.
   bool get _networkStillFeeding {
     final at = _s._feedAdvancedAt;
     if (at == null) return false;
@@ -947,20 +915,26 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _IptvPtPlayerScreenState._networkAliveWindow;
   }
 
-  /// How long a frozen picture is tolerated before recovery. When the probe has
-  /// never reported (blind backend), stay patient enough to outlast a refill of
-  /// the 30 s cache rather than falling back to the old 8 s trigger.
-  Duration get _freezeGrace => _s._everSawFeed
-      ? const Duration(milliseconds: 8000)
-      : _IptvPtPlayerScreenState._blindFreezeGrace;
+  /// Stream is working: enough cache to play, or still downloading, or
+  /// frames advancing. Auto-recovery must not fire in any of these cases.
+  bool get _streamWorking {
+    if (_s._cacheAheadSecs >=
+        _IptvPtPlayerScreenState._minHealthyCacheSecs) {
+      return true;
+    }
+    if (_networkStillFeeding) return true;
+    if (_s._playing &&
+        DateTime.now().difference(_s._lastPosChange) <
+            const Duration(seconds: 2)) {
+      return true;
+    }
+    return false;
+  }
 
-  /// Trace a suppressed recovery once every 5 s so a stall that rides through
-  /// is visible in logs — without this the gate is indistinguishable from a
-  /// detector that simply never fired.
-  void _logStallSuppressed(String kind, Duration held) {
-    if (held.inSeconds % 5 != 0) return;
-    debugPrint('[IPTV Watchdog] $kind ${held.inSeconds}s - feed alive, '
-        'holding (mark=${_s._feedMarkMs}ms)');
+  void _logHealthyHold(String reason) {
+    debugPrint('[IPTV] skip recovery ($reason) — working '
+        '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s '
+        'feeding=$_networkStillFeeding)');
   }
 
   void _startWatchdog() {
@@ -969,9 +943,6 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       final now = DateTime.now();
       _sampleDemuxerProgress();
 
-      // Drop reconnect UI as soon as frames are moving again. Do not gate on
-      // !_buffering — Exo live used to report isLoading=true while playing,
-      // which left "Reconnecting… (1/8)" stuck forever.
       if (_s._statusBanner != null &&
           _s._playing &&
           _s._lastPos > Duration.zero &&
@@ -983,12 +954,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         if (mounted) setState(() => _s._statusBanner = null);
       }
 
-      // Healthy streak resets retry counter (banner may already be cleared)
       if (_s._retryAttempt > 0 &&
           _s._playing &&
           now.difference(_s._lastPosChange) < const Duration(milliseconds: 1500) &&
           _s._lastRecoveryAt != null &&
-          now.difference(_s._lastRecoveryAt!) > _IptvPtPlayerScreenState._healthyStreakNeeded) {
+          now.difference(_s._lastRecoveryAt!) >
+              _IptvPtPlayerScreenState._healthyStreakNeeded) {
         debugPrint('[IPTV Watchdog] healthy streak - resetting retries');
         _s._retryAttempt = 0;
         _s._lastRecoveryAt = null;
@@ -997,77 +968,53 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         }
       }
 
-      // Live after first frame: no stall detectors. Single chokepoint in
-      // [_triggerRecovery] also blocks any stray auto-restart.
-      if (_currentSourceIsLive && _playbackStarted) {
-        return;
-      }
-
-      // ffmpeg owns the retry until its grace expires (VOD path only).
       if (_s._socketTroublePending) return;
 
-      // Detector 1: long buffering (VOD / pre-first-frame only).
+      // Detector 1: long buffering — only if cache is empty / not working.
       final bufferGrace = _s._lastPos > Duration.zero
           ? const Duration(milliseconds: 12000)
           : const Duration(milliseconds: 25000);
       if (_s._userPlayWhenReady &&
           _s._bufferingSince != null &&
           now.difference(_s._bufferingSince!) > bufferGrace) {
-        final bufferingFor = now.difference(_s._bufferingSince!);
-        if (_networkStillFeeding &&
-            bufferingFor < _IptvPtPlayerScreenState._feedingWedgeCeiling) {
-          _logStallSuppressed('buffering', bufferingFor);
+        if (_streamWorking) {
+          _logHealthyHold('buffering');
           return;
         }
         _triggerRecovery(
-            reason: 'buffering ${bufferingFor.inSeconds}s, feed stalled');
+            reason: 'buffering ${now.difference(_s._bufferingSince!).inSeconds}s, '
+                'cache empty');
         return;
       }
-      // Detector 2: position frozen (VOD / pre-first-frame only).
+      // Detector 2: position frozen — only if no cache and not feeding.
       final frozenFor = now.difference(_s._lastPosChange);
       if (_s._userPlayWhenReady &&
           _s._lastPos > Duration.zero &&
-          frozenFor > _freezeGrace) {
-        if (_networkStillFeeding &&
-            frozenFor < _IptvPtPlayerScreenState._feedingWedgeCeiling) {
-          _logStallSuppressed('frozen', frozenFor);
+          frozenFor > const Duration(milliseconds: 8000)) {
+        if (_streamWorking) {
+          _logHealthyHold('frozen');
           return;
         }
         _triggerRecovery(
-          reason: _networkStillFeeding
-              ? 'picture frozen ${frozenFor.inSeconds}s while feed alive'
-              : 'position frozen ${frozenFor.inSeconds}s, feed stalled',
-        );
+            reason: 'position frozen ${frozenFor.inSeconds}s, cache empty');
         return;
       }
-      // Detector 3: silent self-pause (VOD / pre-first-frame only).
+      // Detector 3: silent self-pause — only if not working.
       if (_s._userPlayWhenReady &&
           !_s._playing &&
           !_s._buffering &&
           _s._readyNotPlayingSince != null &&
           now.difference(_s._readyNotPlayingSince!) >
               const Duration(milliseconds: 3000)) {
-        final pausedFor = now.difference(_s._readyNotPlayingSince!);
-        if (_networkStillFeeding &&
-            pausedFor < _IptvPtPlayerScreenState._feedingWedgeCeiling) {
-          _logStallSuppressed('self-pause', pausedFor);
+        if (_streamWorking) {
+          _logHealthyHold('self-pause');
           return;
         }
         _triggerRecovery(
-            reason: 'silent self-pause ${pausedFor.inSeconds}s, feed stalled',
-            forceHard: true);
+            reason: 'silent self-pause, cache empty', forceHard: true);
         return;
       }
-      // Detector 4: opened but never produced a first frame. The classic
-      // "CDN dropped the connection mid-handshake" hang where mpv keeps
-      // playing=true, never flips buffering, never errors, just sits there
-      // with position=0 forever. None of detectors 1-3 catch this:
-      //   • detector 1 needs buffering=true (mpv may not set it)
-      //   • detector 2 is gated on _s._lastPos > 0
-      //   • detector 3 needs playing=false (mpv stays true)
-      // Gate on !_playbackStarted — live Exo often keeps position at 0 while
-      // actually painting (ready / renderedFirstFrame / progress heartbeat).
-      // 30 s is well past the 25 s initial-connect grace in detector 1.
+      // Detector 4: cold open hang.
       if (_s._userPlayWhenReady &&
           !_playbackStarted &&
           _s._lastPos == Duration.zero &&
@@ -1080,38 +1027,34 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
   bool _recoveryInFlight = false;
 
-  /// Single chokepoint for every player reopen / recreate.
+  /// Reopen / recreate only when the stream is **not** working.
   ///
-  /// ## Live policy (redesign)
-  /// After the first frame, the app **never** auto-restarts a live session.
-  /// Stall timers, socket logs, Exo ended/error noise, and hw-decode chatter
-  /// all look like failure while the stream is still fine or mid-reconnect —
-  /// reopening was the bug. Engines own live reconnect (`stream-lavf-o` /
-  /// Exo). The only mid-stream restart is [userInitiated] (Reload).
-  ///
-  /// Cold open (`!_playbackStarted`) may still recover (hang / open failed).
+  /// Working = enough demuxer/buffer cache (≥ [_minHealthyCacheSecs]), or
+  /// feed still advancing, or playhead recently moved. That is the rule —
+  /// not "never recover" and not "timer expired ⇒ dead".
   Future<void> _triggerRecovery({
     required String reason,
     bool forceHard = false,
     bool userInitiated = false,
   }) async {
     if (_s._disposed || _recoveryInFlight) return;
-    if (_currentSourceIsLive && _playbackStarted && !userInitiated) {
-      debugPrint('[IPTV] live auto-recovery blocked: $reason');
+    if (!userInitiated && _playbackStarted && _streamWorking) {
+      _logHealthyHold(reason);
       return;
     }
     final now = DateTime.now();
     if (_s._lastRecoveryAt != null &&
         now.difference(_s._lastRecoveryAt!) <
             const Duration(milliseconds: 1500)) {
-      return; // throttle
+      return;
     }
     _recoveryInFlight = true;
     _s._lastRecoveryAt = now;
     _s._streamSeekable = false;
     debugPrint(
         '[IPTV Watchdog] recovery (#${_s._retryAttempt + 1}, hard=$forceHard'
-        '${userInitiated ? ', user' : ''}): $reason');
+        '${userInitiated ? ', user' : ''}): $reason '
+        '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)');
 
     try {
       if (_s._disposed) return;
@@ -1240,8 +1183,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
   Future<void> _forceSoftwareDecode() async {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
-    if (_currentSourceIsLive && _playbackStarted) {
-      debugPrint('[IPTV Player] live hw→sw skip (would recreate working stream)');
+    if (_streamWorking) {
+      _logHealthyHold('hw→sw');
       return;
     }
     _s._softwareDecodeForced = true;

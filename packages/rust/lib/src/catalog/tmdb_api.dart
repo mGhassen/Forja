@@ -530,6 +530,7 @@ class TmdbApi {
         .map<Map<String, String>>((e) => {
               'name': (e['name'] ?? '').toString(),
               'job': (e['job'] ?? '').toString(),
+              'profilePath': (e['profile_path'] ?? '').toString(),
             })
         .toList();
 

@@ -148,23 +148,40 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
     );
   }
 
-  /// Safari-style PiP chrome — throw snaps to corner; hover play + restore.
+  /// System-style PiP chrome — expand / Minimize / Close · ±15 · scrubber.
   Widget _buildPipRevertOverlay() {
-    return DesktopPipOverlay(
-      hovering: _s._pipHover,
-      onHoverChanged: (on) {
-        if (!mounted) return;
-        if (_s._pipHover == on) return;
-        setState(() => _s._pipHover = on);
-      },
-      playing: _s._player.state.playing,
-      onTogglePlay: () {
-        if (_s._player.state.playing) {
-          unawaited(_s._player.pause());
-        } else {
-          unawaited(_s._player.play());
-        }
-        setState(() {});
+    return ValueListenableBuilder<bool>(
+      valueListenable: _s._isPlayingNotifier,
+      builder: (context, playing, _) {
+        return DesktopPipOverlay(
+          hovering: _s._pipHover,
+          onHoverChanged: (on) {
+            if (!mounted) return;
+            if (_s._pipHover == on) return;
+            setState(() => _s._pipHover = on);
+          },
+          playing: playing,
+          onTogglePlay: () {
+            _s._player.playOrPause();
+          },
+          onClose: () => unawaited(_s._exitPlayer()),
+          onSeekBack: () {
+            final pos =
+                _s._positionNotifier.value - const Duration(seconds: 15);
+            unawaited(
+              _s._seekTo(pos < Duration.zero ? Duration.zero : pos),
+            );
+          },
+          onSeekForward: () {
+            final dur = _s._durationNotifier.value;
+            final pos =
+                _s._positionNotifier.value + const Duration(seconds: 15);
+            unawaited(_s._seekTo(pos > dur ? dur : pos));
+          },
+          positionListenable: _s._positionNotifier,
+          durationListenable: _s._durationNotifier,
+          onSeekTo: (pos) => unawaited(_s._seekTo(pos)),
+        );
       },
     );
   }

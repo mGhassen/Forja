@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 13** components · **1 / 10** acceptance |
-| **Current slice** | **Live recovery redesigned** — `_triggerRecovery` hard-blocks all auto mid-stream restarts; Reload only |
+| **Progress** | **13 / 14** components · **1 / 10** acceptance |
+| **Current slice** | **Cache-gated recovery** — auto-reconnect only when cache empty and feed dead; ≥2s buffer = working |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -32,6 +32,7 @@
 | 11 | R52-C11 | Deferred escalation aborts when `_openedAt` changed, so it cannot fire against a session that was already replaced | ✅ |
 | 12 | R52-C12 | **Live mid-stream: no timer recovery** — after first frame, skip detectors 1–3; live socket notes never escalate; Exo `ended` on live does not forceHard | ✅ |
 | 13 | R52-C13 | **Hard chokepoint** — `_triggerRecovery` refuses live auto-restart after first frame unless `userInitiated`; live mid-stream mpv/Exo errors and hw-decode blips are ignored (no reopen) | ✅ |
+| 14 | R52-C14 | **Cache gate (correct rule)** — `_streamWorking` = `demuxer-cache-duration` ≥ 2s OR feed advancing OR playhead moving; auto-recovery skipped when working; recovers when cache empty | ✅ |
 
 ---
 
@@ -135,12 +136,11 @@ of a recovery that was already succeeding. The user-visible result is a channel
 that plays fine and then drops into "Reconnecting…" for no reason, on a
 schedule set by how often the portal cycles its sockets.
 
-**Contract now:** after the first frame on live, `_triggerRecovery` is a hard
-no for every automatic caller. Reload sets `userInitiated: true`. Mid-stream
-mpv/Exo errors and hw-decode chatter are ignored — they used to reopen a
-working stream. Cold open hang / open-failed may still recover. Dead live
-feeds stay dead until the user hits Reload (same as Lume when the engine gives
-up).
+**Contract now:** auto-recovery runs only when the stream is **not** working.
+Working = `demuxer-cache-duration` (or Exo buffered ahead) ≥ 2 seconds, or the
+feed mark still advancing, or the playhead moved in the last 2 seconds. Timers
+and socket logs no longer reopen a session that still has cache. Reload always
+restarts. Truly empty cache + dead feed still reconnects.
 
 ## Related
 

@@ -515,8 +515,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   double _topBarLeftPadding(BuildContext context) => 16;
 
-  /// Safari-style PiP chrome — throw snaps to corner; hover play + restore.
+  /// System-style PiP chrome — expand / Minimize / Close · ±15 · scrubber.
   Widget _buildPipRevertOverlay() {
+    final vod = _s._isVod;
     return DesktopPipOverlay(
       hovering: _s._pipHover,
       onHoverChanged: (on) {
@@ -535,6 +536,26 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         }
         setState(() {});
       },
+      onClose: () => unawaited(_s._exitIptvPlayer()),
+      onSeekBack: vod
+          ? () {
+              var target = _s._position - const Duration(seconds: 15);
+              if (target < Duration.zero) target = Duration.zero;
+              unawaited(_s._engineSeek(target));
+            }
+          : null,
+      onSeekForward: vod
+          ? () {
+              var target = _s._position + const Duration(seconds: 15);
+              if (target > _s._duration) target = _s._duration;
+              unawaited(_s._engineSeek(target));
+            }
+          : null,
+      position: vod ? _s._position : null,
+      duration: vod ? _s._duration : null,
+      onSeekTo: vod
+          ? (pos) => unawaited(_s._engineSeek(pos))
+          : null,
     );
   }
 
