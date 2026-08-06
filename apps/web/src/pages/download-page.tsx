@@ -483,7 +483,7 @@ function PlatformPicker({
                 const size = formatBytes(a.size_bytes)
                 const multi = orderedAssets.length > 1
                 return (
-                  <div key={a.id} className="flex flex-col items-start gap-1.5">
+                  <div key={a.id} className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
                     <MagnetDownload
                       href={a.download_url}
                       label={downloadButtonLabel(selected, a, {
@@ -498,20 +498,20 @@ function PlatformPicker({
                       }
                     />
                     {a.downloader_code ? (
-                      <p className="font-mono-ui max-w-md px-1 text-[11px] leading-relaxed tracking-[0.04em] text-[rgba(237,230,218,0.55)]">
-                        Downloader code{' '}
-                        <span className="font-bold tracking-[0.12em] text-[#EDE6DA]">
+                      <>
+                        <span
+                          aria-hidden
+                          className="font-mono-ui text-lg text-[rgba(237,230,218,0.4)]"
+                        >
+                          →
+                        </span>
+                        <span className="font-mono-ui text-[clamp(22px,4vw,32px)] font-bold leading-none tracking-[0.16em] text-[#EDE6DA]">
                           {a.downloader_code}
                         </span>
-                        {multi || hasNamedVariant(a.name)
-                          ? ` · ${assetVariantLabel(a.name, selected.id)}`
-                          : ''}
-                        {' — '}
-                        open Downloader on your TV and enter this number
-                      </p>
+                      </>
                     ) : null}
                     {size ? (
-                      <span className="font-mono-ui px-1 text-[10px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.32)]">
+                      <span className="basis-full font-mono-ui px-1 text-[10px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.32)]">
                         {size}
                       </span>
                     ) : null}
