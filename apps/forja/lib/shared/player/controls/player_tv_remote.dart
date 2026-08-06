@@ -45,11 +45,12 @@ class PlayerTvRemoteKeyHandler {
       return true;
     }
 
-    if (key == LogicalKeyboardKey.escape ||
-        key == LogicalKeyboardKey.goBack) {
+    if (key == LogicalKeyboardKey.goBack) {
       onBack();
       return true;
     }
+    // Escape is remote Exit on ATV — do not steal it as Back. ShellTvBackHandler
+    // maps Escape → handleShellExitKey (double-confirm quit).
 
     if (key == LogicalKeyboardKey.contextMenu ||
         key == LogicalKeyboardKey.f10) {

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **5 / 6** acceptance |
-| **Current slice** | Resolve + media_kit trailer player shipped — device smoke remaining |
+| **Progress** | **3 / 3** components · **6 / 8** acceptance |
+| **Current slice** | Native player + ATV D-pad chrome — device smoke remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -35,8 +35,14 @@
 | 4 | R55-A04 | Exit tears down media_kit (no leftover audio) | ✅ |
 | 5 | R55-A05 | Resolve failure shows retry + open-in-YouTube (no WebView fallback) | ✅ |
 | 6 | R55-A06 | Desktop / TV smoke: Trailer from details plays contain-fit native video | ⬜ |
+| 7 | R55-A07 | ATV D-pad: More videos ←/→/OK + ↑ Back; transport/seekbar neighbors; Back arms then exits | ✅ |
+| 8 | R55-A08 | ATV device smoke: trailer D-pad + Back/Exit (`I154-A01`–`A03`) | ⬜ |
 
 ---
+
+## Acceptance (ATV D-pad — issue 154)
+
+Shipped under [issue 154](../issues/154-[open]-android-tv-trailer-player-dpad.md) (`I154-T01`–`T04`). Rows above: `R55-A07` code · `R55-A08` device smoke.
 
 ## Summary
 
@@ -61,3 +67,4 @@ Replace the fullscreen trailer YouTube iframe (and its 1.35× overscan hack to h
 
 - [Media details](../features/movies-tv/media-details.md)
 - [Issue 113](../issues/113-[open]-android-tv-trailer-player-white-screen.md) — WebView white screen (fullscreen path superseded)
+- [Issue 154](../issues/154-[open]-android-tv-trailer-player-dpad.md) — ATV D-pad / Back / Exit

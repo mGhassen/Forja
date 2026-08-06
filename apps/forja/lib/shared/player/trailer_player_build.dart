@@ -195,6 +195,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     tvFocusable: true,
                     focusNode: _s._backFocus,
                     onRightEdge: () => _s._playerMenuFocus.requestFocus(),
+                    onDownEdge: _s._focusDownFromBack,
                     onPressed: () => unawaited(_s._exitTrailer()),
                   ),
                 )
@@ -334,7 +335,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     alignment: Alignment.centerRight,
                     child: tvFocus
                         ? FocusTraversalOrder(
-                            order: const NumericFocusOrder(12),
+                            // Between top bar (1–1.5) and seekbar (2).
+                            order: const NumericFocusOrder(1.8),
                             child: _buildMoreVideosButton(tvFocus: true),
                           )
                         : _buildMoreVideosButton(tvFocus: false),
@@ -349,9 +351,11 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                           position: _s._position,
                           onSeek: _s._seek,
                           tvFocusable: true,
+                          focusNode: _s._seekbarFocus,
                           tvFocusUpNode: _s._hasMoreTrailers
                               ? _s._nextTrailerFocus
                               : _s._backFocus,
+                          onTvFocusDown: () => _s._playFocus.requestFocus(),
                         ),
                       )
                     : CustomSeekbar(
@@ -395,6 +399,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
       onNext: () => _s._shiftPicker(1),
       onPlay: () => _s._playTrailerAt(_s._pickerIndex),
       onPointerActivity: _s._onPointerActivity,
+      onFocusUp: () => _s._backFocus.requestFocus(),
+      onFocusDown: _s._focusSeekbar,
     );
   }
 
@@ -426,6 +432,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
   }
 
   Widget _buildTvTransportRow() {
+    void upToSeek() => _s._focusSeekbar();
+
     Widget ordered(int order, Widget child) => FocusTraversalOrder(
           order: NumericFocusOrder(order.toDouble()),
           child: child,
@@ -454,6 +462,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                       : _s._playing
                           ? 'Pause'
                           : 'Play',
+                  onUpEdge: upToSeek,
+                  onRightEdge: () => _s._rewindFocus.requestFocus(),
                   onPressed: () {
                     if (!_s._ready) return;
                     unawaited(_s._togglePlayPause());
@@ -465,8 +475,12 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 4,
                 PlayerFlatIconButton(
                   tvFocusable: true,
+                  focusNode: _s._rewindFocus,
                   icon: Icons.replay_10_rounded,
                   tooltip: 'Back 10s',
+                  onUpEdge: upToSeek,
+                  onLeftEdge: () => _s._playFocus.requestFocus(),
+                  onRightEdge: () => _s._forwardFocus.requestFocus(),
                   onPressed: () {
                     if (!_s._ready) return;
                     unawaited(_s._skip(-10));
@@ -478,8 +492,12 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 5,
                 PlayerFlatIconButton(
                   tvFocusable: true,
+                  focusNode: _s._forwardFocus,
                   icon: Icons.forward_10_rounded,
                   tooltip: 'Forward 10s',
+                  onUpEdge: upToSeek,
+                  onLeftEdge: () => _s._rewindFocus.requestFocus(),
+                  onRightEdge: () => _s._subsFocus.requestFocus(),
                   onPressed: () {
                     if (!_s._ready) return;
                     unawaited(_s._skip(10));
@@ -495,8 +513,12 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 7,
                 PlayerFlatIconButton(
                   tvFocusable: true,
+                  focusNode: _s._subsFocus,
                   icon: Icons.subtitles_outlined,
                   tooltip: 'Subtitles',
+                  onUpEdge: upToSeek,
+                  onLeftEdge: () => _s._forwardFocus.requestFocus(),
+                  onRightEdge: () => _s._qualityFocus.requestFocus(),
                   onPressedWithContext: _s._showSubtitleMenu,
                 ),
               ),
@@ -505,8 +527,12 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 8,
                 PlayerFlatIconButton(
                   tvFocusable: true,
+                  focusNode: _s._qualityFocus,
                   icon: Icons.hd_outlined,
                   tooltip: 'Quality',
+                  onUpEdge: upToSeek,
+                  onLeftEdge: () => _s._subsFocus.requestFocus(),
+                  onRightEdge: () => _s._speedFocus.requestFocus(),
                   onPressedWithContext: _s._showQualityMenu,
                 ),
               ),
@@ -515,8 +541,11 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 9,
                 PlayerFlatIconButton(
                   tvFocusable: true,
+                  focusNode: _s._speedFocus,
                   icon: Icons.speed_rounded,
                   tooltip: 'Playback speed',
+                  onUpEdge: upToSeek,
+                  onLeftEdge: () => _s._qualityFocus.requestFocus(),
                   onPressedWithContext: _s._showSpeedMenu,
                 ),
               ),
@@ -648,6 +677,8 @@ class _TrailerMoreVideosCard extends StatefulWidget {
     required this.onNext,
     required this.onPlay,
     required this.onPointerActivity,
+    this.onFocusUp,
+    this.onFocusDown,
   });
 
   final MediaTrailer trailer;
@@ -662,6 +693,8 @@ class _TrailerMoreVideosCard extends StatefulWidget {
   final VoidCallback onNext;
   final VoidCallback onPlay;
   final VoidCallback onPointerActivity;
+  final VoidCallback? onFocusUp;
+  final VoidCallback? onFocusDown;
 
   bool get autoNext => autoNextSecondsLeft != null;
 
@@ -946,15 +979,36 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
       return withChevrons(
         FocusableControl(
           focusNode: widget.focusNode,
-          // OK on the card plays — ←/→ chevrons (edges) only cycle preview.
+          // OK on the card plays — ←/→ cycle the preview (cancels Up next).
           onTap: play,
           borderRadius: _radius,
           scaleOnFocus: 1.0,
           showFocusBorder: true,
           showFocusFill: false,
-          onLeftEdge: widget.count > 1 && !widget.autoNext ? widget.onPrev : null,
-          onRightEdge:
-              widget.count > 1 && !widget.autoNext ? widget.onNext : null,
+          onLeftEdge: widget.count > 1
+              ? () {
+                  widget.onPointerActivity();
+                  widget.onPrev();
+                }
+              : null,
+          onRightEdge: widget.count > 1
+              ? () {
+                  widget.onPointerActivity();
+                  widget.onNext();
+                }
+              : null,
+          onUpEdge: widget.onFocusUp == null
+              ? null
+              : () {
+                  widget.onPointerActivity();
+                  widget.onFocusUp!();
+                },
+          onDownEdge: widget.onFocusDown == null
+              ? null
+              : () {
+                  widget.onPointerActivity();
+                  widget.onFocusDown!();
+                },
           onFocusChange: (f) {
             if (_focused == f) return;
             setState(() => _focused = f);

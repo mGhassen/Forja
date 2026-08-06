@@ -57,6 +57,19 @@ void main() {
       expect(back, 1);
     });
 
+    test('escape does not invoke onBack (remote Exit)', () {
+      var back = 0;
+      final handler = _handler(onBack: () => back++);
+
+      final handled = handler.handle(
+        _key(LogicalKeyboardKey.escape),
+        showControls: false,
+      );
+
+      expect(handled, isFalse);
+      expect(back, 0);
+    });
+
     test('select toggles play/pause when controls visible', () {
       var playPause = 0;
       final handler = _handler(onPlayPause: () => playPause++);

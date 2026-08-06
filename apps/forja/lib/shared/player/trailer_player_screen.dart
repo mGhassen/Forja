@@ -79,9 +79,18 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   int? _autoNextSecondsLeft;
   final FocusNode _backFocus = FocusNode(debugLabel: 'trailer-back');
   final FocusNode _playFocus = FocusNode(debugLabel: 'trailer-play');
+  final FocusNode _rewindFocus = FocusNode(debugLabel: 'trailer-rewind');
+  final FocusNode _forwardFocus = FocusNode(debugLabel: 'trailer-forward');
+  final FocusNode _subsFocus = FocusNode(debugLabel: 'trailer-subs');
+  final FocusNode _qualityFocus = FocusNode(debugLabel: 'trailer-quality');
+  final FocusNode _speedFocus = FocusNode(debugLabel: 'trailer-speed');
   final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'trailer-player-menu');
   final FocusNode _nextTrailerFocus = FocusNode(debugLabel: 'trailer-next');
+  final FocusNode _seekbarFocus = FocusNode(debugLabel: 'trailer-seekbar');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'trailer-player-tv-keys');
+  /// First TV Back focused the Back control — next Back exits even before
+  /// geometry reports focus (same arming as MobilePlayer / Exo).
+  bool _tvBackExitArmed = false;
   bool _tvFocus = false;
   bool _initialFocusClaimed = false;
   late int _pickerIndex;
@@ -174,14 +183,19 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     _currentIndex = widget.initialIndex;
     _pickerIndex = _pickerIndexAfter(_currentIndex);
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    _backFocus.addListener(_onTvBackFocusChanged);
     PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted) return false;
-      if (_showControls) {
-        setState(() => _showControls = false);
-        _hideTimer?.cancel();
-        return true;
+      if (_backFocus.hasFocus || _tvBackExitArmed) {
+        _tvBackExitArmed = false;
+        return false;
       }
-      return false;
+      _tvBackExitArmed = true;
+      setState(() => _showControls = true);
+      _hideTimer?.cancel();
+      _startHideTimer();
+      _showChromeAndFocusBack();
+      return true;
     });
     if (!DesktopWindowChrome.isDesktop) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -202,10 +216,17 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     ShellBus.leavePlayerSurface();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     PlayerBackExitGate.setTryFocusBack(null);
+    _backFocus.removeListener(_onTvBackFocusChanged);
     _backFocus.dispose();
     _playFocus.dispose();
+    _rewindFocus.dispose();
+    _forwardFocus.dispose();
+    _subsFocus.dispose();
+    _qualityFocus.dispose();
+    _speedFocus.dispose();
     _playerMenuFocus.dispose();
     _nextTrailerFocus.dispose();
+    _seekbarFocus.dispose();
     _tvKeyFocus.dispose();
     if (!DesktopWindowChrome.isDesktop) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -254,6 +275,23 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
       if (playerChromeOverlayBlocksFocusClaim()) return;
       _backFocus.requestFocus();
     });
+  }
+
+  void _onTvBackFocusChanged() {
+    if (!_backFocus.hasFocus) _tvBackExitArmed = false;
+  }
+
+  void _focusSeekbar() {
+    if (!_seekbarFocus.canRequestFocus) return;
+    _seekbarFocus.requestFocus();
+  }
+
+  void _focusDownFromBack() {
+    if (_hasMoreTrailers && _nextTrailerFocus.canRequestFocus) {
+      _nextTrailerFocus.requestFocus();
+      return;
+    }
+    _focusSeekbar();
   }
 
   @override
