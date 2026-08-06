@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, useSearch } from '@tanstack/react-router'
 import { ArrowDown, ArrowUp, Radio } from 'lucide-react'
 import { IptvPortalPeopleDialog } from '@/components/iptv-assign-dialog'
 import {
@@ -30,6 +30,8 @@ import {
 import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
 
+type PortalPlatform = 'xtream' | 'm3u' | 'stalker'
+
 type Cand = {
   id: string
   url: string
@@ -40,6 +42,7 @@ type Cand = {
   region_primary: string
   dealt_count: number
   catalog_pool: boolean
+  platform: PortalPlatform
   updated_at: string
   created_at: string
   last_scraped_at: string | null
@@ -143,6 +146,8 @@ function relativeTime(iso: string | null | undefined): string {
 
 export function AdminPoolPage() {
   const qc = useQueryClient()
+  const { portal: focusPortalId } = useSearch({ from: '/_ops/pool' })
+  const focusedOnce = useRef<string | null>(null)
   const [open, setOpen] = useState<Set<string>>(() => new Set())
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<IptvPortalEditForm>({
@@ -164,6 +169,9 @@ export function AdminPoolPage() {
   const [inventoryFilter, setInventoryFilter] = useState<
     'all' | 'pool' | 'nonpool'
   >('all')
+  const [platformFilter, setPlatformFilter] = useState<'all' | PortalPlatform>(
+    'all',
+  )
   const [regionFilter, setRegionFilter] = useState<string>('all')
   const [sortKey, setSortKey] = useState<SortKey>('accounts')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -179,7 +187,7 @@ export function AdminPoolPage() {
         const { data, error } = await adminDb
           .from('iptv_portals')
           .select(
-            'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, catalog_pool, updated_at, created_at, last_scraped_at',
+            'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, catalog_pool, platform, updated_at, created_at, last_scraped_at',
           )
           .order('updated_at', { ascending: false })
           .range(from, to)
@@ -202,6 +210,7 @@ export function AdminPoolPage() {
     return rows.filter((c) => {
       if (inventoryFilter === 'pool' && c.catalog_pool !== true) return false
       if (inventoryFilter === 'nonpool' && c.catalog_pool === true) return false
+      if (platformFilter !== 'all' && c.platform !== platformFilter) return false
       if (statusFilter === 'alive' && c.alive !== true) return false
       if (statusFilter === 'dead' && c.alive !== false) return false
       if (statusFilter === 'unchecked' && c.alive != null) return false
@@ -213,7 +222,7 @@ export function AdminPoolPage() {
       }
       return true
     })
-  }, [list.data, inventoryFilter, statusFilter, regionFilter])
+  }, [list.data, inventoryFilter, platformFilter, statusFilter, regionFilter])
 
   const groups = useMemo(
     () => sortHostGroups(groupByHost(filteredRows), sortKey, sortDir),
@@ -222,8 +231,57 @@ export function AdminPoolPage() {
 
   const paging = useTablePagination(groups, {
     initialPageSize: 50,
-    resetKey: `${inventoryFilter}|${statusFilter}|${regionFilter}|${sortKey}|${sortDir}`,
+    resetKey: `${inventoryFilter}|${platformFilter}|${statusFilter}|${regionFilter}|${sortKey}|${sortDir}`,
   })
+
+  // Deep-refs → Pool deep-link: expand host, jump page, highlight row.
+  useEffect(() => {
+    if (!focusPortalId || !list.data?.length) return
+    if (focusedOnce.current === focusPortalId) return
+    const row = list.data.find((c) => c.id === focusPortalId)
+    if (!row) {
+      setActionError(`Portal ${focusPortalId} not found in pool`)
+      focusedOnce.current = focusPortalId
+      return
+    }
+    focusedOnce.current = focusPortalId
+    setInventoryFilter('all')
+    setPlatformFilter('all')
+    setStatusFilter('all')
+    setRegionFilter('all')
+    setActionError(null)
+    setActionInfo(`Focused portal ${row.username} @ ${candidateHost(row.url)}`)
+    const host = candidateHost(row.url)
+    setOpen((prev) => new Set(prev).add(host))
+  }, [focusPortalId, list.data])
+
+  useEffect(() => {
+    if (!focusPortalId || !list.data?.length) return
+    const row = list.data.find((c) => c.id === focusPortalId)
+    if (!row) return
+    const host = candidateHost(row.url)
+    const idx = groups.findIndex((g) => g.host === host)
+    if (idx < 0) return
+    const page = Math.floor(idx / paging.pageSize)
+    if (paging.page !== page) paging.setPage(page)
+    const t = window.setTimeout(() => {
+      document
+        .getElementById(`pool-portal-${focusPortalId}`)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, 80)
+    return () => window.clearTimeout(t)
+  }, [
+    focusPortalId,
+    list.data,
+    groups,
+    paging.page,
+    paging.pageSize,
+    paging.setPage,
+    inventoryFilter,
+    platformFilter,
+    statusFilter,
+    regionFilter,
+  ])
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -452,6 +510,30 @@ export function AdminPoolPage() {
         </div>
         <div className="space-y-1.5">
           <Label
+            htmlFor="pool-platform-filter"
+            className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted"
+          >
+            Type
+          </Label>
+          <Select
+            value={platformFilter}
+            onValueChange={(v) =>
+              setPlatformFilter(v as 'all' | PortalPlatform)
+            }
+          >
+            <SelectTrigger id="pool-platform-filter" className="w-[9rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="xtream">Xtream</SelectItem>
+              <SelectItem value="m3u">M3U</SelectItem>
+              <SelectItem value="stalker">Stalker</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label
             htmlFor="pool-status-filter"
             className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted"
           >
@@ -617,6 +699,7 @@ export function AdminPoolPage() {
                         <IptvPortalActionRow
                           key={c.id}
                           portal={c}
+                          highlighted={focusPortalId === c.id}
                           sharing={sharingId === c.id}
                           shareCode={shareFlash[c.id] ?? null}
                           deleting={remove.isPending}

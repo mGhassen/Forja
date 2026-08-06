@@ -7,7 +7,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
   ChevronDown,
@@ -15,6 +15,7 @@ import {
   FileCode2,
   PanelRightClose,
   PanelRightOpen,
+  RefreshCw,
   X,
 } from 'lucide-react'
 import {
@@ -38,6 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { adminDb } from '@/lib/admin-db'
+import { reprocessDeepRefForAdmin } from '@/lib/deep-ref-reprocess'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { fetchPasteBodyForAdmin } from '@/lib/paste-body'
 import { useTablePagination } from '@/lib/use-table-pagination'
@@ -145,18 +147,51 @@ function DeepRefPortalsTable({ portals }: { portals: DeepRefPortalRow[] }) {
                   {p.output || '—'}
                 </td>
                 <td className="max-w-[160px] truncate px-3 py-2 font-mono-ui text-xs">
-                  {p.url}
+                  {p.portal_id ? (
+                    <Link
+                      to="/pool"
+                      search={{ portal: p.portal_id }}
+                      className="text-forja-text underline-offset-2 hover:text-forja-green hover:underline"
+                      title="Open in Pool"
+                    >
+                      {p.url}
+                    </Link>
+                  ) : (
+                    p.url
+                  )}
                 </td>
                 <td className="px-3 py-2 font-mono-ui text-xs">
-                  {p.username || '—'}
+                  {p.portal_id ? (
+                    <Link
+                      to="/pool"
+                      search={{ portal: p.portal_id }}
+                      className="text-forja-text underline-offset-2 hover:text-forja-green hover:underline"
+                      title="Open in Pool"
+                    >
+                      {p.username || '—'}
+                    </Link>
+                  ) : (
+                    p.username || '—'
+                  )}
                 </td>
                 <td className="px-3 py-2 text-xs">
                   {!p.portal_id ? (
                     <span className="text-forja-muted">Not promoted</span>
-                  ) : p.was_existing ? (
-                    <span className="text-amber-300">Already in DB</span>
                   ) : (
-                    <span className="text-forja-green">New insert</span>
+                    <Link
+                      to="/pool"
+                      search={{ portal: p.portal_id }}
+                      className={cn(
+                        'underline-offset-2 hover:underline',
+                        p.was_existing
+                          ? 'text-amber-300'
+                          : 'text-forja-green',
+                      )}
+                      title="Open in Pool"
+                    >
+                      {p.was_existing ? 'Already in DB' : 'New insert'}
+                      <span className="ml-1 text-forja-muted">→ Pool</span>
+                    </Link>
                   )}
                 </td>
               </tr>
@@ -250,11 +285,15 @@ function PasteSidePanel({
   width,
   onWidthChange,
   onClose,
+  onReprocess,
+  reprocessing,
 }: {
   row: DeepRefRow
   width: number
   onWidthChange: (w: number) => void
   onClose: () => void
+  onReprocess: () => void
+  reprocessing: boolean
 }) {
   const dragRef = useRef<{ startX: number; startW: number } | null>(null)
 
@@ -292,6 +331,8 @@ function PasteSidePanel({
       ? 'Paste body (scrape fetch failed)'
       : 'Paste body · live from paste host'
     : 'Decoded base64'
+
+  const canReprocess = Boolean(row.paste_url.trim() || row.base64.trim())
 
   return (
     <aside
@@ -337,6 +378,22 @@ function PasteSidePanel({
           type="button"
           variant="ghost"
           size="sm"
+          className="h-7 shrink-0 gap-1 px-2"
+          disabled={!canReprocess || reprocessing}
+          onClick={onReprocess}
+          title="Re-fetch paste, extract portals, upsert into pool"
+        >
+          <RefreshCw
+            className={cn('size-3.5', reprocessing && 'animate-spin')}
+          />
+          <span className="text-xs">
+            {reprocessing ? '…' : 'Reprocess'}
+          </span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
           className="size-7 shrink-0 p-0"
           onClick={onClose}
           aria-label="Close paste panel"
@@ -356,6 +413,7 @@ function PasteSidePanel({
 }
 
 export function AdminDeepRefsPage() {
+  const qc = useQueryClient()
   const list = useQuery({
     queryKey: DEEP_REFS_KEY,
     queryFn: fetchDeepRefs,
@@ -367,6 +425,9 @@ export function AdminDeepRefsPage() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [pastePanelId, setPastePanelId] = useState<string | null>(null)
   const [panelWidth, setPanelWidth] = useState(PASTE_PANEL_DEFAULT)
+  const [reprocessingId, setReprocessingId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionInfo, setActionInfo] = useState<string | null>(null)
 
   useEffect(() => {
     setPanelWidth(readStoredPanelWidth())
@@ -383,6 +444,34 @@ export function AdminDeepRefsPage() {
   }, [])
 
   const rows = list.data ?? []
+
+  const reprocess = useCallback(
+    async (id: string) => {
+      setActionError(null)
+      setActionInfo(null)
+      setReprocessingId(id)
+      try {
+        const pasteUrl = (list.data ?? []).find((r) => r.id === id)?.paste_url
+          ?.trim()
+        const result = await reprocessDeepRefForAdmin(id)
+        await qc.invalidateQueries({ queryKey: DEEP_REFS_KEY })
+        if (pasteUrl) {
+          await qc.invalidateQueries({
+            queryKey: ['admin', 'paste_body', pasteUrl],
+          })
+        }
+        setActionInfo(
+          `Reprocessed · ${result.hitCount} portals · ${result.promoted} promoted` +
+            (result.wasExisting ? ` (${result.wasExisting} already in DB)` : ''),
+        )
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : 'Reprocess failed')
+      } finally {
+        setReprocessingId(null)
+      }
+    },
+    [qc, list.data],
+  )
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -444,7 +533,15 @@ export function AdminDeepRefsPage() {
   }
 
   return (
-    <div className="-mx-4 flex sm:-mx-6">
+    <div
+      className={cn(
+        'flex',
+        // Cancel main px; when paste open, bleed past max-w-7xl to viewport right edge.
+        pasteRow
+          ? '-ml-4 mr-[calc(50%-50vw)] sm:-ml-6'
+          : '-mx-4 sm:-mx-6',
+      )}
+    >
       <div className="min-w-0 flex-1 space-y-6 px-4 sm:px-6">
         <PageHeader
           title="Deep refs"
@@ -456,6 +553,12 @@ export function AdminDeepRefsPage() {
           }
         />
 
+        {actionError ? (
+          <p className="text-sm text-red-400">{actionError}</p>
+        ) : null}
+        {actionInfo ? (
+          <p className="text-sm text-forja-muted">{actionInfo}</p>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <MetricChip label="Refs" value={stats.total} />
           <MetricChip label="With paste URL" value={stats.withPaste} />
@@ -528,6 +631,7 @@ export function AdminDeepRefsPage() {
                     <th className={thClassName}>Portals</th>
                     <th className={thClassName}>Recheck</th>
                     <th className={thClassName}>Paste</th>
+                    <th className={thClassName}>Reprocess</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -619,10 +723,34 @@ export function AdminDeepRefsPage() {
                               </span>
                             </Button>
                           </td>
+                          <td className={tdClassName}>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1.5 px-2"
+                              disabled={
+                                reprocessingId != null ||
+                                (!r.paste_url.trim() && !r.base64.trim())
+                              }
+                              onClick={() => void reprocess(r.id)}
+                              title="Re-fetch paste, extract portals, upsert into pool"
+                            >
+                              <RefreshCw
+                                className={cn(
+                                  'size-3.5',
+                                  reprocessingId === r.id && 'animate-spin',
+                                )}
+                              />
+                              <span className="sr-only sm:not-sr-only">
+                                {reprocessingId === r.id ? '…' : 'Run'}
+                              </span>
+                            </Button>
+                          </td>
                         </tr>
                         {open ? (
                           <tr className="border-t border-forja-border/40 bg-black/20">
-                            <td className={tdClassName} colSpan={7}>
+                            <td className={tdClassName} colSpan={8}>
                               <div className="space-y-4 py-2">
                                 <div className="grid gap-3 sm:grid-cols-2">
                                   <div>
@@ -686,6 +814,8 @@ export function AdminDeepRefsPage() {
           width={panelWidth}
           onWidthChange={onWidthChange}
           onClose={() => setPastePanelId(null)}
+          onReprocess={() => void reprocess(pasteRow.id)}
+          reprocessing={reprocessingId === pasteRow.id}
         />
       ) : null}
     </div>

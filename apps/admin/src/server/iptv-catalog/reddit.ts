@@ -575,12 +575,14 @@ function decodeBase64Text(raw: string): string | null {
 export async function processDeepRefRow(
   row: PendingDeepRefRow,
   maxResults = 500,
+  opts?: { force?: boolean },
 ): Promise<{
   ref: DeepRefRecord
   l2FetchOk: number
   l2FetchFail: number
   l2ExtractCount: number
 }> {
+  const force = opts?.force === true
   const acc = new Map<string, CatalogPortal>()
   let text: string | null = null
   let fetchOk: boolean | null = row.fetch_ok
@@ -588,7 +590,8 @@ export async function processDeepRefRow(
   let l2FetchFail = 0
 
   const pasteUrl = String(row.paste_url ?? '').trim()
-  if (pasteUrl && fetchOk == null) {
+  // Pending scrape only fetches when fetch_ok is null; admin reprocess forces a re-fetch.
+  if (pasteUrl && (fetchOk == null || force)) {
     const fetched = await fetchPasteBody(pasteUrl)
     if (fetched) {
       text = truncatePayload(fetched)

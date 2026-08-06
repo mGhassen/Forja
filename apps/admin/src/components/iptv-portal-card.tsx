@@ -7,6 +7,7 @@ import {
 import { cn } from '@/lib/utils'
 
 export type IptvPortalCardData = {
+  id?: string
   username: string
   url: string
   alive: boolean | null

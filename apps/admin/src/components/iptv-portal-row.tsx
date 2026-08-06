@@ -185,6 +185,7 @@ export function IptvPortalActionRow({
   shareCode,
   deleting,
   checking,
+  highlighted,
   deleteConfirmLabel,
   deleteDisabled,
   deleteTitle,
@@ -200,6 +201,7 @@ export function IptvPortalActionRow({
   shareCode: string | null
   deleting: boolean
   checking: boolean
+  highlighted?: boolean
   deleteConfirmLabel: string
   deleteDisabled?: boolean
   deleteTitle?: string
@@ -211,13 +213,17 @@ export function IptvPortalActionRow({
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const pinRail = confirmDelete || sharing || !!shareCode || checking
+  const rowId = 'id' in portal && typeof portal.id === 'string' ? portal.id : null
 
   return (
     <li
+      id={rowId ? `pool-portal-${rowId}` : undefined}
       className={cn(
         'group flex min-h-22 items-stretch border-b border-forja-border/70 last:border-b-0',
         'hover:bg-white/[0.03] focus-within:bg-white/[0.03]',
         pinRail && 'bg-white/[0.03]',
+        highlighted &&
+          'bg-forja-green/[0.08] ring-1 ring-inset ring-forja-green/35',
       )}
     >
       <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">

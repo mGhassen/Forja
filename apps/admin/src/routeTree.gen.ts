@@ -23,6 +23,7 @@ import { Route as ApiIptvCatalogScrapeRouteImport } from './routes/api.iptv-cata
 import { Route as ApiIptvCatalogVerifyRouteImport } from './routes/api.iptv-catalog-verify'
 import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
 import { Route as ApiIptvPasteBodyRouteImport } from './routes/api.iptv-paste-body'
+import { Route as ApiIptvDeepRefReprocessRouteImport } from './routes/api.iptv-deep-ref-reprocess'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthLoginMfaRouteImport } from './routes/_auth/login.mfa'
 
@@ -94,6 +95,11 @@ const ApiIptvPasteBodyRoute = ApiIptvPasteBodyRouteImport.update({
   path: '/api/iptv-paste-body',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIptvDeepRefReprocessRoute = ApiIptvDeepRefReprocessRouteImport.update({
+  id: '/api/iptv-deep-ref-reprocess',
+  path: '/api/iptv-deep-ref-reprocess',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
+  '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
 }
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
+  '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
 }
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
+  '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_ops/': typeof OpsIndexRoute
   '/_auth/login/mfa': typeof AuthLoginMfaRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/api/iptv-catalog-verify'
     | '/api/iptv-share'
     | '/api/iptv-paste-body'
+    | '/api/iptv-deep-ref-reprocess'
     | '/auth/callback'
     | '/login/mfa'
   fileRoutesByTo: FileRoutesByTo
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/api/iptv-catalog-verify'
     | '/api/iptv-share'
     | '/api/iptv-paste-body'
+    | '/api/iptv-deep-ref-reprocess'
     | '/auth/callback'
     | '/login/mfa'
   id:
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/api/iptv-catalog-verify'
     | '/api/iptv-share'
     | '/api/iptv-paste-body'
+    | '/api/iptv-deep-ref-reprocess'
     | '/auth/callback'
     | '/_ops/'
     | '/_auth/login/mfa'
@@ -217,6 +229,7 @@ export interface RootRouteChildren {
   ApiIptvCatalogVerifyRoute: typeof ApiIptvCatalogVerifyRoute
   ApiIptvShareRoute: typeof ApiIptvShareRoute
   ApiIptvPasteBodyRoute: typeof ApiIptvPasteBodyRoute
+  ApiIptvDeepRefReprocessRoute: typeof ApiIptvDeepRefReprocessRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
@@ -320,6 +333,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIptvPasteBodyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/iptv-deep-ref-reprocess': {
+      id: '/api/iptv-deep-ref-reprocess'
+      path: '/api/iptv-deep-ref-reprocess'
+      fullPath: '/api/iptv-deep-ref-reprocess'
+      preLoaderRoute: typeof ApiIptvDeepRefReprocessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -387,6 +407,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIptvCatalogVerifyRoute: ApiIptvCatalogVerifyRoute,
   ApiIptvShareRoute: ApiIptvShareRoute,
   ApiIptvPasteBodyRoute: ApiIptvPasteBodyRoute,
+  ApiIptvDeepRefReprocessRoute: ApiIptvDeepRefReprocessRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
