@@ -29,6 +29,7 @@ void main() {
       expect(tv.playSourceTorrent, isFalse);
       expect(tv.playSourceStremio, isFalse);
       expect(tv.playSourceNuvio, isFalse);
+      expect(tv.playInBackground, isFalse);
     });
 
     test('phone defaults unchanged', () {
@@ -37,12 +38,14 @@ void main() {
       expect(phone.builtInPlayerEngine, BuiltInPlayerEngine.mediaKit);
       expect(phone.subSize, 24);
       expect(phone.torrentRamCacheMb, 200);
+      expect(phone.playInBackground, isFalse);
     });
 
     test('desktop subtitle size', () {
       final desktop = PlatformDefaults.forProfile(PlatformProfile.desktop);
       expect(desktop.subSize, 44);
       expect(desktop.visibleNavIds, PlatformDefaults.phoneNavIds);
+      expect(desktop.playInBackground, isTrue);
     });
   });
 }

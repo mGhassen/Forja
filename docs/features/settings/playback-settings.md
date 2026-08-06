@@ -20,7 +20,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
 - Toggle **Auto next episode** (on by default) — when an episode finishes, start the next one; also available as the **Auto next** switch in the player Episodes panel top bar
 - Toggle **Auto skip intro** (off by default) — when IntroDB has intro/recap timestamps, skip them without tapping Skip; also available in the in-player **Settings** menu
-- Toggle **Play in background** (off by default) — keep movies, series, and IPTV playing when Forja leaves the foreground (another app, Home, or a Space switch without PiP). When off, playback pauses and resumes on return
+- Toggle **Play in background** — keep movies, series, and IPTV playing when Forja leaves the foreground (another app, Home, or a Space switch without PiP). **On by default on desktop**; **off by default on phone and Android TV** (playback pauses until you return — the app stays in memory for a quick resume). When off, returning to Forja resumes if it was playing when you left
 - On **macOS / Windows**: toggle **Auto picture-in-picture** (off by default) — while playing, switching Mission Control Space or a Windows virtual desktop shrinks into PiP automatically. Manual PiP from the player button always works
 - Toggle **IPTV programme guide (EPG)** when the IPTV tab is visible — load and show NOW / NEXT guide data in IPTV player and browser (on by default)
 - Set **IPTV live max quality** when the IPTV tab is visible — **Auto (full quality)** by default (no downscale). Optional **1080p / 720p / 480p** caps ExoPlayer adaptive live variants only if you choose them

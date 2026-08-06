@@ -230,7 +230,9 @@ class _SettingsPlaybackSectionState
             settingsFocusableToggle(
               context,
               'Play in background',
-              'Keep movies, series, and IPTV playing when Forja leaves the foreground (another app, Home, or Space switch without PiP). Off by default.',
+              SettingsService.platformProfile == PlatformProfile.desktop
+                  ? 'Keep movies, series, and IPTV playing when Forja leaves the foreground. On by default on desktop — turn off to pause until you return.'
+                  : 'Keep movies, series, and IPTV playing when Forja leaves the foreground. Off by default — playback pauses until you return (app stays in memory for a quick resume).',
               snap.playInBackground,
               (val) async {
                 await _settings.setPlayInBackground(val);

@@ -77,6 +77,8 @@ abstract final class PlatformChannel {
     final profile = await detectProfile();
     SettingsService.configurePlatformProfile(profile);
     await SettingsService().ensurePlatformDefaultsSeeded(profile);
+    // Hydrate live notifiers that use platform-aware fallbacks.
+    await SettingsService().getPlayInBackground();
   }
 
   /// Android TV only - software WebView warm-up before first real WebView use.

@@ -87,7 +87,8 @@ class SettingsService {
   static const String _autoSkipIntroKey = 'auto_skip_intro';
   /// Desktop Space / virtual-desktop switch → enter PiP (default off).
   static const String _autoPipOnDesktopSwitchKey = 'auto_pip_on_desktop_switch';
-  /// Keep VOD/IPTV playing when the app leaves the foreground (default off).
+  /// Keep VOD/IPTV playing when the app leaves the foreground.
+  /// Default: on desktop, off phone/Android TV ([PlatformDefaults.playInBackground]).
   static const String _playInBackgroundKey = 'play_in_background';
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
   /// IPTV live Exo only: 0 = full portal quality (default). Never auto-cap.
@@ -273,8 +274,12 @@ class SettingsService {
   }
 
   /// When on, VOD/IPTV keep playing after the app leaves the foreground.
+  /// Unset → [PlatformDefaults.playInBackground] (desktop on, phone/TV off).
   Future<bool> getPlayInBackground() async {
-    final v = await kvGetBool(_playInBackgroundKey, fallback: false);
+    final v = await kvGetBool(
+      _playInBackgroundKey,
+      fallback: _defaults.playInBackground,
+    );
     if (playInBackgroundNotifier.value != v) {
       playInBackgroundNotifier.value = v;
     }
@@ -1196,6 +1201,7 @@ class SettingsService {
         _showTorrentStatsOverlayKey,
         defaults.showTorrentStatsOverlay,
       );
+      await kvSetBool(_playInBackgroundKey, defaults.playInBackground);
       await kvSetString(_navbarShell080Key, '1');
       await kvSetString(_navbarShell081Key, '1');
       await kvSetString(_navbarShell084Key, '1');

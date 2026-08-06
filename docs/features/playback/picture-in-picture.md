@@ -20,7 +20,7 @@ Forja supports picture-in-picture in the **movie player** and the **IPTV player*
 - Shrink video to a corner overlay while playback continues
 - Drag freely anywhere on screen
 - Hover: expand (restore full player), Minimize, Close, ±15s seek, play/pause, and scrub (VOD; live IPTV shows play/pause only)
-- Continue audio/video while PiP is active (Android phone/tablet or desktop). Leaving Forja for another full-screen app **without** PiP pauses the main player by default so audio does not keep playing under that app — turn on **Settings → Playback → Play in background** to keep going without PiP
+- Continue audio/video while PiP is active (Android phone/tablet or desktop). Leaving Forja for another full-screen app **without** PiP pauses the main player by default on phone/Android TV so audio does not keep playing under that app — turn on **Settings → Playback → Play in background** to keep going without PiP (that toggle is on by default on desktop)
 - On macOS, switch Mission Control Spaces and keep watching in the same floating window (auto or manual PiP)
 
 ## Tips

@@ -16,6 +16,7 @@ class PlatformDefaults {
     required this.playSourceWebstreaming,
     required this.torrentRamCacheMb,
     required this.showTorrentStatsOverlay,
+    required this.playInBackground,
   });
 
   final List<String> visibleNavIds;
@@ -30,6 +31,9 @@ class PlatformDefaults {
   final bool playSourceWebstreaming;
   final int torrentRamCacheMb;
   final bool showTorrentStatsOverlay;
+
+  /// Desktop keeps audio/video when the window blurs; phone/TV pause (process stays warm).
+  final bool playInBackground;
 
   static const List<String> defaultNavIds = [
     'home',
@@ -57,6 +61,7 @@ class PlatformDefaults {
         playSourceWebstreaming: true,
         torrentRamCacheMb: 128,
         showTorrentStatsOverlay: false,
+        playInBackground: false,
       ),
       PlatformProfile.desktop => const PlatformDefaults(
         visibleNavIds: phoneNavIds,
@@ -71,6 +76,7 @@ class PlatformDefaults {
         playSourceWebstreaming: true,
         torrentRamCacheMb: 200,
         showTorrentStatsOverlay: false,
+        playInBackground: true,
       ),
       PlatformProfile.phone => const PlatformDefaults(
         visibleNavIds: phoneNavIds,
@@ -85,6 +91,7 @@ class PlatformDefaults {
         playSourceWebstreaming: true,
         torrentRamCacheMb: 200,
         showTorrentStatsOverlay: false,
+        playInBackground: false,
       ),
     };
   }

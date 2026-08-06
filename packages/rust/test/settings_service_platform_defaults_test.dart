@@ -192,6 +192,14 @@ void main() {
 
     expect(await service.getSubSize(), 44);
     expect(await service.getNavbarConfig(), PlatformDefaults.phoneNavIds);
+    expect(await service.getPlayInBackground(), isTrue);
+  });
+
+  test('fresh Android TV install pauses in background by default', () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
+
+    expect(await service.getPlayInBackground(), isFalse);
   });
 
   test('ensurePlatformDefaultsSeeded is idempotent', () async {
