@@ -1423,7 +1423,11 @@ collect_android_tv_downloader_codes() {
 
   cdn="${RELEASE_CDN_URL:-}"
   cdn="${cdn%/}"
-  [[ -n "$cdn" ]] || die "RELEASE_CDN_URL missing — needed for Downloader code URLs"
+  # Soft-fail: never die after GitHub publish — R2 upload must still run.
+  if [[ -z "$cdn" ]]; then
+    warn "RELEASE_CDN_URL missing — skip Downloader codes (set FORJA_DOWNLOADER_CODES=… to inject)"
+    return 0
+  fi
 
   # True headless (no TTY) — require env.
   if [[ ! -t 0 ]]; then
@@ -1449,12 +1453,14 @@ collect_android_tv_downloader_codes() {
     esac
     echo "  ${C_BOLD}${label}${C_RESET}  ${C_DIM}${url}${C_RESET}"
     read -r -p "  Downloader code for ${label}: " code || true
-    code="$(printf '%s' "${code:-}" | tr -d '[:space:]')"
+    # Paste from go.aftvnews.com often includes ZWSP/LTR marks that look like
+    # clean digits but fail =~ — strip to [0-9] only. Never die: bad input must
+    # not abort R2 after GitHub release already exists.
+    code="$(printf '%s' "${code:-}" | tr -cd '0-9')"
     if [[ -z "$code" ]]; then
       warn "skipped ${arch}"
       continue
     fi
-    [[ "$code" =~ ^[0-9]+$ ]] || die "Downloader code must be digits (got: $code)"
     parts+=("${arch}=${code}")
     ok "${label}: ${code}"
   done
