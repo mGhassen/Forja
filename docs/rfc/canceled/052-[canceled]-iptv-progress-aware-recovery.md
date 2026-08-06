@@ -1,15 +1,15 @@
 # RFC-052 — Progress-aware IPTV playback recovery
 
-**Status:** partial
-**Depends on:** [issue 148](../issues/148-[open]-iptv-live-edge-snap-reconnect-loop.md) · [issue 124](../issues/fixed/124-[fixed]-atv-iptv-reconnect-banner.md) · [issue 128](../issues/128-[open]-android-tv-iptv-mediakit-exit-anr.md)
+**Status:** canceled
+**Depends on:** [issue 148](../../issues/148-[open]-iptv-live-edge-snap-reconnect-loop.md) · [issue 124](../../issues/fixed/124-[fixed]-atv-iptv-reconnect-banner.md) · [issue 128](../../issues/128-[open]-android-tv-iptv-mediakit-exit-anr.md)
 **Area:** IPTV / playback
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **13 / 14** components · **1 / 10** acceptance |
-| **Current slice** | **Cache-gated recovery** — auto-reconnect only when cache empty and feed dead; ≥2s buffer = working |
+| **Progress** | **Canceled** · **13 / 14** components historical · **1 / 10** acceptance historical · approach abandoned |
+| **Current slice** | **Abandoned** — reporter still saw reconnect loops; playback restored to `v1.3.114` semantics (see issue 148 `I148-T08`) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -152,3 +152,19 @@ restarts. Truly empty cache + dead feed still reconnects.
   `.error` state and arms its stall watchdog **only** while the engine reports
   `.buffering`, cancelling it the moment the state changes. Forja's watchdog is
   a free-running 1 s timer, so it needs the probe to get the same information.
+
+---
+
+## Abandoned (2026-08-06)
+
+Progress-aware / cache-gated recovery did **not** stop the reporter's
+"plays ~1–2 min then Reconnecting…" loop (gates delayed the symptom; hard-block
+made dead streams worse). Per product decision, **all RFC-052 runtime code was
+stripped** and IPTV player playback/recovery restored to **`v1.3.114`**
+semantics (`cache-pause=no`, 25 MB back-buffer, seekable-only jump-to-live on
+open, immediate error/log → `_triggerRecovery`, simple watchdog). PiP, Player
+menus, Exo TextureView/ATV, and open serialization were kept.
+
+Historical component/acceptance rows above stay as shipped-then-reverted
+records. **Do not re-land this RFC without a captured log that proves a new
+root cause.** Track verification on [issue 148](../../issues/148-[open]-iptv-live-edge-snap-reconnect-loop.md) (`I148-T08`, `I148-A01`–`A07`).

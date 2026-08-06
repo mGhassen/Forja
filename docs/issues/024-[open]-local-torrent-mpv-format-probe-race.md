@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 8** fix · **0 / 2** acceptance |
+| **Progress** | **8 / 9** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,6 +27,7 @@
 | 6 | I24-T06 | Engine: hash-validated torrent metadata cache fallback + corrected public magnet E2E fixture | ✅ |
 | 7 | I24-T07 | Player: disable `force-seekable` / lavf seek on open so mpv does not Range the undownloaded tail while the swarm fills the middle | ✅ |
 | 8 | I24-T08 | Player: 180s local-torrent open wait + re-open on transient format probe; engine prefer 256 KiB / min 64 KiB head | ✅ |
+| 9 | I24-T09 | Player: keep torrent Range seek (`force-seekable=yes`); bound lavf probe instead of `seekable=0` (which permanently blocked scrub) | ✅ |
 
 ---
 
@@ -78,3 +79,7 @@ Manual smoke (`I24-T03`, `I24-A01`–`A02`) still required on a real indexer mag
 Observed: healthy swarm (~5 MB/s, 500–600 MB downloaded) still ended **Failed to stream** with `Failed to recognize file format` and `0:00 / 0:00`. Root cause of that symptom: mpv `force-seekable=yes` + HTTP `Content-Length` of the **full** file made lavf issue Range requests for the tail (moov / probe) while those pieces did not exist yet. The swarm filled arbitrary middle pieces; open timed out at 45s × 2 and gave up while download continued.
 
 **Fix:** open torrents sequentially (`force-seekable=no`, `stream-lavf-o=seekable=0`); wait up to 180s with periodic re-open on transient format errors; engine again prefers 256 KiB head (min 64 KiB).
+
+### Follow-up (I24-T09) — 2026-08-06
+
+T07 left `seekable=0` for the whole session. Runtime `force-seekable=yes` after open did **not** stick — scrub past the demuxer cache logged `Cannot seek in this stream`. Fix: drop `seekable=0`; open with `force-seekable=yes` + capped `demuxer-lavf-probesize` / `analyzeduration`; re-assert seekable on every torrent scrub.

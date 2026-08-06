@@ -225,28 +225,12 @@ mixin _DesktopPlayerPlayback
         } else {
           // RFC-045: pipeline owns identity + classify - no separate probe.
           final pid = source.providerId ?? _s._currentProvider;
-          var catalogUrl = hlsProxyTargetUrl(source.url) ?? source.url;
+          final catalogUrl = hlsProxyTargetUrl(source.url) ?? source.url;
           final hdrs = resolvePlaybackHttpHeaders(
             source.headers ?? widget.headers,
             streamUrl: catalogUrl,
             providerId: pid,
           );
-          if (isKissKhProviderId(pid)) {
-            final maxH = await SettingsService().getMaxPlaybackHeight();
-            final cap = kissKhHlsMaxHeight(maxH);
-            final capped = await preferHlsVariantUnderHeight(
-              catalogUrl,
-              headers: hdrs,
-              maxHeight: cap,
-            );
-            if (capped != catalogUrl) {
-              debugPrint(
-                '[Player] KissKh HLS cap ≤${cap}p → variant '
-                '(avoid 4K buffer stall)',
-              );
-              catalogUrl = capped;
-            }
-          }
           final pipeline = await StreamOpenPipeline.start(
             catalogUrl: catalogUrl,
             headers: hdrs,
@@ -1206,7 +1190,6 @@ mixin _DesktopPlayerPlayback
     _s._bufferSub?.cancel();
     _s._playingSub?.cancel();
     _s._bufferingSub?.cancel();
-    _s._kissKhBufferWatchdog?.cancel();
     _s._volumeSub?.cancel();
     _s._errorSub?.cancel();
     _s._completedSub?.cancel();
@@ -1373,22 +1356,10 @@ mixin _DesktopPlayerPlayback
       }
     });
 
-    // Buffering spinner + KissKh first-frame stall recovery
+    // Buffering spinner
     _s._bufferingSub = _s._player.stream.buffering.listen((buffering) {
       if (_s._disposed) return;
       _s._isBufferingNotifier.value = buffering;
-      if (!_s._playbackConfirmed || !isKissKhProviderId(_s._currentProvider)) {
-        return;
-      }
-      if (buffering) {
-        _s._kissKhBufferingSince ??= DateTime.now();
-      } else {
-        _s._kissKhBufferingSince = null;
-      }
-    });
-    _s._kissKhBufferWatchdog?.cancel();
-    _s._kissKhBufferWatchdog = Timer.periodic(const Duration(seconds: 2), (_) {
-      unawaited(_maybeRecoverKissKhBufferStall());
     });
 
     // Volume sync (e.g. hardware media keys)
@@ -1566,55 +1537,6 @@ mixin _DesktopPlayerPlayback
     }
   }
 
-  /// KissKh: after confirm, first-frame BUFFERING with pos≈0 — drop to lowest rung once.
-  Future<void> _maybeRecoverKissKhBufferStall() async {
-    if (_s._disposed || !_s._playbackConfirmed || _s._kissKhBufferStallTried) {
-      return;
-    }
-    if (!isKissKhProviderId(_s._currentProvider)) return;
-    if (!_s._isBufferingNotifier.value) return;
-    final since = _s._kissKhBufferingSince;
-    if (since == null ||
-        DateTime.now().difference(since) < const Duration(seconds: 18)) {
-      return;
-    }
-    // Only the "title card forever" case — mid-play rebuffers are left alone.
-    if (_s._positionNotifier.value >= const Duration(seconds: 2)) return;
-
-    final qualities = _s._hlsQualitiesNotifier.value;
-    final headers = _s._hlsMasterHeaders;
-    if (qualities == null || qualities.isEmpty || headers == null) return;
-
-    final ranked = qualities
-        .where((q) => !q.isAuto && (q.height ?? 0) > 0)
-        .toList()
-      ..sort((a, b) => (a.height ?? 0).compareTo(b.height ?? 0));
-    if (ranked.isEmpty) return;
-    final lowest = ranked.first;
-    if (lowest.url == _s._currentUrl || lowest.url == _s._currentQualityUrl) {
-      return;
-    }
-
-    _s._kissKhBufferStallTried = true;
-    debugPrint(
-      '[Player] KissKh buffer stall ${DateTime.now().difference(since).inSeconds}s '
-      '→ drop to ${lowest.label}',
-    );
-    try {
-      _s._currentQualityUrl = lowest.url;
-      await openPlayerStream(
-        _s._player,
-        url: lowest.url,
-        headers: headers,
-        providerId: _s._currentProvider,
-      );
-      await _s._player.play();
-      _s._kissKhBufferingSince = null;
-    } catch (e) {
-      debugPrint('[Player] KissKh stall recovery failed: $e');
-    }
-  }
-
   /// Checks if [track] is an ASS/SSA or image-based subtitle (PGS/VobSub) and toggles mpv's
   /// `sub-visibility` accordingly. Native tracks render directly onto the video frame,
   /// so the custom Flutter overlay hides itself. For SRT/VTT, sub-visibility is turned off
@@ -1707,16 +1629,17 @@ mixin _DesktopPlayerPlayback
             widget.magnetLink!.isNotEmpty) ||
         isLocalTorrentStreamUrl(widget.mediaPath);
     if (isTorrent) {
-      // Sequential pull only. force-seekable + full Content-Length made lavf
-      // Range-request the file tail (moov) before those pieces existed — swarm
-      // filled the middle for hundreds of MB while mpv stayed on
-      // "Failed to recognize file format".
+      // Seekable HTTP Range (librqbit prioritizes pieces). Cap lavf probe so
+      // open prefers the already-fetched head instead of scanning the whole
+      // file; do NOT set seekable=0 — that permanently breaks scrub.
       await safeSet('cache', 'yes');
       await safeSet('network-timeout', '120');
       await safeSet('demuxer-readahead-secs', '20');
-      await safeSet('force-seekable', 'no');
-      await safeSet('stream-lavf-o', 'seekable=0');
-      await safeSet('demuxer-lavf-o', 'seekable=0');
+      await safeSet('demuxer-lavf-probesize', '65536');
+      await safeSet('demuxer-lavf-analyzeduration', '0.5');
+      await safeSet('force-seekable', 'yes');
+      await safeSet('hr-seek', 'yes');
+      await safeSet('hr-seek-framedrop', 'no');
     } else {
       // Prefer a fast first frame over a huge cold prefetch. Mid-play
       // stability still gets a solid forward window + RAM cache; Quality

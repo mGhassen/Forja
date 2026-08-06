@@ -72,7 +72,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [049-[open]-…](049-[open]-live-matches-mutstreams.md) | Live Matches MutStreams catalog | v1.0.1 | open | 3/3 · 4/5 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S173 · smoke R49-A05 ⬜ |
 | [050-[open]-…](050-[open]-stremio-addon-feature-targets.md) | Stremio feature targets + Live Matches sports | v1.0.1 | open | 3/3 · 6/8 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S180 · B101-S182 · B101-S183 · smoke R50-A06 ⬜ · R50-A07 ⬜ |
 | [051-[open]-…](051-[open]-iptv-multi-protocol-portals.md) | IPTV multi-protocol portals (Xtream / M3U / Stalker) | v1.0.8 | open | 5/5 · 11/12 | [1.0.8](../backlog/1.0.8-[draft].md) |
-| [052-[partial]-…](052-[partial]-iptv-progress-aware-recovery.md) | Progress-aware IPTV playback recovery (cache-gated reconnect) | v1.0.1 | partial | 13/14 · 1/10 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [052-[canceled]-…](canceled/052-[canceled]-iptv-progress-aware-recovery.md) | Progress-aware IPTV playback recovery — abandoned; restored v1.3.114 | v1.0.1 | canceled | Canceled · hist 13/14 · 1/10 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [053-[partial]-…](053-[partial]-asian-drama-tmdb-details.md) | Asian Drama TMDB details enrichment | v1.0.1 | partial | 3/3 · 5/6 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S199 · smoke R53-A06 ⬜ |
 | [054-[partial]-…](054-[partial]-torrent-search-providers.md) | Torrent search providers | v1.0.1 | partial | 4/4 · 5/6 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S201 · smoke R54-A06 ⬜ |
 | [055-[open]-…](055-[open]-native-youtube-trailer-player.md) | Native YouTube trailer player (resolve + media_kit) | v1.0.1 | open | 3/3 · 5/6 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S202 · smoke R55-A06 ⬜ |

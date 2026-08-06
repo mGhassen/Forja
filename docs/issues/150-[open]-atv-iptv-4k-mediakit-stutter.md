@@ -98,4 +98,4 @@ Read the diagnostic line during a stutter and classify:
 
 - [issue 138](138-[open]-android-tv-iptv-4k-audio.md) — origin of the UHD branch; any change here must keep `I138-A03`
 - [issue 108](108-[open]-atv-iptv-exo-choppy-fps.md) — Exo-side choppy FPS on the same surface
-- [RFC-052](../rfc/052-[partial]-iptv-progress-aware-recovery.md) — cache sizing interacts with `I150-T05`
+- [RFC-052](../rfc/canceled/052-[canceled]-iptv-progress-aware-recovery.md) — canceled; cache sizing notes remain historical for `I150-T05`

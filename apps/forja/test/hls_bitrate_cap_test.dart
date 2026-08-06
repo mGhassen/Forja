@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/player/utils.dart';
-import 'package:rust/rust.dart';
 
 void main() {
   group('hlsBitrateForMaxPlaybackHeight', () {
@@ -32,81 +31,23 @@ void main() {
     });
   });
 
-  group('preferHlsVariantUnderHeight', () {
-    final master = 'https://cdn.example/master.m3u8';
-    final qualities = [
-      const HlsQuality(
-        label: '2160p',
-        url: 'https://cdn.example/2160.m3u8',
-        height: 2160,
-      ),
-      const HlsQuality(
-        label: '1080p',
-        url: 'https://cdn.example/1080.m3u8',
-        height: 1080,
-      ),
-      const HlsQuality(
-        label: '720p',
-        url: 'https://cdn.example/720.m3u8',
-        height: 720,
-      ),
-      HlsQuality(
-        label: 'Auto',
-        url: master,
-        isAuto: true,
-      ),
-    ];
-
-    test('picks highest under cap', () async {
-      final url = await preferHlsVariantUnderHeight(
-        master,
-        maxHeight: 1080,
-        qualitiesOverride: qualities,
+  group('catalogUrlForHlsQualities', () {
+    test('prefers catalog then source over play proxy', () {
+      expect(
+        catalogUrlForHlsQualities(
+          catalogUrl: 'https://cdn.example/master.m3u8',
+          sourceUrl: 'https://cdn.example/other.m3u8',
+          playUrl: 'http://127.0.0.1/hls-proxy?url=x',
+        ),
+        'https://cdn.example/master.m3u8',
       );
-      expect(url, 'https://cdn.example/1080.m3u8');
-    });
-
-    test('falls to lowest when all above cap', () async {
-      final url = await preferHlsVariantUnderHeight(
-        master,
-        maxHeight: 480,
-        qualitiesOverride: qualities,
+      expect(
+        catalogUrlForHlsQualities(
+          sourceUrl: 'https://cdn.example/ep.m3u8',
+          playUrl: 'http://127.0.0.1/hls-proxy?url=x',
+        ),
+        'https://cdn.example/ep.m3u8',
       );
-      expect(url, 'https://cdn.example/720.m3u8');
-    });
-
-    test('infers height from path when RESOLUTION missing', () async {
-      final url = await preferHlsVariantUnderHeight(
-        master,
-        maxHeight: 1080,
-        qualitiesOverride: const [
-          HlsQuality(
-            label: 'Variant',
-            url: 'https://cdn.example/child/2160/a.m3u8',
-          ),
-          HlsQuality(
-            label: 'Variant',
-            url: 'https://cdn.example/child/720/b.m3u8',
-          ),
-        ],
-      );
-      expect(url, 'https://cdn.example/child/720/b.m3u8');
-    });
-  });
-
-  group('kissKhHlsMaxHeight', () {
-    test('soft-caps Auto and 4K settings to 1080', () {
-      expect(kissKhHlsMaxHeight(0), 1080);
-      expect(kissKhHlsMaxHeight(2160), 1080);
-      expect(kissKhHlsMaxHeight(720), 720);
-    });
-  });
-
-  group('isKissKhProviderId', () {
-    test('matches kisskh family', () {
-      expect(isKissKhProviderId('kisskh.nl'), isTrue);
-      expect(isKissKhProviderId('kisskh'), isTrue);
-      expect(isKissKhProviderId('vidsrc'), isFalse);
     });
   });
 }

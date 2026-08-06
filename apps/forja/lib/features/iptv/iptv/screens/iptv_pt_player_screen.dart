@@ -279,9 +279,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _formatEngineSwapped = false;
   // When the user explicitly paused (play-after-pause rejoins live edge).
   DateTime? _pausedAt;
-  /// After [drop-buffers], VideoToolbox often logs a one-shot hw fail while
-  /// re-initing — ignore those so we don't thrash into software decode.
-  DateTime? _ignoreHwDecodeFailUntil;
   final List<int> _backoffMs = const [
     500,
     1000,
@@ -298,36 +295,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   // probing every N seconds forever - live IPTV channels routinely come
   // back from short outages, so we don't want to give up.
   static const Duration _coldRetryInterval = Duration(seconds: 15);
-  /// How long a manual reload's live-edge flush gets to restore frames before
-  /// escalating to a real reopen. Covers the flush's own 700ms delay.
-  static const Duration _reloadEscalateAfter = Duration(seconds: 3);
-
-  /// Seconds of demuxer/buffer ahead of the playhead. Updated every watchdog
-  /// tick (MediaKit) or from Exo progress. The recovery gate: if this is above
-  /// [_minHealthyCacheSecs], the stream is working — do not reopen.
-  double _cacheAheadSecs = 0;
-
-  /// Last observed buffered-end mark in ms (Exo / mpv buffer stream).
-  int? _feedMarkMs;
-
-  /// When [_feedMarkMs] last moved — socket still delivering.
-  DateTime? _feedAdvancedAt;
-
-  bool _cacheProbeInFlight = false;
 
   /// Debug-only UHD telemetry timer (issue 150).
   Timer? _uhdDiag;
-
-  /// Have at least this much cache ⇒ stream is healthy, never auto-recover.
-  static const double _minHealthyCacheSecs = 2.0;
-
-  /// Feed mark moved within this window ⇒ still downloading.
-  static const Duration _networkAliveWindow = Duration(seconds: 3);
-
-  /// How long ffmpeg gets on VOD before app escalates (live uses cache gate).
-  static const Duration _ffmpegReconnectGrace = Duration(seconds: 8);
-
-  bool _socketTroublePending = false;
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 
