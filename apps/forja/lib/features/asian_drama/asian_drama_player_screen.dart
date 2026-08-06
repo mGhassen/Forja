@@ -581,7 +581,6 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       providerProbesNotifier: _probeNotifier,
       hubEpisodes: hubEpisodes,
       hubEpisodeNumber: episode.number,
-      episodeOverview: 'Episode ${episode.displayNumber}',
       onHubEpisodeSelected: (ep) async {
         KdramaEpisode? target;
         for (final e in episodes) {

@@ -25,9 +25,11 @@ use tokio::sync::oneshot;
 use tokio_util::io::ReaderStream;
 
 /// Prefer this many head bytes before handing the URL to mpv (container probe).
-const STREAM_HEAD_BYTES: u64 = 64 * 1024;
+/// 64 KiB was too thin for some x265/MP4 probes; mpv then range-sought the
+/// undownloaded tail while the swarm filled the middle (black screen + GBs).
+const STREAM_HEAD_BYTES: u64 = 256 * 1024;
 /// On timeout, still succeed if we got at least this many — mpv keeps pulling.
-const STREAM_HEAD_MIN_ACCEPT: u64 = 16 * 1024;
+const STREAM_HEAD_MIN_ACCEPT: u64 = 64 * 1024;
 /// Healthy swarms can take >60s after a cold DHT; desktop clients keep waiting.
 const STREAM_HEAD_TIMEOUT: Duration = Duration::from_secs(180);
 

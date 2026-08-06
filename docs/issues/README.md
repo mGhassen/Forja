@@ -45,7 +45,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [021-[draft]-…](021-[draft]-catalog-vertical-import-smoke-unverified.md) | Catalog import smoke unverified | P3 | Low | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [022-[draft]-…](022-[draft]-playback-widget-integration-tests.md) | No playback widget tests | P3 | Low | draft | 0/3 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [023-[fixed]-…](fixed/023-[fixed]-packages-api-delete-blocked-host-relocation.md) | packages/api delete | P2 | Medium | fixed | 4/4 | [0.3.2](../backlog/done/0.3.2-[done].md) |
-| [024-[open]-…](024-[open]-local-torrent-mpv-format-probe-race.md) | Local torrent mpv format probe race | P1 | High | open | 5/6 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [024-[open]-…](024-[open]-local-torrent-mpv-format-probe-race.md) | Local torrent mpv format probe race | P1 | High | open | 7/8 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [025-[open]-…](025-[open]-android-tv-leanback-smoke-unverified.md) | Android TV leanback smoke unverified | P1 | High | open | 6/14 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [026-[open]-…](026-[open]-lan-stream-playback-bearer-token.md) | LAN stream Bearer not sent to player | P1 | High | open | 0/2 · 0/2 | — |
 | [027-[draft]-…](027-[draft]-lan-server-client-manual-qa.md) | RFC-022 LAN manual QA matrix | P2 | Medium | draft | 0/10 | — |
@@ -129,7 +129,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [105-[open]-…](105-[open]-exoplayer-sources-dialog-missing.md) | ExoPlayer Sources button / 2-column dialog | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [106-[open]-…](106-[open]-desktop-session-profile-chrome-desync.md) | Long-idle session / profile chrome desync | P1 | High | open | 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [107-[fixed]-…](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) | Android ≤7.0 TMDB posters (Let's Encrypt trust) | P1 | High | fixed | Complete · 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [108-[open]-…](108-[open]-android-tv-iptv-exo-choppy-fps.md) | Android TV IPTV Exo choppy FPS (weak / Android 7) | P1 | High | open | 17/17 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [108-[open]-…](108-[open]-android-tv-iptv-exo-choppy-fps.md) | Android TV IPTV Exo choppy FPS (weak / Android 7) | P1 | High | open | 18/18 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [109-[open]-…](109-[open]-android-tv-boot-jwt-expired-discard-race.md) | ATV/desktop boot JWT expired (gotrue discard) | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [110-[open]-…](110-[open]-android-tv-iptv-player-top-bar-dpad.md) | ATV IPTV player top-right Player D-pad chrome | P1 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [111-[open]-…](111-[open]-macos-keychain-consent-local-file.md) | macOS Keychain consent + local-file fallback | P1 | Medium | open | 5/5 · A 0/3 | — |
@@ -173,7 +173,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (UHD `framedrop=decoder` / `video-sync=audio`) | P2 | Medium | open | 1/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [151-[open]-…](151-[open]-android-tv-exo-vod-stutter-no-cache.md) | ATV movie player (Exo VOD): 24fps judder + no back buffer / disk cache | P2 | Medium | open | 6/6 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [152-[open]-…](152-[open]-android-tv-mediakit-quieter-than-exo.md) | ATV MediaKit plays quieter than ExoPlayer at the same level | P2 | Medium | open | 3/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [153-[open]-…](153-[open]-kisskh-hls-4k-indefinite-buffer.md) | KissKh HLS: first frame then indefinite BUFFERING (4K ladder) | P1 | High | open | 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [153-[open]-…](153-[open]-kisskh-hls-4k-indefinite-buffer.md) | KissKh HLS: first frame then indefinite BUFFERING (4K ladder) | P1 | High | open | 7/7 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

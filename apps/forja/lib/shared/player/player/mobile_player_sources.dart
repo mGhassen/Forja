@@ -709,10 +709,11 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
 
-      final opened = await waitForMediaOpen(
+      final opened = await waitForPlayerStreamOpen(
         _s._player,
         streamUrl: openUrl,
-        timeout: const Duration(seconds: 25),
+        headers: headers,
+        providerId: resolved.providerId ?? _s._currentProvider,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       if (!opened) {

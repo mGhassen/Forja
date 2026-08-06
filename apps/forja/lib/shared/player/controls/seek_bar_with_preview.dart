@@ -163,8 +163,16 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
                           (_playFrac * _trackWidth).clamp(0.0, _trackWidth);
                       final hoverPx =
                           (_hoverFrac * _trackWidth).clamp(0.0, _trackWidth);
+                      // Keep the full circle inside the track — at 0%/100%
+                      // `playPx - thumbR` would sit half outside and get clipped
+                      // by the chrome margin / Stack hardEdge.
+                      final thumbLeft = (playPx - thumbR).clamp(
+                        0.0,
+                        (_trackWidth - thumbR * 2).clamp(0.0, double.infinity),
+                      );
 
                       return Stack(
+                        clipBehavior: Clip.none,
                         alignment: Alignment.centerLeft,
                         children: [
                           Container(
@@ -205,7 +213,7 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
                               ),
                             ),
                           Positioned(
-                            left: playPx - thumbR,
+                            left: thumbLeft,
                             child: Container(
                               width: thumbR * 2,
                               height: thumbR * 2,

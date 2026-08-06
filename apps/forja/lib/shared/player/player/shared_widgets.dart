@@ -319,6 +319,13 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final thumbR =
+            (_isDragging || _tvFocused || _tvScrubArmed) ? 8.0 : 6.0;
+        final playPx = relativePosition * constraints.maxWidth;
+        final thumbLeft = (playPx - thumbR).clamp(
+          0.0,
+          (constraints.maxWidth - thumbR * 2).clamp(0.0, double.infinity),
+        );
         final track = MouseRegion(
           onEnter: (_) {
             if (playerChromeOverlayBlocksSeek()) return;
@@ -399,19 +406,12 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                       color: ForjaShellColors.brandGreen,
                     ),
                   ),
-                  // Thumb
+                  // Thumb — inset so 0%/100% keep a full circle (not half-clipped)
                   Positioned(
-                    left: (relativePosition * constraints.maxWidth) -
-                        ((_isDragging || _tvFocused || _tvScrubArmed)
-                            ? 8.0
-                            : 6.0),
+                    left: thumbLeft,
                     child: Container(
-                      width: (_isDragging || _tvFocused || _tvScrubArmed)
-                          ? 16.0
-                          : 12.0,
-                      height: (_isDragging || _tvFocused || _tvScrubArmed)
-                          ? 16.0
-                          : 12.0,
+                      width: thumbR * 2,
+                      height: thumbR * 2,
                       decoration: BoxDecoration(
                         color: ForjaShellColors.brandGreen,
                         shape: BoxShape.circle,

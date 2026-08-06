@@ -875,6 +875,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       techFilters: _techFilters,
       audioFilters: _audioFilters,
       sizeFilters: _sizeFilters,
+    ).where(
+      (r) => TorrentSearchProviders.matchesResultSource(
+        _selectedSourceId,
+        r.source,
+      ),
     );
     return List<TorrentResult>.from(list)..sort(_compare);
   }
@@ -1253,13 +1258,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final query = _year.isNotEmpty
         ? '${widget.movie.title} $_year'
         : widget.movie.title;
-    final enabled = TorrentSearchProviders.searchEnabledForChip(
-      _selectedSourceId,
-    );
     final results = (await Engine.searchTorrents(
       query,
       imdbId: widget.movie.imdbId,
-      enabledProviders: enabled,
     )).map(TorrentResult.fromJson).toList();
     return (await Engine.filterTorrents(
       results.map((r) => r.toJson()).toList(),
@@ -1275,21 +1276,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final e = episode.toString().padLeft(2, '0');
     final seasonQuery = '${widget.movie.title} S$s';
     final episodeQuery = '${widget.movie.title} S${s}E$e';
-    final enabled = TorrentSearchProviders.searchEnabledForChip(
-      _selectedSourceId,
-    );
     final seasonRaw = (await Engine.searchTorrents(
       seasonQuery,
       imdbId: widget.movie.imdbId,
       season: season,
-      enabledProviders: enabled,
     )).map(TorrentResult.fromJson).toList();
     final episodeRaw = (await Engine.searchTorrents(
       episodeQuery,
       imdbId: widget.movie.imdbId,
       season: season,
       episode: episode,
-      enabledProviders: enabled,
     )).map(TorrentResult.fromJson).toList();
     final combined = <String, TorrentResult>{};
     for (final r in (await Engine.filterTorrents(
@@ -1506,6 +1502,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
     if (id == _selectedSourceId) return;
+    final prev = _selectedSourceId;
     setState(() {
       _selectedSourceId = id;
       if (_kindFilter == 'stremio') _userPickedStremioProvider = true;
@@ -1518,8 +1515,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     });
     if (_kindFilter == 'stremio') {
       // Streams already fetched; provider only filters which addon rows show.
-    } else if (_kindFilter != 'nuvio') {
-      unawaited(_runTorrentSearch());
+    } else if (_kindFilter == 'torrents') {
+      final toIndexer = id == 'jackett' || id == 'prowlarr';
+      final fromIndexer = prev == 'jackett' || prev == 'prowlarr';
+      final needSearch = toIndexer ||
+          fromIndexer ||
+          (TorrentSearchProviders.isBuiltinSearchChip(id) && _results.isEmpty);
+      if (needSearch) unawaited(_runTorrentSearch());
     }
   }
 

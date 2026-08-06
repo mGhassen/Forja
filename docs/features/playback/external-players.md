@@ -6,7 +6,7 @@
 
 Playback always starts in Forja’s built-in player. During a stream you can send the resolved URL to an external player installed on your device. That choice applies to the **current stream only** — the next title opens in the built-in player again.
 
-Options vary by platform (e.g. IINA, VLC, and mpv on macOS; MX Player on Android phone). On desktop, the **Player** menu only lists apps that are actually installed — install mpv with Homebrew (`brew install mpv`) if you want the standalone mpv option; IINA and VLC are detected from `/Applications/`. On **Android TV**, the in-player **Player** menu does **not** offer external apps — only **ExoPlayer** and **MediaKit** (ExoPlayer is the default).
+Options vary by platform (e.g. IINA, VLC, and mpv on macOS; MX Player on Android phone). On desktop, the **Player** menu only lists apps that are actually installed — install mpv with Homebrew (`brew install mpv`) if you want the standalone mpv option; IINA and VLC are detected from `/Applications/`. On **Android TV**, the in-player **Player** menu does **not** offer external apps — only **ExoPlayer** and **MediaKit** (MediaKit is the default).
 
 ## How to open it
 

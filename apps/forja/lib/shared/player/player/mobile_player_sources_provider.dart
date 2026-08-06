@@ -178,10 +178,11 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
         );
         if (_s._fallbackAborted(gen)) return null;
 
-        final opened = await waitForMediaOpen(
+        final opened = await waitForPlayerStreamOpen(
           _s._player,
           streamUrl: streamUrl,
-          timeout: const Duration(seconds: 25),
+          headers: headers,
+          providerId: newProvider,
         );
         if (_s._fallbackAborted(gen)) return null;
         if (!opened) {

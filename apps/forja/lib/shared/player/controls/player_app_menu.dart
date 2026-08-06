@@ -63,11 +63,8 @@ class PlayerAppMenu {
     ScrollPhysics? physics,
   }) {
     // Android TV: Exo + MediaKit only — external apps are not offered.
-    // ATV emulator: MediaKit HEVC ANRs the process — Exo only.
     final showExternal = !PlatformInfo.isAndroidTv;
-    final engines = PlatformInfo.isAndroidTv && PlatformInfo.isAndroidEmulator
-        ? const [BuiltInPlayerEngine.exoPlayer]
-        : builtInPlayerEngineOptionsForUi;
+    final engines = builtInPlayerEngineOptionsForUi;
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       shrinkWrap: true,

@@ -89,12 +89,10 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       _s._player.setVolume(_s._mpvVolume);
 
-      final opened = await waitForMediaOpen(
+      final opened = await waitForPlayerStreamOpen(
         _s._player,
         streamUrl: openedUrl,
-        timeout: isLocalTorrentStreamUrl(openedUrl)
-            ? const Duration(seconds: 45)
-            : const Duration(seconds: 25),
+        headers: resolved.headers,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       if (!opened) {

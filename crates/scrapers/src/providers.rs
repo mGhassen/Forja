@@ -678,6 +678,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn parse_nested_json_query_like_engine_job() {
+        let inner = r#"{"query":"ubuntu","enabled":["torrents_csv"]}"#;
+        let payload = serde_json::json!({ "query": inner }).to_string();
+        let v: serde_json::Value = serde_json::from_str(&payload).unwrap();
+        let q = v.get("query").and_then(|x| x.as_str()).unwrap();
+        let req = SearchRequest::parse(q);
+        assert_eq!(req.query, "ubuntu");
+        assert_eq!(req.enabled, vec!["torrents_csv".to_string()]);
+    }
+
+    #[test]
     fn parses_plain_query() {
         let r = SearchRequest::parse("matrix");
         assert_eq!(r.query, "matrix");

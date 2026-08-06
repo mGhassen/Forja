@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** fix · **0 / 4** device smoke |
+| **Progress** | **7 / 7** fix · **0 / 4** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I153-T04 | KissKh `pngStrip: force` + mirror id resolve; strip post-IEND payload even without MPEG-TS sync (videotradercdn `.png`) | ✅ |
 | 5 | I153-T05 | HLS proxy: protocol-relative `//cdn/…` must not join as `host//cdn/…`; collapse `hostA//hostB` joins | ✅ |
 | 6 | I153-T06 | Cap KissKh catalog **before** OpenPipeline (strip keeps Referer); force strip never falls back to `openDirect` | ✅ |
+| 7 | I153-T07 | `build_rust.sh` copies `libffi.dylib` into Debug/Release `.app` Frameworks (flutter run was on stale proxy) | ✅ |
 
 ---
 

@@ -157,12 +157,11 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
           );
           if (_fallbackAborted(runGen)) return false;
           _s._player.setVolume(_s._mpvVolume);
-          final opened = await waitForMediaOpen(
+          final opened = await waitForPlayerStreamOpen(
             _s._player,
             streamUrl: openUrl,
-            timeout: isLocalTorrentStreamUrl(openUrl)
-                ? const Duration(seconds: 45)
-                : const Duration(seconds: 25),
+            headers: srcHeaders,
+            providerId: source.providerId ?? _s._currentProvider,
           );
           if (_fallbackAborted(runGen)) return false;
           if (!opened) {
@@ -598,10 +597,10 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             _s._activeMagnet = magnet;
           });
         }
-        final isTorrent =
-            isLocalTorrentStreamUrl(openUrl) || widget.magnetLink != null;
+        final isTorrent = isLocalTorrentStreamUrl(openUrl) ||
+            (widget.magnetLink != null && widget.magnetLink!.isNotEmpty);
         int retryCount = 0;
-        const maxRetries = 2;
+        final maxRetries = isTorrent ? 3 : 2;
 
         while (retryCount < maxRetries) {
           try {
@@ -616,12 +615,11 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             );
             if (_fallbackAborted(initGen)) return;
             _s._player.setVolume(_s._mpvVolume);
-            final opened = await waitForMediaOpen(
+            final opened = await waitForPlayerStreamOpen(
               _s._player,
               streamUrl: openedUrl,
-              timeout: isTorrent
-                  ? const Duration(seconds: 45)
-                  : const Duration(seconds: 25),
+              headers: widget.headers,
+              providerId: _s._currentProvider,
             );
             if (_fallbackAborted(initGen)) return;
             if (!opened) {
@@ -1720,16 +1718,20 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     // replay). Without this, mpv goes idle and seeks no-op after completed.
     await safeSet('keep-open', 'yes');
 
-    final isTorrent = widget.magnetLink != null;
+    final isTorrent = (widget.magnetLink != null &&
+            widget.magnetLink!.isNotEmpty) ||
+        isLocalTorrentStreamUrl(widget.mediaPath);
     if (isTorrent) {
-      // Torrent engine feeds bytes from disk as pieces complete - a small
-      // forward window is enough and keeps memory pressure low.
+      // Sequential pull only. force-seekable + full Content-Length made lavf
+      // Range-request the file tail (moov) before those pieces existed — swarm
+      // filled the middle for hundreds of MB while mpv stayed on
+      // "Failed to recognize file format".
       await safeSet('cache', 'yes');
-      await safeSet('network-timeout', '60');
+      await safeSet('network-timeout', '120');
       await safeSet('demuxer-readahead-secs', '20');
-      await safeSet('force-seekable', 'yes');
-      await safeSet('hr-seek', 'yes');
-      await safeSet('hr-seek-framedrop', 'no');
+      await safeSet('force-seekable', 'no');
+      await safeSet('stream-lavf-o', 'seekable=0');
+      await safeSet('demuxer-lavf-o', 'seekable=0');
     } else {
       // Fast first frame: short readahead + soft HLS ceiling. Mobile keeps
       // a smaller RAM cache than desktop; Quality menu still locks a rung.

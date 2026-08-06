@@ -419,7 +419,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       );
     }
 
-    // Built-in player - Android TV defaults to ExoPlayer (media_kit EGL fails on TV).
+    // Built-in player - Android defaults to MediaKit; ExoPlayer is optional.
     if (Platform.isAndroid && PlatformInfo.isAndroidTv) {
       if (_builtInEngine == BuiltInPlayerEngine.exoPlayer) {
         return ExoPlayerScreen(

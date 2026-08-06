@@ -54,6 +54,9 @@ class SettingsService {
   static const String _stremioAddonsKey = 'stremio_addons';
   static const String _externalPlayerKey = 'external_player';
   static const String _builtInPlayerEngineKey = 'built_in_player_engine';
+  /// One-shot: flip seeded/legacy VOD+IPTV Exo → MediaKit (new Android default).
+  static const String _builtInEngineMediaKitDefaultKey =
+      'built_in_engine_mk_default_v1';
   static const String _jackettBaseUrlKey = 'jackett_base_url';
   static const String _jackettApiKeyKey = 'jackett_api_key';
   static const String _prowlarrBaseUrlKey = 'prowlarr_base_url';
@@ -813,6 +816,26 @@ class SettingsService {
     return BuiltInPlayerEngine.defaultForContext(context);
   }
 
+  /// Seeded Android installs wrote ExoPlayer as the VOD default. Flip VOD and
+  /// IPTV once to MediaKit; Live is already MediaKit-by-default and untouched.
+  /// Users who re-pick Exo after this migration keep that choice.
+  Future<void> _migrateBuiltInEngineDefaultToMediaKit() async {
+    if (await kvHasKey(_builtInEngineMediaKitDefaultKey)) return;
+    for (final ctx in const [
+      BuiltInPlayerContext.vod,
+      BuiltInPlayerContext.iptv,
+    ]) {
+      final raw = await kvGetString(ctx.storageKey);
+      if (raw == BuiltInPlayerEngine.exoPlayer.storageKey) {
+        await kvSetString(
+          ctx.storageKey,
+          BuiltInPlayerEngine.mediaKit.storageKey,
+        );
+      }
+    }
+    await kvSetString(_builtInEngineMediaKitDefaultKey, '1');
+  }
+
   Future<void> setBuiltInPlayerEngine(
     BuiltInPlayerEngine engine, {
     BuiltInPlayerContext context = BuiltInPlayerContext.vod,
@@ -1085,6 +1108,7 @@ class SettingsService {
   Future<void> ensurePlatformDefaultsSeeded(PlatformProfile profile) async {
     configurePlatformProfile(profile);
     await ensureCanonicalSettingsMigrated();
+    await _migrateBuiltInEngineDefaultToMediaKit();
     if (await kvHasKey(_platformDefaultsSeededKey)) return;
 
     final hasExistingConfig =

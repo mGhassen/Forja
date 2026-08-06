@@ -14,7 +14,14 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     techFilters: _s._activeTechFilters,
     audioFilters: _s._activeAudioFilters,
     sizeFilters: _s._activeSizeFilters,
-  );
+  )
+      .where(
+        (r) => TorrentSearchProviders.matchesResultSource(
+          _s._selectedSourceId,
+          r.source,
+        ),
+      )
+      .toList();
 
   bool get _panelShowsTorrents => _s._panelKindFilter == 'torrents';
 
@@ -289,6 +296,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       return;
     }
     if (id == _s._selectedSourceId) return;
+    final prev = _s._selectedSourceId;
     setState(() {
       _s._selectedSourceId = id;
       if (_s._panelKindFilter == 'stremio') {
@@ -297,7 +305,12 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       _resetPanelFilters();
     });
     if (TorrentSearchProviders.isBuiltinSearchChip(id)) {
-      _s._autoSearch();
+      // Always search the full Settings-enabled set; chips only filter the list.
+      // Re-search when coming back from Jackett/Prowlarr or when empty.
+      final fromIndexer = prev == 'jackett' || prev == 'prowlarr';
+      if (fromIndexer || _s._allTorrentResults.isEmpty) {
+        _s._autoSearch();
+      }
     } else if (id == 'jackett') {
       _s._searchJackett();
     } else if (id == 'prowlarr') {

@@ -995,26 +995,38 @@ bool isOpenReadyForStream(PlayerState state, {required bool localTorrent}) {
   return isMediaOpenReady(state);
 }
 
+/// Default open wait for local torrent HTTP — peers may still be filling the
+/// head after the engine returned the URL; short timeouts abort while GBs land.
+const kLocalTorrentOpenTimeout = Duration(seconds: 180);
+
 /// Returns true once mpv reports playable media, false on fatal open error or
 /// [timeout].
 ///
 /// Pass [streamUrl] for local torrent streams so early demux probe failures
 /// are ignored until the timeout - pieces may still be filling - and so
 /// readiness requires a decoded video frame (not buffer alone).
+///
+/// [onProbeRetry] (local torrent only): re-open the same URL when lavf dies on
+/// an incomplete head — waiting alone does nothing once demux has aborted.
 Future<bool> waitForMediaOpen(
   Player player, {
   Duration timeout = const Duration(seconds: 25),
   String? streamUrl,
+  Future<void> Function()? onProbeRetry,
+  Duration probeRetryEvery = const Duration(seconds: 15),
 }) async {
   final completer = Completer<bool>();
   final subs = <StreamSubscription<dynamic>>[];
   var settled = false;
   final localTorrent =
       streamUrl != null && isLocalTorrentStreamUrl(streamUrl);
+  var retryInFlight = false;
+  Timer? retryTimer;
 
   void settle(bool ok) {
     if (settled) return;
     settled = true;
+    retryTimer?.cancel();
     for (final sub in subs) {
       sub.cancel();
     }
@@ -1027,12 +1039,39 @@ Future<bool> waitForMediaOpen(
     }
   }
 
+  Future<void> tryReopen(String reason) async {
+    final reopen = onProbeRetry;
+    if (!localTorrent || reopen == null || settled || retryInFlight) return;
+    retryInFlight = true;
+    debugPrint('[Player] Torrent probe retry ($reason)');
+    try {
+      await reopen();
+    } catch (e) {
+      debugPrint('[Player] Torrent probe retry failed: $e');
+    } finally {
+      retryInFlight = false;
+      probe();
+    }
+  }
+
+  if (localTorrent && onProbeRetry != null) {
+    retryTimer = Timer.periodic(probeRetryEvery, (_) {
+      if (settled) return;
+      if (isOpenReadyForStream(player.state, localTorrent: true)) {
+        settle(true);
+        return;
+      }
+      unawaited(tryReopen('periodic'));
+    });
+  }
+
   subs.addAll([
     player.stream.error.listen((err) {
       final fatal = isFatalPlayerOpenError(err) || isOpenHttpFailure(err);
       if (!fatal) return;
       if (localTorrent && isTransientTorrentProbeError(err)) {
         debugPrint('[Player] Transient torrent probe error (waiting): $err');
+        unawaited(tryReopen('format/open'));
         return;
       }
       settle(false);
@@ -1060,10 +1099,43 @@ Future<bool> waitForMediaOpen(
       },
     );
   } finally {
+    retryTimer?.cancel();
     for (final sub in subs) {
       await sub.cancel();
     }
   }
+}
+
+/// [waitForMediaOpen] with local-torrent timeout + optional probe re-open.
+Future<bool> waitForPlayerStreamOpen(
+  Player player, {
+  required String streamUrl,
+  Map<String, String>? headers,
+  String? providerId,
+  Future<String> Function()? reopen,
+}) {
+  final localTorrent = isLocalTorrentStreamUrl(streamUrl);
+  return waitForMediaOpen(
+    player,
+    streamUrl: streamUrl,
+    timeout: localTorrent
+        ? kLocalTorrentOpenTimeout
+        : const Duration(seconds: 25),
+    onProbeRetry: localTorrent
+        ? () async {
+            if (reopen != null) {
+              await reopen();
+              return;
+            }
+            await openPlayerStream(
+              player,
+              url: streamUrl,
+              headers: headers,
+              providerId: providerId,
+            );
+          }
+        : null,
+  );
 }
 
 String? playbackQualityLabel(PlayerState state) {

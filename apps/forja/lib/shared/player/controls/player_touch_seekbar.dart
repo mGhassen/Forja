@@ -120,6 +120,10 @@ class _PlayerTouchSeekBarState extends State<PlayerTouchSeekBar> {
               final trackH = _isDragging ? 6.0 : 3.5;
               final thumbR = _isDragging ? 8.0 : 5.5;
               final playPx = (_playFrac * _trackWidth).clamp(0.0, _trackWidth);
+              final thumbLeft = (playPx - thumbR).clamp(
+                0.0,
+                (_trackWidth - thumbR * 2).clamp(0.0, double.infinity),
+              );
 
               return Stack(
                 clipBehavior: Clip.none,
@@ -155,7 +159,7 @@ class _PlayerTouchSeekBarState extends State<PlayerTouchSeekBar> {
                     ),
                   ),
                   Positioned(
-                    left: playPx - thumbR,
+                    left: thumbLeft,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 130),
                       curve: Curves.easeOut,

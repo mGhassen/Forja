@@ -41,7 +41,7 @@ class TvPlayerScreen extends StatelessWidget {
     this.sourcesListNotifier,
     this.providerSourcesCache,
     this.providerProbesNotifier,
-    this.builtInEngine = BuiltInPlayerEngine.exoPlayer,
+    this.builtInEngine = BuiltInPlayerEngine.mediaKit,
     this.onSwitchPlayer,
   });
 

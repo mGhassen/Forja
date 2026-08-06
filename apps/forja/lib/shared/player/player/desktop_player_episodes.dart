@@ -625,12 +625,10 @@ mixin _DesktopPlayerEpisodes
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       _s._player.setVolume(_s._volumeNotifier.value);
 
-      final opened = await waitForMediaOpen(
+      final opened = await waitForPlayerStreamOpen(
         _s._player,
         streamUrl: openedUrl,
-        timeout: isLocalTorrentStreamUrl(openedUrl)
-            ? const Duration(seconds: 45)
-            : const Duration(seconds: 25),
+        headers: resolved.headers,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       if (!opened) {
@@ -1381,10 +1379,11 @@ mixin _DesktopPlayerEpisodes
         );
         if (_s._fallbackAborted(gen)) return null;
 
-        final opened = await waitForMediaOpen(
+        final opened = await waitForPlayerStreamOpen(
           _s._player,
           streamUrl: streamUrl,
-          timeout: const Duration(seconds: 25),
+          headers: headers,
+          providerId: newProvider,
         );
         if (_s._fallbackAborted(gen)) return null;
         if (!opened) {

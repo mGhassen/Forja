@@ -64,4 +64,17 @@ class TorrentSearchProviders {
     if (isBuiltin(id)) return [id];
     return null;
   }
+
+  /// Whether [resultSource] belongs to the selected Torrents chip.
+  static bool matchesResultSource(String selectedChipId, String resultSource) {
+    if (selectedChipId == allId ||
+        selectedChipId == 'forja' ||
+        selectedChipId == 'jackett' ||
+        selectedChipId == 'prowlarr') {
+      return true;
+    }
+    final expected = resultSources[selectedChipId];
+    if (expected == null) return true;
+    return resultSource == expected;
+  }
 }

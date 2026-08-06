@@ -26,6 +26,17 @@ case "$(uname -s)" in
   Darwin)
   if [[ -f "$OUT/libffi.dylib" ]]; then
     copy_lib "$OUT/libffi.dylib" "$APP/macos/Runner/Frameworks"
+    # flutter run loads the dylib from the built .app, not Runner/Frameworks.
+    # Without this copy, protocol-relative HLS rewrites stay on a stale binary.
+    for app_fw in \
+      "$APP/build/macos/Build/Products/Debug/Forja.app/Contents/Frameworks" \
+      "$APP/build/macos/Build/Products/Release/Forja.app/Contents/Frameworks" \
+      "$APP/build/macos/Build/Products/Profile/Forja.app/Contents/Frameworks"
+    do
+      if [[ -d "$app_fw" ]]; then
+        copy_lib "$OUT/libffi.dylib" "$app_fw"
+      fi
+    done
   fi
   ;;
   Linux)

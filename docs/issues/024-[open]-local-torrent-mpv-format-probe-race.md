@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 6** fix · **0 / 2** acceptance |
+| **Progress** | **7 / 8** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,8 @@
 | 4 | I24-T04 | `waitForMediaOpen`: local torrent readiness requires decoded video (not buffer/moov alone) | ✅ |
 | 5 | I24-T05 | Engine: TCP listen + sandbox DHT persist; 180s head wait; accept ≥16 KiB partial head; richer timeout stats | ✅ |
 | 6 | I24-T06 | Engine: hash-validated torrent metadata cache fallback + corrected public magnet E2E fixture | ✅ |
+| 7 | I24-T07 | Player: disable `force-seekable` / lavf seek on open so mpv does not Range the undownloaded tail while the swarm fills the middle | ✅ |
+| 8 | I24-T08 | Player: 180s local-torrent open wait + re-open on transient format probe; engine prefer 256 KiB / min 64 KiB head | ✅ |
 
 ---
 
@@ -70,3 +72,9 @@ The public magnet E2E fixture used the wrong Big Buck Bunny info hash, so it cou
 **Not verified here:** an actual decoded mpv frame through the Flutter desktop player.
 
 Manual smoke (`I24-T03`, `I24-A01`–`A02`) still required on a real indexer magnet.
+
+### Follow-up (I24-T07 / I24-T08) — 2026-08-06
+
+Observed: healthy swarm (~5 MB/s, 500–600 MB downloaded) still ended **Failed to stream** with `Failed to recognize file format` and `0:00 / 0:00`. Root cause of that symptom: mpv `force-seekable=yes` + HTTP `Content-Length` of the **full** file made lavf issue Range requests for the tail (moov / probe) while those pieces did not exist yet. The swarm filled arbitrary middle pieces; open timed out at 45s × 2 and gave up while download continued.
+
+**Fix:** open torrents sequentially (`force-seekable=no`, `stream-lavf-o=seekable=0`); wait up to 180s with periodic re-open on transient format errors; engine again prefers 256 KiB head (min 64 KiB).

@@ -513,26 +513,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     } else {
       _exoBackend = false;
     }
-    // ATV emulator + MediaKit HEVC: goldfish decoder hangs until ANR (SIGQUIT).
-    // Exo TextureView path works. Force Exo and rewrite the IPTV engine pref so
-    // a prior MediaKit pick cannot keep killing channel opens. Physical ATV OK.
-    if (!kIsWeb &&
-        Platform.isAndroid &&
-        PlatformInfo.isAndroidTv &&
-        PlatformInfo.isAndroidEmulator) {
-      if (!_exoBackend) {
-        debugPrint(
-          '[IPTV] ATV emulator: MediaKit ANRs on HEVC — forcing Exo',
-        );
-        unawaited(
-          SettingsService().setBuiltInPlayerEngine(
-            BuiltInPlayerEngine.exoPlayer,
-            context: widget.engineContext,
-          ),
-        );
-      }
-      _exoBackend = true;
-    }
     // Phone MediaKit: software-friendly. ATV MediaKit: HW + mediacodec_embed.
     _androidMediaKitSafeMode =
         !_exoBackend && !kIsWeb && Platform.isAndroid && !PlatformInfo.isAndroidTv;
@@ -560,16 +540,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   }) async {
     if (kIsWeb || !Platform.isAndroid) return;
     final wantExo = engine == BuiltInPlayerEngine.exoPlayer;
-    if (!wantExo &&
-        PlatformInfo.isAndroidTv &&
-        PlatformInfo.isAndroidEmulator) {
-      debugPrint('[IPTV] ATV emulator: MediaKit switch blocked (HEVC ANR)');
-      if (mounted) {
-        setState(() => _statusBanner = 'Use ExoPlayer on TV emulator');
-        _scheduleHideControls();
-      }
-      return;
-    }
     if (persist) {
       await SettingsService().setBuiltInPlayerEngine(
         engine,
@@ -679,11 +649,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// After format errors on `/hls-proxy`, try the other Android engine once.
   Future<void> _autoSwapEngineForFormatError(String reason) async {
     if (_disposed || _formatEngineSwapped || kIsWeb || !Platform.isAndroid) {
-      return;
-    }
-    if (_exoBackend &&
-        PlatformInfo.isAndroidTv &&
-        PlatformInfo.isAndroidEmulator) {
       return;
     }
     _formatEngineSwapped = true;

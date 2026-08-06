@@ -22,7 +22,7 @@ void main() {
     test('android TV player defaults', () {
       final tv = PlatformDefaults.forProfile(PlatformProfile.androidTv);
       expect(tv.externalPlayer, 'Built-in Player');
-      expect(tv.builtInPlayerEngine, BuiltInPlayerEngine.exoPlayer);
+      expect(tv.builtInPlayerEngine, BuiltInPlayerEngine.mediaKit);
       expect(tv.subSize, 52);
       expect(tv.subBottomPadding, 48);
       expect(tv.torrentRamCacheMb, 128);
@@ -35,6 +35,7 @@ void main() {
     test('phone defaults unchanged', () {
       final phone = PlatformDefaults.forProfile(PlatformProfile.phone);
       expect(phone.visibleNavIds, PlatformDefaults.phoneNavIds);
+      expect(phone.builtInPlayerEngine, BuiltInPlayerEngine.mediaKit);
       expect(phone.subSize, 24);
       expect(phone.torrentRamCacheMb, 200);
     });

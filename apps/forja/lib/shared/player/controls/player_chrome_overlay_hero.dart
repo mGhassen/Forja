@@ -87,9 +87,16 @@ class PlayerPausedHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final overview = (episodeOverview?.trim().isNotEmpty == true)
+    final rawOverview = (episodeOverview?.trim().isNotEmpty == true)
         ? episodeOverview!
         : movie.overview;
+    // Hub callers sometimes pass "Episode N" as overview — same string as
+    // [_episodeLine] — which stacked two identical lines under the title.
+    final episode = _episodeLine;
+    final overview = (episode != null &&
+            rawOverview.trim().toLowerCase() == episode.trim().toLowerCase())
+        ? ''
+        : rawOverview;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -108,10 +115,10 @@ class PlayerPausedHero extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             HeroMetaLine(movie: movie, style: HeroMetaStyle.details),
-            if (_episodeLine != null) ...[
+            if (episode != null) ...[
               const SizedBox(height: 6),
               Text(
-                _episodeLine!,
+                episode,
                 style: TextStyle(
                   color: ForjaShellColors.cinematic.textSecondary,
                   fontSize: 13,

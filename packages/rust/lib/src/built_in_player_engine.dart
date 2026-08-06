@@ -1,5 +1,3 @@
-import 'dart:io';
-
 /// Where a built-in engine choice applies. Each surface remembers its own
 /// ExoPlayer / MediaKit pick — changing IPTV does not change VOD, etc.
 enum BuiltInPlayerContext {
@@ -25,11 +23,8 @@ enum BuiltInPlayerEngine {
     return mediaKit;
   }
 
-  /// Android (phone + TV) defaults to ExoPlayer; all other platforms to media_kit.
-  static BuiltInPlayerEngine platformDefault() {
-    if (Platform.isAndroid) return exoPlayer;
-    return mediaKit;
-  }
+  /// All platforms default to media_kit. ExoPlayer remains an Android option.
+  static BuiltInPlayerEngine platformDefault() => mediaKit;
 
   /// Per-surface default when no KV value exists (and legacy VOD fallback does not apply).
   /// Live Matches → MediaKit.
@@ -45,16 +40,10 @@ enum BuiltInPlayerEngine {
 }
 
 /// Enum declaration order (MediaKit first). Prefer [builtInPlayerEngineOptionsForUi]
-/// in pickers so ExoPlayer (the Android default) appears first.
+/// in pickers so the default engine appears first.
 const builtInPlayerEngineOptions = BuiltInPlayerEngine.values;
 
-/// UI order: ExoPlayer first on Android (default), then MediaKit.
+/// UI order: MediaKit (default) first, then ExoPlayer on Android.
 List<BuiltInPlayerEngine> get builtInPlayerEngineOptionsForUi {
-  if (Platform.isAndroid) {
-    return const [
-      BuiltInPlayerEngine.exoPlayer,
-      BuiltInPlayerEngine.mediaKit,
-    ];
-  }
   return builtInPlayerEngineOptions;
 }

@@ -23,26 +23,25 @@ void main() {
     }
   });
 
-  test('UI options list ExoPlayer first on Android', () {
+  test('UI options list MediaKit first', () {
     final ui = builtInPlayerEngineOptionsForUi;
     expect(ui, isNotEmpty);
-    // VM tests run as non-Android host → declaration order.
-    // On device Android the getter returns [exoPlayer, mediaKit].
+    expect(ui.first, BuiltInPlayerEngine.mediaKit);
     expect(ui.toSet(), builtInPlayerEngineOptions.toSet());
   });
 
-  test('defaultForContext: live is MediaKit; vod/iptv follow platform', () {
+  test('defaultForContext: live/vod/iptv default to MediaKit', () {
     expect(
       BuiltInPlayerEngine.defaultForContext(BuiltInPlayerContext.live),
       BuiltInPlayerEngine.mediaKit,
     );
     expect(
       BuiltInPlayerEngine.defaultForContext(BuiltInPlayerContext.vod),
-      BuiltInPlayerEngine.platformDefault(),
+      BuiltInPlayerEngine.mediaKit,
     );
     expect(
       BuiltInPlayerEngine.defaultForContext(BuiltInPlayerContext.iptv),
-      BuiltInPlayerEngine.platformDefault(),
+      BuiltInPlayerEngine.mediaKit,
     );
   });
 

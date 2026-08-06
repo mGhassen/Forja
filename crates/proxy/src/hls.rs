@@ -244,9 +244,11 @@ pub async fn hls_proxy_handler(
     method: Method,
     headers: HeaderMap,
 ) -> Result<Response, StatusCode> {
-    let target_url = urlencoding::decode(&query.url)
+    let raw_target = urlencoding::decode(&query.url)
         .map(|s| s.into_owned())
         .unwrap_or(query.url);
+    // Defense: repair stale rewritten `hostA//hostB` targets before fetch.
+    let target_url = collapse_double_authority(&raw_target);
     let custom = parse_custom_headers(query.headers.as_deref());
     let headers_json = query.headers.as_deref().unwrap_or("{}");
     let strip = query.strip.as_deref();
@@ -403,6 +405,31 @@ mod tests {
         assert_eq!(
             out,
             "https://hls19.videotradercdn.site/segment/x.png"
+        );
+    }
+
+    #[test]
+    fn rewrite_kisskh_protocol_relative_segments() {
+        const MEDIA: &str = "\
+#EXTM3U
+#EXT-X-MAP:URI=\"//hls19.videotradercdn.site/segment/k/1080/init.png\"
+#EXTINF:3.0,
+//hls19.videotradercdn.site/segment/k/1080/seg.png
+";
+        let out = rewrite_hls_playlist(
+            MEDIA,
+            "https://hls20.cdnvideo11.shop/child/k/1080/index.m3u8",
+            "http://127.0.0.1:9/hls-proxy",
+            "{}",
+            Some("png"),
+        );
+        assert!(
+            out.contains("url=https%3A%2F%2Fhls19.videotradercdn.site%2Fsegment"),
+            "expected protocol-relative → https://hls19…, got:\n{out}"
+        );
+        assert!(
+            !out.contains("cdnvideo11.shop%2F%2Fhls19"),
+            "must not emit hostA//hostB joins:\n{out}"
         );
     }
 
