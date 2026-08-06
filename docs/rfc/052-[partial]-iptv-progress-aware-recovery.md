@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 11** components · **1 / 10** acceptance (progress-gate slice) |
-| **Current slice** | Retry ownership handed to ffmpeg first (`R52-C09`–`C11`) on top of the backend-agnostic feed probe — backoff controller not started |
+| **Progress** | **11 / 12** components · **1 / 10** acceptance (progress-gate slice) |
+| **Current slice** | **Live mid-stream auto-reconnect removed** — engine owns retry; app only cold-open / Reload / hard errors |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -30,6 +30,7 @@
 | 9 | R52-C09 | **Single owner of retry** — `_noteSocketTrouble` defers to ffmpeg's own reconnect for `_ffmpegReconnectGrace` (8 s) instead of force-recreating the player on an ffmpeg *warning* | ✅ |
 | 10 | R52-C10 | Watchdog holds all detectors while `_socketTroublePending`, so the timers cannot recreate the player mid-reconnect | ✅ |
 | 11 | R52-C11 | Deferred escalation aborts when `_openedAt` changed, so it cannot fire against a session that was already replaced | ✅ |
+| 12 | R52-C12 | **Live mid-stream: no timer recovery** — after first frame, skip detectors 1–3; live socket notes never escalate; Exo `ended` on live does not forceHard | ✅ |
 
 ---
 
@@ -133,10 +134,11 @@ of a recovery that was already succeeding. The user-visible result is a channel
 that plays fine and then drops into "Reconnecting…" for no reason, on a
 schedule set by how often the portal cycles its sockets.
 
-**Contract now:** the lowest layer that can fix a drop gets to try first. The
-app only escalates once ffmpeg's window has expired *and* the feed probe still
-shows nothing arriving. Matches the rule Lume states for its own engine — the
-engine never retries on its own schedule, exactly one layer owns retry.
+**Contract now:** on live, after the first frame, the app does not auto-reconnect
+at all. Grace periods and feed probes only delayed the banner (~1 min → ~2 min);
+they did not stop the restart. Mid-stream detectors 1–3 are skipped for live,
+ffmpeg socket notes never escalate, and Exo `STATE_ENDED` on live is ignored.
+Reload / cold-open hang / hard non-socket errors still recover.
 
 ## Related
 

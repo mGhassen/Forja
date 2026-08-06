@@ -190,6 +190,17 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         break;
       case 'ended':
         setState(() => _s._playing = false);
+        // Live IPTV never "ends" — Exo can emit STATE_ENDED on a brief
+        // playlist/segment glitch. Treating that as fatal is what started
+        // the reconnect banner loop after the "IPTV improvements" work.
+        // Let the engine recover; Reload is still there if it is truly dead.
+        if (_currentSourceIsLive) {
+          debugPrint('[IPTV Exo] ended on live — not restarting');
+          if (_s._userPlayWhenReady) {
+            unawaited(_enginePlay());
+          }
+          break;
+        }
         _triggerRecovery(reason: 'exo ended', forceHard: true);
         break;
       case 'error':
@@ -705,21 +716,21 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     });
   }
 
-  /// Socket trouble reported by mpv/ffmpeg — escalate only if ffmpeg's own
-  /// reconnect fails to bring the feed back.
+  /// Socket trouble from mpv/ffmpeg on a live feed.
   ///
-  /// `stream-lavf-o` enables `reconnect`/`reconnect_at_eof`/`reconnect_streamed`,
-  /// so libavformat retries transparently and logs `Will reconnect at …,
-  /// error=Connection reset by peer` at **warning** level while doing it.
-  /// Treating that line as fatal tore down a stream that was already
-  /// recovering, which is the "plays fine, then Reconnecting…" report: the app
-  /// and ffmpeg were both owning retry, and the app won by destroying the
-  /// player mid-retry. Give the lower layer its window, then check the feed.
+  /// ffmpeg already has `reconnect*` in `stream-lavf-o`. Escalating to
+  /// `_triggerRecovery` here is what produced "plays, then Reconnecting…" —
+  /// the app tore down a stream mid-retry. For live we log and leave it alone.
+  /// Dead streams: Reload, or the cold open hang detector if nothing ever
+  /// started. VOD still escalates after the grace window.
   void _noteSocketTrouble(String what) {
+    if (_currentSourceIsLive) {
+      debugPrint('[IPTV Player] live socket note ($what) — '
+          'ffmpeg owns reconnect, app will not restart');
+      return;
+    }
     if (_s._socketTroublePending) return;
     _s._socketTroublePending = true;
-    // A reopen during the window invalidates this check — the escalation would
-    // otherwise fire against a session that has already been replaced.
     final openedAt = _s._openedAt;
     debugPrint('[IPTV Player] socket trouble ($what) - '
         'allowing ${_IptvPtPlayerScreenState._ffmpegReconnectGrace.inSeconds}s '
@@ -991,24 +1002,30 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         }
       }
 
-      // ffmpeg owns the retry until its grace expires. Without this the stall
-      // detectors would recreate the player a few seconds into a reconnect
-      // that was already in progress — the same collision [_noteSocketTrouble]
-      // exists to prevent.
+      // Mid-stream live: the app does **not** auto-reconnect.
+      //
+      // Detectors 1–3 + soft recovery were the bug introduced with the IPTV
+      // "improvements": they reopen/recreate the player on buffering or a
+      // frozen clock, which destroys ffmpeg/Exo's own reconnect and shows
+      // "Reconnecting…". Delaying those detectors (grace / feed probe) only
+      // moved the banner from ~1 min to ~2 min. After the first frame, leave
+      // live recovery to the engine; Reload still forces a restart.
+      //
+      // Still watch cold open (detector 4) and clear banners / retry counters.
+      if (_currentSourceIsLive && _playbackStarted) {
+        return;
+      }
+
+      // ffmpeg owns the retry until its grace expires (VOD path only).
       if (_s._socketTroublePending) return;
 
-      // Detector 1: long buffering. Mid-stream stalls with a 30 s buffer
-      // shouldn't last more than ~10 s; before the first frame, the slow
-      // initial connect to a remote `.ts` feed needs more grace.
+      // Detector 1: long buffering (VOD / pre-first-frame only).
       final bufferGrace = _s._lastPos > Duration.zero
           ? const Duration(milliseconds: 12000)
           : const Duration(milliseconds: 25000);
       if (_s._userPlayWhenReady &&
           _s._bufferingSince != null &&
           now.difference(_s._bufferingSince!) > bufferGrace) {
-        // Refilling is not failing. With cache-secs=30 a deep underrun can
-        // legitimately buffer past this grace, and reopening mid-refill throws
-        // away the data already pulled — the reopen then underruns again.
         final bufferingFor = now.difference(_s._bufferingSince!);
         if (_networkStillFeeding &&
             bufferingFor < _IptvPtPlayerScreenState._feedingWedgeCeiling) {
@@ -1019,25 +1036,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
             reason: 'buffering ${bufferingFor.inSeconds}s, feed stalled');
         return;
       }
-      // Detector 2: position frozen while user wants playback.
-      // Do NOT gate on !_buffering alone - Windows live feeds often flicker
-      // buffering true/false while the last frame is stuck, which resets
-      // detector 1's timer and previously left the stream dead forever
-      // with no "Reconnecting…" banner.
-      // Gate: _lastPos > 0 - avoid false positives before first frame
-      // (detector 4 covers that hang).
-      // Live MediaKit: snap to the edge first — soft reopen looks like a
-      // long freeze (desktop) and can ANR on ATV.
+      // Detector 2: position frozen (VOD / pre-first-frame only).
       final frozenFor = now.difference(_s._lastPosChange);
       if (_s._userPlayWhenReady &&
           _s._lastPos > Duration.zero &&
           frozenFor > _freezeGrace) {
-        // A frozen position is not evidence of a dead stream: mpv is allowed to
-        // buffer 30 s, so any upstream hiccup longer than the grace used to
-        // force a reopen and raise "Reconnecting…" on a feed that was
-        // recovering on its own. Only recover once the feed has actually gone
-        // quiet, or it keeps flowing while the picture stays stuck (wedged
-        // decoder — a reopen is the only thing that clears that).
         if (_networkStillFeeding &&
             frozenFor < _IptvPtPlayerScreenState._feedingWedgeCeiling) {
           _logStallSuppressed('frozen', frozenFor);
@@ -1050,22 +1053,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         );
         return;
       }
-      // Detector 3: should be playing but isn't. For LIVE IPTV, a sustained
-      // self-pause (mpv flipped to pause=yes on its own) almost always means
-      // the upstream feed ended - live TV doesn't end, ever, so this is
-      // dead. Skip while buffering (cache-pause underrun is not a dead feed).
-      // Skip the gradual reopen backoff and go straight to a hard
-      // reopen (forceHard:true).
+      // Detector 3: silent self-pause (VOD / pre-first-frame only).
       if (_s._userPlayWhenReady &&
           !_s._playing &&
           !_s._buffering &&
           _s._readyNotPlayingSince != null &&
           now.difference(_s._readyNotPlayingSince!) >
               const Duration(milliseconds: 3000)) {
-        // A feed that is still delivering has not "ended" — Exo reports
-        // playing=false during a rebuffer and does not always raise its
-        // buffering event in time, which turned a routine stall into a hard
-        // reconnect three seconds later.
         final pausedFor = now.difference(_s._readyNotPlayingSince!);
         if (_networkStillFeeding &&
             pausedFor < _IptvPtPlayerScreenState._feedingWedgeCeiling) {

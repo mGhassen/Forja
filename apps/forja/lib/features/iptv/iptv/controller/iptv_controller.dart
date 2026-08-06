@@ -884,6 +884,12 @@ class IptvController extends ChangeNotifier
       return;
     }
     activePortal = portal;
+    // Arm spinner before health probe notifyListeners / store awaits.
+    isLoading = true;
+    error = null;
+    browserAllStreams = const [];
+    categories = const [];
+    notifyListeners();
     ensurePortalHealth(portal);
     var section = await IptvStore.loadLastSection();
     if (!portal.platform.supportsVodSeries && section != IptvSection.live) {
@@ -922,10 +928,8 @@ class IptvController extends ChangeNotifier
       section = IptvSection.live;
     }
     if (activeSection == section && !isLoading) return;
-    if (activeSection != section) {
-      activeSection = section;
-      notifyListeners();
-    }
+    // openSection arms loading before any paint — do not notify with an
+    // empty shelf here (that flashed Reload + fake load error).
     await openSection(section);
   }
 
@@ -943,6 +947,12 @@ class IptvController extends ChangeNotifier
 
   Future<void> selectPortal(VerifiedPortal p, {bool closePanel = true}) async {
     activePortal = p;
+    // Arm spinner before health / store / panel notifies paint empty error UI.
+    isLoading = true;
+    error = null;
+    browserAllStreams = const [];
+    categories = const [];
+    notifyListeners();
     ensurePortalHealth(p);
     await IptvStore.saveLastPortalKey(p.key);
     if (closePanel) closePortalPanel();

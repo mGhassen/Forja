@@ -178,30 +178,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     );
   }
 
-  Future<void> openSection(
-    IptvSection section, {
-    bool persistSection = true,
-    bool force = false,
-  }) async {
-    final p = _c.activePortal;
-    if (p == null) return;
-
-    final cacheKey = _catalogCacheKey(p.key, section);
-    if (!force) {
-      await _hydratePortalFromDisk(p.key);
-    }
-    _pruneStaleLiveCache(p.key);
-    final cached = _c._catalogCache[cacheKey];
-
-    // Hit session/disk cache → instant UI (this shelf only).
-    if (!force && cached != null) {
-      ++_c._catalogLoadId;
-      _applyCachedSnap(p, section, cached, persistSection: persistSection);
-      return;
-    }
-
-    // Cache miss / Reload → fetch this shelf only (spinner).
-    final loadId = ++_c._catalogLoadId;
+  /// Spinner + empty pane before any await so health/store notifies cannot
+  /// paint the Reload / "Failed to load" empty state mid-open.
+  void _armCatalogLoading(IptvSection section) {
     _c.activeSection = section;
     _c.view = IptvView.browser;
     _c.isLoading = true;
@@ -224,6 +203,54 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _c._epgCache.clear();
     _c._guideEpgCache.clear();
     notifyListeners();
+  }
+
+  Future<void> openSection(
+    IptvSection section, {
+    bool persistSection = true,
+    bool force = false,
+  }) async {
+    final p = _c.activePortal;
+    if (p == null) return;
+
+    final cacheKey = _catalogCacheKey(p.key, section);
+
+    // Session hit → instant UI (no spinner flash).
+    if (!force) {
+      final mem = _c._catalogCache[cacheKey];
+      if (mem != null) {
+        if (section == IptvSection.live && _liveSnapIsStale(mem)) {
+          _c._catalogCache.remove(cacheKey);
+        } else {
+          ++_c._catalogLoadId;
+          _applyCachedSnap(p, section, mem, persistSection: persistSection);
+          return;
+        }
+      }
+    }
+
+    // Arm loading BEFORE disk hydrate / network so portal-health notifyListeners
+    // cannot paint empty+error while streams are still [].
+    final loadId = ++_c._catalogLoadId;
+    _armCatalogLoading(section);
+
+    if (!force) {
+      await _hydratePortalFromDisk(p.key);
+      if (loadId != _c._catalogLoadId) return;
+      if (_c.activePortal?.key != p.key || _c.activeSection != section) {
+        return;
+      }
+    }
+    _pruneStaleLiveCache(p.key);
+    final cached = _c._catalogCache[cacheKey];
+
+    // Disk hydrate filled the shelf → apply without network.
+    if (!force && cached != null) {
+      _applyCachedSnap(p, section, cached, persistSection: persistSection);
+      return;
+    }
+
+    // Cache miss / Reload → fetch this shelf only (already spinning).
     try {
       late final List<IptvCategory> cats;
       late final List<IptvStream> streams;

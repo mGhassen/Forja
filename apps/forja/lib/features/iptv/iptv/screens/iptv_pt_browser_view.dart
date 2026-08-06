@@ -907,8 +907,23 @@ class _BrowserViewState extends State<_BrowserView> {
   Widget _buildStreamsEmpty() {
     final ctrl = widget.ctrl;
     if (ctrl.browserAllStreams.isEmpty) {
+      // Mid-open: spinner only — never Reload / fake "Failed to load".
+      if (ctrl.isLoading) {
+        return Center(
+          child: CircularProgressIndicator(color: IptvShellStyle.accent),
+        );
+      }
+      final err = ctrl.error;
+      // Finished empty with no error — not a failure (do not show Reload).
+      if (err == null) {
+        return Center(
+          child: Text(
+            'No channels',
+            style: GoogleFonts.plusJakartaSans(color: Colors.white60),
+          ),
+        );
+      }
       final canReload = ctrl.activeSection != null;
-      final showError = ctrl.error != null;
       if (canReload &&
           iptvUseTvFocus(context) &&
           !_didRequestReloadFocus &&
@@ -926,12 +941,10 @@ class _BrowserViewState extends State<_BrowserView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              ctrl.error ?? 'Failed to load channels - check connection',
+              err,
               textAlign: TextAlign.center,
               style: GoogleFonts.plusJakartaSans(
-                color: showError
-                    ? const Color(0xFFEF4444)
-                    : Colors.white60,
+                color: const Color(0xFFEF4444),
               ),
             ),
             const SizedBox(height: 16),

@@ -497,6 +497,19 @@ function PlatformPicker({
                         />
                       }
                     />
+                    {a.downloader_code ? (
+                      <p className="font-mono-ui max-w-md px-1 text-[11px] leading-relaxed tracking-[0.04em] text-[rgba(237,230,218,0.55)]">
+                        Downloader code{' '}
+                        <span className="font-bold tracking-[0.12em] text-[#EDE6DA]">
+                          {a.downloader_code}
+                        </span>
+                        {multi || hasNamedVariant(a.name)
+                          ? ` · ${assetVariantLabel(a.name, selected.id)}`
+                          : ''}
+                        {' — '}
+                        open Downloader on your TV and enter this number
+                      </p>
+                    ) : null}
                     {size ? (
                       <span className="font-mono-ui px-1 text-[10px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.32)]">
                         {size}

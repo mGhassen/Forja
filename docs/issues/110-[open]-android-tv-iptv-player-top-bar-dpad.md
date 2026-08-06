@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** fix · **0 / 2** acceptance |
+| **Progress** | **4 / 4** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -22,6 +22,7 @@
 | 1 | I110-T01 | IPTV top-bar flat actions (Player / stats / PiP) use movie-player green D-pad chrome + row edges | ✅ |
 | 2 | I110-T02 | IPTV multi-source chip shows green focus when D-pad focused | ✅ |
 | 3 | I110-T03 | Explicit Back ↔ source ↔ Player ↔ stats FocusNodes + ←/→ edges (focusInDirection fails across title gap) | ✅ |
+| 4 | I110-T04 | ATV Exo/IPTV: top-bar Player uses `PlayerFlatIconButton(tvFocusable)` (not iptvTap); ↑ from right chrome → Player; hide deferral + 10s TV idle | ✅ |
 
 ---
 
@@ -31,6 +32,7 @@
 |--:|----|-------------|--------|
 | 1 | I110-A01 | Android TV IPTV player: → from Back focuses top-right **Player**; icon turns brand green with outline | ⬜ |
 | 2 | I110-A02 | Select on **Player** opens the Player menu; ← returns focus to Back (or source chip when multi-source) | ⬜ |
+| 3 | I110-A03 | Android TV IPTV Exo (no progress chrome): ↑ from Search / Guide / Source focuses **Player**; ↑ from Play / Replay focuses **Back** | ⬜ |
 
 ---
 
@@ -43,6 +45,8 @@ On **Android TV**, IPTV player bottom transport buttons and **Back** used brand-
 **Root cause (reachability):** After green chrome shipped, → from **Back** still often failed because Flutter `FocusScope.focusInDirection` cannot find **Player** across the wide title gap; the key then died with no effect (same gap after Live Matches Streamed/PPV native handoff).
 
 **Root fix:** `_IptvPlayerTopBarIcon` reuses `playerChrome*` colors/shapes; source chip gets the same green focus treatment. **I110-T03** adds dedicated FocusNodes and explicit ←/→ edge callbacks for Back / source chip / Player / stats.
+
+**Follow-up (I110-T04):** ATV Exo hides the bottom progress bar, so ↑ from every transport control went to **Back** and **Player** stayed hard to reach. Top-bar TV actions now use the same `PlayerFlatIconButton(tvFocusable: true)` path as the movie player; ↑ from Search / Guide / Source claims **Player**; chrome idle is 10s on TV and defers hide while a chrome control still has focus.
 
 ## Related
 

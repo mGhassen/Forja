@@ -112,10 +112,21 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   void _scheduleHideControls() {
     _s._hideControlsTimer?.cancel();
     if (_s._guideVisible || _s._searchVisible) return;
-    _s._hideControlsTimer = Timer(const Duration(seconds: 4), () {
+    // TV: match movie/Exo idle (10s). 4s was hiding mid D-pad walk.
+    final hideAfter = iptvUseTvFocus(context)
+        ? const Duration(seconds: 10)
+        : const Duration(seconds: 4);
+    _s._hideControlsTimer = Timer(hideAfter, () {
       if (!mounted) return;
       // Keep chrome (and its focus graph) while a menu owns D-pad.
       if (playerChromeOverlayBlocksSeek()) {
+        _scheduleHideControls();
+        return;
+      }
+      // D-pad still on a chrome control — do not ExcludeFocus mid-traversal
+      // (same as Exo I130-T05; left focus on Play with dead ←/→).
+      if (iptvUseTvFocus(context) &&
+          playerTvChromeHasFocus(_s._playerTvKeyFocus)) {
         _scheduleHideControls();
         return;
       }
@@ -574,7 +585,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     );
   }
 
-  /// Flat top-bar action - same chrome as the movie player (`PlayerFlatIconButton`).
+  /// Flat top-bar action — same widget path as movie/Exo (`PlayerFlatIconButton`).
+  /// TV must use [tvFocusable] + FocusableControl edges; the old iptvTap wrapper
+  /// looked focused but → from Back often failed to claim Player (issue 110).
   Widget _topBarFlatAction({
     required IconData icon,
     required String tooltip,
@@ -587,27 +600,19 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     int? tvFocusOrder,
   }) {
     assert(onPressed != null || onPressedWithContext != null);
-    Widget button;
-    if (iptvUseTvFocus(context)) {
-      button = _IptvPlayerTopBarIcon(
-        icon: icon,
-        tooltip: tooltip,
-        focusNode: focusNode,
-        onPressed: onPressed,
-        onPressedWithContext: onPressedWithContext,
-        onDownEdge: onDownEdge,
-        onLeftEdge: onLeftEdge,
-        onRightEdge: onRightEdge,
-      );
-    } else {
-      button = PlayerFlatIconButton(
-        icon: icon,
-        tooltip: tooltip,
-        size: 44,
-        onPressed: onPressed,
-        onPressedWithContext: onPressedWithContext,
-      );
-    }
+    final tv = iptvUseTvFocus(context);
+    final button = PlayerFlatIconButton(
+      icon: icon,
+      tooltip: tooltip,
+      size: 44,
+      tvFocusable: tv,
+      focusNode: focusNode,
+      onPressed: onPressed,
+      onPressedWithContext: onPressedWithContext,
+      onDownEdge: onDownEdge,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
+    );
     if (tvFocusOrder == null) return button;
     return FocusTraversalOrder(
       order: NumericFocusOrder(tvFocusOrder.toDouble()),
@@ -623,7 +628,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final tv = iptvUseTvFocus(context);
 
     void downFromTop() {
-      if (_s._isVod && _s._seekFocus.canRequestFocus) {
+      if (_showProgressChrome &&
+          _s._isVod &&
+          _s._seekFocus.canRequestFocus) {
         _s._seekFocus.requestFocus();
         return;
       }
@@ -631,7 +638,16 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     }
 
     void claim(FocusNode node) {
-      if (node.canRequestFocus) node.requestFocus();
+      void tryClaim() {
+        if (!mounted) return;
+        if (node.canRequestFocus) node.requestFocus();
+      }
+
+      tryClaim();
+      // Mid-rebuild / ExcludeFocus race — retry once next frame (issue 110).
+      if (!node.hasFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => tryClaim());
+      }
     }
 
     /// Explicit ←/→ edges — [focusInDirection] often fails across the title gap.
@@ -1017,16 +1033,44 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   Widget _buildBottomBar(bool compact) {
     final tvFocus = iptvUseTvFocus(context);
-    void upFromControls() {
-      if (_s._isVod && _s._seekFocus.canRequestFocus) {
+    /// Left transport (Play / Replay) → seekbar when present, else Back.
+    void upFromLeftControls() {
+      if (_showProgressChrome &&
+          _s._isVod &&
+          _s._seekFocus.canRequestFocus) {
         _s._seekFocus.requestFocus();
         return;
       }
       _claimBackFocus();
     }
 
+    /// Right chrome (Search / Guide / Source) → top-right Player (not Back).
+    /// ATV Exo hides the progress bar, so ↑ used to dump everything on Back and
+    /// leave Player unreachable except → across the title gap.
+    void upFromRightControls() {
+      if (_showProgressChrome &&
+          _s._isVod &&
+          _s._seekFocus.canRequestFocus) {
+        _s._seekFocus.requestFocus();
+        return;
+      }
+      if (_s._playerMenuFocus.canRequestFocus) {
+        _s._playerMenuFocus.requestFocus();
+        return;
+      }
+      _claimBackFocus();
+    }
+
     void claim(FocusNode node) {
-      if (node.canRequestFocus) node.requestFocus();
+      void tryClaim() {
+        if (!mounted) return;
+        if (node.canRequestFocus) node.requestFocus();
+      }
+
+      tryClaim();
+      if (!node.hasFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => tryClaim());
+      }
     }
 
     Widget wrapOrder(int order, Widget child) {
@@ -1085,6 +1129,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       required VoidCallback onTap,
       bool big = false,
       FocusNode? focusNode,
+      VoidCallback? onUpEdge,
       VoidCallback? onLeftEdge,
       VoidCallback? onRightEdge,
     }) {
@@ -1092,7 +1137,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         icon: icon,
         big: big,
         focusNode: focusNode,
-        onUpEdge: tvFocus ? upFromControls : null,
+        onUpEdge: onUpEdge,
         onLeftEdge: onLeftEdge,
         onRightEdge: onRightEdge,
         onTap: onTap,
@@ -1111,6 +1156,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             icon: _s._playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
             big: true,
             focusNode: _s._playFocus,
+            onUpEdge: tvFocus ? upFromLeftControls : null,
             onRightEdge: rightOfPlay() == null
                 ? null
                 : () => claim(rightOfPlay()!),
@@ -1144,6 +1190,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           nextIcon(
             icon: Icons.replay_rounded,
             focusNode: _s._replayFocus,
+            onUpEdge: tvFocus ? upFromLeftControls : null,
             onLeftEdge: tvFocus ? () => claim(_s._playFocus) : null,
             onRightEdge: rightOfReplay() == null
                 ? null
@@ -1234,6 +1281,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             nextIcon(
               icon: Icons.search_rounded,
               focusNode: _s._searchChromeFocus,
+              onUpEdge: tvFocus ? upFromRightControls : null,
               onLeftEdge:
                   leftOfSearch() == null ? null : () => claim(leftOfSearch()!),
               onRightEdge: rightOfSearch() == null
@@ -1245,6 +1293,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             nextIcon(
               icon: Icons.grid_view_rounded,
               focusNode: _s._guideFocus,
+              onUpEdge: tvFocus ? upFromRightControls : null,
               onLeftEdge:
                   leftOfGuide() == null ? null : () => claim(leftOfGuide()!),
               onRightEdge: rightOfGuide() == null
@@ -1259,6 +1308,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               builder: (anchorContext) => nextIcon(
                 icon: Icons.swap_horiz_rounded,
                 focusNode: _s._bottomSourceFocus,
+                onUpEdge: tvFocus ? upFromRightControls : null,
                 onLeftEdge: leftOfBottomSource() == null
                     ? null
                     : () => claim(leftOfBottomSource()!),

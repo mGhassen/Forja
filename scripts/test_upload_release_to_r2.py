@@ -9,7 +9,10 @@ from upload_release_to_r2 import (
     detect_arch,
     detect_platform,
     merge_assets_by_arch,
+    merge_downloader_codes,
     merge_platform_manifest,
+    normalize_downloader_codes,
+    parse_downloader_codes_env,
     platforms_from_filenames,
     referenced_version_prefixes,
     stale_latest_keys,
@@ -229,6 +232,83 @@ class ReferencedVersionsTest(unittest.TestCase):
             }
         )
         self.assertEqual(refs, {"v1.3.9", "v1.3.24"})
+
+
+class DownloaderCodesTest(unittest.TestCase):
+    def test_parse_env_csv(self) -> None:
+        self.assertEqual(
+            parse_downloader_codes_env("arm64=482913,armeabi-v7a=482914"),
+            {"arm64": "482913", "armeabi-v7a": "482914"},
+        )
+
+    def test_parse_env_json(self) -> None:
+        self.assertEqual(
+            parse_downloader_codes_env('{"arm64":"111","armeabi-v7a":222}'),
+            {"arm64": "111", "armeabi-v7a": "222"},
+        )
+
+    def test_normalize_rejects_non_digits(self) -> None:
+        self.assertEqual(
+            normalize_downloader_codes({"arm64": "abc", "armeabi-v7a": "9"}),
+            {"armeabi-v7a": "9"},
+        )
+
+    def test_merge_keeps_unchanged_arch_code(self) -> None:
+        codes = merge_downloader_codes(
+            prior_codes={"arm64": "100", "armeabi-v7a": "200"},
+            prior_assets=[
+                "Forja-1.3.1-android-tv-arm64.apk",
+                "Forja-1.3.1-android-tv-armeabi-v7a.apk",
+            ],
+            incoming_codes={"arm64": "300"},
+            incoming_assets=["Forja-1.3.2-android-tv-arm64.apk"],
+            merged_assets=[
+                "Forja-1.3.2-android-tv-arm64.apk",
+                "Forja-1.3.1-android-tv-armeabi-v7a.apk",
+            ],
+        )
+        self.assertEqual(codes, {"arm64": "300", "armeabi-v7a": "200"})
+
+    def test_merge_drops_stale_code_when_apk_replaced_without_new_code(self) -> None:
+        codes = merge_downloader_codes(
+            prior_codes={"arm64": "100"},
+            prior_assets=["Forja-1.3.1-android-tv-arm64.apk"],
+            incoming_codes={},
+            incoming_assets=["Forja-1.3.2-android-tv-arm64.apk"],
+            merged_assets=["Forja-1.3.2-android-tv-arm64.apk"],
+        )
+        self.assertEqual(codes, {})
+
+    def test_manifest_merge_preserves_codes_on_macos_only_upload(self) -> None:
+        existing = {
+            "published_at": "2026-08-01T00:00:00Z",
+            "platforms": {
+                "android_tv": {
+                    "version": "1.3.1",
+                    "published_at": "2026-08-01T00:00:00Z",
+                    "assets": ["Forja-1.3.1-android-tv-arm64.apk"],
+                    "downloader_codes": {"arm64": "555"},
+                },
+                "macos": {
+                    "version": "1.3.1",
+                    "published_at": "2026-08-01T00:00:00Z",
+                    "assets": ["Forja-1.3.1-macos-arm64.dmg"],
+                },
+            },
+        }
+        incoming = platforms_from_filenames(
+            ["Forja-1.3.2-macos-arm64.dmg"],
+            version="1.3.2",
+            published_at="2026-08-02T00:00:00Z",
+        )
+        merged = merge_platform_manifest(
+            existing, incoming, published_at="2026-08-02T00:00:00Z"
+        )
+        self.assertEqual(
+            merged["platforms"]["android_tv"]["downloader_codes"],
+            {"arm64": "555"},
+        )
+        self.assertEqual(merged["platforms"]["macos"]["version"], "1.3.2")
 
 
 if __name__ == "__main__":

@@ -25,6 +25,8 @@ export type ReleaseAsset = {
   name: string
   download_url: string
   size_bytes: number | null
+  /** AFTVnews Downloader numeric code (Android TV APKs). */
+  downloader_code?: string | null
 }
 
 export type Release = {

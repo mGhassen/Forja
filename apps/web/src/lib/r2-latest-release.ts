@@ -14,6 +14,8 @@ export type R2PlatformEntry = {
   version: string
   published_at?: string
   assets: string[]
+  /** AFTVnews Downloader short codes keyed by arch (android_tv only). */
+  downloader_codes?: Record<string, string>
 }
 
 export type R2LatestManifest = {
@@ -32,7 +34,10 @@ export type R2LatestReleaseAsset = {
   name: string
   download_url: string
   size_bytes: number | null
+  /** AFTVnews Downloader numeric code for this APK (Android TV). */
+  downloader_code?: string | null
 }
+
 
 export type R2LatestRelease = {
   id: string
@@ -99,12 +104,57 @@ export function detectPlatformFromFilename(name: string): string {
   return 'other'
 }
 
+/** Architecture slot matching R2 upload / Downloader codes (arm64, …). */
+export function detectArchFromFilename(name: string): string {
+  const lower = name.toLowerCase()
+  if (lower.includes('armeabi-v7a') || lower.includes('armeabi_v7a')) {
+    return 'armeabi-v7a'
+  }
+  if (lower.includes('arm64') || lower.includes('aarch64')) return 'arm64'
+  if (
+    lower.includes('x86_64') ||
+    lower.includes('x86-64') ||
+    lower.includes('amd64')
+  ) {
+    return 'x86_64'
+  }
+  if (/\bx86\b/.test(lower) || lower.includes('i686')) return 'x86'
+  return 'default'
+}
+
+function normalizeDownloaderCodes(
+  raw: unknown,
+): Record<string, string> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const out: Record<string, string> = {}
+  for (const [arch, code] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof arch !== 'string' || !arch.trim()) continue
+    const s = typeof code === 'number' ? String(code) : typeof code === 'string' ? code.trim() : ''
+    if (!s || !/^\d+$/.test(s)) continue
+    out[arch.trim()] = s
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
 function normalizePlatforms(
   manifest: R2LatestManifest,
-): Record<string, { version: string; published_at?: string; assets: string[] }> {
+): Record<
+  string,
+  {
+    version: string
+    published_at?: string
+    assets: string[]
+    downloader_codes?: Record<string, string>
+  }
+> {
   const out: Record<
     string,
-    { version: string; published_at?: string; assets: string[] }
+    {
+      version: string
+      published_at?: string
+      assets: string[]
+      downloader_codes?: Record<string, string>
+    }
   > = {}
 
   if (manifest.platforms && typeof manifest.platforms === 'object') {
@@ -116,11 +166,13 @@ function normalizePlatforms(
         ? entry.assets.filter((a): a is string => typeof a === 'string' && a.trim().length > 0)
         : []
       if (!version || !assets.length) continue
+      const codes = normalizeDownloaderCodes(entry.downloader_codes)
       out[key] = {
         version,
         published_at:
           typeof entry.published_at === 'string' ? entry.published_at : undefined,
         assets,
+        ...(codes ? { downloader_codes: codes } : {}),
       }
     }
   }
@@ -175,6 +227,8 @@ export function fromR2Manifest(
     for (let i = 0; i < entry.assets.length; i++) {
       const name = entry.assets[i]
       const fileVersion = versionFromFilename(name) ?? entry.version
+      const arch = detectArchFromFilename(name)
+      const code = entry.downloader_codes?.[arch]
       assets.push({
         id: `r2-asset-${platform}-${fileVersion}-${i}`,
         release_id: `r2-${fileVersion}`,
@@ -183,6 +237,7 @@ export function fromR2Manifest(
         name,
         download_url: releaseCdnLatestUrl(base, name),
         size_bytes: null,
+        downloader_code: code ?? null,
       })
     }
   }

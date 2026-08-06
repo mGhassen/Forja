@@ -22,9 +22,20 @@ Manifest shape (latest/manifest.json):
     "published_at": "…",
     "platforms": {
       "macos": { "version": "1.2.406", "published_at": "…", "assets": ["…dmg"] },
-      "windows": { "version": "1.2.400", "published_at": "…", "assets": ["…exe"] }
+      "windows": { "version": "1.2.400", "published_at": "…", "assets": ["…exe"] },
+      "android_tv": {
+        "version": "1.3.120",
+        "published_at": "…",
+        "assets": ["…-arm64.apk", "…-armeabi-v7a.apk"],
+        "downloader_codes": { "arm64": "482913", "armeabi-v7a": "482914" }
+      }
     }
   }
+
+Optional env:
+  FORJA_DOWNLOADER_CODES=arm64=482913,armeabi-v7a=482914
+    AFTVnews Downloader short codes for Android TV APKs (go.aftvnews.com).
+    Merged into platforms.android_tv.downloader_codes by arch; website shows them.
 
 Within a platform, incoming assets replace only the same architecture
 (arm64 / x86_64 / …). Other arches already in latest/ are kept — a one-arch
@@ -311,6 +322,109 @@ def platforms_from_filenames(
     }
 
 
+_ARCH_ORDER = {"arm64": 0, "x86_64": 1, "armeabi-v7a": 2, "x86": 3, "default": 4}
+
+
+def normalize_downloader_codes(raw: object) -> dict[str, str]:
+    """arch → numeric AFTVnews Downloader code (digits only)."""
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, str] = {}
+    for arch, code in raw.items():
+        if not isinstance(arch, str) or not isinstance(code, (str, int)):
+            continue
+        arch_key = arch.strip()
+        code_s = str(code).strip()
+        if not arch_key or not code_s or not code_s.isdigit():
+            continue
+        out[arch_key] = code_s
+    return out
+
+
+def parse_downloader_codes_env(raw: str | None) -> dict[str, str]:
+    """
+    Parse FORJA_DOWNLOADER_CODES.
+
+    Formats:
+      arm64=482913,armeabi-v7a=482914
+      {"arm64":"482913","armeabi-v7a":"482914"}
+    """
+    text = (raw or "").strip()
+    if not text:
+        return {}
+    if text.startswith("{"):
+        try:
+            decoded = json.loads(text)
+        except json.JSONDecodeError as e:
+            die(f"FORJA_DOWNLOADER_CODES is not valid JSON: {e}")
+        return normalize_downloader_codes(decoded)
+
+    out: dict[str, str] = {}
+    for part in text.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "=" not in part and ":" not in part:
+            die(
+                f"FORJA_DOWNLOADER_CODES entry '{part}' "
+                "want arch=code (e.g. arm64=482913)"
+            )
+        sep = "=" if "=" in part else ":"
+        arch, code = part.split(sep, 1)
+        arch = arch.strip()
+        code = code.strip()
+        if not arch or not code.isdigit():
+            die(
+                f"FORJA_DOWNLOADER_CODES entry '{part}' "
+                "want arch=digits (e.g. arm64=482913)"
+            )
+        out[arch] = code
+    return out
+
+
+def merge_downloader_codes(
+    *,
+    prior_codes: dict[str, str],
+    prior_assets: list[str],
+    incoming_codes: dict[str, str],
+    incoming_assets: list[str],
+    merged_assets: list[str],
+) -> dict[str, str]:
+    """
+    Keep codes for unchanged arches; require a fresh code when an arch APK is replaced.
+
+    A replaced arch without an incoming code drops the stale code (old URL is gone).
+    """
+    prior_by_arch = {detect_arch(n): n for n in prior_assets}
+    incoming_arches = {detect_arch(n) for n in incoming_assets}
+    merged_arches = {detect_arch(n) for n in merged_assets}
+    out: dict[str, str] = {}
+
+    for arch in sorted(merged_arches, key=lambda a: (_ARCH_ORDER.get(a, 50), a)):
+        if arch in incoming_codes:
+            out[arch] = incoming_codes[arch]
+            continue
+        if arch in incoming_arches:
+            # APK replaced/added this run — prior code pointed at the old filename.
+            continue
+        prior_name = prior_by_arch.get(arch)
+        merged_name = next(
+            (n for n in merged_assets if detect_arch(n) == arch), None
+        )
+        if (
+            prior_name
+            and merged_name
+            and prior_name == merged_name
+            and arch in prior_codes
+        ):
+            out[arch] = prior_codes[arch]
+
+    return {
+        arch: out[arch]
+        for arch in sorted(out, key=lambda a: (_ARCH_ORDER.get(a, 50), a))
+    }
+
+
 def _normalize_platform_entry(
     entry: dict,
     *,
@@ -335,6 +449,16 @@ def _normalize_platform_entry(
     out: dict = {"version": version, "assets": names}
     if isinstance(published, str) and published.strip():
         out["published_at"] = published
+    codes = normalize_downloader_codes(entry.get("downloader_codes"))
+    if codes:
+        # Drop codes for arches no longer present in assets.
+        present = {detect_arch(n) for n in names}
+        codes = {a: c for a, c in codes.items() if a in present}
+        if codes:
+            out["downloader_codes"] = {
+                arch: codes[arch]
+                for arch in sorted(codes, key=lambda a: (_ARCH_ORDER.get(a, 50), a))
+            }
     return out
 
 
@@ -347,13 +471,11 @@ def merge_assets_by_arch(existing_names: list[str], incoming_names: list[str]) -
         by_arch[detect_arch(name)] = name
     for name in incoming_names:
         by_arch[detect_arch(name)] = name
-    # Stable-ish order: arm64, x86_64, then others alpha by arch then name.
-    order = {"arm64": 0, "x86_64": 1, "armeabi-v7a": 2, "x86": 3, "default": 4}
     return [
         name
         for _, name in sorted(
             by_arch.items(),
-            key=lambda item: (order.get(item[0], 50), item[0], item[1]),
+            key=lambda item: (_ARCH_ORDER.get(item[0], 50), item[0], item[1]),
         )
     ]
 
@@ -371,6 +493,7 @@ def merge_platform_manifest(
     - Platforms in this upload merge **by architecture**: only the uploaded
       arch(es) replace prior files; sibling arches stay (may be older versions).
     - Platform `version` is the max semver among remaining asset filenames.
+    - `downloader_codes` merge by arch (Android TV AFTVnews codes).
     """
     platforms: dict[str, dict] = {}
     if isinstance(existing, dict):
@@ -424,6 +547,12 @@ def merge_platform_manifest(
             if isinstance(prior, dict) and isinstance(prior.get("assets"), list)
             else []
         )
+        prior_codes = (
+            normalize_downloader_codes(prior.get("downloader_codes"))
+            if isinstance(prior, dict)
+            else {}
+        )
+        incoming_codes = normalize_downloader_codes(entry.get("downloader_codes"))
         merged_names = merge_assets_by_arch(prior_names, new_names)
         from_names = [v for n in merged_names if (v := version_from_filename(n))]
         entry_ver = entry.get("version")
@@ -436,7 +565,7 @@ def merge_platform_manifest(
         )
         if not version:
             continue
-        platforms[key] = {
+        platform_entry: dict = {
             "version": version,
             "published_at": (
                 entry.get("published_at")
@@ -445,6 +574,26 @@ def merge_platform_manifest(
             ),
             "assets": merged_names,
         }
+        codes = merge_downloader_codes(
+            prior_codes=prior_codes,
+            prior_assets=prior_names,
+            incoming_codes=incoming_codes,
+            incoming_assets=new_names,
+            merged_assets=merged_names,
+        )
+        if codes:
+            platform_entry["downloader_codes"] = codes
+        if key == "android_tv":
+            for arch in sorted(
+                {detect_arch(n) for n in new_names},
+                key=lambda a: (_ARCH_ORDER.get(a, 50), a),
+            ):
+                if arch not in codes:
+                    print(
+                        f"::warning::No Downloader code for {key}/{arch} — "
+                        "set FORJA_DOWNLOADER_CODES or re-run release_local publish"
+                    )
+        platforms[key] = platform_entry
 
     return {
         "published_at": published_at,
@@ -761,6 +910,36 @@ def main() -> None:
     )
     if not incoming_platforms:
         die("No assets mapped to a known platform (windows/macos/linux/android_tv).")
+
+    # AFTVnews Downloader codes → platforms.android_tv.downloader_codes (website).
+    env_codes = parse_downloader_codes_env(os.environ.get("FORJA_DOWNLOADER_CODES"))
+    if env_codes:
+        atv = incoming_platforms.get("android_tv")
+        if not isinstance(atv, dict):
+            print(
+                "::warning::FORJA_DOWNLOADER_CODES set but this upload has no "
+                "Android TV APKs — codes ignored"
+            )
+        else:
+            atv_arches = {detect_arch(n) for n in atv.get("assets", []) if isinstance(n, str)}
+            unused = sorted(a for a in env_codes if a not in atv_arches)
+            if unused:
+                print(
+                    "::warning::Downloader codes for arches not in this upload "
+                    f"(ignored): {', '.join(unused)}"
+                )
+            applied = {a: c for a, c in env_codes.items() if a in atv_arches}
+            if applied:
+                atv["downloader_codes"] = {
+                    arch: applied[arch]
+                    for arch in sorted(
+                        applied, key=lambda a: (_ARCH_ORDER.get(a, 50), a)
+                    )
+                }
+                print(
+                    "Downloader codes: "
+                    + ", ".join(f"{a}={c}" for a, c in atv["downloader_codes"].items())
+                )
 
     existing_raw = get_object_bytes(
         endpoint=endpoint,

@@ -48,7 +48,6 @@ import 'package:forja/shell/shell_bus.dart';
 
 part 'iptv_pt_player_engine.dart';
 part 'iptv_pt_player_ui.dart';
-part 'iptv_pt_player_widgets.dart';
 
 /// True for live IPTV URLs (Xtream `/live/…`, M3U, unknown). False for Xtream VOD.
 @visibleForTesting

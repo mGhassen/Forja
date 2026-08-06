@@ -37,6 +37,9 @@ set -euo pipefail
 # Android TV also needs: FORJA_KEYSTORE_PASSWORD, FORJA_KEY_PASSWORD,
 #   and FORJA_KEYSTORE_PATH or FORJA_KEYSTORE_BASE64 (optional FORJA_KEY_ALIAS)
 # Optional: TURNSTILE_SITE_KEY, SENTRY_DSN, POSTHOG_*
+# Android TV Downloader codes (AFTVnews): FORJA_DOWNLOADER_CODES=arm64=123,armeabi-v7a=456
+#   Interactive publish prompts when Android TV APKs are in dist/; written into R2
+#   latest/manifest.json → platforms.android_tv.downloader_codes (website shows them).
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -1362,10 +1365,87 @@ publish_r2() {
   while IFS= read -r f; do
     cp -f "$f" "$flat/"
   done < <(collect_assets "$ver")
+  # AFTVnews Downloader codes for Android TV → R2 manifest (website).
+  collect_android_tv_downloader_codes "$ver" "$flat"
   echo "==> Upload to R2"
   export R2_BUCKET="${R2_BUCKET:-forja-releases}"
   export RELEASE_STORAGE_KEEP="${RELEASE_STORAGE_KEEP:-3}"
   ./scripts/upload_release_to_r2.sh "$ver" "$flat"
+}
+
+# Prompt / env for AFTVnews Downloader short codes (Android TV APKs only).
+# Sets FORJA_DOWNLOADER_CODES for upload_release_to_r2.py (arch=digits,…).
+collect_android_tv_downloader_codes() {
+  local ver="$1"
+  local flat="$2"
+  local -a apks=()
+  local apk arch cdn url code label
+  local -a parts=()
+
+  shopt -s nullglob
+  apks=("$flat"/Forja-*-android-tv-*.apk)
+  shopt -u nullglob
+  ((${#apks[@]} > 0)) || return 0
+
+  # Already set (CI / NONINTERACTIVE) — pass through.
+  if [[ -n "${FORJA_DOWNLOADER_CODES:-}" ]]; then
+    ok "Downloader codes from env: $FORJA_DOWNLOADER_CODES"
+    export FORJA_DOWNLOADER_CODES
+    return 0
+  fi
+
+  cdn="${RELEASE_CDN_URL:-}"
+  cdn="${cdn%/}"
+  [[ -n "$cdn" ]] || die "RELEASE_CDN_URL missing — needed for Downloader code URLs"
+
+  echo
+  info "Android TV Downloader codes (AFTVnews) for ${ver}"
+  echo "  Create a code per APK at https://go.aftvnews.com/ (paste the CDN URL)."
+  echo "  The website shows these numbers on /download for Android TV."
+  echo
+
+  for apk in "${apks[@]}"; do
+    arch="$(basename "$apk")"
+    case "$arch" in
+      *armeabi-v7a*) arch=armeabi-v7a; label=ARMv7 ;;
+      *arm64*) arch=arm64; label=ARM64 ;;
+      *)
+        warn "skip unknown Android TV APK: $(basename "$apk")"
+        continue
+        ;;
+    esac
+    url="${cdn}/latest/$(basename "$apk")"
+    echo "  ${C_BOLD}${label}${C_RESET} (${arch})"
+    echo "  ${C_DIM}${url}${C_RESET}"
+    if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
+      warn "NONINTERACTIVE — no Downloader code for ${arch} (set FORJA_DOWNLOADER_CODES)"
+      continue
+    fi
+    if ui_can; then
+      code="$(ui_input 1 1 "Downloader code · ${label}" \
+        "Numeric code from go.aftvnews.com (empty = skip)" "")" || true
+    else
+      read -r -p "  Downloader code for ${label} (empty = skip): " code || true
+    fi
+    code="$(printf '%s' "${code:-}" | tr -d '[:space:]')"
+    if [[ -z "$code" ]]; then
+      warn "skipped ${arch}"
+      continue
+    fi
+    [[ "$code" =~ ^[0-9]+$ ]] || die "Downloader code must be digits (got: $code)"
+    parts+=("${arch}=${code}")
+    ok "${label}: ${code}"
+  done
+
+  if ((${#parts[@]} > 0)); then
+    local IFS=,
+    FORJA_DOWNLOADER_CODES="${parts[*]}"
+    export FORJA_DOWNLOADER_CODES
+    ok "Will write downloader_codes into R2 manifest: $FORJA_DOWNLOADER_CODES"
+  else
+    warn "No Downloader codes — website will not show numbers for this Android TV upload"
+    unset FORJA_DOWNLOADER_CODES || true
+  fi
 }
 
 build_selected() {
