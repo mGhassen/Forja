@@ -7,6 +7,7 @@ import 'catalog/stremio_addon_features.dart';
 import 'kv.dart';
 import 'platform_defaults.dart';
 import 'platform_profile.dart';
+import 'playback/torrent/torrent_search_providers.dart';
 import 'secure_settings.dart';
 
 class SettingsService {
@@ -47,6 +48,7 @@ class SettingsService {
   static const String _productAnalyticsEnabledKey =
       'product_analytics_enabled';
   static const String _sortPreferenceKey = 'sort_preference';
+  static const String _enabledTorrentProvidersKey = 'enabled_torrent_providers';
   static const String _useDebridKey = 'use_debrid_for_streams';
   static const String _debridServiceKey = 'debrid_service';
   static const String _stremioAddonsKey = 'stremio_addons';
@@ -737,6 +739,43 @@ class SettingsService {
   Future<void> setSortPreference(String preference) async =>
       kvSetString(_sortPreferenceKey, preference);
 
+  /// Enabled builtin torrent search provider ids. Default: all known providers.
+  Future<List<String>> getEnabledTorrentProviders() async {
+    final raw = await kvGetString(_enabledTorrentProvidersKey);
+    if (raw == null || raw.trim().isEmpty) {
+      return List<String>.from(TorrentSearchProviders.all);
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        final ids = decoded
+            .map((e) => e.toString())
+            .where((id) => TorrentSearchProviders.all.contains(id))
+            .toList();
+        if (ids.isNotEmpty) return ids;
+      }
+    } catch (_) {}
+    return List<String>.from(TorrentSearchProviders.all);
+  }
+
+  Future<void> setEnabledTorrentProviders(List<String> ids) async {
+    final filtered = ids
+        .where((id) => TorrentSearchProviders.all.contains(id))
+        .toList();
+    await kvSetString(_enabledTorrentProvidersKey, jsonEncode(filtered));
+  }
+
+  Future<void> setTorrentProviderEnabled(String id, bool enabled) async {
+    if (!TorrentSearchProviders.all.contains(id)) return;
+    final current = await getEnabledTorrentProviders();
+    if (enabled) {
+      if (!current.contains(id)) current.add(id);
+    } else {
+      current.remove(id);
+    }
+    await setEnabledTorrentProviders(current);
+  }
+
   Future<bool> useDebridForStreams() async =>
       kvGetBool(_useDebridKey, fallback: false);
 
@@ -1274,6 +1313,7 @@ class SettingsService {
         await isPlaySourceWebstreamingEnabled();
     for (final key in [
       _sortPreferenceKey,
+      _enabledTorrentProvidersKey,
       _debridServiceKey,
       _externalPlayerKey,
       _jackettBaseUrlKey,
@@ -1383,6 +1423,7 @@ class SettingsService {
     }
     for (final key in [
       _sortPreferenceKey,
+      _enabledTorrentProvidersKey,
       _debridServiceKey,
       _externalPlayerKey,
       _jackettBaseUrlKey,

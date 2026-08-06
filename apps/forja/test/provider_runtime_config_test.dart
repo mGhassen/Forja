@@ -94,6 +94,22 @@ void main() {
       expect(b['miruro:bee']!.pngStrip, AnimePngStripMode.never);
     });
 
+    test('builtin KissKh forces PNG strip for mirror ids', () {
+      final b = ProviderRuntimeSnapshot.builtins().animePlaybackProfiles;
+      expect(b['kisskh']!.pngStrip, AnimePngStripMode.force);
+      ProviderRuntimeConfig.instance.debugSetSnapshot(
+        ProviderRuntimeSnapshot.builtins(),
+      );
+      expect(
+        ProviderRuntimeConfig.instance.animePlaybackProfile('kisskh.nl').pngStrip,
+        AnimePngStripMode.force,
+      );
+      expect(
+        ProviderRuntimeConfig.instance.animePlaybackProfile('kisskh.co').pngStrip,
+        AnimePngStripMode.force,
+      );
+    });
+
     test('merge clamps stale remote Miruro segmentPoison to masterOnly', () {
       final remote = ProviderRuntimeSnapshot.tryParse({
         'schema': 1,

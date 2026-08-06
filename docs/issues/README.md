@@ -173,7 +173,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (UHD `framedrop=decoder` / `video-sync=audio`) | P2 | Medium | open | 1/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [151-[open]-…](151-[open]-android-tv-exo-vod-stutter-no-cache.md) | ATV movie player (Exo VOD): 24fps judder + no back buffer / disk cache | P2 | Medium | open | 6/6 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [152-[open]-…](152-[open]-android-tv-mediakit-quieter-than-exo.md) | ATV MediaKit plays quieter than ExoPlayer at the same level | P2 | Medium | open | 3/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [153-[open]-…](153-[open]-kisskh-hls-4k-indefinite-buffer.md) | KissKh HLS: first frame then indefinite BUFFERING (4K ladder) | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [153-[open]-…](153-[open]-kisskh-hls-4k-indefinite-buffer.md) | KissKh HLS: first frame then indefinite BUFFERING (4K ladder) | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

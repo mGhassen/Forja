@@ -219,6 +219,7 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
       title: movie.title,
       season: season,
       episode: episode,
+      imdbId: movie.imdbId,
     );
     if (playback == null) return null;
     final ranked = await PlaybackSelection.rankAndDedupe(

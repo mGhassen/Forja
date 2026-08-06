@@ -1,6 +1,8 @@
+mod providers;
 mod search;
 
-pub use search::search_all;
+pub use providers::{all_provider_ids, display_name, SearchRequest, PROVIDER_IDS};
+pub use search::{search_all, search_request};
 
 use regex::Regex;
 use scraper::{Html, Selector};

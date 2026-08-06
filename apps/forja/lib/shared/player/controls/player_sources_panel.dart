@@ -1250,6 +1250,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         : widget.movie.title;
     final results = (await Engine.searchTorrents(
       query,
+      imdbId: widget.movie.imdbId,
     )).map(TorrentResult.fromJson).toList();
     return (await Engine.filterTorrents(
       results.map((r) => r.toJson()).toList(),
@@ -1267,9 +1268,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final episodeQuery = '${widget.movie.title} S${s}E$e';
     final seasonRaw = (await Engine.searchTorrents(
       seasonQuery,
+      imdbId: widget.movie.imdbId,
+      season: season,
     )).map(TorrentResult.fromJson).toList();
     final episodeRaw = (await Engine.searchTorrents(
       episodeQuery,
+      imdbId: widget.movie.imdbId,
+      season: season,
+      episode: episode,
     )).map(TorrentResult.fromJson).toList();
     final combined = <String, TorrentResult>{};
     for (final r in (await Engine.filterTorrents(

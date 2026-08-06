@@ -376,48 +376,53 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
         final showLayout = _showLiveLayoutToggle(context, compact: compact);
+        final searchOpen = ctrl.browserSearchOpen;
         _syncSearchChromeRow();
         // Rail / TV: flush with the category column (0). Compact ☰ only: clear the menu.
         final leftPadding = ShellTokens.usesCompactNavDrawer(context)
             ? ShellTokens.compactChromeLeadingInset(context)
             : 0.0;
 
+        final shelfStrip = Align(
+          alignment: Alignment.centerLeft,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                iptvCatalogRow(
+                  rowId: 'iptv-sections',
+                  sortOrder: 0,
+                  itemCount: _kSectionShelf.length,
+                  child: _buildShelf(context),
+                ),
+                if (showLayout) ...[
+                  const SizedBox(width: 8),
+                  _buildLiveLayoutToggle(context),
+                ],
+              ],
+            ),
+          ),
+        );
+
         return Padding(
           padding: EdgeInsets.fromLTRB(leftPadding, 10, 12, 8),
           child: Row(
             children: [
-              Flexible(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        iptvCatalogRow(
-                          rowId: 'iptv-sections',
-                          sortOrder: 0,
-                          itemCount: _kSectionShelf.length,
-                          child: _buildShelf(context),
-                        ),
-                        if (showLayout) ...[
-                          const SizedBox(width: 8),
-                          _buildLiveLayoutToggle(context),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              // Search open: shelf collapses to the active tab (Live/…) —
+              // intrinsic width so the field is not squeezed under the shelf.
+              // Idle: Flexible so a full Live|Movies|Series strip can scroll.
+              if (searchOpen) shelfStrip else Flexible(child: shelfStrip),
               const SizedBox(width: 8),
               // Flexible + scroll: tools (portal chip ~156+) must not force the
               // parent Row past remaining width (PiP / narrow desktop).
+              // reverse only when idle — open search must stay visible (left).
               Flexible(
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    reverse: true,
+                    reverse: !searchOpen,
                     child: iptvCatalogRow(
                       rowId: 'iptv-top-tools',
                       sortOrder: 1,
@@ -504,7 +509,9 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
             _IptvSectionShelfTab(
               spec: shelves[i],
               selected: ctrl.activeSection == shelves[i].section,
-              listIndex: i,
+              // Absolute Live=0 / Movies=1 / Series=2 — stable while search
+              // collapses the strip to the active tab only.
+              listIndex: _shelfListIndex(shelves[i]),
               isFirst: i == 0,
               isLast: i == shelves.length - 1,
               onTap: () => widget.onSection(shelves[i].section),
@@ -519,19 +526,42 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
                       }
                     }
                   : null,
+              onLeftEdge: i == 0
+                  ? null
+                  : () => iptvFocusRowItem(
+                        'iptv-sections',
+                        _shelfListIndex(shelves[i - 1]),
+                      ),
             ),
         ],
       ),
     );
   }
 
+  /// Absolute index in [_kSectionShelf] (focus memory / ↑ from catalog).
+  int _shelfListIndex(_IptvSectionShelfSpec spec) {
+    final i = _kSectionShelf.indexWhere((s) => s.section == spec.section);
+    return i < 0 ? 0 : i;
+  }
+
   List<_IptvSectionShelfSpec> get _visibleSectionShelves {
     final platform =
         ctrl.activePortal?.platform ?? IptvPortalPlatform.xtream;
-    if (platform.supportsVodSeries) return _kSectionShelf;
-    return _kSectionShelf
-        .where((s) => s.section == IptvSection.live)
-        .toList(growable: false);
+    var shelves = platform.supportsVodSeries
+        ? _kSectionShelf
+        : _kSectionShelf
+            .where((s) => s.section == IptvSection.live)
+            .toList(growable: false);
+    // Search open: keep only the active section so the field has room
+    // (PiP Flexible + reverse scroll was hiding the input under the shelf).
+    if (ctrl.browserSearchOpen) {
+      final active = ctrl.activeSection;
+      final only = shelves
+          .where((s) => s.section == active)
+          .toList(growable: false);
+      if (only.isNotEmpty) return only;
+    }
+    return shelves;
   }
 
   Widget _buildExpandingSearch(BuildContext context) {
@@ -599,8 +629,10 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       tvRowId: 'iptv-top-tools',
       tvItemIndex: _searchToolIndex,
       onDownEdge: _focusDownFromTopTools,
-      onLeftEdge: () =>
-          iptvFocusRowItem('iptv-sections', _kSectionShelf.length - 1),
+      onLeftEdge: () => iptvFocusRowItem(
+        'iptv-sections',
+        iptvActiveSectionShelfIndex(ctrl),
+      ),
       onRightEdge: () => iptvFocusRowItem(
         'iptv-top-tools',
         _showLiveSort ? _sortToolIndex : _portalToolIndex,
@@ -1321,6 +1353,7 @@ class _IptvSectionShelfTab extends StatefulWidget {
     required this.onTap,
     required this.onReload,
     this.onDownEdge,
+    this.onLeftEdge,
     this.onRightEdge,
   });
 
@@ -1332,6 +1365,7 @@ class _IptvSectionShelfTab extends StatefulWidget {
   final VoidCallback onTap;
   final VoidCallback onReload;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
 
   @override
@@ -1460,10 +1494,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                       widget.listIndex,
                     )
                   : widget.onRightEdge,
-              onLeftEdge: widget.listIndex == 0
-                  ? null
-                  : () =>
-                        iptvFocusRowItem('iptv-sections', widget.listIndex - 1),
+              onLeftEdge: widget.onLeftEdge,
               onFocusChange: _setFocused,
               child: SizedBox(
                 height: _kShelfTabHeight,

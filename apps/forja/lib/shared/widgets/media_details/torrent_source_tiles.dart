@@ -529,7 +529,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                               const SizedBox(width: 8),
                               ConstrainedBox(
                                 constraints: BoxConstraints(
-                                  maxWidth: 96,
+                                  maxWidth: 120,
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,

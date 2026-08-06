@@ -60,6 +60,8 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   bool _handleCatalogPageBack() {
+    // Pin focus / floating reorder own Back before streams → category.
+    if (_CategorySidebarRowState.tryConsumeBack()) return true;
     if (!iptvHandleCatalogPageBack(widget.ctrl)) return false;
     _scrollCategorySidebarToSelected();
     return true;
@@ -668,6 +670,7 @@ class _BrowserViewState extends State<_BrowserView> {
 
           Widget rowFor(IptvCategory cat, int listIndex, {int? reorderIndex}) {
             final synthetic = IptvLiveCatalog.isSyntheticId(cat.id);
+            final movableIndex = canReorder ? reorderIndex : null;
             return _CategorySidebarRow(
               key: ValueKey(cat.id),
               label: cat.name.isEmpty ? 'Uncategorized' : cat.name,
@@ -680,7 +683,24 @@ class _BrowserViewState extends State<_BrowserView> {
               onTogglePin: live && !synthetic
                   ? () => ctrl.toggleLiveCategoryPin(cat.id)
                   : null,
-              reorderIndex: canReorder ? reorderIndex : null,
+              reorderIndex: movableIndex,
+              onTvReorderUp: movableIndex != null && movableIndex > 0
+                  ? () => unawaited(
+                        ctrl.reorderLiveCategories(
+                          movableIndex,
+                          movableIndex - 1,
+                        ),
+                      )
+                  : null,
+              onTvReorderDown: movableIndex != null &&
+                      movableIndex < movable.length - 1
+                  ? () => unawaited(
+                        ctrl.reorderLiveCategories(
+                          movableIndex,
+                          movableIndex + 1,
+                        ),
+                      )
+                  : null,
               onTap: () => _commitBrowserCategory(cat.id, enterStreams: true),
               onUpEdge: listIndex == 0
                   ? () => iptvFocusRowItem(

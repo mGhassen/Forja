@@ -19,6 +19,7 @@ Future<List<TorrentResult>> searchTvTorrents({
   required String title,
   required int season,
   required int episode,
+  String? imdbId,
 }) async {
   final s = season.toString().padLeft(2, '0');
   final e = episode.toString().padLeft(2, '0');
@@ -27,12 +28,19 @@ Future<List<TorrentResult>> searchTvTorrents({
 
   final settings = SettingsService();
   final seasonSearches = <Future<List<TorrentResult>>>[
-    Engine.searchTorrents(seasonQuery)
-        .then((list) => list.map(TorrentResult.fromJson).toList()),
+    Engine.searchTorrents(
+      seasonQuery,
+      imdbId: imdbId,
+      season: season,
+    ).then((list) => list.map(TorrentResult.fromJson).toList()),
   ];
   final episodeSearches = <Future<List<TorrentResult>>>[
-    Engine.searchTorrents(episodeQuery)
-        .then((list) => list.map(TorrentResult.fromJson).toList()),
+    Engine.searchTorrents(
+      episodeQuery,
+      imdbId: imdbId,
+      season: season,
+      episode: episode,
+    ).then((list) => list.map(TorrentResult.fromJson).toList()),
   ];
 
   if (await settings.isJackettConfigured()) {
@@ -110,11 +118,13 @@ Future<EpisodeTorrentPlayback?> resolveEpisodeTorrentPlayback({
   required String title,
   required int season,
   required int episode,
+  String? imdbId,
 }) async {
   final torrents = await searchTvTorrents(
     title: title,
     season: season,
     episode: episode,
+    imdbId: imdbId,
   );
   if (torrents.isEmpty) return null;
 

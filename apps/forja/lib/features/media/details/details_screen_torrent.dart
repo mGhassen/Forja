@@ -79,9 +79,14 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       final results = await Future.wait([
         Engine.searchTorrents(
           seasonQuery,
+          imdbId: _s._movie.imdbId,
+          season: _s._selectedSeason,
         ).then((list) => list.map(TorrentResult.fromJson).toList()),
         Engine.searchTorrents(
           episodeQuery,
+          imdbId: _s._movie.imdbId,
+          season: _s._selectedSeason,
+          episode: _s._selectedEpisode,
         ).then((list) => list.map(TorrentResult.fromJson).toList()),
       ]);
       if (!mounted || gen != _s._torrentSearchGen) return;
@@ -140,6 +145,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
     try {
       final results = (await Engine.searchTorrents(
         query,
+        imdbId: _s._movie.imdbId,
       )).map(TorrentResult.fromJson).toList();
       if (!mounted || gen != _s._torrentSearchGen) return;
       final filtered = (await Engine.filterTorrents(

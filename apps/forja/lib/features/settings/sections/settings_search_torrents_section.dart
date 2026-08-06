@@ -59,6 +59,30 @@ class SettingsSearchTorrentsSection extends ConsumerWidget {
           ],
         ),
         SettingsGroup(
+          label: 'Torrent providers',
+          children: [
+            for (final id in TorrentSearchProviders.all)
+              settingsFocusableToggle(
+                context,
+                TorrentSearchProviders.label(id),
+                id == TorrentSearchProviders.torrentio
+                    ? 'IMDb search when available on details.'
+                    : 'Include results from this indexer.',
+                snap.enabledProviders.contains(id),
+                (val) async {
+                  await settings.setTorrentProviderEnabled(id, val);
+                  final next = List<String>.from(snap.enabledProviders);
+                  if (val) {
+                    if (!next.contains(id)) next.add(id);
+                  } else {
+                    next.remove(id);
+                  }
+                  notifier.patch((s) => s.copyWith(enabledProviders: next));
+                },
+              ),
+          ],
+        ),
+        SettingsGroup(
           label: 'Torrent engine',
           children: [
             settingsFocusableDropdown(

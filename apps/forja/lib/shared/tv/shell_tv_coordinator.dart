@@ -1178,14 +1178,24 @@ class ShellTvFocusMeta {
   }
 }
 
-/// Whether [event] is a TV activate key (Select / OK).
-bool shellTvIsActivateKey(KeyEvent event) {
-  if (event is! KeyDownEvent) return false;
-  final key = event.logicalKey;
+/// Whether [key] is a TV activate key (Select / OK / Enter / Space).
+bool shellTvIsActivateLogicalKey(LogicalKeyboardKey key) {
   return key == LogicalKeyboardKey.enter ||
       key == LogicalKeyboardKey.select ||
       key == LogicalKeyboardKey.space ||
       key == LogicalKeyboardKey.numpadEnter;
+}
+
+/// Whether [event] is a TV activate key (Select / OK) on KeyDown.
+bool shellTvIsActivateKey(KeyEvent event) {
+  if (event is! KeyDownEvent) return false;
+  return shellTvIsActivateLogicalKey(event.logicalKey);
+}
+
+/// Whether [event] is a TV activate key on KeyUp (for hold / double-tap).
+bool shellTvIsActivateKeyUp(KeyEvent event) {
+  if (event is! KeyUpEvent) return false;
+  return shellTvIsActivateLogicalKey(event.logicalKey);
 }
 
 /// Scroll visibility mode for TV focus.

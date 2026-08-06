@@ -143,6 +143,7 @@ Widget shellFocusableTap({
   double? focusBleedWidth,
   bool suppressInkHover = false,
   bool allowNestedFocus = false,
+  FocusOnKeyEventCallback? onKeyEvent,
 }) {
   final policy =
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
@@ -183,6 +184,7 @@ Widget shellFocusableTap({
       tvMeta: tvMeta,
       ensureVisibleMode: ensureVisibleMode,
       allowNestedFocus: allowNestedFocus,
+      onKeyEvent: onKeyEvent,
       child: child,
     );
   }

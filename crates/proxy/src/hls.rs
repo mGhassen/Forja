@@ -45,6 +45,11 @@ pub fn strip_png_wrapper(raw: &[u8]) -> Vec<u8> {
                 return raw[p..].to_vec();
             }
         }
+        // KissKh / videotradercdn: PNG shell over fMP4 or other media — no TS
+        // sync. Still drop the PNG so the demuxer sees the real payload.
+        if start < raw.len() {
+            return raw[start..].to_vec();
+        }
     }
     // Megaplay / nekostream: fixed 252-byte PNG header before MPEG-TS.
     if raw.len() > 252 + 188 && raw[252] == 0x47 && raw[252 + 188] == 0x47 {
@@ -255,12 +260,18 @@ pub async fn hls_proxy_handler(
     if strip == Some("png") {
         let bytes = resp.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
         let stripped = strip_png_wrapper(&bytes);
+        // MPEG-TS sync → mp2t; otherwise let the demuxer sniff (fMP4 / AV1).
+        let content_type = if stripped.first() == Some(&0x47) {
+            "video/mp2t"
+        } else {
+            "application/octet-stream"
+        };
         return Response::builder()
             .status(status)
             .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .header(header::ACCEPT_RANGES, "bytes")
             .header(header::CONNECTION, "keep-alive")
-            .header(header::CONTENT_TYPE, "video/mp2t")
+            .header(header::CONTENT_TYPE, content_type)
             .header(header::CONTENT_LENGTH, stripped.len())
             .body(Body::from(stripped))
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
@@ -334,5 +345,17 @@ mod tests {
         let out = strip_png_wrapper(&raw);
         assert_eq!(out[0], 0x47);
         assert!(png_wraps_mpeg_ts(&raw));
+    }
+
+    #[test]
+    fn strip_png_returns_payload_after_iend_without_ts() {
+        let mut raw = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        raw.extend(std::iter::repeat_n(0u8, 8));
+        raw.extend_from_slice(b"IEND");
+        raw.extend([0, 0, 0, 0]);
+        raw.extend_from_slice(b"ftypisom");
+        let out = strip_png_wrapper(&raw);
+        assert_eq!(&out[..8], b"ftypisom");
+        assert!(!png_wraps_mpeg_ts(&raw));
     }
 }

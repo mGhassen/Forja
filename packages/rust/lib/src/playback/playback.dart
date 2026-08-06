@@ -30,5 +30,6 @@ export 'torrent/torrent_playback_resolver.dart';
 export 'providers/services/site111477_service.dart';
 export 'torrent/jackett_service.dart' hide ConnectionTestResult;
 export 'torrent/prowlarr_service.dart';
+export 'torrent/torrent_search_providers.dart';
 export 'torrent/link_resolver.dart';
 export 'proxy/mega_proxy.dart';

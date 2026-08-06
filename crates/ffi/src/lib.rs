@@ -11,7 +11,10 @@ mod engine_mega;
 
 use iptv::m3u;
 use iptv::pastesh;
-use scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html, search_all};
+use scrapers::{
+    dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html, search_request,
+    SearchRequest,
+};
 use stream::list_providers;
 use stremio::{
     build_resource_url, fetch_get, fetch_get_with_headers, fetch_post_with_headers, parse_catalog,
@@ -392,7 +395,8 @@ fn dedup_torrents_json(results_json: String) -> String {
 
 fn search_torrents_json(query: String) -> String {
     utils::engine_cancel::enter_job();
-    let results = RUNTIME.block_on(search_all(&query));
+    let req = SearchRequest::parse(&query);
+    let results = RUNTIME.block_on(search_request(&req));
     serde_json::to_string(&results).unwrap_or_else(|_| "[]".into())
 }
 

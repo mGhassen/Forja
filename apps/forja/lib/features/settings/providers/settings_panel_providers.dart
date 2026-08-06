@@ -177,24 +177,28 @@ class SettingsTorrentSnapshot {
     required this.cacheType,
     required this.ramCacheMb,
     required this.connectionsLimit,
+    required this.enabledProviders,
   });
 
   final String sortPreference;
   final String cacheType;
   final int ramCacheMb;
   final int connectionsLimit;
+  final List<String> enabledProviders;
 
   SettingsTorrentSnapshot copyWith({
     String? sortPreference,
     String? cacheType,
     int? ramCacheMb,
     int? connectionsLimit,
+    List<String>? enabledProviders,
   }) {
     return SettingsTorrentSnapshot(
       sortPreference: sortPreference ?? this.sortPreference,
       cacheType: cacheType ?? this.cacheType,
       ramCacheMb: ramCacheMb ?? this.ramCacheMb,
       connectionsLimit: connectionsLimit ?? this.connectionsLimit,
+      enabledProviders: enabledProviders ?? this.enabledProviders,
     );
   }
 }
@@ -213,6 +217,7 @@ class SettingsTorrentNotifier extends AsyncNotifier<SettingsTorrentSnapshot> {
       cacheType: await s.getTorrentCacheType(),
       ramCacheMb: await s.getTorrentRamCacheMb(),
       connectionsLimit: await s.getTorrentConnectionsLimit(),
+      enabledProviders: await s.getEnabledTorrentProviders(),
     );
   }
 

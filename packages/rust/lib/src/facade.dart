@@ -10,6 +10,7 @@ import 'engine_jobs.dart';
 import 'engine_worker.dart';
 import 'isolate_runner.dart';
 import 'library_path.dart';
+import 'settings_service.dart';
 
 /// Rust engine facade — native library required for parser/torrent features.
 abstract final class Engine {
@@ -162,9 +163,24 @@ abstract final class Engine {
     return RustLib.instance.normalizeTorrentTitle(title);
   }
 
-  static Future<List<Map<String, dynamic>>> searchTorrents(String query) async {
+  static Future<List<Map<String, dynamic>>> searchTorrents(
+    String query, {
+    String? imdbId,
+    int? season,
+    int? episode,
+    List<String>? enabledProviders,
+  }) async {
     _requireReady();
-    final json = await runSearchTorrentsJson(query);
+    final enabled =
+        enabledProviders ?? await SettingsService().getEnabledTorrentProviders();
+    final request = <String, dynamic>{
+      'query': query,
+      'enabled': enabled,
+      if (imdbId != null && imdbId.isNotEmpty) 'imdb_id': imdbId,
+      if (season != null) 'season': season,
+      if (episode != null) 'episode': episode,
+    };
+    final json = await runSearchTorrentsJson(jsonEncode(request));
     return (jsonDecode(json) as List)
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
@@ -288,6 +304,7 @@ abstract final class Engine {
     'forja_iptv_groups',
     'forja_iptv_portal_meta',
     'sort_preference',
+    'enabled_torrent_providers',
     'debrid_service',
     'external_player',
     'jackett_base_url',
@@ -390,6 +407,7 @@ abstract final class Engine {
 
       for (final k in const [
         'sort_preference',
+    'enabled_torrent_providers',
         'debrid_service',
         'external_player',
         'jackett_base_url',

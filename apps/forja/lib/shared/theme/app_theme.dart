@@ -173,6 +173,11 @@ class FocusableControl extends StatefulWidget {
   /// (e.g. IPTV portal row → in-row favorite star). Default false.
   final bool allowNestedFocus;
 
+  /// Optional key hook — runs before arrow / activate handling. Return
+  /// [KeyEventResult.handled] to suppress the default OK → [onTap] path
+  /// (e.g. IPTV category double-OK / long-press gestures).
+  final FocusOnKeyEventCallback? onKeyEvent;
+
   const FocusableControl({
     super.key,
     required this.child,
@@ -184,6 +189,7 @@ class FocusableControl extends StatefulWidget {
     this.showFocusFill = true,
     this.focusBleedWidth,
     this.allowNestedFocus = false,
+    this.onKeyEvent,
     this.onLeftEdge,
     this.onUpEdge,
     this.onDownEdge,
@@ -438,6 +444,10 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
         }
       },
       onKeyEvent: (node, event) {
+        final custom = widget.onKeyEvent?.call(node, event);
+        if (custom != null && custom != KeyEventResult.ignored) {
+          return custom;
+        }
         final arrow = _handleArrow(event);
         if (arrow == KeyEventResult.handled) return arrow;
         if (widget.onTap != null && shellTvIsActivateKey(event)) {

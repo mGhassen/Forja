@@ -13,6 +13,8 @@ class _CategorySidebarRow extends StatefulWidget {
     this.pinned = false,
     this.onTogglePin,
     this.reorderIndex,
+    this.onTvReorderUp,
+    this.onTvReorderDown,
     this.onUpEdge,
     this.onRightEdge,
     this.onTvFocusChange,
@@ -29,6 +31,9 @@ class _CategorySidebarRow extends StatefulWidget {
   final VoidCallback? onTogglePin;
   /// Non-null → whole row is a reorder drag target.
   final int? reorderIndex;
+  /// TV floating-reorder: move this row up / down in the movable list.
+  final VoidCallback? onTvReorderUp;
+  final VoidCallback? onTvReorderDown;
   final VoidCallback? onUpEdge;
   final VoidCallback? onRightEdge;
   /// TV: report focus so the channel pane can stay lazy until OK / →.
@@ -39,18 +44,288 @@ class _CategorySidebarRow extends StatefulWidget {
 }
 
 class _CategorySidebarRowState extends State<_CategorySidebarRow> {
+  /// Row with pin focus or floating reorder — Back returns here (HardwareKeyboard
+  /// steals Focus onKey for goBack).
+  static _CategorySidebarRowState? _chromeOwner;
+
+  static bool tryConsumeBack() {
+    final s = _chromeOwner;
+    if (s == null || !s.mounted) return false;
+    if (s._pinFocus.hasFocus) {
+      s._focusRow();
+      return true;
+    }
+    if (s._floating) {
+      s._exitFloating();
+      return true;
+    }
+    return false;
+  }
+
   bool _focused = false;
   bool _hovered = false;
+  bool _floating = false;
+  bool _okHoldFired = false;
+  int _okTapCount = 0;
+  Timer? _okHoldTimer;
+  Timer? _okTapTimer;
 
-  bool get _tvFocused => iptvTvFocused(context, focused: _focused);
+  late final FocusNode _rowFocus;
+  late final FocusNode _pinFocus;
+
+  static const Duration _okHoldDelay = Duration(seconds: 2);
+  static const Duration _okDoubleTapWindow = Duration(milliseconds: 380);
+
+  bool get _chromeLit =>
+      _focused || _pinFocus.hasFocus || _floating;
+
+  bool get _tvFocused => iptvTvFocused(context, focused: _chromeLit);
 
   bool get _active =>
-      iptvFocusActive(context, hovered: _hovered, focused: _focused);
+      iptvFocusActive(context, hovered: _hovered, focused: _chromeLit);
 
   bool get _showPin =>
       widget.pinnable &&
       widget.onTogglePin != null &&
       (widget.pinned || _hovered || _tvFocused);
+
+  bool get _canTvReorder =>
+      widget.reorderIndex != null &&
+      (widget.onTvReorderUp != null || widget.onTvReorderDown != null);
+
+  bool get _canTvPin =>
+      widget.pinnable && widget.onTogglePin != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _rowFocus = FocusNode(debugLabel: 'iptv-category-row-${widget.listIndex}');
+    _pinFocus = FocusNode(debugLabel: 'iptv-category-pin-${widget.listIndex}');
+    _pinFocus.addListener(_onPinFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    _cancelOkGestures();
+    _releaseChrome();
+    _pinFocus.removeListener(_onPinFocusChanged);
+    _pinFocus.dispose();
+    _rowFocus.dispose();
+    super.dispose();
+  }
+
+  void _onPinFocusChanged() {
+    if (!mounted) return;
+    if (_pinFocus.hasFocus) {
+      _claimChrome();
+    } else {
+      _syncChromeClaim();
+    }
+    setState(() {});
+  }
+
+  void _claimChrome() => _chromeOwner = this;
+
+  void _releaseChrome() {
+    if (_chromeOwner == this) _chromeOwner = null;
+  }
+
+  void _syncChromeClaim() {
+    if (_pinFocus.hasFocus || _floating || _focused) {
+      _claimChrome();
+    } else {
+      _releaseChrome();
+    }
+  }
+
+  void _focusRow() {
+    if (!_rowFocus.canRequestFocus) return;
+    _rowFocus.requestFocus();
+    if (!_rowFocus.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _rowFocus.requestFocus();
+      });
+    }
+  }
+
+  void _focusPin() {
+    if (!_canTvPin || !_pinFocus.canRequestFocus) return;
+    // Ensure pin is built (visible) before requesting focus.
+    if (!_showPin) setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _pinFocus.requestFocus();
+    });
+  }
+
+  void _cancelOkGestures() {
+    _okHoldTimer?.cancel();
+    _okHoldTimer = null;
+    _okTapTimer?.cancel();
+    _okTapTimer = null;
+    _okTapCount = 0;
+    _okHoldFired = false;
+  }
+
+  void _enterFloating() {
+    if (!_canTvReorder || _floating) return;
+    _cancelOkGestures();
+    setState(() => _floating = true);
+    _claimChrome();
+  }
+
+  void _exitFloating() {
+    if (!_floating) return;
+    setState(() => _floating = false);
+    _syncChromeClaim();
+  }
+
+  void _onRowFocusChange(bool focused) {
+    if (focused) {
+      _cancelOkGestures();
+      setState(() => _focused = true);
+      _claimChrome();
+      widget.onTvFocusChange?.call(true);
+      return;
+    }
+    _cancelOkGestures();
+    // Pin / floating may claim focus next frame — keep rail chrome until then.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_pinFocus.hasFocus || _floating) return;
+      setState(() => _focused = false);
+      _releaseChrome();
+      widget.onTvFocusChange?.call(false);
+    });
+  }
+
+  void _fireOpen() {
+    _cancelOkGestures();
+    widget.onTap();
+  }
+
+  KeyEventResult _onRowKey(FocusNode node, KeyEvent event) {
+    if (!iptvUseTvFocus(context)) return KeyEventResult.ignored;
+
+    if (_floating) {
+      if (event is KeyRepeatEvent) return KeyEventResult.handled;
+      if (event is! KeyDownEvent) return KeyEventResult.ignored;
+      final key = event.logicalKey;
+      if (key == LogicalKeyboardKey.arrowUp) {
+        widget.onTvReorderUp?.call();
+        return KeyEventResult.handled;
+      }
+      if (key == LogicalKeyboardKey.arrowDown) {
+        widget.onTvReorderDown?.call();
+        return KeyEventResult.handled;
+      }
+      if (shellTvIsActivateLogicalKey(key) ||
+          key == LogicalKeyboardKey.arrowLeft) {
+        _exitFloating();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    // Long-press OK → floating reorder (KeyDown starts timer; KeyUp cancels /
+    // commits short press). Suppress default OK → open.
+    if (_canTvReorder || _canTvPin) {
+      if (event is KeyDownEvent &&
+          shellTvIsActivateLogicalKey(event.logicalKey)) {
+        _okHoldFired = false;
+        _okHoldTimer?.cancel();
+        if (_canTvReorder) {
+          _okHoldTimer = Timer(_okHoldDelay, () {
+            if (!mounted) return;
+            _okHoldFired = true;
+            _okTapTimer?.cancel();
+            _okTapCount = 0;
+            _enterFloating();
+          });
+        }
+        return KeyEventResult.handled;
+      }
+      if (event is KeyUpEvent &&
+          shellTvIsActivateLogicalKey(event.logicalKey)) {
+        _okHoldTimer?.cancel();
+        _okHoldTimer = null;
+        if (_okHoldFired) {
+          _okHoldFired = false;
+          return KeyEventResult.handled;
+        }
+        if (_canTvPin) {
+          _okTapCount++;
+          if (_okTapCount >= 2) {
+            _okTapTimer?.cancel();
+            _okTapTimer = null;
+            _okTapCount = 0;
+            _focusPin();
+            return KeyEventResult.handled;
+          }
+          _okTapTimer?.cancel();
+          _okTapTimer = Timer(_okDoubleTapWindow, () {
+            if (!mounted) return;
+            _okTapCount = 0;
+            _fireOpen();
+          });
+          return KeyEventResult.handled;
+        }
+        // Reorderable but not pinnable — short OK opens immediately.
+        _fireOpen();
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  Widget _buildPin(BuildContext context) {
+    final tv = iptvUseTvFocus(context);
+    final pinFocused = tv && _pinFocus.hasFocus;
+    final icon = Icon(
+      widget.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+      size: widget.compact ? 16 : 17,
+      color: pinFocused
+          ? ForjaShellColors.brandGreen
+          : ForjaShellColors.iconMuted,
+    );
+
+    if (!tv) {
+      return Tooltip(
+        message: widget.pinned ? 'Unpin category' : 'Pin category',
+        waitDuration: const Duration(milliseconds: 400),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: widget.onTogglePin,
+            borderRadius: BorderRadius.circular(6),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: icon,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return iptvTap(
+      context: context,
+      onTap: () {
+        widget.onTogglePin?.call();
+        _focusRow();
+      },
+      borderRadius: 6,
+      focusNode: _pinFocus,
+      // Nested chrome — not a catalog row item (Back handled via tryConsumeBack).
+      onLeftEdge: _focusRow,
+      onUpEdge: _focusRow,
+      onDownEdge: _focusRow,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: icon,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,10 +342,73 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
         : emphatic
             ? Colors.white
             : ForjaShellColors.textSecondary;
+    final tv = iptvUseTvFocus(context);
+
+    Widget rowBody = AnimatedContainer(
+      duration: tv ? Duration.zero : const Duration(milliseconds: 140),
+      curve: Curves.easeOutCubic,
+      width: double.infinity,
+      height: widget.compact ? 42 : 46,
+      padding: EdgeInsets.only(
+        left: widget.compact ? 10 : 12,
+        right: widget.compact ? 6 : 8,
+      ),
+      decoration: BoxDecoration(
+        color: _tvFocused
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+            : selected
+                ? ForjaShellColors.inkHover
+                : _active
+                    ? ForjaShellColors.inkHover
+                    : Colors.transparent,
+        border: Border(
+          left: BorderSide(
+            color: highlight
+                ? ForjaShellColors.brandGreen
+                : _active
+                    ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
+                    : Colors.transparent,
+            width: 2.5,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (widget.icon != null) ...[
+            Icon(widget.icon, size: widget.compact ? 18 : 20, color: iconColor),
+            SizedBox(width: widget.compact ? 10 : 12),
+          ],
+          Expanded(
+            child: Text(
+              widget.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(
+                color: titleColor,
+                fontSize: widget.compact ? 13 : 14,
+                fontWeight: emphatic ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ),
+          if (_showPin) _buildPin(context),
+        ],
+      ),
+    );
+
+    if (_floating) {
+      rowBody = _iptvCategoryFloatingChrome(rowBody);
+    }
 
     Widget row = iptvTap(
       context: context,
-      onTap: widget.onTap,
+      onTap: () {
+        _cancelOkGestures();
+        if (_floating) {
+          _exitFloating();
+          return;
+        }
+        widget.onTap();
+      },
       borderRadius: 0,
       listIndex: widget.listIndex,
       // Vertical category column is the catalog's left edge - Left → nav rail
@@ -78,93 +416,23 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       navLeftAlways: true,
       tvRowId: 'browser-categories',
       tvItemIndex: widget.listIndex,
+      focusNode: _rowFocus,
+      allowNestedFocus: tv && _canTvPin,
       // Vertical list — skip hub-row lift; keepVisible only in this scroll view.
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      onKeyEvent: tv ? _onRowKey : null,
       onUpEdge: widget.onUpEdge,
-      onRightEdge: widget.onRightEdge,
-      onFocusChange: (focused) {
-        // TV: ↑/↓ only moves focus chrome — do not select. Selecting rebuilds
-        // the channel grid and starts logo fetches; that runs on OK / → instead.
-        setState(() => _focused = focused);
-        widget.onTvFocusChange?.call(focused);
+      onRightEdge: () {
+        _cancelOkGestures();
+        if (_floating) {
+          _exitFloating();
+          return;
+        }
+        widget.onRightEdge?.call();
       },
+      onFocusChange: _onRowFocusChange,
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
-      child: AnimatedContainer(
-        duration: iptvUseTvFocus(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 140),
-        curve: Curves.easeOutCubic,
-        width: double.infinity,
-        height: widget.compact ? 42 : 46,
-        padding: EdgeInsets.only(
-          left: widget.compact ? 10 : 12,
-          right: widget.compact ? 6 : 8,
-        ),
-        decoration: BoxDecoration(
-          color: _tvFocused
-              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-              : selected
-                  ? ForjaShellColors.inkHover
-                  : _active
-                      ? ForjaShellColors.inkHover
-                      : Colors.transparent,
-          border: Border(
-            left: BorderSide(
-              color: highlight
-                  ? ForjaShellColors.brandGreen
-                  : _active
-                      ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
-                      : Colors.transparent,
-              width: 2.5,
-            ),
-          ),
-        ),
-        child: Row(
-          children: [
-            if (widget.icon != null) ...[
-              Icon(widget.icon, size: widget.compact ? 18 : 20, color: iconColor),
-              SizedBox(width: widget.compact ? 10 : 12),
-            ],
-            Expanded(
-              child: Text(
-                widget.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.plusJakartaSans(
-                  color: titleColor,
-                  fontSize: widget.compact ? 13 : 14,
-                  fontWeight: emphatic ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ),
-            if (_showPin)
-              ExcludeFocus(
-                excluding: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
-                child: Tooltip(
-                  message: widget.pinned ? 'Unpin category' : 'Pin category',
-                  waitDuration: const Duration(milliseconds: 400),
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: InkWell(
-                      onTap: widget.onTogglePin,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Icon(
-                          widget.pinned
-                              ? Icons.push_pin_rounded
-                              : Icons.push_pin_outlined,
-                          size: widget.compact ? 16 : 17,
-                          color: ForjaShellColors.iconMuted,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+      child: rowBody,
     );
 
     final reorderIndex = widget.reorderIndex;
@@ -192,6 +460,49 @@ class _CategoryReorderDragStartListener extends ReorderableDragStartListener {
       debugOwner: this,
     );
   }
+}
+
+/// Static floating chrome (TV long-press reorder / same look as drag proxy).
+Widget _iptvCategoryFloatingChrome(Widget child) {
+  return Transform.translate(
+    offset: const Offset(6, -6),
+    child: Transform.scale(
+      scale: 1.04,
+      alignment: Alignment.centerLeft,
+      child: Material(
+        elevation: 12,
+        color: Colors.transparent,
+        shadowColor: Colors.black.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(10),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Stack(
+            fit: StackFit.passthrough,
+            children: [
+              const Positioned.fill(
+                child: ColoredBox(color: Color(0xFF1E2A22)),
+              ),
+              child,
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: ForjaShellColors.brandGreen.withValues(alpha: 0.8),
+                        width: 1.5,
+                      ),
+                      color: ForjaShellColors.brandGreen.withValues(alpha: 0.10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// Floating drag proxy: lifted card, elevated surface, brand-green accent.
