@@ -6,6 +6,12 @@ import {
   detectPlatformFromFilename,
   versionFromFilename,
 } from '@/lib/r2-latest-release'
+import {
+  filenameMatchesArch,
+  type ClientCpuArch,
+} from '@/lib/client-platform'
+
+export type { ClientCpuArch }
 
 export { versionFromFilename }
 
@@ -274,29 +280,44 @@ export function assetsForPlatform(
 export function primaryAssetForPlatform(
   assets: ReleaseAsset[] | undefined,
   platform: ShowcasePlatform,
+  preferredArch?: ClientCpuArch | null,
 ): ReleaseAsset | null {
   const list = assetsForPlatform(assets, platform)
   if (!list.length) return null
 
   const name = (a: ReleaseAsset) => a.name.toLowerCase()
   const find = (ok: (n: string) => boolean) => list.find((a) => ok(name(a)))
+  const findArch = (ext: string) => {
+    if (!preferredArch) return undefined
+    return find(
+      (n) => filenameMatchesArch(n, preferredArch) && n.endsWith(ext),
+    )
+  }
 
   switch (platform.id) {
     case 'windows':
       return (
+        findArch('.exe') ??
         find((n) => n.includes('windows') && n.endsWith('.exe')) ??
         list[0] ??
         null
       )
-    case 'macos':
+    case 'macos': {
+      // Default Apple Silicon when arch unknown (majority of modern Macs).
+      const arch = preferredArch ?? 'arm64'
       return (
-        find((n) => n.includes('arm64') && n.endsWith('.dmg')) ??
+        find(
+          (n) => filenameMatchesArch(n, arch) && n.endsWith('.dmg'),
+        ) ??
         find((n) => n.endsWith('.dmg')) ??
         list[0] ??
         null
       )
+    }
     case 'linux':
       return (
+        findArch('.appimage') ??
+        findArch('.deb') ??
         find(
           (n) =>
             n.includes('linux') &&
@@ -307,6 +328,7 @@ export function primaryAssetForPlatform(
       )
     case 'android_tv':
       return (
+        findArch('.apk') ??
         find((n) => n.includes('android-tv') && n.endsWith('.apk')) ??
         find((n) => n.endsWith('.apk')) ??
         list[0] ??
@@ -320,10 +342,11 @@ export function primaryAssetForPlatform(
 /** Latest primary download URL per showcase platform (null when missing). */
 export function primaryDownloadsByPlatform(
   assets: ReleaseAsset[] | undefined,
+  preferredArch?: ClientCpuArch | null,
 ): Record<ShowcasePlatformId, ReleaseAsset | null> {
   const out = {} as Record<ShowcasePlatformId, ReleaseAsset | null>
   for (const p of SHOWCASE_PLATFORMS) {
-    out[p.id] = primaryAssetForPlatform(assets, p)
+    out[p.id] = primaryAssetForPlatform(assets, p, preferredArch)
   }
   return out
 }
@@ -336,10 +359,15 @@ export function primaryDownloadsByPlatform(
 export function versionForPlatform(
   release: ReleaseWithAssets | null | undefined,
   platformId: ShowcasePlatformId,
+  preferredArch?: ClientCpuArch | null,
 ): string | null {
   const platform = SHOWCASE_PLATFORMS.find((p) => p.id === platformId)
   if (!platform) return null
-  const asset = primaryAssetForPlatform(release?.assets, platform)
+  const asset = primaryAssetForPlatform(
+    release?.assets,
+    platform,
+    preferredArch,
+  )
   const fromName = asset ? versionFromFilename(asset.name) : null
   if (fromName) return fromName
 

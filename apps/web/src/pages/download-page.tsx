@@ -17,6 +17,11 @@ import {
   type ShowcasePlatform,
   type ShowcasePlatformId,
 } from '@/hooks/use-releases'
+import {
+  guessCpuArch,
+  guessOsPlatform,
+  type ClientCpuArch,
+} from '@/lib/client-platform'
 import { startBackgroundDownload } from '@/lib/start-download'
 import type { ReleaseAsset } from '@/hooks/use-releases'
 import { cn } from '@/lib/utils'
@@ -239,15 +244,6 @@ function orderPlatformAssets(
   if (!primary) return assets
   const rest = assets.filter((a) => a.id !== primary.id)
   return [primary, ...rest]
-}
-
-function guessPlatform(): ShowcasePlatformId {
-  if (typeof navigator === 'undefined') return 'windows'
-  const ua = navigator.userAgent.toLowerCase()
-  const plat = navigator.platform?.toLowerCase() ?? ''
-  if (plat.includes('mac') || ua.includes('mac')) return 'macos'
-  if (plat.includes('linux') || ua.includes('linux')) return 'linux'
-  return 'windows'
 }
 
 /** First `# …` heading from a release notes body (e.g. `1.2.365 — Dabaghin`). */
@@ -560,9 +556,11 @@ export function DownloadPage() {
   const { data, isLoading, isError, error } = useLatestRelease()
   const { data: archiveNotes } = useChangelogNotes()
   const [selectedId, setSelectedId] = useState<ShowcasePlatformId>('windows')
+  const [preferredArch, setPreferredArch] = useState<ClientCpuArch | null>(null)
 
   useEffect(() => {
-    setSelectedId(guessPlatform())
+    setSelectedId(guessOsPlatform())
+    void guessCpuArch().then(setPreferredArch)
   }, [])
 
   const assetsById = useMemo(() => {
@@ -574,17 +572,17 @@ export function DownloadPage() {
   }, [data?.assets])
 
   const primaryById = useMemo(
-    () => primaryDownloadsByPlatform(data?.assets),
-    [data?.assets],
+    () => primaryDownloadsByPlatform(data?.assets, preferredArch),
+    [data?.assets, preferredArch],
   )
 
   const versionById = useMemo(() => {
     const map = {} as Record<ShowcasePlatformId, string | null>
     for (const p of SHOWCASE_PLATFORMS) {
-      map[p.id] = versionForPlatform(data, p.id)
+      map[p.id] = versionForPlatform(data, p.id, preferredArch)
     }
     return map
-  }, [data])
+  }, [data, preferredArch])
 
   const resolveNotes = useMemo(
     () => (version: string | null) =>

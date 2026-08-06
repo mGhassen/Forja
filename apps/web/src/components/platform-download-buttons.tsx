@@ -1,11 +1,12 @@
 import { Link } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   SHOWCASE_PLATFORMS,
   primaryDownloadsByPlatform,
   useLatestRelease,
   type ShowcasePlatformId,
 } from '@/hooks/use-releases'
+import { guessCpuArch, type ClientCpuArch } from '@/lib/client-platform'
 import { startBackgroundDownload } from '@/lib/start-download'
 import { cn } from '@/lib/utils'
 
@@ -53,7 +54,16 @@ export function PlatformDownloadButtons({
   emphasize?: ShowcasePlatformId
 }) {
   const { data, isLoading } = useLatestRelease()
-  const byId = primaryDownloadsByPlatform(data?.assets)
+  const [preferredArch, setPreferredArch] = useState<ClientCpuArch | null>(null)
+
+  useEffect(() => {
+    void guessCpuArch().then(setPreferredArch)
+  }, [])
+
+  const byId = useMemo(
+    () => primaryDownloadsByPlatform(data?.assets, preferredArch),
+    [data?.assets, preferredArch],
+  )
 
   if (variant === 'links') {
     return (
