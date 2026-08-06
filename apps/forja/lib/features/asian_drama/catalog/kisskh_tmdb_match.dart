@@ -16,6 +16,28 @@ class KissKhTmdbMatch {
     }
   }
 
+  /// Strip KissKH noise so TMDB search/scoring lines up with clean titles.
+  @visibleForTesting
+  static String normalizeTitle(String raw) {
+    var t = raw.trim();
+    if (t.isEmpty) return t;
+    // Trailing year: "Queen of Tears (2024)" / "[2024]"
+    t = t.replaceFirst(RegExp(r'[\(\[]\s*\d{4}\s*[\)\]]\s*$'), '').trim();
+    // Quality / mirror tags
+    t = t.replaceAll(
+      RegExp(
+        r'\b(HD|FHD|UHD|4K|1080p|720p|WEB-?DL|BluRay)\b',
+        caseSensitive: false,
+      ),
+      ' ',
+    );
+    // Pipe / dash suffixes: "Title | KissKH" / "Title - Extra"
+    final pipe = t.indexOf('|');
+    if (pipe > 0) t = t.substring(0, pipe);
+    t = t.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return t;
+  }
+
   /// Returns the best TMDB hit, or null when confidence is too low.
   static Future<Movie?> resolve({
     required String title,
@@ -24,7 +46,7 @@ class KissKhTmdbMatch {
     TmdbApi? tmdb,
     int minScore = 2,
   }) async {
-    final q = title.trim();
+    final q = normalizeTitle(title);
     if (q.isEmpty) return null;
     final api = tmdb ?? TmdbApi();
     final wantMovie = preferMovie(kissKhType);
@@ -33,10 +55,13 @@ class KissKhTmdbMatch {
       if (hits.isEmpty) return null;
       Movie? best;
       var bestScore = -1;
-      final wantYear = int.tryParse((year ?? '').trim());
+      final wantYear = int.tryParse((year ?? '').trim()) ??
+          int.tryParse(
+            RegExp(r'\b(19|20)\d{2}\b').firstMatch(title)?.group(0) ?? '',
+          );
       for (final h in hits) {
         var s = 0;
-        final ht = h.title.toLowerCase();
+        final ht = normalizeTitle(h.title).toLowerCase();
         final qt = q.toLowerCase();
         if (ht == qt) {
           s += 5;
@@ -44,6 +69,8 @@ class KissKhTmdbMatch {
           s += 2;
         } else if (ht.contains(qt) || qt.contains(ht)) {
           s += 1;
+        } else {
+          continue;
         }
         if (wantMovie) {
           if (h.mediaType == 'movie') {

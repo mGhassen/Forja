@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/search/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -78,6 +79,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
   List<HubSearchResult> _results = [];
 
   List<String> _recommendationTitles = [];
+  List<String> _recentQueries = const [];
+  bool _recommendationsLoading = true;
   int? _helperFocusedIndex;
   int _gridFocusedIndex = 0;
   int? _pendingGridFocusIndex;
@@ -101,6 +104,13 @@ class _HubSearchPageState extends State<HubSearchPage> {
       ShellBus.shellOverlayHasPage.addListener(_onShellOverlayChanged);
     });
     _loadRecommendations();
+    _loadRecentQueries();
+  }
+
+  Future<void> _loadRecentQueries() async {
+    final recent = await SearchRecentQueries.load(widget.tvTabId);
+    if (!mounted) return;
+    setState(() => _recentQueries = recent);
   }
 
   void _scheduleEnsureSearchFieldFocused() {
@@ -173,11 +183,52 @@ class _HubSearchPageState extends State<HubSearchPage> {
     try {
       final titles = await widget.loadRecommendations();
       if (!mounted) return;
-      setState(() => _recommendationTitles = titles);
+      setState(() {
+        _recommendationTitles = titles;
+        _recommendationsLoading = false;
+      });
       if (_query.isEmpty && _tvFocus(context)) {
         _scheduleEnsureSearchFieldFocused();
       }
-    } catch (_) {}
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _recommendationsLoading = false);
+    }
+  }
+
+  List<_HubHelperEntry> get _helperEntries {
+    final recent = [
+      for (final q in _recentQueries) _HubHelperEntry(q, isRecent: true),
+    ];
+    final recentLower = {for (final q in _recentQueries) q.toLowerCase()};
+
+    if (_query.trim().isEmpty) {
+      final recs = _recommendationTitles.where(
+        (t) => !recentLower.contains(t.toLowerCase()),
+      );
+      return [
+        ...recent,
+        for (final t in recs) _HubHelperEntry(t, isRecent: false),
+      ];
+    }
+
+    // Keep recent pinned while searching; result titles follow.
+    return [
+      ...recent,
+      for (var i = 0; i < _results.length; i++)
+        if (!recentLower.contains(_results[i].title.toLowerCase()))
+          _HubHelperEntry(
+            _results[i].title,
+            isRecent: false,
+            resultIndex: i,
+          ),
+    ];
+  }
+
+  Future<void> _recordRecentQuery(String query) async {
+    final next = await SearchRecentQueries.record(widget.tvTabId, query);
+    if (!mounted) return;
+    setState(() => _recentQueries = next);
   }
 
   void _onSearchFieldFocusChange() {
@@ -280,6 +331,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
       _helperFocusedIndex = null;
       _gridFocusedIndex = 0;
     });
+    _recordRecentQuery(query);
     try {
       final results = await widget.onSearch(query);
       if (gen != _searchGeneration || !mounted) return;
@@ -531,10 +583,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
     return () => _focusResultCardAtVisualLevel(index);
   }
 
-  int _helperItemCount() {
-    if (_query.trim().isNotEmpty) return _results.length;
-    return _recommendationTitles.length;
-  }
+  int _helperItemCount() => _helperEntries.length;
 
   void _focusSearchClose() {
     if (!_closeFocusNode.canRequestFocus) return;
@@ -820,23 +869,42 @@ class _HubSearchPageState extends State<HubSearchPage> {
     );
   }
 
-  Widget _buildHelperTitle(String title, {required bool selected}) {
+  Widget _buildHelperTitle(
+    String title, {
+    required bool selected,
+    bool isRecent = false,
+  }) {
+    final color = selected
+        ? ForjaShellColors.textPrimary
+        : ForjaShellColors.textSecondary;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Text(
-          title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: selected
-                ? ForjaShellColors.textPrimary
-                : ForjaShellColors.textSecondary,
-            fontSize: selected ? 17 : 15,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            height: 1.25,
-          ),
+        child: Row(
+          children: [
+            if (isRecent) ...[
+              Icon(
+                Icons.history,
+                size: selected ? 15 : 13,
+                color: color.withValues(alpha: selected ? 0.9 : 0.55),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: selected ? 17 : 15,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -844,9 +912,19 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   Widget _buildHelpersList(BuildContext context) {
     final hasQuery = _query.trim().isNotEmpty;
+    final entries = _helperEntries;
 
-    if (hasQuery) {
-      if (_results.isEmpty && _isSearching) {
+    if (entries.isEmpty) {
+      if (!hasQuery && _recommendationsLoading) {
+        return const Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        );
+      }
+      if (hasQuery && _isSearching) {
         return Center(
           child: SizedBox(
             width: 22,
@@ -858,76 +936,16 @@ class _HubSearchPageState extends State<HubSearchPage> {
           ),
         );
       }
-      if (_results.isEmpty) return const SizedBox.shrink();
-
-      return TvCatalogRow(
-        tabId: widget.tvTabId,
-        rowId: _helperResultsRowId,
-        sortOrder: 0,
-        itemCount: _results.length,
-        orientation: ShellTvRowOrientation.vertical,
-        child: FocusTraversalGroup(
-          policy: ReadingOrderTraversalPolicy(),
-          child: ListView.separated(
-            controller: _helpersScrollController,
-            clipBehavior: Clip.none,
-            padding: const EdgeInsets.only(right: 8, bottom: 8),
-            itemCount: _results.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 2),
-            itemBuilder: (context, index) {
-              final item = _results[index];
-              final count = _results.length;
-              return shellFocusableTap(
-                context: context,
-                onTap: () => _focusResultCardAt(index),
-                borderRadius: 4,
-                scaleOnFocus: 1.0,
-                navLeftAlways: true,
-                listIndex: index,
-                tvTabId: widget.tvTabId,
-                tvRowId: _helperResultsRowId,
-                tvZone: ShellTvZone.chipStrip,
-                tvItemIndex: index,
-                focusNode: index == 0 ? _firstHelperFocusNode : null,
-                onUpEdge: _helperUpEdge(index),
-                onDownEdge: _helperDownEdge(index, count),
-                onRightEdge: _helperRightEdge(index),
-                ensureVisibleMode: ShellTvEnsureVisibleMode.row,
-                onFocusChange: (focused) {
-                  setState(() {
-                    if (focused) {
-                      _helperFocusedIndex = index;
-                    } else if (_helperFocusedIndex == index) {
-                      _helperFocusedIndex = null;
-                    }
-                  });
-                },
-                child: _buildHelperTitle(
-                  item.title,
-                  selected: _helperFocusedIndex == index,
-                ),
-              );
-            },
-          ),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
-    if (_recommendationTitles.isEmpty) {
-      return const Center(
-        child: SizedBox(
-          width: 22,
-          height: 22,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      );
-    }
+    final rowId = hasQuery ? _helperResultsRowId : _helpersRowId;
 
     return TvCatalogRow(
       tabId: widget.tvTabId,
-      rowId: _helpersRowId,
+      rowId: rowId,
       sortOrder: 0,
-      itemCount: _recommendationTitles.length,
+      itemCount: entries.length,
       orientation: ShellTvRowOrientation.vertical,
       child: FocusTraversalGroup(
         policy: ReadingOrderTraversalPolicy(),
@@ -935,20 +953,27 @@ class _HubSearchPageState extends State<HubSearchPage> {
           controller: _helpersScrollController,
           clipBehavior: Clip.none,
           padding: const EdgeInsets.only(right: 8, bottom: 8),
-          itemCount: _recommendationTitles.length,
+          itemCount: entries.length,
           separatorBuilder: (_, _) => const SizedBox(height: 2),
           itemBuilder: (context, index) {
-            final title = _recommendationTitles[index];
-            final count = _recommendationTitles.length;
+            final entry = entries[index];
+            final count = entries.length;
             return shellFocusableTap(
               context: context,
-              onTap: () => _applyHelperQuery(title),
+              onTap: () {
+                final resultIndex = entry.resultIndex;
+                if (resultIndex != null) {
+                  _focusResultCardAt(resultIndex);
+                } else {
+                  _applyHelperQuery(entry.title);
+                }
+              },
               borderRadius: 4,
               scaleOnFocus: 1.0,
               navLeftAlways: true,
               listIndex: index,
               tvTabId: widget.tvTabId,
-              tvRowId: _helpersRowId,
+              tvRowId: rowId,
               tvZone: ShellTvZone.chipStrip,
               tvItemIndex: index,
               focusNode: index == 0 ? _firstHelperFocusNode : null,
@@ -966,8 +991,9 @@ class _HubSearchPageState extends State<HubSearchPage> {
                 });
               },
               child: _buildHelperTitle(
-                title,
+                entry.title,
                 selected: _helperFocusedIndex == index,
+                isRecent: entry.isRecent,
               ),
             );
           },
@@ -1410,4 +1436,16 @@ class _HubSearchCompactCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HubHelperEntry {
+  const _HubHelperEntry(
+    this.title, {
+    required this.isRecent,
+    this.resultIndex,
+  });
+
+  final String title;
+  final bool isRecent;
+  final int? resultIndex;
 }

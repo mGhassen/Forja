@@ -10,7 +10,7 @@ import {
   errMessage,
   type IptvPortalEditForm,
 } from '@/components/iptv-portal-row'
-import { PageHeader } from '@/components/admin-ui'
+import { PageHeader, TablePagination } from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -22,10 +22,12 @@ import {
 } from '@/components/ui/select'
 import { adminDb } from '@/lib/admin-db'
 import { catalogVerify } from '@/lib/catalog-verify'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
 import {
   createPortalShare,
   formatShareCode,
 } from '@/lib/iptv-portal-share'
+import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
 
 type Cand = {
@@ -170,17 +172,18 @@ export function AdminPoolPage() {
 
   const list = useQuery({
     queryKey: ['admin', 'pool'],
-    queryFn: async () => {
-      const { data, error } = await adminDb
-        .from('iptv_portals')
-        .select(
-          'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, catalog_pool, updated_at, last_checked_at',
-        )
-        .order('updated_at', { ascending: false })
-        .limit(5000)
-      if (error) throw error
-      return (data ?? []) as Cand[]
-    },
+    queryFn: () =>
+      fetchAllRows(async (from, to) => {
+        const { data, error } = await adminDb
+          .from('iptv_portals')
+          .select(
+            'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, catalog_pool, updated_at, last_checked_at',
+          )
+          .order('updated_at', { ascending: false })
+          .range(from, to)
+        if (error) throw error
+        return (data ?? []) as Cand[]
+      }),
   })
 
   const regionOptions = useMemo(() => {
@@ -214,6 +217,11 @@ export function AdminPoolPage() {
     () => sortHostGroups(groupByHost(filteredRows), sortKey, sortDir),
     [filteredRows, sortKey, sortDir],
   )
+
+  const paging = useTablePagination(groups, {
+    initialPageSize: 50,
+    resetKey: `${inventoryFilter}|${statusFilter}|${regionFilter}|${sortKey}|${sortDir}`,
+  })
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -490,7 +498,7 @@ export function AdminPoolPage() {
           {(list.data?.length ?? 0) !== filteredRows.length
             ? ` / ${list.data?.length ?? 0}`
             : ''}{' '}
-          portals
+          portals · {groups.length} hosts
         </p>
       </div>
 
@@ -544,7 +552,7 @@ export function AdminPoolPage() {
               })}
               <span className="sr-only">Check</span>
             </div>
-            {groups.map((g) => {
+            {paging.pageRows.map((g) => {
               const expanded = open.has(g.host)
               const hostBusy = checkingHost === g.host
               return (
@@ -637,6 +645,13 @@ export function AdminPoolPage() {
                 </div>
               )
             })}
+            <TablePagination
+              page={paging.page}
+              pageSize={paging.pageSize}
+              total={paging.total}
+              onPageChange={paging.setPage}
+              onPageSizeChange={paging.setPageSize}
+            />
           </>
         )}
       </div>

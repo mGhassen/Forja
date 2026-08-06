@@ -29,6 +29,7 @@ class SettingsPlaybackSnapshot {
     required this.playInBackground,
     required this.iptvEpgEnabled,
     required this.iptvLiveMaxHeightLabel,
+    required this.iptvLiveRecoveryModeLabel,
     required this.maxPlaybackHeightLabel,
     required this.animeTitleLanguageLabel,
   });
@@ -49,6 +50,7 @@ class SettingsPlaybackSnapshot {
   final bool playInBackground;
   final bool iptvEpgEnabled;
   final String iptvLiveMaxHeightLabel;
+  final String iptvLiveRecoveryModeLabel;
   final String maxPlaybackHeightLabel;
   final String animeTitleLanguageLabel;
 
@@ -69,6 +71,7 @@ class SettingsPlaybackSnapshot {
     bool? playInBackground,
     bool? iptvEpgEnabled,
     String? iptvLiveMaxHeightLabel,
+    String? iptvLiveRecoveryModeLabel,
     String? maxPlaybackHeightLabel,
     String? animeTitleLanguageLabel,
   }) {
@@ -94,6 +97,8 @@ class SettingsPlaybackSnapshot {
       iptvEpgEnabled: iptvEpgEnabled ?? this.iptvEpgEnabled,
       iptvLiveMaxHeightLabel:
           iptvLiveMaxHeightLabel ?? this.iptvLiveMaxHeightLabel,
+      iptvLiveRecoveryModeLabel:
+          iptvLiveRecoveryModeLabel ?? this.iptvLiveRecoveryModeLabel,
       maxPlaybackHeightLabel:
           maxPlaybackHeightLabel ?? this.maxPlaybackHeightLabel,
       animeTitleLanguageLabel:
@@ -140,6 +145,9 @@ class SettingsPlaybackNotifier
       iptvEpgEnabled: iptvEpgEnabled,
       iptvLiveMaxHeightLabel: SettingsService.iptvLiveMaxHeightLabel(
         await s.getIptvLiveMaxHeight(),
+      ),
+      iptvLiveRecoveryModeLabel: SettingsService.iptvLiveRecoveryModeLabel(
+        await s.getIptvLiveRecoveryMode(),
       ),
       maxPlaybackHeightLabel: SettingsService.maxPlaybackHeightLabel(
         await s.getMaxPlaybackHeight(),

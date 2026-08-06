@@ -11,19 +11,24 @@ class IptvPlayerBootPrefs {
   const IptvPlayerBootPrefs({
     required this.volume,
     required this.epgEnabled,
+    required this.liveRecoveryMode,
   });
 
   final double volume;
   final bool epgEnabled;
+  /// [SettingsService.iptvLiveRecoveryBuffered] or classic.
+  final String liveRecoveryMode;
 }
 
 final iptvPlayerBootPrefsProvider =
     FutureProvider.autoDispose<IptvPlayerBootPrefs>((ref) async {
   final playback = await ref.watch(settingsPlaybackProvider.future);
   final volume = await IptvStore.loadPlayerVolume();
+  final recovery = await SettingsService().getIptvLiveRecoveryMode();
   return IptvPlayerBootPrefs(
     volume: volume,
     epgEnabled: playback.iptvEpgEnabled,
+    liveRecoveryMode: recovery,
   );
 });
 

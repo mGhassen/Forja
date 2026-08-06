@@ -45,14 +45,6 @@ class ProviderRuntimeConfig {
     if (base == 'vidwish') {
       return animePlaybackProfile('megaplay');
     }
-    // Asian Drama mirrors share one CDN policy (videotradercdn PNG segments).
-    if (base == 'kisskh' || base.startsWith('kisskh.')) {
-      return animePlaybackProfiles['kisskh'] ??
-          const AnimePlaybackProfile(
-            probe: AnimeProbeMode.masterOnly,
-            pngStrip: AnimePngStripMode.force,
-          );
-    }
     final candidates = <String>[
       raw,
       raw.toLowerCase(),
@@ -843,13 +835,6 @@ class ProviderRuntimeSnapshot {
   /// Every in-scope anime [sourceKey] - remote overlay merges by key.
   static const Map<String, AnimePlaybackProfile> _builtinAnimePlaybackProfiles =
       {
-    // KissKh Asian Drama CDN (videotradercdn / streamingcdn): HLS segments are
-    // `.png` shells. `force` — Range samples of a tall PNG header can look like
-    // imageNoTs and exhaust the open pipeline if we only use `auto`.
-    'kisskh': AnimePlaybackProfile(
-      probe: AnimeProbeMode.masterOnly,
-      pngStrip: AnimePngStripMode.force,
-    ),
     'megaplay': AnimePlaybackProfile(
       probe: AnimeProbeMode.segmentPoisonSample,
       pngStrip: AnimePngStripMode.auto,

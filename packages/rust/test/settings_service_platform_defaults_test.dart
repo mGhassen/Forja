@@ -175,7 +175,6 @@ void main() {
 
     final nav = await service.getNavbarConfig();
     expect(nav, [
-      'search',
       'home',
       'asian_drama',
       'anime',
@@ -405,6 +404,39 @@ void main() {
 
     expect(nav, PlatformDefaults.defaultNavIds);
   });
+
+  test(
+    'shell 091 migrates previous default that included Search',
+    () async {
+      await kvSetStringList('navbar_config', const [
+        'search',
+        'home',
+        'asian_drama',
+        'anime',
+        'iptv',
+        'live_matches',
+        'mylist',
+      ]);
+      await kvSetStringList(
+        'navbar_known_ids',
+        List.from(SettingsService.allNavIds),
+      );
+      await kvSetString('navbar_shell_080', '1');
+      await kvSetString('navbar_shell_081', '1');
+      await kvSetString('navbar_shell_084', '1');
+      await kvSetString('navbar_shell_085', '1');
+      await kvSetString('navbar_shell_086', '1');
+      await kvSetString('navbar_shell_087', '1');
+      await kvSetString('navbar_shell_088', '1');
+      await kvSetString('navbar_shell_089', '1');
+      await kvSetString('navbar_shell_090', '1');
+
+      final nav = await SettingsService().getNavbarConfig();
+
+      expect(nav, PlatformDefaults.defaultNavIds);
+      expect(nav, isNot(contains('search')));
+    },
+  );
 
   test('default nav tab persists and resolves startup index', () async {
     final service = SettingsService();

@@ -62,6 +62,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
   List<Map<String, String>> _characters = [];
   List<Map<String, String>> _staff = [];
   List<AnimeCard> _recommendations = [];
+  List<String> _heroBackdropUrls = [];
   Map<String, dynamic>? _progress;
   Set<String> _watchedEpisodes = {};
   String? _error;
@@ -188,6 +189,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
       _staff = [];
       _recommendations = [];
       _related = [];
+      _heroBackdropUrls = [];
       _watchedEpisodes = {};
       _error = null;
     });
@@ -203,6 +205,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
       _staff = [];
       _recommendations = [];
       _related = [];
+      _heroBackdropUrls = [];
     });
 
     // Episodes load only after details for this opened season (thumbs + count).
@@ -215,6 +218,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
       if (!mounted || gen != _loadGen) return;
       setState(() => _full = enriched);
       _loadEpisodesForOpenedSeason(enriched, gen: gen);
+      _loadHeroBackdropUrls(enriched, gen: gen);
     }).catchError((e) {
       if (mounted && gen == _loadGen && _full == null) {
         setState(() {
@@ -230,6 +234,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         setState(() => _full = enriched);
       });
     }
+    _loadHeroBackdropUrls(seed, gen: gen);
 
     ref.read(animeRelationsProvider(seed.id).future).then((r) {
       if (!mounted || gen != _loadGen) return;
@@ -265,6 +270,24 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     }).catchError((_) {});
 
     _loadWatchedEpisodes(forId: seed.id, gen: gen);
+  }
+
+  Future<void> _loadHeroBackdropUrls(AnimeCard card, {required int gen}) async {
+    final urls = await _service.resolveTmdbHeroUrls(card);
+    if (!mounted || gen != _loadGen) return;
+    final fallback = card.heroBackdrop.trim();
+    final merged = <String>[
+      if (fallback.isNotEmpty) fallback,
+      ...urls,
+    ];
+    // Dedupe while keeping order
+    final seen = <String>{};
+    final out = <String>[];
+    for (final u in merged) {
+      if (seen.add(u)) out.add(u);
+    }
+    if (out.isEmpty) return;
+    setState(() => _heroBackdropUrls = out);
   }
 
   void _loadEpisodesForOpenedSeason(AnimeCard details, {required int gen}) {
@@ -594,6 +617,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         children: [
           HubDetailsHero(
             backdropUrl: a.heroBackdrop,
+            backdropUrls: _heroBackdropUrls,
             title: a.displayTitle,
             subtitle: a.titleNative.isNotEmpty && a.titleNative != a.displayTitle
                 ? a.titleNative

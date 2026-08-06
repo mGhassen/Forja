@@ -283,6 +283,22 @@ class _SettingsPlaybackSectionState
                   schedulePreferencesSyncPush();
                 },
               ),
+              settingsFocusableDropdown(
+                context,
+                'IPTV live recovery',
+                'How live channels reconnect. Stable (default) waits until the buffer is empty — same as 1.3.170. Classic reconnects on stall timers like 1.3.114. Takes effect next time you open the player.',
+                snap.iptvLiveRecoveryModeLabel,
+                SettingsService.iptvLiveRecoveryModeOptions.keys.toList(),
+                (val) async {
+                  if (val == null) return;
+                  await _settings.setIptvLiveRecoveryMode(
+                    SettingsService.iptvLiveRecoveryModeStored(val),
+                  );
+                  await _playback.patch(
+                    (s) => s.copyWith(iptvLiveRecoveryModeLabel: val),
+                  );
+                },
+              ),
             ],
             if (widget.visibility.showPlaySources)
               settingsFocusableDropdown(

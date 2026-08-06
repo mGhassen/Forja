@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   PageHeader,
+  TablePagination,
   tableClassName,
   tdClassName,
   thClassName,
@@ -10,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { adminDb } from '@/lib/admin-db'
+import { useTablePagination } from '@/lib/use-table-pagination'
 import {
   SUPPORTED_SCHEMA,
   type AnimeEmbedHost,
@@ -158,19 +160,22 @@ function EmbedHostFields({
   )
 }
 
-function DataTable({
+function DataTable<T,>({
   headers,
-  colSpan,
-  empty,
-  children,
+  rows,
+  emptyLabel = 'No rows — add one below.',
   footer,
+  initialPageSize = 25,
+  renderRow,
 }: {
   headers: ReactNode[]
-  colSpan: number
-  empty?: boolean
-  children: ReactNode
+  rows: T[]
+  emptyLabel?: string
   footer?: ReactNode
+  initialPageSize?: number
+  renderRow: (row: T, absoluteIndex: number) => ReactNode
 }) {
+  const paging = useTablePagination(rows, { initialPageSize })
   return (
     <div className="space-y-2">
       <div className="overflow-x-auto border-y border-forja-border/70">
@@ -192,21 +197,33 @@ function DataTable({
             </tr>
           </thead>
           <tbody>
-            {empty ? (
+            {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={colSpan}
+                  colSpan={headers.length}
                   className={cn(tdClassName, 'px-2 py-3 text-forja-muted')}
                 >
-                  No rows — add one below.
+                  {emptyLabel}
                 </td>
               </tr>
             ) : (
-              children
+              paging.pageRows.map((row, i) =>
+                renderRow(row, paging.startIndex + i),
+              )
             )}
           </tbody>
         </table>
       </div>
+      {rows.length > 0 ? (
+        <TablePagination
+          page={paging.page}
+          pageSize={paging.pageSize}
+          total={paging.total}
+          onPageChange={paging.setPage}
+          onPageSizeChange={paging.setPageSize}
+          pageSizeOptions={[10, 25, 50]}
+        />
+      ) : null}
       {footer}
     </div>
   )
@@ -226,8 +243,7 @@ function KvTable({
   return (
     <DataTable
       headers={[keyLabel, valueLabel, '']}
-      colSpan={3}
-      empty={rows.length === 0}
+      rows={rows}
       footer={
         <Button
           type="button"
@@ -240,8 +256,7 @@ function KvTable({
           Add
         </Button>
       }
-    >
-      {rows.map((r, i) => (
+      renderRow={(r, i) => (
         <tr
           key={i}
           className="border-t border-forja-border/40 hover:bg-white/2"
@@ -279,8 +294,8 @@ function KvTable({
             </Button>
           </td>
         </tr>
-      ))}
-    </DataTable>
+      )}
+    />
   )
 }
 
@@ -550,8 +565,7 @@ export function AdminProvidersPage() {
           >
             <DataTable
               headers={['Provider', 'Movie', 'TV', '']}
-              colSpan={4}
-              empty={templateRows.length === 0}
+              rows={templateRows}
               footer={
                 <Button
                   type="button"
@@ -569,8 +583,7 @@ export function AdminProvidersPage() {
                   Add template
                 </Button>
               }
-            >
-              {templateRows.map((r, i) => (
+              renderRow={(r, i) => (
                 <tr
                   key={i}
                   className="border-t border-forja-border/40 hover:bg-white/2"
@@ -620,8 +633,8 @@ export function AdminProvidersPage() {
                     </Button>
                   </td>
                 </tr>
-              ))}
-            </DataTable>
+              )}
+            />
           </Section>
 
           <Section
@@ -744,9 +757,8 @@ export function AdminProvidersPage() {
             ) : (
               <DataTable
                 headers={['sourceKey', 'probe', 'pngStripHostContains', '']}
-                colSpan={4}
-              >
-                {Object.entries(cfg.anime.playbackProfiles).map(([id, p]) => (
+                rows={Object.entries(cfg.anime.playbackProfiles)}
+                renderRow={([id, p]) => (
                   <tr
                     key={id}
                     className="border-t border-forja-border/40 hover:bg-white/2"
@@ -848,8 +860,8 @@ export function AdminProvidersPage() {
                       </Button>
                     </td>
                   </tr>
-                ))}
-              </DataTable>
+                )}
+              />
             )}
           </Section>
 
@@ -893,9 +905,8 @@ export function AdminProvidersPage() {
                   'Origin',
                   '',
                 ]}
-                colSpan={5}
-              >
-                {cfg.cdnRefererRules.map((r, i) => (
+                rows={cfg.cdnRefererRules}
+                renderRow={(r, i) => (
                   <tr
                     key={i}
                     className="border-t border-forja-border/40 hover:bg-white/2"
@@ -952,8 +963,8 @@ export function AdminProvidersPage() {
                       </Button>
                     </td>
                   </tr>
-                ))}
-              </DataTable>
+                )}
+              />
             )}
           </Section>
         </div>

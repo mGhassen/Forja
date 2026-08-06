@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Canceled** · **13 / 14** components historical · **1 / 10** acceptance historical · approach abandoned |
-| **Current slice** | **Abandoned** — reporter still saw reconnect loops; playback restored to `v1.3.114` semantics (see issue 148 `I148-T08`) |
+| **Progress** | **Canceled** · buffer-aware behavior optional via Settings **Stable** (`I148-T09`) |
+| **Current slice** | **Canceled as sole path** — Stable (1.3.170) / Classic (1.3.114) live under issue 148 |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -155,16 +155,8 @@ restarts. Truly empty cache + dead feed still reconnects.
 
 ---
 
-## Abandoned (2026-08-06)
+## Abandoned as sole path (2026-08-06)
 
-Progress-aware / cache-gated recovery did **not** stop the reporter's
-"plays ~1–2 min then Reconnecting…" loop (gates delayed the symptom; hard-block
-made dead streams worse). Per product decision, **all RFC-052 runtime code was
-stripped** and IPTV player playback/recovery restored to **`v1.3.114`**
-semantics (`cache-pause=no`, 25 MB back-buffer, seekable-only jump-to-live on
-open, immediate error/log → `_triggerRecovery`, simple watchdog). PiP, Player
-menus, Exo TextureView/ATV, and open serialization were kept.
+Progress-aware / cache-gated recovery did **not** stop every reporter loop in mid-experiment builds, so RFC-052 was canceled as the mandatory approach.
 
-Historical component/acceptance rows above stay as shipped-then-reverted
-records. **Do not re-land this RFC without a captured log that proves a new
-root cause.** Track verification on [issue 148](../../issues/148-[open]-iptv-live-edge-snap-reconnect-loop.md) (`I148-T08`, `I148-A01`–`A07`).
+**Superseded by issue 148 `I148-T09`:** the same buffer-aware policy ships again as Settings → Playback → **IPTV live recovery → Stable (1.3.170)** (default). **Classic (1.3.114)** stall-timer recovery is the other option. Do not revive this RFC as a single forced path without logs.

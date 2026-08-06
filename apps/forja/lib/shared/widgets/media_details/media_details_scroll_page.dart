@@ -37,20 +37,22 @@ class MediaDetailsScrollPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           hero,
-          MediaDetailsBody(
-            backgroundColor: backgroundColor,
-            bodyOverlap: bodyOverlap,
-            topSpacing: topSpacing,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var i = 0; i < sections.length; i++) ...[
-                  if (i > 0) const SizedBox(height: DetailsTokens.sectionSpacing),
-                  sections[i],
+          if (sections.isNotEmpty)
+            MediaDetailsBody(
+              backgroundColor: backgroundColor,
+              bodyOverlap: bodyOverlap,
+              topSpacing: topSpacing,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < sections.length; i++) ...[
+                    if (i > 0)
+                      const SizedBox(height: DetailsTokens.sectionSpacing),
+                    sections[i],
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
         ],
       ),
     );

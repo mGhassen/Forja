@@ -92,6 +92,8 @@ class SettingsService {
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
   /// IPTV live Exo only: 0 = full portal quality (default). Never auto-cap.
   static const String _iptvLiveMaxHeightKey = 'iptv_live_max_height';
+  /// IPTV live auto-recovery: `buffered` (1.3.170) or `classic` (1.3.114).
+  static const String _iptvLiveRecoveryModeKey = 'iptv_live_recovery_mode';
   static const String _maxPlaybackHeightKey = 'max_playback_height';
   static const String _animeTitleLanguageKey = 'anime_title_language';
 
@@ -108,6 +110,27 @@ class SettingsService {
       if (entry.value == height) return entry.key;
     }
     return height > 0 ? '${height}p' : 'Auto (full quality)';
+  }
+
+  /// Default = buffer-aware reconnect (shipped in 1.3.170).
+  static const String iptvLiveRecoveryBuffered = 'buffered';
+  static const String iptvLiveRecoveryClassic = 'classic';
+
+  static const Map<String, String> iptvLiveRecoveryModeOptions = {
+    'Stable — buffer-aware (1.3.170)': iptvLiveRecoveryBuffered,
+    'Classic — stall timers (1.3.114)': iptvLiveRecoveryClassic,
+  };
+
+  static String iptvLiveRecoveryModeLabel(String stored) {
+    final v = stored.trim().toLowerCase();
+    for (final entry in iptvLiveRecoveryModeOptions.entries) {
+      if (entry.value == v) return entry.key;
+    }
+    return iptvLiveRecoveryModeOptions.keys.first;
+  }
+
+  static String iptvLiveRecoveryModeStored(String label) {
+    return iptvLiveRecoveryModeOptions[label] ?? iptvLiveRecoveryBuffered;
   }
 
   /// Anime catalog display language (AniList). Default romaji.
@@ -292,6 +315,24 @@ class SettingsService {
 
   Future<void> setIptvLiveMaxHeight(int height) async =>
       kvSetInt(_iptvLiveMaxHeightKey, height < 0 ? 0 : height);
+
+  /// IPTV live auto-recovery. Default [iptvLiveRecoveryBuffered] (1.3.170).
+  Future<String> getIptvLiveRecoveryMode() async {
+    final raw =
+        (await kvGetString(_iptvLiveRecoveryModeKey) ?? iptvLiveRecoveryBuffered)
+            .trim()
+            .toLowerCase();
+    return raw == iptvLiveRecoveryClassic
+        ? iptvLiveRecoveryClassic
+        : iptvLiveRecoveryBuffered;
+  }
+
+  Future<void> setIptvLiveRecoveryMode(String mode) async {
+    final v = mode.trim().toLowerCase() == iptvLiveRecoveryClassic
+        ? iptvLiveRecoveryClassic
+        : iptvLiveRecoveryBuffered;
+    await kvSetString(_iptvLiveRecoveryModeKey, v);
+  }
 
   Future<int> getMaxPlaybackHeight() async =>
       await kvGetInt(_maxPlaybackHeightKey, fallback: 0);
@@ -961,6 +1002,7 @@ class SettingsService {
   static const String _navbarShell088Key = 'navbar_shell_088';
   static const String _navbarShell089Key = 'navbar_shell_089';
   static const String _navbarShell090Key = 'navbar_shell_090';
+  static const String _navbarShell091Key = 'navbar_shell_091';
   static final ValueNotifier<int> navbarChangeNotifier = ValueNotifier<int>(0);
 
   /// Default visible tabs (settings appended in MainScreen).
@@ -1027,6 +1069,17 @@ class SettingsService {
     'home',
     'anime',
     'asian_drama',
+    'iptv',
+    'live_matches',
+    'mylist',
+  ];
+
+  /// Default before Search was withheld from the shell (shell 090 era).
+  static const List<String> _legacySearchInDefaultNavIds = [
+    'search',
+    'home',
+    'asian_drama',
+    'anime',
     'iptv',
     'live_matches',
     'mylist',
@@ -1152,6 +1205,7 @@ class SettingsService {
       await kvSetString(_navbarShell088Key, '1');
       await kvSetString(_navbarShell089Key, '1');
       await kvSetString(_navbarShell090Key, '1');
+      await kvSetString(_navbarShell091Key, '1');
     }
 
     await kvSetString(_platformDefaultsSeededKey, profile.name);
@@ -1257,6 +1311,18 @@ class SettingsService {
         }
       }
       await kvSetString(_navbarShell090Key, '1');
+    }
+    if (!await kvHasKey(_navbarShell091Key)) {
+      if (await kvHasKey(_navbarConfigKey)) {
+        final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+        if (listEquals(raw, _legacySearchInDefaultNavIds)) {
+          await kvSetStringList(
+            _navbarConfigKey,
+            List<String>.from(defaultVisibleNavIds),
+          );
+        }
+      }
+      await kvSetString(_navbarShell091Key, '1');
     }
     if (!await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));

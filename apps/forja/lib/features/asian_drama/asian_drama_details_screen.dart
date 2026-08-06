@@ -6,13 +6,14 @@ import 'package:forja/features/asian_drama/providers/asian_drama_providers.dart'
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero/hero_utils.dart';
+import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
-import 'package:forja/shared/widgets/media_details/media_details_recommendations_section.dart';
+import 'package:forja/shared/widgets/media_details/media_details.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
@@ -314,24 +315,72 @@ class _AsianDramaDetailsScreenState
     return TmdbApi.getBackdropUrl(path);
   }
 
+  List<String> _heroBackdropUrls({
+    required String primary,
+    required List<String> screenshotPaths,
+  }) {
+    final urls = <String>[
+      if (primary.trim().isNotEmpty) primary.trim(),
+      for (final raw in screenshotPaths)
+        if (raw.trim().isNotEmpty)
+          raw.trim().startsWith('http')
+              ? raw.trim()
+              : TmdbApi.getBackdropUrl(raw.trim()),
+    ];
+    return RotatingHeroBackdrop.normalizeUrls(urls);
+  }
+
   String _overview(KdramaDetails det, RichMediaDetails? tmdb) {
     final kiss = det.description.trim();
     if (kiss.isNotEmpty) return kiss;
     return tmdb?.movie.overview.trim() ?? '';
   }
 
-  Map<int, List<Map<String, dynamic>>>? _episodeMaps(KdramaDetails det) {
+  Map<int, List<Map<String, dynamic>>>? _episodeMaps(
+    KdramaDetails det, {
+    Map<int, String> stills = const {},
+    Map<int, Map<String, dynamic>> meta = const {},
+  }) {
     if (det.episodes.isEmpty) return null;
     return {
       1: [
         for (var i = 0; i < det.episodes.length; i++)
-          {
-            'episode_number': i + 1,
-            'name': 'Episode ${det.episodes[i].displayNumber}',
-            'overview': '',
-            'runtime': 0,
-          },
+          _episodeMapEntry(
+            index: i,
+            ep: det.episodes[i],
+            stills: stills,
+            meta: meta,
+          ),
       ],
+    };
+  }
+
+  Map<String, dynamic> _episodeMapEntry({
+    required int index,
+    required KdramaEpisode ep,
+    required Map<int, String> stills,
+    required Map<int, Map<String, dynamic>> meta,
+  }) {
+    // Picker selection keys are 1-based list indices (sorted KissKH order).
+    final pickerNum = index + 1;
+    final kissNum = ep.number == ep.number.truncateToDouble()
+        ? ep.number.toInt()
+        : null;
+    final tmdbMeta = meta[kissNum] ?? meta[pickerNum] ?? const {};
+    final still = stills[kissNum ?? -1] ?? stills[pickerNum] ?? '';
+    final tmdbName = (tmdbMeta['name'] as String?)?.trim() ?? '';
+    final overview = (tmdbMeta['overview'] as String?)?.trim() ?? '';
+    final runtime = (tmdbMeta['runtime'] as int?) ?? 0;
+    final aired = (tmdbMeta['aired'] as String?)?.trim() ?? '';
+    return {
+      'episode_number': pickerNum,
+      'name': tmdbName.isNotEmpty
+          ? tmdbName
+          : 'Episode ${ep.displayNumber}',
+      'overview': overview,
+      'runtime': runtime,
+      if (still.isNotEmpty) 'still_path': still,
+      if (aired.isNotEmpty) 'aired': aired,
     };
   }
 
@@ -397,7 +446,8 @@ class _AsianDramaDetailsScreenState
   Widget _buildScrollLayout() {
     final det = _details!;
     final tmdbAsync = ref.watch(asianDramaTmdbEnrichmentProvider(_tmdbQuery));
-    final tmdb = tmdbAsync.asData?.value;
+    final enrich = tmdbAsync.asData?.value;
+    final tmdb = enrich?.rich;
     final cast = tmdb?.extras.cast ?? const <Map<String, String>>[];
     final crew = _crewAsCast(tmdb?.extras.crew ?? const []);
     final trailers = tmdb?.extras.trailers ?? const <MediaTrailer>[];
@@ -408,6 +458,10 @@ class _AsianDramaDetailsScreenState
         ? tmdb!.movie.voteAverage
         : null;
     final backdrop = _tmdbBackdropUrl(tmdb) ?? det.cover;
+    final heroBackdrops = _heroBackdropUrls(
+      primary: backdrop,
+      screenshotPaths: enrich?.imagePaths ?? const [],
+    );
 
     final resumeEp = (_progress?['episodeNumber'] as num?)?.toInt();
     final rawPosMs = (_progress?['positionMs'] as num?)?.toInt();
@@ -465,7 +519,11 @@ class _AsianDramaDetailsScreenState
               watchedEpisodes: _watchedEpisodes,
               watchedCatalog: EpisodeWatchedService.catalogKisskh,
               fallbackPosterPath: det.cover,
-              customEpisodesBySeason: _episodeMaps(det),
+              customEpisodesBySeason: _episodeMaps(
+                det,
+                stills: enrich?.episodeStills ?? const {},
+                meta: enrich?.episodeMeta ?? const {},
+              ),
               episodeProgress: _episodeProgressMap(),
               onSeasonSelected: (_) {},
               onEpisodeSelected: (ep) {
@@ -494,130 +552,107 @@ class _AsianDramaDetailsScreenState
             ),
           );
 
-    final scroll = SingleChildScrollView(
-      controller: _detailsScrollController,
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          HubDetailsHero(
-            backdropUrl: backdrop,
-            title: det.title,
-            genres: genres,
-            metaParts: _metaParts(det, tmdb),
-            rating: rating,
-            overview: _overview(det, tmdb),
-            facts: _facts(det, tmdb),
-            height: heroHeight,
-            pageBottomChild: episodePicker,
-            positionMs: posMs,
-            durationMs: durMs,
-            seriesProgress: _seriesProgressWidget(det),
-            actionRow: DetailsHeroTvActionScope(
-              tabId: MediaDetailsTv.tabId,
-              itemCount: _progress != null ? 2 : 1,
-              onFocusUp: heroPopUp,
-              child: Row(
-                children: [
-                  HubDetailsPlayRow(
-                    label: canResumeSelected
-                        ? 'Resume'
-                        : 'Play Ep $_selectedEpisode',
-                    enabled: det.episodes.isNotEmpty,
-                    onPlay: _playSelected,
-                    focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
-                    onUpEdge: heroPopUp,
-                    tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                    tvItemIndex: 0,
-                  ),
-                  if (_progress != null) ...[
-                    const SizedBox(width: 10),
-                    HeroPillIconGroup(
-                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                      tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-                      tvItemIndexStart: 1,
-                      onUpEdge: heroPopUp,
-                      slots: [
-                        HeroPillIconSlot(
-                          icon: Icons.delete_outline_rounded,
-                          tooltip: 'Clear progress',
-                          onTap: _clearProgress,
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          if (hasMetaRows)
-            MediaDetailsBody(
-              backgroundColor: AppTheme.bgDark,
-              bodyOverlap: 0,
-              topSpacing: DetailsTokens.bodyTopSpacingWithEpisodes,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (showCast)
-                    MediaDetailsCastSection(
-                      cast: cast,
-                      title: 'Cast',
-                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                      tvRowId: 'cast',
-                      tvRowOrder: castOrder!,
-                      tvFocusUp: firstMetaFocusUp,
-                    ),
-                  if (showCrew) ...[
-                    if (showCast)
-                      const SizedBox(height: DetailsTokens.sectionSpacing),
-                    MediaDetailsCastSection(
-                      cast: crew,
-                      title: 'Crew',
-                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                      tvRowId: 'crew',
-                      tvRowOrder: crewOrder!,
-                      tvFocusUp: showCast ? null : firstMetaFocusUp,
-                    ),
-                  ],
-                  if (showTrailers) ...[
-                    if (showCast || showCrew)
-                      const SizedBox(height: DetailsTokens.sectionSpacing),
-                    MediaDetailsTrailersSection(
-                      trailers: trailers,
-                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                      tvRowId: 'trailers',
-                      tvRowOrder: trailersOrder!,
-                      tvFocusUp:
-                          (showCast || showCrew) ? null : firstMetaFocusUp,
-                    ),
-                  ],
-                  if (showRecs) ...[
-                    if (showCast || showCrew || showTrailers)
-                      const SizedBox(height: DetailsTokens.sectionSpacing),
-                    MediaDetailsRecommendationsSection(
-                      movies: recommendations,
-                      onMovieTap: (movie) =>
-                          AppRouter.openDetails(context, movie: movie),
-                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                      tvRowId: 'recommendations',
-                      tvRowOrder: recsOrder!,
-                      tvFocusUp: (showCast || showCrew || showTrailers)
-                          ? null
-                          : firstMetaFocusUp,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
+    final sections = <Widget>[
+      if (showCast)
+        MediaDetailsCastSection(
+          cast: cast,
+          title: 'Characters',
+          tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+          tvRowId: 'cast',
+          tvRowOrder: castOrder!,
+          tvFocusUp: firstMetaFocusUp,
+        ),
+      if (showCrew)
+        MediaDetailsCastSection(
+          cast: crew,
+          title: 'Crew',
+          tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+          tvRowId: 'crew',
+          tvRowOrder: crewOrder!,
+          tvFocusUp: showCast ? null : firstMetaFocusUp,
+        ),
+      if (showTrailers)
+        MediaDetailsTrailersSection(
+          trailers: trailers,
+          tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+          tvRowId: 'trailers',
+          tvRowOrder: trailersOrder!,
+          tvFocusUp: (showCast || showCrew) ? null : firstMetaFocusUp,
+        ),
+      if (showRecs)
+        MediaDetailsRecommendationsSection(
+          movies: recommendations,
+          onMovieTap: (movie) => AppRouter.openDetails(context, movie: movie),
+          tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+          tvRowId: 'recommendations',
+          tvRowOrder: recsOrder!,
+          tvFocusUp: (showCast || showCrew || showTrailers)
+              ? null
+              : firstMetaFocusUp,
+        ),
+    ];
 
-    return MediaDetailsTvScope(
-      heroPlayFocus: _heroPlayFocus,
+    return MediaDetailsScrollPage(
       scrollController: _detailsScrollController,
-      backFocus: _backFocus,
-      child: scroll,
+      tvHeroPlayFocus: _heroPlayFocus,
+      tvBackFocus: _backFocus,
+      bodyOverlap: 0,
+      topSpacing: DetailsTokens.bodyTopSpacingWithEpisodes,
+      backgroundColor: AppTheme.bgDark,
+      hero: HubDetailsHero(
+        backdropUrl: backdrop,
+        backdropUrls: heroBackdrops,
+        title: det.title,
+        genres: genres,
+        metaParts: _metaParts(det, tmdb),
+        rating: rating,
+        overview: _overview(det, tmdb),
+        facts: _facts(det, tmdb),
+        height: heroHeight,
+        pageBottomChild: episodePicker,
+        positionMs: posMs,
+        durationMs: durMs,
+        seriesProgress: _seriesProgressWidget(det),
+        actionRow: DetailsHeroTvActionScope(
+          tabId: MediaDetailsTv.tabId,
+          itemCount: _progress != null ? 2 : 1,
+          onFocusUp: heroPopUp,
+          child: Row(
+            children: [
+              HubDetailsPlayRow(
+                label: canResumeSelected
+                    ? 'Resume'
+                    : 'Play Ep $_selectedEpisode',
+                enabled: det.episodes.isNotEmpty,
+                onPlay: _playSelected,
+                focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
+                onUpEdge: heroPopUp,
+                tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                tvItemIndex: 0,
+              ),
+              if (_progress != null) ...[
+                const SizedBox(width: 10),
+                HeroPillIconGroup(
+                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                  tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                  tvItemIndexStart: 1,
+                  onUpEdge: heroPopUp,
+                  slots: [
+                    HeroPillIconSlot(
+                      icon: Icons.delete_outline_rounded,
+                      tooltip: 'Clear progress',
+                      onTap: _clearProgress,
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      // Always mount the body so TMDB rows appear under episodes as soon as
+      // enrichment resolves (same shape as movie/TV + anime details).
+      sections: hasMetaRows ? sections : const [],
     );
   }
 }

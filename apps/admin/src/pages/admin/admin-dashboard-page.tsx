@@ -8,6 +8,7 @@ import {
   PanelLabel,
   StatCard,
   StatusBadge,
+  TablePagination,
   tableClassName,
   tableWrapClassName,
   tdClassName,
@@ -20,6 +21,7 @@ import {
   runDurationLabel,
 } from '@/lib/ops-overview'
 import { humanizeScrapeCron } from '@/lib/scrape-cron'
+import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
 
 export function AdminDashboardPage() {
@@ -33,6 +35,7 @@ export function AdminDashboardPage() {
   const d = stats.data
   const loading = stats.isLoading
   const latest = d?.latest
+  const paging = useTablePagination(d?.recent ?? [], { initialPageSize: 25 })
 
   return (
     <div className="space-y-8">
@@ -203,7 +206,7 @@ export function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {(d?.recent ?? []).map((r) => (
+                {paging.pageRows.map((r) => (
                   <tr
                     key={r.id}
                     className="border-t border-forja-border/80 hover:bg-white/[0.02]"
@@ -245,7 +248,7 @@ export function AdminDashboardPage() {
                     </td>
                   </tr>
                 ))}
-                {!loading && (d?.recent.length ?? 0) === 0 ? (
+                {!loading && paging.total === 0 ? (
                   <tr>
                     <td
                       colSpan={10}
@@ -258,6 +261,15 @@ export function AdminDashboardPage() {
               </tbody>
             </table>
           </div>
+          {paging.total > 0 ? (
+            <TablePagination
+              page={paging.page}
+              pageSize={paging.pageSize}
+              total={paging.total}
+              onPageChange={paging.setPage}
+              onPageSizeChange={paging.setPageSize}
+            />
+          ) : null}
         </div>
       </div>
     </div>

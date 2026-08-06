@@ -194,3 +194,80 @@ export const thClassName =
   'bg-forja-elevated/80 px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-forja-muted'
 
 export const tdClassName = 'px-3 py-2.5 align-middle'
+
+export function TablePagination({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+  onPageSizeChange,
+  pageSizeOptions = [25, 50, 100],
+}: {
+  page: number
+  pageSize: number
+  total: number
+  onPageChange: (page: number) => void
+  onPageSizeChange?: (size: number) => void
+  pageSizeOptions?: number[]
+}) {
+  const pageCount = Math.max(1, Math.ceil(total / pageSize) || 1)
+  const safePage = Math.min(Math.max(0, page), pageCount - 1)
+  const from = total === 0 ? 0 : safePage * pageSize + 1
+  const to = Math.min(total, (safePage + 1) * pageSize)
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-forja-border px-3 py-2.5">
+      <p className="text-xs text-forja-muted">
+        {total === 0 ? (
+          '0 rows'
+        ) : (
+          <>
+            <span className="tabular-nums text-forja-text">
+              {from}–{to}
+            </span>{' '}
+            of <span className="tabular-nums">{total}</span>
+          </>
+        )}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        {onPageSizeChange ? (
+          <label className="flex items-center gap-1.5 text-xs text-forja-muted">
+            Rows
+            <select
+              className="h-8 rounded-md border border-forja-border bg-forja-elevated/40 px-2 text-xs text-forja-text"
+              value={pageSize}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            >
+              {pageSizeOptions.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            disabled={safePage <= 0}
+            className="inline-flex h-8 items-center rounded-md border border-forja-border px-2.5 text-xs text-forja-muted transition-colors hover:bg-white/[0.04] hover:text-forja-text disabled:pointer-events-none disabled:opacity-40"
+            onClick={() => onPageChange(safePage - 1)}
+          >
+            Prev
+          </button>
+          <span className="min-w-16 text-center text-xs tabular-nums text-forja-muted">
+            {safePage + 1} / {pageCount}
+          </span>
+          <button
+            type="button"
+            disabled={safePage >= pageCount - 1}
+            className="inline-flex h-8 items-center rounded-md border border-forja-border px-2.5 text-xs text-forja-muted transition-colors hover:bg-white/[0.04] hover:text-forja-text disabled:pointer-events-none disabled:opacity-40"
+            onClick={() => onPageChange(safePage + 1)}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

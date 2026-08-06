@@ -76,6 +76,7 @@ class NavDestinationIcon extends StatelessWidget {
 /// Tabs withheld from the shell and Settings → Features for now.
 /// Destinations and [navTabBuilders] stay registered - remove an ID here to restore.
 const Set<String> temporarilyHiddenNavIds = {
+  'search',
   'discover',
   'similar',
   'downloader',

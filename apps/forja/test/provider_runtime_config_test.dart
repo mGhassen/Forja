@@ -94,19 +94,19 @@ void main() {
       expect(b['miruro:bee']!.pngStrip, AnimePngStripMode.never);
     });
 
-    test('builtin KissKh forces PNG strip for mirror ids', () {
+    test('builtin KissKh defaults to never strip (pre-df3992cd)', () {
       final b = ProviderRuntimeSnapshot.builtins().animePlaybackProfiles;
-      expect(b['kisskh']!.pngStrip, AnimePngStripMode.force);
+      expect(b.containsKey('kisskh'), isFalse);
       ProviderRuntimeConfig.instance.debugSetSnapshot(
         ProviderRuntimeSnapshot.builtins(),
       );
       expect(
         ProviderRuntimeConfig.instance.animePlaybackProfile('kisskh.nl').pngStrip,
-        AnimePngStripMode.force,
+        AnimePngStripMode.never,
       );
       expect(
         ProviderRuntimeConfig.instance.animePlaybackProfile('kisskh.co').pngStrip,
-        AnimePngStripMode.force,
+        AnimePngStripMode.never,
       );
     });
 

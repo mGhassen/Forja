@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 7** acceptance |
-| **Current slice** | Playback restored to `v1.3.114` semantics (`I148-T08`); [RFC-052](../rfc/canceled/052-[canceled]-iptv-progress-aware-recovery.md) canceled — device smoke outstanding |
+| **Progress** | **9 / 9** fix · **0 / 9** acceptance |
+| **Current slice** | Dual recovery modes — Stable (1.3.170 buffer-aware, default) + Classic (1.3.114 timers) via Settings; device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,7 +28,8 @@
 | 5 | I148-T05 | Manual reload escalates to a real reopen when the flush leaves frames frozen (`_escalateReloadIfStalled` → `_triggerRecovery` reopen tier) | ✅ |
 | 6 | I148-T06 | **Revert** T01–T03: drift gate did not fix the reported stall in `v1.3.141`. Restore `v1.3.114` playback semantics — `demuxer-max-back-bytes` 25 MB, no per-open override, no `live_start_index`, no mid-stream live-edge snap, detector 2 back to `_triggerRecovery`, recovery tier ≤2 back to soft reopen | ✅ |
 | 7 | I148-T07 | **Hypothesis shipped then abandoned** — assumed 8 s freeze vs 30 s cache; [RFC-052](../rfc/canceled/052-[canceled]-iptv-progress-aware-recovery.md) gated detectors on feed/cache progress. Did not stop the reporter's reconnect loop | ✅ |
-| 8 | I148-T08 | **Abandon RFC-052** — strip progress/cache/ffmpeg-grace gates; restore `v1.3.114` tunables + watchdog/error recovery; keep PiP / menus / Exo / open serialization; cancel RFC-052 | ✅ |
+| 8 | I148-T08 | **Abandon RFC-052 as sole path** — strip progress/cache gates from default; cancel RFC-052 as mandatory approach | ✅ |
+| 9 | I148-T09 | **Dual mode** — restore 1.3.170 buffer-aware recovery as default; keep 1.3.114 classic timers; Settings → Playback → IPTV live recovery; applies on next player open | ✅ |
 
 ---
 
@@ -36,13 +37,15 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I148-A01 | Desktop MediaKit: live Xtream channel plays 10+ minutes without periodic "Reconnecting… (1/8)" on a healthy feed | ⬜ |
-| 2 | I148-A02 | Log has no mid-stream `live-edge snap` / underrun-exit flush — only seekable open jump-to-live (v1.3.114) | ⬜ |
-| 3 | I148-A03 | Genuinely dead feed still escalates: banner appears, retry ladder runs, source rotates | ⬜ |
-| 4 | I148-A04 | Player **Reload** soft-reopens the current source (same as open) and recovers a stalled channel without ANR | ⬜ |
+| 1 | I148-A01 | Desktop MediaKit + **Stable**: live Xtream channel plays 10+ minutes without periodic "Reconnecting… (1/8)" on a healthy feed | ⬜ |
+| 2 | I148-A02 | **Stable**: log shows cache/feed hold (`skip recovery … working`) on hiccups, not mid-stream underrun live-edge snaps | ⬜ |
+| 3 | I148-A03 | Genuinely dead feed still escalates on **Stable** and **Classic**: banner appears, retry ladder runs | ⬜ |
+| 4 | I148-A04 | Player **Reload** reconnects on both modes (Stable: flush→escalate; Classic: soft reopen) without ANR | ⬜ |
 | 5 | I148-A05 | Android TV MediaKit: **Reload** on a stalled channel reconnects and the app stays alive (no ANR — issue 128 T08 regression watch) | ⬜ |
 | 6 | I148-A06 | Android TV MediaKit: Exo → MediaKit via Player menu, then **Reload** — no ANR (`I128-A01` path) | ⬜ |
-| 7 | I148-A07 | Android TV MediaKit: live channel plays as steadily as it did on `v1.3.114` — no periodic buffering / "Reconnecting…" | ⬜ |
+| 7 | I148-A07 | Android TV MediaKit + **Stable**: live channel matches 1.3.170 steadiness | ⬜ |
+| 8 | I148-A08 | Settings dropdown switches modes; next player open logs `live recovery mode=buffered|classic` | ⬜ |
+| 9 | I148-A09 | **Classic** mode: frozen-position detector reopens within ~8s without requiring empty cache | ⬜ |
 
 ---
 
@@ -50,7 +53,9 @@
 
 **Symptom (1.3.135+):** A live IPTV channel plays normally, then after ~1–2 minutes the picture stalls, the buffering spinner shows `Reconnecting… (attempt 1/8)`, and playback may resume on its own. The upstream feed is often still alive.
 
-> **Status update (I148-T08).** [RFC-052](../rfc/canceled/052-[canceled]-iptv-progress-aware-recovery.md) progress/cache gates and hard-blocks did not fix the report (symptom delayed or dead streams never recovered). **Playback/recovery code is restored to `v1.3.114` semantics.** Keep PiP, Player menus, Exo TextureView/ATV, volume map, and open serialization. **Do not re-land RFC-052 without a log capture that proves a new root cause.**
+> **Status update (I148-T09).** Both policies are available: **Stable** = 1.3.170 buffer/feed-aware recovery (default); **Classic** = 1.3.114 stall-timer recovery. Toggle in Settings → Playback → IPTV live recovery. RFC-052 remains canceled as a mandatory sole path; its behavior ships as the Stable mode.
+
+> **Status update (I148-T08).** Full strip to classic-only was superseded by T09 after the reporter confirmed **1.3.170** (buffer-aware) works. Classic remains selectable.
 
 > **Status update (I148-T07).** The 8 s vs 30 s theory was implemented as RFC-052; it is **historical** — not confirmed by the reporter. T07 stays ✅ as "work that shipped"; the approach is canceled, not proven.
 

@@ -232,45 +232,68 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
     );
   }
 
-  Widget _buildHelperTitle(String title, {required bool selected}) {
+  Widget _buildHelperTitle(
+    String title, {
+    required bool selected,
+    bool isRecent = false,
+  }) {
+    final color = selected
+        ? ForjaShellColors.textPrimary
+        : ForjaShellColors.textSecondary;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Text(
-          title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: selected
-                ? ForjaShellColors.textPrimary
-                : ForjaShellColors.textSecondary,
-            fontSize: selected ? 18 : 16,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            height: 1.25,
-          ),
+        child: Row(
+          children: [
+            if (isRecent) ...[
+              Icon(
+                Icons.history,
+                size: selected ? 16 : 14,
+                color: color.withValues(alpha: selected ? 0.9 : 0.55),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: selected ? 18 : 16,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildHelpersList(BuildContext context) {
-    if (_s._trendingHelperTitles.isEmpty) {
-      return const Center(
-        child: SizedBox(
-          width: 22,
-          height: 22,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      );
+    final entries = _s._helperEntries;
+
+    if (entries.isEmpty) {
+      if (_s._trendingHelpersLoading) {
+        return const Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        );
+      }
+      return const SizedBox.shrink();
     }
 
-    final titles = _s._trendingHelperTitles;
     return TvCatalogRow(
       tabId: 'search',
       rowId: 'helpers',
       sortOrder: 0,
-      itemCount: titles.length,
+      itemCount: entries.length,
       orientation: ShellTvRowOrientation.vertical,
       child: FocusTraversalGroup(
         policy: ReadingOrderTraversalPolicy(),
@@ -279,16 +302,16 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
           clipBehavior: Clip.none,
           padding: const EdgeInsets.only(right: 8, bottom: 8),
           physics: const ClampingScrollPhysics(),
-          itemCount: titles.length,
+          itemCount: entries.length,
           separatorBuilder: (_, _) => const SizedBox(height: 1),
           itemBuilder: (context, index) {
-            final title = titles[index];
-            final count = titles.length;
+            final entry = entries[index];
+            final count = entries.length;
             return FocusTraversalOrder(
               order: NumericFocusOrder(index.toDouble()),
               child: shellFocusableTap(
                 context: context,
-                onTap: () => _s._applyHelperQuery(title),
+                onTap: () => _s._applyHelperQuery(entry.title),
                 borderRadius: 4,
                 scaleOnFocus: 1.0,
                 navLeftAlways: true,
@@ -310,8 +333,9 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                   }
                 },
                 child: _buildHelperTitle(
-                  title,
+                  entry.title,
                   selected: _s._helperFocusedIndex == index,
+                  isRecent: entry.isRecent,
                 ),
               ),
             );

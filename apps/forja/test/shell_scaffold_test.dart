@@ -856,7 +856,6 @@ void main() {
     expect(navDestinations.containsKey('mylist'), isTrue);
     expect(navDestinations.containsKey('settings'), isTrue);
     expect(SettingsService.defaultVisibleNavIds, [
-      'search',
       'home',
       'asian_drama',
       'anime',

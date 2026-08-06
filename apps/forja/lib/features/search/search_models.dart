@@ -39,3 +39,10 @@ class _FlatSearchResult {
   final bool isTmdb;
   final dynamic raw;
 }
+
+class _SearchHelperEntry {
+  const _SearchHelperEntry(this.title, {required this.isRecent});
+
+  final String title;
+  final bool isRecent;
+}

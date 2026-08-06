@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { adminDb } from '@/lib/admin-db'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { supabase } from '@/lib/supabase'
 
 export const SCRAPE_RUNS_KEY = ['admin', 'scrape_runs'] as const
@@ -60,14 +61,8 @@ export function runDurationMs(run: ScrapeRunRow): number | null {
   return Math.max(0, end - start)
 }
 
-export async function fetchScrapeRuns(limit = 50): Promise<ScrapeRunRow[]> {
-  const { data, error } = await adminDb
-    .from('iptv_scrape_runs')
-    .select(SCRAPE_RUN_SELECT)
-    .order('started_at', { ascending: false })
-    .limit(limit)
-  if (error) throw error
-  return ((data ?? []) as ScrapeRunRow[]).map((r) => ({
+export async function fetchScrapeRuns(limit?: number): Promise<ScrapeRunRow[]> {
+  const mapRow = (r: ScrapeRunRow): ScrapeRunRow => ({
     ...emptyScrapeRun(r),
     ...r,
     deep_ref_count: r.deep_ref_count ?? 0,
@@ -75,7 +70,28 @@ export async function fetchScrapeRuns(limit = 50): Promise<ScrapeRunRow[]> {
     l2_fetch_fail: r.l2_fetch_fail ?? 0,
     l2_extract_count: r.l2_extract_count ?? 0,
     unparsed_count: r.unparsed_count ?? 0,
-  }))
+  })
+
+  if (limit != null) {
+    const { data, error } = await adminDb
+      .from('iptv_scrape_runs')
+      .select(SCRAPE_RUN_SELECT)
+      .order('started_at', { ascending: false })
+      .limit(limit)
+    if (error) throw error
+    return ((data ?? []) as ScrapeRunRow[]).map(mapRow)
+  }
+
+  const rows = await fetchAllRows(async (from, to) => {
+    const { data, error } = await adminDb
+      .from('iptv_scrape_runs')
+      .select(SCRAPE_RUN_SELECT)
+      .order('started_at', { ascending: false })
+      .range(from, to)
+    if (error) throw error
+    return (data ?? []) as ScrapeRunRow[]
+  })
+  return rows.map(mapRow)
 }
 
 /** Invalidate + hard refetch every scrape_runs query (list + latest). */

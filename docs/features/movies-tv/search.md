@@ -8,13 +8,13 @@ Search combines TMDB results with every installed Stremio addon that supports se
 
 ## How to open it
 
-Tap **Search** in the navigation bar.
+From **Home**, tap the **Search** icon in the top bar (desktop / TV), or use **Cmd/Ctrl+F** on desktop. The Search nav tab is temporarily hidden from the shell and Settings → Features.
 
 ## What you can do
 
 - Type a title, keyword, or person name
-- **Desktop / TV:** type in the search field on the left; matching titles appear as a text list below the field; film cards appear on the right (TV uses a poster grid instead of the detail preview). On desktop, click a film card to open details (same as Home poster cards)
-- **TV:** focus starts on the search field; **OK** opens typing; **Down** moves to trending suggestions (or result titles while searching); **Right** (with a query) focuses clear (X), **Left** returns to the field, **Down** from X goes to film cards; **Left** from the first card column returns to the aligned suggestion; **Left** from the search field stays on the field (does not jump to the nav); **Left** from suggestions returns to the nav rail
+- **Desktop / TV:** type in the search field on the left; your last 5 searches stay above trending suggestions (also while a search is active); matching titles appear as a text list below the field while searching; film cards appear on the right (TV uses a poster grid instead of the detail preview). On desktop, click a film card to open details (same as Home poster cards)
+- **TV:** focus starts on the search field; **OK** opens typing; **Down** moves to recent searches / trending suggestions (or result titles while searching); **Right** (with a query) focuses clear (X), **Left** returns to the field, **Down** from X goes to film cards; **Left** from the first card column returns to the aligned suggestion; **Left** from the search field stays on the field (does not jump to the nav); **Left** from suggestions returns to the nav rail
 - **Mobile / narrow:** use the search bar at the top; results appear in horizontal rows by source
 - Browse TMDB movie and TV results
 - See matching results from each Stremio addon (combined list on desktop; separate sections on mobile)

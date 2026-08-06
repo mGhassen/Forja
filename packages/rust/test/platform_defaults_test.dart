@@ -8,7 +8,6 @@ void main() {
       expect(
         tv.visibleNavIds,
         [
-          'search',
           'home',
           'asian_drama',
           'anime',

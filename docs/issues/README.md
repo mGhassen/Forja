@@ -168,12 +168,12 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [145-[open]-…](145-[open]-macos-live-embed-webkit-fullscreen-crash.md) | macOS Live embed WK fullscreen SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [146-[open]-…](146-[open]-macos-pip-settitlebarstyle-sigtrap.md) | Desktop PiP setTitleBarStyle SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [147-[open]-…](147-[open]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect loop — restored v1.3.114 playback; RFC-052 canceled | P1 | High | open | 8/8 · A 0/7 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable (1.3.170) + Classic (1.3.114) recovery modes | P1 | High | open | 9/9 · A 0/9 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [149-[open]-…](149-[open]-iptv-player-source-picker-dpad.md) | IPTV/Live player source picker has no D-pad; duplicate source control | P2 | Medium | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (UHD `framedrop=decoder` / `video-sync=audio`) | P2 | Medium | open | 1/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [151-[open]-…](151-[open]-android-tv-exo-vod-stutter-no-cache.md) | ATV movie player (Exo VOD): 24fps judder + no back buffer / disk cache | P2 | Medium | open | 6/6 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [152-[open]-…](152-[open]-android-tv-mediakit-quieter-than-exo.md) | ATV MediaKit plays quieter than ExoPlayer at the same level | P2 | Medium | open | 3/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [153-[open]-…](153-[open]-kisskh-hls-4k-indefinite-buffer.md) | KissKh HLS: first frame then indefinite BUFFERING (4K ladder) | P1 | High | open | 10/10 · A 0/3 · 1⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
+| [153-[open]-…](153-[open]-kisskh-hls-4k-indefinite-buffer.md) | KissKh HLS: first frame then indefinite BUFFERING (4K ladder) | P1 | High | open | 11/11 · A 0/2 · 2⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

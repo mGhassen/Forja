@@ -32,7 +32,6 @@ class PlatformDefaults {
   final bool showTorrentStatsOverlay;
 
   static const List<String> defaultNavIds = [
-    'search',
     'home',
     'asian_drama',
     'anime',

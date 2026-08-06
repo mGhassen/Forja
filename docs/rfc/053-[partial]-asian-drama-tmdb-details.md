@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **5 / 6** acceptance |
-| **Current slice** | Details cast / trailers / recs / enriched hero from TMDB match |
+| **Progress** | **4 / 4** components · **5 / 6** acceptance (details enrich) · **3 / 4** acceptance (hero images / stills) |
+| **Current slice** | Random TMDB hero backdrops + episode stills (no Images row) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,6 +22,7 @@
 | 1 | R53-C01 | Shared KissKH → TMDB title match (`KissKhTmdbMatch`) reused by hub synopsis + details | ✅ |
 | 2 | R53-C02 | `asianDramaTmdbEnrichmentProvider` → `getRichDetails` after match | ✅ |
 | 3 | R53-C03 | Details UI: genres / rating / facts + Cast / Crew / Trailers / More Like This | ✅ |
+| 4 | R53-C04 | Details hero rotates TMDB backdrops; KissKH episode rail merges season-1 stills/meta | ✅ |
 
 ---
 
@@ -35,6 +36,17 @@
 | 4 | R53-A04 | Hub hero synopsis enrich uses the same matcher (overview only) | ✅ |
 | 5 | R53-A05 | More Like This opens Home/Search-style TMDB details (`AppRouter.openDetails`) | ✅ |
 | 6 | R53-A06 | Device smoke: open a known K-drama details → cast row visible when TMDB match succeeds | ⬜ |
+
+---
+
+## Acceptance (images / stills slice)
+
+| # | ID | Description | Status |
+|--:|----|----|-----|
+| 1 | R53-A07 | Title normalizer strips KissKH year/HD/pipe noise so more titles match TMDB | ✅ |
+| 2 | R53-A08 | Confident TV match paints TMDB episode stills (and name/overview when present) on the KissKH episode rail | ✅ |
+| 3 | R53-A09 | Confident match rotates TMDB backdrops in the details hero (no separate Images row) | ✅ |
+| 4 | R53-A10 | Device smoke: matched title shows rotating hero art and/or episode thumbnails | ⬜ |
 
 ---
 

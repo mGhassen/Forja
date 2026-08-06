@@ -9,6 +9,7 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/search/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -62,6 +63,9 @@ class SearchScreenState extends ConsumerState<SearchScreen>
   /// After picking a proposition, focus the matching grid card once results exist.
   int? _pendingGridFocusIndex;
 
+  /// Last typed queries for the empty-state helpers column (before trending).
+  List<String> _recentQueries = const [];
+
   bool _searchFieldEditing = false;
 
   /// Cached for debounce/invalidate without inherited lookup on inactive elements.
@@ -89,6 +93,7 @@ class SearchScreenState extends ConsumerState<SearchScreen>
     _focusNode.addListener(_onSearchFieldFocusChange);
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
     ShellBus.stremioSearchNotifier.addListener(_onExternalSearch);
+    _loadRecentQueries();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ShellBus.notifyShellChromeChanged();
       // Overlay from Home (incl. TV desktop layout) must land on the field.
@@ -96,6 +101,12 @@ class SearchScreenState extends ConsumerState<SearchScreen>
         _focusSearchFieldBrowse();
       }
     });
+  }
+
+  Future<void> _loadRecentQueries() async {
+    final recent = await SearchRecentQueries.load(SearchRecentQueries.scopeSearch);
+    if (!mounted) return;
+    setState(() => _recentQueries = recent);
   }
 
 

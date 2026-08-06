@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rust/rust.dart';
@@ -13,6 +12,7 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero/hero_title.dart';
+import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
@@ -91,6 +91,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   Timer? _heroTimer;
   int _heroIndex = 0;
   final Map<int, String> _heroLogos = {};
+  final Map<int, List<String>> _heroBackdropUrls = {};
   bool _heroHeightSyncScheduled = false;
   double? _heroPageViewportWidth;
 
@@ -149,7 +150,10 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         }
         final movies = snapshot.data!.take(5).toList();
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _fetchHeroLogos(movies);
+          if (mounted) {
+            _fetchHeroLogos(movies);
+            _fetchHeroBackdrops(movies);
+          }
         });
         return _buildCinematicHeroBlock(movies, compact: widget.compact);
       },
@@ -385,10 +389,40 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     }
   }
 
+  Future<void> _fetchHeroBackdrops(List<Movie> movies) async {
+    for (final movie in movies) {
+      if (_heroBackdropUrls.containsKey(movie.id)) continue;
+      final primary = _heroBackdropUrl(movie);
+      final urls = <String>[if (primary.isNotEmpty) primary];
+      try {
+        final paths = await _api.getBackdrops(
+          movie.id,
+          mediaType: movie.mediaType,
+        );
+        for (final p in paths) {
+          final u = TmdbApi.getBackdropUrl(p);
+          if (u.isNotEmpty) urls.add(u);
+        }
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _heroBackdropUrls[movie.id] =
+            RotatingHeroBackdrop.normalizeUrls(urls);
+      });
+    }
+  }
+
   String _heroBackdropUrl(Movie movie) {
     return movie.backdropPath.isNotEmpty
         ? TmdbApi.getBackdropUrl(movie.backdropPath)
         : TmdbApi.getImageUrl(movie.posterPath);
+  }
+
+  List<String> _heroSlideUrls(Movie movie) {
+    final cached = _heroBackdropUrls[movie.id];
+    if (cached != null && cached.isNotEmpty) return cached;
+    final primary = _heroBackdropUrl(movie);
+    return primary.isEmpty ? const [] : [primary];
   }
 
   Widget _buildHeroBackdropCarousel(List<Movie> movies) {
@@ -982,18 +1016,18 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
 
   Widget _buildHeroSlideBackdrop(Movie movie, int index) {
     final shellBg = Theme.of(context).scaffoldBackgroundColor;
+    final urls = _heroSlideUrls(movie);
     return Stack(
       fit: StackFit.expand,
       children: [
-        CachedNetworkImage(
-          key: ValueKey(movie.id),
-          imageUrl: _heroBackdropUrl(movie),
-          fit: BoxFit.cover,
-          alignment: Alignment.centerRight,
-          filterQuality: FilterQuality.medium,
-          placeholder: (c, u) => ColoredBox(color: shellBg),
-          errorWidget: (c, u, e) => ColoredBox(color: shellBg),
-        ),
+        if (urls.isEmpty)
+          ColoredBox(color: shellBg)
+        else
+          RotatingHeroBackdrop(
+            key: ValueKey('home-hero-bg-${movie.id}'),
+            imageUrls: urls,
+            showColorTint: false,
+          ),
         // Trailing join only - opacity tracks scroll so it fades out while
         // sliding left (never parks under the hero text fade). Reverse swipe
         // uses the same rule: previous slide's right edge ramps in as it

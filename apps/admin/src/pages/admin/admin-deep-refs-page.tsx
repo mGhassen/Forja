@@ -6,8 +6,7 @@ import {
   EmptyState,
   MetricChip,
   PageHeader,
-  Panel,
-  PanelLabel,
+  TablePagination,
   tableClassName,
   tableWrapClassName,
   tdClassName,
@@ -24,7 +23,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { adminDb } from '@/lib/admin-db'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { fetchPasteBodyForAdmin } from '@/lib/paste-body'
+import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
 
 export const DEEP_REFS_KEY = ['admin', 'deep_refs'] as const
@@ -59,20 +60,82 @@ type DeepRefRow = {
 
 type FilterStatus = 'all' | 'recheck' | 'ok' | 'has_portals' | 'existing_only'
 
-async function fetchDeepRefs(limit = 200): Promise<DeepRefRow[]> {
-  const { data, error } = await adminDb
-    .from('iptv_scrape_deep_refs')
-    .select(
-      `id, post_id, scrape_run_id, base64, paste_url, ref_host,
-       payload_hash, fetch_ok, extract_count, needs_recheck, created_at,
-       iptv_scrape_deep_ref_portals (
-         id, platform, type, output, url, username, password, was_existing, portal_id, created_at
-       )`,
-    )
-    .order('created_at', { ascending: false })
-    .limit(limit)
-  if (error) throw error
-  return (data ?? []) as DeepRefRow[]
+async function fetchDeepRefs(): Promise<DeepRefRow[]> {
+  return fetchAllRows(async (from, to) => {
+    const { data, error } = await adminDb
+      .from('iptv_scrape_deep_refs')
+      .select(
+        `id, post_id, scrape_run_id, base64, paste_url, ref_host,
+         payload_hash, fetch_ok, extract_count, needs_recheck, created_at,
+         iptv_scrape_deep_ref_portals (
+           id, platform, type, output, url, username, password, was_existing, portal_id, created_at
+         )`,
+      )
+      .order('created_at', { ascending: false })
+      .range(from, to)
+    if (error) throw error
+    return (data ?? []) as DeepRefRow[]
+  })
+}
+
+function DeepRefPortalsTable({ portals }: { portals: DeepRefPortalRow[] }) {
+  const paging = useTablePagination(portals, { initialPageSize: 25 })
+  return (
+    <div className="overflow-hidden border border-forja-border">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-forja-border/80 text-[11px] uppercase tracking-wide text-forja-muted">
+              <th className="px-3 py-2">Platform</th>
+              <th className="px-3 py-2">Type</th>
+              <th className="px-3 py-2">Output</th>
+              <th className="px-3 py-2">URL</th>
+              <th className="px-3 py-2">User</th>
+              <th className="px-3 py-2">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paging.pageRows.map((p) => (
+              <tr key={p.id} className="border-t border-forja-border/50">
+                <td className="px-3 py-2 font-mono-ui text-xs text-forja-green">
+                  {p.platform}
+                </td>
+                <td className="px-3 py-2 font-mono-ui text-xs">
+                  {p.type || '—'}
+                </td>
+                <td className="px-3 py-2 font-mono-ui text-xs">
+                  {p.output || '—'}
+                </td>
+                <td className="max-w-[160px] truncate px-3 py-2 font-mono-ui text-xs">
+                  {p.url}
+                </td>
+                <td className="px-3 py-2 font-mono-ui text-xs">
+                  {p.username || '—'}
+                </td>
+                <td className="px-3 py-2 text-xs">
+                  {!p.portal_id ? (
+                    <span className="text-forja-muted">Not promoted</span>
+                  ) : p.was_existing ? (
+                    <span className="text-amber-300">Already in DB</span>
+                  ) : (
+                    <span className="text-forja-green">New insert</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <TablePagination
+        page={paging.page}
+        pageSize={paging.pageSize}
+        total={paging.total}
+        onPageChange={paging.setPage}
+        onPageSizeChange={paging.setPageSize}
+        pageSizeOptions={[10, 25, 50]}
+      />
+    </div>
+  )
 }
 
 function decodeInlineBase64(raw: string): string | null {
@@ -121,7 +184,7 @@ function PasteBodyPanel({
             {(pasteQuery.error as Error).message}
           </p>
         ) : (
-          <pre className="max-h-40 overflow-auto rounded-lg border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
+          <pre className="max-h-40 overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
             {pasteQuery.data}
           </pre>
         )}
@@ -136,7 +199,7 @@ function PasteBodyPanel({
       <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
         Decoded base64
       </p>
-      <pre className="max-h-40 overflow-auto rounded-lg border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
+      <pre className="max-h-40 overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
         {decoded}
       </pre>
     </div>
@@ -146,7 +209,7 @@ function PasteBodyPanel({
 export function AdminDeepRefsPage() {
   const list = useQuery({
     queryKey: DEEP_REFS_KEY,
-    queryFn: () => fetchDeepRefs(300),
+    queryFn: fetchDeepRefs,
     refetchInterval: 12_000,
   })
 
@@ -189,6 +252,11 @@ export function AdminDeepRefsPage() {
     })
   }, [rows, q, statusFilter])
 
+  const paging = useTablePagination(filtered, {
+    initialPageSize: 50,
+    resetKey: `${q}|${statusFilter}`,
+  })
+
   const stats = useMemo(() => {
     let recheck = 0
     let withPaste = 0
@@ -220,54 +288,61 @@ export function AdminDeepRefsPage() {
         <MetricChip label="Recheck" value={stats.recheck} />
       </div>
 
-      <Panel>
-        <PanelLabel>Filters</PanelLabel>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="deep-q">Search</Label>
-            <Input
-              id="deep-q"
-              placeholder="base64, paste URL, portal output…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => setStatusFilter(v as FilterStatus)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="ok">Parsed ok</SelectItem>
-                <SelectItem value="recheck">Needs recheck</SelectItem>
-                <SelectItem value="has_portals">Has portals</SelectItem>
-                <SelectItem value="existing_only">Had existing portal</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </Panel>
-
-      <Panel>
-        <PanelLabel>Finds ({filtered.length})</PanelLabel>
-        {list.isError ? (
-          <p className="mt-3 text-sm text-red-400">
-            {(list.error as Error).message}
-          </p>
-        ) : list.isLoading ? (
-          <p className="mt-3 text-sm text-forja-muted">Loading…</p>
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            title="No deep refs yet"
-            description="Run a full scrape. Each base64→paste.sh pair becomes one row here."
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[16rem] flex-1 space-y-1.5">
+          <Label
+            htmlFor="deep-q"
+            className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted"
+          >
+            Search
+          </Label>
+          <Input
+            id="deep-q"
+            placeholder="base64, paste URL, portal output…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
           />
-        ) : (
-          <div className={cn(tableWrapClassName, 'mt-3')}>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted">
+            Status
+          </Label>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as FilterStatus)}
+          >
+            <SelectTrigger className="w-[11rem]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="ok">Parsed ok</SelectItem>
+              <SelectItem value="recheck">Needs recheck</SelectItem>
+              <SelectItem value="has_portals">Has portals</SelectItem>
+              <SelectItem value="existing_only">Had existing portal</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <p className="pb-2 text-xs text-forja-muted">
+          {filtered.length}
+          {rows.length !== filtered.length ? ` / ${rows.length}` : ''} refs
+        </p>
+      </div>
+
+      {list.isError ? (
+        <p className="text-sm text-red-400">
+          {(list.error as Error).message}
+        </p>
+      ) : list.isLoading ? (
+        <p className="text-sm text-forja-muted">Loading…</p>
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          title="No deep refs yet"
+          description="Run a full scrape. Each base64→paste.sh pair becomes one row here."
+        />
+      ) : (
+        <div className={tableWrapClassName}>
+          <div className="overflow-x-auto">
             <table className={tableClassName}>
               <thead>
                 <tr>
@@ -280,7 +355,7 @@ export function AdminDeepRefsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r) => {
+                {paging.pageRows.map((r) => {
                   const portals = r.iptv_scrape_deep_ref_portals ?? []
                   const open = openId === r.id
                   return (
@@ -346,7 +421,7 @@ export function AdminDeepRefsPage() {
                                 <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
                                   Base64
                                 </p>
-                                <pre className="max-h-28 overflow-auto rounded-lg border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-all">
+                                <pre className="max-h-28 overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-all">
                                   {r.base64 || '—'}
                                 </pre>
                               </div>
@@ -354,7 +429,7 @@ export function AdminDeepRefsPage() {
                                 <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
                                   Paste URL
                                 </p>
-                                <pre className="overflow-auto rounded-lg border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-text whitespace-pre-wrap break-all">
+                                <pre className="overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-text whitespace-pre-wrap break-all">
                                   {r.paste_url || '—'}
                                 </pre>
                               </div>
@@ -377,59 +452,7 @@ export function AdminDeepRefsPage() {
                                     .
                                   </p>
                                 ) : (
-                                  <div className="overflow-x-auto rounded-lg border border-forja-border">
-                                    <table className="w-full text-left text-sm">
-                                      <thead>
-                                        <tr className="border-b border-forja-border/80 text-[11px] uppercase tracking-wide text-forja-muted">
-                                          <th className="px-3 py-2">Platform</th>
-                                          <th className="px-3 py-2">Type</th>
-                                          <th className="px-3 py-2">Output</th>
-                                          <th className="px-3 py-2">URL</th>
-                                          <th className="px-3 py-2">User</th>
-                                          <th className="px-3 py-2">Status</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {portals.map((p) => (
-                                          <tr
-                                            key={p.id}
-                                            className="border-t border-forja-border/50"
-                                          >
-                                            <td className="px-3 py-2 font-mono-ui text-xs text-forja-green">
-                                              {p.platform}
-                                            </td>
-                                            <td className="px-3 py-2 font-mono-ui text-xs">
-                                              {p.type || '—'}
-                                            </td>
-                                            <td className="px-3 py-2 font-mono-ui text-xs">
-                                              {p.output || '—'}
-                                            </td>
-                                            <td className="max-w-[160px] truncate px-3 py-2 font-mono-ui text-xs">
-                                              {p.url}
-                                            </td>
-                                            <td className="px-3 py-2 font-mono-ui text-xs">
-                                              {p.username || '—'}
-                                            </td>
-                                            <td className="px-3 py-2 text-xs">
-                                              {p.platform === 'stalker' ? (
-                                                <span className="text-forja-muted">
-                                                  saved (not pool)
-                                                </span>
-                                              ) : p.was_existing ? (
-                                                <span className="text-amber-300">
-                                                  Already in DB
-                                                </span>
-                                              ) : (
-                                                <span className="text-forja-green">
-                                                  New insert
-                                                </span>
-                                              )}
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
+                                  <DeepRefPortalsTable portals={portals} />
                                 )}
                               </div>
                             </div>
@@ -442,8 +465,15 @@ export function AdminDeepRefsPage() {
               </tbody>
             </table>
           </div>
-        )}
-      </Panel>
+          <TablePagination
+            page={paging.page}
+            pageSize={paging.pageSize}
+            total={paging.total}
+            onPageChange={paging.setPage}
+            onPageSizeChange={paging.setPageSize}
+          />
+        </div>
+      )}
     </div>
   )
 }

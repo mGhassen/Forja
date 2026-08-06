@@ -197,9 +197,13 @@ class StreamOpenPipeline {
     }
 
     if (pngMode == AnimePngStripMode.force) {
-      // Force means strip — never fall back to openDirect (KissKh PNG shells
-      // demux a first frame then die on seek / mid-buffer).
-      return _once(StreamOpenAction.openPngStrip);
+      if (!_tried.contains(StreamOpenAction.openPngStrip)) {
+        return StreamOpenAction.openPngStrip;
+      }
+      if (_openFailed || _decodeFailed) {
+        return _once(StreamOpenAction.openDirect);
+      }
+      return null;
     }
 
     // auto

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/hero/hero_title.dart';
+import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_facts_panel.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
-import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 
 /// Cinematic details hero for non-TMDB hubs - matches [MediaDetailsHero] layout.
@@ -13,6 +13,7 @@ class HubDetailsHero extends StatelessWidget {
   const HubDetailsHero({
     super.key,
     required this.backdropUrl,
+    this.backdropUrls = const [],
     required this.title,
     this.subtitle,
     this.genres = const [],
@@ -31,6 +32,8 @@ class HubDetailsHero extends StatelessWidget {
   });
 
   final String backdropUrl;
+  /// Extra hero backdrops (full URLs). Rotates randomly with [backdropUrl].
+  final List<String> backdropUrls;
   final String title;
   final String? subtitle;
   final List<String> genres;
@@ -84,7 +87,12 @@ class HubDetailsHero extends StatelessWidget {
             Positioned.fill(
               child: backdropUrl.isEmpty
                   ? ColoredBox(color: shellBg)
-                  : KenBurnsBackdrop(imageUrl: backdropUrl, showColorTint: false),
+                  : RotatingHeroBackdrop(
+                      imageUrls: backdropUrls.isNotEmpty
+                          ? backdropUrls
+                          : [backdropUrl],
+                      showColorTint: false,
+                    ),
             ),
             if (cinematicDesktop)
               Positioned.fill(

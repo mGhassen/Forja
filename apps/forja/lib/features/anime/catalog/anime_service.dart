@@ -103,10 +103,16 @@ class AnimeService {
   }
 
   Future<String?> resolveTmdbBackdrop(AnimeCard card) async {
+    final urls = await resolveTmdbHeroUrls(card);
+    return urls.isEmpty ? null : urls.first;
+  }
+
+  /// TMDB backdrop CDN URLs for details hero rotation (primary + extras).
+  Future<List<String>> resolveTmdbHeroUrls(AnimeCard card) async {
     final query = card.titleEnglish.trim().isNotEmpty
         ? card.titleEnglish.trim()
         : card.titleRomaji.trim();
-    if (query.isEmpty) return null;
+    if (query.isEmpty) return const [];
     try {
       final isMovie = (card.format ?? '').toUpperCase() == 'MOVIE';
       var results = isMovie
@@ -118,11 +124,23 @@ class AnimeService {
             : await _tmdb.searchMovies(query);
       }
       final best = _pickTmdbMatch(results, card.seasonYear);
-      if (best == null || best.backdropPath.isEmpty) return null;
-      return TmdbApi.getBackdropUrl(best.backdropPath);
+      if (best == null) return const [];
+      final mediaType =
+          best.mediaType == 'movie' || best.mediaType == 'tv'
+              ? best.mediaType
+              : (isMovie ? 'movie' : 'tv');
+      final paths = <String>[];
+      if (best.backdropPath.isNotEmpty) paths.add(best.backdropPath);
+      final extras = await _tmdb.getBackdrops(best.id, mediaType: mediaType);
+      for (final p in extras) {
+        if (p.isNotEmpty && !paths.contains(p)) paths.add(p);
+      }
+      return [
+        for (final p in paths.take(12)) TmdbApi.getBackdropUrl(p),
+      ];
     } catch (e) {
-      debugPrint('[AnimeService] TMDB backdrop failed for ${card.id}: $e');
-      return null;
+      debugPrint('[AnimeService] TMDB hero urls failed for ${card.id}: $e');
+      return const [];
     }
   }
 

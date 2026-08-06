@@ -11,6 +11,33 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
     return ref.watch(searchTrendingTitlesProvider).valueOrNull ?? const [];
   }
 
+  bool get _trendingHelpersLoading {
+    final async = ref.watch(searchTrendingTitlesProvider);
+    return async.isLoading && !async.hasValue;
+  }
+
+  /// Left column helpers: last searches, then trending (deduped).
+  List<_SearchHelperEntry> get _helperEntries {
+    final recent = _s._recentQueries;
+    final recentLower = {for (final q in recent) q.toLowerCase()};
+    final trending = _trendingHelperTitles.where(
+      (t) => !recentLower.contains(t.toLowerCase()),
+    );
+    return [
+      for (final q in recent) _SearchHelperEntry(q, isRecent: true),
+      for (final t in trending) _SearchHelperEntry(t, isRecent: false),
+    ];
+  }
+
+  Future<void> _recordRecentQuery(String query) async {
+    final next = await SearchRecentQueries.record(
+      SearchRecentQueries.scopeSearch,
+      query,
+    );
+    if (!mounted) return;
+    setState(() => _s._recentQueries = next);
+  }
+
   List<_SearchSection> _mapSearchSections(List<SearchResultSection> sections) {
     return sections
         .map(
@@ -52,6 +79,7 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
       _s._isSearching = true;
       _s._gridFocusedIndex = null;
     });
+    _recordRecentQuery(trimmed);
     (_s._container ?? ProviderScope.containerOf(context, listen: false))
         .invalidate(searchResultsProvider(trimmed));
   }
@@ -103,6 +131,7 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
         _s._isSearching = true;
         _s._gridFocusedIndex = null;
       });
+      _recordRecentQuery(trimmed);
       (_s._container ?? ProviderScope.containerOf(context, listen: false))
           .invalidate(searchResultsProvider(trimmed));
     });

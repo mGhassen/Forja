@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** fix · **0 / 3** acceptance · **1 / 1** deferred (A02 cap logs) |
-| **Current slice** | Cap + stall remount **reverted** (I153-T10) — PNG strip force remains; scrub still open |
+| **Progress** | **11 / 11** fix · **0 / 2** acceptance · **2 / 2** deferred |
+| **Current slice** | Full KissKh playback policy reverted to pre-`df3992cd` (`pngStrip: never` / `openDirect`) — strip/cap/remount abandoned |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -30,6 +30,7 @@
 | 8 | I153-T08 | Quality switch + stall drop remount through `resolveForcedPngStripPlayUrl` (never raw CDN) | ✅ |
 | 9 | I153-T09 | Post-scrub BUFFERING ≥10s remounts strip at seek target (once) | ✅ |
 | 10 | I153-T10 | Revert open ≤1080 cap + first-frame/seek stall remount watchdog (user regression — scrub worse) | ✅ |
+| 11 | I153-T11 | Revert KissKh `pngStrip: force` (and force-only no-`openDirect`) — back to default `never` / `openDirect` like pre-`df3992cd` | ✅ |
 
 ---
 
@@ -39,17 +40,17 @@
 |--:|----|-------------|--------|
 | 1 | I153-A01 | macOS: a title that previously stuck on BUFFERING after the splash frame advances past ~2s without hanging | ⬜ |
 | 2 | I153-A02 | Logs show `[Player] KissKh HLS cap ≤…p → variant` (or stall drop) when the master has rungs above the cap | ⏭️ |
-| 3 | I153-A03 | Logs show `[OpenPipeline] branch → openPngStrip` for KissKh `videotradercdn` / `.png` segment streams (not `mode=never` / `openDirect` only) | ⬜ |
-| 4 | I153-A04 | macOS: scrub / seek mid-episode continues (no indefinite BUFFERING); logs must not show `priorFail→openDirect` for KissKh | ⬜ |
+| 3 | I153-A03 | Logs show `[OpenPipeline] branch → openPngStrip` for KissKh `videotradercdn` / `.png` segment streams (not `mode=never` / `openDirect` only) | ⏭️ |
+| 4 | I153-A04 | macOS: scrub / seek mid-episode continues (no indefinite BUFFERING) | ⬜ |
 
 ---
 
 ## Summary
 
-**Symptom:** Asian Drama play resolves (`native resolve ok`) and opens (`openDirect`), TextureGL gets a first frame (often a title splash at 3840×2160), then ABR ladders while the player UI stays on **BUFFERING / 0 / 1**. mpv floods `obu_forbidden_bit` / `Failed to parse temporal unit` while fetching `…/2160/*.png` from `videotradercdn`.
+**Symptom:** Asian Drama play resolves (`native resolve ok`) and opens, TextureGL gets a first frame, then playback / scrub sticks on **BUFFERING**. CDN segments are PNG-disguised (`videotradercdn` `.png`, protocol-relative `//cdn/…`).
 
-**Root (corrected):** KissKh CDN segments are **PNG-disguised media**. Provider profile defaulted to `pngStrip: never`, so RFC-045 stayed on `openDirect` and ffmpeg tried to demux PNG shells as AV1/HLS — intermittent yuv frames then infinite buffer. Soft `hls-bitrate` / 1080p variant pick alone does not unwrap PNG.
+**Attempted:** Force PNG-strip HLS proxy + ≤1080 cap + stall remounts. Strip opens (1280×640) but **scrub still BUFFERING**; cap/remount made scrub worse.
 
-**Shipped (kept):** Force `/hls-proxy?strip=png` with **no** `openDirect` fallback; unwrap post-IEND bytes; repair protocol-relative / double-authority CDN joins; Debug `.app` dylib copy.
+**Current (I153-T11):** KissKh playback profile removed — default `pngStrip: never` → OpenPipeline `openDirect` only (pre-`df3992cd` behavior). Proxy `//` join repair (T05/T07) kept for Megaplay / other strip users.
 
-**Reverted (I153-T10):** ≤1080 open-cap, first-frame quality drop, and post-scrub strip remount. Live macOS: openPngStrip + seek remount still left scrub BUFFERING (`KissKh seek stall 10s → remount strip` then hang). Cap/remount made scrub worse than pre-`df3992cd`.
+**Still open:** Reliable seek + start on PNG HLS without a scrub-breaking strip path — needs a new approach, not re-applying force strip.

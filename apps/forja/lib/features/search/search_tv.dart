@@ -93,7 +93,7 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
     });
   }
 
-  int _helperItemCount() => _s._trendingHelperTitles.length;
+  int _helperItemCount() => _s._helperEntries.length;
 
   void _focusResultCardAt(int index) {
     final count = _flatResults().length;

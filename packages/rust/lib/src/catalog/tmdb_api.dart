@@ -78,11 +78,20 @@ class TmdbApi {
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'tv')).toList();
   }
 
-  Future<List<String>> getBackdrops(int movieId) async {
+  Future<List<String>> getBackdrops(
+    int id, {
+    String mediaType = 'movie',
+    int limit = 12,
+  }) async {
     try {
-      final decoded = await _fetchMap('movie/$movieId/images');
-      final backdrops = decoded['backdrops'] as List;
-      return backdrops.take(5).map((e) => e['file_path'] as String).toList();
+      final type = mediaType == 'tv' ? 'tv' : 'movie';
+      final decoded = await _fetchMap('$type/$id/images');
+      final backdrops = decoded['backdrops'] as List? ?? const [];
+      return backdrops
+          .take(limit)
+          .map((e) => (e['file_path'] as String?) ?? '')
+          .where((p) => p.isNotEmpty)
+          .toList();
     } catch (_) {
       return [];
     }

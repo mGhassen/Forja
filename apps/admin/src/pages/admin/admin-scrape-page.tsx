@@ -9,6 +9,7 @@ import {
   Panel,
   PanelLabel,
   StatusBadge,
+  TablePagination,
   tableClassName,
   tableWrapClassName,
   tdClassName,
@@ -47,6 +48,7 @@ import {
   type ScrapeRunRow,
 } from '@/lib/scrape-runs'
 import { cn } from '@/lib/utils'
+import { useTablePagination } from '@/lib/use-table-pagination'
 
 type Run = ScrapeRunRow
 
@@ -54,11 +56,13 @@ export function AdminScrapePage() {
   const qc = useQueryClient()
   const list = useQuery({
     queryKey: SCRAPE_RUNS_KEY,
-    queryFn: () => fetchScrapeRuns(50),
+    queryFn: () => fetchScrapeRuns(),
     refetchInterval: (q) =>
       q.state.data?.some((r) => r.status === 'running') ? 1_500 : 8_000,
     refetchOnWindowFocus: true,
   })
+
+  const paging = useTablePagination(list.data ?? [], { initialPageSize: 50 })
 
   useEffect(() => {
     return subscribeScrapeRuns(() => {
@@ -634,7 +638,7 @@ export function AdminScrapePage() {
                 </tr>
               </thead>
               <tbody>
-                {(list.data ?? []).map((r) => (
+                {paging.pageRows.map((r) => (
                   <tr
                     key={r.id}
                     className={cn(
@@ -700,6 +704,13 @@ export function AdminScrapePage() {
               </tbody>
             </table>
           </div>
+          <TablePagination
+            page={paging.page}
+            pageSize={paging.pageSize}
+            total={paging.total}
+            onPageChange={paging.setPage}
+            onPageSizeChange={paging.setPageSize}
+          />
         </div>
       )}
     </div>

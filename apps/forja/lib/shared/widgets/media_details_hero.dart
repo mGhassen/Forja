@@ -8,11 +8,11 @@ import 'package:forja/shared/design/src/details_tokens.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/hero/hero_facts_panel.dart';
 import 'package:forja/shared/widgets/hero/hero_meta_line.dart';
 import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hero/hero_watch_providers_row.dart';
+import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
@@ -601,6 +601,30 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
     return path.isNotEmpty ? TmdbApi.getBackdropUrl(path) : '';
   }
 
+  /// Primary path + TMDB screenshots (skipped when a season override is pinned).
+  List<String> get _backdropUrls {
+    final override = widget.backdropPathOverride?.trim();
+    if (override != null && override.isNotEmpty) {
+      final url = override.startsWith('http')
+          ? override
+          : TmdbApi.getBackdropUrl(override);
+      return url.isEmpty ? const [] : [url];
+    }
+    final urls = <String>[];
+    void addPath(String path) {
+      final p = path.trim();
+      if (p.isEmpty) return;
+      urls.add(p.startsWith('http') ? p : TmdbApi.getBackdropUrl(p));
+    }
+
+    addPath(widget.movie.backdropPath);
+    for (final shot in widget.movie.screenshots) {
+      addPath(shot);
+    }
+    if (urls.isEmpty) addPath(widget.movie.posterPath);
+    return RotatingHeroBackdrop.normalizeUrls(urls);
+  }
+
   String get _effectiveBackdropPath {
     final override = widget.backdropPathOverride?.trim();
     if (override != null && override.isNotEmpty) return override;
@@ -627,19 +651,14 @@ class _MediaDetailsHeroState extends State<MediaDetailsHero> {
   Color _shellBg(BuildContext context) => AppTheme.bgDark;
 
   Widget _buildBackdropMedia(Color shellBg) {
-    if (_backdropUrl.isEmpty) {
+    final urls = _backdropUrls;
+    if (urls.isEmpty) {
       return ColoredBox(color: shellBg);
     }
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 600),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeIn,
-      child: KenBurnsBackdrop(
-        key: ValueKey(_backdropUrl),
-        imageUrl: _backdropUrl,
-        showColorTint: false,
-      ),
+    return RotatingHeroBackdrop(
+      imageUrls: urls,
+      showColorTint: false,
     );
   }
 

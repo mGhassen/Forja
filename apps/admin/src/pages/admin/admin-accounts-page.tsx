@@ -17,6 +17,7 @@ import {
 import {
   EmptyState,
   PageHeader,
+  TablePagination,
   tableClassName,
   tableWrapClassName,
   tdClassName,
@@ -31,6 +32,7 @@ import {
 } from '@/lib/account-features'
 import { adminDb } from '@/lib/admin-db'
 import { catalogVerify } from '@/lib/catalog-verify'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
 import {
   countAssignmentsForAccounts,
   fetchAssignmentsForAccount,
@@ -41,6 +43,7 @@ import {
   createPortalShare,
   formatShareCode,
 } from '@/lib/iptv-portal-share'
+import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
 
 type AccountRow = {
@@ -285,17 +288,20 @@ export function AdminAccountsPage() {
   const list = useQuery({
     queryKey: ['admin', 'accounts', q],
     queryFn: async () => {
-      let req = adminDb
-        .from('accounts')
-        .select('id, email, is_admin, iptv_credits, features')
-        .order('created_at', { ascending: false })
-        .limit(100)
-      if (q.trim()) {
-        req = req.ilike('email', `%${q.trim()}%`)
-      }
-      const { data, error } = await req
-      if (error) throw error
-      return (data ?? []) as AccountRow[]
+      const needle = q.trim()
+      return fetchAllRows(async (from, to) => {
+        let req = adminDb
+          .from('accounts')
+          .select('id, email, is_admin, iptv_credits, features')
+          .order('created_at', { ascending: false })
+          .range(from, to)
+        if (needle) {
+          req = req.ilike('email', `%${needle}%`)
+        }
+        const { data, error } = await req
+        if (error) throw error
+        return (data ?? []) as AccountRow[]
+      })
     },
   })
 
@@ -303,6 +309,11 @@ export function AdminAccountsPage() {
     () => (list.data ?? []).map((a) => a.id),
     [list.data],
   )
+
+  const paging = useTablePagination(list.data ?? [], {
+    initialPageSize: 50,
+    resetKey: q,
+  })
 
   const counts = useQuery({
     queryKey: ['admin', 'account_portal_counts', accountIds],
@@ -371,7 +382,7 @@ export function AdminAccountsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(list.data ?? []).map((a) => {
+                {paging.pageRows.map((a) => {
                   const feats = parseAccountFeatures(a.features)
                   const enabled = enabledFeatureDefs(feats)
                   const credits = a.iptv_credits ?? 0
@@ -495,6 +506,13 @@ export function AdminAccountsPage() {
               </tbody>
             </table>
           </div>
+          <TablePagination
+            page={paging.page}
+            pageSize={paging.pageSize}
+            total={paging.total}
+            onPageChange={paging.setPage}
+            onPageSizeChange={paging.setPageSize}
+          />
         </div>
       )}
 

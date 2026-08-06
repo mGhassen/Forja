@@ -4,7 +4,7 @@
 
 ## What it is
 
-Home is the default tab when you first install Forja. It pulls metadata from TMDB for your device's country (falling back to the United States when no country is available) and shows a hero carousel, mood circles (icon + label), and scrollable rows: trending, popular, top rated, now playing, and more. On **desktop and TV**, the hero backdrop fills most of the viewport so **Featured This Month** can sit on the image with its title above the posters; the hero still shows title, metadata, synopsis, and Play/Info actions above that row. If you're logged into Trakt, you also get recommendations and TV/movie calendars. You can change the startup tab by selecting its star in **Settings → Features**.
+Home is the default tab when you first install Forja. It pulls metadata from TMDB for your device's country (falling back to the United States when no country is available) and shows a hero carousel, mood circles (icon + label), and scrollable rows: trending, popular, top rated, now playing, and more. On **desktop and TV**, the hero backdrop fills most of the viewport so **Featured This Month** can sit on the image with its title above the posters; the hero still shows title, metadata, synopsis, and Play/Info actions above that row. While a featured title stays on screen, its backdrop **rotates through random TMDB stills** for that title (Ken Burns). If you're logged into Trakt, you also get recommendations and TV/movie calendars. You can change the startup tab by selecting its star in **Settings → Features**.
 
 ## How to open it
 
