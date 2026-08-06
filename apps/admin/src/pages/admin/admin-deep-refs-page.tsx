@@ -170,8 +170,8 @@ function PasteBodyPanel({
 
   if (url) {
     return (
-      <div>
-        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
+      <div className="flex h-full min-h-0 flex-col">
+        <p className="mb-1 shrink-0 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
           Paste body
           {fetchOk === false
             ? ' (scrape fetch failed)'
@@ -184,7 +184,7 @@ function PasteBodyPanel({
             {(pasteQuery.error as Error).message}
           </p>
         ) : (
-          <pre className="max-h-40 overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
+          <pre className="min-h-0 flex-1 overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
             {pasteQuery.data}
           </pre>
         )}
@@ -195,11 +195,11 @@ function PasteBodyPanel({
   const decoded = decodeInlineBase64(base64)
   if (!decoded) return null
   return (
-    <div>
-      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
+    <div className="flex h-full min-h-0 flex-col">
+      <p className="mb-1 shrink-0 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
         Decoded base64
       </p>
-      <pre className="max-h-40 overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
+      <pre className="min-h-0 flex-1 overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
         {decoded}
       </pre>
     </div>
@@ -417,43 +417,49 @@ export function AdminDeepRefsPage() {
                         <tr className="border-t border-forja-border/40 bg-black/20">
                           <td className={tdClassName} colSpan={6}>
                             <div className="space-y-4 py-2">
-                              <div>
-                                <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
-                                  Base64
-                                </p>
-                                <pre className="max-h-28 overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-all">
-                                  {r.base64 || '—'}
-                                </pre>
-                              </div>
-                              <div>
-                                <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
-                                  Paste URL
-                                </p>
-                                <pre className="overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-text whitespace-pre-wrap break-all">
-                                  {r.paste_url || '—'}
-                                </pre>
-                              </div>
-                              <PasteBodyPanel
-                                pasteUrl={r.paste_url}
-                                base64={r.base64}
-                                fetchOk={r.fetch_ok}
-                              />
-                              <div>
-                                <p className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
-                                  <FileCode2 className="size-3.5" />
-                                  Portals (platform · type · output)
-                                </p>
-                                {portals.length === 0 ? (
-                                  <p className="text-sm text-forja-muted">
-                                    No portals extracted
-                                    {r.needs_recheck
-                                      ? ' — flagged for recheck'
-                                      : ''}
-                                    .
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <div>
+                                  <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
+                                    Base64
                                   </p>
-                                ) : (
-                                  <DeepRefPortalsTable portals={portals} />
-                                )}
+                                  <pre className="max-h-28 overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-all">
+                                    {r.base64 || '—'}
+                                  </pre>
+                                </div>
+                                <div>
+                                  <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
+                                    Paste URL
+                                  </p>
+                                  <pre className="max-h-28 overflow-auto border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-text whitespace-pre-wrap break-all">
+                                    {r.paste_url || '—'}
+                                  </pre>
+                                </div>
+                              </div>
+                              <div className="flex min-h-[20rem] flex-col gap-4 lg:flex-row">
+                                <div className="min-w-0 flex-1">
+                                  <p className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
+                                    <FileCode2 className="size-3.5" />
+                                    Portals (platform · type · output)
+                                  </p>
+                                  {portals.length === 0 ? (
+                                    <p className="text-sm text-forja-muted">
+                                      No portals extracted
+                                      {r.needs_recheck
+                                        ? ' — flagged for recheck'
+                                        : ''}
+                                      .
+                                    </p>
+                                  ) : (
+                                    <DeepRefPortalsTable portals={portals} />
+                                  )}
+                                </div>
+                                <div className="w-full shrink-0 border-t border-forja-border/60 pt-4 lg:w-[min(28rem,40%)] lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+                                  <PasteBodyPanel
+                                    pasteUrl={r.paste_url}
+                                    base64={r.base64}
+                                    fetchOk={r.fetch_ok}
+                                  />
+                                </div>
                               </div>
                             </div>
                           </td>
