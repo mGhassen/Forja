@@ -20,7 +20,7 @@ export type CatalogPortal = {
 
 /**
  * Portal hit under a deep ref.
- * - platform: xtream | m3u | stalker
+ * - platform: xtream | m3u | stalker (product protocol — not get.php type=)
  * - type / output: get.php query params (e.g. type=m3u_plus&output=m3u8)
  */
 export type DeepRefPortalHit = {
@@ -90,8 +90,6 @@ export type DeepRefRecord = {
   base64: string
   /** Decoded / found paste URL (empty if base64 was inline credential text). */
   pasteUrl: string
-  /** Fetched paste body (capped) for re-extract. */
-  pasteBody: string | null
   payloadHash: string
   refHost: string
   fetchOk: boolean | null
@@ -106,7 +104,6 @@ export type PendingDeepRefRow = {
   post_id: string
   base64: string
   paste_url: string
-  paste_body: string | null
   payload_hash: string
   ref_host: string
   fetch_ok: boolean | null

@@ -229,7 +229,7 @@ function parseFileMeta(cleaned: string): FileMeta {
   let platformHint: PortalPlatform | null = null
   if (hasM3u && !hasXtream) platformHint = 'm3u'
   else if (hasXtream && !hasM3u) platformHint = 'xtream'
-  // "M3U/XTREAM" → leave null; get.php `type=` decides
+  // "M3U/XTREAM" → leave null. Hint never overrides host+user+pass → xtream.
 
   const regionLine = REGION_HINT_RE.exec(head)?.[1]?.trim() ?? ''
   const fallbackRegion =
@@ -436,27 +436,16 @@ function finalizeXtreamOrM3u(
     return
   }
 
-  const hasM3uType =
-    type.toLowerCase().includes('m3u') ||
-    output.toLowerCase().includes('m3u') ||
-    output.toLowerCase() === 'ts' ||
-    rawUrl.toLowerCase().includes('/get.php') ||
-    fileMeta?.platformHint === 'm3u'
-
-  let platform: PortalPlatform =
-    hasM3uType && (type || output || fileMeta?.platformHint === 'm3u')
-      ? 'm3u'
-      : 'xtream'
-  if (fileMeta?.platformHint === 'xtream' && !type && !output) {
-    platform = 'xtream'
-  }
-
+  // Host + user + pass is always Xtream (player_api). get.php `type=` /
+  // `output=` (m3u_plus, m3u8, ts, …) are export metadata on the hit — not
+  // the product platform. Bare playlist URLs use `__m3u__` via
+  // extractM3uPlaylistUrls only.
   put(acc, {
     url,
     username,
     password,
     source,
-    platform,
+    platform: 'xtream',
     type,
     output,
     ...shared,
@@ -624,10 +613,9 @@ function enrichPortalsFromCards(
         p.regionConfidence && p.regionConfidence > 0
           ? p.regionConfidence
           : fileMeta.region.confidence,
-      platform:
-        !p.type && !p.output && fileMeta.platformHint
-          ? fileMeta.platformHint
-          : p.platform,
+      // Credentialed rows stay xtream/stalker — never flip to m3u from a
+      // note header that says "M3U" (that's usually Allowed Outputs / get.php).
+      platform: p.platform === 'stalker' ? 'stalker' : 'xtream',
     })
     acc.delete(key)
     put(acc, next)

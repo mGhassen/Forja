@@ -16,11 +16,13 @@ function resolveServeOrigin(): string | undefined {
 }
 
 /**
- * Remix adapter (Request/Response + streaming). Edge adapter cannot stream —
- * without streaming, a long multi-step invoke dies at Vercel maxDuration with
- * "No step output" / FUNCTION_INVOCATION_TIMEOUT.
+ * Remix adapter (Request/Response + streaming). Heartbeats keep the Vercel
+ * connection alive while a single step runs (paste fetch / bulk insert).
+ * Scrape itself uses checkpointing:false + sleep('0s') so each HTTP invoke
+ * finishes one step — never return fat portal arrays from step.run (that
+ * truncated the stream body → unexpected end of JSON input).
  *
- * defaultMaxRuntime: checkpoint budget per HTTP invoke (<< Vercel 300s).
+ * defaultMaxRuntime only applies when checkpointing is on; kept for other fns.
  */
 const handler = serve({
   client: inngest,

@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { adminDb } from '@/lib/admin-db'
+import { fetchPasteBodyForAdmin } from '@/lib/paste-body'
 import { cn } from '@/lib/utils'
 
 export const DEEP_REFS_KEY = ['admin', 'deep_refs'] as const
@@ -47,7 +48,6 @@ type DeepRefRow = {
   scrape_run_id: string | null
   base64: string
   paste_url: string
-  paste_body: string | null
   ref_host: string
   payload_hash: string
   fetch_ok: boolean | null
@@ -63,7 +63,7 @@ async function fetchDeepRefs(limit = 200): Promise<DeepRefRow[]> {
   const { data, error } = await adminDb
     .from('iptv_scrape_deep_refs')
     .select(
-      `id, post_id, scrape_run_id, base64, paste_url, paste_body, ref_host,
+      `id, post_id, scrape_run_id, base64, paste_url, ref_host,
        payload_hash, fetch_ok, extract_count, needs_recheck, created_at,
        iptv_scrape_deep_ref_portals (
          id, platform, type, output, url, username, password, was_existing, portal_id, created_at
@@ -73,6 +73,74 @@ async function fetchDeepRefs(limit = 200): Promise<DeepRefRow[]> {
     .limit(limit)
   if (error) throw error
   return (data ?? []) as DeepRefRow[]
+}
+
+function decodeInlineBase64(raw: string): string | null {
+  const s = raw.trim()
+  if (!s) return null
+  try {
+    const bin = atob(s)
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0))
+    return new TextDecoder().decode(bytes)
+  } catch {
+    return null
+  }
+}
+
+function PasteBodyPanel({
+  pasteUrl,
+  base64,
+  fetchOk,
+}: {
+  pasteUrl: string
+  base64: string
+  fetchOk: boolean | null
+}) {
+  const url = pasteUrl.trim()
+  const pasteQuery = useQuery({
+    queryKey: ['admin', 'paste_body', url],
+    queryFn: () => fetchPasteBodyForAdmin(url),
+    enabled: Boolean(url),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  })
+
+  if (url) {
+    return (
+      <div>
+        <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
+          Paste body
+          {fetchOk === false
+            ? ' (scrape fetch failed)'
+            : ' · live from paste host'}
+        </p>
+        {pasteQuery.isLoading ? (
+          <p className="text-sm text-forja-muted">Fetching paste…</p>
+        ) : pasteQuery.isError ? (
+          <p className="text-sm text-red-400">
+            {(pasteQuery.error as Error).message}
+          </p>
+        ) : (
+          <pre className="max-h-40 overflow-auto rounded-lg border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
+            {pasteQuery.data}
+          </pre>
+        )}
+      </div>
+    )
+  }
+
+  const decoded = decodeInlineBase64(base64)
+  if (!decoded) return null
+  return (
+    <div>
+      <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
+        Decoded base64
+      </p>
+      <pre className="max-h-40 overflow-auto rounded-lg border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
+        {decoded}
+      </pre>
+    </div>
+  )
 }
 
 export function AdminDeepRefsPage() {
@@ -106,7 +174,6 @@ export function AdminDeepRefsPage() {
         r.post_id,
         r.base64,
         r.paste_url,
-        r.paste_body ?? '',
         r.ref_host,
         ...portals.flatMap((p) => [
           p.platform,
@@ -138,7 +205,7 @@ export function AdminDeepRefsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Deep refs"
-        description="One row per find: base64 + paste.sh URL. Under each ref: portals with platform (xtream/m3u/stalker) and get.php type/output."
+        description="One row per find: base64 + paste URL only. Expand to fetch paste body live from the host."
         actions={
           <Button type="button" variant="ghost" size="sm" asChild>
             <Link to="/scrape">← Scrape</Link>
@@ -291,19 +358,11 @@ export function AdminDeepRefsPage() {
                                   {r.paste_url || '—'}
                                 </pre>
                               </div>
-                              {r.paste_body ? (
-                                <div>
-                                  <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
-                                    Paste body
-                                    {r.fetch_ok === false
-                                      ? ' (fetch failed)'
-                                      : ''}
-                                  </p>
-                                  <pre className="max-h-40 overflow-auto rounded-lg border border-forja-border bg-black/30 p-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
-                                    {r.paste_body}
-                                  </pre>
-                                </div>
-                              ) : null}
+                              <PasteBodyPanel
+                                pasteUrl={r.paste_url}
+                                base64={r.base64}
+                                fetchOk={r.fetch_ok}
+                              />
                               <div>
                                 <p className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
                                   <FileCode2 className="size-3.5" />

@@ -22,6 +22,7 @@ import { Route as ApiInngestRouteImport } from './routes/api.inngest'
 import { Route as ApiIptvCatalogScrapeRouteImport } from './routes/api.iptv-catalog-scrape'
 import { Route as ApiIptvCatalogVerifyRouteImport } from './routes/api.iptv-catalog-verify'
 import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
+import { Route as ApiIptvPasteBodyRouteImport } from './routes/api.iptv-paste-body'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthLoginMfaRouteImport } from './routes/_auth/login.mfa'
 
@@ -88,6 +89,11 @@ const ApiIptvShareRoute = ApiIptvShareRouteImport.update({
   path: '/api/iptv-share',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIptvPasteBodyRoute = ApiIptvPasteBodyRouteImport.update({
+  id: '/api/iptv-paste-body',
+  path: '/api/iptv-paste-body',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
 }
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
 }
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
   '/api/iptv-share': typeof ApiIptvShareRoute
+  '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_ops/': typeof OpsIndexRoute
   '/_auth/login/mfa': typeof AuthLoginMfaRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/api/iptv-catalog-scrape'
     | '/api/iptv-catalog-verify'
     | '/api/iptv-share'
+    | '/api/iptv-paste-body'
     | '/auth/callback'
     | '/login/mfa'
   fileRoutesByTo: FileRoutesByTo
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/api/iptv-catalog-scrape'
     | '/api/iptv-catalog-verify'
     | '/api/iptv-share'
+    | '/api/iptv-paste-body'
     | '/auth/callback'
     | '/login/mfa'
   id:
@@ -192,6 +203,7 @@ export interface FileRouteTypes {
     | '/api/iptv-catalog-scrape'
     | '/api/iptv-catalog-verify'
     | '/api/iptv-share'
+    | '/api/iptv-paste-body'
     | '/auth/callback'
     | '/_ops/'
     | '/_auth/login/mfa'
@@ -204,6 +216,7 @@ export interface RootRouteChildren {
   ApiIptvCatalogScrapeRoute: typeof ApiIptvCatalogScrapeRoute
   ApiIptvCatalogVerifyRoute: typeof ApiIptvCatalogVerifyRoute
   ApiIptvShareRoute: typeof ApiIptvShareRoute
+  ApiIptvPasteBodyRoute: typeof ApiIptvPasteBodyRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
@@ -300,6 +313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIptvShareRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/iptv-paste-body': {
+      id: '/api/iptv-paste-body'
+      path: '/api/iptv-paste-body'
+      fullPath: '/api/iptv-paste-body'
+      preLoaderRoute: typeof ApiIptvPasteBodyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -366,6 +386,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIptvCatalogScrapeRoute: ApiIptvCatalogScrapeRoute,
   ApiIptvCatalogVerifyRoute: ApiIptvCatalogVerifyRoute,
   ApiIptvShareRoute: ApiIptvShareRoute,
+  ApiIptvPasteBodyRoute: ApiIptvPasteBodyRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport

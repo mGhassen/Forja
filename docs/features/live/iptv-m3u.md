@@ -13,6 +13,7 @@ Forja treats **M3U/M3U8 playlists** as first-class portals next to Xtream and St
 ## What you can do
 
 - Add a playlist by URL (optional custom User-Agent for hosts that reject the default)
+- Tap the dice icon next to the portal name field for a random name
 - Tap the folder icon next to the URL field to pick a local `.m3u`/`.m3u8` file instead of pasting a link
 - Browse live channels by `group-title` in the same catalog browser as Xtream
 - Play a channel in the IPTV player — in-player guide and search work for live
@@ -22,7 +23,7 @@ Forja treats **M3U/M3U8 playlists** as first-class portals next to Xtream and St
 ## Setup
 
 1. Obtain an M3U/M3U8 URL from your provider, or pick a local playlist file
-2. **Portals** → **Add** → **M3U** → enter a **portal name** (required), paste the URL (or choose a file) → confirm
+2. **Portals** → **Add** → **M3U** → enter a **portal name** (required; dice icon fills a random one), paste the URL (or choose a file) → confirm
 3. Open the portal from the list
 
 ## Tips

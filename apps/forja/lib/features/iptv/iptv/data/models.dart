@@ -3,6 +3,44 @@
 
 import 'dart:math';
 
+/// Random display names for M3U portals (add-dialog dice button).
+abstract final class M3uPortalName {
+  static final _random = Random();
+
+  static const _adjectives = [
+    'France',
+    'Nordic',
+    'Pacific',
+    'Atlas',
+    'Aurora',
+    'Cascade',
+    'Delta',
+    'Ember',
+    'Horizon',
+    'Lumen',
+    'Nova',
+    'Orbit',
+    'Pulse',
+    'Summit',
+    'Velvet',
+  ];
+
+  static const _nouns = [
+    'IPTV',
+    'Stream',
+    'Channels',
+    'Playlist',
+    'TV',
+    'Live',
+  ];
+
+  static String generate() {
+    final a = _adjectives[_random.nextInt(_adjectives.length)];
+    final n = _nouns[_random.nextInt(_nouns.length)];
+    return '$a $n';
+  }
+}
+
 /// Helpers for the MAC address a Stalker/Ministra portal authenticates
 /// against — MAG-style set-top-box MACs.
 abstract final class StalkerMac {

@@ -8,24 +8,21 @@ import {
 import { cronIsDueUtc, isValidScrapeCron } from '@/lib/scrape-cron'
 import {
   createCatalogAdminClient,
+  getDeepRefPortalsForPromote,
   getDeepRefRowById,
   getLastScheduledScrapeStartedAt,
   getScrapeCronSettings,
+  insertScrapeDeepRefPortalsBulk,
   insertScrapeRun,
-  linkScrapeDeepRefPortals,
+  listDeepRefPortalIdsForRun,
   listPendingDeepRefIdsForRun,
-  loadKnownScrapePostIds,
   patchScrapeRun,
+  promoteDeepRefPortalRow,
   upsertCatalogCandidate,
   upsertScrapeDeepRef,
   upsertScrapePostId,
 } from '@/server/iptv-catalog/supabase-admin'
-import type {
-  CatalogPortal,
-  DeepRefPortalHit,
-  PortalStatus,
-} from '@/server/iptv-catalog/types'
-import { portalKey } from '@/server/iptv-catalog/types'
+import type { PortalStatus } from '@/server/iptv-catalog/types'
 import { verifyPortalStatus } from '@/server/iptv-catalog/verify'
 
 /**
@@ -36,7 +33,7 @@ import { verifyPortalStatus } from '@/server/iptv-catalog/verify'
 const VERIFY_PORTAL_STATUS = false
 
 /** Chunk size for Inngest upsert steps (timeout safety only — not a product cap). */
-const UPSERT_CHUNK = 50
+const UPSERT_CHUNK = 25
 
 type ScrapeData = {
   jobId?: string
@@ -63,43 +60,14 @@ async function markRun(runId: string, error?: string) {
   })
 }
 
-function hitsToCatalogPortals(
-  hits: DeepRefPortalHit[],
-  pasteUrl: string,
-  postId: string,
-): CatalogPortal[] {
-  return hits
-    .filter(
-      (h) =>
-        (h.platform === 'm3u' &&
-          h.username === '__m3u__' &&
-          Boolean(h.url)) ||
-        (Boolean(h.username) &&
-          (Boolean(h.password) || h.platform === 'stalker')),
-    )
-    .map((h) => ({
-      url: h.url,
-      username: h.username,
-      password: h.password || '',
-      source: pasteUrl ? 'catalog-deep' : 'catalog-decoded',
-      platform: h.platform,
-      postId,
-      expiry: h.expiry ?? null,
-      maxConnections: h.maxConnections ?? null,
-      timezone: h.timezone ?? null,
-      regionPrimary: h.regionPrimary,
-      regionTags: h.regionTags,
-      regionConfidence: h.regionConfidence,
-      allowedOutputs: h.allowedOutputs ?? null,
-    }))
-}
-
 /**
  * Scheduled + on-demand catalog scrape.
- * Phase 1: walk Reddit /new → posts + deep_ref stubs in DB.
- * Phase 2: process pending deep_refs (paste fetch + extract).
- * Phase 2b: link deep_ref_portals (own step — N RPCs).
- * Then upsert portal candidates. Watermark / maxPages still apply.
+ * Phase 1: walk Reddit /new → posts + deep_ref stubs in DB (L1 upserted in-step).
+ * Phase 2: process pending deep_refs (paste + extract + bulk junction insert).
+ * Phase 3: promote junction rows → catalog in small chunks (ids only in memo).
+ *
+ * Never return portal arrays / known-post sets through step.run — that blew
+ * Inngest stream JSON ("unexpected end of JSON input") on Vercel.
  */
 export const iptvCatalogScrape = inngest.createFunction(
   {
@@ -107,7 +75,6 @@ export const iptvCatalogScrape = inngest.createFunction(
     concurrency: { limit: 1 },
     retries: 1,
     // Classic one-step-per-invoke — matches step.sleep('0s') yields.
-    // v4 checkpointing + streaming caused empty JSON parse failures on Vercel.
     checkpointing: false,
     triggers: [
       { cron: '0 6 * * *' },
@@ -138,6 +105,7 @@ export const iptvCatalogScrape = inngest.createFunction(
     const isCron =
       eventName === 'inngest/scheduled.timer' ||
       eventName.startsWith('inngest/scheduled')
+    const forceFull = Boolean(data.forceFull)
 
     if (isCron) {
       const gate = await step.run('check-cron-schedule', async () => {
@@ -168,8 +136,6 @@ export const iptvCatalogScrape = inngest.createFunction(
       }
     }
 
-    // One Reddit page (10 posts) per Inngest step.
-    // Range: startPage..endPage (1-indexed). Legacy maxPages alone → pages 1..maxPages.
     const startPage = Math.min(
       200,
       Math.max(1, Math.floor(data.startPage ?? 1)),
@@ -207,15 +173,6 @@ export const iptvCatalogScrape = inngest.createFunction(
       return insertScrapeRun(sb, isCron ? 'inngest-cron' : 'inngest-admin')
     })
 
-    const knownIds = await step.run('load-known-post-ids', async () => {
-      if (data.forceFull) return [] as string[]
-      const sb = createCatalogAdminClient()
-      const set = await loadKnownScrapePostIds(sb)
-      return [...set]
-    })
-    const knownPostIds = new Set(knownIds)
-
-    const portals = new Map<string, CatalogPortal>()
     let after: string | null = null
     let postsSeen = 0
     let deepRefCount = 0
@@ -224,9 +181,9 @@ export const iptvCatalogScrape = inngest.createFunction(
     let l2ExtractCount = 0
     let unparsedCount = 0
     let l1OnlyCount = 0
+    let l1Upserted = 0
     let hitWatermark = false
 
-    // Skip listing pages (no extract) so startPage is the first we collect.
     for (let s = 0; s < skipPages; s++) {
       const pageAfter = after
       const skipped = await step.run(`skip-reddit-page-${s}`, async () => {
@@ -236,18 +193,30 @@ export const iptvCatalogScrape = inngest.createFunction(
       if (!after) break
     }
 
-    // Phase 1 — COLLECT: Reddit pages → posts + deep_ref stubs (no paste HTTP).
+    // Phase 1 — COLLECT: Reddit → posts + deep_ref stubs; L1 upserted in-step.
+    // Step return is slim (counts + cursor) — never portal arrays / known-id sets.
     for (let page = 0; page < maxPages; page++) {
       const pageAfter = after
-      const knownSnapshot = [...knownPostIds]
       const result = await step.run(`collect-reddit-page-${page}`, async () => {
-        const known = new Set(knownSnapshot)
+        const sb = createCatalogAdminClient()
+        const knownChecker = forceFull
+          ? async () => false
+          : async (postId: string) => {
+              const { data: row, error } = await sb
+                .from('iptv_scrape_posts')
+                .select('post_id')
+                .eq('post_id', postId)
+                .maybeSingle()
+              if (error) throw error
+              return Boolean(row?.post_id)
+            }
+
         const pageResult = await scrapeCatalogPage(
           pageAfter,
           maxResultsPerPage,
-          known,
+          knownChecker,
         )
-        const sb = createCatalogAdminClient()
+
         for (const postId of pageResult.postIds) {
           await upsertScrapePostId(
             sb,
@@ -259,13 +228,32 @@ export const iptvCatalogScrape = inngest.createFunction(
         for (const ref of pageResult.deepRefs) {
           await upsertScrapeDeepRef(sb, ref, runId, { linkPortals: false })
         }
+
+        let upserted = 0
+        for (const portal of pageResult.portals) {
+          const status: PortalStatus = {
+            alive: null,
+            status: 'unverified',
+            expiry: portal.expiry ?? null,
+            maxConnections: portal.maxConnections ?? null,
+            timezone: portal.timezone ?? null,
+            categoryNames: [],
+          }
+          const region = {
+            primary: portal.regionPrimary ?? 'UNKNOWN',
+            tags: portal.regionTags ?? [],
+            confidence: portal.regionConfidence ?? 0,
+          }
+          await upsertCatalogCandidate(sb, portal, status, region)
+          upserted++
+        }
+
         return {
-          portals: pageResult.portals,
-          postIds: pageResult.postIds,
           nextAfter: pageResult.nextAfter,
           postsSeen: pageResult.postsSeen,
           hitWatermark: pageResult.hitWatermark,
           funnel: pageResult.funnel,
+          l1Upserted: upserted,
         }
       })
 
@@ -273,21 +261,18 @@ export const iptvCatalogScrape = inngest.createFunction(
       deepRefCount += result.funnel?.deepRefCount ?? 0
       unparsedCount += result.funnel?.unparsedCount ?? 0
       l1OnlyCount += result.funnel?.l1OnlyCount ?? 0
-      for (const id of result.postIds) knownPostIds.add(id)
-      for (const p of result.portals) {
-        portals.set(portalKey(p), p)
-      }
+      l1Upserted += result.l1Upserted
 
       await step.run(`checkpoint-collect-${page}`, async () => {
         const sb = createCatalogAdminClient()
         await patchScrapeRun(sb, runId, {
           posts_seen: postsSeen,
-          l1_extract_count: portals.size,
+          l1_extract_count: l1Upserted,
           deep_ref_count: deepRefCount,
           unparsed_count: unparsedCount,
+          candidates_upserted: l1Upserted,
         })
       })
-      // Force new Vercel invoke — never chain 10 pages into one 300s request.
       await step.sleep(`yield-collect-${page}`, '0s')
 
       after = result.nextAfter
@@ -302,14 +287,14 @@ export const iptvCatalogScrape = inngest.createFunction(
       const sb = createCatalogAdminClient()
       await patchScrapeRun(sb, runId, {
         posts_seen: postsSeen,
-        l1_extract_count: portals.size,
+        l1_extract_count: l1Upserted,
         deep_ref_count: deepRefCount,
         unparsed_count: unparsedCount,
+        candidates_upserted: l1Upserted,
       })
     })
 
-    // Phase 2 — PROCESS: pending deep_refs from DB → paste fetch + extract.
-    // Unparsed after process only (collect stubs are incomplete by design).
+    // Phase 2 — PROCESS: paste + extract + bulk junction insert. Slim returns only.
     unparsedCount = 0
     const pendingIds = await step.run('list-pending-deep-refs', async () => {
       const sb = createCatalogAdminClient()
@@ -323,14 +308,10 @@ export const iptvCatalogScrape = inngest.createFunction(
         const row = await getDeepRefRowById(sb, deepRefRowId)
         if (!row) {
           return {
-            deepRefId: null as string | null,
-            hits: [] as DeepRefPortalHit[],
-            pasteUrl: '',
-            postId: '',
-            portals: [] as CatalogPortal[],
             l2FetchOk: 0,
             l2FetchFail: 0,
             l2ExtractCount: 0,
+            hitCount: 0,
             needsRecheck: true,
           }
         }
@@ -341,19 +322,16 @@ export const iptvCatalogScrape = inngest.createFunction(
           runId,
           { linkPortals: false },
         )
-        return {
+        const hitCount = await insertScrapeDeepRefPortalsBulk(
+          sb,
           deepRefId,
-          hits: processed.ref.portals,
-          pasteUrl: processed.ref.pasteUrl,
-          postId: processed.ref.postId,
-          portals: hitsToCatalogPortals(
-            processed.ref.portals,
-            processed.ref.pasteUrl,
-            processed.ref.postId,
-          ),
+          processed.ref.portals,
+        )
+        return {
           l2FetchOk: processed.l2FetchOk,
           l2FetchFail: processed.l2FetchFail,
           l2ExtractCount: processed.l2ExtractCount,
+          hitCount,
           needsRecheck: processed.ref.needsRecheck,
         }
       })
@@ -361,139 +339,95 @@ export const iptvCatalogScrape = inngest.createFunction(
       l2FetchFail += outcome.l2FetchFail
       l2ExtractCount += outcome.l2ExtractCount
       if (outcome.needsRecheck) unparsedCount++
-      for (const p of outcome.portals) {
-        portals.set(portalKey(p), p)
-      }
-
-      // Junction rows in a separate step — never N× find/upsert inside paste fetch.
-      if (outcome.deepRefId && outcome.hits.length > 0) {
-        const linkId = outcome.deepRefId
-        const linkHits = outcome.hits
-        const linkPasteUrl = outcome.pasteUrl
-        const linkPostId = outcome.postId
-        await step.run(`link-deep-ref-portals-${i}`, async () => {
-          const sb = createCatalogAdminClient()
-          return linkScrapeDeepRefPortals(
-            sb,
-            linkId,
-            {
-              postId: linkPostId,
-              base64: '',
-              pasteUrl: linkPasteUrl,
-              pasteBody: null,
-              payloadHash: '',
-              refHost: '',
-              fetchOk: true,
-              extractCount: linkHits.length,
-              needsRecheck: false,
-              portals: linkHits,
-            },
-            // Catalog promote stays in upsert-candidates-* (chunked).
-            { promoteCatalog: false },
-          )
-        })
-      }
 
       if (i % 5 === 0 || i === pendingIds.length - 1) {
         await step.run(`checkpoint-process-${i}`, async () => {
           const sb = createCatalogAdminClient()
           await patchScrapeRun(sb, runId, {
             posts_seen: postsSeen,
-            l1_extract_count: portals.size,
+            l1_extract_count: l1Upserted,
             deep_ref_count: deepRefCount,
             l2_fetch_ok: l2FetchOk,
             l2_fetch_fail: l2FetchFail,
             l2_extract_count: l2ExtractCount,
             unparsed_count: unparsedCount,
+            candidates_upserted: l1Upserted,
           })
         })
       }
-      // One paste (+ link) per invoke — Vercel must not sit open across N pastes.
       await step.sleep(`yield-process-${i}`, '0s')
     }
 
-    await step.run('checkpoint-after-reddit', async () => {
+    await step.run('checkpoint-after-process', async () => {
       const sb = createCatalogAdminClient()
       await patchScrapeRun(sb, runId, {
         posts_seen: postsSeen,
-        l1_extract_count: portals.size,
+        l1_extract_count: l1Upserted,
         deep_ref_count: deepRefCount,
         l2_fetch_ok: l2FetchOk,
         l2_fetch_fail: l2FetchFail,
         l2_extract_count: l2ExtractCount,
         unparsed_count: unparsedCount,
+        candidates_upserted: l1Upserted,
       })
     })
 
-    const list = [...portals.values()]
+    // Phase 3 — PROMOTE: junction row ids → catalog (chunked). Ids only in memo.
     let aliveCount = 0
-    let upserted = 0
+    let upserted = l1Upserted
     let deadCount = 0
     let verified = 0
 
+    const portalRowIds = await step.run('list-run-portal-ids', async () => {
+      const sb = createCatalogAdminClient()
+      return listDeepRefPortalIdsForRun(sb, runId)
+    })
+
     if (VERIFY_PORTAL_STATUS) {
-      const toVerify = list.slice(0, maxVerify)
-      for (let i = 0; i < toVerify.length; i++) {
-        const portal = toVerify[i]!
-        const outcome = await step.run(
-          `verify-portal-status-${i}`,
-          async () => {
+      // Legacy probe path — load + verify in small chunks (ids from memo).
+      for (let i = 0; i < Math.min(portalRowIds.length, maxVerify); i += UPSERT_CHUNK) {
+        const chunkIds = portalRowIds.slice(i, i + UPSERT_CHUNK)
+        const n = await step.run(`verify-promote-${i}`, async () => {
+          const sb = createCatalogAdminClient()
+          const rows = await getDeepRefPortalsForPromote(sb, chunkIds)
+          let count = 0
+          let alive = 0
+          let dead = 0
+          for (const row of rows) {
+            const promoted = await promoteDeepRefPortalRow(sb, row)
+            if (!promoted.upserted) continue
+            count++
+            const portal = {
+              url: row.url,
+              username: row.username,
+              password: row.password || '',
+              source: row.paste_url ? 'catalog-deep' : 'catalog-decoded',
+              platform: row.platform,
+            }
             const status = await verifyPortalStatus(portal)
             const region = classifyRegion(status.timezone, status.categoryNames)
-            const sb = createCatalogAdminClient()
             await upsertCatalogCandidate(sb, portal, status, region)
-            return {
-              alive: status.alive,
-              status: status.status,
-              region: region.primary,
-              error: status.error ?? null,
-            }
-          },
-        )
-        upserted++
-        verified++
-        if (outcome.alive) aliveCount++
-        else deadCount++
-
-        if (i % 5 === 0 || i === toVerify.length - 1) {
-          await step.run(`progress-${i}`, async () => {
-            const sb = createCatalogAdminClient()
-            await patchScrapeRun(sb, runId, {
-              candidates_upserted: upserted,
-              alive_count: aliveCount,
-              posts_seen: postsSeen,
-              l1_extract_count: portals.size,
-              deep_ref_count: deepRefCount,
-              l2_fetch_ok: l2FetchOk,
-              l2_fetch_fail: l2FetchFail,
-              l2_extract_count: l2ExtractCount,
-              unparsed_count: unparsedCount,
-            })
-          })
-        }
+            if (status.alive) alive++
+            else dead++
+          }
+          return { count, alive, dead }
+        })
+        upserted += n.count
+        verified += n.count
+        aliveCount += n.alive
+        deadCount += n.dead
+        await step.sleep(`yield-verify-${i}`, '0s')
       }
-    } else if (list.length > 0) {
-      for (let i = 0; i < list.length; i += UPSERT_CHUNK) {
-        const chunk = list.slice(i, i + UPSERT_CHUNK)
+    } else if (portalRowIds.length > 0) {
+      for (let i = 0; i < portalRowIds.length; i += UPSERT_CHUNK) {
+        const chunkIds = portalRowIds.slice(i, i + UPSERT_CHUNK)
         const n = await step.run(`upsert-candidates-${i}`, async () => {
           const sb = createCatalogAdminClient()
+          const rows = await getDeepRefPortalsForPromote(sb, chunkIds)
           let count = 0
-          for (const portal of chunk) {
-            const status: PortalStatus = {
-              alive: null,
-              status: 'unverified',
-              expiry: portal.expiry ?? null,
-              maxConnections: portal.maxConnections ?? null,
-              timezone: portal.timezone ?? null,
-              categoryNames: [],
-            }
-            const region = {
-              primary: portal.regionPrimary ?? 'UNKNOWN',
-              tags: portal.regionTags ?? [],
-              confidence: portal.regionConfidence ?? 0,
-            }
-            await upsertCatalogCandidate(sb, portal, status, region)
-            count++
+          for (const row of rows) {
+            const promoted = await promoteDeepRefPortalRow(sb, row)
+            if (promoted.upserted) count++
           }
           return count
         })
@@ -503,7 +437,7 @@ export const iptvCatalogScrape = inngest.createFunction(
           await patchScrapeRun(sb, runId, {
             candidates_upserted: upserted,
             posts_seen: postsSeen,
-            l1_extract_count: portals.size,
+            l1_extract_count: l1Upserted,
             deep_ref_count: deepRefCount,
             l2_fetch_ok: l2FetchOk,
             l2_fetch_fail: l2FetchFail,
@@ -521,7 +455,7 @@ export const iptvCatalogScrape = inngest.createFunction(
         status: 'ok',
         finished_at: new Date().toISOString(),
         posts_seen: postsSeen,
-        l1_extract_count: portals.size,
+        l1_extract_count: l1Upserted,
         deep_ref_count: deepRefCount,
         l2_fetch_ok: l2FetchOk,
         l2_fetch_fail: l2FetchFail,
@@ -536,8 +470,9 @@ export const iptvCatalogScrape = inngest.createFunction(
     return {
       jobId,
       runId,
-      scrapedUnique: portals.size,
+      scrapedUnique: upserted,
       l1OnlyCount,
+      l1Upserted,
       verified,
       verifyEnabled: VERIFY_PORTAL_STATUS,
       upserted,
@@ -550,6 +485,7 @@ export const iptvCatalogScrape = inngest.createFunction(
       unparsedCount,
       postsSeen,
       hitWatermark,
+      portalRows: portalRowIds.length,
     }
   },
 )

@@ -36,7 +36,7 @@ const B64_HTTP = /aHR0c[a-zA-Z0-9+/=]{10,}/g
 const RAW_PASTE =
   /https?:\/\/(?:paste\.sh|pastebin\.com|justpaste\.it|controlc\.com|pastes\.dev|text\.is|rentry\.co)\/[a-zA-Z0-9#_=-]+/gi
 
-/** Cap stored paste / decoded body for later re-extract (bytes as UTF-16 length). */
+/** Cap in-memory paste / decoded body for extract (never persisted). */
 const PAYLOAD_TEXT_MAX = 64_000
 
 const PASTE_FETCH_TIMEOUT_MS = 12_000
@@ -256,7 +256,7 @@ function rewritePasteUrl(url: string): string {
   return url
 }
 
-async function fetchPasteBody(url: string): Promise<string | null> {
+export async function fetchPasteBody(url: string): Promise<string | null> {
   try {
     if (url.includes('paste.sh/') && url.includes('#')) {
       const hashIdx = url.indexOf('#')
@@ -415,7 +415,6 @@ function collectDeepRefs(
         postId,
         base64: raw,
         pasteUrl: '',
-        pasteBody: null,
         payloadHash: hash,
         refHost: '',
         fetchOk: null,
@@ -434,7 +433,6 @@ function collectDeepRefs(
         postId,
         base64: raw,
         pasteUrl: decoded,
-        pasteBody: null,
         payloadHash: hash,
         refHost: hostOf(decoded),
         fetchOk: null,
@@ -449,12 +447,11 @@ function collectDeepRefs(
         base64: raw,
       })
     } else if (!decoded.startsWith('http') && decoded.includes(':')) {
-      // Collect only — extract portals in process phase from paste_body.
+      // Inline credentials in base64 — decode again in process from `base64` col.
       refs.push({
         postId,
         base64: raw,
         pasteUrl: '',
-        pasteBody: truncatePayload(decoded),
         payloadHash: hashPayload(raw),
         refHost: '',
         fetchOk: null,
@@ -467,7 +464,6 @@ function collectDeepRefs(
         postId,
         base64: raw,
         pasteUrl: '',
-        pasteBody: truncatePayload(decoded),
         payloadHash: hashPayload(raw),
         refHost: '',
         fetchOk: null,
@@ -487,7 +483,6 @@ function collectDeepRefs(
       postId,
       base64: '',
       pasteUrl: url,
-      pasteBody: null,
       payloadHash: hash,
       refHost: hostOf(url),
       fetchOk: null,
@@ -506,7 +501,7 @@ function collectDeepRefs(
   return { refs, pendingPastes }
 }
 
-/** Fetch paste body; return updated deep ref (same base64+paste_url row). */
+/** Fetch paste body; return updated deep ref (same base64+paste_url row). Body never persisted. */
 export async function resolvePendingPastes(
   pending: PendingPaste[],
   acc: Map<string, CatalogPortal>,
@@ -539,7 +534,6 @@ export async function resolvePendingPastes(
         postId: dl.postId,
         base64: dl.base64,
         pasteUrl: dl.url,
-        pasteBody: truncatePayload(text),
         payloadHash: dl.payloadHash,
         refHost: hostOf(dl.url),
         fetchOk: true,
@@ -553,7 +547,6 @@ export async function resolvePendingPastes(
         postId: dl.postId,
         base64: dl.base64,
         pasteUrl: dl.url,
-        pasteBody: null,
         payloadHash: dl.payloadHash,
         refHost: hostOf(dl.url),
         fetchOk: false,
@@ -567,7 +560,18 @@ export async function resolvePendingPastes(
   return { refs, l2FetchOk, l2FetchFail, l2ExtractCount }
 }
 
-/** Process one collected deep_ref: fetch paste if needed, extract portals. */
+function decodeBase64Text(raw: string): string | null {
+  const s = raw.trim()
+  if (!s) return null
+  try {
+    const decoded = Buffer.from(s, 'base64').toString('utf8')
+    return decoded.length > 0 ? decoded : null
+  } catch {
+    return null
+  }
+}
+
+/** Process one collected deep_ref: fetch paste if needed, extract portals. Body never written to DB. */
 export async function processDeepRefRow(
   row: PendingDeepRefRow,
   maxResults = 500,
@@ -578,31 +582,31 @@ export async function processDeepRefRow(
   l2ExtractCount: number
 }> {
   const acc = new Map<string, CatalogPortal>()
-  let pasteBody = row.paste_body
+  let text: string | null = null
   let fetchOk: boolean | null = row.fetch_ok
   let l2FetchOk = 0
   let l2FetchFail = 0
 
   const pasteUrl = String(row.paste_url ?? '').trim()
   if (pasteUrl && fetchOk == null) {
-    const text = await fetchPasteBody(pasteUrl)
-    if (text) {
-      pasteBody = truncatePayload(text)
+    const fetched = await fetchPasteBody(pasteUrl)
+    if (fetched) {
+      text = truncatePayload(fetched)
       fetchOk = true
       l2FetchOk = 1
     } else {
       fetchOk = false
       l2FetchFail = 1
     }
-  } else if (!pasteUrl && pasteBody) {
-    // Inline base64 body already collected — mark processed so it leaves the queue.
+  } else if (!pasteUrl && row.base64) {
+    text = truncatePayload(decodeBase64Text(row.base64))
     fetchOk = true
   }
 
-  const hits: DeepRefPortalHit[] = pasteBody
+  const hits: DeepRefPortalHit[] = text
     ? await addExtracted(
         acc,
-        pasteBody,
+        text,
         pasteUrl ? 'catalog-deep' : 'catalog-decoded',
         maxResults,
         row.post_id,
@@ -614,7 +618,6 @@ export async function processDeepRefRow(
       postId: row.post_id,
       base64: row.base64 ?? '',
       pasteUrl,
-      pasteBody,
       payloadHash: row.payload_hash,
       refHost: row.ref_host ?? hostOf(pasteUrl),
       fetchOk,
@@ -655,14 +658,27 @@ export type ScrapePageResult = {
   funnel: ScrapePageFunnel
 }
 
+export type KnownPostChecker =
+  | ReadonlySet<string>
+  | ((postId: string) => boolean | Promise<boolean>)
+
+async function postIsKnown(
+  known: KnownPostChecker,
+  postId: string,
+): Promise<boolean> {
+  if (typeof known === 'function') return Boolean(await known(postId))
+  return known.has(postId)
+}
+
 /**
  * One Reddit /new page (SCRAPE_PAGE_SIZE posts) → L1 + base64 decode.
  * Does NOT fetch pastes — caller persists deepRefs then calls resolvePendingPastes.
+ * Prefer async DB checker for known posts — never ship the full id set via Inngest.
  */
 export async function scrapeCatalogPage(
   after: string | null | undefined,
   maxResults = 50,
-  knownPostIds: ReadonlySet<string> = new Set(),
+  knownPostIds: KnownPostChecker = new Set(),
   pageSize = SCRAPE_PAGE_SIZE,
 ): Promise<ScrapePageResult> {
   const cursor = parseCursor(after)
@@ -729,7 +745,7 @@ export async function scrapeCatalogPage(
       : rawId.startsWith('t3_')
         ? rawId
         : `t3_${rawId}`
-    if (postId && knownPostIds.has(postId)) {
+    if (postId && (await postIsKnown(knownPostIds, postId))) {
       hitWatermark = true
       break
     }

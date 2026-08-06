@@ -146,7 +146,6 @@ export async function upsertScrapeDeepRef(
         scrape_run_id: scrapeRunId,
         base64: ref.base64,
         paste_url: ref.pasteUrl,
-        paste_body: ref.pasteBody,
         payload_hash: ref.payloadHash,
         ref_host: ref.refHost,
         fetch_ok: ref.fetchOk,
@@ -167,9 +166,70 @@ export async function upsertScrapeDeepRef(
   return deepRefId
 }
 
+const PORTAL_INSERT_CHUNK = 80
+
+function canPromoteHit(hit: {
+  platform: string
+  username: string
+  password: string
+  url: string
+}): boolean {
+  return (
+    (hit.platform === 'm3u' &&
+      hit.username === '__m3u__' &&
+      Boolean(hit.url)) ||
+    (Boolean(hit.username) &&
+      (Boolean(hit.password) || hit.platform === 'stalker'))
+  )
+}
+
+/**
+ * Bulk-write junction rows — no per-hit RPCs.
+ * was_existing / portal_id filled later in catalog upsert chunks.
+ * Safe inside process step: fat portal lists stay in DB, not Inngest memo.
+ */
+export async function insertScrapeDeepRefPortalsBulk(
+  sb: SupabaseClient,
+  deepRefId: string,
+  hits: DeepRefRecord['portals'],
+): Promise<number> {
+  const { error: delErr } = await sb
+    .from('iptv_scrape_deep_ref_portals')
+    .delete()
+    .eq('deep_ref_id', deepRefId)
+  if (delErr) throw delErr
+
+  const deduped = dedupeDeepRefPortalHits(hits ?? [])
+  for (let i = 0; i < deduped.length; i += PORTAL_INSERT_CHUNK) {
+    const chunk = deduped.slice(i, i + PORTAL_INSERT_CHUNK).map((hit) => ({
+      deep_ref_id: deepRefId,
+      platform: hit.platform,
+      type: hit.type,
+      output: hit.output || hit.allowedOutputs || '',
+      url: hit.url,
+      username: hit.username,
+      password: hit.password,
+      was_existing: false,
+      portal_id: null as string | null,
+      expiry: hit.expiry ?? null,
+      max_connections: hit.maxConnections ?? null,
+      timezone: hit.timezone ?? null,
+      region_primary: hit.regionPrimary ?? null,
+      region_tags: hit.regionTags ?? [],
+      region_confidence: hit.regionConfidence ?? 0,
+    }))
+    const { error: hitErr } = await sb
+      .from('iptv_scrape_deep_ref_portals')
+      .insert(chunk)
+    if (hitErr) throw hitErr
+  }
+  return deduped.length
+}
+
 /**
  * Write `iptv_scrape_deep_ref_portals` (+ optional catalog promote).
- * Own Inngest step — never fold into paste fetch (N RPCs per hit).
+ * Prefer insertScrapeDeepRefPortalsBulk from scrape — this path still does
+ * N find/upsert RPCs and must not run inside a fat Inngest step.
  */
 export async function linkScrapeDeepRefPortals(
   sb: SupabaseClient,
@@ -178,6 +238,10 @@ export async function linkScrapeDeepRefPortals(
   opts?: { promoteCatalog?: boolean },
 ): Promise<number> {
   const promoteCatalog = opts?.promoteCatalog !== false
+  if (!promoteCatalog) {
+    return insertScrapeDeepRefPortalsBulk(sb, deepRefId, ref.portals)
+  }
+
   const { error: delErr } = await sb
     .from('iptv_scrape_deep_ref_portals')
     .delete()
@@ -189,14 +253,7 @@ export async function linkScrapeDeepRefPortals(
     let portalId: string | null = null
     let wasExisting = false
 
-    const canPromote =
-      (hit.platform === 'm3u' &&
-        hit.username === '__m3u__' &&
-        Boolean(hit.url)) ||
-      (Boolean(hit.username) &&
-        (Boolean(hit.password) || hit.platform === 'stalker'))
-
-    if (canPromote) {
+    if (canPromoteHit(hit)) {
       const { data: existingId, error: findErr } = await sb.rpc(
         'find_iptv_portal_id',
         { p_url: hit.url, p_username: hit.username },
@@ -204,43 +261,38 @@ export async function linkScrapeDeepRefPortals(
       if (findErr) throw findErr
       wasExisting = Boolean(existingId)
 
-      if (promoteCatalog) {
-        const portal: CatalogPortal = {
-          url: hit.url,
-          username: hit.username,
-          password: hit.password || '',
-          source: ref.pasteUrl ? 'catalog-deep' : 'catalog-decoded',
-          platform: hit.platform,
-          postId: ref.postId,
+      const portal: CatalogPortal = {
+        url: hit.url,
+        username: hit.username,
+        password: hit.password || '',
+        source: ref.pasteUrl ? 'catalog-deep' : 'catalog-decoded',
+        platform: hit.platform,
+        postId: ref.postId,
+        expiry: hit.expiry ?? null,
+        maxConnections: hit.maxConnections ?? null,
+        timezone: hit.timezone ?? null,
+        regionPrimary: hit.regionPrimary,
+        regionTags: hit.regionTags,
+        regionConfidence: hit.regionConfidence,
+        allowedOutputs: hit.allowedOutputs ?? null,
+      }
+      portalId = await upsertCatalogCandidateReturningId(
+        sb,
+        portal,
+        {
+          alive: null,
+          status: 'unverified',
           expiry: hit.expiry ?? null,
           maxConnections: hit.maxConnections ?? null,
           timezone: hit.timezone ?? null,
-          regionPrimary: hit.regionPrimary,
-          regionTags: hit.regionTags,
-          regionConfidence: hit.regionConfidence,
-          allowedOutputs: hit.allowedOutputs ?? null,
-        }
-        portalId = await upsertCatalogCandidateReturningId(
-          sb,
-          portal,
-          {
-            // Never set alive from the note — player_api still owns that.
-            alive: null,
-            status: 'unverified',
-            expiry: hit.expiry ?? null,
-            maxConnections: hit.maxConnections ?? null,
-            timezone: hit.timezone ?? null,
-            categoryNames: [],
-          },
-          {
-            primary: hit.regionPrimary ?? 'UNKNOWN',
-            tags: hit.regionTags ?? [],
-            confidence: hit.regionConfidence ?? 0,
-          },
-        )
-      } else if (existingId) {
-        portalId = existingId as string
-      }
+          categoryNames: [],
+        },
+        {
+          primary: hit.regionPrimary ?? 'UNKNOWN',
+          tags: hit.regionTags ?? [],
+          confidence: hit.regionConfidence ?? 0,
+        },
+      )
     }
 
     const { error: hitErr } = await sb.from('iptv_scrape_deep_ref_portals').insert({
@@ -253,6 +305,12 @@ export async function linkScrapeDeepRefPortals(
       password: hit.password,
       was_existing: wasExisting,
       portal_id: portalId,
+      expiry: hit.expiry ?? null,
+      max_connections: hit.maxConnections ?? null,
+      timezone: hit.timezone ?? null,
+      region_primary: hit.regionPrimary ?? null,
+      region_tags: hit.regionTags ?? [],
+      region_confidence: hit.regionConfidence ?? 0,
     })
     if (hitErr) throw hitErr
   }
@@ -260,24 +318,182 @@ export async function linkScrapeDeepRefPortals(
   return hits.length
 }
 
+/** Junction row ids for a scrape run — slim Inngest memo (ids only). */
+export async function listDeepRefPortalIdsForRun(
+  sb: SupabaseClient,
+  scrapeRunId: string,
+): Promise<string[]> {
+  const { data: refs, error: refErr } = await sb
+    .from('iptv_scrape_deep_refs')
+    .select('id')
+    .eq('scrape_run_id', scrapeRunId)
+  if (refErr) throw refErr
+  const refIds = (refs ?? []).map((r) => String(r.id)).filter(Boolean)
+  if (refIds.length === 0) return []
+
+  const ids: string[] = []
+  const chunk = 100
+  for (let i = 0; i < refIds.length; i += chunk) {
+    const slice = refIds.slice(i, i + chunk)
+    const { data, error } = await sb
+      .from('iptv_scrape_deep_ref_portals')
+      .select('id')
+      .in('deep_ref_id', slice)
+      .order('created_at', { ascending: true })
+    if (error) throw error
+    for (const row of data ?? []) {
+      const id = String(row.id ?? '').trim()
+      if (id) ids.push(id)
+    }
+  }
+  return ids
+}
+
+type DeepRefPortalPromoteRow = {
+  id: string
+  url: string
+  username: string
+  password: string
+  platform: 'xtream' | 'm3u' | 'stalker'
+  type: string
+  output: string
+  paste_url: string
+  post_id: string
+  expiry: string | null
+  maxConnections: string | null
+  timezone: string | null
+  regionPrimary: string | null
+  regionTags: string[]
+  regionConfidence: number
+}
+
+/** Load junction rows by id + parent deep_ref fields for catalog promote. */
+export async function getDeepRefPortalsForPromote(
+  sb: SupabaseClient,
+  portalRowIds: string[],
+): Promise<DeepRefPortalPromoteRow[]> {
+  if (portalRowIds.length === 0) return []
+  const { data, error } = await sb
+    .from('iptv_scrape_deep_ref_portals')
+    .select(
+      'id, url, username, password, platform, type, output, expiry, max_connections, timezone, region_primary, region_tags, region_confidence, iptv_scrape_deep_refs!inner(post_id, paste_url)',
+    )
+    .in('id', portalRowIds)
+  if (error) throw error
+
+  const out: DeepRefPortalPromoteRow[] = []
+  for (const row of data ?? []) {
+    const parent = row.iptv_scrape_deep_refs as unknown as {
+      post_id?: string
+      paste_url?: string
+    } | null
+    const platform = String(row.platform ?? 'xtream') as
+      | 'xtream'
+      | 'm3u'
+      | 'stalker'
+    const tags = Array.isArray(row.region_tags)
+      ? (row.region_tags as string[])
+      : []
+    out.push({
+      id: String(row.id),
+      url: String(row.url ?? ''),
+      username: String(row.username ?? ''),
+      password: String(row.password ?? ''),
+      platform:
+        platform === 'm3u' || platform === 'stalker' ? platform : 'xtream',
+      type: String(row.type ?? ''),
+      output: String(row.output ?? ''),
+      paste_url: String(parent?.paste_url ?? ''),
+      post_id: String(parent?.post_id ?? ''),
+      expiry: row.expiry != null ? String(row.expiry) : null,
+      maxConnections:
+        row.max_connections != null ? String(row.max_connections) : null,
+      timezone: row.timezone != null ? String(row.timezone) : null,
+      regionPrimary:
+        row.region_primary != null ? String(row.region_primary) : null,
+      regionTags: tags,
+      regionConfidence: Number(row.region_confidence ?? 0),
+    })
+  }
+  return out
+}
+
+/** Promote one junction row → catalog; patch was_existing + portal_id. */
+export async function promoteDeepRefPortalRow(
+  sb: SupabaseClient,
+  row: DeepRefPortalPromoteRow,
+): Promise<{ upserted: boolean; wasExisting: boolean }> {
+  if (!canPromoteHit(row)) {
+    return { upserted: false, wasExisting: false }
+  }
+
+  const { data: existingId, error: findErr } = await sb.rpc(
+    'find_iptv_portal_id',
+    { p_url: row.url, p_username: row.username },
+  )
+  if (findErr) throw findErr
+  const wasExisting = Boolean(existingId)
+
+  const portal: CatalogPortal = {
+    url: row.url,
+    username: row.username,
+    password: row.password || '',
+    source: row.paste_url ? 'catalog-deep' : 'catalog-decoded',
+    platform: row.platform,
+    postId: row.post_id || undefined,
+    expiry: row.expiry,
+    maxConnections: row.maxConnections,
+    timezone: row.timezone,
+    regionPrimary: row.regionPrimary ?? undefined,
+    regionTags: row.regionTags,
+    regionConfidence: row.regionConfidence,
+    allowedOutputs: row.output || null,
+  }
+  const portalId = await upsertCatalogCandidateReturningId(
+    sb,
+    portal,
+    {
+      alive: null,
+      status: 'unverified',
+      expiry: row.expiry,
+      maxConnections: row.maxConnections,
+      timezone: row.timezone,
+      categoryNames: [],
+    },
+    {
+      primary: row.regionPrimary ?? 'UNKNOWN',
+      tags: row.regionTags,
+      confidence: row.regionConfidence,
+    },
+  )
+
+  const { error: patchErr } = await sb
+    .from('iptv_scrape_deep_ref_portals')
+    .update({ was_existing: wasExisting, portal_id: portalId })
+    .eq('id', row.id)
+  if (patchErr) throw patchErr
+
+  return { upserted: true, wasExisting }
+}
+
 function isPendingDeepRefRow(r: {
   paste_url?: string | null
-  paste_body?: string | null
+  base64?: string | null
   fetch_ok?: boolean | null
   extract_count?: number | null
 }): boolean {
   const pasteUrl = String(r.paste_url ?? '').trim()
-  const body = r.paste_body
+  const b64 = String(r.base64 ?? '').trim()
   const fetchOk = r.fetch_ok
   const extractCount = Number(r.extract_count ?? 0)
   if (pasteUrl && fetchOk == null) return true
-  if (!pasteUrl && body && fetchOk == null && extractCount === 0) return true
+  if (!pasteUrl && b64 && fetchOk == null && extractCount === 0) return true
   return false
 }
 
 /**
- * Pending deep_ref ids only — never ship paste_body through Inngest memo.
- * Process steps re-fetch the full row by id.
+ * Pending deep_ref ids only — never ship paste bodies through Inngest memo.
+ * Process steps re-fetch the full row by id, then fetch paste.sh on demand.
  */
 export async function listPendingDeepRefIdsForRun(
   sb: SupabaseClient,
@@ -285,7 +501,7 @@ export async function listPendingDeepRefIdsForRun(
 ): Promise<string[]> {
   const { data, error } = await sb
     .from('iptv_scrape_deep_refs')
-    .select('id, paste_url, paste_body, fetch_ok, extract_count')
+    .select('id, paste_url, base64, fetch_ok, extract_count')
     .eq('scrape_run_id', scrapeRunId)
     .order('created_at', { ascending: true })
   if (error) throw error
@@ -302,7 +518,7 @@ export async function getDeepRefRowById(
   const { data, error } = await sb
     .from('iptv_scrape_deep_refs')
     .select(
-      'id, post_id, base64, paste_url, paste_body, payload_hash, ref_host, fetch_ok, extract_count',
+      'id, post_id, base64, paste_url, payload_hash, ref_host, fetch_ok, extract_count',
     )
     .eq('id', id)
     .maybeSingle()
@@ -318,7 +534,7 @@ export async function listPendingDeepRefsForRun(
   const { data, error } = await sb
     .from('iptv_scrape_deep_refs')
     .select(
-      'id, post_id, base64, paste_url, paste_body, payload_hash, ref_host, fetch_ok, extract_count',
+      'id, post_id, base64, paste_url, payload_hash, ref_host, fetch_ok, extract_count',
     )
     .eq('scrape_run_id', scrapeRunId)
     .order('created_at', { ascending: true })
