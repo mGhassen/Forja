@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 3** device smoke |
+| **Progress** | **5 / 5** fix · **0 / 3** device smoke |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I153-T02 | Keep quality-menu parse on the master URL when play already opened a capped variant | ✅ |
 | 3 | I153-T03 | One-shot stall recovery: after confirm, if BUFFERING ≥18s with pos≈0, drop to lowest rung | ✅ |
 | 4 | I153-T04 | KissKh `pngStrip: force` + mirror id resolve; strip post-IEND payload even without MPEG-TS sync (videotradercdn `.png`) | ✅ |
+| 5 | I153-T05 | HLS proxy: protocol-relative `//cdn/…` must not join as `host//cdn/…`; KissKh cap ≤1080 on catalog then re-strip | ✅ |
 
 ---
 

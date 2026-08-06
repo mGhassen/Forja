@@ -262,6 +262,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   bool _isJackettConfigured = false;
   bool _isProwlarrConfigured = false;
+  List<String> _enabledTorrentProviders = List<String>.from(
+    TorrentSearchProviders.all,
+  );
 
   List<Movie> _similarMovies = [];
   List<Map<String, String>> _castMembers = [];
@@ -538,15 +541,15 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   }
 
   String _defaultSourceId() {
-    if (_panelShowTorrent) return 'forja';
+    if (_panelShowTorrent) return TorrentSearchProviders.allId;
     if (_panelShowStremio && _streamAddons.isNotEmpty) {
       return _streamAddons.first['baseUrl'] as String;
     }
-    return 'forja';
+    return TorrentSearchProviders.allId;
   }
 
   String _defaultStremioSourceId() {
-    if (_streamAddons.isEmpty) return 'forja';
+    if (_streamAddons.isEmpty) return TorrentSearchProviders.allId;
     for (final a in _streamAddons) {
       final base = a['baseUrl'] as String?;
       if (base != null && _loadedAddonBaseUrls.contains(base)) return base;
@@ -784,7 +787,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _errorMessage = null;
       switch (kind) {
         case 'torrents':
-          _selectedSourceId = 'forja';
+          _selectedSourceId = TorrentSearchProviders.allId;
         case 'stremio':
           _userPickedStremioProvider = false;
           _selectedSourceId = _defaultStremioSourceId();
@@ -793,7 +796,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
         case 'nuvio':
           _selectedSourceId = 'all_nuvio';
         default:
-          _selectedSourceId = 'forja';
+          _selectedSourceId = TorrentSearchProviders.allId;
       }
     });
     _ensurePanelSourceLoaded();

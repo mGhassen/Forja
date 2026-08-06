@@ -260,8 +260,9 @@ class PipService {
           );
         }
         try {
+          // Aspect + floor only — no max. 640 was an arbitrary soft cap.
           await windowManager.setMinimumSize(Size(240, 240 / aspect));
-          await windowManager.setMaximumSize(Size(640, 640 / aspect));
+          await _clearMaximumSize();
           await windowManager.setAspectRatio(aspect);
         } catch (_) {}
         await windowManager.setAlwaysOnTop(true);
@@ -283,7 +284,7 @@ class PipService {
 
       await windowManager.setResizable(true);
       await windowManager.setMinimumSize(Size(240, 240 / aspect));
-      await windowManager.setMaximumSize(Size(640, 640 / aspect));
+      await _clearMaximumSize();
       await windowManager.setAspectRatio(aspect);
       await windowManager.setSize(Size(pipWidth, pipHeight));
       await _setNativePipChrome(true);
@@ -317,13 +318,7 @@ class PipService {
       try {
         await windowManager.setAspectRatio(0);
       } catch (_) {}
-      try {
-        await windowManager.setMaximumSize(Size.infinite);
-      } catch (_) {
-        try {
-          await windowManager.setMaximumSize(const Size(10000, 10000));
-        } catch (_) {}
-      }
+      await _clearMaximumSize();
       try {
         await windowManager.setMinimumSize(const Size(640, 480));
       } catch (_) {}
@@ -346,6 +341,16 @@ class PipService {
       _savedBounds = null;
       _savedVisibleOnAllWorkspaces = false;
       _desktopController.add(false);
+    }
+  }
+
+  Future<void> _clearMaximumSize() async {
+    try {
+      await windowManager.setMaximumSize(Size.infinite);
+    } catch (_) {
+      try {
+        await windowManager.setMaximumSize(const Size(10000, 10000));
+      } catch (_) {}
     }
   }
 }

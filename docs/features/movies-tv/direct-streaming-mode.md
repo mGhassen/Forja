@@ -6,7 +6,7 @@
 
 **Webstreaming** is a **play source** on the unified [media details](media-details.md) screen — not a tab in **Sources**. When enabled in **Settings → Playback**, the hero shows the default green **Play** / **Resume** pill with a play icon. It auto-searches extractors in your **Provider order** (VidLink, VixSrc, WebStreamr, Videasy, …) and starts playback when one works (loading roulette overlay).
 
-The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent / Forja, **Nuvio**, Stremio). The **Sources** panel is not used for webstreaming.
+The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent providers, **Nuvio**, Stremio). The **Sources** panel is not used for webstreaming.
 
 ## How to open it
 
@@ -18,7 +18,7 @@ The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent
 
 - Let green **Play** / **Resume** auto-extract the best working link in provider order
 - Fall through extractors in the order you set in Settings
-- While servers are checking, the loading screen shows `N / M CHECKED · K UP` progress. Next to **Cancel**, tap the layers icon to open the **server list** — live Waiting / Checking / Up / Down status for each provider. Tap a waiting or down server to **check it manually** (stops Auto order and resolves that provider only)
+- While servers are checking, the loading screen shows `N / M CHECKED · K UP` progress. For series it also shows the selected episode (`S02E05`) under the status line. Next to **Cancel**, tap the layers icon to open the **server list** — live Waiting / Checking / Up / Down status for each provider. Tap a waiting or down server to **check it manually** (stops Auto order and resolves that provider only)
 - Before mpv opens a link, Forja HTTP-probes it (every built-in provider) — dead CDNs fail fast and Auto continues to the next server
 - **Simple resolve** (default): walks **Tries** one server at a time with real budgets — WebStreamr up to ~90s, embed sniffs ~75s, VSEmbed ~25s — so slower natives/embeds are not cut off empty while VSEmbed alone “works”
 - A server only counts as streaming when video actually opens (not when extract alone returns a URL)

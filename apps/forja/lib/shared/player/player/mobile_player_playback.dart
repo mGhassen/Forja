@@ -245,22 +245,21 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             await resetPlayerForOpen(_s._player);
             final pid = source.providerId ?? _s._currentProvider;
             var playUrl = step.playUrl;
-            if (isKissKhProviderId(pid) &&
-                playUrl.toLowerCase().contains('.m3u8')) {
+            if (isKissKhProviderId(pid)) {
               final maxH = await SettingsService().getMaxPlaybackHeight();
-              final cap = maxH > 0 ? maxH : kKissKhHlsSoftMaxHeight;
-              final capped = await preferHlsVariantUnderHeight(
-                playUrl,
+              final cap = kissKhHlsMaxHeight(maxH);
+              playUrl = await kissKhPlayUrlAfterHlsCap(
+                catalogUrl: step.catalogUrl,
+                playUrl: step.playUrl,
                 headers: step.headers,
                 maxHeight: cap,
+                buildPngStripProxy: (url, hdrs) async {
+                  final ls = LocalServerService();
+                  if (ls.port == 0) await ls.start();
+                  if (ls.port == 0) return null;
+                  return ls.getHlsProxyUrl(url, hdrs, stripMode: 'png');
+                },
               );
-              if (capped != playUrl) {
-                debugPrint(
-                  '[Player] KissKh HLS cap ≤${cap}p → variant '
-                  '(avoid 4K buffer stall)',
-                );
-                playUrl = capped;
-              }
             }
             openUrl = await openPlayerStream(
               _s._player,

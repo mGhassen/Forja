@@ -75,6 +75,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [052-[partial]-…](052-[partial]-iptv-progress-aware-recovery.md) | Progress-aware IPTV playback recovery (cache-gated reconnect) | v1.0.1 | partial | 13/14 · 1/10 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [053-[partial]-…](053-[partial]-asian-drama-tmdb-details.md) | Asian Drama TMDB details enrichment | v1.0.1 | partial | 3/3 · 5/6 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S199 · smoke R53-A06 ⬜ |
 | [054-[partial]-…](054-[partial]-torrent-search-providers.md) | Torrent search providers | v1.0.1 | partial | 4/4 · 5/6 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S201 · smoke R54-A06 ⬜ |
+| [055-[open]-…](055-[open]-native-youtube-trailer-player.md) | Native YouTube trailer player (resolve + media_kit) | v1.0.1 | open | 3/3 · 5/6 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S202 · smoke R55-A06 ⬜ |
 
 ## Related
 

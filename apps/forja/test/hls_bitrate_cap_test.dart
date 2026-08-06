@@ -74,6 +74,32 @@ void main() {
       );
       expect(url, 'https://cdn.example/720.m3u8');
     });
+
+    test('infers height from path when RESOLUTION missing', () async {
+      final url = await preferHlsVariantUnderHeight(
+        master,
+        maxHeight: 1080,
+        qualitiesOverride: const [
+          HlsQuality(
+            label: 'Variant',
+            url: 'https://cdn.example/child/2160/a.m3u8',
+          ),
+          HlsQuality(
+            label: 'Variant',
+            url: 'https://cdn.example/child/720/b.m3u8',
+          ),
+        ],
+      );
+      expect(url, 'https://cdn.example/child/720/b.m3u8');
+    });
+  });
+
+  group('kissKhHlsMaxHeight', () {
+    test('soft-caps Auto and 4K settings to 1080', () {
+      expect(kissKhHlsMaxHeight(0), 1080);
+      expect(kissKhHlsMaxHeight(2160), 1080);
+      expect(kissKhHlsMaxHeight(720), 720);
+    });
   });
 
   group('isKissKhProviderId', () {

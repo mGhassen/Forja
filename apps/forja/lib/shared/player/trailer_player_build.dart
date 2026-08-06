@@ -3,6 +3,41 @@ part of 'trailer_player_screen.dart';
 mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
   _TrailerPlayerScreenState get _s => this as _TrailerPlayerScreenState;
 
+  Widget _buildResolveError() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _s._resolveError ?? 'Could not load this trailer',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: () => unawaited(_s._loadCurrentTrailer()),
+                child: const Text('Retry'),
+              ),
+              const SizedBox(width: 12),
+              TextButton(
+                onPressed: () => unawaited(_s._openInYouTube()),
+                child: const Text('Open in YouTube'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tvFocus = _s._tvFocus;
@@ -23,95 +58,37 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              ForjaInAppWebView(
-                key: ValueKey('trailer-player-${_s._trailer.key}'),
-                initialData: InAppWebViewInitialData(
-                  data: _s._embedHtml(),
-                  baseUrl: WebUri(kYoutubeEmbedOrigin),
+              if (_s._controller != null)
+                Positioned.fill(
+                  child: Video(
+                    controller: _s._controller!,
+                    controls: NoVideoControls,
+                    fit: BoxFit.contain,
+                    fill: Colors.black,
+                    subtitleViewConfiguration: const SubtitleViewConfiguration(
+                      visible: true,
+                    ),
+                  ),
                 ),
-                initialSettings: InAppWebViewSettings(
-                  mediaPlaybackRequiresUserGesture: false,
-                  allowsInlineMediaPlayback: true,
-                  // Let the black Scaffold show through while the embed paints
-                  // (default Android WebView surface is white).
-                  transparentBackground: true,
-                  disableVerticalScroll: true,
-                  disableHorizontalScroll: true,
-                  supportZoom: false,
+              if (_s._resolving || _s._resolveError != null)
+                Positioned.fill(
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    child: Center(
+                      child: _s._resolving
+                          ? const CircularProgressIndicator(
+                              color: Colors.white70,
+                              strokeWidth: 2.5,
+                            )
+                          : _buildResolveError(),
+                    ),
+                  ),
                 ),
-                onWebViewCreated: (controller) {
-                  _s._controller = controller;
-                  controller.addJavaScriptHandler(
-                    handlerName: 'trailerReady',
-                    callback: (_) {
-                      if (!mounted) return;
-                      setState(() => _s._ready = true);
-                    },
-                  );
-                  controller.addJavaScriptHandler(
-                    handlerName: 'trailerState',
-                    callback: (args) {
-                      if (!mounted || args.length < 2) return;
-                      final playing = args[0] == true;
-                      final ended = args[1] == true;
-                      if (_s._playing == playing && _s._ended == ended) return;
-                      setState(() {
-                        _s._playing = playing;
-                        _s._ended = ended;
-                      });
-                      if (ended) {
-                        _s._hideTimer?.cancel();
-                        if (!_s._showControls) {
-                          setState(() => _s._showControls = true);
-                        }
-                        _s._maybeStartAutoNext();
-                      } else if (playing) {
-                        _s._cancelAutoNext();
-                        _s._startHideTimer();
-                      }
-                    },
-                  );
-                  controller.addJavaScriptHandler(
-                    handlerName: 'trailerProgress',
-                    callback: (args) {
-                      if (!mounted || args.length < 2) return;
-                      final currentSec = (args[0] as num?)?.toDouble() ?? 0;
-                      final durationSec = (args[1] as num?)?.toDouble() ?? 0;
-                      final pos =
-                          Duration(milliseconds: (currentSec * 1000).round());
-                      final dur =
-                          Duration(milliseconds: (durationSec * 1000).round());
-                      if (_s._position == pos && _s._duration == dur) return;
-                      final wasNearEnd = _s._showNextTrailerChip;
-                      setState(() {
-                        _s._position = pos;
-                        _s._duration = dur;
-                      });
-                      if (!wasNearEnd && _s._showNextTrailerChip) {
-                        _s._hideTimer?.cancel();
-                        if (!_s._showControls) {
-                          setState(() => _s._showControls = true);
-                        }
-                        _s._focusNextTrailerIfNeeded();
-                      }
-                    },
-                  );
-                  controller.addJavaScriptHandler(
-                    handlerName: 'trailerEscape',
-                    callback: (_) => unawaited(_s._exitTrailer()),
-                  );
-                  controller.addJavaScriptHandler(
-                    handlerName: 'trailerDoubleClick',
-                    callback: (_) {
-                      if (!_s._supportsWindowFullscreen) return;
-                      unawaited(_s._toggleFullscreen());
-                    },
-                  );
-                  controller.addJavaScriptHandler(
-                    handlerName: 'trailerTap',
-                    callback: (_) {
-                      if (_s._tvFocus) return;
-                      if (!mounted) return;
+              if (!tvFocus)
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () {
                       if (_s._showControls) {
                         setState(() => _s._showControls = false);
                         _s._hideTimer?.cancel();
@@ -119,18 +96,12 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                         _s._onPointerActivity();
                       }
                     },
-                  );
-                  controller.addJavaScriptHandler(
-                    handlerName: 'trailerPointer',
-                    callback: (_) {
-                      if (_s._tvFocus) return;
-                      _s._onPointerActivity();
+                    onDoubleTap: () {
+                      if (!_s._supportsWindowFullscreen) return;
+                      unawaited(_s._toggleFullscreen());
                     },
-                  );
-                },
-              ),
-              // Chrome sits above the WebView. Pointer/fullscreen come from JS
-              // (platform WebView steals Flutter gesture arena on desktop).
+                  ),
+                ),
               DesktopWindowChrome.overlayDragStrip(),
               AnimatedOpacity(
                 opacity: _s._showControls ? 1.0 : 0.0,
@@ -524,16 +495,6 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 7,
                 PlayerFlatIconButton(
                   tvFocusable: true,
-                  icon: Icons.audiotrack_rounded,
-                  tooltip: 'Audio',
-                  onPressedWithContext: _s._showAudioMenu,
-                ),
-              ),
-              const SizedBox(width: 2),
-              ordered(
-                8,
-                PlayerFlatIconButton(
-                  tvFocusable: true,
                   icon: Icons.subtitles_outlined,
                   tooltip: 'Subtitles',
                   onPressedWithContext: _s._showSubtitleMenu,
@@ -541,7 +502,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               ),
               const SizedBox(width: 2),
               ordered(
-                9,
+                8,
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   icon: Icons.hd_outlined,
@@ -551,7 +512,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               ),
               const SizedBox(width: 2),
               ordered(
-                10,
+                9,
                 PlayerFlatIconButton(
                   tvFocusable: true,
                   icon: Icons.speed_rounded,
@@ -629,12 +590,6 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         ),
         Row(
           children: [
-            PlayerFlatIconButton(
-              icon: Icons.audiotrack_rounded,
-              tooltip: 'Audio',
-              onPressedWithContext: _s._showAudioMenu,
-            ),
-            const SizedBox(width: 2),
             PlayerFlatIconButton(
               icon: Icons.subtitles_outlined,
               tooltip: 'Subtitles',
@@ -834,16 +789,16 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
                   ),
                 ),
               ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (widget.autoNext && autoLeft != null)
+              if (widget.autoNext && autoLeft != null)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
                         SizedBox(
                           width: 40,
                           height: 40,
@@ -854,37 +809,39 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
                             color: Colors.white,
                           ),
                         ),
-                      DecoratedBox(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: SizedBox(
-                          width: widget.autoNext ? 30 : 34,
-                          height: widget.autoNext ? 30 : 34,
-                          child: widget.autoNext && autoLeft != null
-                              ? Center(
-                                  child: Text(
-                                    '$autoLeft',
-                                    style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                )
-                              : Icon(
-                                  widget.playing
-                                      ? Icons.replay_rounded
-                                      : Icons.play_arrow_rounded,
+                        DecoratedBox(
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: SizedBox(
+                            width: 30,
+                            height: 30,
+                            child: Center(
+                              child: Text(
+                                '$autoLeft',
+                                style: const TextStyle(
                                   color: Colors.black,
-                                  size: 22,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
                                 ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
+              ShellCardPlayOverlay(
+                active: false,
+                visible: _active || widget.tvFocus || widget.autoNext,
+                diameter: 44,
+                iconSize: 26,
+                onTap: () {
+                  widget.onPointerActivity();
+                  widget.onPlay();
+                },
               ),
               Positioned(
                 left: 12,
@@ -989,6 +946,7 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
       return withChevrons(
         FocusableControl(
           focusNode: widget.focusNode,
+          // OK on the card plays — ←/→ chevrons (edges) only cycle preview.
           onTap: play,
           borderRadius: _radius,
           scaleOnFocus: 1.0,
@@ -1007,6 +965,7 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
       );
     }
 
+    // Desktop: card body is not a hit target — only center play + chevrons.
     return MouseRegion(
       onEnter: (_) {
         widget.onPointerActivity();
@@ -1016,13 +975,7 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
         if (_hovered) setState(() => _hovered = false);
       },
       onHover: (_) => widget.onPointerActivity(),
-      child: withChevrons(
-        GestureDetector(
-          onTap: play,
-          behavior: HitTestBehavior.opaque,
-          child: face,
-        ),
-      ),
+      child: withChevrons(face),
     );
   }
 }

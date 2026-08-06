@@ -12,8 +12,9 @@ Automatic on [Media details](../movies-tv/media-details.md) when you view torren
 
 ## What you can do
 
+- Open **Sources → Torrents** and pick **All** (every enabled provider) or a single provider chip
 - See combined results from enabled providers
-- Toggle which providers run in [Torrent settings](../settings/torrent-settings.md)
+- Toggle which providers appear/run in [Torrent settings](../settings/torrent-settings.md)
 - Sort by seeders, size, or other options
 - Play magnets or torrent files via [torrent playback](../playback/torrent-playback.md)
 - On desktop, hover a torrent row in Sources to copy its magnet link

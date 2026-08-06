@@ -166,7 +166,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
   }
 
   bool get _isTorrentSource =>
-      _s._selectedSourceId == 'forja' ||
+      TorrentSearchProviders.isBuiltinSearchChip(_s._selectedSourceId) ||
       _s._selectedSourceId == 'jackett' ||
       _s._selectedSourceId == 'prowlarr';
 
@@ -178,19 +178,13 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
   List<SourcesPanelProviderOption> _providerOptions() {
     final options = <SourcesPanelProviderOption>[];
     if (_s._panelKindFilter == 'torrents') {
-      options.add(
-        const SourcesPanelProviderOption(id: 'forja', label: 'Forja'),
+      options.addAll(
+        torrentProviderChipOptions(
+          enabledProviders: _s._enabledTorrentProviders,
+          jackettConfigured: _s._isJackettConfigured,
+          prowlarrConfigured: _s._isProwlarrConfigured,
+        ),
       );
-      if (_s._isJackettConfigured) {
-        options.add(
-          const SourcesPanelProviderOption(id: 'jackett', label: 'Jackett'),
-        );
-      }
-      if (_s._isProwlarrConfigured) {
-        options.add(
-          const SourcesPanelProviderOption(id: 'prowlarr', label: 'Prowlarr'),
-        );
-      }
     } else if (_s._panelKindFilter == 'nuvio') {
       options.add(
         const SourcesPanelProviderOption(id: 'all_nuvio', label: 'All'),
@@ -302,7 +296,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       }
       _resetPanelFilters();
     });
-    if (id == 'forja') {
+    if (TorrentSearchProviders.isBuiltinSearchChip(id)) {
       _s._autoSearch();
     } else if (id == 'jackett') {
       _s._searchJackett();

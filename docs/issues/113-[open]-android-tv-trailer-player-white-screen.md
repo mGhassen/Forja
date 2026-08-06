@@ -40,9 +40,12 @@ On released Android TV builds, opening the fullscreen trailer player left a **wh
 
 **Root cause:** [Issue 031](031-[workaround]-android-tv-webview-gles-crash.md) patched every TV `InAppWebView` with `hardwareAcceleration: false` → plugin `setLayerType(LAYER_TYPE_NONE)`. HTML5 / YouTube iframe video needs View hardware acceleration; without it the platform view stays the default white surface. That patch never stopped Chromium’s `gl_version_info.cc` fatal on broken emulators anyway.
 
-**Fix:** Keep View HA enabled on TV. Emulator GLES still uses `scripts/atv-run.sh` (`--disable-gpu`) + headless extractor block from 031. Trailer / hero WebViews paint with a transparent background so the black scaffold shows while the embed loads.
+**Fix (historical):** Keep View HA enabled on TV. Emulator GLES still uses `scripts/atv-run.sh` (`--disable-gpu`) + headless extractor block from 031. Trailer / hero WebViews paint with a transparent background so the black scaffold shows while the embed loads.
+
+**Superseded for fullscreen:** [RFC-055](../rfc/055-[open]-native-youtube-trailer-player.md) removed the YouTube iframe from `TrailerPlayerScreen` (resolve googlevideo → media_kit). **I113-A01** should now verify native playback (not a WebView). **I113-A02** still applies to the details-hero WebView ambient trailer.
 
 ## Related
 
 - [031](031-[workaround]-android-tv-webview-gles-crash.md) — GLES workaround (HA=false reverted as harmful)
 - [053](053-[workaround]-windows-live-embed-webview2-transparent.md) — Windows transparent embed parallel
+- [RFC-055](../rfc/055-[open]-native-youtube-trailer-player.md) — native fullscreen trailer player

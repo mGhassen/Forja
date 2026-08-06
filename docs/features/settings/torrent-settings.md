@@ -12,7 +12,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 
 ## What you can do
 
-- Enable or disable each **torrent provider** (Knaben, The Pirate Bay, UIndex, Torrents CSV, Nyaa, YTS, SolidTorrents, TheRARBG, Torrentio)
+- Enable or disable each **torrent provider** (Knaben, The Pirate Bay, UIndex, Torrents CSV, Nyaa, YTS, SolidTorrents, TheRARBG, Torrentio) — enabled ones show as chips under **Sources → Torrents** (plus **All**)
 - Set **sort preference** (e.g. seeders high to low)
 - Choose **cache type**: RAM or disk
 - Adjust **RAM cache size** (MB) when using RAM cache — on **TV**, focus the slider and use **Left/Right**

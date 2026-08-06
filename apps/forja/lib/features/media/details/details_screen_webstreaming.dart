@@ -188,6 +188,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
           providerProbesNotifier: probeNotifier,
           fadeOutNotifier: fadeOutNotifier,
           failureNotifier: failureNotifier,
+          subtitle: _s._loadingOverlaySubtitle(),
           onCancel: cancelWebstreamingPlay,
           onManualCheckProvider: (id) => onManualProviderCheck?.call(id),
         );

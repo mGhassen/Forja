@@ -3,6 +3,21 @@ part of 'details_screen.dart';
 mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
   _DetailsScreenState get _s => this as _DetailsScreenState;
 
+  /// Loading overlay line under the status message — season/episode for TV,
+  /// optionally joined with a torrent/debrid source hint.
+  String? _loadingOverlaySubtitle({String? sourceHint}) {
+    final parts = <String>[];
+    if (_s._movie.mediaType == 'tv') {
+      final s = _s._selectedSeason.toString().padLeft(2, '0');
+      final e = _s._selectedEpisode.toString().padLeft(2, '0');
+      parts.add('S${s}E$e');
+    }
+    final hint = sourceHint?.trim();
+    if (hint != null && hint.isNotEmpty) parts.add(hint);
+    if (parts.isEmpty) return null;
+    return parts.join(' · ');
+  }
+
   Duration? _startPositionForAutoPlay({required bool fromRoute}) {
     if (fromRoute) return widget.startPosition;
     final progress = _s._lastProgress;
@@ -270,9 +285,11 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
           messageNotifier: overlayMessage,
           fadeOutNotifier: fadeOutNotifier,
           failureNotifier: failureNotifier,
-          subtitle: playbackSourceHint(
-            useDebrid: useDebrid,
-            debridService: debridService,
+          subtitle: _loadingOverlaySubtitle(
+            sourceHint: playbackSourceHint(
+              useDebrid: useDebrid,
+              debridService: debridService,
+            ),
           ),
           onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
         );
@@ -521,7 +538,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
           messageNotifier: overlayMessage,
           fadeOutNotifier: fadeOutNotifier,
           failureNotifier: failureNotifier,
-          subtitle: sourceHint,
+          subtitle: _loadingOverlaySubtitle(sourceHint: sourceHint),
           onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
         );
       },

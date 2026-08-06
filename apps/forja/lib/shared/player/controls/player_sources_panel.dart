@@ -220,7 +220,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   bool _showStremio = false;
   bool _showNuvio = false;
   String _kindFilter = 'torrents';
-  String _selectedSourceId = 'forja';
+  String _selectedSourceId = TorrentSearchProviders.allId;
   String _searchQuery = '';
   String _sortPreference = 'seeders';
   Set<String> _qualityFilters = {};
@@ -231,6 +231,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   bool _jackettConfigured = false;
   bool _prowlarrConfigured = false;
+  List<String> _enabledTorrentProviders = List<String>.from(
+    TorrentSearchProviders.all,
+  );
   bool _localTorrentEngine = true;
 
   bool get _showsTorrents => _kindFilter == 'torrents';
@@ -487,6 +490,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final sort = await _settings.getSortPreference();
     final jackett = await _settings.isJackettConfigured();
     final prowlarr = await _settings.isProwlarrConfigured();
+    final enabledProviders = await _settings.getEnabledTorrentProviders();
     final caps = PlatformPlayback.capabilities;
     final torrentOn = caps.playSourceTorrent &&
         await _settings.isPlaySourceTorrentEnabled();
@@ -526,6 +530,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _sortPreference = sort;
       _jackettConfigured = jackett;
       _prowlarrConfigured = prowlarr;
+      _enabledTorrentProviders = enabledProviders;
       _localTorrentEngine = local;
       _showTorrents = hasTorrent;
       _showStremio = hasStremio;
@@ -709,10 +714,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return switch (kind) {
       'stremio' =>
         _preferredStremioAddonBaseUrl(addons) ??
-            (addons.isNotEmpty ? addons.first['baseUrl'] as String : 'forja'),
+            (addons.isNotEmpty
+                ? addons.first['baseUrl'] as String
+                : TorrentSearchProviders.allId),
       'nuvio' => 'all_nuvio',
-      'torrents' => 'forja',
-      _ => 'forja',
+      'torrents' => TorrentSearchProviders.allId,
+      _ => TorrentSearchProviders.allId,
     };
   }
 
@@ -733,7 +740,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   String _defaultStremioSourceId() {
-    if (_streamAddons.isEmpty) return 'forja';
+    if (_streamAddons.isEmpty) return TorrentSearchProviders.allId;
     for (final a in _streamAddons) {
       final base = a['baseUrl'] as String?;
       if (base != null && _loadedAddonBaseUrls.contains(base)) return base;
@@ -968,13 +975,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       ];
     }
     if (_kindFilter == 'torrents') {
-      return [
-        const SourcesPanelProviderOption(id: 'forja', label: 'Forja'),
-        if (_jackettConfigured)
-          const SourcesPanelProviderOption(id: 'jackett', label: 'Jackett'),
-        if (_prowlarrConfigured)
-          const SourcesPanelProviderOption(id: 'prowlarr', label: 'Prowlarr'),
-      ];
+      return torrentProviderChipOptions(
+        enabledProviders: _enabledTorrentProviders,
+        jackettConfigured: _jackettConfigured,
+        prowlarrConfigured: _prowlarrConfigured,
+      );
     }
     return const [];
   }
@@ -1232,7 +1237,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _selectedSourceId = 'all_nuvio';
         _selectPlayingProviderIfNeeded();
       } else if (kind == 'torrents') {
-        _selectedSourceId = 'forja';
+        _selectedSourceId = TorrentSearchProviders.allId;
       }
     });
     _ensureVisibleKindsLoaded();
@@ -1248,9 +1253,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final query = _year.isNotEmpty
         ? '${widget.movie.title} $_year'
         : widget.movie.title;
+    final enabled = TorrentSearchProviders.searchEnabledForChip(
+      _selectedSourceId,
+    );
     final results = (await Engine.searchTorrents(
       query,
       imdbId: widget.movie.imdbId,
+      enabledProviders: enabled,
     )).map(TorrentResult.fromJson).toList();
     return (await Engine.filterTorrents(
       results.map((r) => r.toJson()).toList(),
@@ -1266,16 +1275,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final e = episode.toString().padLeft(2, '0');
     final seasonQuery = '${widget.movie.title} S$s';
     final episodeQuery = '${widget.movie.title} S${s}E$e';
+    final enabled = TorrentSearchProviders.searchEnabledForChip(
+      _selectedSourceId,
+    );
     final seasonRaw = (await Engine.searchTorrents(
       seasonQuery,
       imdbId: widget.movie.imdbId,
       season: season,
+      enabledProviders: enabled,
     )).map(TorrentResult.fromJson).toList();
     final episodeRaw = (await Engine.searchTorrents(
       episodeQuery,
       imdbId: widget.movie.imdbId,
       season: season,
       episode: episode,
+      enabledProviders: enabled,
     )).map(TorrentResult.fromJson).toList();
     final combined = <String, TorrentResult>{};
     for (final r in (await Engine.filterTorrents(

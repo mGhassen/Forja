@@ -63,6 +63,31 @@ class SourcesPanelProviderOption {
   final String label;
 }
 
+/// Torrents tab chips: All + Settings-enabled builtins + Jackett/Prowlarr.
+List<SourcesPanelProviderOption> torrentProviderChipOptions({
+  required Iterable<String> enabledProviders,
+  required bool jackettConfigured,
+  required bool prowlarrConfigured,
+}) {
+  final enabled = enabledProviders.toSet();
+  return [
+    const SourcesPanelProviderOption(
+      id: TorrentSearchProviders.allId,
+      label: 'All',
+    ),
+    for (final id in TorrentSearchProviders.all)
+      if (enabled.contains(id))
+        SourcesPanelProviderOption(
+          id: id,
+          label: TorrentSearchProviders.label(id),
+        ),
+    if (jackettConfigured)
+      const SourcesPanelProviderOption(id: 'jackett', label: 'Jackett'),
+    if (prowlarrConfigured)
+      const SourcesPanelProviderOption(id: 'prowlarr', label: 'Prowlarr'),
+  ];
+}
+
 const kTorrentAudioTags = [
   'Atmos',
   'TrueHD',

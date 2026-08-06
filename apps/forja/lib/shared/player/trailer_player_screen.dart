@@ -1,12 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
@@ -14,16 +11,21 @@ import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
+import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/services/mpv_exclusive_session.dart';
+import 'package:forja/shared/services/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:rust/rust.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
-part 'trailer_player_web.dart';
+part 'trailer_player_playback.dart';
 part 'trailer_player_menus.dart';
 part 'trailer_player_build.dart';
 
@@ -46,18 +48,30 @@ class TrailerPlayerScreen extends StatefulWidget {
 }
 
 class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
-    with _TrailerPlayerWeb, _TrailerPlayerMenus, _TrailerPlayerBuild {
-  InAppWebViewController? _controller;
+    with _TrailerPlayerPlayback, _TrailerPlayerMenus, _TrailerPlayerBuild {
+  Player? _player;
+  VideoController? _controller;
+  YoutubeResolvedStreams? _streams;
+  StreamSubscription<bool>? _playingSub;
+  StreamSubscription<Duration>? _positionSub;
+  StreamSubscription<Duration>? _durationSub;
+  StreamSubscription<bool>? _completedSub;
+  int _loadGeneration = 0;
+
   late int _currentIndex;
   bool _playing = false;
   bool _ended = false;
   bool _muted = false;
   bool _ready = false;
+  bool _resolving = false;
+  String? _resolveError;
   bool _isFullscreen = false;
   bool _showControls = true;
   double _volume = 100;
   double _volumeBeforeMute = 100;
-  String _selectedQuality = 'auto';
+  double _playbackRate = 1.0;
+  int? _selectedQualityHeight;
+  String? _activeCaptionCode;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   Timer? _hideTimer;
@@ -162,7 +176,6 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted) return false;
-      // Chrome visible → hide it (remote Back). Hidden → allow exit.
       if (_showControls) {
         setState(() => _showControls = false);
         _hideTimer?.cancel();
@@ -177,12 +190,15 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
       unawaited(_syncFullscreenState());
     }
     _startHideTimer();
+    unawaited(_loadCurrentTrailer());
   }
 
   @override
   void dispose() {
     _hideTimer?.cancel();
     _cancelAutoNext(rebuild: false);
+    _loadGeneration++;
+    unawaited(_teardownPlayer());
     ShellBus.leavePlayerSurface();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     PlayerBackExitGate.setTryFocusBack(null);
@@ -295,6 +311,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
       await windowManager.setFullScreen(false);
       if (mounted) setState(() => _isFullscreen = false);
     }
+    await _teardownPlayer();
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
   }

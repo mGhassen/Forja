@@ -72,12 +72,25 @@ pub fn png_wraps_mpeg_ts(raw: &[u8]) -> bool {
 }
 
 fn resolve_url(relative: &str, base_path: &str, server_base: &str) -> String {
-    if relative.starts_with("http://") || relative.starts_with("https://") {
-        relative.to_string()
-    } else if relative.starts_with('/') {
-        format!("{server_base}{relative}")
+    let trimmed = relative.trim();
+    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        return trimmed.to_string();
+    }
+    // Protocol-relative (`//cdn.example/seg`) — must NOT be treated as a path
+    // under server_base (that produced `https://hls19…shop//hls20…shop/…`).
+    if let Some(rest) = trimmed.strip_prefix("//") {
+        let scheme = if base_path.starts_with("https://") || server_base.starts_with("https://")
+        {
+            "https"
+        } else {
+            "http"
+        };
+        return format!("{scheme}://{rest}");
+    }
+    if trimmed.starts_with('/') {
+        format!("{server_base}{trimmed}")
     } else {
-        format!("{base_path}{relative}")
+        format!("{base_path}{trimmed}")
     }
 }
 
@@ -345,6 +358,16 @@ mod tests {
         let out = strip_png_wrapper(&raw);
         assert_eq!(out[0], 0x47);
         assert!(png_wraps_mpeg_ts(&raw));
+    }
+
+    #[test]
+    fn resolve_protocol_relative_keeps_host() {
+        let out = resolve_url(
+            "//hls20.cdnvideo11.shop/child/2160/x.m3u8",
+            "https://hls19.cdnvideo11.shop/master/",
+            "https://hls19.cdnvideo11.shop",
+        );
+        assert_eq!(out, "https://hls20.cdnvideo11.shop/child/2160/x.m3u8");
     }
 
     #[test]

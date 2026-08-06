@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
+import 'package:rust/rust.dart';
 
 void main() {
   group('TorrentSourceKindFilter', () {
@@ -169,12 +170,21 @@ void main() {
     });
   });
 
-  test('provider options have no All sentinel', () {
-    const options = [
-      SourcesPanelProviderOption(id: 'forja', label: 'Forja'),
-      SourcesPanelProviderOption(id: 'jackett', label: 'Jackett'),
-    ];
-    expect(options.map((o) => o.id), isNot(contains('all')));
-    expect(options.map((o) => o.label.toLowerCase()), isNot(contains('all')));
+  test('torrent provider chips include All and enabled providers', () {
+    final options = torrentProviderChipOptions(
+      enabledProviders: const [
+        TorrentSearchProviders.knaben,
+        TorrentSearchProviders.yts,
+      ],
+      jackettConfigured: true,
+      prowlarrConfigured: false,
+    );
+    expect(options.map((o) => o.id).toList(), [
+      TorrentSearchProviders.allId,
+      TorrentSearchProviders.knaben,
+      TorrentSearchProviders.yts,
+      'jackett',
+    ]);
+    expect(options.first.label, 'All');
   });
 }

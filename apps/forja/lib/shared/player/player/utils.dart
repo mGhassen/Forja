@@ -23,14 +23,39 @@ const kDefaultStreamUserAgent =
 const kHlsBitrateAutoSoftCeiling = '5000000';
 const kExoBitrateAutoSoftCeiling = 5_000_000;
 
-/// KissKh masters often advertise 4K rungs that mpv will start on even with a
-/// soft `hls-bitrate` ceiling (bandwidth tags lie / initial track pick misses).
-/// Opening a ≤1080p media playlist avoids the indefinite BUFFERING ladder.
+/// KissKh soft ceiling — masters often include unusable 4K PNG rungs.
 const kKissKhHlsSoftMaxHeight = 1080;
 
 bool isKissKhProviderId(String? providerId) {
   final key = providerId?.trim().toLowerCase() ?? '';
   return key == 'kisskh' || key.startsWith('kisskh.');
+}
+
+/// Effective KissKh height cap: respect Settings when ≤1080, otherwise soft 1080.
+int kissKhHlsMaxHeight(int settingsMaxHeight) {
+  if (settingsMaxHeight <= 0) return kKissKhHlsSoftMaxHeight;
+  if (settingsMaxHeight > kKissKhHlsSoftMaxHeight) {
+    return kKissKhHlsSoftMaxHeight;
+  }
+  return settingsMaxHeight;
+}
+
+/// Infer height from KissKh / CDN path segments (`…/2160/…`, `…/1080p/…`).
+int? hlsHeightFromUrlPath(String url) {
+  final path = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+  final m = RegExp(r'(?:^|/)(\d{3,4})p?(?:/|$)').firstMatch(path);
+  if (m == null) return null;
+  final h = int.tryParse(m.group(1)!);
+  if (h == null) return null;
+  if (h == 360 ||
+      h == 480 ||
+      h == 720 ||
+      h == 1080 ||
+      h == 1440 ||
+      h == 2160) {
+    return h;
+  }
+  return null;
 }
 
 /// Best non-Auto HLS variant at or under [maxHeight], else the lowest rung.
@@ -44,21 +69,57 @@ Future<String> preferHlsVariantUnderHeight(
   if (!masterUrl.toLowerCase().contains('.m3u8') || maxHeight <= 0) {
     return masterUrl;
   }
-  final qualities =
-      qualitiesOverride ?? await fetchHlsQualities(masterUrl, headers: headers);
+  // Never parse a loopback strip proxy as the master base — relative joins break.
+  final catalog = hlsProxyTargetUrl(masterUrl) ?? masterUrl;
+  final qualities = qualitiesOverride ??
+      await fetchHlsQualities(catalog, headers: headers);
   if (qualities == null || qualities.isEmpty) return masterUrl;
 
-  final ranked = qualities
-      .where((q) => !q.isAuto && (q.height ?? 0) > 0)
-      .toList()
-    ..sort((a, b) => (b.height ?? 0).compareTo(a.height ?? 0));
+  final ranked = qualities.where((q) => !q.isAuto).map((q) {
+        final h = q.height ?? hlsHeightFromUrlPath(q.url);
+        return (q: q, height: h ?? 0);
+      }).where((e) => e.height > 0).toList()
+    ..sort((a, b) => b.height.compareTo(a.height));
   if (ranked.isEmpty) return masterUrl;
 
-  for (final q in ranked) {
-    if ((q.height ?? 0) <= maxHeight) return q.url;
+  for (final e in ranked) {
+    if (e.height <= maxHeight) return e.q.url;
   }
-  // Every rung is above the cap — take the lowest so playback can start.
-  return ranked.last.url;
+  return ranked.last.q.url;
+}
+
+/// Cap a KissKh catalog URL, then re-apply PNG-strip proxy when [playUrl] was stripped.
+Future<String> kissKhPlayUrlAfterHlsCap({
+  required String catalogUrl,
+  required String playUrl,
+  Map<String, String>? headers,
+  required int maxHeight,
+  required Future<String?> Function(
+    String url,
+    Map<String, String> headers,
+  ) buildPngStripProxy,
+}) async {
+  final catalog = (hlsProxyTargetUrl(catalogUrl) ?? catalogUrl).trim();
+  if (!catalog.toLowerCase().contains('.m3u8')) return playUrl;
+
+  final capped = await preferHlsVariantUnderHeight(
+    catalog,
+    headers: headers,
+    maxHeight: maxHeight,
+  );
+  if (capped == catalog) return playUrl;
+
+  debugPrint(
+    '[Player] KissKh HLS cap ≤${maxHeight}p → variant '
+    '(avoid 4K buffer stall)',
+  );
+
+  final wasStrip = playUrl.contains('/hls-proxy') &&
+      playUrl.toLowerCase().contains('strip=png');
+  if (!wasStrip) return capped;
+
+  final proxied = await buildPngStripProxy(capped, headers ?? const {});
+  return (proxied != null && proxied.isNotEmpty) ? proxied : capped;
 }
 
 /// Prefer catalog/master URL for the quality menu when play opened a media playlist.

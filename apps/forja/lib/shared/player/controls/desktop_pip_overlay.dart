@@ -98,6 +98,7 @@ class DesktopPipOverlay extends StatelessWidget {
             left: 10,
             right: 10,
             child: _fade(
+              // Icon-only chrome — labeled chips overflow at min PiP (~240w).
               child: Row(
                 children: [
                   _PipIconChip(
@@ -106,15 +107,15 @@ class DesktopPipOverlay extends StatelessWidget {
                     onTap: () => unawaited(_restore()),
                   ),
                   const Spacer(),
-                  _PipLabelChip(
+                  _PipIconChip(
                     icon: Icons.remove_rounded,
-                    label: 'Minimize',
+                    tooltip: 'Minimize',
                     onTap: () => unawaited(_minimize()),
                   ),
                   const SizedBox(width: 8),
-                  _PipLabelChip(
+                  _PipIconChip(
                     icon: Icons.close_rounded,
-                    label: 'Close',
+                    tooltip: 'Close',
                     onTap: () => unawaited(_close()),
                   ),
                 ],
@@ -215,50 +216,6 @@ class _PipIconChip extends StatelessWidget {
     );
     if (tooltip == null) return chip;
     return Tooltip(message: tooltip!, child: chip);
-  }
-}
-
-class _PipLabelChip extends StatelessWidget {
-  const _PipLabelChip({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          height: 34,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: _pipChromeDecoration(radius: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: Colors.white, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  height: 1,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 

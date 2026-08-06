@@ -6,10 +6,12 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
   Future<void> _checkIndexerConfiguration() async {
     final jackettConfigured = await _s._settings.isJackettConfigured();
     final prowlarrConfigured = await _s._settings.isProwlarrConfigured();
+    final enabled = await _s._settings.getEnabledTorrentProviders();
     if (mounted) {
       setState(() {
         _s._isJackettConfigured = jackettConfigured;
         _s._isProwlarrConfigured = prowlarrConfigured;
+        _s._enabledTorrentProviders = enabled;
       });
     }
   }
@@ -67,6 +69,9 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
     String episodeQuery,
   ) async {
     final gen = ++_s._torrentSearchGen;
+    final enabled = TorrentSearchProviders.searchEnabledForChip(
+      _s._selectedSourceId,
+    );
     _s.ref
         .read(detailsResolveStatusProvider(_s._metaKey).notifier)
         .setLoading();
@@ -81,12 +86,14 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
           seasonQuery,
           imdbId: _s._movie.imdbId,
           season: _s._selectedSeason,
+          enabledProviders: enabled,
         ).then((list) => list.map(TorrentResult.fromJson).toList()),
         Engine.searchTorrents(
           episodeQuery,
           imdbId: _s._movie.imdbId,
           season: _s._selectedSeason,
           episode: _s._selectedEpisode,
+          enabledProviders: enabled,
         ).then((list) => list.map(TorrentResult.fromJson).toList()),
       ]);
       if (!mounted || gen != _s._torrentSearchGen) return;
@@ -134,6 +141,9 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
 
   Future<void> _searchTorrents(String query) async {
     final gen = ++_s._torrentSearchGen;
+    final enabled = TorrentSearchProviders.searchEnabledForChip(
+      _s._selectedSourceId,
+    );
     _s.ref
         .read(detailsResolveStatusProvider(_s._metaKey).notifier)
         .setLoading();
@@ -146,6 +156,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       final results = (await Engine.searchTorrents(
         query,
         imdbId: _s._movie.imdbId,
+        enabledProviders: enabled,
       )).map(TorrentResult.fromJson).toList();
       if (!mounted || gen != _s._torrentSearchGen) return;
       final filtered = (await Engine.filterTorrents(
