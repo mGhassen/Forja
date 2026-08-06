@@ -239,6 +239,11 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier(false);
   final ValueNotifier<double> _volumeNotifier = ValueNotifier(100.0);
 
+  /// KissKh: first-frame BUFFERING forever (4K ladder). One soft drop attempt.
+  DateTime? _kissKhBufferingSince;
+  bool _kissKhBufferStallTried = false;
+  Timer? _kissKhBufferWatchdog;
+
   // ── Subtitles ────────────────────────────────────────────────────────────
   List<Map<String, dynamic>> _externalSubtitles = [];
   bool _isFetchingSubs = false;
@@ -320,12 +325,15 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
       final now = DateTime.now();
       _playbackConfirmedAt = now;
       _sessionFirstConfirmedAt ??= now;
+      _kissKhBufferingSince = null;
+      _kissKhBufferStallTried = false;
       // Media open resets mpv subtitle - re-apply preferred after the wipe.
       unawaited(_reapplyPreferredSubtitle());
     } else {
       // Keep session mid / first-confirm across source switches for credits
       // re-open; open mid stays cleared above.
       _playbackConfirmedAt = null;
+      _kissKhBufferingSince = null;
     }
   }
 
@@ -409,6 +417,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     _bufferSub?.cancel();
     _playingSub?.cancel();
     _bufferingSub?.cancel();
+    _kissKhBufferWatchdog?.cancel();
     _volumeSub?.cancel();
     _errorSub?.cancel();
     _completedSub?.cancel();

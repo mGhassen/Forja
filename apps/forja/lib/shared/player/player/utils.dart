@@ -23,6 +23,56 @@ const kDefaultStreamUserAgent =
 const kHlsBitrateAutoSoftCeiling = '5000000';
 const kExoBitrateAutoSoftCeiling = 5_000_000;
 
+/// KissKh masters often advertise 4K rungs that mpv will start on even with a
+/// soft `hls-bitrate` ceiling (bandwidth tags lie / initial track pick misses).
+/// Opening a ≤1080p media playlist avoids the indefinite BUFFERING ladder.
+const kKissKhHlsSoftMaxHeight = 1080;
+
+bool isKissKhProviderId(String? providerId) {
+  final key = providerId?.trim().toLowerCase() ?? '';
+  return key == 'kisskh' || key.startsWith('kisskh.');
+}
+
+/// Best non-Auto HLS variant at or under [maxHeight], else the lowest rung.
+/// Returns [masterUrl] unchanged when the playlist is not a multi-rendition master.
+Future<String> preferHlsVariantUnderHeight(
+  String masterUrl, {
+  Map<String, String>? headers,
+  int maxHeight = kKissKhHlsSoftMaxHeight,
+  @visibleForTesting List<HlsQuality>? qualitiesOverride,
+}) async {
+  if (!masterUrl.toLowerCase().contains('.m3u8') || maxHeight <= 0) {
+    return masterUrl;
+  }
+  final qualities =
+      qualitiesOverride ?? await fetchHlsQualities(masterUrl, headers: headers);
+  if (qualities == null || qualities.isEmpty) return masterUrl;
+
+  final ranked = qualities
+      .where((q) => !q.isAuto && (q.height ?? 0) > 0)
+      .toList()
+    ..sort((a, b) => (b.height ?? 0).compareTo(a.height ?? 0));
+  if (ranked.isEmpty) return masterUrl;
+
+  for (final q in ranked) {
+    if ((q.height ?? 0) <= maxHeight) return q.url;
+  }
+  // Every rung is above the cap — take the lowest so playback can start.
+  return ranked.last.url;
+}
+
+/// Prefer catalog/master URL for the quality menu when play opened a media playlist.
+String catalogUrlForHlsQualities({
+  String? catalogUrl,
+  required String sourceUrl,
+  required String playUrl,
+}) {
+  final catalog = (catalogUrl ?? '').trim();
+  if (catalog.toLowerCase().contains('.m3u8')) return catalog;
+  if (sourceUrl.toLowerCase().contains('.m3u8')) return sourceUrl;
+  return playUrl;
+}
+
 /// Softvol gain applied to Android TV MediaKit so it matches ExoPlayer loudness
 /// (issue 152).
 ///

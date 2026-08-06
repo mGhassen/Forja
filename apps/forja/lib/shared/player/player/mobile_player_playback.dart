@@ -243,11 +243,30 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             if (step == null) break;
 
             await resetPlayerForOpen(_s._player);
+            final pid = source.providerId ?? _s._currentProvider;
+            var playUrl = step.playUrl;
+            if (isKissKhProviderId(pid) &&
+                playUrl.toLowerCase().contains('.m3u8')) {
+              final maxH = await SettingsService().getMaxPlaybackHeight();
+              final cap = maxH > 0 ? maxH : kKissKhHlsSoftMaxHeight;
+              final capped = await preferHlsVariantUnderHeight(
+                playUrl,
+                headers: step.headers,
+                maxHeight: cap,
+              );
+              if (capped != playUrl) {
+                debugPrint(
+                  '[Player] KissKh HLS cap ≤${cap}p → variant '
+                  '(avoid 4K buffer stall)',
+                );
+                playUrl = capped;
+              }
+            }
             openUrl = await openPlayerStream(
               _s._player,
-              url: step.playUrl,
+              url: playUrl,
               headers: step.headers,
-              providerId: source.providerId ?? _s._currentProvider,
+              providerId: pid,
             );
             if (_fallbackAborted(runGen)) return false;
             _s._player.setVolume(_s._mpvVolume);
@@ -338,7 +357,14 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
           }
           _s._hasInitialSeek = true;
         }
-        _s._detectHlsQualities(openUrl, srcHeaders);
+        _s._detectHlsQualities(
+          catalogUrlForHlsQualities(
+            catalogUrl: source.catalogUrl,
+            sourceUrl: source.url,
+            playUrl: openUrl,
+          ),
+          srcHeaders,
+        );
         final catalogIdentity = durableStreamCatalogUrl(
           catalogUrl: source.catalogUrl,
           sourceUrl: source.url,
@@ -1191,6 +1217,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     _s._bufferSub?.cancel();
     _s._playingSub?.cancel();
     _s._bufferingSub?.cancel();
+    _s._kissKhBufferWatchdog?.cancel();
     _s._errorSub?.cancel();
     _s._completedSub?.cancel();
     _s._tracksSub?.cancel();
@@ -1368,6 +1395,18 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     _s._bufferingSub = _s._player.stream.buffering.listen((buffering) {
       if (_s._disposed) return;
       _s._isBufferingNotifier.value = buffering;
+      if (!_s._playbackConfirmed || !isKissKhProviderId(_s._currentProvider)) {
+        return;
+      }
+      if (buffering) {
+        _s._kissKhBufferingSince ??= DateTime.now();
+      } else {
+        _s._kissKhBufferingSince = null;
+      }
+    });
+    _s._kissKhBufferWatchdog?.cancel();
+    _s._kissKhBufferWatchdog = Timer.periodic(const Duration(seconds: 2), (_) {
+      unawaited(_maybeRecoverKissKhBufferStall());
     });
 
     // Surface only fatal errors - transient network blips are handled by mpv
@@ -1536,6 +1575,54 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       await _applyTrackAutoSelect();
     } catch (e) {
       debugPrint('[Player] audio recovery failed: $e');
+    }
+  }
+
+  /// KissKh: after confirm, first-frame BUFFERING with pos≈0 — drop to lowest rung once.
+  Future<void> _maybeRecoverKissKhBufferStall() async {
+    if (_s._disposed || !_s._playbackConfirmed || _s._kissKhBufferStallTried) {
+      return;
+    }
+    if (!isKissKhProviderId(_s._currentProvider)) return;
+    if (!_s._isBufferingNotifier.value) return;
+    final since = _s._kissKhBufferingSince;
+    if (since == null ||
+        DateTime.now().difference(since) < const Duration(seconds: 18)) {
+      return;
+    }
+    if (_s._positionNotifier.value >= const Duration(seconds: 2)) return;
+
+    final qualities = _s._hlsQualitiesNotifier.value;
+    final headers = _s._hlsMasterHeaders;
+    if (qualities == null || qualities.isEmpty || headers == null) return;
+
+    final ranked = qualities
+        .where((q) => !q.isAuto && (q.height ?? 0) > 0)
+        .toList()
+      ..sort((a, b) => (a.height ?? 0).compareTo(b.height ?? 0));
+    if (ranked.isEmpty) return;
+    final lowest = ranked.first;
+    if (lowest.url == _s._currentUrl || lowest.url == _s._currentQualityUrl) {
+      return;
+    }
+
+    _s._kissKhBufferStallTried = true;
+    debugPrint(
+      '[Player] KissKh buffer stall ${DateTime.now().difference(since).inSeconds}s '
+      '→ drop to ${lowest.label}',
+    );
+    try {
+      _s._currentQualityUrl = lowest.url;
+      await openPlayerStream(
+        _s._player,
+        url: lowest.url,
+        headers: headers,
+        providerId: _s._currentProvider,
+      );
+      await _s._player.play();
+      _s._kissKhBufferingSince = null;
+    } catch (e) {
+      debugPrint('[Player] KissKh stall recovery failed: $e');
     }
   }
 

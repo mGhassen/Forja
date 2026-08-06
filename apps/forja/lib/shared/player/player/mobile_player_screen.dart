@@ -290,6 +290,11 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   final ValueNotifier<bool> _isPlayingNotifier = ValueNotifier(false);
   final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier(false);
 
+  /// KissKh: first-frame BUFFERING forever (4K ladder). One soft drop attempt.
+  DateTime? _kissKhBufferingSince;
+  bool _kissKhBufferStallTried = false;
+  Timer? _kissKhBufferWatchdog;
+
   /// MediaKit on leanback — `vo=mediacodec_embed`, `ao=audiotrack`, softvol
   /// gain. `tvRemoteEnabled` covers [TvPlayerScreen] before the async
   /// `isTelevision` probe lands.
@@ -390,12 +395,15 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
       final now = DateTime.now();
       _playbackConfirmedAt = now;
       _sessionFirstConfirmedAt ??= now;
+      _kissKhBufferingSince = null;
+      _kissKhBufferStallTried = false;
       // Media open resets mpv subtitle - re-apply preferred after the wipe.
       unawaited(_reapplyPreferredSubtitle());
     } else {
       // Keep session mid / first-confirm across source switches for credits
       // re-open; open mid stays cleared above.
       _playbackConfirmedAt = null;
+      _kissKhBufferingSince = null;
     }
   }
 
@@ -508,6 +516,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     _bufferSub?.cancel();
     _playingSub?.cancel();
     _bufferingSub?.cancel();
+    _kissKhBufferWatchdog?.cancel();
     _errorSub?.cancel();
     _completedSub?.cancel();
     _tracksSub?.cancel();
