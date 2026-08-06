@@ -793,7 +793,11 @@ jobs:
             exit 1
           fi
 
+      # New version: write release body from frozen changelog (or GH auto-notes).
+      # Existing tag: assets only — never touch body. Avoids wiping curated notes
+      # when generate_release_notes would fire on a missing/empty frozen file.
       - name: Build release notes from changelog
+        if: inputs.version_mode == 'New version'
         id: notes
         run: |
           chmod +x scripts/changelog_release_notes.sh
@@ -807,7 +811,9 @@ jobs:
             echo "has_notes=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: softprops/action-gh-release@v2
+      - name: Create GitHub Release
+        if: inputs.version_mode == 'New version'
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.resolve_version.outputs.version }}
           name: Forja ${{ needs.resolve_version.outputs.version }}
@@ -815,6 +821,18 @@ jobs:
           body_path: ${{ steps.notes.outputs.has_notes == 'true' && 'RELEASE_NOTES.md' || '' }}
           generate_release_notes: ${{ steps.notes.outputs.has_notes != 'true' }}
           files: release-flat/*
+          overwrite_files: true
+          fail_on_unmatched_files: true
+
+      - name: Attach assets to existing release
+        if: inputs.version_mode == 'Existing tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.resolve_version.outputs.version }}
+          prerelease: ${{ inputs.prerelease }}
+          files: release-flat/*
+          overwrite_files: true
+          fail_on_unmatched_files: true
 
       # publish_release checks out the version tag (changelog accuracy). That tree
       # may predate the R2 uploader when using "Existing tag" — pull tooling from

@@ -16,6 +16,9 @@ set -euo pipefail
 #   ./scripts/release_local.sh publish-r2 v1.2.404      # upload dist/ → R2 only (retry)
 #   ./scripts/release_local.sh sync [v1.2.404]          # push branch (+ tag) → forjahq mirror
 #   ./scripts/release_local.sh sync-from [v1.2.404]     # pull CI release commit from forjahq → origin
+#   ./scripts/release_local.sh clean-gh-assets [vX.Y.Z] [--dry-run]
+#                                    strip installer assets from GitHub releases older than cutoff
+#                                    (keeps release notes + tags; default cutoff = latest tip)
 #
 # Interactive wizard (TTY): ↑↓ / j k navigate · Space toggle · Enter next · b back · q quit
 #
@@ -726,6 +729,16 @@ normalize_tag() {
 
 version_from_tag() {
   echo "${1#v}"
+}
+
+# Semver X.Y.Z without requiring a local git tag (cutoff for GH asset prune).
+normalize_version() {
+  local v="$1"
+  v="${v#"${v%%[![:space:]]*}"}"
+  v="${v%"${v##*[![:space:]]}"}"
+  v="${v#v}"
+  [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "invalid version: $1 (want X.Y.Z)"
+  echo "$v"
 }
 
 dmg_path() { echo "$DIST/Forja-${1}-macos-${2:-arm64}.dmg"; }
@@ -1550,6 +1563,99 @@ cmd_sync_from() {
   FORJA_SYNC_SKIP=0 sync_from_forjahq "$tag"
 }
 
+# Strip installer assets from GitHub Releases older than cutoff (keep notes + tags).
+# Usage: clean-gh-assets [vX.Y.Z] [--dry-run]
+cmd_clean_gh_assets() {
+  local cutoff="" dry=0 arg ver tag asset asset_count
+  local deleted=0 skipped=0 failed=0 touched=0 kept=0
+  local -a targets=()
+
+  for arg in "$@"; do
+    case "$arg" in
+      --dry-run) dry=1 ;;
+      -*) die "unknown flag: $arg (clean-gh-assets [vX.Y.Z] [--dry-run])" ;;
+      *)
+        [[ -z "$cutoff" ]] || die "unexpected arg: $arg"
+        cutoff="$arg"
+        ;;
+    esac
+  done
+
+  require_cmd gh
+  gh auth status >/dev/null 2>&1 || die "gh not authenticated — run: gh auth login"
+
+  if [[ -z "$cutoff" ]]; then
+    cutoff="$(default_release_tag || true)"
+    [[ -n "$cutoff" ]] || die "no cutoff — pass vX.Y.Z"
+  fi
+  cutoff="$(normalize_version "$cutoff")"
+
+  info "Scan GitHub releases older than v${cutoff} ($(gh_repo))"
+  while IFS= read -r tag; do
+    [[ -z "$tag" ]] && continue
+    ver="${tag#v}"
+    [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+    if [[ "$ver" == "$cutoff" ]] || version_tag_gt "v$ver" "v$cutoff"; then
+      kept=$((kept + 1))
+      continue
+    fi
+    targets+=("$tag")
+  done < <(gh_r release list --limit 1000 --json tagName -q '.[].tagName')
+
+  if ((${#targets[@]} == 0)); then
+    ok "No releases older than v${cutoff}"
+    return 0
+  fi
+
+  info "Candidates: ${#targets[@]} release(s) < v${cutoff} (keeping ≥ v${cutoff}: ${kept})"
+  if ((dry)); then
+    for tag in "${targets[@]}"; do
+      asset_count=0
+      while IFS= read -r asset; do
+        [[ -z "$asset" ]] && continue
+        asset_count=$((asset_count + 1))
+        ((asset_count == 1)) && echo "  $tag"
+        echo "    would delete $asset"
+      done < <(gh_r release view "$tag" --json assets -q '.assets[].name' 2>/dev/null || true)
+      if ((asset_count == 0)); then
+        echo "  $tag (no assets)"
+      else
+        deleted=$((deleted + asset_count))
+      fi
+    done
+    ok "Dry-run: would delete ${deleted} asset(s) across ${#targets[@]} release(s)"
+    return 0
+  fi
+
+  confirm "Delete installer assets from ${#targets[@]} GitHub release(s) older than v${cutoff}? (notes/tags kept)" \
+    || die "aborted"
+
+  for tag in "${targets[@]}"; do
+    asset_count=0
+    while IFS= read -r asset; do
+      [[ -z "$asset" ]] && continue
+      asset_count=$((asset_count + 1))
+      ((asset_count == 1)) && echo "==> $tag"
+      if gh_r release delete-asset "$tag" "$asset" --yes; then
+        echo "  deleted $asset"
+        deleted=$((deleted + 1))
+      else
+        echo "  FAIL $asset"
+        failed=$((failed + 1))
+      fi
+    done < <(gh_r release view "$tag" --json assets -q '.assets[].name' 2>/dev/null || true)
+    if ((asset_count == 0)); then
+      echo "skip $tag (no assets)"
+      skipped=$((skipped + 1))
+    else
+      touched=$((touched + 1))
+    fi
+  done
+
+  ok "Cleaned ${deleted} asset(s) from ${touched} release(s) (< v${cutoff}; empty=${skipped}; failed=${failed})"
+  ((failed == 0)) || die "some asset deletes failed"
+}
+
 cmd_backfill() {
   local -a dry=()
   [[ "${1:-}" == "--dry-run" ]] && dry=(--dry-run)
@@ -1858,6 +1964,48 @@ wizard_list_tags() {
   list_tags "$filter" || true
 }
 
+wizard_clean_gh_assets() {
+  local cutoff default_cut mode rc detail
+  fetch_tags
+  default_cut="$(default_release_tag || true)"
+  default_cut="${default_cut#v}"
+  cutoff="$(ui_input 1 3 "Clean GitHub release assets" \
+    "Keep assets on ≥ this version (older stripped)" \
+    "${default_cut}")" || {
+    rc=$?
+    ((rc == 2)) && return 2
+    ui_abort
+  }
+  cutoff="$(normalize_version "$cutoff")"
+  mode="$(ui_choose 2 3 "Clean mode" -- \
+    "dry|Dry-run — list assets that would be deleted" \
+    "real|Delete assets now (notes + tags kept)")" || {
+    rc=$?
+    ((rc == 2)) && return 2
+    ui_abort
+  }
+  detail="Repo:    $(gh_repo)
+Cutoff:  keep ≥ v${cutoff}
+Action:  strip installer assets from releases < v${cutoff}
+Keeps:   release notes, tags, ≥ v${cutoff} assets"
+  if [[ "$mode" == dry ]]; then
+    ui_raw_off
+    ui_clear
+    cmd_clean_gh_assets "v${cutoff}" --dry-run
+    return 0
+  fi
+  if ui_confirm_screen 3 3 "Delete old GitHub assets?" "$detail" 0; then
+    ui_raw_off
+    ui_clear
+    NONINTERACTIVE=1 cmd_clean_gh_assets "v${cutoff}"
+    return 0
+  else
+    rc=$?
+    ((rc == 2)) && return 2
+    ui_abort
+  fi
+}
+
 wizard_tools() {
   local tool tag rc gh_mode do_r2=0 do_sync=0
   tool="$(ui_choose 1 2 "Tools" -- \
@@ -1866,6 +2014,7 @@ wizard_tools() {
     "build_android_tv|Build Android TV APKs (per selected ABI)" \
     "publish|Publish dist/…" \
     "publish_r2|Upload dist/ → R2 only (retry)" \
+    "clean_gh_assets|Clean old GitHub release assets…" \
     "setup_windows|Setup Windows VM")" || {
     rc=$?
     ((rc == 2)) && return 2
@@ -1876,6 +2025,13 @@ wizard_tools() {
       ui_raw_off
       ui_clear
       cmd_setup_windows
+      ;;
+    clean_gh_assets)
+      wizard_clean_gh_assets || {
+        rc=$?
+        ((rc == 2)) && return 2
+        ui_abort
+      }
       ;;
     publish)
       tag="$(pick_tag_interactive)" || {
@@ -1969,6 +2125,7 @@ interactive_menu() {
     echo "  10) Sync → ${SYNC_REPO}"
     echo "  11) Sync ← ${SYNC_REPO} (CI release → origin)"
     echo "  12) Setup Windows VM"
+    echo "  13) Clean old GitHub release assets"
     echo "  q) Quit"
     read -r -p "Choice: " choice
     case "$choice" in
@@ -2030,6 +2187,14 @@ interactive_menu() {
       10) cmd_sync ;;
       11) cmd_sync_from ;;
       12) cmd_setup_windows ;;
+      13)
+        read -r -p "Keep assets on ≥ version (default tip): " cutoff
+        if confirm "Dry-run only?"; then
+          cmd_clean_gh_assets ${cutoff:+"$cutoff"} --dry-run
+        else
+          cmd_clean_gh_assets ${cutoff:+"$cutoff"}
+        fi
+        ;;
       q|Q) exit 0 ;;
       *) die "invalid choice" ;;
     esac
@@ -2045,6 +2210,7 @@ interactive_menu() {
       "backfill|Backfill untagged commits" \
       "list_tags|List / filter tags" \
       "tools|Build / publish tools…" \
+      "clean_gh_assets|Clean old GitHub release assets…" \
       "quit|Quit")" || {
       rc=$?
       ((rc == 2 || rc == 3)) && { ui_raw_off; exit 0; }
@@ -2092,6 +2258,14 @@ interactive_menu() {
         }
         return
         ;;
+      clean_gh_assets)
+        wizard_clean_gh_assets || {
+          rc=$?
+          ((rc == 2)) && continue
+          ui_abort
+        }
+        return
+        ;;
       quit) ui_raw_off; exit 0 ;;
     esac
   done
@@ -2114,8 +2288,9 @@ main() {
     publish-r2) cmd_publish_r2 "${1:?usage: release_local.sh publish-r2 vX.Y.Z}" ;;
     sync) cmd_sync "${1:-}" ;;
     sync-from) cmd_sync_from "${1:-}" ;;
+    clean-gh-assets) cmd_clean_gh_assets "$@" ;;
     -h|--help)
-      sed -n '3,35p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '3,38p' "$0" | sed 's/^# \{0,1\}//'
       ;;
     *)
       die "unknown command: $cmd (try --help)"
