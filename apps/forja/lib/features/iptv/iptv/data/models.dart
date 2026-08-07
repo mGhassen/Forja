@@ -3,8 +3,8 @@
 
 import 'dart:math';
 
-/// Random display names for M3U portals (add-dialog dice button).
-abstract final class M3uPortalName {
+/// Random display names for portals (add-dialog dice button).
+abstract final class IptvPortalName {
   static final _random = Random();
 
   static const _adjectives = [

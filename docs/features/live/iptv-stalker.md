@@ -13,6 +13,7 @@ The IPTV tab supports **Stalker / Ministra** portals alongside Xtream and M3U. Y
 ## What you can do
 
 - Add a Stalker portal with URL (often ending in `/c/` or `portal.php`) and MAC (`00:1A:79:…`); optional serial
+- Tap the dice icon next to the portal name field for a random name
 - Tap **Generate** next to the MAC field for a random MAG-style MAC if your provider issues portal access by any MAC
 - Browse **Live**, **Movies**, and **Series** like Xtream
 - Play in the IPTV player — channel guide and search work for live

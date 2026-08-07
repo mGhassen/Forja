@@ -950,23 +950,16 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                                 : 'My provider',
                                             focusNode: _labelFocus,
                                             dialogIndex: labelIndex,
-                                            suffix: _platform ==
-                                                    IptvPortalPlatform.m3u
-                                                ? ForjaPlainIcon(
-                                                    icon: Icons
-                                                        .casino_outlined,
-                                                    tooltip:
-                                                        'Random name',
-                                                    color: IptvShellStyle
-                                                        .iconMuted,
-                                                    size: 20,
-                                                    onTap: () => setState(
-                                                      () => _labelCtrl.text =
-                                                          M3uPortalName
-                                                              .generate(),
-                                                    ),
-                                                  )
-                                                : null,
+                                            suffix: ForjaPlainIcon(
+                                              icon: Icons.casino_outlined,
+                                              tooltip: 'Random name',
+                                              color: IptvShellStyle.iconMuted,
+                                              size: 20,
+                                              onTap: () => setState(
+                                                () => _labelCtrl.text =
+                                                    IptvPortalName.generate(),
+                                              ),
+                                            ),
                                           ),
                                           SizedBox(height: gapBetweenFields),
                                           _portalField(
