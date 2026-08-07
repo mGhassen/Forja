@@ -29,6 +29,11 @@ export type DownloadStatsView = {
   total: number
   byPlatform: Record<string, number>
   byObject: Array<{ object: string; platform: string; count: number }>
+  byVersion: Array<{
+    version: string
+    count: number
+    byPlatform: Record<string, number>
+  }>
   dayCount: number
   updatedAt: string | null
   bucket: string
@@ -88,6 +93,35 @@ export function isInstallerObject(objectName: string): boolean {
   )
 }
 
+/** Prefer `v1.2.3/…` prefix, else semver in filename, else `latest` / `unknown`. */
+export function versionFromObjectKey(objectName: string): string {
+  const parts = objectName.split('/').filter(Boolean)
+  const prefix = parts[0] ?? ''
+  const prefixMatch = prefix.match(/^v?(\d+\.\d+\.\d+)$/i)
+  if (prefixMatch) return prefixMatch[1]
+
+  const file = parts[parts.length - 1] ?? objectName
+  const fileMatch = file.match(/(?:^|[^0-9])(\d+\.\d+\.\d+)(?:[^0-9]|$)/)
+  if (fileMatch) return fileMatch[1]
+
+  if (prefix.toLowerCase() === 'latest') return 'latest'
+  return 'unknown'
+}
+
+function compareSemverDesc(a: string, b: string): number {
+  const pa = a.split('.').map((n) => Number(n))
+  const pb = b.split('.').map((n) => Number(n))
+  if (pa.length === 3 && pb.length === 3 && pa.every(Number.isFinite) && pb.every(Number.isFinite)) {
+    for (let i = 0; i < 3; i++) {
+      if (pa[i] !== pb[i]) return pb[i]! - pa[i]!
+    }
+    return 0
+  }
+  if (a === 'latest') return -1
+  if (b === 'latest') return 1
+  return a.localeCompare(b)
+}
+
 /** UTC calendar day YYYY-MM-DD */
 export function utcDayString(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -139,22 +173,16 @@ export async function fetchCfDaySlice(opts: {
   end: Date
   bucket?: string
 }): Promise<DaySlice> {
-  const accountId =
-    process.env.R2_ACCOUNT_ID?.trim() ||
-    process.env.CLOUDFLARE_ACCOUNT_ID?.trim() ||
-    ''
+  const { accountId, bucket: defaultBucket } = r2Config()
   const token =
     process.env.CLOUDFLARE_API_TOKEN?.trim() ||
     process.env.CF_API_TOKEN?.trim() ||
     ''
-  const bucket = opts.bucket ?? r2Config().bucket
+  const bucket = opts.bucket ?? defaultBucket
 
-  if (!accountId) {
-    throw new Error('R2_ACCOUNT_ID (or CLOUDFLARE_ACCOUNT_ID) is not configured')
-  }
   if (!token) {
     throw new Error(
-      'CLOUDFLARE_API_TOKEN is not configured (Account Analytics Read)',
+      'CLOUDFLARE_API_TOKEN is not configured (Account → Create Token → Account Analytics Read)',
     )
   }
 
@@ -306,10 +334,39 @@ export function rollupToView(rollup: DownloadsRollup): DownloadStatsView {
     }))
     .sort((a, b) => b.count - a.count)
 
+  const versionMap = new Map<
+    string,
+    { count: number; byPlatform: Record<string, number> }
+  >()
+  for (const row of byObject) {
+    const version = versionFromObjectKey(row.object)
+    const cur = versionMap.get(version) ?? {
+      count: 0,
+      byPlatform: Object.fromEntries(SHOWCASE.map((id) => [id, 0])),
+    }
+    cur.count += row.count
+    cur.byPlatform[row.platform] =
+      (cur.byPlatform[row.platform] ?? 0) + row.count
+    versionMap.set(version, cur)
+  }
+
+  const byVersion = [...versionMap.entries()]
+    .map(([version, v]) => ({
+      version,
+      count: v.count,
+      byPlatform: v.byPlatform,
+    }))
+    .sort((a, b) => {
+      const sem = compareSemverDesc(a.version, b.version)
+      if (sem !== 0) return sem
+      return b.count - a.count
+    })
+
   return {
     total: rollup.totals.total,
     byPlatform: rollup.totals.by_platform,
     byObject,
+    byVersion,
     dayCount: Object.keys(rollup.days).length,
     updatedAt:
       Object.keys(rollup.days).length > 0 ? rollup.updated_at : null,

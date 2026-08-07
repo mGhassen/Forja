@@ -28,6 +28,7 @@ function toStats(data: DownloadStats): DownloadStats {
     total: data.total,
     byPlatform: data.byPlatform,
     byObject: data.byObject,
+    byVersion: data.byVersion ?? [],
     dayCount: data.dayCount,
     updatedAt: data.updatedAt,
     bucket: data.bucket,
@@ -118,7 +119,7 @@ export function AdminDownloadsPage() {
             <code className="text-forja-text">R2_ACCESS_KEY_ID</code> /{' '}
             <code className="text-forja-text">R2_SECRET_ACCESS_KEY</code> +{' '}
             <code className="text-forja-text">CLOUDFLARE_API_TOKEN</code>{' '}
-            (Analytics Read) on the admin host.
+            (Account Analytics Read — different from the S3 keys).
           </p>
         </Panel>
       ) : null}
@@ -217,6 +218,76 @@ export function AdminDownloadsPage() {
                     </tr>
                   )
                 })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      <Panel>
+        <PanelLabel>By release version</PanelLabel>
+        <div className={`${tableWrapClassName} mt-4`}>
+          <table className={tableClassName}>
+            <thead>
+              <tr>
+                <th className={thClassName}>Version</th>
+                <th className={thClassName}>Total</th>
+                <th className={`${thClassName} hidden md:table-cell`}>
+                  Windows
+                </th>
+                <th className={`${thClassName} hidden md:table-cell`}>macOS</th>
+                <th className={`${thClassName} hidden md:table-cell`}>Linux</th>
+                <th className={`${thClassName} hidden lg:table-cell`}>
+                  Android TV
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading || busy ? (
+                <tr>
+                  <td className={tdClassName} colSpan={6}>
+                    {busy ? 'Running CF rollup…' : 'Loading…'}
+                  </td>
+                </tr>
+              ) : !(d?.byVersion?.length) ? (
+                <tr>
+                  <td className={tdClassName} colSpan={6}>
+                    —
+                  </td>
+                </tr>
+              ) : (
+                d.byVersion.map((row) => (
+                  <tr key={row.version}>
+                    <td className={`${tdClassName} font-mono text-sm`}>
+                      {row.version === 'latest' || row.version === 'unknown'
+                        ? row.version
+                        : `v${row.version}`}
+                    </td>
+                    <td className={`${tdClassName} tabular-nums font-medium`}>
+                      {formatCount(row.count)}
+                    </td>
+                    <td
+                      className={`${tdClassName} hidden tabular-nums md:table-cell`}
+                    >
+                      {formatCount(row.byPlatform.windows ?? 0)}
+                    </td>
+                    <td
+                      className={`${tdClassName} hidden tabular-nums md:table-cell`}
+                    >
+                      {formatCount(row.byPlatform.macos ?? 0)}
+                    </td>
+                    <td
+                      className={`${tdClassName} hidden tabular-nums md:table-cell`}
+                    >
+                      {formatCount(row.byPlatform.linux ?? 0)}
+                    </td>
+                    <td
+                      className={`${tdClassName} hidden tabular-nums lg:table-cell`}
+                    >
+                      {formatCount(row.byPlatform.android_tv ?? 0)}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

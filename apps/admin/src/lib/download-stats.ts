@@ -13,6 +13,11 @@ export type DownloadStats = {
   total: number
   byPlatform: Record<string, number>
   byObject: Array<{ object: string; platform: string; count: number }>
+  byVersion: Array<{
+    version: string
+    count: number
+    byPlatform: Record<string, number>
+  }>
   dayCount: number
   updatedAt: string | null
   bucket: string
