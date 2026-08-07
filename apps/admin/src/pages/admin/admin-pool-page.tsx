@@ -144,10 +144,59 @@ function relativeTime(iso: string | null | undefined): string {
   return `${Math.round(hr / 24)}d ago`
 }
 
+function portalCredKey(url: string, username: string): string {
+  return `${url.trim().toLowerCase()}\0${username.trim().toLowerCase()}`
+}
+
+/** Resolve deep-ref → pool focus when portal_id is stale/orphaned. */
+async function resolveFocusPortalId(
+  rows: Cand[],
+  opts: { portal?: string; url?: string; user?: string },
+): Promise<string | null> {
+  const portalId = opts.portal?.trim()
+  if (portalId) {
+    if (rows.some((c) => c.id === portalId)) return portalId
+    const { data: direct } = await adminDb
+      .from('iptv_portals')
+      .select('id')
+      .eq('id', portalId)
+      .maybeSingle()
+    if (direct?.id) return String(direct.id)
+  }
+
+  let url = opts.url?.trim() ?? ''
+  let user = opts.user?.trim() ?? ''
+  if ((!url || !user) && portalId) {
+    const { data: hit } = await adminDb
+      .from('iptv_scrape_deep_ref_portals')
+      .select('url, username')
+      .eq('portal_id', portalId)
+      .limit(1)
+      .maybeSingle()
+    if (hit) {
+      url = String(hit.url ?? '').trim()
+      user = String(hit.username ?? '').trim()
+    }
+  }
+  if (!url || !user) return null
+
+  const key = portalCredKey(url, user)
+  const byCreds = rows.find((c) => portalCredKey(c.url, c.username) === key)
+  if (byCreds) return byCreds.id
+
+  const { data: foundId } = await adminDb.rpc('find_iptv_portal_id', {
+    p_url: url,
+    p_username: user,
+  })
+  return typeof foundId === 'string' && foundId ? foundId : null
+}
+
 export function AdminPoolPage() {
   const qc = useQueryClient()
-  const { portal: focusPortalId } = useSearch({ from: '/_ops/pool' })
+  const search = useSearch({ from: '/_ops/pool' })
+  const focusKey = `${search.portal ?? ''}|${search.url ?? ''}|${search.user ?? ''}`
   const focusedOnce = useRef<string | null>(null)
+  const [resolvedFocusId, setResolvedFocusId] = useState<string | null>(null)
   const [open, setOpen] = useState<Set<string>>(() => new Set())
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<IptvPortalEditForm>({
@@ -234,30 +283,67 @@ export function AdminPoolPage() {
     resetKey: `${inventoryFilter}|${platformFilter}|${statusFilter}|${regionFilter}|${sortKey}|${sortDir}`,
   })
 
-  // Deep-refs → Pool deep-link: expand host, jump page, highlight row.
+  // Deep-refs → Pool deep-link: resolve id (or url+user), expand host, highlight.
   useEffect(() => {
-    if (!focusPortalId || !list.data?.length) return
-    if (focusedOnce.current === focusPortalId) return
-    const row = list.data.find((c) => c.id === focusPortalId)
-    if (!row) {
-      setActionError(`Portal ${focusPortalId} not found in pool`)
-      focusedOnce.current = focusPortalId
+    if (!search.portal && !search.url) {
+      setResolvedFocusId(null)
       return
     }
-    focusedOnce.current = focusPortalId
-    setInventoryFilter('all')
-    setPlatformFilter('all')
-    setStatusFilter('all')
-    setRegionFilter('all')
-    setActionError(null)
-    setActionInfo(`Focused portal ${row.username} @ ${candidateHost(row.url)}`)
-    const host = candidateHost(row.url)
-    setOpen((prev) => new Set(prev).add(host))
-  }, [focusPortalId, list.data])
+    if (!list.isSuccess || list.isFetching || !list.data) return
+    if (focusedOnce.current === focusKey) return
+
+    let cancelled = false
+    void (async () => {
+      const id = await resolveFocusPortalId(list.data ?? [], {
+        portal: search.portal,
+        url: search.url,
+        user: search.user,
+      })
+      if (cancelled) return
+      focusedOnce.current = focusKey
+      if (!id) {
+        setResolvedFocusId(null)
+        setActionError(
+          search.portal
+            ? `Portal ${search.portal} not found (stale deep-ref link — reprocess to refresh)`
+            : 'Portal not found for url/user',
+        )
+        return
+      }
+      const row = (list.data ?? []).find((c) => c.id === id)
+      if (!row) {
+        setResolvedFocusId(null)
+        setActionError(`Portal ${id} not in loaded pool list`)
+        return
+      }
+      setResolvedFocusId(id)
+      setInventoryFilter('all')
+      setPlatformFilter('all')
+      setStatusFilter('all')
+      setRegionFilter('all')
+      setActionError(null)
+      setActionInfo(
+        `Focused portal ${row.username} @ ${candidateHost(row.url)}`,
+      )
+      setOpen((prev) => new Set(prev).add(candidateHost(row.url)))
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    focusKey,
+    search.portal,
+    search.url,
+    search.user,
+    list.isSuccess,
+    list.isFetching,
+    list.data,
+  ])
 
   useEffect(() => {
-    if (!focusPortalId || !list.data?.length) return
-    const row = list.data.find((c) => c.id === focusPortalId)
+    if (!resolvedFocusId || !list.data?.length) return
+    const row = list.data.find((c) => c.id === resolvedFocusId)
     if (!row) return
     const host = candidateHost(row.url)
     const idx = groups.findIndex((g) => g.host === host)
@@ -266,12 +352,12 @@ export function AdminPoolPage() {
     if (paging.page !== page) paging.setPage(page)
     const t = window.setTimeout(() => {
       document
-        .getElementById(`pool-portal-${focusPortalId}`)
+        .getElementById(`pool-portal-${resolvedFocusId}`)
         ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }, 80)
     return () => window.clearTimeout(t)
   }, [
-    focusPortalId,
+    resolvedFocusId,
     list.data,
     groups,
     paging.page,
@@ -699,7 +785,7 @@ export function AdminPoolPage() {
                         <IptvPortalActionRow
                           key={c.id}
                           portal={c}
-                          highlighted={focusPortalId === c.id}
+                          highlighted={resolvedFocusId === c.id}
                           sharing={sharingId === c.id}
                           shareCode={shareFlash[c.id] ?? null}
                           deleting={remove.isPending}

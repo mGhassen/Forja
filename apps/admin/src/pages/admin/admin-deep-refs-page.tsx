@@ -150,7 +150,11 @@ function DeepRefPortalsTable({ portals }: { portals: DeepRefPortalRow[] }) {
                   {p.portal_id ? (
                     <Link
                       to="/pool"
-                      search={{ portal: p.portal_id }}
+                      search={{
+                        portal: p.portal_id,
+                        url: p.url,
+                        user: p.username,
+                      }}
                       className="text-forja-text underline-offset-2 hover:text-forja-green hover:underline"
                       title="Open in Pool"
                     >
@@ -164,7 +168,11 @@ function DeepRefPortalsTable({ portals }: { portals: DeepRefPortalRow[] }) {
                   {p.portal_id ? (
                     <Link
                       to="/pool"
-                      search={{ portal: p.portal_id }}
+                      search={{
+                        portal: p.portal_id,
+                        url: p.url,
+                        user: p.username,
+                      }}
                       className="text-forja-text underline-offset-2 hover:text-forja-green hover:underline"
                       title="Open in Pool"
                     >
@@ -180,7 +188,11 @@ function DeepRefPortalsTable({ portals }: { portals: DeepRefPortalRow[] }) {
                   ) : (
                     <Link
                       to="/pool"
-                      search={{ portal: p.portal_id }}
+                      search={{
+                        portal: p.portal_id,
+                        url: p.url,
+                        user: p.username,
+                      }}
                       className={cn(
                         'underline-offset-2 hover:underline',
                         p.was_existing
