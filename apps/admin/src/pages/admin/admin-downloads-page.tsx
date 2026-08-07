@@ -95,10 +95,10 @@ export function AdminDownloadsPage() {
         <Panel tone="accent">
           <p className="text-sm text-amber-300">Could not load stats: {err}</p>
           <p className="mt-2 text-xs text-forja-muted">
-            Needs R2 S3 keys +{' '}
-            <code className="text-forja-text">CLOUDFLARE_API_TOKEN</code>{' '}
-            (Analytics Read). Run <strong>Backfill 30d</strong> once to seed the
-            JSON.
+            Reads via <code className="text-forja-text">RELEASE_CDN_URL</code>
+            /stats/downloads.json (or R2 S3 keys). Writes need S3 keys +{' '}
+            <code className="text-forja-text">CLOUDFLARE_API_TOKEN</code> —
+            set those on Vercel, then run <strong>Backfill 30d</strong>.
           </p>
         </Panel>
       ) : null}

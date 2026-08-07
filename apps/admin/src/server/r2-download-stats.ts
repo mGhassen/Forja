@@ -3,7 +3,7 @@
  * Object: stats/downloads.json (lifetime days; CF only keeps ~31d raw).
  */
 
-import { r2Config, r2GetObject, r2PutObject } from '@/server/r2-s3'
+import { r2Config, r2GetObject, r2GetObjectPublic, r2PutObject, hasR2S3Creds } from '@/server/r2-s3'
 
 export const DOWNLOADS_STATS_KEY = 'stats/downloads.json'
 
@@ -233,19 +233,49 @@ export async function fetchCfDaySlice(opts: {
   return { by_platform, by_object }
 }
 
-export async function readDownloadsRollup(): Promise<DownloadsRollup> {
-  const { bucket } = r2Config()
-  const raw = await r2GetObject(DOWNLOADS_STATS_KEY)
-  if (!raw) return emptyRollup(bucket)
+function parseRollupBytes(
+  raw: Uint8Array,
+  bucket: string,
+): DownloadsRollup | null {
   try {
     const parsed = JSON.parse(new TextDecoder().decode(raw)) as DownloadsRollup
-    if (parsed?.schema !== 1 || !parsed.days) return emptyRollup(bucket)
+    if (parsed?.schema !== 1 || !parsed.days) return null
     parsed.bucket = parsed.bucket || bucket
     if (!parsed.totals) recomputeTotals(parsed)
     return parsed
   } catch {
-    return emptyRollup(bucket)
+    return null
   }
+}
+
+export async function readDownloadsRollup(): Promise<DownloadsRollup> {
+  const { bucket, cdnBase } = r2Config()
+
+  // Prefer public CDN — admin host often has RELEASE_CDN_URL but no S3 keys.
+  if (cdnBase) {
+    try {
+      const fromCdn = await r2GetObjectPublic(DOWNLOADS_STATS_KEY)
+      if (fromCdn) {
+        const parsed = parseRollupBytes(fromCdn, bucket)
+        if (parsed) return parsed
+      }
+    } catch {
+      // fall through to S3
+    }
+  }
+
+  if (hasR2S3Creds()) {
+    const raw = await r2GetObject(DOWNLOADS_STATS_KEY)
+    if (!raw) return emptyRollup(bucket)
+    return parseRollupBytes(raw, bucket) ?? emptyRollup(bucket)
+  }
+
+  // No file yet / no read path — empty UI, not a hard error.
+  if (cdnBase) return emptyRollup(bucket)
+
+  throw new Error(
+    'Set RELEASE_CDN_URL (read) and/or R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY on the admin host',
+  )
 }
 
 export async function writeDownloadsRollup(

@@ -56,6 +56,15 @@ function bridgeEnv(mode: string) {
   if (url && !process.env.SUPABASE_URL) {
     process.env.SUPABASE_URL = url
   }
+  const releaseCdn =
+    localEnv.RELEASE_CDN_URL ||
+    rootEnv.RELEASE_CDN_URL ||
+    localEnv.VITE_RELEASE_CDN_URL ||
+    rootEnv.VITE_RELEASE_CDN_URL ||
+    ''
+  if (releaseCdn && !process.env.RELEASE_CDN_URL) {
+    process.env.RELEASE_CDN_URL = releaseCdn
+  }
   for (const k of [
     'INNGEST_EVENT_KEY',
     'INNGEST_SIGNING_KEY',
@@ -71,6 +80,7 @@ function bridgeEnv(mode: string) {
     'R2_ACCESS_KEY_ID',
     'R2_SECRET_ACCESS_KEY',
     'R2_ENDPOINT',
+    'RELEASE_CDN_URL',
   ] as const) {
     const v = localEnv[k] || rootEnv[k] || ''
     // Always prefer apps/admin/.env over a stale shell export

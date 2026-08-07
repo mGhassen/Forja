@@ -15,7 +15,17 @@ export function r2Config() {
   const endpoint =
     process.env.R2_ENDPOINT?.trim() ||
     `https://${accountId}.r2.cloudflarestorage.com`
-  return { accountId, accessKey, secretKey, bucket, endpoint }
+  const cdnBase = (
+    process.env.RELEASE_CDN_URL?.trim() ||
+    process.env.VITE_RELEASE_CDN_URL?.trim() ||
+    ''
+  ).replace(/\/$/, '')
+  return { accountId, accessKey, secretKey, bucket, endpoint, cdnBase }
+}
+
+export function hasR2S3Creds(): boolean {
+  const c = r2Config()
+  return Boolean(c.accessKey && c.secretKey)
 }
 
 function requireS3Creds() {
@@ -126,6 +136,23 @@ export async function r2GetObject(key: string): Promise<Uint8Array | null> {
   if (res.status === 404) return null
   if (!res.ok) {
     throw new Error(`R2 GET ${key} failed HTTP ${res.status}`)
+  }
+  return new Uint8Array(await res.arrayBuffer())
+}
+
+/** Public custom-domain GET (no S3 keys). Returns null on 404. */
+export async function r2GetObjectPublic(
+  key: string,
+): Promise<Uint8Array | null> {
+  const { cdnBase } = r2Config()
+  if (!cdnBase) return null
+  const url = `${cdnBase}/${key.split('/').map(encodeURIComponent).join('/')}`
+  const res = await fetch(url, {
+    headers: { Accept: 'application/json' },
+  })
+  if (res.status === 404) return null
+  if (!res.ok) {
+    throw new Error(`CDN GET ${key} failed HTTP ${res.status}`)
   }
   return new Uint8Array(await res.arrayBuffer())
 }
