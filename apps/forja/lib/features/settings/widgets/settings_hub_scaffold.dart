@@ -284,14 +284,14 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(
                 SettingsTokens.pagePadding,
-                8,
+                tv ? ShellTokens.shellHeaderTopPadding : 8,
                 SettingsTokens.pagePadding,
                 4,
               ),
-              child: ShellTabHeader(
+              child: const ShellTabHeader(
                 title: 'Settings',
                 padding: EdgeInsets.zero,
               ),
@@ -345,12 +345,14 @@ class _CategorySidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final headerTop = tv ? ShellTokens.shellHeaderTopPadding : 12.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: ShellTabHeader(
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, headerTop, 16, 8),
+          child: const ShellTabHeader(
             title: 'Settings',
             padding: EdgeInsets.zero,
           ),

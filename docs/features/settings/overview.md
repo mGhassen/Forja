@@ -44,8 +44,10 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   focus zone). Detail rows use the **same green left bar + tint** on hover /
   D-pad focus (not a bordered box). **↑/↓** (and **←/→** as the same prev/next) walk the detail
   controls in a **vertical list** — not sideways between neighbors; long lists
-  (e.g. Playback) scroll so the focused row stays visible; holding **↑/↓**
-  speeds up the further you hold; D-pad stays in the
+  (e.g. Playback) scroll so the focused row stays visible; focusing the **first**
+  control (or any control near the top of the page) snaps the detail scroll
+  back to the top so the category title and section labels stay on screen;
+  holding **↑/↓** speeds up the further you hold; D-pad stays in the
   right pane. **Back** returns to the selected
   category, then first category, then the nav rail. **←** on the first category
   also returns to the nav rail. **OK** in the detail pane flips a toggle /

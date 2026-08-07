@@ -317,6 +317,10 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
 
     if (first != null) {
       first.requestFocus();
+      if (_scrollController.hasClients &&
+          _scrollController.offset > _scrollController.position.minScrollExtent) {
+        _scrollController.jumpTo(_scrollController.position.minScrollExtent);
+      }
       if (first.hasPrimaryFocus || first.hasFocus) return;
     }
 
@@ -327,14 +331,16 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final titleTop = tv ? ShellTokens.shellHeaderTopPadding : 8.0;
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               SettingsTokens.pagePadding,
-              8,
+              titleTop,
               SettingsTokens.pagePadding,
               4,
             ),
@@ -788,18 +794,7 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
       onFocusChange: (f) {
         setState(() => _focused = f);
         if (f) {
-          Scrollable.ensureVisible(
-            context,
-            alignment: 0.0,
-            duration: Duration.zero,
-            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
-          );
-          Scrollable.ensureVisible(
-            context,
-            alignment: 1.0,
-            duration: Duration.zero,
-            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-          );
+          shellTvEnsureVisibleItem(context);
         } else {
           widget.onChangeEnd?.call(widget.value);
         }
@@ -1017,6 +1012,9 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       setState(() => _editing = false);
       _syncFocusModes();
       return;
+    }
+    if (_browseFocus.hasFocus || _editFocus.hasFocus) {
+      shellTvEnsureVisibleItem(context);
     }
     setState(() {});
   }

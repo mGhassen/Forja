@@ -1252,6 +1252,11 @@ bool shellTvIsActivateKeyUp(KeyEvent event) {
 /// Scroll visibility mode for TV focus.
 enum ShellTvEnsureVisibleMode { off, row, item }
 
+/// Content-Y slack: first control + section label + scroll padding still count
+/// as "page top" so ↑ / land-focus snaps to [minScrollExtent] instead of
+/// pinning the control flush and clipping chrome above it.
+const double kShellTvListTopRevealSlackPx = 140;
+
 ScrollableState? _nearestVerticalScrollable(BuildContext context) {
   var scrollable = Scrollable.maybeOf(context);
   while (scrollable != null) {
@@ -1261,6 +1266,48 @@ ScrollableState? _nearestVerticalScrollable(BuildContext context) {
     scrollable = Scrollable.maybeOf(scrollable.context);
   }
   return null;
+}
+
+/// TV vertical lists (settings, menus): keep the focused control on-screen.
+///
+/// When the control sits near the **start** of the scroll content, jump to
+/// [ScrollPosition.minScrollExtent] so page titles / group labels above the
+/// first focusable stay visible. Mid-list rows use keepVisible only.
+void shellTvEnsureVisibleItem(
+  BuildContext context, {
+  double topRevealSlackPx = kShellTvListTopRevealSlackPx,
+}) {
+  final scrollable = _nearestVerticalScrollable(context);
+  if (scrollable == null) return;
+  final position = scrollable.position;
+  if (!position.hasContentDimensions) return;
+
+  final box = context.findRenderObject();
+  if (box is! RenderBox || !box.hasSize || !box.attached) return;
+  final viewportBox = scrollable.context.findRenderObject();
+  if (viewportBox is! RenderBox || !viewportBox.hasSize) return;
+
+  final topInViewport = box.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
+  final contentY = position.pixels + topInViewport;
+  if (position.pixels > position.minScrollExtent + 0.5 &&
+      contentY <= topRevealSlackPx) {
+    position.jumpTo(position.minScrollExtent);
+    return;
+  }
+
+  const zero = Duration.zero;
+  Scrollable.ensureVisible(
+    context,
+    alignment: 0.0,
+    duration: zero,
+    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+  );
+  Scrollable.ensureVisible(
+    context,
+    alignment: 1.0,
+    duration: zero,
+    alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+  );
 }
 
 /// Lift a focused catalog card in the **vertical** page scroller.

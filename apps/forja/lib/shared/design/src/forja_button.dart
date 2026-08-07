@@ -199,7 +199,10 @@ class _ForjaButtonState extends State<ForjaButton> {
     return Focus(
       focusNode: widget.focusNode,
       autofocus: widget.autofocus,
-      onFocusChange: (v) => setState(() => _focused = v),
+      onFocusChange: (v) {
+        setState(() => _focused = v);
+        if (v) shellTvEnsureVisibleItem(context);
+      },
       onKeyEvent: (node, event) {
         final linearScope = ShellTvLinearFocusScope.activeOf(context) &&
             !ShellTvDisableLinearFocus.activeOf(context);
