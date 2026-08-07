@@ -193,8 +193,7 @@ class _SettingsDebridSectionState
       },
       borderRadius: 6,
       scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      showFocusFill: true,
+      showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       child: Padding(

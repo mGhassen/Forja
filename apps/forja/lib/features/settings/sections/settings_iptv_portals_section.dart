@@ -283,8 +283,7 @@ class _ImportLogPanel extends StatelessWidget {
                   onTap: onClose,
                   borderRadius: 20,
                   scaleOnFocus: 1.0,
-                  showFocusBorder: true,
-                  showFocusFill: true,
+                  showFocusRail: true,
                   tvTabId: 'settings',
                   tvZone: ShellTvZone.settings,
                   child: const Padding(

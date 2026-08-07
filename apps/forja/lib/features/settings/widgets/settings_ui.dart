@@ -280,25 +280,44 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
 
     final scope = FocusScope.of(context);
+
+    // Already on a real detail control (not the bare scope).
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary != null &&
+        !identical(primary, scope) &&
+        primary.context != null &&
+        primary.canRequestFocus &&
+        scope.hasFocus) {
+      return;
+    }
+
+    final policy = FocusTraversalGroup.maybeOf(context) ??
+        ReadingOrderTraversalPolicy();
+    final fromPolicy = policy.findFirstFocus(
+      scope,
+      ignoreCurrentFocus: true,
+    );
     FocusNode? first;
-    for (final node in scope.traversalDescendants) {
-      if (identical(node, scope)) continue;
-      if (!node.canRequestFocus || node.skipTraversal) continue;
-      if (node.context == null) continue;
-      first = node;
-      break;
+    if (fromPolicy != null &&
+        !identical(fromPolicy, scope) &&
+        fromPolicy.canRequestFocus &&
+        !fromPolicy.skipTraversal &&
+        fromPolicy.context != null) {
+      first = fromPolicy;
+    } else {
+      for (final node in scope.descendants) {
+        if (identical(node, scope)) continue;
+        if (node is FocusScopeNode) continue;
+        if (!node.canRequestFocus || node.skipTraversal) continue;
+        if (node.context == null) continue;
+        first = node;
+        break;
+      }
     }
 
     if (first != null) {
       first.requestFocus();
-      final primary = FocusManager.instance.primaryFocus;
-      if (primary != null &&
-          !identical(primary, scope) &&
-          scope.hasFocus) {
-        return;
-      }
-    } else if (scope.canRequestFocus) {
-      scope.requestFocus();
+      if (first.hasPrimaryFocus || first.hasFocus) return;
     }
 
     if (_focusAttempts++ < 30) {
@@ -328,8 +347,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
                         () => Navigator.of(context).maybePop(),
                     borderRadius: 20,
                     scaleOnFocus: 1.0,
-                    showFocusBorder: true,
-                    showFocusFill: true,
+                    showFocusRail: true,
                     tvTabId: 'settings',
                     tvZone: ShellTvZone.settings,
                     child: const Padding(
@@ -471,8 +489,7 @@ class SettingsToggleRow extends StatelessWidget {
       context: context,
       onTap: () => onChanged(!value),
       scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      showFocusFill: true,
+      showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
@@ -578,8 +595,7 @@ class SettingsSelectRow extends StatelessWidget {
         onChanged(next);
       },
       scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      showFocusFill: true,
+      showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
@@ -672,8 +688,7 @@ class SettingsActionRow extends StatelessWidget {
       context: context,
       onTap: busy ? null : onTap,
       scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      showFocusFill: true,
+      showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
@@ -828,16 +843,18 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
         }
         return KeyEventResult.ignored;
       },
-      child: DecoratedBox(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
           color: _focused ? ForjaShellColors.inkHover : Colors.transparent,
-          border: _focused
-              ? Border.all(
-                  color: Colors.white.withValues(alpha: 0.28),
-                  width: 1,
-                )
-              : null,
+          border: Border(
+            left: BorderSide(
+              color: _focused
+                  ? ForjaShellColors.brandGreen
+                  : Colors.transparent,
+              width: 2.5,
+            ),
+          ),
         ),
         child: content,
       ),
@@ -890,9 +907,9 @@ class SettingsFilledButton extends StatelessWidget {
 
 /// Flat underline text field - no filled box.
 ///
-/// On Android TV: focus highlights the field; OK/Select opens the keyboard.
-/// Back / focus loss leaves edit mode without losing browse focus highlight
-/// until focus moves elsewhere.
+/// On Android TV: D-pad focus lands on a browse [Focus] wrapper — never on
+/// [EditableText] — so the IME stays closed until OK/Select. Back leaves edit
+/// mode and restores browse focus on the same field.
 class SettingsTextField extends StatefulWidget {
   const SettingsTextField({
     super.key,
@@ -902,6 +919,9 @@ class SettingsTextField extends StatefulWidget {
     this.obscureText = false,
     this.enabled = true,
     this.onSubmitted,
+    this.keyboardType,
+    this.maxLength,
+    this.inputFormatters,
   });
 
   final TextEditingController controller;
@@ -910,15 +930,23 @@ class SettingsTextField extends StatefulWidget {
   final bool obscureText;
   final bool enabled;
   final ValueChanged<String>? onSubmitted;
+  final TextInputType? keyboardType;
+  final int? maxLength;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<SettingsTextField> createState() => _SettingsTextFieldState();
 }
 
 class _SettingsTextFieldState extends State<SettingsTextField> {
-  late final FocusNode _focusNode =
-      FocusNode(debugLabel: 'settings-text-field');
+  late final FocusNode _browseFocus =
+      FocusNode(debugLabel: 'settings-text-browse');
+  late final FocusNode _editFocus =
+      FocusNode(debugLabel: 'settings-text-edit');
   bool _editing = false;
+  /// True while switching browse ↔ edit so a one-frame unfocused gap does not
+  /// clear [_editing] before the target node receives focus.
+  bool _focusHandoff = false;
 
   bool get _tv => ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
@@ -927,33 +955,96 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
   @override
   void initState() {
     super.initState();
-    _focusNode.onKeyEvent = _handleTvKey;
-    _focusNode.addListener(_onFocusChange);
+    _browseFocus.onKeyEvent = _handleTvKey;
+    _editFocus.onKeyEvent = _handleTvKey;
+    _browseFocus.addListener(_onFocusChange);
+    _editFocus.addListener(_onFocusChange);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncFocusModes();
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.enabled != widget.enabled) _syncFocusModes();
   }
 
   @override
   void dispose() {
-    _focusNode.removeListener(_onFocusChange);
-    _focusNode.onKeyEvent = null;
-    _focusNode.dispose();
+    _browseFocus.removeListener(_onFocusChange);
+    _editFocus.removeListener(_onFocusChange);
+    _browseFocus.onKeyEvent = null;
+    _editFocus.onKeyEvent = null;
+    _browseFocus.dispose();
+    _editFocus.dispose();
     super.dispose();
   }
 
-  void _onFocusChange() {
-    if (!_focusNode.hasFocus && _editing && mounted) {
-      setState(() => _editing = false);
-    } else if (mounted) {
-      setState(() {});
+  void _syncFocusModes() {
+    final enabled = widget.enabled;
+    if (!_tv) {
+      _browseFocus
+        ..canRequestFocus = false
+        ..skipTraversal = true;
+      _editFocus
+        ..canRequestFocus = enabled
+        ..skipTraversal = false;
+      return;
     }
+    // Browse focus owns the field until OK; EditableText stays out of traversal
+    // so Android never attaches an IME on D-pad land.
+    _browseFocus
+      ..canRequestFocus = enabled && !_editing
+      ..skipTraversal = _editing;
+    _editFocus
+      ..canRequestFocus = enabled && _editing
+      ..skipTraversal = !_editing;
+  }
+
+  void _onFocusChange() {
+    if (!mounted) return;
+    if (_focusHandoff) {
+      if (_editing && _editFocus.hasFocus) _focusHandoff = false;
+      if (!_editing && _browseFocus.hasFocus) _focusHandoff = false;
+      setState(() {});
+      return;
+    }
+    if (_editing && !_editFocus.hasFocus && !_browseFocus.hasFocus) {
+      setState(() => _editing = false);
+      _syncFocusModes();
+      return;
+    }
+    setState(() {});
   }
 
   void _beginEditing() {
-    if (!_editing && mounted) setState(() => _editing = true);
-    if (!_focusNode.hasFocus) _focusNode.requestFocus();
+    if (!mounted || !widget.enabled) return;
+    _focusHandoff = true;
+    setState(() => _editing = true);
+    _syncFocusModes();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_editing) return;
+      _editFocus.requestFocus();
+    });
   }
 
-  void _endEditing() {
-    if (_editing && mounted) setState(() => _editing = false);
+  void _endEditing({bool keepBrowseFocus = true}) {
+    if (!mounted) return;
+    _focusHandoff = true;
+    if (_editing) setState(() => _editing = false);
+    _syncFocusModes();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (keepBrowseFocus && _browseFocus.canRequestFocus) {
+        _browseFocus.requestFocus();
+      } else {
+        _focusHandoff = false;
+      }
+    });
   }
 
   KeyEventResult _handleTvKey(FocusNode node, KeyEvent event) {
@@ -1024,14 +1115,21 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.enabled;
-    return TextField(
+    final browseHighlight = _browseOnly && _browseFocus.hasFocus;
+    final field = TextField(
       controller: widget.controller,
-      focusNode: _focusNode,
+      focusNode: _editFocus,
       obscureText: widget.obscureText,
       enabled: enabled,
       readOnly: _browseOnly,
       showCursor: !_browseOnly,
       enableInteractiveSelection: !_browseOnly,
+      // Belt-and-suspenders: even if edit focus leaks, no IME in browse.
+      keyboardType: _browseOnly
+          ? TextInputType.none
+          : (widget.keyboardType ?? TextInputType.text),
+      maxLength: widget.maxLength,
+      inputFormatters: widget.inputFormatters,
       onTap: _tv && !_editing ? _beginEditing : null,
       onSubmitted: (value) {
         if (_tv) _endEditing();
@@ -1048,14 +1146,24 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
         labelText: widget.label,
         hintText: widget.hint,
         isDense: true,
-        floatingLabelStyle: const TextStyle(color: ForjaShellColors.brandGreen),
+        counterText: widget.maxLength != null ? '' : null,
+        floatingLabelStyle: TextStyle(
+          color: browseHighlight
+              ? ForjaShellColors.brandGreen
+              : ForjaShellColors.textSecondary,
+        ),
         labelStyle: const TextStyle(color: ForjaShellColors.textSecondary),
         hintStyle: TextStyle(
           color: ForjaShellColors.textSecondary.withValues(alpha: 0.5),
         ),
         contentPadding: const EdgeInsets.only(top: 18, bottom: 10),
-        enabledBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: ForjaShellColors.borderSubtle),
+        enabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(
+            color: browseHighlight
+                ? ForjaShellColors.brandGreen
+                : ForjaShellColors.borderSubtle,
+            width: browseHighlight ? 2 : 1,
+          ),
         ),
         disabledBorder: UnderlineInputBorder(
           borderSide: BorderSide(
@@ -1065,6 +1173,17 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
         focusedBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: ForjaShellColors.brandGreen, width: 2),
         ),
+      ),
+    );
+
+    if (!_tv) return field;
+
+    return Focus(
+      focusNode: _browseFocus,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled && !_editing ? _beginEditing : null,
+        child: field,
       ),
     );
   }

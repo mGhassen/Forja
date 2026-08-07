@@ -140,6 +140,7 @@ Widget shellFocusableTap({
   ShellTvEnsureVisibleMode ensureVisibleMode = ShellTvEnsureVisibleMode.row,
   bool showFocusBorder = false,
   bool showFocusFill = true,
+  bool showFocusRail = false,
   double? focusBleedWidth,
   bool suppressInkHover = false,
   bool allowNestedFocus = false,
@@ -165,13 +166,14 @@ Widget shellFocusableTap({
     gridColumns: gridColumns,
   );
 
-  if (policy.useFocusableMoodChips || showFocusBorder) {
+  if (policy.useFocusableMoodChips || showFocusBorder || showFocusRail) {
     return FocusableControl(
       onTap: onTap,
       borderRadius: borderRadius,
       scaleOnFocus: scaleOnFocus,
       showFocusBorder: showFocusBorder,
       showFocusFill: showFocusFill,
+      showFocusRail: showFocusRail,
       focusBleedWidth: focusBleedWidth,
       autoFocus: autoFocus,
       onLeftEdge: resolvedLeftEdge,

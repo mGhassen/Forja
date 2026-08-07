@@ -41,7 +41,8 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   focus ring; focusing a category selects it and updates the right pane, but
   focus stays on the left). **OK** or **→** opens that category’s right pane
   and moves focus to the first control there (each category’s detail is its own
-  focus zone). **↑/↓** (and **←/→** as the same prev/next) walk the detail
+  focus zone). Detail rows use the **same green left bar + tint** on hover /
+  D-pad focus (not a bordered box). **↑/↓** (and **←/→** as the same prev/next) walk the detail
   controls in a **vertical list** — not sideways between neighbors; long lists
   (e.g. Playback) scroll so the focused row stays visible; holding **↑/↓**
   speeds up the further you hold; D-pad stays in the

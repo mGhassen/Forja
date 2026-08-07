@@ -83,9 +83,59 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
       widget.onSelect(categoryId);
     }
     setState(() => _detailEnterToken++);
-    if (_detailScope.canRequestFocus) {
+    // Do not focus the bare [FocusScope] — that leaves primary on
+    // `settings-detail` with no row chrome. Land on the first control after
+    // the detail body rebuilds.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _landDetailFocus(0));
+  }
+
+  void _landDetailFocus(int attempt) {
+    if (!mounted) return;
+    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+
+    final first = _firstDetailFocusable();
+    if (first != null) {
+      first.requestFocus();
+      if (first.hasPrimaryFocus || first.hasFocus) return;
+    }
+
+    if (attempt < 30) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _landDetailFocus(attempt + 1),
+      );
+      return;
+    }
+
+    // Empty / still building — own the scope so Back can exit to the rail.
+    if (_detailScope.canRequestFocus && !_detailScope.hasFocus) {
       _detailScope.requestFocus();
     }
+  }
+
+  FocusNode? _firstDetailFocusable() {
+    if (!_detailScope.canRequestFocus) return null;
+
+    final policy = ReadingOrderTraversalPolicy();
+    final fromPolicy = policy.findFirstFocus(
+      _detailScope,
+      ignoreCurrentFocus: true,
+    );
+    if (fromPolicy != null &&
+        !identical(fromPolicy, _detailScope) &&
+        fromPolicy.canRequestFocus &&
+        !fromPolicy.skipTraversal &&
+        fromPolicy.context != null) {
+      return fromPolicy;
+    }
+
+    for (final node in _detailScope.descendants) {
+      if (identical(node, _detailScope)) continue;
+      if (node is FocusScopeNode) continue;
+      if (!node.canRequestFocus || node.skipTraversal) continue;
+      if (node.context == null) continue;
+      return node;
+    }
+    return null;
   }
 
   int? _focusedCategoryIndex() {

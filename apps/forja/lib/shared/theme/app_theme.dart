@@ -166,6 +166,10 @@ class FocusableControl extends StatefulWidget {
   /// Flat focus (scale ≤ 1): when false, only the thin border - no gray fill.
   final bool showFocusFill;
 
+  /// Settings-style chrome: green left bar + [ForjaShellColors.inkHover] fill
+  /// (same as category rail) — no gray/white focus ring box.
+  final bool showFocusRail;
+
   /// Layout width used for focus-scale bleed. Defaults to poster card width.
   final double? focusBleedWidth;
 
@@ -187,6 +191,7 @@ class FocusableControl extends StatefulWidget {
     this.scaleOnFocus = ShellTokens.focusActiveScale,
     this.showFocusBorder = false,
     this.showFocusFill = true,
+    this.showFocusRail = false,
     this.focusBleedWidth,
     this.allowNestedFocus = false,
     this.onKeyEvent,
@@ -501,11 +506,18 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   }
 
   Widget _buildFocusedChild(BuildContext context) {
-    // Flat menus (scale 1.0): gray fill + thin border. Catalog cards keep
-    // the white focus ring + lift scale.
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final chromeActive =
+        _isFocused || (policy.scaleOnHover && _isHovered);
+
+    // Settings rail: green left bar + ink fill (no ring box).
+    // Flat menus (scale 1.0): gray fill + thin border.
+    // Catalog cards: white focus ring + lift scale.
+    final railFocus = widget.showFocusRail;
     final flatMenuFocus =
-        widget.showFocusBorder && widget.scaleOnFocus <= 1.0;
-    final bleed = widget.showFocusBorder && !flatMenuFocus
+        !railFocus && widget.showFocusBorder && widget.scaleOnFocus <= 1.0;
+    final bleed = widget.showFocusBorder && !flatMenuFocus && !railFocus
         ? shellMovieCardFocusBleed(
             context,
             scaleOnFocus: widget.scaleOnFocus,
@@ -517,7 +529,27 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       animation: _scale,
       builder: (context, child) {
         Widget content = child!;
-        if (widget.showFocusBorder && _isFocused) {
+        if (railFocus) {
+          content = AnimatedContainer(
+            duration: policy.instantFocusChrome
+                ? Duration.zero
+                : const Duration(milliseconds: 140),
+            decoration: BoxDecoration(
+              color: chromeActive
+                  ? ForjaShellColors.inkHover
+                  : Colors.transparent,
+              border: Border(
+                left: BorderSide(
+                  color: chromeActive
+                      ? ForjaShellColors.brandGreen
+                      : Colors.transparent,
+                  width: 2.5,
+                ),
+              ),
+            ),
+            child: content,
+          );
+        } else if (widget.showFocusBorder && _isFocused) {
           if (flatMenuFocus) {
             content = DecoratedBox(
               decoration: BoxDecoration(
@@ -553,7 +585,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
             );
           }
         }
-        if (flatMenuFocus) return content;
+        if (flatMenuFocus || railFocus) return content;
         return Transform.scale(
           scale: _scale.value,
           alignment: Alignment.center,

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -368,30 +369,23 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
         const SizedBox(height: 16),
         _sectionLabel('OR ENTER MANUALLY'),
         const SizedBox(height: 8),
-        TextField(
+        SettingsTextField(
           controller: _manualHostController,
-          decoration: const InputDecoration(
-            labelText: 'Desktop IP',
-            hintText: '192.168.1.10',
-          ),
-          keyboardType: TextInputType.text,
+          label: 'Desktop IP',
+          hint: '192.168.1.10',
         ),
         const SizedBox(height: 8),
-        TextField(
+        SettingsTextField(
           controller: _manualPortController,
-          decoration: const InputDecoration(
-            labelText: 'Port',
-            hintText: 'Shown under Enable LAN server on desktop',
-          ),
+          label: 'Port',
+          hint: 'Shown under Enable LAN server on desktop',
           keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 8),
-        TextField(
+        SettingsTextField(
           controller: _pairCodeController,
-          decoration: const InputDecoration(
-            labelText: '6-digit code',
-            hintText: 'From desktop Settings → LAN',
-          ),
+          label: '6-digit code',
+          hint: 'From desktop Settings → LAN',
           keyboardType: TextInputType.number,
           maxLength: 6,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
