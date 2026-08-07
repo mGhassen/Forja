@@ -225,15 +225,17 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     widget.onPinFocusChange?.call(_pinFocus.hasFocus || _floating);
   }
 
-  void _cancelOkGestures() {
+  void _cancelOkGestures({bool clearHoldFired = true}) {
     _okHoldTimer?.cancel();
     _okHoldTimer = null;
-    _okHoldFired = false;
+    if (clearHoldFired) _okHoldFired = false;
   }
 
   void _enterFloating() {
     if (!_canTvReorder || _floating) return;
-    _cancelOkGestures();
+    // Cancel the timer only — keep _okHoldFired so the OK KeyUp after
+    // hold-to-enter is swallowed (otherwise float drops on release).
+    _cancelOkGestures(clearHoldFired: false);
     _tvPinRevealed = false;
     _claimChrome();
     widget.onEnterFloating?.call();
@@ -249,7 +251,8 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
 
   void _onRowFocusChange(bool focused) {
     if (focused) {
-      _cancelOkGestures();
+      // Don't clear hold-fired mid enter-float (OK KeyUp still coming).
+      if (!_floating && !_okHoldFired) _cancelOkGestures();
       setState(() => _focused = true);
       _claimChrome();
       widget.onTvFocusChange?.call(true);
@@ -290,12 +293,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       if (!nav && !activate) return KeyEventResult.ignored;
 
       if (event is KeyDownEvent || event is KeyRepeatEvent) {
-        if (key == LogicalKeyboardKey.arrowUp) {
-          widget.onTvReorderUp?.call();
-          return KeyEventResult.handled;
-        }
-        if (key == LogicalKeyboardKey.arrowDown) {
-          widget.onTvReorderDown?.call();
+        // ↑/↓: trap only — HardwareKeyboard already moved once. Calling
+        // onTvReorder* here doubles the step (HW return true ≠ Focus skip).
+        if (key == LogicalKeyboardKey.arrowUp ||
+            key == LogicalKeyboardKey.arrowDown) {
           return KeyEventResult.handled;
         }
         if (key == LogicalKeyboardKey.arrowLeft) {
@@ -307,16 +308,18 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
           if (_canTvPin) _focusPin();
           return KeyEventResult.handled;
         }
-        // Trap OK KeyDown — OK drops on KeyUp so open-channels does not fire.
+        if (activate) {
+          // Fresh OK KeyDown drops; ignore while enter-hold flag still set.
+          if (event is KeyDownEvent && !_okHoldFired) {
+            _exitFloating();
+          }
+          return KeyEventResult.handled;
+        }
         return KeyEventResult.handled;
       }
       if (event is KeyUpEvent && activate) {
         // Release after hold-to-enter — stay floating.
-        if (_okHoldFired) {
-          _okHoldFired = false;
-          return KeyEventResult.handled;
-        }
-        _exitFloating();
+        if (_okHoldFired) _okHoldFired = false;
         return KeyEventResult.handled;
       }
       return KeyEventResult.handled;

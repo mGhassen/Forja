@@ -119,11 +119,15 @@ class _BrowserViewState extends State<_BrowserView> {
   void _setTvFloatingCategory(String? categoryId) {
     if (_tvFloatingCategoryId == categoryId) return;
     final prev = _tvFloatingCategoryId;
+    // Arm swallow before setState/HW bind so the enter KeyUp cannot drop float.
+    if (categoryId != null) {
+      _swallowFloatingActivateUp = true;
+    } else {
+      _swallowFloatingActivateUp = false;
+    }
     setState(() => _tvFloatingCategoryId = categoryId);
     _syncFloatingReorderKeys();
     if (categoryId != null) {
-      // Hold-OK KeyUp arrives after enter — do not treat it as drop.
-      _swallowFloatingActivateUp = true;
       // Stay put on enter — only scroll once dragging reaches the 2nd slot.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _tvFloatingCategoryId != categoryId) return;
@@ -131,7 +135,6 @@ class _BrowserViewState extends State<_BrowserView> {
       });
       return;
     }
-    _swallowFloatingActivateUp = false;
     if (prev == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _tvFloatingReorder) return;
@@ -160,14 +163,16 @@ class _BrowserViewState extends State<_BrowserView> {
     final activate = shellTvIsActivateLogicalKey(key);
     if (!up && !down && !left && !right && !activate) return false;
 
-    // Drop on OK KeyUp (KeyDown must not exit — KeyUp would open channels).
-    // ← drops on KeyDown. Swallow the KeyUp from hold-to-enter.
+    // Drop on a fresh OK KeyDown. Swallow KeyUp from hold-to-enter (and all
+    // other activate KeyUps) — never drop on KeyUp or the enter release kills float.
     if (activate) {
       if (event is KeyUpEvent) {
         if (_swallowFloatingActivateUp) {
           _swallowFloatingActivateUp = false;
-          return true;
         }
+        return true;
+      }
+      if (event is KeyDownEvent && !_swallowFloatingActivateUp) {
         _exitTvFloatingReorder();
       }
       return true;
@@ -197,18 +202,46 @@ class _BrowserViewState extends State<_BrowserView> {
   void _tvMoveFloatingCategory(int delta) {
     final id = _tvFloatingCategoryId;
     if (id == null || !widget.ctrl.canReorderLiveCategories) return;
+    final cats = widget.ctrl.browserSidebarCategories;
     final movable = [
-      for (final c in widget.ctrl.browserSidebarCategories)
+      for (final c in cats)
         if (!IptvLiveCatalog.isSyntheticId(c.id)) c,
     ];
     final oldIndex = movable.indexWhere((c) => c.id == id);
     if (oldIndex < 0) return;
     final newIndex = (oldIndex + delta).clamp(0, movable.length - 1);
     if (newIndex == oldIndex) return;
+
+    // Predict post-move list index + scroll *before* notify paints — jumping
+    // in a post-frame callback flashes the row at the wrong viewport slot.
+    final listIdx = cats.indexWhere((c) => c.id == id);
+    final predictedListIdx =
+        listIdx < 0 ? -1 : (listIdx + (newIndex - oldIndex));
+    final scrollTarget = predictedListIdx < 0
+        ? null
+        : _floatingMoveScrollTarget(
+            listIndex: predictedListIdx,
+            delta: delta,
+          );
+
     unawaited(widget.ctrl.reorderLiveCategories(oldIndex, newIndex));
+    if (scrollTarget != null && _categoryScroll.hasClients) {
+      final max = _categoryScroll.position.maxScrollExtent;
+      final target = scrollTarget.clamp(0.0, max);
+      if ((_categoryScroll.offset - target).abs() > 0.5) {
+        _categoryScroll.jumpTo(target);
+      }
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _tvFloatingCategoryId != id) return;
-      _scrollCategorySidebarForFloatingMove(delta);
+      // Re-assert if rebuild / ensureVisible nudged the offset.
+      if (scrollTarget != null && _categoryScroll.hasClients) {
+        final max = _categoryScroll.position.maxScrollExtent;
+        final target = scrollTarget.clamp(0.0, max);
+        if ((_categoryScroll.offset - target).abs() > 0.5) {
+          _categoryScroll.jumpTo(target);
+        }
+      }
       _focusFloatingCategoryRow();
     });
   }
@@ -256,37 +289,31 @@ class _BrowserViewState extends State<_BrowserView> {
     iptvFocusRowItem('browser-categories', idx);
   }
 
-  /// After ↑/↓ reorder: only scroll once the floating row hits the edge band.
+  /// Scroll offset to pin [listIndex] at the edge band, or null if already in band.
   ///
-  /// Dragging up — stay at the **2nd** visible row once you reach it; at the
-  /// top of the list it may sit first. Dragging down — mirror (2nd from
-  /// bottom → last). Never jump to 2nd on enter / mid-viewport moves.
-  void _scrollCategorySidebarForFloatingMove(int delta) {
-    final id = _tvFloatingCategoryId;
-    if (id == null || !_categoryScroll.hasClients) return;
-    final cats = widget.ctrl.browserSidebarCategories;
-    final idx = cats.indexWhere((c) => c.id == id);
-    if (idx < 0) return;
+  /// Dragging up — **2nd** visible row (first at list top). Dragging down —
+  /// 2nd-from-bottom (last at list end). Mid-viewport moves return null.
+  double? _floatingMoveScrollTarget({
+    required int listIndex,
+    required int delta,
+  }) {
+    if (!_categoryScroll.hasClients || listIndex < 0) return null;
     final rowH = _categoryRowExtent(widget.compact);
     final pos = _categoryScroll.position;
     final max = pos.maxScrollExtent;
     final viewH = pos.viewportDimension;
     final current = pos.pixels;
-    final itemTop = _categoryListPadV + idx * rowH;
+    final itemTop = _categoryListPadV + listIndex * rowH;
 
     late final double target;
     if (delta < 0) {
-      // Prefer 2nd visible slot (one row above).
       target = (itemTop - rowH).clamp(0.0, max);
-      // Only scroll up when the row sits above that band.
-      if (current <= target + 0.5) return;
+      if (current <= target + 0.5) return null;
     } else {
-      // Prefer 2nd-from-bottom visible slot.
       target = (itemTop - viewH + 2 * rowH).clamp(0.0, max);
-      // Only scroll down when the row sits below that band.
-      if (current >= target - 0.5) return;
+      if (current >= target - 0.5) return null;
     }
-    _categoryScroll.jumpTo(target);
+    return target;
   }
 
   void _onCtrlChanged() {
@@ -947,8 +974,8 @@ class _BrowserViewState extends State<_BrowserView> {
                 }
               },
               // Parent HardwareKeyboard owns ↑/↓ while floating (id-based +
-              // scroll pin). Non-null while reorderable so long-press OK works;
-              // row Focus onKey is backup if HW handler is unbound.
+              // scroll pin). Non-null enables long-press OK; row Focus only
+              // traps ↑/↓ (does not move — HW already did; both paths fire).
               onTvReorderUp: movableIndex != null
                   ? () => _tvMoveFloatingCategory(-1)
                   : null,

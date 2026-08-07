@@ -229,6 +229,10 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       _focusSearchClose();
       return KeyEventResult.handled;
     }
+    if (key == LogicalKeyboardKey.arrowUp) {
+      // Top-bar tools: trap ↑ (do not jump to shelf).
+      return KeyEventResult.handled;
+    }
     if (key == LogicalKeyboardKey.arrowDown) {
       _focusDownFromTopTools();
       return KeyEventResult.handled;
@@ -628,6 +632,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
       tvZone: ShellTvZone.topBar,
       tvRowId: 'iptv-top-tools',
       tvItemIndex: _searchToolIndex,
+      onUpEdge: () {}, // trap — stay on Search / Sort / Portals
       onDownEdge: _focusDownFromTopTools,
       onLeftEdge: () => iptvFocusRowItem(
         'iptv-sections',
@@ -690,6 +695,8 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         tvZone: ShellTvZone.topBar,
         tvRowId: 'iptv-top-tools',
         tvItemIndex: _sortToolIndex,
+        onUpEdge: () {}, // trap — stay on Search / Sort / Portals
+
         onDownEdge: _focusDownFromTopTools,
         onLeftEdge: _focusLeftToSearchTool,
         onRightEdge: () =>
@@ -808,6 +815,8 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
             tvRowId: 'iptv-search-chrome',
             tvItemIndex: 1,
             tvZone: ShellTvZone.topBar,
+            onUpEdge: () {}, // trap — stay on Search / Sort / Portals
+
             onLeftEdge: () => _focusSearchField(edit: false),
             onRightEdge: () => iptvFocusRowItem(
               'iptv-top-tools',
@@ -877,6 +886,8 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
         tvZone: ShellTvZone.topBar,
         tvRowId: 'iptv-top-tools',
         tvItemIndex: _portalToolIndex,
+        onUpEdge: () {}, // trap — stay on Search / Sort / Portals
+
         onDownEdge: _focusDownFromPortalTool,
         onLeftEdge: () {
           if (!_showLiveSort && ctrl.browserSearchOpen) {
