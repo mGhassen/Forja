@@ -65,11 +65,12 @@ impl LanServer {
             }
         }
 
+        // Caller must start the torrent HTTP engine first — do not
+        // `TorrentEngine::start_engine` here (nested tokio runtime panic).
         if self.state.torrent.engine_port() == 0 {
-            self.state
-                .torrent
-                .start_engine(preferred_port)
-                .map_err(|e| e.to_string())?;
+            return Err(
+                "torrent engine not running — start it before LAN server".into(),
+            );
         }
 
         let app = build_router(self.state.clone());
@@ -93,7 +94,15 @@ impl LanServer {
 
         if bind_mode == LanBindMode::AllInterfaces {
             let server_id = self.state.pairing.server_id();
-            self.mdns = Some(MdnsAnnouncer::announce(&server_id, port, VERSION)?);
+            // Bonjour often fails under macOS app sandbox; HTTP server must still start.
+            match MdnsAnnouncer::announce(&server_id, port, VERSION) {
+                Ok(mdns) => self.mdns = Some(mdns),
+                Err(e) => {
+                    eprintln!(
+                        "[lan] mDNS announce failed (server still on :{port}): {e}"
+                    );
+                }
+            }
         }
 
         self.state.pairing.refresh_code();

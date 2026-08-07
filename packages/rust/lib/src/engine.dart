@@ -682,6 +682,9 @@ class RustLib {
   int lanServerStart({int bindMode = 1, int preferredPort = 0}) =>
       _native.ffi_lan_server_start(bindMode, preferredPort);
 
+  String lanServerLastError() =>
+      _readString(_native.ffi_lan_server_last_error());
+
   void lanServerStop() => _native.ffi_lan_server_stop();
 
   int lanServerPort() => _native.ffi_lan_server_port();
@@ -1214,6 +1217,11 @@ final class _FfiNative {
               'ffi_lan_server_start',
             )
             .asFunction(),
+        ffi_lan_server_last_error = lib
+            .lookup<ffi.NativeFunction<_VersionNative>>(
+              'ffi_lan_server_last_error',
+            )
+            .asFunction(),
         ffi_lan_server_stop = lib
             .lookup<ffi.NativeFunction<_TorrentStopNative>>(
               'ffi_lan_server_stop',
@@ -1521,6 +1529,7 @@ final class _FfiNative {
     ffi.Pointer<ffi.Char>,
   ) ffi_proxy_register_route;
   final int Function(int, int) ffi_lan_server_start;
+  final ffi.Pointer<ffi.Char> Function() ffi_lan_server_last_error;
   final void Function() ffi_lan_server_stop;
   final int Function() ffi_lan_server_port;
   final ffi.Pointer<ffi.Char> Function() ffi_lan_pairing_code_refresh;

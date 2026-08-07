@@ -18,8 +18,14 @@ impl MdnsAnnouncer {
         version: &str,
     ) -> Result<Self, String> {
         let daemon = ServiceDaemon::new().map_err(|e| e.to_string())?;
-        let host = local_lan_ip().unwrap_or_else(|| "127.0.0.1".to_string());
-        let service_name = format!("Forja-{server_id}");
+        let ip = local_lan_ip().unwrap_or_else(|| "127.0.0.1".to_string());
+        // Hostname must be a DNS label, not a bare IP (mdns-sd rejects `192.168.x.x.`).
+        let safe_id: String = server_id
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+            .collect();
+        let host_name = format!("forja-{safe_id}.local.");
+        let service_name = format!("Forja-{safe_id}");
         let instance = format!("{service_name}.{SERVICE_TYPE}");
         let properties = [
             ("server_id", server_id),
@@ -28,8 +34,8 @@ impl MdnsAnnouncer {
         let info = ServiceInfo::new(
             SERVICE_TYPE,
             &service_name,
-            &format!("{host}."),
-            &host,
+            &host_name,
+            ip.as_str(),
             port,
             &properties[..],
         )

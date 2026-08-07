@@ -690,6 +690,11 @@ pub extern "C" fn ffi_lan_server_start(bind_mode: u8, preferred_port: u16) -> i3
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_lan_server_last_error() -> *mut c_char {
+    to_c_string(crate::lan_server_last_error())
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_lan_server_stop() {
     crate::lan_server_stop();
 }

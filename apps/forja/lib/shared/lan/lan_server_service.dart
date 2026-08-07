@@ -33,9 +33,16 @@ class LanServerService {
     if (p > 0) {
       await LanPrefs.instance.setLanServerEnabled(true);
       RustLib.instance.lanPairingCodeRefresh();
+      return true;
     }
-    return p > 0;
+    final err = RustLib.instance.lanServerLastError();
+    if (err.isNotEmpty) {
+      debugPrint('[LAN] start failed: $err');
+    }
+    return false;
   }
+
+  String lastStartError() => RustLib.instance.lanServerLastError();
 
   Future<void> stop() async {
     RustLib.instance.lanServerStop();

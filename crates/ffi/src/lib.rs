@@ -655,6 +655,17 @@ fn lan_server_start(bind_mode: u8, preferred_port: u32) -> i32 {
     }
 }
 
+fn lan_server_last_error() -> String {
+    #[cfg(feature = "lan-server")]
+    {
+        engine_lan::lan_server_last_error()
+    }
+    #[cfg(not(feature = "lan-server"))]
+    {
+        "lan-server feature disabled".into()
+    }
+}
+
 fn lan_server_stop() {
     #[cfg(feature = "lan-server")]
     engine_lan::lan_server_stop();

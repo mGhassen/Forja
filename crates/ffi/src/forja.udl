@@ -81,6 +81,7 @@ namespace forja {
     u32 proxy_port();
     boolean proxy_register_route(string token, string upstream_url);
     i32 lan_server_start(u8 bind_mode, u32 preferred_port);
+    string lan_server_last_error();
     void lan_server_stop();
     u32 lan_server_port();
     string lan_pairing_code_refresh();

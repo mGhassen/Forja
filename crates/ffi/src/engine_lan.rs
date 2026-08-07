@@ -3,6 +3,26 @@ use std::sync::{LazyLock, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static LAN: LazyLock<Mutex<Option<LanServer>>> = LazyLock::new(|| Mutex::new(None));
+static LAST_ERROR: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
+
+fn set_last_error(msg: &str) {
+    if let Ok(mut err) = LAST_ERROR.lock() {
+        *err = msg.to_string();
+    }
+}
+
+fn clear_last_error() {
+    if let Ok(mut err) = LAST_ERROR.lock() {
+        err.clear();
+    }
+}
+
+pub fn lan_server_last_error() -> String {
+    LAST_ERROR
+        .lock()
+        .map(|e| e.clone())
+        .unwrap_or_default()
+}
 
 pub fn lan_server_start(
     runtime: &tokio::runtime::Runtime,
@@ -13,6 +33,7 @@ pub fn lan_server_start(
         if let Some(existing) = guard.as_ref() {
             let port = existing.port();
             if port > 0 {
+                clear_last_error();
                 return port as i32;
             }
         }
@@ -26,14 +47,30 @@ pub fn lan_server_start(
     }
     runtime
         .block_on(async {
-            let proxy_state = crate::engine_proxy::proxy_state()?;
+            let proxy_state = match crate::engine_proxy::proxy_state() {
+                Some(s) => s,
+                None => {
+                    set_last_error("local proxy not running");
+                    eprintln!("[lan] start failed: local proxy not running");
+                    return None;
+                }
+            };
             let torrent = crate::engine_torrent::shared_torrent_engine();
             let server_id = stable_server_id();
             let mut lan = LanServer::new(server_id, proxy_state, torrent);
             let mode = LanBindMode::from_u8(bind_mode);
-            let port = lan.start(mode, preferred_port).await.ok()?;
-            *LAN.lock().ok()? = Some(lan);
-            Some(port)
+            match lan.start(mode, preferred_port).await {
+                Ok(port) => {
+                    *LAN.lock().ok()? = Some(lan);
+                    clear_last_error();
+                    Some(port)
+                }
+                Err(e) => {
+                    set_last_error(&e);
+                    eprintln!("[lan] start failed: {e}");
+                    None
+                }
+            }
         })
         .map(|p| p as i32)
         .unwrap_or(-1)

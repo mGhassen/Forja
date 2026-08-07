@@ -69,7 +69,12 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
     if (enabled) {
       final ok = await LanServerService.instance.start();
       if (!ok && mounted) {
-        ForjaToast.error('Failed to start LAN server');
+        final detail = LanServerService.instance.lastStartError();
+        ForjaToast.error(
+          detail.isEmpty
+              ? 'Failed to start LAN server'
+              : 'Failed to start LAN server: $detail',
+        );
         return;
       }
     } else {
