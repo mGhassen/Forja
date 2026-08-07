@@ -768,9 +768,9 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   }
 
   void _returnToActivePage() {
-    final tabId = ShellTvFocus.currentNavTabId;
-    if (tabId == null || tabId.isEmpty) return;
-    ShellTvFocusCoordinator.restoreTabFocusAfterNav(tabId);
+    // Same path as handleNavKey(RIGHT): maps overlay details/search → their
+    // tab memory (not the shell tab id, which would fall back to Play).
+    ShellTvFocusCoordinator.handleNavKey(LogicalKeyboardKey.arrowRight);
   }
 
   bool _activeFor(ShellInputPolicy policy) =>

@@ -25,5 +25,7 @@ void main() {
     expect(ShellInputPolicy.tv.scaleOnFocus, isTrue);
     expect(ShellInputPolicy.tv.wrapAppFocusTraversal, isTrue);
     expect(ShellInputPolicy.mobile.wrapAppFocusTraversal, isFalse);
+    expect(ShellInputPolicy.desktop.kenBurnsBackdrop, isTrue);
+    expect(ShellInputPolicy.tv.kenBurnsBackdrop, isFalse);
   });
 }

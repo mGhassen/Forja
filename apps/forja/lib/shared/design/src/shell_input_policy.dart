@@ -25,6 +25,7 @@ class ShellInputPolicy {
     required this.wrapAppFocusTraversal,
     required this.useFocusableMoodChips,
     required this.heroPlayAutoFocus,
+    required this.kenBurnsBackdrop,
   });
 
   final bool scaleOnHover;
@@ -34,6 +35,10 @@ class ShellInputPolicy {
   final bool useFocusableMoodChips;
   final bool heroPlayAutoFocus;
 
+  /// Slow pan/zoom on hero backdrops. Off on TV — full-bleed
+  /// [Transform.scale] every frame saccades on leanback SoCs.
+  final bool kenBurnsBackdrop;
+
   static const mobile = ShellInputPolicy(
     scaleOnHover: false,
     scaleOnFocus: false,
@@ -41,6 +46,7 @@ class ShellInputPolicy {
     wrapAppFocusTraversal: false,
     useFocusableMoodChips: false,
     heroPlayAutoFocus: false,
+    kenBurnsBackdrop: true,
   );
 
   static const desktop = ShellInputPolicy(
@@ -50,6 +56,7 @@ class ShellInputPolicy {
     wrapAppFocusTraversal: false,
     useFocusableMoodChips: false,
     heroPlayAutoFocus: false,
+    kenBurnsBackdrop: true,
   );
 
   static const tv = ShellInputPolicy(
@@ -59,6 +66,7 @@ class ShellInputPolicy {
     wrapAppFocusTraversal: true,
     useFocusableMoodChips: true,
     heroPlayAutoFocus: true,
+    kenBurnsBackdrop: false,
   );
 
   bool get isInteractiveActive => scaleOnHover || scaleOnFocus;

@@ -69,4 +69,25 @@ void main() {
       );
     });
   });
+
+  group('AppUpdaterManifest.versionFromFilename', () {
+    test('reads Forja-{semver}-… names', () {
+      expect(
+        AppUpdaterManifest.versionFromFilename(
+          'Forja-1.3.192-macos-arm64.dmg',
+        ),
+        '1.3.192',
+      );
+      expect(
+        AppUpdaterManifest.versionFromFilename(
+          'Forja-1.2.400-windows-setup.exe',
+        ),
+        '1.2.400',
+      );
+    });
+
+    test('returns null when no semver', () {
+      expect(AppUpdaterManifest.versionFromFilename('readme.txt'), isNull);
+    });
+  });
 }

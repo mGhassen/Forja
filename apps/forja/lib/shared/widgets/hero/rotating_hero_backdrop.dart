@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/src/shell_input_policy.dart';
+import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
 
 /// Ken Burns hero that crossfades through [imageUrls] on a random beat.
@@ -106,8 +108,13 @@ class _RotatingHeroBackdropState extends State<RotatingHeroBackdrop> {
       return const ColoredBox(color: Color(0xFF141414));
     }
     final url = _urls[_index.clamp(0, _urls.length - 1)];
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final crossfade = policy.kenBurnsBackdrop
+        ? const Duration(milliseconds: 800)
+        : Duration.zero;
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 800),
+      duration: crossfade,
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeIn,
       child: KenBurnsBackdrop(

@@ -704,7 +704,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
           !_isPipMode &&
           !PipService.instance.isDesktopActive &&
           !PipService.instance.autoPipArmed &&
-          !SettingsService.playInBackgroundNotifier.value &&
+          !SettingsService.keepsPlayingInBackground &&
           _playing) {
         _pausedByLifecycle = true;
       }
@@ -723,8 +723,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       unawaited(PipService.instance.enterInsteadOfPause());
       return;
     }
-    if (SettingsService.playInBackgroundNotifier.value) return;
-    if (_playing) {
+    if (SettingsService.keepsPlayingInBackground) return;
+    // Live may report !_playing while buffering — still stop decode/audio.
+    if (_playing || _userPlayWhenReady) {
       _pausedByLifecycle = true;
       _userPlayWhenReady = false;
       unawaited(_enginePause());

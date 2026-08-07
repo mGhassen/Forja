@@ -447,21 +447,36 @@ abstract final class ShellTvFocusCoordinator {
     return shellTabId;
   }
 
-  /// Release nav and restore page focus after the rail handles RIGHT.
+  /// Restore page focus after the rail handles RIGHT.
+  ///
+  /// Snapshots tab memory **before** moving focus — an empty
+  /// [FocusManager.primaryFocus.unfocus] gap lets Flutter autofocus hero
+  /// Play, which overwrites memory via [ShellTvFocusMeta.notifyFocused].
   static void restoreTabFocusAfterNav(String tabId) {
     if (tabId.isEmpty) return;
-    _releaseNavFocus();
+    final snapshot = _tabMemory[tabId];
+
     void attempt() {
+      if (snapshot != null && snapshot.zone != ShellTvZone.nav) {
+        // Re-apply in case a mid-frame autofocus polluted live memory.
+        saveFocus(tabId, snapshot);
+        if (_restoreFromMemory(tabId, snapshot) && _pageHasFocus()) return;
+        if (_tryRestoreLiveNode(snapshot) && _pageHasFocus()) return;
+      }
       if (!restoreTabFocus(tabId)) {
         _restoreDefault(tabId);
       }
     }
 
+    // Prefer a synchronous requestFocus so nav loses focus by transfer —
+    // no empty unfocus gap for Play autofocus to steal.
+    attempt();
+    if (_pageHasFocus()) return;
+
     // Two post-frame passes - ExcludeFocus on the tab stack lifts in the same
     // frame as overlay pop / rail RIGHT; hero Play may not be focusable yet.
     void scheduleAttempt({required int remaining}) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _releaseNavFocus();
         attempt();
         if (!_pageHasFocus() && remaining > 0) {
           scheduleAttempt(remaining: remaining - 1);
@@ -470,13 +485,6 @@ abstract final class ShellTvFocusCoordinator {
     }
 
     scheduleAttempt(remaining: 2);
-  }
-
-  static void _releaseNavFocus() {
-    if (!ShellTvFocus.anyNavFocused && !ShellTvFocus.primaryFocusIsNav) {
-      return;
-    }
-    FocusManager.instance.primaryFocus?.unfocus();
   }
 
   static bool _pageHasFocus() {

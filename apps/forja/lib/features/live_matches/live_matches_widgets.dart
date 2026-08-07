@@ -358,37 +358,47 @@ class _LiveMatchesServerSheetOptionState
 class _TeamBadge extends StatelessWidget {
   final String? badge;
   final String name;
-  const _TeamBadge({required this.badge, required this.name});
+  final bool showName;
+  final double radius;
+  const _TeamBadge({
+    required this.badge,
+    required this.name,
+    this.showName = true,
+    this.radius = 18,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 18,
-          backgroundColor: Colors.white12,
-          child: badge != null && badge!.isNotEmpty
-              ? CachedNetworkImage(
-                  imageUrl: badge!,
-                  width: 30,
-                  height: 30,
-                  fit: BoxFit.contain,
-                  errorWidget: (_, _, _) => Text(
-                    name.isNotEmpty ? name[0] : '?',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                )
-              : Text(
-                  name.isNotEmpty ? name[0] : '?',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.bold,
-                  ),
+    final avatar = CircleAvatar(
+      radius: radius,
+      backgroundColor: Colors.white12,
+      child: badge != null && badge!.isNotEmpty
+          ? CachedNetworkImage(
+              imageUrl: badge!,
+              width: radius * 1.67,
+              height: radius * 1.67,
+              fit: BoxFit.contain,
+              errorWidget: (_, _, _) => Text(
+                name.isNotEmpty ? name[0] : '?',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.bold,
                 ),
-        ),
+              ),
+            )
+          : Text(
+              name.isNotEmpty ? name[0] : '?',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+    );
+    if (!showName) return avatar;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        avatar,
         const SizedBox(height: 3),
         SizedBox(
           width: 50,
@@ -401,6 +411,99 @@ class _TeamBadge extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// TV grid tile: visual band + caption under (IPTV live channel pattern).
+class _LiveMatchTvCaptionBody extends StatelessWidget {
+  const _LiveMatchTvCaptionBody({
+    required this.active,
+    required this.visual,
+    required this.title,
+    this.subtitle,
+    this.overlays = const [],
+  });
+
+  final bool active;
+  final Widget visual;
+  final String title;
+  final String? subtitle;
+  final List<Widget> overlays;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = shellCardBorderRadius(context);
+    final inset = shellScaled(context, 8).clamp(4.0, 8.0);
+    final titleSize = shellHubCardTitleFontSize(context);
+    return AnimatedContainer(
+      duration: Duration.zero,
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: active
+              ? ForjaShellColors.chipSelectedBorder
+              : Colors.transparent,
+          width: 1.5,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(
+              color: Colors.white.withValues(alpha: 0.03),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(inset, inset + 2, inset, 4),
+                      child: visual,
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(inset, 0, inset, inset),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: subtitle == null ? 2 : 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: titleSize,
+                            height: 1.15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (subtitle != null && subtitle!.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: (titleSize - 1).clamp(9.0, 11.0),
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...overlays,
+          ],
+        ),
+      ),
     );
   }
 }
@@ -496,15 +599,142 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
   Widget build(BuildContext context) {
     final c = widget.channel;
     final policy = ShellScope.inputPolicyOf(context);
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
     final active = ShellInputPolicy.interactiveActive(
       policy,
       hovered: _hovered,
       focused: _focused,
     );
+    final card = tv
+        ? _LiveMatchTvCaptionBody(
+            active: active,
+            title: c.name,
+            subtitle: c.viewers > 0 ? '${c.viewers} viewers' : null,
+            visual: Center(
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: c.image.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: c.image,
+                        fit: BoxFit.contain,
+                        errorWidget: (_, _, _) => const Icon(
+                          Icons.tv_rounded,
+                          color: Colors.white38,
+                          size: 36,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.tv_rounded,
+                        color: Colors.white38,
+                        size: 36,
+                      ),
+              ),
+            ),
+            overlays: [
+              ShellCardPlayOverlay(
+                active: active,
+                visible: true,
+                diameter: 28,
+                iconSize: 16,
+              ),
+              _LiveMatchCornerBadge(
+                label: '● LIVE',
+                live: true,
+                color: Colors.green.shade700,
+                top: 6,
+              ),
+            ],
+          )
+        : AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              color: active
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.white.withValues(alpha: 0.06),
+              border: Border.all(
+                color: active
+                    ? ForjaShellColors.chipSelectedBorder
+                    : ForjaShellColors.cinematic.borderSubtle,
+                width: 1.5,
+              ),
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        blurRadius: 12,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(13),
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (c.image.isNotEmpty)
+                          CachedNetworkImage(
+                            imageUrl: c.image,
+                            height: 46,
+                            fit: BoxFit.contain,
+                            errorWidget: (_, _, _) => const Icon(
+                              Icons.tv_rounded,
+                              color: Colors.white38,
+                              size: 38,
+                            ),
+                          )
+                        else
+                          const Icon(
+                            Icons.tv_rounded,
+                            color: Colors.white38,
+                            size: 38,
+                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          c.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (c.viewers > 0) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            '${c.viewers} viewers',
+                            style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 9,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  // Channels are always live - keep the play affordance visible.
+                  ShellCardPlayOverlay(active: active, visible: true),
+                  _LiveMatchCornerBadge(
+                    label: '● LIVE',
+                    live: true,
+                    color: Colors.green.shade700,
+                  ),
+                ],
+              ),
+            ),
+          );
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: 14,
+      borderRadius: tv ? shellCardBorderRadius(context) : 14,
       scaleOnFocus: 1.0,
       gridIndex: widget.gridIndex,
       gridColumns: widget.gridColumns,
@@ -517,92 +747,7 @@ class _CdnChannelCardState extends State<_CdnChannelCard> {
       tvItemIndex: widget.gridIndex,
       onFocusChange: (focused) => setState(() => _focused = focused),
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: active
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.06),
-          border: Border.all(
-            color: active
-                ? ForjaShellColors.chipSelectedBorder
-                : ForjaShellColors.cinematic.borderSubtle,
-            width: 1.5,
-          ),
-          boxShadow: active
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    spreadRadius: 1,
-                  ),
-                ]
-              : null,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(13),
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (c.image.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: c.image,
-                        height: 46,
-                        fit: BoxFit.contain,
-                        errorWidget: (_, _, _) => const Icon(
-                          Icons.tv_rounded,
-                          color: Colors.white38,
-                          size: 38,
-                        ),
-                      )
-                    else
-                      const Icon(
-                        Icons.tv_rounded,
-                        color: Colors.white38,
-                        size: 38,
-                      ),
-                    const SizedBox(height: 8),
-                    Text(
-                      c.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (c.viewers > 0) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        '${c.viewers} viewers',
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 9,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              // Channels are always live - keep the play affordance visible.
-              ShellCardPlayOverlay(active: active, visible: true),
-              _LiveMatchCornerBadge(
-                label: '● LIVE',
-                live: true,
-                color: Colors.green.shade700,
-              ),
-            ],
-          ),
-        ),
-      ),
+      child: card,
     );
   }
 }
@@ -648,6 +793,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
     final e = widget.event;
     final canPlay = e.isLive;
     final policy = ShellScope.inputPolicyOf(context);
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
     final active =
         widget.forceActive ||
         ShellInputPolicy.interactiveActive(
@@ -655,156 +801,211 @@ class _CdnSportCardState extends State<_CdnSportCard> {
           hovered: _hovered,
           focused: _focused,
         );
-    final card = AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: active
-            ? Colors.white.withValues(alpha: 0.1)
-            : Colors.white.withValues(alpha: 0.06),
-        border: Border.all(
-          color: active
-              ? ForjaShellColors.chipSelectedBorder
-              : ForjaShellColors.cinematic.borderSubtle,
-          width: 1.5,
+    final title = e.homeTeam.isNotEmpty && e.awayTeam.isNotEmpty
+        ? '${e.homeTeam} vs ${e.awayTeam}'
+        : (e.tournament.isNotEmpty ? e.tournament : e.sport);
+    final subtitle = e.homeTeam.isNotEmpty && e.awayTeam.isNotEmpty
+        ? e.tournament
+        : null;
+    final overlays = <Widget>[
+      if (canPlay)
+        ShellCardPlayOverlay(
+          active: active,
+          visible: true,
+          diameter: tv ? 28 : 48,
+          iconSize: tv ? 16 : 28,
         ),
-        boxShadow: active
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
+      _LiveMatchCornerBadge(
+        label: e.isLive ? '● LIVE' : e.status.toUpperCase(),
+        live: e.isLive,
+        color: e.isLive ? Colors.red.shade700 : Colors.orange.shade700,
+        top: tv ? 6 : 8,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(13),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Column(
-                        children: [
-                          if (e.homeTeamIMG.isNotEmpty)
-                            CachedNetworkImage(
-                              imageUrl: e.homeTeamIMG,
-                              width: 32,
-                              height: 32,
-                              errorWidget: (_, _, _) => const Icon(
+    ];
+    final Widget card;
+    if (tv) {
+      card = _LiveMatchTvCaptionBody(
+        active: active,
+        title: title,
+        subtitle: subtitle,
+        visual: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _TeamBadge(
+                badge: e.homeTeamIMG.isNotEmpty ? e.homeTeamIMG : null,
+                name: e.homeTeam,
+                showName: false,
+                radius: 16,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  'VS',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              _TeamBadge(
+                badge: e.awayTeamIMG.isNotEmpty ? e.awayTeamIMG : null,
+                name: e.awayTeam,
+                showName: false,
+                radius: 16,
+              ),
+            ],
+          ),
+        ),
+        overlays: overlays,
+      );
+    } else {
+      card = AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          color: active
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.06),
+          border: Border.all(
+            color: active
+                ? ForjaShellColors.chipSelectedBorder
+                : ForjaShellColors.cinematic.borderSubtle,
+            width: 1.5,
+          ),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(13),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Column(
+                          children: [
+                            if (e.homeTeamIMG.isNotEmpty)
+                              CachedNetworkImage(
+                                imageUrl: e.homeTeamIMG,
+                                width: 32,
+                                height: 32,
+                                errorWidget: (_, _, _) => const Icon(
+                                  Icons.sports_rounded,
+                                  color: Colors.white38,
+                                  size: 26,
+                                ),
+                              )
+                            else
+                              const Icon(
                                 Icons.sports_rounded,
                                 color: Colors.white38,
                                 size: 26,
                               ),
-                            )
-                          else
-                            const Icon(
-                              Icons.sports_rounded,
-                              color: Colors.white38,
-                              size: 26,
-                            ),
-                          const SizedBox(height: 3),
-                          SizedBox(
-                            width: 50,
-                            child: Text(
-                              e.homeTeam,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 8.5,
+                            const SizedBox(height: 3),
+                            SizedBox(
+                              width: 50,
+                              child: Text(
+                                e.homeTeam,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 8.5,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text(
-                          'VS',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(
+                            'VS',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
-                      ),
-                      Column(
-                        children: [
-                          if (e.awayTeamIMG.isNotEmpty)
-                            CachedNetworkImage(
-                              imageUrl: e.awayTeamIMG,
-                              width: 32,
-                              height: 32,
-                              errorWidget: (_, _, _) => const Icon(
+                        Column(
+                          children: [
+                            if (e.awayTeamIMG.isNotEmpty)
+                              CachedNetworkImage(
+                                imageUrl: e.awayTeamIMG,
+                                width: 32,
+                                height: 32,
+                                errorWidget: (_, _, _) => const Icon(
+                                  Icons.sports_rounded,
+                                  color: Colors.white38,
+                                  size: 26,
+                                ),
+                              )
+                            else
+                              const Icon(
                                 Icons.sports_rounded,
                                 color: Colors.white38,
                                 size: 26,
                               ),
-                            )
-                          else
-                            const Icon(
-                              Icons.sports_rounded,
-                              color: Colors.white38,
-                              size: 26,
-                            ),
-                          const SizedBox(height: 3),
-                          SizedBox(
-                            width: 50,
-                            child: Text(
-                              e.awayTeam,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 8.5,
+                            const SizedBox(height: 3),
+                            SizedBox(
+                              width: 50,
+                              child: Text(
+                                e.awayTeam,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 8.5,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    e.tournament,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                          ],
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 6),
+                    Text(
+                      e.tournament,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            // Airing events always show the play button; hover/focus turns it green.
-            if (canPlay) ShellCardPlayOverlay(active: active, visible: true),
-            _LiveMatchCornerBadge(
-              label: e.isLive ? '● LIVE' : e.status.toUpperCase(),
-              live: e.isLive,
-              color: e.isLive ? Colors.red.shade700 : Colors.orange.shade700,
-            ),
-          ],
+              ...overlays,
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    }
 
     return shellFocusableTap(
       context: context,
       onTap: canPlay ? widget.onTap : null,
-      borderRadius: 14,
+      borderRadius: tv ? shellCardBorderRadius(context) : 14,
       scaleOnFocus: 1.0,
       gridIndex: widget.tvZone == ShellTvZone.grid ? widget.gridIndex : null,
       gridColumns: widget.tvZone == ShellTvZone.grid
@@ -1023,7 +1224,8 @@ class _LiveMatchesEmbedPlayerScreen extends StatefulWidget {
 }
 
 class _LiveMatchesEmbedPlayerScreenState
-    extends State<_LiveMatchesEmbedPlayerScreen> {
+    extends State<_LiveMatchesEmbedPlayerScreen>
+    with WidgetsBindingObserver {
   /// IPTV chrome helpers ([iptvTap] / [IptvRoundIcon]) register under this tab.
   static const _tvTabId = 'iptv';
   static const _topRowId = 'live-embed-top';
@@ -1036,6 +1238,8 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _exiting = false;
   bool _playing = false;
   bool _muted = false;
+  /// True when we paused because the app left the foreground (not user pause).
+  bool _pausedByLifecycle = false;
 
   /// Android: cover the broken WebView lock UI while we sniff HLS for native.
   bool _androidNativeHandoff = false;
@@ -1109,6 +1313,42 @@ class _LiveMatchesEmbedPlayerScreenState
     } catch (_) {}
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _pauseEmbedForAppBackground();
+    } else if (state == AppLifecycleState.resumed) {
+      _resumeEmbedAfterAppBackground();
+    }
+  }
+
+  /// Silence HTML5/JW under Home / app switch. Also covers Streamed underlay
+  /// WebView kept alive for CDN proxy while [IptvPtPlayerScreen] is on top.
+  void _pauseEmbedForAppBackground() {
+    if (_exiting || _mediaStopped) return;
+    if (SettingsService.keepsPlayingInBackground) return;
+    if (_playing) _pausedByLifecycle = true;
+    unawaited(_runEmbedMediaCmd('pause'));
+    if (_playing && mounted) setState(() => _playing = false);
+  }
+
+  void _resumeEmbedAfterAppBackground() {
+    if (!_pausedByLifecycle || _exiting || _mediaStopped) {
+      _pausedByLifecycle = false;
+      return;
+    }
+    // Native handoff owns playback — do not restart underlay media.
+    if (_androidHandoffStarted) {
+      _pausedByLifecycle = false;
+      return;
+    }
+    _pausedByLifecycle = false;
+    unawaited(_runEmbedMediaCmd('play'));
+    if (mounted) setState(() => _playing = true);
+  }
+
   Future<void> _togglePlayPause() async {
     if (_playing) {
       await _runEmbedMediaCmd('pause');
@@ -1143,6 +1383,7 @@ class _LiveMatchesEmbedPlayerScreenState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     ShellBus.enterPlayerSurface();
     final embedUrl = widget.embedUrl;
     // Catalog-origin iframe wrapper so document.referrer matches the site
@@ -2023,6 +2264,7 @@ class _LiveMatchesEmbedPlayerScreenState
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     ShellBus.leavePlayerSurface();
     _loadingWatchdog?.cancel();
     _adWindowCloseTimer?.cancel();
@@ -3106,6 +3348,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
     final canPlay = hasSources && m.isLive;
     final policy = ShellScope.inputPolicyOf(context);
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
     final active =
         widget.forceActive ||
         ShellInputPolicy.interactiveActive(
@@ -3114,150 +3357,243 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
           focused: _focused,
         );
 
-    final card = AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: active
-            ? Colors.white.withValues(alpha: 0.1)
-            : Colors.white.withValues(alpha: 0.06),
-        border: Border.all(
-          color: active
-              ? ForjaShellColors.chipSelectedBorder
-              : ForjaShellColors.cinematic.borderSubtle,
-          width: 1.5,
+    final overlays = <Widget>[
+      if (canPlay)
+        ShellCardPlayOverlay(
+          active: active,
+          visible: true,
+          diameter: tv ? 28 : 48,
+          iconSize: tv ? 16 : 28,
         ),
-        boxShadow: active
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
+      _LiveMatchCornerBadge(
+        label: m.categoryLabel.toUpperCase(),
+        live: false,
+        right: null,
+        left: tv ? 6 : 8,
+        top: tv ? 6 : 8,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(13),
-        child: Stack(
-          children: [
-            if (m.poster.isNotEmpty)
-              Positioned.fill(
-                child: CachedNetworkImage(
-                  imageUrl: _streamedImageUrl(m.poster),
-                  fit: BoxFit.cover,
-                  errorWidget: (_, _, _) => const SizedBox.shrink(),
-                ),
+      if (m.isLive)
+        _LiveMatchCornerBadge(label: '● LIVE', live: true, top: tv ? 6 : 8)
+      else if (m.timeLabel.isNotEmpty)
+        _LiveMatchCornerBadge(
+          label: m.timeLabel,
+          live: false,
+          top: tv ? 6 : 8,
+        ),
+      if (!hasSources)
+        Positioned(
+          bottom: 6,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(6),
               ),
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.45),
-                      Colors.black.withValues(alpha: 0.90),
-                    ],
-                  ),
+              child: const Text(
+                'Not yet available',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (hasTeams) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _TeamBadge(
-                          badge: _streamedImageUrl(m.homeBadge ?? ''),
-                          name: m.homeTeam!,
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(
-                            'VS',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                        ),
-                        _TeamBadge(
-                          badge: _streamedImageUrl(m.awayBadge ?? ''),
-                          name: m.awayTeam!,
-                        ),
+          ),
+        ),
+    ];
+
+    final Widget card;
+    if (tv) {
+      final Widget visual;
+      if (hasTeams) {
+        visual = Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _TeamBadge(
+                badge: _streamedImageUrl(m.homeBadge ?? ''),
+                name: m.homeTeam!,
+                showName: false,
+                radius: 16,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  'VS',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              _TeamBadge(
+                badge: _streamedImageUrl(m.awayBadge ?? ''),
+                name: m.awayTeam!,
+                showName: false,
+                radius: 16,
+              ),
+            ],
+          ),
+        );
+      } else if (m.poster.isNotEmpty) {
+        visual = Center(
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: CachedNetworkImage(
+              imageUrl: _streamedImageUrl(m.poster),
+              fit: BoxFit.contain,
+              errorWidget: (_, _, _) => const Icon(
+                Icons.sports_rounded,
+                color: Colors.white38,
+                size: 36,
+              ),
+            ),
+          ),
+        );
+      } else {
+        visual = const Center(
+          child: Icon(Icons.sports_rounded, color: Colors.white38, size: 36),
+        );
+      }
+      card = _LiveMatchTvCaptionBody(
+        active: active,
+        title: m.title,
+        subtitle: hasSources ? null : 'Not yet available',
+        visual: visual,
+        overlays: [
+          if (canPlay)
+            ShellCardPlayOverlay(
+              active: active,
+              visible: true,
+              diameter: 28,
+              iconSize: 16,
+            ),
+          _LiveMatchCornerBadge(
+            label: m.categoryLabel.toUpperCase(),
+            live: false,
+            right: null,
+            left: 6,
+            top: 6,
+          ),
+          if (m.isLive)
+            const _LiveMatchCornerBadge(label: '● LIVE', live: true, top: 6)
+          else if (m.timeLabel.isNotEmpty)
+            _LiveMatchCornerBadge(label: m.timeLabel, live: false, top: 6),
+        ],
+      );
+    } else {
+      card = AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          color: active
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.06),
+          border: Border.all(
+            color: active
+                ? ForjaShellColors.chipSelectedBorder
+                : ForjaShellColors.cinematic.borderSubtle,
+            width: 1.5,
+          ),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(13),
+          child: Stack(
+            children: [
+              if (m.poster.isNotEmpty)
+                Positioned.fill(
+                  child: CachedNetworkImage(
+                    imageUrl: _streamedImageUrl(m.poster),
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => const SizedBox.shrink(),
+                  ),
+                ),
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.45),
+                        Colors.black.withValues(alpha: 0.90),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                  ],
-                  Text(
-                    m.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
                   ),
-                ],
+                ),
               ),
-            ),
-            // Airing matches always show the play button; hover/focus turns it green.
-            if (canPlay) ShellCardPlayOverlay(active: active, visible: true),
-            _LiveMatchCornerBadge(
-              label: m.categoryLabel.toUpperCase(),
-              live: false,
-              right: null,
-              left: 8,
-            ),
-            if (m.isLive)
-              const _LiveMatchCornerBadge(label: '● LIVE', live: true)
-            else if (m.timeLabel.isNotEmpty)
-              _LiveMatchCornerBadge(label: m.timeLabel, live: false),
-            if (!hasSources)
-              Positioned(
-                bottom: 6,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'Not yet available',
-                      style: TextStyle(
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (hasTeams) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _TeamBadge(
+                            badge: _streamedImageUrl(m.homeBadge ?? ''),
+                            name: m.homeTeam!,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              'VS',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.7),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ),
+                          _TeamBadge(
+                            badge: _streamedImageUrl(m.awayBadge ?? ''),
+                            name: m.awayTeam!,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Text(
+                      m.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 8,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-          ],
+              ...overlays,
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    }
 
     return shellFocusableTap(
       context: context,
       onTap: canPlay ? widget.onTap : null,
-      borderRadius: 14,
+      borderRadius: tv ? shellCardBorderRadius(context) : 14,
       scaleOnFocus: 1.0,
       gridIndex: widget.tvZone == ShellTvZone.grid ? widget.gridIndex : null,
       gridColumns: widget.tvZone == ShellTvZone.grid
@@ -3327,6 +3663,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
     final canPlay = widget.playableOverride ?? (hasIframe && s.isLive);
     final showLive = (widget.playableOverride == true) || s.isLive;
     final policy = ShellScope.inputPolicyOf(context);
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
     final active =
         widget.forceActive ||
         ShellInputPolicy.interactiveActive(
@@ -3335,193 +3672,265 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
           focused: _focused,
         );
 
-    final card = AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: active
-            ? Colors.white.withValues(alpha: 0.1)
-            : Colors.white.withValues(alpha: 0.06),
-        border: Border.all(
-          color: active
-              ? ForjaShellColors.chipSelectedBorder
-              : ForjaShellColors.cinematic.borderSubtle,
-          width: 1.5,
+    final overlays = <Widget>[
+      if (canPlay)
+        ShellCardPlayOverlay(
+          active: active,
+          visible: true,
+          diameter: tv ? 28 : 48,
+          iconSize: tv ? 16 : 28,
         ),
-        boxShadow: active
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
+      _LiveMatchCornerBadge(
+        label: s.categoryName.toUpperCase(),
+        live: false,
+        right: null,
+        left: tv ? 6 : 8,
+        top: tv ? 6 : 8,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(13),
-        child: Stack(
-          children: [
-            // poster background
-            if (s.poster.isNotEmpty)
-              Positioned.fill(
-                child: CachedNetworkImage(
-                  imageUrl: s.poster,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, _, _) => const SizedBox.shrink(),
-                ),
-              ),
-            // dark gradient overlay
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.45),
-                      Colors.black.withValues(alpha: 0.90),
-                    ],
-                  ),
-                ),
-              ),
+      if (showLive)
+        _LiveMatchCornerBadge(label: '● LIVE', live: true, top: tv ? 6 : 8)
+      else if (s.timeLabel.isNotEmpty)
+        _LiveMatchCornerBadge(
+          label: s.timeLabel,
+          live: false,
+          top: tv ? 6 : 8,
+        ),
+      if (!tv && s.viewers > 0)
+        Positioned(
+          right: 8,
+          bottom: 8,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(6),
             ),
-            // content
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (hasTeams) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _TeamBadge(badge: s.homeBadge, name: s.homeTeam!),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text(
-                            'VS',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                        ),
-                        _TeamBadge(badge: s.awayBadge, name: s.awayTeam!),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                  ],
+                  Icon(Icons.circle, size: 7, color: Colors.red.shade400),
+                  const SizedBox(width: 4),
                   Text(
-                    s.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
+                    '${s.viewers}',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  if (s.league.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      s.league,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 9.5,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
-            // Airing matches always show the play button; hover/focus turns it green.
-            if (canPlay) ShellCardPlayOverlay(active: active, visible: true),
-            _LiveMatchCornerBadge(
-              label: s.categoryName.toUpperCase(),
-              live: false,
-              right: null,
-              left: 8,
+          ),
+        ),
+      if (!tv && !hasIframe)
+        Positioned(
+          bottom: 6,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                'Not yet available',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-            if (showLive)
-              const _LiveMatchCornerBadge(label: '● LIVE', live: true)
-            else if (s.timeLabel.isNotEmpty)
-              _LiveMatchCornerBadge(label: s.timeLabel, live: false),
-            if (s.viewers > 0)
-              Positioned(
-                right: 8,
-                bottom: 8,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(6),
+          ),
+        ),
+    ];
+
+    final Widget card;
+    if (tv) {
+      final Widget visual;
+      if (hasTeams) {
+        visual = Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _TeamBadge(
+                badge: s.homeBadge,
+                name: s.homeTeam!,
+                showName: false,
+                radius: 16,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  'VS',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 3,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.circle, size: 7, color: Colors.red.shade400),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${s.viewers}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                ),
+              ),
+              _TeamBadge(
+                badge: s.awayBadge,
+                name: s.awayTeam!,
+                showName: false,
+                radius: 16,
+              ),
+            ],
+          ),
+        );
+      } else if (s.poster.isNotEmpty) {
+        visual = Center(
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: CachedNetworkImage(
+              imageUrl: s.poster,
+              fit: BoxFit.contain,
+              errorWidget: (_, _, _) => const Icon(
+                Icons.sports_rounded,
+                color: Colors.white38,
+                size: 36,
+              ),
+            ),
+          ),
+        );
+      } else {
+        visual = const Center(
+          child: Icon(Icons.sports_rounded, color: Colors.white38, size: 36),
+        );
+      }
+      final captionBits = <String>[
+        if (!hasIframe) 'Not yet available',
+        if (hasIframe && s.league.isNotEmpty) s.league,
+        if (hasIframe && s.viewers > 0) '${s.viewers} viewers',
+      ];
+      card = _LiveMatchTvCaptionBody(
+        active: active,
+        title: s.name,
+        subtitle: captionBits.isEmpty ? null : captionBits.join(' · '),
+        visual: visual,
+        overlays: overlays,
+      );
+    } else {
+      card = AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          color: active
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.06),
+          border: Border.all(
+            color: active
+                ? ForjaShellColors.chipSelectedBorder
+                : ForjaShellColors.cinematic.borderSubtle,
+            width: 1.5,
+          ),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(13),
+          child: Stack(
+            children: [
+              if (s.poster.isNotEmpty)
+                Positioned.fill(
+                  child: CachedNetworkImage(
+                    imageUrl: s.poster,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => const SizedBox.shrink(),
+                  ),
+                ),
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.45),
+                        Colors.black.withValues(alpha: 0.90),
                       ],
                     ),
                   ),
                 ),
               ),
-            // no iframe warning bottom
-            if (!hasIframe)
-              Positioned(
-                bottom: 6,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'Not yet available',
-                      style: TextStyle(
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (hasTeams) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _TeamBadge(badge: s.homeBadge, name: s.homeTeam!),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              'VS',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.7),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ),
+                          _TeamBadge(badge: s.awayBadge, name: s.awayTeam!),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    Text(
+                      s.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 8,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
+                    if (s.league.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        s.league,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 9.5,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-          ],
+              ...overlays,
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    }
 
     return shellFocusableTap(
       context: context,
       onTap: canPlay ? widget.onTap : null,
-      borderRadius: 14,
+      borderRadius: tv ? shellCardBorderRadius(context) : 14,
       scaleOnFocus: 1.0,
       gridIndex: widget.tvZone == ShellTvZone.grid ? widget.gridIndex : null,
       gridColumns: widget.tvZone == ShellTvZone.grid

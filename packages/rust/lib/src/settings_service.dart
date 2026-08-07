@@ -90,6 +90,9 @@ class SettingsService {
   /// Keep VOD/IPTV playing when the app leaves the foreground.
   /// Default: on desktop, off phone/Android TV ([PlatformDefaults.playInBackground]).
   static const String _playInBackgroundKey = 'play_in_background';
+  /// One-shot: stop honoring cloud-polluted `play_in_background` on phone/TV.
+  static const String _playInBackgroundDeviceLocalKey =
+      'play_in_background_device_local_v1';
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
   /// IPTV live Exo only: 0 = full portal quality (default). Never auto-cap.
   static const String _iptvLiveMaxHeightKey = 'iptv_live_max_height';
@@ -288,6 +291,7 @@ class SettingsService {
 
   /// When on, VOD/IPTV keep playing after the app leaves the foreground.
   /// Unset → [PlatformDefaults.playInBackground] (desktop on, phone/TV off).
+  /// Device-local — not cloud-synced (desktop default on must not flip ATV).
   Future<bool> getPlayInBackground() async {
     final v = await kvGetBool(
       _playInBackgroundKey,
@@ -302,6 +306,13 @@ class SettingsService {
   Future<void> setPlayInBackground(bool v) async {
     await kvSetBool(_playInBackgroundKey, v);
     playInBackgroundNotifier.value = v;
+  }
+
+  /// Lifecycle gate: Android TV always pauses on background (process stays warm).
+  /// Desktop/phone honor [playInBackgroundNotifier].
+  static bool get keepsPlayingInBackground {
+    if (platformProfile == PlatformProfile.androidTv) return false;
+    return playInBackgroundNotifier.value;
   }
 
   Future<bool> getPlayerWebViewUseEmbed() async {
@@ -1179,10 +1190,23 @@ class SettingsService {
     }
   }
 
+  /// Reset phone/TV `play_in_background` after it was wrongly cloud-synced from
+  /// desktop (default on). Desktop keeps its stored value.
+  Future<void> _migratePlayInBackgroundDeviceLocal() async {
+    if (await kvHasKey(_playInBackgroundDeviceLocalKey)) return;
+    if (platformProfile != PlatformProfile.desktop) {
+      final defaults = PlatformDefaults.forProfile(platformProfile);
+      await kvSetBool(_playInBackgroundKey, defaults.playInBackground);
+      playInBackgroundNotifier.value = defaults.playInBackground;
+    }
+    await kvSetString(_playInBackgroundDeviceLocalKey, '1');
+  }
+
   Future<void> ensurePlatformDefaultsSeeded(PlatformProfile profile) async {
     configurePlatformProfile(profile);
     await ensureCanonicalSettingsMigrated();
     await _migrateBuiltInEngineDefaultToMediaKit();
+    await _migratePlayInBackgroundDeviceLocal();
     if (await kvHasKey(_platformDefaultsSeededKey)) return;
 
     final hasExistingConfig =

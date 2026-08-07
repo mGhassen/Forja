@@ -601,7 +601,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       // Capture play intent before focus/other apps pause us (inactive fires first).
       if (!_s._disposed &&
           !_s._isPipMode &&
-          !SettingsService.playInBackgroundNotifier.value &&
+          !SettingsService.keepsPlayingInBackground &&
           _s._player.state.playing) {
         _s._pausedByLifecycle = true;
       }
@@ -629,7 +629,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
 
   void _pauseForAppBackground() {
     if (_s._disposed || _s._isPipMode) return;
-    if (SettingsService.playInBackgroundNotifier.value) return;
+    if (SettingsService.keepsPlayingInBackground) return;
     if (_s._player.state.playing) {
       _s._pausedByLifecycle = true;
       unawaited(_s._player.pause());

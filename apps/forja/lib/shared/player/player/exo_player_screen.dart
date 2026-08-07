@@ -586,7 +586,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       _pauseForAppBackground();
     } else if (state == AppLifecycleState.inactive) {
       if (!_disposed &&
-          !SettingsService.playInBackgroundNotifier.value &&
+          !SettingsService.keepsPlayingInBackground &&
           _isPlaying) {
         _pausedByLifecycle = true;
       }
@@ -598,7 +598,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _pauseForAppBackground() {
     if (_disposed) return;
-    if (SettingsService.playInBackgroundNotifier.value) return;
+    if (SettingsService.keepsPlayingInBackground) return;
     if (_isPlaying) {
       _pausedByLifecycle = true;
       unawaited(ExoPlayerBridge.pause(_viewId));

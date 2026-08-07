@@ -93,16 +93,16 @@ export function isInstallerObject(objectName: string): boolean {
   )
 }
 
-/** Prefer `v1.2.3/…` prefix, else semver in filename, else `latest` / `unknown`. */
+/** Prefer semver in filename, else `v1.2.3/…` prefix, else `latest` / `unknown`. */
 export function versionFromObjectKey(objectName: string): string {
   const parts = objectName.split('/').filter(Boolean)
-  const prefix = parts[0] ?? ''
-  const prefixMatch = prefix.match(/^v?(\d+\.\d+\.\d+)$/i)
-  if (prefixMatch) return prefixMatch[1]
-
   const file = parts[parts.length - 1] ?? objectName
   const fileMatch = file.match(/(?:^|[^0-9])(\d+\.\d+\.\d+)(?:[^0-9]|$)/)
   if (fileMatch) return fileMatch[1]
+
+  const prefix = parts[0] ?? ''
+  const prefixMatch = prefix.match(/^v?(\d+\.\d+\.\d+)$/i)
+  if (prefixMatch) return prefixMatch[1]
 
   if (prefix.toLowerCase() === 'latest') return 'latest'
   return 'unknown'

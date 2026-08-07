@@ -210,33 +210,34 @@ class _SettingsPlaybackSectionState
                   schedulePreferencesSyncPush();
                 },
               ),
-              settingsFocusableToggle(
-                context,
-                'Auto skip intro',
-                'When IntroDB has intro or recap timestamps, skip them without tapping Skip.',
-                snap.autoSkipIntro,
-                (val) async {
-                  await _settings.setAutoSkipIntro(val);
-                  await _playback.patch((s) => s.copyWith(autoSkipIntro: val));
-                  schedulePreferencesSyncPush();
-                },
-              ),
-            ],
             settingsFocusableToggle(
               context,
-              'Play in background',
-              SettingsService.platformProfile == PlatformProfile.desktop
-                  ? 'Keep movies, series, and IPTV playing when Forja leaves the foreground. On by default on desktop — turn off to pause until you return.'
-                  : 'Keep movies, series, and IPTV playing when Forja leaves the foreground. Off by default — playback pauses until you return (app stays in memory for a quick resume).',
-              snap.playInBackground,
+              'Auto skip intro',
+              'When IntroDB has intro or recap timestamps, skip them without tapping Skip.',
+              snap.autoSkipIntro,
               (val) async {
-                await _settings.setPlayInBackground(val);
-                await _playback.patch(
-                  (s) => s.copyWith(playInBackground: val),
-                );
+                await _settings.setAutoSkipIntro(val);
+                await _playback.patch((s) => s.copyWith(autoSkipIntro: val));
                 schedulePreferencesSyncPush();
               },
             ),
+            ],
+            // Android TV always pauses on Home/app switch (device-local; not synced).
+            if (SettingsService.platformProfile != PlatformProfile.androidTv)
+              settingsFocusableToggle(
+                context,
+                'Play in background',
+                SettingsService.platformProfile == PlatformProfile.desktop
+                    ? 'Keep movies, series, and IPTV playing when Forja leaves the foreground. On by default on desktop — turn off to pause until you return.'
+                    : 'Keep movies, series, and IPTV playing when Forja leaves the foreground. Off by default — playback pauses until you return (app stays in memory for a quick resume).',
+                snap.playInBackground,
+                (val) async {
+                  await _settings.setPlayInBackground(val);
+                  await _playback.patch(
+                    (s) => s.copyWith(playInBackground: val),
+                  );
+                },
+              ),
             if (!kIsWeb && (Platform.isMacOS || Platform.isWindows))
               settingsFocusableToggle(
                 context,

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
@@ -11,6 +10,7 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/hero/desktop_selectable_title.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
@@ -439,14 +439,19 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                   onPageChanged: _onPageChanged,
                   itemBuilder: (context, index) {
                     final slide = slides[index % slides.length];
-                    return CachedNetworkImage(
-                      key: ValueKey(slide.id),
-                      imageUrl: slide.imageUrl,
-                      fit: slide.imageFit,
-                      alignment: slide.imageAlignment,
-                      filterQuality: FilterQuality.medium,
-                      placeholder: (c, u) => ColoredBox(color: shellBg),
-                      errorWidget: (c, u, e) => ColoredBox(color: shellBg),
+                    final real = index % slides.length;
+                    return ColoredBox(
+                      color: shellBg,
+                      child: KenBurnsBackdrop(
+                        key: ValueKey(slide.id),
+                        imageUrl: slide.imageUrl,
+                        showColorTint: false,
+                        fit: slide.imageFit,
+                        imageAlignment: slide.imageAlignment,
+                        filterQuality: FilterQuality.medium,
+                        // Only the settled slide ticks — neighbors stay still.
+                        enableMotion: real == _index,
+                      ),
                     );
                   },
                 ),

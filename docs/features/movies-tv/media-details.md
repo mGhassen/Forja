@@ -4,7 +4,7 @@
 
 ## What it is
 
-When you open a title from Home, Discover, Search, or lists, you get the **media details** screen — one screen for torrents, Stremio/Nuvio, and webstreaming. A **cinematic hero** (~82% of the viewport) shows Ken Burns backdrop animation that **rotates random TMDB backdrops** for the title when several exist, then a chromeless YouTube trailer after a random **12–20 seconds** (preloaded for a smooth crossfade). After each trailer finishes, the backdrop returns for another random 12–20 seconds, then the trailer plays again. Trailer audio is on by default and fades from quiet to full volume over 3 seconds. A **mute** button in the bottom-right of the hero toggles sound.
+When you open a title from Home, Discover, Search, or lists, you get the **media details** screen — one screen for torrents, Stremio/Nuvio, and webstreaming. A **cinematic hero** (~82% of the viewport) shows a backdrop that **rotates random TMDB stills** for the title when several exist — with a slow **Ken Burns** pan/zoom on desktop/mobile (static stills on **Android TV** so the set does not stutter) — then a chromeless YouTube trailer after a random **12–20 seconds** (preloaded for a smooth crossfade). After each trailer finishes, the backdrop returns for another random 12–20 seconds, then the trailer plays again. Trailer audio is on by default and fades from quiet to full volume over 3 seconds. A **mute** button in the bottom-right of the hero toggles sound.
 
 On **TV series**, the backdrop continues below the hero chrome so season and episode rails sit on the image — not on a separate black block. The episode rail reserves ~500px of backdrop when seasons are shown, or ~320px for episodes-only (single-season titles) so the row sits closer under Play. Hero chrome is a bit taller than a single viewport so seasons/episodes sit slightly lower. Synopsis stays as **3 lines + Read More** (same as movies) when there is room; on short phones **and short landscape panels (e.g. 720p Android TV)** the chrome floor is taller and secondary chrome (director, providers, genres, then synopsis) yields first so **title** and **Play** / **Resume** stay visible.
 
@@ -31,7 +31,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 
 ## What you can do
 
-- Watch the Ken Burns backdrop (12–20s), then chromeless autoplay trailer in the hero when TMDB has one; alternates after each trailer ends (sound on, volume ramps up; mute toggle bottom-right)
+- Watch the hero backdrop (Ken Burns pan/zoom on desktop/mobile; stills on Android TV) for 12–20s, then chromeless autoplay trailer when TMDB has one; alternates after each trailer ends (sound on, volume ramps up; mute toggle bottom-right)
 - Green **Play** / **Resume** (play icon) auto-extracts the best direct webstreaming link when that play source is enabled
 - If Play can’t start a stream, the cinematic loading screen stays up with a plain-language error (**Couldn’t start playback**) and **Try again** / **Close** — not a toast that vanishes. On **TV**, **Try again** is focused; **↓** reaches **Close**; **OK** activates. For series, the loading screen shows the selected episode as **S02E05** (and torrent/debrid source when applicable) under the status line
 - **Cancel**, **Escape**, leaving the title, or switching to another shell tab (e.g. IPTV) while servers are still checking **stops** the search — Forja does not keep probing the next embed in the background

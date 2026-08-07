@@ -19,6 +19,16 @@ class PlatformUpdateTarget {
 class AppUpdaterManifest {
   AppUpdaterManifest._();
 
+  static final _versionInName = RegExp(
+    r'forja-(\d+\.\d+\.\d+)',
+    caseSensitive: false,
+  );
+
+  /// Semver embedded in installer filenames (`Forja-1.3.192-macos-arm64.dmg`).
+  static String? versionFromFilename(String name) {
+    return _versionInName.firstMatch(name)?.group(1);
+  }
+
   /// Showcase keys matching web / R2 upload (`windows` · `macos` · `linux` · `android_tv`).
   static String? platformKey({
     required bool isWindows,

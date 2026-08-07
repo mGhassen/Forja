@@ -2,6 +2,8 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/src/shell_input_policy.dart';
+import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:palette_generator/palette_generator.dart';
@@ -125,6 +127,13 @@ class KenBurnsBackdrop extends StatefulWidget {
   final bool showColorTint;
   final Alignment panBegin;
   final Alignment panEnd;
+  final BoxFit fit;
+  final Alignment imageAlignment;
+  final FilterQuality filterQuality;
+
+  /// When false, shows a still even if the shell policy allows Ken Burns
+  /// (e.g. off-screen PageView neighbors).
+  final bool enableMotion;
 
   const KenBurnsBackdrop({
     super.key,
@@ -137,100 +146,159 @@ class KenBurnsBackdrop extends StatefulWidget {
     this.showColorTint = true,
     this.panBegin = const Alignment(-0.5, -0.3),
     this.panEnd = const Alignment(0.5, 0.2),
+    this.fit = BoxFit.cover,
+    this.imageAlignment = Alignment.topCenter,
+    this.filterQuality = FilterQuality.low,
+    this.enableMotion = true,
   });
 
   @override
   State<KenBurnsBackdrop> createState() => _KenBurnsBackdropState();
 }
 
-class _KenBurnsBackdropState extends State<KenBurnsBackdrop> with TickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<Alignment> _alignAnimation;
+class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
+    with TickerProviderStateMixin {
+  AnimationController? _controller;
+  Animation<double>? _scaleAnimation;
+  Animation<Alignment>? _alignAnimation;
+  bool? _motionEnabled;
+
+  bool _resolveMotionEnabled(BuildContext context) {
+    if (!widget.enableMotion) return false;
+    final policy = ShellScope.maybeOf(context)?.inputPolicy ??
+        ShellInputPolicy.desktop;
+    return policy.kenBurnsBackdrop;
+  }
+
+  void _syncMotion(BuildContext context) {
+    final enabled = _resolveMotionEnabled(context);
+    if (_motionEnabled == enabled) return;
+    _motionEnabled = enabled;
+    if (enabled) {
+      _setupAnimations();
+    } else {
+      _tearDownAnimations();
+    }
+  }
 
   @override
-  void initState() {
-    super.initState();
-    _setupAnimations();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncMotion(context);
   }
 
   @override
   void didUpdateWidget(KenBurnsBackdrop oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageUrl != widget.imageUrl) {
-      _controller.dispose();
-      _setupAnimations();
-      return;
+    if (oldWidget.enableMotion != widget.enableMotion) {
+      _syncMotion(context);
     }
-    if (oldWidget.cycleDuration != widget.cycleDuration ||
+    if (_motionEnabled != true) return;
+    if (oldWidget.imageUrl != widget.imageUrl ||
+        oldWidget.cycleDuration != widget.cycleDuration ||
         oldWidget.minScale != widget.minScale ||
         oldWidget.maxScale != widget.maxScale ||
         oldWidget.panBegin != widget.panBegin ||
         oldWidget.panEnd != widget.panEnd) {
-      _controller.dispose();
+      _tearDownAnimations();
       _setupAnimations();
     }
   }
 
+  void _tearDownAnimations() {
+    _controller?.dispose();
+    _controller = null;
+    _scaleAnimation = null;
+    _alignAnimation = null;
+  }
+
   void _setupAnimations() {
-    _controller = AnimationController(
+    _tearDownAnimations();
+    final controller = AnimationController(
       duration: widget.cycleDuration,
       vsync: this,
     )..repeat(reverse: true);
-
+    _controller = controller;
     _scaleAnimation = Tween<double>(
       begin: widget.minScale,
       end: widget.maxScale,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-
+    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeInOut));
     _alignAnimation = AlignmentTween(
       begin: widget.panBegin,
       end: widget.panEnd,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    ).animate(CurvedAnimation(parent: controller, curve: Curves.easeInOut));
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _tearDownAnimations();
     super.dispose();
+  }
+
+  Widget _image() {
+    return CachedNetworkImage(
+      imageUrl: widget.imageUrl,
+      fit: widget.fit,
+      alignment: widget.imageAlignment,
+      filterQuality: widget.filterQuality,
+      errorWidget: (c, u, e) => Container(color: const Color(0xFF141414)),
+    );
+  }
+
+  Widget _tintOverlay() {
+    final colors = widget.colors;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(
+              const Color(0xFF141414),
+              colors?.dominant ?? const Color(0xFF141414),
+              0.35,
+            )!
+                .withValues(alpha: 0.75),
+            Color.lerp(
+              const Color(0xFF000000),
+              colors?.muted ?? const Color(0xFF000000),
+              0.15,
+            )!
+                .withValues(alpha: 0.88),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = widget.colors;
+    final controller = _controller;
+    final scale = _scaleAnimation;
+    final align = _alignAnimation;
+    final motion = _motionEnabled == true &&
+        controller != null &&
+        scale != null &&
+        align != null;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return Transform.scale(
-              scale: _scaleAnimation.value,
-              alignment: _alignAnimation.value,
-              child: child,
-            );
-          },
-          child: CachedNetworkImage(
-            imageUrl: widget.imageUrl,
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-            errorWidget: (c, u, e) => Container(color: const Color(0xFF141414)),
-          ),
-        ),
-        if (widget.showColorTint)
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color.lerp(const Color(0xFF141414), colors?.dominant ?? const Color(0xFF141414), 0.35)!.withValues(alpha: 0.75),
-                  Color.lerp(const Color(0xFF000000), colors?.muted ?? const Color(0xFF000000), 0.15)!.withValues(alpha: 0.88),
-                ],
-              ),
-            ),
-          ),
+        if (motion)
+          AnimatedBuilder(
+            animation: controller,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: scale.value,
+                alignment: align.value,
+                child: child,
+              );
+            },
+            child: _image(),
+          )
+        else
+          _image(),
+        if (widget.showColorTint) _tintOverlay(),
       ],
     );
   }

@@ -458,6 +458,183 @@ void main() {
     pageNode.dispose();
   });
 
+  testWidgets(
+    'nav RIGHT restores media-details memory while overlay open',
+    (tester) async {
+      final homeNav = FocusNode(debugLabel: 'nav-home');
+      final play = FocusNode(debugLabel: 'details-play');
+      final episode = FocusNode(debugLabel: 'details-ep');
+      ShellTvFocus.registerNav('home', homeNav);
+      ShellTvFocus.currentNavTabId = 'home';
+
+      shellTvRegisterRow(
+        tabId: MediaDetailsTv.tabId,
+        rowId: 'episodes',
+        sortOrder: 1,
+        itemCount: 1,
+      );
+      ShellTvFocusCoordinator.registerItemNode(
+        tabId: MediaDetailsTv.tabId,
+        rowId: 'episodes',
+        index: 0,
+        node: episode,
+      );
+      ShellTvFocusCoordinator.saveFocus(
+        MediaDetailsTv.tabId,
+        ShellTvFocusMemory(
+          zone: ShellTvZone.row,
+          rowId: 'episodes',
+          itemIndex: 0,
+          node: episode,
+        ),
+      );
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'home',
+        defaultFocus: () => play,
+      );
+      ShellTvFocusCoordinator.registerTabDefaults(
+        MediaDetailsTv.tabId,
+        defaultFocus: () => play,
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Stack(
+            children: [
+              Row(
+                children: [
+                  Focus(
+                    focusNode: homeNav,
+                    child: const SizedBox(width: 40, height: 40),
+                  ),
+                  Focus(
+                    focusNode: play,
+                    child: const SizedBox(width: 40, height: 40),
+                  ),
+                  Focus(
+                    focusNode: episode,
+                    child: const SizedBox(width: 40, height: 40),
+                  ),
+                ],
+              ),
+              const Positioned.fill(child: ShellOverlayNavigator()),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final overlay = shellOverlayNavigatorKey.currentState!;
+      await overlay.push(
+        PageRouteBuilder<void>(
+          opaque: false,
+          pageBuilder: (context, animation, secondaryAnimation) {
+            return const SizedBox.expand();
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(shellOverlayCanPop(), isTrue);
+
+      homeNav.requestFocus();
+      await tester.pump();
+      expect(homeNav.hasFocus, isTrue);
+
+      expect(
+        ShellTvFocusCoordinator.handleNavKey(LogicalKeyboardKey.arrowRight),
+        isTrue,
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(episode.hasFocus, isTrue);
+      expect(play.hasFocus, isFalse);
+      expect(homeNav.hasFocus, isFalse);
+
+      homeNav.dispose();
+      play.dispose();
+      episode.dispose();
+    },
+  );
+
+  testWidgets(
+    'restoreTabFocusAfterNav keeps snapshot if Play pollutes memory',
+    (tester) async {
+      final homeNav = FocusNode(debugLabel: 'nav-home');
+      final play = FocusNode(debugLabel: 'hero-play');
+      final card = FocusNode(debugLabel: 'catalog-card');
+      ShellTvFocus.registerNav('home', homeNav);
+      ShellTvFocus.currentNavTabId = 'home';
+
+      shellTvRegisterRow(
+        tabId: 'home',
+        rowId: 'featured',
+        sortOrder: 0,
+        itemCount: 1,
+      );
+      ShellTvFocusCoordinator.registerItemNode(
+        tabId: 'home',
+        rowId: 'featured',
+        index: 0,
+        node: card,
+      );
+      ShellTvFocusCoordinator.saveFocus(
+        'home',
+        ShellTvFocusMemory(
+          zone: ShellTvZone.row,
+          rowId: 'featured',
+          itemIndex: 0,
+          node: card,
+        ),
+      );
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'home',
+        defaultFocus: () => play,
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: homeNav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: play,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: card,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      homeNav.requestFocus();
+      await tester.pump();
+
+      // Snapshot is taken inside restore; pollute live memory the same way
+      // Play autofocus used to (hero overwrites row) before post-frame passes.
+      ShellTvFocusCoordinator.restoreTabFocusAfterNav('home');
+      ShellTvFocusCoordinator.saveFocus(
+        'home',
+        ShellTvFocusMemory(zone: ShellTvZone.hero, node: play),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(card.hasFocus, isTrue);
+      expect(play.hasFocus, isFalse);
+
+      homeNav.dispose();
+      play.dispose();
+      card.dispose();
+    },
+  );
+
   test('restoreTabFocus ignores stale nav-only memory', () {
     final pageNode = FocusNode(debugLabel: 'page-item');
     ShellTvFocusCoordinator.saveFocus(

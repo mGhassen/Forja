@@ -4,10 +4,11 @@
 ///
 /// In-app updates:
 /// - Discovery: `{RELEASE_CDN_URL}/latest/manifest.json` (per-platform `platforms` map)
-/// - Installer: `{RELEASE_CDN_URL}/v{version}/{filename}`
+/// - Installer: `{RELEASE_CDN_URL}/latest/{filename}` (merged per platform/arch)
+/// - Fallback: `{RELEASE_CDN_URL}/v{version}/{filename}` (immutable archive)
 /// - Notes: `{RELEASE_CDN_URL}/changelog/index.json` + `changelog/{version}.md`
 ///
-/// `latest/{installer}` is the site download CTA path (merged per platform).
+/// `latest/{installer}` is the canonical download path (web + in-app).
 /// `changelog/` is a permanent archive (not pruned with installer retention).
 class ReleaseStorageUrls {
   ReleaseStorageUrls._();
@@ -43,7 +44,7 @@ class ReleaseStorageUrls {
     return '$root/changelog/$ver.md';
   }
 
-  /// `{RELEASE_CDN_URL}/latest/{filename}` - site download CTAs only.
+  /// `{RELEASE_CDN_URL}/latest/{filename}` - web CTAs + in-app installer download.
   static String? latestUrl({required String filename}) {
     final root = _root;
     if (root == null) return null;
@@ -61,11 +62,16 @@ class ReleaseStorageUrls {
     return '$root/v$ver/$filename';
   }
 
-  /// Versioned CDN object for [filename].
+  /// Prefer merged `latest/{filename}`; fall back to versioned archive.
+  ///
+  /// [version] is only used for the fallback path — pass the semver embedded
+  /// in [filename] when present (split-arch latest can mix versions).
   static String preferStorage({
     required String version,
     required String filename,
   }) {
+    final latest = latestUrl(filename: filename);
+    if (latest != null && latest.isNotEmpty) return latest;
     return publicUrl(version: version, filename: filename) ?? '';
   }
 

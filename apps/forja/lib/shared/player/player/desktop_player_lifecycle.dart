@@ -481,7 +481,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
           !_s._isPipMode &&
           !PipService.instance.isDesktopActive &&
           !PipService.instance.autoPipArmed &&
-          !SettingsService.playInBackgroundNotifier.value &&
+          !SettingsService.keepsPlayingInBackground &&
           _s._player.state.playing) {
         _s._pausedByLifecycle = true;
       }
@@ -518,7 +518,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
       unawaited(PipService.instance.enterInsteadOfPause());
       return;
     }
-    if (SettingsService.playInBackgroundNotifier.value) return;
+    if (SettingsService.keepsPlayingInBackground) return;
     if (_s._player.state.playing) {
       _s._pausedByLifecycle = true;
       unawaited(_s._player.pause());

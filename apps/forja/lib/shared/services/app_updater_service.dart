@@ -13,8 +13,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// In-app updates.
 ///
-/// Discovery + download: Cloudflare R2 (`latest/manifest.json`, `v{ver}/{file}`).
-/// Manifest is per-platform - a macOS-only release does not wipe Windows/Linux/TV.
+/// Discovery: Cloudflare R2 `latest/manifest.json` (per-platform).
+/// Download: `latest/{file}` (same mirror as the website; versioned `v{ver}/`
+/// as fallback). Manifest merge keeps other platforms on partial releases.
 /// Changelog bodies: R2 `changelog/` (permanent); GitHub Releases as fallback.
 class AppUpdaterService {
   static const String githubRepo = 'mGhassen/Forja';
@@ -112,17 +113,29 @@ class AppUpdaterService {
       );
     }
 
-    if (!AppUpdaterManifest.isUpdateAvailable(
-      currentVersion: currentVersion,
-      target: target,
-    )) {
+    final filename = _pickInstallerFilename(target.assets);
+    if (filename == null || filename.isEmpty) {
+      return UpdateCheckResult.failed(
+        'Found ${target.version} but no matching installer asset.',
+      );
+    }
+
+    // Split-arch latest can keep an older sibling arch — compare against the
+    // asset this device would actually download, not the platform max.
+    final assetVersion =
+        AppUpdaterManifest.versionFromFilename(filename) ?? target.version;
+
+    if (!AppUpdaterReleaseNotes.isNewerVersion(currentVersion, assetVersion)) {
       return UpdateCheckResult.upToDate();
     }
 
-    final downloadUrl = _pickInstallerUrl(target.version, target.assets);
-    if (downloadUrl == null || downloadUrl.isEmpty) {
+    final downloadUrl = ReleaseStorageUrls.preferStorage(
+      version: assetVersion,
+      filename: filename,
+    );
+    if (downloadUrl.isEmpty) {
       return UpdateCheckResult.failed(
-        'Found ${target.version} but no matching installer asset.',
+        'Found $assetVersion but no matching installer asset.',
       );
     }
 
@@ -130,13 +143,13 @@ class AppUpdaterService {
 
     final changelogs = await _fetchChangelogs(
       currentVersion: currentVersion,
-      latestVersion: target.version,
+      latestVersion: assetVersion,
     );
 
     return UpdateCheckResult.available(
       UpdateInfo(
         currentVersion: currentVersion,
-        latestVersion: target.version,
+        latestVersion: assetVersion,
         downloadUrl: downloadUrl,
         changelogs: changelogs,
         fullChangelogUrl: fullChangelogUrl(),
@@ -291,33 +304,28 @@ class AppUpdaterService {
     }
   }
 
-  String? _pickInstallerUrl(String version, List<String> assets) {
-    final String? filename;
+  String? _pickInstallerFilename(List<String> assets) {
     if (Platform.isWindows) {
-      filename = _firstMatching(
+      return _firstMatching(
         assets,
         (n) => n.contains('windows') && n.endsWith('.exe'),
       );
-    } else if (Platform.isLinux) {
-      filename = _firstMatching(
+    }
+    if (Platform.isLinux) {
+      return _firstMatching(
         assets,
         (n) =>
             n.contains('linux') &&
             (n.endsWith('.appimage') || n.endsWith('.deb')),
       );
-    } else if (Platform.isMacOS) {
-      filename = _pickMacosFilename(assets);
-    } else if (Platform.isAndroid) {
-      filename = _pickAndroidFilename(assets);
-    } else {
-      filename = null;
     }
-    if (filename == null || filename.isEmpty) return null;
-    final url = ReleaseStorageUrls.preferStorage(
-      version: version,
-      filename: filename,
-    );
-    return url.isEmpty ? null : url;
+    if (Platform.isMacOS) {
+      return _pickMacosFilename(assets);
+    }
+    if (Platform.isAndroid) {
+      return _pickAndroidFilename(assets);
+    }
+    return null;
   }
 
   String? _firstMatching(List<String> assets, bool Function(String lower) test) {

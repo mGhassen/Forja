@@ -202,6 +202,31 @@ void main() {
     expect(await service.getPlayInBackground(), isFalse);
   });
 
+  test(
+    'ATV resets cloud-polluted play_in_background and always pauses',
+    () async {
+      await kvSetBool('play_in_background', true);
+      await kvSetString('platform_defaults_seeded_v1', 'androidTv');
+      await kvSetStringList('navbar_config', const ['home', 'iptv']);
+      await kvSetStringList(
+        'navbar_known_ids',
+        List.from(SettingsService.allNavIds),
+      );
+
+      final service = SettingsService();
+      await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
+
+      expect(await service.getPlayInBackground(), isFalse);
+      expect(SettingsService.keepsPlayingInBackground, isFalse);
+
+      // Migration is one-shot; stored value can change but ATV still pauses.
+      await kvSetBool('play_in_background', true);
+      await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
+      expect(await service.getPlayInBackground(), isTrue);
+      expect(SettingsService.keepsPlayingInBackground, isFalse);
+    },
+  );
+
   test('ensurePlatformDefaultsSeeded is idempotent', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
