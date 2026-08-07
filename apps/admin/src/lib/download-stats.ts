@@ -38,7 +38,7 @@ export async function fetchDownloadStats(): Promise<DownloadStats> {
 export async function triggerDownloadRollup(
   action: 'rollup' | 'backfill' = 'rollup',
   days = 30,
-): Promise<void> {
+): Promise<DownloadStats & { ok: true; action: string; daysWritten?: string[] }> {
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -52,6 +52,16 @@ export async function triggerDownloadRollup(
     },
     body: JSON.stringify({ action, days }),
   })
-  const json = (await res.json().catch(() => ({}))) as { error?: string }
-  if (!res.ok) throw new Error(json.error || 'Failed to trigger rollup')
+  const json = (await res.json().catch(() => ({}))) as DownloadStats & {
+    error?: string
+    ok?: boolean
+    action?: string
+    daysWritten?: string[]
+  }
+  if (!res.ok) throw new Error(json.error || 'Failed to run rollup')
+  return json as DownloadStats & {
+    ok: true
+    action: string
+    daysWritten?: string[]
+  }
 }

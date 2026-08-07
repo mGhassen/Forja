@@ -15,11 +15,24 @@ import {
   DOWNLOAD_STATS_KEY,
   fetchDownloadStats,
   triggerDownloadRollup,
+  type DownloadStats,
 } from '@/lib/download-stats'
 
 function formatCount(n: number | undefined): string {
   if (n == null) return '—'
   return n.toLocaleString()
+}
+
+function toStats(data: DownloadStats): DownloadStats {
+  return {
+    total: data.total,
+    byPlatform: data.byPlatform,
+    byObject: data.byObject,
+    dayCount: data.dayCount,
+    updatedAt: data.updatedAt,
+    bucket: data.bucket,
+    source: 'r2_rollup',
+  }
 }
 
 export function AdminDownloadsPage() {
@@ -32,20 +45,24 @@ export function AdminDownloadsPage() {
 
   const rollup = useMutation({
     mutationFn: () => triggerDownloadRollup('rollup'),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: DOWNLOAD_STATS_KEY })
+    onSuccess: (data) => {
+      qc.setQueryData(DOWNLOAD_STATS_KEY, toStats(data))
     },
   })
   const backfill = useMutation({
     mutationFn: () => triggerDownloadRollup('backfill', 30),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: DOWNLOAD_STATS_KEY })
+    onSuccess: (data) => {
+      qc.setQueryData(DOWNLOAD_STATS_KEY, toStats(data))
     },
   })
 
   const d = stats.data
   const loading = stats.isLoading
-  const err = stats.error instanceof Error ? stats.error.message : null
+  const loadErr = stats.error instanceof Error ? stats.error.message : null
+  const actionErr =
+    (rollup.error instanceof Error ? rollup.error.message : null) ||
+    (backfill.error instanceof Error ? backfill.error.message : null)
+  const busy = rollup.isPending || backfill.isPending
 
   const platformRows = [
     ...DOWNLOAD_PLATFORMS.map((p) => ({
@@ -74,45 +91,54 @@ export function AdminDownloadsPage() {
               type="button"
               variant="secondary"
               size="sm"
-              disabled={rollup.isPending || backfill.isPending}
+              disabled={busy}
               onClick={() => rollup.mutate()}
             >
-              {rollup.isPending ? 'Queuing…' : 'Roll up yesterday'}
+              {rollup.isPending ? 'Running…' : 'Roll up yesterday'}
             </Button>
             <Button
               type="button"
               size="sm"
-              disabled={rollup.isPending || backfill.isPending}
+              disabled={busy}
               onClick={() => backfill.mutate()}
             >
-              {backfill.isPending ? 'Queuing…' : 'Backfill 30d'}
+              {backfill.isPending ? 'Backfilling…' : 'Backfill 30d'}
             </Button>
           </>
         }
       />
 
-      {err ? (
+      {loadErr || actionErr ? (
         <Panel tone="accent">
-          <p className="text-sm text-amber-300">Could not load stats: {err}</p>
+          <p className="text-sm text-amber-300">
+            {actionErr ? `Backfill/rollup failed: ${actionErr}` : `Could not load stats: ${loadErr}`}
+          </p>
           <p className="mt-2 text-xs text-forja-muted">
-            Reads via <code className="text-forja-text">RELEASE_CDN_URL</code>
-            /stats/downloads.json (or R2 S3 keys). Writes need S3 keys +{' '}
-            <code className="text-forja-text">CLOUDFLARE_API_TOKEN</code> —
-            set those on Vercel, then run <strong>Backfill 30d</strong>.
+            Writes need{' '}
+            <code className="text-forja-text">R2_ACCESS_KEY_ID</code> /{' '}
+            <code className="text-forja-text">R2_SECRET_ACCESS_KEY</code> +{' '}
+            <code className="text-forja-text">CLOUDFLARE_API_TOKEN</code>{' '}
+            (Analytics Read) on the admin host.
           </p>
         </Panel>
       ) : null}
 
-      {(rollup.isSuccess || backfill.isSuccess) && (
-        <p className="text-xs text-forja-muted">
-          Inngest job queued — refresh in a minute.
+      {backfill.isSuccess ? (
+        <p className="text-xs text-forja-green">
+          Backfill wrote {backfill.data.daysWritten?.length ?? 0} day(s) · total{' '}
+          {formatCount(backfill.data.total)}
         </p>
-      )}
+      ) : null}
+      {rollup.isSuccess ? (
+        <p className="text-xs text-forja-green">
+          Rolled up yesterday · total {formatCount(rollup.data.total)}
+        </p>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Total"
-          value={loading ? '…' : formatCount(d?.total)}
+          value={loading || busy ? '…' : formatCount(d?.total)}
           accent="green"
           hint={
             d?.dayCount
@@ -124,7 +150,7 @@ export function AdminDownloadsPage() {
           <StatCard
             key={p.id}
             label={p.label}
-            value={loading ? '…' : formatCount(d?.byPlatform[p.id])}
+            value={loading || busy ? '…' : formatCount(d?.byPlatform[p.id])}
           />
         ))}
       </div>
@@ -148,10 +174,10 @@ export function AdminDownloadsPage() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
+              {loading || busy ? (
                 <tr>
                   <td className={tdClassName} colSpan={3}>
-                    Loading…
+                    {busy ? 'Running CF rollup…' : 'Loading…'}
                   </td>
                 </tr>
               ) : platformRows.every((r) => r.count === 0) ? (
@@ -220,7 +246,7 @@ export function AdminDownloadsPage() {
                   </td>
                 </tr>
               ))}
-              {!loading && !(d?.byObject?.length) ? (
+              {!loading && !busy && !(d?.byObject?.length) ? (
                 <tr>
                   <td className={tdClassName} colSpan={3}>
                     —

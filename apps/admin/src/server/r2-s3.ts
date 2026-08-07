@@ -70,6 +70,7 @@ async function awsV4Headers(opts: {
   contentType?: string
   body: Uint8Array
   unsignedPayload?: boolean
+  extraHeaders?: Record<string, string>
 }): Promise<Record<string, string>> {
   const now = new Date()
   const amzDate = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
@@ -84,6 +85,11 @@ async function awsV4Headers(opts: {
     'x-amz-date': amzDate,
   }
   if (opts.contentType) headers['content-type'] = opts.contentType
+  if (opts.extraHeaders) {
+    for (const [k, v] of Object.entries(opts.extraHeaders)) {
+      headers[k.toLowerCase()] = v
+    }
+  }
 
   const signedNames = Object.keys(headers).sort()
   const canonicalHeaders = signedNames.map((k) => `${k}:${headers[k]}\n`).join('')
@@ -148,6 +154,7 @@ export async function r2GetObjectPublic(
   if (!cdnBase) return null
   const url = `${cdnBase}/${key.split('/').map(encodeURIComponent).join('/')}`
   const res = await fetch(url, {
+    cache: 'no-store',
     headers: { Accept: 'application/json' },
   })
   if (res.status === 404) return null
@@ -176,6 +183,9 @@ export async function r2PutObject(
     contentType,
     body: bytes,
     unsignedPayload: true,
+    extraHeaders: {
+      'cache-control': 'no-cache, max-age=0',
+    },
   })
   const res = await fetch(`${endpoint}${canonicalUri}`, {
     method: 'PUT',

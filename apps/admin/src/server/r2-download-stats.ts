@@ -311,7 +311,8 @@ export function rollupToView(rollup: DownloadsRollup): DownloadStatsView {
     byPlatform: rollup.totals.by_platform,
     byObject,
     dayCount: Object.keys(rollup.days).length,
-    updatedAt: rollup.updated_at,
+    updatedAt:
+      Object.keys(rollup.days).length > 0 ? rollup.updated_at : null,
     bucket: rollup.bucket,
     source: 'r2_rollup',
   }
