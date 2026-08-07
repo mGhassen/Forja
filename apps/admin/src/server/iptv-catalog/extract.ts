@@ -92,6 +92,14 @@ const STALKER_CARD =
   /Portal\s*:\s*(https?:\/\/[^\s\n]+)[\t ]*\n[\t ]*MAC\s*Addr(?:ess)?\s*:\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})(?:[\t ]*\n[\t ]*Exp(?:iry|ired)?\s*date\s*:\s*([^\n]+))?/gi
 
 /**
+ * MAC-checker HIT lines (pipe-separated):
+ * `[19:18:51] ✅ HIT: http://host:80 | 00:1A:79:… | Expires on February 16, 2027, 7:51 pm`
+ * Portal may be bare host:port (no `/c/`). Expiry clause optional.
+ */
+const STALKER_HIT_LINE =
+  /(?:✅\s*)?HIT:\s*(https?:\/\/[^\s|]+)\s*\|\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})(?:\s*\|\s*Expires\s+on\s+([^\n|]+))?/gi
+
+/**
  * Scan dumps: portal URL alone, then lines
  * `00:1A:79:… [Total: …] [March 28, 2027, 12:00 am]`
  */
@@ -193,6 +201,25 @@ function cleanPortalUrl(raw: string): string {
   while (clean.endsWith('/')) clean = clean.slice(0, -1)
   if (!clean.startsWith('http')) clean = `http://${clean}`
   return clean
+}
+
+/**
+ * MAC checkers often emit bare `http://host:port`. Mag portals expect `/c`.
+ * Leave paths that already look like stalker alone.
+ */
+function stalkerPortalUrl(raw: string): string {
+  const url = cleanPortalUrl(raw)
+  if (!url) return url
+  if (/\/c$/i.test(url) || /portal\.php|stalker_portal/i.test(url)) return url
+  try {
+    const parsed = new URL(url)
+    if (parsed.pathname === '/' || parsed.pathname === '') {
+      return cleanPortalUrl(`${url}/c`)
+    }
+  } catch {
+    // keep cleaned
+  }
+  return url
 }
 
 function cleanCred(raw: string): string {
@@ -822,8 +849,28 @@ function extractStalkerPortals(
   const pairedMacs = new Set<string>()
   const pairedPortals = new Set<string>()
 
+  for (const m of cleaned.matchAll(STALKER_HIT_LINE)) {
+    const portalUrl = stalkerPortalUrl(m[1] ?? '')
+    const mac = (m[2] ?? '').toUpperCase().replace(/-/g, ':')
+    if (!portalUrl || !mac) continue
+    const expiryRaw = m[3]?.trim() ?? null
+    const expiry = expiryRaw ? formatPortalExpiry(expiryRaw) : null
+    pairedMacs.add(mac)
+    pairedPortals.add(portalUrl)
+    put(acc, {
+      url: portalUrl,
+      username: mac,
+      password: '',
+      source,
+      platform: 'stalker',
+      type: '',
+      output: '',
+      expiry,
+    })
+  }
+
   for (const m of cleaned.matchAll(STALKER_CARD)) {
-    const portalUrl = cleanPortalUrl(m[1] ?? '')
+    const portalUrl = stalkerPortalUrl(m[1] ?? '')
     const mac = (m[2] ?? '').toUpperCase().replace(/-/g, ':')
     if (!portalUrl || !mac) continue
     const expiryRaw = m[3]?.trim() ?? null
