@@ -244,6 +244,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   Duration _lastPos = Duration.zero;
   DateTime _lastPosChange = DateTime.now();
   DateTime? _bufferingSince;
+  /// Stall-reopen mode: when buffering flickers false, wait this long before
+  /// clearing [_bufferingSince] so detector 1's grace is not reset by core-idle.
+  DateTime? _bufferingClearAt;
   DateTime? _readyNotPlayingSince;
   // When the current source was last opened. Used by detector 4 to find
   // "playing=true but never produced a first frame" - the classic
@@ -335,9 +338,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// How long ffmpeg gets on VOD before app escalates (live uses cache gate).
   static const Duration _ffmpegReconnectGrace = Duration(seconds: 8);
 
+  /// Stall-reopen: require continuous non-buffering this long before resetting
+  /// [_bufferingSince] (media_kit `core-idle` flicker).
+  static const Duration _bufferingClearHold = Duration(milliseconds: 1500);
+
   bool _socketTroublePending = false;
 
-  /// [SettingsService.iptvLiveRecoveryBuffered] (default) or classic.
+  /// [SettingsService.iptvLiveRecoveryBuffered] (default), stall (test), or classic.
   String _liveRecoveryMode = SettingsService.iptvLiveRecoveryBuffered;
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';

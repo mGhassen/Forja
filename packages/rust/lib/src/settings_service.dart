@@ -119,9 +119,12 @@ class SettingsService {
   /// Default = buffer-aware reconnect (shipped in 1.3.170).
   static const String iptvLiveRecoveryBuffered = 'buffered';
   static const String iptvLiveRecoveryClassic = 'classic';
+  /// Stable + reopen when buffering/freeze stalls with no playhead (test).
+  static const String iptvLiveRecoveryStall = 'stall';
 
   static const Map<String, String> iptvLiveRecoveryModeOptions = {
     'Stable — buffer-aware (1.3.170)': iptvLiveRecoveryBuffered,
+    'Stable — reopen on buffer stall (test)': iptvLiveRecoveryStall,
     'Classic — stall timers (1.3.114)': iptvLiveRecoveryClassic,
   };
 
@@ -135,6 +138,13 @@ class SettingsService {
 
   static String iptvLiveRecoveryModeStored(String label) {
     return iptvLiveRecoveryModeOptions[label] ?? iptvLiveRecoveryBuffered;
+  }
+
+  static String normalizeIptvLiveRecoveryMode(String? raw) {
+    final v = (raw ?? iptvLiveRecoveryBuffered).trim().toLowerCase();
+    if (v == iptvLiveRecoveryClassic) return iptvLiveRecoveryClassic;
+    if (v == iptvLiveRecoveryStall) return iptvLiveRecoveryStall;
+    return iptvLiveRecoveryBuffered;
   }
 
   /// Anime catalog display language (AniList). Default romaji.
@@ -326,20 +336,16 @@ class SettingsService {
 
   /// IPTV live auto-recovery. Default [iptvLiveRecoveryBuffered] (1.3.170).
   Future<String> getIptvLiveRecoveryMode() async {
-    final raw =
-        (await kvGetString(_iptvLiveRecoveryModeKey) ?? iptvLiveRecoveryBuffered)
-            .trim()
-            .toLowerCase();
-    return raw == iptvLiveRecoveryClassic
-        ? iptvLiveRecoveryClassic
-        : iptvLiveRecoveryBuffered;
+    return normalizeIptvLiveRecoveryMode(
+      await kvGetString(_iptvLiveRecoveryModeKey),
+    );
   }
 
   Future<void> setIptvLiveRecoveryMode(String mode) async {
-    final v = mode.trim().toLowerCase() == iptvLiveRecoveryClassic
-        ? iptvLiveRecoveryClassic
-        : iptvLiveRecoveryBuffered;
-    await kvSetString(_iptvLiveRecoveryModeKey, v);
+    await kvSetString(
+      _iptvLiveRecoveryModeKey,
+      normalizeIptvLiveRecoveryMode(mode),
+    );
   }
 
   /// Android TV MediaKit IPTV: match panel refresh to stream fps. Default off.

@@ -283,7 +283,7 @@ class _SettingsPlaybackSectionState
               settingsFocusableDropdown(
                 context,
                 'IPTV live recovery',
-                'How live channels reconnect. Stable (default) waits until the buffer is empty — same as 1.3.170. Classic reconnects on stall timers like 1.3.114. Takes effect next time you open the player.',
+                'How live channels reconnect. Stable (default) waits until the buffer is empty — same as 1.3.170. Stable + reopen on buffer stall (test) keeps that hold but reconnects when buffering/freeze stalls with no playhead. Classic reconnects on stall timers like 1.3.114. Takes effect next time you open the player.',
                 snap.iptvLiveRecoveryModeLabel,
                 SettingsService.iptvLiveRecoveryModeOptions.keys.toList(),
                 (val) async {

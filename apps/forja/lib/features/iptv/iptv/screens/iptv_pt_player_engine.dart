@@ -105,6 +105,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           _s._buffering = false;
         }
         _s._bufferingSince = null;
+        _s._bufferingClearAt = null;
         _noteVideoFrame(reason: 'exo ready');
         break;
       case 'playing':
@@ -122,6 +123,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         if (playing) {
           _s._readyNotPlayingSince = null;
           _s._bufferingSince = null;
+          _s._bufferingClearAt = null;
           // Live Exo often reports position 0 forever while frames paint —
           // keep the watchdog heartbeat alive.
           _noteVideoFrame(reason: 'exo playing');
@@ -138,6 +140,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           _s._bufferingSince ??= DateTime.now();
         } else {
           _s._bufferingSince = null;
+          _s._bufferingClearAt = null;
         }
         break;
       case 'progress':
@@ -632,10 +635,19 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (!mounted) return;
       setState(() => _s._buffering = b);
       if (b) {
+        _s._bufferingClearAt = null;
         _s._bufferingSince ??= DateTime.now();
+      } else if (_stallReopenRecovery) {
+        // Keep [_bufferingSince] through brief core-idle clears; watchdog
+        // finalizes after [_bufferingClearHold].
+        _s._bufferingClearAt ??= DateTime.now();
+        if (!_playbackStarted) {
+          _noteVideoFrame(reason: 'buffering done');
+        }
       } else {
         final since = _s._bufferingSince;
         _s._bufferingSince = null;
+        _s._bufferingClearAt = null;
         if (since != null) {
           final ms = DateTime.now().difference(since).inMilliseconds;
           if (ms >= 500) debugPrint('[IPTV Player] buffering window ${ms}ms');
@@ -969,34 +981,80 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   /// Stream is working: enough cache to play, or still downloading, or
   /// frames advancing. Auto-recovery must not fire in any of these cases.
   /// Classic mode always returns false so stall timers reopen like 1.3.114.
+  /// Stall-reopen (test): ignore cache/feed when buffering/freeze stalled
+  /// with no recent playhead — demuxer can still look "healthy" while idle.
   bool get _bufferedRecovery =>
       _s._liveRecoveryMode != SettingsService.iptvLiveRecoveryClassic;
 
+  bool get _stallReopenRecovery =>
+      _s._liveRecoveryMode == SettingsService.iptvLiveRecoveryStall;
+
+  bool get _playheadRecentlyMoved =>
+      _s._playing &&
+      DateTime.now().difference(_s._lastPosChange) < const Duration(seconds: 2);
+
+  /// Sustained underrun / freeze without playhead — treat as dead for stall mode.
+  bool get _stallWithoutPlayhead {
+    if (!_stallReopenRecovery) return false;
+    if (_playheadRecentlyMoved) return false;
+    final since = _s._bufferingSince;
+    if (since != null) {
+      final grace = _s._lastPos > Duration.zero
+          ? const Duration(milliseconds: 12000)
+          : const Duration(milliseconds: 25000);
+      if (DateTime.now().difference(since) > grace) return true;
+    }
+    if (_s._lastPos > Duration.zero &&
+        DateTime.now().difference(_s._lastPosChange) >
+            const Duration(milliseconds: 8000)) {
+      return true;
+    }
+    return false;
+  }
+
   bool get _streamWorking {
     if (!_bufferedRecovery) return false;
+    if (_stallWithoutPlayhead) return false;
     if (_s._cacheAheadSecs >=
         _IptvPtPlayerScreenState._minHealthyCacheSecs) {
       return true;
     }
     if (_networkStillFeeding) return true;
-    if (_s._playing &&
-        DateTime.now().difference(_s._lastPosChange) <
-            const Duration(seconds: 2)) {
-      return true;
-    }
+    if (_playheadRecentlyMoved) return true;
     return false;
   }
 
   void _logHealthyHold(String reason) {
     debugPrint('[IPTV] skip recovery ($reason) — working '
         '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s '
-        'feeding=$_networkStillFeeding)');
+        'feeding=$_networkStillFeeding'
+        '${_stallReopenRecovery ? ' stall=$_stallWithoutPlayhead' : ''})');
+  }
+
+  void _finalizeBufferingClearIfNeeded(DateTime now) {
+    if (!_stallReopenRecovery) return;
+    final clearAt = _s._bufferingClearAt;
+    if (clearAt == null || _s._buffering || _s._bufferingSince == null) {
+      return;
+    }
+    if (now.difference(clearAt) <
+        _IptvPtPlayerScreenState._bufferingClearHold) {
+      return;
+    }
+    final since = _s._bufferingSince;
+    _s._bufferingSince = null;
+    _s._bufferingClearAt = null;
+    if (since != null) {
+      final ms = now.difference(since).inMilliseconds;
+      if (ms >= 500) debugPrint('[IPTV Player] buffering window ${ms}ms');
+    }
   }
 
   void _startWatchdog() {
     _s._watchdog = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted || _s._disposed) return;
       final now = DateTime.now();
+      _finalizeBufferingClearIfNeeded(now);
       _sampleDemuxerProgress();
 
       if (_s._statusBanner != null &&
@@ -1151,6 +1209,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         }
         if (mounted) setState(() {});
         _s._bufferingSince = null;
+        _s._bufferingClearAt = null;
         _s._readyNotPlayingSince = null;
         _s._lastPos = Duration.zero;
         _s._lastPosChange = DateTime.now();
@@ -1214,6 +1273,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         }
       }
       _s._bufferingSince = null;
+      _s._bufferingClearAt = null;
       _s._readyNotPlayingSince = null;
       _s._lastPos = Duration.zero;
       _s._lastPosChange = DateTime.now();
