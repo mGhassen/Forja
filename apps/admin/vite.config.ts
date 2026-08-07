@@ -63,6 +63,14 @@ function bridgeEnv(mode: string) {
     'ANTHROPIC_API_KEY',
     'IPTV_LLM_MODEL',
     'IPTV_LLM_EXTRACT',
+    'R2_ACCOUNT_ID',
+    'CLOUDFLARE_ACCOUNT_ID',
+    'CLOUDFLARE_API_TOKEN',
+    'CF_API_TOKEN',
+    'R2_BUCKET',
+    'R2_ACCESS_KEY_ID',
+    'R2_SECRET_ACCESS_KEY',
+    'R2_ENDPOINT',
   ] as const) {
     const v = localEnv[k] || rootEnv[k] || ''
     // Always prefer apps/admin/.env over a stale shell export

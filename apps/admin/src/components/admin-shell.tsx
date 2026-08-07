@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import {
   Boxes,
+  Download,
   FileCode2,
   LayoutDashboard,
   LogOut,
@@ -22,6 +23,7 @@ const NAV = [
   { to: '/scrape' as const, label: 'Scrape', icon: Radar, end: false },
   { to: '/deep-refs' as const, label: 'Deep refs', icon: FileCode2, end: false },
   { to: '/providers' as const, label: 'Providers', icon: Server, end: false },
+  { to: '/downloads' as const, label: 'Downloads', icon: Download, end: false },
 ]
 
 export function AdminShell({ children }: { children?: ReactNode }) {

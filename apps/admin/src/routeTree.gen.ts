@@ -15,16 +15,18 @@ import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as OpsIndexRouteImport } from './routes/_ops/index'
 import { Route as OpsAccountsRouteImport } from './routes/_ops/accounts'
 import { Route as OpsDeepRefsRouteImport } from './routes/_ops/deep-refs'
+import { Route as OpsDownloadsRouteImport } from './routes/_ops/downloads'
 import { Route as OpsPoolRouteImport } from './routes/_ops/pool'
 import { Route as OpsProvidersRouteImport } from './routes/_ops/providers'
 import { Route as OpsScrapeRouteImport } from './routes/_ops/scrape'
 import { Route as ApiInngestRouteImport } from './routes/api.inngest'
 import { Route as ApiIptvCatalogScrapeRouteImport } from './routes/api.iptv-catalog-scrape'
 import { Route as ApiIptvCatalogVerifyRouteImport } from './routes/api.iptv-catalog-verify'
-import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
-import { Route as ApiIptvPasteBodyRouteImport } from './routes/api.iptv-paste-body'
 import { Route as ApiIptvDeepRefReprocessRouteImport } from './routes/api.iptv-deep-ref-reprocess'
+import { Route as ApiIptvPasteBodyRouteImport } from './routes/api.iptv-paste-body'
 import { Route as ApiIptvPromoteBackfillRouteImport } from './routes/api.iptv-promote-backfill'
+import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
+import { Route as ApiR2DownloadStatsRouteImport } from './routes/api.r2-download-stats'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthLoginMfaRouteImport } from './routes/_auth/login.mfa'
 
@@ -54,6 +56,11 @@ const OpsAccountsRoute = OpsAccountsRouteImport.update({
 const OpsDeepRefsRoute = OpsDeepRefsRouteImport.update({
   id: '/deep-refs',
   path: '/deep-refs',
+  getParentRoute: () => OpsRoute,
+} as any)
+const OpsDownloadsRoute = OpsDownloadsRouteImport.update({
+  id: '/downloads',
+  path: '/downloads',
   getParentRoute: () => OpsRoute,
 } as any)
 const OpsPoolRoute = OpsPoolRouteImport.update({
@@ -86,9 +93,9 @@ const ApiIptvCatalogVerifyRoute = ApiIptvCatalogVerifyRouteImport.update({
   path: '/api/iptv-catalog-verify',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiIptvShareRoute = ApiIptvShareRouteImport.update({
-  id: '/api/iptv-share',
-  path: '/api/iptv-share',
+const ApiIptvDeepRefReprocessRoute = ApiIptvDeepRefReprocessRouteImport.update({
+  id: '/api/iptv-deep-ref-reprocess',
+  path: '/api/iptv-deep-ref-reprocess',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIptvPasteBodyRoute = ApiIptvPasteBodyRouteImport.update({
@@ -96,14 +103,19 @@ const ApiIptvPasteBodyRoute = ApiIptvPasteBodyRouteImport.update({
   path: '/api/iptv-paste-body',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiIptvDeepRefReprocessRoute = ApiIptvDeepRefReprocessRouteImport.update({
-  id: '/api/iptv-deep-ref-reprocess',
-  path: '/api/iptv-deep-ref-reprocess',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiIptvPromoteBackfillRoute = ApiIptvPromoteBackfillRouteImport.update({
   id: '/api/iptv-promote-backfill',
   path: '/api/iptv-promote-backfill',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIptvShareRoute = ApiIptvShareRouteImport.update({
+  id: '/api/iptv-share',
+  path: '/api/iptv-share',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiR2DownloadStatsRoute = ApiR2DownloadStatsRouteImport.update({
+  id: '/api/r2-download-stats',
+  path: '/api/r2-download-stats',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -122,16 +134,18 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRouteWithChildren
   '/accounts': typeof OpsAccountsRoute
   '/deep-refs': typeof OpsDeepRefsRoute
+  '/downloads': typeof OpsDownloadsRoute
   '/pool': typeof OpsPoolRoute
   '/providers': typeof OpsProvidersRoute
   '/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
-  '/api/iptv-share': typeof ApiIptvShareRoute
-  '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
+  '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
+  '/api/iptv-share': typeof ApiIptvShareRoute
+  '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
 }
@@ -140,16 +154,18 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRouteWithChildren
   '/accounts': typeof OpsAccountsRoute
   '/deep-refs': typeof OpsDeepRefsRoute
+  '/downloads': typeof OpsDownloadsRoute
   '/pool': typeof OpsPoolRoute
   '/providers': typeof OpsProvidersRoute
   '/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
-  '/api/iptv-share': typeof ApiIptvShareRoute
-  '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
+  '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
+  '/api/iptv-share': typeof ApiIptvShareRoute
+  '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
 }
@@ -160,16 +176,18 @@ export interface FileRoutesById {
   '/_auth/login': typeof AuthLoginRouteWithChildren
   '/_ops/accounts': typeof OpsAccountsRoute
   '/_ops/deep-refs': typeof OpsDeepRefsRoute
+  '/_ops/downloads': typeof OpsDownloadsRoute
   '/_ops/pool': typeof OpsPoolRoute
   '/_ops/providers': typeof OpsProvidersRoute
   '/_ops/scrape': typeof OpsScrapeRoute
   '/api/inngest': typeof ApiInngestRoute
   '/api/iptv-catalog-scrape': typeof ApiIptvCatalogScrapeRoute
   '/api/iptv-catalog-verify': typeof ApiIptvCatalogVerifyRoute
-  '/api/iptv-share': typeof ApiIptvShareRoute
-  '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
+  '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
+  '/api/iptv-share': typeof ApiIptvShareRoute
+  '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_ops/': typeof OpsIndexRoute
   '/_auth/login/mfa': typeof AuthLoginMfaRoute
@@ -181,16 +199,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/accounts'
     | '/deep-refs'
+    | '/downloads'
     | '/pool'
     | '/providers'
     | '/scrape'
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
     | '/api/iptv-catalog-verify'
-    | '/api/iptv-share'
-    | '/api/iptv-paste-body'
     | '/api/iptv-deep-ref-reprocess'
+    | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
+    | '/api/iptv-share'
+    | '/api/r2-download-stats'
     | '/auth/callback'
     | '/login/mfa'
   fileRoutesByTo: FileRoutesByTo
@@ -199,16 +219,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/accounts'
     | '/deep-refs'
+    | '/downloads'
     | '/pool'
     | '/providers'
     | '/scrape'
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
     | '/api/iptv-catalog-verify'
-    | '/api/iptv-share'
-    | '/api/iptv-paste-body'
     | '/api/iptv-deep-ref-reprocess'
+    | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
+    | '/api/iptv-share'
+    | '/api/r2-download-stats'
     | '/auth/callback'
     | '/login/mfa'
   id:
@@ -218,16 +240,18 @@ export interface FileRouteTypes {
     | '/_auth/login'
     | '/_ops/accounts'
     | '/_ops/deep-refs'
+    | '/_ops/downloads'
     | '/_ops/pool'
     | '/_ops/providers'
     | '/_ops/scrape'
     | '/api/inngest'
     | '/api/iptv-catalog-scrape'
     | '/api/iptv-catalog-verify'
-    | '/api/iptv-share'
-    | '/api/iptv-paste-body'
     | '/api/iptv-deep-ref-reprocess'
+    | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
+    | '/api/iptv-share'
+    | '/api/r2-download-stats'
     | '/auth/callback'
     | '/_ops/'
     | '/_auth/login/mfa'
@@ -239,10 +263,11 @@ export interface RootRouteChildren {
   ApiInngestRoute: typeof ApiInngestRoute
   ApiIptvCatalogScrapeRoute: typeof ApiIptvCatalogScrapeRoute
   ApiIptvCatalogVerifyRoute: typeof ApiIptvCatalogVerifyRoute
-  ApiIptvShareRoute: typeof ApiIptvShareRoute
-  ApiIptvPasteBodyRoute: typeof ApiIptvPasteBodyRoute
   ApiIptvDeepRefReprocessRoute: typeof ApiIptvDeepRefReprocessRoute
+  ApiIptvPasteBodyRoute: typeof ApiIptvPasteBodyRoute
   ApiIptvPromoteBackfillRoute: typeof ApiIptvPromoteBackfillRoute
+  ApiIptvShareRoute: typeof ApiIptvShareRoute
+  ApiR2DownloadStatsRoute: typeof ApiR2DownloadStatsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
@@ -290,6 +315,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpsDeepRefsRouteImport
       parentRoute: typeof OpsRoute
     }
+    '/_ops/downloads': {
+      id: '/_ops/downloads'
+      path: '/downloads'
+      fullPath: '/downloads'
+      preLoaderRoute: typeof OpsDownloadsRouteImport
+      parentRoute: typeof OpsRoute
+    }
     '/_ops/pool': {
       id: '/_ops/pool'
       path: '/pool'
@@ -332,11 +364,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIptvCatalogVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/iptv-share': {
-      id: '/api/iptv-share'
-      path: '/api/iptv-share'
-      fullPath: '/api/iptv-share'
-      preLoaderRoute: typeof ApiIptvShareRouteImport
+    '/api/iptv-deep-ref-reprocess': {
+      id: '/api/iptv-deep-ref-reprocess'
+      path: '/api/iptv-deep-ref-reprocess'
+      fullPath: '/api/iptv-deep-ref-reprocess'
+      preLoaderRoute: typeof ApiIptvDeepRefReprocessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/iptv-paste-body': {
@@ -346,18 +378,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIptvPasteBodyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/iptv-deep-ref-reprocess': {
-      id: '/api/iptv-deep-ref-reprocess'
-      path: '/api/iptv-deep-ref-reprocess'
-      fullPath: '/api/iptv-deep-ref-reprocess'
-      preLoaderRoute: typeof ApiIptvDeepRefReprocessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/iptv-promote-backfill': {
       id: '/api/iptv-promote-backfill'
       path: '/api/iptv-promote-backfill'
       fullPath: '/api/iptv-promote-backfill'
       preLoaderRoute: typeof ApiIptvPromoteBackfillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/iptv-share': {
+      id: '/api/iptv-share'
+      path: '/api/iptv-share'
+      fullPath: '/api/iptv-share'
+      preLoaderRoute: typeof ApiIptvShareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/r2-download-stats': {
+      id: '/api/r2-download-stats'
+      path: '/api/r2-download-stats'
+      fullPath: '/api/r2-download-stats'
+      preLoaderRoute: typeof ApiR2DownloadStatsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
@@ -402,6 +441,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 interface OpsRouteChildren {
   OpsAccountsRoute: typeof OpsAccountsRoute
   OpsDeepRefsRoute: typeof OpsDeepRefsRoute
+  OpsDownloadsRoute: typeof OpsDownloadsRoute
   OpsPoolRoute: typeof OpsPoolRoute
   OpsProvidersRoute: typeof OpsProvidersRoute
   OpsScrapeRoute: typeof OpsScrapeRoute
@@ -411,6 +451,7 @@ interface OpsRouteChildren {
 const OpsRouteChildren: OpsRouteChildren = {
   OpsAccountsRoute: OpsAccountsRoute,
   OpsDeepRefsRoute: OpsDeepRefsRoute,
+  OpsDownloadsRoute: OpsDownloadsRoute,
   OpsPoolRoute: OpsPoolRoute,
   OpsProvidersRoute: OpsProvidersRoute,
   OpsScrapeRoute: OpsScrapeRoute,
@@ -425,21 +466,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInngestRoute: ApiInngestRoute,
   ApiIptvCatalogScrapeRoute: ApiIptvCatalogScrapeRoute,
   ApiIptvCatalogVerifyRoute: ApiIptvCatalogVerifyRoute,
-  ApiIptvShareRoute: ApiIptvShareRoute,
-  ApiIptvPasteBodyRoute: ApiIptvPasteBodyRoute,
   ApiIptvDeepRefReprocessRoute: ApiIptvDeepRefReprocessRoute,
+  ApiIptvPasteBodyRoute: ApiIptvPasteBodyRoute,
   ApiIptvPromoteBackfillRoute: ApiIptvPromoteBackfillRoute,
+  ApiIptvShareRoute: ApiIptvShareRoute,
+  ApiR2DownloadStatsRoute: ApiR2DownloadStatsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
