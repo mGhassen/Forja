@@ -131,6 +131,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 - [Overview](settings/overview.md)
 - [Appearance](settings/appearance.md)
 - [Playback settings](settings/playback-settings.md)
+- [LAN](settings/lan.md) — desktop server, pairing, torrent relay to phone/TV
 - [Cache & data](settings/cache-data.md)
 - [Torrent settings](settings/torrent-settings.md)
 - [Backup & restore](settings/backup-restore.md)
@@ -151,6 +152,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 | Goal | Start here |
 |------|------------|
 | Watch a movie from torrents | [Media details](movies-tv/media-details.md) → [Torrent scrapers](scrapers/torrent.md) → [Debrid](sources/debrid.md) |
+| Play torrents on Android TV via desktop | [LAN](settings/lan.md) |
 | Watch without torrents | [Webstreaming](movies-tv/direct-streaming-mode.md) → [Stream providers](sources/stream-providers.md) |
 | Add more stream sources | [Nuvio scrapers](scrapers/nuvio.md) · [WebStreamr settings](scrapers/webstreamr-settings.md) |
 | Watch live sports | [Live Matches](live/live-matches.md) |

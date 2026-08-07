@@ -91,8 +91,8 @@ struct PreparedTorrent {
 }
 
 #[derive(Clone)]
-struct AppState {
-    api: Api,
+pub struct TorrentAppState {
+    pub api: Api,
 }
 
 #[derive(Clone)]
@@ -223,14 +223,9 @@ impl TorrentEngine {
                 .await
                 .map_err(|e| e.to_string())?;
             let api = Api::new(session.clone(), None);
-            let app = Router::new()
-                .route(
-                    "/torrents/{id}/stream/{file_id}/{*filename}",
-                    get(stream_file_handler),
-                )
-                .with_state(AppState {
-                    api: api.clone(),
-                });
+            let app = torrent_stream_router(TorrentAppState {
+                api: api.clone(),
+            });
             let addr = SocketAddr::from(([127, 0, 0, 1], preferred_port));
             let listener = tokio::net::TcpListener::bind(addr)
                 .await
@@ -256,6 +251,10 @@ impl TorrentEngine {
 
     pub fn engine_port(&self) -> u16 {
         self.inner.lock().map(|i| i.http_port).unwrap_or(0)
+    }
+
+    pub fn torrent_api(&self) -> Option<Api> {
+        self.inner.lock().ok().and_then(|i| i.api.clone())
     }
 
     pub fn stop_engine(&self) {
@@ -820,8 +819,18 @@ fn peer_snapshot(api: &Api, torrent_id: usize) -> (u32, u32, u64) {
     (live, seen, progress)
 }
 
+/// Shared torrent HTTP stream routes for loopback engine and LAN remount.
+pub fn torrent_stream_router(state: TorrentAppState) -> Router {
+    Router::new()
+        .route(
+            "/torrents/{id}/stream/{file_id}/{*filename}",
+            get(stream_file_handler),
+        )
+        .with_state(state)
+}
+
 async fn stream_file_handler(
-    State(state): State<AppState>,
+    State(state): State<TorrentAppState>,
     Path((id, file_id, _filename)): Path<(usize, usize, String)>,
     headers: HeaderMap,
 ) -> Result<Response, StatusCode> {

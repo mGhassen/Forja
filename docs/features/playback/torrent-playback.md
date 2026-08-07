@@ -38,9 +38,11 @@ When you play a torrent or magnet link, Forja uses the built-in torrent engine (
 - Closing Sources to pick a torrent does not abort the magnet resolve that is about to start
 - Disk cache helps on low-RAM devices for large files
 - [Debrid](../sources/debrid.md) avoids slow swarms when the torrent is already cached remotely
+- On Android TV / phone, pair with a desktop in [LAN](../settings/lan.md) to play magnets via the desktop engine (ticketed LAN URL)
 
 ## Related
 
 - [Torrent scrapers](../scrapers/torrent.md)
 - [Torrent settings](../settings/torrent-settings.md)
+- [LAN](../settings/lan.md)
 - [Magnet player](../utilities/magnet-player.md)

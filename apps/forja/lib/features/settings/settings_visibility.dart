@@ -1,4 +1,5 @@
 import 'package:forja/app/boot_needs.dart';
+import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:rust/rust.dart';
 
@@ -96,11 +97,14 @@ class SettingsVisibility {
     // Same capability AND as [BootNeeds] — Android TV caps force torrent /
     // Stremio / Nuvio off even if cloud sync wrote phone prefs into KV.
     final caps = PlatformPlayback.capabilities;
+    final lanPaired = await LanPrefs.instance.isPaired;
     return SettingsVisibility(
       playSourceTorrent:
-          caps.playSourceTorrent && await s.isPlaySourceTorrentEnabled(),
+          (caps.playSourceTorrent && await s.isPlaySourceTorrentEnabled()) ||
+          lanPaired,
       playSourceStremio:
-          caps.playSourceStremio && await s.isPlaySourceStremioEnabled(),
+          (caps.playSourceStremio && await s.isPlaySourceStremioEnabled()) ||
+          lanPaired,
       playSourceNuvio:
           caps.playSourceNuvio && await s.isPlaySourceNuvioEnabled(),
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),

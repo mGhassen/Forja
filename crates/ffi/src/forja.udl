@@ -80,6 +80,13 @@ namespace forja {
     void proxy_stop();
     u32 proxy_port();
     boolean proxy_register_route(string token, string upstream_url);
+    i32 lan_server_start(u8 bind_mode, u32 preferred_port);
+    void lan_server_stop();
+    u32 lan_server_port();
+    string lan_pairing_code_refresh();
+    boolean lan_revoke_device(string device_id);
+    string lan_devices_json();
+    string lan_browse_servers_json(u64 timeout_ms);
     string storage_open(string path);
     string storage_get_json(string key);
     string storage_set_json(string key, string value_json);

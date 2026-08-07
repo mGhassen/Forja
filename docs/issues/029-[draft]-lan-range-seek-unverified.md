@@ -34,6 +34,6 @@ This is **verification debt**, not necessarily missing engine logic. File code b
 
 ## Related
 
-- [RFC-022](../rfc/022-[draft]-lan-server-client.md) R22-A11, R22-C07
+- [RFC-022](../rfc/022-[open]-lan-server-client.md) R22-A11, R22-C07
 - [026](026-[open]-lan-stream-playback-bearer-token.md)
 - [027](027-[draft]-lan-server-client-manual-qa.md)

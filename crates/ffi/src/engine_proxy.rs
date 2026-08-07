@@ -33,6 +33,10 @@ pub fn proxy_port() -> u16 {
     PROXY_PORT.lock().map(|p| *p).unwrap_or(0)
 }
 
+pub fn proxy_state() -> Option<proxy::ProxyState> {
+    PROXY.lock().ok().map(|p| p.state.clone())
+}
+
 pub fn proxy_register_route(runtime: &Runtime, token: String, upstream_url: String) -> bool {
     runtime
         .block_on(async {

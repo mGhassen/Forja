@@ -34,6 +34,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_back_handler.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_remote_debug.dart';
+import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/catalog/tmdb_user_region.dart';
@@ -244,6 +245,8 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   _warnIfRustMissing();
   ProviderRuntimeConfig.instance.pushToRust();
   await PlatformChannel.seedPlatformDefaultsAfterEngine();
+  _wireLanPlaybackBridge();
+  unawaited(_restoreLanServerIfEnabled());
 
   await AppTheme.initTheme();
 
@@ -658,6 +661,41 @@ class _SplashScreenState extends State<SplashScreen> {
       ),
     );
   }
+}
+
+void _wireLanPlaybackBridge() {
+  LanPlaybackBridge.openMagnetOnDesktop = ({
+    required String magnet,
+    int? season,
+    int? episode,
+    int? fileIdx,
+  }) async {
+    if (!await LanPlaybackRouter.shouldPreferDesktop(
+      PlatformPlayback.capabilities,
+    )) {
+      return null;
+    }
+    final url = await LanClientService.instance.openStream(
+      kind: 'torrent',
+      magnet: magnet,
+      season: season,
+      episode: episode,
+      fileIdx: fileIdx,
+    );
+    if (url == null || url.isEmpty) return null;
+    return TorrentPlaybackUrl(
+      url,
+      fileIndex: fileIdx,
+      source: TorrentPlaybackSource.localEngine,
+      sourceLabel: 'LAN Server',
+    );
+  };
+}
+
+Future<void> _restoreLanServerIfEnabled() async {
+  if (!LanServerService.canRunServer) return;
+  if (!await LanPrefs.instance.isLanServerEnabled()) return;
+  await LanServerService.instance.start();
 }
 
 void _warnIfRustMissing() {

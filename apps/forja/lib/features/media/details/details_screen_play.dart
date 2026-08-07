@@ -144,7 +144,9 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
       return;
     }
 
-    if (_s._playSourceTorrent && _s._playbackProfile.builtinTorrentSearch) {
+    if (_s._playSourceTorrent &&
+        (_s._playbackProfile.builtinTorrentSearch ||
+            !_s._playbackProfile.localTorrentEngine)) {
       if (_s._isSearching) return;
       if (_s._allTorrentResults.isNotEmpty) {
         _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);

@@ -51,5 +51,5 @@ RFC-022 acceptance rows R22-A01–A09 and the primary ship smoke (desktop server
 
 ## Related
 
-- [RFC-022](../rfc/022-[draft]-lan-server-client.md)
+- [RFC-022](../rfc/022-[open]-lan-server-client.md)
 - [026](026-[open]-lan-stream-playback-bearer-token.md)

@@ -33,4 +33,4 @@ RFC-022 R22-A10 requires passthrough relay (no transcode) for HDR/DV/Atmos over 
 
 ## Related
 
-- [RFC-022](../rfc/022-[draft]-lan-server-client.md) R22-A10, R22-C06, §6
+- [RFC-022](../rfc/022-[open]-lan-server-client.md) R22-A10, R22-C06, §6

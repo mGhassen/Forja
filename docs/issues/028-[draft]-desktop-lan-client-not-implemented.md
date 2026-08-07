@@ -36,7 +36,7 @@
 
 ## Summary
 
-[RFC-022](../rfc/022-[draft]-lan-server-client.md) §3 and routing table row **“Desktop (client to another server)”** require a desktop to pair to a remote desktop and consume relayed streams.
+[RFC-022](../rfc/022-[open]-lan-server-client.md) §3 and routing table row **“Desktop (client to another server)”** require a desktop to pair to a remote desktop and consume relayed streams.
 
 Current design intent in code:
 
@@ -48,5 +48,5 @@ Current design intent in code:
 
 ## Related
 
-- [RFC-022](../rfc/022-[draft]-lan-server-client.md) §3, §4.2
+- [RFC-022](../rfc/022-[open]-lan-server-client.md) §3, §4.2
 - [026](026-[open]-lan-stream-playback-bearer-token.md)

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../engine_jobs.dart';
+import '../lan_playback_bridge.dart';
 import 'debrid_api.dart';
 import 'torrent_stream_service.dart';
 
@@ -105,7 +106,30 @@ Future<TorrentPlaybackUrl?> resolveMagnetForPlayback({
     return null;
   }
 
-  if (!localTorrentEngine) return null;
+  if (!localTorrentEngine) {
+    final lan = LanPlaybackBridge.openMagnetOnDesktop;
+    if (lan != null) {
+      return lan(
+        magnet: magnet,
+        season: season,
+        episode: episode,
+        fileIdx: fileIdx,
+      );
+    }
+    return null;
+  }
+
+  // Prefer paired desktop when available (phone / TV with local engine off).
+  final lan = LanPlaybackBridge.openMagnetOnDesktop;
+  if (lan != null) {
+    final viaLan = await lan(
+      magnet: magnet,
+      season: season,
+      episode: episode,
+      fileIdx: fileIdx,
+    );
+    if (viaLan != null) return viaLan;
+  }
 
   StreamSubscription<String>? statusSub;
   if (onStatus != null) {

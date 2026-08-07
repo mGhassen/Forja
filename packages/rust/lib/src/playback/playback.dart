@@ -27,6 +27,7 @@ export 'torrent/debrid_api.dart'
         isDebridAuthFailure;
 export 'stremio/stremio_stream_resolver.dart';
 export 'torrent/torrent_playback_resolver.dart';
+export 'lan_playback_bridge.dart';
 export 'providers/services/site111477_service.dart';
 export 'torrent/jackett_service.dart' hide ConnectionTestResult;
 export 'torrent/prowlarr_service.dart';

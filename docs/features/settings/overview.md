@@ -28,6 +28,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | Connected services | Trakt, Simkl, MDBlist | VOD tab |
 | [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists | VOD tab — never on Android TV |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
+| [LAN](lan.md) | Desktop server, pairing, torrent relay to phone/TV | Always |
 | [Navigation](navigation-bar.md) | Tab visibility, order, default menu | Always |
 | [About](app-updates.md) | Check for updates, crash reporting + product analytics opt-in, app version | Always |
 

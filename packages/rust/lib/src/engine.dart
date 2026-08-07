@@ -679,6 +679,26 @@ class RustLib {
         return _native.ffi_proxy_register_route(tokenPtr, urlPtr);
       });
 
+  int lanServerStart({int bindMode = 1, int preferredPort = 0}) =>
+      _native.ffi_lan_server_start(bindMode, preferredPort);
+
+  void lanServerStop() => _native.ffi_lan_server_stop();
+
+  int lanServerPort() => _native.ffi_lan_server_port();
+
+  String lanPairingCodeRefresh() =>
+      _readString(_native.ffi_lan_pairing_code_refresh());
+
+  bool lanRevokeDevice(String deviceId) => using((arena) {
+        final ptr = deviceId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _native.ffi_lan_revoke_device(ptr);
+      });
+
+  String lanDevicesJson() => _readString(_native.ffi_lan_devices_json());
+
+  String lanBrowseServersJson({int timeoutMs = 3000}) =>
+      _readString(_native.ffi_lan_browse_servers_json(timeoutMs));
+
   String seek111477StartJson(String json) => using((arena) {
         final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_seek111477_start_json(ptr));
@@ -1189,6 +1209,41 @@ final class _FfiNative {
               'ffi_proxy_register_route',
             )
             .asFunction(),
+        ffi_lan_server_start = lib
+            .lookup<ffi.NativeFunction<_LanServerStartNative>>(
+              'ffi_lan_server_start',
+            )
+            .asFunction(),
+        ffi_lan_server_stop = lib
+            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+              'ffi_lan_server_stop',
+            )
+            .asFunction(),
+        ffi_lan_server_port = lib
+            .lookup<ffi.NativeFunction<_ProxyPortNative>>(
+              'ffi_lan_server_port',
+            )
+            .asFunction(),
+        ffi_lan_pairing_code_refresh = lib
+            .lookup<ffi.NativeFunction<_VersionNative>>(
+              'ffi_lan_pairing_code_refresh',
+            )
+            .asFunction(),
+        ffi_lan_revoke_device = lib
+            .lookup<ffi.NativeFunction<_TorrentStartNative>>(
+              'ffi_lan_revoke_device',
+            )
+            .asFunction(),
+        ffi_lan_devices_json = lib
+            .lookup<ffi.NativeFunction<_VersionNative>>(
+              'ffi_lan_devices_json',
+            )
+            .asFunction(),
+        ffi_lan_browse_servers_json = lib
+            .lookup<ffi.NativeFunction<_LanBrowseNative>>(
+              'ffi_lan_browse_servers_json',
+            )
+            .asFunction(),
         ffi_seek111477_start_json = lib
             .lookup<ffi.NativeFunction<_Seek111477JsonNative>>(
               'ffi_seek111477_start_json',
@@ -1465,6 +1520,13 @@ final class _FfiNative {
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
   ) ffi_proxy_register_route;
+  final int Function(int, int) ffi_lan_server_start;
+  final void Function() ffi_lan_server_stop;
+  final int Function() ffi_lan_server_port;
+  final ffi.Pointer<ffi.Char> Function() ffi_lan_pairing_code_refresh;
+  final bool Function(ffi.Pointer<ffi.Char>) ffi_lan_revoke_device;
+  final ffi.Pointer<ffi.Char> Function() ffi_lan_devices_json;
+  final ffi.Pointer<ffi.Char> Function(int) ffi_lan_browse_servers_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_seek111477_start_json;
   final void Function() ffi_seek111477_stop;
@@ -1588,6 +1650,8 @@ typedef _ProxyRegisterNative = ffi.Bool Function(
   ffi.Pointer<ffi.Char>,
   ffi.Pointer<ffi.Char>,
 );
+typedef _LanServerStartNative = ffi.Int32 Function(ffi.Uint8, ffi.Uint16);
+typedef _LanBrowseNative = ffi.Pointer<ffi.Char> Function(ffi.Uint64);
 typedef _Seek111477JsonNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,
 );

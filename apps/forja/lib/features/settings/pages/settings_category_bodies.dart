@@ -15,6 +15,7 @@ import 'package:forja/features/settings/sections/settings_cache_data_section.dar
 import 'package:forja/features/settings/sections/settings_debrid_section.dart';
 import 'package:forja/features/settings/sections/settings_forja_account_panel.dart';
 import 'package:forja/features/settings/sections/settings_iptv_portals_section.dart';
+import 'package:forja/features/settings/sections/lan_settings_section.dart';
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
 import 'package:forja/features/settings/sections/settings_playback_section.dart';
 import 'package:forja/features/settings/sections/settings_provider_scoring_section.dart';
@@ -59,6 +60,8 @@ Widget buildSettingsCategoryBody(
       return const ListsScreen(embedded: true);
     case SettingsCategoryId.data:
       return SettingsDataPageBody(visibility: visibility);
+    case SettingsCategoryId.lan:
+      return const LanSettingsSection();
     case SettingsCategoryId.navigation:
       return const SettingsNavigationPageBody();
     case SettingsCategoryId.about:

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 2** fix · **0 / 2** acceptance |
+| **Progress** | **1 / 2** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -19,8 +19,8 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I26-T01 | Return auth headers (or signed play URL) from `POST /open`; propagate through `LanClientService` → `StremioPlayable` / player `Media(httpHeaders: …)` | ⬜ |
-| 2 | I26-T02 | Manual smoke: paired phone plays torrent stream from desktop LAN server (no 401 on `/torrents/…` or `/proxy/…`) | ⬜ |
+| 1 | I26-T01 | Mint short-lived stream ticket on `POST /open`; append `?st=` to `play_url`; validate ticket on media GETs (not Bearer) | ✅ |
+| 2 | I26-T02 | Manual smoke: paired phone/ATV plays torrent stream from desktop LAN server (no 401 on `/torrents/…` or `/proxy/…`) | ⬜ |
 
 ---
 
@@ -28,26 +28,24 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I26-A01 | After pair, magnet play on mobile client reaches first frame without HTTP 401 on stream GET | ⬜ |
-| 2 | I26-A02 | Proxy-gated relay (e.g. 111477) plays on client when desktop serves | ⬜ |
+| 1 | I26-A01 | After pair, magnet play on mobile/ATV client reaches first frame without HTTP 401 on stream GET | ⬜ |
+| 2 | I26-A02 | Proxy-gated relay plays on client when desktop serves | ⬜ |
 
 ---
 
 ## Summary
 
-[RFC-022](../rfc/022-[draft]-lan-server-client.md) token-gates LAN stream routes (`/torrents/…`, `/proxy/…`) with Bearer auth. `LanClientService.openStream` sends the token on `POST /open` only; the returned `play_url` is opened by media_kit **without** `Authorization`. Stream GETs fail with 401 even when pairing succeeds.
+[RFC-022](../rfc/022-[open]-lan-server-client.md) token-gates LAN stream routes (`/torrents/…`, `/proxy/…`). Early designs used Bearer on every GET; media_kit / ExoPlayer often cannot attach `Authorization` to media requests, so stream GETs 401 even when pairing succeeds.
 
-**Symptom fix (wrong):** disable auth on stream routes — do not ship; LAN exposure must stay token-gated per RFC-022 §8.
+**Symptom fix (wrong):** disable auth on stream routes — do not ship.
 
-**Root fix:** one of:
+**Root fix (shipped in code — I26-T01):** `POST /open` mints a short-lived stream ticket; `play_url` includes `?st=…` (also `X-Forja-Stream-Ticket`). Control plane keeps Bearer device tokens. Media middleware validates the ticket only.
 
-- Include `Authorization: Bearer …` (or equivalent) in `OpenResponse.headers` and wire through player open path
-- Short-lived signed query token on play URLs (no custom headers in mpv)
-- Path-embedded stream token validated by gateway middleware
+**Still open:** I26-T02 / I26-A* manual smoke.
 
-**Blocks:** RFC-022 R22-A07, R22-A08 until fixed.
+**Blocks:** RFC-022 R22-A07, R22-A08, R22-A13 until smoke passes.
 
 ## Related
 
-- [RFC-022](../rfc/022-[draft]-lan-server-client.md)
+- [RFC-022](../rfc/022-[open]-lan-server-client.md)
 - [027](027-[draft]-lan-server-client-manual-qa.md) — full acceptance matrix

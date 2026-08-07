@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
@@ -492,10 +493,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final prowlarr = await _settings.isProwlarrConfigured();
     final enabledProviders = await _settings.getEnabledTorrentProviders();
     final caps = PlatformPlayback.capabilities;
-    final torrentOn = caps.playSourceTorrent &&
-        await _settings.isPlaySourceTorrentEnabled();
-    final stremioOn = caps.playSourceStremio &&
-        await _settings.isPlaySourceStremioEnabled();
+    final lanPaired = await LanPrefs.instance.isPaired;
+    final torrentOn =
+        (caps.playSourceTorrent && await _settings.isPlaySourceTorrentEnabled()) ||
+        lanPaired;
+    final stremioOn =
+        (caps.playSourceStremio && await _settings.isPlaySourceStremioEnabled()) ||
+        lanPaired;
     final nuvioOn =
         caps.playSourceNuvio && await _settings.isPlaySourceNuvioEnabled();
     final local = _profile.localTorrentEngine;

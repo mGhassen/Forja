@@ -501,11 +501,15 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   bool get _panelShowTorrent =>
       _playSourceTorrent &&
-      _playbackProfile.builtinTorrentSearch &&
-      _playbackProfile.playSourceTorrent;
+      ((_playbackProfile.playSourceTorrent &&
+              _playbackProfile.builtinTorrentSearch) ||
+          // Paired LAN client (ATV): settings already gated torrent on.
+          (!_playbackProfile.localTorrentEngine && _playSourceTorrent));
 
   bool get _panelShowStremio =>
-      _playSourceStremio && _playbackProfile.playSourceStremio;
+      _playSourceStremio &&
+      (_playbackProfile.playSourceStremio ||
+          (!_playbackProfile.localTorrentEngine && _playSourceStremio));
 
   bool get _panelShowNuvio =>
       _playSourceNuvio &&

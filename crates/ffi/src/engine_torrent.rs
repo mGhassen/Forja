@@ -1,11 +1,16 @@
 use torrent::TorrentEngine;
-use std::sync::{LazyLock, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 
 /// Engine is internally synchronized (`TorrentEngine.inner`). Do **not** wrap
 /// long `stream_magnet` / `list_files` calls in an outer mutex — that blocked
 /// `status_json` (and the next play) for the whole magnet/head wait.
-static TORRENT: LazyLock<TorrentEngine> = LazyLock::new(TorrentEngine::new);
+static TORRENT: LazyLock<Arc<TorrentEngine>> =
+    LazyLock::new(|| Arc::new(TorrentEngine::new()));
 static LAST_ENGINE_ERROR: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
+
+pub fn shared_torrent_engine() -> Arc<TorrentEngine> {
+    TORRENT.clone()
+}
 
 fn set_last_error(msg: &str) {
     if let Ok(mut err) = LAST_ENGINE_ERROR.lock() {

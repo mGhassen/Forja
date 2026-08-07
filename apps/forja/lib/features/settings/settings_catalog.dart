@@ -11,6 +11,7 @@ abstract final class SettingsCategoryId {
   static const accounts = 'accounts';
   static const lists = 'lists';
   static const data = 'data';
+  static const lan = 'lan';
   static const navigation = 'navigation';
   static const about = 'about';
 
@@ -23,6 +24,7 @@ abstract final class SettingsCategoryId {
     accounts,
     lists,
     data,
+    lan,
     navigation,
     about,
   ];
@@ -114,6 +116,12 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
         subtitle: 'Clear cache, export, import',
         icon: Icons.folder_outlined,
       ),
+    const SettingsCategoryMeta(
+      id: SettingsCategoryId.lan,
+      title: 'LAN',
+      subtitle: 'Desktop server, pairing, torrent relay',
+      icon: Icons.lan_outlined,
+    ),
     const SettingsCategoryMeta(
       id: SettingsCategoryId.navigation,
       title: 'Features',
