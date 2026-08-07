@@ -11,20 +11,25 @@ import { portalKey } from './types'
 const URL_PARAM = /(https?:\/\/[^?\s"'<]+)\?([^\s"'<)\]]*)/gi
 
 const LABEL_HOST_FIRST =
-  /(?:(?:🔗|🌍|🌐)\s*)?(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Server|S[ᴇe]rv[ᴇe]r|ꜱᴇʀᴠᴇʀ|URL)\W+(https?:\/\/[^<\s"']+).{1,500}?(?:(?:👤|👑)\s*)?(?<![?&\w])(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\W+([^\s|<"'\n&]+).{1,200}?(?:(?:🔑|🔐)\s*)?(?<![?&\w])(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\W+([^\s|<"'\n&]+)/gis
+  /(?:(?:🔗|🌍|🌐|📡)\s*)?(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Server|Servidor|S[ᴇe]rv[ᴇe]r|ꜱᴇʀᴠᴇʀ|URL)\W+(https?:\/\/[^<\s"']+).{1,160}?(?:(?:👤|👑)\s*)?(?<![?&\w])(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\W+([^\s|<"'\n&]+).{1,80}?(?:(?:🔑|🔐|🔒)\s*)?(?<![?&\w])(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\W+([^\s|<"'\n&]+)/gis
 
 const LABEL_USER_FIRST =
-  /(?:(?:👤|👑)\s*)?(?<![?&\w])(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\W+([^\s|<"'\n&]+).{1,400}?(?:(?:🔑|🔐)\s*)?(?<![?&\w])(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\W+([^\s|<"'\n&]+).{1,400}?(?:(?:🔗|🌍|🌐)\s*)?(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Server|S[ᴇe]rv[ᴇe]r|ꜱᴇʀᴠᴇʀ|URL)\W+(https?:\/\/[^<\s"']+)/gis
+  /(?:(?:👤|👑)\s*)?(?<![?&\w])(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\W+([^\s|<"'\n&]+).{1,80}?(?:(?:🔑|🔐|🔒)\s*)?(?<![?&\w])(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\W+([^\s|<"'\n&]+).{1,120}?(?:(?:🔗|🌍|🌐|📡)\s*)?(?:Portal|Host(?:\s*URL)?|H[ᴏo]s[ᴛt]|Panel|Server|Servidor|S[ᴇe]rv[ᴇe]r|ꜱᴇʀᴠᴇʀ|URL)\W+(https?:\/\/[^<\s"']+)/gis
 
 /**
  * IPTV_ZONENEW status cards: `🔗 http://…` then later `👤 USERNAME :` / `🔑 PASSWORD :`.
- * Emoji on the link is enough — no Host/URL word required.
+ * Also `🌍 SERVIDOR: http://…` (label between emoji and URL).
  */
-const EMOJI_LINK = /(?:🔗|🌍|🌐)\s*(https?:\/\/[^\s<"']+)/gi
+const EMOJI_LINK =
+  /(?:🔗|🌍|🌐|📡)\s*(?:(?:SERVIDOR|Servidor|Host|Server|Portal|URL)\s*[:=]\s*)?(https?:\/\/[^\s<"']+)/gi
+
+/** Bare get.php lines (sometimes missing 🔗 after Telegram glue). */
+const GET_PHP_URL =
+  /(https?:\/\/[^?\s<"']+\?[^?\s<"']*?[?&](?:username|user)=[^&\s<"']+[^?\s<"']*)/gi
 
 /** Emoji-required so we never match `username=` inside get.php query strings. */
 const EMOJI_CREDS =
-  /(?:👤|👑)\s*(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\s*[:=]\s*([^\s|<"'\n]+)[\s\S]{0,240}?(?:🔑|🔐)\s*(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\s*[:=]\s*([^\s|<"'\n]+)/gi
+  /(?:👤|👑)\s*(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\s*[:=]\s*([^\s|<"'\n]+)[\s\S]{0,240}?(?:🔑|🔐|🔒)\s*(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\s*[:=]\s*([^\s|<"'\n]+)/gi
 
 const TABLE_LINE =
   /^[^\S\n]*((?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})):([1-9]\d{1,4})[^\S\n]+([A-Za-z0-9._@+-]{3,64}):(\S{3,64})([^\n]*)/gim
@@ -51,13 +56,46 @@ const LABELED_PLAYLIST_URL =
 
 /**
  * Stalker / Ministra MAC lines.
- * Accepts `mac=…`, `MAC: …`, `MAC Addr: …`, `Mac Address: …`.
+ * Accepts `mac=…`, `MAC: …`, `MAC Addr: …`, Hit Hunter smallcaps `ᴍᴀᴄ : …`.
  */
 const STALKER_MAC =
-  /mac(?:\s*addr(?:ess)?)?\s*[=:]\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})/gi
+  /(?:ᴍᴀᴄ|mac)(?:\s*addr(?:ess)?)?\s*[=:]\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})/gi
 
 const STALKER_PORTAL =
   /(https?:\/\/[^<\s"']+?(?:\/c\/?(?=[?\s"'<]|$)|\/portal\.php(?:[^\s"'<]*)?|\/stalker_portal[^<\s"']*))/gi
+
+/** Hit Hunter / Ishiro cards — smallcaps labels, MAC → EXP → PORTAL order. */
+const HH_MAC_LINE =
+  /(?:🔌\s*)?(?:ᴍᴀᴄ|MAC)\s*:\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})/i
+const HH_PORTAL_LINE =
+  /(?:🌐\s*)?(?:ᴘᴏʀᴛᴀʟ|PORTAL|Portal)\s*:\s*(https?:\/\/[^\s\n]+)/i
+const HH_EXP_LINE =
+  /(?:📅\s*)?(?:ᴇxᴘɪʀᴀᴛɪᴏɴ|EXPIRATION|Expiration|Exp(?:iry|ired)?(?:\s*date|\s*on)?)\s*:\s*([^\n]+)/i
+const HH_TZ_LINE =
+  /(?:🕰️\s*)?(?:ᴛɪᴍᴇᴢᴏɴᴇ|TIMEZONE|Timezone|Time\s*zone)\s*:\s*([^\n]+)/i
+const HH_COUNTRY_LINE =
+  /(?:🌍\s*)?(?:ᴄᴏᴜɴᴛʀʏ|COUNTRY|Country)\s*:\s*([^\n]+)/i
+
+/**
+ * KC night-owl / math-sans dumps (after foldMathSansSerif):
+ * `PANEL ✦:➤ http://host/c/` + `MAC ✦: ➤ …` + `EXPIRES ✦: Month D, YYYY…`
+ * Also tolerates truncated `ANEL` label.
+ */
+const KC_SEP = String.raw`[✦:=➤\s]+`
+const KC_PANEL_LINE = new RegExp(
+  String.raw`(?:PANEL|Portal|ANEL)\s*${KC_SEP}(https?:\/\/[^\s]+)`,
+  'i',
+)
+const KC_MAC_LINE = new RegExp(
+  String.raw`(?:❀+\s*)?(?:✦\s*)?MAC\s*${KC_SEP}((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})`,
+  'i',
+)
+const KC_EXPIRES_LINE = new RegExp(
+  String.raw`(?:❀+\s*)?(?:✦\s*)?EXPIRES\s*${KC_SEP}([^\n]+)`,
+  'i',
+)
+
+const MAC_ADDR_RE = /^(?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}$/
 
 const BLOCK_TAGS = /<(?:p|br|div|li|h\d)[^>]*>/gi
 const ANY_TAG = /<[^>]+>/g
@@ -66,13 +104,14 @@ const ANGLE_URL = /<(https?:\/\/[^>\s]+)>/gi
 const PATH_SUFFIX =
   /\/(?:get|live|portal|c|index|playlist|player_api|xmltv|index\.php|portal\.php)\.php$/i
 
-const MAXCONN_RE = /(?:👥\s*)?MAXCONN\s*[:=]\s*(\d+)/i
+const MAXCONN_RE =
+  /(?:👥|⏳|🔝\s*)?(?:MAXCONN|Max\s*conn(?:ections?)?|CONEX(?:ÕES|OES|ões))\s*[:=]\s*(\d+)/i
 const OUTPUTS_RE =
-  /(?:📺\s*)?Allowed\s*Outputs?\s*[:=]\s*([^\n\r]+)/i
+  /(?:📺|✅\s*)?Allowed\s*(?:Outputs?|formats?)\s*[:=]\s*(\[[^\]]*\]|[^\n\r⏱]+)/i
 const EXPIRED_RE = /(?:📆\s*)?Expired\s*on\s*[:=]\s*([^\n\r]+)/i
-/** Stalker / dump cards: `Exp date: April 27, 2027, 2:00 pm` or `Expiry: …`. */
+/** Stalker / dump cards: `Exp date: …`, `Expire date: …`, PT `VALIDADE: …`. */
 const EXP_DATE_RE =
-  /(?:📆\s*)?Exp(?:iry|ired)?(?:\s*date|\s*on)?\s*[:=]\s*([^\n\r]+)/i
+  /(?:📆|📅\s*)?(?:Exp(?:ire[ds]?|iry)?(?:\s*date|\s*on)?|VALIDADE)\s*[:=]\s*([^\n\r]+)/i
 const REGION_HINT_RE =
   /(?:mainly|mostly|focus|region)\s*[:\-]?\s*([^\n\r]{2,80})/i
 
@@ -87,17 +126,36 @@ const JUNK_CRED =
 const DUMP_CRED_LINE =
   /^([A-Za-z0-9@._+-]{3,64})\s+(\S{3,64})(?:\s+\d+\s*G[uü]n)?(?:\s*\([^)]*Biti[sş]:\s*(\d{1,2}\/\d{1,2}\/\d{4})[^)]*\))?/i
 
-/** `Portal : http://…/c/` + `MAC Addr:` + optional `Exp date:` card. */
+/** `Portal : http://…/c/` + `MAC Addr:` / `🔑 MAC:` + optional `Exp date:` card. */
 const STALKER_CARD =
-  /Portal\s*:\s*(https?:\/\/[^\s\n]+)[\t ]*\n[\t ]*MAC\s*Addr(?:ess)?\s*:\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})(?:[\t ]*\n[\t ]*Exp(?:iry|ired)?\s*date\s*:\s*([^\n]+))?/gi
+  /Portal\s*:\s*(https?:\/\/[^\s\n]+)[\t ]*\n[\t ]*(?:🔑\s*)?MAC(?:\s*Addr(?:ess)?)?\s*:\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})(?:[\t ]*\n[\s\S]{0,300}?Exp(?:ire[ds]?|iry)?(?:\s*date|\s*on)?\s*:\s*([^\n]+))?/gi
 
 /**
- * MAC-checker HIT lines (pipe-separated):
+ * MAC-checker / pipe dumps:
  * `[19:18:51] ✅ HIT: http://host:80 | 00:1A:79:… | Expires on February 16, 2027, 7:51 pm`
+ * `http://host | 00:1A:79:… | Expires on November 22, 2027, 12:00 am`  (HIT: optional)
  * Portal may be bare host:port (no `/c/`). Expiry clause optional.
  */
 const STALKER_HIT_LINE =
-  /(?:✅\s*)?HIT:\s*(https?:\/\/[^\s|]+)\s*\|\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})(?:\s*\|\s*Expires\s+on\s+([^\n|]+))?/gi
+  /(?:(?:✅\s*)?HIT:\s*)?(https?:\/\/[^\s|]+)\s*\|\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})(?:\s*\|\s*Expires\s+on\s+([^\n|]+))?/gi
+
+/**
+ * MAC Raider / KC cards (math-bold folded to ASCII):
+ * `Host  ➩ http://host/c/` + `ExpDate ➩ …` + `MAC  ➩ 00:1A:79:…`
+ */
+const RAIDER_SEP = String.raw`[➩:>\-✦═\s]+`
+const RAIDER_HOST_LINE = new RegExp(
+  String.raw`(?:Host|Portal)\s*${RAIDER_SEP}(https?:\/\/[^\s]+)`,
+  'i',
+)
+const RAIDER_MAC_LINE = new RegExp(
+  String.raw`MAC(?:\s*Addr(?:ess)?)?\s*${RAIDER_SEP}((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})`,
+  'i',
+)
+const RAIDER_EXP_LINE = new RegExp(
+  String.raw`Exp(?:Date|iry|ires|ired)?(?:\s*date|\s*on)?\s*${RAIDER_SEP}([^\n]+)`,
+  'i',
+)
 
 /**
  * Scan dumps: portal URL alone, then lines
@@ -150,11 +208,39 @@ type CardMeta = {
 
 function cleanHtmlish(raw: string): string {
   const s = raw.replaceAll('&amp;', '&').replaceAll('&quot;', '"')
-  return s
-    .replace(MARKDOWN_LINK, '$2')
-    .replace(ANGLE_URL, '$1')
-    .replace(BLOCK_TAGS, '\n')
-    .replace(ANY_TAG, '')
+  return foldMathAlnum(
+    s
+      .replace(MARKDOWN_LINK, '$2')
+      .replace(ANGLE_URL, '$1')
+      .replace(BLOCK_TAGS, '\n')
+      .replace(ANY_TAG, ''),
+  )
+}
+
+/**
+ * Mathematical Alphanumeric Symbols (U+1D400–U+1D7FF) → ASCII.
+ * Covers bold/italic/sans/mono Latin used in Telegram portal cards.
+ */
+function foldMathAlnum(s: string): string {
+  return s.replace(/[\u{1D400}-\u{1D7FF}]/gu, (ch) => {
+    const cp = ch.codePointAt(0)!
+    for (const start of [0x1d7ce, 0x1d7d8, 0x1d7e2, 0x1d7ec, 0x1d7f6]) {
+      if (cp >= start && cp <= start + 9) {
+        return String.fromCharCode(48 + (cp - start))
+      }
+    }
+    // Contiguous A–Z/a–z styles (skip script/fraktur/double-struck holes).
+    for (const start of [
+      0x1d400, 0x1d434, 0x1d468, 0x1d4d0, 0x1d56c, 0x1d5a0, 0x1d5d4, 0x1d608,
+      0x1d63c, 0x1d670,
+    ]) {
+      const off = cp - start
+      if (off >= 0 && off < 52) {
+        return String.fromCharCode(off < 26 ? 65 + off : 97 + (off - 26))
+      }
+    }
+    return ch
+  })
 }
 
 function isJunkCode(text: string): boolean {
@@ -237,6 +323,14 @@ function isMacBridgePass(pass: string): boolean {
   return lp.includes('live.php') || lp.includes('mac=') || lp.startsWith('live.')
 }
 
+/** `live.php?mac=00:1A:79:…` (nested qs inside get.php password=). */
+function macFromBridgePass(rawPass: string): string | null {
+  const m =
+    /mac=((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})/i.exec(rawPass)
+  if (!m?.[1]) return null
+  return m[1].toUpperCase().replace(/-/g, ':')
+}
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -276,11 +370,23 @@ export function parseNoteFileMeta(rawText: string): FileMeta {
 
 function parseCardMeta(block: string): CardMeta {
   const max = MAXCONN_RE.exec(block)?.[1]?.trim() ?? null
-  const allowed = OUTPUTS_RE.exec(block)?.[1]?.trim() ?? null
-  const expiredRaw =
+  let allowed = OUTPUTS_RE.exec(block)?.[1]?.trim() ?? null
+  if (allowed) {
+    // `[‘m3u8’, ‘ts’, ‘rtmp’]` → m3u8,ts,rtmp
+    const listed = [...allowed.matchAll(/[a-z0-9]+/gi)].map((m) => m[0])
+    if (listed.length > 0 && /\[/.test(allowed)) {
+      allowed = listed.join(',')
+    } else {
+      allowed = allowed.replace(/\s+/g, '').replace(/,+$/, '')
+    }
+  }
+  let expiredRaw =
     EXPIRED_RE.exec(block)?.[1]?.trim() ??
     EXP_DATE_RE.exec(block)?.[1]?.trim() ??
     null
+  if (expiredRaw) {
+    expiredRaw = expiredRaw.replace(/\s+\d+\s+Days?\s*$/i, '').trim()
+  }
   const expiry = expiredRaw ? formatPortalExpiry(expiredRaw) : null
   return {
     maxConnections: max,
@@ -358,7 +464,11 @@ function cardBlockForUser(cleaned: string, username: string): string {
     `(?:👤|👑)\\s*(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\\s*[:=]\\s*${escapeRegExp(username)}\\b[\\s\\S]{0,700}`,
     'i',
   )
-  return re.exec(cleaned)?.[0] ?? ''
+  const hit = re.exec(cleaned)?.[0] ?? ''
+  if (!hit) return ''
+  // Don't bleed Allowed Outputs / Expired on from the next Telegram card.
+  const cut = hit.search(/\n(?:🔗|📡|🌐|🌍|Portal\s*:)/i)
+  return cut >= 0 ? hit.slice(0, cut) : hit
 }
 
 function mergePortalMeta(
@@ -404,11 +514,12 @@ function finalizeXtreamOrM3u(
   fileMeta?: FileMeta,
 ) {
   const url = cleanPortalUrl(rawUrl)
+  if (!url) return
+
+  // Pull MAC before cleanCred — it splits on `?` and would drop `?mac=…`.
+  const bridgeMac = macFromBridgePass(rawPass)
   const username = cleanCred(rawUser)
   const password = cleanCred(rawPass)
-  if (!url || username.length < 1 || password.length < 1) return
-  if (isJunkCred(username) || isJunkCred(password)) return
-  if (username.includes('http') || password.includes('http')) return
 
   const region = fileMeta?.region
   const allowed = meta?.allowedOutputs ?? null
@@ -428,15 +539,33 @@ function finalizeXtreamOrM3u(
         : region?.confidence,
   }
 
-  // MAC-bridge fake M3U → stalker, keep it.
-  if (
+  // MAC-bridge fake M3U (`play` + `live.php?mac=…`) → stalker with MAC username.
+  const isBridge =
+    Boolean(bridgeMac) ||
+    isMacBridgePass(rawPass) ||
     isMacBridgePass(password) ||
     (username.toLowerCase() === 'play' &&
       (password.toLowerCase().includes('live') ||
-        password.toLowerCase().includes('mac')))
-  ) {
+        password.toLowerCase().includes('mac') ||
+        /live\.php/i.test(rawPass)))
+  if (isBridge) {
+    if (bridgeMac) {
+      put(acc, {
+        url: stalkerPortalUrl(url),
+        username: bridgeMac,
+        password: '',
+        source,
+        platform: 'stalker',
+        type,
+        output,
+        ...shared,
+      })
+      return
+    }
+    if (username.length < 1 || password.length < 1) return
+    if (isJunkCred(username) || isJunkCred(password)) return
     put(acc, {
-      url,
+      url: stalkerPortalUrl(url),
       username,
       password,
       source,
@@ -448,12 +577,19 @@ function finalizeXtreamOrM3u(
     return
   }
 
+  if (username.length < 1 || password.length < 1) return
+  if (isJunkCred(username) || isJunkCred(password)) return
+  if (username.includes('http') || password.includes('http')) return
+
   const lu = url.toLowerCase()
   if (lu.endsWith('/c') || lu.includes('/c/')) {
+    // Mag /c/ portals take MAC usernames — reject xtream user/pass glued on
+    // via LABEL_* after math-sans `PANEL` folds to ASCII `Panel`.
+    if (!MAC_ADDR_RE.test(username)) return
     put(acc, {
       url,
-      username,
-      password,
+      username: username.toUpperCase().replace(/-/g, ':'),
+      password: '',
       source,
       platform: 'stalker',
       type,
@@ -575,6 +711,12 @@ function extractEmojiLinkCards(
     if (m.index == null || !m[1]) continue
     marks.push({ kind: 'url', index: m.index, url: m[1] })
   }
+  // Telegram sometimes strips the 🔗 — still treat get.php as a URL mark so
+  // the following 👤/🔑 card doesn't glue onto the previous host.
+  for (const m of cleaned.matchAll(GET_PHP_URL)) {
+    if (m.index == null || !m[1]) continue
+    marks.push({ kind: 'url', index: m.index, url: m[1] })
+  }
   for (const m of cleaned.matchAll(EMOJI_CREDS)) {
     if (m.index == null || !m[1] || !m[2]) continue
     marks.push({
@@ -597,7 +739,11 @@ function extractEmojiLinkCards(
     const q = parseQuery(
       lastUrl.includes('?') ? (lastUrl.split('?')[1] ?? '') : '',
     )
-    const block = cleaned.slice(Math.max(0, mark.index - 80), mark.end + 500)
+    const urlUser = q.username || q.user || ''
+    if (urlUser && urlUser !== mark.user) continue
+    const block =
+      cardBlockForUser(cleaned, mark.user) ||
+      cleaned.slice(Math.max(0, mark.index - 80), mark.end + 200)
     const card = parseCardMeta(block)
     finalizeXtreamOrM3u(
       acc,
@@ -725,11 +871,74 @@ export function extractPortals(
 
   extractEmojiLinkCards(cleaned, acc, source, fileMeta)
   extractPortalDumpLines(cleaned, acc, source, fileMeta)
+  extractPathCredUrls(cleaned, acc, source, fileMeta)
   extractM3uPlaylistUrls(cleaned, acc, source, fileMeta)
   enrichPortalsFromCards(cleaned, acc, fileMeta)
   extractStalkerPortals(cleaned, acc, source, fileMeta)
 
   return [...acc.values()]
+}
+
+/**
+ * Path-style Xtream lines (no get.php query):
+ * `http://host:port/user/pass`
+ * `http://host/live/user/pass` (also movie/series)
+ */
+function extractPathCredUrls(
+  cleaned: string,
+  acc: Map<string, ExtractedPortal>,
+  source: string,
+  fileMeta: FileMeta,
+) {
+  for (const line of cleaned.split(/\n/)) {
+    const trimmed = line.trim().replace(/[.,;]+$/, '')
+    if (!/^https?:\/\//i.test(trimmed)) continue
+    if (/[?&](?:username|user)=/i.test(trimmed)) continue
+    if (/\/(?:get|player_api|xmltv|portal)\.php/i.test(trimmed)) continue
+    if (/\/c\/?$/i.test(trimmed) || /stalker_portal/i.test(trimmed)) continue
+    if (/\.(?:m3u8?|m3u)(?:$|\?)/i.test(trimmed)) continue
+
+    let parsed: URL
+    try {
+      parsed = new URL(trimmed)
+    } catch {
+      continue
+    }
+    let segs = parsed.pathname.split('/').filter(Boolean)
+    if (
+      segs.length === 3 &&
+      /^(?:live|movie|series)$/i.test(segs[0] ?? '')
+    ) {
+      segs = segs.slice(1)
+    }
+    if (segs.length !== 2) continue
+
+    let user = segs[0] ?? ''
+    let pass = segs[1] ?? ''
+    try {
+      user = decodeURIComponent(user)
+      pass = decodeURIComponent(pass)
+    } catch {
+      // keep raw
+    }
+    if (user.length < 2 || pass.length < 2) continue
+    if (isJunkCred(user) || isJunkCred(pass)) continue
+    if (/\.(?:php|html?|js|css|json|xml|ts|m3u8?)$/i.test(pass)) continue
+    if (user.includes('http') || pass.includes('http')) continue
+
+    const portalUrl = `${parsed.protocol}//${parsed.host}`
+    finalizeXtreamOrM3u(
+      acc,
+      portalUrl,
+      user,
+      pass,
+      source,
+      '',
+      '',
+      undefined,
+      fileMeta,
+    )
+  }
 }
 
 /**
@@ -837,6 +1046,148 @@ function extractPortalDumpLines(
 }
 
 /**
+ * Hit Hunter / Ishiro dump cards:
+ * `├● 🔌 ᴍᴀᴄ : …` then nearby `ᴇxᴘɪʀᴀᴛɪᴏɴ` / `ᴘᴏʀᴛᴀʟ` / `ᴛɪᴍᴇᴢᴏɴᴇ`.
+ */
+function extractHitHunterStalkerCards(
+  cleaned: string,
+  acc: Map<string, ExtractedPortal>,
+  source: string,
+  pairedMacs: Set<string>,
+  pairedPortals: Set<string>,
+) {
+  const lines = cleaned.split(/\n/)
+  for (let i = 0; i < lines.length; i++) {
+    const macM = HH_MAC_LINE.exec(lines[i] ?? '')
+    if (!macM?.[1]) continue
+    const mac = macM[1].toUpperCase().replace(/-/g, ':')
+    if (pairedMacs.has(mac)) continue
+
+    const window = lines.slice(i, Math.min(lines.length, i + 16)).join('\n')
+    const portalRaw = HH_PORTAL_LINE.exec(window)?.[1]
+    if (!portalRaw) continue
+    const portalUrl = stalkerPortalUrl(portalRaw)
+    if (!portalUrl) continue
+
+    const expiryRaw = HH_EXP_LINE.exec(window)?.[1]?.trim() ?? null
+    const expiry = expiryRaw ? formatPortalExpiry(expiryRaw) : null
+    const timezone = HH_TZ_LINE.exec(window)?.[1]?.trim() || null
+    const country = HH_COUNTRY_LINE.exec(window)?.[1]?.trim() || ''
+    const region = timezone
+      ? classifyRegion(timezone, country ? [country] : [])
+      : country
+        ? classifyRegionFromNote(country)
+        : undefined
+
+    pairedMacs.add(mac)
+    pairedPortals.add(portalUrl)
+    put(acc, {
+      url: portalUrl,
+      username: mac,
+      password: '',
+      source,
+      platform: 'stalker',
+      type: '',
+      output: '',
+      expiry,
+      timezone,
+      regionPrimary: region?.primary,
+      regionTags: region?.tags,
+      regionConfidence: region?.confidence,
+    })
+  }
+}
+
+/**
+ * KC night-owl PANEL/MAC/EXPIRES cards (math-sans folded to ASCII).
+ * Portal line first, then MAC + EXPIRES in the next few lines.
+ */
+function extractKcPanelStalkerCards(
+  cleaned: string,
+  acc: Map<string, ExtractedPortal>,
+  source: string,
+  pairedMacs: Set<string>,
+  pairedPortals: Set<string>,
+) {
+  const lines = cleaned.split(/\n/)
+  for (let i = 0; i < lines.length; i++) {
+    const panelM = KC_PANEL_LINE.exec(lines[i] ?? '')
+    if (!panelM?.[1]) continue
+    const portalUrl = stalkerPortalUrl(panelM[1])
+    if (!portalUrl) continue
+
+    const window = lines.slice(i, Math.min(lines.length, i + 6)).join('\n')
+    const macRaw = KC_MAC_LINE.exec(window)?.[1]
+    if (!macRaw) continue
+    const mac = macRaw.toUpperCase().replace(/-/g, ':')
+    if (pairedMacs.has(mac)) continue
+
+    let expiryRaw = KC_EXPIRES_LINE.exec(window)?.[1]?.trim() ?? null
+    if (expiryRaw) {
+      expiryRaw = expiryRaw.replace(/\s+\d+\s+Days?\s*$/i, '').trim()
+    }
+    const expiry = expiryRaw ? formatPortalExpiry(expiryRaw) : null
+
+    pairedMacs.add(mac)
+    pairedPortals.add(portalUrl)
+    put(acc, {
+      url: portalUrl,
+      username: mac,
+      password: '',
+      source,
+      platform: 'stalker',
+      type: '',
+      output: '',
+      expiry,
+    })
+  }
+}
+
+/**
+ * MAC Raider cards: Host/Portal ➩ url, ExpDate ➩ …, MAC ➩ …
+ */
+function extractMacRaiderStalkerCards(
+  cleaned: string,
+  acc: Map<string, ExtractedPortal>,
+  source: string,
+  pairedMacs: Set<string>,
+  pairedPortals: Set<string>,
+) {
+  const lines = cleaned.split(/\n/)
+  for (let i = 0; i < lines.length; i++) {
+    const hostM = RAIDER_HOST_LINE.exec(lines[i] ?? '')
+    if (!hostM?.[1]) continue
+    const portalUrl = stalkerPortalUrl(hostM[1])
+    if (!portalUrl) continue
+
+    const window = lines.slice(i, Math.min(lines.length, i + 18)).join('\n')
+    const macRaw = RAIDER_MAC_LINE.exec(window)?.[1]
+    if (!macRaw) continue
+    const mac = macRaw.toUpperCase().replace(/-/g, ':')
+    if (pairedMacs.has(mac)) continue
+
+    let expiryRaw = RAIDER_EXP_LINE.exec(window)?.[1]?.trim() ?? null
+    if (expiryRaw) {
+      expiryRaw = expiryRaw.replace(/\s+\d+\s+Days?\s*$/i, '').trim()
+    }
+    const expiry = expiryRaw ? formatPortalExpiry(expiryRaw) : null
+
+    pairedMacs.add(mac)
+    pairedPortals.add(portalUrl)
+    put(acc, {
+      url: portalUrl,
+      username: mac,
+      password: '',
+      source,
+      platform: 'stalker',
+      type: '',
+      output: '',
+      expiry,
+    })
+  }
+}
+
+/**
  * Prefer Portal+MAC(+Exp) cards and bare MAC dumps under a portal URL line;
  * fall back to unique portal×MAC cartesian for leftover labeled macs.
  */
@@ -848,6 +1199,28 @@ function extractStalkerPortals(
 ) {
   const pairedMacs = new Set<string>()
   const pairedPortals = new Set<string>()
+
+  extractHitHunterStalkerCards(
+    cleaned,
+    acc,
+    source,
+    pairedMacs,
+    pairedPortals,
+  )
+  extractKcPanelStalkerCards(
+    cleaned,
+    acc,
+    source,
+    pairedMacs,
+    pairedPortals,
+  )
+  extractMacRaiderStalkerCards(
+    cleaned,
+    acc,
+    source,
+    pairedMacs,
+    pairedPortals,
+  )
 
   for (const m of cleaned.matchAll(STALKER_HIT_LINE)) {
     const portalUrl = stalkerPortalUrl(m[1] ?? '')
@@ -875,6 +1248,14 @@ function extractStalkerPortals(
     if (!portalUrl || !mac) continue
     const expiryRaw = m[3]?.trim() ?? null
     const expiry = expiryRaw ? formatPortalExpiry(expiryRaw) : null
+    const after = cleaned.slice(
+      m.index ?? 0,
+      (m.index ?? 0) + m[0].length + 280,
+    )
+    const timezone =
+      /(?:⏱\s*)?Server\s*timezone\s*:\s*([^\n]+)/i.exec(after)?.[1]?.trim() ||
+      null
+    const region = timezone ? classifyRegion(timezone, []) : undefined
     pairedMacs.add(mac)
     pairedPortals.add(portalUrl)
     put(acc, {
@@ -886,6 +1267,10 @@ function extractStalkerPortals(
       type: '',
       output: '',
       expiry,
+      timezone,
+      regionPrimary: region?.primary,
+      regionTags: region?.tags,
+      regionConfidence: region?.confidence,
     })
   }
 

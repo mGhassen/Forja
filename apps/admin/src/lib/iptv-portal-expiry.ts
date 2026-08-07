@@ -86,7 +86,11 @@ export function formatPortalExpiry(raw?: string | null): string | null {
   const s = String(raw).trim()
   if (!s) return null
   const d = parsePortalExpiry(s)
-  if (!d) return s
+  if (!d) {
+    // Xtream sentinel / never-expires placeholders — don't keep as expiry text.
+    if (/\b1970\b/.test(s) || /^unknown$/i.test(s)) return null
+    return s
+  }
   const day = String(d.getDate()).padStart(2, '0')
   return `${day} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }

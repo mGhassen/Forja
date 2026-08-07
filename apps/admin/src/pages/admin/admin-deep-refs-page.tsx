@@ -16,6 +16,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   RefreshCw,
+  Search,
   X,
 } from 'lucide-react'
 import {
@@ -94,6 +95,7 @@ async function fetchDeepRefs(): Promise<DeepRefRow[]> {
          )`,
       )
       .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
       .range(from, to)
     if (error) throw error
     return (data ?? []) as DeepRefRow[]
@@ -467,6 +469,7 @@ export function AdminDeepRefsPage() {
           ?.trim()
         const result = await reprocessDeepRefForAdmin(id)
         await qc.invalidateQueries({ queryKey: DEEP_REFS_KEY })
+        await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
         if (pasteUrl) {
           await qc.invalidateQueries({
             queryKey: ['admin', 'paste_body', pasteUrl],
@@ -510,6 +513,7 @@ export function AdminDeepRefsPage() {
           p.output,
           p.url,
           p.username,
+          p.portal_id,
         ]),
       ]
         .join(' ')
@@ -579,19 +583,26 @@ export function AdminDeepRefsPage() {
         </div>
 
         <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[16rem] flex-1 space-y-1.5">
+          <div className="relative min-w-[16rem] flex-1 space-y-1.5">
             <Label
               htmlFor="deep-q"
               className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted"
             >
               Search
             </Label>
-            <Input
-              id="deep-q"
-              placeholder="base64, paste URL, portal output…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-forja-muted"
+                aria-hidden
+              />
+              <Input
+                id="deep-q"
+                className="pl-9"
+                placeholder="base64, paste URL, host, user, portal id…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted">

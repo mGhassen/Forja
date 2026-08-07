@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearch } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp, Radio } from 'lucide-react'
+import { ArrowDown, ArrowUp, Radio, Search } from 'lucide-react'
 import { IptvPortalPeopleDialog } from '@/components/iptv-assign-dialog'
 import {
   IptvPortalActionRow,
@@ -12,6 +12,7 @@ import {
 } from '@/components/iptv-portal-row'
 import { PageHeader, TablePagination } from '@/components/admin-ui'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -22,114 +23,24 @@ import {
 } from '@/components/ui/select'
 import { adminDb } from '@/lib/admin-db'
 import { catalogVerify } from '@/lib/catalog-verify'
-import { fetchAllRows } from '@/lib/fetch-all-rows'
+import {
+  candidateHost,
+  fetchPoolHostPortals,
+  fetchPoolHosts,
+  fetchPoolPortalById,
+  poolHostKey,
+  resolvePoolFocusPortalId,
+  type PoolCand,
+  type PortalPlatform,
+} from '@/lib/iptv-pool'
 import {
   createPortalShare,
   formatShareCode,
 } from '@/lib/iptv-portal-share'
-import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
-
-type PortalPlatform = 'xtream' | 'm3u' | 'stalker'
-
-type Cand = {
-  id: string
-  url: string
-  username: string
-  alive: boolean | null
-  expiry: string | null
-  max_connections: string | null
-  region_primary: string
-  dealt_count: number
-  catalog_pool: boolean
-  platform: PortalPlatform
-  updated_at: string
-  created_at: string
-  last_scraped_at: string | null
-}
-
-type HostGroup = {
-  host: string
-  rows: Cand[]
-  alive: number
-  lastScrapedAt: string | null
-}
 
 type SortKey = 'host' | 'accounts' | 'alive' | 'scraped'
 type SortDir = 'asc' | 'desc'
-
-function candidateHost(url: string): string {
-  try {
-    const u = new URL(url.includes('://') ? url : `http://${url}`)
-    return u.host || url
-  } catch {
-    return url
-  }
-}
-
-function groupByHost(rows: Cand[]): HostGroup[] {
-  const map = new Map<string, Cand[]>()
-  for (const row of rows) {
-    const host = candidateHost(row.url)
-    const list = map.get(host)
-    if (list) list.push(row)
-    else map.set(host, [row])
-  }
-  return [...map.entries()].map(([host, groupRows]) => {
-    let lastScrapedAt: string | null = null
-    for (const r of groupRows) {
-      // Prefer scrape stamp; never last_checked_at / updated_at (verify / edits).
-      const t = r.last_scraped_at || r.created_at
-      if (
-        t &&
-        (!lastScrapedAt ||
-          new Date(t).getTime() > new Date(lastScrapedAt).getTime())
-      ) {
-        lastScrapedAt = t
-      }
-    }
-    return {
-      host,
-      rows: groupRows,
-      alive: groupRows.filter((r) => r.alive === true).length,
-      lastScrapedAt,
-    }
-  })
-}
-
-function sortHostGroups(
-  groups: HostGroup[],
-  key: SortKey,
-  dir: SortDir,
-): HostGroup[] {
-  const mul = dir === 'asc' ? 1 : -1
-  return [...groups].sort((a, b) => {
-    let cmp = 0
-    switch (key) {
-      case 'host':
-        cmp = a.host.localeCompare(b.host)
-        break
-      case 'accounts':
-        cmp = a.rows.length - b.rows.length
-        break
-      case 'alive':
-        cmp = a.alive - b.alive
-        break
-      case 'scraped': {
-        const at = a.lastScrapedAt
-          ? new Date(a.lastScrapedAt).getTime()
-          : 0
-        const bt = b.lastScrapedAt
-          ? new Date(b.lastScrapedAt).getTime()
-          : 0
-        cmp = at - bt
-        break
-      }
-    }
-    if (cmp !== 0) return cmp * mul
-    return a.host.localeCompare(b.host)
-  })
-}
 
 function relativeTime(iso: string | null | undefined): string {
   if (!iso) return '—'
@@ -144,51 +55,103 @@ function relativeTime(iso: string | null | undefined): string {
   return `${Math.round(hr / 24)}d ago`
 }
 
-function portalCredKey(url: string, username: string): string {
-  return `${url.trim().toLowerCase()}\0${username.trim().toLowerCase()}`
+function useDebounced<T>(value: T, ms: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebounced(value), ms)
+    return () => window.clearTimeout(t)
+  }, [value, ms])
+  return debounced
 }
 
-/** Resolve deep-ref → pool focus when portal_id is stale/orphaned. */
-async function resolveFocusPortalId(
-  rows: Cand[],
-  opts: { portal?: string; url?: string; user?: string },
-): Promise<string | null> {
-  const portalId = opts.portal?.trim()
-  if (portalId) {
-    if (rows.some((c) => c.id === portalId)) return portalId
-    const { data: direct } = await adminDb
-      .from('iptv_portals')
-      .select('id')
-      .eq('id', portalId)
-      .maybeSingle()
-    if (direct?.id) return String(direct.id)
+function HostPortals({
+  host,
+  filters,
+  highlightedId,
+  sharingId,
+  shareFlash,
+  checkingId,
+  checkingHost,
+  removePending,
+  onShare,
+  onEdit,
+  onDelete,
+  onCheck,
+  onPeople,
+}: {
+  host: string
+  filters: {
+    q: string
+    inventory: 'all' | 'pool' | 'nonpool'
+    platform: 'all' | PortalPlatform
+    status: 'all' | 'alive' | 'dead' | 'unchecked'
+    region: string
   }
-
-  let url = opts.url?.trim() ?? ''
-  let user = opts.user?.trim() ?? ''
-  if ((!url || !user) && portalId) {
-    const { data: hit } = await adminDb
-      .from('iptv_scrape_deep_ref_portals')
-      .select('url, username')
-      .eq('portal_id', portalId)
-      .limit(1)
-      .maybeSingle()
-    if (hit) {
-      url = String(hit.url ?? '').trim()
-      user = String(hit.username ?? '').trim()
-    }
-  }
-  if (!url || !user) return null
-
-  const key = portalCredKey(url, user)
-  const byCreds = rows.find((c) => portalCredKey(c.url, c.username) === key)
-  if (byCreds) return byCreds.id
-
-  const { data: foundId } = await adminDb.rpc('find_iptv_portal_id', {
-    p_url: url,
-    p_username: user,
+  highlightedId: string | null
+  sharingId: string | null
+  shareFlash: Record<string, string>
+  checkingId: string | null
+  checkingHost: string | null
+  removePending: boolean
+  onShare: (c: PoolCand) => void
+  onEdit: (c: PoolCand) => void
+  onDelete: (id: string) => void
+  onCheck: (c: PoolCand) => void
+  onPeople: (c: PoolCand) => void
+}) {
+  const portals = useQuery({
+    queryKey: ['admin', 'pool', 'portals', poolHostKey(host), filters],
+    queryFn: () => fetchPoolHostPortals(host, filters),
   })
-  return typeof foundId === 'string' && foundId ? foundId : null
+
+  if (portals.isLoading) {
+    return (
+      <p className="border-t border-forja-border px-3 py-3 text-sm text-forja-muted">
+        Loading portals…
+      </p>
+    )
+  }
+  if (portals.error) {
+    return (
+      <p className="border-t border-forja-border px-3 py-3 text-sm text-red-400">
+        {(portals.error as Error).message}
+      </p>
+    )
+  }
+  const rows = portals.data ?? []
+  if (rows.length === 0) {
+    return (
+      <p className="border-t border-forja-border px-3 py-3 text-sm text-forja-muted">
+        No portals match these filters.
+      </p>
+    )
+  }
+
+  return (
+    <ul className="grid grid-cols-1 border-t border-forja-border bg-forja-surface/20 sm:grid-cols-2 sm:[&>li:nth-child(odd)]:border-r sm:[&>li:nth-child(odd)]:border-forja-border/70">
+      {rows.map((c) => (
+        <IptvPortalActionRow
+          key={c.id}
+          portal={c}
+          highlighted={highlightedId === c.id}
+          sharing={sharingId === c.id}
+          shareCode={shareFlash[c.id] ?? null}
+          deleting={removePending}
+          checking={checkingId === c.id || checkingHost === host}
+          deleteConfirmLabel="Remove from catalog pool?"
+          deleteDisabled={c.catalog_pool !== true}
+          deleteTitle={
+            c.catalog_pool ? 'Remove from catalog pool' : 'Not in catalog pool'
+          }
+          onShare={() => onShare(c)}
+          onEdit={() => onEdit(c)}
+          onDelete={() => onDelete(c.id)}
+          onCheck={() => onCheck(c)}
+          onPeople={() => onPeople(c)}
+        />
+      ))}
+    </ul>
+  )
 }
 
 export function AdminPoolPage() {
@@ -212,6 +175,8 @@ export function AdminPoolPage() {
   const [checkingHost, setCheckingHost] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionInfo, setActionInfo] = useState<string | null>(null)
+  const [q, setQ] = useState('')
+  const debouncedQ = useDebounced(q, 250)
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'alive' | 'dead' | 'unchecked'
   >('all')
@@ -224,150 +189,123 @@ export function AdminPoolPage() {
   const [regionFilter, setRegionFilter] = useState<string>('all')
   const [sortKey, setSortKey] = useState<SortKey>('accounts')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(50)
   const [peopleFor, setPeopleFor] = useState<{
     id: string
     label: string
   } | null>(null)
 
-  const list = useQuery({
-    queryKey: ['admin', 'pool'],
+  const filters = useMemo(
+    () => ({
+      q: debouncedQ,
+      inventory: inventoryFilter,
+      platform: platformFilter,
+      status: statusFilter,
+      region: regionFilter,
+    }),
+    [debouncedQ, inventoryFilter, platformFilter, statusFilter, regionFilter],
+  )
+
+  useEffect(() => {
+    setPage(0)
+  }, [filters, sortKey, sortDir, pageSize])
+
+  const hostsQuery = useQuery({
+    queryKey: [
+      'admin',
+      'pool',
+      'hosts',
+      filters,
+      sortKey,
+      sortDir,
+      page,
+      pageSize,
+    ],
     queryFn: () =>
-      fetchAllRows(async (from, to) => {
-        const { data, error } = await adminDb
-          .from('iptv_portals')
-          .select(
-            'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, catalog_pool, platform, updated_at, created_at, last_scraped_at',
-          )
-          .order('updated_at', { ascending: false })
-          .range(from, to)
-        if (error) throw error
-        return (data ?? []) as Cand[]
+      fetchPoolHosts({
+        ...filters,
+        sort: sortKey,
+        dir: sortDir,
+        limit: pageSize,
+        offset: page * pageSize,
       }),
   })
 
-  const regionOptions = useMemo(() => {
-    const set = new Set<string>()
-    for (const c of list.data ?? []) {
-      const r = (c.region_primary || 'UNKNOWN').trim() || 'UNKNOWN'
-      set.add(r)
-    }
-    return [...set].sort((a, b) => a.localeCompare(b))
-  }, [list.data])
+  const hosts = hostsQuery.data?.hosts ?? []
+  const hostCount = hostsQuery.data?.host_count ?? 0
+  const portalCount = hostsQuery.data?.portal_count ?? 0
+  const regionOptions = hostsQuery.data?.regions ?? []
 
-  const filteredRows = useMemo(() => {
-    const rows = list.data ?? []
-    return rows.filter((c) => {
-      if (inventoryFilter === 'pool' && c.catalog_pool !== true) return false
-      if (inventoryFilter === 'nonpool' && c.catalog_pool === true) return false
-      if (platformFilter !== 'all' && c.platform !== platformFilter) return false
-      if (statusFilter === 'alive' && c.alive !== true) return false
-      if (statusFilter === 'dead' && c.alive !== false) return false
-      if (statusFilter === 'unchecked' && c.alive != null) return false
-      if (
-        regionFilter !== 'all' &&
-        (c.region_primary || 'UNKNOWN') !== regionFilter
-      ) {
-        return false
-      }
-      return true
-    })
-  }, [list.data, inventoryFilter, platformFilter, statusFilter, regionFilter])
-
-  const groups = useMemo(
-    () => sortHostGroups(groupByHost(filteredRows), sortKey, sortDir),
-    [filteredRows, sortKey, sortDir],
-  )
-
-  const paging = useTablePagination(groups, {
-    initialPageSize: 50,
-    resetKey: `${inventoryFilter}|${platformFilter}|${statusFilter}|${regionFilter}|${sortKey}|${sortDir}`,
-  })
-
-  // Deep-refs → Pool deep-link: resolve id (or url+user), expand host, highlight.
+  // Deep-refs → Pool: resolve id, seed search, expand host.
   useEffect(() => {
     if (!search.portal && !search.url) {
       setResolvedFocusId(null)
       return
     }
-    if (!list.isSuccess || list.isFetching || !list.data) return
     if (focusedOnce.current === focusKey) return
 
     let cancelled = false
     void (async () => {
-      const id = await resolveFocusPortalId(list.data ?? [], {
-        portal: search.portal,
-        url: search.url,
-        user: search.user,
-      })
-      if (cancelled) return
-      focusedOnce.current = focusKey
-      if (!id) {
+      try {
+        const id = await resolvePoolFocusPortalId({
+          portal: search.portal,
+          url: search.url,
+          user: search.user,
+        })
+        if (cancelled) return
+        if (!id) {
+          focusedOnce.current = focusKey
+          setResolvedFocusId(null)
+          setActionError(
+            search.portal
+              ? `Portal ${search.portal} not found (stale deep-ref link — reprocess to refresh)`
+              : 'Portal not found for url/user',
+          )
+          return
+        }
+        const row = await fetchPoolPortalById(id)
+        if (cancelled) return
+        if (!row) {
+          focusedOnce.current = focusKey
+          setResolvedFocusId(null)
+          setActionError(`Portal ${id} not found`)
+          return
+        }
+        focusedOnce.current = focusKey
+        const host = candidateHost(row.url)
+        setResolvedFocusId(id)
+        setQ(row.username.trim() || host)
+        setInventoryFilter('all')
+        setPlatformFilter('all')
+        setStatusFilter('all')
+        setRegionFilter('all')
+        setPage(0)
+        setActionError(null)
+        setActionInfo(`Focused portal ${row.username} @ ${host}`)
+        setOpen(new Set([host]))
+      } catch (e) {
+        if (cancelled) return
+        focusedOnce.current = focusKey
         setResolvedFocusId(null)
-        setActionError(
-          search.portal
-            ? `Portal ${search.portal} not found (stale deep-ref link — reprocess to refresh)`
-            : 'Portal not found for url/user',
-        )
-        return
+        setActionError(errMessage(e, 'Focus failed'))
       }
-      const row = (list.data ?? []).find((c) => c.id === id)
-      if (!row) {
-        setResolvedFocusId(null)
-        setActionError(`Portal ${id} not in loaded pool list`)
-        return
-      }
-      setResolvedFocusId(id)
-      setInventoryFilter('all')
-      setPlatformFilter('all')
-      setStatusFilter('all')
-      setRegionFilter('all')
-      setActionError(null)
-      setActionInfo(
-        `Focused portal ${row.username} @ ${candidateHost(row.url)}`,
-      )
-      setOpen((prev) => new Set(prev).add(candidateHost(row.url)))
     })()
 
     return () => {
       cancelled = true
     }
-  }, [
-    focusKey,
-    search.portal,
-    search.url,
-    search.user,
-    list.isSuccess,
-    list.isFetching,
-    list.data,
-  ])
+  }, [focusKey, search.portal, search.url, search.user])
 
   useEffect(() => {
-    if (!resolvedFocusId || !list.data?.length) return
-    const row = list.data.find((c) => c.id === resolvedFocusId)
-    if (!row) return
-    const host = candidateHost(row.url)
-    const idx = groups.findIndex((g) => g.host === host)
-    if (idx < 0) return
-    const page = Math.floor(idx / paging.pageSize)
-    if (paging.page !== page) paging.setPage(page)
+    if (!resolvedFocusId) return
     const t = window.setTimeout(() => {
       document
         .getElementById(`pool-portal-${resolvedFocusId}`)
         ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    }, 80)
+    }, 120)
     return () => window.clearTimeout(t)
-  }, [
-    resolvedFocusId,
-    list.data,
-    groups,
-    paging.page,
-    paging.pageSize,
-    paging.setPage,
-    inventoryFilter,
-    platformFilter,
-    statusFilter,
-    regionFilter,
-  ])
+  }, [resolvedFocusId, hosts, open, debouncedQ])
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -376,6 +314,10 @@ export function AdminPoolPage() {
     }
     setSortKey(key)
     setSortDir(key === 'host' ? 'asc' : 'desc')
+  }
+
+  function invalidatePool() {
+    return qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
   }
 
   const saveEdit = useMutation({
@@ -397,7 +339,7 @@ export function AdminPoolPage() {
       setEditingId(null)
       setEditError(null)
       setActionError(null)
-      await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
+      await invalidatePool()
     },
     onError: (e) => {
       setEditError(e instanceof Error ? e.message : 'Save failed')
@@ -406,7 +348,6 @@ export function AdminPoolPage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      // Leave the portal row (may be assigned to users) — drop from pool only.
       const { error } = await adminDb
         .from('iptv_portals')
         .update({ catalog_pool: false })
@@ -417,7 +358,7 @@ export function AdminPoolPage() {
     onSuccess: async (_void, id) => {
       setActionError(null)
       if (editingId === id) setEditingId(null)
-      await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
+      await invalidatePool()
     },
     onError: (e) => {
       setActionError(e instanceof Error ? e.message : 'Delete failed')
@@ -425,15 +366,16 @@ export function AdminPoolPage() {
   })
 
   function toggle(host: string) {
+    const key = poolHostKey(host)
     setOpen((prev) => {
       const next = new Set(prev)
-      if (next.has(host)) next.delete(host)
-      else next.add(host)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
 
-  async function beginEdit(c: Cand) {
+  async function beginEdit(c: PoolCand) {
     const id = c.id
     setEditError(null)
     setActionError(null)
@@ -455,7 +397,7 @@ export function AdminPoolPage() {
     }
   }
 
-  async function copyShare(c: Cand) {
+  async function copyShare(c: PoolCand) {
     setSharingId(c.id)
     setActionError(null)
     setActionInfo(null)
@@ -487,7 +429,7 @@ export function AdminPoolPage() {
     }
   }
 
-  async function checkPortal(c: Cand) {
+  async function checkPortal(c: PoolCand) {
     setCheckingId(c.id)
     setActionError(null)
     setActionInfo(null)
@@ -501,7 +443,7 @@ export function AdminPoolPage() {
             }`
           : `Checked ${res.checked}`,
       )
-      await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
+      await invalidatePool()
     } catch (e) {
       setActionError(errMessage(e, 'Status check failed'))
     } finally {
@@ -518,7 +460,7 @@ export function AdminPoolPage() {
       setActionInfo(
         `${host}: ${res.alive} alive · ${res.dead} dead · ${res.checked} checked`,
       )
-      await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
+      await invalidatePool()
     } catch (e) {
       setActionError(errMessage(e, 'Host status check failed'))
     } finally {
@@ -538,8 +480,10 @@ export function AdminPoolPage() {
         }
       />
 
-      {list.error ? (
-        <p className="text-sm text-red-400">{(list.error as Error).message}</p>
+      {hostsQuery.error ? (
+        <p className="text-sm text-red-400">
+          {(hostsQuery.error as Error).message}
+        </p>
       ) : null}
       {actionError ? (
         <p className="text-sm text-red-400">{actionError}</p>
@@ -571,6 +515,27 @@ export function AdminPoolPage() {
       ) : null}
 
       <div className="flex flex-wrap items-end gap-3">
+        <div className="relative min-w-[16rem] flex-1 space-y-1.5">
+          <Label
+            htmlFor="pool-q"
+            className="text-[11px] font-semibold uppercase tracking-[0.14em] text-forja-muted"
+          >
+            Search
+          </Label>
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-forja-muted"
+              aria-hidden
+            />
+            <Input
+              id="pool-q"
+              className="pl-9"
+              placeholder="host, url, user, region, portal id…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+        </div>
         <div className="space-y-1.5">
           <Label
             htmlFor="pool-inventory-filter"
@@ -664,20 +629,15 @@ export function AdminPoolPage() {
           </Select>
         </div>
         <p className="pb-2 text-xs text-forja-muted">
-          {filteredRows.length}
-          {(list.data?.length ?? 0) !== filteredRows.length
-            ? ` / ${list.data?.length ?? 0}`
-            : ''}{' '}
-          portals · {groups.length} hosts
+          {portalCount.toLocaleString()} portals · {hostCount.toLocaleString()}{' '}
+          hosts
         </p>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-forja-border">
-        {list.isLoading ? (
+        {hostsQuery.isLoading ? (
           <p className="px-4 py-4 text-sm text-forja-muted">Loading…</p>
-        ) : (list.data?.length ?? 0) === 0 ? (
-          <p className="px-4 py-4 text-sm text-forja-muted">No portals.</p>
-        ) : groups.length === 0 ? (
+        ) : hostCount === 0 ? (
           <p className="px-4 py-4 text-sm text-forja-muted">
             No portals match these filters.
           </p>
@@ -722,8 +682,9 @@ export function AdminPoolPage() {
               })}
               <span className="sr-only">Check</span>
             </div>
-            {paging.pageRows.map((g) => {
-              const expanded = open.has(g.host)
+            {hosts.map((g) => {
+              const hostKey = poolHostKey(g.host)
+              const expanded = open.has(hostKey)
               const hostBusy = checkingHost === g.host
               return (
                 <div
@@ -748,13 +709,13 @@ export function AdminPoolPage() {
                       </span>
                     </button>
                     <span className="text-right text-sm tabular-nums text-forja-muted">
-                      {g.rows.length}
+                      {g.accounts}
                     </span>
                     <span className="text-right text-sm tabular-nums text-forja-muted">
                       {g.alive}
                     </span>
                     <span className="text-right text-sm text-forja-muted">
-                      {relativeTime(g.lastScrapedAt)}
+                      {relativeTime(g.last_scraped_at)}
                     </span>
                     <Button
                       type="button"
@@ -780,52 +741,44 @@ export function AdminPoolPage() {
                     </Button>
                   </div>
                   {expanded ? (
-                    <ul className="grid grid-cols-1 border-t border-forja-border bg-forja-surface/20 sm:grid-cols-2 sm:[&>li:nth-child(odd)]:border-r sm:[&>li:nth-child(odd)]:border-forja-border/70">
-                      {g.rows.map((c) => (
-                        <IptvPortalActionRow
-                          key={c.id}
-                          portal={c}
-                          highlighted={resolvedFocusId === c.id}
-                          sharing={sharingId === c.id}
-                          shareCode={shareFlash[c.id] ?? null}
-                          deleting={remove.isPending}
-                          checking={
-                            checkingId === c.id || checkingHost === g.host
-                          }
-                          deleteConfirmLabel="Remove from catalog pool?"
-                          deleteDisabled={c.catalog_pool !== true}
-                          deleteTitle={
-                            c.catalog_pool
-                              ? 'Remove from catalog pool'
-                              : 'Not in catalog pool'
-                          }
-                          onShare={() => void copyShare(c)}
-                          onEdit={() => void beginEdit(c)}
-                          onDelete={() => remove.mutate(c.id)}
-                          onCheck={() => void checkPortal(c)}
-                          onPeople={() =>
-                            setPeopleFor({
-                              id: c.id,
-                              label: `${c.username} · ${c.url}`,
-                            })
-                          }
-                        />
-                      ))}
-                    </ul>
+                    <HostPortals
+                      host={g.host}
+                      filters={filters}
+                      highlightedId={resolvedFocusId}
+                      sharingId={sharingId}
+                      shareFlash={shareFlash}
+                      checkingId={checkingId}
+                      checkingHost={checkingHost}
+                      removePending={remove.isPending}
+                      onShare={(c) => void copyShare(c)}
+                      onEdit={(c) => void beginEdit(c)}
+                      onDelete={(id) => remove.mutate(id)}
+                      onCheck={(c) => void checkPortal(c)}
+                      onPeople={(c) =>
+                        setPeopleFor({
+                          id: c.id,
+                          label: `${c.username} · ${c.url}`,
+                        })
+                      }
+                    />
                   ) : null}
                 </div>
               )
             })}
-            <TablePagination
-              page={paging.page}
-              pageSize={paging.pageSize}
-              total={paging.total}
-              onPageChange={paging.setPage}
-              onPageSizeChange={paging.setPageSize}
-            />
           </>
         )}
       </div>
+
+      {hostCount > 0 ? (
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          total={hostCount}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[25, 50, 100]}
+        />
+      ) : null}
     </div>
   )
 }
