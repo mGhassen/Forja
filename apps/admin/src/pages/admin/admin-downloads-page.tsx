@@ -18,6 +18,8 @@ import {
 } from '@/lib/download-stats'
 import { cn } from '@/lib/utils'
 
+const VERSION_PREVIEW = 8
+
 function formatCount(n: number | undefined): string {
   if (n == null) return '—'
   return n.toLocaleString()
@@ -46,18 +48,23 @@ function toStats(data: DownloadStats): DownloadStats {
   }
 }
 
-const PLATFORM_FILL: Record<string, string> = {
-  windows: 'bg-sky-400/80',
-  macos: 'bg-violet-400/80',
-  linux: 'bg-amber-400/80',
-  android_tv: 'bg-forja-green/80',
-  other: 'bg-white/25',
-  ios: 'bg-rose-400/70',
+const PLATFORM_ACCENT: Record<string, string> = {
+  windows: 'text-sky-300',
+  macos: 'text-violet-300',
+  linux: 'text-amber-300',
+  android_tv: 'text-forja-green',
+}
+
+const PLATFORM_BAR: Record<string, string> = {
+  windows: 'bg-sky-400',
+  macos: 'bg-violet-400',
+  linux: 'bg-amber-400',
+  android_tv: 'bg-forja-green',
 }
 
 export function AdminDownloadsPage() {
   const qc = useQueryClient()
-  const [showAllObjects, setShowAllObjects] = useState(false)
+  const [showAllVersions, setShowAllVersions] = useState(false)
 
   const stats = useQuery({
     queryKey: DOWNLOAD_STATS_KEY,
@@ -83,24 +90,30 @@ export function AdminDownloadsPage() {
   const busy = rollup.isPending || backfill.isPending
   const total = d?.total ?? 0
 
-  const platformMix = useMemo(() => {
-    return DOWNLOAD_PLATFORMS.map((p) => ({
-      id: p.id,
-      label: p.label,
-      count: d?.byPlatform[p.id] ?? 0,
-    })).filter((p) => p.count > 0 || total === 0)
-  }, [d?.byPlatform, total])
+  const { semverVersions, otherVersions } = useMemo(() => {
+    const all = d?.byVersion ?? []
+    const semver: typeof all = []
+    const other: typeof all = []
+    for (const row of all) {
+      if (/^\d+\.\d+\.\d+$/.test(row.version)) semver.push(row)
+      else other.push(row)
+    }
+    return { semverVersions: semver, otherVersions: other }
+  }, [d?.byVersion])
 
-  const versions = d?.byVersion ?? []
-  const maxVersion = Math.max(1, ...versions.map((v) => v.count))
-  const objects = d?.byObject ?? []
-  const objectSlice = showAllObjects ? objects : objects.slice(0, 12)
+  const versionRows = showAllVersions
+    ? [...semverVersions, ...otherVersions]
+    : semverVersions.slice(0, VERSION_PREVIEW)
+  const hiddenCount = Math.max(0, semverVersions.length - VERSION_PREVIEW)
+  const maxVersion = Math.max(1, ...versionRows.map((v) => v.count), 1)
+
+  const topObjects = (d?.byObject ?? []).slice(0, 8)
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Downloads"
-        description="Installer GetObject lifetime rollup · R2 stats/downloads.json"
+        description="Installer GetObject lifetime · R2 stats/downloads.json"
         actions={
           <>
             <Button
@@ -131,11 +144,6 @@ export function AdminDownloadsPage() {
               ? `Backfill/rollup failed: ${actionErr}`
               : `Could not load stats: ${loadErr}`}
           </p>
-          <p className="mt-1 text-xs text-forja-muted">
-            Needs S3 keys +{' '}
-            <code className="text-forja-text">CLOUDFLARE_API_TOKEN</code>{' '}
-            (Account Analytics Read).
-          </p>
         </Panel>
       ) : null}
 
@@ -147,82 +155,75 @@ export function AdminDownloadsPage() {
         </p>
       ) : null}
 
-      <Panel tone="accent" className="space-y-5 p-4 sm:p-5">
-        {/* Hero strip — total + platform mix, no cards */}
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <p className="font-mono-ui text-[10px] font-bold uppercase tracking-[0.18em] text-forja-muted">
-              Lifetime installs
+      <Panel className="space-y-6 p-4 sm:p-5">
+        {/* Total + platforms as equal columns — readable numbers */}
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)] sm:items-stretch">
+          <div className="flex flex-col justify-center rounded-xl border border-forja-border/80 bg-black/20 px-4 py-4">
+            <p className="font-mono-ui text-[10px] font-bold uppercase tracking-[0.16em] text-forja-muted">
+              Lifetime
             </p>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="font-disp text-4xl font-bold tabular-nums tracking-tight text-forja-green sm:text-5xl">
-                {loading || busy ? '…' : formatCount(total)}
-              </span>
-              <span className="text-sm text-forja-muted">
-                {loading
-                  ? '…'
-                  : d?.dayCount
-                    ? `${d.dayCount} day${d.dayCount === 1 ? '' : 's'} rolled`
-                    : 'empty — run backfill'}
-                {d?.bucket ? ` · ${d.bucket}` : ''}
-              </span>
-            </div>
-            {d?.updatedAt ? (
-              <p className="mt-1 text-[11px] text-forja-muted">
-                Updated {new Date(d.updatedAt).toLocaleString()}
-              </p>
-            ) : null}
+            <p className="mt-1 font-disp text-4xl font-bold tabular-nums tracking-tight text-forja-green sm:text-[2.75rem]">
+              {loading || busy ? '…' : formatCount(total)}
+            </p>
+            <p className="mt-2 text-xs text-forja-muted">
+              {loading
+                ? '…'
+                : d?.dayCount
+                  ? `${d.dayCount} days in rollup`
+                  : 'No days — backfill'}
+              {d?.updatedAt
+                ? ` · ${new Date(d.updatedAt).toLocaleString()}`
+                : ''}
+            </p>
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-2 lg:max-w-xl lg:items-end">
-            <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-              {loading || busy || total === 0
-                ? null
-                : platformMix.map((p) => (
-                    <div
-                      key={p.id}
-                      className={cn('h-full', PLATFORM_FILL[p.id] ?? PLATFORM_FILL.other)}
-                      style={{ width: `${pct(p.count, total)}%` }}
-                      title={`${p.label}: ${formatCount(p.count)}`}
-                    />
-                  ))}
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 lg:justify-end">
-              {DOWNLOAD_PLATFORMS.map((p) => {
-                const count = d?.byPlatform[p.id] ?? 0
-                return (
-                  <div key={p.id} className="flex items-baseline gap-1.5">
-                    <span
-                      className={cn(
-                        'inline-block size-1.5 rounded-full',
-                        PLATFORM_FILL[p.id],
-                      )}
-                      aria-hidden
-                    />
-                    <span className="text-[11px] text-forja-muted">{p.label}</span>
-                    <span className="font-mono-ui text-xs tabular-nums text-forja-text">
-                      {loading || busy ? '…' : formatCount(count)}
-                    </span>
-                    <span className="font-mono-ui text-[10px] tabular-nums text-forja-muted">
-                      {loading || busy || total === 0
-                        ? ''
-                        : `${pct(count, total)}%`}
-                    </span>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {DOWNLOAD_PLATFORMS.map((p) => {
+              const count = d?.byPlatform[p.id] ?? 0
+              const share = pct(count, total)
+              return (
+                <div
+                  key={p.id}
+                  className="flex flex-col justify-between rounded-xl border border-forja-border/80 bg-black/20 px-3 py-3"
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-forja-muted">
+                    {p.label}
+                  </p>
+                  <p
+                    className={cn(
+                      'mt-2 font-disp text-2xl font-bold tabular-nums tracking-tight',
+                      PLATFORM_ACCENT[p.id],
+                    )}
+                  >
+                    {loading || busy ? '…' : formatCount(count)}
+                  </p>
+                  <div className="mt-2">
+                    <div className="h-1 overflow-hidden rounded-full bg-white/[0.08]">
+                      <div
+                        className={cn('h-full rounded-full', PLATFORM_BAR[p.id])}
+                        style={{ width: `${share}%` }}
+                      />
+                    </div>
+                    <p className="mt-1 font-mono-ui text-[10px] tabular-nums text-forja-muted">
+                      {loading || busy || total === 0 ? '—' : `${share}%`}
+                    </p>
                   </div>
-                )
-              })}
-            </div>
+                </div>
+              )
+            })}
           </div>
         </div>
 
-        {/* Version matrix — primary dense table */}
+        {/* Recent releases only */}
         <div>
-          <div className="mb-2 flex items-baseline justify-between gap-2">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-forja-muted">
-              By release
+              Recent releases
             </p>
             <p className="text-[10px] text-forja-muted">
-              {versions.length} version{versions.length === 1 ? '' : 's'}
+              {showAllVersions
+                ? `${semverVersions.length + otherVersions.length} shown`
+                : `Newest ${Math.min(VERSION_PREVIEW, semverVersions.length)} of ${semverVersions.length}`}
             </p>
           </div>
           <div className={tableWrapClassName}>
@@ -230,12 +231,11 @@ export function AdminDownloadsPage() {
               <thead>
                 <tr>
                   <th className={thClassName}>Version</th>
-                  <th className={thClassName}>Share</th>
                   <th className={`${thClassName} text-right`}>Total</th>
                   {DOWNLOAD_PLATFORMS.map((p) => (
                     <th
                       key={p.id}
-                      className={`${thClassName} hidden text-right sm:table-cell`}
+                      className={`${thClassName} text-right`}
                     >
                       {p.label}
                     </th>
@@ -249,31 +249,28 @@ export function AdminDownloadsPage() {
                       {busy ? 'Running CF rollup…' : 'Loading…'}
                     </td>
                   </tr>
-                ) : versions.length === 0 ? (
+                ) : versionRows.length === 0 ? (
                   <tr>
                     <td className={tdClassName} colSpan={6}>
                       No release data yet.
                     </td>
                   </tr>
                 ) : (
-                  versions.map((row) => (
-                    <tr key={row.version} className="group">
-                      <td className={`${tdClassName} font-mono text-sm`}>
-                        {versionLabel(row.version)}
-                      </td>
+                  versionRows.map((row) => (
+                    <tr key={row.version}>
                       <td className={tdClassName}>
-                        <div className="flex min-w-[88px] items-center gap-2 sm:min-w-[140px]">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-mono text-sm text-forja-text">
+                            {versionLabel(row.version)}
+                          </span>
+                          <div className="hidden h-1 max-w-[72px] flex-1 overflow-hidden rounded-full bg-white/[0.06] md:block">
                             <div
-                              className="h-full rounded-full bg-forja-green/65"
+                              className="h-full rounded-full bg-forja-green/60"
                               style={{
                                 width: `${Math.round((row.count / maxVersion) * 100)}%`,
                               }}
                             />
                           </div>
-                          <span className="w-10 shrink-0 text-right font-mono-ui text-[10px] tabular-nums text-forja-muted">
-                            {pct(row.count, total)}%
-                          </span>
                         </div>
                       </td>
                       <td
@@ -284,7 +281,12 @@ export function AdminDownloadsPage() {
                       {DOWNLOAD_PLATFORMS.map((p) => (
                         <td
                           key={p.id}
-                          className={`${tdClassName} hidden text-right font-mono-ui text-xs tabular-nums text-forja-muted sm:table-cell`}
+                          className={cn(
+                            `${tdClassName} text-right font-mono-ui text-xs tabular-nums`,
+                            (row.byPlatform[p.id] ?? 0) > 0
+                              ? 'text-forja-text'
+                              : 'text-forja-muted/50',
+                          )}
                         >
                           {formatCount(row.byPlatform[p.id] ?? 0)}
                         </td>
@@ -295,89 +297,45 @@ export function AdminDownloadsPage() {
               </tbody>
             </table>
           </div>
+          {(hiddenCount > 0 || otherVersions.length > 0) && (
+            <button
+              type="button"
+              className="mt-2 text-[11px] text-forja-green hover:underline"
+              onClick={() => setShowAllVersions((v) => !v)}
+            >
+              {showAllVersions
+                ? 'Show recent only'
+                : `Show ${hiddenCount + otherVersions.length} more`}
+            </button>
+          )}
         </div>
 
-        {/* Top objects — compact, secondary */}
-        <div>
-          <div className="mb-2 flex items-baseline justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-forja-muted">
-              Top objects
+        {/* Compact top files */}
+        {topObjects.length > 0 ? (
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-forja-muted">
+              Top files
             </p>
-            {objects.length > 12 ? (
-              <button
-                type="button"
-                className="text-[11px] text-forja-green hover:underline"
-                onClick={() => setShowAllObjects((v) => !v)}
-              >
-                {showAllObjects
-                  ? 'Show less'
-                  : `Show all ${objects.length}`}
-              </button>
-            ) : (
-              <span className="text-[10px] text-forja-muted">
-                {objects.length} file{objects.length === 1 ? '' : 's'}
-              </span>
-            )}
+            <ul className="divide-y divide-forja-border/60 rounded-xl border border-forja-border/80 bg-black/15">
+              {topObjects.map((row) => (
+                <li
+                  key={row.object}
+                  className="flex items-center justify-between gap-3 px-3 py-2"
+                >
+                  <span
+                    className="min-w-0 truncate font-mono text-[11px] text-forja-muted"
+                    title={row.object}
+                  >
+                    {row.object}
+                  </span>
+                  <span className="shrink-0 font-mono-ui text-xs tabular-nums text-forja-text">
+                    {formatCount(row.count)}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className={tableWrapClassName}>
-            <table className={tableClassName}>
-              <thead>
-                <tr>
-                  <th className={thClassName}>Object</th>
-                  <th className={`${thClassName} hidden sm:table-cell`}>
-                    Platform
-                  </th>
-                  <th className={`${thClassName} text-right`}>Gets</th>
-                  <th className={`${thClassName} hidden text-right sm:table-cell`}>
-                    Share
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading || busy ? (
-                  <tr>
-                    <td className={tdClassName} colSpan={4}>
-                      …
-                    </td>
-                  </tr>
-                ) : objectSlice.length === 0 ? (
-                  <tr>
-                    <td className={tdClassName} colSpan={4}>
-                      —
-                    </td>
-                  </tr>
-                ) : (
-                  objectSlice.map((row) => (
-                    <tr key={row.object}>
-                      <td
-                        className={`${tdClassName} max-w-[280px] truncate font-mono text-[11px] sm:max-w-none`}
-                        title={row.object}
-                      >
-                        {row.object}
-                      </td>
-                      <td
-                        className={`${tdClassName} hidden text-xs text-forja-muted sm:table-cell`}
-                      >
-                        {DOWNLOAD_PLATFORMS.find((p) => p.id === row.platform)
-                          ?.label ?? row.platform}
-                      </td>
-                      <td
-                        className={`${tdClassName} text-right font-mono-ui text-xs tabular-nums`}
-                      >
-                        {formatCount(row.count)}
-                      </td>
-                      <td
-                        className={`${tdClassName} hidden text-right font-mono-ui text-[10px] tabular-nums text-forja-muted sm:table-cell`}
-                      >
-                        {pct(row.count, total)}%
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        ) : null}
       </Panel>
     </div>
   )
