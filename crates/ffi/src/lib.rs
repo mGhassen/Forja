@@ -693,6 +693,17 @@ fn lan_pairing_code_refresh() -> String {
     }
 }
 
+fn lan_pairing_code() -> String {
+    #[cfg(feature = "lan-server")]
+    {
+        engine_lan::lan_pairing_code()
+    }
+    #[cfg(not(feature = "lan-server"))]
+    {
+        String::new()
+    }
+}
+
 fn lan_revoke_device(device_id: String) -> bool {
     #[cfg(feature = "lan-server")]
     {

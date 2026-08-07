@@ -6,36 +6,42 @@
 
 **Settings → LAN**
 
-## Desktop (server)
+## Once — pair (not per movie)
 
-1. Enable **LAN server**
-2. Note the **6-digit pairing code** (refresh anytime)
-3. Keep Forja running on the same Wi‑Fi as your phone / Android TV
+Pairing means **this TV trusts that desktop**. Do it once on the same Wi‑Fi.
 
-The desktop runs the Rust engine and relays torrent (and proxy-gated) streams to paired devices. Stream URLs use a short-lived ticket (`?st=`) so the player does not need an Authorization header.
+### Desktop
 
-## Phone / tablet / Android TV (client)
+1. **Settings → LAN → Enable LAN server**
+2. Note the **port** and the **6-digit pairing code**
+3. Keep Forja running
 
-1. Tap **Discover** (mDNS) or enter the desktop **IP and port** manually
-2. Enter the **pairing code** from the desktop
-3. Tap **Pair**
+Paired TVs and phones appear under **Paired devices**. **Revoke** forces that device to pair again.
 
-After pairing, torrent and Stremio hash sources appear even on Android TV (local torrent engine stays off). Playback opens a desktop `play_url` over LAN. Direct URLs still play on the device without the server.
+### Android TV / phone
+
+1. **Settings → LAN**
+2. **Discover on Wi‑Fi**, or type the desktop **IP** and **port**
+3. Enter the **6-digit code** from the desktop
+4. **Pair with desktop**
+
+Status shows **Paired · desktop online**. Unpair anytime from the same screen.
+
+## Every night — watch
+
+1. On the TV, open a title → **Sources → Torrents** (visible after pairing)
+2. Pick a torrent
+3. The TV asks the desktop to open the magnet; the desktop downloads; the TV plays the stream
+
+You do not re-enter a code per title.
 
 ## Android TV — local torrent (optional)
 
-**Allow local torrent on this device** (Settings → LAN) uses the on-box engine instead of the desktop when enabled. Default: use the paired desktop.
+**Allow local torrent on this device** uses the on-box engine instead of the desktop. Leave **off** for the normal LAN setup.
 
 ## Security
 
-LAN server is **off by default**. Only devices that complete pairing (or already hold a device token) can call control APIs; media GETs need a valid stream ticket minted at open time.
-
-## What you can do
-
-- Start / stop the desktop LAN server
-- Pair / unpair / revoke devices
-- Discover servers without typing an IP (when mDNS works)
-- Play magnets on TV/phone via the desktop when paired
+LAN server is **off by default**. Only devices that complete pairing (or already hold a device token) can call control APIs. Media URLs use a short-lived ticket (`?st=`).
 
 ## Related
 

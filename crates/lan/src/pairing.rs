@@ -7,12 +7,12 @@ use std::time::{Duration, Instant};
 const CODE_TTL: Duration = Duration::from_secs(300);
 const STREAM_TICKET_TTL: Duration = Duration::from_secs(12 * 60 * 60);
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceRecord {
     pub device_id: String,
     pub token: String,
     pub paired_at: u64,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
 }
 
@@ -172,7 +172,8 @@ impl PairingState {
         self.inner
             .lock()
             .map(|g| {
-                g.devices
+                let mut out: Vec<_> = g
+                    .devices
                     .values()
                     .map(|d| DeviceRecord {
                         device_id: d.device_id.clone(),
@@ -180,9 +181,35 @@ impl PairingState {
                         paired_at: d.paired_at,
                         label: d.label.clone(),
                     })
-                    .collect()
+                    .collect();
+                out.sort_by(|a, b| b.paired_at.cmp(&a.paired_at));
+                out
             })
             .unwrap_or_default()
+    }
+
+    /// Full tokens for durable storage (not for API responses).
+    pub fn export_devices(&self) -> Vec<DeviceRecord> {
+        self.inner
+            .lock()
+            .map(|g| g.devices.values().cloned().collect())
+            .unwrap_or_default()
+    }
+
+    pub fn restore_devices(&self, records: Vec<DeviceRecord>) {
+        let Ok(mut g) = self.inner.lock() else {
+            return;
+        };
+        g.devices.clear();
+        g.token_index.clear();
+        for record in records {
+            if record.device_id.is_empty() || record.token.is_empty() {
+                continue;
+            }
+            g.token_index
+                .insert(record.token.clone(), record.device_id.clone());
+            g.devices.insert(record.device_id.clone(), record);
+        }
     }
 
     pub fn revoke_device(&self, device_id: &str) -> bool {

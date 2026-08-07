@@ -15,9 +15,10 @@ class LanServerService {
       !kIsWeb &&
       (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
-  bool get isRunning => RustLib.instance.lanServerPort() > 0;
+  bool get isRunning =>
+      Engine.isReady && RustLib.instance.lanServerPort() > 0;
 
-  int get port => RustLib.instance.lanServerPort();
+  int get port => Engine.isReady ? RustLib.instance.lanServerPort() : 0;
 
   Future<bool> start({bool allInterfaces = true}) async {
     if (!canRunServer || !Engine.isReady) return false;
@@ -32,26 +33,35 @@ class LanServerService {
     );
     if (p > 0) {
       await LanPrefs.instance.setLanServerEnabled(true);
-      RustLib.instance.lanPairingCodeRefresh();
+      RustLib.instance.lanPairingCode();
       return true;
     }
-    final err = RustLib.instance.lanServerLastError();
+    final err = lastStartError();
     if (err.isNotEmpty) {
       debugPrint('[LAN] start failed: $err');
     }
     return false;
   }
 
-  String lastStartError() => RustLib.instance.lanServerLastError();
+  String lastStartError() =>
+      Engine.isReady ? RustLib.instance.lanServerLastError() : 'engine not ready';
 
   Future<void> stop() async {
-    RustLib.instance.lanServerStop();
+    if (Engine.isReady) {
+      RustLib.instance.lanServerStop();
+    }
     await LanPrefs.instance.setLanServerEnabled(false);
   }
 
-  String refreshPairingCode() => RustLib.instance.lanPairingCodeRefresh();
+  String refreshPairingCode() =>
+      Engine.isReady ? RustLib.instance.lanPairingCodeRefresh() : '';
+
+  /// Active code if still valid; otherwise mint a new one.
+  String currentPairingCode() =>
+      Engine.isReady ? RustLib.instance.lanPairingCode() : '';
 
   List<Map<String, dynamic>> listDevices() {
+    if (!Engine.isReady) return const [];
     final raw = RustLib.instance.lanDevicesJson();
     final decoded = jsonDecode(raw);
     if (decoded is List) {
@@ -64,5 +74,5 @@ class LanServerService {
   }
 
   bool revokeDevice(String deviceId) =>
-      RustLib.instance.lanRevokeDevice(deviceId);
+      Engine.isReady && RustLib.instance.lanRevokeDevice(deviceId);
 }

@@ -710,6 +710,11 @@ pub extern "C" fn ffi_lan_pairing_code_refresh() -> *mut c_char {
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_lan_pairing_code() -> *mut c_char {
+    to_c_string(crate::lan_pairing_code())
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_lan_revoke_device(device_id: *const c_char) -> bool {
     crate::lan_revoke_device(from_c_str(device_id))
 }

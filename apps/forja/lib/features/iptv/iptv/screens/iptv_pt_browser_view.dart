@@ -30,9 +30,9 @@ class _BrowserViewState extends State<_BrowserView> {
   double _streamTileExtent = 120;
   double _streamMainGap = 10;
   Timer? _scrollSettleTimer;
-  /// TV: defer stream logos until scroll settles (decode thrash on hold ↑/↓).
-  bool _channelLogosVisible = true;
-  static const _logoSettleDelay = Duration(milliseconds: 350);
+  /// TV: defer stream logos until D-pad focus is still 500ms (decode thrash).
+  bool _channelLogosVisible = false;
+  static const _logoSettleDelay = Duration(milliseconds: 500);
   bool _didInitialFocus = false;
   bool _didRequestReloadFocus = false;
   bool _wasLoading = false;
@@ -67,7 +67,15 @@ class _BrowserViewState extends State<_BrowserView> {
       'iptv',
       pageBack: _handleCatalogPageBack,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncInitialFocus());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncInitialFocus();
+      if (!mounted) return;
+      if (iptvUseTvFocus(context)) {
+        _bumpChannelLogoSettle();
+      } else {
+        setState(() => _channelLogosVisible = true);
+      }
+    });
   }
 
   bool _handleCatalogPageBack() {
@@ -606,34 +614,36 @@ class _BrowserViewState extends State<_BrowserView> {
   void _toggleSearch() => toggleSearch();
 
   bool _onScrollNotification(ScrollNotification n) {
-    final tv = iptvUseTvFocus(context);
+    // Mobile visibility probes only — TV logos are focus-debounced.
+    if (iptvUseTvFocus(context)) return false;
     if (n is ScrollStartNotification) {
       _scrollSettleTimer?.cancel();
-      // Mobile visibility probes only — TV health is focus-debounced.
-      if (!tv) widget.ctrl.cancelAllLazyChecks();
-      if (tv && _channelLogosVisible) {
-        setState(() => _channelLogosVisible = false);
-      }
+      widget.ctrl.cancelAllLazyChecks();
     } else if (n is ScrollEndNotification) {
       _scrollSettleTimer?.cancel();
-      _scrollSettleTimer = Timer(
-        tv ? _logoSettleDelay : const Duration(milliseconds: 300),
-        () {
-          if (!mounted) return;
-          if (tv) {
-            setState(() => _channelLogosVisible = true);
-          } else {
-            setState(() {});
-          }
-        },
-      );
+      _scrollSettleTimer = Timer(const Duration(milliseconds: 300), () {
+        if (!mounted) return;
+        setState(() {});
+      });
     }
     return false;
   }
 
-  /// Mobile health debounce + TV logo deferral both listen to stream scroll.
+  /// Hide stream logos on every D-pad focus step; show only after 500ms idle.
+  void _bumpChannelLogoSettle() {
+    if (!iptvUseTvFocus(context)) return;
+    _scrollSettleTimer?.cancel();
+    if (_channelLogosVisible) {
+      setState(() => _channelLogosVisible = false);
+    }
+    _scrollSettleTimer = Timer(_logoSettleDelay, () {
+      if (!mounted || _channelLogosVisible) return;
+      setState(() => _channelLogosVisible = true);
+    });
+  }
+
+  /// Mobile health debounce listens to stream scroll; TV uses focus settle.
   bool get _useStreamScrollListener =>
-      iptvUseTvFocus(context) ||
       _LiveHealthProbe.usesScrollDebounce(context);
 
   bool get _streamShowLogos =>
@@ -1121,6 +1131,7 @@ class _BrowserViewState extends State<_BrowserView> {
               stream: stream,
               ctrl: widget.ctrl,
               showLogo: _streamShowLogos,
+              onTvFocusGained: _bumpChannelLogoSettle,
               gridIndex: i,
               gridColumns: cross,
               onUpEdge: i < cross
@@ -1184,6 +1195,7 @@ class _BrowserViewState extends State<_BrowserView> {
           categoryName: categoryNames[stream.categoryId] ?? '',
           listIndex: i,
           showLogo: _streamShowLogos,
+          onTvFocusGained: _bumpChannelLogoSettle,
           onLeftEdge: iptvStreamLeftEdge(ctrl, stream),
           onRightEdge: ctrl.portalPanelOpen
               ? () => iptvFocusPortalList(ctrl)

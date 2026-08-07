@@ -12,6 +12,9 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::oneshot;
+
+/// Invoked after pair / revoke so the host can persist device tokens.
+pub type DevicesChangedHook = Arc<dyn Fn(&PairingState) + Send + Sync>;
 use torrent::{torrent_stream_router, TorrentAppState, TorrentEngine};
 
 use crate::auth::{require_bearer_token, require_stream_ticket};
@@ -27,6 +30,7 @@ pub struct LanServerState {
     pub proxy_state: ProxyState,
     pub torrent: Arc<TorrentEngine>,
     pub listen_port: Arc<tokio::sync::RwLock<u16>>,
+    pub on_devices_changed: Option<DevicesChangedHook>,
 }
 
 pub struct LanServer {
@@ -49,8 +53,13 @@ impl LanServer {
                 proxy_state,
                 torrent,
                 listen_port: Arc::new(tokio::sync::RwLock::new(0)),
+                on_devices_changed: None,
             },
         }
+    }
+
+    pub fn set_on_devices_changed(&mut self, hook: DevicesChangedHook) {
+        self.state.on_devices_changed = Some(hook);
     }
 
     pub async fn start(
@@ -193,6 +202,7 @@ async fn pair_handler(
                 Json(serde_json::json!({ "error": e })),
             )
         })?;
+    notify_devices_changed(&state);
     Ok(Json(PairResponse {
         token,
         server_id: state.pairing.server_id(),
@@ -210,7 +220,16 @@ async fn revoke_handler(
     Json(body): Json<RevokeRequest>,
 ) -> impl IntoResponse {
     let ok = state.pairing.revoke_device(&body.device_id);
+    if ok {
+        notify_devices_changed(&state);
+    }
     Json(serde_json::json!({ "ok": ok }))
+}
+
+fn notify_devices_changed(state: &LanServerState) {
+    if let Some(hook) = &state.on_devices_changed {
+        hook(&state.pairing);
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -393,6 +412,7 @@ mod tests {
             proxy_state: ProxyState::default(),
             torrent: Arc::new(TorrentEngine::new()),
             listen_port: Arc::new(tokio::sync::RwLock::new(0)),
+            on_devices_changed: None,
         };
         let _ = build_router(state);
     }

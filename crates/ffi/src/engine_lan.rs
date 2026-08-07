@@ -1,5 +1,5 @@
-use lan::{LanBindMode, LanServer};
-use std::sync::{LazyLock, Mutex};
+use lan::{LanBindMode, LanServer, PairingState};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static LAN: LazyLock<Mutex<Option<LanServer>>> = LazyLock::new(|| Mutex::new(None));
@@ -58,6 +58,10 @@ pub fn lan_server_start(
             let torrent = crate::engine_torrent::shared_torrent_engine();
             let server_id = stable_server_id();
             let mut lan = LanServer::new(server_id, proxy_state, torrent);
+            restore_paired_devices(&lan.state.pairing);
+            lan.set_on_devices_changed(Arc::new(|pairing| {
+                persist_paired_devices(pairing);
+            }));
             let mode = LanBindMode::from_u8(bind_mode);
             match lan.start(mode, preferred_port).await {
                 Ok(port) => {
@@ -94,15 +98,34 @@ pub fn lan_server_port() -> u16 {
 pub fn lan_pairing_code_refresh() -> String {
     LAN.lock()
         .ok()
+        .and_then(|mut g| {
+            g.as_mut()
+                .map(|s| s.state.pairing.refresh_code())
+        })
+        .unwrap_or_default()
+}
+
+pub fn lan_pairing_code() -> String {
+    LAN.lock()
+        .ok()
         .and_then(|mut g| g.as_mut().map(|s| s.pairing_code()))
         .unwrap_or_default()
 }
 
 pub fn lan_revoke_device(device_id: String) -> bool {
-    LAN.lock()
+    let ok = LAN
+        .lock()
         .ok()
         .and_then(|g| g.as_ref().map(|s| s.state.pairing.revoke_device(&device_id)))
-        .unwrap_or(false)
+        .unwrap_or(false);
+    if ok {
+        if let Ok(guard) = LAN.lock() {
+            if let Some(server) = guard.as_ref() {
+                persist_paired_devices(&server.state.pairing);
+            }
+        }
+    }
+    ok
 }
 
 pub fn lan_devices_json() -> String {
@@ -121,6 +144,24 @@ pub fn lan_browse_servers_json(timeout_ms: u64) -> String {
     let timeout = std::time::Duration::from_millis(timeout_ms.clamp(500, 30_000));
     let servers = lan::browse_forja_servers(timeout);
     serde_json::to_string(&servers).unwrap_or_else(|_| "[]".into())
+}
+
+const PAIRED_DEVICES_KEY: &str = "lan_paired_devices";
+
+fn persist_paired_devices(pairing: &PairingState) {
+    let devices = pairing.export_devices();
+    let value = serde_json::to_value(devices).unwrap_or(serde_json::json!([]));
+    let _ = storage::set(PAIRED_DEVICES_KEY, value);
+}
+
+fn restore_paired_devices(pairing: &PairingState) {
+    let Some(value) = storage::get(PAIRED_DEVICES_KEY) else {
+        return;
+    };
+    let Ok(devices) = serde_json::from_value::<Vec<lan::DeviceRecord>>(value) else {
+        return;
+    };
+    pairing.restore_devices(devices);
 }
 
 fn stable_server_id() -> String {

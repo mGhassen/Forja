@@ -567,7 +567,8 @@ class IptvController extends ChangeNotifier
   final List<IptvStream> _healthQueue = [];
   final Map<String, Timer> _healthDebounce = {};
   static const _maxLazyHealthChecks = 2;
-  static const _lazyCheckDelay = Duration(milliseconds: 450);
+  /// Dwell before focus/hover probes fire — skip channels you only skim past.
+  static const _lazyCheckDelay = Duration(milliseconds: 350);
 
   // ── EPG cache (live section only) ──
   /// Memoised `get_short_epg` results per stream for the current portal+section.

@@ -66,14 +66,20 @@ class LanClientService {
     required int port,
     required String code,
     String? deviceId,
+    String? label,
   }) async {
     final id = deviceId ?? await LanPrefs.instance.deviceId();
+    final deviceLabel = label ?? LanPrefs.defaultDeviceLabel();
     try {
       final r = await http
           .post(
             Uri.parse('http://$host:$port/pair'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'code': code, 'device_id': id}),
+            body: jsonEncode({
+              'code': code,
+              'device_id': id,
+              'label': deviceLabel,
+            }),
           )
           .timeout(const Duration(seconds: 8));
       if (r.statusCode != 200) return null;

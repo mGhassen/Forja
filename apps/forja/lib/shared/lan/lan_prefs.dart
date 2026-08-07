@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 
 /// Persisted LAN client pairing state (token, server address).
@@ -84,5 +87,18 @@ class LanPrefs {
         host != null &&
         host.isNotEmpty &&
         port != null;
+  }
+
+  /// Friendly name shown on the desktop paired-devices list.
+  static String defaultDeviceLabel() {
+    if (kIsWeb) return 'Web';
+    final profile = SettingsService.platformProfile;
+    if (profile == PlatformProfile.androidTv) return 'Android TV';
+    if (!kIsWeb && Platform.isIOS) return 'iPhone';
+    if (!kIsWeb && Platform.isAndroid) return 'Android';
+    if (!kIsWeb && Platform.isMacOS) return 'Mac';
+    if (!kIsWeb && Platform.isWindows) return 'Windows';
+    if (!kIsWeb && Platform.isLinux) return 'Linux';
+    return 'Forja device';
   }
 }

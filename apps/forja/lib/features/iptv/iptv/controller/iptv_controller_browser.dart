@@ -493,12 +493,24 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
   /// Queue a health probe after the card has stayed visible (debounced).
   /// Fresh cache hit skips; stale entry keeps the last border until re-probe.
-  void scheduleLazyCheck(IptvStream s) {
+  ///
+  /// [onlyThis]: TV D-pad focus — drop other pending timers/queue entries so
+  /// skimming channels never piles probes behind the one you dwell on.
+  void scheduleLazyCheck(IptvStream s, {bool onlyThis = false}) {
     final p = _c.activePortal;
     if (p == null || !_sectionSupportsStreamHealth(_c.activeSection)) return;
     if (!_streamSupportsHealthProbe(s)) return;
     if (_isStreamHealthFresh(s.streamId)) return;
     if (_c._healthInFlight.contains(s.streamId)) return;
+
+    if (onlyThis) {
+      for (final id in _c._healthDebounce.keys.toList()) {
+        if (id == s.streamId) continue;
+        _c._healthDebounce[id]?.cancel();
+        _c._healthDebounce.remove(id);
+      }
+      _c._healthQueue.removeWhere((x) => x.streamId != s.streamId);
+    }
 
     _c._healthDebounce[s.streamId]?.cancel();
     _c._healthDebounce[s.streamId] = Timer(IptvController._lazyCheckDelay, () {
@@ -519,6 +531,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   void cancelLazyCheck(String streamId) {
     _c._healthDebounce[streamId]?.cancel();
     _c._healthDebounce.remove(streamId);
+    _c._healthQueue.removeWhere((x) => x.streamId == streamId);
   }
 
   void cancelAllLazyChecks() {
@@ -526,6 +539,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       t.cancel();
     }
     _c._healthDebounce.clear();
+    _c._healthQueue.clear();
     // Do not touch portal health expiry - catalog open/reload must keep
     // the active-portal status cache until TTL or an explicit refresh.
     for (final t in _portalHealthDebounce.values) {

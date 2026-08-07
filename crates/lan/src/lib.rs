@@ -7,4 +7,4 @@ mod server;
 pub use bind::LanBindMode;
 pub use mdns::{browse_forja_servers, DiscoveredServer, MdnsAnnouncer};
 pub use pairing::{DeviceRecord, PairingState};
-pub use server::{LanServer, LanServerState};
+pub use server::{DevicesChangedHook, LanServer, LanServerState};

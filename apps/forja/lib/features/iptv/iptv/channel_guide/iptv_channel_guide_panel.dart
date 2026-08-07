@@ -76,14 +76,14 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   final List<IptvGuideChannel> _healthQueue = [];
   final Map<String, Timer> _healthDebounce = {};
   static const _maxHealthChecks = 2;
-  static const _healthCheckDelay = Duration(milliseconds: 450);
+  static const _healthCheckDelay = Duration(milliseconds: 350);
   /// Match catalog stream health TTL (portal status dots use the same window).
   static const _healthTtl = Duration(minutes: 2);
 
-  /// TV: defer channel-list [Image.network] until scroll settles (decode thrash).
+  /// TV: defer channel-list [Image.network] until D-pad focus is still 500ms.
   Timer? _logoSettleTimer;
-  bool _channelLogosVisible = true;
-  static const _logoSettleDelay = Duration(milliseconds: 350);
+  bool _channelLogosVisible = false;
+  static const _logoSettleDelay = Duration(milliseconds: 500);
 
   static const Color _groupsTint = Color(0xE00C0C12);
   static const Color _channelsTint = Color(0xE016161F);
@@ -107,6 +107,14 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     _syncFocusIndices();
     _focusNode.addListener(_reclaimFocusIfLost);
     _scheduleRevealPlaying();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (iptvUseTvFocus(context)) {
+        _bumpChannelLogoSettle();
+      } else {
+        setState(() => _channelLogosVisible = true);
+      }
+    });
   }
 
   void _claimFocus() {
@@ -269,24 +277,22 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     super.dispose();
   }
 
-  /// Hide channel logos while the list is moving; show them 350ms after settle.
-  /// D-pad mid-viewport (no jump) keeps logos — only real scroll triggers this.
-  bool _onChannelScrollNotification(ScrollNotification n) {
-    if (!iptvUseTvFocus(context)) return false;
-    if (n is ScrollStartNotification) {
-      _logoSettleTimer?.cancel();
-      if (_channelLogosVisible) {
-        setState(() => _channelLogosVisible = false);
-      }
-    } else if (n is ScrollEndNotification) {
-      _logoSettleTimer?.cancel();
-      _logoSettleTimer = Timer(_logoSettleDelay, () {
-        if (!mounted) return;
-        setState(() => _channelLogosVisible = true);
-      });
+  /// Hide channel logos on every D-pad step; show them only after 500ms idle.
+  /// Mid-viewport ↑/↓ (no scroll) still bumps — scroll alone used to miss that.
+  void _bumpChannelLogoSettle() {
+    if (!iptvUseTvFocus(context)) return;
+    _logoSettleTimer?.cancel();
+    if (_channelLogosVisible) {
+      setState(() => _channelLogosVisible = false);
     }
-    return false;
+    _logoSettleTimer = Timer(_logoSettleDelay, () {
+      if (!mounted || _channelLogosVisible) return;
+      setState(() => _channelLogosVisible = true);
+    });
   }
+
+  bool get _showChannelLogos =>
+      !iptvUseTvFocus(context) || _channelLogosVisible;
 
   void _syncFocusIndices({bool channelOnly = false}) {
     if (!channelOnly) {
@@ -341,6 +347,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         _focusedChannelIndex = 0;
       }
     });
+    if (groupChanged) _bumpChannelLogoSettle();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollFocusedGroupIntoView(animate: animateScroll);
     });
@@ -426,6 +433,13 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   void _scheduleHealthCheck(IptvGuideChannel ch) {
     if (_isHealthFresh(ch.id)) return;
     if (_healthInFlight.contains(ch.id)) return;
+    // Single dwell target — drop timers/queue for channels you already left.
+    for (final id in _healthDebounce.keys.toList()) {
+      if (id == ch.id) continue;
+      _healthDebounce[id]?.cancel();
+      _healthDebounce.remove(id);
+    }
+    _healthQueue.removeWhere((x) => x.id != ch.id);
     _healthDebounce[ch.id]?.cancel();
     _healthDebounce[ch.id] = Timer(_healthCheckDelay, () {
       _healthDebounce.remove(ch.id);
@@ -436,6 +450,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   void _cancelHealthCheck(String channelId) {
     _healthDebounce[channelId]?.cancel();
     _healthDebounce.remove(channelId);
+    _healthQueue.removeWhere((x) => x.id == channelId);
   }
 
   void _enqueueHealthCheck(IptvGuideChannel ch) {
@@ -569,6 +584,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         if (next == _focusedChannelIndex) return;
         _focusedChannelIndex = next;
         _scrollToFocused();
+        _bumpChannelLogoSettle();
         setState(() {});
         return;
       }
@@ -584,6 +600,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       if (next == _focusedChannelIndex) return;
       _focusedChannelIndex = next;
       _scrollToFocused();
+      _bumpChannelLogoSettle();
       setState(() {});
     }
   }
@@ -625,6 +642,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         final g = widget.guide.groups[_focusedGroupIndex];
         _selectGroup(g.id);
         setState(() => _focusColumn = _FocusColumn.channels);
+        _bumpChannelLogoSettle();
         _scrollToFocused();
         return;
       }
@@ -636,6 +654,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       final g = widget.guide.groups[_focusedGroupIndex];
       _selectGroup(g.id);
       setState(() => _step = _GuideStep.channels);
+      _bumpChannelLogoSettle();
       WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
       return;
     }
@@ -649,6 +668,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         final g = widget.guide.groups[_focusedGroupIndex];
         _selectGroup(g.id);
         setState(() => _focusColumn = _FocusColumn.channels);
+        _bumpChannelLogoSettle();
         _scrollToFocused();
         return;
       }
@@ -663,6 +683,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       final g = widget.guide.groups[_focusedGroupIndex];
       _selectGroup(g.id);
       setState(() => _step = _GuideStep.channels);
+      _bumpChannelLogoSettle();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_focusNode.canRequestFocus) _focusNode.requestFocus();
       });
@@ -1100,50 +1121,47 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
     return IptvTvScrollbar(
       controller: _channelScroll,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: _onChannelScrollNotification,
-        child: ListView.builder(
-          controller: _channelScroll,
-          padding: const EdgeInsets.symmetric(
-            vertical: IptvChannelGuidePanel.channelListPaddingV,
-          ),
-          itemCount: channels.length,
-          itemExtent: IptvChannelGuidePanel.channelRowExtent,
-          addAutomaticKeepAlives: false,
-          itemBuilder: (_, i) {
-            final ch = channels[i];
-            final active = ch.id == widget.currentChannelId;
-            final focused = _focusColumn == _FocusColumn.channels &&
-                i == _focusedChannelIndex &&
-                (_wide || _step == _GuideStep.channels);
-            return _GuideChannelTile(
-              channel: ch,
-              active: active,
-              focused: focused,
-              showLogo: _channelLogosVisible,
-              health: _health[ch.id],
-              onProbe: () => _scheduleHealthCheck(ch),
-              onCancelProbe: () => _cancelHealthCheck(ch.id),
-              onHover: () {
-                if (_focusColumn == _FocusColumn.channels &&
-                    _focusedChannelIndex == i) {
-                  return;
-                }
-                setState(() {
-                  _focusedChannelIndex = i;
-                  _focusColumn = _FocusColumn.channels;
-                });
-              },
-              onTap: () {
-                setState(() {
-                  _focusedChannelIndex = i;
-                  _focusColumn = _FocusColumn.channels;
-                });
-                widget.onChannelSelected(ch);
-              },
-            );
-          },
+      child: ListView.builder(
+        controller: _channelScroll,
+        padding: const EdgeInsets.symmetric(
+          vertical: IptvChannelGuidePanel.channelListPaddingV,
         ),
+        itemCount: channels.length,
+        itemExtent: IptvChannelGuidePanel.channelRowExtent,
+        addAutomaticKeepAlives: false,
+        itemBuilder: (_, i) {
+          final ch = channels[i];
+          final active = ch.id == widget.currentChannelId;
+          final focused = _focusColumn == _FocusColumn.channels &&
+              i == _focusedChannelIndex &&
+              (_wide || _step == _GuideStep.channels);
+          return _GuideChannelTile(
+            channel: ch,
+            active: active,
+            focused: focused,
+            showLogo: _showChannelLogos,
+            health: _health[ch.id],
+            onProbe: () => _scheduleHealthCheck(ch),
+            onCancelProbe: () => _cancelHealthCheck(ch.id),
+            onHover: () {
+              if (_focusColumn == _FocusColumn.channels &&
+                  _focusedChannelIndex == i) {
+                return;
+              }
+              setState(() {
+                _focusedChannelIndex = i;
+                _focusColumn = _FocusColumn.channels;
+              });
+            },
+            onTap: () {
+              setState(() {
+                _focusedChannelIndex = i;
+                _focusColumn = _FocusColumn.channels;
+              });
+              widget.onChannelSelected(ch);
+            },
+          );
+        },
       ),
     );
   }

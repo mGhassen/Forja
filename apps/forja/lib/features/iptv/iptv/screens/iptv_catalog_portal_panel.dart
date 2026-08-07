@@ -29,7 +29,8 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   final ScrollController _listScroll = ScrollController();
   String _query = '';
   bool _searchOpen = false;
-  bool _didFocusHeaderOnOpen = false;
+  /// Open-time focus handoff consumed once — later notifies must not re-steal.
+  bool _didFocusOnOpen = false;
   String? _scrolledToActiveKey;
   int? _scrolledToActiveIndex;
   /// Row the user last reached with ↑/↓ — ↓ from the header returns here
@@ -43,10 +44,10 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     _knownPortalKeys = {for (final v in widget.ctrl.verified) v.key};
     widget.ctrl.addListener(_onCtrlChanged);
     if (widget.ctrl.portalPanelOpen) {
-      _didFocusHeaderOnOpen = true;
+      _didFocusOnOpen = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _focusPanelHeader();
         _scrollToActivePortal();
+        _focusPanelOnOpen();
       });
     }
   }
@@ -65,9 +66,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     if (!mounted) return;
     final currentKeys = {for (final v in widget.ctrl.verified) v.key};
     if (widget.ctrl.portalPanelOpen) {
-      if (!_didFocusHeaderOnOpen && !_searchOpen) {
-        _didFocusHeaderOnOpen = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelHeader());
+      if (!_didFocusOnOpen && !_searchOpen) {
+        _didFocusOnOpen = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _focusPanelOnOpen());
       }
       // Portal health probes notify while the user scrolls — never move the
       // viewport out from under a focused row.
@@ -108,18 +109,30 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       }
     } else {
       _knownPortalKeys = currentKeys;
-      _didFocusHeaderOnOpen = false;
+      _didFocusOnOpen = false;
       _scrolledToActiveKey = null;
       _scrolledToActiveIndex = null;
       _lastFocusedPortalIndex = null;
     }
   }
 
+  /// Opening the panel: land on the selected portal (first when none). Empty
+  /// list → Add (+). Down from the top-bar Portals button still uses header.
+  void _focusPanelOnOpen() {
+    if (!mounted || !widget.ctrl.portalPanelOpen || _searchOpen) return;
+    // Already inside the list or header — do not steal (health-probe notifies).
+    if (iptvRowHasFocus('portals') || iptvRowHasFocus('iptv-portal-header')) {
+      return;
+    }
+    if (_filtered.isEmpty) {
+      _focusPanelHeader();
+      return;
+    }
+    _focusPortalsFromHeader();
+  }
+
   void _focusPanelHeader() {
     if (!mounted || !widget.ctrl.portalPanelOpen || _searchOpen) return;
-    // Only the open handoff may claim focus — a later notify must not pull the
-    // user out of the list they are scrolling.
-    if (_panelFocus.hasFocus) return;
     // Prefer Add (+), which is the last header action.
     final addIndex = _portalHeaderAddIndex();
     if (iptvFocusRowItem('iptv-portal-header', addIndex)) return;

@@ -38,6 +38,7 @@ class _StreamCard extends StatefulWidget {
   final IptvController ctrl;
   final VoidCallback onTap;
   final bool showLogo;
+  final VoidCallback? onTvFocusGained;
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onLeftEdge;
@@ -48,6 +49,7 @@ class _StreamCard extends StatefulWidget {
     required this.ctrl,
     required this.onTap,
     this.showLogo = true,
+    this.onTvFocusGained,
     this.gridIndex,
     this.gridColumns,
     this.onLeftEdge,
@@ -77,15 +79,29 @@ class _StreamCardState extends State<_StreamCard> {
   void _onFocus(bool focused) {
     setState(() => _focused = focused);
     _syncLiveProbe(focused || _hovered);
+    if (focused && iptvUseTvFocus(context)) {
+      widget.onTvFocusGained?.call();
+    }
   }
 
   void _syncLiveProbe(bool active) {
     if (!_streamHealthEnabled(widget.stream)) return;
     if (active) {
-      widget.ctrl.scheduleLazyCheck(widget.stream);
+      widget.ctrl.scheduleLazyCheck(
+        widget.stream,
+        onlyThis: iptvUseTvFocus(context),
+      );
     } else {
       widget.ctrl.cancelLazyCheck(widget.stream.streamId);
     }
+  }
+
+  @override
+  void dispose() {
+    if (_streamHealthEnabled(widget.stream)) {
+      widget.ctrl.cancelLazyCheck(widget.stream.streamId);
+    }
+    super.dispose();
   }
 
   Color _surfaceColor(bool active, bool? health) {
@@ -420,6 +436,7 @@ class _StreamRowTile extends StatefulWidget {
     required this.categoryName,
     required this.onTap,
     this.showLogo = true,
+    this.onTvFocusGained,
     this.listIndex,
     this.onLeftEdge,
     this.onRightEdge,
@@ -431,6 +448,7 @@ class _StreamRowTile extends StatefulWidget {
   final String categoryName;
   final VoidCallback onTap;
   final bool showLogo;
+  final VoidCallback? onTvFocusGained;
   final int? listIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -458,15 +476,29 @@ class _StreamRowTileState extends State<_StreamRowTile> {
   void _onFocus(bool focused) {
     setState(() => _focused = focused);
     _syncLiveProbe(focused || _hovered);
+    if (focused && iptvUseTvFocus(context)) {
+      widget.onTvFocusGained?.call();
+    }
   }
 
   void _syncLiveProbe(bool active) {
     if (!_streamHealthEnabled(widget.stream)) return;
     if (active) {
-      widget.ctrl.scheduleLazyCheck(widget.stream);
+      widget.ctrl.scheduleLazyCheck(
+        widget.stream,
+        onlyThis: iptvUseTvFocus(context),
+      );
     } else {
       widget.ctrl.cancelLazyCheck(widget.stream.streamId);
     }
+  }
+
+  @override
+  void dispose() {
+    if (_streamHealthEnabled(widget.stream)) {
+      widget.ctrl.cancelLazyCheck(widget.stream.streamId);
+    }
+    super.dispose();
   }
 
   Color _surfaceColor(bool active, bool? health) {

@@ -692,6 +692,8 @@ class RustLib {
   String lanPairingCodeRefresh() =>
       _readString(_native.ffi_lan_pairing_code_refresh());
 
+  String lanPairingCode() => _readString(_native.ffi_lan_pairing_code());
+
   bool lanRevokeDevice(String deviceId) => using((arena) {
         final ptr = deviceId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _native.ffi_lan_revoke_device(ptr);
@@ -1237,6 +1239,11 @@ final class _FfiNative {
               'ffi_lan_pairing_code_refresh',
             )
             .asFunction(),
+        ffi_lan_pairing_code = lib
+            .lookup<ffi.NativeFunction<_VersionNative>>(
+              'ffi_lan_pairing_code',
+            )
+            .asFunction(),
         ffi_lan_revoke_device = lib
             .lookup<ffi.NativeFunction<_TorrentStartNative>>(
               'ffi_lan_revoke_device',
@@ -1533,6 +1540,7 @@ final class _FfiNative {
   final void Function() ffi_lan_server_stop;
   final int Function() ffi_lan_server_port;
   final ffi.Pointer<ffi.Char> Function() ffi_lan_pairing_code_refresh;
+  final ffi.Pointer<ffi.Char> Function() ffi_lan_pairing_code;
   final bool Function(ffi.Pointer<ffi.Char>) ffi_lan_revoke_device;
   final ffi.Pointer<ffi.Char> Function() ffi_lan_devices_json;
   final ffi.Pointer<ffi.Char> Function(int) ffi_lan_browse_servers_json;

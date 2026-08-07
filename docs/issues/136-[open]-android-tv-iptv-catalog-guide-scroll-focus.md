@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** fix · **0 / 5** acceptance |
+| **Progress** | **11 / 11** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,8 @@
 | 7 | I136-T07 | TV category pin: sync → focus (trap → / KeyRepeat); freeze rail scroll on OK pin | ✅ |
 | 8 | I136-T08 | In-player channel guide (TV): defer channel logos until 350ms after scroll settle | ✅ |
 | 9 | I136-T09 | IPTV catalog channel grid/list (TV): same 350ms logo + EPG deferral; `cacheWidth` on thumbs | ✅ |
+| 10 | I136-T10 | In-player channel guide (TV): load logos only after D-pad idle **500ms** (not scroll-only) | ✅ |
+| 11 | I136-T11 | IPTV catalog (TV): same D-pad idle **500ms** logo gate on stream focus | ✅ |
 
 ---
 
@@ -58,6 +60,8 @@ D-pad focus on IPTV **catalog** (category rail + channel grid/list) and **in-pla
 **Follow-up (I136-T08):** Holding ↑/↓ in the in-player channel list decoded every logo mid-scroll. On TV, channel-row `Image.network` stays off until **350ms** after the last scroll settle (placeholders meanwhile); header “Now playing” logo unchanged.
 
 **Follow-up (I136-T09):** Catalog channel grid/list had the same decode thrash. Same 350ms settle gate; live EPG “NOW” footers stay off while scrolling; thumbs decode with `cacheWidth` only.
+
+**Follow-up (I136-T10 / T11):** Scroll-only settle missed mid-viewport ↑/↓ (no jump). Logos now stay off until D-pad focus is idle **500ms** in the in-player guide and catalog stream grid/list.
 
 ## Related
 
