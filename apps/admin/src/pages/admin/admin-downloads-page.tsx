@@ -84,7 +84,7 @@ export function AdminDownloadsPage() {
     <div className="space-y-8">
       <PageHeader
         title="Downloads"
-        description="Lifetime installer GetObject totals from R2 stats/downloads.json (Inngest rolls up Cloudflare Analytics daily)."
+        description="Lifetime installer GetObject totals from R2 stats/downloads.json. Buttons run now (not Inngest); daily cron at 01:15 UTC keeps the file fresh."
         actions={
           <>
             <Button
