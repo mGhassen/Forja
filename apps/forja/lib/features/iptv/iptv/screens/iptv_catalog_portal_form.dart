@@ -7,42 +7,9 @@ class _PortalExpiryTone {
   final String label;
 }
 
-const _expiryMonthIndex = <String, int>{
-  'jan': 1,
-  'feb': 2,
-  'mar': 3,
-  'apr': 4,
-  'may': 5,
-  'jun': 6,
-  'jul': 7,
-  'aug': 8,
-  'sep': 9,
-  'oct': 10,
-  'nov': 11,
-  'dec': 12,
-};
-
-DateTime? _parsePortalExpiryDate(String expiry) {
-  final s = expiry.trim();
-  if (s.isEmpty || s.toLowerCase() == 'unknown') return null;
-
-  final ts = int.tryParse(s);
-  if (ts != null) {
-    return DateTime.fromMillisecondsSinceEpoch(ts * 1000);
-  }
-
-  final parts = s.split(RegExp(r'\s+'));
-  if (parts.length != 3) return null;
-  final day = int.tryParse(parts[0]);
-  final month = _expiryMonthIndex[parts[1].toLowerCase()];
-  final year = int.tryParse(parts[2]);
-  if (day == null || month == null || year == null) return null;
-  return DateTime(year, month, day);
-}
-
 _PortalExpiryTone _portalExpiryTone(String expiry) {
   final label = expiry.trim().isEmpty ? 'Unknown' : expiry.trim();
-  final end = _parsePortalExpiryDate(label);
+  final end = IptvPortalExpiry.parse(label);
   if (end == null) {
     return _PortalExpiryTone(
       color: const Color(0xFF9CA3AF),

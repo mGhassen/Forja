@@ -158,26 +158,10 @@ class IptvClient {
       name: (info['username']?.toString() ?? '').isNotEmpty
           ? info['username'].toString()
           : p.username,
-      expiry: _formatExpiry(info['exp_date']?.toString()),
+      expiry: IptvPortalExpiry.format(info['exp_date']?.toString()),
       maxConnections: info['max_connections']?.toString() ?? '1',
       activeConnections: info['active_cons']?.toString() ?? '0',
     );
-  }
-
-  static String _formatExpiry(String? raw) {
-    if (raw == null) return 'Unknown';
-    final ts = int.tryParse(raw);
-    if (ts == null) return 'Unknown';
-    try {
-      final d = DateTime.fromMillisecondsSinceEpoch(ts * 1000);
-      const months = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ];
-      return '${d.day.toString().padLeft(2, '0')} ${months[d.month - 1]} ${d.year}';
-    } catch (_) {
-      return raw;
-    }
   }
 
   /// Categories + streams for one shelf (orphans already merged in Rust).

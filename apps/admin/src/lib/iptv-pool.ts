@@ -93,28 +93,34 @@ export async function fetchPoolHosts(
   }
 }
 
+/** PostgREST `.in()` is a GET query string — keep chunks under URL limits. */
+const DEEP_REF_IN_CHUNK = 80
+
 /** Latest deep_ref_id per portal from junction (created_at desc). */
 async function attachDeepRefIds(
   portals: Omit<PoolCand, 'deep_ref_id'>[],
 ): Promise<PoolCand[]> {
   if (portals.length === 0) return []
   const ids = portals.map((p) => p.id)
-  const { data, error } = await adminDb
-    .from('iptv_scrape_deep_ref_portals')
-    .select('portal_id, deep_ref_id, created_at')
-    .in('portal_id', ids)
-    .order('created_at', { ascending: false })
-  if (error) throw new Error(errMessage(error, 'Deep ref lookup failed'))
   const map = new Map<string, string>()
-  for (const row of data ?? []) {
-    const portalId = String(
-      (row as { portal_id?: string }).portal_id ?? '',
-    ).trim()
-    const deepRefId = String(
-      (row as { deep_ref_id?: string }).deep_ref_id ?? '',
-    ).trim()
-    if (!portalId || !deepRefId || map.has(portalId)) continue
-    map.set(portalId, deepRefId)
+  for (let i = 0; i < ids.length; i += DEEP_REF_IN_CHUNK) {
+    const chunk = ids.slice(i, i + DEEP_REF_IN_CHUNK)
+    const { data, error } = await adminDb
+      .from('iptv_scrape_deep_ref_portals')
+      .select('portal_id, deep_ref_id, created_at')
+      .in('portal_id', chunk)
+      .order('created_at', { ascending: false })
+    if (error) throw new Error(errMessage(error, 'Deep ref lookup failed'))
+    for (const row of data ?? []) {
+      const portalId = String(
+        (row as { portal_id?: string }).portal_id ?? '',
+      ).trim()
+      const deepRefId = String(
+        (row as { deep_ref_id?: string }).deep_ref_id ?? '',
+      ).trim()
+      if (!portalId || !deepRefId || map.has(portalId)) continue
+      map.set(portalId, deepRefId)
+    }
   }
   return portals.map((p) => ({
     ...p,

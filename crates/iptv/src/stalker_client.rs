@@ -398,15 +398,9 @@ impl Session {
             .and_then(|v| v.as_str())
             .unwrap_or(&self.mac)
             .to_string();
-        let expiry = js
-            .get("expire_date")
-            .or_else(|| js.get("phone"))
-            .map(|v| match v {
-                Value::String(s) => s.clone(),
-                Value::Number(n) => n.to_string(),
-                _ => String::new(),
-            })
-            .unwrap_or_default();
+        // Lume: `exp_date`; some panels misuse `phone` for the sub end date.
+        // `expire_date` kept as a rare alias.
+        let expiry = profile_expiry_raw(&js);
         Ok(json!({
             "user_info": {
                 "username": name,
@@ -932,6 +926,50 @@ fn has_empty_stream_param(url: &str) -> bool {
         .any(|pair| pair == "stream=" || pair.split_once('=') == Some(("stream", "")))
 }
 
+/// Pull subscription end from `get_profile` — Lume reads `exp_date`; some
+/// Ministra panels only put the date in `phone`.
+fn profile_expiry_raw(js: &Value) -> String {
+    for key in ["exp_date", "expire_date"] {
+        if let Some(s) = json_scalar_string(js.get(key)) {
+            if !s.trim().is_empty() {
+                return s;
+            }
+        }
+    }
+    json_scalar_string(js.get("phone"))
+        .filter(|s| looks_like_expiry(s))
+        .unwrap_or_default()
+}
+
+fn json_scalar_string(v: Option<&Value>) -> Option<String> {
+    match v? {
+        Value::String(s) => Some(s.clone()),
+        Value::Number(n) => Some(n.to_string()),
+        _ => None,
+    }
+}
+
+/// Avoid treating a literal phone number as an end date.
+fn looks_like_expiry(raw: &str) -> bool {
+    let s = raw.trim();
+    if s.is_empty() {
+        return false;
+    }
+    if s.chars().all(|c| c.is_ascii_digit()) {
+        return s.len() >= 9; // unix seconds / millis
+    }
+    let lower = s.to_ascii_lowercase();
+    if lower.contains('/') || lower.contains('-') {
+        return true;
+    }
+    const MONTHS: &[&str] = &[
+        "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct",
+        "nov", "dec", "january", "february", "march", "april", "june", "july",
+        "august", "september", "october", "november", "december",
+    ];
+    MONTHS.iter().any(|m| lower.contains(m))
+}
+
 // ── Response parsing ───────────────────────────────────────────────────────
 
 fn parse_stalker_categories(js: &Value) -> Vec<ParsedCategory> {
@@ -1161,6 +1199,33 @@ mod tests {
         let cats = parse_stalker_categories(&js);
         assert_eq!(cats.len(), 1);
         assert_eq!(cats[0].name, "News");
+    }
+
+    #[test]
+    fn profile_expiry_prefers_exp_date_over_phone() {
+        let js = json!({
+            "exp_date": "1790000000",
+            "phone": "February 16, 2027",
+        });
+        assert_eq!(profile_expiry_raw(&js), "1790000000");
+    }
+
+    #[test]
+    fn profile_expiry_falls_back_to_phone_when_date_like() {
+        let js = json!({ "phone": "February 16, 2027" });
+        assert_eq!(profile_expiry_raw(&js), "February 16, 2027");
+    }
+
+    #[test]
+    fn profile_expiry_ignores_literal_phone_number() {
+        let js = json!({ "phone": "+44 7700 900123" });
+        assert_eq!(profile_expiry_raw(&js), "");
+    }
+
+    #[test]
+    fn profile_expiry_accepts_expire_date_alias() {
+        let js = json!({ "expire_date": "16 Feb 2027" });
+        assert_eq!(profile_expiry_raw(&js), "16 Feb 2027");
     }
 
     // ── candidate endpoint ordering ──────────────────────────────────

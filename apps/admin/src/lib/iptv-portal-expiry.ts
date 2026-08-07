@@ -1,4 +1,4 @@
-/** Match Flutter `_formatExpiry` / `_parsePortalExpiryDate` (dd MMM yyyy). */
+/** Match Flutter `IptvPortalExpiry` (`dd MMM yyyy`). */
 const MONTHS = [
   'Jan',
   'Feb',

@@ -41,6 +41,128 @@ abstract final class IptvPortalName {
   }
 }
 
+/// Portal subscription end — matches admin `formatPortalExpiry` / UI tone.
+abstract final class IptvPortalExpiry {
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  static const _monthIndex = <String, int>{
+    'jan': 1,
+    'january': 1,
+    'feb': 2,
+    'february': 2,
+    'mar': 3,
+    'march': 3,
+    'apr': 4,
+    'april': 4,
+    'may': 5,
+    'jun': 6,
+    'june': 6,
+    'jul': 7,
+    'july': 7,
+    'aug': 8,
+    'august': 8,
+    'sep': 9,
+    'september': 9,
+    'oct': 10,
+    'october': 10,
+    'nov': 11,
+    'november': 11,
+    'dec': 12,
+    'december': 12,
+  };
+
+  /// Normalize raw Xtream/Stalker/scrape expiry to `dd MMM yyyy`, or `Unknown`.
+  static String format(String? raw) {
+    final s = (raw ?? '').trim();
+    if (s.isEmpty || s.toLowerCase() == 'unknown') return 'Unknown';
+    final d = parse(s);
+    if (d == null) {
+      if (RegExp(r'\b1970\b').hasMatch(s)) return 'Unknown';
+      return s;
+    }
+    if (d.year <= 1970) return 'Unknown';
+    final day = d.day.toString().padLeft(2, '0');
+    return '$day ${_months[d.month - 1]} ${d.year}';
+  }
+
+  static DateTime? parse(String? raw) {
+    final s = (raw ?? '').trim();
+    if (s.isEmpty || s.toLowerCase() == 'unknown') return null;
+
+    if (RegExp(r'^\d+$').hasMatch(s)) {
+      final n = int.tryParse(s);
+      if (n == null) return null;
+      final ms = n > 1000000000000 ? n : n * 1000;
+      try {
+        final d = DateTime.fromMillisecondsSinceEpoch(ms);
+        return d.year <= 1970 ? null : d;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    // Reddit / dump cards: `24/01/2027 19:55:57` (DD/MM/YYYY).
+    final dmy = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})').firstMatch(s);
+    if (dmy != null) {
+      final day = int.tryParse(dmy.group(1)!);
+      final month = int.tryParse(dmy.group(2)!);
+      final year = int.tryParse(dmy.group(3)!);
+      if (day != null &&
+          month != null &&
+          year != null &&
+          year > 1970 &&
+          month >= 1 &&
+          month <= 12 &&
+          day >= 1 &&
+          day <= 31) {
+        return DateTime(year, month, day);
+      }
+    }
+
+    // `16 Feb 2027` / `16 February 2027`
+    final parts = s.split(RegExp(r'\s+'));
+    if (parts.length == 3) {
+      final day = int.tryParse(parts[0]);
+      final month = _monthIndex[parts[1].toLowerCase()];
+      final year = int.tryParse(parts[2]);
+      if (day != null && month != null && year != null && year > 1970) {
+        return DateTime(year, month, day);
+      }
+    }
+
+    // `February 16, 2027` / `Feb 16 2027`
+    final eng = RegExp(
+      r'^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})',
+    ).firstMatch(s);
+    if (eng != null) {
+      final month = _monthIndex[eng.group(1)!.toLowerCase()];
+      final day = int.tryParse(eng.group(2)!);
+      final year = int.tryParse(eng.group(3)!);
+      if (day != null && month != null && year != null && year > 1970) {
+        return DateTime(year, month, day);
+      }
+    }
+
+    // ISO `2027-02-16` / `2027-02-16T…`
+    final iso = DateTime.tryParse(s);
+    if (iso != null && iso.year > 1970) return iso;
+    return null;
+  }
+}
+
 /// Helpers for the MAC address a Stalker/Ministra portal authenticates
 /// against — MAG-style set-top-box MACs.
 abstract final class StalkerMac {
