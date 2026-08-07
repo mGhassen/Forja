@@ -20,6 +20,7 @@ import {
   fetchOpsOverview,
   runDurationLabel,
 } from '@/lib/ops-overview'
+import { formatAdminDateTime } from '@/lib/iptv-portal-expiry'
 import { humanizeScrapeCron } from '@/lib/scrape-cron'
 import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
@@ -96,7 +97,7 @@ export function AdminDashboardPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={latest.status} />
                 <span className="text-xs text-forja-muted">
-                  {new Date(latest.started_at).toLocaleString()}
+                  {formatAdminDateTime(latest.started_at)}
                   {latest.source ? ` · ${latest.source}` : ''} ·{' '}
                   {runDurationLabel(latest)}
                 </span>
@@ -212,7 +213,7 @@ export function AdminDashboardPage() {
                     className="border-t border-forja-border/80 hover:bg-white/[0.02]"
                   >
                     <td className={cn(tdClassName, 'whitespace-nowrap text-xs')}>
-                      {new Date(r.started_at).toLocaleString()}
+                      {formatAdminDateTime(r.started_at)}
                     </td>
                     <td className={tdClassName}>
                       <StatusBadge status={r.status} />

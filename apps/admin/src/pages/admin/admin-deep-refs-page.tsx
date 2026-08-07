@@ -48,6 +48,7 @@ import {
   countPromoteBackfillPending,
   startPromoteBackfill,
 } from '@/lib/promote-backfill'
+import { formatAdminDateTime } from '@/lib/iptv-portal-expiry'
 import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
 
@@ -846,11 +847,11 @@ export function AdminDeepRefsPage() {
                             )}
                             title={
                               r.created_at !== deepRefLastAt(r)
-                                ? `First seen ${new Date(r.created_at).toLocaleString()}`
+                                ? `First seen ${formatAdminDateTime(r.created_at)}`
                                 : undefined
                             }
                           >
-                            {new Date(deepRefLastAt(r)).toLocaleString()}
+                            {formatAdminDateTime(deepRefLastAt(r))}
                           </td>
                           <td
                             className={cn(tdClassName, 'font-mono-ui text-xs')}

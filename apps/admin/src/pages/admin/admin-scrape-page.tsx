@@ -47,6 +47,7 @@ import {
   subscribeScrapeRuns,
   type ScrapeRunRow,
 } from '@/lib/scrape-runs'
+import { formatAdminDateTime } from '@/lib/iptv-portal-expiry'
 import { cn } from '@/lib/utils'
 import { useTablePagination } from '@/lib/use-table-pagination'
 
@@ -282,7 +283,7 @@ export function AdminScrapePage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge status={latest.status} />
                   <span className="text-xs text-forja-muted">
-                    {new Date(latest.started_at).toLocaleString()}
+                    {formatAdminDateTime(latest.started_at)}
                     {latest.source ? ` · ${latest.source}` : ''}
                   </span>
                 </div>
@@ -315,7 +316,7 @@ export function AdminScrapePage() {
                 <p className="text-xs text-forja-muted">
                   Duration {runDurationLabel(latest)}
                   {latest.finished_at
-                    ? ` · finished ${new Date(latest.finished_at).toLocaleString()}`
+                    ? ` · finished ${formatAdminDateTime(latest.finished_at)}`
                     : ' · in progress'}
                 </p>
                 {latest.error ? (
@@ -647,7 +648,7 @@ export function AdminScrapePage() {
                     )}
                   >
                     <td className={cn(tdClassName, 'whitespace-nowrap text-xs')}>
-                      {new Date(r.started_at).toLocaleString()}
+                      {formatAdminDateTime(r.started_at)}
                     </td>
                     <td
                       className={cn(

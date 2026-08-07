@@ -34,6 +34,11 @@ export type PoolHostsResult = {
   regions: string[]
 }
 
+export type PoolHostPortalsResult = {
+  portals: PoolCand[]
+  total: number
+}
+
 export type PoolFilterParams = {
   q?: string
   inventory?: 'all' | 'pool' | 'nonpool'
@@ -130,8 +135,11 @@ async function attachDeepRefIds(
 
 export async function fetchPoolHostPortals(
   host: string,
-  opts: Omit<PoolFilterParams, 'sort' | 'dir' | 'limit' | 'offset'>,
-): Promise<PoolCand[]> {
+  opts: Omit<PoolFilterParams, 'sort' | 'dir'> & {
+    limit?: number
+    offset?: number
+  },
+): Promise<PoolHostPortalsResult> {
   const { data, error } = await adminDb.rpc('admin_iptv_pool_host_portals', {
     p_host: poolHostKey(host),
     p_q: opts.q?.trim() || null,
@@ -139,13 +147,29 @@ export async function fetchPoolHostPortals(
     p_platform: opts.platform ?? 'all',
     p_status: opts.status ?? 'all',
     p_region: opts.region ?? 'all',
+    p_limit: opts.limit ?? 50,
+    p_offset: opts.offset ?? 0,
   })
   if (error) throw new Error(errMessage(error, 'Pool portals failed'))
-  const rows = (Array.isArray(data) ? data : []) as Omit<
-    PoolCand,
-    'deep_ref_id'
-  >[]
-  return attachDeepRefIds(rows)
+  const raw = (data ?? {}) as Record<string, unknown>
+  // New shape: { portals, total }. Old RPC returned a bare array.
+  const list = Array.isArray(raw.portals)
+    ? raw.portals
+    : Array.isArray(data)
+      ? data
+      : []
+  const rows = list as PoolCand[]
+  const needsDeepRef = rows.some((r) => r.deep_ref_id === undefined)
+  const portals = needsDeepRef
+    ? await attachDeepRefIds(rows as Omit<PoolCand, 'deep_ref_id'>[])
+    : rows.map((r) => ({
+        ...r,
+        deep_ref_id: r.deep_ref_id ?? null,
+      }))
+  return {
+    portals,
+    total: Number(raw.total ?? portals.length),
+  }
 }
 
 export async function fetchPoolPortalById(

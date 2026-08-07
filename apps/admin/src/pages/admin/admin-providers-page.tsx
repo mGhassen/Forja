@@ -35,6 +35,7 @@ import {
   serializeConfig,
   templatesToRows,
 } from '@/lib/provider-runtime-config'
+import { formatAdminDateTime } from '@/lib/iptv-portal-expiry'
 import { cn } from '@/lib/utils'
 
 type Mode = 'form' | 'json'
@@ -525,7 +526,7 @@ export function AdminProvidersPage() {
         {row.data?.updated_at ? (
           <>
             <span className="mx-2 text-forja-border">·</span>
-            updated {new Date(row.data.updated_at).toLocaleString()}
+            updated {formatAdminDateTime(row.data.updated_at)}
             {dirty ? ' · unsaved' : ''}
           </>
         ) : null}

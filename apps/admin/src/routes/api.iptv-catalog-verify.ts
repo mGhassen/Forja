@@ -13,15 +13,6 @@ function json(data: unknown, status = 200) {
   return Response.json(data, { status })
 }
 
-function candidateHost(url: string): string {
-  try {
-    const u = new URL(url.includes('://') ? url : `http://${url}`)
-    return u.host || url
-  } catch {
-    return url
-  }
-}
-
 type CandRow = {
   id: string
   url: string
@@ -107,20 +98,18 @@ export const Route = createFileRoute('/api/iptv-catalog-verify')({
             if (!data) return json({ error: 'portal not found' }, 404)
             rows = [data as CandRow]
           } else if (host) {
+            const hostKey = host.toLowerCase()
             const { data, error } = await sb
               .from('iptv_portals')
               .select('id, url, username')
+              .eq('url_host', hostKey)
               .order('updated_at', { ascending: false })
-              .limit(500)
+              .limit(40)
             if (error) return json({ error: error.message }, 500)
-            rows = ((data ?? []) as CandRow[]).filter(
-              (r) => candidateHost(r.url) === host,
-            )
+            rows = (data ?? []) as CandRow[]
             if (rows.length === 0) {
               return json({ error: 'no portals for host' }, 404)
             }
-            // Manual host check — cap so one click can’t hang forever.
-            rows = rows.slice(0, 40)
           }
 
           const results = []

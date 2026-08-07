@@ -99,9 +99,29 @@ function HostPortals({
   onCheck: (c: PoolCand) => void
   onPeople: (c: PoolCand) => void
 }) {
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(50)
+
+  useEffect(() => {
+    setPage(0)
+  }, [host, filters, pageSize])
+
   const portals = useQuery({
-    queryKey: ['admin', 'pool', 'portals', poolHostKey(host), filters],
-    queryFn: () => fetchPoolHostPortals(host, filters),
+    queryKey: [
+      'admin',
+      'pool',
+      'portals',
+      poolHostKey(host),
+      filters,
+      page,
+      pageSize,
+    ],
+    queryFn: () =>
+      fetchPoolHostPortals(host, {
+        ...filters,
+        limit: pageSize,
+        offset: page * pageSize,
+      }),
   })
 
   if (portals.isLoading) {
@@ -118,8 +138,9 @@ function HostPortals({
       </p>
     )
   }
-  const rows = portals.data ?? []
-  if (rows.length === 0) {
+  const rows = portals.data?.portals ?? []
+  const total = portals.data?.total ?? 0
+  if (total === 0) {
     return (
       <p className="border-t border-forja-border px-3 py-3 text-sm text-forja-muted">
         No portals match these filters.
@@ -128,29 +149,41 @@ function HostPortals({
   }
 
   return (
-    <ul className="grid grid-cols-1 border-t border-forja-border bg-forja-surface/20 sm:grid-cols-2 sm:[&>li:nth-child(odd)]:border-r sm:[&>li:nth-child(odd)]:border-forja-border/70">
-      {rows.map((c) => (
-        <IptvPortalActionRow
-          key={c.id}
-          portal={c}
-          highlighted={highlightedId === c.id}
-          sharing={sharingId === c.id}
-          shareCode={shareFlash[c.id] ?? null}
-          deleting={removePending}
-          checking={checkingId === c.id || checkingHost === host}
-          deleteConfirmLabel="Remove from catalog pool?"
-          deleteDisabled={c.catalog_pool !== true}
-          deleteTitle={
-            c.catalog_pool ? 'Remove from catalog pool' : 'Not in catalog pool'
-          }
-          onShare={() => onShare(c)}
-          onEdit={() => onEdit(c)}
-          onDelete={() => onDelete(c.id)}
-          onCheck={() => onCheck(c)}
-          onPeople={() => onPeople(c)}
+    <div className="border-t border-forja-border bg-forja-surface/20">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 sm:[&>li:nth-child(odd)]:border-r sm:[&>li:nth-child(odd)]:border-forja-border/70">
+        {rows.map((c) => (
+          <IptvPortalActionRow
+            key={c.id}
+            portal={c}
+            highlighted={highlightedId === c.id}
+            sharing={sharingId === c.id}
+            shareCode={shareFlash[c.id] ?? null}
+            deleting={removePending}
+            checking={checkingId === c.id || checkingHost === host}
+            deleteConfirmLabel="Remove from catalog pool?"
+            deleteDisabled={c.catalog_pool !== true}
+            deleteTitle={
+              c.catalog_pool ? 'Remove from catalog pool' : 'Not in catalog pool'
+            }
+            onShare={() => onShare(c)}
+            onEdit={() => onEdit(c)}
+            onDelete={() => onDelete(c.id)}
+            onCheck={() => onCheck(c)}
+            onPeople={() => onPeople(c)}
+          />
+        ))}
+      </ul>
+      {total > pageSize || page > 0 ? (
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[25, 50, 100]}
         />
-      ))}
-    </ul>
+      ) : null}
+    </div>
   )
 }
 
