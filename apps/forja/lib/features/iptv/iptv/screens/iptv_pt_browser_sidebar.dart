@@ -21,6 +21,7 @@ class _CategorySidebarRow extends StatefulWidget {
     this.onUpEdge,
     this.onRightEdge,
     this.onTvFocusChange,
+    this.onPinFocusChange,
   });
 
   final String label;
@@ -45,6 +46,8 @@ class _CategorySidebarRow extends StatefulWidget {
   final VoidCallback? onRightEdge;
   /// TV: report focus so the channel pane can stay lazy until OK / →.
   final ValueChanged<bool>? onTvFocusChange;
+  /// TV: pin chrome focused — parent ExcludeFocus on channels.
+  final ValueChanged<bool>? onPinFocusChange;
 
   @override
   State<_CategorySidebarRow> createState() => _CategorySidebarRowState();
@@ -66,6 +69,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       s._exitFloating();
       return true;
     }
+    if (s._tvPinRevealed) {
+      s._hideTvPinReveal();
+      return true;
+    }
     return false;
   }
 
@@ -73,6 +80,8 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   bool _hovered = false;
   bool _okHoldFired = false;
   Timer? _okHoldTimer;
+  /// TV: pin chrome after hold-OK when reorder is unavailable.
+  bool _tvPinRevealed = false;
 
   late final FocusNode _rowFocus;
   late final FocusNode _pinFocus;
@@ -82,7 +91,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   bool get _floating => widget.floating;
 
   bool get _chromeLit =>
-      _focused || _pinFocus.hasFocus || _floating;
+      _focused || _pinFocus.hasFocus || _floating || _tvPinRevealed;
 
   bool get _tvFocused => iptvTvFocused(context, focused: _chromeLit);
 
@@ -91,9 +100,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
 
   bool get _showPin {
     if (!widget.pinnable || widget.onTogglePin == null) return false;
-    // TV: always mount the pin so → can focus it on the first press (no
-    // setState/post-frame race that leaked KeyRepeat into channels).
-    if (iptvUseTvFocus(context)) return true;
+    // TV: pin only after hold-OK (float / reveal) — normal browse hides it.
+    if (iptvUseTvFocus(context)) {
+      return _floating || _tvPinRevealed || _pinFocus.hasFocus;
+    }
     return widget.pinned || _hovered || _tvFocused;
   }
 
@@ -108,7 +118,16 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   void initState() {
     super.initState();
     _rowFocus = FocusNode(debugLabel: 'iptv-category-row-${widget.listIndex}');
-    _pinFocus = FocusNode(debugLabel: 'iptv-category-pin-${widget.listIndex}');
+    _pinFocus = FocusNode(
+      debugLabel: 'iptv-category-pin-${widget.listIndex}',
+      onKeyEvent: (node, event) {
+        // Belt-and-suspenders — FocusableControl can still spatial → to channels.
+        if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+    );
     _pinFocus.addListener(_onPinFocusChanged);
     if (_floating || _pinFocus.hasFocus) _claimChrome();
   }
@@ -142,12 +161,16 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
 
   void _onPinFocusChanged() {
     if (!mounted) return;
-    if (_pinFocus.hasFocus) {
+    final pinFocused = _pinFocus.hasFocus;
+    if (pinFocused) {
       _claimChrome();
     } else {
       _syncChromeClaim();
     }
     setState(() {});
+    widget.onPinFocusChange?.call(
+      pinFocused || _tvPinRevealed || _floating,
+    );
   }
 
   void _claimChrome() => _chromeOwner = this;
@@ -157,7 +180,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   }
 
   void _syncChromeClaim() {
-    if (_pinFocus.hasFocus || _floating || _focused) {
+    if (_pinFocus.hasFocus || _floating || _focused || _tvPinRevealed) {
       _claimChrome();
     } else {
       _releaseChrome();
@@ -176,17 +199,30 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
 
   void _focusPin() {
     if (!_canTvPin || !_pinFocus.canRequestFocus) return;
-    // Pin is always mounted on TV — focus sync so KeyRepeat hits the pin
-    // trap instead of spatial → into channels.
+    if (!_showPin) {
+      setState(() => _tvPinRevealed = true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _pinFocus.requestFocus();
+      });
+      return;
+    }
     if (_pinFocus.context != null) {
       _pinFocus.requestFocus();
       return;
     }
-    if (!_showPin) setState(() {});
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _pinFocus.requestFocus();
     });
+  }
+
+  void _hideTvPinReveal() {
+    if (!_tvPinRevealed && !_pinFocus.hasFocus) return;
+    if (_pinFocus.hasFocus) _focusRow();
+    setState(() => _tvPinRevealed = false);
+    _syncChromeClaim();
+    widget.onPinFocusChange?.call(_pinFocus.hasFocus || _floating);
   }
 
   void _cancelOkGestures() {
@@ -198,14 +234,17 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   void _enterFloating() {
     if (!_canTvReorder || _floating) return;
     _cancelOkGestures();
+    _tvPinRevealed = false;
     _claimChrome();
     widget.onEnterFloating?.call();
+    widget.onPinFocusChange?.call(true);
   }
 
   void _exitFloating() {
     if (!_floating) return;
     widget.onExitFloating?.call();
     _syncChromeClaim();
+    widget.onPinFocusChange?.call(_pinFocus.hasFocus || _tvPinRevealed);
   }
 
   void _onRowFocusChange(bool focused) {
@@ -221,6 +260,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (_pinFocus.hasFocus || _floating) return;
+      if (_tvPinRevealed) {
+        setState(() => _tvPinRevealed = false);
+        widget.onPinFocusChange?.call(false);
+      }
       setState(() => _focused = false);
       _releaseChrome();
       widget.onTvFocusChange?.call(false);
@@ -259,39 +302,59 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
           if (event is KeyDownEvent) _exitFloating();
           return KeyEventResult.handled;
         }
-        // Trap OK KeyDown + → — OK drops on KeyUp so open-channels does not fire.
+        if (key == LogicalKeyboardKey.arrowRight) {
+          // Hold-OK session: → focuses pin (not channels).
+          if (_canTvPin) _focusPin();
+          return KeyEventResult.handled;
+        }
+        // Trap OK KeyDown — OK drops on KeyUp so open-channels does not fire.
         return KeyEventResult.handled;
       }
       if (event is KeyUpEvent && activate) {
+        // Release after hold-to-enter — stay floating.
+        if (_okHoldFired) {
+          _okHoldFired = false;
+          return KeyEventResult.handled;
+        }
         _exitFloating();
         return KeyEventResult.handled;
       }
       return KeyEventResult.handled;
     }
 
-    // → focuses pin when pinnable (channels open via OK).
-    // KeyDown + KeyRepeat — first repeat must not leak to spatial channels.
-    if ((event is KeyDownEvent || event is KeyRepeatEvent) &&
-        event.logicalKey == LogicalKeyboardKey.arrowRight &&
-        _canTvPin) {
-      _cancelOkGestures();
-      _focusPin();
-      return KeyEventResult.handled;
+    // Pin revealed (hold without reorder): → focuses pin; ← hides.
+    if (_tvPinRevealed) {
+      final key = event.logicalKey;
+      if ((event is KeyDownEvent || event is KeyRepeatEvent) &&
+          key == LogicalKeyboardKey.arrowRight &&
+          _canTvPin) {
+        _focusPin();
+        return KeyEventResult.handled;
+      }
+      if (event is KeyDownEvent && key == LogicalKeyboardKey.arrowLeft) {
+        _hideTvPinReveal();
+        return KeyEventResult.handled;
+      }
     }
 
-    // Long-press OK → floating reorder. Short OK → open channels.
+    // Long-press OK → float (reorder) or reveal pin. Short OK → open channels.
+    // Normal → is ignored here → onRightEdge opens channels.
     if (_canTvReorder || _canTvPin) {
       if (event is KeyDownEvent &&
           shellTvIsActivateLogicalKey(event.logicalKey)) {
         _okHoldFired = false;
         _okHoldTimer?.cancel();
-        if (_canTvReorder) {
-          _okHoldTimer = Timer(_okHoldDelay, () {
-            if (!mounted) return;
-            _okHoldFired = true;
+        _okHoldTimer = Timer(_okHoldDelay, () {
+          if (!mounted) return;
+          _okHoldFired = true;
+          if (_canTvReorder) {
             _enterFloating();
-          });
-        }
+          } else if (_canTvPin) {
+            setState(() => _tvPinRevealed = true);
+            _claimChrome();
+            widget.onPinFocusChange?.call(true);
+          }
+        });
         return KeyEventResult.handled;
       }
       if (event is KeyUpEvent &&
@@ -461,7 +524,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       tvRowId: 'browser-categories',
       tvItemIndex: widget.listIndex,
       focusNode: _rowFocus,
-      allowNestedFocus: tv && _canTvPin,
+      allowNestedFocus: tv && _canTvPin && _showPin,
       // Vertical list — skip hub-row lift; keepVisible only in this scroll view.
       // Floating / pin chrome: parent freezes scroll — ensureVisible fights it.
       ensureVisibleMode: (_floating || _pinFocus.hasFocus)
@@ -471,14 +534,14 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       onUpEdge: widget.onUpEdge,
       onRightEdge: () {
         _cancelOkGestures();
-        if (_floating) {
-          _exitFloating();
+        if (_floating || _tvPinRevealed) {
+          if (_canTvPin) {
+            _focusPin();
+            return;
+          }
           return;
         }
-        if (_canTvPin) {
-          _focusPin();
-          return;
-        }
+        // Normal browse: → opens channels.
         widget.onRightEdge?.call();
       },
       onFocusChange: _onRowFocusChange,

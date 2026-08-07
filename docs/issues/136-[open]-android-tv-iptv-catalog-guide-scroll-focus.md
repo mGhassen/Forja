@@ -38,7 +38,7 @@
 | 1 | I136-A01 | Android TV: ↑/↓ in IPTV category + channel (catalog) keeps focus chrome fully visible — no missing highlight while scrolling | ⬜ |
 | 2 | I136-A02 | Android TV: in-player channel guide groups/channels same; logos not stretched; rows feel denser | ⬜ |
 | 3 | I136-A03 | Android TV: hold ↑/↓ through long category/channel lists — scroll stays snappy (no obvious hitch per step); category left-bar lines stay aligned when holding ↑ | ⬜ |
-| 4 | I136-A04 | Android TV: hold OK to float a category — ↑/↓ moves one group at a time, focus stays on the floating row (not channels), rail scrolls so it stays 2nd visible until ends | ⬜ |
+| 4 | I136-A04 | Android TV: hold OK to float — ↑/↓ one step; no scroll until 2nd visible slot, then pin there until ends; focus stays on float | ⬜ |
 | 5 | I136-A05 | Android TV: → on a Live group focuses pin on first press; OK on pin does not jump category rail scroll | ⬜ |
 
 ---
@@ -51,7 +51,7 @@ D-pad focus on IPTV **catalog** (category rail + channel grid/list) and **in-pla
 
 **Follow-up (I136-T05):** Category sidebar still used `SliverList` without fixed extents (channels/portals already had `itemExtent`). Fast ↑ corrected estimated heights → green left-bar / rows jumped. Now `SliverFixedExtentList` + reorderable `itemExtent`, scroll cache, and no full-browser `setState` while D-pad walks unopened groups.
 
-**Follow-up (I136-T06):** TV floating reorder lost primary focus on each ↑/↓ rebuild → KeyRepeat hit spatial/HoldAccel (stride 3) and channels. Parent `HardwareKeyboard` owns the session; moves by category id; rail pins the floating row as the 2nd visible until list ends; channel pane `ExcludeFocus` while floating.
+**Follow-up (I136-T06):** TV floating reorder lost primary focus on each ↑/↓ rebuild → KeyRepeat hit spatial/HoldAccel (stride 3) and channels. Parent `HardwareKeyboard` owns the session; moves by category id; rail scrolls only after the floating row reaches the 2nd visible slot (then pins there until ends); channel pane `ExcludeFocus` while floating.
 
 **Follow-up (I136-T07):** → to pin used post-frame focus while KeyRepeat still on the row/pin leaked spatial → into channels (right-left-right). Pin always mounted on TV + sync focus + trap →; OK pin freezes rail scroll (pinned row still moves to front of movable list).
 

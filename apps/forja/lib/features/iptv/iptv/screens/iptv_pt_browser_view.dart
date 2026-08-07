@@ -45,6 +45,10 @@ class _BrowserViewState extends State<_BrowserView> {
   /// TV floating reorder — sticky on this category until OK / Back / ← drops.
   String? _tvFloatingCategoryId;
   bool _floatingReorderKeysBound = false;
+  /// Swallow OK KeyUp after hold-to-enter — must not drop the float.
+  bool _swallowFloatingActivateUp = false;
+  /// Category pin has focus — channel pane must not take →.
+  bool _tvCategoryPinFocused = false;
 
   bool get _searchOpen => widget.ctrl.browserSearchOpen;
   bool get _needsPortal => widget.ctrl.activePortal == null;
@@ -118,13 +122,16 @@ class _BrowserViewState extends State<_BrowserView> {
     setState(() => _tvFloatingCategoryId = categoryId);
     _syncFloatingReorderKeys();
     if (categoryId != null) {
+      // Hold-OK KeyUp arrives after enter — do not treat it as drop.
+      _swallowFloatingActivateUp = true;
+      // Stay put on enter — only scroll once dragging reaches the 2nd slot.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _tvFloatingCategoryId != categoryId) return;
-        _scrollCategorySidebarToFloating();
         _focusFloatingCategoryRow();
       });
       return;
     }
+    _swallowFloatingActivateUp = false;
     if (prev == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _tvFloatingReorder) return;
@@ -154,9 +161,15 @@ class _BrowserViewState extends State<_BrowserView> {
     if (!up && !down && !left && !right && !activate) return false;
 
     // Drop on OK KeyUp (KeyDown must not exit — KeyUp would open channels).
-    // ← drops on KeyDown.
+    // ← drops on KeyDown. Swallow the KeyUp from hold-to-enter.
     if (activate) {
-      if (event is KeyUpEvent) _exitTvFloatingReorder();
+      if (event is KeyUpEvent) {
+        if (_swallowFloatingActivateUp) {
+          _swallowFloatingActivateUp = false;
+          return true;
+        }
+        _exitTvFloatingReorder();
+      }
       return true;
     }
     if (left) {
@@ -164,8 +177,8 @@ class _BrowserViewState extends State<_BrowserView> {
       return true;
     }
     if (right) {
-      // Trap → — drop only via OK / ← / Back.
-      return true;
+      // Let the focused row handle → (focus pin when available).
+      return false;
     }
 
     // One category per KeyDown / KeyRepeat — never HoldAccel strides.
@@ -195,7 +208,7 @@ class _BrowserViewState extends State<_BrowserView> {
     unawaited(widget.ctrl.reorderLiveCategories(oldIndex, newIndex));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _tvFloatingCategoryId != id) return;
-      _scrollCategorySidebarToFloating();
+      _scrollCategorySidebarForFloatingMove(delta);
       _focusFloatingCategoryRow();
     });
   }
@@ -243,20 +256,36 @@ class _BrowserViewState extends State<_BrowserView> {
     iptvFocusRowItem('browser-categories', idx);
   }
 
-  /// Pin floating row as the 2nd visible category (1 above) until list ends.
-  void _scrollCategorySidebarToFloating() {
+  /// After ↑/↓ reorder: only scroll once the floating row hits the edge band.
+  ///
+  /// Dragging up — stay at the **2nd** visible row once you reach it; at the
+  /// top of the list it may sit first. Dragging down — mirror (2nd from
+  /// bottom → last). Never jump to 2nd on enter / mid-viewport moves.
+  void _scrollCategorySidebarForFloatingMove(int delta) {
     final id = _tvFloatingCategoryId;
     if (id == null || !_categoryScroll.hasClients) return;
     final cats = widget.ctrl.browserSidebarCategories;
     final idx = cats.indexWhere((c) => c.id == id);
     if (idx < 0) return;
     final rowH = _categoryRowExtent(widget.compact);
-    const keepAbove = 1;
-    final target = (_categoryListPadV + (idx - keepAbove) * rowH).clamp(
-      0.0,
-      _categoryScroll.position.maxScrollExtent,
-    );
-    if ((_categoryScroll.offset - target).abs() < 0.5) return;
+    final pos = _categoryScroll.position;
+    final max = pos.maxScrollExtent;
+    final viewH = pos.viewportDimension;
+    final current = pos.pixels;
+    final itemTop = _categoryListPadV + idx * rowH;
+
+    late final double target;
+    if (delta < 0) {
+      // Prefer 2nd visible slot (one row above).
+      target = (itemTop - rowH).clamp(0.0, max);
+      // Only scroll up when the row sits above that band.
+      if (current <= target + 0.5) return;
+    } else {
+      // Prefer 2nd-from-bottom visible slot.
+      target = (itemTop - viewH + 2 * rowH).clamp(0.0, max);
+      // Only scroll down when the row sits below that band.
+      if (current >= target - 0.5) return;
+    }
     _categoryScroll.jumpTo(target);
   }
 
@@ -813,7 +842,7 @@ class _BrowserViewState extends State<_BrowserView> {
             Expanded(
               // Floating reorder owns the remote — channels must not steal focus.
               child: ExcludeFocus(
-                excluding: _tvFloatingReorder,
+                excluding: _tvFloatingReorder || _tvCategoryPinFocused,
                 child: _buildChannelPane(),
               ),
             ),
@@ -938,6 +967,11 @@ class _BrowserViewState extends State<_BrowserView> {
                   _commitBrowserCategory(cat.id, enterStreams: true),
               onTvFocusChange: (focused) =>
                   _onCategoryTvFocus(cat.id, focused),
+              onPinFocusChange: (focused) {
+                if (!mounted) return;
+                if (_tvCategoryPinFocused == focused) return;
+                setState(() => _tvCategoryPinFocused = focused);
+              },
             );
           }
 
