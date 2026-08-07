@@ -9,6 +9,14 @@ pub fn lan_server_start(
     bind_mode: u8,
     preferred_port: u16,
 ) -> i32 {
+    if let Ok(guard) = LAN.lock() {
+        if let Some(existing) = guard.as_ref() {
+            let port = existing.port();
+            if port > 0 {
+                return port as i32;
+            }
+        }
+    }
     if crate::engine_proxy::proxy_port() == 0 {
         let _ = crate::proxy_start(preferred_port as u32);
     }

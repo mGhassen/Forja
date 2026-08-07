@@ -149,7 +149,8 @@ fn build_router(state: LanServerState) -> Router {
         .with_state(state.clone());
 
     let stream_pairing = pairing.clone();
-    let mut streams = proxy::proxy_router(state.proxy_state.clone());
+    // proxy_media_router omits /health — axum::merge panics on overlapping routes.
+    let mut streams = proxy::proxy_media_router(state.proxy_state.clone());
     if let Some(api) = state.torrent.torrent_api() {
         streams = streams.merge(torrent_stream_router(TorrentAppState { api }));
     }
@@ -158,7 +159,6 @@ fn build_router(state: LanServerState) -> Router {
         async move { require_stream_ticket(pairing, req, next).await }
     }));
 
-    // Public last so LAN /health wins over proxy /health.
     streams.merge(protected).merge(public)
 }
 
@@ -374,5 +374,17 @@ mod tests {
             append_stream_ticket("http://h/p?x=1", "abc"),
             "http://h/p?x=1&st=abc"
         );
+    }
+
+    #[test]
+    fn build_router_does_not_overlap_health() {
+        // axum::merge panics on duplicate routes — regression for Settings → LAN enable.
+        let state = LanServerState {
+            pairing: PairingState::new("test-server".into()),
+            proxy_state: ProxyState::default(),
+            torrent: Arc::new(TorrentEngine::new()),
+            listen_port: Arc::new(tokio::sync::RwLock::new(0)),
+        };
+        let _ = build_router(state);
     }
 }

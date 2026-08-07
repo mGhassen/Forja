@@ -21,6 +21,10 @@ class LanServerService {
 
   Future<bool> start({bool allInterfaces = true}) async {
     if (!canRunServer || !Engine.isReady) return false;
+    if (isRunning) {
+      await LanPrefs.instance.setLanServerEnabled(true);
+      return true;
+    }
     final bindMode = allInterfaces ? 1 : 0;
     final p = RustLib.instance.lanServerStart(
       bindMode: bindMode,

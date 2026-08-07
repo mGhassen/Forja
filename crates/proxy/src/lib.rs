@@ -101,10 +101,20 @@ impl LocalProxy {
     }
 }
 
-/// Shared axum routes for loopback LocalProxy and LAN remount.
+/// Media/proxy routes only (no `/health`). LAN remounts these and supplies its own health.
+pub fn proxy_media_router(state: ProxyState) -> Router {
+    proxy_media_routes().with_state(state)
+}
+
+/// Loopback LocalProxy: media routes + simple `/health`.
 pub fn proxy_router(state: ProxyState) -> Router {
-    Router::new()
+    proxy_media_routes()
         .route("/health", get(health))
+        .with_state(state)
+}
+
+fn proxy_media_routes() -> Router<ProxyState> {
+    Router::new()
         .route(
             "/proxy",
             get(query_proxy_handler).head(query_proxy_handler),
@@ -124,7 +134,6 @@ pub fn proxy_router(state: ProxyState) -> Router {
             "/subtitlecat-translate",
             get(subtitlecat::subtitlecat_translate_handler),
         )
-        .with_state(state)
 }
 
 #[derive(Debug, Deserialize)]
