@@ -30,6 +30,9 @@ class _BrowserViewState extends State<_BrowserView> {
   double _streamTileExtent = 120;
   double _streamMainGap = 10;
   Timer? _scrollSettleTimer;
+  /// TV: defer stream logos until scroll settles (decode thrash on hold ↑/↓).
+  bool _channelLogosVisible = true;
+  static const _logoSettleDelay = Duration(milliseconds: 350);
   bool _didInitialFocus = false;
   bool _didRequestReloadFocus = false;
   bool _wasLoading = false;
@@ -41,9 +44,11 @@ class _BrowserViewState extends State<_BrowserView> {
   bool _tvCategoryRailFocused = false;
   /// TV floating reorder — sticky on this category until OK / Back / ← drops.
   String? _tvFloatingCategoryId;
+  bool _floatingReorderKeysBound = false;
 
   bool get _searchOpen => widget.ctrl.browserSearchOpen;
   bool get _needsPortal => widget.ctrl.activePortal == null;
+  bool get _tvFloatingReorder => _tvFloatingCategoryId != null;
 
   @override
   void initState() {
@@ -64,6 +69,7 @@ class _BrowserViewState extends State<_BrowserView> {
   bool _handleCatalogPageBack() {
     // Pin focus / floating reorder own Back before streams → category.
     if (_CategorySidebarRowState.tryConsumeBack()) return true;
+    if (_exitTvFloatingReorder()) return true;
     if (!iptvHandleCatalogPageBack(widget.ctrl)) return false;
     _scrollCategorySidebarToSelected();
     return true;
@@ -71,6 +77,7 @@ class _BrowserViewState extends State<_BrowserView> {
 
   @override
   void dispose() {
+    _unbindFloatingReorderKeys();
     widget.ctrl.removeListener(_onCtrlChanged);
     _scrollSettleTimer?.cancel();
     _categoryScroll.dispose();
@@ -80,6 +87,177 @@ class _BrowserViewState extends State<_BrowserView> {
     _reloadEmptyFocus.dispose();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _bindFloatingReorderKeys() {
+    if (_floatingReorderKeysBound) return;
+    HardwareKeyboard.instance.addHandler(_onFloatingReorderKey);
+    _floatingReorderKeysBound = true;
+    ShellTvHoldAccel.reset();
+  }
+
+  void _unbindFloatingReorderKeys() {
+    if (!_floatingReorderKeysBound) return;
+    HardwareKeyboard.instance.removeHandler(_onFloatingReorderKey);
+    _floatingReorderKeysBound = false;
+    ShellTvHoldAccel.reset();
+  }
+
+  void _syncFloatingReorderKeys() {
+    if (_tvFloatingReorder && iptvUseTvFocus(context)) {
+      _bindFloatingReorderKeys();
+    } else {
+      _unbindFloatingReorderKeys();
+    }
+  }
+
+  /// Enter / leave TV floating category reorder (parent owns ↑↓ + drop keys).
+  void _setTvFloatingCategory(String? categoryId) {
+    if (_tvFloatingCategoryId == categoryId) return;
+    final prev = _tvFloatingCategoryId;
+    setState(() => _tvFloatingCategoryId = categoryId);
+    _syncFloatingReorderKeys();
+    if (categoryId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _tvFloatingCategoryId != categoryId) return;
+        _scrollCategorySidebarToFloating();
+        _focusFloatingCategoryRow();
+      });
+      return;
+    }
+    if (prev == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _tvFloatingReorder) return;
+      final cats = widget.ctrl.browserSidebarCategories;
+      final idx = cats.indexWhere((c) => c.id == prev);
+      if (idx >= 0) iptvFocusRowItem('browser-categories', idx);
+    });
+  }
+
+  bool _exitTvFloatingReorder() {
+    if (!_tvFloatingReorder) return false;
+    _setTvFloatingCategory(null);
+    return true;
+  }
+
+  /// Hardware keys while floating — survives focus flicker to channels / neighbors.
+  bool _onFloatingReorderKey(KeyEvent event) {
+    if (!_tvFloatingReorder) return false;
+    if (!iptvUseTvFocus(context)) return false;
+
+    final key = event.logicalKey;
+    final up = key == LogicalKeyboardKey.arrowUp;
+    final down = key == LogicalKeyboardKey.arrowDown;
+    final left = key == LogicalKeyboardKey.arrowLeft;
+    final right = key == LogicalKeyboardKey.arrowRight;
+    final activate = shellTvIsActivateLogicalKey(key);
+    if (!up && !down && !left && !right && !activate) return false;
+
+    // Drop on OK KeyUp (KeyDown must not exit — KeyUp would open channels).
+    // ← drops on KeyDown.
+    if (activate) {
+      if (event is KeyUpEvent) _exitTvFloatingReorder();
+      return true;
+    }
+    if (left) {
+      if (event is KeyDownEvent) _exitTvFloatingReorder();
+      return true;
+    }
+    if (right) {
+      // Trap → — drop only via OK / ← / Back.
+      return true;
+    }
+
+    // One category per KeyDown / KeyRepeat — never HoldAccel strides.
+    if (event is KeyUpEvent) {
+      ShellTvHoldAccel.reset();
+      return true;
+    }
+    if (event is KeyDownEvent || event is KeyRepeatEvent) {
+      ShellTvHoldAccel.reset();
+      _tvMoveFloatingCategory(up ? -1 : 1);
+      return true;
+    }
+    return true;
+  }
+
+  void _tvMoveFloatingCategory(int delta) {
+    final id = _tvFloatingCategoryId;
+    if (id == null || !widget.ctrl.canReorderLiveCategories) return;
+    final movable = [
+      for (final c in widget.ctrl.browserSidebarCategories)
+        if (!IptvLiveCatalog.isSyntheticId(c.id)) c,
+    ];
+    final oldIndex = movable.indexWhere((c) => c.id == id);
+    if (oldIndex < 0) return;
+    final newIndex = (oldIndex + delta).clamp(0, movable.length - 1);
+    if (newIndex == oldIndex) return;
+    unawaited(widget.ctrl.reorderLiveCategories(oldIndex, newIndex));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _tvFloatingCategoryId != id) return;
+      _scrollCategorySidebarToFloating();
+      _focusFloatingCategoryRow();
+    });
+  }
+
+  /// Pin without scrolling the rail (item may move to top of movable list).
+  void _toggleCategoryPin(String categoryId) {
+    final cats = widget.ctrl.browserSidebarCategories;
+    final slot = cats.indexWhere((c) => c.id == categoryId);
+    final offset =
+        _categoryScroll.hasClients ? _categoryScroll.offset : null;
+    unawaited(widget.ctrl.toggleLiveCategoryPin(categoryId));
+    void restoreScrollAndFocus() {
+      if (!mounted) return;
+      if (offset != null && _categoryScroll.hasClients) {
+        final target = offset.clamp(
+          0.0,
+          _categoryScroll.position.maxScrollExtent,
+        );
+        if ((_categoryScroll.offset - target).abs() > 0.5) {
+          _categoryScroll.jumpTo(target);
+        }
+      }
+      // Pinned row moved to the front — keep focus on this viewport slot.
+      if (slot >= 0 &&
+          slot < widget.ctrl.browserSidebarCategories.length) {
+        iptvFocusRowItem('browser-categories', slot);
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      restoreScrollAndFocus();
+      // Second frame: fight showOnScreen after sliver re-layout.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        restoreScrollAndFocus();
+      });
+    });
+  }
+
+  void _focusFloatingCategoryRow() {
+    final id = _tvFloatingCategoryId;
+    if (id == null) return;
+    final idx = widget.ctrl.browserSidebarCategories
+        .indexWhere((c) => c.id == id);
+    if (idx < 0) return;
+    iptvFocusRowItem('browser-categories', idx);
+  }
+
+  /// Pin floating row as the 2nd visible category (1 above) until list ends.
+  void _scrollCategorySidebarToFloating() {
+    final id = _tvFloatingCategoryId;
+    if (id == null || !_categoryScroll.hasClients) return;
+    final cats = widget.ctrl.browserSidebarCategories;
+    final idx = cats.indexWhere((c) => c.id == id);
+    if (idx < 0) return;
+    final rowH = _categoryRowExtent(widget.compact);
+    const keepAbove = 1;
+    final target = (_categoryListPadV + (idx - keepAbove) * rowH).clamp(
+      0.0,
+      _categoryScroll.position.maxScrollExtent,
+    );
+    if ((_categoryScroll.offset - target).abs() < 0.5) return;
+    _categoryScroll.jumpTo(target);
   }
 
   void _onCtrlChanged() {
@@ -98,7 +276,7 @@ class _BrowserViewState extends State<_BrowserView> {
     _lastBrowserSearch = search;
     if (_tvFloatingCategoryId != null &&
         !widget.ctrl.canReorderLiveCategories) {
-      _tvFloatingCategoryId = null;
+      _setTvFloatingCategory(null);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -288,6 +466,14 @@ class _BrowserViewState extends State<_BrowserView> {
 
   void _onCategoryTvFocus(String categoryId, bool focused) {
     if (!iptvUseTvFocus(context)) return;
+    // Floating reorder: ignore neighbor focus flicker from list rebuilds.
+    if (_tvFloatingReorder) {
+      if (focused && categoryId == _tvFloatingCategoryId) {
+        _tvFocusedCategoryId = categoryId;
+        _tvCategoryRailFocused = true;
+      }
+      return;
+    }
     final selected = widget.ctrl.browserSelectedCategoryId;
     final wasPending = _tvCategoryRailFocused &&
         _tvFocusedCategoryId != null &&
@@ -364,17 +550,38 @@ class _BrowserViewState extends State<_BrowserView> {
   void _toggleSearch() => toggleSearch();
 
   bool _onScrollNotification(ScrollNotification n) {
+    final tv = iptvUseTvFocus(context);
     if (n is ScrollStartNotification) {
       _scrollSettleTimer?.cancel();
-      widget.ctrl.cancelAllLazyChecks();
+      // Mobile visibility probes only — TV health is focus-debounced.
+      if (!tv) widget.ctrl.cancelAllLazyChecks();
+      if (tv && _channelLogosVisible) {
+        setState(() => _channelLogosVisible = false);
+      }
     } else if (n is ScrollEndNotification) {
       _scrollSettleTimer?.cancel();
-      _scrollSettleTimer = Timer(const Duration(milliseconds: 300), () {
-        if (mounted) setState(() {});
-      });
+      _scrollSettleTimer = Timer(
+        tv ? _logoSettleDelay : const Duration(milliseconds: 300),
+        () {
+          if (!mounted) return;
+          if (tv) {
+            setState(() => _channelLogosVisible = true);
+          } else {
+            setState(() {});
+          }
+        },
+      );
     }
     return false;
   }
+
+  /// Mobile health debounce + TV logo deferral both listen to stream scroll.
+  bool get _useStreamScrollListener =>
+      iptvUseTvFocus(context) ||
+      _LiveHealthProbe.usesScrollDebounce(context);
+
+  bool get _streamShowLogos =>
+      !iptvUseTvFocus(context) || _channelLogosVisible;
 
   String get _sectionTitle {
     switch (widget.ctrl.activeSection) {
@@ -603,7 +810,13 @@ class _BrowserViewState extends State<_BrowserView> {
               width: categoryWidth,
               child: _buildCategorySidebar(compact: widget.compact),
             ),
-            Expanded(child: _buildChannelPane()),
+            Expanded(
+              // Floating reorder owns the remote — channels must not steal focus.
+              child: ExcludeFocus(
+                excluding: _tvFloatingReorder,
+                child: _buildChannelPane(),
+              ),
+            ),
           ],
         );
       },
@@ -688,38 +901,30 @@ class _BrowserViewState extends State<_BrowserView> {
               pinnable: live && !synthetic,
               pinned: ctrl.isLiveCategoryPinned(cat.id),
               onTogglePin: live && !synthetic
-                  ? () => ctrl.toggleLiveCategoryPin(cat.id)
+                  ? () => _toggleCategoryPin(cat.id)
                   : null,
               reorderIndex: movableIndex,
               floating: floating,
               onEnterFloating: movableIndex != null
                   ? () {
                       if (!mounted) return;
-                      setState(() => _tvFloatingCategoryId = cat.id);
+                      _setTvFloatingCategory(cat.id);
                     }
                   : null,
               onExitFloating: () {
                 if (!mounted) return;
                 if (_tvFloatingCategoryId == cat.id) {
-                  setState(() => _tvFloatingCategoryId = null);
+                  _setTvFloatingCategory(null);
                 }
               },
-              onTvReorderUp: movableIndex != null && movableIndex > 0
-                  ? () => unawaited(
-                        ctrl.reorderLiveCategories(
-                          movableIndex,
-                          movableIndex - 1,
-                        ),
-                      )
+              // Parent HardwareKeyboard owns ↑/↓ while floating (id-based +
+              // scroll pin). Non-null while reorderable so long-press OK works;
+              // row Focus onKey is backup if HW handler is unbound.
+              onTvReorderUp: movableIndex != null
+                  ? () => _tvMoveFloatingCategory(-1)
                   : null,
-              onTvReorderDown: movableIndex != null &&
-                      movableIndex < movable.length - 1
-                  ? () => unawaited(
-                        ctrl.reorderLiveCategories(
-                          movableIndex,
-                          movableIndex + 1,
-                        ),
-                      )
+              onTvReorderDown: movableIndex != null
+                  ? () => _tvMoveFloatingCategory(1)
                   : null,
               onTap: () => _commitBrowserCategory(cat.id, enterStreams: true),
               onUpEdge: listIndex == 0
@@ -854,6 +1059,7 @@ class _BrowserViewState extends State<_BrowserView> {
             return _StreamCard(
               stream: stream,
               ctrl: widget.ctrl,
+              showLogo: _streamShowLogos,
               gridIndex: i,
               gridColumns: cross,
               onUpEdge: i < cross
@@ -871,7 +1077,7 @@ class _BrowserViewState extends State<_BrowserView> {
             );
           },
         );
-        final scrollable = !_LiveHealthProbe.usesScrollDebounce(ctx)
+        final scrollable = !_useStreamScrollListener
             ? grid
             : NotificationListener<ScrollNotification>(
                 onNotification: _onScrollNotification,
@@ -916,6 +1122,7 @@ class _BrowserViewState extends State<_BrowserView> {
           ctrl: ctrl,
           categoryName: categoryNames[stream.categoryId] ?? '',
           listIndex: i,
+          showLogo: _streamShowLogos,
           onLeftEdge: iptvStreamLeftEdge(ctrl, stream),
           onRightEdge: ctrl.portalPanelOpen
               ? () => iptvFocusPortalList(ctrl)
@@ -927,7 +1134,7 @@ class _BrowserViewState extends State<_BrowserView> {
         );
       },
     );
-    final scrollable = !_LiveHealthProbe.usesScrollDebounce(context)
+    final scrollable = !_useStreamScrollListener
         ? rows
         : NotificationListener<ScrollNotification>(
             onNotification: _onScrollNotification,

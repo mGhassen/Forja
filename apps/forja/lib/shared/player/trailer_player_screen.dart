@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';

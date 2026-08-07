@@ -3,13 +3,33 @@ part of 'trailer_player_screen.dart';
 mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
   _TrailerPlayerScreenState get _s => this as _TrailerPlayerScreenState;
 
+  /// Leanback MediaKit path — same knobs as main VOD / IPTV ATV.
+  bool get _atvMediaKit => PlatformInfo.isAndroidTv;
+
   Future<void> _ensurePlayer() async {
     if (_s._player != null) return;
     await MpvExclusiveSession.instance.prepareForVideoPlayer();
     if (!mounted) return;
-    final player = MpvExclusiveSession.instance.trackPlayer(Player());
+    final atv = _atvMediaKit;
+    final player = MpvExclusiveSession.instance.trackPlayer(
+      Player(
+        configuration: const PlayerConfiguration(
+          logLevel: MPVLogLevel.warn,
+        ),
+      ),
+    );
     _s._player = player;
-    _s._controller = VideoController(player);
+    // ATV: vo=gpu needs EGL (black / audio-only). mediacodec_embed paints
+    // MediaCodec into the Flutter Surface — matches TvPlayerScreen / IPTV.
+    _s._controller = VideoController(
+      player,
+      configuration: VideoControllerConfiguration(
+        vo: atv ? 'mediacodec_embed' : null,
+        enableHardwareAcceleration: true,
+        hwdec: atv ? 'mediacodec' : null,
+        androidAttachSurfaceAfterVideoParameters: false,
+      ),
+    );
     _s._playingSub = player.stream.playing.listen((playing) {
       if (!mounted) return;
       if (_s._playing == playing && !_s._ended) return;
@@ -50,6 +70,40 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       _s._hideTimer?.cancel();
       _s._maybeStartAutoNext();
     });
+    await _applyTrailerMpvTunables(atv: atv);
+  }
+
+  Future<void> _applyTrailerMpvTunables({required bool atv}) async {
+    final platform = _s._player?.platform;
+    if (platform is! NativePlayer) return;
+    if (!await mediaKitPlayerHandleReady(platform)) return;
+
+    Future<void> safeSet(String key, String val) async {
+      try {
+        await platform.setProperty(key, val);
+      } catch (e) {
+        debugPrint('[Trailer] failed mpv $key=$val: $e');
+      }
+    }
+
+    if (atv) {
+      await safeSet('hwdec', 'mediacodec');
+      // OpenSLES misconfigures on some ATV images (0 frames).
+      await safeSet('ao', 'audiotrack');
+      // VOD clock — display-resample is for IPTV live edge.
+      await safeSet('video-sync', 'audio');
+    }
+
+    await safeSet('cache', 'yes');
+    await safeSet('cache-secs', atv ? '30' : '45');
+    await safeSet('demuxer-readahead-secs', '20');
+    await safeSet('demuxer-max-bytes', atv ? '150000000' : '100MiB');
+    await safeSet('demuxer-max-back-bytes', atv ? '25000000' : '30MiB');
+    await safeSet('cache-pause', 'no');
+    await safeSet('cache-pause-initial', 'no');
+    await safeSet('network-timeout', '30');
+    await safeSet('ytdl', 'no');
+    await safeSet('keep-open', 'yes');
   }
 
   Future<void> _teardownPlayer() async {
@@ -145,10 +199,30 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     final player = _s._player;
     if (player == null) return;
     final videoUrl = streams.playUrl!;
-    await player.setVolume(_s._volume);
-    await openPlayerStream(player, url: videoUrl);
     final audioUrl = streams.audioUrl;
-    if (audioUrl != null && audioUrl.isNotEmpty) {
+    await player.setVolume(_s._volume);
+
+    // Bind separate AAC *before* open so A/V join together. Post-open
+    // setAudioTrack forces a demuxer resync hitch (visible on ATV MediaCodec).
+    var boundViaAudioFile = false;
+    final platform = player.platform;
+    if (platform is NativePlayer) {
+      if (!await mediaKitPlayerHandleReady(platform)) return;
+      try {
+        await platform.setProperty(
+          'audio-file',
+          (audioUrl != null && audioUrl.isNotEmpty) ? audioUrl : '',
+        );
+        boundViaAudioFile = audioUrl != null && audioUrl.isNotEmpty;
+      } catch (e) {
+        debugPrint('[Trailer] audio-file bind failed: $e');
+      }
+    }
+
+    await openPlayerStream(player, url: videoUrl);
+    if (!boundViaAudioFile &&
+        audioUrl != null &&
+        audioUrl.isNotEmpty) {
       await player.setAudioTrack(AudioTrack.uri(audioUrl));
     }
     if (resumeAt != null && resumeAt > Duration.zero) {

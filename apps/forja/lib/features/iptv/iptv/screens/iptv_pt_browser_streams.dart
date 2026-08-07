@@ -37,6 +37,7 @@ class _StreamCard extends StatefulWidget {
   final IptvStream stream;
   final IptvController ctrl;
   final VoidCallback onTap;
+  final bool showLogo;
   final int? gridIndex;
   final int? gridColumns;
   final VoidCallback? onLeftEdge;
@@ -46,6 +47,7 @@ class _StreamCard extends StatefulWidget {
     required this.stream,
     required this.ctrl,
     required this.onTap,
+    this.showLogo = true,
     this.gridIndex,
     this.gridColumns,
     this.onLeftEdge,
@@ -254,7 +256,7 @@ class _StreamCardState extends State<_StreamCard> {
             ),
           ),
         ),
-        if (widget.stream.kind == 'live')
+        if (widget.stream.kind == 'live' && widget.showLogo)
           _EpgNowFooter(stream: widget.stream, ctrl: widget.ctrl),
       ],
     );
@@ -361,9 +363,10 @@ class _StreamCardState extends State<_StreamCard> {
                 child: AspectRatio(
                   aspectRatio: 1,
                   child: _streamIconThumb(
-                    icon: widget.stream.icon,
+                    icon: widget.showLogo ? widget.stream.icon : '',
                     contain: true,
                     padding: 6,
+                    cacheWidth: 160,
                   ),
                 ),
               ),
@@ -390,7 +393,7 @@ class _StreamCardState extends State<_StreamCard> {
 
   Widget _streamThumb() {
     return _streamIconThumb(
-      icon: widget.stream.icon,
+      icon: widget.showLogo ? widget.stream.icon : '',
       contain: widget.stream.kind == 'live',
       padding: 10,
     );
@@ -416,6 +419,7 @@ class _StreamRowTile extends StatefulWidget {
     required this.ctrl,
     required this.categoryName,
     required this.onTap,
+    this.showLogo = true,
     this.listIndex,
     this.onLeftEdge,
     this.onRightEdge,
@@ -426,6 +430,7 @@ class _StreamRowTile extends StatefulWidget {
   final IptvController ctrl;
   final String categoryName;
   final VoidCallback onTap;
+  final bool showLogo;
   final int? listIndex;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
@@ -528,9 +533,10 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                           fit: StackFit.expand,
                           children: [
                             _streamIconThumb(
-                              icon: widget.stream.icon,
+                              icon: widget.showLogo ? widget.stream.icon : '',
                               contain: widget.stream.kind == 'live',
                               padding: 4,
+                              cacheWidth: 88,
                             ),
                             _StreamThumbPlayHint(active: active),
                           ],
@@ -570,7 +576,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                               ),
                             ),
                           ],
-                          if (widget.stream.kind == 'live')
+                          if (widget.stream.kind == 'live' && widget.showLogo)
                             _EpgNowFooter(
                               stream: widget.stream,
                               ctrl: widget.ctrl,
@@ -880,6 +886,7 @@ Widget _streamIconThumb({
   required String icon,
   required bool contain,
   double padding = 0,
+  int? cacheWidth,
 }) {
   if (icon.isEmpty) {
     return const SizedBox.expand(child: _StreamPlaceholder());
@@ -889,7 +896,10 @@ Widget _streamIconThumb({
     fit: contain ? BoxFit.contain : BoxFit.cover,
     alignment: Alignment.center,
     gaplessPlayback: true,
-    filterQuality: FilterQuality.medium,
+    cacheWidth: cacheWidth,
+    // Only cacheWidth — setting both forces a stretched decode (deformed logos).
+    filterQuality:
+        cacheWidth != null ? FilterQuality.low : FilterQuality.medium,
     errorBuilder: (_, _, _) => const _StreamPlaceholder(),
     loadingBuilder: (_, child, p) =>
         p == null ? child : const _StreamPlaceholder(),

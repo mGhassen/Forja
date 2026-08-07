@@ -89,10 +89,13 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   bool get _active =>
       iptvFocusActive(context, hovered: _hovered, focused: _chromeLit);
 
-  bool get _showPin =>
-      widget.pinnable &&
-      widget.onTogglePin != null &&
-      (widget.pinned || _hovered || _tvFocused);
+  bool get _showPin {
+    if (!widget.pinnable || widget.onTogglePin == null) return false;
+    // TV: always mount the pin so → can focus it on the first press (no
+    // setState/post-frame race that leaked KeyRepeat into channels).
+    if (iptvUseTvFocus(context)) return true;
+    return widget.pinned || _hovered || _tvFocused;
+  }
 
   bool get _canTvReorder =>
       widget.reorderIndex != null &&
@@ -173,7 +176,12 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
 
   void _focusPin() {
     if (!_canTvPin || !_pinFocus.canRequestFocus) return;
-    // Ensure pin is built (visible) before requesting focus.
+    // Pin is always mounted on TV — focus sync so KeyRepeat hits the pin
+    // trap instead of spatial → into channels.
+    if (_pinFocus.context != null) {
+      _pinFocus.requestFocus();
+      return;
+    }
     if (!_showPin) setState(() {});
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -228,31 +236,42 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     if (!iptvUseTvFocus(context)) return KeyEventResult.ignored;
 
     if (_floating) {
-      if (event is KeyRepeatEvent) return KeyEventResult.handled;
-      if (event is! KeyDownEvent) return KeyEventResult.ignored;
+      // Parent HardwareKeyboard owns ↑/↓ / OK drop. Keep trapping here if a
+      // KeyEvent still reaches the row (e.g. handler unbound mid-frame).
       final key = event.logicalKey;
-      if (key == LogicalKeyboardKey.arrowUp) {
-        widget.onTvReorderUp?.call();
+      final nav = key == LogicalKeyboardKey.arrowUp ||
+          key == LogicalKeyboardKey.arrowDown ||
+          key == LogicalKeyboardKey.arrowLeft ||
+          key == LogicalKeyboardKey.arrowRight;
+      final activate = shellTvIsActivateLogicalKey(key);
+      if (!nav && !activate) return KeyEventResult.ignored;
+
+      if (event is KeyDownEvent || event is KeyRepeatEvent) {
+        if (key == LogicalKeyboardKey.arrowUp) {
+          widget.onTvReorderUp?.call();
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.arrowDown) {
+          widget.onTvReorderDown?.call();
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.arrowLeft) {
+          if (event is KeyDownEvent) _exitFloating();
+          return KeyEventResult.handled;
+        }
+        // Trap OK KeyDown + → — OK drops on KeyUp so open-channels does not fire.
         return KeyEventResult.handled;
       }
-      if (key == LogicalKeyboardKey.arrowDown) {
-        widget.onTvReorderDown?.call();
-        return KeyEventResult.handled;
-      }
-      if (shellTvIsActivateLogicalKey(key) ||
-          key == LogicalKeyboardKey.arrowLeft) {
+      if (event is KeyUpEvent && activate) {
         _exitFloating();
         return KeyEventResult.handled;
       }
-      // Trap → while floating (drop with OK / ← / Back).
-      if (key == LogicalKeyboardKey.arrowRight) {
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
+      return KeyEventResult.handled;
     }
 
     // → focuses pin when pinnable (channels open via OK).
-    if (event is KeyDownEvent &&
+    // KeyDown + KeyRepeat — first repeat must not leak to spatial channels.
+    if ((event is KeyDownEvent || event is KeyRepeatEvent) &&
         event.logicalKey == LogicalKeyboardKey.arrowRight &&
         _canTvPin) {
       _cancelOkGestures();
@@ -333,6 +352,15 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       onLeftEdge: _focusRow,
       onUpEdge: _focusRow,
       onDownEdge: _focusRow,
+      // Trap → — spatial would jump into the channel pane (right-left-right bug).
+      onRightEdge: () {},
+      onKeyEvent: (node, event) {
+        final key = event.logicalKey;
+        if (key == LogicalKeyboardKey.arrowRight) {
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
       child: Padding(
         padding: const EdgeInsets.all(4),
         child: icon,
@@ -435,7 +463,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       focusNode: _rowFocus,
       allowNestedFocus: tv && _canTvPin,
       // Vertical list — skip hub-row lift; keepVisible only in this scroll view.
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      // Floating / pin chrome: parent freezes scroll — ensureVisible fights it.
+      ensureVisibleMode: (_floating || _pinFocus.hasFocus)
+          ? ShellTvEnsureVisibleMode.off
+          : ShellTvEnsureVisibleMode.item,
       onKeyEvent: tv ? _onRowKey : null,
       onUpEdge: widget.onUpEdge,
       onRightEdge: () {

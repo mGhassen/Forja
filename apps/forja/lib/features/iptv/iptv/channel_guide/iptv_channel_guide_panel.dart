@@ -80,6 +80,11 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   /// Match catalog stream health TTL (portal status dots use the same window).
   static const _healthTtl = Duration(minutes: 2);
 
+  /// TV: defer channel-list [Image.network] until scroll settles (decode thrash).
+  Timer? _logoSettleTimer;
+  bool _channelLogosVisible = true;
+  static const _logoSettleDelay = Duration(milliseconds: 350);
+
   static const Color _groupsTint = Color(0xE00C0C12);
   static const Color _channelsTint = Color(0xE016161F);
   /// Brand green — matches catalog sidebar / TV focus chrome (not gray navUnderline).
@@ -252,6 +257,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
   @override
   void dispose() {
+    _logoSettleTimer?.cancel();
     for (final t in _healthDebounce.values) {
       t.cancel();
     }
@@ -261,6 +267,25 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     _groupScroll.dispose();
     _channelScroll.dispose();
     super.dispose();
+  }
+
+  /// Hide channel logos while the list is moving; show them 350ms after settle.
+  /// D-pad mid-viewport (no jump) keeps logos — only real scroll triggers this.
+  bool _onChannelScrollNotification(ScrollNotification n) {
+    if (!iptvUseTvFocus(context)) return false;
+    if (n is ScrollStartNotification) {
+      _logoSettleTimer?.cancel();
+      if (_channelLogosVisible) {
+        setState(() => _channelLogosVisible = false);
+      }
+    } else if (n is ScrollEndNotification) {
+      _logoSettleTimer?.cancel();
+      _logoSettleTimer = Timer(_logoSettleDelay, () {
+        if (!mounted) return;
+        setState(() => _channelLogosVisible = true);
+      });
+    }
+    return false;
   }
 
   void _syncFocusIndices({bool channelOnly = false}) {
@@ -1075,46 +1100,50 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
     return IptvTvScrollbar(
       controller: _channelScroll,
-      child: ListView.builder(
-        controller: _channelScroll,
-        padding: const EdgeInsets.symmetric(
-          vertical: IptvChannelGuidePanel.channelListPaddingV,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: _onChannelScrollNotification,
+        child: ListView.builder(
+          controller: _channelScroll,
+          padding: const EdgeInsets.symmetric(
+            vertical: IptvChannelGuidePanel.channelListPaddingV,
+          ),
+          itemCount: channels.length,
+          itemExtent: IptvChannelGuidePanel.channelRowExtent,
+          addAutomaticKeepAlives: false,
+          itemBuilder: (_, i) {
+            final ch = channels[i];
+            final active = ch.id == widget.currentChannelId;
+            final focused = _focusColumn == _FocusColumn.channels &&
+                i == _focusedChannelIndex &&
+                (_wide || _step == _GuideStep.channels);
+            return _GuideChannelTile(
+              channel: ch,
+              active: active,
+              focused: focused,
+              showLogo: _channelLogosVisible,
+              health: _health[ch.id],
+              onProbe: () => _scheduleHealthCheck(ch),
+              onCancelProbe: () => _cancelHealthCheck(ch.id),
+              onHover: () {
+                if (_focusColumn == _FocusColumn.channels &&
+                    _focusedChannelIndex == i) {
+                  return;
+                }
+                setState(() {
+                  _focusedChannelIndex = i;
+                  _focusColumn = _FocusColumn.channels;
+                });
+              },
+              onTap: () {
+                setState(() {
+                  _focusedChannelIndex = i;
+                  _focusColumn = _FocusColumn.channels;
+                });
+                widget.onChannelSelected(ch);
+              },
+            );
+          },
         ),
-        itemCount: channels.length,
-        itemExtent: IptvChannelGuidePanel.channelRowExtent,
-        addAutomaticKeepAlives: false,
-        itemBuilder: (_, i) {
-          final ch = channels[i];
-          final active = ch.id == widget.currentChannelId;
-          final focused = _focusColumn == _FocusColumn.channels &&
-              i == _focusedChannelIndex &&
-              (_wide || _step == _GuideStep.channels);
-          return _GuideChannelTile(
-            channel: ch,
-            active: active,
-            focused: focused,
-            health: _health[ch.id],
-            onProbe: () => _scheduleHealthCheck(ch),
-            onCancelProbe: () => _cancelHealthCheck(ch.id),
-            onHover: () {
-              if (_focusColumn == _FocusColumn.channels &&
-                  _focusedChannelIndex == i) {
-                return;
-              }
-              setState(() {
-                _focusedChannelIndex = i;
-                _focusColumn = _FocusColumn.channels;
-              });
-            },
-            onTap: () {
-              setState(() {
-                _focusedChannelIndex = i;
-                _focusColumn = _FocusColumn.channels;
-              });
-              widget.onChannelSelected(ch);
-            },
-          );
-        },
       ),
     );
   }
@@ -1129,12 +1158,14 @@ class _GuideChannelTile extends StatefulWidget {
     required this.onHover,
     required this.onProbe,
     required this.onCancelProbe,
+    this.showLogo = true,
     this.health,
   });
 
   final IptvGuideChannel channel;
   final bool active;
   final bool focused;
+  final bool showLogo;
   final bool? health;
   final VoidCallback onTap;
   final VoidCallback onHover;
@@ -1213,7 +1244,9 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
                 clipBehavior: Clip.none,
                 children: [
                   _ChannelLogo(
-                    url: widget.channel.logoUrl ?? '',
+                    url: widget.showLogo
+                        ? (widget.channel.logoUrl ?? '')
+                        : '',
                     width: 40,
                     height: 40,
                   ),
