@@ -119,4 +119,27 @@ abstract final class PlatformChannel {
       await SystemNavigator.pop();
     }
   }
+
+  /// Android TV: switch HDMI / panel mode so refresh divides cleanly into
+  /// [fps] (issue 150 MediaKit / 151 Exo). No-op when already clean or no mode.
+  static Future<void> applyDisplayFrameRate(double fps) async {
+    if (!Platform.isAndroid || fps <= 0) return;
+    try {
+      await _channel.invokeMethod<void>('applyDisplayFrameRate', {
+        'fps': fps,
+      });
+    } catch (e) {
+      debugPrint('[PlatformChannel] applyDisplayFrameRate failed: $e');
+    }
+  }
+
+  /// Restore the system display mode after MediaKit IPTV leaves the player.
+  static Future<void> clearDisplayFrameRate() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<void>('clearDisplayFrameRate');
+    } catch (e) {
+      debugPrint('[PlatformChannel] clearDisplayFrameRate failed: $e');
+    }
+  }
 }

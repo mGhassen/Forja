@@ -296,6 +296,21 @@ class _SettingsPlaybackSectionState
                   );
                 },
               ),
+              if (SettingsService.platformProfile ==
+                  PlatformProfile.androidTv)
+                settingsFocusableToggle(
+                  context,
+                  'IPTV match display refresh',
+                  'MediaKit only. Off by default. When on, asks the TV to switch refresh rate to match the channel (e.g. 50 Hz for 50 fps) — test for 4K stutter. Brief HDMI blink on open; next open of the player picks it up.',
+                  snap.iptvMatchDisplayRefresh,
+                  (val) async {
+                    await _settings.setIptvMatchDisplayRefresh(val);
+                    await _playback.patch(
+                      (s) => s.copyWith(iptvMatchDisplayRefresh: val),
+                    );
+                    schedulePreferencesSyncPush();
+                  },
+                ),
             ],
             if (widget.visibility.showPlaySources)
               settingsFocusableDropdown(

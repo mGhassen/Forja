@@ -95,6 +95,9 @@ class SettingsService {
   static const String _iptvLiveMaxHeightKey = 'iptv_live_max_height';
   /// IPTV live auto-recovery: `buffered` (1.3.170) or `classic` (1.3.114).
   static const String _iptvLiveRecoveryModeKey = 'iptv_live_recovery_mode';
+  /// Android TV MediaKit: ask the panel for a refresh matching stream fps
+  /// (issue 150). Opt-in — default off so existing installs stay unchanged.
+  static const String _iptvMatchDisplayRefreshKey = 'iptv_match_display_refresh';
   static const String _maxPlaybackHeightKey = 'max_playback_height';
   static const String _animeTitleLanguageKey = 'anime_title_language';
 
@@ -338,6 +341,13 @@ class SettingsService {
         : iptvLiveRecoveryBuffered;
     await kvSetString(_iptvLiveRecoveryModeKey, v);
   }
+
+  /// Android TV MediaKit IPTV: match panel refresh to stream fps. Default off.
+  Future<bool> getIptvMatchDisplayRefresh() async =>
+      kvGetBool(_iptvMatchDisplayRefreshKey, fallback: false);
+
+  Future<void> setIptvMatchDisplayRefresh(bool enabled) async =>
+      kvSetBool(_iptvMatchDisplayRefreshKey, enabled);
 
   Future<int> getMaxPlaybackHeight() async =>
       await kvGetInt(_maxPlaybackHeightKey, fallback: 0);

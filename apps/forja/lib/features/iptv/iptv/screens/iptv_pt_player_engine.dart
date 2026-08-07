@@ -292,6 +292,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (player == null) return;
       // Do NOT stop() before first open — virgin mpv stop hangs the UI isolate
       // on ATV (ANR). Live reload uses [_reloadCurrent] (live-edge snap).
+      // New open may have a different container fps — allow one mode switch.
+      _s._displayFrameRateApplied = false;
       final headers = <String, String>{
         'User-Agent': _IptvPtPlayerScreenState._ua,
         ...src.headers,
@@ -309,7 +311,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     _engineSetVolume(_s._volume);
   }
 
-  /// ATV MediaKit: restore ao/mute and pick a real audio track after open.
+  /// ATV MediaKit: restore ao/mute, pick a real audio track, and ask the TV
+  /// for a refresh rate that matches the stream fps (issue 150).
   ///
   /// Do **not** retune `video-sync` / `framedrop` for UHD — known-good 4K
   /// playback (≤v1.3.80) kept `display-resample` + `framedrop=vo` for all
@@ -348,7 +351,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final w = int.tryParse((await p.getProperty('width')).toString()) ?? 0;
         if (h <= 0 && w <= 0) continue;
 
-        // Observe-only — leave video-sync=display-resample from tunables.
+        // 50/25 fps on a fixed 60 Hz panel judders even when decode is fine.
+        // Same window mode switch Exo already uses (ForjaDisplayFrameRate).
+        await _applyAtvMediaKitDisplayFrameRate(p);
+
         if (h >= 2160 || w >= 3840) {
           _startUhdDiagnostics();
         }
@@ -357,6 +363,26 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         debugPrint('[IPTV Player] ATV post-open tune failed: $e');
         return;
       }
+    }
+  }
+
+  /// One HDMI / panel mode switch per open when container fps is known.
+  /// Gated by Settings → IPTV match display refresh (default off).
+  Future<void> _applyAtvMediaKitDisplayFrameRate(NativePlayer p) async {
+    if (_s._displayFrameRateApplied) return;
+    final enabled = await SettingsService().getIptvMatchDisplayRefresh();
+    if (!enabled) return;
+    try {
+      final raw = await p.getProperty('container-fps');
+      final fps = double.tryParse(raw.toString());
+      if (fps == null || fps <= 0 || fps > 130) return;
+      _s._displayFrameRateApplied = true;
+      await PlatformChannel.applyDisplayFrameRate(fps);
+      debugPrint(
+        '[IPTV Player] ATV MediaKit display match for ${fps.toStringAsFixed(2)}fps',
+      );
+    } catch (e) {
+      debugPrint('[IPTV Player] ATV display frame-rate match failed: $e');
     }
   }
 
@@ -1299,6 +1325,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     }
     if (!_s._playerAlive) return;
     _s._playerAlive = false;
+    _s._uhdDiag?.cancel();
+    _s._uhdDiag = null;
+    unawaited(PlatformChannel.clearDisplayFrameRate());
+    _s._displayFrameRateApplied = false;
     await _cancelPlayerSubscriptions();
     final player = _s._player;
     _s._player = null;
@@ -1327,6 +1357,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     }
     if (!_s._playerAlive) return;
     _s._playerAlive = false;
+    _s._uhdDiag?.cancel();
+    _s._uhdDiag = null;
+    unawaited(PlatformChannel.clearDisplayFrameRate());
+    _s._displayFrameRateApplied = false;
     await _cancelPlayerSubscriptions();
     final player = _s._player;
     if (player == null) return;

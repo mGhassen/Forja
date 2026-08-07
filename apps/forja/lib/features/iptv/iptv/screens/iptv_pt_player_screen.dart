@@ -318,6 +318,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// Debug-only UHD telemetry timer (issue 150).
   Timer? _uhdDiag;
 
+  /// One display-mode switch per MediaKit open (issue 150 — 50 fps on 60 Hz).
+  bool _displayFrameRateApplied = false;
+
   /// Have at least this much cache ⇒ stream is healthy, never auto-recover.
   static const double _minHealthyCacheSecs = 2.0;
 
@@ -749,6 +752,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
     _watchdog?.cancel();
     _uhdDiag?.cancel();
+    unawaited(PlatformChannel.clearDisplayFrameRate());
+    _displayFrameRateApplied = false;
     _hideControlsTimer?.cancel();
     _hideVolumeTimer?.cancel();
     _playerTvKeyFocus.dispose();

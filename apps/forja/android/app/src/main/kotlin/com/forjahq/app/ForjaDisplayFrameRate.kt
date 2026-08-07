@@ -8,17 +8,16 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * Window-level display frame-rate matching for Android TV (issue 151).
+ * Window-level display frame-rate matching for Android TV (issues 151 / 150).
  *
- * Playback renders into a TextureView (issue 133 forced it for both VOD and IPTV),
- * so the decoder output never reaches a window-layer Surface and Media3's
- * `Surface.setFrameRate` hint cannot trigger the platform's
- * match-content-frame-rate. Requesting a [Display.Mode] on the activity window
- * does reach the compositor, so 24 fps film stops running a 3:2 cadence — and
- * 50/25 fps live channels stop juddering — on a fixed 60 Hz output.
+ * Exo TextureView and MediaKit `mediacodec_embed` both paint into Flutter —
+ * neither reaches a window-layer Surface, so Media3's `Surface.setFrameRate`
+ * hint cannot trigger match-content-frame-rate. Requesting a [Display.Mode]
+ * on the activity window does reach the compositor, so 24 fps film and
+ * 50/25 fps live channels stop juddering on a fixed 60 Hz output.
  */
 object ForjaDisplayFrameRate {
-    private const val TAG = "ForjaExo"
+    private const val TAG = "ForjaDisplay"
 
     /** How far a refresh/fps ratio may sit from a whole number and still be judder-free. */
     private const val CADENCE_TOLERANCE = 0.05f

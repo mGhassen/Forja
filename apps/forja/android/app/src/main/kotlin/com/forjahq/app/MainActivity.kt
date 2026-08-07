@@ -58,6 +58,22 @@ class MainActivity : AudioServiceActivity() {
                     android.os.Process.killProcess(android.os.Process.myPid())
                     result.success(null)
                 }
+                // MediaKit IPTV (issue 150): same window mode switch Exo uses
+                // for 50/25 fps on a 60 Hz panel. Exo calls ForjaDisplayFrameRate
+                // from its plugin; MediaKit has no native host — go through here.
+                "applyDisplayFrameRate" -> {
+                    val fps = call.argument<Number>("fps")?.toFloat()
+                    if (fps == null || fps <= 0f) {
+                        result.error("bad_args", "fps required", null)
+                    } else {
+                        ForjaDisplayFrameRate.apply(this, fps)
+                        result.success(null)
+                    }
+                }
+                "clearDisplayFrameRate" -> {
+                    ForjaDisplayFrameRate.clear(this)
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }

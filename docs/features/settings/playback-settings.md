@@ -25,6 +25,7 @@ Core playback preferences: which backends **Play** tries on the media details sc
 - Toggle **IPTV programme guide (EPG)** when the IPTV tab is visible — load and show NOW / NEXT guide data in IPTV player and browser (on by default)
 - Set **IPTV live max quality** when the IPTV tab is visible — **Auto (full quality)** by default (no downscale). Optional **1080p / 720p / 480p** caps ExoPlayer adaptive live variants only if you choose them
 - Set **IPTV live recovery** when the IPTV tab is visible — **Stable — buffer-aware (1.3.170)** by default (only reconnect when the live buffer is empty); **Classic — stall timers (1.3.114)** reconnects on freeze/buffering timers. Applies the next time you open the IPTV player
+- On **Android TV**, toggle **IPTV match display refresh** (off by default) — MediaKit only; when on, asks the TV to switch refresh rate to match the channel fps (e.g. 50 Hz for 50 fps) so live looks less stuttery. Takes effect the next time you open the IPTV player
 - Set **Max stream quality** to cap automatic source ranking and HLS Auto start bitrate (Auto, 4K, 1080p, 720p, …)
 - Choose **Anime title language** — **Romaji** (default), **English**, or **Native** — for Anime hub / details / player titles. Stream matching still searches romaji first, then English, native, and AniList synonyms
 
