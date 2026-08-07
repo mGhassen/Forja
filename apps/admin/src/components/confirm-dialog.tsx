@@ -305,3 +305,213 @@ export function FullScrapeDialog({
     </div>
   )
 }
+
+const BACKFILL_PRESETS = [100, 1000, 5000] as const
+const BACKFILL_MAX = 20_000
+const BACKFILL_CHUNK = 25
+
+export type PromoteBackfillOptions = {
+  limit: number
+  chunkSize: number
+}
+
+/** Promote stranded deep_ref_portals (portal_id null) into the pool via Inngest. */
+export function PromoteBackfillDialog({
+  open,
+  busy,
+  pending,
+  pendingLoading,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean
+  busy?: boolean
+  pending: number | null
+  pendingLoading?: boolean
+  onClose: () => void
+  onConfirm: (opts: PromoteBackfillOptions) => void
+}) {
+  const [limit, setLimit] = useState(1000)
+  const [custom, setCustom] = useState('')
+  const [all, setAll] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setLimit(1000)
+    setCustom('')
+    setAll(false)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busy) onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, busy, onClose])
+
+  if (!open) return null
+
+  const customN = Math.floor(Number(custom.trim()))
+  const customOk =
+    custom.trim() === '' ||
+    (Number.isFinite(customN) && customN >= 1 && customN <= BACKFILL_MAX)
+
+  let resolvedLimit = limit
+  if (all) {
+    resolvedLimit =
+      pending != null && pending > 0
+        ? Math.min(BACKFILL_MAX, pending)
+        : BACKFILL_MAX
+  } else if (custom.trim() && customOk) {
+    resolvedLimit = Math.min(BACKFILL_MAX, customN)
+  }
+
+  const pendingLabel =
+    pendingLoading || pending == null
+      ? 'Counting…'
+      : pending.toLocaleString()
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      role="presentation"
+      onClick={() => {
+        if (!busy) onClose()
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="promote-backfill-title"
+        className="w-full max-w-md border border-forja-border bg-forja-elevated p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <h2
+            id="promote-backfill-title"
+            className="text-sm font-semibold text-forja-text"
+          >
+            Backfill promote?
+          </h2>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 shrink-0 p-0"
+            aria-label="Close"
+            disabled={busy}
+            onClick={onClose}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+        <p className="mb-4 text-sm leading-relaxed text-forja-muted">
+          Upserts eligible deep-ref hits with{' '}
+          <code className="font-mono-ui text-forja-text">portal_id</code> null
+          into the pool (no paste re-fetch). Chunks of {BACKFILL_CHUNK} via
+          Inngest. Eligible pending:{' '}
+          <span className="font-semibold tabular-nums text-forja-text">
+            {pendingLabel}
+          </span>
+          .
+        </p>
+        <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
+          Limit this run
+        </div>
+        <div className="mb-3 flex flex-wrap gap-2">
+          {BACKFILL_PRESETS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setLimit(n)
+                setCustom('')
+                setAll(false)
+              }}
+              className={cn(
+                'rounded-md border px-3 py-1.5 text-sm tabular-nums transition-colors',
+                !all && !custom.trim() && limit === n
+                  ? 'border-forja-green bg-forja-green/15 text-forja-green'
+                  : 'border-forja-border text-forja-muted hover:bg-white/5',
+              )}
+            >
+              {n.toLocaleString()}
+            </button>
+          ))}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setAll(true)
+              setCustom('')
+            }}
+            className={cn(
+              'rounded-md border px-3 py-1.5 text-sm transition-colors',
+              all
+                ? 'border-forja-green bg-forja-green/15 text-forja-green'
+                : 'border-forja-border text-forja-muted hover:bg-white/5',
+            )}
+          >
+            All
+          </button>
+        </div>
+        <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-forja-muted">
+          Custom limit
+        </label>
+        <input
+          type="text"
+          inputMode="numeric"
+          disabled={busy}
+          placeholder={`1–${BACKFILL_MAX.toLocaleString()}`}
+          value={custom}
+          onChange={(e) => {
+            setCustom(e.target.value)
+            setAll(false)
+          }}
+          className="mb-3 w-full rounded-md border border-forja-border bg-black/30 px-3 py-2 font-mono-ui text-sm text-forja-text outline-none focus:border-forja-green"
+        />
+        {customOk ? (
+          <p className="mb-5 text-sm text-forja-text">
+            Promote up to{' '}
+            <span className="font-semibold tabular-nums text-forja-green">
+              {resolvedLimit.toLocaleString()}
+            </span>{' '}
+            · chunk {BACKFILL_CHUNK}
+          </p>
+        ) : (
+          <p className="mb-5 text-sm text-red-400">
+            Enter a number between 1 and {BACKFILL_MAX.toLocaleString()}.
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={busy || !customOk}
+            className="text-amber-300"
+            onClick={() =>
+              onConfirm({ limit: resolvedLimit, chunkSize: BACKFILL_CHUNK })
+            }
+          >
+            {busy
+              ? 'Starting…'
+              : `Promote ≤${resolvedLimit.toLocaleString()}`}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}

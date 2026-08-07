@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **16 / 16** fix · **0 / 3** acceptance |
+| **Progress** | **17 / 17** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -35,6 +35,7 @@
 | 14 | I142-T14 | Drop `paste_body` — persist `paste_url` only; admin + process fetch paste on demand | ✅ |
 | 15 | I142-T15 | Host+user+pass never platform=m3u — get.php type/output stay metadata; backfill misclassified rows | ✅ |
 | 16 | I142-T16 | Stream EOF relapse: `streaming: false` on Nitro/Node; claim-next process + paged promote (no id lists in memo) | ✅ |
+| 17 | I142-T17 | Ops **Backfill promote**: Inngest claim-next on `portal_id` null + Deep refs dialog (limit presets) | ✅ |
 
 ---
 
@@ -59,5 +60,7 @@ Admin catalog scrape rewalked 500 posts every run, wrote empty `subreddit`, drop
 **Also (I142-T15):** extract used to set `platform=m3u` whenever get.php `type`/`output` contained `m3u` — wrong. Host+user+pass is always **xtream**; `type`/`output` stay scrape metadata. Migration `20260806152419_…` flips misclassified pool + deep_ref_portal rows (keeps real `__m3u__` playlist rows).
 
 **HTTP 504 / “before the SDK responded”:** not Reddit — Vercel/proxy killed a long Inngest step. Pipeline is **collect → process → promote**: (1) Reddit pages → posts + deep_ref stubs; L1 candidates upserted inside collect (slim step return); watermark via per-post DB lookup (no known-id set in memo); (2) **claim-next** pending deep_ref → paste + extract + **bulk** `iptv_scrape_deep_ref_portals` insert (counts only in memo — never a pending-id array); (3) **paged** junction ids from DB → chunked catalog promote (never memoize the full portal-id list). Classic orchestration (`checkpointing: false` + `sleep('0s')`). Serve uses **`streaming: false`** — Remix streaming is Edge-only; on Nitro/Node the heartbeat stream truncates → `unexpected end of JSON input` (I142-T16). Returning full portal arrays / known-post / id lists through `step.run` also truncated the body even after T12–T13.
+
+**Also (I142-T17):** Phase 2 always inserts junction rows with `portal_id` null; if Phase 3 dies mid-run, eligible hits stay **Not promoted**. Admin Deep refs → **Backfill promote** enqueues `iptv/catalog.promote-backfill` (claim-next null rows, chunk 25, limit presets 100/1k/5k/All) — no paste re-fetch.
 
 **Apply migrations** `20260731184207_…` + `20260731184812_…` + `20260801115640_…` + `20260804001433_iptv_portals_drop_scrape_provenance.sql` + `20260806151925_iptv_scrape_deep_ref_portals_meta.sql` + `20260806151710_iptv_scrape_deep_refs_drop_paste_body.sql` before deploying admin (ask before `db push`). Junction meta for slim promote; deep refs never store paste plaintext — only `paste_url`. `iptv_portals.post_id` / `layer` stay dropped — scrape lineage via `portal_id`.

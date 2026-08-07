@@ -74,9 +74,22 @@ export const Route = createFileRoute('/api/iptv-deep-ref-reprocess')({
               fetch_ok: processed.ref.fetchOk,
               extract_count: processed.ref.extractCount,
               needs_recheck: processed.ref.needsRecheck,
+              updated_at: new Date().toISOString(),
             })
             .eq('id', deepRefId)
-          if (patchErr) throw patchErr
+          if (patchErr && /updated_at/i.test(patchErr.message)) {
+            const { error: retryErr } = await sb
+              .from('iptv_scrape_deep_refs')
+              .update({
+                fetch_ok: processed.ref.fetchOk,
+                extract_count: processed.ref.extractCount,
+                needs_recheck: processed.ref.needsRecheck,
+              })
+              .eq('id', deepRefId)
+            if (retryErr) throw retryErr
+          } else if (patchErr) {
+            throw patchErr
+          }
 
           const hitCount = await insertScrapeDeepRefPortalsBulk(
             sb,

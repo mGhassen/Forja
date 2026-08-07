@@ -138,24 +138,35 @@ export async function upsertScrapeDeepRef(
   opts?: { linkPortals?: boolean },
 ): Promise<string> {
   const linkPortals = opts?.linkPortals !== false
-  const { data, error } = await sb
+  const baseRow = {
+    post_id: ref.postId,
+    scrape_run_id: scrapeRunId,
+    base64: ref.base64,
+    paste_url: ref.pasteUrl,
+    payload_hash: ref.payloadHash,
+    ref_host: ref.refHost,
+    fetch_ok: ref.fetchOk,
+    extract_count: ref.extractCount,
+    needs_recheck: ref.needsRecheck,
+  }
+  // Force-full / watermark re-hit keeps created_at; bump updated_at for admin sort.
+  let { data, error } = await sb
     .from('iptv_scrape_deep_refs')
     .upsert(
-      {
-        post_id: ref.postId,
-        scrape_run_id: scrapeRunId,
-        base64: ref.base64,
-        paste_url: ref.pasteUrl,
-        payload_hash: ref.payloadHash,
-        ref_host: ref.refHost,
-        fetch_ok: ref.fetchOk,
-        extract_count: ref.extractCount,
-        needs_recheck: ref.needsRecheck,
-      },
+      { ...baseRow, updated_at: new Date().toISOString() },
       { onConflict: 'post_id,payload_hash' },
     )
     .select('id')
     .single()
+  if (error && /updated_at/i.test(error.message)) {
+    const retry = await sb
+      .from('iptv_scrape_deep_refs')
+      .upsert(baseRow, { onConflict: 'post_id,payload_hash' })
+      .select('id')
+      .single()
+    data = retry.data
+    error = retry.error
+  }
   if (error) throw error
   const deepRefId = data.id as string
 
@@ -168,7 +179,7 @@ export async function upsertScrapeDeepRef(
 
 const PORTAL_INSERT_CHUNK = 80
 
-function canPromoteHit(hit: {
+export function canPromoteHit(hit: {
   platform: string
   username: string
   password: string
@@ -181,6 +192,89 @@ function canPromoteHit(hit: {
     (Boolean(hit.username) &&
       (Boolean(hit.password) || hit.platform === 'stalker'))
   )
+}
+
+/**
+ * Claim next eligible junction ids with portal_id null (promote gate).
+ * Always start from the front — promoted rows drop out of the null set.
+ * Offset only skips permanently ineligible null rows.
+ */
+export async function claimEligibleUnpromotedPortalIds(
+  sb: SupabaseClient,
+  limit: number,
+): Promise<string[]> {
+  const want = Math.max(0, Math.floor(limit))
+  if (want === 0) return []
+
+  const ids: string[] = []
+  let offset = 0
+  const pageSize = Math.max(want * 4, 50)
+
+  while (ids.length < want) {
+    const to = offset + pageSize - 1
+    const { data, error } = await sb
+      .from('iptv_scrape_deep_ref_portals')
+      .select('id, platform, username, password, url')
+      .is('portal_id', null)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(offset, to)
+    if (error) throw error
+    if (!data?.length) break
+
+    for (const row of data) {
+      if (
+        canPromoteHit({
+          platform: String(row.platform ?? ''),
+          username: String(row.username ?? ''),
+          password: String(row.password ?? ''),
+          url: String(row.url ?? ''),
+        })
+      ) {
+        ids.push(String(row.id))
+        if (ids.length >= want) return ids
+      }
+    }
+    if (data.length < pageSize) break
+    offset += pageSize
+  }
+  return ids
+}
+
+/** Exact eligible count for admin backfill dialog (paged — PostgREST cap safe). */
+export async function countEligibleUnpromotedPortals(
+  sb: SupabaseClient,
+): Promise<number> {
+  const pageSize = 500
+  let offset = 0
+  let count = 0
+  for (;;) {
+    const to = offset + pageSize - 1
+    const { data, error } = await sb
+      .from('iptv_scrape_deep_ref_portals')
+      .select('platform, username, password, url')
+      .is('portal_id', null)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(offset, to)
+    if (error) throw error
+    if (!data?.length) break
+    for (const row of data) {
+      if (
+        canPromoteHit({
+          platform: String(row.platform ?? ''),
+          username: String(row.username ?? ''),
+          password: String(row.password ?? ''),
+          url: String(row.url ?? ''),
+        })
+      ) {
+        count++
+      }
+    }
+    if (data.length < pageSize) break
+    offset += pageSize
+  }
+  return count
 }
 
 /**

@@ -8,7 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, useSearch } from '@tanstack/react-router'
 import {
   ChevronDown,
   ChevronRight,
@@ -29,6 +29,7 @@ import {
   tdClassName,
   thClassName,
 } from '@/components/admin-ui'
+import { PromoteBackfillDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -43,6 +44,10 @@ import { adminDb } from '@/lib/admin-db'
 import { reprocessDeepRefForAdmin } from '@/lib/deep-ref-reprocess'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { fetchPasteBodyForAdmin } from '@/lib/paste-body'
+import {
+  countPromoteBackfillPending,
+  startPromoteBackfill,
+} from '@/lib/promote-backfill'
 import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
 
@@ -78,27 +83,64 @@ type DeepRefRow = {
   extract_count: number
   needs_recheck: boolean
   created_at: string
+  /** Last collect/process upsert; falls back to created_at pre-migration. */
+  updated_at: string | null
+  iptv_scrape_runs: { started_at: string } | null
   iptv_scrape_deep_ref_portals: DeepRefPortalRow[] | null
+}
+
+function deepRefLastAt(r: DeepRefRow): string {
+  return (
+    r.updated_at ||
+    r.iptv_scrape_runs?.started_at ||
+    r.created_at
+  )
 }
 
 type FilterStatus = 'all' | 'recheck' | 'ok' | 'has_portals' | 'existing_only'
 
 async function fetchDeepRefs(): Promise<DeepRefRow[]> {
-  return fetchAllRows(async (from, to) => {
+  const rows = await fetchAllRows(async (from, to) => {
     const { data, error } = await adminDb
       .from('iptv_scrape_deep_refs')
       .select(
         `id, post_id, scrape_run_id, base64, paste_url, ref_host,
-         payload_hash, fetch_ok, extract_count, needs_recheck, created_at,
+         payload_hash, fetch_ok, extract_count, needs_recheck, created_at, updated_at,
+         iptv_scrape_runs ( started_at ),
          iptv_scrape_deep_ref_portals (
            id, platform, type, output, url, username, password, was_existing, portal_id, created_at
          )`,
       )
-      .order('created_at', { ascending: false })
       .order('id', { ascending: false })
       .range(from, to)
+    if (error && /updated_at/i.test(error.message)) {
+      const retry = await adminDb
+        .from('iptv_scrape_deep_refs')
+        .select(
+          `id, post_id, scrape_run_id, base64, paste_url, ref_host,
+           payload_hash, fetch_ok, extract_count, needs_recheck, created_at,
+           iptv_scrape_runs ( started_at ),
+           iptv_scrape_deep_ref_portals (
+             id, platform, type, output, url, username, password, was_existing, portal_id, created_at
+           )`,
+        )
+        .order('id', { ascending: false })
+        .range(from, to)
+      if (retry.error) throw retry.error
+      return (retry.data ?? []).map((r) => ({
+        ...(r as Omit<DeepRefRow, 'updated_at'>),
+        updated_at: null,
+      }))
+    }
     if (error) throw error
     return (data ?? []) as DeepRefRow[]
+  })
+  // One row per paste (post_id+hash). Force-full re-upserts same rows — sort by last touch.
+  return [...rows].sort((a, b) => {
+    const tb = Date.parse(deepRefLastAt(b))
+    const ta = Date.parse(deepRefLastAt(a))
+    if (tb !== ta) return tb - ta
+    return b.id.localeCompare(a.id)
   })
 }
 
@@ -428,24 +470,61 @@ function PasteSidePanel({
 
 export function AdminDeepRefsPage() {
   const qc = useQueryClient()
+  const search = useSearch({ from: '/_ops/deep-refs' })
+  const focusRefId = search.ref?.trim() || null
+  const focusedOnce = useRef<string | null>(null)
   const list = useQuery({
     queryKey: DEEP_REFS_KEY,
     queryFn: fetchDeepRefs,
     refetchInterval: 12_000,
   })
 
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(() => focusRefId ?? '')
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
-  const [openId, setOpenId] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(() => focusRefId)
   const [pastePanelId, setPastePanelId] = useState<string | null>(null)
   const [panelWidth, setPanelWidth] = useState(PASTE_PANEL_DEFAULT)
   const [reprocessingId, setReprocessingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [actionInfo, setActionInfo] = useState<string | null>(null)
+  const [backfillOpen, setBackfillOpen] = useState(false)
+  const [backfillBusy, setBackfillBusy] = useState(false)
+  const [backfillPending, setBackfillPending] = useState<number | null>(null)
+  const [backfillPendingLoading, setBackfillPendingLoading] = useState(false)
 
   useEffect(() => {
     setPanelWidth(readStoredPanelWidth())
   }, [])
+
+  useEffect(() => {
+    if (!focusRefId) return
+    setQ(focusRefId)
+    setOpenId(focusRefId)
+  }, [focusRefId])
+
+  useEffect(() => {
+    if (!backfillOpen) return
+    let cancelled = false
+    setBackfillPendingLoading(true)
+    void countPromoteBackfillPending()
+      .then((n) => {
+        if (!cancelled) setBackfillPending(n)
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setActionError(
+            e instanceof Error ? e.message : 'Failed to count pending',
+          )
+          setBackfillPending(null)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBackfillPendingLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [backfillOpen])
 
   const onWidthChange = useCallback((w: number) => {
     const next = clampPanelWidth(w)
@@ -488,6 +567,31 @@ export function AdminDeepRefsPage() {
     [qc, list.data],
   )
 
+  const startBackfill = useCallback(
+    async (opts: { limit: number; chunkSize: number }) => {
+      setActionError(null)
+      setActionInfo(null)
+      setBackfillBusy(true)
+      try {
+        const result = await startPromoteBackfill(opts)
+        setBackfillOpen(false)
+        setActionInfo(
+          `Promote backfill queued · ≤${result.limit?.toLocaleString() ?? opts.limit} · chunk ${result.chunkSize ?? opts.chunkSize}` +
+            (result.jobId ? ` · job ${result.jobId.slice(0, 8)}…` : ''),
+        )
+        await qc.invalidateQueries({ queryKey: DEEP_REFS_KEY })
+        await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
+      } catch (e) {
+        setActionError(
+          e instanceof Error ? e.message : 'Promote backfill failed',
+        )
+      } finally {
+        setBackfillBusy(false)
+      }
+    },
+    [qc],
+  )
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
     return rows.filter((r) => {
@@ -503,6 +607,7 @@ export function AdminDeepRefsPage() {
       }
       if (!needle) return true
       const hay = [
+        r.id,
         r.post_id,
         r.base64,
         r.paste_url,
@@ -527,16 +632,35 @@ export function AdminDeepRefsPage() {
     resetKey: `${q}|${statusFilter}`,
   })
 
+  useEffect(() => {
+    if (!focusRefId || !list.data?.length) return
+    if (focusedOnce.current === focusRefId) return
+    const exists = list.data.some((r) => r.id === focusRefId)
+    if (!exists) return
+    focusedOnce.current = focusRefId
+    const t = window.setTimeout(() => {
+      document
+        .getElementById(`deep-ref-${focusRefId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 80)
+    return () => window.clearTimeout(t)
+  }, [focusRefId, list.data, paging.page])
+
   const stats = useMemo(() => {
     let recheck = 0
     let withPaste = 0
     let portalHits = 0
+    let notPromoted = 0
     for (const r of rows) {
       if (r.needs_recheck) recheck++
       if (r.paste_url) withPaste++
-      portalHits += r.iptv_scrape_deep_ref_portals?.length ?? 0
+      const portals = r.iptv_scrape_deep_ref_portals ?? []
+      portalHits += portals.length
+      for (const p of portals) {
+        if (!p.portal_id) notPromoted++
+      }
     }
-    return { total: rows.length, recheck, withPaste, portalHits }
+    return { total: rows.length, recheck, withPaste, portalHits, notPromoted }
   }, [rows])
 
   const pasteRow = useMemo(
@@ -563,9 +687,20 @@ export function AdminDeepRefsPage() {
           title="Deep refs"
           description="One row per find: base64 + paste URL only. Open the paste panel to fetch the body live."
           actions={
-            <Button type="button" variant="ghost" size="sm" asChild>
-              <Link to="/scrape">← Scrape</Link>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="text-amber-300"
+                onClick={() => setBackfillOpen(true)}
+              >
+                Backfill promote
+              </Button>
+              <Button type="button" variant="ghost" size="sm" asChild>
+                <Link to="/scrape">← Scrape</Link>
+              </Button>
+            </div>
           }
         />
 
@@ -579,6 +714,7 @@ export function AdminDeepRefsPage() {
           <MetricChip label="Refs" value={stats.total} />
           <MetricChip label="With paste URL" value={stats.withPaste} />
           <MetricChip label="Portal hits" value={stats.portalHits} />
+          <MetricChip label="Not promoted" value={stats.notPromoted} />
           <MetricChip label="Recheck" value={stats.recheck} />
         </div>
 
@@ -627,6 +763,10 @@ export function AdminDeepRefsPage() {
           <p className="pb-2 text-xs text-forja-muted">
             {filtered.length}
             {rows.length !== filtered.length ? ` / ${rows.length}` : ''} refs
+            <span className="text-forja-muted">
+              {' '}
+              · one row per paste (run L2 portals are hits inside these)
+            </span>
           </p>
         </div>
 
@@ -648,10 +788,20 @@ export function AdminDeepRefsPage() {
                 <thead>
                   <tr>
                     <th className={thClassName} />
-                    <th className={thClassName}>When</th>
+                    <th
+                      className={thClassName}
+                      title="Last scrape touch (force-full reuses the same paste row)"
+                    >
+                      Last
+                    </th>
                     <th className={thClassName}>Post</th>
                     <th className={thClassName}>Paste URL</th>
-                    <th className={thClassName}>Portals</th>
+                    <th
+                      className={thClassName}
+                      title="Portal hits on this paste (not scrape-run L2 total)"
+                    >
+                      Portals
+                    </th>
                     <th className={thClassName}>Recheck</th>
                     <th className={thClassName}>Paste</th>
                     <th className={thClassName}>Reprocess</th>
@@ -665,10 +815,13 @@ export function AdminDeepRefsPage() {
                     return (
                       <Fragment key={r.id}>
                         <tr
+                          id={`deep-ref-${r.id}`}
                           className={cn(
                             'border-t border-forja-border/80 transition-colors hover:bg-white/[0.02]',
                             open && 'bg-forja-green/[0.04]',
                             pasteOpen && 'bg-forja-green/[0.06]',
+                            focusRefId === r.id &&
+                              'bg-forja-green/[0.08] ring-1 ring-inset ring-forja-green/35',
                           )}
                         >
                           <td className={tdClassName}>
@@ -691,8 +844,13 @@ export function AdminDeepRefsPage() {
                               tdClassName,
                               'whitespace-nowrap text-xs',
                             )}
+                            title={
+                              r.created_at !== deepRefLastAt(r)
+                                ? `First seen ${new Date(r.created_at).toLocaleString()}`
+                                : undefined
+                            }
                           >
-                            {new Date(r.created_at).toLocaleString()}
+                            {new Date(deepRefLastAt(r)).toLocaleString()}
                           </td>
                           <td
                             className={cn(tdClassName, 'font-mono-ui text-xs')}
@@ -841,6 +999,17 @@ export function AdminDeepRefsPage() {
           reprocessing={reprocessingId === pasteRow.id}
         />
       ) : null}
+
+      <PromoteBackfillDialog
+        open={backfillOpen}
+        busy={backfillBusy}
+        pending={backfillPending}
+        pendingLoading={backfillPendingLoading}
+        onClose={() => {
+          if (!backfillBusy) setBackfillOpen(false)
+        }}
+        onConfirm={(opts) => void startBackfill(opts)}
+      />
     </div>
   )
 }

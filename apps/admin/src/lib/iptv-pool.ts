@@ -16,6 +16,8 @@ export type PoolCand = {
   updated_at: string
   created_at: string
   last_scraped_at: string | null
+  /** Latest scrape deep ref that promoted this portal (junction). */
+  deep_ref_id: string | null
 }
 
 export type PoolHostSummary = {
@@ -91,6 +93,35 @@ export async function fetchPoolHosts(
   }
 }
 
+/** Latest deep_ref_id per portal from junction (created_at desc). */
+async function attachDeepRefIds(
+  portals: Omit<PoolCand, 'deep_ref_id'>[],
+): Promise<PoolCand[]> {
+  if (portals.length === 0) return []
+  const ids = portals.map((p) => p.id)
+  const { data, error } = await adminDb
+    .from('iptv_scrape_deep_ref_portals')
+    .select('portal_id, deep_ref_id, created_at')
+    .in('portal_id', ids)
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(errMessage(error, 'Deep ref lookup failed'))
+  const map = new Map<string, string>()
+  for (const row of data ?? []) {
+    const portalId = String(
+      (row as { portal_id?: string }).portal_id ?? '',
+    ).trim()
+    const deepRefId = String(
+      (row as { deep_ref_id?: string }).deep_ref_id ?? '',
+    ).trim()
+    if (!portalId || !deepRefId || map.has(portalId)) continue
+    map.set(portalId, deepRefId)
+  }
+  return portals.map((p) => ({
+    ...p,
+    deep_ref_id: map.get(p.id) ?? null,
+  }))
+}
+
 export async function fetchPoolHostPortals(
   host: string,
   opts: Omit<PoolFilterParams, 'sort' | 'dir' | 'limit' | 'offset'>,
@@ -104,7 +135,11 @@ export async function fetchPoolHostPortals(
     p_region: opts.region ?? 'all',
   })
   if (error) throw new Error(errMessage(error, 'Pool portals failed'))
-  return (Array.isArray(data) ? data : []) as PoolCand[]
+  const rows = (Array.isArray(data) ? data : []) as Omit<
+    PoolCand,
+    'deep_ref_id'
+  >[]
+  return attachDeepRefIds(rows)
 }
 
 export async function fetchPoolPortalById(
@@ -118,7 +153,11 @@ export async function fetchPoolPortalById(
     .eq('id', id)
     .maybeSingle()
   if (error) throw new Error(errMessage(error, 'Portal fetch failed'))
-  return data ? (data as PoolCand) : null
+  if (!data) return null
+  const [withRef] = await attachDeepRefIds([
+    data as Omit<PoolCand, 'deep_ref_id'>,
+  ])
+  return withRef ?? null
 }
 
 /** Resolve deep-ref → pool focus when portal_id is stale/orphaned. */

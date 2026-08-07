@@ -1,5 +1,6 @@
 import { CalendarDays, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Link } from '@tanstack/react-router'
 import {
   formatPortalExpiry,
   parsePortalExpiry,
@@ -14,6 +15,7 @@ export type IptvPortalCardData = {
   expiry?: string | null
   max_connections?: string | null
   catalog_pool?: boolean
+  deep_ref_id?: string | null
 }
 
 export function portalExpiryTone(expiry?: string | null): {
@@ -129,6 +131,18 @@ export function IptvPortalCardBody({
         {badge}
       </p>
       <p className="truncate text-sm text-white/55">{portal.url}</p>
+      {portal.deep_ref_id ? (
+        <p className="truncate text-[11px]">
+          <Link
+            to="/deep-refs"
+            search={{ ref: portal.deep_ref_id }}
+            className="text-forja-muted underline-offset-2 hover:text-forja-green hover:underline"
+            title="Open scrape deep ref"
+          >
+            Deep ref →
+          </Link>
+        </p>
+      ) : null}
       <p
         className={cn(
           'flex items-center gap-1.5 text-[11px] font-semibold',
