@@ -537,8 +537,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
       // [_exitPlayer] already scheduled LAN close; this covers forced pops.
       if (!_exitInProgress) {
         LanClientService.instance.releaseLanTorrentIfNeeded(
-          playUrl: widget.mediaPath,
-          magnet: widget.magnetLink,
+          playUrl: _currentUrl ?? widget.mediaPath,
+          magnet: _activeMagnet ?? widget.magnetLink,
         );
       }
     }

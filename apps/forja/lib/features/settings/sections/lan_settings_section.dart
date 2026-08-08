@@ -106,6 +106,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     }
     _ensureStatusPolling();
     if (mounted) setState(() => _loading = false);
+    LanPairingPresence.instance.notifyChanged();
     if (prevPaired != _paired || prevOnline != _serverOnline) {
       _refreshPlaySourceGates();
     }
@@ -124,6 +125,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
             _serverPort = LanServerService.instance.port;
           }
         });
+        LanPairingPresence.instance.notifyChanged();
         return;
       }
       unawaited(_pollClientStatus());
@@ -301,6 +303,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
 
   Future<void> _unpair() async {
     await LanPrefs.instance.clearServer();
+    LanPairingPresence.instance.notifyChanged();
     await _load();
     _refreshPlaySourceGates();
   }
@@ -314,6 +317,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
 
   Future<void> _revoke(String deviceId) async {
     LanServerService.instance.revokeDevice(deviceId);
+    LanPairingPresence.instance.notifyChanged();
     await _load();
   }
 
@@ -323,6 +327,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       _devices = LanServerService.instance.listDevices();
       _pairingCode = LanServerService.instance.currentPairingCode();
     });
+    LanPairingPresence.instance.notifyChanged();
   }
 
   void _copyCode() {

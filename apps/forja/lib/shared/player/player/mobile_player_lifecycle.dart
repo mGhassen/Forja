@@ -562,8 +562,8 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     _saveWatchHistory();
     // Tell desktop LAN to stop before MediaKit teardown races the UI isolate.
     LanClientService.instance.releaseLanTorrentIfNeeded(
-      playUrl: widget.mediaPath,
-      magnet: widget.magnetLink,
+      playUrl: _s._currentUrl ?? widget.mediaPath,
+      magnet: _s._activeMagnet ?? widget.magnetLink,
     );
     // Stop mpv before orientation/pop - dispose alone is fire-and-forget
     // and can leave audio after the route is gone (issue 059).

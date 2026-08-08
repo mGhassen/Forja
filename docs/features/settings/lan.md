@@ -18,6 +18,8 @@ Pairing means **this TV trusts that desktop**. Do it once on the same Wi‑Fi.
 
 Paired TVs and phones appear under **Paired devices** with a green/grey status dot and a small status line under the name (**Online** = recent traffic; **Idle** = still paired, not talking right now). Date and device id sit on their own lines below. Use the **reload** icon if a device just paired and the list still says waiting. **Revoke** forces that device to pair again.
 
+When at least one device is paired, the desktop nav profile avatar shows a green cast badge (top-right).
+
 The desktop reuses the same LAN **port** across toggles and app restarts. If the IP still changes (or the sticky port is unavailable), a paired TV rediscovers this PC on Wi‑Fi (same server id) and updates the saved address — you do not re-enter the pairing code.
 
 **Torrent activity** is one list: history of magnets opened by paired devices. If a torrent is currently downloading/serving, that row shows live progress (state, %, speed, peers) instead of a second duplicate line. Use the trash icon to stop an active download and delete its cached file. **Clear all** stops the engine torrent, wipes the torrent download cache, and clears history.
@@ -31,7 +33,7 @@ The desktop reuses the same LAN **port** across toggles and app restarts. If the
 
 On Android TV, **OK** on a field opens the keyboard and the page scrolls so the field stays visible above it.
 
-Status shows **Paired** with a green/grey status dot and a small **Desktop online/offline** line under it. The screen periodically re-checks the desktop (and rediscovers it if the port changed). Use the **reload** icon next to the status to re-check now (D-pad focusable on Android TV). Unpair anytime from the same screen.
+Status shows **Paired** with a green/grey status dot and a small **Desktop online/offline** line under it. The screen periodically re-checks the desktop (and rediscovers it if the port changed). Use the **reload** icon next to the status to re-check now (D-pad focusable on Android TV). Unpair anytime from the same screen. While paired, the TV nav profile avatar shows a green cast badge (top-right).
 
 ## Every night — watch
 

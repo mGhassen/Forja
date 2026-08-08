@@ -385,8 +385,8 @@ struct CloseRequest {
 
 /// Stop a LAN-opened torrent when the client leaves the player.
 ///
-/// Requires `info_hash` and only stops when it matches the active swarm —
-/// so pushReplacement after a new `/open` does not kill the new download.
+/// Stops the active swarm. Source-switch sets `retainForExternalHandoff` so
+/// the old player does not call `/close` after a new `/open`.
 async fn close_handler(
     State(state): State<LanServerState>,
     Json(body): Json<CloseRequest>,
@@ -397,13 +397,25 @@ async fn close_handler(
                 .info_hash
                 .as_deref()
                 .map(str::trim)
-                .filter(|h| !h.is_empty())
-                .ok_or_else(|| bad_request("info_hash required for torrent"))?;
+                .filter(|h| !h.is_empty());
             let Some(status) = state.torrent.status() else {
                 return Ok(Json(serde_json::json!({ "ok": true, "stopped": false })));
             };
-            if !status.info_hash.eq_ignore_ascii_case(want) {
-                return Ok(Json(serde_json::json!({ "ok": true, "stopped": false })));
+            if let Some(want) = want {
+                if !status.info_hash.eq_ignore_ascii_case(want) {
+                    // Skip only when both look like distinct 40-char hex hashes
+                    // (new /open already replaced the swarm). Otherwise stop —
+                    // magnet base32 vs engine hex must not leave downloads running.
+                    let both_hex = status.info_hash.len() == 40
+                        && want.len() == 40
+                        && status.info_hash.chars().all(|c| c.is_ascii_hexdigit())
+                        && want.chars().all(|c| c.is_ascii_hexdigit());
+                    if both_hex {
+                        return Ok(Json(
+                            serde_json::json!({ "ok": true, "stopped": false }),
+                        ));
+                    }
+                }
             }
             state.torrent.stop();
             Ok(Json(serde_json::json!({ "ok": true, "stopped": true })))

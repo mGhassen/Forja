@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
 
+import 'lan_pairing_presence.dart';
 import 'lan_prefs.dart';
 
 class LanServerInfo {
@@ -70,6 +72,7 @@ class LanClientService {
           .timeout(const Duration(seconds: 3));
       if (r.statusCode == 401) {
         await LanPrefs.instance.clearServer();
+        LanPairingPresence.instance.notifyChanged();
         return false;
       }
       return r.statusCode == 200;
@@ -126,6 +129,7 @@ class LanClientService {
         port: port,
         serverId: json['server_id']?.toString(),
       );
+      LanPairingPresence.instance.notifyChanged();
       return token;
     } catch (_) {
       return null;
@@ -187,6 +191,7 @@ class LanClientService {
           .timeout(const Duration(seconds: 120));
       if (r.statusCode == 401) {
         await prefs.clearServer();
+        LanPairingPresence.instance.notifyChanged();
         return null;
       }
       if (r.statusCode != 200) return null;
@@ -205,20 +210,29 @@ class LanClientService {
     final hash = (infoHash?.trim().isNotEmpty == true)
         ? infoHash!.trim()
         : infoHashFromMagnet(magnet);
-    if (hash == null || hash.isEmpty) return false;
+    if (hash == null || hash.isEmpty) {
+      debugPrint('[LAN] closeTorrent skipped — no info_hash');
+      return false;
+    }
 
     final prefs = LanPrefs.instance;
     final token = await prefs.token;
     var h = await prefs.serverHost;
     var p = await prefs.serverPort;
-    if (token == null || h == null || p == null) return false;
+    if (token == null || h == null || p == null) {
+      debugPrint('[LAN] closeTorrent skipped — not paired');
+      return false;
+    }
 
     if (!await _probeAndTouch(
       h,
       p,
       expectedServerId: await prefs.serverId,
     )) {
-      if (!await verifyPairedConnection()) return false;
+      if (!await verifyPairedConnection()) {
+        debugPrint('[LAN] closeTorrent failed — desktop unreachable');
+        return false;
+      }
       h = await prefs.serverHost;
       p = await prefs.serverPort;
       if (h == null || p == null) return false;
@@ -237,15 +251,25 @@ class LanClientService {
           .timeout(const Duration(seconds: 10));
       if (r.statusCode == 401) {
         await prefs.clearServer();
+        LanPairingPresence.instance.notifyChanged();
+        debugPrint('[LAN] closeTorrent 401 — cleared pairing');
         return false;
       }
-      return r.statusCode == 200;
-    } catch (_) {
+      if (r.statusCode != 200) {
+        debugPrint('[LAN] closeTorrent HTTP ${r.statusCode}: ${r.body}');
+        return false;
+      }
+      debugPrint(
+        '[LAN] closeTorrent ok hash=${hash.length > 8 ? hash.substring(0, 8) : hash}…',
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[LAN] closeTorrent error: $e');
       return false;
     }
   }
 
-  /// Fire-and-forget close when [playUrl] is a remounted LAN torrent stream.
+  /// Fire-and-forget close when this play was a remounted LAN torrent.
   ///
   /// Deferred past MediaKit/MediaCodec dispose — sync prefs + HTTP in the
   /// same window as surface teardown ANRs Android TV (issue 128 pattern).
@@ -253,8 +277,18 @@ class LanClientService {
     required String playUrl,
     String? magnet,
   }) {
-    if (!isLanTorrentStreamUrl(playUrl)) return;
     final mag = magnet;
+    final lanUrl = isLanTorrentStreamUrl(playUrl);
+    // Magnet + non-local /torrents/ path (covers odd hosts); never local engine.
+    final magnetLan = mag != null &&
+        mag.isNotEmpty &&
+        playUrl.contains('/torrents/') &&
+        playUrl.contains('/stream/') &&
+        !isLoopbackPlayHost(playUrl);
+    if (!lanUrl && !magnetLan) {
+      debugPrint('[LAN] release skip — not a LAN torrent url');
+      return;
+    }
     unawaited(
       Future<void>.delayed(const Duration(milliseconds: 600), () async {
         await closeTorrent(magnet: mag);
@@ -317,9 +351,13 @@ class LanClientService {
 bool isLanTorrentStreamUrl(String url) {
   final uri = Uri.tryParse(url);
   if (uri == null) return false;
-  final host = uri.host.toLowerCase();
-  if (host == '127.0.0.1' || host == 'localhost') return false;
+  if (isLoopbackPlayHost(url)) return false;
   return uri.path.contains('/torrents/') && uri.path.contains('/stream/');
+}
+
+bool isLoopbackPlayHost(String url) {
+  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+  return host == '127.0.0.1' || host == 'localhost' || host == '::1';
 }
 
 String? infoHashFromMagnet(String? magnet) {

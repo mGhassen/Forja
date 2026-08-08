@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -190,6 +191,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
   bool _coldStartNavFocusDone = false;
   bool _coldStartNavFocusScheduled = false;
   String _profileLabel = 'Guest';
+  Timer? _lanPairPoll;
 
   bool get _railEngaged => _mouseInRail || _focusInRail;
 
@@ -224,6 +226,17 @@ class _ShellNavRailState extends State<ShellNavRail> {
   void initState() {
     super.initState();
     _syncNavOrder();
+    LanPairingPresence.instance.refresh();
+    // Desktop learns about a new TV pair via the engine store — light poll.
+    _lanPairPoll = Timer.periodic(const Duration(seconds: 5), (_) {
+      LanPairingPresence.instance.notifyChanged();
+    });
+  }
+
+  @override
+  void dispose() {
+    _lanPairPoll?.cancel();
+    super.dispose();
   }
 
   @override
@@ -394,31 +407,49 @@ class _ShellNavRailState extends State<ShellNavRail> {
                         children: [
                           Expanded(child: navArea),
                           if (settingsIndex != null)
-                            _ShellNavRailItem(
-                              key: const ValueKey('nav-rail-settings'),
-                              destination: navDestinations['settings']!,
-                              label: showDesktopProfile ? _profileLabel : null,
-                              icon: showDesktopProfile
-                                  ? ForjaActiveProfileAvatar(
-                                      size: profileIconSize,
-                                      showBorder: false,
-                                      onProfile: _onActiveProfile,
-                                    )
-                                  : null,
-                              customIconSize: showDesktopProfile
-                                  ? profileIconSize
-                                  : null,
-                              iconSize: fit.iconSize,
-                              labelFontSize: preferredLabelFont,
-                              alwaysShowLabel: showDesktopProfile,
-                              desaturateCustomIconWhenIdle: showDesktopProfile,
-                              selected: settingsIndex == widget.selectedIndex,
-                              onTap: () {
-                                widget.onDestinationSelected(settingsIndex);
+                            ValueListenableBuilder<bool>(
+                              valueListenable:
+                                  LanPairingPresence.instance.paired,
+                              builder: (context, lanPaired, _) {
+                                return _ShellNavRailItem(
+                                  key: const ValueKey('nav-rail-settings'),
+                                  destination: navDestinations['settings']!,
+                                  label: showDesktopProfile
+                                      ? _profileLabel
+                                      : null,
+                                  icon: showDesktopProfile
+                                      ? ForjaActiveProfileAvatar(
+                                          size: profileIconSize,
+                                          showBorder: false,
+                                          onProfile: _onActiveProfile,
+                                        )
+                                      : null,
+                                  iconBadge:
+                                      showDesktopProfile && lanPaired
+                                      ? _NavLanPairBadge(
+                                          avatarSize: profileIconSize,
+                                        )
+                                      : null,
+                                  customIconSize: showDesktopProfile
+                                      ? profileIconSize
+                                      : null,
+                                  iconSize: fit.iconSize,
+                                  labelFontSize: preferredLabelFont,
+                                  alwaysShowLabel: showDesktopProfile,
+                                  desaturateCustomIconWhenIdle:
+                                      showDesktopProfile,
+                                  selected:
+                                      settingsIndex == widget.selectedIndex,
+                                  onTap: () {
+                                    widget.onDestinationSelected(
+                                      settingsIndex,
+                                    );
+                                  },
+                                  itemSpacing: profileSpacing,
+                                  railEngaged: _railEngaged,
+                                  onFocusChanged: _syncFocusInRail,
+                                );
                               },
-                              itemSpacing: profileSpacing,
-                              railEngaged: _railEngaged,
-                              onFocusChanged: _syncFocusInRail,
                             ),
                         ],
                       );
@@ -639,6 +670,32 @@ class _AnimatedSaturation extends StatelessWidget {
   }
 }
 
+/// Brand-green cast badge — LAN pairing exists (desktop↔TV), outside desaturation.
+class _NavLanPairBadge extends StatelessWidget {
+  const _NavLanPairBadge({required this.avatarSize});
+
+  final double avatarSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = (avatarSize * 0.42).clamp(10.0, 16.0);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppTheme.bgDark,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppTheme.bgDark, width: 1.5),
+      ),
+      child: Icon(
+        Icons.cast_connected_rounded,
+        size: size * 0.85,
+        color: ForjaShellColors.brandGreen,
+      ),
+    );
+  }
+}
+
 class _ShellNavRailItem extends StatefulWidget {
   const _ShellNavRailItem({
     super.key,
@@ -650,6 +707,7 @@ class _ShellNavRailItem extends StatefulWidget {
     required this.onFocusChanged,
     this.label,
     this.icon,
+    this.iconBadge,
     this.iconSize,
     this.labelFontSize,
     this.customIconSize,
@@ -665,6 +723,8 @@ class _ShellNavRailItem extends StatefulWidget {
   final VoidCallback onFocusChanged;
   final String? label;
   final Widget? icon;
+  /// Drawn above [icon] after idle desaturation so it stays colored.
+  final Widget? iconBadge;
   /// Fitted / preferred glyph size for destination icons.
   final double? iconSize;
   final double? labelFontSize;
@@ -861,6 +921,17 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       icon = _AnimatedSaturation(
         colorized: widget.selected || active,
         child: icon,
+      );
+    }
+    final badge = widget.iconBadge;
+    if (badge != null) {
+      icon = Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          icon,
+          Positioned(right: -2, top: -2, child: badge),
+        ],
       );
     }
 
