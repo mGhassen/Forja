@@ -701,6 +701,16 @@ class RustLib {
 
   String lanDevicesJson() => _readString(_native.ffi_lan_devices_json());
 
+  String lanTorrentHistoryJson() =>
+      _readString(_native.ffi_lan_torrent_history_json());
+
+  bool lanRemoveTorrentHistory(String infoHash) => using((arena) {
+        final ptr = infoHash.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        return _native.ffi_lan_remove_torrent_history(ptr);
+      });
+
+  bool lanClearTorrentHistory() => _native.ffi_lan_clear_torrent_history();
+
   String lanBrowseServersJson({int timeoutMs = 3000}) =>
       _readString(_native.ffi_lan_browse_servers_json(timeoutMs));
 
@@ -1254,6 +1264,21 @@ final class _FfiNative {
               'ffi_lan_devices_json',
             )
             .asFunction(),
+        ffi_lan_torrent_history_json = lib
+            .lookup<ffi.NativeFunction<_VersionNative>>(
+              'ffi_lan_torrent_history_json',
+            )
+            .asFunction(),
+        ffi_lan_remove_torrent_history = lib
+            .lookup<ffi.NativeFunction<_TorrentStartNative>>(
+              'ffi_lan_remove_torrent_history',
+            )
+            .asFunction(),
+        ffi_lan_clear_torrent_history = lib
+            .lookup<ffi.NativeFunction<_TorrentIsRunningNative>>(
+              'ffi_lan_clear_torrent_history',
+            )
+            .asFunction(),
         ffi_lan_browse_servers_json = lib
             .lookup<ffi.NativeFunction<_LanBrowseNative>>(
               'ffi_lan_browse_servers_json',
@@ -1543,6 +1568,9 @@ final class _FfiNative {
   final ffi.Pointer<ffi.Char> Function() ffi_lan_pairing_code;
   final bool Function(ffi.Pointer<ffi.Char>) ffi_lan_revoke_device;
   final ffi.Pointer<ffi.Char> Function() ffi_lan_devices_json;
+  final ffi.Pointer<ffi.Char> Function() ffi_lan_torrent_history_json;
+  final bool Function(ffi.Pointer<ffi.Char>) ffi_lan_remove_torrent_history;
+  final bool Function() ffi_lan_clear_torrent_history;
   final ffi.Pointer<ffi.Char> Function(int) ffi_lan_browse_servers_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_seek111477_start_json;

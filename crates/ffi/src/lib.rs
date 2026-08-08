@@ -727,6 +727,40 @@ fn lan_devices_json() -> String {
     }
 }
 
+fn lan_torrent_history_json() -> String {
+    #[cfg(feature = "lan-server")]
+    {
+        engine_lan::lan_torrent_history_json()
+    }
+    #[cfg(not(feature = "lan-server"))]
+    {
+        "[]".into()
+    }
+}
+
+fn lan_remove_torrent_history(info_hash: String) -> bool {
+    #[cfg(feature = "lan-server")]
+    {
+        engine_lan::lan_remove_torrent_history(info_hash)
+    }
+    #[cfg(not(feature = "lan-server"))]
+    {
+        let _ = info_hash;
+        false
+    }
+}
+
+fn lan_clear_torrent_history() -> bool {
+    #[cfg(feature = "lan-server")]
+    {
+        engine_lan::lan_clear_torrent_history()
+    }
+    #[cfg(not(feature = "lan-server"))]
+    {
+        false
+    }
+}
+
 fn lan_browse_servers_json(timeout_ms: u64) -> String {
     #[cfg(feature = "lan-server")]
     {

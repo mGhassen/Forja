@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
@@ -131,9 +132,9 @@ class SettingsPlaybackNotifier
     final iptvEpgEnabled = await s.isIptvEpgEnabled();
     SettingsService.iptvEpgEnabledNotifier.value = iptvEpgEnabled;
     return SettingsPlaybackSnapshot(
-      playSourceTorrent: await s.isPlaySourceTorrentEnabled(),
-      playSourceStremio: await s.isPlaySourceStremioEnabled(),
-      playSourceNuvio: await s.isPlaySourceNuvioEnabled(),
+      playSourceTorrent: await PlaySourceEffective.torrent(s),
+      playSourceStremio: await PlaySourceEffective.stremio(s),
+      playSourceNuvio: await PlaySourceEffective.nuvio(s),
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
       simpleStreamingResolve: await s.isSimpleStreamingResolveEnabled(),
       builtInEngine: await s.getBuiltInPlayerEngine(),

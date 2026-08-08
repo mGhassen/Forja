@@ -725,6 +725,21 @@ pub extern "C" fn ffi_lan_devices_json() -> *mut c_char {
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_lan_torrent_history_json() -> *mut c_char {
+    to_c_string(crate::lan_torrent_history_json())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_lan_remove_torrent_history(info_hash: *const c_char) -> bool {
+    crate::lan_remove_torrent_history(from_c_str(info_hash))
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_lan_clear_torrent_history() -> bool {
+    crate::lan_clear_torrent_history()
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_lan_browse_servers_json(timeout_ms: u64) -> *mut c_char {
     to_c_string(crate::lan_browse_servers_json(timeout_ms))
 }

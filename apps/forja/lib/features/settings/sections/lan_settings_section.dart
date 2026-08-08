@@ -1,20 +1,26 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
+import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:rust/rust.dart';
 
 /// Settings → LAN — one-time desktop↔TV trust (RFC-022).
-class LanSettingsSection extends StatefulWidget {
+class LanSettingsSection extends ConsumerStatefulWidget {
   const LanSettingsSection({super.key});
 
   @override
-  State<LanSettingsSection> createState() => _LanSettingsSectionState();
+  ConsumerState<LanSettingsSection> createState() => _LanSettingsSectionState();
 }
 
-class _LanSettingsSectionState extends State<LanSettingsSection> {
+class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
   final _manualHostController = TextEditingController();
   final _manualPortController = TextEditingController();
   final _pairCodeController = TextEditingController();
@@ -33,6 +39,10 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
   int? _pairedPort;
   List<LanServerInfo> _discovered = [];
   List<Map<String, dynamic>> _devices = [];
+  List<Map<String, dynamic>> _torrentHistory = [];
+  Map<String, dynamic>? _activeTorrent;
+  int _torrentCacheBytes = 0;
+  Timer? _statusTimer;
 
   bool get _isDesktopServer => LanServerService.canRunServer;
 
@@ -44,6 +54,7 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
 
   @override
   void dispose() {
+    _statusTimer?.cancel();
     _manualHostController.dispose();
     _manualPortController.dispose();
     _pairCodeController.dispose();
@@ -79,7 +90,64 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
       _localIps = const [];
       _devices = const [];
     }
+    if (_isDesktopServer) {
+      _torrentHistory = LanServerService.instance.listTorrentHistory();
+      _activeTorrent = LanServerService.instance.activeTorrentStatus();
+      try {
+        _torrentCacheBytes =
+            await TorrentStreamService().cacheDirectoryBytes();
+      } catch (_) {
+        _torrentCacheBytes = 0;
+      }
+      _ensureStatusPolling();
+    }
     if (mounted) setState(() => _loading = false);
+  }
+
+  void _ensureStatusPolling() {
+    _statusTimer?.cancel();
+    if (!_isDesktopServer) return;
+    _statusTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (!mounted) return;
+      setState(() {
+        _activeTorrent = LanServerService.instance.activeTorrentStatus();
+        _torrentHistory = LanServerService.instance.listTorrentHistory();
+      });
+    });
+  }
+
+  Future<void> _refreshTorrentPanel() async {
+    if (!_isDesktopServer) return;
+    var cacheBytes = _torrentCacheBytes;
+    try {
+      cacheBytes = await TorrentStreamService().cacheDirectoryBytes();
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _activeTorrent = LanServerService.instance.activeTorrentStatus();
+      _torrentHistory = LanServerService.instance.listTorrentHistory();
+      _torrentCacheBytes = cacheBytes;
+    });
+  }
+
+  Future<void> _removeHistory(String infoHash) async {
+    final ok = LanServerService.instance.removeTorrentHistory(infoHash);
+    if (!ok) {
+      ForjaToast.error('Could not remove torrent');
+      return;
+    }
+    ForjaToast.success('Removed torrent cache entry');
+    await _refreshTorrentPanel();
+  }
+
+  Future<void> _clearAllTorrents() async {
+    final ok = LanServerService.instance.clearTorrentHistory();
+    if (!ok) {
+      ForjaToast.error('Could not clear torrent cache');
+      return;
+    }
+    ForjaToast.success('Torrent cache cleared');
+    await _refreshTorrentPanel();
   }
 
   Future<void> _toggleServer(bool enabled) async {
@@ -137,14 +205,25 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
       ForjaToast.error('Pairing failed — check code, IP, and that desktop LAN is on');
       return;
     }
-    ForjaToast.success('Paired — torrents will play via this desktop');
+    ForjaToast.success(
+      'Paired — enable Direct torrent in Settings → Playback',
+    );
     _pairCodeController.clear();
     await _load();
+    _refreshPlaySourceGates();
   }
 
   Future<void> _unpair() async {
     await LanPrefs.instance.clearServer();
     await _load();
+    _refreshPlaySourceGates();
+  }
+
+  /// Pairing unlocks Playback torrent/Stremio/Nuvio toggles on ATV.
+  void _refreshPlaySourceGates() {
+    SettingsService.playSourceChangeNotifier.value++;
+    ref.invalidate(settingsVisibilityProvider);
+    ref.invalidate(settingsPlaybackProvider);
   }
 
   Future<void> _revoke(String deviceId) async {
@@ -373,7 +452,142 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
             );
           }),
       ],
+      const SizedBox(height: 20),
+      ..._torrentActivitySection(),
     ];
+  }
+
+  List<Widget> _torrentActivitySection() {
+    final active = _activeTorrent;
+    final activeHash = active?['info_hash']?.toString().toLowerCase();
+    final cacheLabel =
+        TorrentStreamService.formatStorageBytes(_torrentCacheBytes);
+    return [
+      Row(
+        children: [
+          Expanded(child: _sectionLabel('TORRENT ACTIVITY')),
+          if (_torrentHistory.isNotEmpty || _torrentCacheBytes > 0)
+            TextButton(
+              onPressed: _clearAllTorrents,
+              child: const Text('Clear all'),
+            ),
+        ],
+      ),
+      Text(
+        'Torrents opened by paired TVs/phones. Delete removes the cached download.',
+        style: TextStyle(
+          color: ForjaShellColors.textSecondary,
+          fontSize: 12,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'Cache on disk: $cacheLabel',
+        style: TextStyle(
+          color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
+          fontSize: 12,
+        ),
+      ),
+      const SizedBox(height: 8),
+      if (active != null) ...[
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(
+            Icons.play_circle_fill_rounded,
+            color: ForjaShellColors.brandGreen,
+          ),
+          title: Text(
+            active['name']?.toString().isNotEmpty == true
+                ? active['name'].toString()
+                : 'Active torrent',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            _activeTorrentSubtitle(active),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(height: 4),
+      ],
+      if (_torrentHistory.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            active == null
+                ? 'No LAN torrents yet — play one from a paired TV.'
+                : 'Serving now (not yet in history).',
+            style: TextStyle(
+              color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
+              fontSize: 13,
+            ),
+          ),
+        )
+      else
+        ..._torrentHistory.map((e) {
+          final hash = e['info_hash']?.toString() ?? '';
+          final name = e['name']?.toString().trim();
+          final label = (e['device_label'] as String?)?.trim();
+          final device = (label != null && label.isNotEmpty)
+              ? label
+              : (e['device_id']?.toString() ?? 'Device');
+          final when = _formatPairedAt(e['opened_at']);
+          final bytes = (e['total_bytes'] as num?)?.toInt() ?? 0;
+          final size = bytes > 0
+              ? TorrentStreamService.formatStorageBytes(bytes)
+              : null;
+          final isActive = activeHash != null &&
+              hash.isNotEmpty &&
+              activeHash == hash.toLowerCase();
+          return ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              isActive
+                  ? Icons.downloading_rounded
+                  : Icons.video_file_outlined,
+              color: isActive
+                  ? ForjaShellColors.brandGreen
+                  : ForjaShellColors.textSecondary,
+            ),
+            title: Text(
+              (name != null && name.isNotEmpty) ? name : hash,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              [
+                if (isActive) 'In progress',
+                device,
+                ?when,
+                ?size,
+              ].join(' · '),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: IconButton(
+              tooltip: 'Delete cached download',
+              onPressed: hash.isEmpty ? null : () => _removeHistory(hash),
+              icon: const Icon(Icons.delete_outline_rounded),
+            ),
+          );
+        }),
+    ];
+  }
+
+  static String _activeTorrentSubtitle(Map<String, dynamic> active) {
+    final progress = (active['progress'] as num?)?.toDouble() ?? 0;
+    final pct = (progress * 100).clamp(0, 100).toStringAsFixed(0);
+    final state = active['state']?.toString() ?? '';
+    final down = (active['download_rate'] as num?)?.toInt() ?? 0;
+    final peers = (active['num_peers'] as num?)?.toInt() ?? 0;
+    final rate = TorrentStreamService.formatStorageBytes(down);
+    return [
+      if (state.isNotEmpty) state,
+      '$pct%',
+      '$rate/s',
+      '$peers peers',
+    ].join(' · ');
   }
 
   List<Widget> _clientBody() {

@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
+import 'package:forja/shared/lan/lan_prefs.dart';
+import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:rust/rust.dart';
 
 import 'helpers/rust_engine.dart';
@@ -38,9 +40,10 @@ void main() {
     await openFreshStore();
   });
 
-  tearDown(() {
+  tearDown(() async {
     PlatformPlayback.clearOverride();
     SettingsService.configurePlatformProfile(PlatformProfile.phone);
+    await LanPrefs.instance.clearServer();
   });
 
   test('Android TV hides Sources, WebStreamr, Lists, Data, Debrid, torrent',
@@ -89,5 +92,42 @@ void main() {
     expect(ids.contains(SettingsCategoryId.accounts), isTrue);
     expect(ids.contains(SettingsCategoryId.navigation), isTrue);
     expect(ids.contains(SettingsCategoryId.about), isTrue);
+    expect(v.showPlaySourceTorrentToggle, isFalse);
+    expect(v.showPlaySourceStremioToggle, isFalse);
+    expect(v.showPlaySourceNuvioToggle, isFalse);
+  });
+
+  test('Android TV paired unlocks Playback toggles; honors stored prefs',
+      () async {
+    PlatformPlayback.override = PlaybackProfile.androidTv;
+    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
+    await service.setNavbarConfig([
+      'home',
+      'anime',
+      'iptv',
+      'mylist',
+    ]);
+    await LanPrefs.instance.setServer(host: '192.168.1.10', port: 8787);
+    await LanPrefs.instance.setToken('test-token');
+    await service.setPlaySourceTorrentEnabled(true);
+    await service.setPlaySourceStremioEnabled(false);
+    await service.setPlaySourceNuvioEnabled(true);
+
+    final v = await SettingsVisibility.resolve(service);
+    expect(v.showPlaySourceTorrentToggle, isTrue);
+    expect(v.showPlaySourceStremioToggle, isTrue);
+    expect(v.showPlaySourceNuvioToggle, isTrue);
+    expect(v.playSourceTorrent, isTrue);
+    expect(v.playSourceStremio, isFalse);
+    expect(v.playSourceNuvio, isTrue);
+    expect(v.showSourcesCategory, isFalse);
+    expect(v.showDebrid, isFalse);
+
+    expect(await PlaySourceEffective.torrent(service), isTrue);
+    expect(await PlaySourceEffective.stremio(service), isFalse);
+    expect(await PlaySourceEffective.nuvio(service), isTrue);
   });
 }

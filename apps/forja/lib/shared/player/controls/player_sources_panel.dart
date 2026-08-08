@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
+import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
@@ -492,16 +492,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final jackett = await _settings.isJackettConfigured();
     final prowlarr = await _settings.isProwlarrConfigured();
     final enabledProviders = await _settings.getEnabledTorrentProviders();
-    final caps = PlatformPlayback.capabilities;
-    final lanPaired = await LanPrefs.instance.isPaired;
-    final torrentOn =
-        (caps.playSourceTorrent && await _settings.isPlaySourceTorrentEnabled()) ||
-        lanPaired;
-    final stremioOn =
-        (caps.playSourceStremio && await _settings.isPlaySourceStremioEnabled()) ||
-        lanPaired;
-    final nuvioOn =
-        caps.playSourceNuvio && await _settings.isPlaySourceNuvioEnabled();
+    final torrentOn = await PlaySourceEffective.torrent(_settings);
+    final stremioOn = await PlaySourceEffective.stremio(_settings);
+    final nuvioOn = await PlaySourceEffective.nuvio(_settings);
     final local = _profile.localTorrentEngine;
     List<Map<String, dynamic>> addons = const [];
     if (stremioOn) {

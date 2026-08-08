@@ -386,6 +386,7 @@ class TorrentStreamService {
       final progressBytes = (m['progress_bytes'] as num?)?.toInt() ?? 0;
       final totalBytes = (m['total_bytes'] as num?)?.toInt() ?? 0;
       final etaSecs = (m['eta_secs'] as num?)?.toInt() ?? 0;
+      final statusHash = (m['info_hash'] as String?)?.trim().toLowerCase();
       return TorrentStats(
         downloadMbps: downloadRate / 1024 / 1024,
         uploadMbps: uploadRate / 1024 / 1024,
@@ -395,7 +396,7 @@ class TorrentStreamService {
         loadedBytes: progressBytes,
         totalBytes: totalBytes,
         etaSeconds: etaSecs > 0 ? etaSecs : null,
-        hash: hash,
+        hash: (statusHash != null && statusHash.isNotEmpty) ? statusHash : hash,
         isConnected: numPeers > 0,
       );
     } catch (_) {

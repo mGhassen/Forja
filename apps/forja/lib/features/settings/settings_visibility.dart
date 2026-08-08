@@ -1,5 +1,5 @@
 import 'package:forja/app/boot_needs.dart';
-import 'package:forja/shared/lan/lan.dart';
+import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:rust/rust.dart';
 
@@ -15,6 +15,9 @@ class SettingsVisibility {
     required this.playSourceStremio,
     required this.playSourceNuvio,
     required this.playSourceWebstreaming,
+    required this.showPlaySourceTorrentToggle,
+    required this.showPlaySourceStremioToggle,
+    required this.showPlaySourceNuvioToggle,
     required this.vodTab,
     required this.iptvNav,
     required this.liveMatchesNav,
@@ -24,6 +27,11 @@ class SettingsVisibility {
   final bool playSourceStremio;
   final bool playSourceNuvio;
   final bool playSourceWebstreaming;
+
+  /// Settings → Playback rows (caps, or LAN-paired ATV client).
+  final bool showPlaySourceTorrentToggle;
+  final bool showPlaySourceStremioToggle;
+  final bool showPlaySourceNuvioToggle;
 
   /// Any tab that can open VOD details / Sources (same set as [BootNeeds]).
   final bool vodTab;
@@ -63,8 +71,11 @@ class SettingsVisibility {
           liveMatchesNav);
 
   /// Debrid serves torrent + Stremio hashes (+ Nuvio magnets).
+  /// Lean Android TV Settings keep Debrid off (desktop relay only).
   bool get showDebrid =>
-      vodTab && (playSourceTorrent || playSourceStremio || playSourceNuvio);
+      !_isAndroidTv &&
+      vodTab &&
+      (playSourceTorrent || playSourceStremio || playSourceNuvio);
 
   bool get showWebstreamr =>
       !_isAndroidTv && vodTab && playSourceWebstreaming;
@@ -94,20 +105,14 @@ class SettingsVisibility {
     var nav = await s.getNavbarConfig();
     nav = nav.where((id) => !temporarilyHiddenNavIds.contains(id)).toList();
 
-    // Same capability AND as [BootNeeds] — Android TV caps force torrent /
-    // Stremio / Nuvio off even if cloud sync wrote phone prefs into KV.
-    final caps = PlatformPlayback.capabilities;
-    final lanPaired = await LanPrefs.instance.isPaired;
     return SettingsVisibility(
-      playSourceTorrent:
-          (caps.playSourceTorrent && await s.isPlaySourceTorrentEnabled()) ||
-          lanPaired,
-      playSourceStremio:
-          (caps.playSourceStremio && await s.isPlaySourceStremioEnabled()) ||
-          lanPaired,
-      playSourceNuvio:
-          caps.playSourceNuvio && await s.isPlaySourceNuvioEnabled(),
+      playSourceTorrent: await PlaySourceEffective.torrent(s),
+      playSourceStremio: await PlaySourceEffective.stremio(s),
+      playSourceNuvio: await PlaySourceEffective.nuvio(s),
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
+      showPlaySourceTorrentToggle: await PlaySourceEffective.showTorrentToggle(),
+      showPlaySourceStremioToggle: await PlaySourceEffective.showStremioToggle(),
+      showPlaySourceNuvioToggle: await PlaySourceEffective.showNuvioToggle(),
       vodTab: nav.any(BootNeeds.vodNavIds.contains),
       iptvNav: nav.contains('iptv'),
       liveMatchesNav: nav.contains('live_matches'),

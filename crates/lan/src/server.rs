@@ -15,10 +15,13 @@ use tokio::sync::oneshot;
 
 /// Invoked after pair / revoke so the host can persist device tokens.
 pub type DevicesChangedHook = Arc<dyn Fn(&PairingState) + Send + Sync>;
+/// Invoked after LAN torrent history changes so the host can persist.
+pub type HistoryChangedHook = Arc<dyn Fn(&TorrentHistory) + Send + Sync>;
 use torrent::{torrent_stream_router, TorrentAppState, TorrentEngine};
 
 use crate::auth::{require_bearer_token, require_stream_ticket};
 use crate::bind::LanBindMode;
+use crate::history::{TorrentHistory, TorrentHistoryEntry};
 use crate::mdns::MdnsAnnouncer;
 use crate::pairing::{PairRequest, PairResponse, PairingState, RevokeRequest};
 
@@ -29,8 +32,10 @@ pub struct LanServerState {
     pub pairing: PairingState,
     pub proxy_state: ProxyState,
     pub torrent: Arc<TorrentEngine>,
+    pub history: TorrentHistory,
     pub listen_port: Arc<tokio::sync::RwLock<u16>>,
     pub on_devices_changed: Option<DevicesChangedHook>,
+    pub on_history_changed: Option<HistoryChangedHook>,
 }
 
 pub struct LanServer {
@@ -52,14 +57,20 @@ impl LanServer {
                 pairing: PairingState::new(server_id),
                 proxy_state,
                 torrent,
+                history: TorrentHistory::default(),
                 listen_port: Arc::new(tokio::sync::RwLock::new(0)),
                 on_devices_changed: None,
+                on_history_changed: None,
             },
         }
     }
 
     pub fn set_on_devices_changed(&mut self, hook: DevicesChangedHook) {
         self.state.on_devices_changed = Some(hook);
+    }
+
+    pub fn set_on_history_changed(&mut self, hook: HistoryChangedHook) {
+        self.state.on_history_changed = Some(hook);
     }
 
     pub async fn start(
@@ -328,6 +339,13 @@ async fn open_handler(
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| bad_request("torrent resolve missing url"))?;
             let play_url = append_stream_ticket(&rewrite_local_url(url, &host, port), &ticket);
+            record_torrent_open(
+                &state,
+                &device_token,
+                &magnet,
+                parsed.get("info_hash").and_then(|v| v.as_str()),
+                url,
+            );
             OpenResponse {
                 play_url,
                 headers: None,
@@ -336,6 +354,93 @@ async fn open_handler(
         other => return Err(bad_request(&format!("unknown kind: {other}"))),
     };
     Ok(Json(response))
+}
+
+fn record_torrent_open(
+    state: &LanServerState,
+    device_token: &str,
+    magnet: &str,
+    info_hash: Option<&str>,
+    stream_url: &str,
+) {
+    let hash = info_hash
+        .map(|h| h.to_ascii_lowercase())
+        .or_else(|| extract_info_hash(magnet))
+        .unwrap_or_default();
+    if hash.is_empty() {
+        return;
+    }
+    let (device_id, device_label) = state
+        .pairing
+        .device_for_token(device_token)
+        .unwrap_or_else(|| ("unknown".into(), None));
+    let status = state.torrent.status();
+    let name = status
+        .as_ref()
+        .map(|s| s.name.clone())
+        .filter(|n| !n.is_empty())
+        .or_else(|| magnet_display_name(magnet))
+        .unwrap_or_else(|| hash.clone());
+    let total_bytes = status.as_ref().map(|s| s.total_bytes).unwrap_or(0);
+    let cache_file = file_name_from_url(stream_url);
+    let opened_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    state.history.record(TorrentHistoryEntry {
+        info_hash: hash,
+        name,
+        cache_file,
+        device_id,
+        device_label,
+        opened_at,
+        total_bytes,
+    });
+    if let Some(hook) = &state.on_history_changed {
+        hook(&state.history);
+    }
+}
+
+fn extract_info_hash(magnet: &str) -> Option<String> {
+    let xt = magnet.split("xt=urn:btih:").nth(1)?;
+    let hash = xt.split('&').next()?;
+    if hash.is_empty() {
+        return None;
+    }
+    Some(hash.to_ascii_lowercase())
+}
+
+fn magnet_display_name(magnet: &str) -> Option<String> {
+    let query = magnet.strip_prefix("magnet:?").unwrap_or(magnet);
+    for pair in query.split('&') {
+        let mut parts = pair.splitn(2, '=');
+        let k = parts.next()?;
+        let v = parts.next().unwrap_or("");
+        if k == "dn" {
+            let decoded = urlencoding::decode(v).unwrap_or(v.into()).into_owned();
+            let trimmed = decoded.replace('+', " ").trim().to_string();
+            if !trimmed.is_empty() {
+                return Some(trimmed);
+            }
+        }
+    }
+    None
+}
+
+fn file_name_from_url(url: &str) -> Option<String> {
+    let path = url.split('?').next().unwrap_or(url);
+    let name = path.rsplit('/').next().unwrap_or("");
+    if name.is_empty() || name.contains("..") {
+        return None;
+    }
+    let decoded = urlencoding::decode(name)
+        .unwrap_or(name.into())
+        .into_owned();
+    if decoded.is_empty() {
+        None
+    } else {
+        Some(decoded)
+    }
 }
 
 fn rewrite_local_url(url: &str, host: &str, port: u16) -> String {
@@ -411,9 +516,25 @@ mod tests {
             pairing: PairingState::new("test-server".into()),
             proxy_state: ProxyState::default(),
             torrent: Arc::new(TorrentEngine::new()),
+            history: TorrentHistory::default(),
             listen_port: Arc::new(tokio::sync::RwLock::new(0)),
             on_devices_changed: None,
+            on_history_changed: None,
         };
         let _ = build_router(state);
+    }
+
+    #[test]
+    fn parses_magnet_dn_and_stream_file() {
+        let magnet = "magnet:?xt=urn:btih:abc123def4567890abc123def4567890abc123de&dn=Big%20Buck%20Bunny";
+        assert_eq!(
+            extract_info_hash(magnet).as_deref(),
+            Some("abc123def4567890abc123def4567890abc123de")
+        );
+        assert_eq!(magnet_display_name(magnet).as_deref(), Some("Big Buck Bunny"));
+        assert_eq!(
+            file_name_from_url("http://h/torrents/1/stream/0/movie.mkv?st=x").as_deref(),
+            Some("movie.mkv")
+        );
     }
 }

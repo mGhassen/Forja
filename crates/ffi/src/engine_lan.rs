@@ -1,9 +1,10 @@
-use lan::{LanBindMode, LanServer, PairingState};
+use lan::{LanBindMode, LanServer, PairingState, TorrentHistory, TorrentHistoryEntry};
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static LAN: LazyLock<Mutex<Option<LanServer>>> = LazyLock::new(|| Mutex::new(None));
 static LAST_ERROR: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new(String::new()));
+static HISTORY: LazyLock<TorrentHistory> = LazyLock::new(TorrentHistory::default);
 
 fn set_last_error(msg: &str) {
     if let Ok(mut err) = LAST_ERROR.lock() {
@@ -59,8 +60,13 @@ pub fn lan_server_start(
             let server_id = stable_server_id();
             let mut lan = LanServer::new(server_id, proxy_state, torrent);
             restore_paired_devices(&lan.state.pairing);
+            restore_torrent_history(&HISTORY);
+            lan.state.history = HISTORY.clone();
             lan.set_on_devices_changed(Arc::new(|pairing| {
                 persist_paired_devices(pairing);
+            }));
+            lan.set_on_history_changed(Arc::new(|history| {
+                persist_torrent_history(history);
             }));
             let mode = LanBindMode::from_u8(bind_mode);
             match lan.start(mode, preferred_port).await {
@@ -140,6 +146,45 @@ pub fn lan_devices_json() -> String {
         .unwrap_or_else(|| "[]".into())
 }
 
+pub fn lan_torrent_history_json() -> String {
+    ensure_history_loaded();
+    serde_json::to_string(&HISTORY.list()).unwrap_or_else(|_| "[]".into())
+}
+
+/// Stop active torrent when matching, delete cached file, drop history row.
+pub fn lan_remove_torrent_history(info_hash: String) -> bool {
+    if info_hash.is_empty() {
+        return false;
+    }
+    ensure_history_loaded();
+    let Some(entry) = HISTORY.remove(&info_hash) else {
+        return false;
+    };
+    persist_torrent_history(&HISTORY);
+    if let Some(status) = crate::engine_torrent::shared_torrent_engine().status() {
+        if status.info_hash.eq_ignore_ascii_case(&entry.info_hash) {
+            crate::engine_torrent::torrent_stop();
+        }
+    }
+    if let Some(file) = entry.cache_file.as_deref() {
+        let _ = torrent::TorrentEngine::delete_cached_named(file);
+    }
+    if entry.cache_file.as_deref() != Some(entry.name.as_str()) {
+        let _ = torrent::TorrentEngine::delete_cached_named(&entry.name);
+    }
+    true
+}
+
+/// Stop torrent, wipe download cache, clear LAN history.
+pub fn lan_clear_torrent_history() -> bool {
+    ensure_history_loaded();
+    crate::engine_torrent::torrent_stop();
+    let _ = torrent::TorrentEngine::clear_cache_dir();
+    HISTORY.clear();
+    persist_torrent_history(&HISTORY);
+    true
+}
+
 pub fn lan_browse_servers_json(timeout_ms: u64) -> String {
     let timeout = std::time::Duration::from_millis(timeout_ms.clamp(500, 30_000));
     let servers = lan::browse_forja_servers(timeout);
@@ -147,6 +192,7 @@ pub fn lan_browse_servers_json(timeout_ms: u64) -> String {
 }
 
 const PAIRED_DEVICES_KEY: &str = "lan_paired_devices";
+const TORRENT_HISTORY_KEY: &str = "lan_torrent_history";
 
 fn persist_paired_devices(pairing: &PairingState) {
     let devices = pairing.export_devices();
@@ -162,6 +208,33 @@ fn restore_paired_devices(pairing: &PairingState) {
         return;
     };
     pairing.restore_devices(devices);
+}
+
+fn persist_torrent_history(history: &TorrentHistory) {
+    let value = serde_json::to_value(history.list()).unwrap_or(serde_json::json!([]));
+    let _ = storage::set(TORRENT_HISTORY_KEY, value);
+}
+
+fn restore_torrent_history(history: &TorrentHistory) {
+    let Some(value) = storage::get(TORRENT_HISTORY_KEY) else {
+        return;
+    };
+    let Ok(entries) = serde_json::from_value::<Vec<TorrentHistoryEntry>>(value) else {
+        return;
+    };
+    history.restore(entries);
+}
+
+fn ensure_history_loaded() {
+    static LOADED: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
+    let Ok(mut loaded) = LOADED.lock() else {
+        return;
+    };
+    if *loaded {
+        return;
+    }
+    restore_torrent_history(&HISTORY);
+    *loaded = true;
 }
 
 fn stable_server_id() -> String {

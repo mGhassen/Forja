@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/media/details/providers/details_providers.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:rust/rust.dart';
 
@@ -138,9 +139,9 @@ class DetailsPlaySessionNotifier
   Future<void> loadPlaySources() async {
     final settings = SettingsService();
     final next = DetailsPlaySources(
-      torrent: await settings.isPlaySourceTorrentEnabled(),
-      stremio: await settings.isPlaySourceStremioEnabled(),
-      nuvio: await settings.isPlaySourceNuvioEnabled(),
+      torrent: await PlaySourceEffective.torrent(settings),
+      stremio: await PlaySourceEffective.stremio(settings),
+      nuvio: await PlaySourceEffective.nuvio(settings),
       webstreaming: await settings.isPlaySourceWebstreamingEnabled(),
     );
     session.playSources = next;

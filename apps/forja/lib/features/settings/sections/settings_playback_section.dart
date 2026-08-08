@@ -56,11 +56,13 @@ class _SettingsPlaybackSectionState
           SettingsGroup(
             label: 'Play sources',
             children: [
-              if (PlatformPlayback.capabilities.playSourceTorrent)
+              if (widget.visibility.showPlaySourceTorrentToggle)
                 settingsFocusableToggle(
                   context,
                   'Direct torrent',
-                  'Search Forja indexers (Jackett / Prowlarr) in Sources.',
+                  PlatformPlayback.capabilities.localTorrentEngine
+                      ? 'Search Forja indexers (Jackett / Prowlarr) in Sources.'
+                      : 'Search torrents via your paired desktop (Settings → LAN).',
                   snap.playSourceTorrent,
                   (val) async {
                     await _settings.setPlaySourceTorrentEnabled(val);
@@ -75,11 +77,13 @@ class _SettingsPlaybackSectionState
                     }
                   },
                 ),
-              if (PlatformPlayback.capabilities.playSourceStremio)
+              if (widget.visibility.showPlaySourceStremioToggle)
                 settingsFocusableToggle(
                   context,
                   'Stremio',
-                  'Play from installed Stremio addon streams.',
+                  PlatformPlayback.capabilities.playSourceStremio
+                      ? 'Play from installed Stremio addon streams.'
+                      : 'Play Stremio streams via your paired desktop.',
                   snap.playSourceStremio,
                   (val) async {
                     await _settings.setPlaySourceStremioEnabled(val);
@@ -89,11 +93,13 @@ class _SettingsPlaybackSectionState
                     schedulePreferencesSyncPush();
                   },
                 ),
-              if (PlatformPlayback.capabilities.playSourceNuvio)
+              if (widget.visibility.showPlaySourceNuvioToggle)
                 settingsFocusableToggle(
                   context,
                   'Nuvio',
-                  'Play from installed Nuvio scraper addons in Sources.',
+                  PlatformPlayback.capabilities.playSourceNuvio
+                      ? 'Play from installed Nuvio scraper addons in Sources.'
+                      : 'Play Nuvio scrapers via your paired desktop.',
                   snap.playSourceNuvio,
                   (val) async {
                     await _settings.setPlaySourceNuvioEnabled(val);
@@ -101,7 +107,8 @@ class _SettingsPlaybackSectionState
                       (s) => s.copyWith(playSourceNuvio: val),
                     );
                     schedulePreferencesSyncPush();
-                    if (val) {
+                    if (val &&
+                        PlatformPlayback.capabilities.playSourceNuvio) {
                       debugPrint('[Init] Nuvio refresh (settings toggle)');
                       unawaited(NuvioService.instance.refreshAllInstalled());
                     }

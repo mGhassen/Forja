@@ -135,6 +135,14 @@ impl PairingState {
             .unwrap_or(false)
     }
 
+    /// `(device_id, label)` for a live device token.
+    pub fn device_for_token(&self, token: &str) -> Option<(String, Option<String>)> {
+        let g = self.inner.lock().ok()?;
+        let device_id = g.token_index.get(token)?.clone();
+        let label = g.devices.get(&device_id).and_then(|d| d.label.clone());
+        Some((device_id, label))
+    }
+
     pub fn mint_stream_ticket(&self, device_token: &str) -> Result<String, String> {
         let mut g = self.inner.lock().map_err(|_| "pairing lock poisoned")?;
         let device_id = g

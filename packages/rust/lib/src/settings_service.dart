@@ -521,6 +521,9 @@ class SettingsService {
       kvGetBool(_playSourceTorrentKey, fallback: _defaults.playSourceTorrent);
 
   /// Effective for UI / playback — always off on Android TV.
+  ///
+  /// Paired ATV clients honor stored toggles via host
+  /// `PlaySourceEffective` (desktop relay), not this getter.
   Future<bool> isPlaySourceTorrentEnabled() async {
     if (platformProfile == PlatformProfile.androidTv) return false;
     return isPlaySourceTorrentStored();
@@ -536,6 +539,7 @@ class SettingsService {
       kvGetBool(_playSourceStremioKey, fallback: _defaults.playSourceStremio);
 
   /// Effective for UI / playback — always off on Android TV.
+  /// Paired ATV: see `PlaySourceEffective` on the host.
   Future<bool> isPlaySourceStremioEnabled() async {
     if (platformProfile == PlatformProfile.androidTv) return false;
     return isPlaySourceStremioStored();
@@ -559,6 +563,7 @@ class SettingsService {
   }
 
   /// Effective for UI / playback — always off on Android TV.
+  /// Paired ATV: see `PlaySourceEffective` on the host.
   Future<bool> isPlaySourceNuvioEnabled() async {
     if (platformProfile == PlatformProfile.androidTv) return false;
     return isPlaySourceNuvioStored();

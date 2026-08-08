@@ -1,5 +1,5 @@
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/lan/lan.dart';
+import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:rust/rust.dart';
 
 /// Profile-scoped boot requirements from navbar + play-source prefs.
@@ -69,16 +69,9 @@ class BootNeeds {
     var nav = await s.getNavbarConfig();
     nav = nav.where((id) => !temporarilyHiddenNavIds.contains(id)).toList();
 
-    final caps = PlatformPlayback.capabilities;
-    final lanPaired = await LanPrefs.instance.isPaired;
-    final playSourceTorrent =
-        (caps.playSourceTorrent && await s.isPlaySourceTorrentEnabled()) ||
-        lanPaired;
-    final playSourceStremio =
-        (caps.playSourceStremio && await s.isPlaySourceStremioEnabled()) ||
-        lanPaired;
-    final playSourceNuvio =
-        caps.playSourceNuvio && await s.isPlaySourceNuvioEnabled();
+    final playSourceTorrent = await PlaySourceEffective.torrent(s);
+    final playSourceStremio = await PlaySourceEffective.stremio(s);
+    final playSourceNuvio = await PlaySourceEffective.nuvio(s);
     final playSourceWebstreaming = await s.isPlaySourceWebstreamingEnabled();
     final homeTab = nav.contains('home');
     final tmdb = nav.any(_tmdbNavIds.contains);

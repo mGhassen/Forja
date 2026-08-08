@@ -76,6 +76,38 @@ class LanServerService {
   bool revokeDevice(String deviceId) =>
       Engine.isReady && RustLib.instance.lanRevokeDevice(deviceId);
 
+  /// Recent LAN-opened torrents (persisted; newest first).
+  List<Map<String, dynamic>> listTorrentHistory() {
+    if (!Engine.isReady) return const [];
+    final raw = RustLib.instance.lanTorrentHistoryJson();
+    final decoded = jsonDecode(raw);
+    if (decoded is List) {
+      return decoded
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    return const [];
+  }
+
+  /// Active torrent engine status while a LAN (or local) swarm is open.
+  Map<String, dynamic>? activeTorrentStatus() {
+    if (!Engine.isReady) return null;
+    final raw = RustLib.instance.torrentStatusJson();
+    if (raw.isEmpty || raw == 'null') return null;
+    final decoded = jsonDecode(raw);
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    return null;
+  }
+
+  /// Remove one history row and delete its cached download file when present.
+  bool removeTorrentHistory(String infoHash) =>
+      Engine.isReady && RustLib.instance.lanRemoveTorrentHistory(infoHash);
+
+  /// Stop the active torrent, wipe the torrent cache dir, clear history.
+  bool clearTorrentHistory() =>
+      Engine.isReady && RustLib.instance.lanClearTorrentHistory();
+
   /// Non-loopback IPv4 addresses on this machine (for manual TV pairing).
   Future<List<String>> localIpv4Addresses() async {
     if (kIsWeb) return const [];

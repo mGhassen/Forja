@@ -61,7 +61,7 @@ class PlaybackProfile {
     playSourceNuvio: true,
   );
 
-  /// Android TV — webstreaming only; torrent / Stremio / Nuvio never shown.
+  /// Android TV — local webstreaming only; torrent / Stremio / Nuvio via LAN pair.
   static const androidTv = PlaybackProfile(
     localTorrentEngine: false,
     stremioInfoHash: StremioInfoHashPolicy.hidden,

@@ -513,7 +513,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   bool get _panelShowNuvio =>
       _playSourceNuvio &&
-      _playbackProfile.playSourceNuvio &&
+      (_playbackProfile.playSourceNuvio ||
+          (!_playbackProfile.localTorrentEngine && _playSourceNuvio)) &&
       _hasNuvioAddons;
 
   bool get _hasPanelPlaySources =>

@@ -46,6 +46,8 @@ const TORRENT_INIT_TIMEOUT: Duration = Duration::from_secs(30);
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TorrentStatus {
     pub name: String,
+    #[serde(default)]
+    pub info_hash: String,
     pub progress: f64,
     pub download_rate: u64,
     pub upload_rate: u64,
@@ -715,6 +717,7 @@ impl TorrentEngine {
         };
         Some(TorrentStatus {
             name,
+            info_hash: active.info_hash.clone(),
             progress,
             download_rate,
             upload_rate,
@@ -725,6 +728,37 @@ impl TorrentEngine {
             eta_secs,
             state,
         })
+    }
+
+    /// librqbit download root (`{temp}/torrent`).
+    pub fn cache_dir() -> PathBuf {
+        Self::download_dir()
+    }
+
+    /// Delete one cached media file under the download root (no path traversal).
+    pub fn delete_cached_named(file_name: &str) -> Result<bool, String> {
+        if file_name.is_empty()
+            || file_name.contains("..")
+            || file_name.contains('/')
+            || file_name.contains('\\')
+        {
+            return Err("invalid cache file name".into());
+        }
+        let path = Self::download_dir().join(file_name);
+        if !path.exists() {
+            return Ok(false);
+        }
+        std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+
+    /// Wipe the torrent download directory (including DHT state).
+    pub fn clear_cache_dir() -> Result<(), String> {
+        let dir = Self::download_dir();
+        if !dir.exists() {
+            return Ok(());
+        }
+        std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())
     }
 
     pub fn status_json(&self) -> String {

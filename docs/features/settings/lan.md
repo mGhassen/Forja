@@ -18,6 +18,8 @@ Pairing means **this TV trusts that desktop**. Do it once on the same Wi‑Fi.
 
 Paired TVs and phones appear under **Paired devices**. Use the **reload** icon if a device just paired and the list still says waiting. **Revoke** forces that device to pair again.
 
+**Torrent activity** lists the torrent currently downloading/serving (when any) and a cached history of magnets opened by paired devices. Use the trash icon on a row to stop that download if it is active and delete its cached file. **Clear all** stops the engine torrent, wipes the torrent download cache, and clears history.
+
 ### Android TV / phone
 
 1. **Settings → LAN**
@@ -31,11 +33,12 @@ Status shows **Paired · desktop online**. Unpair anytime from the same screen.
 
 ## Every night — watch
 
-1. On the TV, open a title → **Sources → Torrents** (visible after pairing)
-2. Pick a torrent
-3. The TV asks the desktop to open the magnet; the desktop downloads; the TV plays the stream
+1. On the TV, **Settings → Playback** → turn on **Direct torrent** (and **Stremio** / **Nuvio** if you want those)
+2. Open a title → white **Play** / **Sources → Torrents**
+3. Pick a torrent
+4. The TV asks the desktop to open the magnet; the desktop downloads; the TV plays the stream
 
-You do not re-enter a code per title.
+You do not re-enter a code per title. Unpair hides those Playback toggles again (Webstreaming stays).
 
 ## Android TV — local torrent (optional)
 
