@@ -344,28 +344,26 @@ async fn open_handler(
                 .magnet
                 .filter(|m| !m.is_empty())
                 .ok_or_else(|| bad_request("magnet required for torrent"))?;
-            let raw = state.torrent.stream_magnet_json(
-                &magnet,
-                body.season,
-                body.episode,
-                body.file_idx,
-            );
-            let parsed: serde_json::Value =
-                serde_json::from_str(&raw).map_err(|_| bad_request("torrent resolve failed"))?;
-            if let Some(err) = parsed.get("error").and_then(|v| v.as_str()) {
-                return Err(bad_request(err));
-            }
-            let url = parsed
-                .get("url")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| bad_request("torrent resolve missing url"))?;
-            let play_url = append_stream_ticket(&rewrite_local_url(url, &host, port), &ticket);
+            // Must not call `stream_magnet_json` here — that `block_on`s the
+            // torrent Runtime from inside the LAN/FFI Tokio worker and panics.
+            let parsed = state
+                .torrent
+                .stream_magnet_on_engine(
+                    magnet.clone(),
+                    body.season,
+                    body.episode,
+                    body.file_idx,
+                )
+                .await
+                .map_err(|e| bad_request(&e))?;
+            let play_url =
+                append_stream_ticket(&rewrite_local_url(&parsed.url, &host, port), &ticket);
             record_torrent_open(
                 &state,
                 &device_token,
                 &magnet,
-                parsed.get("info_hash").and_then(|v| v.as_str()),
-                url,
+                Some(parsed.info_hash.as_str()),
+                &parsed.url,
             );
             OpenResponse {
                 play_url,

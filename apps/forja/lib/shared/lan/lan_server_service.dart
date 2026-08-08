@@ -20,6 +20,13 @@ class LanServerService {
 
   int get port => Engine.isReady ? RustLib.instance.lanServerPort() : 0;
 
+  /// Boot / post-splash: start only if the user left the server enabled.
+  Future<bool> restoreIfEnabled() async {
+    if (!canRunServer) return false;
+    if (!await LanPrefs.instance.isLanServerEnabled()) return false;
+    return start();
+  }
+
   Future<bool> start({bool allInterfaces = true}) async {
     if (!canRunServer || !Engine.isReady) return false;
     if (isRunning) {
@@ -30,23 +37,37 @@ class LanServerService {
       }
       return true;
     }
+
+    // LAN remounts torrent/proxy streams — engines must be up before bind.
+    if (PlatformPlayback.capabilities.localTorrentEngine) {
+      final torrentOk = await TorrentStreamService().start();
+      if (!torrentOk) {
+        debugPrint('[LAN] torrent engine required but failed to start');
+        return false;
+      }
+    }
+    await LocalServerService().start();
+
     final bindMode = allInterfaces ? 1 : 0;
     final preferred = await LanPrefs.instance.listenPort ?? 0;
     var p = _startOnce(bindMode, preferred);
+
     // Preferred briefly busy after stop — retry before giving up the sticky port.
-    if (p <= 0 && preferred > 0) {
+    if (p <= 0 && preferred > 0 && _isBindConflict(lastStartError())) {
       for (var i = 0; i < 5 && p <= 0; i++) {
         await Future<void>.delayed(Duration(milliseconds: 100 * (i + 1)));
         debugPrint('[LAN] retry preferred port $preferred (${i + 1}/5)');
         p = _startOnce(bindMode, preferred);
       }
     }
+
     var usedEphemeral = false;
-    if (p <= 0 && preferred > 0) {
+    if (p <= 0 && preferred > 0 && _isBindConflict(lastStartError())) {
       debugPrint('[LAN] port $preferred busy — ephemeral fallback (sticky kept)');
       p = _startOnce(bindMode, 0);
       usedEphemeral = p > 0;
     }
+
     if (p > 0) {
       await LanPrefs.instance.setLanServerEnabled(true);
       // Don't overwrite sticky with a temporary ephemeral bind.
@@ -56,6 +77,7 @@ class LanServerService {
       RustLib.instance.lanPairingCode();
       return true;
     }
+
     final err = lastStartError();
     if (err.isNotEmpty) {
       debugPrint('[LAN] start failed: $err');
@@ -71,6 +93,20 @@ class LanServerService {
 
   String lastStartError() =>
       Engine.isReady ? RustLib.instance.lanServerLastError() : 'engine not ready';
+
+  /// True when the LAN listen socket itself could not bind.
+  static bool _isBindConflict(String err) {
+    final e = err.toLowerCase();
+    // engine_lan prefixes dependency failures; those are not sticky-port conflicts.
+    if (e.contains('torrent engine') || e.contains('proxy not running')) {
+      return false;
+    }
+    return e.contains('address already in use') ||
+        e.contains('eaddrinuse') ||
+        e.contains('os error 48') ||
+        e.contains('os error 98') ||
+        e.contains('only one usage of each socket address');
+  }
 
   Future<void> stop() async {
     if (Engine.isReady) {

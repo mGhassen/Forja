@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components (desktop→TV) · **4 / 5** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
-| **Current slice** | Sticky port + mDNS rediscover + presence dots shipped — first-frame smoke still open |
+| **Progress** | **7 / 7** components (desktop→TV) · **6 / 7** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
+| **Current slice** | Nested-runtime `/open` torrent fix shipped — first-frame smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -74,6 +74,8 @@ Historical C01–C07 above were never on `main` (stale ✅ from `feat/forja-serv
 | 15 | R22-A15 | Desktop Settings → LAN shows active/in-progress torrent + cached history of LAN opens; delete one or Clear all removes download cache | ✅ |
 | 16 | R22-A16 | Desktop restart keeps sticky LAN port; if port/IP still changes, paired client rediscovers via mDNS `server_id` and rewrites saved address without re-pair | ✅ |
 | 17 | R22-A17 | Settings → LAN shows green/grey status dots — TV desktop online/offline; desktop paired devices Online/Idle from `last_seen` | ✅ |
+| 18 | R22-A18 | LAN restore runs after post-splash torrent/proxy warm; ephemeral fallback only on real bind conflict (not “torrent not running”) so sticky port survives app restart | ✅ |
+| 19 | R22-A19 | LAN `POST /open` torrent resolves via `stream_magnet_on_engine` (no nested `Runtime::block_on` panic on desktop) | ✅ |
 
 ---
 

@@ -589,6 +589,10 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
   List<Widget> _torrentActivitySection() {
     final active = _activeTorrent;
     final activeHash = active?['info_hash']?.toString().toLowerCase();
+    final activeInHistory = activeHash != null &&
+        _torrentHistory.any(
+          (e) => (e['info_hash']?.toString() ?? '').toLowerCase() == activeHash,
+        );
     final cacheLabel =
         TorrentStreamService.formatStorageBytes(_torrentCacheBytes);
     return [
@@ -618,7 +622,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         ),
       ),
       const SizedBox(height: 8),
-      if (active != null) ...[
+      if (active != null && !activeInHistory) ...[
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(
@@ -666,14 +670,17 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           final size = bytes > 0
               ? TorrentStreamService.formatStorageBytes(bytes)
               : null;
-          final isActive = activeHash != null &&
-              hash.isNotEmpty &&
-              activeHash == hash.toLowerCase();
+          final live = (activeHash != null &&
+                  hash.isNotEmpty &&
+                  activeHash == hash.toLowerCase())
+              ? active
+              : null;
+          final isActive = live != null;
           return ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Icon(
               isActive
-                  ? Icons.downloading_rounded
+                  ? Icons.play_circle_fill_rounded
                   : Icons.video_file_outlined,
               color: isActive
                   ? ForjaShellColors.brandGreen
@@ -686,7 +693,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
             ),
             subtitle: Text(
               [
-                if (isActive) 'In progress',
+                if (live != null) _activeTorrentSubtitle(live),
                 device,
                 ?when,
                 ?size,

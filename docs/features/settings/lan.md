@@ -20,7 +20,7 @@ Paired TVs and phones appear under **Paired devices** with a green/grey status d
 
 The desktop reuses the same LAN **port** across toggles and app restarts. If the IP still changes (or the sticky port is unavailable), a paired TV rediscovers this PC on Wi‑Fi (same server id) and updates the saved address — you do not re-enter the pairing code.
 
-**Torrent activity** lists the torrent currently downloading/serving (when any) and a cached history of magnets opened by paired devices. Use the trash icon on a row to stop that download if it is active and delete its cached file. **Clear all** stops the engine torrent, wipes the torrent download cache, and clears history.
+**Torrent activity** is one list: history of magnets opened by paired devices. If a torrent is currently downloading/serving, that row shows live progress (state, %, speed, peers) instead of a second duplicate line. Use the trash icon to stop an active download and delete its cached file. **Clear all** stops the engine torrent, wipes the torrent download cache, and clears history.
 
 ### Android TV / phone
 

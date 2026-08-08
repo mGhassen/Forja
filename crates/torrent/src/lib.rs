@@ -21,6 +21,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt};
+use tokio::net::TcpSocket;
 use tokio::sync::oneshot;
 use tokio_util::io::ReaderStream;
 
@@ -60,11 +61,11 @@ pub struct TorrentStatus {
 }
 
 #[derive(Debug, Serialize)]
-struct StreamResponse {
-    url: String,
-    torrent_id: usize,
-    file_idx: usize,
-    info_hash: String,
+pub struct StreamResponse {
+    pub url: String,
+    pub torrent_id: usize,
+    pub file_idx: usize,
+    pub info_hash: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -229,9 +230,11 @@ impl TorrentEngine {
                 api: api.clone(),
             });
             let addr = SocketAddr::from(([127, 0, 0, 1], preferred_port));
-            let listener = tokio::net::TcpListener::bind(addr)
-                .await
-                .map_err(|e| e.to_string())?;
+            // SO_REUSEADDR so restart after stop does not lose the HTTP port to TIME_WAIT.
+            let socket = TcpSocket::new_v4().map_err(|e| e.to_string())?;
+            socket.set_reuseaddr(true).map_err(|e| e.to_string())?;
+            socket.bind(addr).map_err(|e| e.to_string())?;
+            let listener = socket.listen(128).map_err(|e| e.to_string())?;
             let port = listener.local_addr().map_err(|e| e.to_string())?.port();
             let (tx, rx) = oneshot::channel();
             tokio::spawn(async move {
@@ -317,6 +320,31 @@ impl TorrentEngine {
                 })
             }
         }
+    }
+
+    /// Resolve a magnet on this engine's Tokio runtime.
+    ///
+    /// Safe to `.await` from another runtime (LAN axum / FFI). Calling
+    /// [`stream_magnet_json`] from an async worker nests `Runtime::block_on`
+    /// and panics.
+    pub async fn stream_magnet_on_engine(
+        self: &Arc<Self>,
+        magnet: String,
+        season: Option<i32>,
+        episode: Option<i32>,
+        preferred_idx: Option<i32>,
+    ) -> Result<StreamResponse, String> {
+        if magnet.is_empty() || !magnet.starts_with("magnet:") {
+            return Err("Invalid magnet link".into());
+        }
+        let this = Arc::clone(self);
+        self.runtime
+            .spawn(async move {
+                this.stream_magnet(&magnet, season, episode, preferred_idx)
+                    .await
+            })
+            .await
+            .map_err(|e| format!("torrent task failed: {e}"))?
     }
 
     async fn list_files(&self, magnet: &str) -> Result<ListFilesResponse, String> {

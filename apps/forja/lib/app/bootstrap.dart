@@ -246,7 +246,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   ProviderRuntimeConfig.instance.pushToRust();
   await PlatformChannel.seedPlatformDefaultsAfterEngine();
   _wireLanPlaybackBridge();
-  unawaited(_restoreLanServerIfEnabled());
+  // LAN restore waits for post-splash torrent/proxy warm — see ProfileEngineWarm.
 
   await AppTheme.initTheme();
 
@@ -690,12 +690,6 @@ void _wireLanPlaybackBridge() {
       sourceLabel: 'LAN Server',
     );
   };
-}
-
-Future<void> _restoreLanServerIfEnabled() async {
-  if (!LanServerService.canRunServer) return;
-  if (!await LanPrefs.instance.isLanServerEnabled()) return;
-  await LanServerService.instance.start();
 }
 
 void _warnIfRustMissing() {

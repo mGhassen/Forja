@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
+import 'package:forja/shared/lan/lan.dart';
 import 'package:rust/rust.dart';
 
 /// Starts profile-activated engines. Idempotent - safe from post-splash,
@@ -87,6 +88,19 @@ class ProfileEngineWarm {
       debugPrint('[Init] TorrentStream skip (direct torrent off)');
     } else {
       debugPrint('[Init] TorrentStream skip (no VOD tab)');
+    }
+
+    // After torrent/proxy warm — never race Engine.init (sticky port miss).
+    if (startTorrent && LanServerService.canRunServer) {
+      unawaited(
+        LanServerService.instance.restoreIfEnabled().then((ok) {
+          if (ok) {
+            debugPrint(
+              '[Init] LAN server restored on :${LanServerService.instance.port}',
+            );
+          }
+        }),
+      );
     }
   }
 }

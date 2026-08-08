@@ -39,14 +39,24 @@ pub fn lan_server_start(
             }
         }
     }
-    // Proxy/torrent use ephemeral ports — only the LAN control server sticks
-    // `preferred_port` so paired clients keep a stable address.
+    // Host (Dart) starts proxy/torrent before LAN. Best-effort here if missing.
     if crate::engine_proxy::proxy_port() == 0 {
         let _ = crate::proxy_start(0);
     }
     #[cfg(feature = "torrent-engine")]
     if crate::torrent_engine_port() == 0 {
-        let _ = crate::torrent_engine_start(0);
+        let started = crate::torrent_engine_start(0);
+        if started <= 0 {
+            let detail = crate::torrent_engine_last_error();
+            let msg = if detail.is_empty() {
+                "torrent engine not running — start it before LAN server".into()
+            } else {
+                format!("torrent engine not running: {detail}")
+            };
+            set_last_error(&msg);
+            eprintln!("[lan] start failed: {msg}");
+            return -1;
+        }
     }
     runtime
         .block_on(async {
@@ -59,6 +69,12 @@ pub fn lan_server_start(
                 }
             };
             let torrent = crate::engine_torrent::shared_torrent_engine();
+            #[cfg(feature = "torrent-engine")]
+            if torrent.engine_port() == 0 {
+                set_last_error("torrent engine not running — start it before LAN server");
+                eprintln!("[lan] start failed: torrent engine not running");
+                return None;
+            }
             let server_id = stable_server_id();
             let mut lan = LanServer::new(server_id, proxy_state, torrent);
             restore_paired_devices(&lan.state.pairing);
