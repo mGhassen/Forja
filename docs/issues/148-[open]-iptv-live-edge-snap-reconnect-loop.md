@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** fix · **0 / 11** acceptance |
-| **Current slice** | Stall-reopen test mode in Settings; device smoke outstanding |
+| **Progress** | **12 / 12** fix · **0 / 11** acceptance |
+| **Current slice** | Stall-reopen is a Stable checkbox (not a third dropdown peer); device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -32,6 +32,7 @@
 | 9 | I148-T09 | **Dual mode** — restore 1.3.170 buffer-aware recovery as default; keep 1.3.114 classic timers; Settings → Playback → IPTV live recovery; applies on next player open | ✅ |
 | 10 | I148-T10 | Reject absurd `demuxer-cache-duration` / buffer-ahead samples (>90 s) as PTS garbage — stats show `— (invalid PTS)`; Stable gate does not treat spikes as healthy cache | ✅ |
 | 11 | I148-T11 | **Stall-reopen test mode** — Settings third option (`stall`): Stable cache/feed hold, but ignore cache/feed when buffering/freeze past grace with no playhead; debounce `core-idle` flicker on `_bufferingSince` | ✅ |
+| 12 | I148-T12 | **Stall UX** — Settings dropdown is Stable/Classic only; **Reopen on buffer stall** is a checkbox under Stable (still stores `stall` / `buffered` / `classic`) | ✅ |
 
 ---
 
@@ -46,16 +47,18 @@
 | 5 | I148-A05 | Android TV MediaKit: **Reload** on a stalled channel reconnects and the app stays alive (no ANR — issue 128 T08 regression watch) | ⬜ |
 | 6 | I148-A06 | Android TV MediaKit: Exo → MediaKit via Player menu, then **Reload** — no ANR (`I128-A01` path) | ⬜ |
 | 7 | I148-A07 | Android TV MediaKit + **Stable**: live channel matches 1.3.170 steadiness | ⬜ |
-| 8 | I148-A08 | Settings dropdown switches modes; next player open logs `live recovery mode=buffered|stall|classic` | ⬜ |
+| 8 | I148-A08 | Settings dropdown switches Stable/Classic; stall checkbox under Stable; next player open logs `live recovery mode=buffered|stall|classic` | ⬜ |
 | 9 | I148-A09 | **Classic** mode: frozen-position detector reopens within ~8s without requiring empty cache | ⬜ |
 | 10 | I148-A10 | Stream stats: Cache stays in the seconds–tens range on healthy live; a PTS spike shows `— (invalid PTS)` not thousands of minutes; no multi-hour Buffered ahead | ⬜ |
-| 11 | I148-A11 | MediaKit + **Stable — reopen on buffer stall**: sustained Buffering with frozen playhead reconnects within ~12s even when demuxer still reports cache/feed (`skip recovery` must not hold) | ⬜ |
+| 11 | I148-A11 | MediaKit + **Stable** + **Reopen on buffer stall**: sustained Buffering with frozen playhead reconnects within ~12s even when demuxer still reports cache/feed (`skip recovery` must not hold) | ⬜ |
 
 ---
 
 ## Summary
 
 **Symptom (1.3.135+):** A live IPTV channel plays normally, then after ~1–2 minutes the picture stalls, the buffering spinner shows `Reconnecting… (attempt 1/8)`, and playback may resume on its own. The upstream feed is often still alive.
+
+> **Status update (I148-T12).** Stall reopen is no longer a third dropdown peer next to 1.3.170 / 1.3.114. Settings → **IPTV live recovery** = Stable | Classic; with Stable selected, checkbox **Reopen on buffer stall** maps to stored `stall`.
 
 > **Status update (I148-T11).** Third Settings mode **Stable — reopen on buffer stall (test)** (`stall`): same buffer/feed hold as 1.3.170, but sustained buffering/freeze without playhead movement forces reopen (ignores stale demuxer cache). Default remains Stable (`buffered`).
 

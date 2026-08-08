@@ -466,46 +466,34 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   }
 
   void _seedHealthFromCache() {
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final at = _c.aliveCheckedAt ?? now;
     for (final id in _c.aliveStreamIds) {
       _c.streamHealth[id] = true;
-      _c._streamHealthCheckedAtMs[id] = at;
     }
   }
 
-  /// Same freshness window as portal status dots.
-  static const _streamHealthTtl = Duration(minutes: 2);
-
-  bool _isStreamHealthFresh(String streamId) {
-    if (!_c.streamHealth.containsKey(streamId)) return false;
-    final at = _c._streamHealthCheckedAtMs[streamId];
-    if (at == null) return false;
-    return DateTime.now().millisecondsSinceEpoch - at <
-        _streamHealthTtl.inMilliseconds;
-  }
-
-  void _recordStreamHealth(String streamId, bool ok, {String? kind}) {
+  /// Write [streamHealth]; returns true when the painted value changed.
+  bool _recordStreamHealth(String streamId, bool ok, {String? kind}) {
+    final prev = _c.streamHealth[streamId];
     _c.streamHealth[streamId] = ok;
-    _c._streamHealthCheckedAtMs[streamId] =
-        DateTime.now().millisecondsSinceEpoch;
-    if (kind != 'live') return;
-    if (ok) {
-      _c.aliveStreamIds = {..._c.aliveStreamIds, streamId};
-    } else if (_c.aliveStreamIds.contains(streamId)) {
-      _c.aliveStreamIds = {..._c.aliveStreamIds}..remove(streamId);
+    if (kind == 'live') {
+      if (ok) {
+        _c.aliveStreamIds = {..._c.aliveStreamIds, streamId};
+      } else if (_c.aliveStreamIds.contains(streamId)) {
+        _c.aliveStreamIds = {..._c.aliveStreamIds}..remove(streamId);
+      }
     }
+    return prev != ok;
   }
 
   void _clearStreamHealthState() {
     _c.streamHealth.clear();
-    _c._streamHealthCheckedAtMs.clear();
     _c._healthInFlight.clear();
     _c._healthQueue.clear();
   }
 
   /// Queue a health probe after the card has stayed visible (debounced).
-  /// Fresh cache hit skips; stale entry keeps the last border until re-probe.
+  /// Last border stays painted until the new result lands; every dwell
+  /// re-probes so a dead portal flips green → red on re-hover/focus.
   ///
   /// [onlyThis]: TV D-pad focus — drop other pending timers/queue entries so
   /// skimming channels never piles probes behind the one you dwell on.
@@ -513,7 +501,6 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     final p = _c.activePortal;
     if (p == null || !_sectionSupportsStreamHealth(_c.activeSection)) return;
     if (!_streamSupportsHealthProbe(s)) return;
-    if (_isStreamHealthFresh(s.streamId)) return;
     if (_c._healthInFlight.contains(s.streamId)) return;
 
     if (onlyThis) {
@@ -566,7 +553,6 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     final p = _c.activePortal;
     if (p == null || !_sectionSupportsStreamHealth(_c.activeSection)) return;
     if (!_streamSupportsHealthProbe(s)) return;
-    if (_isStreamHealthFresh(s.streamId)) return;
     if (_c._healthInFlight.contains(s.streamId)) return;
     if (_c._healthInFlight.length >= IptvController._maxLazyHealthChecks) {
       if (!_c._healthQueue.any((x) => x.streamId == s.streamId)) {
@@ -599,16 +585,19 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     try {
       final url = await _resolveProbeUrl(p.portal, s);
       if (url == null || url.isEmpty) {
-        _recordStreamHealth(s.streamId, false, kind: s.kind);
-        notifyListeners();
+        if (_recordStreamHealth(s.streamId, false, kind: s.kind)) {
+          notifyListeners();
+        }
         return;
       }
       final ok = await IptvAliveChecker.checkOne(url);
-      _recordStreamHealth(s.streamId, ok, kind: s.kind);
-      notifyListeners();
+      if (_recordStreamHealth(s.streamId, ok, kind: s.kind)) {
+        notifyListeners();
+      }
     } catch (_) {
-      _recordStreamHealth(s.streamId, false, kind: s.kind);
-      notifyListeners();
+      if (_recordStreamHealth(s.streamId, false, kind: s.kind)) {
+        notifyListeners();
+      }
     } finally {
       _c._healthInFlight.remove(s.streamId);
       _drainHealthQueue();
@@ -619,7 +608,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     while (_c._healthQueue.isNotEmpty &&
         _c._healthInFlight.length < IptvController._maxLazyHealthChecks) {
       final next = _c._healthQueue.removeAt(0);
-      if (!_isStreamHealthFresh(next.streamId)) {
+      if (!_c._healthInFlight.contains(next.streamId)) {
         unawaited(_runLazyHealthCheck(next));
       }
     }
@@ -627,8 +616,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
   void markStreamDead(String streamId) {
     if (streamId.isEmpty) return;
-    _recordStreamHealth(streamId, false, kind: 'live');
-    notifyListeners();
+    if (_recordStreamHealth(streamId, false, kind: 'live')) {
+      notifyListeners();
+    }
   }
 
   bool? healthFor(String streamId) => _c.streamHealth[streamId];

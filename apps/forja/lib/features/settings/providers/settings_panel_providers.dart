@@ -31,6 +31,7 @@ class SettingsPlaybackSnapshot {
     required this.iptvEpgEnabled,
     required this.iptvLiveMaxHeightLabel,
     required this.iptvLiveRecoveryModeLabel,
+    required this.iptvLiveRecoveryStallReopen,
     required this.iptvMatchDisplayRefresh,
     required this.maxPlaybackHeightLabel,
     required this.animeTitleLanguageLabel,
@@ -53,6 +54,7 @@ class SettingsPlaybackSnapshot {
   final bool iptvEpgEnabled;
   final String iptvLiveMaxHeightLabel;
   final String iptvLiveRecoveryModeLabel;
+  final bool iptvLiveRecoveryStallReopen;
   final bool iptvMatchDisplayRefresh;
   final String maxPlaybackHeightLabel;
   final String animeTitleLanguageLabel;
@@ -75,6 +77,7 @@ class SettingsPlaybackSnapshot {
     bool? iptvEpgEnabled,
     String? iptvLiveMaxHeightLabel,
     String? iptvLiveRecoveryModeLabel,
+    bool? iptvLiveRecoveryStallReopen,
     bool? iptvMatchDisplayRefresh,
     String? maxPlaybackHeightLabel,
     String? animeTitleLanguageLabel,
@@ -103,6 +106,8 @@ class SettingsPlaybackSnapshot {
           iptvLiveMaxHeightLabel ?? this.iptvLiveMaxHeightLabel,
       iptvLiveRecoveryModeLabel:
           iptvLiveRecoveryModeLabel ?? this.iptvLiveRecoveryModeLabel,
+      iptvLiveRecoveryStallReopen:
+          iptvLiveRecoveryStallReopen ?? this.iptvLiveRecoveryStallReopen,
       iptvMatchDisplayRefresh:
           iptvMatchDisplayRefresh ?? this.iptvMatchDisplayRefresh,
       maxPlaybackHeightLabel:
@@ -132,6 +137,7 @@ class SettingsPlaybackNotifier
     final iptvEpgEnabled = await s.isIptvEpgEnabled();
     SettingsService.iptvEpgEnabledNotifier.value = iptvEpgEnabled;
     final lanReady = await PlaySourceEffective.lanDesktopReady();
+    final recoveryMode = await s.getIptvLiveRecoveryMode();
     return SettingsPlaybackSnapshot(
       playSourceTorrent: await PlaySourceEffective.torrent(s, lanReady),
       playSourceStremio: await PlaySourceEffective.stremio(s, lanReady),
@@ -154,8 +160,10 @@ class SettingsPlaybackNotifier
         await s.getIptvLiveMaxHeight(),
       ),
       iptvLiveRecoveryModeLabel: SettingsService.iptvLiveRecoveryModeLabel(
-        await s.getIptvLiveRecoveryMode(),
+        recoveryMode,
       ),
+      iptvLiveRecoveryStallReopen:
+          SettingsService.iptvLiveRecoveryStallReopen(recoveryMode),
       iptvMatchDisplayRefresh: await s.getIptvMatchDisplayRefresh(),
       maxPlaybackHeightLabel: SettingsService.maxPlaybackHeightLabel(
         await s.getMaxPlaybackHeight(),

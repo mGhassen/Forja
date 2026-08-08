@@ -96,7 +96,7 @@ class SettingsService {
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
   /// IPTV live Exo only: 0 = full portal quality (default). Never auto-cap.
   static const String _iptvLiveMaxHeightKey = 'iptv_live_max_height';
-  /// IPTV live auto-recovery: `buffered` (1.3.170) or `classic` (1.3.114).
+  /// IPTV live auto-recovery: `buffered` | `stall` | `classic`.
   static const String _iptvLiveRecoveryModeKey = 'iptv_live_recovery_mode';
   /// Android TV MediaKit: ask the panel for a refresh matching stream fps
   /// (issue 150). Opt-in — default off so existing installs stay unchanged.
@@ -125,22 +125,35 @@ class SettingsService {
   /// Stable + reopen when buffering/freeze stalls with no playhead (test).
   static const String iptvLiveRecoveryStall = 'stall';
 
+  static const String iptvLiveRecoveryStableLabel =
+      'Stable — buffer-aware (1.3.170)';
+  static const String iptvLiveRecoveryClassicLabel =
+      'Classic — stall timers (1.3.114)';
+
+  /// Policy dropdown only — stall reopen is a separate Stable toggle.
   static const Map<String, String> iptvLiveRecoveryModeOptions = {
-    'Stable — buffer-aware (1.3.170)': iptvLiveRecoveryBuffered,
-    'Stable — reopen on buffer stall (test)': iptvLiveRecoveryStall,
-    'Classic — stall timers (1.3.114)': iptvLiveRecoveryClassic,
+    iptvLiveRecoveryStableLabel: iptvLiveRecoveryBuffered,
+    iptvLiveRecoveryClassicLabel: iptvLiveRecoveryClassic,
   };
 
+  /// Policy label for Settings dropdown (`stall` maps to Stable).
   static String iptvLiveRecoveryModeLabel(String stored) {
-    final v = stored.trim().toLowerCase();
-    for (final entry in iptvLiveRecoveryModeOptions.entries) {
-      if (entry.value == v) return entry.key;
+    if (normalizeIptvLiveRecoveryMode(stored) == iptvLiveRecoveryClassic) {
+      return iptvLiveRecoveryClassicLabel;
     }
-    return iptvLiveRecoveryModeOptions.keys.first;
+    return iptvLiveRecoveryStableLabel;
   }
 
-  static String iptvLiveRecoveryModeStored(String label) {
-    return iptvLiveRecoveryModeOptions[label] ?? iptvLiveRecoveryBuffered;
+  static bool iptvLiveRecoveryStallReopen(String stored) =>
+      normalizeIptvLiveRecoveryMode(stored) == iptvLiveRecoveryStall;
+
+  static String composeIptvLiveRecoveryMode({
+    required bool classic,
+    required bool stallReopen,
+  }) {
+    if (classic) return iptvLiveRecoveryClassic;
+    if (stallReopen) return iptvLiveRecoveryStall;
+    return iptvLiveRecoveryBuffered;
   }
 
   static String normalizeIptvLiveRecoveryMode(String? raw) {

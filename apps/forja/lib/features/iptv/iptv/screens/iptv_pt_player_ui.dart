@@ -77,10 +77,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     return !(_s._exoBackend && PlatformInfo.isAndroidTv);
   }
 
+  /// Catalog `vodPlayback` + duration heuristic — Films/Series chrome profile.
   bool get _isVodChrome => _s.widget.vodPlayback || _s._isVod;
 
-  /// MediaKit always; Exo for movies/series (live Exo stays track-light).
-  bool get _showTrackButtons => !_s._exoBackend || _isVodChrome;
+  /// Films/Series only — live IPTV chrome hides Audio/Subs (any engine).
+  bool get _showTrackButtons => _isVodChrome;
 
   bool get _showEpisodesButton =>
       _isVodChrome &&

@@ -164,11 +164,11 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [141-[open]-…](141-[open]-desktop-trackpad-swipe-steals-horizontal-scroll.md) | Desktop trackpad swipe steals horizontal scroll | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [142-[open]-…](142-[open]-iptv-admin-scrape-watermark-deep-refs.md) | IPTV admin scrape watermark + deep refs + no upsert cap | P1 | High | open | 17/17 · A 0/3 | [1.0.5](../backlog/1.0.5-[draft].md) |
 | [143-[open]-…](143-[open]-android-tv-stremio-live-reconnect.md) | ATV Live Matches Stremio forever Reconnecting | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [144-[open]-…](144-[open]-iptv-catalog-stream-health-never-reprobes.md) | IPTV catalog/guide stream health never re-probes | P2 | Medium | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [144-[open]-…](144-[open]-iptv-catalog-stream-health-never-reprobes.md) | IPTV catalog/guide stream health never re-probes | P2 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [145-[open]-…](145-[open]-macos-live-embed-webkit-fullscreen-crash.md) | macOS Live embed WK fullscreen SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [146-[open]-…](146-[open]-macos-pip-settitlebarstyle-sigtrap.md) | Desktop PiP setTitleBarStyle SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [147-[open]-…](147-[open]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / stall-test / Classic modes | P1 | High | open | 11/11 · A 0/11 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / Classic + stall checkbox | P1 | High | open | 12/12 · A 0/11 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [149-[open]-…](149-[open]-iptv-player-source-picker-dpad.md) | IPTV/Live player source picker has no D-pad; duplicate source control | P2 | Medium | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (display mode match shipped) | P2 | Medium | open | 2/5 · 1⏭️ · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [151-[open]-…](151-[open]-android-tv-exo-vod-stutter-no-cache.md) | ATV movie player (Exo VOD): 24fps judder + no back buffer / disk cache | P2 | Medium | open | 6/6 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -183,7 +183,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [162-[open]-…](162-[open]-iptv-more-like-this-catalog-only.md) | IPTV More like this = portal catalog only | P2 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 11/11 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 16/16 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

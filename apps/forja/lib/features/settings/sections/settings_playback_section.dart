@@ -342,19 +342,47 @@ class _SettingsPlaybackSectionState
               settingsFocusableDropdown(
                 context,
                 'IPTV live recovery',
-                'How live channels reconnect. Stable (default) waits until the buffer is empty — same as 1.3.170. Stable + reopen on buffer stall (test) keeps that hold but reconnects when buffering/freeze stalls with no playhead. Classic reconnects on stall timers like 1.3.114. Takes effect next time you open the player.',
+                'How live channels reconnect. Stable (default) waits until the buffer is empty — same as 1.3.170. Classic reconnects on stall timers like 1.3.114. Takes effect next time you open the player.',
                 snap.iptvLiveRecoveryModeLabel,
                 SettingsService.iptvLiveRecoveryModeOptions.keys.toList(),
                 (val) async {
                   if (val == null) return;
-                  await _settings.setIptvLiveRecoveryMode(
-                    SettingsService.iptvLiveRecoveryModeStored(val),
+                  final classic =
+                      val == SettingsService.iptvLiveRecoveryClassicLabel;
+                  final mode = SettingsService.composeIptvLiveRecoveryMode(
+                    classic: classic,
+                    stallReopen:
+                        classic ? false : snap.iptvLiveRecoveryStallReopen,
                   );
+                  await _settings.setIptvLiveRecoveryMode(mode);
                   await _playback.patch(
-                    (s) => s.copyWith(iptvLiveRecoveryModeLabel: val),
+                    (s) => s.copyWith(
+                      iptvLiveRecoveryModeLabel: val,
+                      iptvLiveRecoveryStallReopen:
+                          classic ? false : s.iptvLiveRecoveryStallReopen,
+                    ),
                   );
                 },
               ),
+              if (snap.iptvLiveRecoveryModeLabel ==
+                  SettingsService.iptvLiveRecoveryStableLabel)
+                settingsFocusableToggle(
+                  context,
+                  'Reopen on buffer stall',
+                  'Stable only (test). When buffering/freeze stalls with no playhead, reconnect even if demuxer still reports cache. Takes effect next time you open the player.',
+                  snap.iptvLiveRecoveryStallReopen,
+                  (val) async {
+                    await _settings.setIptvLiveRecoveryMode(
+                      SettingsService.composeIptvLiveRecoveryMode(
+                        classic: false,
+                        stallReopen: val,
+                      ),
+                    );
+                    await _playback.patch(
+                      (s) => s.copyWith(iptvLiveRecoveryStallReopen: val),
+                    );
+                  },
+                ),
               if (SettingsService.platformProfile ==
                   PlatformProfile.androidTv)
                 settingsFocusableToggle(
