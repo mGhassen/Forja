@@ -37,12 +37,14 @@ void main() {
   setUp(() async {
     PlatformPlayback.clearOverride();
     SettingsService.configurePlatformProfile(PlatformProfile.phone);
+    PlaySourceEffective.debugForceLanDesktopOnline = null;
     await openFreshStore();
   });
 
   tearDown(() async {
     PlatformPlayback.clearOverride();
     SettingsService.configurePlatformProfile(PlatformProfile.phone);
+    PlaySourceEffective.debugForceLanDesktopOnline = null;
     await LanPrefs.instance.clearServer();
   });
 
@@ -97,10 +99,11 @@ void main() {
     expect(v.showPlaySourceNuvioToggle, isFalse);
   });
 
-  test('Android TV paired unlocks Playback toggles; honors stored prefs',
+  test('Android TV paired + online unlocks Playback toggles; honors stored',
       () async {
     PlatformPlayback.override = PlaybackProfile.androidTv;
     SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+    PlaySourceEffective.debugForceLanDesktopOnline = true;
 
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
@@ -120,6 +123,7 @@ void main() {
     expect(v.showPlaySourceTorrentToggle, isTrue);
     expect(v.showPlaySourceStremioToggle, isTrue);
     expect(v.showPlaySourceNuvioToggle, isTrue);
+    expect(v.lanPlaySourcesEditable, isTrue);
     expect(v.playSourceTorrent, isTrue);
     expect(v.playSourceStremio, isFalse);
     expect(v.playSourceNuvio, isTrue);
@@ -128,6 +132,43 @@ void main() {
 
     expect(await PlaySourceEffective.torrent(service), isTrue);
     expect(await PlaySourceEffective.stremio(service), isFalse);
+    expect(await PlaySourceEffective.nuvio(service), isTrue);
+  });
+
+  test('Android TV paired + offline deactivates play sources; keeps stored',
+      () async {
+    PlatformPlayback.override = PlaybackProfile.androidTv;
+    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+    PlaySourceEffective.debugForceLanDesktopOnline = false;
+
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
+    await service.setNavbarConfig([
+      'home',
+      'anime',
+      'iptv',
+      'mylist',
+    ]);
+    await LanPrefs.instance.setServer(host: '192.168.1.10', port: 8787);
+    await LanPrefs.instance.setToken('test-token');
+    await service.setPlaySourceTorrentEnabled(true);
+    await service.setPlaySourceStremioEnabled(true);
+    await service.setPlaySourceNuvioEnabled(true);
+
+    final v = await SettingsVisibility.resolve(service);
+    expect(v.showPlaySourceTorrentToggle, isTrue);
+    expect(v.lanPlaySourcesEditable, isFalse);
+    expect(v.playSourceTorrent, isFalse);
+    expect(v.playSourceStremio, isFalse);
+    expect(v.playSourceNuvio, isFalse);
+
+    expect(await service.isPlaySourceTorrentStored(), isTrue);
+    expect(await service.isPlaySourceStremioStored(), isTrue);
+    expect(await service.isPlaySourceNuvioStored(), isTrue);
+
+    PlaySourceEffective.debugForceLanDesktopOnline = true;
+    expect(await PlaySourceEffective.torrent(service), isTrue);
+    expect(await PlaySourceEffective.stremio(service), isTrue);
     expect(await PlaySourceEffective.nuvio(service), isTrue);
   });
 }

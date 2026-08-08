@@ -131,10 +131,11 @@ class SettingsPlaybackNotifier
     final preferredAudio = await s.getPreferredAudioLanguage();
     final iptvEpgEnabled = await s.isIptvEpgEnabled();
     SettingsService.iptvEpgEnabledNotifier.value = iptvEpgEnabled;
+    final lanReady = await PlaySourceEffective.lanDesktopReady();
     return SettingsPlaybackSnapshot(
-      playSourceTorrent: await PlaySourceEffective.torrent(s),
-      playSourceStremio: await PlaySourceEffective.stremio(s),
-      playSourceNuvio: await PlaySourceEffective.nuvio(s),
+      playSourceTorrent: await PlaySourceEffective.torrent(s, lanReady),
+      playSourceStremio: await PlaySourceEffective.stremio(s, lanReady),
+      playSourceNuvio: await PlaySourceEffective.nuvio(s, lanReady),
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
       simpleStreamingResolve: await s.isSimpleStreamingResolveEnabled(),
       builtInEngine: await s.getBuiltInPlayerEngine(),

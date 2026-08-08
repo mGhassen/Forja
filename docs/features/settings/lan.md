@@ -38,7 +38,7 @@ Status shows **Paired · desktop online**. Unpair anytime from the same screen.
 3. Pick a torrent
 4. The TV asks the desktop to open the magnet; the desktop downloads; the TV plays the stream
 
-You do not re-enter a code per title. Unpair hides those Playback toggles again (Webstreaming stays).
+You do not re-enter a code per title. Unpair hides those Playback toggles again (Webstreaming stays). If the desktop goes **offline**, Direct torrent / Stremio / Nuvio turn off and stay disabled until it is online again — your previous checks come back automatically.
 
 ## Android TV — local torrent (optional)
 

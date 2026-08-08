@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 2** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I160-T02 | Settings → Playback show Direct torrent / Stremio / Nuvio when LAN paired | ✅ |
 | 3 | I160-T03 | Details `loadPlaySources` + panel gates use effective flags (white Play + Sources) | ✅ |
 | 4 | I160-T04 | Invalidate Settings visibility / playback snapshot after pair / unpair | ✅ |
+| 5 | I160-T05 | Paired + desktop offline → effective off + toggles disabled; restore stored when online | ✅ |
 
 ---
 
@@ -32,6 +33,7 @@
 |--:|----|-------------|--------|
 | 1 | I160-A01 | Physical ATV: pair desktop → Settings → Playback shows torrent/Stremio/Nuvio; enable Direct torrent → details white Play + Sources panel | ⬜ |
 | 2 | I160-A02 | Unpaired ATV: Playback still Webstreaming-only; synced phone prefs do not reopen torrent/Stremio/Nuvio | ⬜ |
+| 3 | I160-A03 | Paired ATV: desktop offline → torrent/Stremio/Nuvio off + disabled; desktop online again restores prior checks | ⬜ |
 
 ---
 

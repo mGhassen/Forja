@@ -138,10 +138,11 @@ class DetailsPlaySessionNotifier
 
   Future<void> loadPlaySources() async {
     final settings = SettingsService();
+    final lanReady = await PlaySourceEffective.lanDesktopReady();
     final next = DetailsPlaySources(
-      torrent: await PlaySourceEffective.torrent(settings),
-      stremio: await PlaySourceEffective.stremio(settings),
-      nuvio: await PlaySourceEffective.nuvio(settings),
+      torrent: await PlaySourceEffective.torrent(settings, lanReady),
+      stremio: await PlaySourceEffective.stremio(settings, lanReady),
+      nuvio: await PlaySourceEffective.nuvio(settings, lanReady),
       webstreaming: await settings.isPlaySourceWebstreamingEnabled(),
     );
     session.playSources = next;

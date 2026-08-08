@@ -549,59 +549,67 @@ class SettingsToggleRow extends StatelessWidget {
     required this.subtitle,
     required this.value,
     required this.onChanged,
+    this.enabled = true,
   });
 
   final String title;
   final String subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: ForjaShellColors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+    final titleColor = enabled
+        ? ForjaShellColors.textPrimary
+        : ForjaShellColors.textSecondary;
+    final content = Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: titleColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: ForjaShellColors.textSecondary,
-                    fontSize: 12.5,
-                    height: 1.35,
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: 12.5,
+                      height: 1.35,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          ExcludeFocus(
-            excluding: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
-            child: ForjaSwitch(
-              value: value,
-              onChanged: onChanged,
-              scale: ForjaSwitch.settingsScale,
+            const SizedBox(width: 12),
+            ExcludeFocus(
+              excluding: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+              child: ForjaSwitch(
+                value: value,
+                onChanged: enabled ? onChanged : null,
+                scale: ForjaSwitch.settingsScale,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
     return shellFocusableTap(
       context: context,
-      onTap: () => onChanged(!value),
+      onTap: enabled ? () => onChanged(!value) : null,
       scaleOnFocus: 1.0,
       showFocusRail: true,
       tvTabId: 'settings',
@@ -611,7 +619,6 @@ class SettingsToggleRow extends StatelessWidget {
     );
   }
 }
-
 /// Dropdown select row used inside [SettingsGroup].
 class SettingsSelectRow extends StatelessWidget {
   const SettingsSelectRow({

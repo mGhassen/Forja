@@ -63,6 +63,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    final prevPaired = _paired;
+    final prevOnline = _serverOnline;
     final prefs = LanPrefs.instance;
     _serverEnabled = await prefs.isLanServerEnabled();
     _allowLocalTorrent = await prefs.allowLocalTorrentOnDevice();
@@ -102,6 +104,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       _ensureStatusPolling();
     }
     if (mounted) setState(() => _loading = false);
+    if (prevPaired != _paired || prevOnline != _serverOnline) {
+      _refreshPlaySourceGates();
+    }
   }
 
   void _ensureStatusPolling() {

@@ -7,13 +7,15 @@ Widget settingsFocusableToggle(
   String title,
   String subtitle,
   bool value,
-  ValueChanged<bool> onChanged,
-) {
+  ValueChanged<bool> onChanged, {
+  bool enabled = true,
+}) {
   return SettingsToggleRow(
     title: title,
     subtitle: subtitle,
     value: value,
     onChanged: onChanged,
+    enabled: enabled,
   );
 }
 

@@ -67,13 +67,13 @@ class LanPlaybackRouter {
     return LanRouteDecision.localEngine;
   }
 
-  /// ATV / constrained: show torrent UI when paired to a desktop server.
+  /// ATV / constrained: show torrent UI when paired desktop is online.
   static Future<bool> shouldExposeTorrentSources(
     PlaybackProfile profile,
   ) async {
     if (profile.playSourceTorrent) return true;
     if (isDesktopServer) return true;
-    return hasPairedServer();
+    return isServerOnline();
   }
 
   static String unavailableMessage({required bool neverPaired}) {

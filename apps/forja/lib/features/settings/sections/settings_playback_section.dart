@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
+import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
@@ -30,6 +31,41 @@ class _SettingsPlaybackSectionState
 
   SettingsPlaybackNotifier get _playback =>
       ref.read(settingsPlaybackProvider.notifier);
+
+  @override
+  void initState() {
+    super.initState();
+    // Re-check desktop /health so offline→online restores LAN play sources.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_refreshLanPlaySourceGates());
+    });
+  }
+
+  Future<void> _refreshLanPlaySourceGates() async {
+    final caps = PlatformPlayback.capabilities;
+    if (caps.playSourceTorrent ||
+        caps.playSourceStremio ||
+        caps.playSourceNuvio) {
+      return;
+    }
+    SettingsService.playSourceChangeNotifier.value++;
+    ref.invalidate(settingsVisibilityProvider);
+    await _playback.reload();
+  }
+
+  String _lanPlaySourceSubtitle({
+    required String native,
+    required String lanOnline,
+    required String lanOffline,
+  }) {
+    final caps = PlatformPlayback.capabilities;
+    if (caps.playSourceTorrent ||
+        caps.playSourceStremio ||
+        caps.playSourceNuvio) {
+      return native;
+    }
+    return widget.visibility.lanPlaySourcesEditable ? lanOnline : lanOffline;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,9 +96,14 @@ class _SettingsPlaybackSectionState
                 settingsFocusableToggle(
                   context,
                   'Direct torrent',
-                  PlatformPlayback.capabilities.localTorrentEngine
-                      ? 'Search Forja indexers (Jackett / Prowlarr) in Sources.'
-                      : 'Search torrents via your paired desktop (Settings → LAN).',
+                  _lanPlaySourceSubtitle(
+                    native:
+                        'Search Forja indexers (Jackett / Prowlarr) in Sources.',
+                    lanOnline:
+                        'Search torrents via your paired desktop (Settings → LAN).',
+                    lanOffline:
+                        'Desktop offline — turn LAN server on to use torrents.',
+                  ),
                   snap.playSourceTorrent,
                   (val) async {
                     await _settings.setPlaySourceTorrentEnabled(val);
@@ -76,14 +117,18 @@ class _SettingsPlaybackSectionState
                       await TorrentStreamService().start();
                     }
                   },
+                  enabled: widget.visibility.lanPlaySourcesEditable,
                 ),
               if (widget.visibility.showPlaySourceStremioToggle)
                 settingsFocusableToggle(
                   context,
                   'Stremio',
-                  PlatformPlayback.capabilities.playSourceStremio
-                      ? 'Play from installed Stremio addon streams.'
-                      : 'Play Stremio streams via your paired desktop.',
+                  _lanPlaySourceSubtitle(
+                    native: 'Play from installed Stremio addon streams.',
+                    lanOnline: 'Play Stremio streams via your paired desktop.',
+                    lanOffline:
+                        'Desktop offline — turn LAN server on to use Stremio.',
+                  ),
                   snap.playSourceStremio,
                   (val) async {
                     await _settings.setPlaySourceStremioEnabled(val);
@@ -92,14 +137,19 @@ class _SettingsPlaybackSectionState
                     );
                     schedulePreferencesSyncPush();
                   },
+                  enabled: widget.visibility.lanPlaySourcesEditable,
                 ),
               if (widget.visibility.showPlaySourceNuvioToggle)
                 settingsFocusableToggle(
                   context,
                   'Nuvio',
-                  PlatformPlayback.capabilities.playSourceNuvio
-                      ? 'Play from installed Nuvio scraper addons in Sources.'
-                      : 'Play Nuvio scrapers via your paired desktop.',
+                  _lanPlaySourceSubtitle(
+                    native:
+                        'Play from installed Nuvio scraper addons in Sources.',
+                    lanOnline: 'Play Nuvio scrapers via your paired desktop.',
+                    lanOffline:
+                        'Desktop offline — turn LAN server on to use Nuvio.',
+                  ),
                   snap.playSourceNuvio,
                   (val) async {
                     await _settings.setPlaySourceNuvioEnabled(val);
@@ -113,6 +163,7 @@ class _SettingsPlaybackSectionState
                       unawaited(NuvioService.instance.refreshAllInstalled());
                     }
                   },
+                  enabled: widget.visibility.lanPlaySourcesEditable,
                 ),
               settingsFocusableToggle(
                 context,

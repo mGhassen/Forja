@@ -180,7 +180,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [157-[open]-…](157-[open]-android-tv-ken-burns-hero-stutter.md) | ATV Ken Burns hero backdrop stutter | P2 | Medium | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [158-[open]-…](158-[open]-android-tv-nav-right-loses-page-focus.md) | ATV nav RIGHT loses last page focus | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [159-[open]-…](159-[open]-android-tv-live-background-audio.md) | ATV live/IPTV audio continues after Home | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

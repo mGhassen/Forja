@@ -18,6 +18,7 @@ class SettingsVisibility {
     required this.showPlaySourceTorrentToggle,
     required this.showPlaySourceStremioToggle,
     required this.showPlaySourceNuvioToggle,
+    required this.lanPlaySourcesEditable,
     required this.vodTab,
     required this.iptvNav,
     required this.liveMatchesNav,
@@ -32,6 +33,9 @@ class SettingsVisibility {
   final bool showPlaySourceTorrentToggle;
   final bool showPlaySourceStremioToggle;
   final bool showPlaySourceNuvioToggle;
+
+  /// ATV LAN toggles: editable only while desktop is online.
+  final bool lanPlaySourcesEditable;
 
   /// Any tab that can open VOD details / Sources (same set as [BootNeeds]).
   final bool vodTab;
@@ -105,14 +109,17 @@ class SettingsVisibility {
     var nav = await s.getNavbarConfig();
     nav = nav.where((id) => !temporarilyHiddenNavIds.contains(id)).toList();
 
+    final lanReady = await PlaySourceEffective.lanDesktopReady();
+    final lanEditable = await PlaySourceEffective.lanPlaySourcesEditable();
     return SettingsVisibility(
-      playSourceTorrent: await PlaySourceEffective.torrent(s),
-      playSourceStremio: await PlaySourceEffective.stremio(s),
-      playSourceNuvio: await PlaySourceEffective.nuvio(s),
+      playSourceTorrent: await PlaySourceEffective.torrent(s, lanReady),
+      playSourceStremio: await PlaySourceEffective.stremio(s, lanReady),
+      playSourceNuvio: await PlaySourceEffective.nuvio(s, lanReady),
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
       showPlaySourceTorrentToggle: await PlaySourceEffective.showTorrentToggle(),
       showPlaySourceStremioToggle: await PlaySourceEffective.showStremioToggle(),
       showPlaySourceNuvioToggle: await PlaySourceEffective.showNuvioToggle(),
+      lanPlaySourcesEditable: lanEditable,
       vodTab: nav.any(BootNeeds.vodNavIds.contains),
       iptvNav: nav.contains('iptv'),
       liveMatchesNav: nav.contains('live_matches'),

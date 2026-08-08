@@ -69,9 +69,10 @@ class BootNeeds {
     var nav = await s.getNavbarConfig();
     nav = nav.where((id) => !temporarilyHiddenNavIds.contains(id)).toList();
 
-    final playSourceTorrent = await PlaySourceEffective.torrent(s);
-    final playSourceStremio = await PlaySourceEffective.stremio(s);
-    final playSourceNuvio = await PlaySourceEffective.nuvio(s);
+    final lanReady = await PlaySourceEffective.lanDesktopReady();
+    final playSourceTorrent = await PlaySourceEffective.torrent(s, lanReady);
+    final playSourceStremio = await PlaySourceEffective.stremio(s, lanReady);
+    final playSourceNuvio = await PlaySourceEffective.nuvio(s, lanReady);
     final playSourceWebstreaming = await s.isPlaySourceWebstreamingEnabled();
     final homeTab = nav.contains('home');
     final tmdb = nav.any(_tmdbNavIds.contains);

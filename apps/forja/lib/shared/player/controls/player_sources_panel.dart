@@ -492,9 +492,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final jackett = await _settings.isJackettConfigured();
     final prowlarr = await _settings.isProwlarrConfigured();
     final enabledProviders = await _settings.getEnabledTorrentProviders();
-    final torrentOn = await PlaySourceEffective.torrent(_settings);
-    final stremioOn = await PlaySourceEffective.stremio(_settings);
-    final nuvioOn = await PlaySourceEffective.nuvio(_settings);
+    final lanReady = await PlaySourceEffective.lanDesktopReady();
+    final torrentOn = await PlaySourceEffective.torrent(_settings, lanReady);
+    final stremioOn = await PlaySourceEffective.stremio(_settings, lanReady);
+    final nuvioOn = await PlaySourceEffective.nuvio(_settings, lanReady);
     final local = _profile.localTorrentEngine;
     List<Map<String, dynamic>> addons = const [];
     if (stremioOn) {
