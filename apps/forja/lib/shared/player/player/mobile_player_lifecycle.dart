@@ -560,15 +560,31 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     final result = _s._positionNotifier.value;
     _s._cancelPendingStreamWork();
     _saveWatchHistory();
+    // Tell desktop LAN to stop before MediaKit teardown races the UI isolate.
+    LanClientService.instance.releaseLanTorrentIfNeeded(
+      playUrl: widget.mediaPath,
+      magnet: widget.magnetLink,
+    );
     // Stop mpv before orientation/pop - dispose alone is fire-and-forget
     // and can leave audio after the route is gone (issue 059).
     await _s._stopPlaybackForExit();
-    // Unlock orientation so the rest of the app follows system settings.
-    await SystemChrome.setPreferredOrientations([]);
-    // Let the rotation finish before popping - avoids BLASTBufferQueue
-    // errors from media_kit surface teardown during an active rotation.
-    await Future.delayed(const Duration(milliseconds: 300));
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Unmount MediaCodec surface before pop (issue 128) — ATV ANR otherwise.
+    if (Platform.isAndroid && mounted && _s._showVideoSurface) {
+      setState(() => _s._showVideoSurface = false);
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (!PlatformInfo.isAndroidTv) {
+      // Unlock orientation so the rest of the app follows system settings.
+      await SystemChrome.setPreferredOrientations([]);
+      // Let the rotation finish before popping - avoids BLASTBufferQueue
+      // errors from media_kit surface teardown during an active rotation.
+      await Future.delayed(const Duration(milliseconds: 300));
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
+    if (!mounted) {
+      _popPlayerRoute(nav: nav, result: result);
+      return;
+    }
     _popPlayerRoute(nav: nav, result: result);
   }
 

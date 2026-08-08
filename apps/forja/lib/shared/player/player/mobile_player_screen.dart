@@ -33,6 +33,7 @@ import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/extractors/providers/arabic/arabic_service.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
+import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
@@ -201,6 +202,9 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   bool _showControls = true;
   /// Guards re-entrant Back while [_exitPlayer] awaits stop/orientation.
   bool _exitInProgress = false;
+  /// MediaKit [Video] mounted — cleared before pop on Android so MediaCodec
+  /// surface teardown is not interleaved with route dispose (issue 128 ANR).
+  bool _showVideoSurface = true;
   final FocusNode _playFocus = FocusNode(debugLabel: 'player-play');
   final FocusNode _rewindFocus = FocusNode(debugLabel: 'player-rewind');
   final FocusNode _forwardFocus = FocusNode(debugLabel: 'player-forward');
@@ -530,6 +534,13 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     if (!TorrentStreamService().retainForExternalHandoff) {
       final torrentId = widget.magnetLink ?? widget.mediaPath;
       TorrentStreamService().removeTorrent(torrentId);
+      // [_exitPlayer] already scheduled LAN close; this covers forced pops.
+      if (!_exitInProgress) {
+        LanClientService.instance.releaseLanTorrentIfNeeded(
+          playUrl: widget.mediaPath,
+          magnet: widget.magnetLink,
+        );
+      }
     }
 
     // Tear down the 111477 proxy and delete its on-disk cache.
@@ -554,7 +565,11 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   Future<void> _teardownMediaKitPlayer() async {
     _playbackStopped = true;
     MpvExclusiveSession.instance.untrackPlayer(_player);
-    final disposeFuture = teardownMediaKitPlayer(_player);
+    // Exit-only fast path on Android — full timeouts on hot-swap (issue 128).
+    final disposeFuture = teardownMediaKitPlayer(
+      _player,
+      fast: _exitInProgress && Platform.isAndroid,
+    );
     MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
     await disposeFuture;
   }

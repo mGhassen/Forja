@@ -27,15 +27,18 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
               // Positioned.fill: loose Stack children can get a zero-sized
               // surface on Android (Impeller/Skia sibling composite).
               Positioned.fill(
-                child: Video(
-                  controller: _s._controller,
-                  controls: NoVideoControls,
-                  fit: _s._videoFit,
-                  fill: Colors.black,
-                  subtitleViewConfiguration: const SubtitleViewConfiguration(
-                    visible: false,
-                  ),
-                ),
+                child: _s._showVideoSurface
+                    ? Video(
+                        controller: _s._controller,
+                        controls: NoVideoControls,
+                        fit: _s._videoFit,
+                        fill: Colors.black,
+                        subtitleViewConfiguration:
+                            const SubtitleViewConfiguration(
+                          visible: false,
+                        ),
+                      )
+                    : const ColoredBox(color: Colors.black),
               ),
 
                 // ── 1b. Custom subtitle overlay ─────────────────────────────

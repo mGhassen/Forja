@@ -246,12 +246,20 @@ class LanClientService {
   }
 
   /// Fire-and-forget close when [playUrl] is a remounted LAN torrent stream.
+  ///
+  /// Deferred past MediaKit/MediaCodec dispose — sync prefs + HTTP in the
+  /// same window as surface teardown ANRs Android TV (issue 128 pattern).
   void releaseLanTorrentIfNeeded({
     required String playUrl,
     String? magnet,
   }) {
     if (!isLanTorrentStreamUrl(playUrl)) return;
-    unawaited(closeTorrent(magnet: magnet));
+    final mag = magnet;
+    unawaited(
+      Future<void>.delayed(const Duration(milliseconds: 600), () async {
+        await closeTorrent(magnet: mag);
+      }),
+    );
   }
 
   /// Health on saved address; on failure browse mDNS for the same `server_id`
