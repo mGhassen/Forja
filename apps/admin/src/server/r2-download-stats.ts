@@ -279,7 +279,14 @@ function parseRollupBytes(
 export async function readDownloadsRollup(): Promise<DownloadsRollup> {
   const { bucket, cdnBase } = r2Config()
 
-  // Prefer public CDN — admin host often has RELEASE_CDN_URL but no S3 keys.
+  // S3 first — same path the cron writes. CDN can serve a stale edge copy of
+  // stats/downloads.json after overwrite even with cache: no-store on fetch.
+  if (hasR2S3Creds()) {
+    const raw = await r2GetObject(DOWNLOADS_STATS_KEY)
+    if (!raw) return emptyRollup(bucket)
+    return parseRollupBytes(raw, bucket) ?? emptyRollup(bucket)
+  }
+
   if (cdnBase) {
     try {
       const fromCdn = await r2GetObjectPublic(DOWNLOADS_STATS_KEY)
@@ -288,21 +295,13 @@ export async function readDownloadsRollup(): Promise<DownloadsRollup> {
         if (parsed) return parsed
       }
     } catch {
-      // fall through to S3
+      // empty below
     }
+    return emptyRollup(bucket)
   }
-
-  if (hasR2S3Creds()) {
-    const raw = await r2GetObject(DOWNLOADS_STATS_KEY)
-    if (!raw) return emptyRollup(bucket)
-    return parseRollupBytes(raw, bucket) ?? emptyRollup(bucket)
-  }
-
-  // No file yet / no read path — empty UI, not a hard error.
-  if (cdnBase) return emptyRollup(bucket)
 
   throw new Error(
-    'Set RELEASE_CDN_URL (read) and/or R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY on the admin host',
+    'Set R2_ACCESS_KEY_ID + R2_SECRET_ACCESS_KEY (preferred) and/or RELEASE_CDN_URL on the admin host',
   )
 }
 

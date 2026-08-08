@@ -1172,7 +1172,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       builtInEngine: _builtInEngine,
       onSelect: ({builtInEngine, externalPlayer}) async {
         if (builtInEngine != null) {
-          await _s._switchBuiltInEngine(builtInEngine);
+          // Movies/Series: session-only — do not overwrite Live IPTV engine pref.
+          await _s._switchBuiltInEngine(
+            builtInEngine,
+            persist: !_s.widget.vodPlayback,
+          );
           return;
         }
         if (externalPlayer == null) return;

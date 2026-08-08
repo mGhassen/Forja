@@ -41,7 +41,7 @@
 
 ```
 CF Analytics (~31d) → Inngest daily → R2 stats/downloads.json (forever)
-Admin UI ← read that JSON (S3 GET)
+Admin UI ← S3 GET that JSON (CDN only if no S3 keys — edge can stale after overwrite)
 ```
 
 ### File shape (`stats/downloads.json`)

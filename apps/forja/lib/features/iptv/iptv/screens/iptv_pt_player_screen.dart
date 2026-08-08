@@ -616,21 +616,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         context: widget.engineContext,
       );
       if (_disposed || !mounted) return;
-      // Catalog Movies/Series: MediaKit first. Media3 Mp4Extractor dies on many
-      // portal AAC configs (AacUtil OOB → Source error / stuck buffering). Exo
-      // stays in the Player menu; choosing it persists for next IPTV open.
+      // Live IPTV: unchanged — honor IPTV engine pref.
+      // Movies/Series: always MediaKit. Media3 dies on many portal MP4 AAC
+      // configs; do not inherit Live's Exo choice. Exo stays in the Player
+      // menu for this session only (VOD switches do not rewrite the live key).
       _exoBackend = widget.vodPlayback
           ? false
           : engine == BuiltInPlayerEngine.exoPlayer;
-      if (widget.vodPlayback) {
-        final explicit = await SettingsService().peekBuiltInPlayerEngine(
-          BuiltInPlayerContext.iptv,
-        );
-        if (_disposed || !mounted) return;
-        if (explicit == BuiltInPlayerEngine.exoPlayer) {
-          _exoBackend = true;
-        }
-      }
     } else {
       _exoBackend = false;
     }

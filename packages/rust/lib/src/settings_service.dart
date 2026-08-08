@@ -894,15 +894,6 @@ class SettingsService {
     return BuiltInPlayerEngine.defaultForContext(context);
   }
 
-  /// Stored engine for [context] only — no VOD fallback. Null if unset.
-  Future<BuiltInPlayerEngine?> peekBuiltInPlayerEngine(
-    BuiltInPlayerContext context,
-  ) async {
-    final raw = await kvGetString(context.storageKey);
-    if (raw == null || raw.isEmpty) return null;
-    return BuiltInPlayerEngine.fromStorage(raw);
-  }
-
   /// Seeded Android installs wrote ExoPlayer as the VOD default. Flip VOD and
   /// IPTV once to MediaKit; Live is already MediaKit-by-default and untouched.
   /// Users who re-pick Exo after this migration keep that choice.

@@ -183,7 +183,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [162-[open]-…](162-[open]-iptv-more-like-this-catalog-only.md) | IPTV More like this = portal catalog only | P2 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 9/9 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 11/11 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

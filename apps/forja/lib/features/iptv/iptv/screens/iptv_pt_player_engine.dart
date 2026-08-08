@@ -466,19 +466,26 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // Network: fail fast so the watchdog can step in
       await p.setProperty('network-timeout', '15');
 
-      // Cache: prioritise SMOOTHNESS over live-edge latency. Same 30 s / 150 MB
-      // window that played 4K on ATV MediaKit before I138 (≤v1.3.80). Keep
-      // cache-pause OFF — we'd rather skip frames than show a spinner.
+      // Cache: Live keeps the 30 s / 150 MB window (4K ATV MediaKit ≤v1.3.80).
+      // Movies/Series must NOT inherit that — progressive VOD + MediaCodec
+      // buffer pools OOM/ANR the process (issue 163 series crash).
       await p.setProperty('cache', 'yes');
-      await p.setProperty('cache-secs', '30');
-      await p.setProperty('demuxer-readahead-secs', '20');
-      await p.setProperty('demuxer-max-bytes', '150000000');
-      await p.setProperty('demuxer-max-back-bytes', '25000000');
+      if (_s.widget.vodPlayback) {
+        debugPrint('[IPTV Player] MediaKit cache profile=vod (32MiB)');
+        await p.setProperty('cache-secs', '10');
+        await p.setProperty('demuxer-readahead-secs', '5');
+        await p.setProperty('demuxer-max-bytes', '33554432');
+        await p.setProperty('demuxer-max-back-bytes', '8388608');
+        await p.setProperty('audio-buffer', '0.4');
+      } else {
+        await p.setProperty('cache-secs', '30');
+        await p.setProperty('demuxer-readahead-secs', '20');
+        await p.setProperty('demuxer-max-bytes', '150000000');
+        await p.setProperty('demuxer-max-back-bytes', '25000000');
+        await p.setProperty('audio-buffer', '1.0');
+      }
       await p.setProperty('cache-pause', 'no');
       await p.setProperty('cache-pause-initial', 'no');
-      // Larger audio buffer too - audio underruns are the most jarring
-      // form of buffering on IPTV feeds.
-      await p.setProperty('audio-buffer', '1.0');
 
       await p.setProperty('sub-auto', 'all');
       await p.setProperty('sub-visibility', 'no');
