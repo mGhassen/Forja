@@ -1635,6 +1635,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 // Live: after a real pause, rejoin the edge (don't resume
                 // from the frozen demuxer position seconds behind).
                 if (pausedAt != null &&
+                    !_s.widget.vodPlayback &&
                     iptvExoUrlLooksLive(
                       _s._sources.isEmpty
                           ? ''

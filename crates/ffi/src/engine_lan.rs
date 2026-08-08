@@ -181,6 +181,11 @@ pub fn lan_remove_torrent_history(info_hash: String) -> bool {
         return false;
     };
     persist_torrent_history(&HISTORY);
+    if let Ok(guard) = LAN.lock() {
+        if let Some(server) = guard.as_ref() {
+            server.state.lease.clear_if_hash(&info_hash);
+        }
+    }
     if let Some(status) = crate::engine_torrent::shared_torrent_engine().status() {
         if status.info_hash.eq_ignore_ascii_case(&entry.info_hash) {
             crate::engine_torrent::torrent_stop();
@@ -198,6 +203,11 @@ pub fn lan_remove_torrent_history(info_hash: String) -> bool {
 /// Stop torrent, wipe download cache, clear LAN history.
 pub fn lan_clear_torrent_history() -> bool {
     ensure_history_loaded();
+    if let Ok(guard) = LAN.lock() {
+        if let Some(server) = guard.as_ref() {
+            server.state.lease.clear();
+        }
+    }
     crate::engine_torrent::torrent_stop();
     let _ = torrent::TorrentEngine::clear_cache_dir();
     HISTORY.clear();

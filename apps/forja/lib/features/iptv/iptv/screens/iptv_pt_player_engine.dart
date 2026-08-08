@@ -200,6 +200,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final msg = event['message']?.toString() ?? 'Playback error';
         debugPrint('[IPTV Exo] error: $msg');
         if (!_s._formatEngineSwapped &&
+            !_livePlaybackProfile &&
+            iptvIsHardOpenFail(msg)) {
+          unawaited(_s._autoSwapEngineForFormatError(msg));
+          return;
+        }
+        if (!_s._formatEngineSwapped &&
             _IptvPtPlayerScreenState._isUnrecognizedFormatError(msg)) {
           unawaited(_s._autoSwapEngineForFormatError(msg));
           return;
@@ -527,6 +533,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     return iptvExoUrlLooksLive(_s._sources[_s._sourceIdx].url);
   }
 
+  /// Live recovery / live-edge profile. Catalog `vodPlayback` wins over URL so
+  /// Stalker/M3U movie URLs without `/movie/` still skip live-only paths.
+  bool get _livePlaybackProfile {
+    if (_s.widget.vodPlayback) return false;
+    return _currentSourceIsLive;
+  }
+
   Future<void> _initOrientationAndChrome() async {
     // Don't auto-enter fullscreen or force landscape - the player opens in a
     // normal window/portrait, and the user enters fullscreen explicitly via
@@ -641,7 +654,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         // Keep [_bufferingSince] through brief core-idle clears; watchdog
         // finalizes after [_bufferingClearHold].
         _s._bufferingClearAt ??= DateTime.now();
-        if (!_playbackStarted) {
+        if (!_playbackStarted && _livePlaybackProfile) {
           _noteVideoFrame(reason: 'buffering done');
         }
       } else {
@@ -653,7 +666,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           if (ms >= 500) debugPrint('[IPTV Player] buffering window ${ms}ms');
         }
         if (!_playbackStarted) {
-          _noteVideoFrame(reason: 'buffering done');
+          // VOD: only real playhead proves alive — buffering-done alone falsely
+          // armed Stable "working" before Failed to open (issue 163).
+          if (_livePlaybackProfile) {
+            _noteVideoFrame(reason: 'buffering done');
+          }
         }
         // No mid-stream live-edge snap here. Flushing the cache on every
         // underrun exit throws away the cushion that absorbs the next hiccup,
@@ -667,6 +684,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       }
       debugPrint('[IPTV Player] error: $msg');
       final lower = msg.toLowerCase();
+      if (!_s._formatEngineSwapped &&
+          !_livePlaybackProfile &&
+          iptvIsHardOpenFail(msg)) {
+        unawaited(_s._autoSwapEngineForFormatError(msg));
+        return;
+      }
       if (!_s._formatEngineSwapped &&
           _IptvPtPlayerScreenState._isUnrecognizedFormatError(msg)) {
         unawaited(_s._autoSwapEngineForFormatError(msg));
@@ -793,7 +816,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _s._openedAt = DateTime.now();
         _resetDemuxerProbe();
         unawaited(_probeStreamCapabilities().then((_) {
-          if (mounted) _scheduleJumpToLive();
+          if (mounted && _livePlaybackProfile) _scheduleJumpToLive();
         }));
         // Clear banner after a short successful run (do not require !_buffering —
         // Exo live prefetch used to keep isLoading true and leave reconnect UI up).
@@ -830,7 +853,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       await _openCurrent();
       return;
     }
-    if (!_s._exoBackend && _s._playerAlive && _currentSourceIsLive) {
+    if (!_s._exoBackend && _s._playerAlive && _livePlaybackProfile) {
       final inFlight = _openInFlight;
       if (inFlight != null) await inFlight;
       if (_s._disposed || !_s._playerAlive) return;
@@ -870,6 +893,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   /// the stall it tries to fix.
   void _scheduleJumpToLive({bool force = false}) {
     if (_s._exoBackend) return;
+    if (!_livePlaybackProfile) return;
     // Classic: seekable-only open snap (1.3.114). Never force drop-buffers.
     final allowForce = _bufferedRecovery && force;
     if (!allowForce && !_s._streamSeekable) return;
@@ -1152,7 +1176,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     bool userInitiated = false,
   }) async {
     if (_s._disposed || _recoveryInFlight) return;
-    if (!userInitiated && _playbackStarted && _streamWorking) {
+    // Stable cache/feed hold is live-only — VOD must not skip recovery after a
+    // false "video alive" / open fail (issue 163).
+    if (!userInitiated &&
+        _livePlaybackProfile &&
+        _playbackStarted &&
+        _streamWorking) {
       _logHealthyHold(reason);
       return;
     }
@@ -1183,6 +1212,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
                 _s._statusBanner = 'Switching to ${_s._sources[_s._sourceIdx].label}…');
           }
           await _openCurrent();
+          return;
+        }
+        // Movies/series: stop after the ladder (no forever cold-retry).
+        if (!_livePlaybackProfile) {
+          if (mounted) {
+            setState(() => _s._statusBanner = 'Playback failed');
+          }
           return;
         }
         // Single-source channel that won't connect. Don't give up - live

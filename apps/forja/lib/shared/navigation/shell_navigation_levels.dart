@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
@@ -47,8 +48,11 @@ abstract final class ShellNavigationLevels {
     final ctx = shellOverlayNavigatorKey.currentContext;
     if (ctx == null) return;
     final rootNav = Navigator.maybeOf(ctx, rootNavigator: true);
-    if (rootNav?.canPop() ?? false) {
-      rootNav!.maybePop();
+    if (rootNav == null) return;
+    // Player PopScope uses canPop:false so [canPop] is false, but maybePop
+    // still invokes onPopInvoked → [_exitPlayer] / LAN close.
+    if (rootNav.canPop() || ShellBus.playerSurfaceActive.value) {
+      rootNav.maybePop();
     }
   }
 
@@ -87,7 +91,11 @@ abstract final class ShellNavigationLevels {
 
   /// Deepest open level - used to decide which single step back takes.
   static ShellNavLevel resolveBackTarget() {
-    if (rootRouteCanPop()) return ShellNavLevel.player;
+    // Player PopScope uses canPop:false so [rootRouteCanPop] is often false
+    // while the surface is up — still treat as player so Back exits via maybePop.
+    if (rootRouteCanPop() || ShellBus.playerSurfaceActive.value) {
+      return ShellNavLevel.player;
+    }
     if (shellOverlayCanPop()) return ShellNavLevel.detail;
     if (tabStackCanPop()) return ShellNavLevel.tabStack;
     if (ShellTvFocus.anyNavFocused || ShellTvFocus.primaryFocusIsNav) {

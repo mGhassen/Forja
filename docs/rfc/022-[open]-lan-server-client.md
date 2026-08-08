@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components (desktop→TV) · **7 / 8** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
-| **Current slice** | Client leave-player stops desktop torrent swarm — first-frame smoke still open |
+| **Progress** | **8 / 8** components (desktop→TV) · **9 / 10** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
+| **Current slice** | Idle TV pause→stop+clean (R22-A22); first-frame smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -78,6 +78,8 @@ Historical C01–C07 above were never on `main` (stale ✅ from `feat/forja-serv
 | 18 | R22-A18 | LAN restore runs after post-splash torrent/proxy warm; ephemeral fallback only on real bind conflict (not “torrent not running”) so sticky port survives app restart | ✅ |
 | 19 | R22-A19 | LAN `POST /open` torrent resolves via `stream_magnet_on_engine` (no nested `Runtime::block_on` panic on desktop) | ✅ |
 | 20 | R22-A20 | Leaving or cancelling a LAN torrent play on TV/phone stops the matching desktop download (cache/history kept until Delete) | ✅ |
+| 21 | R22-A21 | `/close` uses `stop_on_engine` (no nested `block_on`); client closes without requiring parsed info_hash; cancel-before-`play_url` and TV Back→maybePop still stop the desktop swarm | ✅ |
+| 22 | R22-A22 | Desktop idle-watch: owner TV idle 120s → pause swarm; still idle +120s → stop + delete cache/history (resume if TV returns during grace) | ✅ |
 
 ---
 

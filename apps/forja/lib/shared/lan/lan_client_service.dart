@@ -36,6 +36,10 @@ class LanClientService {
   LanClientService._();
   static final LanClientService instance = LanClientService._();
 
+  /// Last magnet successfully opened via [openStream] (kind torrent).
+  /// Used to `/close` even when the play URL was rewritten or magnet parse fails.
+  String? _lastOpenedTorrentMagnet;
+
   Future<bool> checkHealth(String host, int port) async {
     final info = await fetchHealth(host, port);
     return info != null;
@@ -196,7 +200,15 @@ class LanClientService {
       }
       if (r.statusCode != 200) return null;
       final json = jsonDecode(r.body) as Map<String, dynamic>;
-      return json['play_url']?.toString();
+      final playUrl = json['play_url']?.toString();
+      if (kind == 'torrent' &&
+          playUrl != null &&
+          playUrl.isNotEmpty &&
+          magnet != null &&
+          magnet.isNotEmpty) {
+        _lastOpenedTorrentMagnet = magnet;
+      }
+      return playUrl;
     } catch (_) {
       return null;
     }
@@ -204,16 +216,14 @@ class LanClientService {
 
   /// Tell the desktop to stop a LAN torrent swarm (keeps cache/history).
   ///
-  /// Only stops when [infoHash] / magnet still matches the active download —
-  /// safe after source switch `/open` of a different magnet.
+  /// When [infoHash]/magnet parse to a hash, desktop only stops if it still
+  /// matches the active swarm (safe after source-switch `/open`). When no
+  /// hash is available, desktop stops whatever is active — better than
+  /// leaving the download running after TV exit.
   Future<bool> closeTorrent({String? infoHash, String? magnet}) async {
     final hash = (infoHash?.trim().isNotEmpty == true)
         ? infoHash!.trim()
         : infoHashFromMagnet(magnet);
-    if (hash == null || hash.isEmpty) {
-      debugPrint('[LAN] closeTorrent skipped — no info_hash');
-      return false;
-    }
 
     final prefs = LanPrefs.instance;
     final token = await prefs.token;
@@ -238,6 +248,11 @@ class LanClientService {
       if (h == null || p == null) return false;
     }
 
+    final body = <String, dynamic>{
+      'kind': 'torrent',
+      if (hash != null && hash.isNotEmpty) 'info_hash': hash,
+    };
+
     try {
       final r = await http
           .post(
@@ -246,7 +261,7 @@ class LanClientService {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
             },
-            body: jsonEncode({'kind': 'torrent', 'info_hash': hash}),
+            body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 10));
       if (r.statusCode == 401) {
@@ -259,9 +274,18 @@ class LanClientService {
         debugPrint('[LAN] closeTorrent HTTP ${r.statusCode}: ${r.body}');
         return false;
       }
-      debugPrint(
-        '[LAN] closeTorrent ok hash=${hash.length > 8 ? hash.substring(0, 8) : hash}…',
-      );
+      if (_lastOpenedTorrentMagnet != null &&
+          magnet != null &&
+          magnet.isNotEmpty &&
+          _lastOpenedTorrentMagnet == magnet) {
+        _lastOpenedTorrentMagnet = null;
+      } else if (hash == null || hash.isEmpty) {
+        _lastOpenedTorrentMagnet = null;
+      }
+      final hashLabel = (hash != null && hash.isNotEmpty)
+          ? (hash.length > 8 ? '${hash.substring(0, 8)}…' : hash)
+          : 'active';
+      debugPrint('[LAN] closeTorrent ok hash=$hashLabel');
       return true;
     } catch (e) {
       debugPrint('[LAN] closeTorrent error: $e');
@@ -274,24 +298,48 @@ class LanClientService {
   /// Deferred past MediaKit/MediaCodec dispose — sync prefs + HTTP in the
   /// same window as surface teardown ANRs Android TV (issue 128 pattern).
   void releaseLanTorrentIfNeeded({
-    required String playUrl,
+    String? playUrl,
     String? magnet,
   }) {
-    final mag = magnet;
-    final lanUrl = isLanTorrentStreamUrl(playUrl);
+    final mag = (magnet != null && magnet.isNotEmpty)
+        ? magnet
+        : _lastOpenedTorrentMagnet;
+    final url = playUrl ?? '';
+    final lanUrl = url.isNotEmpty && isLanTorrentStreamUrl(url);
     // Magnet + non-local /torrents/ path (covers odd hosts); never local engine.
     final magnetLan = mag != null &&
         mag.isNotEmpty &&
-        playUrl.contains('/torrents/') &&
-        playUrl.contains('/stream/') &&
-        !isLoopbackPlayHost(playUrl);
-    if (!lanUrl && !magnetLan) {
-      debugPrint('[LAN] release skip — not a LAN torrent url');
+        url.contains('/torrents/') &&
+        url.contains('/stream/') &&
+        !isLoopbackPlayHost(url);
+    // Paired client opened this magnet on desktop even if URL rewrite failed.
+    final trackedLan = mag != null &&
+        mag.isNotEmpty &&
+        _lastOpenedTorrentMagnet != null &&
+        _lastOpenedTorrentMagnet == mag;
+    if (!lanUrl && !magnetLan && !trackedLan) {
+      debugPrint('[LAN] release skip — not a LAN torrent session');
       return;
     }
     unawaited(
       Future<void>.delayed(const Duration(milliseconds: 600), () async {
         await closeTorrent(magnet: mag);
+      }),
+    );
+  }
+
+  /// Cancel/fail during resolve — desktop may already be downloading.
+  void releaseLanTorrentAfterCancel({String? magnet}) {
+    final mag = (magnet != null && magnet.isNotEmpty)
+        ? magnet
+        : _lastOpenedTorrentMagnet;
+    if ((mag == null || mag.isEmpty) && _lastOpenedTorrentMagnet == null) {
+      debugPrint('[LAN] cancel release skip — no magnet');
+      return;
+    }
+    unawaited(
+      Future<void>.delayed(const Duration(milliseconds: 200), () async {
+        await closeTorrent(magnet: mag ?? _lastOpenedTorrentMagnet);
       }),
     );
   }
@@ -364,6 +412,7 @@ String? infoHashFromMagnet(String? magnet) {
   if (magnet == null || magnet.isEmpty) return null;
   final m = RegExp(
     r'xt=urn:btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})',
+    caseSensitive: false,
   ).firstMatch(magnet);
   return m?.group(1)?.toLowerCase();
 }

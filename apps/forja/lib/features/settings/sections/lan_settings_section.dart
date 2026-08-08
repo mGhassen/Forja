@@ -628,24 +628,11 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       ),
       const SizedBox(height: 8),
       if (active != null && !activeInHistory) ...[
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(
-            Icons.play_circle_fill_rounded,
-            color: ForjaShellColors.brandGreen,
-          ),
-          title: Text(
-            active['name']?.toString().isNotEmpty == true
-                ? active['name'].toString()
-                : 'Active torrent',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          subtitle: Text(
-            _activeTorrentSubtitle(active),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+        _torrentActivityTile(
+          title: active['name']?.toString().isNotEmpty == true
+              ? active['name'].toString()
+              : 'Active torrent',
+          live: active,
         ),
         const SizedBox(height: 4),
       ],
@@ -680,10 +667,43 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                   activeHash == hash.toLowerCase())
               ? active
               : null;
-          final isActive = live != null;
-          return ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
+          return _torrentActivityTile(
+            title: (name != null && name.isNotEmpty) ? name : hash,
+            device: device,
+            when: when,
+            size: size,
+            live: live,
+            onDelete: hash.isEmpty ? null : () => _removeHistory(hash),
+          );
+        }),
+    ];
+  }
+
+  Widget _torrentActivityTile({
+    required String title,
+    String? device,
+    String? when,
+    String? size,
+    Map<String, dynamic>? live,
+    VoidCallback? onDelete,
+  }) {
+    final isActive = live != null;
+    final progress = ((live?['progress'] as num?)?.toDouble() ?? 0)
+        .clamp(0.0, 1.0);
+    final pct = (progress * 100).toStringAsFixed(0);
+    final state = live?['state']?.toString() ?? '';
+    final down = (live?['download_rate'] as num?)?.toInt() ?? 0;
+    final peers = (live?['num_peers'] as num?)?.toInt() ?? 0;
+    final rate = TorrentStreamService.formatStorageBytes(down);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
               isActive
                   ? Icons.play_circle_fill_rounded
                   : Icons.video_file_outlined,
@@ -691,44 +711,145 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                   ? ForjaShellColors.brandGreen
                   : ForjaShellColors.textSecondary,
             ),
-            title: Text(
-              (name != null && name.isNotEmpty) ? name : hash,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: ForjaShellColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (isActive) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 4,
+                            color: ForjaShellColors.brandGreen,
+                            backgroundColor: ForjaShellColors.borderSubtle,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '$pct%',
+                        style: const TextStyle(
+                          color: ForjaShellColors.brandGreen,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      if (state.isNotEmpty) _torrentChip(state, accent: true),
+                      _torrentMeta(
+                        Icons.download_rounded,
+                        '$rate/s',
+                      ),
+                      _torrentMeta(
+                        Icons.group_outlined,
+                        '$peers peers',
+                      ),
+                    ],
+                  ),
+                ],
+                if (device != null || when != null || size != null) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      if (device != null)
+                        _torrentMeta(Icons.tv_outlined, device),
+                      if (when != null)
+                        _torrentMeta(Icons.event_outlined, when),
+                      if (size != null)
+                        _torrentMeta(Icons.sd_storage_outlined, size),
+                    ],
+                  ),
+                ],
+              ],
             ),
-            subtitle: Text(
-              [
-                if (live != null) _activeTorrentSubtitle(live),
-                device,
-                ?when,
-                ?size,
-              ].join(' · '),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: IconButton(
+          ),
+          if (onDelete != null)
+            IconButton(
               tooltip: 'Delete cached download',
-              onPressed: hash.isEmpty ? null : () => _removeHistory(hash),
+              onPressed: onDelete,
               icon: const Icon(Icons.delete_outline_rounded),
             ),
-          );
-        }),
-    ];
+        ],
+      ),
+    );
   }
 
-  static String _activeTorrentSubtitle(Map<String, dynamic> active) {
-    final progress = (active['progress'] as num?)?.toDouble() ?? 0;
-    final pct = (progress * 100).clamp(0, 100).toStringAsFixed(0);
-    final state = active['state']?.toString() ?? '';
-    final down = (active['download_rate'] as num?)?.toInt() ?? 0;
-    final peers = (active['num_peers'] as num?)?.toInt() ?? 0;
-    final rate = TorrentStreamService.formatStorageBytes(down);
-    return [
-      if (state.isNotEmpty) state,
-      '$pct%',
-      '$rate/s',
-      '$peers peers',
-    ].join(' · ');
+  static Widget _torrentChip(String label, {bool accent = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: accent
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+            : ForjaShellColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: accent
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.35)
+              : ForjaShellColors.borderSubtle,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: accent
+              ? ForjaShellColors.brandGreen
+              : ForjaShellColors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  static Widget _torrentMeta(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: ForjaShellColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: ForjaShellColors.borderSubtle),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: ForjaShellColors.textSecondary),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   List<Widget> _clientBody() {

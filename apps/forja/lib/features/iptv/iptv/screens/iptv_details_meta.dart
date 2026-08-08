@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:forja/features/iptv/iptv/iptv_catalog_recs.dart';
 import 'package:forja/shared/widgets/hero/hero_meta_line.dart';
 import 'package:forja/shared/widgets/hero/hero_utils.dart';
 import 'package:forja/shared/widgets/media_details/media_details_recommendations_section.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
-import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
 /// Portal-only fallback when TMDB match is missing.
@@ -126,9 +126,14 @@ List<Map<String, String>> iptvCrewAsCast(List<Map<String, String>> crew) {
 }
 
 /// Cast / Crew / Trailers / Recommendations — same rows as home details.
+///
+/// [catalogRecommendations] is TMDB ∩ portal Movies/Series. Empty → hide the
+/// row (never open Home/torrent details for IPTV "More like this").
 List<Widget> buildIptvDetailsMetaSections({
   required BuildContext context,
   required RichMediaDetails? rich,
+  required List<IptvCatalogRecHit> catalogRecommendations,
+  required void Function(IptvCatalogRecHit hit) onCatalogRecTap,
   required bool tvFocus,
   required String tvTabId,
   required int tvRowOrderBase,
@@ -139,11 +144,10 @@ List<Widget> buildIptvDetailsMetaSections({
   final cast = rich.extras.cast;
   final crew = iptvCrewAsCast(rich.extras.crew);
   final trailers = rich.extras.trailers;
-  final recommendations = rich.extras.recommendations;
   final showCast = cast.isNotEmpty;
   final showCrew = crew.isNotEmpty;
   final showTrailers = trailers.isNotEmpty;
-  final showRecs = recommendations.isNotEmpty;
+  final showRecs = catalogRecommendations.isNotEmpty;
   if (!showCast && !showCrew && !showTrailers && !showRecs) {
     return const [];
   }
@@ -183,8 +187,17 @@ List<Widget> buildIptvDetailsMetaSections({
       ),
     if (showRecs)
       MediaDetailsRecommendationsSection(
-        movies: recommendations,
-        onMovieTap: (movie) => AppRouter.openDetails(context, movie: movie),
+        movies: [
+          for (final hit in catalogRecommendations) hit.tmdb,
+        ],
+        onMovieTap: (movie) {
+          for (final h in catalogRecommendations) {
+            if (h.tmdb.id == movie.id) {
+              onCatalogRecTap(h);
+              return;
+            }
+          }
+        },
         tvTabId: tvFocus ? tvTabId : null,
         tvRowId: 'recommendations',
         tvRowOrder: recsOrder!,

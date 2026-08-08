@@ -612,6 +612,10 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
             playUrl: playback.url,
             magnet: magnetLink,
           );
+        } else if (!_s._playbackProfile.localTorrentEngine) {
+          LanClientService.instance.releaseLanTorrentAfterCancel(
+            magnet: magnetLink,
+          );
         }
         popLoading();
         cleanupNotifiers();
@@ -627,6 +631,11 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
     } catch (e, st) {
       debugPrint('[Torrent] Stream error: $e\n$st');
       if (_s._streamCancelled) {
+        if (!_s._playbackProfile.localTorrentEngine) {
+          LanClientService.instance.releaseLanTorrentAfterCancel(
+            magnet: magnetLink,
+          );
+        }
         popLoading();
         cleanupNotifiers();
         return;
@@ -642,6 +651,10 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
       if (resolvedUrl != null) {
         LanClientService.instance.releaseLanTorrentIfNeeded(
           playUrl: resolvedUrl!,
+          magnet: magnetLink,
+        );
+      } else if (!_s._playbackProfile.localTorrentEngine) {
+        LanClientService.instance.releaseLanTorrentAfterCancel(
           magnet: magnetLink,
         );
       }

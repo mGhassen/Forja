@@ -679,19 +679,10 @@ class _NavLanPairBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = (avatarSize * 0.42).clamp(10.0, 16.0);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppTheme.bgDark,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.bgDark, width: 1.5),
-      ),
-      child: Icon(
-        Icons.cast_connected_rounded,
-        size: size * 0.85,
-        color: ForjaShellColors.brandGreen,
-      ),
+    return Icon(
+      Icons.signal_wifi_4_bar_rounded,
+      size: size,
+      color: ForjaShellColors.brandGreen,
     );
   }
 }
@@ -930,7 +921,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         clipBehavior: Clip.none,
         children: [
           icon,
-          Positioned(right: -2, top: -2, child: badge),
+          Positioned(right: -5, top: -5, child: badge),
         ],
       );
     }

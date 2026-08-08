@@ -10,6 +10,7 @@ use proxy::ProxyState;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpSocket;
@@ -24,6 +25,7 @@ use torrent::{torrent_stream_router, TorrentAppState, TorrentEngine};
 use crate::auth::{require_bearer_token, require_stream_ticket};
 use crate::bind::LanBindMode;
 use crate::history::{TorrentHistory, TorrentHistoryEntry};
+use crate::idle_watch::{run_idle_watch, LanTorrentLeaseStore};
 use crate::mdns::MdnsAnnouncer;
 use crate::pairing::{PairRequest, PairResponse, PairingState, RevokeRequest};
 
@@ -35,6 +37,7 @@ pub struct LanServerState {
     pub proxy_state: ProxyState,
     pub torrent: Arc<TorrentEngine>,
     pub history: TorrentHistory,
+    pub lease: LanTorrentLeaseStore,
     pub listen_port: Arc<tokio::sync::RwLock<u16>>,
     pub on_devices_changed: Option<DevicesChangedHook>,
     pub on_history_changed: Option<HistoryChangedHook>,
@@ -44,6 +47,7 @@ pub struct LanServer {
     shutdown: Option<oneshot::Sender<()>>,
     /// Completes when the axum serve task exits (socket released).
     serve_done: Option<oneshot::Receiver<()>>,
+    idle_cancel: Option<Arc<AtomicBool>>,
     mdns: Option<MdnsAnnouncer>,
     pub state: LanServerState,
 }
@@ -57,12 +61,14 @@ impl LanServer {
         Self {
             shutdown: None,
             serve_done: None,
+            idle_cancel: None,
             mdns: None,
             state: LanServerState {
                 pairing: PairingState::new(server_id),
                 proxy_state,
                 torrent,
                 history: TorrentHistory::default(),
+                lease: LanTorrentLeaseStore::default(),
                 listen_port: Arc::new(tokio::sync::RwLock::new(0)),
                 on_devices_changed: None,
                 on_history_changed: None,
@@ -132,11 +138,23 @@ impl LanServer {
         }
 
         self.state.pairing.refresh_code();
+
+        let cancel = Arc::new(AtomicBool::new(false));
+        self.idle_cancel = Some(Arc::clone(&cancel));
+        let watch_state = self.state.clone();
+        tokio::spawn(async move {
+            run_idle_watch(watch_state, cancel).await;
+        });
+
         Ok(port)
     }
 
     /// Signal graceful shutdown and wait until the listen socket is released.
     pub async fn stop(&mut self) {
+        if let Some(cancel) = self.idle_cancel.take() {
+            cancel.store(true, Ordering::Relaxed);
+        }
+        self.state.lease.clear();
         if let Some(tx) = self.shutdown.take() {
             let _ = tx.send(());
         }
@@ -387,6 +405,9 @@ struct CloseRequest {
 ///
 /// Stops the active swarm. Source-switch sets `retainForExternalHandoff` so
 /// the old player does not call `/close` after a new `/open`.
+///
+/// Must not call [`TorrentEngine::stop`] here — that `block_on`s the torrent
+/// runtime from the LAN/FFI worker (same panic as nested `/open`).
 async fn close_handler(
     State(state): State<LanServerState>,
     Json(body): Json<CloseRequest>,
@@ -417,7 +438,8 @@ async fn close_handler(
                     }
                 }
             }
-            state.torrent.stop();
+            state.torrent.stop_on_engine().await;
+            state.lease.clear();
             Ok(Json(serde_json::json!({ "ok": true, "stopped": true })))
         }
         other => Err(bad_request(&format!("unknown kind: {other}"))),
@@ -442,6 +464,7 @@ fn record_torrent_open(
         .pairing
         .device_for_token(device_token)
         .unwrap_or_else(|| ("unknown".into(), None));
+    state.lease.set(device_id.clone(), hash.clone());
     let status = state.torrent.status();
     let name = status
         .as_ref()
@@ -470,12 +493,13 @@ fn record_torrent_open(
 }
 
 fn extract_info_hash(magnet: &str) -> Option<String> {
-    let xt = magnet.split("xt=urn:btih:").nth(1)?;
+    let lower = magnet.to_ascii_lowercase();
+    let xt = lower.split("xt=urn:btih:").nth(1)?;
     let hash = xt.split('&').next()?;
     if hash.is_empty() {
         return None;
     }
-    Some(hash.to_ascii_lowercase())
+    Some(hash.to_string())
 }
 
 fn magnet_display_name(magnet: &str) -> Option<String> {
@@ -605,6 +629,7 @@ mod tests {
             proxy_state: ProxyState::default(),
             torrent: Arc::new(TorrentEngine::new()),
             history: TorrentHistory::default(),
+            lease: crate::idle_watch::LanTorrentLeaseStore::default(),
             listen_port: Arc::new(tokio::sync::RwLock::new(0)),
             on_devices_changed: None,
             on_history_changed: None,

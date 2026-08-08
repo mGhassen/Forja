@@ -34,4 +34,19 @@ void main() {
       );
     });
   });
+
+  group('iptvIsHardOpenFail', () {
+    test('Failed to open', () {
+      expect(
+        iptvIsHardOpenFail(
+          'Failed to open http://x/movie/u/p/1.mp4.',
+        ),
+        isTrue,
+      );
+    });
+
+    test('benign seek noise is not hard open', () {
+      expect(iptvIsHardOpenFail('Cannot seek'), isFalse);
+    });
+  });
 }

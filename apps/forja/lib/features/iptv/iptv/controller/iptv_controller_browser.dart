@@ -51,6 +51,19 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     }
   }
 
+  /// Movies + Series rows for [portalKey] from session/disk cache (no network).
+  /// Used by IPTV details "More like this" to keep recommendations playable.
+  Future<List<IptvStream>> vodSeriesCatalog(String portalKey) async {
+    await _hydratePortalFromDisk(portalKey);
+    final out = <IptvStream>[];
+    for (final section in [IptvSection.vod, IptvSection.series]) {
+      final snap = _c._catalogCache[_catalogCacheKey(portalKey, section)];
+      if (snap == null) continue;
+      out.addAll(snap.streams);
+    }
+    return out;
+  }
+
   void _putCatalogSnap(
     String portalKey,
     IptvSection section,

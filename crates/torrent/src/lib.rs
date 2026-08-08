@@ -666,23 +666,101 @@ impl TorrentEngine {
 
     pub fn stop(&self) {
         self.runtime.block_on(async {
-            let pause = {
-                let Ok(mut inner) = self.inner.lock() else {
-                    return;
-                };
-                if let (Some(session), Some(active)) = (inner.session.clone(), inner.active.take())
-                {
-                    session
-                        .get(TorrentIdOrHash::Id(active.id))
-                        .map(|handle| (session, handle))
-                } else {
-                    None
-                }
-            };
-            if let Some((session, handle)) = pause {
-                let _ = session.pause(&handle).await;
-            }
+            self.stop_async().await;
         });
+    }
+
+    /// Pause + forget the active swarm. Safe to call from this engine's runtime.
+    async fn stop_async(&self) {
+        let pause = {
+            let Ok(mut inner) = self.inner.lock() else {
+                return;
+            };
+            if let (Some(session), Some(active)) = (inner.session.clone(), inner.active.take()) {
+                session
+                    .get(TorrentIdOrHash::Id(active.id))
+                    .map(|handle| (session, handle))
+            } else {
+                None
+            }
+        };
+        if let Some((session, handle)) = pause {
+            let _ = session.pause(&handle).await;
+        }
+    }
+
+    /// Pause the active swarm but keep it tracked (idle TV — may resume).
+    async fn pause_active_async(&self) {
+        let pause = {
+            let Ok(inner) = self.inner.lock() else {
+                return;
+            };
+            let (Some(session), Some(active)) = (inner.session.clone(), inner.active.clone())
+            else {
+                return;
+            };
+            session
+                .get(TorrentIdOrHash::Id(active.id))
+                .map(|handle| (session, handle))
+        };
+        if let Some((session, handle)) = pause {
+            let _ = session.pause(&handle).await;
+        }
+    }
+
+    /// Resume a previously paused active swarm.
+    async fn unpause_active_async(&self) {
+        let unpause = {
+            let Ok(inner) = self.inner.lock() else {
+                return;
+            };
+            let (Some(session), Some(active)) = (inner.session.clone(), inner.active.clone())
+            else {
+                return;
+            };
+            session
+                .get(TorrentIdOrHash::Id(active.id))
+                .map(|handle| (session, handle))
+        };
+        if let Some((session, handle)) = unpause {
+            let _ = session.unpause(&handle).await;
+        }
+    }
+
+    /// Stop the active swarm from another Tokio runtime (LAN axum / FFI).
+    ///
+    /// Same pattern as [`stream_magnet_on_engine`] — never `block_on` this
+    /// engine's runtime from inside the LAN worker (nested runtime panic).
+    pub async fn stop_on_engine(self: &Arc<Self>) {
+        let this = Arc::clone(self);
+        let _ = self
+            .runtime
+            .spawn(async move {
+                this.stop_async().await;
+            })
+            .await;
+    }
+
+    /// Pause (keep active) from another Tokio runtime.
+    pub async fn pause_active_on_engine(self: &Arc<Self>) {
+        let this = Arc::clone(self);
+        let _ = self
+            .runtime
+            .spawn(async move {
+                this.pause_active_async().await;
+            })
+            .await;
+    }
+
+    /// Unpause from another Tokio runtime.
+    pub async fn unpause_active_on_engine(self: &Arc<Self>) {
+        let this = Arc::clone(self);
+        let _ = self
+            .runtime
+            .spawn(async move {
+                this.unpause_active_async().await;
+            })
+            .await;
     }
 
     pub fn is_running(&self) -> bool {
@@ -972,9 +1050,13 @@ async fn stream_file_handler(
 }
 
 fn extract_info_hash(magnet: &str) -> Option<String> {
-    let xt = magnet.split("xt=urn:btih:").nth(1)?;
+    let lower = magnet.to_ascii_lowercase();
+    let xt = lower.split("xt=urn:btih:").nth(1)?;
     let hash = xt.split('&').next()?;
-    Some(hash.to_lowercase())
+    if hash.is_empty() {
+        return None;
+    }
+    Some(hash.to_string())
 }
 
 fn metadata_cache_url(info_hash: &str) -> String {

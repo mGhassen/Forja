@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
+import 'package:forja/features/iptv/iptv/iptv_catalog_recs.dart';
 import 'package:forja/features/iptv/iptv/iptv_title_clean.dart';
 import 'package:forja/features/iptv/iptv/iptv_tmdb_enrichment.dart';
+import 'package:forja/features/iptv/iptv/providers/iptv_controller_provider.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_details_meta.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
+import 'package:forja/features/iptv/iptv/screens/iptv_series_details_view.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -32,7 +36,7 @@ Future<T?> openIptvMovieDetails<T>(
 }
 
 /// IPTV movie details — same TV focus / scroll stack as Home details.
-class IptvMovieDetailsScreen extends StatefulWidget {
+class IptvMovieDetailsScreen extends ConsumerStatefulWidget {
   const IptvMovieDetailsScreen({
     super.key,
     required this.movie,
@@ -43,15 +47,18 @@ class IptvMovieDetailsScreen extends StatefulWidget {
   final VerifiedPortal portal;
 
   @override
-  State<IptvMovieDetailsScreen> createState() => _IptvMovieDetailsScreenState();
+  ConsumerState<IptvMovieDetailsScreen> createState() =>
+      _IptvMovieDetailsScreenState();
 }
 
-class _IptvMovieDetailsScreenState extends State<IptvMovieDetailsScreen> {
+class _IptvMovieDetailsScreenState
+    extends ConsumerState<IptvMovieDetailsScreen> {
   final _scroll = ScrollController();
   final _backFocus = FocusNode(debugLabel: 'iptv-movie-back');
   final _heroPlayFocus = FocusNode(debugLabel: 'iptv-movie-play');
 
   IptvTmdbEnrichment? _enrich;
+  List<IptvCatalogRecHit> _catalogRecs = const [];
   bool _playing = false;
   bool _heroFocusDone = false;
 
@@ -87,7 +94,19 @@ class _IptvMovieDetailsScreenState extends State<IptvMovieDetailsScreen> {
       preferMovie: true,
     );
     if (!mounted) return;
-    setState(() => _enrich = hit);
+    final catalog = await ref
+        .read(iptvControllerProvider)
+        .vodSeriesCatalog(widget.portal.key);
+    if (!mounted) return;
+    final recs = filterIptvCatalogRecommendations(
+      recommendations: hit?.rich.extras.recommendations ?? const [],
+      catalog: catalog,
+      excludeStreamId: widget.movie.streamId,
+    );
+    setState(() {
+      _enrich = hit;
+      _catalogRecs = recs;
+    });
   }
 
   void _revealedDetailsHeroPlayFocus() {
@@ -221,6 +240,22 @@ class _IptvMovieDetailsScreenState extends State<IptvMovieDetailsScreen> {
     final sections = buildIptvDetailsMetaSections(
       context: context,
       rich: _enrich?.rich,
+      catalogRecommendations: _catalogRecs,
+      onCatalogRecTap: (hit) {
+        if (hit.stream.kind == 'series') {
+          openIptvSeriesDetails(
+            context,
+            series: hit.stream,
+            portal: widget.portal,
+          );
+        } else {
+          openIptvMovieDetails(
+            context,
+            movie: hit.stream,
+            portal: widget.portal,
+          );
+        }
+      },
       tvFocus: tvFocus,
       tvTabId: MediaDetailsTv.tabId,
       tvRowOrderBase: 0,

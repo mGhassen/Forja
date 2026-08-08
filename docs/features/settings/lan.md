@@ -22,7 +22,7 @@ When at least one device is paired, the desktop nav profile avatar shows a green
 
 The desktop reuses the same LAN **port** across toggles and app restarts. If the IP still changes (or the sticky port is unavailable), a paired TV rediscovers this PC on Wi‑Fi (same server id) and updates the saved address — you do not re-enter the pairing code.
 
-**Torrent activity** is one list: history of magnets opened by paired devices. If a torrent is currently downloading/serving, that row shows live progress (state, %, speed, peers) instead of a second duplicate line. Use the trash icon to stop an active download and delete its cached file. **Clear all** stops the engine torrent, wipes the torrent download cache, and clears history.
+**Torrent activity** is one list: history of magnets opened by paired devices. An active download shows a progress bar, percent, status chip, speed, and peer count; device, date, and size sit as separate chips below (not one dotted line). Use the trash icon to stop an active download and delete its cached file. **Clear all** stops the engine torrent, wipes the torrent download cache, and clears history.
 
 ### Android TV / phone
 
@@ -42,6 +42,7 @@ Status shows **Paired** with a green/grey status dot and a small **Desktop onlin
 3. Pick a torrent
 4. The TV asks the desktop to open the magnet; the desktop downloads; the TV plays the stream
 5. When you leave the player (or cancel before it opens), the desktop **stops that download** — cached files stay until you delete them under **Torrent activity**
+6. If the TV goes **Idle** (no contact for ~2 minutes) while a torrent is still open, the desktop **pauses** the download; if the TV stays idle another ~2 minutes, the desktop **stops and deletes** that cached download (same as trash in Torrent activity). If the TV comes back during the pause window, download **resumes**
 
 You do not re-enter a code per title. Unpair hides those Playback toggles again (Webstreaming stays). If the desktop goes **offline**, Direct torrent / Stremio / Nuvio turn off and stay disabled until it is online again — your previous checks come back automatically.
 

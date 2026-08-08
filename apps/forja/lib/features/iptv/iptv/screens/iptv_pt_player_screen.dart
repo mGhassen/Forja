@@ -64,6 +64,19 @@ bool iptvExoUrlLooksLive(String url) {
   return true;
 }
 
+/// Hard open failure (MediaKit / Exo) — VOD can swap engines once.
+@visibleForTesting
+bool iptvIsHardOpenFail(String msg) {
+  final lower = msg.toLowerCase();
+  return lower.contains('failed to open') ||
+      lower.contains('unable to open') ||
+      lower.contains('error opening') ||
+      lower.contains('failed to recognize file format') ||
+      lower.contains('unrecognizedinputformat') ||
+      lower.contains('none of the available extractors') ||
+      (lower.contains('source error') && lower.contains('m3u8'));
+}
+
 /// Single source for the IPTV player.
 class IptvPlaySource {
   final String url;
@@ -98,6 +111,9 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   final BuiltInPlayerContext engineContext;
   /// When set on Android, boot with this engine for this session only.
   final BuiltInPlayerEngine? forceBuiltInEngine;
+  /// Movies/series: no live-edge snap, finite recovery, online subs.
+  /// Live channels leave this false so existing live behavior is unchanged.
+  final bool vodPlayback;
   /// Movies/series: fetch online subs + Search-by-name (not live).
   final bool onlineSubtitles;
   /// Prefer over [title] for subtitle APIs (e.g. series show name).
@@ -116,6 +132,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     this.onChannelChanged,
     this.engineContext = BuiltInPlayerContext.iptv,
     this.forceBuiltInEngine,
+    this.vodPlayback = false,
     this.onlineSubtitles = false,
     this.subtitleSearchTitle,
     this.subtitleSeason,
@@ -133,20 +150,23 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     ValueChanged<IptvStream>? onChannelChanged,
     BuiltInPlayerContext engineContext = BuiltInPlayerContext.iptv,
     BuiltInPlayerEngine? forceBuiltInEngine,
-  }) =>
-      IptvPtPlayerScreen(
-        key: key,
-        sources: [IptvPlaySource(url: url, label: portalName ?? 'Source 1')],
-        title: stream.name,
-        subtitle: portalName,
-        logoUrl: stream.icon.isEmpty ? null : stream.icon,
-        channelGuide: channelGuide,
-        onChannelChanged: onChannelChanged,
-        engineContext: engineContext,
-        forceBuiltInEngine: forceBuiltInEngine,
-        onlineSubtitles: stream.kind == 'vod' || stream.kind == 'series',
-        subtitleSearchTitle: stream.name,
-      );
+  }) {
+    final vod = stream.kind == 'vod' || stream.kind == 'series';
+    return IptvPtPlayerScreen(
+      key: key,
+      sources: [IptvPlaySource(url: url, label: portalName ?? 'Source 1')],
+      title: stream.name,
+      subtitle: portalName,
+      logoUrl: stream.icon.isEmpty ? null : stream.icon,
+      channelGuide: channelGuide,
+      onChannelChanged: onChannelChanged,
+      engineContext: engineContext,
+      forceBuiltInEngine: forceBuiltInEngine,
+      vodPlayback: vod,
+      onlineSubtitles: vod,
+      subtitleSearchTitle: stream.name,
+    );
+  }
 
   /// Convenience: build for a list of channel hits (multi-source).
   factory IptvPtPlayerScreen.fromHits({
@@ -567,6 +587,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     final forced = widget.forceBuiltInEngine;
     if (forced != null && !kIsWeb && Platform.isAndroid) {
       _exoBackend = forced == BuiltInPlayerEngine.exoPlayer;
+    } else if (!kIsWeb &&
+        Platform.isAndroid &&
+        PlatformInfo.isAndroidTv &&
+        widget.vodPlayback) {
+      // ATV Movies/Series: Exo avoids MediaKit live-edge / goldfish ANR on VOD.
+      // Live IPTV still uses the IPTV engine pref below. Player menu can swap.
+      _exoBackend = true;
     } else if (!kIsWeb && Platform.isAndroid) {
       final engine = await SettingsService().getBuiltInPlayerEngine(
         context: widget.engineContext,
@@ -738,7 +765,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         (lower.contains('source error') && lower.contains('m3u8'));
   }
 
-  /// After format errors on `/hls-proxy`, try the other Android engine once.
+  /// After format / hard-open errors, try the other Android engine once.
   Future<void> _autoSwapEngineForFormatError(String reason) async {
     if (_disposed || _formatEngineSwapped || kIsWeb || !Platform.isAndroid) {
       return;
