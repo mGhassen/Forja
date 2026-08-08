@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components (desktop→TV) · **6 / 7** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
-| **Current slice** | Nested-runtime `/open` torrent fix shipped — first-frame smoke still open |
+| **Progress** | **8 / 8** components (desktop→TV) · **7 / 8** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
+| **Current slice** | Client leave-player stops desktop torrent swarm — first-frame smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -43,6 +43,7 @@ Historical C01–C07 above were never on `main` (stale ✅ from `feat/forja-serv
 | 12 | R22-C12 | Dart LAN services, Settings → LAN, ATV paired torrent expose, `LanPlaybackBridge` open path | ✅ |
 | 13 | R22-C13 | Desktop LAN torrent activity — persist `/open` history, live status, delete/clear cached downloads | ✅ |
 | 14 | R22-C14 | Sticky listen port + client mDNS rediscover by `server_id` + device `last_seen` presence dots | ✅ |
+| 15 | R22-C15 | `POST /close` + client release on player exit / cancel — stop matching desktop swarm (keep cache) | ✅ |
 
 ---
 
@@ -76,6 +77,7 @@ Historical C01–C07 above were never on `main` (stale ✅ from `feat/forja-serv
 | 17 | R22-A17 | Settings → LAN shows green/grey status dots — TV desktop online/offline; desktop paired devices Online/Idle from `last_seen` | ✅ |
 | 18 | R22-A18 | LAN restore runs after post-splash torrent/proxy warm; ephemeral fallback only on real bind conflict (not “torrent not running”) so sticky port survives app restart | ✅ |
 | 19 | R22-A19 | LAN `POST /open` torrent resolves via `stream_magnet_on_engine` (no nested `Runtime::block_on` panic on desktop) | ✅ |
+| 20 | R22-A20 | Leaving or cancelling a LAN torrent play on TV/phone stops the matching desktop download (cache/history kept until Delete) | ✅ |
 
 ---
 
@@ -251,6 +253,7 @@ New routes on the desktop's LAN-bound axum router (same process as proxy/torrent
 | `GET /search?q=` | token | Torrent search (wraps `scrapers::search_all` via FFI pipeline) |
 | `POST /resolve` | token | Resolve title to candidate sources (host calls server; server runs provider registry + engine) |
 | `POST /open` | token | Open stream (torrent add or proxy route register); returns LAN play URL |
+| `POST /close` | token | Stop matching torrent swarm when client leaves player (`info_hash`); keeps cache |
 | `GET /status?handle=` | token | Stream status (progress, buffered, errors) |
 | `GET /devices` | token | List paired devices |
 | `POST /revoke` | token | Revoke a device token |

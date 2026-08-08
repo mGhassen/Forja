@@ -13,6 +13,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
+import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -187,6 +188,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
         isLocalTorrentStreamUrl(_sessionStreamUrl)) {
       TorrentStreamService().removeTorrent(torrentId);
     }
+    // LAN remount: local removeTorrent is a no-op on TV — stop desktop swarm.
+    LanClientService.instance.releaseLanTorrentIfNeeded(
+      playUrl: _sessionStreamUrl,
+      magnet: widget.magnetLink,
+    );
     super.dispose();
   }
 

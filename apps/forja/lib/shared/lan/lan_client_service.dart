@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -196,6 +197,63 @@ class LanClientService {
     }
   }
 
+  /// Tell the desktop to stop a LAN torrent swarm (keeps cache/history).
+  ///
+  /// Only stops when [infoHash] / magnet still matches the active download —
+  /// safe after source switch `/open` of a different magnet.
+  Future<bool> closeTorrent({String? infoHash, String? magnet}) async {
+    final hash = (infoHash?.trim().isNotEmpty == true)
+        ? infoHash!.trim()
+        : infoHashFromMagnet(magnet);
+    if (hash == null || hash.isEmpty) return false;
+
+    final prefs = LanPrefs.instance;
+    final token = await prefs.token;
+    var h = await prefs.serverHost;
+    var p = await prefs.serverPort;
+    if (token == null || h == null || p == null) return false;
+
+    if (!await _probeAndTouch(
+      h,
+      p,
+      expectedServerId: await prefs.serverId,
+    )) {
+      if (!await verifyPairedConnection()) return false;
+      h = await prefs.serverHost;
+      p = await prefs.serverPort;
+      if (h == null || p == null) return false;
+    }
+
+    try {
+      final r = await http
+          .post(
+            Uri.parse('http://$h:$p/close'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({'kind': 'torrent', 'info_hash': hash}),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (r.statusCode == 401) {
+        await prefs.clearServer();
+        return false;
+      }
+      return r.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Fire-and-forget close when [playUrl] is a remounted LAN torrent stream.
+  void releaseLanTorrentIfNeeded({
+    required String playUrl,
+    String? magnet,
+  }) {
+    if (!isLanTorrentStreamUrl(playUrl)) return;
+    unawaited(closeTorrent(magnet: magnet));
+  }
+
   /// Health on saved address; on failure browse mDNS for the same `server_id`
   /// and rewrite host/port (desktop restart / sticky-port miss).
   Future<bool> verifyPairedConnection() async {
@@ -245,4 +303,21 @@ class LanClientService {
       return const [];
     }
   }
+}
+
+/// Remounted desktop torrent HTTP URL (not localhost — that is local engine).
+bool isLanTorrentStreamUrl(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return false;
+  final host = uri.host.toLowerCase();
+  if (host == '127.0.0.1' || host == 'localhost') return false;
+  return uri.path.contains('/torrents/') && uri.path.contains('/stream/');
+}
+
+String? infoHashFromMagnet(String? magnet) {
+  if (magnet == null || magnet.isEmpty) return null;
+  final m = RegExp(
+    r'xt=urn:btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})',
+  ).firstMatch(magnet);
+  return m?.group(1)?.toLowerCase();
 }

@@ -39,6 +39,7 @@ Status shows **Paired** with a green/grey status dot and a small **Desktop onlin
 2. Open a title → white **Play** / **Sources → Torrents**
 3. Pick a torrent
 4. The TV asks the desktop to open the magnet; the desktop downloads; the TV plays the stream
+5. When you leave the player (or cancel before it opens), the desktop **stops that download** — cached files stay until you delete them under **Torrent activity**
 
 You do not re-enter a code per title. Unpair hides those Playback toggles again (Webstreaming stays). If the desktop goes **offline**, Direct torrent / Stremio / Nuvio turn off and stay disabled until it is online again — your previous checks come back automatically.
 

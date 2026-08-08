@@ -607,6 +607,12 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         },
       );
       if (_s._streamCancelled) {
+        if (playback != null) {
+          LanClientService.instance.releaseLanTorrentIfNeeded(
+            playUrl: playback.url,
+            magnet: magnetLink,
+          );
+        }
         popLoading();
         cleanupNotifiers();
         return;
@@ -633,6 +639,12 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
     }
 
     if (!mounted || _s._streamCancelled) {
+      if (resolvedUrl != null) {
+        LanClientService.instance.releaseLanTorrentIfNeeded(
+          playUrl: resolvedUrl!,
+          magnet: magnetLink,
+        );
+      }
       popLoading();
       cleanupNotifiers();
       return;

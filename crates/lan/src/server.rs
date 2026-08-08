@@ -187,6 +187,7 @@ fn build_router(state: LanServerState) -> Router {
         .route("/devices", get(devices_handler))
         .route("/revoke", post(revoke_handler))
         .route("/open", post(open_handler))
+        .route("/close", post(close_handler))
         .route("/search", get(search_handler))
         .route("/status", get(status_handler))
         .route_layer(middleware::from_fn({
@@ -373,6 +374,42 @@ async fn open_handler(
         other => return Err(bad_request(&format!("unknown kind: {other}"))),
     };
     Ok(Json(response))
+}
+
+#[derive(Debug, Deserialize)]
+struct CloseRequest {
+    kind: String,
+    #[serde(default)]
+    info_hash: Option<String>,
+}
+
+/// Stop a LAN-opened torrent when the client leaves the player.
+///
+/// Requires `info_hash` and only stops when it matches the active swarm —
+/// so pushReplacement after a new `/open` does not kill the new download.
+async fn close_handler(
+    State(state): State<LanServerState>,
+    Json(body): Json<CloseRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    match body.kind.as_str() {
+        "torrent" => {
+            let want = body
+                .info_hash
+                .as_deref()
+                .map(str::trim)
+                .filter(|h| !h.is_empty())
+                .ok_or_else(|| bad_request("info_hash required for torrent"))?;
+            let Some(status) = state.torrent.status() else {
+                return Ok(Json(serde_json::json!({ "ok": true, "stopped": false })));
+            };
+            if !status.info_hash.eq_ignore_ascii_case(want) {
+                return Ok(Json(serde_json::json!({ "ok": true, "stopped": false })));
+            }
+            state.torrent.stop();
+            Ok(Json(serde_json::json!({ "ok": true, "stopped": true })))
+        }
+        other => Err(bad_request(&format!("unknown kind: {other}"))),
+    }
 }
 
 fn record_torrent_open(
@@ -575,5 +612,13 @@ mod tests {
             file_name_from_url("http://h/torrents/1/stream/0/movie.mkv?st=x").as_deref(),
             Some("movie.mkv")
         );
+    }
+
+    #[test]
+    fn close_request_deserializes_info_hash() {
+        let r: CloseRequest =
+            serde_json::from_str(r#"{"kind":"torrent","info_hash":"AbC"}"#).unwrap();
+        assert_eq!(r.kind, "torrent");
+        assert_eq!(r.info_hash.as_deref(), Some("AbC"));
     }
 }
