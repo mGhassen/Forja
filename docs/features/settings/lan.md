@@ -16,7 +16,7 @@ Pairing means **this TV trusts that desktop**. Do it once on the same Wi‑Fi.
 2. Note the **desktop address** (`IP:port`) and the **6-digit pairing code**
 3. Keep Forja running
 
-Paired TVs and phones appear under **Paired devices**. **Revoke** forces that device to pair again.
+Paired TVs and phones appear under **Paired devices**. Use the **reload** icon if a device just paired and the list still says waiting. **Revoke** forces that device to pair again.
 
 ### Android TV / phone
 

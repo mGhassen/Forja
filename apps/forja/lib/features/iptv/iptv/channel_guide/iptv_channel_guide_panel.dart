@@ -191,7 +191,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
   /// Scroll only when the focused row would be clipped — leap to keep it inside
   /// [listFocusMargin]. Instant jump on TV (no tween stutter / missing focus).
-  void _jumpListToIndex(
+  /// Returns true when the list offset actually moved.
+  bool _jumpListToIndex(
     ScrollController controller, {
     required int index,
     required double itemExtent,
@@ -199,10 +200,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     required double alignment,
     bool animate = false,
   }) {
-    if (!controller.hasClients || index < 0) return;
+    if (!controller.hasClients || index < 0) return false;
     final position = controller.position;
     final viewport = position.viewportDimension;
-    if (viewport <= 0) return;
+    if (viewport <= 0) return false;
     final margin = IptvChannelGuidePanel.listFocusMargin;
     final itemTop = paddingV + index * itemExtent;
     final itemBottom = itemTop + itemExtent;
@@ -223,9 +224,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
           itemBottom <= viewBottom - margin;
       if (!inView) target = preferred;
     }
-    if (target == null) return;
+    if (target == null) return false;
     final offset = target.clamp(0.0, position.maxScrollExtent);
-    if ((offset - position.pixels).abs() < 0.5) return;
+    if ((offset - position.pixels).abs() < 0.5) return false;
     // TV D-pad: always jump. Animated scroll hides the focus highlight mid-tween.
     final useAnimate = animate && !iptvUseTvFocus(context);
     if (useAnimate) {
@@ -237,6 +238,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     } else {
       controller.jumpTo(offset);
     }
+    return true;
   }
 
   @override
@@ -277,13 +279,17 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     super.dispose();
   }
 
-  /// Hide channel logos on every D-pad step; show them only after 500ms idle.
-  /// Mid-viewport ↑/↓ (no scroll) still bumps — scroll alone used to miss that.
-  void _bumpChannelLogoSettle() {
+  /// Reveal channel logos after 500ms idle. [hide] only when the list scrolled
+  /// or the group swapped — mid-viewport ↑/↓ must keep logos on.
+  void _bumpChannelLogoSettle({bool hide = false}) {
     if (!iptvUseTvFocus(context)) return;
     _logoSettleTimer?.cancel();
-    if (_channelLogosVisible) {
-      setState(() => _channelLogosVisible = false);
+    if (hide) {
+      if (_channelLogosVisible) {
+        setState(() => _channelLogosVisible = false);
+      }
+    } else if (_channelLogosVisible) {
+      return;
     }
     _logoSettleTimer = Timer(_logoSettleDelay, () {
       if (!mounted || _channelLogosVisible) return;
@@ -347,7 +353,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         _focusedChannelIndex = 0;
       }
     });
-    if (groupChanged) _bumpChannelLogoSettle();
+    if (groupChanged) _bumpChannelLogoSettle(hide: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollFocusedGroupIntoView(animate: animateScroll);
     });
@@ -504,19 +510,19 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   bool get _wide =>
       MediaQuery.sizeOf(context).width >= IptvChannelGuidePanel.wideBreakpoint;
 
-  void _scrollToFocused({bool animate = true, bool groupsOnly = false}) {
+  /// Returns true when the channel list offset actually moved.
+  bool _scrollToFocused({bool animate = true, bool groupsOnly = false}) {
     _scrollFocusedGroupIntoView(animate: animate);
-    if (!groupsOnly && _focusColumn == _FocusColumn.channels) {
-      if (!_channelScroll.hasClients) return;
-      _jumpListToIndex(
-        _channelScroll,
-        index: _focusedChannelIndex,
-        itemExtent: IptvChannelGuidePanel.channelRowExtent,
-        paddingV: IptvChannelGuidePanel.channelListPaddingV,
-        alignment: 0,
-        animate: animate,
-      );
-    }
+    if (groupsOnly || _focusColumn != _FocusColumn.channels) return false;
+    if (!_channelScroll.hasClients) return false;
+    return _jumpListToIndex(
+      _channelScroll,
+      index: _focusedChannelIndex,
+      itemExtent: IptvChannelGuidePanel.channelRowExtent,
+      paddingV: IptvChannelGuidePanel.channelListPaddingV,
+      alignment: 0,
+      animate: animate,
+    );
   }
 
   void _close() {
@@ -583,8 +589,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
             (_focusedChannelIndex + delta).clamp(0, n - 1);
         if (next == _focusedChannelIndex) return;
         _focusedChannelIndex = next;
-        _scrollToFocused();
-        _bumpChannelLogoSettle();
+        final scrolled = _scrollToFocused();
+        _bumpChannelLogoSettle(hide: scrolled);
         setState(() {});
         return;
       }
@@ -599,8 +605,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       final next = (_focusedChannelIndex + delta).clamp(0, n - 1);
       if (next == _focusedChannelIndex) return;
       _focusedChannelIndex = next;
-      _scrollToFocused();
-      _bumpChannelLogoSettle();
+      final scrolled = _scrollToFocused();
+      _bumpChannelLogoSettle(hide: scrolled);
       setState(() {});
     }
   }
@@ -642,7 +648,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         final g = widget.guide.groups[_focusedGroupIndex];
         _selectGroup(g.id);
         setState(() => _focusColumn = _FocusColumn.channels);
-        _bumpChannelLogoSettle();
+        _bumpChannelLogoSettle(hide: true);
         _scrollToFocused();
         return;
       }
@@ -654,7 +660,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       final g = widget.guide.groups[_focusedGroupIndex];
       _selectGroup(g.id);
       setState(() => _step = _GuideStep.channels);
-      _bumpChannelLogoSettle();
+      _bumpChannelLogoSettle(hide: true);
       WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
       return;
     }
@@ -668,7 +674,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         final g = widget.guide.groups[_focusedGroupIndex];
         _selectGroup(g.id);
         setState(() => _focusColumn = _FocusColumn.channels);
-        _bumpChannelLogoSettle();
+        _bumpChannelLogoSettle(hide: true);
         _scrollToFocused();
         return;
       }
@@ -683,7 +689,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       final g = widget.guide.groups[_focusedGroupIndex];
       _selectGroup(g.id);
       setState(() => _step = _GuideStep.channels);
-      _bumpChannelLogoSettle();
+      _bumpChannelLogoSettle(hide: true);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_focusNode.canRequestFocus) _focusNode.requestFocus();
       });

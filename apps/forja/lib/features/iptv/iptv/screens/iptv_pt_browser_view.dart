@@ -33,6 +33,8 @@ class _BrowserViewState extends State<_BrowserView> {
   /// TV: defer stream logos until D-pad focus is still 500ms (decode thrash).
   bool _channelLogosVisible = false;
   static const _logoSettleDelay = Duration(milliseconds: 500);
+  /// Last stream-list offset — hide logos only when this actually moves.
+  double? _lastStreamScrollOffset;
   bool _didInitialFocus = false;
   bool _didRequestReloadFocus = false;
   bool _wasLoading = false;
@@ -62,6 +64,7 @@ class _BrowserViewState extends State<_BrowserView> {
     _wasLoading = widget.ctrl.isLoading;
     _wasPortalPanelOpen = widget.ctrl.portalPanelOpen;
     widget.ctrl.addListener(_onCtrlChanged);
+    _streamScroll.addListener(_onStreamScrollForLogos);
     // Prefer this pageBack (scrolls the category rail) over the screen default.
     TvHeroActions.bind(
       'iptv',
@@ -91,6 +94,7 @@ class _BrowserViewState extends State<_BrowserView> {
   void dispose() {
     _unbindFloatingReorderKeys();
     widget.ctrl.removeListener(_onCtrlChanged);
+    _streamScroll.removeListener(_onStreamScrollForLogos);
     _scrollSettleTimer?.cancel();
     _categoryScroll.dispose();
     _streamScroll.dispose();
@@ -514,6 +518,8 @@ class _BrowserViewState extends State<_BrowserView> {
     // from the previous category into this one.
     if (prev != categoryId) {
       iptvResetBrowserStreamsFocusMemory();
+      // New channel set — drop logos even if scroll offset stayed at 0.
+      _bumpChannelLogoSettle(hide: true);
     }
     if (iptvUseTvFocus(context)) {
       setState(() {
@@ -614,7 +620,7 @@ class _BrowserViewState extends State<_BrowserView> {
   void _toggleSearch() => toggleSearch();
 
   bool _onScrollNotification(ScrollNotification n) {
-    // Mobile visibility probes only — TV logos are focus-debounced.
+    // Mobile visibility probes only — TV logos listen via [_streamScroll].
     if (iptvUseTvFocus(context)) return false;
     if (n is ScrollStartNotification) {
       _scrollSettleTimer?.cancel();
@@ -629,12 +635,29 @@ class _BrowserViewState extends State<_BrowserView> {
     return false;
   }
 
-  /// Hide stream logos on every D-pad focus step; show only after 500ms idle.
-  void _bumpChannelLogoSettle() {
+  /// TV: hide logos only when the channel list offset actually moves.
+  void _onStreamScrollForLogos() {
+    if (!mounted || !iptvUseTvFocus(context) || !_streamScroll.hasClients) {
+      return;
+    }
+    final offset = _streamScroll.offset;
+    final prev = _lastStreamScrollOffset;
+    _lastStreamScrollOffset = offset;
+    if (prev == null || (offset - prev).abs() < 0.5) return;
+    _bumpChannelLogoSettle(hide: true);
+  }
+
+  /// Reveal stream logos after 500ms idle. [hide] only when the list scrolled
+  /// or the category swapped — mid-viewport ↑/↓ must keep logos on.
+  void _bumpChannelLogoSettle({bool hide = false}) {
     if (!iptvUseTvFocus(context)) return;
     _scrollSettleTimer?.cancel();
-    if (_channelLogosVisible) {
-      setState(() => _channelLogosVisible = false);
+    if (hide) {
+      if (_channelLogosVisible) {
+        setState(() => _channelLogosVisible = false);
+      }
+    } else if (_channelLogosVisible) {
+      return;
     }
     _scrollSettleTimer = Timer(_logoSettleDelay, () {
       if (!mounted || _channelLogosVisible) return;

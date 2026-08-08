@@ -152,6 +152,14 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
     await _load();
   }
 
+  void _refreshPairedDevices() {
+    if (!_isDesktopServer || !LanServerService.instance.isRunning) return;
+    setState(() {
+      _devices = LanServerService.instance.listDevices();
+      _pairingCode = LanServerService.instance.currentPairingCode();
+    });
+  }
+
   void _copyCode() {
     if (_pairingCode.isEmpty) return;
     Clipboard.setData(ClipboardData(text: _pairingCode));
@@ -309,8 +317,16 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
           ),
         ),
         const SizedBox(height: 20),
-        _sectionLabel('PAIRED DEVICES'),
-        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(child: _sectionLabel('PAIRED DEVICES')),
+            IconButton(
+              tooltip: 'Reload paired devices',
+              onPressed: _refreshPairedDevices,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ],
+        ),
         Text(
           _devices.isEmpty
               ? 'No TVs or phones paired yet.'

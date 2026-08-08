@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** fix · **0 / 5** acceptance |
+| **Progress** | **12 / 12** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -30,6 +30,7 @@
 | 9 | I136-T09 | IPTV catalog channel grid/list (TV): same 350ms logo + EPG deferral; `cacheWidth` on thumbs | ✅ |
 | 10 | I136-T10 | In-player channel guide (TV): load logos only after D-pad idle **500ms** (not scroll-only) | ✅ |
 | 11 | I136-T11 | IPTV catalog (TV): same D-pad idle **500ms** logo gate on stream focus | ✅ |
+| 12 | I136-T12 | TV catalog + guide: after logos settle, keep them on mid-viewport ↑/↓ — hide only on real list scroll / group swap | ✅ |
 
 ---
 
@@ -62,6 +63,8 @@ D-pad focus on IPTV **catalog** (category rail + channel grid/list) and **in-pla
 **Follow-up (I136-T09):** Catalog channel grid/list had the same decode thrash. Same 350ms settle gate; live EPG “NOW” footers stay off while scrolling; thumbs decode with `cacheWidth` only.
 
 **Follow-up (I136-T10 / T11):** Scroll-only settle missed mid-viewport ↑/↓ (no jump). Logos now stay off until D-pad focus is idle **500ms** in the in-player guide and catalog stream grid/list.
+
+**Follow-up (I136-T12):** T10/T11 hid logos on every focus step (including mid-viewport ↑/↓ with no scroll). After the first settle, logos stay on until the channel list actually scrolls or the category/group swaps — then hide and re-settle after **500ms** idle.
 
 ## Related
 
