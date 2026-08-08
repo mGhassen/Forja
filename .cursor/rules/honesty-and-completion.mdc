@@ -44,6 +44,7 @@ Many bugs have **two layers**. Name both. Never collapse them into "fixed."
 ## Workarounds require permission
 
 - A **workaround** skips root cause (and often symptom fix too): user-side avoidance, deferred real fix, `Future(() => …)` on the UI isolate, allowlists that hide the problem, etc.
+- **Never hide / omit / force-disable a user-facing option as the fix** (Player engines, settings, tabs, buttons). See [no-hide-as-fix.mdc](./no-hide-as-fix.mdc).
 - Before implementing a workaround, **ask the user for permission** and explain:
   - what the symptom fix would be
   - what the root / engine fix would be

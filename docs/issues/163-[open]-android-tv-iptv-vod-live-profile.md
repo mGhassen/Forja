@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 3** acceptance |
+| **Progress** | **9 / 9** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,6 +27,7 @@
 | 6 | I163-T06 | ATV VOD chrome: progress scrubber + Audio/Subs (+ Episodes on series); Exo online subs | ✅ |
 | 7 | I163-T07 | ATV Movies/Series: omit/refuse MediaKit in Player menu + auto-swap (Exo only) | ✅ |
 | 8 | I163-T08 | Restore MediaKit for ATV Movies/Series (Player menu + engine pref + auto-swap); keep `vodPlayback` live-profile gates | ✅ |
+| 9 | I163-T09 | Remove Player menu `allowMediaKit` kill-switch; VOD Exo `Source error` / 403 → one-shot MediaKit swap | ✅ |
 
 ---
 
@@ -46,4 +47,4 @@ IPTV Movies/Series reused the **live** player profile: post-open `drop-buffers` 
 
 **Fix:** Catalog-driven `vodPlayback` (and URL fallback via `_livePlaybackProfile`). Live paths unchanged when `vodPlayback` is false. VOD chrome: scrubber + Audio/Subs (+ Episodes on series).
 
-**Engine:** `I163-T07` briefly forced ATV VOD to Exo-only; **`I163-T08` restores MediaKit** in the Player menu and settings pref (same as Live). VOD still skips live-edge snap / forever cold-retry.
+**Engine:** `I163-T07` briefly forced ATV VOD to Exo-only; **`I163-T08`/`T09` restore MediaKit** (menu always lists it; no hide API; VOD Exo hard-fail / 403 swaps to MediaKit once). VOD still skips live-edge snap / forever cold-retry.

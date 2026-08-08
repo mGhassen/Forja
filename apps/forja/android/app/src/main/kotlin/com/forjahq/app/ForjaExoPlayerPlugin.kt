@@ -207,10 +207,28 @@ class ExoPlayerHost(
         }
 
         override fun onPlayerError(error: PlaybackException) {
+            // Include cause (e.g. AAC ASC ArrayIndexOutOfBounds) so Dart can
+            // treat extractor deaths as hard-open fails and swap engines.
+            val detail = buildString {
+                append(error.message ?: error.toString())
+                var c = error.cause
+                var depth = 0
+                while (c != null && depth < 4) {
+                    append(": ")
+                    append(c.javaClass.simpleName)
+                    val cm = c.message
+                    if (!cm.isNullOrBlank()) {
+                        append(": ")
+                        append(cm)
+                    }
+                    c = c.cause
+                    depth++
+                }
+            }
             emit(
                 mapOf(
                     "type" to "error",
-                    "message" to (error.message ?: error.toString()),
+                    "message" to detail,
                 ),
             )
         }

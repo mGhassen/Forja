@@ -77,7 +77,13 @@ bool iptvIsHardOpenFail(String msg) {
       lower.contains('failed to recognize file format') ||
       lower.contains('unrecognizedinputformat') ||
       lower.contains('none of the available extractors') ||
-      (lower.contains('source error') && lower.contains('m3u8'));
+      lower.contains('invalidresponsecode') ||
+      lower.contains('response code: 403') ||
+      lower.contains('response code: 401') ||
+      lower.contains('arrayindexoutofbounds') ||
+      lower.contains('unexpectedloaderexception') ||
+      // Exo progressive VOD: HTTP death or Media3 AAC/MP4 extractor crash.
+      lower.contains('source error');
 }
 
 /// Single source for the IPTV player.
@@ -611,6 +617,17 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       );
       if (_disposed || !mounted) return;
       _exoBackend = engine == BuiltInPlayerEngine.exoPlayer;
+      // Movies/Series: prefer MediaKit when IPTV has no explicit engine yet
+      // (legacy VOD inherit of Exo). Media3 dies on many portal MP4 AAC configs.
+      if (widget.vodPlayback && _exoBackend) {
+        final iptvRaw = await SettingsService().getBuiltInPlayerEngineRaw(
+          BuiltInPlayerContext.iptv,
+        );
+        if (_disposed || !mounted) return;
+        if (iptvRaw == null || iptvRaw.isEmpty) {
+          _exoBackend = false;
+        }
+      }
     } else {
       _exoBackend = false;
     }

@@ -1,0 +1,29 @@
+---
+description: Never hide, remove, or disable user-facing options when asked to fix a bug
+alwaysApply: true
+---
+
+# Never hide something as a “fix”
+
+When the user asks to **fix** a bug (crash, ANR, bad playback, layout, …):
+
+## Forbidden without explicit user approval in the same conversation
+
+- Hiding or omitting a menu entry, setting, engine, tab, button, or feature
+- Forcing one backend and refusing the other (e.g. Exo-only, “MediaKit isn’t available…”)
+- `allowX: false` / filter-out UI “so it cannot crash”
+- Shipping a workaround that removes choice, then marking the issue fixed
+
+**Wrong:** “Movies ANR on MediaKit → hide MediaKit / force Exo.”  
+**Right:** Fix the MediaKit path (or the live-profile misuse). Keep Exo **and** MediaKit in the Player menu.
+
+## Required
+
+1. Fix the **root** (or symptom) that was asked for.
+2. Keep the same user-facing surface area unless the user **explicitly** says to remove/hide it.
+3. If you believe a hide/disable is the only safe path — **stop and ask**. Do not ship it.
+4. Workarounds still need permission per [honesty-and-completion.mdc](./honesty-and-completion.mdc). Hiding UI is a workaround.
+
+## Precedent (do not repeat)
+
+Issue 163 briefly omitted MediaKit for ATV IPTV Movies/Series. That was wrong. MediaKit stays available; VOD must skip live-edge snap / forever reconnect instead.

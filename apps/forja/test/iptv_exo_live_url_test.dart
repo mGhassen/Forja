@@ -48,5 +48,15 @@ void main() {
     test('benign seek noise is not hard open', () {
       expect(iptvIsHardOpenFail('Cannot seek'), isFalse);
     });
+
+    test('Exo Source error / HTTP 403 is hard open', () {
+      expect(iptvIsHardOpenFail('Source error'), isTrue);
+      expect(
+        iptvIsHardOpenFail(
+          'HttpDataSource\$InvalidResponseCodeException: Response code: 403',
+        ),
+        isTrue,
+      );
+    });
   });
 }

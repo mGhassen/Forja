@@ -199,15 +199,18 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       case 'error':
         final msg = event['message']?.toString() ?? 'Playback error';
         debugPrint('[IPTV Exo] error: $msg');
-        if (!_s._formatEngineSwapped &&
-            !_livePlaybackProfile &&
-            iptvIsHardOpenFail(msg)) {
-          unawaited(_s._autoSwapEngineForFormatError(msg));
-          return;
-        }
-        if (!_s._formatEngineSwapped &&
-            _IptvPtPlayerScreenState._isUnrecognizedFormatError(msg)) {
-          unawaited(_s._autoSwapEngineForFormatError(msg));
+        // VOD: Media3 AAC/MP4 extractor deaths ("Source error") are not fixed by
+        // reopening Exo — swap to MediaKit once, never hard-loop Exo.
+        if (!_livePlaybackProfile &&
+            (iptvIsHardOpenFail(msg) ||
+                _IptvPtPlayerScreenState._isUnrecognizedFormatError(msg))) {
+          if (!_s._formatEngineSwapped) {
+            unawaited(_s._autoSwapEngineForFormatError(msg));
+            return;
+          }
+          if (mounted) {
+            setState(() => _s._statusBanner = 'Playback failed');
+          }
           return;
         }
         _triggerRecovery(reason: 'exo error: $msg', forceHard: true);
@@ -1183,6 +1186,25 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _playbackStarted &&
         _streamWorking) {
       _logHealthyHold(reason);
+      return;
+    }
+    // VOD Exo extractor/HTTP death → MediaKit once (don't reopen Exo forever).
+    if (!userInitiated &&
+        !_livePlaybackProfile &&
+        _s._exoBackend &&
+        !_s._formatEngineSwapped &&
+        iptvIsHardOpenFail(reason)) {
+      unawaited(_s._autoSwapEngineForFormatError(reason));
+      return;
+    }
+    if (!userInitiated &&
+        !_livePlaybackProfile &&
+        _s._exoBackend &&
+        _s._formatEngineSwapped &&
+        iptvIsHardOpenFail(reason)) {
+      if (mounted) {
+        setState(() => _s._statusBanner = 'Playback failed');
+      }
       return;
     }
     final now = DateTime.now();
