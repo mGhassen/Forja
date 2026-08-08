@@ -424,12 +424,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                                           onProfile: _onActiveProfile,
                                         )
                                       : null,
-                                  iconBadge:
-                                      showDesktopProfile && lanPaired
-                                      ? _NavLanPairBadge(
-                                          avatarSize: profileIconSize,
-                                        )
-                                      : null,
+                                  labelDot: showDesktopProfile && lanPaired,
                                   customIconSize: showDesktopProfile
                                       ? profileIconSize
                                       : null,
@@ -670,19 +665,41 @@ class _AnimatedSaturation extends StatelessWidget {
   }
 }
 
-/// Brand-green cast badge — LAN pairing exists (desktop↔TV), outside desaturation.
-class _NavLanPairBadge extends StatelessWidget {
-  const _NavLanPairBadge({required this.avatarSize});
+class _NavRailLabel extends StatelessWidget {
+  const _NavRailLabel({
+    required this.text,
+    required this.style,
+    this.showDot = false,
+  });
 
-  final double avatarSize;
+  final String text;
+  final TextStyle style;
+  final bool showDot;
 
   @override
   Widget build(BuildContext context) {
-    final size = (avatarSize * 0.42).clamp(10.0, 16.0);
-    return Icon(
-      Icons.signal_wifi_4_bar_rounded,
-      size: size,
-      color: ForjaShellColors.brandGreen,
+    final label = Text(
+      text,
+      textAlign: TextAlign.center,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: style,
+    );
+    if (!showDot) return label;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 5,
+          height: 5,
+          decoration: const BoxDecoration(
+            color: ForjaShellColors.brandGreen,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Flexible(child: label),
+      ],
     );
   }
 }
@@ -698,7 +715,7 @@ class _ShellNavRailItem extends StatefulWidget {
     required this.onFocusChanged,
     this.label,
     this.icon,
-    this.iconBadge,
+    this.labelDot = false,
     this.iconSize,
     this.labelFontSize,
     this.customIconSize,
@@ -714,8 +731,8 @@ class _ShellNavRailItem extends StatefulWidget {
   final VoidCallback onFocusChanged;
   final String? label;
   final Widget? icon;
-  /// Drawn above [icon] after idle desaturation so it stays colored.
-  final Widget? iconBadge;
+  /// Brand-green status dot before the label (LAN pairing).
+  final bool labelDot;
   /// Fitted / preferred glyph size for destination icons.
   final double? iconSize;
   final double? labelFontSize;
@@ -914,17 +931,6 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         child: icon,
       );
     }
-    final badge = widget.iconBadge;
-    if (badge != null) {
-      icon = Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          icon,
-          Positioned(right: -5, top: -5, child: badge),
-        ],
-      );
-    }
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: widget.itemSpacing / 2),
@@ -1033,12 +1039,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                             width: ShellTokens.navRailWidth,
                             child: Center(
                               child: showLabel
-                                  ? Text(
-                                      label,
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                  ? _NavRailLabel(
+                                      text: label,
                                       style: labelStyle,
+                                      showDot: widget.labelDot,
                                     )
                                   : _TypewriterLabel(
                                       text: label,

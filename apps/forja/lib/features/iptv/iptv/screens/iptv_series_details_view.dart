@@ -146,19 +146,23 @@ class _IptvSeriesDetailsScreenState
       preferMovie: false,
     );
     if (!mounted) return;
-    final catalog = await ref
-        .read(iptvControllerProvider)
-        .vodSeriesCatalog(widget.portal.key);
-    if (!mounted) return;
-    final recs = filterIptvCatalogRecommendations(
-      recommendations: hit?.rich.extras.recommendations ?? const [],
-      catalog: catalog,
-      excludeStreamId: widget.series.streamId,
-    );
-    setState(() {
-      _enrich = hit;
-      _catalogRecs = recs;
-    });
+    setState(() => _enrich = hit);
+
+    try {
+      final catalog = await ref
+          .read(iptvControllerProvider)
+          .vodSeriesCatalog(widget.portal.key);
+      if (!mounted) return;
+      final recs = filterIptvCatalogRecommendations(
+        recommendations: hit?.rich.extras.recommendations ?? const [],
+        catalog: catalog,
+        excludeStreamId: widget.series.streamId,
+      );
+      if (!mounted) return;
+      setState(() => _catalogRecs = recs);
+    } catch (_) {
+      // Enrichment already painted; catalog recs are optional.
+    }
   }
 
   void _syncSelectionFromEpisodes() {
@@ -374,6 +378,9 @@ class _IptvSeriesDetailsScreenState
           subtitleSeason: episode.season,
           subtitleEpisode: episode.episode,
           subtitleYear: _cleaned.year,
+          seriesEpisodes: List<IptvEpisode>.from(_episodes),
+          seriesPortal: widget.portal.portal,
+          seriesShowTitle: _displayTitle,
         ),
       ),
     );
@@ -539,6 +546,7 @@ class _IptvSeriesDetailsScreenState
               rating: rating,
               overview: _overview(),
               facts: _facts(),
+              richFacts: _enrich?.rich,
               height: heroHeight,
               showSeasonRail: multiSeason,
               pageBottomChild: episodePicker,

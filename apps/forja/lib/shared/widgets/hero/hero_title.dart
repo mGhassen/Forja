@@ -21,6 +21,10 @@ class ChromaticHeroTitleText extends StatelessWidget {
   final TextStyle style;
   final int maxLines;
 
+  /// Room for neg letterSpacing glyph overhang + ±1.5 chromatic offsets so a
+  /// parent [ClipRect] (details title slot) does not eat the first/last strokes.
+  static const double _bleed = 2.0;
+
   @override
   Widget build(BuildContext context) {
     final plain = Text(
@@ -30,41 +34,47 @@ class ChromaticHeroTitleText extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
     );
     if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
-      return wrapDesktopSelectableTitle(context, plain);
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: _bleed),
+        child: wrapDesktopSelectableTitle(context, plain),
+      );
     }
-    return wrapDesktopSelectableTitle(
-      context,
-      Stack(
-        clipBehavior: Clip.hardEdge,
-        children: [
-          desktopTitleSelectionGhost(
-            Transform.translate(
-              offset: const Offset(-1.5, 0),
-              child: Text(
-                title,
-                style: style.copyWith(
-                  color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: _bleed),
+      child: wrapDesktopSelectableTitle(
+        context,
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            desktopTitleSelectionGhost(
+              Transform.translate(
+                offset: const Offset(-1.5, 0),
+                child: Text(
+                  title,
+                  style: style.copyWith(
+                    color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
+                  ),
+                  maxLines: maxLines,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: maxLines,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
-          ),
-          desktopTitleSelectionGhost(
-            Transform.translate(
-              offset: const Offset(1.5, 0),
-              child: Text(
-                title,
-                style: style.copyWith(
-                  color: const Color(0xFFFBBF24).withValues(alpha: 0.4),
+            desktopTitleSelectionGhost(
+              Transform.translate(
+                offset: const Offset(1.5, 0),
+                child: Text(
+                  title,
+                  style: style.copyWith(
+                    color: const Color(0xFFFBBF24).withValues(alpha: 0.4),
+                  ),
+                  maxLines: maxLines,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: maxLines,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
-          ),
-          plain,
-        ],
+            plain,
+          ],
+        ),
       ),
     );
   }

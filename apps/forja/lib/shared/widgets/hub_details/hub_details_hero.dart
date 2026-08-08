@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/hero/hero_facts_panel.dart';
 import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_facts_panel.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
+import 'package:rust/rust.dart';
 
 /// Cinematic details hero for non-TMDB hubs - matches [MediaDetailsHero] layout.
 class HubDetailsHero extends StatelessWidget {
@@ -21,6 +23,7 @@ class HubDetailsHero extends StatelessWidget {
     this.rating,
     this.overview = '',
     this.facts = const [],
+    this.richFacts,
     this.actionRow,
     this.height,
     this.positionMs,
@@ -41,6 +44,8 @@ class HubDetailsHero extends StatelessWidget {
   final double? rating;
   final String overview;
   final List<MapEntry<String, String>> facts;
+  /// When set, right column uses the same [HeroFactsPanel] as Home details.
+  final RichMediaDetails? richFacts;
   final Widget? actionRow;
   final double? height;
   final int? positionMs;
@@ -144,6 +149,7 @@ class HubDetailsHero extends StatelessWidget {
                           rating: rating,
                           overview: overview,
                           facts: facts,
+                          richFacts: richFacts,
                           actionRow: actionRow,
                           positionMs: positionMs,
                           durationMs: durationMs,
@@ -196,6 +202,7 @@ class _HubHeroLayout extends StatelessWidget {
     this.rating,
     required this.overview,
     required this.facts,
+    this.richFacts,
     this.actionRow,
     this.positionMs,
     this.durationMs,
@@ -211,6 +218,7 @@ class _HubHeroLayout extends StatelessWidget {
   final double? rating;
   final String overview;
   final List<MapEntry<String, String>> facts;
+  final RichMediaDetails? richFacts;
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
@@ -246,7 +254,33 @@ class _HubHeroLayout extends StatelessWidget {
       );
     }
 
-    final factsPanel = HubDetailsFactsPanel(entries: facts);
+    final rich = richFacts;
+    final Widget? factsChild;
+    var hasFacts = false;
+    if (rich != null) {
+      final panel = HeroFactsPanel(
+        movie: rich.movie,
+        status: rich.extras.status,
+        budget: rich.extras.budget,
+        revenue: rich.extras.revenue,
+        languageCode: rich.extras.originalLanguage,
+        spokenLanguages: rich.extras.spokenLanguages,
+        productionCompanies: rich.extras.productionCompanies,
+        originCountries: rich.extras.originCountries,
+        lastAirDate: rich.extras.lastAirDate,
+        networks: rich.extras.networks,
+        creators: rich.extras.creators,
+        positionMs: positionMs,
+        durationMs: durationMs,
+      );
+      hasFacts = panel.hasContent;
+      factsChild = hasFacts ? panel : null;
+    } else {
+      final panel = HubDetailsFactsPanel(entries: facts);
+      hasFacts = panel.hasContent;
+      factsChild = hasFacts ? panel : null;
+    }
+
     return SizedBox(
       width: double.infinity,
       height: maxHeight,
@@ -261,7 +295,7 @@ class _HubHeroLayout extends StatelessWidget {
               child: mainColumn,
             ),
           ),
-          if (factsPanel.hasContent && maxHeight != null)
+          if (factsChild != null && maxHeight != null)
             Align(
               alignment: Alignment.bottomRight,
               child: ConstrainedBox(
@@ -275,7 +309,7 @@ class _HubHeroLayout extends StatelessWidget {
                     shrinkWrap: true,
                     padding: EdgeInsets.zero,
                     physics: const ClampingScrollPhysics(),
-                    children: [factsPanel],
+                    children: [factsChild],
                   ),
                 ),
               ),

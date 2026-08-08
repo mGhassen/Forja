@@ -94,19 +94,23 @@ class _IptvMovieDetailsScreenState
       preferMovie: true,
     );
     if (!mounted) return;
-    final catalog = await ref
-        .read(iptvControllerProvider)
-        .vodSeriesCatalog(widget.portal.key);
-    if (!mounted) return;
-    final recs = filterIptvCatalogRecommendations(
-      recommendations: hit?.rich.extras.recommendations ?? const [],
-      catalog: catalog,
-      excludeStreamId: widget.movie.streamId,
-    );
-    setState(() {
-      _enrich = hit;
-      _catalogRecs = recs;
-    });
+    setState(() => _enrich = hit);
+
+    try {
+      final catalog = await ref
+          .read(iptvControllerProvider)
+          .vodSeriesCatalog(widget.portal.key);
+      if (!mounted) return;
+      final recs = filterIptvCatalogRecommendations(
+        recommendations: hit?.rich.extras.recommendations ?? const [],
+        catalog: catalog,
+        excludeStreamId: widget.movie.streamId,
+      );
+      if (!mounted) return;
+      setState(() => _catalogRecs = recs);
+    } catch (_) {
+      // Enrichment already painted; catalog recs are optional.
+    }
   }
 
   void _revealedDetailsHeroPlayFocus() {
@@ -294,6 +298,7 @@ class _IptvMovieDetailsScreenState
               rating: rating,
               overview: _movie?.overview.trim() ?? '',
               facts: _facts(),
+              richFacts: _enrich?.rich,
               height: heroHeight,
               actionRow: DetailsHeroTvActionScope(
                 tabId: MediaDetailsTv.tabId,

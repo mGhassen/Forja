@@ -70,9 +70,22 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     return _s._epgCache!.load(stream, limit: 8);
   }
 
-  /// Android TV Exo: no bottom progress chrome (live track or VOD scrubber).
-  bool get _showProgressChrome =>
-      !(_s._exoBackend && PlatformInfo.isAndroidTv);
+  /// VOD always gets a scrubber. Live + Android TV Exo hides the live track
+  /// (←/→ still seek when chrome is hidden).
+  bool get _showProgressChrome {
+    if (_s.widget.vodPlayback || _s._isVod) return true;
+    return !(_s._exoBackend && PlatformInfo.isAndroidTv);
+  }
+
+  bool get _isVodChrome => _s.widget.vodPlayback || _s._isVod;
+
+  /// MediaKit always; Exo for movies/series (live Exo stays track-light).
+  bool get _showTrackButtons => !_s._exoBackend || _s.widget.vodPlayback;
+
+  bool get _showEpisodesButton =>
+      _s.widget.vodPlayback &&
+      (_s.widget.seriesEpisodes?.isNotEmpty ?? false) &&
+      _s.widget.seriesPortal != null;
 
   double _floatingEpgBottomInset(BuildContext context, bool compact) {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
@@ -137,11 +150,28 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     }
   }
 
-  void _showAudioMenu(BuildContext anchorContext) {
-    if (_s._exoBackend || _s._player == null) return;
+  Future<void> _showAudioMenu(BuildContext anchorContext) async {
     _s._tvBackExitArmed = false;
     PlayerBackExitGate.exitReady = false;
     _scheduleHideControls();
+    if (_s._exoBackend) {
+      final id = _s._exoViewId;
+      if (id == null) return;
+      final tracks = await ExoPlayerBridge.getTracks(id);
+      if (!mounted || !anchorContext.mounted) return;
+      await ExoPlayerMenus.showAudio(
+        context: context,
+        tracks: tracks,
+        anchorContext: anchorContext,
+        onSelect: (trackId) => ExoPlayerBridge.selectTrack(
+          id,
+          type: 'audio',
+          trackId: trackId,
+        ),
+      );
+      return;
+    }
+    if (_s._player == null) return;
     PlayerAudioMenu.show(
       context,
       player: _s._player!,
@@ -154,8 +184,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     );
   }
 
-  void _showSubtitleMenu(BuildContext anchorContext) {
-    if (_s._exoBackend || _s._player == null) return;
+  Future<void> _showSubtitleMenu(BuildContext anchorContext) async {
     _s._tvBackExitArmed = false;
     PlayerBackExitGate.exitReady = false;
     _scheduleHideControls();
@@ -167,6 +196,55 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             if (_s._subQuerySeason != null && _s._subQueryEpisode != null)
               'S${_s._subQuerySeason}E${_s._subQueryEpisode}',
           ].join(' ');
+    if (_s._exoBackend) {
+      final id = _s._exoViewId;
+      if (id == null) return;
+      final tracks = await ExoPlayerBridge.getTracks(id);
+      if (!mounted || !anchorContext.mounted) return;
+      await ExoPlayerMenus.showSubtitles(
+        context: context,
+        tracks: tracks,
+        anchorContext: anchorContext,
+        externalSubtitles: _s._externalSubtitles,
+        selectedExternalSubUrl: _s._selectedExternalSubUrl,
+        isFetchingSubs: _s._isFetchingSubs,
+        onOff: () async {
+          await ExoPlayerBridge.selectTrack(
+            id,
+            type: 'text',
+            trackId: null,
+          );
+          if (mounted) setState(() => _s._selectedExternalSubUrl = null);
+        },
+        onSelectEmbedded: (track) async {
+          if (track == null) {
+            await ExoPlayerBridge.selectTrack(
+              id,
+              type: 'text',
+              trackId: null,
+            );
+            return;
+          }
+          await ExoPlayerBridge.selectTrack(
+            id,
+            type: 'text',
+            trackId: track.id,
+          );
+          if (mounted) setState(() => _s._selectedExternalSubUrl = null);
+        },
+        onSelectExternal: (sub) async {
+          // Online SRT for Exo VOD still goes through MediaKit path when
+          // engine is MediaKit; Exo embeds only for now.
+          if (!_s._exoBackend) await _loadOnlineSubtitle(sub);
+        },
+        onSubtitleSettings:
+            _s.widget.onlineSubtitles && !_s._exoBackend
+                ? _showSubtitleSettings
+                : null,
+      );
+      return;
+    }
+    if (_s._player == null) return;
     PlayerSubtitleMenu.show(
       context,
       player: _s._player!,
@@ -901,9 +979,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           children: [
             _buildTopBar(compact),
             const Spacer(),
-            // VOD scrubber or live EPG / live-edge — hidden on Android TV Exo.
+            // VOD scrubber (films/series) or live EPG / live-edge track.
             if (_showProgressChrome)
-              _s._isVod
+              _isVodChrome
                   ? _buildSeekbar(compact)
                   : _buildLiveProgressBar(compact),
             _buildBottomBar(compact),
@@ -1065,7 +1143,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
     void downFromTop() {
       if (_showProgressChrome &&
-          _s._isVod &&
+          _isVodChrome &&
           _s._seekFocus.canRequestFocus) {
         _s._seekFocus.requestFocus();
         return;
@@ -1472,7 +1550,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     /// Left transport (Play / Replay) → seekbar when present, else Back.
     void upFromLeftControls() {
       if (_showProgressChrome &&
-          _s._isVod &&
+          _isVodChrome &&
           _s._seekFocus.canRequestFocus) {
         _s._seekFocus.requestFocus();
         return;
@@ -1481,11 +1559,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     }
 
     /// Right chrome (Search / Guide / Source) → top-right Player (not Back).
-    /// ATV Exo hides the progress bar, so ↑ used to dump everything on Back and
-    /// leave Player unreachable except → across the title gap.
     void upFromRightControls() {
       if (_showProgressChrome &&
-          _s._isVod &&
+          _isVodChrome &&
           _s._seekFocus.canRequestFocus) {
         _s._seekFocus.requestFocus();
         return;
@@ -1519,7 +1595,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
     final hasGuide = widget.channelGuide != null;
     final hasSources = _s._sources.length > 1;
-    final showTracks = !_s._exoBackend;
+    final showTracks = _showTrackButtons;
+    final showEpisodes = _showEpisodesButton;
 
     // Explicit ←/→ chain (issue 131) — Spacer / title-gap geometry fails on ATV.
     FocusNode? rightOfPlay() {
@@ -1530,6 +1607,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     FocusNode? rightOfReplay() {
       if (!tvFocus) return null;
       if (showTracks) return _s._subtitleFocus;
+      if (showEpisodes) return _s._episodesFocus;
       if (hasGuide) return _s._searchChromeFocus;
       if (hasSources) return _s._bottomSourceFocus;
       return null;
@@ -1552,6 +1630,20 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
     FocusNode? rightOfAudio() {
       if (!tvFocus) return null;
+      if (showEpisodes) return _s._episodesFocus;
+      if (hasGuide) return _s._searchChromeFocus;
+      if (hasSources) return _s._bottomSourceFocus;
+      return null;
+    }
+
+    FocusNode? leftOfEpisodes() {
+      if (!tvFocus) return null;
+      if (showTracks) return _s._audioFocus;
+      return _s._replayFocus;
+    }
+
+    FocusNode? rightOfEpisodes() {
+      if (!tvFocus) return null;
       if (hasGuide) return _s._searchChromeFocus;
       if (hasSources) return _s._bottomSourceFocus;
       return null;
@@ -1559,6 +1651,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
     FocusNode? leftOfSearch() {
       if (!tvFocus) return null;
+      if (showEpisodes) return _s._episodesFocus;
       if (showTracks) return _s._audioFocus;
       return _s._replayFocus;
     }
@@ -1581,6 +1674,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     FocusNode? leftOfBottomSource() {
       if (!tvFocus) return null;
       if (hasGuide) return _s._guideFocus;
+      if (showEpisodes) return _s._episodesFocus;
       if (showTracks) return _s._audioFocus;
       return _s._replayFocus;
     }
@@ -1752,7 +1846,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 onRightEdge: rightOfSubtitle() == null
                     ? null
                     : () => claim(rightOfSubtitle()!),
-                onTap: () => _showSubtitleMenu(btnCtx),
+                onTap: () => unawaited(_showSubtitleMenu(btnCtx)),
               ),
             ),
             const SizedBox(width: 14),
@@ -1766,7 +1860,24 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 onRightEdge: rightOfAudio() == null
                     ? null
                     : () => claim(rightOfAudio()!),
-                onTap: () => _showAudioMenu(btnCtx),
+                onTap: () => unawaited(_showAudioMenu(btnCtx)),
+              ),
+            ),
+          ],
+          if (showEpisodes) ...[
+            const SizedBox(width: 14),
+            Builder(
+              builder: (btnCtx) => nextIcon(
+                icon: Icons.video_library_outlined,
+                focusNode: _s._episodesFocus,
+                onUpEdge: tvFocus ? upFromLeftControls : null,
+                onLeftEdge: leftOfEpisodes() == null
+                    ? null
+                    : () => claim(leftOfEpisodes()!),
+                onRightEdge: rightOfEpisodes() == null
+                    ? null
+                    : () => claim(rightOfEpisodes()!),
+                onTap: () => unawaited(_showEpisodesPanel(btnCtx)),
               ),
             ),
           ],
@@ -1820,6 +1931,83 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         ],
       ),
     );
+  }
+
+  static int _hubEpisodeKey(IptvEpisode e) => e.season * 10000 + e.episode;
+
+  Future<void> _showEpisodesPanel(BuildContext anchorContext) async {
+    final eps = _s.widget.seriesEpisodes;
+    final portal = _s.widget.seriesPortal;
+    if (eps == null || eps.isEmpty || portal == null) return;
+    _s._tvBackExitArmed = false;
+    PlayerBackExitGate.exitReady = false;
+    _scheduleHideControls();
+    final hub = [
+      for (final e in eps)
+        PlayerHubEpisode(
+          number: _hubEpisodeKey(e),
+          title: e.title.trim().isEmpty
+              ? 'Episode ${e.episode}'
+              : e.title.trim(),
+          overview: e.plot.trim().isEmpty ? null : e.plot.trim(),
+          thumbnailUrl: e.image.trim().isEmpty ? null : e.image.trim(),
+        ),
+    ];
+    final current = (_s._playingSeason != null && _s._playingEpisode != null)
+        ? _s._playingSeason! * 10000 + _s._playingEpisode!
+        : hub.first.number;
+    await PlayerHubEpisodePanel.show(
+      context: context,
+      episodes: hub,
+      currentEpisode: current,
+      onEpisodeSelected: (hubEp) async {
+        final key = hubEp.number.toInt();
+        IptvEpisode? match;
+        for (final e in eps) {
+          if (_hubEpisodeKey(e) == key) {
+            match = e;
+            break;
+          }
+        }
+        if (match == null) return;
+        await _switchSeriesEpisode(match, portal);
+      },
+    );
+  }
+
+  Future<void> _switchSeriesEpisode(
+    IptvEpisode episode,
+    IptvPortal portal,
+  ) async {
+    final url = await IptvClient.resolveEpisodeUrl(portal, episode);
+    if (!mounted || url == null || url.isEmpty) return;
+    final show = (_s.widget.seriesShowTitle ?? _s._subQueryTitle).trim();
+    final epTitle = episode.title.trim().isEmpty
+        ? 'Episode ${episode.episode}'
+        : episode.title.trim();
+    setState(() {
+      _s._sources = [
+        IptvPlaySource(url: url, label: _s._sources.first.label),
+      ];
+      _s._sourceIdx = 0;
+      _s._title = 'Ep ${episode.episode} · $epTitle';
+      _s._subtitle = show.isEmpty
+          ? 'Season ${episode.season}'
+          : '$show · Season ${episode.season}';
+      _s._logoUrl =
+          episode.image.trim().isNotEmpty ? episode.image : _s._logoUrl;
+      _s._playingSeason = episode.season;
+      _s._playingEpisode = episode.episode;
+      _s._subQuerySeason = episode.season;
+      _s._subQueryEpisode = episode.episode;
+      _s._position = Duration.zero;
+      _s._duration = Duration.zero;
+      _s._buffered = Duration.zero;
+    });
+    await _s._reloadCurrent();
+    if (_s.widget.onlineSubtitles && !_s._exoBackend) {
+      _fetchOnlineSubtitles();
+    }
   }
 
   void _toggleMute() {

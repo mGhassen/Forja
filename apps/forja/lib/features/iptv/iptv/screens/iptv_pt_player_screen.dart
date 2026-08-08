@@ -38,6 +38,8 @@ import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/desktop_pip_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/player_episode_panel.dart';
+import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
@@ -45,6 +47,7 @@ import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/providers/player_prefs_providers.dart';
 import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
+import 'package:forja/shared/player/exo/exo_player_menus.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
@@ -121,6 +124,11 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   final int? subtitleSeason;
   final int? subtitleEpisode;
   final int? subtitleYear;
+  /// Series: in-player episode list (same panel as hub VOD players).
+  final List<IptvEpisode>? seriesEpisodes;
+  final IptvPortal? seriesPortal;
+  /// Show name for chrome / episode switch titles.
+  final String? seriesShowTitle;
 
   const IptvPtPlayerScreen({
     super.key,
@@ -138,6 +146,9 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     this.subtitleSeason,
     this.subtitleEpisode,
     this.subtitleYear,
+    this.seriesEpisodes,
+    this.seriesPortal,
+    this.seriesShowTitle,
   });
 
   /// Convenience: build for a single Xtream stream.
@@ -268,8 +279,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   final FocusNode _subtitleFocus =
       FocusNode(debugLabel: 'iptv-player-subtitles');
   final FocusNode _audioFocus = FocusNode(debugLabel: 'iptv-player-audio');
+  final FocusNode _episodesFocus =
+      FocusNode(debugLabel: 'iptv-player-episodes');
   final FocusNode _searchChromeFocus =
       FocusNode(debugLabel: 'iptv-player-search');
+  /// Playing series episode (updated when switching from the in-player panel).
+  int? _playingSeason;
+  int? _playingEpisode;
   final FocusNode _guideFocus = FocusNode(debugLabel: 'iptv-player-guide');
   final FocusNode _bottomSourceFocus =
       FocusNode(debugLabel: 'iptv-player-bottom-source');
@@ -506,6 +522,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _title = widget.title;
     _subtitle = widget.subtitle;
     _logoUrl = widget.logoUrl;
+    _playingSeason = widget.subtitleSeason;
+    _playingEpisode = widget.subtitleEpisode;
     _seedSubtitleQuery();
     final guide = widget.channelGuide;
     _selectedGroupId = guide?.initialGroupId ?? '';
@@ -854,6 +872,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _statsFocus.dispose();
     _subtitleFocus.dispose();
     _audioFocus.dispose();
+    _episodesFocus.dispose();
     _searchChromeFocus.dispose();
     _guideFocus.dispose();
     _bottomSourceFocus.dispose();
