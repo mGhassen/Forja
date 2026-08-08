@@ -57,6 +57,12 @@ void main() {
         ),
         isTrue,
       );
+      expect(
+        iptvIsHardOpenFail(
+          'Source error: UnexpectedLoaderException: ArrayIndexOutOfBoundsException',
+        ),
+        isTrue,
+      );
     });
   });
 }
