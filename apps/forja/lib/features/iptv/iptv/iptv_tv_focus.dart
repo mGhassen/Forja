@@ -278,11 +278,6 @@ bool iptvRestoreCatalogFocus(IptvController ctrl, {int? portalIndex}) {
 /// In-page Back: search field/X → close search · channel grid → category.
 /// Returns false so the shell can move focus to the nav rail.
 bool iptvHandleCatalogPageBack(IptvController ctrl) {
-  if (ctrl.view == IptvView.episodeList ||
-      ctrl.view == IptvView.movieDetails) {
-    ctrl.back();
-    return true;
-  }
   if (ctrl.browserSearchOpen &&
       (iptvRowHasFocus('iptv-search-chrome') ||
           _iptvMemoryRowIs('iptv-search-chrome'))) {

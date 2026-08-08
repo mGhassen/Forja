@@ -15,7 +15,7 @@ The IPTV tab supports **Stalker / Ministra** portals alongside Xtream and M3U. Y
 - Add a Stalker portal with URL (often ending in `/c/` or `portal.php`) and MAC (`00:1A:79:…`); optional serial
 - Tap the dice icon next to the portal name field for a random name
 - Tap **Generate** next to the MAC field for a random MAG-style MAC if your provider issues portal access by any MAC
-- Browse **Live**, **Movies**, and **Series** like Xtream — movies and series open the same cinematic details page (TMDB backdrop when matched, Play; series also get the episodes rail, Android TV D-pad)
+- Browse **Live**, **Movies**, and **Series** like Xtream — movies and series open the same Home-style details overlay (TMDB when matched, Play, Cast/Crew/Trailers; series also get episodes; Android TV D-pad matches movie details)
 - Play in the IPTV player — channel guide and search work for live
 - Sync Stalker portals to your signed-in profile (same as Xtream)
 - See subscription end date on the portal card when the portal reports it (`get_profile` `exp_date`, or a date stuffed in `phone` on some panels)

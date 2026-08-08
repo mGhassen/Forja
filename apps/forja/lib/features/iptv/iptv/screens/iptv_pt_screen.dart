@@ -74,10 +74,7 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
   Duration get shellStaleAfter => ShellTokens.tabStaleIptv;
 
   @override
-  bool get shellBlocksEviction =>
-      _ctrl.view == IptvView.episodeList ||
-      _ctrl.view == IptvView.movieDetails ||
-      _ctrl.activePortal != null;
+  bool get shellBlocksEviction => _ctrl.activePortal != null;
 
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
@@ -118,10 +115,8 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
   void _syncShellNav() {
     final ctrl = _navListenerCtrl;
     if (ctrl == null) return;
-    final hide = ctrl.view == IptvView.episodeList ||
-        ctrl.view == IptvView.movieDetails;
-    if (ShellBus.hideGlobalNav.value != hide) {
-      ShellBus.hideGlobalNav.value = hide;
+    if (ShellBus.hideGlobalNav.value) {
+      ShellBus.hideGlobalNav.value = false;
       ShellBus.notifyShellChromeChanged();
     }
   }
@@ -152,9 +147,7 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
           }
         },
         child: PopScope(
-          canPop: !ctrl.portalPanelOpen &&
-              ctrl.view != IptvView.episodeList &&
-              ctrl.view != IptvView.movieDetails,
+          canPop: !ctrl.portalPanelOpen,
           onPopInvokedWithResult: (didPop, _) {
             if (!didPop) ctrl.back();
           },
@@ -186,9 +179,13 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
           wide: _isWide(context),
         );
       case IptvView.episodeList:
-        return IptvSeriesDetailsView(ctrl: ctrl);
       case IptvView.movieDetails:
-        return IptvMovieDetailsView(ctrl: ctrl);
+        // Details open as shell overlays (Home-style MediaDetailsTv).
+        return _IptvCatalogShell(
+          ctrl: ctrl,
+          compact: _isCompact(context),
+          wide: _isWide(context),
+        );
       case IptvView.channelsHub:
       case IptvView.channelResults:
         return _IptvCatalogShell(
