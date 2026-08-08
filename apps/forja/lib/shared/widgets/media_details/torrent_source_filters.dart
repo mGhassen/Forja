@@ -4,9 +4,11 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
@@ -1298,7 +1300,7 @@ class _SearchFieldState extends State<_SearchField> {
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
       widget.onDownEdge?.call();
       return widget.onDownEdge != null
@@ -1316,35 +1318,42 @@ class _SearchFieldState extends State<_SearchField> {
 
   @override
   Widget build(BuildContext context) {
-    Widget field = TextField(
-      controller: _controller,
-      focusNode: widget.focusNode,
-      onChanged: widget.onChanged,
-      onSubmitted: (_) => widget.onDownEdge?.call(),
-      style: TextStyle(
-        color: ForjaShellColors.cinematic.textPrimary,
-        fontSize: 13,
-      ),
-      decoration: InputDecoration(
-        hintText: 'Search',
-        hintStyle: TextStyle(
-          color: ForjaShellColors.cinematic.textSecondary.withValues(
-            alpha: 0.7,
-          ),
-          fontSize: 13,
-        ),
-        border: InputBorder.none,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 10),
-      ),
+    final secondary = ForjaShellColors.cinematic.textSecondary;
+    final hintStyle = TextStyle(
+      color: secondary.withValues(alpha: 0.7),
+      fontSize: 13,
     );
-    if (widget.focusNode != null &&
-        (widget.onUpEdge != null || widget.onDownEdge != null)) {
-      field = Focus(
-        onKeyEvent: _onKey,
-        child: field,
-      );
-    }
+    final fieldStyle = TextStyle(
+      color: ForjaShellColors.cinematic.textPrimary,
+      fontSize: 13,
+    );
+    final decoration = InputDecoration(
+      hintText: 'Search',
+      hintStyle: hintStyle,
+      border: InputBorder.none,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+    );
+    // TV passes searchFocusNode — browse focus only until OK (TvBrowseTextField).
+    final focus = widget.focusNode;
+    final Widget field = focus != null
+        ? TvBrowseTextField(
+            controller: _controller,
+            focusNode: focus,
+            onChanged: widget.onChanged,
+            onSubmitted: (_) => widget.onDownEdge?.call(),
+            decoration: decoration,
+            style: fieldStyle,
+            browseHintStyle: hintStyle,
+            onKeyEvent: _onKey,
+          )
+        : TextField(
+            controller: _controller,
+            onChanged: widget.onChanged,
+            onSubmitted: (_) => widget.onDownEdge?.call(),
+            style: fieldStyle,
+            decoration: decoration,
+          );
 
     return Container(
       decoration: _torrentPanelControlDecoration(active: false, radius: 10),
@@ -1354,14 +1363,14 @@ class _SearchFieldState extends State<_SearchField> {
           Icon(
             Icons.search_rounded,
             size: 18,
-            color: ForjaShellColors.cinematic.textSecondary,
+            color: secondary,
           ),
           const SizedBox(width: 8),
           Expanded(child: field),
           if (widget.query.isNotEmpty)
             ForjaCloseButton.compact(
               tooltip: null,
-              color: ForjaShellColors.cinematic.textSecondary,
+              color: secondary,
               onTap: () => widget.onChanged(''),
             ),
         ],
