@@ -450,9 +450,12 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
             ? Colors.white
             : ForjaShellColors.textSecondary;
     final tv = iptvUseTvFocus(context);
+    // Desktop drag proxy wraps the row — same brighter green as TV floating.
+    final lifted =
+        _floating || _IptvCategoryDragProxyScope.isProxy(context);
 
-    // Floating = same row chrome, slightly brighter green (no card / border lift).
-    final fillColor = _floating
+    // Floating / drag = same row chrome, slightly brighter green (no card lift).
+    final fillColor = lifted
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.28)
         : _tvFocused
             ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
@@ -475,7 +478,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
         color: fillColor,
         border: Border(
           left: BorderSide(
-            color: highlight || _floating
+            color: highlight || lifted
                 ? ForjaShellColors.brandGreen
                 : _active
                     ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
@@ -498,7 +501,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
               style: GoogleFonts.plusJakartaSans(
                 color: titleColor,
                 fontSize: widget.compact ? 13 : 14,
-                fontWeight: emphatic || _floating
+                fontWeight: emphatic || lifted
                     ? FontWeight.w700
                     : FontWeight.w500,
               ),
@@ -579,66 +582,28 @@ class _CategoryReorderDragStartListener extends ReorderableDragStartListener {
   }
 }
 
-/// Floating drag proxy: lifted card, elevated surface, brand-green accent.
+/// Marks the drag overlay so [_CategorySidebarRow] paints TV floating chrome.
+class _IptvCategoryDragProxyScope extends InheritedWidget {
+  const _IptvCategoryDragProxyScope({required super.child});
+
+  static bool isProxy(BuildContext context) {
+    return context
+            .dependOnInheritedWidgetOfExactType<_IptvCategoryDragProxyScope>() !=
+        null;
+  }
+
+  @override
+  bool updateShouldNotify(covariant _IptvCategoryDragProxyScope oldWidget) =>
+      false;
+}
+
+/// Drag proxy: same brighter-green rail chrome as TV floating (no card lift).
 Widget _iptvCategoryReorderProxy(
   Widget child,
-  int index,
-  Animation<double> animation,
+  int _,
+  Animation<double> __,
 ) {
-  return AnimatedBuilder(
-    animation: animation,
-    builder: (context, child) {
-      final t = Curves.easeOutCubic.transform(animation.value);
-      return Transform.translate(
-        offset: Offset(6 * t, -6 * t),
-        child: Transform.scale(
-          scale: 1 + 0.04 * t,
-          alignment: Alignment.centerLeft,
-          child: Material(
-            elevation: 12 * t,
-            color: Colors.transparent,
-            shadowColor: Colors.black.withValues(alpha: 0.72),
-            borderRadius: BorderRadius.circular(10),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Stack(
-                fit: StackFit.passthrough,
-                children: [
-                  Positioned.fill(
-                    child: ColoredBox(
-                      color: Color.lerp(
-                        ForjaShellColors.surfaceElevated,
-                        const Color(0xFF1E2A22),
-                        t,
-                      )!,
-                    ),
-                  ),
-                  child!,
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: ForjaShellColors.brandGreen
-                                .withValues(alpha: 0.28 + 0.52 * t),
-                            width: 1.5,
-                          ),
-                          color: ForjaShellColors.brandGreen
-                              .withValues(alpha: 0.10 * t),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    },
-    child: child,
-  );
+  return _IptvCategoryDragProxyScope(child: child);
 }
 
 IconData? _iptvCategoryIcon(String categoryId) {

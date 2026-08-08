@@ -25,19 +25,24 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   static const _matchCardWidthScale = 1.15;
   static const _matchCardHeightScale = 1.32;
 
-  /// TV: same poster cell as IPTV live channels (`shellMovieCard*`).
+  /// Caption band under the 16:9 art on TV (title + optional subtitle).
+  double _tvMatchCaptionBand(BuildContext context) =>
+      shellScaled(context, 40).clamp(32.0, 48.0);
+
+  /// TV: landscape continue-watching cell + caption under.
   /// Desktop/phone: continue-watching landscape tile (height clamp keeps room
   /// for overlay title/teams).
   double _matchCardWidth(BuildContext context) {
     if (ShellScope.metricsOf(context).usesTvDensity) {
-      return shellMovieCardWidth(context);
+      return shellContinueWatchingCardWidth(context);
     }
     return shellContinueWatchingCardWidth(context) * _matchCardWidthScale;
   }
 
   double _matchCardHeight(BuildContext context) {
     if (ShellScope.metricsOf(context).usesTvDensity) {
-      return shellMovieCardHeight(context);
+      return shellContinueWatchingCardHeight(context) +
+          _tvMatchCaptionBand(context);
     }
     final height =
         shellContinueWatchingCardHeight(context) * _matchCardHeightScale;
@@ -46,14 +51,15 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
 
   double _channelCardWidth(BuildContext context) {
     if (ShellScope.metricsOf(context).usesTvDensity) {
-      return shellMovieCardWidth(context);
+      return shellContinueWatchingCardWidth(context);
     }
     return (_matchCardWidth(context) * 0.9).clamp(210.0, 260.0);
   }
 
   double _channelCardHeight(BuildContext context) {
     if (ShellScope.metricsOf(context).usesTvDensity) {
-      return shellMovieCardHeight(context);
+      return shellContinueWatchingCardHeight(context) +
+          _tvMatchCaptionBand(context);
     }
     return (_matchCardHeight(context) * 0.88).clamp(130.0, 150.0);
   }

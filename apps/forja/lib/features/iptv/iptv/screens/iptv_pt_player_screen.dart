@@ -30,12 +30,16 @@ import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/iptv/providers/iptv_player_providers.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
+import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/desktop_pip_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
+import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
+import 'package:forja/shared/player/providers/player_prefs_providers.dart';
 import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
@@ -224,6 +228,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   final FocusNode _statsFocus = FocusNode(debugLabel: 'iptv-player-stats');
   /// Bottom-row TV FocusNodes — explicit ←/→ like the top bar (Spacer gap
   /// breaks geometric [focusInDirection] on Android TV).
+  final FocusNode _subtitleFocus =
+      FocusNode(debugLabel: 'iptv-player-subtitles');
+  final FocusNode _audioFocus = FocusNode(debugLabel: 'iptv-player-audio');
   final FocusNode _searchChromeFocus =
       FocusNode(debugLabel: 'iptv-player-search');
   final FocusNode _guideFocus = FocusNode(debugLabel: 'iptv-player-guide');
@@ -261,6 +268,16 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _showVolumeSlider = false;
   bool _volumeHovering = false;
   Timer? _hideVolumeTimer;
+
+  // Tracks — MediaKit only (same menus as the home movies player).
+  bool _isNativeSubtitle = false;
+  double _subtitleDelay = 0.0;
+  double _subtitleSize = 44.0;
+  double _subtitleBottomPadding = 24.0;
+  Color _subtitleColor = Colors.white;
+  double _subtitleBgOpacity = 0.67;
+  bool _subtitleBold = false;
+  String _subtitleFont = 'Default';
 
   // Fullscreen state (desktop only - mobile is permanently immersive)
   bool _isFullscreen = false;
@@ -539,6 +556,20 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _muted = prefs.volume == 0;
     _liveRecoveryMode = prefs.liveRecoveryMode;
     debugPrint('[IPTV Player] live recovery mode=$_liveRecoveryMode');
+    if (!_exoBackend) {
+      try {
+        final subPrefs =
+            await ref.read(playerSubtitlePrefsProvider(true).future);
+        if (!_disposed && mounted) {
+          _subtitleSize = subPrefs.size;
+          _subtitleColor = Color(subPrefs.colorArgb);
+          _subtitleBgOpacity = subPrefs.bgOpacity;
+          _subtitleBold = subPrefs.bold;
+          _subtitleBottomPadding = subPrefs.bottomPadding;
+          _subtitleFont = subPrefs.font;
+        }
+      } catch (_) {}
+    }
     if (_exoBackend) {
       await _bootExoPlayer();
     } else {
@@ -753,6 +784,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _replayFocus.dispose();
     _playerMenuFocus.dispose();
     _statsFocus.dispose();
+    _subtitleFocus.dispose();
+    _audioFocus.dispose();
     _searchChromeFocus.dispose();
     _guideFocus.dispose();
     _bottomSourceFocus.dispose();

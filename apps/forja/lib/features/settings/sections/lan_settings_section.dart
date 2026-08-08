@@ -28,6 +28,7 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
   bool _pairing = false;
   String _pairingCode = '';
   int _serverPort = 0;
+  List<String> _localIps = [];
   String? _pairedHost;
   int? _pairedPort;
   List<LanServerInfo> _discovered = [];
@@ -70,10 +71,12 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
       _pairingCode = LanServerService.instance.currentPairingCode();
       _serverPort = LanServerService.instance.port;
       _devices = LanServerService.instance.listDevices();
+      _localIps = await LanServerService.instance.localIpv4Addresses();
       _serverEnabled = true;
     } else if (_isDesktopServer) {
       _pairingCode = '';
       _serverPort = 0;
+      _localIps = const [];
       _devices = const [];
     }
     if (mounted) setState(() => _loading = false);
@@ -155,6 +158,19 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
     ForjaToast.success('Code copied');
   }
 
+  void _copyAddress(String host) {
+    if (_serverPort <= 0) return;
+    Clipboard.setData(ClipboardData(text: '$host:$_serverPort'));
+    ForjaToast.success('Address copied');
+  }
+
+  String get _primaryAddressLabel {
+    if (_serverPort <= 0) return '';
+    if (_localIps.isEmpty) return 'port $_serverPort';
+    if (_localIps.length == 1) return '${_localIps.first}:$_serverPort';
+    return '${_localIps.first}:$_serverPort (+${_localIps.length - 1} more)';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -196,7 +212,7 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
         title: const Text('Enable LAN server'),
         subtitle: Text(
           running
-              ? 'Listening on all interfaces · port $_serverPort'
+              ? 'Listening · $_primaryAddressLabel'
               : 'Off — TVs cannot use this desktop for torrents',
         ),
         value: running,
@@ -204,6 +220,46 @@ class _LanSettingsSectionState extends State<LanSettingsSection> {
       ),
       if (running) ...[
         const SizedBox(height: 8),
+        _sectionLabel('DESKTOP ADDRESS'),
+        const SizedBox(height: 4),
+        Text(
+          'On the TV: Settings → LAN → enter this IP and port if Discover does not find this PC.',
+          style: TextStyle(
+            color: ForjaShellColors.textSecondary,
+            fontSize: 12,
+            height: 1.3,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (_localIps.isEmpty)
+          Text(
+            'Port $_serverPort — could not detect a LAN IP; check Wi‑Fi / Ethernet.',
+            style: TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: 13,
+            ),
+          )
+        else
+          ..._localIps.map(
+            (ip) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(
+                '$ip:$_serverPort',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+              trailing: IconButton(
+                tooltip: 'Copy address',
+                onPressed: () => _copyAddress(ip),
+                icon: const Icon(Icons.copy_rounded),
+              ),
+            ),
+          ),
+        const SizedBox(height: 16),
         _sectionLabel('PAIRING CODE'),
         const SizedBox(height: 4),
         Text(

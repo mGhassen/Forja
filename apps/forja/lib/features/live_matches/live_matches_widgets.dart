@@ -415,7 +415,7 @@ class _TeamBadge extends StatelessWidget {
   }
 }
 
-/// TV grid tile: visual band + caption under (IPTV live channel pattern).
+/// TV grid tile: landscape visual band + caption under.
 class _LiveMatchTvCaptionBody extends StatelessWidget {
   const _LiveMatchTvCaptionBody({
     required this.active,
@@ -3440,13 +3440,15 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
           ),
         );
       } else if (m.poster.isNotEmpty) {
-        visual = Center(
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: CachedNetworkImage(
-              imageUrl: _streamedImageUrl(m.poster),
-              fit: BoxFit.contain,
-              errorWidget: (_, _, _) => const Icon(
+        visual = ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: CachedNetworkImage(
+            imageUrl: _streamedImageUrl(m.poster),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorWidget: (_, _, _) => const Center(
+              child: Icon(
                 Icons.sports_rounded,
                 color: Colors.white38,
                 size: 36,
@@ -3784,13 +3786,15 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
           ),
         );
       } else if (s.poster.isNotEmpty) {
-        visual = Center(
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: CachedNetworkImage(
-              imageUrl: s.poster,
-              fit: BoxFit.contain,
-              errorWidget: (_, _, _) => const Icon(
+        visual = ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: CachedNetworkImage(
+            imageUrl: s.poster,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorWidget: (_, _, _) => const Center(
+              child: Icon(
                 Icons.sports_rounded,
                 color: Colors.white38,
                 size: 36,

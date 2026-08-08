@@ -110,6 +110,134 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     );
   }
 
+  /// ASS/PGS → mpv; SRT/VTT → Flutter overlay (same split as home movies).
+  void _updateSubVisibility(SubtitleTrack track) {
+    if (_s._exoBackend || _s._disposed || !mounted) return;
+    final player = _s._player;
+    if (player == null) return;
+    final codec = track.codec?.toLowerCase() ?? '';
+    final isNativeCodec = codec.contains('ass') ||
+        codec.contains('ssa') ||
+        codec.contains('pgs') ||
+        codec.contains('dvd') ||
+        codec.contains('dvb') ||
+        codec.contains('vobsub');
+    final title = (track.title ?? track.id).toLowerCase();
+    final looksAss = title.endsWith('.ass') || title.endsWith('.ssa');
+    final shouldUseNative =
+        track.id != 'no' && (isNativeCodec || looksAss);
+    if (shouldUseNative != _s._isNativeSubtitle) {
+      setState(() => _s._isNativeSubtitle = shouldUseNative);
+    }
+    if (player.platform is NativePlayer) {
+      (player.platform as NativePlayer).setProperty(
+        'sub-visibility',
+        shouldUseNative ? 'yes' : 'no',
+      );
+    }
+  }
+
+  void _showAudioMenu(BuildContext anchorContext) {
+    if (_s._exoBackend || _s._player == null) return;
+    _s._tvBackExitArmed = false;
+    PlayerBackExitGate.exitReady = false;
+    _scheduleHideControls();
+    PlayerAudioMenu.show(
+      context,
+      player: _s._player!,
+      onTrackSelected: () {},
+      anchorContext: anchorContext,
+      margin: EdgeInsets.only(
+        left: 16,
+        bottom: MediaQuery.paddingOf(context).bottom + 88,
+      ),
+    );
+  }
+
+  void _showSubtitleMenu(BuildContext anchorContext) {
+    if (_s._exoBackend || _s._player == null) return;
+    _s._tvBackExitArmed = false;
+    PlayerBackExitGate.exitReady = false;
+    _scheduleHideControls();
+    PlayerSubtitleMenu.show(
+      context,
+      player: _s._player!,
+      anchorContext: anchorContext,
+      externalSubtitles: const [],
+      selectedExternalSubUrl: null,
+      isFetchingSubs: false,
+      updateSubVisibility: _updateSubVisibility,
+      onExternalUrlChanged: (_) {},
+      onNativeSubtitleChanged: (v) =>
+          setState(() => _s._isNativeSubtitle = v),
+      loadOnlineSubtitle: (_) async {},
+      onSubtitleSettings: _showSubtitleSettings,
+      margin: EdgeInsets.only(
+        left: 16,
+        bottom: MediaQuery.paddingOf(context).bottom + 88,
+      ),
+    );
+  }
+
+  void _showSubtitleSettings() {
+    if (_s._player == null) return;
+    PlayerSubtitleSettingsDialog.show(
+      context,
+      initial: PlayerSubtitleSettingsValues(
+        size: _s._subtitleSize,
+        delay: _s._subtitleDelay,
+        color: _s._subtitleColor,
+        bgOpacity: _s._subtitleBgOpacity,
+        bottomPadding: _s._subtitleBottomPadding,
+        bold: _s._subtitleBold,
+        font: _s._subtitleFont,
+      ),
+      player: _s._player,
+      onChanged: (values) {
+        setState(() {
+          _s._subtitleSize = values.size;
+          _s._subtitleDelay = values.delay;
+          _s._subtitleColor = values.color;
+          _s._subtitleBgOpacity = values.bgOpacity;
+          _s._subtitleBottomPadding = values.bottomPadding;
+          _s._subtitleBold = values.bold;
+          _s._subtitleFont = values.font;
+        });
+      },
+    );
+  }
+
+  TextStyle _buildSubtitleTextStyle({double scale = 1.0}) {
+    final base = TextStyle(
+      height: 1.4,
+      fontSize: _s._subtitleSize * scale,
+      letterSpacing: 0.0,
+      wordSpacing: 0.0,
+      color: _s._subtitleColor,
+      fontWeight: _s._subtitleBold ? FontWeight.bold : FontWeight.normal,
+      backgroundColor: Colors.black.withValues(alpha: _s._subtitleBgOpacity),
+      shadows: [
+        Shadow(
+          blurRadius: 10 * scale,
+          color: Colors.black,
+          offset: Offset.zero,
+        ),
+      ],
+    );
+    if (_s._subtitleFont == 'Default') return base;
+    final fontMap = <String, TextStyle Function({TextStyle? textStyle})>{
+      'Poppins': GoogleFonts.poppins,
+      'Roboto': GoogleFonts.roboto,
+      'Roboto Mono': GoogleFonts.robotoMono,
+      'Montserrat': GoogleFonts.montserrat,
+      'Open Sans': GoogleFonts.openSans,
+      'Lato': GoogleFonts.lato,
+    };
+    final fn = fontMap[_s._subtitleFont];
+    if (fn != null) return fn(textStyle: base);
+    return base;
+  }
+
   void _scheduleHideControls() {
     _s._hideControlsTimer?.cancel();
     if (_s._guideVisible || _s._searchVisible) return;
@@ -333,10 +461,47 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                               fit: BoxFit.contain,
                               fill: Colors.black,
                               controls: NoVideoControls,
+                              subtitleViewConfiguration:
+                                  const SubtitleViewConfiguration(
+                                visible: false,
+                              ),
                             ),
                     ),
                   ),
                 ),
+                // Text subs (SRT/VTT) — same Flutter overlay as home movies.
+                // ASS/PGS stay on mpv via sub-visibility.
+                if (!pipMode &&
+                    !_s._exoBackend &&
+                    _s._player != null &&
+                    !_s._isNativeSubtitle)
+                  StreamBuilder<List<String>>(
+                    stream: _s._player!.stream.subtitle,
+                    initialData: _s._player!.state.subtitle,
+                    builder: (context, snap) {
+                      final lines = snap.data ?? [];
+                      final text = lines
+                          .where((l) => l.trim().isNotEmpty)
+                          .join('\n');
+                      if (text.isEmpty) return const SizedBox.shrink();
+                      const refHeight = 720.0;
+                      final winH = MediaQuery.of(context).size.height;
+                      final scale = (winH / refHeight).clamp(0.35, 1.0);
+                      final hSidePad = 24.0 * scale;
+                      return Positioned(
+                        left: hSidePad,
+                        right: hSidePad,
+                        bottom: _s._subtitleBottomPadding * scale,
+                        child: IgnorePointer(
+                          child: Text(
+                            text,
+                            style: _buildSubtitleTextStyle(scale: scale),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 // Reconnect/buffering banner - hidden in PiP
                 if (!pipMode &&
                     (_s._buffering || _s._statusBanner != null))
@@ -1105,6 +1270,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
     final hasGuide = widget.channelGuide != null;
     final hasSources = _s._sources.length > 1;
+    final showTracks = !_s._exoBackend;
 
     // Explicit ←/→ chain (issue 131) — Spacer / title-gap geometry fails on ATV.
     FocusNode? rightOfPlay() {
@@ -1114,6 +1280,29 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
     FocusNode? rightOfReplay() {
       if (!tvFocus) return null;
+      if (showTracks) return _s._subtitleFocus;
+      if (hasGuide) return _s._searchChromeFocus;
+      if (hasSources) return _s._bottomSourceFocus;
+      return null;
+    }
+
+    FocusNode? leftOfSubtitle() {
+      if (!tvFocus) return null;
+      return _s._replayFocus;
+    }
+
+    FocusNode? rightOfSubtitle() {
+      if (!tvFocus) return null;
+      return _s._audioFocus;
+    }
+
+    FocusNode? leftOfAudio() {
+      if (!tvFocus) return null;
+      return _s._subtitleFocus;
+    }
+
+    FocusNode? rightOfAudio() {
+      if (!tvFocus) return null;
       if (hasGuide) return _s._searchChromeFocus;
       if (hasSources) return _s._bottomSourceFocus;
       return null;
@@ -1121,6 +1310,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
     FocusNode? leftOfSearch() {
       if (!tvFocus) return null;
+      if (showTracks) return _s._audioFocus;
       return _s._replayFocus;
     }
 
@@ -1142,6 +1332,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     FocusNode? leftOfBottomSource() {
       if (!tvFocus) return null;
       if (hasGuide) return _s._guideFocus;
+      if (showTracks) return _s._audioFocus;
       return _s._replayFocus;
     }
 
@@ -1295,6 +1486,37 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ],
+          if (showTracks) ...[
+            const SizedBox(width: 14),
+            Builder(
+              builder: (btnCtx) => nextIcon(
+                icon: Icons.subtitles_outlined,
+                focusNode: _s._subtitleFocus,
+                onUpEdge: tvFocus ? upFromLeftControls : null,
+                onLeftEdge: leftOfSubtitle() == null
+                    ? null
+                    : () => claim(leftOfSubtitle()!),
+                onRightEdge: rightOfSubtitle() == null
+                    ? null
+                    : () => claim(rightOfSubtitle()!),
+                onTap: () => _showSubtitleMenu(btnCtx),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Builder(
+              builder: (btnCtx) => nextIcon(
+                icon: Icons.audiotrack_rounded,
+                focusNode: _s._audioFocus,
+                onUpEdge: tvFocus ? upFromLeftControls : null,
+                onLeftEdge:
+                    leftOfAudio() == null ? null : () => claim(leftOfAudio()!),
+                onRightEdge: rightOfAudio() == null
+                    ? null
+                    : () => claim(rightOfAudio()!),
+                onTap: () => _showAudioMenu(btnCtx),
               ),
             ),
           ],

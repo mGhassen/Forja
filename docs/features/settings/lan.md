@@ -13,7 +13,7 @@ Pairing means **this TV trusts that desktop**. Do it once on the same Wi‑Fi.
 ### Desktop
 
 1. **Settings → LAN → Enable LAN server**
-2. Note the **port** and the **6-digit pairing code**
+2. Note the **desktop address** (`IP:port`) and the **6-digit pairing code**
 3. Keep Forja running
 
 Paired TVs and phones appear under **Paired devices**. **Revoke** forces that device to pair again.

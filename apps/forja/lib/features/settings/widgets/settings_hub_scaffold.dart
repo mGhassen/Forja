@@ -287,7 +287,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
             Padding(
               padding: EdgeInsets.fromLTRB(
                 SettingsTokens.pagePadding,
-                tv ? ShellTokens.shellHeaderTopPadding : 8,
+                tv ? 28 : 8,
                 SettingsTokens.pagePadding,
                 4,
               ),
@@ -346,7 +346,7 @@ class _CategorySidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final headerTop = tv ? ShellTokens.shellHeaderTopPadding : 12.0;
+    final headerTop = tv ? 28.0 : 12.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

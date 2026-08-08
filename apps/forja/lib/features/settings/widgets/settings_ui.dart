@@ -121,6 +121,8 @@ class SettingsCategoryTile extends StatelessWidget {
       tvRowId: tvRowId,
       tvItemIndex: tvItemIndex ?? listIndex,
       tvZone: rail ? ShellTvZone.row : ShellTvZone.settings,
+      // Item mode snaps the first tile to list top (header stays visible).
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onRightEdge: onRightEdge,
       focusNode: focusNode,
       onFocusChange: (focused) {
@@ -255,9 +257,35 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
   int _focusAttempts = 0;
 
   @override
+  void initState() {
+    super.initState();
+    // Catch raw Material buttons (LAN Discover, etc.) that never call
+    // shellTvEnsureVisibleItem themselves.
+    FocusManager.instance.addListener(_onFocusChange);
+  }
+
+  @override
   void dispose() {
+    FocusManager.instance.removeListener(_onFocusChange);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onFocusChange() {
+    if (!mounted || !widget.scrollable) return;
+    if (!_scrollController.hasClients) return;
+    final policy = ShellScope.maybeOf(context)?.inputPolicy;
+    if (policy == null || !policy.ensureVisibleOnFocus) return;
+
+    final primary = FocusManager.instance.primaryFocus;
+    final ctx = primary?.context;
+    if (ctx == null || !ctx.mounted) return;
+
+    final scrollable = Scrollable.maybeOf(ctx);
+    if (scrollable == null) return;
+    if (!identical(scrollable.position, _scrollController.position)) return;
+
+    shellTvEnsureVisibleItem(ctx);
   }
 
   @override
@@ -273,6 +301,14 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
 
   void _scheduleLandFocus() {
     WidgetsBinding.instance.addPostFrameCallback((_) => _landFocusOnFirst());
+  }
+
+  void _snapScrollToTop() {
+    if (!mounted || !_scrollController.hasClients) return;
+    final min = _scrollController.position.minScrollExtent;
+    if (_scrollController.offset > min) {
+      _scrollController.jumpTo(min);
+    }
   }
 
   void _landFocusOnFirst() {
@@ -317,10 +353,9 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
 
     if (first != null) {
       first.requestFocus();
-      if (_scrollController.hasClients &&
-          _scrollController.offset > _scrollController.position.minScrollExtent) {
-        _scrollController.jumpTo(_scrollController.position.minScrollExtent);
-      }
+      // After focus ensureVisible runs, re-pin to absolute top so title +
+      // section labels above the first control stay on screen.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _snapScrollToTop());
       if (first.hasPrimaryFocus || first.hasFocus) return;
     }
 
@@ -329,81 +364,93 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
     }
   }
 
+  Widget _titleRow({required bool includeBack}) {
+    return Row(
+      children: [
+        if (includeBack)
+          shellFocusableTap(
+            context: context,
+            onTap: widget.onBack ?? () => Navigator.of(context).maybePop(),
+            borderRadius: 20,
+            scaleOnFocus: 1.0,
+            showFocusRail: true,
+            tvTabId: 'settings',
+            tvZone: ShellTvZone.settings,
+            child: const Padding(
+              padding: EdgeInsets.all(8),
+              child: Icon(
+                Icons.arrow_back_rounded,
+                color: ForjaShellColors.textPrimary,
+              ),
+            ),
+          ),
+        Expanded(
+          child: Text(
+            widget.title,
+            style: const TextStyle(
+              color: ForjaShellColors.textPrimary,
+              fontSize: SettingsTokens.pageTitleSize,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final titleTop = tv ? ShellTokens.shellHeaderTopPadding : 8.0;
+    // TV: title lives inside the scroller so snap-to-top reveals it with the
+    // section labels above the first control (sticky chrome was getting clipped).
+    final titleTop = tv ? 28.0 : 8.0;
     return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              SettingsTokens.pagePadding,
-              titleTop,
-              SettingsTokens.pagePadding,
-              4,
-            ),
-            child: Row(
-              children: [
-                if (widget.showBack)
-                  shellFocusableTap(
-                    context: context,
-                    onTap: widget.onBack ??
-                        () => Navigator.of(context).maybePop(),
-                    borderRadius: 20,
-                    scaleOnFocus: 1.0,
-                    showFocusRail: true,
-                    tvTabId: 'settings',
-                    tvZone: ShellTvZone.settings,
-                    child: const Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Icon(
-                        Icons.arrow_back_rounded,
-                        color: ForjaShellColors.textPrimary,
-                      ),
+      child: widget.scrollable
+          ? Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              interactive: true,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                padding: EdgeInsets.fromLTRB(
+                  SettingsTokens.pagePadding,
+                  titleTop,
+                  SettingsTokens.pagePadding,
+                  48,
+                ),
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: SettingsTokens.detailMaxWidth,
                     ),
-                  ),
-                Expanded(
-                  child: Text(
-                    widget.title,
-                    style: const TextStyle(
-                      color: ForjaShellColors.textPrimary,
-                      fontSize: SettingsTokens.pageTitleSize,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _titleRow(includeBack: widget.showBack),
+                        const SizedBox(height: 12),
+                        widget.child,
+                      ],
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: widget.scrollable
-                ? Scrollbar(
-                    controller: _scrollController,
-                    thumbVisibility: true,
-                    interactive: true,
-                    child: SingleChildScrollView(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(
-                        SettingsTokens.pagePadding,
-                        8,
-                        SettingsTokens.pagePadding,
-                        48,
-                      ),
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            maxWidth: SettingsTokens.detailMaxWidth,
-                          ),
-                          child: widget.child,
-                        ),
-                      ),
-                    ),
-                  )
-                : Padding(
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    SettingsTokens.pagePadding,
+                    titleTop,
+                    SettingsTokens.pagePadding,
+                    4,
+                  ),
+                  child: _titleRow(includeBack: widget.showBack),
+                ),
+                Expanded(
+                  child: Padding(
                     padding: const EdgeInsets.fromLTRB(
                       SettingsTokens.pagePadding,
                       8,
@@ -426,9 +473,9 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
                       },
                     ),
                   ),
-          ),
-        ],
-      ),
+                ),
+              ],
+            ),
     );
   }
 }

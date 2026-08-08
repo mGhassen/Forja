@@ -75,4 +75,22 @@ class LanServerService {
 
   bool revokeDevice(String deviceId) =>
       Engine.isReady && RustLib.instance.lanRevokeDevice(deviceId);
+
+  /// Non-loopback IPv4 addresses on this machine (for manual TV pairing).
+  Future<List<String>> localIpv4Addresses() async {
+    if (kIsWeb) return const [];
+    final out = <String>[];
+    final ifaces = await NetworkInterface.list(
+      type: InternetAddressType.IPv4,
+      includeLinkLocal: false,
+    );
+    for (final iface in ifaces) {
+      for (final addr in iface.addresses) {
+        if (addr.isLoopback) continue;
+        final ip = addr.address;
+        if (!out.contains(ip)) out.add(ip);
+      }
+    }
+    return out;
+  }
 }

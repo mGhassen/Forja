@@ -1252,10 +1252,10 @@ bool shellTvIsActivateKeyUp(KeyEvent event) {
 /// Scroll visibility mode for TV focus.
 enum ShellTvEnsureVisibleMode { off, row, item }
 
-/// Content-Y slack: first control + section label + scroll padding still count
-/// as "page top" so ↑ / land-focus snaps to [minScrollExtent] instead of
+/// Content-Y slack: page title + section label + first control still count as
+/// "page top" so ↑ / land-focus snaps to [minScrollExtent] instead of
 /// pinning the control flush and clipping chrome above it.
-const double kShellTvListTopRevealSlackPx = 140;
+const double kShellTvListTopRevealSlackPx = 240;
 
 ScrollableState? _nearestVerticalScrollable(BuildContext context) {
   var scrollable = Scrollable.maybeOf(context);
@@ -1272,7 +1272,9 @@ ScrollableState? _nearestVerticalScrollable(BuildContext context) {
 ///
 /// When the control sits near the **start** of the scroll content, jump to
 /// [ScrollPosition.minScrollExtent] so page titles / group labels above the
-/// first focusable stay visible. Mid-list rows use keepVisible only.
+/// first focusable stay visible — and **do not** run keepVisible (AtEnd on a
+/// tall first control scrolls down and clips everything above it). Mid-list
+/// rows use keepVisible only.
 void shellTvEnsureVisibleItem(
   BuildContext context, {
   double topRevealSlackPx = kShellTvListTopRevealSlackPx,
@@ -1287,11 +1289,13 @@ void shellTvEnsureVisibleItem(
   final viewportBox = scrollable.context.findRenderObject();
   if (viewportBox is! RenderBox || !viewportBox.hasSize) return;
 
-  final topInViewport = box.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
+  final topInViewport =
+      box.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
   final contentY = position.pixels + topInViewport;
-  if (position.pixels > position.minScrollExtent + 0.5 &&
-      contentY <= topRevealSlackPx) {
-    position.jumpTo(position.minScrollExtent);
+  if (contentY <= topRevealSlackPx) {
+    if (position.pixels > position.minScrollExtent + 0.5) {
+      position.jumpTo(position.minScrollExtent);
+    }
     return;
   }
 
