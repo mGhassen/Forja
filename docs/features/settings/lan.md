@@ -25,6 +25,8 @@ Paired TVs and phones appear under **Paired devices**. **Revoke** forces that de
 3. Enter the **6-digit code** from the desktop
 4. **Pair with desktop**
 
+On Android TV, **OK** on a field opens the keyboard and the page scrolls so the field stays visible above it.
+
 Status shows **Paired · desktop online**. Unpair anytime from the same screen.
 
 ## Every night — watch

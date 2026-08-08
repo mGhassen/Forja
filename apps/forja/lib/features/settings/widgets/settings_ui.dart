@@ -251,14 +251,23 @@ class SettingsPageScaffold extends StatefulWidget {
   State<SettingsPageScaffold> createState() => _SettingsPageScaffoldState();
 }
 
-class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
+class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
+    with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
   int _handledEnterToken = 0;
   int _focusAttempts = 0;
 
+  /// Extra bottom scroll padding so a focused text field can sit above the IME.
+  /// Leanback keyboards often overlay without shrinking the Flutter view /
+  /// reporting viewInsets — then we reserve a fraction of the screen.
+  double _imeScrollPad = 0;
+
+  static const _editFocusLabel = 'settings-text-edit';
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Catch raw Material buttons (LAN Discover, etc.) that never call
     // shellTvEnsureVisibleItem themselves.
     FocusManager.instance.addListener(_onFocusChange);
@@ -266,12 +275,50 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     FocusManager.instance.removeListener(_onFocusChange);
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _onFocusChange() {
+  @override
+  void didChangeMetrics() {
+    _syncImeScrollPad(revealFocused: true);
+  }
+
+  bool get _editingSettingsField {
+    final label = FocusManager.instance.primaryFocus?.debugLabel;
+    return label == _editFocusLabel;
+  }
+
+  void _syncImeScrollPad({required bool revealFocused}) {
+    if (!mounted || !widget.scrollable) return;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final view = View.of(context);
+    final rawIme = view.viewInsets.bottom / view.devicePixelRatio;
+    final inheritedIme = MediaQuery.viewInsetsOf(context).bottom;
+    var pad = rawIme > inheritedIme ? rawIme : inheritedIme;
+    // Android TV leanback IME often reports 0 while covering ~40% of the screen.
+    if (tv && _editingSettingsField && pad < 1) {
+      pad = MediaQuery.sizeOf(context).height * 0.42;
+    }
+    if ((pad - _imeScrollPad).abs() < 0.5) {
+      if (revealFocused && pad > 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _revealFocusedField();
+        });
+      }
+      return;
+    }
+    setState(() => _imeScrollPad = pad);
+    if (revealFocused) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _revealFocusedField();
+      });
+    }
+  }
+
+  void _revealFocusedField() {
     if (!mounted || !widget.scrollable) return;
     if (!_scrollController.hasClients) return;
     final policy = ShellScope.maybeOf(context)?.inputPolicy;
@@ -285,7 +332,21 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
     if (scrollable == null) return;
     if (!identical(scrollable.position, _scrollController.position)) return;
 
+    // Pin editing fields into the upper band so they clear the overlay IME.
+    if (primary!.debugLabel == _editFocusLabel && _imeScrollPad > 0) {
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.18,
+        duration: Duration.zero,
+      );
+      return;
+    }
     shellTvEnsureVisibleItem(ctx);
+  }
+
+  void _onFocusChange() {
+    _syncImeScrollPad(revealFocused: true);
+    if (_imeScrollPad <= 0) _revealFocusedField();
   }
 
   @override
@@ -417,7 +478,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold> {
                   SettingsTokens.pagePadding,
                   titleTop,
                   SettingsTokens.pagePadding,
-                  48,
+                  48 + _imeScrollPad,
                 ),
                 child: Align(
                   alignment: Alignment.topLeft,
@@ -1074,6 +1135,17 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_editing) return;
       _editFocus.requestFocus();
+      // IME opens after edit focus — second frame lets settings scroller pad
+      // for the keyboard and pin this field above it.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_editing) return;
+        shellTvEnsureVisibleItem(context);
+        Scrollable.ensureVisible(
+          context,
+          alignment: 0.18,
+          duration: Duration.zero,
+        );
+      });
     });
   }
 
