@@ -263,12 +263,13 @@ class _IptvSeriesDetailsScreenState extends State<IptvSeriesDetailsScreen> {
     final portal = widget.portal.displayLabel.trim();
     return iptvTmdbFacts(
       _enrich?.rich,
-      base: [
-        if (year != null) MapEntry('Year', '$year'),
-        if (_seasons.isNotEmpty) MapEntry('Seasons', '${_seasons.length}'),
-        if (_episodes.isNotEmpty) MapEntry('Episodes', '${_episodes.length}'),
-        if (portal.isNotEmpty) MapEntry('Portal', portal),
-      ],
+      preferTv: true,
+      fallback: iptvPortalFacts(
+        year: year,
+        seasons: _seasons.isNotEmpty ? _seasons.length : null,
+        episodes: _episodes.isNotEmpty ? _episodes.length : null,
+        portal: portal,
+      ),
     );
   }
 

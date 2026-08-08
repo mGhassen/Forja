@@ -168,11 +168,12 @@ class _IptvMovieDetailsScreenState extends State<IptvMovieDetailsScreen> {
     final portal = widget.portal.displayLabel.trim();
     return iptvTmdbFacts(
       _enrich?.rich,
-      base: [
-        if (year != null) MapEntry('Year', '$year'),
-        if (runtime > 0) MapEntry('Runtime', '${runtime}m'),
-        if (portal.isNotEmpty) MapEntry('Portal', portal),
-      ],
+      preferTv: false,
+      fallback: iptvPortalFacts(
+        year: year,
+        runtimeMinutes: runtime,
+        portal: portal,
+      ),
     );
   }
 

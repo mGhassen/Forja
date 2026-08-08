@@ -70,7 +70,9 @@ class HubDetailsHero extends StatelessWidget {
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final cinematicDesktop = viewportWidth >= 900;
     final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
-    final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
+    // Hub heroes (IPTV / anime / Asian Drama) sit a bit higher than Home.
+    final heroContentTop =
+        topInset + DetailsTokens.heroContentTopInset - 24;
     final bodyOverlap =
         this.bodyOverlap ?? DetailsTokens.heroBodyOverlap;
     final pageBleed = bleed > 0;
@@ -488,14 +490,14 @@ class _HubHeroMainColumn extends StatelessWidget {
       ],
       if (showOverview) ...[
         const SizedBox(height: _overviewGap),
-        SizedBox(
-          height: _overviewSlotHeight,
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: _overviewSlotHeight),
           child: Align(
             alignment: Alignment.topLeft,
             child: HeroOverviewText(
               overview: overview,
               maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
-              shrinkWrap: false,
+              shrinkWrap: true,
               style: _overviewStyle,
             ),
           ),
@@ -503,9 +505,7 @@ class _HubHeroMainColumn extends StatelessWidget {
       ],
     ];
 
-    // Pack meta → actions → progress at the top. Footer height is reserved in
-    // the meta budget so tight series chrome (episode rail) never clips Play.
-    // Clip meta only — wrapping actions in ClipRect shaves pill focus chrome.
+    // Pack meta → actions → progress at the top (Play sits under synopsis).
     final footer = <Widget>[
       if (actionRow != null) ...[
         const SizedBox(height: _actionGap),
@@ -541,23 +541,13 @@ class _HubHeroMainColumn extends StatelessWidget {
     return SizedBox(
       width: maxContentWidth,
       height: maxHeight,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: ClipRect(
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: metaColumn,
-                ),
-              ),
-            ),
-          ),
-          ...footer,
-        ],
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [...metaColumn, ...footer],
+        ),
       ),
     );
   }
