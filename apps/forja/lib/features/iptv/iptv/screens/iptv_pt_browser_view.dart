@@ -30,10 +30,11 @@ class _BrowserViewState extends State<_BrowserView> {
   double _streamTileExtent = 120;
   double _streamMainGap = 10;
   Timer? _scrollSettleTimer;
-  /// TV: defer stream logos until D-pad focus is still 500ms (decode thrash).
-  bool _channelLogosVisible = false;
+  /// TV: after settle, new tiles may decode logos. Already-shown ids stay on.
+  bool _allowNewLogos = false;
+  final Set<String> _revealedLogoIds = <String>{};
   static const _logoSettleDelay = Duration(milliseconds: 500);
-  /// Last stream-list offset — hide logos only when this actually moves.
+  /// Last stream-list offset — gate new logos only when this actually moves.
   double? _lastStreamScrollOffset;
   bool _didInitialFocus = false;
   bool _didRequestReloadFocus = false;
@@ -76,7 +77,7 @@ class _BrowserViewState extends State<_BrowserView> {
       if (iptvUseTvFocus(context)) {
         _bumpChannelLogoSettle();
       } else {
-        setState(() => _channelLogosVisible = true);
+        setState(() => _allowNewLogos = true);
       }
     });
   }
@@ -513,12 +514,14 @@ class _BrowserViewState extends State<_BrowserView> {
   void _commitBrowserCategory(String categoryId, {required bool enterStreams}) {
     final ctrl = widget.ctrl;
     final prev = ctrl.browserSelectedCategoryId;
-    ctrl.selectBrowserCategory(categoryId);
-    // Each group has its own channel focus — do not carry index
-    // from the previous category into this one.
+    // Clear before select so the rebuild does not paint old reveals.
     if (prev != categoryId) {
       iptvResetBrowserStreamsFocusMemory();
-      // New channel set — drop logos even if scroll offset stayed at 0.
+      _revealedLogoIds.clear();
+      _allowNewLogos = false;
+    }
+    ctrl.selectBrowserCategory(categoryId);
+    if (prev != categoryId) {
       _bumpChannelLogoSettle(hide: true);
     }
     if (iptvUseTvFocus(context)) {
@@ -635,7 +638,7 @@ class _BrowserViewState extends State<_BrowserView> {
     return false;
   }
 
-  /// TV: hide logos only when the channel list offset actually moves.
+  /// TV: stop admitting *new* logos when the channel list offset moves.
   void _onStreamScrollForLogos() {
     if (!mounted || !iptvUseTvFocus(context) || !_streamScroll.hasClients) {
       return;
@@ -647,21 +650,46 @@ class _BrowserViewState extends State<_BrowserView> {
     _bumpChannelLogoSettle(hide: true);
   }
 
-  /// Reveal stream logos after 500ms idle. [hide] only when the list scrolled
-  /// or the category swapped — mid-viewport ↑/↓ must keep logos on.
+  /// Stream ids currently on screen (plus one row of cache).
+  Iterable<String> _viewportStreamIds() {
+    final list = _filteredStreams;
+    if (list.isEmpty || !_streamScroll.hasClients) return const Iterable.empty();
+    final pos = _streamScroll.position;
+    final cross = _streamCrossAxisCount.clamp(1, 999);
+    final extent = _streamTileExtent + _streamMainGap;
+    if (extent <= 0 || pos.viewportDimension <= 0) {
+      return const Iterable.empty();
+    }
+    const padRows = 1;
+    final firstRow =
+        ((pos.pixels / extent).floor() - padRows).clamp(0, 1 << 20);
+    final lastRow =
+        ((pos.pixels + pos.viewportDimension) / extent).ceil() + padRows;
+    final first = firstRow * cross;
+    final last = (lastRow * cross).clamp(0, list.length);
+    if (first >= list.length) return const Iterable.empty();
+    return [for (var i = first; i < last; i++) list[i].streamId];
+  }
+
+  /// After 500ms idle, admit logos for the viewport. [hide] stops *new* logos
+  /// on scroll/category swap — already-revealed tiles stay painted.
   void _bumpChannelLogoSettle({bool hide = false}) {
     if (!iptvUseTvFocus(context)) return;
     _scrollSettleTimer?.cancel();
     if (hide) {
-      if (_channelLogosVisible) {
-        setState(() => _channelLogosVisible = false);
+      if (_allowNewLogos) {
+        _revealedLogoIds.addAll(_viewportStreamIds());
+        setState(() => _allowNewLogos = false);
       }
-    } else if (_channelLogosVisible) {
+    } else if (_allowNewLogos) {
       return;
     }
     _scrollSettleTimer = Timer(_logoSettleDelay, () {
-      if (!mounted || _channelLogosVisible) return;
-      setState(() => _channelLogosVisible = true);
+      if (!mounted || _allowNewLogos) return;
+      setState(() {
+        _allowNewLogos = true;
+        _revealedLogoIds.addAll(_viewportStreamIds());
+      });
     });
   }
 
@@ -669,8 +697,10 @@ class _BrowserViewState extends State<_BrowserView> {
   bool get _useStreamScrollListener =>
       _LiveHealthProbe.usesScrollDebounce(context);
 
-  bool get _streamShowLogos =>
-      !iptvUseTvFocus(context) || _channelLogosVisible;
+  bool _streamShowLogo(IptvStream stream) {
+    if (!iptvUseTvFocus(context)) return true;
+    return _revealedLogoIds.contains(stream.streamId) || _allowNewLogos;
+  }
 
   String get _sectionTitle {
     switch (widget.ctrl.activeSection) {
@@ -1153,7 +1183,7 @@ class _BrowserViewState extends State<_BrowserView> {
             return _StreamCard(
               stream: stream,
               ctrl: widget.ctrl,
-              showLogo: _streamShowLogos,
+              showLogo: _streamShowLogo(stream),
               onTvFocusGained: _bumpChannelLogoSettle,
               gridIndex: i,
               gridColumns: cross,
@@ -1217,7 +1247,7 @@ class _BrowserViewState extends State<_BrowserView> {
           ctrl: ctrl,
           categoryName: categoryNames[stream.categoryId] ?? '',
           listIndex: i,
-          showLogo: _streamShowLogos,
+          showLogo: _streamShowLogo(stream),
           onTvFocusGained: _bumpChannelLogoSettle,
           onLeftEdge: iptvStreamLeftEdge(ctrl, stream),
           onRightEdge: ctrl.portalPanelOpen

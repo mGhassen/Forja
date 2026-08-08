@@ -80,9 +80,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   /// Match catalog stream health TTL (portal status dots use the same window).
   static const _healthTtl = Duration(minutes: 2);
 
-  /// TV: defer channel-list [Image.network] until D-pad focus is still 500ms.
+  /// TV: after settle, new rows may decode logos. Already-shown ids stay on.
   Timer? _logoSettleTimer;
-  bool _channelLogosVisible = false;
+  bool _allowNewLogos = false;
+  final Set<String> _revealedLogoIds = <String>{};
   static const _logoSettleDelay = Duration(milliseconds: 500);
 
   static const Color _groupsTint = Color(0xE00C0C12);
@@ -112,7 +113,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       if (iptvUseTvFocus(context)) {
         _bumpChannelLogoSettle();
       } else {
-        setState(() => _channelLogosVisible = true);
+        setState(() => _allowNewLogos = true);
       }
     });
   }
@@ -279,26 +280,55 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     super.dispose();
   }
 
-  /// Reveal channel logos after 500ms idle. [hide] only when the list scrolled
-  /// or the group swapped — mid-viewport ↑/↓ must keep logos on.
+  /// Channel ids currently on screen (plus one row of cache).
+  Iterable<String> _viewportChannelIds() {
+    final channels = _visibleChannels;
+    if (channels.isEmpty || !_channelScroll.hasClients) {
+      return const Iterable.empty();
+    }
+    final pos = _channelScroll.position;
+    final extent = IptvChannelGuidePanel.channelRowExtent;
+    if (extent <= 0 || pos.viewportDimension <= 0) {
+      return const Iterable.empty();
+    }
+    const pad = IptvChannelGuidePanel.channelListPaddingV;
+    const padRows = 1;
+    final first = (((pos.pixels - pad) / extent).floor() - padRows)
+        .clamp(0, channels.length);
+    final last = (((pos.pixels + pos.viewportDimension - pad) / extent)
+                .ceil() +
+            padRows)
+        .clamp(0, channels.length);
+    if (first >= channels.length) return const Iterable.empty();
+    return [for (var i = first; i < last; i++) channels[i].id];
+  }
+
+  /// After 500ms idle, admit logos for the viewport. [hide] stops *new* logos
+  /// on scroll/group swap — already-revealed rows stay painted.
   void _bumpChannelLogoSettle({bool hide = false}) {
     if (!iptvUseTvFocus(context)) return;
     _logoSettleTimer?.cancel();
     if (hide) {
-      if (_channelLogosVisible) {
-        setState(() => _channelLogosVisible = false);
+      if (_allowNewLogos) {
+        _revealedLogoIds.addAll(_viewportChannelIds());
+        setState(() => _allowNewLogos = false);
       }
-    } else if (_channelLogosVisible) {
+    } else if (_allowNewLogos) {
       return;
     }
     _logoSettleTimer = Timer(_logoSettleDelay, () {
-      if (!mounted || _channelLogosVisible) return;
-      setState(() => _channelLogosVisible = true);
+      if (!mounted || _allowNewLogos) return;
+      setState(() {
+        _allowNewLogos = true;
+        _revealedLogoIds.addAll(_viewportChannelIds());
+      });
     });
   }
 
-  bool get _showChannelLogos =>
-      !iptvUseTvFocus(context) || _channelLogosVisible;
+  bool _showChannelLogo(IptvGuideChannel channel) {
+    if (!iptvUseTvFocus(context)) return true;
+    return _revealedLogoIds.contains(channel.id) || _allowNewLogos;
+  }
 
   void _syncFocusIndices({bool channelOnly = false}) {
     if (!channelOnly) {
@@ -345,6 +375,10 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final groupChanged = groupId != _browseGroupId;
     if (!groupChanged && nextFocus == _focusedGroupIndex) {
       return;
+    }
+    if (groupChanged) {
+      _revealedLogoIds.clear();
+      _allowNewLogos = false;
     }
     setState(() {
       _focusedGroupIndex = nextFocus;
@@ -1145,7 +1179,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
             channel: ch,
             active: active,
             focused: focused,
-            showLogo: _showChannelLogos,
+            showLogo: _showChannelLogo(ch),
             health: _health[ch.id],
             onProbe: () => _scheduleHealthCheck(ch),
             onCancelProbe: () => _cancelHealthCheck(ch.id),
