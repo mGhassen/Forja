@@ -15,6 +15,8 @@ class LanPrefs {
   static const _deviceIdKey = 'lan_device_id';
   static const _serverEnabledKey = 'lan_server_enabled';
   static const _allowLocalTorrentKey = 'lan_allow_local_torrent';
+  /// Sticky desktop listen port so TV keeps working across desktop restarts.
+  static const _listenPortKey = 'lan_listen_port';
 
   Future<String> deviceId() async {
     final existing = await kvGetString(_deviceIdKey);
@@ -71,6 +73,15 @@ class LanPrefs {
 
   Future<void> setLanServerEnabled(bool enabled) async =>
       kvSetBool(_serverEnabledKey, enabled);
+
+  Future<int?> get listenPort async {
+    final v = await kvGetInt(_listenPortKey, fallback: 0);
+    return v > 0 ? v : null;
+  }
+
+  Future<void> setListenPort(int port) async {
+    await kvSetInt(_listenPortKey, port > 0 ? port : 0);
+  }
 
   Future<bool> allowLocalTorrentOnDevice() async =>
       kvGetBool(_allowLocalTorrentKey, fallback: false);

@@ -16,7 +16,9 @@ Pairing means **this TV trusts that desktop**. Do it once on the same Wi‑Fi.
 2. Note the **desktop address** (`IP:port`) and the **6-digit pairing code**
 3. Keep Forja running
 
-Paired TVs and phones appear under **Paired devices**. Use the **reload** icon if a device just paired and the list still says waiting. **Revoke** forces that device to pair again.
+Paired TVs and phones appear under **Paired devices** with a green/grey status dot (**Online** = recent traffic from that device; **Idle** = still paired, not talking right now). Use the **reload** icon if a device just paired and the list still says waiting. **Revoke** forces that device to pair again.
+
+The desktop reuses the same LAN **port** across restarts when possible. If the port or IP still changes, a paired TV rediscovers this PC on Wi‑Fi (same server id) and updates the saved address — you do not re-enter the pairing code.
 
 **Torrent activity** lists the torrent currently downloading/serving (when any) and a cached history of magnets opened by paired devices. Use the trash icon on a row to stop that download if it is active and delete its cached file. **Clear all** stops the engine torrent, wipes the torrent download cache, and clears history.
 
@@ -29,7 +31,7 @@ Paired TVs and phones appear under **Paired devices**. Use the **reload** icon i
 
 On Android TV, **OK** on a field opens the keyboard and the page scrolls so the field stays visible above it.
 
-Status shows **Paired · desktop online**. Unpair anytime from the same screen.
+Status shows **Paired · desktop online/offline** with a green/grey status dot. The screen periodically re-checks the desktop (and rediscovers it if the port changed). Unpair anytime from the same screen.
 
 ## Every night — watch
 

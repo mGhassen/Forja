@@ -101,8 +101,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       } catch (_) {
         _torrentCacheBytes = 0;
       }
-      _ensureStatusPolling();
     }
+    _ensureStatusPolling();
     if (mounted) setState(() => _loading = false);
     if (prevPaired != _paired || prevOnline != _serverOnline) {
       _refreshPlaySourceGates();
@@ -111,14 +111,39 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
 
   void _ensureStatusPolling() {
     _statusTimer?.cancel();
-    if (!_isDesktopServer) return;
-    _statusTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+    _statusTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!mounted) return;
-      setState(() {
-        _activeTorrent = LanServerService.instance.activeTorrentStatus();
-        _torrentHistory = LanServerService.instance.listTorrentHistory();
-      });
+      if (_isDesktopServer) {
+        setState(() {
+          _devices = LanServerService.instance.listDevices();
+          _activeTorrent = LanServerService.instance.activeTorrentStatus();
+          _torrentHistory = LanServerService.instance.listTorrentHistory();
+          if (LanServerService.instance.isRunning) {
+            _serverPort = LanServerService.instance.port;
+          }
+        });
+        return;
+      }
+      unawaited(_pollClientStatus());
     });
+  }
+
+  Future<void> _pollClientStatus() async {
+    final prevOnline = _serverOnline;
+    final online = await LanClientService.instance.verifyPairedConnection();
+    final host = await LanPrefs.instance.serverHost;
+    final port = await LanPrefs.instance.serverPort;
+    final paired = await LanPrefs.instance.isPaired;
+    if (!mounted) return;
+    setState(() {
+      _paired = paired;
+      _serverOnline = online;
+      _pairedHost = host;
+      _pairedPort = port;
+    });
+    if (prevOnline != online || (!_paired && prevOnline)) {
+      _refreshPlaySourceGates();
+    }
   }
 
   Future<void> _refreshTorrentPanel() async {
@@ -438,15 +463,30 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
             final label = (d['label'] as String?)?.trim();
             final title = (label != null && label.isNotEmpty) ? label : 'Device';
             final when = _formatPairedAt(d['paired_at']);
+            final online = _deviceOnline(d['last_seen']);
             return ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                _iconForLabel(label),
-                color: ForjaShellColors.brandGreen,
+              leading: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    _iconForLabel(label),
+                    color: ForjaShellColors.brandGreen,
+                  ),
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: _statusDot(online),
+                  ),
+                ],
               ),
               title: Text(title),
               subtitle: Text(
-                when == null ? id : '$when · $id',
+                [
+                  online ? 'Online' : 'Idle',
+                  ?when,
+                  id,
+                ].join(' · '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -599,19 +639,32 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     return [
       ListTile(
         contentPadding: EdgeInsets.zero,
-        leading: Icon(
-          _paired
-              ? (_serverOnline
-                  ? Icons.tv_rounded
-                  : Icons.cloud_off_rounded)
-              : Icons.link_rounded,
-          color: _paired && _serverOnline
-              ? Colors.greenAccent
-              : ForjaShellColors.textSecondary,
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(
+              _paired
+                  ? (_serverOnline
+                      ? Icons.tv_rounded
+                      : Icons.cloud_off_rounded)
+                  : Icons.link_rounded,
+              color: _paired && _serverOnline
+                  ? Colors.greenAccent
+                  : ForjaShellColors.textSecondary,
+            ),
+            if (_paired)
+              Positioned(
+                right: -2,
+                bottom: -2,
+                child: _statusDot(_serverOnline),
+              ),
+          ],
         ),
         title: Text(
           _paired
-              ? (_serverOnline ? 'Paired · desktop online' : 'Paired · desktop offline')
+              ? (_serverOnline
+                  ? 'Paired · desktop online'
+                  : 'Paired · desktop offline')
               : 'Not paired',
         ),
         subtitle: Text(
@@ -720,6 +773,28 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         fontSize: 11,
         fontWeight: FontWeight.bold,
         letterSpacing: 1.5,
+      ),
+    );
+  }
+
+  /// Green = seen in the last 2 minutes; grey = paired but idle.
+  static bool _deviceOnline(Object? lastSeenRaw) {
+    final secs = (lastSeenRaw as num?)?.toInt() ?? 0;
+    if (secs <= 0) return false;
+    final age = DateTime.now().millisecondsSinceEpoch ~/ 1000 - secs;
+    return age >= 0 && age <= 120;
+  }
+
+  static Widget _statusDot(bool online) {
+    return Container(
+      width: 9,
+      height: 9,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: online
+            ? Colors.greenAccent
+            : ForjaShellColors.textSecondary.withValues(alpha: 0.55),
+        border: Border.all(color: ForjaShellColors.surfaceElevated, width: 1.5),
       ),
     );
   }

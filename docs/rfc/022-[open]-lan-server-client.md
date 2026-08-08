@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components (desktop→TV) · **2 / 3** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
-| **Current slice** | Desktop→ATV torrent relay + Settings torrent activity/history — first-frame smoke open |
+| **Progress** | **7 / 7** components (desktop→TV) · **4 / 5** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
+| **Current slice** | Sticky port + mDNS rediscover + presence dots shipped — first-frame smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -42,6 +42,7 @@ Historical C01–C07 above were never on `main` (stale ✅ from `feat/forja-serv
 | 11 | R22-C11 | One-time pairing code + device token store / revoke | ✅ |
 | 12 | R22-C12 | Dart LAN services, Settings → LAN, ATV paired torrent expose, `LanPlaybackBridge` open path | ✅ |
 | 13 | R22-C13 | Desktop LAN torrent activity — persist `/open` history, live status, delete/clear cached downloads | ✅ |
+| 14 | R22-C14 | Sticky listen port + client mDNS rediscover by `server_id` + device `last_seen` presence dots | ✅ |
 
 ---
 
@@ -71,6 +72,8 @@ Historical C01–C07 above were never on `main` (stale ✅ from `feat/forja-serv
 | 13 | R22-A13 | Desktop LAN on → ATV/phone pairs → magnet reaches first frame via ticketed `play_url` (no 401 on `/torrents/…`) | ⬜ |
 | 14 | R22-A14 | Paired ATV: Settings → Playback shows Direct torrent / Stremio / Nuvio; enabled toggles drive details white Play + Sources (desktop relay) | ✅ |
 | 15 | R22-A15 | Desktop Settings → LAN shows active/in-progress torrent + cached history of LAN opens; delete one or Clear all removes download cache | ✅ |
+| 16 | R22-A16 | Desktop restart keeps sticky LAN port; if port/IP still changes, paired client rediscovers via mDNS `server_id` and rewrites saved address without re-pair | ✅ |
+| 17 | R22-A17 | Settings → LAN shows green/grey status dots — TV desktop online/offline; desktop paired devices Online/Idle from `last_seen` | ✅ |
 
 ---
 

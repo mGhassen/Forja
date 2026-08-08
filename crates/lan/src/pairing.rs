@@ -12,6 +12,9 @@ pub struct DeviceRecord {
     pub device_id: String,
     pub token: String,
     pub paired_at: u64,
+    /// Unix seconds of last authenticated control/stream request (0 = never).
+    #[serde(default)]
+    pub last_seen: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
 }
@@ -106,13 +109,12 @@ impl PairingState {
         }
 
         let token = generate_token();
+        let now = unix_secs();
         let record = DeviceRecord {
             device_id: device_id.to_string(),
             token: token.clone(),
-            paired_at: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_secs())
-                .unwrap_or(0),
+            paired_at: now,
+            last_seen: now,
             label,
         };
         if let Some(old) = g.devices.remove(device_id) {
@@ -133,6 +135,33 @@ impl PairingState {
             .lock()
             .map(|g| g.token_index.contains_key(token))
             .unwrap_or(false)
+    }
+
+    /// Mark device active (Bearer control-plane hit).
+    pub fn touch_token(&self, token: &str) {
+        let Ok(mut g) = self.inner.lock() else {
+            return;
+        };
+        let Some(device_id) = g.token_index.get(token).cloned() else {
+            return;
+        };
+        if let Some(rec) = g.devices.get_mut(&device_id) {
+            rec.last_seen = unix_secs();
+        }
+    }
+
+    /// Mark device active (stream ticket media GET).
+    pub fn touch_stream_ticket(&self, ticket: &str) {
+        let Ok(mut g) = self.inner.lock() else {
+            return;
+        };
+        let Some(entry) = g.stream_tickets.get(ticket) else {
+            return;
+        };
+        let device_id = entry.device_id.clone();
+        if let Some(rec) = g.devices.get_mut(&device_id) {
+            rec.last_seen = unix_secs();
+        }
     }
 
     /// `(device_id, label)` for a live device token.
@@ -187,6 +216,7 @@ impl PairingState {
                         device_id: d.device_id.clone(),
                         token: mask_token(&d.token),
                         paired_at: d.paired_at,
+                        last_seen: d.last_seen,
                         label: d.label.clone(),
                     })
                     .collect();
@@ -233,6 +263,13 @@ impl PairingState {
             false
         }
     }
+}
+
+fn unix_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 fn generate_token() -> String {
@@ -305,5 +342,18 @@ mod tests {
         assert!(state.mint_stream_ticket("bad").is_err());
         assert!(state.revoke_device("tv-1"));
         assert!(!state.validate_stream_ticket(&ticket));
+    }
+
+    #[test]
+    fn touch_token_updates_last_seen() {
+        let state = PairingState::new("srv1".into());
+        let code = state.refresh_code();
+        let token = state.pair(&code, "tv-1", Some("Android TV".into())).expect("pair");
+        let before = state.list_devices()[0].last_seen;
+        assert!(before > 0);
+        std::thread::sleep(Duration::from_millis(20));
+        state.touch_token(&token);
+        let after = state.list_devices()[0].last_seen;
+        assert!(after >= before);
     }
 }

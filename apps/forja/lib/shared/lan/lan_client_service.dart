@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:rust/rust.dart';
 
 import 'lan_prefs.dart';
 
@@ -33,14 +34,8 @@ class LanClientService {
   static final LanClientService instance = LanClientService._();
 
   Future<bool> checkHealth(String host, int port) async {
-    try {
-      final r = await http
-          .get(Uri.parse('http://$host:$port/health'))
-          .timeout(const Duration(seconds: 3));
-      return r.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    final info = await fetchHealth(host, port);
+    return info != null;
   }
 
   Future<LanServerInfo?> fetchHealth(String host, int port) async {
@@ -59,6 +54,44 @@ class LanClientService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Authenticated ping so the desktop can mark this device online.
+  Future<bool> pingStatus(String host, int port) async {
+    final token = await LanPrefs.instance.token;
+    if (token == null || token.isEmpty) return false;
+    try {
+      final r = await http
+          .get(
+            Uri.parse('http://$host:$port/status'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 3));
+      if (r.statusCode == 401) {
+        await LanPrefs.instance.clearServer();
+        return false;
+      }
+      return r.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _probeAndTouch(
+    String host,
+    int port, {
+    String? expectedServerId,
+  }) async {
+    final info = await fetchHealth(host, port);
+    if (info == null) return false;
+    if (expectedServerId != null &&
+        expectedServerId.isNotEmpty &&
+        info.serverId.isNotEmpty &&
+        info.serverId != expectedServerId) {
+      return false;
+    }
+    await pingStatus(host, port);
+    return true;
   }
 
   Future<String?> pair({
@@ -112,9 +145,21 @@ class LanClientService {
   }) async {
     final prefs = LanPrefs.instance;
     final token = await prefs.token;
-    final h = host ?? await prefs.serverHost;
-    final p = port ?? await prefs.serverPort;
+    var h = host ?? await prefs.serverHost;
+    var p = port ?? await prefs.serverPort;
     if (token == null || h == null || p == null) return null;
+
+    // Stale port after desktop restart — rediscover before open.
+    if (!await _probeAndTouch(
+      h,
+      p,
+      expectedServerId: await prefs.serverId,
+    )) {
+      if (!await verifyPairedConnection()) return null;
+      h = await prefs.serverHost;
+      p = await prefs.serverPort;
+      if (h == null || p == null) return null;
+    }
 
     final body = <String, dynamic>{
       'kind': kind,
@@ -151,12 +196,53 @@ class LanClientService {
     }
   }
 
+  /// Health on saved address; on failure browse mDNS for the same `server_id`
+  /// and rewrite host/port (desktop restart / sticky-port miss).
   Future<bool> verifyPairedConnection() async {
     final prefs = LanPrefs.instance;
     if (!await prefs.isPaired) return false;
     final host = await prefs.serverHost;
     final port = await prefs.serverPort;
+    final serverId = await prefs.serverId;
     if (host == null || port == null) return false;
-    return checkHealth(host, port);
+
+    if (await _probeAndTouch(host, port, expectedServerId: serverId)) {
+      return true;
+    }
+
+    if (serverId == null || serverId.isEmpty) return false;
+    for (final s in _browseServers()) {
+      if (s.serverId != serverId) continue;
+      if (!await _probeAndTouch(
+        s.host,
+        s.port,
+        expectedServerId: serverId,
+      )) {
+        continue;
+      }
+      await prefs.setServer(
+        host: s.host,
+        port: s.port,
+        serverId: serverId,
+      );
+      return true;
+    }
+    return false;
+  }
+
+  List<LanServerInfo> _browseServers() {
+    if (!Engine.isReady) return const [];
+    try {
+      final raw = RustLib.instance.lanBrowseServersJson(timeoutMs: 3000);
+      final list = jsonDecode(raw);
+      if (list is! List) return const [];
+      return list
+          .whereType<Map>()
+          .map((e) => LanServerInfo.fromJson(Map<String, dynamic>.from(e)))
+          .where((s) => s.host.isNotEmpty && s.port > 0)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
   }
 }

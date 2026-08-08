@@ -26,6 +26,7 @@ pub async fn require_bearer_token(
     if token.is_empty() || !pairing.validate_token(&token) {
         return Err(StatusCode::UNAUTHORIZED);
     }
+    pairing.touch_token(&token);
     req.extensions_mut().insert(token);
     Ok(next.run(req).await)
 }
@@ -46,6 +47,7 @@ pub async fn require_stream_ticket(
     if ticket.is_empty() || !pairing.validate_stream_ticket(&ticket) {
         return Err(StatusCode::UNAUTHORIZED);
     }
+    pairing.touch_stream_ticket(&ticket);
     Ok(next.run(req).await)
 }
 

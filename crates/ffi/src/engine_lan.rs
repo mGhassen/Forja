@@ -39,12 +39,14 @@ pub fn lan_server_start(
             }
         }
     }
+    // Proxy/torrent use ephemeral ports — only the LAN control server sticks
+    // `preferred_port` so paired clients keep a stable address.
     if crate::engine_proxy::proxy_port() == 0 {
-        let _ = crate::proxy_start(preferred_port as u32);
+        let _ = crate::proxy_start(0);
     }
     #[cfg(feature = "torrent-engine")]
     if crate::torrent_engine_port() == 0 {
-        let _ = crate::torrent_engine_start(preferred_port as u32);
+        let _ = crate::torrent_engine_start(0);
     }
     runtime
         .block_on(async {

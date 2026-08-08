@@ -24,15 +24,29 @@ class LanServerService {
     if (!canRunServer || !Engine.isReady) return false;
     if (isRunning) {
       await LanPrefs.instance.setLanServerEnabled(true);
+      final running = port;
+      if (running > 0) {
+        await LanPrefs.instance.setListenPort(running);
+      }
       return true;
     }
     final bindMode = allInterfaces ? 1 : 0;
-    final p = RustLib.instance.lanServerStart(
+    final preferred = await LanPrefs.instance.listenPort ?? 0;
+    var p = RustLib.instance.lanServerStart(
       bindMode: bindMode,
-      preferredPort: 0,
+      preferredPort: preferred,
     );
+    // Preferred port busy → fall back to ephemeral, then stick that.
+    if (p <= 0 && preferred > 0) {
+      debugPrint('[LAN] port $preferred busy — retrying with ephemeral');
+      p = RustLib.instance.lanServerStart(
+        bindMode: bindMode,
+        preferredPort: 0,
+      );
+    }
     if (p > 0) {
       await LanPrefs.instance.setLanServerEnabled(true);
+      await LanPrefs.instance.setListenPort(p);
       RustLib.instance.lanPairingCode();
       return true;
     }
