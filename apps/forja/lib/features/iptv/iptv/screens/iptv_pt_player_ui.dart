@@ -80,10 +80,10 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   bool get _isVodChrome => _s.widget.vodPlayback || _s._isVod;
 
   /// MediaKit always; Exo for movies/series (live Exo stays track-light).
-  bool get _showTrackButtons => !_s._exoBackend || _s.widget.vodPlayback;
+  bool get _showTrackButtons => !_s._exoBackend || _isVodChrome;
 
   bool get _showEpisodesButton =>
-      _s.widget.vodPlayback &&
+      _isVodChrome &&
       (_s.widget.seriesEpisodes?.isNotEmpty ?? false) &&
       _s.widget.seriesPortal != null;
 
@@ -233,14 +233,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           if (mounted) setState(() => _s._selectedExternalSubUrl = null);
         },
         onSelectExternal: (sub) async {
-          // Online SRT for Exo VOD still goes through MediaKit path when
-          // engine is MediaKit; Exo embeds only for now.
-          if (!_s._exoBackend) await _loadOnlineSubtitle(sub);
+          await _loadOnlineSubtitle(sub);
         },
-        onSubtitleSettings:
-            _s.widget.onlineSubtitles && !_s._exoBackend
-                ? _showSubtitleSettings
-                : null,
+        onSubtitleSettings: _s.widget.onlineSubtitles
+            ? _showSubtitleSettings
+            : null,
       );
       return;
     }
@@ -270,6 +267,46 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   }
 
   void _showSubtitleSettings() {
+    final exoId = _s._exoViewId;
+    if (_s._exoBackend) {
+      if (exoId == null) return;
+      PlayerSubtitleSettingsDialog.show(
+        context,
+        initial: PlayerSubtitleSettingsValues(
+          size: _s._subtitleSize,
+          delay: _s._subtitleDelay,
+          color: _s._subtitleColor,
+          bgOpacity: _s._subtitleBgOpacity,
+          bottomPadding: _s._subtitleBottomPadding,
+          bold: _s._subtitleBold,
+          font: _s._subtitleFont,
+        ),
+        player: null,
+        onChanged: (values) {
+          setState(() {
+            _s._subtitleSize = values.size;
+            _s._subtitleDelay = values.delay;
+            _s._subtitleColor = values.color;
+            _s._subtitleBgOpacity = values.bgOpacity;
+            _s._subtitleBottomPadding = values.bottomPadding;
+            _s._subtitleBold = values.bold;
+            _s._subtitleFont = values.font;
+          });
+          unawaited(
+            ExoPlayerBridge.setSubtitleStyle(
+              exoId,
+              sizeSp: values.size,
+              textColorArgb: values.color.toARGB32(),
+              backgroundOpacity: values.bgOpacity,
+              bottomPaddingPx: values.bottomPadding,
+              bold: values.bold,
+              font: values.font,
+            ),
+          );
+        },
+      );
+      return;
+    }
     if (_s._player == null) return;
     PlayerSubtitleSettingsDialog.show(
       context,
@@ -298,7 +335,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   }
 
   void _fetchOnlineSubtitles() {
-    if (!widget.onlineSubtitles || _s._exoBackend) return;
+    if (!widget.onlineSubtitles) return;
     final title = _s._subQueryTitle.trim();
     if (title.isEmpty) return;
     _s._subtitleFetchSub?.cancel();
@@ -327,7 +364,12 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   Future<void> _loadOnlineSubtitle(Map<String, dynamic> s) async {
     final url = (s['url'] ?? '').toString();
-    if (url.isEmpty || _s._player == null) return;
+    if (url.isEmpty) return;
+    if (_s._exoBackend) {
+      await _loadOnlineSubtitleExo(s, url);
+      return;
+    }
+    if (_s._player == null) return;
     final isTranslated =
         s['translated'] == true || url.contains('/subtitlecat-translate');
 
@@ -407,6 +449,63 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       if (!mounted) return;
       setState(() => _s._selectedExternalSubUrl = null);
       ForjaToast.warning('Subtitle failed');
+    }
+  }
+
+  Future<void> _loadOnlineSubtitleExo(Map<String, dynamic> s, String url) async {
+    final id = _s._exoViewId;
+    if (id == null) return;
+    final lang = (s['language'] ?? s['lang'] ?? 'und').toString();
+    final label = (s['display'] ?? lang).toString();
+    try {
+      var uri = url;
+      if (!url.startsWith('file://') && !url.startsWith('/')) {
+        final cached = _s._externalSubFileCache[url];
+        if (cached != null) {
+          uri = cached;
+        } else {
+          final isTranslated =
+              s['translated'] == true || url.contains('/subtitlecat-translate');
+          final subUri = Uri.parse(url);
+          final selfOrigin = '${subUri.scheme}://${subUri.host}';
+          final ref = (s['referer'] as String?)?.trim();
+          final org = (s['origin'] as String?)?.trim();
+          final headers = <String, String>{
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': '*/*',
+            'Referer': (ref != null && ref.isNotEmpty) ? ref : '$selfOrigin/',
+            'Origin': (org != null && org.isNotEmpty) ? org : selfOrigin,
+          };
+          final res = await http
+              .get(subUri, headers: headers)
+              .timeout(Duration(minutes: isTranslated ? 5 : 1));
+          if (!mounted) return;
+          if (res.statusCode != 200) {
+            ForjaToast.warning('Subtitle failed');
+            return;
+          }
+          final dir = await getTemporaryDirectory();
+          final safeLang = lang.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+          final file = File(
+            '${dir.path}/forja_iptv_exo_sub_${DateTime.now().millisecondsSinceEpoch}_$safeLang.srt',
+          );
+          await file.writeAsBytes(res.bodyBytes);
+          uri = Uri.file(file.path).toString();
+          _s._externalSubFileCache[url] = uri;
+        }
+      } else if (url.startsWith('/')) {
+        uri = Uri.file(url).toString();
+      }
+      await ExoPlayerBridge.setSubtitles(id, [
+        {'url': uri, 'lang': lang, 'label': label},
+      ]);
+      if (!mounted) return;
+      setState(() => _s._selectedExternalSubUrl = url);
+    } catch (e) {
+      debugPrint('[IPTV Player] Exo subtitle load failed: $e');
+      if (mounted) ForjaToast.warning('Subtitle failed');
     }
   }
 
@@ -716,7 +815,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           _focusPlayerChrome();
         },
         onSeekBack: () {
-          if (!_s._isVod) {
+          if (!_isVodChrome || _s._duration.inSeconds <= 1) {
             _revealControlsAndFocus(back: false);
             return;
           }
@@ -726,7 +825,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           _scheduleHideControls();
         },
         onSeekForward: () {
-          if (!_s._isVod) {
+          if (!_isVodChrome || _s._duration.inSeconds <= 1) {
             _revealControlsAndFocus(back: false);
             return;
           }
@@ -1426,9 +1525,103 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     );
   }
 
+  /// VOD chrome before duration is known — keeps the progress row visible.
+  Widget _buildVodSeekbarWaiting(bool compact) {
+    final pos = _s._position;
+    final tv = iptvUseTvFocus(context);
+    final bar = SizedBox(
+      height: compact ? 28 : 32,
+      child: Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: const LinearProgressIndicator(
+            minHeight: 3.5,
+            backgroundColor: Colors.white24,
+            color: ForjaShellColors.brandGreen,
+          ),
+        ),
+      ),
+    );
+    final track = !tv
+        ? bar
+        : Focus(
+            focusNode: _s._seekFocus,
+            onKeyEvent: (node, event) {
+              if (!shellTvIsNavigationKey(event)) {
+                return KeyEventResult.ignored;
+              }
+              final key = event.logicalKey;
+              if (key == LogicalKeyboardKey.arrowUp) {
+                _claimBackFocus();
+                return KeyEventResult.handled;
+              }
+              if (key == LogicalKeyboardKey.arrowDown) {
+                _claimPlayFocus();
+                return KeyEventResult.handled;
+              }
+              // Duration unknown — don't leak ←/→ into the transport row.
+              if (key == LogicalKeyboardKey.arrowLeft ||
+                  key == LogicalKeyboardKey.arrowRight) {
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: Builder(
+              builder: (ctx) {
+                final focused = Focus.of(ctx).hasFocus;
+                return DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    border: focused
+                        ? Border.all(
+                            color: ForjaShellColors.brandGreen,
+                            width: 1.5,
+                          )
+                        : null,
+                  ),
+                  child: bar,
+                );
+              },
+            ),
+          );
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 16 : 24,
+        vertical: compact ? 2 : 4,
+      ),
+      child: Row(
+        children: [
+          if ((_s._logoUrl ?? '').isNotEmpty) ...[
+            _buildChannelLogo(compact),
+            SizedBox(width: compact ? 10 : 16),
+          ],
+          Expanded(child: track),
+          SizedBox(
+            width: compact ? 100 : 120,
+            child: Text(
+              '${_IptvPtPlayerScreenState._fmtDur(pos)} / --:--',
+              textAlign: TextAlign.right,
+              style: GoogleFonts.spaceMono(
+                color: Colors.white,
+                fontSize: compact ? 12 : 13,
+                fontFeatures: const [FontFeature.tabularFigures()],
+                shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSeekbar(bool compact) {
     final totalMs = _s._duration.inMilliseconds.toDouble();
-    if (totalMs <= 0) return const SizedBox.shrink();
+    // Movies/series always reserve the scrubber row — Exo often reports
+    // duration late (or never for some progressive MP4s). Don't hide chrome.
+    if (totalMs <= 0) {
+      if (!_isVodChrome) return const SizedBox.shrink();
+      return _buildVodSeekbarWaiting(compact);
+    }
     final currentMs = _s._isSeeking
         ? _s._seekPreview
         : _s._position.inMilliseconds.toDouble().clamp(0.0, totalMs);
@@ -1526,11 +1719,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             SizedBox(width: compact ? 10 : 16),
           ],
           Expanded(child: slider),
-          // Current time
           SizedBox(
-            width: compact ? 84 : 100,
+            width: compact ? 100 : 120,
             child: Text(
-              _IptvPtPlayerScreenState._fmtDur(shownPos),
+              '${_IptvPtPlayerScreenState._fmtDur(shownPos)} / '
+              '${_IptvPtPlayerScreenState._fmtDur(_s._duration)}',
               textAlign: TextAlign.right,
               style: GoogleFonts.spaceMono(
                 color: Colors.white,
@@ -2005,7 +2198,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       _s._buffered = Duration.zero;
     });
     await _s._reloadCurrent();
-    if (_s.widget.onlineSubtitles && !_s._exoBackend) {
+    if (_s.widget.onlineSubtitles) {
       _fetchOnlineSubtitles();
     }
   }

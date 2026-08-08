@@ -175,9 +175,21 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
           needsTruncation: needsTruncation,
         );
 
-        // Parent fixed slots (details / home) must never yellow-strip - clip and
-        // scroll when expanded.
+        // Unbounded parent — size to text.
         if (maxHeight == null) return content;
+
+        // shrinkWrap: ceiling only — do not fill the overview slot (Play sits
+        // under synopsis). Fixed slots (!shrinkWrap) keep a tight height.
+        if (widget.shrinkWrap) {
+          return ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: ClipRect(
+              child: _expanded
+                  ? SingleChildScrollView(child: content)
+                  : content,
+            ),
+          );
+        }
 
         return SizedBox(
           width: maxWidth.isFinite ? maxWidth : null,

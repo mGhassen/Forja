@@ -1396,14 +1396,14 @@ class _HeroMainColumn extends StatelessWidget {
       ],
       if (showOverview) ...[
         const SizedBox(height: _overviewGap),
-        SizedBox(
-          height: overviewHeight,
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: overviewHeight),
           child: Align(
             alignment: Alignment.topLeft,
             child: HeroOverviewText(
               overview: movie.overview,
               maxLines: ShellTokens.heroOverviewMaxLinesDesktop,
-              shrinkWrap: false,
+              shrinkWrap: true,
               style: _overviewStyle,
             ),
           ),
@@ -1411,10 +1411,9 @@ class _HeroMainColumn extends StatelessWidget {
       ],
     ];
 
-    // Pack meta → actions → progress at the top. Footer height is reserved in
-    // the meta budget so tight series chrome (episode rail) never clips Play
-    // out of the focus tree. Clip meta only — wrapping actions in ClipRect
-    // shaves the pill focus ring / scale on tight ATV viewports.
+    // Pack meta → actions → progress at the top (Play sits under synopsis).
+    // Footer height is reserved in the meta budget so tight series chrome
+    // (episode rail) never clips Play out of the focus tree.
     final footer = <Widget>[
       if (actionRow != null) ...[
         const SizedBox(height: _actionGap),
@@ -1450,23 +1449,13 @@ class _HeroMainColumn extends StatelessWidget {
     return SizedBox(
       width: maxContentWidth,
       height: maxHeight,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: ClipRect(
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: metaColumn,
-                ),
-              ),
-            ),
-          ),
-          ...footer,
-        ],
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [...metaColumn, ...footer],
+        ),
       ),
     );
   }

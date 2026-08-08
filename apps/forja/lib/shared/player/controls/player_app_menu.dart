@@ -37,6 +37,8 @@ class PlayerAppMenu {
     required PlayerMenuSelectHandler onSelect,
     BuildContext? anchorContext,
     bool centered = false,
+    /// When false, MediaKit is omitted (ATV IPTV Movies/Series — goldfish ANR).
+    bool allowMediaKit = true,
   }) {
     PlayerPopupPanel.show(
       context: context,
@@ -50,6 +52,7 @@ class PlayerAppMenu {
         externalPlayerName: externalPlayerName,
         onSelect: onSelect,
         onDismiss: PlayerPopupPanel.dismiss,
+        allowMediaKit: allowMediaKit,
       ),
     );
   }
@@ -61,10 +64,15 @@ class PlayerAppMenu {
     required PlayerMenuSelectHandler onSelect,
     VoidCallback? onDismiss,
     ScrollPhysics? physics,
+    bool allowMediaKit = true,
   }) {
     // Android TV: Exo + MediaKit only — external apps are not offered.
     final showExternal = !PlatformInfo.isAndroidTv;
-    final engines = builtInPlayerEngineOptionsForUi;
+    final engines = allowMediaKit
+        ? builtInPlayerEngineOptionsForUi
+        : builtInPlayerEngineOptionsForUi
+            .where((e) => e != BuiltInPlayerEngine.mediaKit)
+            .toList();
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
       shrinkWrap: true,

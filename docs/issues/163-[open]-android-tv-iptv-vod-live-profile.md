@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 3** acceptance |
+| **Progress** | **8 / 8** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,9 @@
 | 3 | I163-T03 | Stable healthy-hold + buffering-done “video alive” live-only; VOD finite recovery (no forever cold-retry) | ✅ |
 | 4 | I163-T04 | ATV VOD boots Exo; hard open fail → one-shot engine swap (`iptvIsHardOpenFail`) | ✅ |
 | 5 | I163-T05 | Series episode open passes `vodPlayback` + onlineSubtitles | ✅ |
+| 6 | I163-T06 | ATV VOD chrome: progress scrubber + Audio/Subs (+ Episodes on series); Exo online subs | ✅ |
+| 7 | I163-T07 | ATV Movies/Series: omit/refuse MediaKit in Player menu + auto-swap (Exo only) | ✅ |
+| 8 | I163-T08 | Restore MediaKit for ATV Movies/Series (Player menu + engine pref + auto-swap); keep `vodPlayback` live-profile gates | ✅ |
 
 ---
 
@@ -41,4 +44,6 @@
 
 IPTV Movies/Series reused the **live** player profile: post-open `drop-buffers` + `seek 99999` on seekable VOD (ANR on goldfish/ATV MediaKit), and Stable recovery treated buffering-done as “working” so `Failed to open` never recovered.
 
-**Fix:** Catalog-driven `vodPlayback` (and URL fallback via `_livePlaybackProfile`). Live paths unchanged when `vodPlayback` is false. ATV VOD defaults to Exo; hard open fails can swap engines once.
+**Fix:** Catalog-driven `vodPlayback` (and URL fallback via `_livePlaybackProfile`). Live paths unchanged when `vodPlayback` is false. VOD chrome: scrubber + Audio/Subs (+ Episodes on series).
+
+**Engine:** `I163-T07` briefly forced ATV VOD to Exo-only; **`I163-T08` restores MediaKit** in the Player menu and settings pref (same as Live). VOD still skips live-edge snap / forever cold-retry.

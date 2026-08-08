@@ -605,13 +605,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     final forced = widget.forceBuiltInEngine;
     if (forced != null && !kIsWeb && Platform.isAndroid) {
       _exoBackend = forced == BuiltInPlayerEngine.exoPlayer;
-    } else if (!kIsWeb &&
-        Platform.isAndroid &&
-        PlatformInfo.isAndroidTv &&
-        widget.vodPlayback) {
-      // ATV Movies/Series: Exo avoids MediaKit live-edge / goldfish ANR on VOD.
-      // Live IPTV still uses the IPTV engine pref below. Player menu can swap.
-      _exoBackend = true;
     } else if (!kIsWeb && Platform.isAndroid) {
       final engine = await SettingsService().getBuiltInPlayerEngine(
         context: widget.engineContext,
@@ -629,22 +622,23 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _muted = prefs.volume == 0;
     _liveRecoveryMode = prefs.liveRecoveryMode;
     debugPrint('[IPTV Player] live recovery mode=$_liveRecoveryMode');
-    if (!_exoBackend) {
-      try {
-        final subPrefs =
-            await ref.read(playerSubtitlePrefsProvider(true).future);
-        if (!_disposed && mounted) {
-          _subtitleSize = subPrefs.size;
-          _subtitleColor = Color(subPrefs.colorArgb);
-          _subtitleBgOpacity = subPrefs.bgOpacity;
-          _subtitleBold = subPrefs.bold;
-          _subtitleBottomPadding = subPrefs.bottomPadding;
-          _subtitleFont = subPrefs.font;
-        }
-      } catch (_) {}
-    }
+    try {
+      final subPrefs =
+          await ref.read(playerSubtitlePrefsProvider(true).future);
+      if (!_disposed && mounted) {
+        _subtitleSize = subPrefs.size;
+        _subtitleColor = Color(subPrefs.colorArgb);
+        _subtitleBgOpacity = subPrefs.bgOpacity;
+        _subtitleBold = subPrefs.bold;
+        _subtitleBottomPadding = subPrefs.bottomPadding;
+        _subtitleFont = subPrefs.font;
+      }
+    } catch (_) {}
     if (_exoBackend) {
       await _bootExoPlayer();
+      if (!_disposed && mounted && widget.onlineSubtitles) {
+        _fetchOnlineSubtitles();
+      }
     } else {
       await _bootPlayer();
       if (!_disposed && mounted && widget.onlineSubtitles) {
