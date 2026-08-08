@@ -668,7 +668,7 @@ fn lan_server_last_error() -> String {
 
 fn lan_server_stop() {
     #[cfg(feature = "lan-server")]
-    engine_lan::lan_server_stop();
+    engine_lan::lan_server_stop(&RUNTIME);
 }
 
 fn lan_server_port() -> u32 {

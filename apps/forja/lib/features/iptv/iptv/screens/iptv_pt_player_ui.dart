@@ -159,19 +159,31 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     _s._tvBackExitArmed = false;
     PlayerBackExitGate.exitReady = false;
     _scheduleHideControls();
+    final hint = _s._subQueryTitle.trim().isEmpty
+        ? null
+        : [
+            _s._subQueryTitle,
+            if (_s._subQueryYear != null) '(${_s._subQueryYear})',
+            if (_s._subQuerySeason != null && _s._subQueryEpisode != null)
+              'S${_s._subQuerySeason}E${_s._subQueryEpisode}',
+          ].join(' ');
     PlayerSubtitleMenu.show(
       context,
       player: _s._player!,
       anchorContext: anchorContext,
-      externalSubtitles: const [],
-      selectedExternalSubUrl: null,
-      isFetchingSubs: false,
+      externalSubtitles: _s._externalSubtitles,
+      selectedExternalSubUrl: _s._selectedExternalSubUrl,
+      isFetchingSubs: _s._isFetchingSubs,
       updateSubVisibility: _updateSubVisibility,
-      onExternalUrlChanged: (_) {},
+      onExternalUrlChanged: (url) =>
+          setState(() => _s._selectedExternalSubUrl = url),
       onNativeSubtitleChanged: (v) =>
           setState(() => _s._isNativeSubtitle = v),
-      loadOnlineSubtitle: (_) async {},
+      loadOnlineSubtitle: _loadOnlineSubtitle,
       onSubtitleSettings: _showSubtitleSettings,
+      onTitleSearch:
+          widget.onlineSubtitles ? () => unawaited(_showTitleSearchDialog()) : null,
+      titleSearchHint: widget.onlineSubtitles ? hint : null,
       margin: EdgeInsets.only(
         left: 16,
         bottom: MediaQuery.paddingOf(context).bottom + 88,
@@ -205,6 +217,243 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         });
       },
     );
+  }
+
+  void _fetchOnlineSubtitles() {
+    if (!widget.onlineSubtitles || _s._exoBackend) return;
+    final title = _s._subQueryTitle.trim();
+    if (title.isEmpty) return;
+    _s._subtitleFetchSub?.cancel();
+    if (mounted) setState(() => _s._isFetchingSubs = true);
+    final stream = SubtitleApi.fetchSubtitlesStream(
+      tmdbId: 0,
+      title: title,
+      year: _s._subQueryYear,
+      season: _s._subQuerySeason,
+      episode: _s._subQueryEpisode,
+    );
+    _s._subtitleFetchSub = stream.listen(
+      (subs) {
+        if (!mounted) return;
+        setState(() => _s._externalSubtitles = List<Map<String, dynamic>>.from(subs));
+      },
+      onError: (e) {
+        debugPrint('[IPTV Player] subtitle fetch error: $e');
+        if (mounted) setState(() => _s._isFetchingSubs = false);
+      },
+      onDone: () {
+        if (mounted) setState(() => _s._isFetchingSubs = false);
+      },
+    );
+  }
+
+  Future<void> _loadOnlineSubtitle(Map<String, dynamic> s) async {
+    final url = (s['url'] ?? '').toString();
+    if (url.isEmpty || _s._player == null) return;
+    final isTranslated =
+        s['translated'] == true || url.contains('/subtitlecat-translate');
+
+    Future<void> applyUri(String uri) async {
+      if (_s._disposed || !mounted || _s._player == null) return;
+      final track = SubtitleTrack.uri(
+        uri,
+        title: s['display']?.toString(),
+        language: s['language']?.toString(),
+      );
+      await _s._player!.setSubtitleTrack(track);
+      if (_s._disposed || !mounted) return;
+      _updateSubVisibility(track);
+      if (mounted) setState(() => _s._selectedExternalSubUrl = url);
+    }
+
+    final cached = _s._externalSubFileCache[url];
+    if (cached != null) {
+      try {
+        await applyUri(cached);
+        return;
+      } catch (_) {
+        _s._externalSubFileCache.remove(url);
+      }
+    }
+
+    if (url.startsWith('file://') || url.startsWith('/')) {
+      try {
+        final uri = url.startsWith('file://') ? url : Uri.file(url).toString();
+        _s._externalSubFileCache[url] = uri;
+        await applyUri(uri);
+      } catch (_) {
+        if (mounted) {
+          setState(() => _s._selectedExternalSubUrl = null);
+          ForjaToast.warning('Subtitle failed');
+        }
+      }
+      return;
+    }
+
+    try {
+      final subUri = Uri.parse(url);
+      final selfOrigin = '${subUri.scheme}://${subUri.host}';
+      final ref = (s['referer'] as String?)?.trim();
+      final org = (s['origin'] as String?)?.trim();
+      final headers = <String, String>{
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Referer': (ref != null && ref.isNotEmpty) ? ref : '$selfOrigin/',
+        'Origin': (org != null && org.isNotEmpty) ? org : selfOrigin,
+      };
+      final res = await http
+          .get(subUri, headers: headers)
+          .timeout(Duration(minutes: isTranslated ? 5 : 1));
+      if (!mounted) return;
+      if (res.statusCode != 200) {
+        setState(() => _s._selectedExternalSubUrl = null);
+        ForjaToast.warning('Subtitle failed');
+        return;
+      }
+      final dir = await getTemporaryDirectory();
+      final safeLang = (s['language'] ?? 'sub').toString().replaceAll(
+        RegExp(r'[^A-Za-z0-9_-]'),
+        '_',
+      );
+      final file = File(
+        '${dir.path}/forja_iptv_sub_${DateTime.now().millisecondsSinceEpoch}_$safeLang.srt',
+      );
+      await file.writeAsBytes(res.bodyBytes);
+      final uri = Uri.file(file.path).toString();
+      _s._externalSubFileCache[url] = uri;
+      await applyUri(uri);
+    } catch (e) {
+      debugPrint('[IPTV Player] subtitle download failed: $e');
+      if (!mounted) return;
+      setState(() => _s._selectedExternalSubUrl = null);
+      ForjaToast.warning('Subtitle failed');
+    }
+  }
+
+  Future<void> _showTitleSearchDialog() async {
+    if (!widget.onlineSubtitles) return;
+    final titleCtrl = TextEditingController(text: _s._subQueryTitle);
+    final yearCtrl = TextEditingController(
+      text: _s._subQueryYear?.toString() ?? '',
+    );
+    final seasonCtrl = TextEditingController(
+      text: _s._subQuerySeason?.toString() ?? '',
+    );
+    final episodeCtrl = TextEditingController(
+      text: _s._subQueryEpisode?.toString() ?? '',
+    );
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => ShellScope.rehost(
+        context,
+        AlertDialog(
+          backgroundColor: const Color(0xFF141414),
+          title: const Text(
+            'Search subtitles',
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          content: SizedBox(
+            width: 360,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleCtrl,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Film or series name',
+                    labelStyle: TextStyle(color: Colors.white54),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white24),
+                    ),
+                  ),
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: yearCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Year (optional)',
+                    labelStyle: TextStyle(color: Colors.white54),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white24),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: seasonCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Season',
+                          labelStyle: TextStyle(color: Colors.white54),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white24),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: episodeCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Episode',
+                          labelStyle: TextStyle(color: Colors.white54),
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white24),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Search', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+    final typed = titleCtrl.text.trim();
+    final yearRaw = yearCtrl.text.trim();
+    final seasonRaw = seasonCtrl.text.trim();
+    final episodeRaw = episodeCtrl.text.trim();
+    titleCtrl.dispose();
+    yearCtrl.dispose();
+    seasonCtrl.dispose();
+    episodeCtrl.dispose();
+    if (ok != true || !mounted || typed.isEmpty) return;
+    final cleaned = cleanIptvMediaTitle(typed);
+    setState(() {
+      _s._subQueryTitle = cleaned.title.isNotEmpty ? cleaned.title : typed;
+      _s._subQueryYear = int.tryParse(yearRaw) ?? cleaned.year;
+      _s._subQuerySeason = int.tryParse(seasonRaw) ?? cleaned.season;
+      _s._subQueryEpisode = int.tryParse(episodeRaw) ?? cleaned.episode;
+      _s._externalSubtitles = [];
+      _s._selectedExternalSubUrl = null;
+    });
+    _fetchOnlineSubtitles();
   }
 
   TextStyle _buildSubtitleTextStyle({double scale = 1.0}) {

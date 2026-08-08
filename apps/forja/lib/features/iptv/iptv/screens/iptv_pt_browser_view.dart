@@ -1381,6 +1381,10 @@ class _BrowserViewState extends State<_BrowserView> {
       ctrl.openSeries(s);
       return;
     }
+    if (s.kind == 'vod') {
+      ctrl.openMovie(s);
+      return;
+    }
     if (s.kind == 'live') {
       unawaited(ctrl.recordLiveWatched(s.streamId));
     }

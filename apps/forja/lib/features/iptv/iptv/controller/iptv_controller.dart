@@ -24,6 +24,7 @@ enum IptvView {
   sectionPick,
   browser,
   episodeList,
+  movieDetails,
   channelsHub,
   channelResults,
 }
@@ -121,6 +122,7 @@ class IptvController extends ChangeNotifier
   VerifiedPortal? activePortal;
   IptvSection? activeSection;
   IptvStream? activeSeries;
+  IptvStream? activeMovie;
 
   bool isLoading = false;
   /// Shelf loads use [isLoading] spinner (one shelf at a time).

@@ -10,6 +10,8 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// Settings → LAN — one-time desktop↔TV trust (RFC-022).
@@ -144,6 +146,60 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     if (prevOnline != online || (!_paired && prevOnline)) {
       _refreshPlaySourceGates();
     }
+  }
+
+  /// Manual refresh — does not blank the page with [_loading].
+  Future<void> _reloadClientStatus() async {
+    await _pollClientStatus();
+  }
+
+  /// IconButton on touch/desktop; [shellFocusableTap] on TV so D-pad owns focus.
+  Widget _reloadControl({
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    final icon = const Icon(Icons.refresh_rounded);
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      return shellFocusableTap(
+        context: context,
+        onTap: onPressed,
+        borderRadius: 8,
+        scaleOnFocus: 1.0,
+        showFocusRail: true,
+        tvTabId: 'settings',
+        tvZone: ShellTvZone.settings,
+        child: SizedBox(width: 40, height: 40, child: Center(child: icon)),
+      );
+    }
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: icon,
+    );
+  }
+
+  Widget _unpairControl() {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      return shellFocusableTap(
+        context: context,
+        onTap: () => unawaited(_unpair()),
+        borderRadius: 8,
+        scaleOnFocus: 1.0,
+        showFocusRail: true,
+        tvTabId: 'settings',
+        tvZone: ShellTvZone.settings,
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Text('Unpair'),
+        ),
+      );
+    }
+    return TextButton(
+      onPressed: () => unawaited(_unpair()),
+      child: const Text('Unpair'),
+    );
   }
 
   Future<void> _refreshTorrentPanel() async {
@@ -429,10 +485,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         Row(
           children: [
             Expanded(child: _sectionLabel('PAIRED DEVICES')),
-            IconButton(
+            _reloadControl(
               tooltip: 'Reload paired devices',
               onPressed: _refreshPairedDevices,
-              icon: const Icon(Icons.refresh_rounded),
             ),
           ],
         ),
@@ -466,6 +521,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
             final online = _deviceOnline(d['last_seen']);
             return ListTile(
               contentPadding: EdgeInsets.zero,
+              isThreeLine: true,
               leading: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -481,14 +537,42 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                 ],
               ),
               title: Text(title),
-              subtitle: Text(
-                [
-                  online ? 'Online' : 'Idle',
-                  ?when,
-                  id,
-                ].join(' · '),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    online ? 'Online' : 'Idle',
+                    style: TextStyle(
+                      color: online
+                          ? Colors.greenAccent.withValues(alpha: 0.9)
+                          : ForjaShellColors.textSecondary,
+                      fontSize: 12,
+                      height: 1.25,
+                    ),
+                  ),
+                  if (when != null)
+                    Text(
+                      when,
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary
+                            .withValues(alpha: 0.85),
+                        fontSize: 11,
+                        height: 1.25,
+                      ),
+                    ),
+                  if (id.isNotEmpty)
+                    Text(
+                      id,
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary
+                            .withValues(alpha: 0.7),
+                        fontSize: 11,
+                        height: 1.25,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
               ),
               trailing: TextButton(
                 onPressed: id.isEmpty ? null : () => _revoke(id),
@@ -639,6 +723,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     return [
       ListTile(
         contentPadding: EdgeInsets.zero,
+        isThreeLine: _paired,
         leading: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -660,21 +745,43 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
               ),
           ],
         ),
-        title: Text(
-          _paired
-              ? (_serverOnline
-                  ? 'Paired · desktop online'
-                  : 'Paired · desktop offline')
-              : 'Not paired',
+        title: Text(_paired ? 'Paired' : 'Not paired'),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_paired)
+              Text(
+                _serverOnline ? 'Desktop online' : 'Desktop offline',
+                style: TextStyle(
+                  color: _serverOnline
+                      ? Colors.greenAccent.withValues(alpha: 0.9)
+                      : ForjaShellColors.textSecondary,
+                  fontSize: 12,
+                  height: 1.25,
+                ),
+              ),
+            Text(
+              _paired
+                  ? '${_pairedHost ?? '?'}:${_pairedPort ?? '?'} — torrents play via desktop'
+                  : 'Pair once. Then open Sources → Torrents on a title.',
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
+                fontSize: 11,
+                height: 1.25,
+              ),
+            ),
+          ],
         ),
-        subtitle: Text(
-          _paired
-              ? '${_pairedHost ?? '?'}:${_pairedPort ?? '?'} — torrents play via desktop'
-              : 'Pair once. Then open Sources → Torrents on a title.',
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _reloadControl(
+              tooltip: 'Reload desktop status',
+              onPressed: () => unawaited(_reloadClientStatus()),
+            ),
+            if (_paired) _unpairControl(),
+          ],
         ),
-        trailing: _paired
-            ? TextButton(onPressed: _unpair, child: const Text('Unpair'))
-            : null,
       ),
       if (!_paired) ...[
         const SizedBox(height: 8),

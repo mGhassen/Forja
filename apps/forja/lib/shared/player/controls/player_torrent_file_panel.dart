@@ -3,8 +3,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
@@ -100,11 +104,16 @@ class _TorrentFilePanelOverlayState extends State<_TorrentFilePanelOverlay> {
       onClose: widget.onClose,
       enableBlur: false,
       frozenFrame: widget.frozenFrame,
-      child: _TorrentFilePanelBody(
-        magnetLink: widget.magnetLink,
-        currentFileIndex: widget.currentFileIndex,
-        onFileSelected: widget.onFileSelected,
+      child: SourcesPanelTv.wrapBody(
+        context: context,
         onClose: widget.onClose,
+        includeOverlayScope: false,
+        child: _TorrentFilePanelBody(
+          magnetLink: widget.magnetLink,
+          currentFileIndex: widget.currentFileIndex,
+          onFileSelected: widget.onFileSelected,
+          onClose: widget.onClose,
+        ),
       ),
     );
   }
@@ -129,10 +138,12 @@ class _TorrentFilePanelBody extends StatefulWidget {
 
 class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
   final _scrollController = ScrollController();
+  final FocusNode _closeFocus = FocusNode(debugLabel: 'torrent-files-close');
   List<TorrentFileEntry>? _files;
   String? _error;
   bool _loading = true;
   int? _switchingIndex;
+  bool _didInitialFocus = false;
 
   @override
   void initState() {
@@ -142,8 +153,23 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
 
   @override
   void dispose() {
+    _closeFocus.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _claimListFocus() {
+    if (_didInitialFocus || !SourcesPanelTv.isTv(context)) return;
+    final files = _files;
+    if (files == null || files.isEmpty) return;
+    _didInitialFocus = true;
+    var index = 0;
+    final current = widget.currentFileIndex;
+    if (current != null) {
+      final i = files.indexWhere((f) => f.index == current);
+      if (i >= 0) index = i;
+    }
+    SourcesPanelTv.focusListItem(index: index);
   }
 
   Future<void> _loadFiles() async {
@@ -166,7 +192,10 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
         _files = files;
         _loading = false;
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToCurrent();
+        _claimListFocus();
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -212,6 +241,7 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
   @override
   Widget build(BuildContext context) {
     final count = _files?.length;
+    final tv = SourcesPanelTv.isTv(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -220,6 +250,17 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
           title: 'Torrent files',
           onClose: widget.onClose,
           badge: count?.toString(),
+          closeFocusNode: tv ? _closeFocus : null,
+          closeOnKeyEvent: tv
+              ? (node, event) {
+                  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                  if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                    SourcesPanelTv.focusListItem();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                }
+              : null,
         ),
         Expanded(child: _buildBody()),
       ],
@@ -263,7 +304,8 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
     }
 
     final files = _files!;
-    return ListView.separated(
+    final tv = SourcesPanelTv.isTv(context);
+    final list = ListView.separated(
       controller: _scrollController,
       padding: const EdgeInsets.only(top: 4, bottom: 8),
       itemCount: files.length,
@@ -280,9 +322,29 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
           isCurrent: isCurrent,
           isSwitching: isSwitching,
           enabled: enabled,
+          tvItemIndex: tv ? i : null,
+          onUpEdge: i == 0
+              ? () {
+                  if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
+                }
+              : null,
+          onDownEdge: i >= files.length - 1 ? () {} : null,
           onPlay: () => _select(file),
         );
       },
+    );
+
+    if (!tv) return list;
+    return TvCatalogRow(
+      tabId: SourcesPanelTv.tabId,
+      rowId: SourcesPanelTv.listRowId,
+      sortOrder: SourcesPanelTv.listSort,
+      itemCount: files.length,
+      orientation: ShellTvRowOrientation.vertical,
+      onFocusUp: () {
+        if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
+      },
+      child: list,
     );
   }
 }

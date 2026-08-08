@@ -88,12 +88,14 @@ pub fn lan_server_start(
         .unwrap_or(-1)
 }
 
-pub fn lan_server_stop() {
-    if let Ok(mut guard) = LAN.lock() {
-        if let Some(mut server) = guard.take() {
-            server.stop();
+pub fn lan_server_stop(runtime: &tokio::runtime::Runtime) {
+    runtime.block_on(async {
+        if let Ok(mut guard) = LAN.lock() {
+            if let Some(mut server) = guard.take() {
+                server.stop().await;
+            }
         }
-    }
+    });
 }
 
 pub fn lan_server_port() -> u16 {

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Compact top chrome for the Sources panel:
 /// title + count · kind tabs · provider chips · search/filters.
-class TorrentSourcesPanelChrome extends StatelessWidget {
+class TorrentSourcesPanelChrome extends StatefulWidget {
   const TorrentSourcesPanelChrome({
     super.key,
     required this.onClose,
@@ -52,6 +55,10 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
     this.onReloadKind,
     /// When false after being true, dismisses Filters if open.
     this.sourcesPanelOpen = false,
+    /// TV: ↓ from search/filters → source list (parent owns list graph).
+    this.onFocusList,
+    /// TV: claim initial focus when the panel opens (parent may also call).
+    this.claimInitialFocus = true,
   });
 
   final VoidCallback onClose;
@@ -92,69 +99,241 @@ class TorrentSourcesPanelChrome extends StatelessWidget {
   final bool showCacheLine;
   final bool filterEnableBlur;
   final bool sourcesPanelOpen;
+  final VoidCallback? onFocusList;
+  final bool claimInitialFocus;
+
+  @override
+  State<TorrentSourcesPanelChrome> createState() =>
+      _TorrentSourcesPanelChromeState();
+}
+
+class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
+  final FocusNode _closeFocus = FocusNode(debugLabel: 'sources-close');
+  final FocusNode _searchFocus = FocusNode(debugLabel: 'sources-search');
+  final FocusNode _filtersFocus = FocusNode(debugLabel: 'sources-filters');
+  bool _didInitialFocus = false;
+
+  bool get _tv => SourcesPanelTv.isTv(context);
+
+  bool get _showProviders =>
+      widget.providerOptions.isNotEmpty && widget.onProviderTap != null;
+
+  int get _kindCount {
+    var n = 0;
+    if (widget.showTorrents) n++;
+    if (widget.showStremio) n++;
+    if (widget.showNuvio) n++;
+    return n;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.sourcesPanelOpen) {
+      _scheduleInitialFocus();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant TorrentSourcesPanelChrome oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.sourcesPanelOpen && !oldWidget.sourcesPanelOpen) {
+      _didInitialFocus = false;
+      _scheduleInitialFocus();
+    }
+    if (!widget.sourcesPanelOpen) {
+      _didInitialFocus = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _closeFocus.dispose();
+    _searchFocus.dispose();
+    _filtersFocus.dispose();
+    super.dispose();
+  }
+
+  void _scheduleInitialFocus() {
+    if (!widget.claimInitialFocus || _didInitialFocus) return;
+    _didInitialFocus = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_tv || !widget.sourcesPanelOpen) return;
+      final count = widget.resultCount ?? 0;
+      if (count > 0 && widget.onFocusList != null) {
+        widget.onFocusList!();
+        return;
+      }
+      SourcesPanelTv.focusKindItem();
+    });
+  }
+
+  void _focusList() {
+    widget.onFocusList?.call();
+  }
+
+  void _focusProvidersOrSearchOrList() {
+    if (_showProviders) {
+      SourcesPanelTv.focusProvidersItem();
+      return;
+    }
+    if (_searchFocus.canRequestFocus) {
+      _searchFocus.requestFocus();
+      return;
+    }
+    _focusList();
+  }
+
+  void _focusKindOrClose() {
+    SourcesPanelTv.focusKindItem();
+  }
+
+  void _focusSearchFromProviders() {
+    if (_searchFocus.canRequestFocus) {
+      _searchFocus.requestFocus();
+      return;
+    }
+    _focusList();
+  }
+
+  KeyEventResult _onCloseKey(FocusNode node, KeyEvent event) {
+    if (!_tv || event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _focusKindOrClose();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+      if (_filtersFocus.canRequestFocus) {
+        _filtersFocus.requestFocus();
+      } else if (_searchFocus.canRequestFocus) {
+        _searchFocus.requestFocus();
+      }
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
 
   @override
   Widget build(BuildContext context) {
     const gap = 8.0;
-    final showProviders =
-        providerOptions.isNotEmpty && onProviderTap != null;
+
+    Widget kind = _KindTabs(
+      selected: widget.kindFilter,
+      showTorrents: widget.showTorrents,
+      showStremio: widget.showStremio,
+      showNuvio: widget.showNuvio,
+      onChanged: widget.onKindChanged,
+      onReloadKind: widget.isFetching ? null : widget.onReloadKind,
+    );
+    if (_tv && _kindCount > 0) {
+      kind = TvCatalogRow(
+        tabId: SourcesPanelTv.tabId,
+        rowId: SourcesPanelTv.kindRowId,
+        sortOrder: SourcesPanelTv.kindSort,
+        itemCount: _kindCount,
+        onFocusDown: _focusProvidersOrSearchOrList,
+        child: kind,
+      );
+    }
+
+    Widget? providers;
+    if (_showProviders) {
+      providers = TorrentSourceChips(
+        options: widget.providerOptions,
+        selectedSourceId: widget.selectedSourceId ?? '',
+        nuvioSelectedScraperIds: widget.nuvioSelectedScraperIds,
+        onChipTap: widget.onProviderTap!,
+        tvTabId: _tv ? SourcesPanelTv.tabId : null,
+        tvRowId: _tv ? SourcesPanelTv.providersRowId : null,
+      );
+      if (_tv) {
+        providers = TvCatalogRow(
+          tabId: SourcesPanelTv.tabId,
+          rowId: SourcesPanelTv.providersRowId,
+          sortOrder: SourcesPanelTv.providersSort,
+          itemCount: widget.providerOptions.length,
+          onFocusUp: _focusKindOrClose,
+          onFocusDown: _focusSearchFromProviders,
+          child: providers,
+        );
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _TitleRow(
-          resultCount: resultCount,
-          episodeLabel: episodeLabel,
-          isFetching: isFetching,
-          onCancelFetch: onCancelFetch,
-          onClose: onClose,
+          resultCount: widget.resultCount,
+          episodeLabel: widget.episodeLabel,
+          isFetching: widget.isFetching,
+          onCancelFetch: widget.onCancelFetch,
+          onClose: widget.onClose,
+          closeFocusNode: _tv ? _closeFocus : null,
+          closeOnKeyEvent: _tv ? _onCloseKey : null,
         ),
         SizedBox(height: gap),
-        _KindTabs(
-          selected: kindFilter,
-          showTorrents: showTorrents,
-          showStremio: showStremio,
-          showNuvio: showNuvio,
-          onChanged: onKindChanged,
-          onReloadKind: isFetching ? null : onReloadKind,
-        ),
-        if (showProviders) ...[
+        kind,
+        if (providers != null) ...[
           SizedBox(height: gap),
-          TorrentSourceChips(
-            options: providerOptions,
-            selectedSourceId: selectedSourceId ?? '',
-            nuvioSelectedScraperIds: nuvioSelectedScraperIds,
-            onChipTap: onProviderTap!,
-          ),
+          providers,
         ],
         SizedBox(height: gap),
         TorrentSourceSearchToolbar(
-          searchQuery: searchQuery,
-          onSearchChanged: onSearchChanged,
-          availableQualities: availableQualities,
-          availableLanguages: availableLanguages,
-          availableTech: availableTech,
-          activeQualityFilters: activeQualityFilters,
-          activeLanguageFilters: activeLanguageFilters,
-          activeTechFilters: activeTechFilters,
-          onQualityFiltersChanged: onQualityFiltersChanged,
-          onLanguageFiltersChanged: onLanguageFiltersChanged,
-          onTechFiltersChanged: onTechFiltersChanged,
+          searchQuery: widget.searchQuery,
+          onSearchChanged: widget.onSearchChanged,
+          availableQualities: widget.availableQualities,
+          availableLanguages: widget.availableLanguages,
+          availableTech: widget.availableTech,
+          activeQualityFilters: widget.activeQualityFilters,
+          activeLanguageFilters: widget.activeLanguageFilters,
+          activeTechFilters: widget.activeTechFilters,
+          onQualityFiltersChanged: widget.onQualityFiltersChanged,
+          onLanguageFiltersChanged: widget.onLanguageFiltersChanged,
+          onTechFiltersChanged: widget.onTechFiltersChanged,
           showFilters: true,
-          showAudioFilters: showAudioFilters,
-          activeAudioFilters: activeAudioFilters,
-          onAudioFiltersChanged: onAudioFiltersChanged,
-          availableSizeRanges: availableSizeRanges,
-          activeSizeFilters: activeSizeFilters,
-          onSizeFiltersChanged: onSizeFiltersChanged,
-          sortPreference: sortPreference,
-          onSortChanged: onSortChanged,
-          enableBlur: filterEnableBlur,
-          sourcesPanelOpen: sourcesPanelOpen,
+          showAudioFilters: widget.showAudioFilters,
+          activeAudioFilters: widget.activeAudioFilters,
+          onAudioFiltersChanged: widget.onAudioFiltersChanged,
+          availableSizeRanges: widget.availableSizeRanges,
+          activeSizeFilters: widget.activeSizeFilters,
+          onSizeFiltersChanged: widget.onSizeFiltersChanged,
+          sortPreference: widget.sortPreference,
+          onSortChanged: widget.onSortChanged,
+          enableBlur: widget.filterEnableBlur,
+          sourcesPanelOpen: widget.sourcesPanelOpen,
+          searchFocusNode: _tv ? _searchFocus : null,
+          filtersFocusNode: _tv ? _filtersFocus : null,
+          onSearchUpEdge: _tv
+              ? () {
+                  if (_showProviders) {
+                    SourcesPanelTv.focusProvidersItem();
+                  } else {
+                    SourcesPanelTv.focusKindItem();
+                  }
+                }
+              : null,
+          onSearchDownEdge: _tv ? _focusList : null,
+          onFiltersUpEdge: _tv
+              ? () {
+                  if (_searchFocus.canRequestFocus) {
+                    _searchFocus.requestFocus();
+                  } else if (_showProviders) {
+                    SourcesPanelTv.focusProvidersItem();
+                  } else {
+                    SourcesPanelTv.focusKindItem();
+                  }
+                }
+              : null,
+          onFiltersDownEdge: _tv ? _focusList : null,
+          onFiltersRightEdge: _tv
+              ? () {
+                  if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
+                }
+              : null,
         ),
-        if (showCacheLine && cacheRefreshToken != null) ...[
+        if (widget.showCacheLine && widget.cacheRefreshToken != null) ...[
           const SizedBox(height: 4),
-          TorrentCacheStorageLine(refreshToken: cacheRefreshToken!),
+          TorrentCacheStorageLine(refreshToken: widget.cacheRefreshToken!),
         ],
       ],
     );
@@ -168,6 +347,8 @@ class _TitleRow extends StatelessWidget {
     required this.onCancelFetch,
     this.resultCount,
     this.episodeLabel,
+    this.closeFocusNode,
+    this.closeOnKeyEvent,
   });
 
   final VoidCallback onClose;
@@ -175,6 +356,8 @@ class _TitleRow extends StatelessWidget {
   final VoidCallback onCancelFetch;
   final int? resultCount;
   final String? episodeLabel;
+  final FocusNode? closeFocusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? closeOnKeyEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -245,6 +428,8 @@ class _TitleRow extends StatelessWidget {
         ForjaCloseButton(
           color: cinematic.textSecondary,
           onTap: onClose,
+          focusNode: closeFocusNode,
+          onKeyEvent: closeOnKeyEvent,
         ),
       ],
     );
@@ -318,7 +503,6 @@ class _KindTabs extends StatelessWidget {
                   selected: selected == options[i].id,
                   tvItemIndex: i,
                   onTap: () => onChanged(options[i].id),
-                  // Reload only the opened kind - never prefetch a hidden category.
                   onReload: onReloadKind == null || selected != options[i].id
                       ? null
                       : () => onReloadKind!(options[i].id),
@@ -424,7 +608,6 @@ class _KindTabState extends State<_KindTab> {
               Text(widget.label),
               if (widget.onReload != null) ...[
                 const SizedBox(width: 8),
-                // Reload stays pointer-only on TV - Kind tab OK switches kinds.
                 ExcludeFocus(
                   child: MouseRegion(
                     cursor: SystemMouseCursors.click,
@@ -470,7 +653,8 @@ class _KindTabState extends State<_KindTab> {
         borderRadius: 8,
         scaleOnFocus: 1.0,
         listIndex: widget.tvItemIndex,
-        tvRowId: 'sources-kind',
+        tvTabId: SourcesPanelTv.tabId,
+        tvRowId: SourcesPanelTv.kindRowId,
         tvItemIndex: widget.tvItemIndex,
         onFocusChange: (focused) => setState(() => _focused = focused),
         child: face,
@@ -479,33 +663,10 @@ class _KindTabState extends State<_KindTab> {
   }
 }
 
-class _SourcesCancelChip extends StatefulWidget {
+class _SourcesCancelChip extends StatelessWidget {
   const _SourcesCancelChip({required this.onCancel});
 
   final VoidCallback onCancel;
-
-  @override
-  State<_SourcesCancelChip> createState() => _SourcesCancelChipState();
-}
-
-class _SourcesCancelChipState extends State<_SourcesCancelChip> {
-  final FocusNode _focus = FocusNode(debugLabel: 'sources-cancel');
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
-      if (_focus.canRequestFocus) _focus.requestFocus();
-    });
-  }
-
-  @override
-  void dispose() {
-    _focus.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -518,18 +679,16 @@ class _SourcesCancelChipState extends State<_SourcesCancelChip> {
         fontWeight: FontWeight.w600,
       ),
     );
-    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
-      return GestureDetector(onTap: widget.onCancel, child: label);
+    if (!SourcesPanelTv.isTv(context)) {
+      return GestureDetector(onTap: onCancel, child: label);
     }
+    // No tvRowId — spatial only so Cancel cannot trap ↓/← into a dead row.
     return shellFocusableTap(
       context: context,
-      onTap: widget.onCancel,
-      focusNode: _focus,
+      onTap: onCancel,
       borderRadius: 8,
       scaleOnFocus: ShellTokens.focusActiveScale,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      tvRowId: 'sources-cancel',
-      tvItemIndex: 0,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         child: label,

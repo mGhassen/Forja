@@ -336,7 +336,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
   //  STREAM LIST
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _torrentTileFor(TorrentResult r) {
+  Widget _torrentTileFor(TorrentResult r, {int? tvItemIndex, int? tvCount}) {
     double prog = 0;
     var preselected = false;
     if (_s._lastProgress != null && _s._lastProgress!['method'] == 'torrent') {
@@ -358,6 +358,13 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       progress: prog,
       isResumable: preselected,
       highlightStart: widget.startPosition != null,
+      tvItemIndex: tvItemIndex,
+      onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
+      onDownEdge: tvItemIndex != null &&
+              tvCount != null &&
+              tvItemIndex >= tvCount - 1
+          ? () {}
+          : null,
       onPlay: () => _s._playTorrent(
         r,
         startPosition: preselected
@@ -370,6 +377,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
   Widget _stremioTileFor(
     Map<String, dynamic> s, {
     required bool showAddonName,
+    int? tvItemIndex,
+    int? tvCount,
   }) {
     final title = s['title'] ?? s['name'] ?? 'Unknown Stream';
     final description = s['description'] ?? '';
@@ -409,6 +418,13 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       progress: prog,
       isResumable: resumable,
       highlightStart: widget.startPosition != null,
+      tvItemIndex: tvItemIndex,
+      onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
+      onDownEdge: tvItemIndex != null &&
+              tvCount != null &&
+              tvItemIndex >= tvCount - 1
+          ? () {}
+          : null,
       onTap: () => _s._playStremioStream(
         s,
         startPosition: resumable
@@ -536,7 +552,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         _panelShowsNuvio ||
         (_panelShowsStremio && _providerOptions().length > 1);
 
-    return ListView.separated(
+    final list = ListView.separated(
       shrinkWrap: !inPanel,
       physics: inPanel
           ? const BouncingScrollPhysics()
@@ -544,13 +560,43 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       itemCount: count,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
-        if (i < torrents.length) return _torrentTileFor(torrents[i]);
+        final tvIndex = inPanel && SourcesPanelTv.isTv(context) ? i : null;
+        if (i < torrents.length) {
+          return _torrentTileFor(
+            torrents[i],
+            tvItemIndex: tvIndex,
+            tvCount: count,
+          );
+        }
         final j = i - torrents.length;
         if (j < stremio.length) {
-          return _stremioTileFor(stremio[j], showAddonName: showAddonName);
+          return _stremioTileFor(
+            stremio[j],
+            showAddonName: showAddonName,
+            tvItemIndex: tvIndex,
+            tvCount: count,
+          );
         }
-        return _stremioTileFor(nuvio[j - stremio.length], showAddonName: true);
+        return _stremioTileFor(
+          nuvio[j - stremio.length],
+          showAddonName: true,
+          tvItemIndex: tvIndex,
+          tvCount: count,
+        );
       },
+    );
+
+    if (!inPanel || !SourcesPanelTv.isTv(context) || count == 0) {
+      return list;
+    }
+    return TvCatalogRow(
+      tabId: SourcesPanelTv.tabId,
+      rowId: SourcesPanelTv.listRowId,
+      sortOrder: SourcesPanelTv.listSort,
+      itemCount: count,
+      orientation: ShellTvRowOrientation.vertical,
+      onFocusUp: SourcesPanelTv.focusProvidersItem,
+      child: list,
     );
   }
 }

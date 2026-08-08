@@ -505,38 +505,59 @@ class _HubHeroMainColumn extends StatelessWidget {
 
     // Pack meta → actions → progress at the top. Footer height is reserved in
     // the meta budget so tight series chrome (episode rail) never clips Play.
-    return SizedBox(
-      width: maxContentWidth,
-      height: bounded ? maxHeight : null,
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: ClipRect(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ...metaColumn,
-              if (actionRow != null) ...[
-                const SizedBox(height: _actionGap),
-                DetailsHeroActionRowFit(child: actionRow!),
-              ],
-              if (showProgress) ...[
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: 220,
-                  child: WatchProgressBar(
-                    positionMs: positionMs!,
-                    durationMs: durationMs!,
-                  ),
-                ),
-              ],
-              if (showSeriesProgress) ...[
-                SizedBox(height: showProgress ? 8 : 14),
-                seriesProgress!,
-              ],
-            ],
+    // Clip meta only — wrapping actions in ClipRect shaves pill focus chrome.
+    final footer = <Widget>[
+      if (actionRow != null) ...[
+        const SizedBox(height: _actionGap),
+        DetailsHeroActionRowFit(child: actionRow!),
+      ],
+      if (showProgress) ...[
+        const SizedBox(height: 14),
+        SizedBox(
+          width: 220,
+          child: WatchProgressBar(
+            positionMs: positionMs!,
+            durationMs: durationMs!,
           ),
         ),
+      ],
+      if (showSeriesProgress) ...[
+        SizedBox(height: showProgress ? 8 : 14),
+        seriesProgress!,
+      ],
+    ];
+
+    if (!bounded) {
+      return SizedBox(
+        width: maxContentWidth,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [...metaColumn, ...footer],
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: maxContentWidth,
+      height: maxHeight,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRect(
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: metaColumn,
+                ),
+              ),
+            ),
+          ),
+          ...footer,
+        ],
       ),
     );
   }

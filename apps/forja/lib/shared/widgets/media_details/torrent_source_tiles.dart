@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 class TorrentSourceTile extends StatelessWidget {
@@ -13,6 +16,9 @@ class TorrentSourceTile extends StatelessWidget {
     this.progress = 0,
     this.isResumable = false,
     this.highlightStart = false,
+    this.tvItemIndex,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final TorrentResult result;
@@ -20,6 +26,9 @@ class TorrentSourceTile extends StatelessWidget {
   final double progress;
   final bool isResumable;
   final bool highlightStart;
+  final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +59,9 @@ class TorrentSourceTile extends StatelessWidget {
       seeders: seedsLabel,
       flags: flags.isEmpty ? null : flags,
       magnet: magnet.isEmpty ? null : magnet,
+      tvItemIndex: tvItemIndex,
+      onUpEdge: onUpEdge,
+      onDownEdge: onDownEdge,
       badges: [
         if (meta.quality != null)
           _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
@@ -74,6 +86,9 @@ class WebstreamingSourceTile extends StatelessWidget {
     this.isResumable = false,
     this.highlightStart = false,
     this.provider,
+    this.tvItemIndex,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final String title;
@@ -83,6 +98,9 @@ class WebstreamingSourceTile extends StatelessWidget {
   final bool isResumable;
   final bool highlightStart;
   final String? provider;
+  final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +117,9 @@ class WebstreamingSourceTile extends StatelessWidget {
       highlightStart: highlightStart,
       title: title,
       provider: provider,
+      tvItemIndex: tvItemIndex,
+      onUpEdge: onUpEdge,
+      onDownEdge: onDownEdge,
       badges: [
         if (meta.quality != null)
           _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
@@ -125,6 +146,9 @@ class TorrentFileSourceTile extends StatelessWidget {
     this.isCurrent = false,
     this.isSwitching = false,
     this.enabled = true,
+    this.tvItemIndex,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final String fileName;
@@ -133,6 +157,9 @@ class TorrentFileSourceTile extends StatelessWidget {
   final bool isCurrent;
   final bool isSwitching;
   final bool enabled;
+  final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   String _formatSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
@@ -153,6 +180,9 @@ class TorrentFileSourceTile extends StatelessWidget {
       highlightStart: isCurrent,
       provider: isCurrent ? 'Playing' : null,
       onPlay: onPlay,
+      tvItemIndex: tvItemIndex,
+      onUpEdge: onUpEdge,
+      onDownEdge: onDownEdge,
     );
 
     if (!enabled && !isSwitching) {
@@ -198,6 +228,9 @@ class StremioSourceTile extends StatelessWidget {
     this.sizeText,
     this.seeders,
     this.stream,
+    this.tvItemIndex,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final String title;
@@ -214,6 +247,9 @@ class StremioSourceTile extends StatelessWidget {
   final String? sizeText;
   final String? seeders;
   final Map<String, dynamic>? stream;
+  final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -260,6 +296,9 @@ class StremioSourceTile extends StatelessWidget {
       provider: provider,
       seeders: isExternal ? null : seedsLabel,
       flags: flags.isEmpty ? null : flags,
+      tvItemIndex: tvItemIndex,
+      onUpEdge: onUpEdge,
+      onDownEdge: onDownEdge,
       badges: isExternal
           ? [
               if (description.trim().isNotEmpty)
@@ -358,6 +397,9 @@ class _SourceBadgeCard extends StatefulWidget {
     this.seeders,
     this.flags,
     this.magnet,
+    this.tvItemIndex,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final VoidCallback onTap;
@@ -373,6 +415,9 @@ class _SourceBadgeCard extends StatefulWidget {
   final String? seeders;
   final String? flags;
   final String? magnet;
+  final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   State<_SourceBadgeCard> createState() => _SourceBadgeCardState();
@@ -435,12 +480,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final showCopyMagnet = magnet != null && magnet.isNotEmpty && _hovered;
     const seedColor = Color(0xFF22C55E);
 
-    return FocusableControl(
-      onTap: widget.onTap,
-      borderRadius: 10,
-      scaleOnFocus: 1.0,
-      onFocusChange: (focused) => setState(() => _focused = focused),
-      child: MouseRegion(
+    final face = MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: AnimatedContainer(
@@ -623,7 +663,33 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
             ],
           ),
         ),
-      ),
+      );
+
+    final tvIndex = widget.tvItemIndex;
+    if (tvIndex != null && SourcesPanelTv.isTv(context)) {
+      return shellFocusableTap(
+        context: context,
+        onTap: widget.onTap,
+        borderRadius: 10,
+        scaleOnFocus: 1.0,
+        listIndex: tvIndex,
+        tvTabId: SourcesPanelTv.tabId,
+        tvRowId: SourcesPanelTv.listRowId,
+        tvItemIndex: tvIndex,
+        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        onUpEdge: widget.onUpEdge,
+        onDownEdge: widget.onDownEdge,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        child: face,
+      );
+    }
+
+    return FocusableControl(
+      onTap: widget.onTap,
+      borderRadius: 10,
+      scaleOnFocus: 1.0,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: face,
     );
   }
 }

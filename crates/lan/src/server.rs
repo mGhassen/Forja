@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
+use tokio::net::TcpSocket;
 use tokio::sync::oneshot;
 
 /// Invoked after pair / revoke so the host can persist device tokens.
@@ -40,6 +42,8 @@ pub struct LanServerState {
 
 pub struct LanServer {
     shutdown: Option<oneshot::Sender<()>>,
+    /// Completes when the axum serve task exits (socket released).
+    serve_done: Option<oneshot::Receiver<()>>,
     mdns: Option<MdnsAnnouncer>,
     pub state: LanServerState,
 }
@@ -52,6 +56,7 @@ impl LanServer {
     ) -> Self {
         Self {
             shutdown: None,
+            serve_done: None,
             mdns: None,
             state: LanServerState {
                 pairing: PairingState::new(server_id),
@@ -95,14 +100,14 @@ impl LanServer {
 
         let app = build_router(self.state.clone());
         let addr = SocketAddr::new(bind_mode.bind_addr(), preferred_port);
-        let listener = tokio::net::TcpListener::bind(addr)
-            .await
-            .map_err(|e| e.to_string())?;
+        let listener = bind_lan_listener(addr).await?;
         let port = listener.local_addr().map_err(|e| e.to_string())?.port();
         *self.state.listen_port.write().await = port;
 
         let (tx, rx) = oneshot::channel();
+        let (done_tx, done_rx) = oneshot::channel();
         self.shutdown = Some(tx);
+        self.serve_done = Some(done_rx);
         tokio::spawn(async move {
             axum::serve(listener, app)
                 .with_graceful_shutdown(async {
@@ -110,6 +115,7 @@ impl LanServer {
                 })
                 .await
                 .ok();
+            let _ = done_tx.send(());
         });
 
         if bind_mode == LanBindMode::AllInterfaces {
@@ -129,14 +135,16 @@ impl LanServer {
         Ok(port)
     }
 
-    pub fn stop(&mut self) {
+    /// Signal graceful shutdown and wait until the listen socket is released.
+    pub async fn stop(&mut self) {
         if let Some(tx) = self.shutdown.take() {
             let _ = tx.send(());
         }
         self.mdns.take();
-        if let Ok(mut port) = self.state.listen_port.try_write() {
-            *port = 0;
+        if let Some(done) = self.serve_done.take() {
+            let _ = tokio::time::timeout(Duration::from_millis(1500), done).await;
         }
+        *self.state.listen_port.write().await = 0;
     }
 
     pub fn port(&self) -> u16 {
@@ -153,6 +161,19 @@ impl LanServer {
             .current_code()
             .unwrap_or_else(|| self.state.pairing.refresh_code())
     }
+}
+
+/// Bind with `SO_REUSEADDR` so a sticky preferred port can reopen after stop
+/// without waiting out TIME_WAIT (the old bug that forced a new random port).
+async fn bind_lan_listener(addr: SocketAddr) -> Result<tokio::net::TcpListener, String> {
+    let socket = if addr.is_ipv4() {
+        TcpSocket::new_v4().map_err(|e| e.to_string())?
+    } else {
+        TcpSocket::new_v6().map_err(|e| e.to_string())?
+    };
+    socket.set_reuseaddr(true).map_err(|e| e.to_string())?;
+    socket.bind(addr).map_err(|e| e.to_string())?;
+    socket.listen(128).map_err(|e| e.to_string())
 }
 
 fn build_router(state: LanServerState) -> Router {
@@ -487,6 +508,26 @@ fn bad_request(msg: &str) -> (StatusCode, Json<serde_json::Value>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::{IpAddr, Ipv4Addr};
+
+    #[tokio::test]
+    async fn sticky_port_rebinds_after_close() {
+        let first = bind_lan_listener(SocketAddr::new(
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
+            0,
+        ))
+        .await
+        .expect("initial bind");
+        let port = first.local_addr().unwrap().port();
+        drop(first);
+        let second = bind_lan_listener(SocketAddr::new(
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
+            port,
+        ))
+        .await
+        .expect("sticky rebind");
+        assert_eq!(second.local_addr().unwrap().port(), port);
+    }
 
     #[test]
     fn rewrite_swaps_loopback_host() {

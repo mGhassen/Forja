@@ -27,6 +27,10 @@ class PlayerSubtitleMenu {
     required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
     PlayerSubtitleSelectionCallback? onSubtitleSelected,
+    /// IPTV / junk titles — opens a "search by name" dialog.
+    VoidCallback? onTitleSearch,
+    /// Shown under the list when set (e.g. cleaned query in use).
+    String? titleSearchHint,
     BuildContext? anchorContext,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) async {
@@ -42,6 +46,8 @@ class PlayerSubtitleMenu {
       loadOnlineSubtitle: loadOnlineSubtitle,
       onSubtitleSettings: onSubtitleSettings,
       onSubtitleSelected: onSubtitleSelected,
+      onTitleSearch: onTitleSearch,
+      titleSearchHint: titleSearchHint,
       margin: margin,
       anchorContext: anchorContext,
     );
@@ -97,6 +103,8 @@ class PlayerSubtitleMenu {
     required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
     PlayerSubtitleSelectionCallback? onSubtitleSelected,
+    VoidCallback? onTitleSearch,
+    String? titleSearchHint,
     required EdgeInsets margin,
     BuildContext? anchorContext,
   }) async {
@@ -181,6 +189,18 @@ class PlayerSubtitleMenu {
               ),
             ),
           ],
+          if (onTitleSearch != null) ...[
+            const SizedBox(width: 6),
+            _SubtitleHeaderChip(
+              label: 'Search',
+              icon: Icons.search_rounded,
+              selected: false,
+              onTap: () {
+                PlayerPopupPanel.dismiss();
+                onTitleSearch();
+              },
+            ),
+          ],
           const SizedBox(width: 6),
           ForjaPlainIcon(
             icon: Icons.tune_rounded,
@@ -203,6 +223,30 @@ class PlayerSubtitleMenu {
               child: LinearProgressIndicator(
                 color: Colors.white54,
                 backgroundColor: Colors.white10,
+              ),
+            ),
+          if (titleSearchHint != null && titleSearchHint.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                'Searching: $titleSearchHint',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ),
+          if (!isFetchingSubs &&
+              folderKeys.isEmpty &&
+              onTitleSearch != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'No online subtitles yet. Tap Search to type the film or series name.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.55),
+                  fontSize: 12,
+                  height: 1.35,
+                ),
               ),
             ),
           for (var i = 0; i < folderKeys.length; i++) ...[
@@ -247,6 +291,8 @@ class PlayerSubtitleMenu {
                         loadOnlineSubtitle: loadOnlineSubtitle,
                         onSubtitleSettings: onSubtitleSettings,
                         onSubtitleSelected: onSubtitleSelected,
+                        onTitleSearch: onTitleSearch,
+                        titleSearchHint: titleSearchHint,
                         margin: margin,
                         anchorContext: anchorContext,
                       ),

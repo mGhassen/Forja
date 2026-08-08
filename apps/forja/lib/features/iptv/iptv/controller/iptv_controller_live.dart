@@ -86,6 +86,7 @@ mixin _IptvControllerLive on ChangeNotifier {
     final p = _c.activePortal;
     if (p == null) return;
     _c.activeSeries = s;
+    _c.activeMovie = null;
     _c.view = IptvView.episodeList;
     _c.isLoading = true;
     _c.error = null;
@@ -99,5 +100,15 @@ mixin _IptvControllerLive on ChangeNotifier {
       _c.isLoading = false;
       notifyListeners();
     }
+  }
+
+  void openMovie(IptvStream s) {
+    if (_c.activePortal == null) return;
+    _c.activeMovie = s;
+    _c.activeSeries = null;
+    _c.episodes = const [];
+    _c.error = null;
+    _c.view = IptvView.movieDetails;
+    notifyListeners();
   }
 }

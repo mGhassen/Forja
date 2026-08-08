@@ -32,21 +32,27 @@ class LanServerService {
     }
     final bindMode = allInterfaces ? 1 : 0;
     final preferred = await LanPrefs.instance.listenPort ?? 0;
-    var p = RustLib.instance.lanServerStart(
-      bindMode: bindMode,
-      preferredPort: preferred,
-    );
-    // Preferred port busy → fall back to ephemeral, then stick that.
+    var p = _startOnce(bindMode, preferred);
+    // Preferred briefly busy after stop — retry before giving up the sticky port.
     if (p <= 0 && preferred > 0) {
-      debugPrint('[LAN] port $preferred busy — retrying with ephemeral');
-      p = RustLib.instance.lanServerStart(
-        bindMode: bindMode,
-        preferredPort: 0,
-      );
+      for (var i = 0; i < 5 && p <= 0; i++) {
+        await Future<void>.delayed(Duration(milliseconds: 100 * (i + 1)));
+        debugPrint('[LAN] retry preferred port $preferred (${i + 1}/5)');
+        p = _startOnce(bindMode, preferred);
+      }
+    }
+    var usedEphemeral = false;
+    if (p <= 0 && preferred > 0) {
+      debugPrint('[LAN] port $preferred busy — ephemeral fallback (sticky kept)');
+      p = _startOnce(bindMode, 0);
+      usedEphemeral = p > 0;
     }
     if (p > 0) {
       await LanPrefs.instance.setLanServerEnabled(true);
-      await LanPrefs.instance.setListenPort(p);
+      // Don't overwrite sticky with a temporary ephemeral bind.
+      if (!usedEphemeral || preferred == 0) {
+        await LanPrefs.instance.setListenPort(p);
+      }
       RustLib.instance.lanPairingCode();
       return true;
     }
@@ -56,6 +62,12 @@ class LanServerService {
     }
     return false;
   }
+
+  int _startOnce(int bindMode, int preferredPort) =>
+      RustLib.instance.lanServerStart(
+        bindMode: bindMode,
+        preferredPort: preferredPort,
+      );
 
   String lastStartError() =>
       Engine.isReady ? RustLib.instance.lanServerLastError() : 'engine not ready';

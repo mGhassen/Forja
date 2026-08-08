@@ -1,12 +1,15 @@
 import 'dart:async';
-import 'dart:io' show Platform;
+import 'dart:io' show File, Platform;
 import 'package:flutter/foundation.dart'
     show kDebugMode, kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
+import 'package:forja/features/iptv/iptv/iptv_title_clean.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -95,6 +98,13 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   final BuiltInPlayerContext engineContext;
   /// When set on Android, boot with this engine for this session only.
   final BuiltInPlayerEngine? forceBuiltInEngine;
+  /// Movies/series: fetch online subs + Search-by-name (not live).
+  final bool onlineSubtitles;
+  /// Prefer over [title] for subtitle APIs (e.g. series show name).
+  final String? subtitleSearchTitle;
+  final int? subtitleSeason;
+  final int? subtitleEpisode;
+  final int? subtitleYear;
 
   const IptvPtPlayerScreen({
     super.key,
@@ -106,6 +116,11 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     this.onChannelChanged,
     this.engineContext = BuiltInPlayerContext.iptv,
     this.forceBuiltInEngine,
+    this.onlineSubtitles = false,
+    this.subtitleSearchTitle,
+    this.subtitleSeason,
+    this.subtitleEpisode,
+    this.subtitleYear,
   });
 
   /// Convenience: build for a single Xtream stream.
@@ -129,6 +144,8 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
         onChannelChanged: onChannelChanged,
         engineContext: engineContext,
         forceBuiltInEngine: forceBuiltInEngine,
+        onlineSubtitles: stream.kind == 'vod' || stream.kind == 'series',
+        subtitleSearchTitle: stream.name,
       );
 
   /// Convenience: build for a list of channel hits (multi-source).
@@ -278,6 +295,16 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   double _subtitleBgOpacity = 0.67;
   bool _subtitleBold = false;
   String _subtitleFont = 'Default';
+
+  List<Map<String, dynamic>> _externalSubtitles = [];
+  String? _selectedExternalSubUrl;
+  bool _isFetchingSubs = false;
+  final Map<String, String> _externalSubFileCache = {};
+  StreamSubscription<List<Map<String, dynamic>>>? _subtitleFetchSub;
+  String _subQueryTitle = '';
+  int? _subQueryYear;
+  int? _subQuerySeason;
+  int? _subQueryEpisode;
 
   // Fullscreen state (desktop only - mobile is permanently immersive)
   bool _isFullscreen = false;
@@ -459,6 +486,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _title = widget.title;
     _subtitle = widget.subtitle;
     _logoUrl = widget.logoUrl;
+    _seedSubtitleQuery();
     final guide = widget.channelGuide;
     _selectedGroupId = guide?.initialGroupId ?? '';
     _currentChannelId = guide?.initialChannelId ?? '';
@@ -574,7 +602,20 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       await _bootExoPlayer();
     } else {
       await _bootPlayer();
+      if (!_disposed && mounted && widget.onlineSubtitles) {
+        _fetchOnlineSubtitles();
+      }
     }
+  }
+
+  void _seedSubtitleQuery() {
+    if (!widget.onlineSubtitles) return;
+    final raw = (widget.subtitleSearchTitle ?? widget.title).trim();
+    final cleaned = cleanIptvMediaTitle(raw);
+    _subQueryTitle = cleaned.title.isNotEmpty ? cleaned.title : raw;
+    _subQueryYear = widget.subtitleYear ?? cleaned.year;
+    _subQuerySeason = widget.subtitleSeason ?? cleaned.season;
+    _subQueryEpisode = widget.subtitleEpisode ?? cleaned.episode;
   }
 
   /// Hot-swap Exo ↔ MediaKit from the in-player Player menu (Android).
@@ -797,6 +838,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _displayFrameRateApplied = false;
     _hideControlsTimer?.cancel();
     _hideVolumeTimer?.cancel();
+    _subtitleFetchSub?.cancel();
     _playerTvKeyFocus.dispose();
     _seekFocus.dispose();
     unawaited(_finalizeExit());

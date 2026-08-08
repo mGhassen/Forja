@@ -17,6 +17,10 @@ mixin _IptvControllerNav on ChangeNotifier {
         _c.activeSeries = null;
         _c.episodes = const [];
         break;
+      case IptvView.movieDetails:
+        _c.view = IptvView.browser;
+        _c.activeMovie = null;
+        break;
       case IptvView.channelsHub:
         _c.view = IptvView.browser;
         _c.activeHardcoded = null;

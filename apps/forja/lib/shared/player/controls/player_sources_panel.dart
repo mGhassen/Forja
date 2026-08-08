@@ -12,6 +12,9 @@ import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
@@ -137,17 +140,22 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      child: _PlayerSourcesBody(
-        movie: widget.movie,
-        season: widget.season,
-        episode: widget.episode,
-        currentMagnet: widget.currentMagnet,
-        currentStreamUrl: widget.currentStreamUrl,
-        preferredKind: widget.preferredKind,
-        currentAddonBaseUrl: widget.currentAddonBaseUrl,
-        onTorrentSelected: widget.onTorrentSelected,
-        onStremioSelected: widget.onStremioSelected,
+      child: SourcesPanelTv.wrapBody(
+        context: context,
         onClose: widget.onClose,
+        includeOverlayScope: false,
+        child: _PlayerSourcesBody(
+          movie: widget.movie,
+          season: widget.season,
+          episode: widget.episode,
+          currentMagnet: widget.currentMagnet,
+          currentStreamUrl: widget.currentStreamUrl,
+          preferredKind: widget.preferredKind,
+          currentAddonBaseUrl: widget.currentAddonBaseUrl,
+          onTorrentSelected: widget.onTorrentSelected,
+          onStremioSelected: widget.onStremioSelected,
+          onClose: widget.onClose,
+        ),
       ),
     );
   }
@@ -1623,6 +1631,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           filterEnableBlur: false,
           onReloadKind: _reloadKind,
           sourcesPanelOpen: true,
+          onFocusList: () {
+            final cur = _currentItemIndex(torrents, stremio, nuvio: nuvio) ?? 0;
+            final max = totalCount > 0 ? totalCount - 1 : 0;
+            SourcesPanelTv.focusListItem(index: cur.clamp(0, max));
+          },
         ),
         const SizedBox(height: 4),
         Expanded(
@@ -1712,12 +1725,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
     final currentIndex = _currentItemIndex(torrents, stremio, nuvio: nuvio);
 
-    return ListView.separated(
+    final tv = SourcesPanelTv.isTv(context);
+    final list = ListView.separated(
       controller: _listScrollController,
       padding: const EdgeInsets.only(top: 2, bottom: 8),
       itemCount: totalCount,
       separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, i) {
+        final tvIndex = tv ? i : null;
+        final onUp = i == 0 ? SourcesPanelTv.focusProvidersItem : null;
+        final onDown = i >= totalCount - 1 ? () {} : null;
         if (i < torrents.length) {
           final r = torrents[i];
           final isCurrent = i == currentIndex;
@@ -1726,6 +1743,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             child: TorrentSourceTile(
               result: r,
               highlightStart: isCurrent,
+              tvItemIndex: tvIndex,
+              onUpEdge: onUp,
+              onDownEdge: onDown,
               onPlay: () => _selectTorrent(r),
             ),
           );
@@ -1751,10 +1771,24 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
             stream: s,
             highlightStart: isCurrent,
+            tvItemIndex: tvIndex,
+            onUpEdge: onUp,
+            onDownEdge: onDown,
             onTap: () => _selectStremio(s),
           ),
         );
       },
+    );
+
+    if (!tv) return list;
+    return TvCatalogRow(
+      tabId: SourcesPanelTv.tabId,
+      rowId: SourcesPanelTv.listRowId,
+      sortOrder: SourcesPanelTv.listSort,
+      itemCount: totalCount,
+      orientation: ShellTvRowOrientation.vertical,
+      onFocusUp: SourcesPanelTv.focusProvidersItem,
+      child: list,
     );
   }
 }

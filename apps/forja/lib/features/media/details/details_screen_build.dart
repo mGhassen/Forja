@@ -253,18 +253,31 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
       );
     }
 
+    final tv = SourcesPanelTv.isTv(context);
     final scaffold = Scaffold(
       backgroundColor: AppTheme.bgDark,
       body: Stack(
         children: [
-          _buildScrollLayout(),
+          ExcludeFocus(
+            excluding: tv && _s._sourcesPanelOpen,
+            child: _buildScrollLayout(),
+          ),
           if (!_s._isCollection && _s._hasPanelPlaySources)
             TorrentSourcesPanel(
               isOpen: _s._sourcesPanelOpen,
               onClose: _s._closeSourcesPanel,
-              child: _buildSourcesPanelContent(),
+              child: _s._sourcesPanelOpen
+                  ? SourcesPanelTv.wrapBody(
+                      context: context,
+                      onClose: _s._closeSourcesPanel,
+                      child: _buildSourcesPanelContent(),
+                    )
+                  : _buildSourcesPanelContent(),
             ),
-          MediaDetailsBackButton(focusNode: _s._detailsBackFocus),
+          ExcludeFocus(
+            excluding: tv && _s._sourcesPanelOpen,
+            child: MediaDetailsBackButton(focusNode: _s._detailsBackFocus),
+          ),
         ],
       ),
     );
@@ -435,6 +448,7 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
           ),
           onReloadKind: _s._reloadPanelKind,
           sourcesPanelOpen: _s._sourcesPanelOpen,
+          onFocusList: () => SourcesPanelTv.focusListItem(),
         ),
         const SizedBox(height: 8),
         Expanded(child: _s._buildStreamList(inPanel: true)),

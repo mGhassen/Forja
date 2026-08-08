@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
@@ -449,12 +452,16 @@ class TorrentSourceChips extends StatefulWidget {
     required this.selectedSourceId,
     required this.nuvioSelectedScraperIds,
     required this.onChipTap,
+    this.tvTabId,
+    this.tvRowId,
   });
 
   final List<SourcesPanelProviderOption> options;
   final String selectedSourceId;
   final Set<String> nuvioSelectedScraperIds;
   final ValueChanged<String> onChipTap;
+  final String? tvTabId;
+  final String? tvRowId;
 
   @override
   State<TorrentSourceChips> createState() => _TorrentSourceChipsState();
@@ -522,13 +529,16 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                 clipBehavior: Clip.none,
                 child: Row(
                   children: [
-                    for (final option in widget.options)
+                    for (var i = 0; i < widget.options.length; i++)
                       Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: _ProviderChip(
-                          label: option.label,
-                          selected: _chipSelected(option),
-                          onTap: () => widget.onChipTap(option.id),
+                          label: widget.options[i].label,
+                          selected: _chipSelected(widget.options[i]),
+                          onTap: () => widget.onChipTap(widget.options[i].id),
+                          tvTabId: widget.tvTabId,
+                          tvRowId: widget.tvRowId,
+                          tvItemIndex: widget.tvRowId != null ? i : null,
                         ),
                       ),
                   ],
@@ -552,37 +562,57 @@ class _ProviderChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.tvTabId,
+    this.tvRowId,
+    this.tvItemIndex,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final String? tvTabId;
+  final String? tvRowId;
+  final int? tvItemIndex;
 
   @override
   Widget build(BuildContext context) {
-    return FocusableControl(
-      onTap: onTap,
-      borderRadius: 999,
-      // Dense strip - scale clips into chrome gaps above/below.
-      scaleOnFocus: 1.0,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: _torrentPanelChipDecoration(
-          selected: selected,
-          radius: 999,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: selected
-                ? ForjaShellColors.cinematic.textPrimary
-                : ForjaShellColors.cinematic.textSecondary,
-          ),
+    final face = AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: _torrentPanelChipDecoration(
+        selected: selected,
+        radius: 999,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: selected
+              ? ForjaShellColors.cinematic.textPrimary
+              : ForjaShellColors.cinematic.textSecondary,
         ),
       ),
+    );
+    if (tvTabId == null || tvRowId == null || tvItemIndex == null) {
+      return FocusableControl(
+        onTap: onTap,
+        borderRadius: 999,
+        scaleOnFocus: 1.0,
+        child: face,
+      );
+    }
+    return shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 999,
+      scaleOnFocus: 1.0,
+      listIndex: tvItemIndex,
+      tvTabId: tvTabId,
+      tvRowId: tvRowId,
+      tvItemIndex: tvItemIndex,
+      tvZone: ShellTvZone.chipStrip,
+      child: face,
     );
   }
 }
@@ -998,6 +1028,13 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
 
     /// When Sources closes, dismiss Filters if they were open.
     this.sourcesPanelOpen = false,
+    this.searchFocusNode,
+    this.filtersFocusNode,
+    this.onSearchUpEdge,
+    this.onSearchDownEdge,
+    this.onFiltersUpEdge,
+    this.onFiltersDownEdge,
+    this.onFiltersRightEdge,
   });
 
   final String searchQuery;
@@ -1022,6 +1059,13 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
   final ValueChanged<String>? onSortChanged;
   final bool enableBlur;
   final bool sourcesPanelOpen;
+  final FocusNode? searchFocusNode;
+  final FocusNode? filtersFocusNode;
+  final VoidCallback? onSearchUpEdge;
+  final VoidCallback? onSearchDownEdge;
+  final VoidCallback? onFiltersUpEdge;
+  final VoidCallback? onFiltersDownEdge;
+  final VoidCallback? onFiltersRightEdge;
 
   @override
   State<TorrentSourceSearchToolbar> createState() =>
@@ -1156,13 +1200,28 @@ class _TorrentSourceSearchToolbarState
           child: _SearchField(
             query: widget.searchQuery,
             onChanged: widget.onSearchChanged,
+            focusNode: widget.searchFocusNode,
+            onUpEdge: widget.onSearchUpEdge,
+            onDownEdge: widget.onSearchDownEdge,
           ),
         ),
         if (_canFilter) ...[
           const SizedBox(width: 8),
           FocusableControl(
             onTap: _toggleFilters,
+            focusNode: widget.filtersFocusNode,
             borderRadius: 10,
+            scaleOnFocus: 1.0,
+            onUpEdge: widget.onFiltersUpEdge,
+            onDownEdge: widget.onFiltersDownEdge,
+            onRightEdge: widget.onFiltersRightEdge,
+            onLeftEdge: widget.searchFocusNode == null
+                ? null
+                : () {
+                    if (widget.searchFocusNode!.canRequestFocus) {
+                      widget.searchFocusNode!.requestFocus();
+                    }
+                  },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: _torrentPanelControlDecoration(
@@ -1199,10 +1258,19 @@ class _TorrentSourceSearchToolbarState
 }
 
 class _SearchField extends StatefulWidget {
-  const _SearchField({required this.query, required this.onChanged});
+  const _SearchField({
+    required this.query,
+    required this.onChanged,
+    this.focusNode,
+    this.onUpEdge,
+    this.onDownEdge,
+  });
 
   final String query;
   final ValueChanged<String> onChanged;
+  final FocusNode? focusNode;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   State<_SearchField> createState() => _SearchFieldState();
@@ -1229,8 +1297,55 @@ class _SearchFieldState extends State<_SearchField> {
     super.dispose();
   }
 
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      widget.onDownEdge?.call();
+      return widget.onDownEdge != null
+          ? KeyEventResult.handled
+          : KeyEventResult.ignored;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      widget.onUpEdge?.call();
+      return widget.onUpEdge != null
+          ? KeyEventResult.handled
+          : KeyEventResult.ignored;
+    }
+    return KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) {
+    Widget field = TextField(
+      controller: _controller,
+      focusNode: widget.focusNode,
+      onChanged: widget.onChanged,
+      onSubmitted: (_) => widget.onDownEdge?.call(),
+      style: TextStyle(
+        color: ForjaShellColors.cinematic.textPrimary,
+        fontSize: 13,
+      ),
+      decoration: InputDecoration(
+        hintText: 'Search',
+        hintStyle: TextStyle(
+          color: ForjaShellColors.cinematic.textSecondary.withValues(
+            alpha: 0.7,
+          ),
+          fontSize: 13,
+        ),
+        border: InputBorder.none,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+      ),
+    );
+    if (widget.focusNode != null &&
+        (widget.onUpEdge != null || widget.onDownEdge != null)) {
+      field = Focus(
+        onKeyEvent: _onKey,
+        child: field,
+      );
+    }
+
     return Container(
       decoration: _torrentPanelControlDecoration(active: false, radius: 10),
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1242,28 +1357,7 @@ class _SearchFieldState extends State<_SearchField> {
             color: ForjaShellColors.cinematic.textSecondary,
           ),
           const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              onChanged: widget.onChanged,
-              style: TextStyle(
-                color: ForjaShellColors.cinematic.textPrimary,
-                fontSize: 13,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Search',
-                hintStyle: TextStyle(
-                  color: ForjaShellColors.cinematic.textSecondary.withValues(
-                    alpha: 0.7,
-                  ),
-                  fontSize: 13,
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-            ),
-          ),
+          Expanded(child: field),
           if (widget.query.isNotEmpty)
             ForjaCloseButton.compact(
               tooltip: null,

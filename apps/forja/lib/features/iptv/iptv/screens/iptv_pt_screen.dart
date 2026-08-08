@@ -32,6 +32,8 @@ import 'package:forja/features/iptv/iptv/data/iptv_portal_share.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_catalog_workspace.dart';
+import 'package:forja/features/iptv/iptv/screens/iptv_movie_details_view.dart';
+import 'package:forja/features/iptv/iptv/screens/iptv_series_details_view.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'iptv_pt_player_screen.dart';
 
@@ -42,7 +44,6 @@ part 'iptv_pt_widgets_section.dart';
 part 'iptv_pt_browser_view.dart';
 part 'iptv_pt_browser_sidebar.dart';
 part 'iptv_pt_browser_streams.dart';
-part 'iptv_pt_widgets_episode.dart';
 part 'iptv_pt_widgets_channels.dart';
 
 /// Mask a URL for safe display: keeps host, masks each path segment to first 2 chars + ***.
@@ -74,7 +75,9 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
 
   @override
   bool get shellBlocksEviction =>
-      _ctrl.view == IptvView.episodeList || _ctrl.activePortal != null;
+      _ctrl.view == IptvView.episodeList ||
+      _ctrl.view == IptvView.movieDetails ||
+      _ctrl.activePortal != null;
 
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
@@ -115,7 +118,8 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
   void _syncShellNav() {
     final ctrl = _navListenerCtrl;
     if (ctrl == null) return;
-    final hide = ctrl.view == IptvView.episodeList;
+    final hide = ctrl.view == IptvView.episodeList ||
+        ctrl.view == IptvView.movieDetails;
     if (ShellBus.hideGlobalNav.value != hide) {
       ShellBus.hideGlobalNav.value = hide;
       ShellBus.notifyShellChromeChanged();
@@ -148,7 +152,9 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
           }
         },
         child: PopScope(
-          canPop: !ctrl.portalPanelOpen && ctrl.view != IptvView.episodeList,
+          canPop: !ctrl.portalPanelOpen &&
+              ctrl.view != IptvView.episodeList &&
+              ctrl.view != IptvView.movieDetails,
           onPopInvokedWithResult: (didPop, _) {
             if (!didPop) ctrl.back();
           },
@@ -180,7 +186,9 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
           wide: _isWide(context),
         );
       case IptvView.episodeList:
-        return _EpisodeListView(ctrl: ctrl, compact: _isCompact(context));
+        return IptvSeriesDetailsView(ctrl: ctrl);
+      case IptvView.movieDetails:
+        return IptvMovieDetailsView(ctrl: ctrl);
       case IptvView.channelsHub:
       case IptvView.channelResults:
         return _IptvCatalogShell(

@@ -5,5 +5,6 @@ export 'media_details_tracker_handlers.dart';
 export 'torrent_release_metadata.dart';
 export 'torrent_source_filters.dart';
 export 'torrent_source_tiles.dart';
+export 'sources_panel_tv.dart';
 export 'torrent_sources_panel.dart';
 export 'torrent_sources_panel_chrome.dart';
