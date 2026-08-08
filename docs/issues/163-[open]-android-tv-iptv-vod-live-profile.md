@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **16 / 16** fix · **0 / 3** acceptance |
+| **Progress** | **21 / 21** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -35,6 +35,11 @@
 | 14 | I163-T14 | Split MediaKit profiles: Live = 1.3.170 tunables; Movies/Series = Home VOD-style (no live reconnect/cache) | ✅ |
 | 15 | I163-T15 | Live chrome hides Audio/Subs; Movies/Series keep track buttons (`_showTrackButtons` → `_isVodChrome`) | ✅ |
 | 16 | I163-T16 | Revert T14 — restore Live MediaKit to post-170 HEAD (keep 155/148); do not rewind Live to 1.3.170 | ✅ |
+| 17 | I163-T17 | Live MediaKit: defer display-refresh match until first frame (≤v1.3.170 open timing); skip on emulator | ✅ |
+| 18 | I163-T18 | Emulator ATV MediaKit: `hwdec=no` / no `mediacodec_embed` (stop goldfish HEVC process death); physical ATV HW unchanged | ✅ |
+| 19 | I163-T19 | Revert T17–T18 — Live MediaKit decode/open back to yesterday (`50ebdaa2` / HEAD): `mediacodec_embed` + inline display match | ✅ |
+| 20 | I163-T20 | Restore IPTV player trio (`engine`/`screen`/`ui`) from `50ebdaa2` (2026-08-07 evening) — full Live player as yesterday | ✅ |
+| 21 | I163-T21 | Restore Live MediaKit **conf** (`engine`+`screen`) from `v1.3.170` / ~2 days — no Aug-7 display-match / stall-recovery | ✅ |
 
 ---
 
@@ -61,5 +66,13 @@ IPTV Movies/Series reused the **live** player profile: post-open `drop-buffers` 
 **Emulator VOD decode (`I163-T12` → `I163-T13`):** Tried software decode for emulator Movies/Series; **reverted** — ATV MediaKit init is back to `_atvMediaKit` + `mediacodec_embed` for all ATV (Live path identical to pre-T12). Goldfish HEVC/H264 MediaKit ANR remains an emulator limit (issue 108).
 
 **Split profiles (`I163-T14` → `I163-T16`):** Mis-scoped “restore Live to 1.3.170” rewrite — **reverted**. Live MediaKit is again **post-170 HEAD** (keeps issue 155 no-UHD-retune, 148 recovery modes, display-refresh match, etc.). VOD lean cache (`I163-T11`) and live-profile gates (`I163-T01`–`T03`) stay. Do not rewind Live to 1.3.170 when fixing VOD.
+
+**Live display match (`I163-T17` → `I163-T19`):** Tried deferring display-refresh match — **reverted**. Live open path matches end-of-2026-08-07 (`50ebdaa2`): MediaCodec embed + display match in the dimension probe when the setting is on.
+
+**Emulator MediaKit SW (`I163-T18` → `I163-T19`):** Tried emulator `hwdec=no` — **reverted** (EGL black / no usable Live MediaKit paint). Live ATV MediaKit is again `mediacodec_embed` / `hwdec=mediacodec` on emulator and physical (yesterday Live decode). Goldfish HEVC process death remains an emulator limit (issue 108).
+
+**Full Live player restore (`I163-T20`):** Checked out `iptv_pt_player_{engine,screen,ui}.dart` from `50ebdaa2` (2026-08-07 ~21:21 — still had Aug-7 display-match + stall recovery).
+
+**MediaKit Live conf (`I163-T21`):** User asked for conf not chrome — restored `engine` + `screen` from **`v1.3.170`** (2026-08-06, ~2 days). That drops Aug-7 display-refresh match and stall/classic recovery modes. MediaKit pin is again: `mediacodec_embed` / `hwdec=mediacodec` / `display-resample`+`framedrop=vo` / UHD mid-open `video-sync=audio` / 150MB cache. UI file left as-is from T20.
 
 **Chrome profile (`I163-T15`):** Live bottom chrome hides **Audio** / **Subtitles** (any engine). Movies/Series keep track buttons via `_isVodChrome` (`vodPlayback` / duration).

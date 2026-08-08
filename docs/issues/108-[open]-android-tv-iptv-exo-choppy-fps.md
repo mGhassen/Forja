@@ -68,7 +68,7 @@ On **Android TV**, IPTV and Home/Search movies both use Media3 ExoPlayer by defa
 
 **Emulator fallback (T10):** On goldfish/ranchu leanback emulators, SurfaceView + MediaCodec often fails `setOutputSurface` (`BAD_INDEX`) → audio continues, picture stays black, and the separate Surface can cover Flutter player chrome. Emulators force **TextureView** + phone TLHC path for Exo; physical ATVs keep SurfaceView.
 
-**Emulator MediaKit (T14–T18):** T14 software decode dropped `mediacodec_embed` → black/EGL. T15–T17 forced Exo / hid MediaKit. **T18** restores both engines in the Player menu and normal boot choice — do not hide MediaKit again. HEVC + MediaKit on goldfish can still ANR; Exo remains the stable pick when that happens.
+**Emulator MediaKit (T14–T18):** T14 software decode dropped `mediacodec_embed` → black/EGL. T15–T17 forced Exo / hid MediaKit. **T18** restores both engines in the Player menu and normal boot choice — do not hide MediaKit again. HEVC + MediaKit on goldfish can still ANR; that remains an emulator limit.
 
 **Opt-in quality (T09):** **Settings → Playback → IPTV live max quality** defaults to **Auto (full quality)**. Choosing 1080p / 720p / 480p applies an Exo track ceiling for live adaptive feeds only — never automatic.
 
