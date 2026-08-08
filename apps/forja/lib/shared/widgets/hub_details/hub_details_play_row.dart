@@ -61,6 +61,7 @@ class HubDetailsPlayRow extends StatelessWidget {
     this.onPlay,
     this.enabled = true,
     this.focusNode,
+    this.autoFocus = false,
     this.tvTabId,
     this.tvItemIndex,
     this.onUpEdge,
@@ -70,6 +71,7 @@ class HubDetailsPlayRow extends StatelessWidget {
   final VoidCallback? onPlay;
   final bool enabled;
   final FocusNode? focusNode;
+  final bool autoFocus;
   final String? tvTabId;
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
@@ -80,6 +82,7 @@ class HubDetailsPlayRow extends StatelessWidget {
       label: label,
       onTap: enabled ? onPlay : null,
       focusNode: focusNode,
+      autoFocus: autoFocus,
       onUpEdge: onUpEdge,
       tvTabId: tvTabId,
       tvRowId: tvTabId != null ? MediaDetailsTv.heroRowId : null,

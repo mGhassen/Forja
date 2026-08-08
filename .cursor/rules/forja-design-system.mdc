@@ -73,6 +73,17 @@ Prefer `ForjaSwitch(scale: ForjaSwitch.settingsScale)` in dense settings lists. 
 - Platform layout and input: read `ShellScope.metrics` / `ShellScope.inputPolicy` — not `ShellTokens.isTvLayout` in widgets.
 - Platform shell switches live only in `shell/adapters/` (`ShellHost`, `DesktopShell`, `TvShell`, `MobileShell`).
 
+### Text inputs (TV) — focus only until OK
+
+**D-pad land = focus/highlight only. Never activate.** Opening the keyboard, edit mode, or search chrome requires explicit OK / Select / Enter / tap — never `onFocusChange(true)` or autofocus-into-edit.
+
+| Widget | Role |
+|--------|------|
+| `TvBrowseTextField` | TV search/query fields — browse until activate, then edit + IME |
+| `SettingsTextField` | Settings rows — same browse/edit split |
+
+Forbidden on TV: raw `TextField` that becomes editable / opens IME when focused; wiring focus listeners to `openSearch` / `beginEditing`. Full rule: `forja-tv-scope.mdc` → **TV text inputs**.
+
 ## Forbidden without explicit approval
 
 - Ad-hoc `BackdropFilter` / `ImageFilter.blur` outside `ForjaFrostedPanel` (and existing IPTV frosted panels)

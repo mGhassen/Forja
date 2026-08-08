@@ -37,8 +37,24 @@ Read `ShellScope.inputPolicyOf(context)` — never `ShellTokens.isTvLayout` in w
 | `ForjaShellChip` | Filter/mood chips (uses focus on TV automatically) |
 | `HoverScale` | Delegates to `shellFocusableTap` on TV — prefer for legacy cards |
 | `ExcludeFocus` on empty overlay | `shell_overlay_navigator.dart` — do not regress |
+| **Text inputs / search fields** | **Browse focus only on D-pad land — never activate** (see below) |
 
 Hub sub-routes pushed via `pushShellRoute` (details, search, explore) inherit the same rules.
+
+## TV text inputs — focus ≠ activate (mandatory)
+
+**Hard rule:** On TV, D-pad / arrow focus on a text field, search field, or search chrome control must **only move focus** (highlight). It must **never** open the keyboard, enter edit mode, expand search, submit, or fire `onTap` / `onSubmitted` / open handlers.
+
+**Activate only on explicit select:** OK / Select / Enter / click / tap. Not on `onFocusChange(true)`, `autofocus`, or “focus landed so open it”.
+
+| Do | Don’t |
+|----|--------|
+| Use `TvBrowseTextField` for TV search/query fields | Raw `TextField` that attaches IME when focused |
+| Use browse/edit split like `SettingsTextField` (browse node in traversal; edit node only after OK) | `onFocusChange: (f) { if (f) openSearch() / beginEditing() }` |
+| Open search chrome / keyboard from tool button `onTap` or activate key | Auto-open search or keyboard because focus moved onto Search / the field |
+| Keep `readOnly` + no IME in browse; `TextInputType.none` until editing | `autofocus: true` on an editable field that pops the keyboard on land |
+
+Canonical widgets: `shared/widgets/tv_browse_text_field.dart`, `SettingsTextField` in `settings_ui.dart`. Same contract for IPTV catalog search, portal search, hub search, player episode search, settings fields — every TV text input.
 
 ## Shell shared with all in-scope tabs
 

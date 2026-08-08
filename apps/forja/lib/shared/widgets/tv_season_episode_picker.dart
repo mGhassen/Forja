@@ -834,11 +834,13 @@ class _EpisodeCard extends StatefulWidget {
 
   static const double _bodyTopGap = 10;
   static const double _metaGap = 4;
-  static const double _titleLineHeight = 14 * 1.25;
-  static const double _dateBlockHeight = _metaGap + 12 * 1.2;
-  static const double _overviewBlockHeight = _metaGap + 12 * 1.4 * 2;
+  // Ceil text metrics — fractional line heights + platform font rounding
+  // were overflowing the row by <1px (e.g. 150.75 thumb in a 216 budget).
+  static const double _titleLineHeight = 18; // ceil(14 * 1.25)
+  static const double _dateBlockHeight = _metaGap + 15; // ceil(12 * 1.2)
+  static const double _overviewBlockHeight = _metaGap + 34; // ceil(12 * 1.4 * 2)
 
-  static double get thumbHeight => cardWidth * 9 / 16;
+  static double get thumbHeight => (cardWidth * 9 / 16).ceilToDouble();
 
   /// Height for title + optional air date / two-line overview.
   static double contentHeight({
@@ -855,8 +857,7 @@ class _EpisodeCard extends StatefulWidget {
     bool showDate = true,
     bool showOverview = true,
   }) =>
-      contentHeight(showDate: showDate, showOverview: showOverview)
-          .ceilToDouble() +
+      contentHeight(showDate: showDate, showOverview: showOverview) +
       rowVerticalPadding * 2;
 
   @override

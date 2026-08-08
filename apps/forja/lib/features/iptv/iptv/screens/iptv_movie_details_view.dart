@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/asian_drama/catalog/kisskh_tmdb_match.dart';
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/iptv_title_clean.dart';
+import 'package:forja/features/iptv/iptv/iptv_tmdb_enrichment.dart';
+import 'package:forja/features/iptv/iptv/screens/iptv_details_meta.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
@@ -17,7 +18,7 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart';
 
-/// Cinematic IPTV movie details — same shell as series / Asian Drama details.
+/// Cinematic IPTV movie details — same shell as home / Asian Drama details.
 class IptvMovieDetailsView extends StatefulWidget {
   const IptvMovieDetailsView({super.key, required this.ctrl});
 
@@ -32,10 +33,11 @@ class _IptvMovieDetailsViewState extends State<IptvMovieDetailsView> {
   final _backFocus = FocusNode(debugLabel: 'iptv-movie-back');
   final _heroPlayFocus = FocusNode(debugLabel: 'iptv-movie-play');
 
-  Movie? _tmdb;
+  IptvTmdbEnrichment? _enrich;
   bool _tmdbLoading = false;
   bool _playing = false;
   bool _heroFocusDone = false;
+  String? _loadedForKey;
 
   IptvController get ctrl => widget.ctrl;
 
@@ -44,8 +46,10 @@ class _IptvMovieDetailsViewState extends State<IptvMovieDetailsView> {
     return cleanIptvMediaTitle(name);
   }
 
+  Movie? get _movie => _enrich?.rich.movie;
+
   String get _displayTitle {
-    final tmdbTitle = _tmdb?.title.trim() ?? '';
+    final tmdbTitle = _movie?.title.trim() ?? '';
     if (tmdbTitle.isNotEmpty) return tmdbTitle;
     final cleaned = _cleaned.title;
     if (cleaned.isNotEmpty) return cleaned;
@@ -58,6 +62,7 @@ class _IptvMovieDetailsViewState extends State<IptvMovieDetailsView> {
     ctrl.addListener(_onCtrl);
     TvHeroActions.bind(
       'iptv',
+      defaultFocus: () => _heroPlayFocus,
       pageBack: () {
         ctrl.back();
         return true;
@@ -72,6 +77,7 @@ class _IptvMovieDetailsViewState extends State<IptvMovieDetailsView> {
     );
     ShellTvFocusCoordinator.registerDetailBackFocus(_backFocus);
     _loadTmdb();
+    _schedulePlayFocus();
   }
 
   @override
@@ -87,35 +93,33 @@ class _IptvMovieDetailsViewState extends State<IptvMovieDetailsView> {
   void _onCtrl() {
     if (!mounted) return;
     setState(() {});
-    if (_tmdb == null && !_tmdbLoading && ctrl.activeMovie != null) {
-      _loadTmdb();
-    }
+    _loadTmdb();
   }
 
   Future<void> _loadTmdb() async {
     final movie = ctrl.activeMovie;
     if (movie == null || _tmdbLoading) return;
-    final cleaned = cleanIptvMediaTitle(movie.name);
-    if (cleaned.isEmpty) return;
+    final key = '${movie.streamId}|${movie.name}';
+    if (_loadedForKey == key) return;
     _tmdbLoading = true;
-    final hit = await KissKhTmdbMatch.resolve(
-      title: cleaned.title,
-      year: cleaned.year?.toString(),
-      kissKhType: 'movie',
+    final hit = await loadIptvTmdbEnrichment(
+      rawTitle: movie.name,
+      preferMovie: true,
     );
     if (!mounted) return;
     setState(() {
-      _tmdb = hit;
+      _enrich = hit;
+      _loadedForKey = key;
       _tmdbLoading = false;
     });
   }
 
   String _backdropUrl() {
-    final path = _tmdb?.backdropPath.trim() ?? '';
+    final path = _movie?.backdropPath.trim() ?? '';
     if (path.isNotEmpty) {
       return path.startsWith('http') ? path : TmdbApi.getBackdropUrl(path);
     }
-    final poster = _tmdb?.posterPath.trim() ?? '';
+    final poster = _movie?.posterPath.trim() ?? '';
     if (poster.isNotEmpty) {
       return poster.startsWith('http') ? poster : TmdbApi.getImageUrl(poster);
     }
@@ -125,39 +129,50 @@ class _IptvMovieDetailsViewState extends State<IptvMovieDetailsView> {
   List<String> _heroBackdropUrls() {
     final primary = _backdropUrl();
     final icon = ctrl.activeMovie?.icon.trim() ?? '';
+    final shots = _movie?.screenshots ?? const <String>[];
     return RotatingHeroBackdrop.normalizeUrls([
       if (primary.isNotEmpty) primary,
+      for (final raw in shots)
+        if (raw.trim().isNotEmpty)
+          raw.trim().startsWith('http')
+              ? raw.trim()
+              : TmdbApi.getBackdropUrl(raw.trim()),
       if (icon.isNotEmpty && icon != primary) icon,
     ]);
   }
 
-  String _overview() => _tmdb?.overview.trim() ?? '';
+  String _overview() => _movie?.overview.trim() ?? '';
 
   List<String> _metaParts() {
     final parts = <String>[];
-    final date = _tmdb?.releaseDate.trim() ?? '';
+    final date = _movie?.releaseDate.trim() ?? '';
     if (date.length >= 4) {
       parts.add(date.substring(0, 4));
     } else if (_cleaned.year != null) {
       parts.add('${_cleaned.year}');
     }
-    final runtime = _tmdb?.runtime ?? 0;
+    final cert = _enrich?.rich.extras.certification.trim() ?? '';
+    if (cert.isNotEmpty) parts.add(cert);
+    final runtime = _movie?.runtime ?? 0;
     if (runtime > 0) parts.add('${runtime}m');
     return parts;
   }
 
   List<MapEntry<String, String>> _facts() {
-    final facts = <MapEntry<String, String>>[];
     final year = _cleaned.year ??
-        (_tmdb != null && (_tmdb!.releaseDate.length >= 4)
-            ? int.tryParse(_tmdb!.releaseDate.substring(0, 4))
+        (_movie != null && (_movie!.releaseDate.length >= 4)
+            ? int.tryParse(_movie!.releaseDate.substring(0, 4))
             : null);
-    if (year != null) facts.add(MapEntry('Year', '$year'));
-    final runtime = _tmdb?.runtime ?? 0;
-    if (runtime > 0) facts.add(MapEntry('Runtime', '${runtime}m'));
+    final runtime = _movie?.runtime ?? 0;
     final portal = ctrl.activePortal?.displayLabel.trim() ?? '';
-    if (portal.isNotEmpty) facts.add(MapEntry('Portal', portal));
-    return facts;
+    return iptvTmdbFacts(
+      _enrich?.rich,
+      base: [
+        if (year != null) MapEntry('Year', '$year'),
+        if (runtime > 0) MapEntry('Runtime', '${runtime}m'),
+        if (portal.isNotEmpty) MapEntry('Portal', portal),
+      ],
+    );
   }
 
   Future<void> _play() async {
@@ -196,6 +211,23 @@ class _IptvMovieDetailsViewState extends State<IptvMovieDetailsView> {
     if (_backFocus.canRequestFocus) _backFocus.requestFocus();
   }
 
+  void _schedulePlayFocus({int attempt = 0}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+      if (!tv) return;
+      if (_heroPlayFocus.canRequestFocus) {
+        _heroPlayFocus.requestFocus();
+        _heroFocusDone = true;
+        if (!_heroPlayFocus.hasFocus && attempt < 10) {
+          _schedulePlayFocus(attempt: attempt + 1);
+        }
+        return;
+      }
+      if (attempt < 10) _schedulePlayFocus(attempt: attempt + 1);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final movie = ctrl.activeMovie;
@@ -225,20 +257,27 @@ class _IptvMovieDetailsViewState extends State<IptvMovieDetailsView> {
     final backdrop = _backdropUrl();
     final heroBackdrops = _heroBackdropUrls();
     final rating =
-        (_tmdb?.voteAverage ?? 0) > 0 ? _tmdb!.voteAverage : null;
+        (_movie?.voteAverage ?? 0) > 0 ? _movie!.voteAverage : null;
     final heroHeight = DetailsTokens.heroHeight(context);
-
-    if (tvFocus && policy.heroPlayAutoFocus && !_heroFocusDone) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _heroFocusDone) return;
+    final heroFocusUp = tvFocus ? _focusBack : null;
+    final sections = buildIptvDetailsMetaSections(
+      context: context,
+      rich: _enrich?.rich,
+      tvFocus: tvFocus,
+      tvTabId: 'iptv',
+      tvRowOrderBase: 0,
+      tvFocusUp: () {
         if (_heroPlayFocus.canRequestFocus) {
           _heroPlayFocus.requestFocus();
-          _heroFocusDone = true;
+        } else {
+          heroFocusUp?.call();
         }
-      });
-    }
+      },
+    );
 
-    final heroFocusUp = tvFocus ? _focusBack : null;
+    if (tvFocus && !_heroFocusDone) {
+      _schedulePlayFocus();
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
@@ -249,12 +288,12 @@ class _IptvMovieDetailsViewState extends State<IptvMovieDetailsView> {
             scrollController: _scroll,
             bodyOverlap: 0,
             backgroundColor: AppTheme.bgDark,
-            sections: const [],
+            sections: sections,
             hero: HubDetailsHero(
               backdropUrl: backdrop,
               backdropUrls: heroBackdrops,
               title: _displayTitle,
-              genres: _tmdb?.genres ?? const [],
+              genres: _movie?.genres ?? const [],
               metaParts: _metaParts(),
               rating: rating,
               overview: _overview(),
@@ -264,12 +303,13 @@ class _IptvMovieDetailsViewState extends State<IptvMovieDetailsView> {
                 tabId: 'iptv',
                 itemCount: 1,
                 onFocusUp: heroFocusUp,
+                onFocusDown: sections.isNotEmpty ? _focusFirstMetaRow : null,
                 child: HubDetailsPlayRow(
                   label: _playing ? 'Opening…' : 'Play',
                   enabled: !_playing,
                   onPlay: _play,
-                  focusNode:
-                      policy.heroPlayAutoFocus ? _heroPlayFocus : null,
+                  focusNode: tvFocus ? _heroPlayFocus : null,
+                  autoFocus: tvFocus,
                   onUpEdge: heroFocusUp,
                   tvTabId: tvFocus ? 'iptv' : null,
                   tvItemIndex: 0,
@@ -284,5 +324,12 @@ class _IptvMovieDetailsViewState extends State<IptvMovieDetailsView> {
         ],
       ),
     );
+  }
+
+  void _focusFirstMetaRow() {
+    ShellTvFocusCoordinator.focusRowItem('iptv', 'cast', 0) ||
+        ShellTvFocusCoordinator.focusRowItem('iptv', 'crew', 0) ||
+        ShellTvFocusCoordinator.focusRowItem('iptv', 'trailers', 0) ||
+        ShellTvFocusCoordinator.focusRowItem('iptv', 'recommendations', 0);
   }
 }
