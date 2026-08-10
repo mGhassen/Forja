@@ -264,36 +264,29 @@ class _BrowserViewState extends State<_BrowserView> {
     });
   }
 
-  /// Pin without scrolling the rail (item may move to top of movable list).
+  /// Pin/unpin: follow the row to its new list index (scroll + focus).
   void _toggleCategoryPin(String categoryId) {
-    final cats = widget.ctrl.browserSidebarCategories;
-    final slot = cats.indexWhere((c) => c.id == categoryId);
-    final offset =
-        _categoryScroll.hasClients ? _categoryScroll.offset : null;
     unawaited(widget.ctrl.toggleLiveCategoryPin(categoryId));
-    void restoreScrollAndFocus() {
+    // Drop pin chrome ExcludeFocus — focus lands on the category row.
+    if (_tvCategoryPinFocused) {
+      setState(() => _tvCategoryPinFocused = false);
+    }
+    void scrollAndFocusPinned() {
       if (!mounted) return;
-      if (offset != null && _categoryScroll.hasClients) {
-        final target = offset.clamp(
-          0.0,
-          _categoryScroll.position.maxScrollExtent,
-        );
-        if ((_categoryScroll.offset - target).abs() > 0.5) {
-          _categoryScroll.jumpTo(target);
-        }
-      }
-      // Pinned row moved to the front — keep focus on this viewport slot.
-      if (slot >= 0 &&
-          slot < widget.ctrl.browserSidebarCategories.length) {
-        iptvFocusRowItem('browser-categories', slot);
-      }
+      final idx = widget.ctrl.browserSidebarCategories
+          .indexWhere((c) => c.id == categoryId);
+      if (idx < 0) return;
+      // Keep Favorites / Already watched above when the pin sits under them.
+      final keepAbove = idx.clamp(0, 2);
+      _scrollCategorySidebarToIndex(idx, keepAbove: keepAbove);
+      iptvFocusRowItem('browser-categories', idx);
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      restoreScrollAndFocus();
-      // Second frame: fight showOnScreen after sliver re-layout.
+      scrollAndFocusPinned();
+      // Second frame: row must be mounted after lazy sliver jump.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        restoreScrollAndFocus();
+        scrollAndFocusPinned();
       });
     });
   }

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **13 / 13** fix · **0 / 5** acceptance |
+| **Progress** | **14 / 14** fix · **0 / 5** acceptance · **1** deferred (A05) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -32,6 +32,7 @@
 | 11 | I136-T11 | IPTV catalog (TV): same D-pad idle **500ms** logo gate on stream focus | ✅ |
 | 12 | I136-T12 | TV catalog + guide: keep already-shown logos on scroll; only defer *new* viewport tiles (mid-viewport ↑/↓ never flashes) | ✅ |
 | 13 | I136-T13 | Clear channel-pane ExcludeFocus when HW drops float (stuck `_tvCategoryPinFocused` blocked OK/→ into channels) | ✅ |
+| 14 | I136-T14 | TV category pin: after pin/unpin, scroll rail to new index + focus that row (supersedes freeze-scroll of T07) | ✅ |
 
 ---
 
@@ -43,7 +44,8 @@
 | 2 | I136-A02 | Android TV: in-player channel guide groups/channels same; logos not stretched; rows feel denser | ⬜ |
 | 3 | I136-A03 | Android TV: hold ↑/↓ through long category/channel lists — scroll stays snappy (no obvious hitch per step); category left-bar lines stay aligned when holding ↑ | ⬜ |
 | 4 | I136-A04 | Android TV: hold OK to float — ↑/↓ one step; no scroll until 2nd visible slot, then pin there until ends; focus stays on float | ⬜ |
-| 5 | I136-A05 | Android TV: → on a Live group focuses pin on first press; OK on pin does not jump category rail scroll | ⬜ |
+| 5 | I136-A05 | Android TV: → on a Live group focuses pin on first press; OK on pin does not jump category rail scroll | ⏭️ |
+| 6 | I136-A06 | Android TV: OK on pin focuses the pinned/unpinned group and scrolls the category rail to its new index | ⬜ |
 
 ---
 
@@ -68,6 +70,8 @@ D-pad focus on IPTV **catalog** (category rail + channel grid/list) and **in-pla
 **Follow-up (I136-T12):** T10/T11 hid *all* logos on every focus/scroll. Now each revealed channel id stays painted; scroll/group swap only stops *new* tiles from decoding until **500ms** idle. Mid-viewport ↑/↓ never flashes.
 
 **Follow-up (I136-T13):** Enter float set `_tvCategoryPinFocused` (ExcludeFocus channels); HW OK/← cleared float without clearing that flag — OK/→ after pin/reorder stayed on the category rail. Clear the flag when float drops (and on row dispose).
+
+**Follow-up (I136-T14):** T07 froze rail scroll on pin so the old viewport slot kept focus while the row jumped to the top of the movable list — focus looked lost. Pin/unpin now scrolls to the row’s new index and focuses it (`I136-A06`; `I136-A05` freeze-scroll deferred).
 
 ## Related
 

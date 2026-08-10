@@ -412,7 +412,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     return iptvTap(
       context: context,
       onTap: () {
-        // Stay on the pin — refocusing the row would ensureVisible-scroll.
+        // Parent scrolls + focuses the row at its new index after pin/unpin.
         widget.onTogglePin?.call();
       },
       borderRadius: 6,
