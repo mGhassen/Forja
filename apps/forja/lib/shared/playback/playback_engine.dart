@@ -30,15 +30,15 @@ abstract final class PlaybackEngine {
     final cancelled = isCancelled ?? (() => false);
     if (providers.isEmpty) return null;
 
-    final resolveDomain =
-        domain ?? SourceDomain.fromMediaType(movie.mediaType);
+    final resolveDomain = domain ?? SourceDomain.fromMediaType(movie.mediaType);
 
     void reportProgress(List<dynamic>? events) {
       if (events == null) return;
       for (final raw in events) {
         if (raw is! Map) continue;
         final map = Map<String, dynamic>.from(raw);
-        final id = map['providerId']?.toString() ?? map['provider_id']?.toString();
+        final id =
+            map['providerId']?.toString() ?? map['provider_id']?.toString();
         final status = map['status']?.toString();
         if (id != null && status != null) {
           onProgress?.call(id, status);
@@ -76,18 +76,22 @@ abstract final class PlaybackEngine {
         final hostRequests = response['hostRequests'] as List<dynamic>? ?? [];
         if (sessionId.isEmpty || hostRequests.isEmpty) break;
 
-        final orderedHosts = hostRequests.whereType<Map>().map((raw) {
-          return Map<String, dynamic>.from(raw);
-        }).toList()
-          ..sort((a, b) {
-            final idA =
-                a['providerId']?.toString() ?? a['provider_id']?.toString() ?? '';
-            final idB =
-                b['providerId']?.toString() ?? b['provider_id']?.toString() ?? '';
-            final rankA = effectiveRanks?[idA] ?? 1 << 20;
-            final rankB = effectiveRanks?[idB] ?? 1 << 20;
-            return rankA.compareTo(rankB);
-          });
+        final orderedHosts =
+            hostRequests.whereType<Map>().map((raw) {
+              return Map<String, dynamic>.from(raw);
+            }).toList()..sort((a, b) {
+              final idA =
+                  a['providerId']?.toString() ??
+                  a['provider_id']?.toString() ??
+                  '';
+              final idB =
+                  b['providerId']?.toString() ??
+                  b['provider_id']?.toString() ??
+                  '';
+              final rankA = effectiveRanks?[idA] ?? 1 << 20;
+              final rankB = effectiveRanks?[idB] ?? 1 << 20;
+              return rankA.compareTo(rankB);
+            });
 
         final hostResults = <Map<String, dynamic>>[];
 
@@ -149,10 +153,7 @@ abstract final class PlaybackEngine {
         reportProgress(response['progress'] as List<dynamic>?);
       }
 
-      final hit = _hitFromResponse(
-        response,
-        effectiveRanks: effectiveRanks,
-      );
+      final hit = _hitFromResponse(response, effectiveRanks: effectiveRanks);
       if (hit != null) {
         onHitsUpdated?.call([hit]);
       }
@@ -171,23 +172,20 @@ abstract final class PlaybackEngine {
     Object? resolver,
     bool Function()? isCancelled,
     void Function(String providerId, String status)? onProgress,
-  }) =>
-      resolveStreamingRace(
-        providers: providers,
-        movie: movie,
-        season: season,
-        episode: episode,
-        isCancelled: isCancelled,
-        onProgress: onProgress,
-      );
+  }) => resolveStreamingRace(
+    providers: providers,
+    movie: movie,
+    season: season,
+    episode: episode,
+    isCancelled: isCancelled,
+    onProgress: onProgress,
+  );
 
   static List<StreamSource> mergeHitSources(List<PlaybackResolveHit> hits) {
     if (hits.isEmpty) return const [];
     final sorted = List<PlaybackResolveHit>.from(hits)
       ..sort((a, b) => a.providerRank.compareTo(b.providerRank));
-    return dedupeSourcesByUrl(
-      sorted.expand((h) => h.streamSources).toList(),
-    );
+    return dedupeSourcesByUrl(sorted.expand((h) => h.streamSources).toList());
   }
 
   static Map<String, List<StreamSource>> hitsToProviderCache(
@@ -221,7 +219,8 @@ abstract final class PlaybackEngine {
 
     final sources = ResolverEngineClient.sourcesFromResponse(response);
     final ranked = sources.isNotEmpty ? sources : [winner];
-    final providerId = response['winnerProviderId']?.toString() ??
+    final providerId =
+        response['winnerProviderId']?.toString() ??
         response['winner_provider_id']?.toString() ??
         winner.providerId;
     final rank = effectiveRanks?[providerId] ?? winner.providerRank;

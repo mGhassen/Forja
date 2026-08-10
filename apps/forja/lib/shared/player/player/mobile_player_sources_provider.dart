@@ -220,7 +220,13 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
         if (currentPos.inSeconds > 0) {
           await _s._player.seek(currentPos);
         }
-        _s._detectHlsQualities(streamUrl, headers);
+        _s._detectHlsQualities(
+          streamUrl,
+          headers,
+          sourceQualities: sources?.isNotEmpty == true
+              ? sources!.first.qualities
+              : null,
+        );
 
         setState(() {
           _s._currentProvider = newProvider;

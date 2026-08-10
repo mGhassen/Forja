@@ -426,10 +426,36 @@ mixin _DesktopPlayerTracks on ConsumerState<DesktopPlayerScreen>, WidgetsBinding
   //  HLS QUALITY SELECTOR
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Probe [url] as a master HLS playlist. Populates the quality notifier
-  /// when 2+ variants are present, otherwise clears it (hiding the gear).
-  void _detectHlsQualities(String url, Map<String, String>? headers) {
+  /// Apply discrete [sourceQualities] when present; else probe HLS master ABR.
+  void _detectHlsQualities(
+    String url,
+    Map<String, String>? headers, {
+    List<StreamQualityOption>? sourceQualities,
+  }) {
     _s._currentQualityUrl = url;
+    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
+
+    if (sourceQualities != null && sourceQualities.length >= 2) {
+      final existing = _s._hlsQualitiesNotifier.value;
+      if (existing != null && existing.any((q) => q.url == url)) return;
+      final auto = sourceQualities.firstWhere(
+        (q) => q.isAuto,
+        orElse: () => sourceQualities.first,
+      );
+      _s._hlsMasterUrl = auto.url;
+      _s._hlsMasterHeaders = resolved;
+      _s._hlsQualitiesNotifier.value = [
+        for (final q in sourceQualities)
+          HlsQuality(
+            label: q.label,
+            url: q.url,
+            height: q.height,
+            isAuto: q.isAuto,
+          ),
+      ];
+      return;
+    }
+
     if (!url.contains('.m3u8')) {
       _s._hlsMasterUrl = null;
       _s._hlsMasterHeaders = null;
@@ -439,7 +465,6 @@ mixin _DesktopPlayerTracks on ConsumerState<DesktopPlayerScreen>, WidgetsBinding
     final existing = _s._hlsQualitiesNotifier.value;
     if (existing != null && existing.any((q) => q.url == url)) return;
 
-    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
     _s._hlsMasterUrl = url;
     _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;

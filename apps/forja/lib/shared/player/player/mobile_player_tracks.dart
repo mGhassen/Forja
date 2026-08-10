@@ -403,29 +403,51 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
   //  HLS QUALITY SELECTOR
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Probe [url] as a master HLS playlist. Populates the quality notifier
-  /// when 2+ variants are present, otherwise clears it (hiding the gear).
-  void _detectHlsQualities(String url, Map<String, String>? headers) {
+  /// Apply discrete [sourceQualities] when present; else probe HLS master ABR.
+  void _detectHlsQualities(
+    String url,
+    Map<String, String>? headers, {
+    List<StreamQualityOption>? sourceQualities,
+  }) {
     _s._currentQualityUrl = url;
+    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
+
+    if (sourceQualities != null && sourceQualities.length >= 2) {
+      final existing = _s._hlsQualitiesNotifier.value;
+      if (existing != null && existing.any((q) => q.url == url)) return;
+      final auto = sourceQualities.firstWhere(
+        (q) => q.isAuto,
+        orElse: () => sourceQualities.first,
+      );
+      _s._hlsMasterUrl = auto.url;
+      _s._hlsMasterHeaders = resolved;
+      _s._hlsQualitiesNotifier.value = [
+        for (final q in sourceQualities)
+          HlsQuality(
+            label: q.label,
+            url: q.url,
+            height: q.height,
+            isAuto: q.isAuto,
+          ),
+      ];
+      return;
+    }
+
     if (!url.contains('.m3u8')) {
       _s._hlsMasterUrl = null;
       _s._hlsMasterHeaders = null;
       _s._hlsQualitiesNotifier.value = null;
       return;
     }
-    // If the user just picked a variant from the same master, keep the list.
     final existing = _s._hlsQualitiesNotifier.value;
     if (existing != null && existing.any((q) => q.url == url)) return;
 
-    // New stream - clear any prior quality state immediately so the gear
-    // doesn't expose stale variants while the new master loads.
-    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
+    final resolvedHeaders = resolved;
     _s._hlsMasterUrl = url;
-    _s._hlsMasterHeaders = resolved;
+    _s._hlsMasterHeaders = resolvedHeaders;
     _s._hlsQualitiesNotifier.value = null;
-    fetchHlsQualities(url, headers: resolved).then((qs) {
+    fetchHlsQualities(url, headers: resolvedHeaders).then((qs) {
       if (_s._disposed) return;
-      // Only apply if a newer URL didn't take over while we were fetching.
       if (_s._hlsMasterUrl != url) return;
       _s._hlsQualitiesNotifier.value = qs;
     });

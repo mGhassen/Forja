@@ -345,6 +345,7 @@ mixin _DesktopPlayerPlayback
             playUrl: openUrl,
           ),
           source.headers ?? widget.headers,
+          sourceQualities: source.qualities,
         );
         final catalogIdentity = durableStreamCatalogUrl(
           catalogUrl: source.catalogUrl,

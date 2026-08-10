@@ -1415,6 +1415,7 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
     headers: null,
     providerId: pid,
     catalogUrl: source.catalogUrl ?? url,
+    qualities: source.qualities,
   );
 }
 

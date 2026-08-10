@@ -527,12 +527,7 @@ mixin _DesktopPlayerSources on ConsumerState<DesktopPlayerScreen>, WidgetsBindin
 
     if (animeHlsNeedsPngStripFor(openUrl, sourceKey: pid)) {
       final stripped = await applyAnimePngStripIfNeeded(
-        StreamSource(
-          url: openUrl,
-          title: source.title,
-          type: source.type,
-          headers: headers,
-        ),
+        source.copyWith(url: openUrl, headers: headers),
         sourceKey: pid,
       );
       openUrl = stripped.url;
@@ -788,7 +783,11 @@ mixin _DesktopPlayerSources on ConsumerState<DesktopPlayerScreen>, WidgetsBindin
         });
       }
 
-      _s._detectHlsQualities(openUrl, headers);
+      _s._detectHlsQualities(
+        openUrl,
+        headers,
+        sourceQualities: resolved.qualities ?? source.qualities,
+      );
       if (currentPos.inSeconds > 0) await _s._player.seek(currentPos);
       syncPlayerProgressNotifiers(
         _s._player,

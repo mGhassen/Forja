@@ -350,6 +350,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             playUrl: openUrl,
           ),
           srcHeaders,
+          sourceQualities: source.qualities,
         );
         final catalogIdentity = durableStreamCatalogUrl(
           catalogUrl: source.catalogUrl,

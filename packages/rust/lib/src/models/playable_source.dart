@@ -84,10 +84,12 @@ class PlayableSource {
       audio: audio,
       headers: headers,
       subtitles: subtitles,
-      providerId: json['provider_id']?.toString() ??
+      providerId:
+          json['provider_id']?.toString() ??
           json['providerId']?.toString() ??
           '',
-      providerRank: (json['provider_rank'] as num?)?.toInt() ??
+      providerRank:
+          (json['provider_rank'] as num?)?.toInt() ??
           (json['providerRank'] as num?)?.toInt() ??
           0,
       latencyMs: (json['latency_ms'] as num?)?.toInt(),
@@ -103,34 +105,34 @@ class PlayableSource {
   }
 
   Map<String, dynamic> toJson() => {
-        'url': url,
-        'title': title,
-        'container': container,
-        if (video != null) 'video': video!.toJson(),
-        if (audio != null) 'audio': audio!.toJson(),
-        if (headers.isNotEmpty) 'headers': headers,
-        if (subtitles.isNotEmpty)
-          'subtitles': subtitles.map((s) => s.toJson()).toList(),
-        if (providerId.isNotEmpty) 'provider_id': providerId,
-        'provider_rank': providerRank,
-        if (latencyMs != null) 'latency_ms': latencyMs,
-        if (requiresProxy) 'requires_proxy': requiresProxy,
-        if (embedKind != null) 'embed_kind': embedKind,
-        if (audioUrl != null) 'audio_url': audioUrl,
-        if (score != null) 'score': score,
-        if (baselineRank != null) 'baseline_rank': baselineRank,
-        if (effectiveRank != null) 'effective_rank': effectiveRank,
-        if (qualityScore != null) 'quality_score': qualityScore,
-        if (providerBonus != null) 'provider_bonus': providerBonus,
-      };
+    'url': url,
+    'title': title,
+    'container': container,
+    if (video != null) 'video': video!.toJson(),
+    if (audio != null) 'audio': audio!.toJson(),
+    if (headers.isNotEmpty) 'headers': headers,
+    if (subtitles.isNotEmpty)
+      'subtitles': subtitles.map((s) => s.toJson()).toList(),
+    if (providerId.isNotEmpty) 'provider_id': providerId,
+    'provider_rank': providerRank,
+    if (latencyMs != null) 'latency_ms': latencyMs,
+    if (requiresProxy) 'requires_proxy': requiresProxy,
+    if (embedKind != null) 'embed_kind': embedKind,
+    if (audioUrl != null) 'audio_url': audioUrl,
+    if (score != null) 'score': score,
+    if (baselineRank != null) 'baseline_rank': baselineRank,
+    if (effectiveRank != null) 'effective_rank': effectiveRank,
+    if (qualityScore != null) 'quality_score': qualityScore,
+    if (providerBonus != null) 'provider_bonus': providerBonus,
+  };
 
   StreamSource toStreamSource() => StreamSource(
-        url: url,
-        title: title,
-        type: _containerToLegacyType(container),
-        headers: headers.isEmpty ? null : headers,
-        providerId: providerId.isEmpty ? null : providerId,
-      );
+    url: url,
+    title: title,
+    type: _containerToLegacyType(container),
+    headers: headers.isEmpty ? null : headers,
+    providerId: providerId.isEmpty ? null : providerId,
+  );
 
   static String _containerToLegacyType(String container) {
     return switch (container) {
@@ -159,20 +161,20 @@ class VideoTrack {
   });
 
   factory VideoTrack.fromJson(Map<String, dynamic> json) => VideoTrack(
-        codec: json['codec']?.toString() ?? 'unknown',
-        width: (json['width'] as num?)?.toInt() ?? 0,
-        height: (json['height'] as num?)?.toInt() ?? 0,
-        bitrateKbps: (json['bitrate_kbps'] as num?)?.toInt(),
-        hdr: json['hdr']?.toString() ?? 'none',
-      );
+    codec: json['codec']?.toString() ?? 'unknown',
+    width: (json['width'] as num?)?.toInt() ?? 0,
+    height: (json['height'] as num?)?.toInt() ?? 0,
+    bitrateKbps: (json['bitrate_kbps'] as num?)?.toInt(),
+    hdr: json['hdr']?.toString() ?? 'none',
+  );
 
   Map<String, dynamic> toJson() => {
-        'codec': codec,
-        'width': width,
-        'height': height,
-        if (bitrateKbps != null) 'bitrate_kbps': bitrateKbps,
-        'hdr': hdr,
-      };
+    'codec': codec,
+    'width': width,
+    'height': height,
+    if (bitrateKbps != null) 'bitrate_kbps': bitrateKbps,
+    'hdr': hdr,
+  };
 }
 
 class PlayableAudioTrack {
@@ -194,10 +196,10 @@ class PlayableAudioTrack {
       );
 
   Map<String, dynamic> toJson() => {
-        'codec': codec,
-        'channels': channels,
-        if (language != null) 'language': language,
-      };
+    'codec': codec,
+    'channels': channels,
+    if (language != null) 'language': language,
+  };
 }
 
 class PlayableSubtitleTrack {
@@ -219,10 +221,10 @@ class PlayableSubtitleTrack {
       );
 
   Map<String, dynamic> toJson() => {
-        'url': url,
-        'language': language,
-        if (format.isNotEmpty) 'format': format,
-      };
+    'url': url,
+    'language': language,
+    if (format.isNotEmpty) 'format': format,
+  };
 }
 
 /// Device codec/resolution profile passed to Rust scorer.
@@ -263,16 +265,16 @@ class DevicePlaybackCapabilities {
   );
 
   Map<String, dynamic> toJson() => {
-        'max_height': maxHeight,
-        'hevc': hevc,
-        'av1': av1,
-        'vp9': vp9,
-        'hdr10': hdr10,
-        'dolby_vision': dolbyVision,
-        'is_low_power': isLowPower,
-        'software_decode_allowed': softwareDecodeAllowed,
-        'user_max_height': userMaxHeight,
-      };
+    'max_height': maxHeight,
+    'hevc': hevc,
+    'av1': av1,
+    'vp9': vp9,
+    'hdr10': hdr10,
+    'dolby_vision': dolbyVision,
+    'is_low_power': isLowPower,
+    'software_decode_allowed': softwareDecodeAllowed,
+    'user_max_height': userMaxHeight,
+  };
 
   factory DevicePlaybackCapabilities.fromJson(Map<String, dynamic> json) =>
       DevicePlaybackCapabilities(
@@ -361,8 +363,9 @@ List<PlayableSource> normalizeLegacyStreamSources({
   return parsePlayableSourcesJson(raw);
 }
 
-List<StreamSource> playableSourcesToStreamSources(List<PlayableSource> sources) =>
-    sources.map((s) => s.toStreamSource()).toList();
+List<StreamSource> playableSourcesToStreamSources(
+  List<PlayableSource> sources,
+) => sources.map((s) => s.toStreamSource()).toList();
 
 List<PlayableSource> rankStreamSources({
   required List<StreamSource> sources,
