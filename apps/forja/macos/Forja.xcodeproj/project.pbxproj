@@ -28,10 +28,10 @@
 		33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F22044A3C60003C045 /* Assets.xcassets */; };
 		33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F42044A3C60003C045 /* MainMenu.xib */; };
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
-		A7F0DE5C0A11B00100D35C01 /* DesktopSpaceChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F0DE5B0A11B00100D35C01 /* DesktopSpaceChannel.swift */; };
-		A7F0DE5E0A11B00100D35C02 /* DesktopPipChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F0DE5D0A11B00100D35C02 /* DesktopPipChannel.swift */; };
 		6B8B2B6EA8C05DA9B48FC57C /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CD715728D4F1855A9512E444 /* Pods_RunnerTests.framework */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+		A7F0DE5C0A11B00100D35C01 /* DesktopSpaceChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F0DE5B0A11B00100D35C01 /* DesktopSpaceChannel.swift */; };
+		A7F0DE5E0A11B00100D35C02 /* DesktopPipChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F0DE5D0A11B00100D35C02 /* DesktopPipChannel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,8 +77,6 @@
 		33CC10F52044A3C60003C045 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		33CC10F72044A3C60003C045 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = Runner/Info.plist; sourceTree = "<group>"; };
 		33CC11122044BFA00003C045 /* MainFlutterWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainFlutterWindow.swift; sourceTree = "<group>"; };
-		A7F0DE5B0A11B00100D35C01 /* DesktopSpaceChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopSpaceChannel.swift; sourceTree = "<group>"; };
-		A7F0DE5D0A11B00100D35C02 /* DesktopPipChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopPipChannel.swift; sourceTree = "<group>"; };
 		33CEB47222A05771004F2AC0 /* Flutter-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Debug.xcconfig"; sourceTree = "<group>"; };
 		33CEB47422A05771004F2AC0 /* Flutter-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Release.xcconfig"; sourceTree = "<group>"; };
 		33CEB47722A0578A004F2AC0 /* Flutter-Generated.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Flutter-Generated.xcconfig"; path = "ephemeral/Flutter-Generated.xcconfig"; sourceTree = "<group>"; };
@@ -90,6 +88,8 @@
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		96FFA135B56E1CADD3A4AA33 /* Pods-Forja.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Forja.release.xcconfig"; path = "Target Support Files/Pods-Forja/Pods-Forja.release.xcconfig"; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		A7F0DE5B0A11B00100D35C01 /* DesktopSpaceChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopSpaceChannel.swift; sourceTree = "<group>"; };
+		A7F0DE5D0A11B00100D35C02 /* DesktopPipChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopPipChannel.swift; sourceTree = "<group>"; };
 		BEA4039EF9386E4401A62675 /* Pods_Forja.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Forja.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD715728D4F1855A9512E444 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		EAB0BF33709227AA5470A78C /* Pods-Forja.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Forja.debug.xcconfig"; path = "Target Support Files/Pods-Forja/Pods-Forja.debug.xcconfig"; sourceTree = "<group>"; };
@@ -285,7 +285,6 @@
 					33CC10EC2044A3C60003C045 = {
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
-						ProvisioningStyle = Automatic;
 						SystemCapabilities = {
 							com.apple.Sandbox = {
 								enabled = 1;

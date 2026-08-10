@@ -2033,13 +2033,13 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               ),
             ),
           ],
+          const Spacer(),
           if (showTracks) ...[
-            const SizedBox(width: 14),
             Builder(
               builder: (btnCtx) => nextIcon(
                 icon: Icons.subtitles_outlined,
                 focusNode: _s._subtitleFocus,
-                onUpEdge: tvFocus ? upFromLeftControls : null,
+                onUpEdge: tvFocus ? upFromRightControls : null,
                 onLeftEdge: leftOfSubtitle() == null
                     ? null
                     : () => claim(leftOfSubtitle()!),
@@ -2054,7 +2054,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               builder: (btnCtx) => nextIcon(
                 icon: Icons.audiotrack_rounded,
                 focusNode: _s._audioFocus,
-                onUpEdge: tvFocus ? upFromLeftControls : null,
+                onUpEdge: tvFocus ? upFromRightControls : null,
                 onLeftEdge:
                     leftOfAudio() == null ? null : () => claim(leftOfAudio()!),
                 onRightEdge: rightOfAudio() == null
@@ -2063,14 +2063,14 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 onTap: () => unawaited(_showAudioMenu(btnCtx)),
               ),
             ),
+            const SizedBox(width: 14),
           ],
           if (showEpisodes) ...[
-            const SizedBox(width: 14),
             Builder(
               builder: (btnCtx) => nextIcon(
                 icon: Icons.video_library_outlined,
                 focusNode: _s._episodesFocus,
-                onUpEdge: tvFocus ? upFromLeftControls : null,
+                onUpEdge: tvFocus ? upFromRightControls : null,
                 onLeftEdge: leftOfEpisodes() == null
                     ? null
                     : () => claim(leftOfEpisodes()!),
@@ -2080,8 +2080,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 onTap: () => unawaited(_showEpisodesPanel(btnCtx)),
               ),
             ),
+            const SizedBox(width: 14),
           ],
-          const Spacer(),
           if (hasGuide) ...[
             nextIcon(
               icon: Icons.search_rounded,
