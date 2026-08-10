@@ -21,8 +21,8 @@ enum IptvPlayerChromeProfile {
   /// Prefer scrubber when catalog says VOD (UI ORs duration heuristic).
   bool get vodSeekChrome => this == vod;
 
-  /// Persist Player menu engine to SharedPreferences (Live only).
-  bool get persistEnginePref => this == live;
+  /// Persist Player menu engine to this surface's KV (vod vs iptv).
+  bool get persistEnginePref => true;
 
   /// Progress bar: hide only Android TV Exo **live**. VOD Exo keeps scrubber.
   bool showProgressChrome({

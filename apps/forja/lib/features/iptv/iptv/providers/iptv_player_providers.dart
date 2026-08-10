@@ -5,7 +5,7 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:rust/rust.dart';
 
 /// IPTV player boot prefs (last volume + EPG). Engine choice is per-surface KV
-/// via [SettingsService.getBuiltInPlayerEngine] + [BuiltInPlayerContext].
+/// (`vod` for Movies/Series, `iptv` for Live) via Settings / Player menu.
 @immutable
 class IptvPlayerBootPrefs {
   const IptvPlayerBootPrefs({

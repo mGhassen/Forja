@@ -166,7 +166,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     String? portalName,
     IptvChannelGuide? channelGuide,
     ValueChanged<IptvStream>? onChannelChanged,
-    BuiltInPlayerContext engineContext = BuiltInPlayerContext.iptv,
+    BuiltInPlayerContext? engineContext,
     BuiltInPlayerEngine? forceBuiltInEngine,
   }) {
     final vod = stream.kind == 'vod' || stream.kind == 'series';
@@ -178,7 +178,9 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
       logoUrl: stream.icon.isEmpty ? null : stream.icon,
       channelGuide: channelGuide,
       onChannelChanged: onChannelChanged,
-      engineContext: engineContext,
+      // Movies/Series share Settings → Movies; Live keeps IPTV.
+      engineContext: engineContext ??
+          (vod ? BuiltInPlayerContext.vod : BuiltInPlayerContext.iptv),
       forceBuiltInEngine: forceBuiltInEngine,
       vodPlayback: vod,
       onlineSubtitles: vod,
@@ -621,13 +623,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         context: widget.engineContext,
       );
       if (_disposed || !mounted) return;
-      // Live IPTV: unchanged — honor IPTV engine pref.
-      // Movies/Series: always MediaKit. Media3 dies on many portal MP4 AAC
-      // configs; do not inherit Live's Exo choice. Exo stays in the Player
-      // menu for this session only (VOD switches do not rewrite the live key).
-      _exoBackend = widget.vodPlayback
-          ? false
-          : engine == BuiltInPlayerEngine.exoPlayer;
+      // Honor per-surface pref (Movies → vod, Live IPTV → iptv).
+      _exoBackend = engine == BuiltInPlayerEngine.exoPlayer;
     } else {
       _exoBackend = false;
     }

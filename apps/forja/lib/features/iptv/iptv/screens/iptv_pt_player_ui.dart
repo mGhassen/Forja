@@ -1178,7 +1178,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       builtInEngine: _builtInEngine,
       onSelect: ({builtInEngine, externalPlayer}) async {
         if (builtInEngine != null) {
-          // Movies/Series: session-only — do not overwrite Live IPTV engine pref.
           await _s._switchBuiltInEngine(
             builtInEngine,
             persist: _s._chrome.persistEnginePref,

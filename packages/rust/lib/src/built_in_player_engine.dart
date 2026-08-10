@@ -1,9 +1,11 @@
 /// Where a built-in engine choice applies. Each surface remembers its own
 /// ExoPlayer / MediaKit pick — changing IPTV does not change VOD, etc.
 enum BuiltInPlayerContext {
-  /// Movies / series + Settings → Playback → Built-in engine.
+  /// Home/Search + IPTV Movies/Series + Settings → Movies & series engine.
   vod('built_in_player_engine'),
+  /// IPTV Live channels + Settings → IPTV engine.
   iptv('built_in_player_engine_iptv'),
+  /// Live Matches native player (in-player menu only).
   live('built_in_player_engine_live');
 
   const BuiltInPlayerContext(this.storageKey);

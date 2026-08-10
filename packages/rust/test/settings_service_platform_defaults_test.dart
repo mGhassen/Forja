@@ -56,7 +56,7 @@ void main() {
   });
 
   test(
-    'ATV unset IPTV engine inherits VOD Exo; Live stays MediaKit',
+    'ATV unset IPTV engine stays MediaKit when VOD is Exo; Live stays MediaKit',
     () async {
       addTearDown(() {
         SettingsService.configurePlatformProfile(PlatformProfile.phone);
@@ -79,7 +79,7 @@ void main() {
         await service.getBuiltInPlayerEngine(
           context: BuiltInPlayerContext.iptv,
         ),
-        BuiltInPlayerEngine.exoPlayer,
+        BuiltInPlayerEngine.mediaKit,
       );
       expect(
         await service.getBuiltInPlayerEngine(

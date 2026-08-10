@@ -46,7 +46,7 @@ void main() {
   });
 
   // ATV IPTV MediaKit default is asserted in settings_service_platform_defaults_test
-  // (getBuiltInPlayerEngine — unset IPTV must not inherit VOD Exo).
+  // (getBuiltInPlayerEngine — unset IPTV does not inherit VOD Exo).
 
   test('player contexts use distinct storage keys', () {
     expect(

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **25 / 25** fix · **0 / 3** acceptance |
+| **Progress** | **26 / 26** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -44,6 +44,7 @@
 | 23 | I163-T23 | Seekable live (duration > 1s): restore advancing MediaKit scrubber — T22 catalog-only `vodSeekChrome` left a static full bar + LIVE | ✅ |
 | 24 | I163-T24 | **Full revert (user B):** restore IPTV player trio from `50ebdaa2`; drop `vodPlayback` / chrome profile / VOD gates / emu MediaKit experiments — Live path as before VOD-profile work (Movies/Series may hit live-edge ANR again) | ✅ |
 | 25 | I163-T25 | Restore `IptvPlayerChromeProfile` + `vodPlayback` player stack (Audio/Subs/Episodes; VOD gates; seekable-live scrubber) after T24 — no emu MediaKit force-Exo | ✅ |
+| 26 | I163-T26 | IPTV Movies/Series boot + persist Settings → Movies & series engine (`vod`); stop always-MediaKit / session-only menu | ✅ |
 
 ---
 
@@ -63,7 +64,7 @@ IPTV Movies/Series reused the **live** player profile: post-open `drop-buffers` 
 
 **Fix:** Catalog-driven `vodPlayback` (and URL fallback via `_livePlaybackProfile`). Live paths unchanged when `vodPlayback` is false. VOD chrome: scrubber + Audio/Subs (+ Episodes on series).
 
-**Engine:** `I163-T07` briefly forced ATV VOD to Exo-only; **`I163-T08`–`T10`**: Movies/Series always MediaKit (menu can session-switch to Exo without writing Live’s IPTV engine key); VOD Exo hard-fail swaps once; **Live boot + recovery untouched**. VOD still skips live-edge snap / forever cold-retry.
+**Engine:** `I163-T07` briefly forced ATV VOD to Exo-only; **`I163-T08`–`T10`**: Movies/Series always MediaKit (menu can session-switch to Exo without writing Live’s IPTV engine key); VOD Exo hard-fail swaps once; **Live boot + recovery untouched**. **`I163-T26`**: Movies/Series honor + persist Settings → **Movies & series engine** (`vod`); Live IPTV stays on Settings → **IPTV engine**. VOD still skips live-edge snap / forever cold-retry.
 
 **MediaKit cache (`I163-T11`):** Movies/Series inherited Live’s `demuxer-max-bytes=150MB` / 30s readahead → MediaCodec buffer pool + demuxer OOM/process death on open (goldfish/ATV). VOD now uses 32MiB / 10s; Live profile unchanged.
 

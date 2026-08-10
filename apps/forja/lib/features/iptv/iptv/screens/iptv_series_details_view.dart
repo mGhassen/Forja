@@ -372,6 +372,7 @@ class _IptvSeriesDetailsScreenState
           logoUrl: episode.image.isNotEmpty
               ? episode.image
               : widget.series.icon,
+          engineContext: BuiltInPlayerContext.vod,
           vodPlayback: true,
           onlineSubtitles: true,
           subtitleSearchTitle: _displayTitle,

@@ -157,7 +157,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [134-[fixed]-…](fixed/134-[fixed]-player-audio-continues-after-app-switch.md) | Player audio continues after app switch | P1 | High | fixed | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [135-[open]-…](135-[open]-android-tv-spatial-dpad-all-screens.md) | ATV spatial 2D D-pad (all screens) | P1 | High | open | 9/9 · A 1/8 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [136-[open]-…](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) | ATV IPTV catalog/guide scroll focus + logos | P1 | Medium | open | 13/13 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [137-[open]-…](137-[open]-android-tv-player-engine-not-remembered.md) | ATV in-player engine not remembered per surface | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [137-[open]-…](137-[open]-android-tv-player-engine-not-remembered.md) | ATV in-player engine not remembered per surface | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [138-[open]-…](138-[open]-android-tv-iptv-4k-audio.md) | ATV IPTV 4K MediaKit silent / Exo audio stutter | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [139-[open]-…](139-[open]-android-tv-shell-focus-chrome-stutter.md) | ATV shell / catalog focus chrome stutter | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [140-[open]-…](140-[open]-hls-duration-gate-marks-playing-failed.md) | HLS duration gate → red Source / 0:00 seek | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -183,7 +183,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [162-[open]-…](162-[open]-iptv-more-like-this-catalog-only.md) | IPTV More like this = portal catalog only | P2 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 25/25 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 26/26 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [164-[open]-…](164-[open]-vsembed-new-player-chain.md) | VSEmbed new JS player (rcp/prorcp dead) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [165-[open]-…](165-[open]-vidnest-cdn-forced-referer.md) | VidNest movie/TV CDN forced vidnest.fun Referer | P1 | High | open | 2/2 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [166-[open]-…](166-[open]-vidlove-opaque-media-proxy.md) | VidLove opaque `/api?d=` media not accepted | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |

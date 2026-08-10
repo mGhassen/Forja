@@ -20,6 +20,7 @@ class SettingsPlaybackSnapshot {
     required this.playSourceWebstreaming,
     required this.simpleStreamingResolve,
     required this.builtInEngine,
+    required this.builtInEngineIptv,
     required this.streamProviderOrder,
     required this.animeProviderOrder,
     required this.preferredAudioLang,
@@ -43,6 +44,7 @@ class SettingsPlaybackSnapshot {
   final bool playSourceWebstreaming;
   final bool simpleStreamingResolve;
   final BuiltInPlayerEngine builtInEngine;
+  final BuiltInPlayerEngine builtInEngineIptv;
   final List<String> streamProviderOrder;
   final List<String> animeProviderOrder;
   final String preferredAudioLang;
@@ -66,6 +68,7 @@ class SettingsPlaybackSnapshot {
     bool? playSourceWebstreaming,
     bool? simpleStreamingResolve,
     BuiltInPlayerEngine? builtInEngine,
+    BuiltInPlayerEngine? builtInEngineIptv,
     List<String>? streamProviderOrder,
     List<String>? animeProviderOrder,
     String? preferredAudioLang,
@@ -91,6 +94,7 @@ class SettingsPlaybackSnapshot {
       simpleStreamingResolve:
           simpleStreamingResolve ?? this.simpleStreamingResolve,
       builtInEngine: builtInEngine ?? this.builtInEngine,
+      builtInEngineIptv: builtInEngineIptv ?? this.builtInEngineIptv,
       streamProviderOrder: streamProviderOrder ?? this.streamProviderOrder,
       animeProviderOrder: animeProviderOrder ?? this.animeProviderOrder,
       preferredAudioLang: preferredAudioLang ?? this.preferredAudioLang,
@@ -144,7 +148,12 @@ class SettingsPlaybackNotifier
       playSourceNuvio: await PlaySourceEffective.nuvio(s, lanReady),
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
       simpleStreamingResolve: await s.isSimpleStreamingResolveEnabled(),
-      builtInEngine: await s.getBuiltInPlayerEngine(),
+      builtInEngine: await s.getBuiltInPlayerEngine(
+        context: BuiltInPlayerContext.vod,
+      ),
+      builtInEngineIptv: await s.getBuiltInPlayerEngine(
+        context: BuiltInPlayerContext.iptv,
+      ),
       streamProviderOrder: await s.getStreamProviderOrder(),
       animeProviderOrder: await s.getAnimeProviderOrder(),
       preferredAudioLang: kTrackLanguageDisplayNames.contains(preferredAudio)

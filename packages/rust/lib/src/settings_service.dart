@@ -888,21 +888,14 @@ class SettingsService {
   Future<void> setExternalPlayer(String player) async =>
       kvSetString(_externalPlayerKey, player);
 
-  /// Built-in engine for [context]. Unset IPTV falls back to the VOD key
-  /// (legacy single-key installs), then [BuiltInPlayerEngine.defaultForContext].
-  /// Live never inherits VOD/IPTV.
+  /// Built-in engine for [context]. Surfaces are independent — unset uses
+  /// [BuiltInPlayerEngine.defaultForContext] (no cross-surface inherit).
   Future<BuiltInPlayerEngine> getBuiltInPlayerEngine({
     BuiltInPlayerContext context = BuiltInPlayerContext.vod,
   }) async {
     final raw = await kvGetString(context.storageKey);
     if (raw != null && raw.isNotEmpty) {
       return BuiltInPlayerEngine.fromStorage(raw);
-    }
-    if (context == BuiltInPlayerContext.iptv) {
-      final vodRaw = await kvGetString(BuiltInPlayerContext.vod.storageKey);
-      if (vodRaw != null && vodRaw.isNotEmpty) {
-        return BuiltInPlayerEngine.fromStorage(vodRaw);
-      }
     }
     return BuiltInPlayerEngine.defaultForContext(context);
   }

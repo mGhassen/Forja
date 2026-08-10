@@ -207,8 +207,8 @@ class _SettingsPlaybackSectionState
             if (Platform.isAndroid)
               settingsFocusableDropdown(
                 context,
-                'Built-in engine',
-                'Decoder for movies and series. IPTV and Live Matches each remember their own choice from the in-player Player menu.',
+                'Movies & series engine',
+                'Home, Search, Anime, Asian Drama, and IPTV Movies/Series. Live IPTV has its own row under IPTV settings.',
                 snap.builtInEngine.displayName,
                 builtInPlayerEngineOptionsForUi
                     .map((e) => e.displayName)
@@ -219,7 +219,10 @@ class _SettingsPlaybackSectionState
                       .where((e) => e.displayName == val)
                       .toList();
                   if (match.isEmpty) return;
-                  await _settings.setBuiltInPlayerEngine(match.first);
+                  await _settings.setBuiltInPlayerEngine(
+                    match.first,
+                    context: BuiltInPlayerContext.vod,
+                  );
                   await _playback.patch(
                     (s) => s.copyWith(builtInEngine: match.first),
                   );
@@ -311,6 +314,30 @@ class _SettingsPlaybackSectionState
                 },
               ),
             if (widget.visibility.showIptvSettings) ...[
+              if (Platform.isAndroid)
+                settingsFocusableDropdown(
+                  context,
+                  'IPTV engine',
+                  'Live channels only. Does not change Movies & series or Live Matches.',
+                  snap.builtInEngineIptv.displayName,
+                  builtInPlayerEngineOptionsForUi
+                      .map((e) => e.displayName)
+                      .toList(),
+                  (val) async {
+                    if (val == null) return;
+                    final match = builtInPlayerEngineOptionsForUi
+                        .where((e) => e.displayName == val)
+                        .toList();
+                    if (match.isEmpty) return;
+                    await _settings.setBuiltInPlayerEngine(
+                      match.first,
+                      context: BuiltInPlayerContext.iptv,
+                    );
+                    await _playback.patch(
+                      (s) => s.copyWith(builtInEngineIptv: match.first),
+                    );
+                  },
+                ),
               settingsFocusableToggle(
                 context,
                 'IPTV programme guide (EPG)',
