@@ -348,8 +348,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onPopInvokedWithResult: (didPop, _) {
           if (didPop) return;
           final nav = Navigator.of(context, rootNavigator: true);
-          if (nav.canPop()) nav.pop();
           dismissActiveLoadingOverlayRoute(nav);
+          if (nav.canPop()) nav.pop();
         },
         child: Scaffold(
           backgroundColor: DesignTokens.bgDark,

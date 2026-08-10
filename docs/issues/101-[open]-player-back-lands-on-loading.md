@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 3** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I101-T02 | Player Back/Escape pops player then strips registered loading route in the same frame | ✅ |
 | 3 | I101-T03 | Keep anime/AD host mounted during playback (I75 Source reload / handoff) — strip only on exit | ✅ |
 | 4 | I101-T04 | Harden exit: always `canPop: false` + capture navigator before awaits; `dismissActiveLoadingOverlayRoute` popUntil fallback + post-frame retry; anime/AD pop host before cache cleanup | ✅ |
+| 5 | I101-T05 | Strip loading **before** player pop (`removeRoute` under player) — pop-then-dismiss painted one frame of resolve UI | ✅ |
 
 ---
 
@@ -52,6 +53,10 @@ Mobile/TV `PopScope` flipped `canPop: true` then deferred the pop. A system/defe
 - `canPop: false` for the whole player session (forced `Navigator.pop` still used for episode handoff / sources-exhausted so the host stays).
 - `dismissActiveLoadingOverlayRoute`: registered `removeRoute` + `popUntil` by name + next-frame retry.
 - Anime/AD: pop (or dismiss) the host **immediately** after `playerFuture`, before cache/notifier cleanup.
+
+### Flash after T04 (I101-T05)
+
+T02/T04 still did **pop player → then dismiss**. That order reveals the loading route for at least one frame (worse when the first `removeRoute` hits a locked navigator and the post-frame retry paints after). Fix: call `dismissActiveLoadingOverlayRoute` **before** `Navigator.pop` on every exit path so `removeRoute` yanks the host from under the player; then pop reveals details.
 
 ## Related
 

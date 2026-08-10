@@ -110,12 +110,11 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     // Instant native mute/pause/ao=null - do not await hung media_kit stop
     // before popping (that left the UI stuck with audio still playing).
     await _s._stopPlaybackForExit();
+    // Strip loading under the player first — pop-then-dismiss paints resolve UI.
+    dismissActiveLoadingOverlayRoute(nav);
     if (nav.mounted && nav.canPop()) {
       nav.pop(result);
     }
-    // Always strip stream-loading host (anime / AD / movie dialog) - even when
-    // this State already unmounted - so Back never lands on the resolve page.
-    dismissActiveLoadingOverlayRoute(nav);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

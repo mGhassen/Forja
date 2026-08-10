@@ -7,7 +7,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
   Widget build(BuildContext context) {
     ref.watch(playerResolveStatusProvider);
     final body = PopScope(
-      // Always false - exit via [_exitPlayer] manual pop + loading dismiss.
+      // Always false - exit via [_exitPlayer] (loading strip then pop).
       // canPop:true raced a deferred system pop and skipped dismiss (I101).
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {

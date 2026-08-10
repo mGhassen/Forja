@@ -16,9 +16,9 @@ const loadingOverlayFadeOutDuration = Duration(milliseconds: 750);
 
 /// [RouteSettings.name] for stream-loading hosts/dialogs under the player.
 ///
-/// Player Back pops the player then strips any registered route with this name
-/// in the same frame - otherwise Back lands on the loading screen (anime /
-/// Asian Drama hosts stay mounted for Source reload during playback).
+/// Anime / Asian Drama hosts stay mounted under the player for Source reload
+/// during playback. On exit, strip them **before** popping the player
+/// ([dismissActiveLoadingOverlayRoute]) so Back never paints resolve UI.
 const loadingOverlayRouteName = 'loading_overlay';
 
 NavigatorState? _activeLoadingOverlayNavigator;
@@ -43,13 +43,15 @@ void clearLoadingOverlayRouteRegistration(Route<dynamic>? route) {
   _activeLoadingOverlayRoute = null;
 }
 
-/// Remove a leftover loading route under/above the player (same-frame safe).
+/// Strip the stream-loading route so Back returns to details, not resolve UI.
 ///
-/// Call after popping [PlayerScreen] so Back returns to details, not loading.
+/// Call **before** popping [PlayerScreen]. [Navigator.removeRoute] yanks the
+/// loading host from under the player without revealing it; popping first
+/// paints one frame of the resolve roulette (issue 101).
 ///
-/// Uses the registered [Route] when present, then falls back to [Navigator.popUntil]
-/// so a cleared/stale registration cannot leave `loading_overlay` on top.
-/// Retries next frame when the navigator was locked mid-transition.
+/// Uses the registered [Route] when present, then falls back to
+/// [Navigator.popUntil] if loading somehow became current. Retries next frame
+/// when the navigator was locked mid-transition.
 void dismissActiveLoadingOverlayRoute([NavigatorState? navigator]) {
   final registeredNav = _activeLoadingOverlayNavigator;
   final route = _activeLoadingOverlayRoute;
@@ -65,10 +67,9 @@ void dismissActiveLoadingOverlayRoute([NavigatorState? navigator]) {
       _removeLoadingOverlayRoute(nav, route);
     }
     try {
-      // After the player is gone, pop any `loading_overlay` that became current.
-      // Stops at shell / details host (name != loading_overlay). Safe while a
-      // non-loading route (e.g. player) is still on top - predicate is already true.
-      // Do not delay this by name - a later Play can push a new loading host.
+      // If loading is current (player already gone / missed removeRoute), pop
+      // it. While the player is still on top the predicate is already true —
+      // no-op, which is what we want after a successful under-player remove.
       nav.popUntil(
         (route) => route.settings.name != loadingOverlayRouteName,
       );

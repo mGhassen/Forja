@@ -628,7 +628,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     final handOffList = _handOffEpisodes;
     _handOffEpisode = null;
     _handOffEpisodes = const [];
-    // Leave the loading shell immediately so Back never paints resolve UI.
+    // Leave the loading shell if player exit did not already strip us.
     if (handOff == null) {
       if (mounted && navigator.canPop()) {
         navigator.pop();

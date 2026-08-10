@@ -601,13 +601,12 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
         nav ??
         (mounted ? Navigator.of(context, rootNavigator: true) : null);
     final popResult = result ?? _s._positionNotifier.value;
-    // Keep canPop false for the whole session (desktop parity). Flipping it
-    // true let a deferred system pop unmount us before dismiss ran (I101).
+    // Strip loading under the player first — pop-then-dismiss paints resolve UI.
+    // Keep canPop false for the whole session (desktop parity).
+    dismissActiveLoadingOverlayRoute(navigator);
     if (navigator != null && navigator.mounted && navigator.canPop()) {
       navigator.pop(popResult);
     }
-    // Strip anime/AD/movie loading host even if this State is already gone.
-    dismissActiveLoadingOverlayRoute(navigator);
   }
 
   @override

@@ -1419,13 +1419,12 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     await playerFuture;
     final handOff = _handOffEpisode;
     _handOffEpisode = null;
-    // Leave the loading shell immediately so Back never paints resolve UI
-    // (cache cleanup below must not delay return to details).
+    // Leave the loading shell if player exit did not already strip us
+    // (dismiss-before-pop). Episode handoff keeps this route for replacement.
     if (handOff == null) {
       if (mounted && navigator.canPop()) {
         navigator.pop();
       } else {
-        // Player exit may already have stripped us via dismissActiveLoadingOverlayRoute.
         dismissActiveLoadingOverlayRoute(navigator);
       }
     }

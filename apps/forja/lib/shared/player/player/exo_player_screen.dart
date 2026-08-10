@@ -1162,12 +1162,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final navigator =
         nav ??
         (mounted ? Navigator.of(context, rootNavigator: true) : null);
-    // Keep canPop false for the whole session (desktop parity). Flipping it
-    // true let a deferred system pop unmount us before dismiss ran (I101).
+    // Strip loading under the player first — pop-then-dismiss paints resolve UI.
+    dismissActiveLoadingOverlayRoute(navigator);
     if (navigator != null && navigator.mounted && navigator.canPop()) {
       navigator.pop();
     }
-    dismissActiveLoadingOverlayRoute(navigator);
   }
 
   Future<void> _showPlayerMenu(BuildContext anchorContext) async {

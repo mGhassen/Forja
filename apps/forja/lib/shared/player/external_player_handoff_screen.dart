@@ -67,8 +67,8 @@ class _ExternalPlayerHandoffScreenState
 
     void exitHandoff() {
       final nav = Navigator.of(context, rootNavigator: true);
-      if (nav.canPop()) nav.pop();
       dismissActiveLoadingOverlayRoute(nav);
+      if (nav.canPop()) nav.pop();
     }
 
     return PopScope(
