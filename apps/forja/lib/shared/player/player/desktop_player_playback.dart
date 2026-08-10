@@ -1,7 +1,10 @@
 part of 'desktop_player_screen.dart';
 
 mixin _DesktopPlayerPlayback
-    on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+    on
+        ConsumerState<DesktopPlayerScreen>,
+        WidgetsBindingObserver,
+        WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   Future<bool> _trySourcesFromIndex(
@@ -112,7 +115,8 @@ mixin _DesktopPlayerPlayback
         }
 
         // RFC-045 open pipeline (identity → classify → technique → observe).
-        final useOpenPipeline = !PlayableSourceBridge.requiresProxy(
+        final useOpenPipeline =
+            !PlayableSourceBridge.requiresProxy(
               _s._playableSources,
               i,
               _s._currentProvider,
@@ -205,8 +209,8 @@ mixin _DesktopPlayerPlayback
             _s._currentFallbackSourceIndex++;
             continue;
           }
-          final hasDuration = !needsDurationGate ||
-              await waitForSeekableDuration(_s._player);
+          final hasDuration =
+              !needsDurationGate || await waitForSeekableDuration(_s._player);
           if (_fallbackAborted(runGen)) return false;
           if (!hasDuration) {
             debugPrint('[Player] Source $i opened without duration: $openUrl');
@@ -260,18 +264,16 @@ mixin _DesktopPlayerPlayback
             );
             if (_fallbackAborted(runGen)) return false;
             if (!opened) {
-              debugPrint(
-                '[OpenPipeline] open fail ${step.label}: $openUrl',
-              );
+              debugPrint('[OpenPipeline] open fail ${step.label}: $openUrl');
               await _s._player.stop();
               pipeline.report(StreamOpenStepResult.openFailed);
               continue;
             }
             final needsDurationGate =
                 sourceRequiresSeekableDurationBeforeConfirm(
-              openUrl,
-              type: source.type,
-            );
+                  openUrl,
+                  type: source.type,
+                );
             final decoded = await confirmOpenedStreamVideoDecode(
               _s._player,
               openUrl: openUrl,
@@ -281,15 +283,13 @@ mixin _DesktopPlayerPlayback
             );
             if (_fallbackAborted(runGen)) return false;
             if (!decoded) {
-              debugPrint(
-                '[OpenPipeline] decode fail ${step.label}: $openUrl',
-              );
+              debugPrint('[OpenPipeline] decode fail ${step.label}: $openUrl');
               await _s._player.stop();
               pipeline.report(StreamOpenStepResult.decodeFailed);
               continue;
             }
-            final hasDuration = !needsDurationGate ||
-                await waitForSeekableDuration(_s._player);
+            final hasDuration =
+                !needsDurationGate || await waitForSeekableDuration(_s._player);
             if (_fallbackAborted(runGen)) return false;
             if (!hasDuration) {
               debugPrint(
@@ -345,7 +345,6 @@ mixin _DesktopPlayerPlayback
             playUrl: openUrl,
           ),
           source.headers ?? widget.headers,
-          sourceQualities: source.qualities,
         );
         final catalogIdentity = durableStreamCatalogUrl(
           catalogUrl: source.catalogUrl,
@@ -465,7 +464,8 @@ mixin _DesktopPlayerPlayback
               providers: providers,
               providerId: pid,
               season: widget.selectedSeason ?? 1,
-              episode: widget.hubEpisodeNumber?.toInt() ??
+              episode:
+                  widget.hubEpisodeNumber?.toInt() ??
                   widget.selectedEpisode ??
                   1,
               isCancelled: () => _fallbackAborted(initGen),
@@ -567,7 +567,8 @@ mixin _DesktopPlayerPlayback
             _s._activeMagnet = magnet;
           });
         }
-        final isTorrent = isLocalTorrentStreamUrl(openUrl) ||
+        final isTorrent =
+            isLocalTorrentStreamUrl(openUrl) ||
             (widget.magnetLink != null && widget.magnetLink!.isNotEmpty);
         int retryCount = 0;
         // Torrents: few outer retries — waitForMediaOpen already re-opens on
@@ -611,7 +612,8 @@ mixin _DesktopPlayerPlayback
             final seekAfterOpen = widget.startPosition;
             if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
               final dur = _s._player.state.duration;
-              final nearCredits = dur.inSeconds >= 90 &&
+              final nearCredits =
+                  dur.inSeconds >= 90 &&
                   seekAfterOpen >= dur - const Duration(seconds: 15);
               if (!nearCredits && dur > Duration.zero) {
                 await _s._player.seek(seekAfterOpen);
@@ -696,9 +698,8 @@ mixin _DesktopPlayerPlayback
       kind: StatusRouletteKind.loading,
     );
 
-    final episode = widget.hubEpisodeNumber?.toInt() ??
-        widget.selectedEpisode ??
-        1;
+    final episode =
+        widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode ?? 1;
     final season = widget.selectedSeason ?? 1;
     final animeHost = movie.mediaType.toLowerCase() == 'anime';
 
@@ -950,8 +951,7 @@ mixin _DesktopPlayerPlayback
     setState(() {
       _s._hasError = true;
       _s._showControls = true;
-      _s._errorMessage =
-          'Playback stopped. Tap Retry to reload this server.';
+      _s._errorMessage = 'Playback stopped. Tap Retry to reload this server.';
     });
   }
 
@@ -965,8 +965,7 @@ mixin _DesktopPlayerPlayback
   /// Stop on failure - no silent hop to the next provider.
   /// Used when the user pinned a server/stream (or Auto server is Off).
   Future<void> _failPlaybackNoFailover({required String message}) async {
-    final pinned =
-        _s._providerPinned || _s._sourcePinned || widget.pinSource;
+    final pinned = _s._providerPinned || _s._sourcePinned || widget.pinSource;
     debugPrint(
       pinned
           ? '[Player] Playback failed - no auto failover (pinned)'
@@ -1084,9 +1083,8 @@ mixin _DesktopPlayerPlayback
           providers: providers,
           providerId: newProvider,
           season: widget.selectedSeason ?? 1,
-          episode: widget.hubEpisodeNumber?.toInt() ??
-              widget.selectedEpisode ??
-              1,
+          episode:
+              widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode ?? 1,
           isCancelled: () => _fallbackAborted(gen),
         );
         if (_fallbackAborted(gen)) return false;
@@ -1199,12 +1197,12 @@ mixin _DesktopPlayerPlayback
     _s._logSub?.cancel();
     _s._autoTracksAppliedForSource = false;
 
-      _s._playbackRecovery = PlaybackRecovery(
-        player: _s._player,
-        onPlaybackFailed: () {
-          if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return;
-          unawaited(_showPlaybackFailureOnWatch());
-        },
+    _s._playbackRecovery = PlaybackRecovery(
+      player: _s._player,
+      onPlaybackFailed: () {
+        if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return;
+        unawaited(_showPlaybackFailureOnWatch());
+      },
       onForceSoftwareDecode: () async {
         if (_s._player.platform is! NativePlayer) return;
         await (_s._player.platform as NativePlayer).setProperty('hwdec', 'no');
@@ -1227,9 +1225,7 @@ mixin _DesktopPlayerPlayback
           shownPos >= shownDur - const Duration(seconds: 2)) {
         return;
       }
-      final openAge = openPlaybackAge(
-        openConfirmedAt: _s._playbackConfirmedAt,
-      );
+      final openAge = openPlaybackAge(openConfirmedAt: _s._playbackConfirmedAt);
       final effectiveDurMs = shownDur.inMilliseconds > 0
           ? shownDur.inMilliseconds
           : _s._player.state.duration.inMilliseconds;
@@ -1397,9 +1393,7 @@ mixin _DesktopPlayerPlayback
       if (_s._hasError) return;
       if (_s._isInitPlaybackRunning) {
         unawaited(_invalidateWebstreamingCacheForCurrent());
-        debugPrint(
-          '[Player] Open failed during probe - hopping ($err)',
-        );
+        debugPrint('[Player] Open failed during probe - hopping ($err)');
         return;
       }
       unawaited(_showPlaybackFailureOnWatch(reason: err));
@@ -1415,9 +1409,7 @@ mixin _DesktopPlayerPlayback
       if (_s._disposed || !completed) return;
       if (!_s._playbackConfirmed || _s._isInitPlaybackRunning) return;
       if (_s._abortiveCompletedLatched) return;
-      final openAge = openPlaybackAge(
-        openConfirmedAt: _s._playbackConfirmedAt,
-      );
+      final openAge = openPlaybackAge(openConfirmedAt: _s._playbackConfirmedAt);
       final dur = _s._player.state.duration;
       final pinDur = dur > Duration.zero ? dur : _s._durationNotifier.value;
       if (shouldAcceptNaturalPlaybackEnd(
@@ -1483,13 +1475,10 @@ mixin _DesktopPlayerPlayback
       if (!hasAudio) return;
       _s._autoTracksAppliedForSource = true;
       _s._trackAutoSelectTimer?.cancel();
-      _s._trackAutoSelectTimer = Timer(
-        const Duration(milliseconds: 600),
-        () {
-          _s._trackAutoSelectTimer = null;
-          unawaited(_applyTrackAutoSelect());
-        },
-      );
+      _s._trackAutoSelectTimer = Timer(const Duration(milliseconds: 600), () {
+        _s._trackAutoSelectTimer = null;
+        unawaited(_applyTrackAutoSelect());
+      });
     });
   }
 
@@ -1626,8 +1615,8 @@ mixin _DesktopPlayerPlayback
     // replay). Without this, mpv goes idle and seeks no-op after completed.
     await safeSet('keep-open', 'yes');
 
-    final isTorrent = (widget.magnetLink != null &&
-            widget.magnetLink!.isNotEmpty) ||
+    final isTorrent =
+        (widget.magnetLink != null && widget.magnetLink!.isNotEmpty) ||
         isLocalTorrentStreamUrl(widget.mediaPath);
     if (isTorrent) {
       // Seekable HTTP Range (librqbit prioritizes pieces). Cap lavf probe so
@@ -1676,7 +1665,8 @@ mixin _DesktopPlayerPlayback
     final hdrs = resolvePlaybackHttpHeaders(
       widget.headers,
       streamUrl: widget.mediaPath,
-      providerId: _s._currentProvider ??
+      providerId:
+          _s._currentProvider ??
           (_s._currentSources?.isNotEmpty == true
               ? _s._currentSources!.first.providerId
               : null),

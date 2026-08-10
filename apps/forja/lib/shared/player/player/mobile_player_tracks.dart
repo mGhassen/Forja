@@ -221,9 +221,7 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     );
 
     final uiSelected = _s._selectedExternalSubUrl;
-    if (uiSelected != null &&
-        _playerHasActiveSubtitle() &&
-        !forcePlayerApply) {
+    if (uiSelected != null && _playerHasActiveSubtitle() && !forcePlayerApply) {
       if (preferredPick == null) return;
       if (uiSelected == preferredPick['url']) return;
       debugPrint(
@@ -233,7 +231,8 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       return;
     }
 
-    final pick = preferredPick ??
+    final pick =
+        preferredPick ??
         (preferred == 'English'
             ? null
             : pickExternalSubtitleForLanguage(
@@ -273,13 +272,16 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       onNativeSubtitleChanged: (v) => setState(() => _s._isNativeSubtitle = v),
       loadOnlineSubtitle: _loadOnlineSubtitle,
       onSubtitleSettings: _showSubtitleSettings,
-      onSubtitleSelected: ({required bool off, String? language, String? title}) {
-        unawaited(_rememberSubtitlePreference(
-          off: off,
-          language: language,
-          title: title,
-        ));
-      },
+      onSubtitleSelected:
+          ({required bool off, String? language, String? title}) {
+            unawaited(
+              _rememberSubtitlePreference(
+                off: off,
+                language: language,
+                title: title,
+              ),
+            );
+          },
       margin: EdgeInsets.only(
         left: 16,
         bottom: MediaQuery.paddingOf(context).bottom + 76,
@@ -403,51 +405,29 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
   //  HLS QUALITY SELECTOR
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Apply discrete [sourceQualities] when present; else probe HLS master ABR.
-  void _detectHlsQualities(
-    String url,
-    Map<String, String>? headers, {
-    List<StreamQualityOption>? sourceQualities,
-  }) {
+  /// Probe [url] as a master HLS playlist. Populates the quality notifier
+  /// when 2+ variants are present, otherwise clears it (hiding the gear).
+  void _detectHlsQualities(String url, Map<String, String>? headers) {
     _s._currentQualityUrl = url;
-    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
-
-    if (sourceQualities != null && sourceQualities.length >= 2) {
-      final existing = _s._hlsQualitiesNotifier.value;
-      if (existing != null && existing.any((q) => q.url == url)) return;
-      final auto = sourceQualities.firstWhere(
-        (q) => q.isAuto,
-        orElse: () => sourceQualities.first,
-      );
-      _s._hlsMasterUrl = auto.url;
-      _s._hlsMasterHeaders = resolved;
-      _s._hlsQualitiesNotifier.value = [
-        for (final q in sourceQualities)
-          HlsQuality(
-            label: q.label,
-            url: q.url,
-            height: q.height,
-            isAuto: q.isAuto,
-          ),
-      ];
-      return;
-    }
-
     if (!url.contains('.m3u8')) {
       _s._hlsMasterUrl = null;
       _s._hlsMasterHeaders = null;
       _s._hlsQualitiesNotifier.value = null;
       return;
     }
+    // If the user just picked a variant from the same master, keep the list.
     final existing = _s._hlsQualitiesNotifier.value;
     if (existing != null && existing.any((q) => q.url == url)) return;
 
-    final resolvedHeaders = resolved;
+    // New stream - clear any prior quality state immediately so the gear
+    // doesn't expose stale variants while the new master loads.
+    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
     _s._hlsMasterUrl = url;
-    _s._hlsMasterHeaders = resolvedHeaders;
+    _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;
-    fetchHlsQualities(url, headers: resolvedHeaders).then((qs) {
+    fetchHlsQualities(url, headers: resolved).then((qs) {
       if (_s._disposed) return;
+      // Only apply if a newer URL didn't take over while we were fetching.
       if (_s._hlsMasterUrl != url) return;
       _s._hlsQualitiesNotifier.value = qs;
     });
@@ -484,6 +464,4 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     if (pos.inSeconds > 0) await _s._player.seek(pos);
     _s._startHideTimer();
   }
-
-
 }

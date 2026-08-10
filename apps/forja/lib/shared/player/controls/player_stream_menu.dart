@@ -76,14 +76,18 @@ class PlayerStreamMenu {
     required Future<List<StreamSource>?> Function(
       String providerId, {
       bool forceRefresh,
-    }) onLoadProvider,
+    })
+    onLoadProvider,
     required Future<List<StreamSource>?> Function(String providerId)
-        onSelectProvider,
+    onSelectProvider,
     required Future<void> Function(StreamSource source, int index)
-        onSelectSource,
-    required Future<bool> Function(StreamSource source, int index,
-            [String? providerId])
-        onCheckSource,
+    onSelectSource,
+    required Future<bool> Function(
+      StreamSource source,
+      int index, [
+      String? providerId,
+    ])
+    onCheckSource,
     VoidCallback? onTogglePlayPause,
     bool providersEnabled = true,
     BuildContext? anchorContext,
@@ -157,13 +161,15 @@ class PlayerStreamMenu {
     required List<StreamSource> sources,
     required PlayerStreamMenuState state,
     required Future<void> Function(StreamSource source, int index)
-        onSelectSource,
-    required Future<bool> Function(StreamSource source, int index,
-            [String? providerId])
-        onCheckSource,
+    onSelectSource,
+    required Future<bool> Function(
+      StreamSource source,
+      int index, [
+      String? providerId,
+    ])
+    onCheckSource,
     required Map<String, PlayerSourceStatus> urlStatuses,
-    required void Function(String url, PlayerSourceStatus status)
-        onUrlStatus,
+    required void Function(String url, PlayerSourceStatus status) onUrlStatus,
     bool useIndexedStatuses = false,
     String? providerId,
     String? serverLabel,
@@ -184,7 +190,8 @@ class PlayerStreamMenu {
               );
               // Single-stream current server: that row is the playing one even
               // if proxy/catalog identity briefly diverges.
-              final isCurrent = matched ||
+              final isCurrent =
+                  matched ||
                   (useIndexedStatuses &&
                       state.playbackConfirmed &&
                       sources.length == 1);
@@ -223,17 +230,14 @@ class PlayerStreamMenu {
                   );
                   onUrlStatus(
                     url,
-                    ok
-                        ? PlayerSourceStatus.ready
-                        : PlayerSourceStatus.failed,
+                    ok ? PlayerSourceStatus.ready : PlayerSourceStatus.failed,
                   );
                 },
                 onPlay: () async {
                   dismiss();
                   await onSelectSource(entry.value, entry.key);
                 },
-                onTogglePlayPause:
-                    isPlaying ? onTogglePlayPause : null,
+                onTogglePlayPause: isPlaying ? onTogglePlayPause : null,
               );
             },
           ),
@@ -247,12 +251,11 @@ class PlayerStreamMenu {
     Map<String, dynamic> providers, {
     Map<String, ProviderOrderRow> scoreRows = const {},
     List<StreamProviderProbe> probes = const [],
-  }) =>
-      orderedProviderEntriesForPanel(
-        providers,
-        scoreRows: scoreRows,
-        probes: probes,
-      );
+  }) => orderedProviderEntriesForPanel(
+    providers,
+    scoreRows: scoreRows,
+    probes: probes,
+  );
 
   /// Stable panel order - settings provider priority only.
   /// Reliability scores drive resolve/probe order elsewhere, not this list.
@@ -334,8 +337,10 @@ class PlayerStreamMenu {
     final isMiruro = _isMiruroPanelProvider(providerId, provider);
     if (!isMiruro) return null;
     if (previousProviderId == null) return 'Miruro';
-    final prevMiruro =
-        _isMiruroPanelProvider(previousProviderId, previousProvider);
+    final prevMiruro = _isMiruroPanelProvider(
+      previousProviderId,
+      previousProvider,
+    );
     return prevMiruro ? null : 'Miruro';
   }
 
@@ -470,7 +475,8 @@ class PlayerStreamMenu {
     ).rowById;
     return {
       for (final entry in providers.entries)
-        entry.key: base[_engineScoringId(entry.key, entry.value)] ??
+        entry.key:
+            base[_engineScoringId(entry.key, entry.value)] ??
             ProviderOrderRow(
               id: entry.key,
               settingsRank: 999,
@@ -487,8 +493,9 @@ class PlayerStreamMenu {
     if (delta == 0) return const SizedBox.shrink();
     final color = delta > 0
         ? playerSourceStatusColor(PlayerSourceStatus.active)
-        : playerSourceStatusColor(PlayerSourceStatus.failed)
-            .withValues(alpha: 0.85);
+        : playerSourceStatusColor(
+            PlayerSourceStatus.failed,
+          ).withValues(alpha: 0.85);
     return Padding(
       padding: const EdgeInsets.only(right: 4),
       child: Text(
@@ -512,15 +519,19 @@ class PlayerStreamMenu {
     }
     // Badge = running provider Σ (up/down, min 0); ± prefixes = this title only.
     final score = ProviderScoreMemory.globalScoreFor(providerId);
-    final serverDelta =
-        ProviderScoreMemory.serverVerdictFor(scoreScope, providerId);
-    final streamDelta =
-        ProviderScoreMemory.streamVerdictFor(scoreScope, providerId);
+    final serverDelta = ProviderScoreMemory.serverVerdictFor(
+      scoreScope,
+      providerId,
+    );
+    final streamDelta = ProviderScoreMemory.streamVerdictFor(
+      scoreScope,
+      providerId,
+    );
     final color = score >= 4
         ? playerSourceStatusColor(PlayerSourceStatus.active)
         : score >= 2
-            ? Colors.white.withValues(alpha: 0.82)
-            : Colors.white.withValues(alpha: 0.52);
+        ? Colors.white.withValues(alpha: 0.82)
+        : Colors.white.withValues(alpha: 0.52);
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -648,10 +659,7 @@ class PlayerStreamMenu {
     if (flagEmojis.isNotEmpty) {
       body = body
           .replaceAll(
-            RegExp(
-              r'(?:🌐|[\u{1F1E6}-\u{1F1FF}]{2})\s*',
-              unicode: true,
-            ),
+            RegExp(r'(?:🌐|[\u{1F1E6}-\u{1F1FF}]{2})\s*', unicode: true),
             '',
           )
           .trim();
@@ -677,8 +685,7 @@ class PlayerStreamMenu {
   @visibleForTesting
   static List<MapEntry<int, StreamSource>> orderedSourceEntriesForPanel(
     List<StreamSource> sources,
-  ) =>
-      sources.asMap().entries.toList();
+  ) => sources.asMap().entries.toList();
 
   /// Playing / selected identity for a stream row.
   ///
@@ -709,8 +716,7 @@ class PlayerStreamMenu {
     StreamSource source,
     PlayerStreamMenuState state, {
     String? providerId,
-  }) =>
-      isCurrentSource(source, state, providerId: providerId);
+  }) => isCurrentSource(source, state, providerId: providerId);
 
   static PlayerSourceStatus _resolveProviderStatus(
     String providerId, {
@@ -788,9 +794,7 @@ class PlayerStreamMenu {
     int? checkingTotal,
   }) {
     if (isPlaying) return 'Playing now';
-    if (checkingOrdinal != null &&
-        checkingTotal != null &&
-        checkingTotal > 1) {
+    if (checkingOrdinal != null && checkingTotal != null && checkingTotal > 1) {
       return 'Checking $checkingOrdinal/$checkingTotal…';
     }
     if (sourceCount > 0) {
@@ -837,9 +841,12 @@ class PlayerStreamMenu {
       return _checkingSpinner();
     }
     if (status == PlayerSourceStatus.failed) {
-      return _serverSolidDot(playerSourceStatusColor(PlayerSourceStatus.failed));
+      return _serverSolidDot(
+        playerSourceStatusColor(PlayerSourceStatus.failed),
+      );
     }
-    final up = isLoaded ||
+    final up =
+        isLoaded ||
         status == PlayerSourceStatus.ready ||
         status == PlayerSourceStatus.active;
     return _serverSolidDot(
@@ -857,11 +864,7 @@ class PlayerStreamMenu {
   }) {
     if (isPlaying) {
       if (mediaPlaying) {
-        return Icon(
-          Icons.pause_rounded,
-          size: 22,
-          color: _streamPauseBlue,
-        );
+        return Icon(Icons.pause_rounded, size: 22, color: _streamPauseBlue);
       }
       return Icon(
         Icons.play_arrow_rounded,

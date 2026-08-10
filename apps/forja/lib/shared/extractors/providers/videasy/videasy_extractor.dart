@@ -517,16 +517,12 @@ class VideasyExtractor {
     }
     if (allSources.isEmpty) return null;
 
-    final collapsed = collapseStreamQualityVariants(allSources);
-    final primary = collapsed.first;
-    onLog(
-      '[Videasy] ${hits.length} mirror(s) → ${collapsed.length} sources'
-      ' (${allSources.length} raw)',
-    );
+    final primary = allSources.first;
+    onLog('[Videasy] ${hits.length} mirror(s) → ${allSources.length} sources');
     return ExtractedMedia(
       url: primary.url,
       headers: _playbackHeaders,
-      sources: collapsed,
+      sources: allSources,
       provider: hits.first.provider ?? 'videasy',
       externalSubtitles: allSubs.isEmpty ? null : allSubs,
     );
@@ -684,11 +680,10 @@ class VideasyExtractor {
     }
 
     picked.sort((a, b) => _qualityRank(b.title) - _qualityRank(a.title));
-    final collapsed = collapseStreamQualityVariants(picked);
     return ExtractedMedia(
-      url: collapsed.first.url,
+      url: picked.first.url,
       headers: _playbackHeaders,
-      sources: collapsed,
+      sources: picked,
       provider: 'videasy/$provider',
       externalSubtitles: allSubs.isEmpty ? null : allSubs,
     );

@@ -1106,21 +1106,19 @@ class StreamExtractor {
   List<StreamSource> _buildCapturedSources(Map<String, String> headers) {
     _flushCurrentChipSources();
     if (_flushedChipSources.isNotEmpty) {
-      return collapseStreamQualityVariants(
-        List<StreamSource>.from(_flushedChipSources),
-      );
+      return List<StreamSource>.from(_flushedChipSources);
     }
     final urls = _detectedVideoUrls.isNotEmpty
         ? List<String>.from(_detectedVideoUrls)
         : (_capturedVideo != null ? [_capturedVideo!] : const <String>[]);
-    return collapseStreamQualityVariants([
+    return [
       for (final url in urls)
         _streamSourceForUrl(
           url,
           headers: headers,
           serverLabel: _chipTitleLabel(),
         ),
-    ]);
+    ];
   }
 
   String _getRawSpyJs(EmbedExtractProfile profile) {

@@ -112,7 +112,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
         }
 
         // RFC-045 open pipeline (identity → classify → technique → observe).
-        final useOpenPipeline = !PlayableSourceBridge.requiresProxy(
+        final useOpenPipeline =
+            !PlayableSourceBridge.requiresProxy(
               _s._playableSources,
               i,
               _s._currentProvider,
@@ -263,18 +264,16 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             );
             if (_fallbackAborted(runGen)) return false;
             if (!opened) {
-              debugPrint(
-                '[OpenPipeline] open fail ${step.label}: $openUrl',
-              );
+              debugPrint('[OpenPipeline] open fail ${step.label}: $openUrl');
               await _s._player.stop();
               pipeline.report(StreamOpenStepResult.openFailed);
               continue;
             }
             final needsDurationGate =
                 sourceRequiresSeekableDurationBeforeConfirm(
-              openUrl,
-              type: source.type,
-            );
+                  openUrl,
+                  type: source.type,
+                );
             final decoded = await confirmOpenedStreamVideoDecode(
               _s._player,
               openUrl: openUrl,
@@ -284,9 +283,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             );
             if (_fallbackAborted(runGen)) return false;
             if (!decoded) {
-              debugPrint(
-                '[OpenPipeline] decode fail ${step.label}: $openUrl',
-              );
+              debugPrint('[OpenPipeline] decode fail ${step.label}: $openUrl');
               await _s._player.stop();
               pipeline.report(StreamOpenStepResult.decodeFailed);
               continue;
@@ -350,7 +347,6 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             playUrl: openUrl,
           ),
           srcHeaders,
-          sourceQualities: source.qualities,
         );
         final catalogIdentity = durableStreamCatalogUrl(
           catalogUrl: source.catalogUrl,
@@ -480,7 +476,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
               providers: providers,
               providerId: pid,
               season: widget.selectedSeason ?? 1,
-              episode: widget.hubEpisodeNumber?.toInt() ??
+              episode:
+                  widget.hubEpisodeNumber?.toInt() ??
                   widget.selectedEpisode ??
                   1,
               isCancelled: () => _fallbackAborted(initGen),
@@ -582,7 +579,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             _s._activeMagnet = magnet;
           });
         }
-        final isTorrent = isLocalTorrentStreamUrl(openUrl) ||
+        final isTorrent =
+            isLocalTorrentStreamUrl(openUrl) ||
             (widget.magnetLink != null && widget.magnetLink!.isNotEmpty);
         int retryCount = 0;
         final maxRetries = isTorrent ? 3 : 2;
@@ -624,7 +622,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             final seekAfterOpen = widget.startPosition;
             if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
               final dur = _s._player.state.duration;
-              final nearCredits = dur.inSeconds >= 90 &&
+              final nearCredits =
+                  dur.inSeconds >= 90 &&
                   seekAfterOpen >= dur - const Duration(seconds: 15);
               if (!nearCredits && dur > Duration.zero) {
                 await _s._player.seek(seekAfterOpen);
@@ -710,9 +709,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       kind: StatusRouletteKind.loading,
     );
 
-    final episode = widget.hubEpisodeNumber?.toInt() ??
-        widget.selectedEpisode ??
-        1;
+    final episode =
+        widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode ?? 1;
     final season = widget.selectedSeason ?? 1;
     final animeHost = movie.mediaType.toLowerCase() == 'anime';
 
@@ -962,8 +960,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     setState(() {
       _s._hasError = true;
       _s._showControls = true;
-      _s._errorMessage =
-          'Playback stopped. Tap Retry to reload this server.';
+      _s._errorMessage = 'Playback stopped. Tap Retry to reload this server.';
     });
   }
 
@@ -977,8 +974,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
   /// Stop on failure - no silent hop to the next provider.
   /// Used when the user pinned a server/stream (or Auto server is Off).
   Future<void> _failPlaybackNoFailover({required String message}) async {
-    final pinned =
-        _s._providerPinned || _s._sourcePinned || widget.pinSource;
+    final pinned = _s._providerPinned || _s._sourcePinned || widget.pinSource;
     debugPrint(
       pinned
           ? '[Player] Playback failed - no auto failover (pinned)'
@@ -1096,9 +1092,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
           providers: providers,
           providerId: newProvider,
           season: widget.selectedSeason ?? 1,
-          episode: widget.hubEpisodeNumber?.toInt() ??
-              widget.selectedEpisode ??
-              1,
+          episode:
+              widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode ?? 1,
           isCancelled: () => _fallbackAborted(gen),
         );
         if (_fallbackAborted(gen)) return false;
@@ -1241,9 +1236,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
           shownPos >= shownDur - const Duration(seconds: 2)) {
         return;
       }
-      final openAge = openPlaybackAge(
-        openConfirmedAt: _s._playbackConfirmedAt,
-      );
+      final openAge = openPlaybackAge(openConfirmedAt: _s._playbackConfirmedAt);
       final effectiveDurMs = shownDur.inMilliseconds > 0
           ? shownDur.inMilliseconds
           : _s._player.state.duration.inMilliseconds;
@@ -1410,9 +1403,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       if (_s._isInitPlaybackRunning) {
         // Drop stale extract during probe only — retry uses fresh extract.
         unawaited(_invalidateWebstreamingCacheForCurrent());
-        debugPrint(
-          '[Player] Open failed during probe - hopping ($err)',
-        );
+        debugPrint('[Player] Open failed during probe - hopping ($err)');
         return;
       }
       unawaited(_showPlaybackFailureOnWatch(reason: err));
@@ -1427,9 +1418,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       if (_s._disposed || !completed) return;
       if (!_s._playbackConfirmed || _s._isInitPlaybackRunning) return;
       if (_s._abortiveCompletedLatched) return;
-      final openAge = openPlaybackAge(
-        openConfirmedAt: _s._playbackConfirmedAt,
-      );
+      final openAge = openPlaybackAge(openConfirmedAt: _s._playbackConfirmedAt);
       final dur = _s._player.state.duration;
       final pinDur = dur > Duration.zero ? dur : _s._durationNotifier.value;
       if (shouldAcceptNaturalPlaybackEnd(
@@ -1498,13 +1487,10 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       _s._autoTracksAppliedForSource = true;
       // Defer slightly so mpv has finished probing all tracks/metadata.
       _s._trackAutoSelectTimer?.cancel();
-      _s._trackAutoSelectTimer = Timer(
-        const Duration(milliseconds: 600),
-        () {
-          _s._trackAutoSelectTimer = null;
-          unawaited(_applyTrackAutoSelect());
-        },
-      );
+      _s._trackAutoSelectTimer = Timer(const Duration(milliseconds: 600), () {
+        _s._trackAutoSelectTimer = null;
+        unawaited(_applyTrackAutoSelect());
+      });
     });
   }
 
@@ -1642,8 +1628,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     // replay). Without this, mpv goes idle and seeks no-op after completed.
     await safeSet('keep-open', 'yes');
 
-    final isTorrent = (widget.magnetLink != null &&
-            widget.magnetLink!.isNotEmpty) ||
+    final isTorrent =
+        (widget.magnetLink != null && widget.magnetLink!.isNotEmpty) ||
         isLocalTorrentStreamUrl(widget.mediaPath);
     if (isTorrent) {
       // Seekable HTTP Range (librqbit prioritizes pieces). Cap lavf probe so
@@ -1690,7 +1676,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     final hdrs = resolvePlaybackHttpHeaders(
       widget.headers,
       streamUrl: widget.mediaPath,
-      providerId: _s._currentProvider ??
+      providerId:
+          _s._currentProvider ??
           (_s._currentSources?.isNotEmpty == true
               ? _s._currentSources!.first.providerId
               : null),

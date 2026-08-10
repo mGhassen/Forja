@@ -309,6 +309,14 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   );
   bool _detailsHeroInitialFocusDone = false;
 
+  /// TV: reclaim Play/Resume when player pop leaves an empty FocusScope.
+  void _claimTvHeroPlayAfterPlayer() {
+    ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
+      _detailsHeroPlayFocus,
+      isMounted: () => mounted,
+    );
+  }
+
   // MDBlist aggregated ratings
   Map<String, dynamic>? _mdblistRatings;
   final MediaDetailsTrackerState _trackerState = MediaDetailsTrackerState();
@@ -467,9 +475,13 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
             progress: progress,
             startPosition: startPosition,
           );
-          if (ok) return true;
+          if (ok) {
+            if (mounted) _claimTvHeroPlayAfterPlayer();
+            return true;
+          }
         }
         if (await _tryResumeWebStreamFromWatchHistory(startPosition)) {
+          if (mounted) _claimTvHeroPlayAfterPlayer();
           return true;
         }
         await _startWebstreamingOnlyPlayback();

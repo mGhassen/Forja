@@ -502,6 +502,32 @@ abstract final class ShellTvFocusCoordinator {
     return ctx != null && ctx.mounted;
   }
 
+  /// After the player route pops, details can land with an empty FocusScope
+  /// (loading-overlay strip + watch-history rebuild race). Reclaim hero
+  /// Play/Resume only when the page has no usable focus — never steal a
+  /// successful restore.
+  static void claimHeroPlayAfterPlayerExit(
+    FocusNode play, {
+    required bool Function() isMounted,
+    int frameRetries = 4,
+  }) {
+    if (!tvBackPolicyEnabled) return;
+
+    void attempt({required int remaining}) {
+      if (!isMounted()) return;
+      if (_pageHasFocus()) return;
+      if (play.context != null && play.canRequestFocus) {
+        play.requestFocus();
+      }
+      if (_pageHasFocus() || remaining <= 0) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        attempt(remaining: remaining - 1);
+      });
+    }
+
+    attempt(remaining: frameRetries);
+  }
+
   static void _revealHeroForTab(String tabId) {
     _tabHeroReveal[tabId]?.call();
     if (!_tabHeroReveal.containsKey(tabId)) {

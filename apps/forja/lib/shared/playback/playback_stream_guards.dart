@@ -165,19 +165,5 @@ bool streamSourceMatchesPlaying(
   // Proxy play URL ↔ catalog row (PNG-strip / hls-proxy).
   if (hit(url, playTarget) || hit(sourceCatalog, playTarget)) return true;
   if (hit(urlTarget, catalog) || hit(urlTarget, playTarget)) return true;
-  final qualities = source.qualities;
-  if (qualities != null) {
-    for (final q in qualities) {
-      final qUrl = q.url.trim();
-      if (qUrl.isEmpty) continue;
-      if (hit(qUrl, play) || hit(qUrl, catalog)) return true;
-      final qTarget = hlsProxyTargetUrl(qUrl) ?? '';
-      if (hit(qUrl, playTarget) ||
-          hit(qTarget, catalog) ||
-          hit(qTarget, playTarget)) {
-        return true;
-      }
-    }
-  }
   return false;
 }

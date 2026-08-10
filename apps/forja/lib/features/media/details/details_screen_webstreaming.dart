@@ -13,8 +13,15 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       progress: progress,
       startPosition: startPosition,
     );
-    if (ok || !mounted) return;
-    if (await _tryResumeWebStreamFromWatchHistory(startPosition)) return;
+    if (ok) {
+      if (mounted) _s._claimTvHeroPlayAfterPlayer();
+      return;
+    }
+    if (!mounted) return;
+    if (await _tryResumeWebStreamFromWatchHistory(startPosition)) {
+      if (mounted) _s._claimTvHeroPlayAfterPlayer();
+      return;
+    }
     if (mounted) await _startWebstreamingOnlyPlayback();
   }
   void _onPlayStreamingPressed() {
@@ -393,7 +400,11 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       progress: progress,
       startPosition: _s._startPositionForAutoPlay(fromRoute: fromRoute),
     );
-    if (ok || !mounted) return;
+    if (ok) {
+      if (mounted) _s._claimTvHeroPlayAfterPlayer();
+      return;
+    }
+    if (!mounted) return;
     if (fromRoute) {
       _s._failAutoPlayFromRoute();
       return;
@@ -774,6 +785,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
               ),
             );
             await playerFuture;
+            if (mounted) _s._claimTvHeroPlayAfterPlayer();
             _s._webstreamingOnlyExtractionCancelled = true;
             PlaybackEngine.cancelAllPending();
             liveNotifiersDisposed = true;
@@ -932,6 +944,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       } else {
         await openPlayer();
       }
+      if (mounted) _s._claimTvHeroPlayAfterPlayer();
     } finally {
       providerSourcesCache.dispose();
     }

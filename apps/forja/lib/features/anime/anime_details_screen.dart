@@ -8,6 +8,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
@@ -316,9 +317,14 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
       category: _category,
       allEpisodes: _episodes,
       startPosition: startPosition,
-    ).then((_) {
-      _refreshProgress();
+    ).then((_) async {
+      await _refreshProgress();
       _loadWatchedEpisodes();
+      if (!mounted) return;
+      ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
+        _heroPlayFocus,
+        isMounted: () => mounted,
+      );
     });
   }
 

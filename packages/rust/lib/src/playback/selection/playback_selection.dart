@@ -42,19 +42,7 @@ abstract final class PlaybackSelection {
       providerRank: providerRank,
       device: device,
     );
-    final mapped = playableSourcesToStreamSources(ranked);
-    final qualityByUrl = <String, List<StreamQualityOption>>{};
-    for (final s in sources) {
-      final q = s.qualities;
-      if (q != null && q.isNotEmpty) qualityByUrl[s.url] = q;
-    }
-    final restored = [
-      for (final s in mapped)
-        qualityByUrl.containsKey(s.url)
-            ? s.copyWith(qualities: qualityByUrl[s.url])
-            : s,
-    ];
-    return collapseStreamQualityVariants(restored);
+    return playableSourcesToStreamSources(ranked);
   }
 }
 

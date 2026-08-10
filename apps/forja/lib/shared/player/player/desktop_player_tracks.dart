@@ -1,6 +1,10 @@
 part of 'desktop_player_screen.dart';
 
-mixin _DesktopPlayerTracks on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+mixin _DesktopPlayerTracks
+    on
+        ConsumerState<DesktopPlayerScreen>,
+        WidgetsBindingObserver,
+        WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -224,9 +228,7 @@ mixin _DesktopPlayerTracks on ConsumerState<DesktopPlayerScreen>, WidgetsBinding
 
     // UI shows a selection but mpv was wiped by media open → must reload.
     final uiSelected = _s._selectedExternalSubUrl;
-    if (uiSelected != null &&
-        _playerHasActiveSubtitle() &&
-        !forcePlayerApply) {
+    if (uiSelected != null && _playerHasActiveSubtitle() && !forcePlayerApply) {
       if (preferredPick == null) return;
       if (uiSelected == preferredPick['url']) return;
       debugPrint(
@@ -236,7 +238,8 @@ mixin _DesktopPlayerTracks on ConsumerState<DesktopPlayerScreen>, WidgetsBinding
       return;
     }
 
-    final pick = preferredPick ??
+    final pick =
+        preferredPick ??
         (preferred == 'English'
             ? null
             : pickExternalSubtitleForLanguage(
@@ -277,13 +280,16 @@ mixin _DesktopPlayerTracks on ConsumerState<DesktopPlayerScreen>, WidgetsBinding
       onNativeSubtitleChanged: (v) => setState(() => _s._isNativeSubtitle = v),
       loadOnlineSubtitle: _loadOnlineSubtitle,
       onSubtitleSettings: _showSubtitleSettings,
-      onSubtitleSelected: ({required bool off, String? language, String? title}) {
-        unawaited(_rememberSubtitlePreference(
-          off: off,
-          language: language,
-          title: title,
-        ));
-      },
+      onSubtitleSelected:
+          ({required bool off, String? language, String? title}) {
+            unawaited(
+              _rememberSubtitlePreference(
+                off: off,
+                language: language,
+                title: title,
+              ),
+            );
+          },
     );
   }
 
@@ -426,36 +432,10 @@ mixin _DesktopPlayerTracks on ConsumerState<DesktopPlayerScreen>, WidgetsBinding
   //  HLS QUALITY SELECTOR
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Apply discrete [sourceQualities] when present; else probe HLS master ABR.
-  void _detectHlsQualities(
-    String url,
-    Map<String, String>? headers, {
-    List<StreamQualityOption>? sourceQualities,
-  }) {
+  /// Probe [url] as a master HLS playlist. Populates the quality notifier
+  /// when 2+ variants are present, otherwise clears it (hiding the gear).
+  void _detectHlsQualities(String url, Map<String, String>? headers) {
     _s._currentQualityUrl = url;
-    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
-
-    if (sourceQualities != null && sourceQualities.length >= 2) {
-      final existing = _s._hlsQualitiesNotifier.value;
-      if (existing != null && existing.any((q) => q.url == url)) return;
-      final auto = sourceQualities.firstWhere(
-        (q) => q.isAuto,
-        orElse: () => sourceQualities.first,
-      );
-      _s._hlsMasterUrl = auto.url;
-      _s._hlsMasterHeaders = resolved;
-      _s._hlsQualitiesNotifier.value = [
-        for (final q in sourceQualities)
-          HlsQuality(
-            label: q.label,
-            url: q.url,
-            height: q.height,
-            isAuto: q.isAuto,
-          ),
-      ];
-      return;
-    }
-
     if (!url.contains('.m3u8')) {
       _s._hlsMasterUrl = null;
       _s._hlsMasterHeaders = null;
@@ -465,6 +445,7 @@ mixin _DesktopPlayerTracks on ConsumerState<DesktopPlayerScreen>, WidgetsBinding
     final existing = _s._hlsQualitiesNotifier.value;
     if (existing != null && existing.any((q) => q.url == url)) return;
 
+    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
     _s._hlsMasterUrl = url;
     _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;
@@ -502,6 +483,4 @@ mixin _DesktopPlayerTracks on ConsumerState<DesktopPlayerScreen>, WidgetsBinding
     if (pos.inSeconds > 0) await _s._player.seek(pos);
     _s._onMouseMove();
   }
-
-
 }

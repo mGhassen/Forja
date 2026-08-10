@@ -1,7 +1,10 @@
 part of 'desktop_player_screen.dart';
 
 mixin _DesktopPlayerEpisodes
-    on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+    on
+        ConsumerState<DesktopPlayerScreen>,
+        WidgetsBindingObserver,
+        WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   void _toggleLoop() {
@@ -673,12 +676,15 @@ mixin _DesktopPlayerEpisodes
         final base = stream['_addonBaseUrl']?.toString();
         _s._catalogAddonBaseUrl = base;
         final magnet = resolved.magnetLink;
-        final localTorrent = magnet != null &&
+        final localTorrent =
+            magnet != null &&
             magnet.isNotEmpty &&
             isLocalTorrentStreamUrl(resolved.streamUrl);
         _s._catalogSourceKind = localTorrent
             ? 'torrents'
-            : ((base != null && base.startsWith('nuvio:')) ? 'nuvio' : 'stremio');
+            : ((base != null && base.startsWith('nuvio:'))
+                  ? 'nuvio'
+                  : 'stremio');
         _s._currentProvider = 'stremio_direct';
       });
       _s._markPlaybackConfirmed(true);
@@ -693,7 +699,9 @@ mixin _DesktopPlayerEpisodes
       _s._onMouseMove();
     } catch (e) {
       if (!mounted || _s._fallbackAborted(switchGen)) return;
-      debugPrint('[Player] ${catalogStreamKindLabel(stream)} switch failed: $e');
+      debugPrint(
+        '[Player] ${catalogStreamKindLabel(stream)} switch failed: $e',
+      );
       _s._statusController.upsert(
         statusId,
         title,
@@ -736,7 +744,8 @@ mixin _DesktopPlayerEpisodes
       );
       if (!mounted) return;
       if (resolved is! StremioPlayable || resolved.streamUrl.isEmpty) {
-        final msg = resolved is StremioResolveFailure && resolved.message.isNotEmpty
+        final msg =
+            resolved is StremioResolveFailure && resolved.message.isNotEmpty
             ? resolved.message
             : 'Failed to resolve stream';
         debugPrint(
@@ -751,7 +760,8 @@ mixin _DesktopPlayerEpisodes
 
       final season = widget.selectedSeason;
       final episode = widget.selectedEpisode;
-      final nextTitle = widget.movie != null && season != null && episode != null
+      final nextTitle =
+          widget.movie != null && season != null && episode != null
           ? '${widget.movie!.title} - S$season E$episode'
           : widget.title;
       final base = stream['_addonBaseUrl']?.toString();
@@ -775,7 +785,9 @@ mixin _DesktopPlayerEpisodes
         ),
       );
     } catch (e) {
-      debugPrint('[Player] ${catalogStreamKindLabel(stream)} switch failed: $e');
+      debugPrint(
+        '[Player] ${catalogStreamKindLabel(stream)} switch failed: $e',
+      );
       await _failEpisodeLoading('Failed to resolve stream');
     }
   }
@@ -824,7 +836,8 @@ mixin _DesktopPlayerEpisodes
 
       final season = widget.selectedSeason;
       final episode = widget.selectedEpisode;
-      final nextTitle = widget.movie != null && season != null && episode != null
+      final nextTitle =
+          widget.movie != null && season != null && episode != null
           ? '${widget.movie!.title} - S$season E$episode'
           : widget.title;
 
@@ -1239,9 +1252,8 @@ mixin _DesktopPlayerEpisodes
         providers: widget.providers!,
         providerId: providerId,
         season: widget.selectedSeason ?? 1,
-        episode: widget.hubEpisodeNumber?.toInt() ??
-            widget.selectedEpisode ??
-            1,
+        episode:
+            widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode ?? 1,
         isCancelled: () =>
             _s._disposed || (_s._providerLoadGens[providerId] ?? 0) != gen,
         bypassDiskCache: forceRefresh,
@@ -1259,7 +1271,8 @@ mixin _DesktopPlayerEpisodes
         // cache - refresh it so panel reload is not a no-op after cache play.
         if (forceRefresh &&
             (_s._currentProvider == providerId ||
-                ((_s._currentProvider == null || _s._currentProvider!.isEmpty) &&
+                ((_s._currentProvider == null ||
+                        _s._currentProvider!.isEmpty) &&
                     widget.activeProvider == providerId))) {
           _s._currentSources = sources;
           _s._failedSourceIndices.clear();
@@ -1272,7 +1285,8 @@ mixin _DesktopPlayerEpisodes
       }
       // Re-extract miss while this server is still playing must not paint it
       // dead - live URL is still open in the player.
-      final playingSame = _s._playbackConfirmed &&
+      final playingSame =
+          _s._playbackConfirmed &&
           (_s._currentProvider == providerId ||
               widget.activeProvider == providerId);
       if (!playingSame) {
@@ -1285,7 +1299,8 @@ mixin _DesktopPlayerEpisodes
       return null;
     } catch (_) {
       if ((_s._providerLoadGens[providerId] ?? 0) == gen) {
-        final playingSame = _s._playbackConfirmed &&
+        final playingSame =
+            _s._playbackConfirmed &&
             (_s._currentProvider == providerId ||
                 widget.activeProvider == providerId);
         if (!playingSame) {
@@ -1347,9 +1362,8 @@ mixin _DesktopPlayerEpisodes
           providers: widget.providers!,
           providerId: newProvider,
           season: widget.selectedSeason ?? 1,
-          episode: widget.hubEpisodeNumber?.toInt() ??
-              widget.selectedEpisode ??
-              1,
+          episode:
+              widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode ?? 1,
           isCancelled: () => _s._fallbackAborted(gen),
         );
         if (_s._fallbackAborted(gen)) return null;
@@ -1421,13 +1435,7 @@ mixin _DesktopPlayerEpisodes
         if (currentPos.inSeconds > 0) {
           await _s._player.seek(currentPos);
         }
-        _s._detectHlsQualities(
-          streamUrl,
-          headers,
-          sourceQualities: sources?.isNotEmpty == true
-              ? sources!.first.qualities
-              : null,
-        );
+        _s._detectHlsQualities(streamUrl, headers);
 
         setState(() {
           _s._currentProvider = newProvider;

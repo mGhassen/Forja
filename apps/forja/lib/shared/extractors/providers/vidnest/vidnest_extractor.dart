@@ -80,79 +80,79 @@ class VidnestExtractor {
     final id = tmdbId.trim();
     if (id.isEmpty) return null;
     final gen = _generation;
-    bool cancelled() =>
-        gen != _generation || (isCancelled?.call() ?? false);
+    bool cancelled() => gen != _generation || (isCancelled?.call() ?? false);
 
     final deadline = DateTime.now().add(timeout);
     final client = _sharedClient ??= http.Client();
 
-    final batches = await mapBoundedParallel<_VidnestServer, List<StreamSource>>(
-      items: _servers,
-      concurrency: _maxInFlight,
-      isCancelled: cancelled,
-      work: (server, _) async {
-        if (cancelled()) return null;
-        if (DateTime.now().isAfter(deadline)) {
-          _log('timed out before ${server.id}');
-          return null;
-        }
-        try {
-          final path = server.pathFor(
-            isMovie: isMovie,
-            tmdbId: id,
-            season: season,
-            episode: episode,
-          );
-          final uri = Uri.parse('$_apiBase/$path');
-          _log('GET $uri');
-          final res = await client
-              .get(
-                uri,
-                headers: {
-                  'User-Agent': userAgent,
-                  'Accept': 'application/json, text/plain, */*',
-                  'Origin': _embedOrigin,
-                  'Referer': '$_embedOrigin/',
-                },
-              )
-              .timeout(_fetchTimeout);
-          if (cancelled()) return null;
-          if (res.statusCode < 200 || res.statusCode >= 300) {
-            _log('${server.id} HTTP ${res.statusCode}');
-            return null;
-          }
-          final decoded = _decodeBody(res.body);
-          if (decoded == null) {
-            _log('${server.id} decrypt/parse failed');
-            return null;
-          }
-          final sources = _parseSources(decoded, server);
-          if (sources.isEmpty) {
-            _log('${server.id} no streams');
-            return null;
-          }
-          _log('${server.id} → ${sources.length} source(s)');
-          return sources;
-        } on TimeoutException {
-          _log('${server.id} fetch timeout');
-          return null;
-        } catch (e) {
-          _log('${server.id} error: $e');
-          return null;
-        }
-      },
-    );
+    final batches =
+        await mapBoundedParallel<_VidnestServer, List<StreamSource>>(
+          items: _servers,
+          concurrency: _maxInFlight,
+          isCancelled: cancelled,
+          work: (server, _) async {
+            if (cancelled()) return null;
+            if (DateTime.now().isAfter(deadline)) {
+              _log('timed out before ${server.id}');
+              return null;
+            }
+            try {
+              final path = server.pathFor(
+                isMovie: isMovie,
+                tmdbId: id,
+                season: season,
+                episode: episode,
+              );
+              final uri = Uri.parse('$_apiBase/$path');
+              _log('GET $uri');
+              final res = await client
+                  .get(
+                    uri,
+                    headers: {
+                      'User-Agent': userAgent,
+                      'Accept': 'application/json, text/plain, */*',
+                      'Origin': _embedOrigin,
+                      'Referer': '$_embedOrigin/',
+                    },
+                  )
+                  .timeout(_fetchTimeout);
+              if (cancelled()) return null;
+              if (res.statusCode < 200 || res.statusCode >= 300) {
+                _log('${server.id} HTTP ${res.statusCode}');
+                return null;
+              }
+              final decoded = _decodeBody(res.body);
+              if (decoded == null) {
+                _log('${server.id} decrypt/parse failed');
+                return null;
+              }
+              final sources = _parseSources(decoded, server);
+              if (sources.isEmpty) {
+                _log('${server.id} no streams');
+                return null;
+              }
+              _log('${server.id} → ${sources.length} source(s)');
+              return sources;
+            } on TimeoutException {
+              _log('${server.id} fetch timeout');
+              return null;
+            } catch (e) {
+              _log('${server.id} error: $e');
+              return null;
+            }
+          },
+        );
 
     if (cancelled()) return null;
-    final allSources = <StreamSource>[
-      for (final batch in batches) ...batch,
-    ];
+    final allSources = <StreamSource>[for (final batch in batches) ...batch];
     if (allSources.isEmpty) return null;
-    final playable = collapseStreamQualityVariants(
-      dedupeStreamSources(allSources),
-    )
+    final playable = dedupeStreamSources(allSources)
         .map(
-          (s) => s.copyWith(
+          (s) => StreamSource(
+            url: s.url,
+            title: s.title,
+            type: s.type,
+            headers: s.headers,
             providerId: 'vidnest',
             catalogUrl: s.catalogUrl ?? s.url,
           ),
@@ -231,8 +231,16 @@ class VidnestExtractor {
           .where((e) => (e['link'] ?? e['url'])?.toString().isNotEmpty == true)
           .toList();
       rows.sort((a, b) {
-        final ra = int.tryParse('${a['resolution']}'.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-        final rb = int.tryParse('${b['resolution']}'.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+        final ra =
+            int.tryParse(
+              '${a['resolution']}'.replaceAll(RegExp(r'[^0-9]'), ''),
+            ) ??
+            0;
+        final rb =
+            int.tryParse(
+              '${b['resolution']}'.replaceAll(RegExp(r'[^0-9]'), ''),
+            ) ??
+            0;
         return rb.compareTo(ra);
       });
       for (final row in rows) {
@@ -276,8 +284,10 @@ class VidnestExtractor {
         final row = Map<String, dynamic>.from(raw);
         final u = row['url']?.toString() ?? '';
         if (u.isEmpty) continue;
-        final lang = row['language']?.toString() ?? row['lang']?.toString() ?? '';
-        final quality = row['quality']?.toString() ?? row['type']?.toString() ?? 'auto';
+        final lang =
+            row['language']?.toString() ?? row['lang']?.toString() ?? '';
+        final quality =
+            row['quality']?.toString() ?? row['type']?.toString() ?? 'auto';
         out.add(
           StreamSource(
             url: u,

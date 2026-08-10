@@ -3,11 +3,8 @@ import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart';
 
-StreamSource _source(String title) => StreamSource(
-      title: title,
-      url: 'https://example.com/$title',
-      type: 'mp4',
-    );
+StreamSource _source(String title) =>
+    StreamSource(title: title, url: 'https://example.com/$title', type: 'mp4');
 
 void main() {
   group('PlayerStreamMenu panel provider order', () {
@@ -95,50 +92,54 @@ void main() {
       expect(order.map((e) => e.key).toList(), ['vixsrc', 'vidlink']);
     });
 
-    test('ignores reliability effectiveRank so checking a server does not reshuffle', () {
-      // After a check, SourceEngine bumps effectiveRank for the winner while
-      // settingsRank stays fixed - panel must keep settings order.
-      final scoreRows = {
-        'vixsrc': ProviderOrderRow(
-          id: 'vixsrc',
-          settingsRank: 0,
-          domainScore: 10,
-          reliabilityScore: 0,
-          effectiveRank: 2,
-          maxDisplacement: 2,
-          supported: true,
-        ),
-        'vidlink': ProviderOrderRow(
-          id: 'vidlink',
-          settingsRank: 1,
-          domainScore: 10,
-          reliabilityScore: 4,
-          effectiveRank: 0,
-          maxDisplacement: 2,
-          supported: true,
-        ),
-        'vidsrc': ProviderOrderRow(
-          id: 'vidsrc',
-          settingsRank: 2,
-          domainScore: 10,
-          reliabilityScore: 2,
-          effectiveRank: 1,
-          maxDisplacement: 2,
-          supported: true,
-        ),
-      };
+    test(
+      'ignores reliability effectiveRank so checking a server does not reshuffle',
+      () {
+        // After a check, SourceEngine bumps effectiveRank for the winner while
+        // settingsRank stays fixed - panel must keep settings order.
+        final scoreRows = {
+          'vixsrc': ProviderOrderRow(
+            id: 'vixsrc',
+            settingsRank: 0,
+            domainScore: 10,
+            reliabilityScore: 0,
+            effectiveRank: 2,
+            maxDisplacement: 2,
+            supported: true,
+          ),
+          'vidlink': ProviderOrderRow(
+            id: 'vidlink',
+            settingsRank: 1,
+            domainScore: 10,
+            reliabilityScore: 4,
+            effectiveRank: 0,
+            maxDisplacement: 2,
+            supported: true,
+          ),
+          'vidsrc': ProviderOrderRow(
+            id: 'vidsrc',
+            settingsRank: 2,
+            domainScore: 10,
+            reliabilityScore: 2,
+            effectiveRank: 1,
+            maxDisplacement: 2,
+            supported: true,
+          ),
+        };
 
-      final order = PlayerStreamMenu.orderedProviderEntriesForPanel(
-        {
+        final order = PlayerStreamMenu.orderedProviderEntriesForPanel({
           'vidsrc': const {},
           'vidlink': const {},
           'vixsrc': const {},
-        },
-        scoreRows: scoreRows,
-      );
+        }, scoreRows: scoreRows);
 
-      expect(order.map((e) => e.key).toList(), ['vixsrc', 'vidlink', 'vidsrc']);
-    });
+        expect(order.map((e) => e.key).toList(), [
+          'vixsrc',
+          'vidlink',
+          'vidsrc',
+        ]);
+      },
+    );
 
     test('clusters Miruro pipes under one contiguous block', () {
       final scoreRows = {
@@ -184,16 +185,13 @@ void main() {
         ),
       };
 
-      final order = PlayerStreamMenu.orderedProviderEntriesForPanel(
-        {
-          'watchhentai': const {},
-          'miruro:kiwi:sub': const {},
-          'vidnest:hianime:sub': const {},
-          'megaplay:sub': const {},
-          'miruro:bee:sub': const {},
-        },
-        scoreRows: scoreRows,
-      );
+      final order = PlayerStreamMenu.orderedProviderEntriesForPanel({
+        'watchhentai': const {},
+        'miruro:kiwi:sub': const {},
+        'vidnest:hianime:sub': const {},
+        'megaplay:sub': const {},
+        'miruro:bee:sub': const {},
+      }, scoreRows: scoreRows);
 
       expect(order.map((e) => e.key).toList(), [
         'megaplay:sub',
@@ -252,8 +250,7 @@ void main() {
       const playingUrl = 'https://example.com/stream-b';
 
       final order = PlayerStreamMenu.orderedSourceEntriesForPanel(sources);
-      final playingIdx =
-          order.indexWhere((e) => e.value.url == playingUrl);
+      final playingIdx = order.indexWhere((e) => e.value.url == playingUrl);
 
       expect(playingIdx, 1);
       expect(order.map((e) => e.value.title).toList(), [

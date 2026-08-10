@@ -886,4 +886,79 @@ void main() {
 
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
   });
+
+  testWidgets('claimHeroPlayAfterPlayerExit focuses Play when page empty', (
+    tester,
+  ) async {
+    ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
+    final play = FocusNode(debugLabel: 'details-hero-play');
+    final other = FocusNode(debugLabel: 'other');
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(focusNode: play, child: const SizedBox(width: 40, height: 40)),
+            Focus(focusNode: other, child: const SizedBox(width: 40, height: 40)),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+    other.requestFocus();
+    await tester.pump();
+    other.unfocus();
+    await tester.pump();
+    expect(play.hasFocus, isFalse);
+
+    ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
+      play,
+      isMounted: () => true,
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(play.hasFocus, isTrue);
+
+    play.dispose();
+    other.dispose();
+  });
+
+  testWidgets('claimHeroPlayAfterPlayerExit does not steal existing page focus', (
+    tester,
+  ) async {
+    ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
+    final play = FocusNode(debugLabel: 'details-hero-play');
+    final episode = FocusNode(debugLabel: 'episode');
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(focusNode: play, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: episode,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+    episode.requestFocus();
+    await tester.pump();
+
+    ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
+      play,
+      isMounted: () => true,
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(episode.hasFocus, isTrue);
+    expect(play.hasFocus, isFalse);
+
+    play.dispose();
+    episode.dispose();
+  });
 }

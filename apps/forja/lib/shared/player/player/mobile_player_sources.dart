@@ -9,13 +9,13 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
   }
 
   ProviderScoreScope? get _scoreScope => PlayerStreamMenu.scoreScope(
-        movie: widget.movie,
-        providers: widget.providers,
-        selectedSeason: widget.selectedSeason,
-        selectedEpisode: widget.selectedEpisode,
-        hubEpisodeNumber: widget.hubEpisodeNumber,
-        activeProvider: widget.activeProvider,
-      );
+    movie: widget.movie,
+    providers: widget.providers,
+    selectedSeason: widget.selectedSeason,
+    selectedEpisode: widget.selectedEpisode,
+    hubEpisodeNumber: widget.hubEpisodeNumber,
+    activeProvider: widget.activeProvider,
+  );
 
   List<String> _streamUrlsForProvider(String providerId) {
     if (providerId.isEmpty) return const [];
@@ -178,7 +178,9 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         !_s._isInitPlaybackRunning &&
         merged.length > prevLen &&
         _s._currentFallbackSourceIndex < merged.length) {
-      unawaited(_s._initPlayback(sourceStartIndex: _s._currentFallbackSourceIndex));
+      unawaited(
+        _s._initPlayback(sourceStartIndex: _s._currentFallbackSourceIndex),
+      );
     }
   }
 
@@ -189,11 +191,11 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       final isCurrent = _s._currentProvider == 'service111477'
           ? source.url == _s._current111477FileUrl
           : streamSourceMatchesPlaying(
-                source,
-                playUrl: _s._currentUrl,
-                catalogUrl: _s._currentPlayingCatalogUrl,
-              ) ||
-              (_s._playbackConfirmed && sources.length == 1);
+                  source,
+                  playUrl: _s._currentUrl,
+                  catalogUrl: _s._currentPlayingCatalogUrl,
+                ) ||
+                (_s._playbackConfirmed && sources.length == 1);
       if (isCurrent && _s._playbackConfirmed) return PlayerSourceStatus.active;
       if (_s._checkingSourceIndices.contains(i)) {
         return PlayerSourceStatus.checking;
@@ -221,7 +223,8 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     );
   }
 
-  ValueNotifier<Map<String, List<StreamSource>>> get _liveProviderSourcesCache =>
+  ValueNotifier<Map<String, List<StreamSource>>>
+  get _liveProviderSourcesCache =>
       widget.providerSourcesCache ?? _s._ownedProviderSourcesCache;
 
   void _cancelPendingStreamWork() {
@@ -367,7 +370,8 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     if (_usesCatalogSourcesPanel) return false;
     final hasProviders =
         widget.providers != null && widget.providers!.isNotEmpty;
-    final hasSources = _s._effectiveCurrentSources != null &&
+    final hasSources =
+        _s._effectiveCurrentSources != null &&
         _s._effectiveCurrentSources!.isNotEmpty;
     return hasProviders || hasSources;
   }
@@ -433,9 +437,8 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         movie: movie,
         providers: providers,
         season: widget.selectedSeason ?? 1,
-        episode: widget.hubEpisodeNumber?.toInt() ??
-            widget.selectedEpisode ??
-            1,
+        episode:
+            widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode ?? 1,
         isCancelled: () => _s._fallbackAborted(gen),
         onHitsUpdated: (hits) {
           if (!mounted || _s._fallbackAborted(gen)) return;
@@ -486,14 +489,9 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
   }
 
   Future<
-      ({
-        String openUrl,
-        Map<String, String>? headers,
-        StreamSource resolved,
-      })?> _resolveValidatedStream(
-    StreamSource source, {
-    String? providerId,
-  }) async {
+    ({String openUrl, Map<String, String>? headers, StreamSource resolved})?
+  >
+  _resolveValidatedStream(StreamSource source, {String? providerId}) async {
     final pid = providerId ?? _s._currentProvider;
     var openUrl = source.url;
     Map<String, String>? headers = source.headers ?? widget.headers;
@@ -520,14 +518,19 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         type: result.url.contains('.m3u8')
             ? 'hls'
             : result.url.contains('.mpd')
-                ? 'dash'
-                : 'mp4',
+            ? 'dash'
+            : 'mp4',
       );
     }
 
     if (animeHlsNeedsPngStripFor(openUrl, sourceKey: pid)) {
       final stripped = await applyAnimePngStripIfNeeded(
-        source.copyWith(url: openUrl, headers: headers),
+        StreamSource(
+          url: openUrl,
+          title: source.title,
+          type: source.type,
+          headers: headers,
+        ),
         sourceKey: pid,
       );
       openUrl = stripped.url;
@@ -535,11 +538,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       resolved = stripped;
     }
 
-    final ok = await probeStreamSourceUrl(
-      openUrl,
-      headers,
-      sourceKey: pid,
-    );
+    final ok = await probeStreamSourceUrl(openUrl, headers, sourceKey: pid);
     if (!ok) return null;
     return (openUrl: openUrl, headers: headers, resolved: resolved);
   }
@@ -552,7 +551,8 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     final pid = providerId ?? _s._currentProvider ?? '';
     final affectsCurrent =
         providerId == null || providerId == _s._currentProvider;
-    final playingRow = _s._playbackConfirmed &&
+    final playingRow =
+        _s._playbackConfirmed &&
         affectsCurrent &&
         streamSourceMatchesPlaying(
           source,
@@ -659,7 +659,9 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       final validated = await _resolveValidatedStream(source);
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       if (validated == null) {
-        ref.read(playerResolveStatusProvider.notifier).setError('Failed: ${source.title}');
+        ref
+            .read(playerResolveStatusProvider.notifier)
+            .setError('Failed: ${source.title}');
         _s._statusController.upsert(
           statusId,
           source.title,
@@ -667,9 +669,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
           dismissAfter: const Duration(seconds: 2),
         );
         _markSourceFailed(index);
-        unawaited(
-          _recordStreamPlayFailure(_s._currentProvider ?? ''),
-        );
+        unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
         return;
       }
 
@@ -715,7 +715,9 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         try {
           await _s._player.stop();
         } catch (_) {}
-        ref.read(playerResolveStatusProvider.notifier).setError('Failed: ${source.title}');
+        ref
+            .read(playerResolveStatusProvider.notifier)
+            .setError('Failed: ${source.title}');
         _s._statusController.upsert(
           statusId,
           source.title,
@@ -723,9 +725,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
           dismissAfter: const Duration(seconds: 2),
         );
         _markSourceFailed(index);
-        unawaited(
-          _recordStreamPlayFailure(_s._currentProvider ?? ''),
-        );
+        unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
         return;
       }
       final decoded = await confirmOpenedStreamVideoDecode(
@@ -739,7 +739,9 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         try {
           await _s._player.stop();
         } catch (_) {}
-        ref.read(playerResolveStatusProvider.notifier).setError('Failed: ${source.title}');
+        ref
+            .read(playerResolveStatusProvider.notifier)
+            .setError('Failed: ${source.title}');
         _s._statusController.upsert(
           statusId,
           source.title,
@@ -747,9 +749,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
           dismissAfter: const Duration(seconds: 2),
         );
         _markSourceFailed(index);
-        unawaited(
-          _recordStreamPlayFailure(_s._currentProvider ?? ''),
-        );
+        unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
         return;
       }
 
@@ -783,11 +783,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         });
       }
 
-      _s._detectHlsQualities(
-        openUrl,
-        headers,
-        sourceQualities: resolved.qualities ?? source.qualities,
-      );
+      _s._detectHlsQualities(openUrl, headers);
       if (currentPos.inSeconds > 0) await _s._player.seek(currentPos);
       syncPlayerProgressNotifiers(
         _s._player,
@@ -818,7 +814,9 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       unawaited(widget.onSourcePinned?.call(source.url, source.title));
     } catch (_) {
       if (!mounted || _s._fallbackAborted(switchGen)) return;
-      ref.read(playerResolveStatusProvider.notifier).setError('Failed: ${source.title}');
+      ref
+          .read(playerResolveStatusProvider.notifier)
+          .setError('Failed: ${source.title}');
       _s._statusController.upsert(
         statusId,
         source.title,
@@ -826,10 +824,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         dismissAfter: const Duration(seconds: 2),
       );
       _markSourceFailed(index);
-      unawaited(
-        _recordStreamPlayFailure(_s._currentProvider ?? ''),
-      );
+      unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
     }
   }
-
 }

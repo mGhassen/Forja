@@ -40,9 +40,8 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
         providers: widget.providers!,
         providerId: providerId,
         season: widget.selectedSeason ?? 1,
-        episode: widget.hubEpisodeNumber?.toInt() ??
-            widget.selectedEpisode ??
-            1,
+        episode:
+            widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode ?? 1,
         isCancelled: () =>
             _s._disposed || (_s._providerLoadGens[providerId] ?? 0) != gen,
         bypassDiskCache: forceRefresh,
@@ -60,7 +59,8 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
         // cache - refresh it so panel reload is not a no-op after cache play.
         if (forceRefresh &&
             (_s._currentProvider == providerId ||
-                ((_s._currentProvider == null || _s._currentProvider!.isEmpty) &&
+                ((_s._currentProvider == null ||
+                        _s._currentProvider!.isEmpty) &&
                     widget.activeProvider == providerId))) {
           _s._currentSources = sources;
           _s._failedSourceIndices.clear();
@@ -71,7 +71,8 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
         _s._sourceMenuRevision.value++;
         return sources;
       }
-      final playingSame = _s._playbackConfirmed &&
+      final playingSame =
+          _s._playbackConfirmed &&
           (_s._currentProvider == providerId ||
               widget.activeProvider == providerId);
       if (!playingSame) {
@@ -84,7 +85,8 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
       return null;
     } catch (_) {
       if ((_s._providerLoadGens[providerId] ?? 0) == gen) {
-        final playingSame = _s._playbackConfirmed &&
+        final playingSame =
+            _s._playbackConfirmed &&
             (_s._currentProvider == providerId ||
                 widget.activeProvider == providerId);
         if (!playingSame) {
@@ -146,9 +148,8 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
           providers: widget.providers!,
           providerId: newProvider,
           season: widget.selectedSeason ?? 1,
-          episode: widget.hubEpisodeNumber?.toInt() ??
-              widget.selectedEpisode ??
-              1,
+          episode:
+              widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode ?? 1,
           isCancelled: () => _s._fallbackAborted(gen),
         );
         if (_s._fallbackAborted(gen)) return null;
@@ -220,13 +221,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
         if (currentPos.inSeconds > 0) {
           await _s._player.seek(currentPos);
         }
-        _s._detectHlsQualities(
-          streamUrl,
-          headers,
-          sourceQualities: sources?.isNotEmpty == true
-              ? sources!.first.qualities
-              : null,
-        );
+        _s._detectHlsQualities(streamUrl, headers);
 
         setState(() {
           _s._currentProvider = newProvider;

@@ -4,10 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 export 'package:forja/shared/playback/playback_stream_guards.dart'
-    show
-        durableStreamCatalogUrl,
-        hlsProxyTargetUrl,
-        streamSourceMatchesPlaying;
+    show durableStreamCatalogUrl, hlsProxyTargetUrl, streamSourceMatchesPlaying;
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/utils/language_display.dart';
@@ -171,23 +168,20 @@ Map<String, String> resolvePlaybackHttpHeaders(
     final refHost = Uri.tryParse(ref)?.host.toLowerCase() ?? ref.toLowerCase();
     final streamHost =
         Uri.tryParse(catalogForMatch ?? '')?.host.toLowerCase() ?? '';
-    final selfCdn = streamHost.isNotEmpty &&
+    final selfCdn =
+        streamHost.isNotEmpty &&
         refHost.isNotEmpty &&
         (refHost == streamHost ||
             refHost.contains(streamHost) ||
             streamHost.contains(refHost));
     final scrapeLeak = refHost.contains('enma');
-    final policyHost =
-        Uri.tryParse(policy.referer)?.host.toLowerCase() ?? '';
+    final policyHost = Uri.tryParse(policy.referer)?.host.toLowerCase() ?? '';
     final familyOk = _refererMatchesPolicyFamily(refHost, policyHost);
     // Miruro pipes ship upstream embed Referers (kwik / animepahe / …).
     // Forcing miruro.tv (v1.2.406 regression) 403s owocdn segments.
-    final miruroPipe =
-        (pid ?? '').toLowerCase().startsWith('miruro:');
-    final accepted = ref.isNotEmpty &&
-        !selfCdn &&
-        !scrapeLeak &&
-        (familyOk || miruroPipe);
+    final miruroPipe = (pid ?? '').toLowerCase().startsWith('miruro:');
+    final accepted =
+        ref.isNotEmpty && !selfCdn && !scrapeLeak && (familyOk || miruroPipe);
     if (!accepted) {
       putCanonical('Referer', 'referer', policy.referer);
       putCanonical('Origin', 'origin', policy.origin);
@@ -195,9 +189,7 @@ Map<String, String> resolvePlaybackHttpHeaders(
   }
 
   // Legacy KissKh CDN sniff - only when provider identity is unknown.
-  if (policy == null &&
-      streamUrl != null &&
-      _isKissKhCdnStream(streamUrl)) {
+  if (policy == null && streamUrl != null && _isKissKhCdnStream(streamUrl)) {
     final ref = take('Referer', 'referer') ?? '';
     if (ref.isEmpty || _isKissKhCdnStream(ref) || !ref.contains('kisskh')) {
       putCanonical('Referer', 'referer', 'https://kisskh.co/');
@@ -397,10 +389,7 @@ Future<void> silenceMediaKitPlayer(Player player) async {
 /// isolate can exceed the 5s input ANR window (issue 128). Prefer silence +
 /// short timeouts after the Video surface is already unmounted. Do not use for
 /// hot-swap / recreate (zombie mpv breaks the next MediaKit open).
-Future<void> teardownMediaKitPlayer(
-  Player player, {
-  bool fast = false,
-}) async {
+Future<void> teardownMediaKitPlayer(Player player, {bool fast = false}) async {
   await silenceMediaKitPlayer(player);
   try {
     if (player.platform is NativePlayer) {
@@ -415,17 +404,17 @@ Future<void> teardownMediaKitPlayer(
       }
     }
   } catch (_) {}
-  final stopTimeout =
-      fast ? const Duration(milliseconds: 400) : const Duration(seconds: 2);
-  final disposeTimeout =
-      fast ? const Duration(milliseconds: 500) : const Duration(seconds: 2);
+  final stopTimeout = fast
+      ? const Duration(milliseconds: 400)
+      : const Duration(seconds: 2);
+  final disposeTimeout = fast
+      ? const Duration(milliseconds: 500)
+      : const Duration(seconds: 2);
   try {
     await player.stop().timeout(stopTimeout);
   } catch (_) {}
   // Let demux_thread finish demux_free before dispose clears wakeup.
-  await Future.delayed(
-    Duration(milliseconds: fast ? 20 : 80),
-  );
+  await Future.delayed(Duration(milliseconds: fast ? 20 : 80));
   try {
     await player.dispose().timeout(disposeTimeout);
   } catch (_) {}
@@ -455,13 +444,11 @@ Future<String> openPlayerStream(
     streamUrl: openUrl,
     alreadyResolved: true,
   );
-  final isRemoteHttp = (openUrl.startsWith('http://') ||
-          openUrl.startsWith('https://')) &&
+  final isRemoteHttp =
+      (openUrl.startsWith('http://') || openUrl.startsWith('https://')) &&
       !isLocalTorrentStreamUrl(openUrl) &&
       !isLocalLoopbackPlayUrl(openUrl);
-  await player.open(
-    Media(openUrl, httpHeaders: isRemoteHttp ? hdrs : null),
-  );
+  await player.open(Media(openUrl, httpHeaders: isRemoteHttp ? hdrs : null));
   return openUrl;
 }
 
@@ -618,10 +605,7 @@ bool sourceExpectsDuration(String url, {String? type}) {
 /// HLS/DASH already proved a decoded frame. Their playlist duration often
 /// arrives after confirm; the UI duration listener drops pre-confirm events, so
 /// a hard 5s gate falsely fails hosts like VixSrc while video is already up.
-bool sourceRequiresSeekableDurationBeforeConfirm(
-  String url, {
-  String? type,
-}) {
+bool sourceRequiresSeekableDurationBeforeConfirm(String url, {String? type}) {
   if (!sourceExpectsDuration(url, type: type)) return false;
   if (sourceRequiresVideoDecode(url, type: type)) return false;
   return true;
@@ -680,10 +664,7 @@ Future<bool> confirmOpenedStreamVideoDecode(
   bool force = false,
 }) async {
   if (!force && !sourceRequiresVideoDecode(openUrl, type: type)) return true;
-  return waitForVideoDecode(
-    player,
-    timeout: videoDecodeTimeoutForUrl(openUrl),
-  );
+  return waitForVideoDecode(player, timeout: videoDecodeTimeoutForUrl(openUrl));
 }
 
 Future<bool> waitForSeekableDuration(
@@ -723,10 +704,7 @@ bool isMidEpisodePlayback(int positionMs, int durationMs) {
 }
 
 /// Age of the current source open only (ignores session mid / first confirm).
-Duration openPlaybackAge({
-  required DateTime? openConfirmedAt,
-  DateTime? now,
-}) {
+Duration openPlaybackAge({required DateTime? openConfirmedAt, DateTime? now}) {
   if (openConfirmedAt == null) return Duration.zero;
   return (now ?? DateTime.now()).difference(openConfirmedAt);
 }
@@ -902,7 +880,8 @@ Future<void> seekPlayerPreservingProgress(
   var target = position;
   if (target < Duration.zero) target = Duration.zero;
   if (dur > Duration.zero && target > dur) target = dur;
-  final leavingEof = dur > Duration.zero &&
+  final leavingEof =
+      dur > Duration.zero &&
       shouldPinSeekBarAtEof(uiPosition: previous, duration: dur) &&
       !shouldPinSeekBarAtEof(uiPosition: target, duration: dur);
   positionNotifier.value = target;
@@ -910,8 +889,8 @@ Future<void> seekPlayerPreservingProgress(
     await ensureLocalTorrentSeekable(player);
   }
   await player.seek(target);
-  final nearEnd = dur > Duration.zero &&
-      target >= dur - const Duration(milliseconds: 500);
+  final nearEnd =
+      dur > Duration.zero && target >= dur - const Duration(milliseconds: 500);
   if (!player.state.playing && !nearEnd) {
     await player.play();
   }
@@ -961,8 +940,7 @@ Future<bool> waitForMediaOpen(
   final completer = Completer<bool>();
   final subs = <StreamSubscription<dynamic>>[];
   var settled = false;
-  final localTorrent =
-      streamUrl != null && isLocalTorrentStreamUrl(streamUrl);
+  final localTorrent = streamUrl != null && isLocalTorrentStreamUrl(streamUrl);
   var retryInFlight = false;
   Timer? retryTimer;
 
@@ -1035,8 +1013,10 @@ Future<bool> waitForMediaOpen(
     return await completer.future.timeout(
       timeout,
       onTimeout: () {
-        final ok =
-            isOpenReadyForStream(player.state, localTorrent: localTorrent);
+        final ok = isOpenReadyForStream(
+          player.state,
+          localTorrent: localTorrent,
+        );
         settle(ok);
         return ok;
       },
@@ -1057,9 +1037,7 @@ Future<void> ensureLocalTorrentSeekable(Player player) async {
     try {
       await mpv.setProperty(key, val);
     } catch (e) {
-      debugPrint(
-        '[Player] Warning: failed to set mpv property $key=$val: $e',
-      );
+      debugPrint('[Player] Warning: failed to set mpv property $key=$val: $e');
     }
   }
 
@@ -1197,7 +1175,10 @@ bool isHlsQualityAuto(String? currentQualityUrl, String? masterUrl) {
   return currentQualityUrl == masterUrl;
 }
 
-HlsQuality? matchActiveHlsVariant(List<HlsQuality> qualities, PlayerState state) {
+HlsQuality? matchActiveHlsVariant(
+  List<HlsQuality> qualities,
+  PlayerState state,
+) {
   final height = state.videoParams.h ?? 0;
   if (height > 0) {
     for (final quality in qualities) {
@@ -1216,10 +1197,7 @@ HlsQuality? matchActiveHlsVariant(List<HlsQuality> qualities, PlayerState state)
   return null;
 }
 
-String? activeHlsQualityLabel(
-  PlayerState state,
-  List<HlsQuality> qualities,
-) {
+String? activeHlsQualityLabel(PlayerState state, List<HlsQuality> qualities) {
   final fromParams = playbackQualityLabel(state);
   if (fromParams != null) return fromParams;
   return matchActiveHlsVariant(qualities, state)?.label;
@@ -1351,7 +1329,7 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
   String? sourceKey,
   @visibleForTesting
   Future<bool> Function(String url, Map<String, String> headers)?
-      segmentLooksPngWrapped,
+  segmentLooksPngWrapped,
   @visibleForTesting
   String Function(String url, Map<String, String> headers)? buildStripProxy,
 }) async {
@@ -1362,7 +1340,9 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
   final pid = source.providerId?.trim().isNotEmpty == true
       ? source.providerId
       : sourceKey;
-  final profile = ProviderRuntimeConfig.instance.animePlaybackProfile(pid ?? '');
+  final profile = ProviderRuntimeConfig.instance.animePlaybackProfile(
+    pid ?? '',
+  );
   final mode = profile.pngStrip;
   // `auto` is owned by [StreamOpenStrategy] at open time (try direct ↔ strip).
   // This helper only materializes `force` (or legacy callers that pass a mock).
@@ -1415,7 +1395,6 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
     headers: null,
     providerId: pid,
     catalogUrl: source.catalogUrl ?? url,
-    qualities: source.qualities,
   );
 }
 
@@ -1426,8 +1405,7 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
 Future<bool> animeHlsSegmentLooksPngWrappedForStrategy(
   String playlistUrl,
   Map<String, String> headers,
-) =>
-    _animeHlsSegmentLooksPngWrapped(playlistUrl, headers);
+) => _animeHlsSegmentLooksPngWrapped(playlistUrl, headers);
 
 /// True when the first playable media segment is a PNG shell wrapping MPEG-TS.
 Future<bool> _animeHlsSegmentLooksPngWrapped(
@@ -1478,9 +1456,7 @@ Future<bool> _animeHlsSegmentLooksPngWrapped(
       );
       if (sample.isEmpty) continue;
       if (animeSegmentSampleLooksPngWrapped(sample)) {
-        if (kDebugMode &&
-            looksLikePng(sample) &&
-            !pngWrapsMpegTs(sample)) {
+        if (kDebugMode && looksLikePng(sample) && !pngWrapsMpegTs(sample)) {
           debugPrint(
             '[Player] PNG Range decoy (${sample.length}B) - strip $segUrl',
           );
@@ -1599,7 +1575,8 @@ Future<bool> hlsMediaSegmentsLookPlayable(
         checked++;
 
         final ct = (res.headers['content-type'] ?? '').toLowerCase();
-        final maybeWrapped = _isAnimeHlsAdHost(res.finalUrl) ||
+        final maybeWrapped =
+            _isAnimeHlsAdHost(res.finalUrl) ||
             _isAnimeHlsAdHost(seg) ||
             ct.startsWith('image/');
         if (maybeWrapped) {
@@ -1610,7 +1587,8 @@ Future<bool> hlsMediaSegmentsLookPlayable(
               timeoutSecs: 8,
               maxRetries: 0,
             );
-            if (sample.isNotEmpty && animeSegmentSampleLooksPngWrapped(sample)) {
+            if (sample.isNotEmpty &&
+                animeSegmentSampleLooksPngWrapped(sample)) {
               continue;
             }
           } catch (_) {}
@@ -1645,10 +1623,7 @@ Future<bool> _probeHlsMasterOnly(
   }
 }
 
-Future<bool> _probeHeadOrRange(
-  String catalog,
-  Map<String, String> hdrs,
-) async {
+Future<bool> _probeHeadOrRange(String catalog, Map<String, String> hdrs) async {
   try {
     var res = await animeHttp(
       'HEAD',
@@ -1711,10 +1686,7 @@ Future<bool> probeStreamSourceUrl(
         if (catalog.contains('.m3u8') ||
             catalog.toLowerCase().contains('/api/proxy') ||
             normalized.contains('/hls-proxy')) {
-          if (!await hlsMediaSegmentsLookPlayable(
-            catalog,
-            hdrs,
-          )) {
+          if (!await hlsMediaSegmentsLookPlayable(catalog, hdrs)) {
             debugPrint(
               '[Player] HLS media poison/ad segments - reject $catalog '
               '(sourceKey=$key)',
@@ -1760,11 +1732,7 @@ Future<bool> validateStreamSourceForCheck({
     // Catalog hosts only - loopback is rejected by [isUnplayableCachedStreamUrl].
     return url.contains('://');
   }
-  return probeStreamSourceUrl(
-    source.url,
-    headers,
-    sourceKey: providerId,
-  );
+  return probeStreamSourceUrl(source.url, headers, sourceKey: providerId);
 }
 
 /// Index of [current] in a flat hub episode list, or null if not found.

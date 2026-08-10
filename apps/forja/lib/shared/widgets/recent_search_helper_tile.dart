@@ -6,6 +6,7 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Recent search row: select title to run the query; X deletes it.
 ///
+/// Desktop hover matches recommendation rows (one full-row ink fill).
 /// On TV, Right from the title focuses the X; Left from X returns to the title;
 /// Right from X runs [onRightPastRemove] (usually film cards).
 class RecentSearchHelperTile extends StatefulWidget {
@@ -51,6 +52,7 @@ class RecentSearchHelperTile extends StatefulWidget {
 class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
   late final FocusNode _removeFocus;
   bool _removeFocused = false;
+  bool _hovered = false;
 
   String get _removeRowId => '${widget.tvRowId}-remove';
 
@@ -104,7 +106,12 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
 
   @override
   Widget build(BuildContext context) {
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final useTvFocus = policy.useFocusableMoodChips;
     final highlighted = widget.selected || _removeFocused;
+    // Desktop: same soft fill as recommendation InkWell hover (one row, not split).
+    final showHoverFill = !useTvFocus && _hovered;
     final color = highlighted
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
@@ -112,90 +119,110 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
     final fontSize =
         highlighted ? widget.titleFontSizeSelected : widget.titleFontSize;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: widget.verticalPadding),
-      child: Row(
-        children: [
-          Expanded(
-            child: shellFocusableTap(
-              context: context,
-              onTap: widget.onSelect,
-              borderRadius: 4,
-              scaleOnFocus: 1.0,
-              navLeftAlways: true,
-              listIndex: widget.listIndex,
-              tvTabId: widget.tvTabId,
-              tvRowId: widget.tvRowId,
-              tvZone: ShellTvZone.chipStrip,
-              tvItemIndex: widget.listIndex,
-              focusNode: widget.titleFocusNode,
-              onUpEdge: widget.onUpEdge,
-              onDownEdge: widget.onDownEdge,
-              onRightEdge: _focusRemove,
-              ensureVisibleMode: ShellTvEnsureVisibleMode.row,
-              onFocusChange: widget.onFocusChange,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.history,
-                      size: iconSize,
-                      color: color.withValues(
-                        alpha: highlighted ? 0.9 : 0.55,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: color,
-                          fontSize: fontSize,
-                          fontWeight:
-                              highlighted ? FontWeight.w600 : FontWeight.w400,
-                          height: 1.25,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          shellFocusableTap(
+    Widget row = Row(
+      children: [
+        Expanded(
+          child: shellFocusableTap(
             context: context,
-            onTap: widget.onRemove,
+            onTap: widget.onSelect,
             borderRadius: 4,
             scaleOnFocus: 1.0,
+            navLeftAlways: true,
+            listIndex: widget.listIndex,
             tvTabId: widget.tvTabId,
-            tvRowId: _removeRowId,
+            tvRowId: widget.tvRowId,
             tvZone: ShellTvZone.chipStrip,
             tvItemIndex: widget.listIndex,
-            focusNode: _removeFocus,
+            focusNode: widget.titleFocusNode,
             onUpEdge: widget.onUpEdge,
             onDownEdge: widget.onDownEdge,
-            onLeftEdge: _focusTitle,
-            onRightEdge: widget.onRightPastRemove,
+            onRightEdge: _focusRemove,
             ensureVisibleMode: ShellTvEnsureVisibleMode.row,
-            child: SizedBox(
-              width: 36,
-              height: 32,
-              child: Center(
-                child: Icon(
-                  Icons.close_rounded,
-                  size: highlighted ? 18 : 16,
-                  color: _removeFocused
-                      ? ForjaShellColors.textPrimary
-                      : ForjaShellColors.iconMuted,
-                ),
+            onFocusChange: widget.onFocusChange,
+            suppressInkHover: true,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.history,
+                    size: iconSize,
+                    color: color.withValues(
+                      alpha: highlighted ? 0.9 : 0.55,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: fontSize,
+                        fontWeight:
+                            highlighted ? FontWeight.w600 : FontWeight.w400,
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+        shellFocusableTap(
+          context: context,
+          onTap: widget.onRemove,
+          borderRadius: 4,
+          scaleOnFocus: 1.0,
+          tvTabId: widget.tvTabId,
+          tvRowId: _removeRowId,
+          tvZone: ShellTvZone.chipStrip,
+          tvItemIndex: widget.listIndex,
+          focusNode: _removeFocus,
+          onUpEdge: widget.onUpEdge,
+          onDownEdge: widget.onDownEdge,
+          onLeftEdge: _focusTitle,
+          onRightEdge: widget.onRightPastRemove,
+          ensureVisibleMode: ShellTvEnsureVisibleMode.row,
+          suppressInkHover: true,
+          child: SizedBox(
+            width: 36,
+            height: 32,
+            child: Center(
+              child: Icon(
+                Icons.close_rounded,
+                size: highlighted ? 18 : 16,
+                color: _removeFocused
+                    ? ForjaShellColors.textPrimary
+                    : ForjaShellColors.iconMuted,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    row = Material(
+      color: showHoverFill ? ForjaShellColors.inkHover : Colors.transparent,
+      borderRadius: BorderRadius.circular(4),
+      clipBehavior: Clip.antiAlias,
+      child: row,
+    );
+
+    if (!useTvFocus) {
+      row = MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.click,
+        child: row,
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: widget.verticalPadding),
+      child: row,
     );
   }
 }

@@ -13,6 +13,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/media_details/media_details.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
@@ -182,9 +183,14 @@ class _AsianDramaDetailsScreenState
       episode: ep,
       allEpisodes: det.episodes,
       startPosition: startPosition,
-    ).then((_) {
-      _refreshProgress();
+    ).then((_) async {
+      await _refreshProgress();
       _loadWatchedEpisodes();
+      if (!mounted) return;
+      ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
+        _heroPlayFocus,
+        isMounted: () => mounted,
+      );
     });
   }
 

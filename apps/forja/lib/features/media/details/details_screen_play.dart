@@ -263,6 +263,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         stremioId: stremioId,
         stremioAddonBaseUrl: stremioAddonBaseUrl,
       );
+      if (mounted) _s._claimTvHeroPlayAfterPlayer();
       return;
     }
 
@@ -344,6 +345,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
             fadeTransition: true,
           ),
         );
+        if (mounted) _s._claimTvHeroPlayAfterPlayer();
       }
     } else if (resolved is StremioResolveFailure &&
         resolved.error != StremioPlaybackError.cancelled &&
@@ -688,6 +690,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         fadeTransition: true,
       ),
     );
+    if (mounted) _s._claimTvHeroPlayAfterPlayer();
     cleanupNotifiers();
   }
 }
