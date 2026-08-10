@@ -159,8 +159,7 @@ class PlayerSubtitleMenu {
 
     await PlayerPopupPanel.show(
       context: context,
-      title: 'Subtitles',
-      leadingIcon: Icons.subtitles_outlined,
+      title: '',
       alignment: Alignment.bottomLeft,
       margin: margin,
       anchorContext: anchorContext,

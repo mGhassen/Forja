@@ -433,13 +433,8 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PlayerSidePanelHeader(
-          title: 'Subtitles',
+          title: '',
           onClose: widget.onClose,
-          leading: Icon(
-            Icons.subtitles_outlined,
-            color: ForjaShellColors.cinematic.textSecondary,
-            size: 18,
-          ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

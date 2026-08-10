@@ -12,7 +12,7 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 
 ## What you can do
 
-- Floating subtitle picker: header has **Off**, **File** (load SRT/ASS/SSA/VTT — hidden on **Android TV**), and tune. Body is one language list — in-stream and online tracks share a folder (drill-in on MediaKit; two-column on ExoPlayer). Tapping **Off** turns subtitles off immediately. Language names use native script (e.g. العربية, Français, தமிழ்)
+- Floating subtitle picker: header has **Off**, **File** (load SRT/ASS/SSA/VTT — hidden on **Android TV**), and tune (no “Subtitles” title). Body is one language list — in-stream and online tracks share a folder (drill-in on MediaKit; two-column on ExoPlayer). Tapping **Off** turns subtitles off immediately. Language names use native script (e.g. العربية, Français, தமிழ்)
 - Enable, disable, or switch tracks
 - Change appearance (size, color, font, opacity, position) — tune icon next to Close in the Subtitles header on **MediaKit** and **ExoPlayer**. On **TV**, focus a slider and use **Left/Right** to adjust (no OK first). Sync **delay** applies on MediaKit only
 - Adjust sync delay if dialogue is early/late (MediaKit)

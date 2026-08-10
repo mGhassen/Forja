@@ -181,39 +181,45 @@ class PlayerSidePanelHeader extends StatelessWidget {
                 leading!,
                 const SizedBox(width: 8),
               ],
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        title,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: cinematic.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          letterSpacing: -0.2,
+              if (title.isNotEmpty || badge != null || titleTrailing != null)
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (title.isNotEmpty)
+                        Flexible(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: cinematic.textPrimary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    if (badge != null) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        badge!,
-                        style: TextStyle(
-                          color: cinematic.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
+                      if (badge != null) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          badge!,
+                          style: TextStyle(
+                            color: cinematic.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
+                      ],
+                      if (titleTrailing != null) ...[
+                        const SizedBox(width: 12),
+                        titleTrailing!,
+                      ],
                     ],
-                    if (titleTrailing != null) ...[
-                      const SizedBox(width: 12),
-                      titleTrailing!,
-                    ],
-                  ],
-                ),
-              ),
+                  ),
+                )
+              else
+                const Spacer(),
               if (trailing != null) ...[
                 trailing!,
                 const SizedBox(width: 2),

@@ -463,17 +463,23 @@ class _PanelShell extends StatelessWidget {
                     )
                   else
                     const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.15,
+                  if (title.isNotEmpty)
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.15,
+                        ),
                       ),
-                    ),
-                  ),
+                    )
+                  else
+                    const Spacer(),
                   if (trailing != null) ...[
                     trailing!,
                     const SizedBox(width: 4),
