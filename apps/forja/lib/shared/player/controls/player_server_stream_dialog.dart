@@ -13,6 +13,7 @@ import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
 
@@ -155,6 +156,8 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
   final Set<String> _failedServers = {};
   final Map<String, PlayerSourceStatus> _urlStatuses = {};
   final Map<String, int> _loadGens = {};
+  final Map<String, FocusNode> _serverFocusNodes = {};
+  final Map<String, FocusNode> _streamFocusNodes = {};
 
   @override
   void initState() {
@@ -173,6 +176,53 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
         unawaited(_ensureServerLoaded(id));
       });
     }
+  }
+
+  @override
+  void dispose() {
+    for (final node in _serverFocusNodes.values) {
+      node.dispose();
+    }
+    for (final node in _streamFocusNodes.values) {
+      node.dispose();
+    }
+    super.dispose();
+  }
+
+  FocusNode _serverFocus(String providerId) => _serverFocusNodes.putIfAbsent(
+        providerId,
+        () => FocusNode(debugLabel: 'sources-server-$providerId'),
+      );
+
+  FocusNode _streamFocus(String url) => _streamFocusNodes.putIfAbsent(
+        url,
+        () => FocusNode(debugLabel: 'sources-stream-$url'),
+      );
+
+  void _focusSelectedServer() {
+    final id = _selectedServerId;
+    if (id == null || id.isEmpty) return;
+    _serverFocus(id).requestFocus();
+  }
+
+  void _focusStreamsEntry(String providerId) {
+    final streams = _streamsFor(providerId);
+    if (streams.isEmpty) return;
+    StreamSource? playing;
+    for (final s in streams) {
+      if (streamSourceMatchesPlaying(
+            s,
+            playUrl: widget.currentUrl,
+          ) ||
+          (widget.currentUrl != null &&
+              widget.currentUrl!.isNotEmpty &&
+              widget.currentUrl == s.url)) {
+        playing = s;
+        break;
+      }
+    }
+    final target = playing ?? streams.first;
+    _streamFocus(target.url).requestFocus();
   }
 
   List<MapEntry<String, dynamic>> _orderedServers() {
@@ -310,13 +360,30 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 8, 6, 12),
       children: [
-        for (final entry in servers)
+        for (var i = 0; i < servers.length; i++)
           PlayerPopupListTile(
-            label: _serverLabel(entry.key),
-            badge: _serverBadge(entry.key),
-            selected: entry.key == _selectedServerId,
-            status: _serverStatus(entry.key),
-            onTap: () => unawaited(_ensureServerLoaded(entry.key)),
+            label: _serverLabel(servers[i].key),
+            badge: _serverBadge(servers[i].key),
+            selected: servers[i].key == _selectedServerId,
+            status: _serverStatus(servers[i].key),
+            focusNode: _serverFocus(servers[i].key),
+            onUpEdge: i == 0 ? () {} : null,
+            onDownEdge: i == servers.length - 1 ? () {} : null,
+            onRightEdge: () {
+              final id = servers[i].key;
+              void go() => _focusStreamsEntry(id);
+              if (_streamsFor(id).isNotEmpty) {
+                if (_selectedServerId != id) {
+                  setState(() => _selectedServerId = id);
+                }
+                go();
+              } else {
+                unawaited(_ensureServerLoaded(id).then((_) {
+                  if (mounted) go();
+                }));
+              }
+            },
+            onTap: () => unawaited(_ensureServerLoaded(servers[i].key)),
           ),
       ],
     );
@@ -406,6 +473,10 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
                 badgeColor: playerSourceBadgeColor(type),
                 selected: playing,
                 status: status,
+                focusNode: _streamFocus(source.url),
+                onUpEdge: i == 0 ? () {} : null,
+                onDownEdge: i == streams.length - 1 ? () {} : null,
+                onLeftEdge: _focusSelectedServer,
                 onTap: () async {
                   PlayerServerStreamDialog.dismiss();
                   await widget.onSelectStream(serverId, source, i);
@@ -431,66 +502,75 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
           ),
         ),
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                flex: 5,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 4, 8, 0),
-                      child: Text(
-                        'Servers',
-                        style: TextStyle(
-                          color: ForjaShellColors.cinematic.textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.4,
+          // Independent columns: ↑/↓ stay in-column; ←/→ cross via edge hooks.
+          child: ShellTvDisableLinearFocus(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: FocusTraversalGroup(
+                    policy: WidgetOrderTraversalPolicy(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 4, 8, 0),
+                          child: Text(
+                            'Servers',
+                            style: TextStyle(
+                              color: ForjaShellColors.cinematic.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
                         ),
-                      ),
+                        Expanded(child: _buildServersColumn()),
+                      ],
                     ),
-                    Expanded(child: _buildServersColumn()),
-                  ],
+                  ),
                 ),
-              ),
-              VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: PlayerPopupTokens.border,
-              ),
-              Expanded(
-                flex: 6,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 4, 14, 0),
-                      child: Text(
-                        _selectedServerId == null
-                            ? 'Streams'
-                            : 'Streams · ${_serverLabel(_selectedServerId!)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: ForjaShellColors.cinematic.textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.4,
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: PlayerPopupTokens.border,
+                ),
+                Expanded(
+                  flex: 6,
+                  child: FocusTraversalGroup(
+                    policy: WidgetOrderTraversalPolicy(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 4, 14, 0),
+                          child: Text(
+                            _selectedServerId == null
+                                ? 'Streams'
+                                : 'Streams · ${_serverLabel(_selectedServerId!)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: ForjaShellColors.cinematic.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
                         ),
-                      ),
+                        Expanded(
+                          child: ListenableBuilder(
+                            listenable: widget.providerSourcesCache,
+                            builder: (context, _) => _buildStreamsColumn(),
+                          ),
+                        ),
+                      ],
                     ),
-                    Expanded(
-                      child: ListenableBuilder(
-                        listenable: widget.providerSourcesCache,
-                        builder: (context, _) => _buildStreamsColumn(),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -553,10 +633,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
                       child: playerSidePanelTvScope(
                         context: context,
                         onClose: widget.onClose,
-                        child: FocusTraversalGroup(
-                          policy: ReadingOrderTraversalPolicy(),
-                          child: _buildBody(),
-                        ),
+                        child: _buildBody(),
                       ),
                     ),
                   ),

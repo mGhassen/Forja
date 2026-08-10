@@ -863,6 +863,11 @@ class PlayerPopupListTile extends StatelessWidget {
     this.status,
     this.trailing,
     this.onTap,
+    this.focusNode,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onUpEdge,
+    this.onDownEdge,
   });
 
   final String label;
@@ -873,6 +878,11 @@ class PlayerPopupListTile extends StatelessWidget {
   final PlayerSourceStatus? status;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final FocusNode? focusNode;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   static const double _statusSlot = 18;
 
@@ -1069,11 +1079,16 @@ class PlayerPopupListTile extends StatelessWidget {
         // Prefer the current value; else first row claims via fallback nextFocus.
         autoFocus:
             selected && PlayerPopupListFocusScope.claimAutofocus(context),
+        focusNode: focusNode,
         onTap: onTap,
         borderRadius: PlayerPopupTokens.chipRadius,
         scaleOnFocus: 1.0,
         showFocusBorder: true,
         ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        onUpEdge: onUpEdge,
+        onDownEdge: onDownEdge,
         child: tile,
       ),
     );

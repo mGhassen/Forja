@@ -16,25 +16,9 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
     return async.isLoading && !async.hasValue;
   }
 
-  /// Left column: recent + recommendations (empty) or recent + result titles (query).
+  /// Left column: recent + recommendations — never mirrors result cards.
   List<_SearchHelperEntry> get _helperEntries {
     final recent = _s._recentQueries;
-    final recentLower = {for (final q in recent) q.toLowerCase()};
-
-    if (_s._query.trim().isNotEmpty) {
-      final results = _s._flatResults();
-      return [
-        for (final q in recent) _SearchHelperEntry(q, isRecent: true),
-        for (var i = 0; i < results.length; i++)
-          if (!recentLower.contains(results[i].title.toLowerCase()))
-            _SearchHelperEntry(
-              results[i].title,
-              isRecent: false,
-              resultIndex: i,
-            ),
-      ];
-    }
-
     final recs = SearchRecentQueries.pickRecommendations(
       _trendingHelperTitles,
       exclude: recent,

@@ -197,33 +197,18 @@ class _HubSearchPageState extends State<HubSearchPage> {
     }
   }
 
+  /// Left column: recent + recommendations — never mirrors result cards.
   List<_HubHelperEntry> get _helperEntries {
     final recent = [
       for (final q in _recentQueries) _HubHelperEntry(q, isRecent: true),
     ];
-    final recentLower = {for (final q in _recentQueries) q.toLowerCase()};
-
-    if (_query.trim().isEmpty) {
-      final recs = SearchRecentQueries.pickRecommendations(
-        _recommendationTitles,
-        exclude: _recentQueries,
-      );
-      return [
-        ...recent,
-        for (final t in recs) _HubHelperEntry(t, isRecent: false),
-      ];
-    }
-
-    // Keep recent pinned while searching; matching result titles follow.
+    final recs = SearchRecentQueries.pickRecommendations(
+      _recommendationTitles,
+      exclude: _recentQueries,
+    );
     return [
       ...recent,
-      for (var i = 0; i < _results.length; i++)
-        if (!recentLower.contains(_results[i].title.toLowerCase()))
-          _HubHelperEntry(
-            _results[i].title,
-            isRecent: false,
-            resultIndex: i,
-          ),
+      for (final t in recs) _HubHelperEntry(t, isRecent: false),
     ];
   }
 
