@@ -86,6 +86,43 @@ final searchTrendingTitlesProvider =
   }
 });
 
+/// Idle → trending pool. With a query → titles related to the top TMDB hit
+/// (recs / similar / genre / year / language / director / studio) — never the
+/// same titles as the result cards.
+final searchHelperTitlesProvider =
+    FutureProvider.autoDispose.family<List<String>, String>((ref, rawQuery) async {
+  final query = rawQuery.trim();
+  if (query.isEmpty) {
+    return ref.watch(searchTrendingTitlesProvider.future);
+  }
+
+  final sections = await ref.watch(searchResultsProvider(query).future);
+  Movie? seed;
+  final exclude = <String>{};
+  for (final section in sections) {
+    if (!section.isTmdb) continue;
+    for (final raw in section.results) {
+      if (raw is! Movie) continue;
+      final title = raw.title.trim();
+      if (title.isNotEmpty) exclude.add(title.toLowerCase());
+      seed ??= raw;
+    }
+  }
+  if (seed == null) {
+    return ref.watch(searchTrendingTitlesProvider.future);
+  }
+
+  final api = TmdbApi();
+  try {
+    final contextual = await api.contextualSearchTitles(
+      seed,
+      exclude: exclude,
+    );
+    if (contextual.isNotEmpty) return contextual;
+  } catch (_) {}
+  return ref.watch(searchTrendingTitlesProvider.future);
+});
+
 /// Unified TMDB + addon search for a trimmed query.
 final searchResultsProvider = FutureProvider.autoDispose
     .family<List<SearchResultSection>, String>((ref, rawQuery) async {

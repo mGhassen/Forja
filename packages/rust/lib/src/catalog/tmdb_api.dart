@@ -257,6 +257,8 @@ class TmdbApi {
     int? minVoteCount,
     String? language,
     int? watchProviderId,
+    int? withPeople,
+    int? withCompanies,
     String? watchRegion,
     String sortBy = 'popularity.desc',
     int page = 1,
@@ -287,6 +289,12 @@ class TmdbApi {
     if (watchProviderId != null) {
       path += '&with_watch_providers=$watchProviderId';
     }
+    if (withPeople != null) {
+      path += '&with_people=$withPeople';
+    }
+    if (withCompanies != null) {
+      path += '&with_companies=$withCompanies';
+    }
 
     final decoded = await _fetchMap(path);
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'movie')).toList();
@@ -301,6 +309,9 @@ class TmdbApi {
     int? minVoteCount,
     String? language,
     int? watchProviderId,
+    int? withPeople,
+    int? withCompanies,
+    int? withNetworks,
     String? watchRegion,
     String sortBy = 'popularity.desc',
     int page = 1,
@@ -331,9 +342,157 @@ class TmdbApi {
     if (watchProviderId != null) {
       path += '&with_watch_providers=$watchProviderId';
     }
+    if (withPeople != null) {
+      path += '&with_people=$withPeople';
+    }
+    if (withCompanies != null) {
+      path += '&with_companies=$withCompanies';
+    }
+    if (withNetworks != null) {
+      path += '&with_networks=$withNetworks';
+    }
 
     final decoded = await _fetchMap(path);
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'tv')).toList();
+  }
+
+  /// Titles related to [seed] by TMDB recs/similar + genre/year/lang/people/studio.
+  /// Never includes [seed] or [exclude] (case-insensitive). Cap [max].
+  Future<List<String>> contextualSearchTitles(
+    Movie seed, {
+    Iterable<String> exclude = const [],
+    int max = 64,
+  }) async {
+    final isTv = seed.mediaType == 'tv';
+    final type = isTv ? 'tv' : 'movie';
+    final seen = <String>{
+      for (final e in exclude)
+        if (e.trim().isNotEmpty) e.trim().toLowerCase(),
+    };
+    final seedTitle = seed.title.trim();
+    if (seedTitle.isNotEmpty) seen.add(seedTitle.toLowerCase());
+
+    Map<String, dynamic> details = const {};
+    try {
+      details = await _fetchMap(
+        '$type/${seed.id}?append_to_response=credits',
+        timeoutSecs: 10,
+      );
+    } catch (_) {}
+
+    final genreIds = (details['genres'] as List? ?? const [])
+        .whereType<Map>()
+        .map((g) => g['id'])
+        .whereType<int>()
+        .take(2)
+        .toList();
+    final dateRaw = (details['release_date'] ??
+            details['first_air_date'] ??
+            seed.releaseDate)
+        .toString();
+    final year = int.tryParse(
+      dateRaw.length >= 4 ? dateRaw.substring(0, 4) : '',
+    );
+    final language = (details['original_language'] as String?)?.trim();
+    final companies = details['production_companies'] as List? ?? const [];
+    int? companyId;
+    for (final c in companies) {
+      if (c is Map && c['id'] is int) {
+        companyId = c['id'] as int;
+        break;
+      }
+    }
+    final networks = details['networks'] as List? ?? const [];
+    int? networkId;
+    for (final n in networks) {
+      if (n is Map && n['id'] is int) {
+        networkId = n['id'] as int;
+        break;
+      }
+    }
+
+    int? personId;
+    final credits = details['credits'];
+    if (credits is Map) {
+      final crew = credits['crew'] as List? ?? const [];
+      for (final raw in crew) {
+        if (raw is! Map) continue;
+        final job = (raw['job'] ?? '').toString();
+        if (job == 'Director' || job == 'Creator' || job == 'Executive Producer') {
+          final id = raw['id'];
+          if (id is int) {
+            personId = id;
+            break;
+          }
+        }
+      }
+      if (personId == null) {
+        final createdBy = details['created_by'] as List? ?? const [];
+        for (final raw in createdBy) {
+          if (raw is! Map) continue;
+          final id = raw['id'];
+          if (id is int) {
+            personId = id;
+            break;
+          }
+        }
+      }
+    }
+
+    Future<List<Movie>> safe(Future<List<Movie>> Function() run) async {
+      try {
+        return await run();
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    final lists = await Future.wait([
+      safe(() => isTv
+          ? getTvRecommendations(seed.id)
+          : getMovieRecommendations(seed.id)),
+      safe(() => isTv ? getSimilarTvShows(seed.id) : getSimilarMovies(seed.id)),
+      if (genreIds.isNotEmpty)
+        safe(() => isTv
+            ? discoverTvShows(genres: genreIds, year: year)
+            : discoverMovies(genres: genreIds, year: year)),
+      if (genreIds.isNotEmpty)
+        safe(() => isTv
+            ? discoverTvShows(genres: genreIds)
+            : discoverMovies(genres: genreIds)),
+      if (genreIds.isNotEmpty && language != null && language.isNotEmpty)
+        safe(() => isTv
+            ? discoverTvShows(genres: genreIds, language: language)
+            : discoverMovies(genres: genreIds, language: language)),
+      if (personId != null)
+        safe(() => isTv
+            ? discoverTvShows(withPeople: personId)
+            : discoverMovies(withPeople: personId)),
+      if (isTv && networkId != null)
+        safe(() => discoverTvShows(withNetworks: networkId)),
+      if (!isTv && companyId != null)
+        safe(() => discoverMovies(withCompanies: companyId)),
+    ]);
+
+    final queues = [for (final list in lists) List<Movie>.from(list)];
+    final titles = <String>[];
+    var madeProgress = true;
+    while (madeProgress && titles.length < max) {
+      madeProgress = false;
+      for (final queue in queues) {
+        while (queue.isNotEmpty) {
+          final item = queue.removeAt(0);
+          final title = item.title.trim();
+          if (title.isEmpty) continue;
+          if (!seen.add(title.toLowerCase())) continue;
+          titles.add(title);
+          madeProgress = true;
+          break;
+        }
+        if (titles.length >= max) break;
+      }
+    }
+    return titles;
   }
 
   Future<List<Movie>> getSimilarMovies(int movieId) async {

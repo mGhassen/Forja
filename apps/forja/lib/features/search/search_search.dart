@@ -8,11 +8,17 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
   }
 
   List<String> get _trendingHelperTitles {
-    return ref.watch(searchTrendingTitlesProvider).valueOrNull ?? const [];
+    final key = _s._activeSearchQuery.trim().isNotEmpty
+        ? _s._activeSearchQuery.trim()
+        : '';
+    return ref.watch(searchHelperTitlesProvider(key)).valueOrNull ?? const [];
   }
 
   bool get _trendingHelpersLoading {
-    final async = ref.watch(searchTrendingTitlesProvider);
+    final key = _s._activeSearchQuery.trim().isNotEmpty
+        ? _s._activeSearchQuery.trim()
+        : '';
+    final async = ref.watch(searchHelperTitlesProvider(key));
     return async.isLoading && !async.hasValue;
   }
 

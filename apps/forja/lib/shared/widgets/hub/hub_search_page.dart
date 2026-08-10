@@ -37,7 +37,10 @@ class HubSearchResult {
 }
 
 typedef HubSearchQuery = Future<List<HubSearchResult>> Function(String query);
-typedef HubRecommendationsLoader = Future<List<String>> Function();
+typedef HubRecommendationsLoader = Future<List<String>> Function({
+  required String query,
+  required List<HubSearchResult> results,
+});
 typedef HubSearchOpen = void Function(HubSearchResult result);
 
 /// Hub search overlay - desktop split layout with recommendations + result grid
@@ -75,6 +78,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
   Timer? _debounce;
   String _query = '';
   int _searchGeneration = 0;
+  int _recommendGeneration = 0;
   bool _isSearching = false;
   String? _error;
   List<HubSearchResult> _results = [];
@@ -180,10 +184,17 @@ class _HubSearchPageState extends State<HubSearchPage> {
     });
   }
 
-  Future<void> _loadRecommendations() async {
+  Future<void> _loadRecommendations({
+    String query = '',
+    List<HubSearchResult> results = const [],
+  }) async {
+    final gen = ++_recommendGeneration;
     try {
-      final titles = await widget.loadRecommendations();
-      if (!mounted) return;
+      final titles = await widget.loadRecommendations(
+        query: query,
+        results: results,
+      );
+      if (!mounted || gen != _recommendGeneration) return;
       setState(() {
         _recommendationTitles = titles;
         _recommendationsLoading = false;
@@ -192,7 +203,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
         _scheduleEnsureSearchFieldFocused();
       }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || gen != _recommendGeneration) return;
       setState(() => _recommendationsLoading = false);
     }
   }
@@ -317,6 +328,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
         _isSearching = false;
         _pendingGridFocusIndex = null;
       });
+      _loadRecommendations();
       if (_tvFocus(context) && _focusNode.hasFocus) {
         _focusSearchFieldBrowse();
       }
@@ -356,6 +368,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
         _results = results;
         _isSearching = false;
       });
+      _loadRecommendations(query: query, results: results);
       _scheduleFocusOnResultCardIfPending();
     } catch (e) {
       if (gen != _searchGeneration || !mounted) return;
@@ -1041,14 +1054,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
             return shellFocusableTap(
               context: context,
-              onTap: () {
-                final resultIndex = entry.resultIndex;
-                if (resultIndex != null) {
-                  _focusResultCardAt(resultIndex);
-                } else {
-                  _applyHelperQuery(entry.title);
-                }
-              },
+                onTap: () => _applyHelperQuery(entry.title),
               borderRadius: 4,
               scaleOnFocus: 1.0,
               navLeftAlways: true,
@@ -1515,10 +1521,8 @@ class _HubHelperEntry {
   const _HubHelperEntry(
     this.title, {
     required this.isRecent,
-    this.resultIndex,
   });
 
   final String title;
   final bool isRecent;
-  final int? resultIndex;
 }

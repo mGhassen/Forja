@@ -344,14 +344,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               order: NumericFocusOrder(index.toDouble()),
               child: shellFocusableTap(
                 context: context,
-                onTap: () {
-                  final resultIndex = entry.resultIndex;
-                  if (resultIndex != null) {
-                    _s._focusResultCardAt(resultIndex);
-                  } else {
-                    _s._applyHelperQuery(entry.title);
-                  }
-                },
+                onTap: () => _s._applyHelperQuery(entry.title),
                 borderRadius: 4,
                 scaleOnFocus: 1.0,
                 navLeftAlways: true,
