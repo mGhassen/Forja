@@ -236,25 +236,32 @@ class StreamExtractor {
     _serverSwitchCount = 0;
     _lastServerClickLabel = null;
 
-    _timeoutTimer = Timer(effectiveTimeout, () {
-      if (_completer != null && !_completer!.isCompleted) {
-        final best = _bestPlayableCaptured();
-        if (best != null) {
-          // Timeout (or cancel flagged mid-sniff): still return what we have.
-          _capturedVideo = best;
-          _completeWithCaptured(url);
-          return;
-        }
-        if (cancelled()) {
+    void armSniffTimeout() {
+      _timeoutTimer?.cancel();
+      _timeoutTimer = Timer(effectiveTimeout, () {
+        if (_completer != null && !_completer!.isCompleted) {
+          final best = _bestPlayableCaptured();
+          if (best != null) {
+            _capturedVideo = best;
+            _completeWithCaptured(url);
+            return;
+          }
+          if (cancelled()) {
+            _cleanup();
+            _completer?.complete(null);
+            return;
+          }
+          _log('Sniffing session timeout for: $url');
           _cleanup();
           _completer?.complete(null);
-          return;
         }
-        _log('Sniffing session timeout for: $url');
-        _cleanup();
-        _completer?.complete(null);
-      }
-    });
+      });
+    }
+
+    // CF wait runs after WebView boot — don't burn the sniff budget on interstitial.
+    if (!_profile.waitForCloudflare) {
+      armSniffTimeout();
+    }
 
     _log(
       'RAW SNIFFER START: $url'
@@ -361,6 +368,16 @@ class StreamExtractor {
       await cancel();
       return null;
     }
+    if (_profile.waitForCloudflare && !cancelled()) {
+      await _waitForCloudflareClearance(cancelled: cancelled);
+      if (!cancelled() && !(_completer?.isCompleted ?? true)) {
+        armSniffTimeout();
+      }
+    }
+    if (cancelled()) {
+      await cancel();
+      return null;
+    }
     try {
       return await _completer?.future;
     } finally {
@@ -368,6 +385,56 @@ class StreamExtractor {
         _activeProviderId = null;
       }
     }
+  }
+
+  /// Miruro-style poll until CF interstitial / empty error shell clears.
+  /// Hard gates (Turnstile fail, origin 522) time out and sniff continues empty.
+  Future<void> _waitForCloudflareClearance({
+    required bool Function() cancelled,
+  }) async {
+    final controller = _headlessWebView?.webViewController;
+    if (controller == null) return;
+    final deadline = DateTime.now().add(const Duration(seconds: 28));
+    var loggedBlocked = false;
+    while (DateTime.now().isBefore(deadline)) {
+      if (cancelled() || (_completer?.isCompleted ?? true)) return;
+      try {
+        final res = await controller.callAsyncJavaScript(
+          functionBody: '''
+            const title = (document.title || '').trim();
+            const t = title.toLowerCase();
+            const b = ((document.body && document.body.innerText) || '').slice(0, 2000);
+            const html = (document.documentElement && document.documentElement.innerHTML) || '';
+            const blocked =
+              !title ||
+              t.includes('just a moment') ||
+              t.includes('attention required') ||
+              t.includes('expired') ||
+              b.includes('Checking your browser') ||
+              b.includes('Enable JavaScript and cookies') ||
+              b.includes('Attention Required') ||
+              b.includes('error code: 522') ||
+              b.includes('error code: 523') ||
+              b.includes('error code: 521') ||
+              (html.includes('cf-icon-error') && !html.includes('video'));
+            return { blocked: blocked, title: title };
+          ''',
+        );
+        final value = res?.value;
+        if (value is Map && value['blocked'] != true) {
+          final title = value['title']?.toString() ?? '';
+          if (title.isNotEmpty) {
+            _log('CF clear ($title)');
+            return;
+          }
+        } else if (!loggedBlocked) {
+          loggedBlocked = true;
+          _log('CF / challenge shell detected - waiting for clearance');
+        }
+      } catch (_) {}
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
+    _log('CF wait timed out - continuing sniff');
   }
 
   // ── Wrapper helpers ──────────────────────────────────────────────────────
@@ -420,7 +487,14 @@ class StreamExtractor {
           .replaceFirst('[BLOB_URL]', '')
           .replaceFirst('[WORKER]', '')
           .replaceFirst('[SERVER_CLICK]', '')
+          .replaceFirst('[SERVER_PANEL]', '')
+          .replaceFirst('[VS_BOOT]', '')
           .trim();
+      // Non-URL control messages from the sniffer.
+      if (fullMsg.contains('[SERVER_PANEL]') ||
+          fullMsg.contains('[VS_BOOT]')) {
+        return;
+      }
       // Server switch: stash the previous chip's playable URLs, then clear so
       // a dead default cannot win — rotate profiles still keep every hit.
       if (fullMsg.contains('[SERVER_CLICK]')) {
@@ -685,11 +759,15 @@ class StreamExtractor {
     _completeWithCaptured(playbackReferer);
   }
 
-  /// `/api/proxy` URLs whose response body was `#EXTM3U`.
+  /// `/api/proxy` or VidFast `/w/{uuid}/…` URLs whose body was `#EXTM3U`.
   static bool _isEmbedProxyPlaylistUrl(String url) {
     final lower = url.toLowerCase();
-    return lower.contains('/api/proxy') &&
-        (lower.contains('sig=') || lower.contains('1embed'));
+    if (lower.contains('/api/proxy') &&
+        (lower.contains('sig=') || lower.contains('1embed'))) {
+      return true;
+    }
+    // VidFast opaque session playlist path.
+    return RegExp(r'/w/[0-9a-f-]{8,}/', caseSensitive: false).hasMatch(lower);
   }
 
   static bool _isHttpOrHttpsUrl(String url) {
@@ -1073,6 +1151,59 @@ class StreamExtractor {
       window.open = function() { return null; };
       window.alert = function() { return true; };
 
+      const looksProxyUrl = (lowerUrl) =>
+        lowerUrl.includes('/api/proxy') ||
+        lowerUrl.includes('/api/sources') ||
+        lowerUrl.includes('/api/v1/stream') ||
+        lowerUrl.includes('internal_token=') ||
+        (lowerUrl.includes('/api?') && lowerUrl.includes('d=')) ||
+        lowerUrl.includes('proxy') ||
+        // VidFast session media: `/w/{uuid}/…` (often plaintext or JSON playlist).
+        /\\/w\\/[0-9a-f-]{8,}\\//i.test(lowerUrl);
+
+      const scanNetworkBody = (tag, absUrl, text) => {
+        if (!text || typeof text !== 'string') return;
+        const lowerUrl = String(absUrl || '').toLowerCase();
+        const trimmed = text.trim();
+        const looksProxy = looksProxyUrl(lowerUrl);
+        if (!(trimmed.includes('.m3u8') || trimmed.startsWith('#EXTM3U') ||
+              (ACCEPT_PROXY_BODY && looksProxy))) {
+          return;
+        }
+        if (trimmed.startsWith('#EXTM3U') && String(absUrl).startsWith('http')) {
+          log(tag, absUrl);
+        }
+        const matches = text.match(/https?:\\/\\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*/gi);
+        if (matches) matches.forEach((u) => log(tag, u));
+        const rel = text.match(/["'](\\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*)["']/gi);
+        if (rel) {
+          rel.forEach((rawMatch) => {
+            const path = rawMatch.replace(/["']/g, '');
+            try { log(tag, new URL(path, window.location.href).href); } catch (e) {}
+          });
+        }
+        if (ACCEPT_PROXY_BODY && looksProxy && trimmed.startsWith('{')) {
+          try {
+            const walk = (node) => {
+              if (!node) return;
+              if (typeof node === 'string') {
+                if (node.includes('.m3u8') || node.includes('m3u8=')) {
+                  try { log(tag, new URL(node, window.location.href).href); } catch (e) {
+                    if (node.startsWith('http')) log(tag, node);
+                  }
+                }
+                return;
+              }
+              if (Array.isArray(node)) { node.forEach(walk); return; }
+              if (typeof node === 'object') {
+                Object.keys(node).forEach((k) => walk(node[k]));
+              }
+            };
+            walk(JSON.parse(trimmed));
+          } catch (e) {}
+        }
+      };
+
       const originalFetch = window.fetch;
       window.fetch = async function(...args) {
         const raw = args[0] instanceof Request ? args[0].url : String(args[0]);
@@ -1083,21 +1214,7 @@ class StreamExtractor {
         try {
           const clone = res.clone();
           const text = await clone.text();
-          const lowerUrl = absUrl.toLowerCase();
-          const looksProxy = lowerUrl.includes('/api/proxy') ||
-            lowerUrl.includes('/api/sources') ||
-            lowerUrl.includes('/api/v1/stream') ||
-            lowerUrl.includes('internal_token=') ||
-            (lowerUrl.includes('/api?') && lowerUrl.includes('d=')) ||
-            lowerUrl.includes('proxy');
-          if (text.includes('.m3u8') || text.trim().startsWith('#EXTM3U') ||
-              (ACCEPT_PROXY_BODY && looksProxy)) {
-            if (text.trim().startsWith('#EXTM3U') && absUrl.startsWith('http')) {
-              log('FETCH_BODY', absUrl);
-            }
-            const matches = text.match(/https?:\\/\\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*/gi);
-            if (matches) matches.forEach((u) => log('FETCH_BODY', u));
-          }
+          scanNetworkBody('FETCH_BODY', absUrl, text);
         } catch (e) {}
         return res;
       };
@@ -1114,34 +1231,19 @@ class StreamExtractor {
       XMLHttpRequest.prototype.send = function() {
         this.addEventListener('load', function() {
           try {
-            const reqUrl = String(this._pt_url || '');
-            const text = this.responseText || '';
-            const lowerUrl = reqUrl.toLowerCase();
-            const looksProxy = lowerUrl.includes('/api/proxy') ||
-              lowerUrl.includes('/api/sources') ||
-              lowerUrl.includes('/api/v1/stream') ||
-              lowerUrl.includes('internal_token=') ||
-              (lowerUrl.includes('/api?') && lowerUrl.includes('d=')) ||
-              lowerUrl.includes('proxy');
-            if (text.includes('.m3u8') || text.trim().startsWith('#EXTM3U') ||
-                (ACCEPT_PROXY_BODY && looksProxy)) {
-              if (text.trim().startsWith('#EXTM3U') && reqUrl.startsWith('http')) {
-                log('XHR_BODY', reqUrl);
-              }
-              const matches = text.match(/https?:\\/\\/[^"'\\s<>]+\\.m3u8[^"'\\s<>]*/gi);
-              if (matches) matches.forEach((u) => log('XHR_BODY', u));
-            }
+            scanNetworkBody('XHR_BODY', this._pt_url, this.responseText || '');
           } catch (e) {}
         });
         return originalXHRSend.apply(this, arguments);
       };
 
-      // VidFast / MSE players: real playlist is Hls.loadSource(url), video.src is blob:.
+      // VidFast / MSE: playlist is Hls.loadSource(url); video.src is blob:.
+      // Webpack often keeps Hls off window — deep-scan + defineProperty trap.
       const hookHlsProto = (H) => {
         if (!H || !H.prototype || H.prototype.__pt_hls_hooked) return;
-        H.prototype.__pt_hls_hooked = true;
         const origLoad = H.prototype.loadSource;
         if (typeof origLoad !== 'function') return;
+        H.prototype.__pt_hls_hooked = true;
         H.prototype.loadSource = function(url) {
           try {
             let abs = String(url || '');
@@ -1151,10 +1253,27 @@ class StreamExtractor {
           return origLoad.apply(this, arguments);
         };
       };
+      const hookHlsCandidate = (v) => {
+        if (!v) return;
+        if (typeof v === 'function') hookHlsProto(v);
+        try {
+          if (v.default) hookHlsProto(v.default);
+          if (v.Hls) hookHlsProto(v.Hls);
+          if (v.hls) hookHlsProto(v.hls);
+        } catch (e) {}
+      };
       const hookHls = () => {
-        hookHlsProto(window.Hls);
-        hookHlsProto(window.hls);
-        hookHlsProto(window.Hlsjs);
+        hookHlsCandidate(window.Hls);
+        hookHlsCandidate(window.hls);
+        hookHlsCandidate(window.Hlsjs);
+        try {
+          const keys = Object.getOwnPropertyNames(window);
+          for (let i = 0; i < keys.length; i++) {
+            let v;
+            try { v = window[keys[i]]; } catch (e) { continue; }
+            hookHlsCandidate(v);
+          }
+        } catch (e) {}
       };
       hookHls();
       setInterval(hookHls, 400);
@@ -1163,8 +1282,39 @@ class StreamExtractor {
         Object.defineProperty(window, 'Hls', {
           configurable: true,
           get() { return _hls; },
-          set(v) { _hls = v; hookHlsProto(v); }
+          set(v) { _hls = v; hookHlsCandidate(v); }
         });
+      } catch (e) {}
+      try {
+        const odp = Object.defineProperty;
+        Object.defineProperty = function(obj, prop, desc) {
+          const ret = odp.apply(this, arguments);
+          try {
+            if (obj && typeof obj.loadSource === 'function' && !obj.__pt_hls_hooked &&
+                (prop === 'loadSource' || (obj.prototype && obj.prototype.loadSource))) {
+              if (prop === 'loadSource' && typeof desc?.value === 'function') {
+                const orig = desc.value;
+                odp.call(Object, obj, 'loadSource', {
+                  configurable: true,
+                  writable: true,
+                  value: function(url) {
+                    try {
+                      let abs = String(url || '');
+                      try { abs = new URL(abs, window.location.href).href; } catch (e) {}
+                      if (abs) log('HLS_SRC', abs);
+                    } catch (e) {}
+                    return orig.apply(this, arguments);
+                  }
+                });
+                try { obj.__pt_hls_hooked = true; } catch (e) {}
+              }
+            }
+            if (obj && obj.prototype && typeof obj.prototype.loadSource === 'function') {
+              hookHlsProto(obj);
+            }
+          } catch (e) {}
+          return ret;
+        };
       } catch (e) {}
 
 

@@ -58,5 +58,7 @@ void main() {
     expect(SimpleStreamingResolve.timeoutFor('vidlove').inSeconds, 120);
     expect(SimpleStreamingResolve.timeoutFor('111movies').inSeconds, 120);
     expect(SimpleStreamingResolve.timeoutFor('vidrock').inSeconds, 120);
+    expect(SimpleStreamingResolve.timeoutFor('vidfast').inSeconds, 120);
+    expect(SimpleStreamingResolve.timeoutFor('vidzee').inSeconds, 120);
   });
 }

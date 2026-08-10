@@ -16,6 +16,7 @@ class EmbedExtractProfile {
     this.cdnHostsPreferEmbedReferer = const [],
     this.harvestCookies = true,
     this.completeOnlyWithAudio = false,
+    this.waitForCloudflare = false,
   });
 
   final String id;
@@ -53,4 +54,8 @@ class EmbedExtractProfile {
 
   /// Do not complete until an audio URL was also sniffed (legacy Anitaro).
   final bool completeOnlyWithAudio;
+
+  /// Poll until Cloudflare interstitial / error shell clears (Miruro-style).
+  /// Does not bypass hard CF gates (Turnstile / 522); only waits for JS clear.
+  final bool waitForCloudflare;
 }

@@ -27,8 +27,10 @@ abstract final class SimpleStreamingResolve {
   /// VidLove / 111movies: chip rotate + opaque `/api?d=` media (90s sniff).
   static const _vidloveTimeout = Duration(seconds: 120);
 
-  /// VidRock: Servers list chip-rotate collect-all (90s sniff).
+  /// VidRock / VidFast / Vidzee: Servers chip-rotate + CF wait headroom.
   static const _vidrockTimeout = Duration(seconds: 120);
+  static const _vidfastTimeout = Duration(seconds: 120);
+  static const _vidzeeTimeout = Duration(seconds: 120);
 
   /// 111477 HTTP before any sniff fallback.
   static const _hostApiTimeout = Duration(seconds: 35);
@@ -171,6 +173,8 @@ abstract final class SimpleStreamingResolve {
       return _vidloveTimeout;
     }
     if (providerId == 'vidrock') return _vidrockTimeout;
+    if (providerId == 'vidfast') return _vidfastTimeout;
+    if (providerId == 'vidzee') return _vidzeeTimeout;
     if (hostApiIds.contains(providerId)) return _hostApiTimeout;
     return _hostEmbedTimeout;
   }

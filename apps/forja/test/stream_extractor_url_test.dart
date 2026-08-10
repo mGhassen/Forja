@@ -67,6 +67,13 @@ void main() {
         isFalse,
       );
     });
+
+    test('VidFast /w/uuid path is embed proxy playlist URL', () {
+      const url =
+          'https://vidfast.vc/w/2997559f-eb63-54f1-bf57-dfa63248e8aa/token';
+      // Not playable by suffix alone — needs confirmed playlist body.
+      expect(StreamExtractor.isPlayableStreamUrl(url), isFalse);
+    });
   });
 
   group('StreamExtractor.isStrongStreamUrl', () {
@@ -151,10 +158,21 @@ void main() {
       );
       expect(love.forceDirect, isTrue);
       expect(love.acceptProxyPlaylistBodies, isTrue);
-      expect(fast.rotateServerChips, isFalse);
+      expect(fast.rotateServerChips, isTrue);
       expect(fast.forceDirect, isTrue);
       expect(fast.deferUntilStrongStream, isTrue);
       expect(fast.acceptProxyPlaylistBodies, isTrue);
+      expect(fast.timeout.inSeconds, 90);
+    });
+
+    test('vidzee waits for CF, forceDirect, rotates servers', () {
+      final p = EmbedExtractProfiles.resolve('vidzee');
+      expect(p.forceDirect, isTrue);
+      expect(p.deferUntilStrongStream, isTrue);
+      expect(p.rotateServerChips, isTrue);
+      expect(p.waitForCloudflare, isTrue);
+      expect(p.timeout.inSeconds, 90);
+      expect(p.cdnHostsPreferEmbedReferer, containsAll(['1shows', 'vidzee']));
     });
 
     test('vidrock rotates Servers list chips and defers for HLS.js', () {
