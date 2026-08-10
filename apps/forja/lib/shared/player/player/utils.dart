@@ -137,6 +137,10 @@ Map<String, String> resolvePlaybackHttpHeaders(
   final pid = providerId?.trim();
   final policy = cfg.playbackPolicyFor(pid);
   final banSelf = cfg.bansCdnSelfReferer(pid);
+  // Movie/TV VidNest CDNs (lamda/delta/alfa/…) reject forced vidnest.fun
+  // Referer; web uses no-referrer. Keep extractor/API headers only — do not
+  // invent policy Referer. Anime `vidnest:*` still uses policy below.
+  final vidnestMovieTv = pid != null && pid.toLowerCase() == 'vidnest';
   final catalogForMatch = streamUrl != null && isLocalLoopbackPlayUrl(streamUrl)
       ? (hlsProxyTargetUrl(streamUrl) ?? streamUrl)
       : streamUrl;
@@ -144,7 +148,7 @@ Map<String, String> resolvePlaybackHttpHeaders(
   final referer = take('Referer', 'referer');
   if (referer != null && referer.isNotEmpty) {
     putCanonical('Referer', 'referer', referer);
-  } else if (policy != null) {
+  } else if (policy != null && !vidnestMovieTv) {
     // RFC-044: recover from provider identity - never invent CDN self-Referer.
     putCanonical('Referer', 'referer', policy.referer);
     putCanonical('Origin', 'origin', policy.origin);
@@ -162,7 +166,7 @@ Map<String, String> resolvePlaybackHttpHeaders(
   }
 
   // Provider policy: force when missing, self-CDN, or scrape (enma) Referer.
-  if (policy != null) {
+  if (policy != null && !vidnestMovieTv) {
     final ref = take('Referer', 'referer') ?? '';
     final refHost = Uri.tryParse(ref)?.host.toLowerCase() ?? ref.toLowerCase();
     final streamHost =

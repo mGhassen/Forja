@@ -27,6 +27,9 @@ class StreamExtractor {
   // Track all detected video URLs to select best quality
   final List<String> _detectedVideoUrls = [];
 
+  /// Streams flushed before each server-chip switch (collect-all rotate).
+  final List<StreamSource> _flushedChipSources = [];
+
   /// Count of internal server-chip switches during this sniff (dropdown / chips).
   int _serverSwitchCount = 0;
   String? _lastServerClickLabel;
@@ -229,6 +232,7 @@ class StreamExtractor {
     _originalEmbedUrl = url;
     _completing = false;
     _detectedVideoUrls.clear();
+    _flushedChipSources.clear();
     _serverSwitchCount = 0;
     _lastServerClickLabel = null;
 
@@ -417,8 +421,8 @@ class StreamExtractor {
           .replaceFirst('[WORKER]', '')
           .replaceFirst('[SERVER_CLICK]', '')
           .trim();
-      // Server switch: drop the previous server's candidates so a dead default
-      // (e.g. VidSrc.sbs Star) cannot win over a later working mirror.
+      // Server switch: stash the previous chip's playable URLs, then clear so
+      // a dead default cannot win — rotate profiles still keep every hit.
       if (fullMsg.contains('[SERVER_CLICK]')) {
         final label = streamUrl;
         if (label.isNotEmpty &&
@@ -427,6 +431,7 @@ class StreamExtractor {
           _log('Ignoring duplicate SERVER_CLICK: $label');
           return;
         }
+        _flushCurrentChipSources();
         _lastServerClickLabel = label;
         _serverSwitchCount++;
         _detectedVideoUrls.clear();
@@ -725,6 +730,8 @@ class StreamExtractor {
     }
 
     if (lower.contains('.m3u8')) return true;
+    // Cinesrc / ice.* proxies: `?m3u8=<token>` (no `.m3u8` in the path).
+    if (lower.contains('m3u8=')) return true;
     if (lower.contains('.mpd')) return true;
     if (lower.contains('.mp4') && !lower.contains('googlevideo.com')) {
       return true;
@@ -755,7 +762,22 @@ class StreamExtractor {
         !lower.contains('appId=')) {
       return true;
     }
+    // VidLove / 111movies: player sets video.src to signed `/api?d=&internal_token=`
+    // (no .m3u8/.mp4 suffix). Browser plays that URL; treat as media.
+    if (isOpaqueSignedMediaProxyUrl(trimmed)) return true;
     return false;
+  }
+
+  /// VidLove-style opaque media proxy (`/api?d=…&internal_token=…`).
+  static bool isOpaqueSignedMediaProxyUrl(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.host.isEmpty) return false;
+    if (!(uri.isScheme('http') || uri.isScheme('https'))) return false;
+    final path = uri.path;
+    if (path != '/api' && path != '/api/') return false;
+    final d = uri.queryParameters['d']?.trim() ?? '';
+    final token = uri.queryParameters['internal_token']?.trim() ?? '';
+    return d.isNotEmpty && token.isNotEmpty;
   }
 
   /// Audio-only / secondary tracks that look like `.mp4` but are not the film.
@@ -776,6 +798,7 @@ class StreamExtractor {
     // Progressive mp4 can be a stale signed clip; prefer playlist formats when
     // [EmbedExtractProfile.deferUntilStrongStream] is waiting for a real open.
     if (lower.contains('.m3u8')) return true;
+    if (lower.contains('m3u8=')) return true;
     if (lower.contains('.mpd')) return true;
     if (lower.contains('playlist') && !lower.contains('webmanifest')) {
       return true;
@@ -792,8 +815,10 @@ class StreamExtractor {
   /// Excludes progressive mp4 so multi-server embeds can rotate past audio clips.
   static bool isDeferredStrongStreamUrl(String url) {
     if (isAudioOnlyStreamUrl(url)) return false;
+    if (isOpaqueSignedMediaProxyUrl(url)) return true;
     final lower = url.toLowerCase();
     return lower.contains('.m3u8') ||
+        lower.contains('m3u8=') ||
         lower.contains('.mpd') ||
         (lower.contains('playlist') && !lower.contains('webmanifest'));
   }
@@ -928,39 +953,94 @@ class StreamExtractor {
     }
   }
 
-  List<StreamSource> _buildCapturedSources(Map<String, String> headers) {
+  void _flushCurrentChipSources() {
     final urls = _detectedVideoUrls.isNotEmpty
         ? List<String>.from(_detectedVideoUrls)
         : (_capturedVideo != null ? [_capturedVideo!] : const <String>[]);
-    return urls.map((url) {
-      final lower = url.toLowerCase();
-      final type =
-          lower.contains('.m3u8') ||
-              (_profile.acceptProxyPlaylistBodies &&
-                  _isEmbedProxyPlaylistUrl(url))
-          ? 'hls'
-          : lower.contains('.mpd')
-          ? 'dash'
-          : 'mp4';
-      final title = lower.contains('h265') || lower.contains('hevc')
-          ? 'HEVC'
-          : lower.contains('1080')
-          ? '1080p'
-          : lower.contains('720')
-          ? '720p'
-          : 'Stream';
-      return StreamSource(
-        url: url,
-        title: title,
-        type: type,
-        headers: headers,
-        providerId: _activeProviderId ??
-            (_profile.id != EmbedExtractProfiles.generic.id
-                ? _profile.id
-                : null),
-        catalogUrl: url,
+    if (urls.isEmpty) return;
+    final headers = Map<String, String>.from(
+      _capturedHeaders ??
+          _buildHeaders(_originalEmbedUrl ?? _playerOriginFallback()),
+    );
+    final label = _chipTitleLabel();
+    for (final url in urls) {
+      if (!isPlayableStreamUrl(url) || isAudioOnlyStreamUrl(url)) continue;
+      if (_flushedChipSources.any((s) => s.url == url)) continue;
+      _flushedChipSources.add(
+        _streamSourceForUrl(url, headers: headers, serverLabel: label),
       );
-    }).toList();
+    }
+  }
+
+  String? _chipTitleLabel() {
+    final clicked = _lastServerClickLabel?.trim();
+    if (clicked != null && clicked.isNotEmpty) return clicked;
+    if (_profile.serverChipLabels.isNotEmpty) {
+      return _profile.serverChipLabels.first;
+    }
+    return null;
+  }
+
+  String _playerOriginFallback() {
+    final embed = _originalEmbedUrl;
+    if (embed == null || embed.isEmpty) return 'https://player.videasy.to/';
+    return embed;
+  }
+
+  StreamSource _streamSourceForUrl(
+    String url, {
+    required Map<String, String> headers,
+    String? serverLabel,
+  }) {
+    final lower = url.toLowerCase();
+    final type =
+        lower.contains('.m3u8') ||
+            (_profile.acceptProxyPlaylistBodies &&
+                _isEmbedProxyPlaylistUrl(url))
+        ? 'hls'
+        : lower.contains('.mpd')
+        ? 'dash'
+        : 'mp4';
+    final quality = lower.contains('h265') || lower.contains('hevc')
+        ? 'HEVC'
+        : lower.contains('1080')
+        ? '1080p'
+        : lower.contains('720')
+        ? '720p'
+        : 'Stream';
+    final label = serverLabel?.trim();
+    final title = (label != null && label.isNotEmpty)
+        ? '$label · $quality'
+        : quality;
+    return StreamSource(
+      url: url,
+      title: title,
+      type: type,
+      headers: headers,
+      providerId: _activeProviderId ??
+          (_profile.id != EmbedExtractProfiles.generic.id
+              ? _profile.id
+              : null),
+      catalogUrl: url,
+    );
+  }
+
+  List<StreamSource> _buildCapturedSources(Map<String, String> headers) {
+    _flushCurrentChipSources();
+    if (_flushedChipSources.isNotEmpty) {
+      return List<StreamSource>.from(_flushedChipSources);
+    }
+    final urls = _detectedVideoUrls.isNotEmpty
+        ? List<String>.from(_detectedVideoUrls)
+        : (_capturedVideo != null ? [_capturedVideo!] : const <String>[]);
+    return [
+      for (final url in urls)
+        _streamSourceForUrl(
+          url,
+          headers: headers,
+          serverLabel: _chipTitleLabel(),
+        ),
+    ];
   }
 
   String _getRawSpyJs(EmbedExtractProfile profile) {
@@ -969,6 +1049,7 @@ class StreamExtractor {
         .map((s) => '"${s.toLowerCase().replaceAll('"', '')}"')
         .join(',');
     final acceptProxyBody = profile.acceptProxyPlaylistBodies;
+    final providerIdJs = profile.id.replaceAll("'", r"\'");
     return """
     (function() {
       if (window.pt_raw_injected) return;
@@ -976,6 +1057,9 @@ class StreamExtractor {
       const ROTATE_SERVER_CHIPS = $rotate;
       const SERVER_CHIP_LABELS = [$labelsJson];
       const ACCEPT_PROXY_BODY = $acceptProxyBody;
+      const PROVIDER_ID = '$providerIdJs';
+      const IS_VIDROCK = PROVIDER_ID === 'vidrock';
+      const IS_VIDSRC = PROVIDER_ID === 'vidsrc';
 
       const log = (type, url) => {
         if (!url || typeof url !== 'string' || url.startsWith('data:')) return;
@@ -1003,6 +1087,8 @@ class StreamExtractor {
           const looksProxy = lowerUrl.includes('/api/proxy') ||
             lowerUrl.includes('/api/sources') ||
             lowerUrl.includes('/api/v1/stream') ||
+            lowerUrl.includes('internal_token=') ||
+            (lowerUrl.includes('/api?') && lowerUrl.includes('d=')) ||
             lowerUrl.includes('proxy');
           if (text.includes('.m3u8') || text.trim().startsWith('#EXTM3U') ||
               (ACCEPT_PROXY_BODY && looksProxy)) {
@@ -1034,6 +1120,8 @@ class StreamExtractor {
             const looksProxy = lowerUrl.includes('/api/proxy') ||
               lowerUrl.includes('/api/sources') ||
               lowerUrl.includes('/api/v1/stream') ||
+              lowerUrl.includes('internal_token=') ||
+              (lowerUrl.includes('/api?') && lowerUrl.includes('d=')) ||
               lowerUrl.includes('proxy');
             if (text.includes('.m3u8') || text.trim().startsWith('#EXTM3U') ||
                 (ACCEPT_PROXY_BODY && looksProxy)) {
@@ -1164,6 +1252,8 @@ class StreamExtractor {
       const isActiveChip = (el) => {
         const cls = (el.className || '').toString().toLowerCase();
         return cls.includes('active') ||
+          cls.includes('border-player-accent') ||
+          cls.includes('bg-player-accent') ||
           el.getAttribute('aria-pressed') === 'true' ||
           el.getAttribute('aria-selected') === 'true';
       };
@@ -1181,8 +1271,7 @@ class StreamExtractor {
           document.querySelector('.srv-menu');
         const btn = document.getElementById('srvBtn') ||
           document.querySelector('.srv-dropdown-btn');
-        if (!btn || !menu) return;
-        if (!menu.classList.contains('open')) {
+        if (btn && menu && !menu.classList.contains('open')) {
           try { btn.click(); } catch (e) {}
           try {
             btn.dispatchEvent(new MouseEvent('click', {
@@ -1190,9 +1279,44 @@ class StreamExtractor {
             }));
           } catch (e) {}
         }
+        // VidRock-only: panel mounts only while open (title="Server List").
+        // Do NOT click generic "server" controls on VidSrc.sbs / other hosts.
+        if (IS_VIDROCK && !document.querySelector('[data-server-list]')) {
+          const toggles = Array.from(document.querySelectorAll(
+            'button[title], [role="button"][title]'
+          ));
+          for (const el of toggles) {
+            const t = (
+              (el.getAttribute('title') || '') + ' ' +
+              (el.getAttribute('aria-label') || '')
+            ).toLowerCase();
+            if (t.includes('server list')) {
+              try { el.click(); } catch (e) {}
+              try {
+                el.dispatchEvent(new MouseEvent('click', {
+                  view: window, bubbles: true, cancelable: true
+                }));
+              } catch (e) {}
+              console.log('PT_EXTRACT: [SERVER_PANEL] open | FRAME: ' +
+                window.location.href);
+              break;
+            }
+          }
+        }
       };
       const clickEl = (el) => {
-        const label = chipText(el);
+        let label = chipText(el);
+        if (IS_VIDROCK) {
+          // Rows: name in `.font-normal.text-sm`, language on next line.
+          const nameNode = el.querySelector(
+            '.font-normal.text-sm, .font-normal, [class*="font-normal"]'
+          );
+          if (nameNode) {
+            const n = (nameNode.textContent || '').trim().replace(/\\s+/g, ' ');
+            if (n) label = n;
+          }
+          triedServerLabels.add(chipText(el).toLowerCase());
+        }
         const lower = label.toLowerCase();
         triedServerLabels.add(lower);
         console.log('PT_EXTRACT: [SERVER_CLICK] ' + label + ' | FRAME: ' + window.location.href);
@@ -1223,6 +1347,20 @@ class StreamExtractor {
         });
 
         let chips = menuItems;
+        // VidRock-only: rows are `div.cursor-pointer` (not <button>).
+        if (IS_VIDROCK && chips.length === 0) {
+          chips = Array.from(document.querySelectorAll(
+            '[data-server-list] .cursor-pointer, ' +
+            '[data-server-list] [class*="rounded-lg"][class*="border"]'
+          )).filter((el) => {
+            if (el.tagName === 'BUTTON' || el.closest('button')) return false;
+            const text = chipText(el);
+            if (!text || text.length > 60) return false;
+            if (/^(original audio|default)\$/i.test(text)) return false;
+            const rect = el.getBoundingClientRect();
+            return rect.width >= 40 && rect.height >= 28 && rect.width <= 480;
+          });
+        }
         if (chips.length === 0) {
           const nodes = Array.from(document.querySelectorAll(
             'button, [role="button"], a, div, span, li'
@@ -1286,7 +1424,51 @@ class StreamExtractor {
         clickEl(el);
       };
 
+      // VSEmbed landing (`autoStart:false`): streams only load after Play
+      // injects `#player_frame` → `/embed/player/…?vs=…` (stream_urls + vsdec).
+      // Generic play-button clicks often miss `#bigPlay` (SVG-only, or a bad
+      // CSS `[class*="play" i]` selector aborting interact). Force the boot.
+      const bootVsembedLanding = () => {
+        if (!IS_VIDSRC) return;
+        const cfg = window.CFG || {};
+        if (!cfg.playerUrl || document.getElementById('player_frame')) return;
+        const big = document.getElementById('bigPlay') ||
+          document.querySelector('button.jw-bigplay, .jw-bigplay');
+        if (big) {
+          try { big.click(); } catch (e) {}
+          try {
+            big.dispatchEvent(new MouseEvent('click', {
+              view: window, bubbles: true, cancelable: true
+            }));
+          } catch (e) {}
+        }
+        if (document.getElementById('player_frame')) return;
+        const wrap = document.getElementById('player');
+        if (!wrap) return;
+        if (big) {
+          try { big.style.display = 'none'; } catch (e) {}
+        }
+        const frame = document.createElement('iframe');
+        frame.id = 'player_frame';
+        frame.src = cfg.playerUrl;
+        frame.setAttribute(
+          'allow',
+          'autoplay; fullscreen; picture-in-picture; encrypted-media'
+        );
+        frame.setAttribute('allowfullscreen', '');
+        frame.setAttribute('scrolling', 'no');
+        frame.setAttribute('referrerpolicy', 'origin');
+        frame.style.cssText =
+          'position:absolute;inset:0;width:100%;height:100%;border:0;' +
+          'display:block;z-index:20;background:#000';
+        wrap.appendChild(frame);
+        let abs = cfg.playerUrl;
+        try { abs = new URL(cfg.playerUrl, window.location.href).href; } catch (e) {}
+        log('VS_BOOT', abs);
+      };
+
       const interact = () => {
+        bootVsembedLanding();
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
         for (let i = 0; i < 3; i++) {
@@ -1300,21 +1482,25 @@ class StreamExtractor {
           }
         }
         const selectors = [
+          '#bigPlay', 'button.jw-bigplay', '.jw-bigplay',
           '.play-icon-main', '.jw-icon-display', '.jw-display-icon-container', '.jw-icon-playback',
           '.jw-button-color', '#play-button', '.play-button', '.v-play-button',
-          '.vjs-big-play-button', '[class*="play" i]', '[id*="play" i]',
+          '.vjs-big-play-button', '[class*="play"]', '[id*="play"]',
           '.play-icon', '.play_icon', '.play-btn', '.play_btn',
           '.click_to_play', '.overlay', '#player_overlay'
         ];
         selectors.forEach((selector) => {
-          document.querySelectorAll(selector).forEach((btn) => {
-            const rect = btn.getBoundingClientRect();
-            if (rect.width <= 0 || rect.height <= 0) return;
+          let nodes;
+          try { nodes = document.querySelectorAll(selector); } catch (e) { return; }
+          nodes.forEach((btn) => {
             const text = (btn.innerText || btn.textContent || '').toLowerCase();
             const id = (btn.id || '').toLowerCase();
             const cls = (btn.className || '').toString().toLowerCase();
-            if (text.includes('play') || id.includes('play') || cls.includes('play') || cls.includes('overlay')) {
-              btn.click();
+            const aria = (btn.getAttribute('aria-label') || '').toLowerCase();
+            if (text.includes('play') || id.includes('play') ||
+                cls.includes('play') || cls.includes('overlay') ||
+                aria.includes('play')) {
+              try { btn.click(); } catch (e) {}
             }
           });
         });

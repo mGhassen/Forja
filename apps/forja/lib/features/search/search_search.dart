@@ -54,6 +54,28 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
     setState(() => _s._recentQueries = next);
   }
 
+  Future<void> _removeRecentQuery(String query, {required int index}) async {
+    final next = await SearchRecentQueries.remove(
+      SearchRecentQueries.scopeSearch,
+      query,
+    );
+    if (!mounted) return;
+    setState(() {
+      _s._recentQueries = next;
+      _s._helperFocusedIndex = null;
+    });
+    final count = _s._helperItemCount();
+    if (count == 0) {
+      _s._focusSearchFieldBrowse();
+      return;
+    }
+    final focusIndex = index.clamp(0, count - 1);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _s._focusHelperAtIndex(focusIndex);
+    });
+  }
+
   List<_SearchSection> _mapSearchSections(List<SearchResultSection> sections) {
     return sections
         .map(

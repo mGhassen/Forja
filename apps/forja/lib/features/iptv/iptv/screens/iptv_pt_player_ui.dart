@@ -70,21 +70,20 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     return _s._epgCache!.load(stream, limit: 8);
   }
 
-  /// VOD always gets a scrubber. Live + Android TV Exo hides the live track
-  /// (←/→ still seek when chrome is hidden).
-  bool get _showProgressChrome {
-    if (_s.widget.vodPlayback || _s._isVod) return true;
-    return !(_s._exoBackend && PlatformInfo.isAndroidTv);
-  }
+  /// Progress bar via chrome profile — hide only ATV Exo pure live.
+  bool get _showProgressChrome => _s._chrome.showProgressChrome(
+        exoBackend: _s._exoBackend,
+        isVodHeuristic: _s._isVod,
+      );
 
-  /// Catalog `vodPlayback` + duration heuristic — Films/Series chrome profile.
-  bool get _isVodChrome => _s.widget.vodPlayback || _s._isVod;
+  /// Seek chrome: catalog VOD **or** seekable live (duration > 1s).
+  bool get _isVodChrome => _s._chrome.vodSeekChrome || _s._isVod;
 
-  /// Films/Series only — live IPTV chrome hides Audio/Subs (any engine).
-  bool get _showTrackButtons => _isVodChrome;
+  /// Films/Series only — Live hides Audio/Subs (catalog `vodPlayback`).
+  bool get _showTrackButtons => _s._chrome.showAudioSubtitles;
 
   bool get _showEpisodesButton =>
-      _isVodChrome &&
+      _s._chrome.showEpisodes &&
       (_s.widget.seriesEpisodes?.isNotEmpty ?? false) &&
       _s.widget.seriesPortal != null;
 
@@ -98,14 +97,20 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   }
 
   void _showStatsMenu(BuildContext anchorContext) {
-    if (_s._exoBackend || _s._player == null) return;
+    final exoId = _s._exoViewId;
+    if (_s._exoBackend) {
+      if (exoId == null) return;
+    } else if (_s._player == null) {
+      return;
+    }
     // Opening a menu cancels an armed player-exit Back.
     _s._tvBackExitArmed = false;
     PlayerBackExitGate.exitReady = false;
     _scheduleHideControls();
     IptvPlayerStatsPanel.show(
       context,
-      player: _s._player!,
+      player: _s._exoBackend ? null : _s._player,
+      exoViewId: _s._exoBackend ? exoId : null,
       anchorContext: anchorContext,
       alignment: Alignment.topRight,
       margin: EdgeInsets.only(
@@ -1176,7 +1181,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           // Movies/Series: session-only — do not overwrite Live IPTV engine pref.
           await _s._switchBuiltInEngine(
             builtInEngine,
-            persist: !_s.widget.vodPlayback,
+            persist: _s._chrome.persistEnginePref,
           );
           return;
         }
@@ -1242,7 +1247,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     // PiP is phone/desktop chrome - hide on Android TV (matches VOD player).
     final showPip =
         PipService.instance.isSupported && !iptvUseTvFocus(context);
-    final showStats = !_s._exoBackend;
     final tv = iptvUseTvFocus(context);
 
     void downFromTop() {
@@ -1280,7 +1284,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     }
 
     VoidCallback? rightFromPlayer() {
-      if (!tv || !showStats) return null;
+      if (!tv) return null;
       return () => claim(_s._statsFocus);
     }
 
@@ -1294,7 +1298,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
     var next = 1; // 1 = Back
     final playerOrder = ++next;
-    final statsOrder = showStats ? ++next : null;
+    final statsOrder = ++next;
     final pipOrder = showPip ? ++next : null;
 
     return Padding(
@@ -1375,17 +1379,16 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               onLeftEdge: leftFromPlayer(),
               onRightEdge: rightFromPlayer(),
             ),
-            if (showStats)
-              _topBarFlatAction(
-                icon: Icons.monitor_heart_outlined,
-                tooltip: 'Stream stats',
-                tvFocusOrder: statsOrder,
-                focusNode: _s._statsFocus,
-                onPressedWithContext: _showStatsMenu,
-                onDownEdge: downFromTop,
-                onLeftEdge:
-                    tv ? () => claim(_s._playerMenuFocus) : null,
-              ),
+            _topBarFlatAction(
+              icon: Icons.monitor_heart_outlined,
+              tooltip: 'Stream stats',
+              tvFocusOrder: statsOrder,
+              focusNode: _s._statsFocus,
+              onPressedWithContext: _showStatsMenu,
+              onDownEdge: downFromTop,
+              onLeftEdge:
+                  tv ? () => claim(_s._playerMenuFocus) : null,
+            ),
             if (showPip)
               _topBarFlatAction(
                 icon: PipService.instance.isDesktopActive
@@ -1927,7 +1930,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 // Live: after a real pause, rejoin the edge (don't resume
                 // from the frozen demuxer position seconds behind).
                 if (pausedAt != null &&
-                    !_s.widget.vodPlayback &&
+                    _s._chrome == IptvPlayerChromeProfile.live &&
                     iptvExoUrlLooksLive(
                       _s._sources.isEmpty
                           ? ''

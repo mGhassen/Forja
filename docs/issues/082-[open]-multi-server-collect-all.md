@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix tasks · **1 / 5** acceptance |
+| **Progress** | **9 / 9** fix tasks · **1 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,8 @@
 | 5 | I82-T05 | Feature doc + changelog + unit coverage for collect-all / order | ✅ |
 | 6 | I82-T06 | No background checks while playing: drop Source auto-probe; stop Auto sibling fill; cancel pending extracts on playback confirm | ✅ |
 | 7 | I82-T07 | VidSrc.sbs: first-hit + ≤3s grace then return (cancel leftover WebViews); dead mirrors must not block spinner | ✅ |
+| 8 | I82-T08 | Videasy: `speedracelight` hosts + Cypher/`vsrc` mirror table; wait-all API probes; Servers-tab chip sniff keeps every server stream | ✅ |
+| 9 | I82-T09 | VidSrc.sbs: drop first-hit grace; sniff every CFG mirror; nested chip-rotate collect-all (Pro Multi internals) | ✅ |
 
 ---
 

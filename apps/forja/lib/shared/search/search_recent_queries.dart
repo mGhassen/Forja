@@ -92,6 +92,21 @@ class SearchRecentQueries {
     return next;
   }
 
+  /// Remove one saved query (case-insensitive). Returns the new list.
+  static Future<List<String>> remove(String scope, String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return load(scope);
+    final trimmedLower = trimmed.toLowerCase();
+    final current = await load(scope);
+    final next = [
+      for (final q in current)
+        if (q.toLowerCase() != trimmedLower) q,
+    ];
+    if (next.length == current.length) return current;
+    await kvSetStringList(_key(scope), next);
+    return next;
+  }
+
   /// Unique titles from [candidates], skipping [exclude], capped at [max].
   static List<String> pickRecommendations(
     Iterable<String> candidates, {

@@ -133,6 +133,40 @@ void main() {
       expect(h.containsKey('Origin'), isFalse);
     });
 
+    test('providerId vidnest does not force vidnest.fun Referer on CDN', () {
+      const url = 'https://lamda.example-cdn.net/hls/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: url,
+        providerId: 'vidnest',
+      );
+      expect(h['User-Agent'], contains('Mozilla/5.0'));
+      expect(h.containsKey('Referer'), isFalse);
+      expect(h.containsKey('Origin'), isFalse);
+    });
+
+    test('providerId vidnest keeps API Referer when present', () {
+      const url = 'https://delta.example-cdn.net/v/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://upstream.example/embed'},
+        streamUrl: url,
+        providerId: 'vidnest',
+      );
+      expect(h['Referer'], 'https://upstream.example/embed');
+      expect(h['Origin'], 'https://upstream.example');
+    });
+
+    test('providerId vidnest:hianime still applies megaplay policy', () {
+      const url = 'https://cdn-rotate.example/v/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: url,
+        providerId: 'vidnest:hianime',
+      );
+      expect(h['Referer'], 'https://megaplay.buzz/');
+      expect(h['Origin'], 'https://megaplay.buzz');
+    });
+
     test('forces kisskh.co Referer for streamingcdn hosts when headers lost', () {
       const url =
           'https://hls08.streamingcdn4.site/12260/Ep2.v673_index0.ts';

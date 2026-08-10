@@ -103,7 +103,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [079-[fixed]-…](fixed/079-[fixed]-scrub-back-forced-eof.md) | Scrub-back forced back to EOF | P1 | High | fixed | Complete · 4/4 · A 3/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [080-[open]-…](080-[open]-miruro-cf-pipe-webview-unlock.md) | Miruro CF pipe WebView unlock fails | P1 | High | open | 5/7 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [081-[fixed]-…](fixed/081-[fixed]-macos-quit-mpv-demux-sigsegv.md) | macOS quit mpv demux SIGSEGV | P1 | High | fixed | Complete · 4/4 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [082-[open]-…](082-[open]-multi-server-collect-all.md) | Multi-server must show every mirror | P1 | High | open | 7/7 · A 1/5 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [082-[open]-…](082-[open]-multi-server-collect-all.md) | Multi-server must show every mirror | P1 | High | open | 9/9 · A 1/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [083-[open]-…](083-[open]-anime-first-hit-no-background-scan.md) | Anime first playable wins (no background scan) | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [084-[open]-…](084-[open]-megaplay-nekostream-cdn-referer.md) | Megaplay nekostream Referer + `/stream/ani/` | P1 | High | open | 29/29 · A 3/11 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [085-[open]-…](085-[open]-desktop-involuntary-signout-dumps-login.md) | Session loss → login + wipe (no Guest portal leak) | P1 | High | open | 5/5 · A 0/2 · 1⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -129,7 +129,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [105-[open]-…](105-[open]-exoplayer-sources-dialog-missing.md) | ExoPlayer Sources button / 2-column dialog | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [106-[open]-…](106-[open]-desktop-session-profile-chrome-desync.md) | Long-idle session / profile chrome desync | P1 | High | open | 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [107-[fixed]-…](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) | Android ≤7.0 TMDB posters (Let's Encrypt trust) | P1 | High | fixed | Complete · 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [108-[open]-…](108-[open]-android-tv-iptv-exo-choppy-fps.md) | Android TV IPTV Exo choppy FPS (weak / Android 7) | P1 | High | open | 18/18 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [108-[open]-…](108-[open]-android-tv-iptv-exo-choppy-fps.md) | Android TV IPTV Exo choppy FPS (weak / Android 7) | P1 | High | open | 30/30 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [109-[open]-…](109-[open]-android-tv-boot-jwt-expired-discard-race.md) | ATV/desktop boot JWT expired (gotrue discard) | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [110-[open]-…](110-[open]-android-tv-iptv-player-top-bar-dpad.md) | ATV IPTV player top-right Player D-pad chrome | P1 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [111-[open]-…](111-[open]-macos-keychain-consent-local-file.md) | macOS Keychain consent + local-file fallback | P1 | Medium | open | 5/5 · A 0/3 | — |
@@ -146,7 +146,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [122-[open]-…](122-[open]-android-tv-iptv-player-lost-dpad.md) | Android TV IPTV player lost D-pad | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [123-[open]-…](123-[open]-android-tv-iptv-catalog-focus-after-player.md) | Android TV IPTV catalog focus after player | P1 | Medium | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [124-[open]-…](124-[open]-android-tv-iptv-reconnect-banner-stuck.md) | Android TV IPTV reconnect banner stuck after recover | P1 | Medium | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [125-[open]-…](125-[open]-android-tv-iptv-exo-progress-bar-missing.md) | Android TV IPTV Exo progress bar missing | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [125-[open]-…](125-[open]-android-tv-iptv-exo-progress-bar-missing.md) | Android TV IPTV Exo progress bar missing | P1 | High | open | 5/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [126-[open]-…](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) | ATV stale local settings push overwrites cloud Features/nav | P0 | Critical | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 8/8 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 7/7 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -156,7 +156,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 10/10 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [134-[fixed]-…](fixed/134-[fixed]-player-audio-continues-after-app-switch.md) | Player audio continues after app switch | P1 | High | fixed | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [135-[open]-…](135-[open]-android-tv-spatial-dpad-all-screens.md) | ATV spatial 2D D-pad (all screens) | P1 | High | open | 9/9 · A 1/8 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [136-[open]-…](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) | ATV IPTV catalog/guide scroll focus + logos | P1 | Medium | open | 12/12 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [136-[open]-…](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) | ATV IPTV catalog/guide scroll focus + logos | P1 | Medium | open | 13/13 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [137-[open]-…](137-[open]-android-tv-player-engine-not-remembered.md) | ATV in-player engine not remembered per surface | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [138-[open]-…](138-[open]-android-tv-iptv-4k-audio.md) | ATV IPTV 4K MediaKit silent / Exo audio stutter | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [139-[open]-…](139-[open]-android-tv-shell-focus-chrome-stutter.md) | ATV shell / catalog focus chrome stutter | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -183,7 +183,12 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [162-[open]-…](162-[open]-iptv-more-like-this-catalog-only.md) | IPTV More like this = portal catalog only | P2 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 21/21 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 25/25 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [164-[open]-…](164-[open]-vsembed-new-player-chain.md) | VSEmbed new JS player (rcp/prorcp dead) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [165-[open]-…](165-[open]-vidnest-cdn-forced-referer.md) | VidNest movie/TV CDN forced vidnest.fun Referer | P1 | High | open | 2/2 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [166-[open]-…](166-[open]-vidlove-opaque-media-proxy.md) | VidLove opaque `/api?d=` media not accepted | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [167-[open]-…](167-[open]-autoembed-cloudflare-turnstile.md) | AutoEmbed Cloudflare Turnstile blocks sniff | P1 | High | open | 0/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [168-[open]-…](168-[open]-vidrock-multi-server-chip-rotate.md) | VidRock multi-server chip-rotate collect-all | P1 | Medium | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

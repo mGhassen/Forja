@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 12** fix · **0 / 5** acceptance |
+| **Progress** | **13 / 13** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -31,6 +31,7 @@
 | 10 | I136-T10 | In-player channel guide (TV): load logos only after D-pad idle **500ms** (not scroll-only) | ✅ |
 | 11 | I136-T11 | IPTV catalog (TV): same D-pad idle **500ms** logo gate on stream focus | ✅ |
 | 12 | I136-T12 | TV catalog + guide: keep already-shown logos on scroll; only defer *new* viewport tiles (mid-viewport ↑/↓ never flashes) | ✅ |
+| 13 | I136-T13 | Clear channel-pane ExcludeFocus when HW drops float (stuck `_tvCategoryPinFocused` blocked OK/→ into channels) | ✅ |
 
 ---
 
@@ -65,6 +66,8 @@ D-pad focus on IPTV **catalog** (category rail + channel grid/list) and **in-pla
 **Follow-up (I136-T10 / T11):** Scroll-only settle missed mid-viewport ↑/↓ (no jump). Logos now stay off until D-pad focus is idle **500ms** in the in-player guide and catalog stream grid/list.
 
 **Follow-up (I136-T12):** T10/T11 hid *all* logos on every focus/scroll. Now each revealed channel id stays painted; scroll/group swap only stops *new* tiles from decoding until **500ms** idle. Mid-viewport ↑/↓ never flashes.
+
+**Follow-up (I136-T13):** Enter float set `_tvCategoryPinFocused` (ExcludeFocus channels); HW OK/← cleared float without clearing that flag — OK/→ after pin/reorder stayed on the category rail. Clear the flag when float drops (and on row dispose).
 
 ## Related
 

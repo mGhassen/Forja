@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **18 / 18** fix · **0 / 5** acceptance |
-| **Current slice** | Exo-side fluidity; T17 emulator MediaKit hide reverted (T18) — both engines offered again |
+| **Progress** | **30 / 30** fix · **0 / 5** acceptance |
+| **Current slice** | T30 player restored to `50ebdaa2` — emu MediaKit experiments T26–T29 wiped with VOD-profile revert |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -39,6 +39,18 @@
 | 16 | I108-T16 | **Revert T14–T15** — restore ATV MediaKit `vo=mediacodec_embed` + `hwdec=mediacodec` on emulator (T14 killed paint via EGL; T15 was a workaround for that self-inflicted regression). Goldfish HEVC ANR on some channels remains an emulator limit, not a ship blocker | ✅ |
 | 17 | I108-T17 | ATV **emulator** IPTV: force Exo + rewrite IPTV engine pref + hide MediaKit in Player menu — restored MediaKit HW (T16) still ANRs on 1080p HEVC (`c2.goldfish.hevc.decoder`); Exo TextureView path is the working engine on this AVD | ✅ |
 | 18 | I108-T18 | **Revert T17 UX** — restore MediaKit in Player menu / engine switch / boot choice (user needs both engines; do not hide MediaKit) | ✅ |
+| 19 | I108-T19 | ATV **emulator** Live MediaKit: lean demuxer (32MiB / 10s, same as VOD) — cut 150MB + goldfish MediaCodec buffer-pool ANR mid-play; physical ATV Live keeps 150MB / 30s; no `hwdec=no` / no Exo force | ✅ |
+| 20 | I108-T20 | **Revert T19** — Live MediaKit demuxer identical on emulator and physical (150MB / 30s); user wants same profile | ✅ |
+| 21 | I108-T21 | Re-apply T19 — ATV **emulator** Live MediaKit lean demuxer 32MiB / 10s; physical ATV Live 150MB / 30s (second-open goldfish OOM) | ✅ |
+| 22 | I108-T22 | ATV **emulator** MediaKit: software decode (no `mediacodec_embed` / no goldfish HW); skip display-match; physical ATV HW unchanged — re-try after T14 black; process-death was worse | ✅ |
+| 23 | I108-T23 | **Revert T21–T22** — emu Live MediaKit back to physical parity (`mediacodec_embed` / `hwdec=mediacodec` / 150MB); no lean-emu cache; no forced software; display-match follows setting again | ✅ |
+| 24 | I108-T24 | ATV **emulator** IPTV: session-boot **Exo** (TextureView) so streams show picture; no pref rewrite; MediaKit stays in Player menu; block Exo→MediaKit format auto-swap on emu | ✅ |
+| 25 | I108-T25 | **Revert T24** — user MediaKit-only; remove emulator Exo boot + Exo→MediaKit auto-swap block | ✅ |
+| 26 | I108-T26 | ATV **emulator** IPTV MediaKit: `vo=gpu` + `hwdec=mediacodec-copy` (HW→GLES); physical stays `mediacodec_embed` + `mediacodec`; no Exo | ✅ |
+| 27 | I108-T27 | ATV **emulator** IPTV MediaKit: back to `mediacodec_embed` + `mediacodec`; cap Surface / `android-surface-size` to **854×480** before codec + re-clamp on video-params (T26 was black+audio); physical unchanged | ✅ |
+| 28 | I108-T28 | **3b+4:** remove T27 Surface clamp thrash; emulator MediaKit **never dispose/recreate** Player (soft `open` only — reuse Surface); physical unchanged | ✅ |
+| 29 | I108-T29 | ATV **emulator** IPTV MediaKit **staged surface**: boot Player with `vo=null`/`vid=no`/`hwdec=no`, wait demux cache, then attach `mediacodec_embed` once; keep T28 reuse; physical unchanged | ✅ |
+| 30 | I108-T30 | **With issue 163 T24:** IPTV player trio restored from `50ebdaa2` — removes T26–T29 emu MediaKit hacks; plain `mediacodec_embed` again | ✅ |
 
 ---
 
@@ -68,7 +80,7 @@ On **Android TV**, IPTV and Home/Search movies both use Media3 ExoPlayer by defa
 
 **Emulator fallback (T10):** On goldfish/ranchu leanback emulators, SurfaceView + MediaCodec often fails `setOutputSurface` (`BAD_INDEX`) → audio continues, picture stays black, and the separate Surface can cover Flutter player chrome. Emulators force **TextureView** + phone TLHC path for Exo; physical ATVs keep SurfaceView.
 
-**Emulator MediaKit (T14–T18):** T14 software decode dropped `mediacodec_embed` → black/EGL. T15–T17 forced Exo / hid MediaKit. **T18** restores both engines in the Player menu and normal boot choice — do not hide MediaKit again. HEVC + MediaKit on goldfish can still ANR; that remains an emulator limit.
+**Emulator MediaKit (T14–T30):** T14–T29 experiments (software / Exo force / lean cache / gpu-copy / surface cap / reuse / staged attach) — **T30** wiped with IPTV player restore to `50ebdaa2` (issue 163 T24). Current MediaKit = plain `mediacodec_embed` + `hwdec=mediacodec` like that evening build. Goldfish crash risk remains an emulator limit.
 
 **Opt-in quality (T09):** **Settings → Playback → IPTV live max quality** defaults to **Auto (full quality)**. Choosing 1080p / 720p / 480p applies an Exo track ceiling for live adaptive feeds only — never automatic.
 

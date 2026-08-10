@@ -5,10 +5,10 @@ import 'package:http/http.dart' as http;
 
 /// Discovers VidSrc.sbs multi-server mirrors from the outer embed HTML.
 ///
-/// The public page boots on Star (`1embed`) and hides other mirrors
-/// (PRO Multi / Cinesrc / Vlux) in a dropdown. During resolve we parse
-/// `CFG.servers` and sniff nested embeds (bounded parallel, first-hit +
-/// short grace) so play is not blocked by hung mirrors.
+/// The public page hides mirrors (PRO Multi / Cinesrc / 4K / …) in a
+/// dropdown. During resolve we parse `CFG.servers` and sniff every nested
+/// embed (bounded parallel). Each nested player rotates its own Servers
+/// chips so internals land in Sources.
 class VidsrcsbsExtractor {
   VidsrcsbsExtractor({this.onLog, http.Client? client})
     : _client = client ?? http.Client();

@@ -31,6 +31,7 @@ import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/iptv/providers/iptv_player_providers.dart';
+import 'package:forja/features/iptv/iptv/screens/iptv_player_chrome_profile.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
@@ -256,6 +257,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _isSeeking = false;
   double _seekPreview = 0.0;
   bool get _isVod => _duration.inSeconds > 1;
+
+  /// Live vs Movies/Series chrome (tracks / episodes / engine persist).
+  IptvPlayerChromeProfile get _chrome =>
+      IptvPlayerChromeProfile.fromVodPlayback(widget.vodPlayback);
 
   late List<IptvPlaySource> _sources;
   late String _title;

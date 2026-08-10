@@ -250,7 +250,7 @@ class _IptvCatalogTopBarState extends State<IptvCatalogTopBar>
   }
 
   void _focusDownFromShelf() {
-    iptvFocusCatalogGroupRow(ctrl.browserCategoryFocusIndex);
+    iptvFocusShelfDownCategories(ctrl);
   }
 
   void _focusDownFromTopTools() {

@@ -153,6 +153,10 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   void dispose() {
     _cancelOkGestures();
     _releaseChrome();
+    // Remount after pin/reorder must not leave parent ExcludeFocus stuck.
+    if (_pinFocus.hasFocus || _tvPinRevealed || _floating) {
+      widget.onPinFocusChange?.call(false);
+    }
     _pinFocus.removeListener(_onPinFocusChanged);
     _pinFocus.dispose();
     _rowFocus.dispose();
@@ -531,11 +535,12 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       tvItemIndex: widget.listIndex,
       focusNode: _rowFocus,
       allowNestedFocus: tv && _canTvPin && _showPin,
-      // Vertical list — skip hub-row lift; keepVisible only in this scroll view.
+      // Vertical list: keepVisible only — never snap the rail to put the row
+      // at the top (`.item` does that for Settings labels).
       // Floating / pin chrome: parent freezes scroll — ensureVisible fights it.
       ensureVisibleMode: (_floating || _pinFocus.hasFocus)
           ? ShellTvEnsureVisibleMode.off
-          : ShellTvEnsureVisibleMode.item,
+          : ShellTvEnsureVisibleMode.row,
       onKeyEvent: tv ? _onRowKey : null,
       onUpEdge: widget.onUpEdge,
       onRightEdge: () {

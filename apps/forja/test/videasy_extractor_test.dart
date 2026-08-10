@@ -2,10 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 
 void main() {
-  test('wings sources URL double-encodes title via Uri query builder', () {
+  test('sources URL double-encodes title via Uri query builder', () {
     final uri = Uri.https(
-      'api.wingsdatabase.com',
-      '/neon2/sources-with-title',
+      'api.speedracelight.com',
+      '/vsrc/sources-with-title',
       VideasyExtractor.sourcesQueryForTest(
         title: 'The Mysterious Benedict Society',
         isMovie: false,
@@ -23,8 +23,8 @@ void main() {
       contains('title=The%2520Mysterious%2520Benedict%2520Society'),
     );
     expect(uri.query, isNot(contains('%252520')));
-    expect(uri.host, 'api.wingsdatabase.com');
-    expect(uri.path, '/neon2/sources-with-title');
+    expect(uri.host, 'api.speedracelight.com');
+    expect(uri.path, '/vsrc/sources-with-title');
     expect(uri.query, contains('totalSeasons=2'));
     expect(uri.query, contains('seasonId=1'));
     expect(uri.query, contains('episodeId=1'));
@@ -32,7 +32,7 @@ void main() {
 
   test('movie sources query still sends seasonId/episodeId defaults', () {
     final uri = Uri.https(
-      'api.wingsdatabase.com',
+      'api.speedracelight.com',
       '/cdn/sources-with-title',
       VideasyExtractor.sourcesQueryForTest(
         title: 'Backrooms',
@@ -52,17 +52,26 @@ void main() {
     expect(uri.query, isNot(contains('totalSeasons')));
   });
 
-  test('Yoru cdn is first mirror for movies and TV', () {
-    expect(VideasyExtractor.mirrorEndpointsForTest().first, 'cdn');
+  test('Yoru cdn is first mirror; Cypher is second', () {
+    final endpoints = VideasyExtractor.mirrorEndpointsForTest();
+    final names = VideasyExtractor.mirrorDisplayNamesForTest();
+    expect(endpoints.first, 'cdn');
+    expect(names.first, 'Yoru');
+    expect(endpoints[1], 'downloader2');
+    expect(names[1], 'Cypher');
+    expect(names, containsAll(['Breach', 'Neon', 'Vyse', 'Killjoy', 'Fade']));
   });
 
-  test('post-first-hit grace is short (web parity, no dead-mirror block)', () {
-    expect(VideasyExtractor.postFirstHitGraceForTest.inSeconds, lessThanOrEqualTo(3));
+  test('server chip labels match mirror display names for sniff rotate', () {
+    expect(
+      VideasyExtractor.serverChipLabels,
+      containsAll(VideasyExtractor.mirrorDisplayNamesForTest()),
+    );
   });
 
   test('tv sources query uses cdn path with season fields', () {
     final uri = Uri.https(
-      'api.wingsdatabase.com',
+      'api.speedracelight.com',
       '/cdn/sources-with-title',
       VideasyExtractor.sourcesQueryForTest(
         title: 'Lucky',

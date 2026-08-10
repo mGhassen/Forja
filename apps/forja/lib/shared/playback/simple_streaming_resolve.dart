@@ -12,13 +12,25 @@ abstract final class SimpleStreamingResolve {
   /// Host HTTP APIs (may still fall back to WebView).
   static const hostApiIds = {'videasy', 'service111477'};
 
-  /// VSEmbed is a short Rust chain.
-  static const _vidsrcTimeout = Duration(seconds: 25);
+  /// VSEmbed: Rust chain first, then WebView sniff of the JS player.
+  static const _vidsrcTimeout = Duration(seconds: 90);
 
   /// WebStreamr scrapes many country sources; 25s was cutting it off empty.
   static const _webstreamrTimeout = Duration(seconds: 90);
 
-  /// Wings / 111477 HTTP before any sniff fallback.
+  /// Videasy: full mirror fan-out (+ optional Servers-tab sniff).
+  static const _videasyTimeout = Duration(seconds: 100);
+
+  /// VidSrc.sbs: every CFG mirror + nested Servers-chip rotate.
+  static const _vidsrcsbsTimeout = Duration(seconds: 180);
+
+  /// VidLove / 111movies: chip rotate + opaque `/api?d=` media (90s sniff).
+  static const _vidloveTimeout = Duration(seconds: 120);
+
+  /// VidRock: Servers list chip-rotate collect-all (90s sniff).
+  static const _vidrockTimeout = Duration(seconds: 120);
+
+  /// 111477 HTTP before any sniff fallback.
   static const _hostApiTimeout = Duration(seconds: 35);
 
   /// Must cover EmbedExtractProfile sniff (45–60s) + probe headroom.
@@ -153,6 +165,12 @@ abstract final class SimpleStreamingResolve {
   static Duration timeoutFor(String providerId) {
     if (providerId == 'vidsrc') return _vidsrcTimeout;
     if (providerId == 'webstreamr') return _webstreamrTimeout;
+    if (providerId == 'videasy') return _videasyTimeout;
+    if (providerId == 'vidsrcsbs') return _vidsrcsbsTimeout;
+    if (providerId == 'vidlove' || providerId == '111movies') {
+      return _vidloveTimeout;
+    }
+    if (providerId == 'vidrock') return _vidrockTimeout;
     if (hostApiIds.contains(providerId)) return _hostApiTimeout;
     return _hostEmbedTimeout;
   }

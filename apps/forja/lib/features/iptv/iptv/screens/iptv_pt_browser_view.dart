@@ -138,7 +138,12 @@ class _BrowserViewState extends State<_BrowserView> {
     } else {
       _swallowFloatingActivateUp = false;
     }
-    setState(() => _tvFloatingCategoryId = categoryId);
+    setState(() {
+      _tvFloatingCategoryId = categoryId;
+      // HW OK/← exits via this path — not the row's `_exitFloating` — so pin
+      // chrome ExcludeFocus must clear here or OK/→ never reach channels.
+      if (categoryId == null) _tvCategoryPinFocused = false;
+    });
     _syncFloatingReorderKeys();
     if (categoryId != null) {
       // Stay put on enter — only scroll once dragging reaches the 2nd slot.
@@ -383,6 +388,17 @@ class _BrowserViewState extends State<_BrowserView> {
   static const _categoryScrollCacheRows = 14;
 
   void _scrollCategorySidebarToSelected() {
+    final selected = widget.ctrl.browserSelectedCategoryId;
+    if (selected == null) return;
+    final idx = widget.ctrl.browserSidebarCategories
+        .indexWhere((c) => c.id == selected);
+    if (idx < 0) return;
+    // Leave 3 rows above so the selection lands as the 4th visible category.
+    _scrollCategorySidebarToIndex(idx, keepAbove: 3);
+  }
+
+  /// Jump the category rail so [listIndex] is visible (selected restore).
+  void _scrollCategorySidebarToIndex(int listIndex, {int keepAbove = 0}) {
     var tries = 0;
     void attempt() {
       if (!mounted) return;
@@ -392,21 +408,19 @@ class _BrowserViewState extends State<_BrowserView> {
         }
         return;
       }
-      final cats = widget.ctrl.browserSidebarCategories;
-      final selected = widget.ctrl.browserSelectedCategoryId;
-      if (selected == null) return;
-      final idx = cats.indexWhere((c) => c.id == selected);
-      if (idx < 0) return;
+      if (listIndex < 0) return;
       final rowH = _categoryRowExtent(widget.compact);
-      // Leave 3 rows above so the selection lands as the 4th visible category.
-      const keepAbove = 3;
-      final target = (_categoryListPadV + (idx - keepAbove) * rowH).clamp(
+      final target =
+          (_categoryListPadV + (listIndex - keepAbove) * rowH).clamp(
         0.0,
         _categoryScroll.position.maxScrollExtent,
       );
-      _categoryScroll.jumpTo(target);
+      if ((_categoryScroll.offset - target).abs() > 0.5) {
+        _categoryScroll.jumpTo(target);
+      }
     }
 
+    attempt();
     WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 

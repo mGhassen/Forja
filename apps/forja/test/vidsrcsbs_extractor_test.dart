@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/extractors/providers/vidsrcsbs/profile.dart';
 import 'package:forja/shared/extractors/providers/vidsrcsbs/vidsrcsbs_extractor.dart';
 import 'package:forja/shared/playback/host_provider_adapter.dart';
 
@@ -32,10 +33,11 @@ var CFG = {
     });
   });
 
-  test('VidSrc.sbs post-first-hit grace is short (no dead-mirror spinner)', () {
+  test('VidSrc.sbs nested sniff rotates chips and waits for all top mirrors', () {
+    expect(vidsrcsbsNestedExtractProfile.rotateServerChips, isTrue);
     expect(
-      HostProviderAdapter.vidsrcsbsPostFirstHitGraceForTest.inSeconds,
-      lessThanOrEqualTo(3),
+      HostProviderAdapter.vidsrcsbsWebviewSniffConcurrencyForTest,
+      lessThanOrEqualTo(2),
     );
   });
 }

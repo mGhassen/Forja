@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **21 / 21** fix · **0 / 3** acceptance |
+| **Progress** | **25 / 25** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -40,6 +40,10 @@
 | 19 | I163-T19 | Revert T17–T18 — Live MediaKit decode/open back to yesterday (`50ebdaa2` / HEAD): `mediacodec_embed` + inline display match | ✅ |
 | 20 | I163-T20 | Restore IPTV player trio (`engine`/`screen`/`ui`) from `50ebdaa2` (2026-08-07 evening) — full Live player as yesterday | ✅ |
 | 21 | I163-T21 | Restore Live MediaKit **conf** (`engine`+`screen`) from `v1.3.170` / ~2 days — no Aug-7 display-match / stall-recovery | ✅ |
+| 22 | I163-T22 | `IptvPlayerChromeProfile.live` / `.vod` — Live hides Audio/Subs; Movies/Series keep tracks + episodes + VOD scrubber | ✅ |
+| 23 | I163-T23 | Seekable live (duration > 1s): restore advancing MediaKit scrubber — T22 catalog-only `vodSeekChrome` left a static full bar + LIVE | ✅ |
+| 24 | I163-T24 | **Full revert (user B):** restore IPTV player trio from `50ebdaa2`; drop `vodPlayback` / chrome profile / VOD gates / emu MediaKit experiments — Live path as before VOD-profile work (Movies/Series may hit live-edge ANR again) | ✅ |
+| 25 | I163-T25 | Restore `IptvPlayerChromeProfile` + `vodPlayback` player stack (Audio/Subs/Episodes; VOD gates; seekable-live scrubber) after T24 — no emu MediaKit force-Exo | ✅ |
 
 ---
 
@@ -75,4 +79,8 @@ IPTV Movies/Series reused the **live** player profile: post-open `drop-buffers` 
 
 **MediaKit Live conf (`I163-T21`):** User asked for conf not chrome — restored `engine` + `screen` from **`v1.3.170`** (2026-08-06, ~2 days). That drops Aug-7 display-refresh match and stall/classic recovery modes. MediaKit pin is again: `mediacodec_embed` / `hwdec=mediacodec` / `display-resample`+`framedrop=vo` / UHD mid-open `video-sync=audio` / 150MB cache. UI file left as-is from T20.
 
-**Chrome profile (`I163-T15`):** Live bottom chrome hides **Audio** / **Subtitles** (any engine). Movies/Series keep track buttons via `_isVodChrome` (`vodPlayback` / duration).
+**Chrome profile (`I163-T15` → `I163-T23`):** T15 gated buttons via `_isVodChrome`; T20 player restore dropped it. **T22:** `IptvPlayerChromeProfile.live` / `.vod` from catalog `vodPlayback` — Live hides Audio/Subs; Movies/Series show them (+ Episodes when list attached). **T23:** seekable live (mpv duration > 1s) uses the advancing scrubber again; pure live (no duration) keeps the EPG / live-edge track.
+
+**Full revert (`I163-T24`):** User chose restore to pre–VOD-profile player (`50ebdaa2` trio). Removed `vodPlayback` gates, chrome profile file, series online-subs player args, and issue-108 emu MediaKit experiments layered on that stack. **Honest cost:** Movies/Series can again hit live-edge / fat-cache process death (the original 163 symptom). Acceptance A01–A03 unverified.
+
+**Chrome profile restored (`I163-T25`):** User asked to put VOD chrome profile back after T24. Recreated `IptvPlayerChromeProfile` + restored player `vodPlayback` / series args from HEAD (T22/T23 semantics: catalog tracks; seekable live scrubber). No emulator MediaKit force-Exo. Acceptance A01–A03 still unverified.

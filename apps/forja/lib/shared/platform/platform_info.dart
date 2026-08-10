@@ -11,7 +11,6 @@ abstract final class PlatformInfo {
   static bool get isPhone => profile == PlatformProfile.phone;
 
   /// Set at [PlatformChannel.initialize] — goldfish/ranchu leanback emulators.
-  /// Emulators force Exo TextureView. Home/VOD always TextureView; IPTV live
-  /// may use SurfaceView until [ExoPlayerBridge.preferTextureSurface] flips.
+  /// Exo: TextureView + TLHC on emulator (issue 108 T10).
   static bool isAndroidEmulator = false;
 }

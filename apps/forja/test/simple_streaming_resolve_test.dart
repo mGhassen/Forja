@@ -50,10 +50,13 @@ void main() {
   });
 
   test('timeoutFor gives WebStreamr and embeds enough budget', () {
-    expect(SimpleStreamingResolve.timeoutFor('vidsrc').inSeconds, 25);
+    expect(SimpleStreamingResolve.timeoutFor('vidsrc').inSeconds, 90);
     expect(SimpleStreamingResolve.timeoutFor('webstreamr').inSeconds, 90);
-    expect(SimpleStreamingResolve.timeoutFor('videasy').inSeconds, 35);
+    expect(SimpleStreamingResolve.timeoutFor('videasy').inSeconds, 100);
     expect(SimpleStreamingResolve.timeoutFor('vidlink').inSeconds, 75);
-    expect(SimpleStreamingResolve.timeoutFor('vidsrcsbs').inSeconds, 75);
+    expect(SimpleStreamingResolve.timeoutFor('vidsrcsbs').inSeconds, 180);
+    expect(SimpleStreamingResolve.timeoutFor('vidlove').inSeconds, 120);
+    expect(SimpleStreamingResolve.timeoutFor('111movies').inSeconds, 120);
+    expect(SimpleStreamingResolve.timeoutFor('vidrock').inSeconds, 120);
   });
 }

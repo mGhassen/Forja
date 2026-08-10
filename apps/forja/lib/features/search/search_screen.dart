@@ -12,6 +12,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/search/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
+import 'package:forja/shared/widgets/recent_search_helper_tile.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/tv_search_browse_overlay.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';

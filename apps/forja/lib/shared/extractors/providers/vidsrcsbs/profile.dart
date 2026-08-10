@@ -6,11 +6,11 @@ import 'package:forja/shared/extractors/core/embed_extract_profile.dart';
 /// [VidsrcsbsExtractor]. Outer dropdown rotation is a last resort.
 const vidsrcsbsExtractProfile = EmbedExtractProfile(
   id: 'vidsrcsbs',
-  timeout: Duration(seconds: 45),
+  timeout: Duration(seconds: 75),
   forceDirect: true,
   deferUntilStrongStream: true,
   rotateServerChips: true,
-  serverChipLabels: ['pro multi', 'cinesrc', 'vlux', 'star'],
+  serverChipLabels: ['pro multi', 'cinesrc', '4k', 'vlux', 'star'],
   rotateBeforeComplete: true,
   acceptProxyPlaylistBodies: true,
   cdnHostsPreferEmbedReferer: [
@@ -23,15 +23,17 @@ const vidsrcsbsExtractProfile = EmbedExtractProfile(
   ],
 );
 
-/// Sniff one nested mirror (`web.nxsha.app`, `cinesrc.st`, `vidlux.xyz`, …)
-/// loaded as the WebView top-level document - no dropdown UI.
+/// Sniff one nested mirror (`web.nxsha.app`, `cinesrc.st`, …) as the WebView
+/// top-level document. Rotates that mirror's own Servers chips (Pro Multi's
+/// internals, etc.) and keeps every playlist until timeout.
 const vidsrcsbsNestedExtractProfile = EmbedExtractProfile(
   id: 'vidsrcsbs',
-  timeout: Duration(seconds: 22),
+  timeout: Duration(seconds: 75),
   forceDirect: true,
   deferUntilStrongStream: true,
-  rotateServerChips: false,
-  rotateBeforeComplete: false,
+  rotateServerChips: true,
+  // Empty = click every server / source chip the nested player exposes.
+  serverChipLabels: [],
   acceptProxyPlaylistBodies: true,
   cdnHostsPreferEmbedReferer: [
     'cinezo',

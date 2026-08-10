@@ -195,24 +195,46 @@ VoidCallback iptvStreamLeftEdge(IptvController ctrl, IptvStream stream) {
 bool iptvFocusBrowserCategories(IptvController ctrl) =>
     iptvFocusRowItem('browser-categories', ctrl.browserCategoryFocusIndex);
 
-/// Sidebar index of the first portal group — skips Favorites / Already watched.
+/// Sidebar index for TV land / shelf ↓: first user-pinned group in rail order,
+/// else first portal group (skips Favorites / Already watched).
 int iptvFirstPortalGroupFocusIndex(IptvController ctrl) {
   final cats = ctrl.browserSidebarCategories;
+  if (cats.isEmpty) return 0;
+  if (ctrl.activeSection == IptvSection.live) {
+    for (var i = 0; i < cats.length; i++) {
+      final id = cats[i].id;
+      if (id.isEmpty || IptvLiveCatalog.isSyntheticId(id)) continue;
+      if (ctrl.isLiveCategoryPinned(id)) return i;
+    }
+  }
   final idx = cats.indexWhere(
     (c) => c.id.isNotEmpty && !IptvLiveCatalog.isSyntheticId(c.id),
   );
   return idx >= 0 ? idx : ctrl.browserCategoryFocusIndex;
 }
 
+/// Shelf ↓ into the category rail — same target as [iptvFirstPortalGroupFocusIndex].
+int iptvShelfDownCategoryFocusIndex(IptvController ctrl) =>
+    iptvFirstPortalGroupFocusIndex(ctrl);
+
 /// Catalog group row (sidebar). Prefer [iptvFocusFirstPortalGroup] on open.
 bool iptvFocusCatalogGroupRow([int index = 0]) =>
     iptvFocusRowItem('browser-categories', index);
 
-/// TV landing focus when opening a portal / entering from nav — first portal
-/// group, not Favorites or Already watched.
+/// TV landing focus when opening a portal / entering from nav — first pinned
+/// group when any, else first portal group (not Favorites / Already watched).
 bool iptvFocusFirstPortalGroup(IptvController ctrl) =>
     iptvFocusCatalogGroupRow(iptvFirstPortalGroupFocusIndex(ctrl));
 
+/// Shelf ↓: focus only — do not jump the rail to put the row at the top.
+bool iptvFocusShelfDownCategories(IptvController ctrl) {
+  final index = iptvShelfDownCategoryFocusIndex(ctrl);
+  if (iptvFocusCatalogGroupRow(index)) return true;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    iptvFocusCatalogGroupRow(index);
+  });
+  return true;
+}
 /// Shelf index for the active Live / Movies / Series tab.
 int iptvActiveSectionShelfIndex(IptvController ctrl) {
   switch (ctrl.activeSection) {

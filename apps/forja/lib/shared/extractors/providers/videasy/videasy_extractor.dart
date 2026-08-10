@@ -1,11 +1,11 @@
-// Videasy extractor - mirrors player.videasy.to (chunk 8351).
+// Videasy extractor - mirrors player.videasy.to Servers tab.
 //
-// Pipeline (api.wingsdatabase.com - NOT the public videasy.to embed docs):
-//   1. Metadata from db.wingsdatabase.com/3 (same as the player page)
+// Pipeline (api.speedracelight.com - NOT the public videasy.to embed docs):
+//   1. Metadata from db.speedracelight.com/3 (same as the player page)
 //   2. GET /seed?mediaId=… (cached ~25s; refresh on 401)
 //   3. GET /{mirror}/sources-with-title?title&enc=2&seed=…&totalSeasons=…
 //   4. Decrypt payload in headless WebView (STREAMCRYPTO - seed + tmdbId)
-//   5. Parse JSON sources
+//   5. Parse JSON sources — every responsive mirror becomes a Sources row
 
 import 'dart:async';
 import 'dart:convert';
@@ -21,43 +21,71 @@ class VideasyExtractor {
 
   final void Function(String) onLog;
 
-  static const _apiHostDefault = 'api.wingsdatabase.com';
-  static const _dbHostDefault = 'db.wingsdatabase.com';
+  static const _apiHostDefault = 'api.speedracelight.com';
+  static const _dbHostDefault = 'db.speedracelight.com';
   static const _playerOriginDefault = 'https://player.videasy.to';
 
-  static String get _apiHost =>
-      ProviderRuntimeConfig.instance.api('videasyApiHost') ?? _apiHostDefault;
-  static String get _dbHost =>
-      ProviderRuntimeConfig.instance.api('videasyDbHost') ?? _dbHostDefault;
+  /// Stale remote config still ships wingsdatabase (DNS dead). Prefer live host.
+  static const _deadApiHosts = {'api.wingsdatabase.com'};
+  static const _deadDbHosts = {'db.wingsdatabase.com'};
+  static const _apiHostFallbacks = [
+    'api.speedracelight.com',
+    'api.wingsdatabase.com',
+  ];
+
+  static String? _activeApiHost;
+
+  static String get _apiHost {
+    final configured =
+        ProviderRuntimeConfig.instance.api('videasyApiHost') ?? _apiHostDefault;
+    if (_deadApiHosts.contains(configured)) return _apiHostDefault;
+    return _activeApiHost ?? configured;
+  }
+
+  static String get _dbHost {
+    final configured =
+        ProviderRuntimeConfig.instance.api('videasyDbHost') ?? _dbHostDefault;
+    if (_deadDbHosts.contains(configured)) return _dbHostDefault;
+    return configured;
+  }
+
   static String get _playerOrigin =>
       ProviderRuntimeConfig.instance.api('videasyPlayerOrigin') ??
       _playerOriginDefault;
-  // Fail hung mirrors fast - neon2/m4uhd often stall with 0 bytes while cdn
+  // Fail hung mirrors fast - m4uhd/vsrc often stall with 0 bytes while cdn
   // (Yoru) answers in ~100ms.
   static const _fetchTimeout = Duration(seconds: 12);
   static const _slowFetchTimeout = Duration(seconds: 18);
-  // After first mirror hit, keep collecting siblings briefly then play.
-  // Do NOT bump [_generation] on grace (that discarded hits - issue 071).
-  static const _postFirstHitGrace = Duration(seconds: 2);
-  // Keep short enough that HostProviderAdapter can fall back to sniffing
-  // player.videasy.to when wings mirrors CF-block / timeout.
-  static const _defaultExtractTimeout = Duration(seconds: 45);
+  // Cover full parallel mirror fan-out before HostProviderAdapter sniffs.
+  static const _defaultExtractTimeout = Duration(seconds: 60);
   static const _maxInFlight = 4;
   static const _seedTtl = Duration(seconds: 25);
 
-  /// Servers tab from player chunk 8351 (Yoru→cdn, Neon→neon2, …).
+  /// Player Servers tab labels (chip-rotate sniff order).
+  static const serverChipLabels = <String>[
+    'Yoru',
+    'Cypher',
+    'Breach',
+    'Neon',
+    'Vyse',
+    'Killjoy',
+    'Fade',
+    'Omen',
+    'Raze',
+  ];
+
+  /// Servers tab → API path (player.videasy.to / speedracelight).
   /// Listed order only - every mirror is probed (bounded parallel).
   static const _mirrors = <_VideasyMirror>[
     _VideasyMirror('cdn', displayName: 'Yoru'),
-    _VideasyMirror('neon2', slow: true, displayName: 'Neon'),
-    _VideasyMirror('ym', displayName: 'Sage'),
-    _VideasyMirror('jett', displayName: 'Jett'),
+    _VideasyMirror('downloader2', displayName: 'Cypher'),
     _VideasyMirror('m4uhd', slow: true, displayName: 'Breach'),
+    _VideasyMirror('vsrc', slow: true, displayName: 'Neon'),
     _VideasyMirror('hdmovie', qualityFilter: 'English', displayName: 'Vyse'),
     _VideasyMirror('meine', language: 'german', displayName: 'Killjoy'),
+    _VideasyMirror('hdmovie', qualityFilter: 'Hindi', displayName: 'Fade'),
     _VideasyMirror('lamovie', displayName: 'Omen'),
     _VideasyMirror('superflix', displayName: 'Raze'),
-    _VideasyMirror('hdmovie', qualityFilter: 'Hindi', displayName: 'Fade'),
   ];
 
   static const userAgent =
@@ -88,6 +116,7 @@ class VideasyExtractor {
     _sharedClient?.close();
     _sharedClient = null;
     _seedCache.clear();
+    _activeApiHost = null;
   }
 
   Future<ExtractedMedia?> extract({
@@ -368,33 +397,50 @@ class VideasyExtractor {
       _seedCache.remove(tmdbId);
     }
 
-    try {
-      final uri = Uri.https(_apiHost, '/seed', {'mediaId': tmdbId});
-      final res = await _get(uri, gen: gen);
-      if (res.statusCode != 200) {
-        onLog('[Videasy] seed -> ${res.statusCode}');
-        // Keep last good seed - 429 mid-fanout must not kill remaining probes.
-        return _seedCache[tmdbId]?.seed;
+    final configured =
+        ProviderRuntimeConfig.instance.api('videasyApiHost') ?? _apiHostDefault;
+    final hosts = <String>[
+      ?_activeApiHost,
+      if (!_deadApiHosts.contains(configured)) configured,
+      ..._apiHostFallbacks,
+    ];
+    final seen = <String>{};
+    for (final host in hosts) {
+      if (!seen.add(host)) continue;
+      if (gen != _generation) return null;
+      try {
+        final uri = Uri.https(host, '/seed', {'mediaId': tmdbId});
+        final res = await _get(uri, gen: gen);
+        if (res.statusCode != 200) {
+          onLog('[Videasy] seed $host -> ${res.statusCode}');
+          // Keep last good seed - 429 mid-fanout must not kill remaining probes.
+          if (res.statusCode == 429) return _seedCache[tmdbId]?.seed;
+          continue;
+        }
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final seed = data['seed']?.toString().trim();
+        if (seed == null || seed.isEmpty) continue;
+        final ttlMs = (data['ttlMs'] as num?)?.toInt();
+        final ttl = ttlMs != null && ttlMs > 0
+            ? Duration(milliseconds: ttlMs)
+            : _seedTtl;
+        _seedCache[tmdbId] = _CachedSeed(seed: seed, expiresAt: now.add(ttl));
+        _activeApiHost = host;
+        if (host != configured) {
+          onLog('[Videasy] seed host failover → $host');
+        }
+        return seed;
+      } catch (e) {
+        onLog('[Videasy] seed fetch failed ($host): $e');
       }
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      final seed = data['seed']?.toString().trim();
-      if (seed == null || seed.isEmpty) return null;
-      final ttlMs = (data['ttlMs'] as num?)?.toInt();
-      final ttl = ttlMs != null && ttlMs > 0
-          ? Duration(milliseconds: ttlMs)
-          : _seedTtl;
-      _seedCache[tmdbId] = _CachedSeed(seed: seed, expiresAt: now.add(ttl));
-      return seed;
-    } catch (e) {
-      onLog('[Videasy] seed fetch failed: $e');
-      return null;
     }
+    return _seedCache[tmdbId]?.seed;
   }
 
   static void _invalidateSeed(String tmdbId) => _seedCache.remove(tmdbId);
 
-  /// Probe mirrors in parallel. First hit starts a short grace, then we return
-  /// what we have - dead/hung siblings must not block play (web parity).
+  /// Probe every mirror (bounded parallel). Sources lists each responsive
+  /// server — do not abort the queue after the first hit.
   Future<ExtractedMedia?> _collectProviders({
     required _VideasyDecryptHost crypto,
     required String tmdbId,
@@ -406,11 +452,8 @@ class VideasyExtractor {
     var nextIndex = 0;
     var inFlight = 0;
     final done = Completer<void>();
-    Timer? grace;
 
     void finish() {
-      grace?.cancel();
-      grace = null;
       if (done.isCompleted) return;
       done.complete();
     }
@@ -422,13 +465,6 @@ class VideasyExtractor {
         return;
       }
       if (nextIndex >= jobs.length && inFlight == 0) finish();
-    }
-
-    void onFirstHitScheduleGrace() {
-      if (grace != null || done.isCompleted) return;
-      // Stop queueing more mirrors - keep in-flight, then cut after grace.
-      nextIndex = jobs.length;
-      grace = Timer(_postFirstHitGrace, finish);
     }
 
     void pump() {
@@ -443,7 +479,6 @@ class VideasyExtractor {
               inFlight--;
               if (hit != null && !done.isCompleted) {
                 hits.add(hit);
-                onFirstHitScheduleGrace();
               }
               pump();
               maybeFinish();
@@ -460,7 +495,6 @@ class VideasyExtractor {
 
     pump();
     await done.future;
-    grace?.cancel();
 
     if (hits.isEmpty) {
       if (!cancelled()) onLog('[Videasy] No sources from any mirror');
@@ -624,8 +658,9 @@ class VideasyExtractor {
       }
     }
 
-    // Neon (neon2): player prefers DASH when present.
-    final picked = provider == 'neon2' && dash.isNotEmpty ? dash : sources;
+    // Neon (vsrc / legacy neon2): player prefers DASH when present.
+    final preferDash = provider == 'vsrc' || provider == 'neon2';
+    final picked = preferDash && dash.isNotEmpty ? dash : sources;
     if (picked.isEmpty) return null;
 
     final allSubs = <Map<String, dynamic>>[];
@@ -678,7 +713,9 @@ class VideasyExtractor {
   ];
 
   @visibleForTesting
-  static Duration get postFirstHitGraceForTest => _postFirstHitGrace;
+  static List<String> mirrorDisplayNamesForTest() => [
+    for (final m in _mirrors) m.displayName,
+  ];
 
   @visibleForTesting
   static Map<String, String> sourcesQueryForTest({

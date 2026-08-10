@@ -307,6 +307,39 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
           itemBuilder: (context, index) {
             final entry = entries[index];
             final count = entries.length;
+            final selected = _s._helperFocusedIndex == index;
+            void onFocusChange(bool focused) {
+              if (focused) {
+                _s._setHelperFocusedIndex(index);
+              } else {
+                _s._clearHelperFocusedIndex(index);
+              }
+            }
+
+            if (entry.isRecent) {
+              return FocusTraversalOrder(
+                order: NumericFocusOrder(index.toDouble()),
+                child: RecentSearchHelperTile(
+                  title: entry.title,
+                  selected: selected,
+                  listIndex: index,
+                  tvTabId: 'search',
+                  tvRowId: 'helpers',
+                  titleFocusNode:
+                      index == 0 ? _s._firstHelperFocusNode : null,
+                  onSelect: () => _s._applyHelperQuery(entry.title),
+                  onRemove: () => _s._removeRecentQuery(
+                    entry.title,
+                    index: index,
+                  ),
+                  onUpEdge: _s._helperUpEdge(index),
+                  onDownEdge: _s._helperDownEdge(index, count),
+                  onRightPastRemove: _s._helperRightEdge(index),
+                  onFocusChange: onFocusChange,
+                ),
+              );
+            }
+
             return FocusTraversalOrder(
               order: NumericFocusOrder(index.toDouble()),
               child: shellFocusableTap(
@@ -332,17 +365,11 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                 onDownEdge: _s._helperDownEdge(index, count),
                 onRightEdge: _s._helperRightEdge(index),
                 ensureVisibleMode: ShellTvEnsureVisibleMode.row,
-                onFocusChange: (focused) {
-                  if (focused) {
-                    _s._setHelperFocusedIndex(index);
-                  } else {
-                    _s._clearHelperFocusedIndex(index);
-                  }
-                },
+                onFocusChange: onFocusChange,
                 child: _buildHelperTitle(
                   entry.title,
-                  selected: _s._helperFocusedIndex == index,
-                  isRecent: entry.isRecent,
+                  selected: selected,
+                  isRecent: false,
                 ),
               ),
             );

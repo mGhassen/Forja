@@ -60,5 +60,6 @@ cd apps/forja && flutter test test/player_playback_headers_test.dart test/vidnes
 ## Related
 
 - [054](054-[fixed]-vidsrc-cloudstream-referer-blocks-segments.md) — same header-strip pattern for CloudStream
+- [165](../165-[open]-vidnest-cdn-forced-referer.md) — non-MovieBox CDNs: stop forcing vidnest.fun Referer
 - [Stream providers](../../features/sources/stream-providers.md)
 - [VidNest docs](https://vidnest.fun/)

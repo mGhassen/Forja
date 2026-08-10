@@ -41,6 +41,32 @@ void main() {
         isTrue,
       );
     });
+
+    test('accepts VidLove signed /api?d=&internal_token= media proxy', () {
+      const url =
+          'https://cdn.example.com/api?d=abc123&internal_token=v1.moviebox.x';
+      expect(StreamExtractor.isPlayableStreamUrl(url), isTrue);
+      expect(StreamExtractor.isOpaqueSignedMediaProxyUrl(url), isTrue);
+      expect(
+        StreamExtractor.isOpaqueSignedMediaProxyUrl(
+          'https://cdn.example.com/api?d=only',
+        ),
+        isFalse,
+      );
+    });
+
+    test('accepts Cinesrc ice proxy ?m3u8= token URLs', () {
+      const url =
+          'https://ice.bright67.online/?m3u8=51e94ee741680a43&h=d6bb5033';
+      expect(StreamExtractor.isPlayableStreamUrl(url), isTrue);
+      expect(StreamExtractor.isDeferredStrongStreamUrl(url), isTrue);
+      expect(
+        StreamExtractor.isPlayableStreamUrl(
+          'https://ice.bright67.online/?seg=abc&h=d6bb',
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('StreamExtractor.isStrongStreamUrl', () {
@@ -93,6 +119,15 @@ void main() {
         isFalse,
       );
     });
+
+    test('VidLove opaque media proxy ends deferred sniff', () {
+      expect(
+        StreamExtractor.isDeferredStrongStreamUrl(
+          'https://cdn.example.com/api?d=abc&internal_token=v1.x',
+        ),
+        isTrue,
+      );
+    });
   });
 
   group('EmbedExtractProfiles', () {
@@ -110,12 +145,26 @@ void main() {
       final love = EmbedExtractProfiles.resolve('vidlove');
       final fast = EmbedExtractProfiles.resolve('vidfast');
       expect(love.rotateServerChips, isTrue);
-      expect(love.serverChipLabels, contains('neta'));
+      expect(
+        love.serverChipLabels,
+        containsAll(['moviebox', 'vidapi', 'neta', 'gogo']),
+      );
       expect(love.forceDirect, isTrue);
+      expect(love.acceptProxyPlaylistBodies, isTrue);
       expect(fast.rotateServerChips, isFalse);
       expect(fast.forceDirect, isTrue);
       expect(fast.deferUntilStrongStream, isTrue);
       expect(fast.acceptProxyPlaylistBodies, isTrue);
+    });
+
+    test('vidrock rotates Servers list chips and defers for HLS.js', () {
+      final p = EmbedExtractProfiles.resolve('vidrock');
+      expect(p.forceDirect, isTrue);
+      expect(p.deferUntilStrongStream, isTrue);
+      expect(p.rotateServerChips, isTrue);
+      expect(p.acceptProxyPlaylistBodies, isTrue);
+      expect(p.serverChipLabels, isEmpty);
+      expect(p.timeout.inSeconds, 90);
     });
 
     test('vidsrcsbs accepts proxy playlist bodies', () {
@@ -132,11 +181,12 @@ void main() {
       expect(p.serverChipLabels.first, 'pro multi');
     });
 
-    test('vidsrcsbs nested profile sniffs mirrors without dropdown rotation', () {
-      expect(vidsrcsbsNestedExtractProfile.rotateServerChips, isFalse);
+    test('vidsrcsbs nested profile rotates each mirror Servers chips', () {
+      expect(vidsrcsbsNestedExtractProfile.rotateServerChips, isTrue);
       expect(vidsrcsbsNestedExtractProfile.rotateBeforeComplete, isFalse);
       expect(vidsrcsbsNestedExtractProfile.forceDirect, isTrue);
-      expect(vidsrcsbsNestedExtractProfile.timeout.inSeconds, lessThan(30));
+      expect(vidsrcsbsNestedExtractProfile.serverChipLabels, isEmpty);
+      expect(vidsrcsbsNestedExtractProfile.timeout.inSeconds, 75);
     });
 
     test('autoembed forces player top-level load (anti-sandbox)', () {

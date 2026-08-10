@@ -11,6 +11,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/widgets/recent_search_helper_tile.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/tv_search_browse_overlay.dart';
@@ -230,6 +231,25 @@ class _HubSearchPageState extends State<HubSearchPage> {
     final next = await SearchRecentQueries.record(widget.tvTabId, query);
     if (!mounted) return;
     setState(() => _recentQueries = next);
+  }
+
+  Future<void> _removeRecentQuery(String query, {required int index}) async {
+    final next = await SearchRecentQueries.remove(widget.tvTabId, query);
+    if (!mounted) return;
+    setState(() {
+      _recentQueries = next;
+      _helperFocusedIndex = null;
+    });
+    final count = _helperItemCount();
+    if (count == 0) {
+      _focusSearchFieldBrowse();
+      return;
+    }
+    final focusIndex = index.clamp(0, count - 1);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _focusHelperAtIndex(focusIndex);
+    });
   }
 
   void _onSearchFieldFocusChange() {
@@ -1000,6 +1020,40 @@ class _HubSearchPageState extends State<HubSearchPage> {
           itemBuilder: (context, index) {
             final entry = entries[index];
             final count = entries.length;
+            final selected = _helperFocusedIndex == index;
+            void onFocusChange(bool focused) {
+              setState(() {
+                if (focused) {
+                  _helperFocusedIndex = index;
+                } else if (_helperFocusedIndex == index) {
+                  _helperFocusedIndex = null;
+                }
+              });
+            }
+
+            if (entry.isRecent) {
+              return RecentSearchHelperTile(
+                title: entry.title,
+                selected: selected,
+                listIndex: index,
+                tvTabId: widget.tvTabId,
+                tvRowId: rowId,
+                titleFocusNode: index == 0 ? _firstHelperFocusNode : null,
+                onSelect: () => _applyHelperQuery(entry.title),
+                onRemove: () => _removeRecentQuery(
+                  entry.title,
+                  index: index,
+                ),
+                onUpEdge: _helperUpEdge(index),
+                onDownEdge: _helperDownEdge(index, count),
+                onRightPastRemove: _helperRightEdge(index),
+                onFocusChange: onFocusChange,
+                titleFontSize: 15,
+                titleFontSizeSelected: 17,
+                verticalPadding: 8,
+              );
+            }
+
             return shellFocusableTap(
               context: context,
               onTap: () {
@@ -1023,19 +1077,11 @@ class _HubSearchPageState extends State<HubSearchPage> {
               onDownEdge: _helperDownEdge(index, count),
               onRightEdge: _helperRightEdge(index),
               ensureVisibleMode: ShellTvEnsureVisibleMode.row,
-              onFocusChange: (focused) {
-                setState(() {
-                  if (focused) {
-                    _helperFocusedIndex = index;
-                  } else if (_helperFocusedIndex == index) {
-                    _helperFocusedIndex = null;
-                  }
-                });
-              },
+              onFocusChange: onFocusChange,
               child: _buildHelperTitle(
                 entry.title,
-                selected: _helperFocusedIndex == index,
-                isRecent: entry.isRecent,
+                selected: selected,
+                isRecent: false,
               ),
             );
           },
