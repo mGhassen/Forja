@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_menu_return_focus.dart';
+import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_seek_scrub_cancel.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
@@ -30,15 +33,28 @@ class PlayerSubtitleSettingsValues {
 }
 
 /// Subtitle appearance dialog - touch + TV D-pad (sliders, chips, toggles).
+///
+/// Uses [OverlayEntry] (not [showDialog]) so remote Back dismisses via
+/// [dismissAnyPlayerChromeOverlay] without racing the player route pop.
 class PlayerSubtitleSettingsDialog {
-  static bool _isShowing = false;
-  static VoidCallback? _dismiss;
-  static bool get isShowing => _isShowing;
+  static OverlayEntry? _entry;
+  static Completer<void>? _completer;
+
+  static bool get isShowing => _entry != null;
 
   static bool dismissIfShowing() {
-    if (!_isShowing || _dismiss == null) return false;
-    _dismiss!();
+    if (_entry == null) return false;
+    dismiss();
     return true;
+  }
+
+  static void dismiss() {
+    final wasShowing = _entry != null;
+    _entry?.remove();
+    _entry = null;
+    _completer?.complete();
+    _completer = null;
+    if (wasShowing) playerMenuRestoreReturnFocus();
   }
 
   static Future<void> show(
@@ -48,369 +64,26 @@ class PlayerSubtitleSettingsDialog {
     Player? player,
   }) {
     playerMenuCaptureReturnFocus(context);
-    _isShowing = true;
+    dismiss();
     playerChromeCancelSeekScrubs();
-    return showDialog<void>(
-      context: context,
-      useRootNavigator: false,
-      builder: (dialogContext) {
-        var values = initial;
 
-        return StatefulBuilder(
-          builder: (context, setDialog) {
-            final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final overlay = Overlay.of(context);
+    _completer = Completer<void>();
 
-            void apply(void Function() mutate) {
-              setDialog(() => mutate());
-              onChanged(values);
-            }
+    void close() => dismiss();
 
-            void close() {
-              SettingsService().setSubSize(values.size);
-              SettingsService().setSubBgOpacity(values.bgOpacity);
-              SettingsService().setSubBottomPadding(values.bottomPadding);
-              Navigator.pop(dialogContext);
-            }
-
-            _dismiss = close;
-
-            Widget dialogBody = Dialog(
-              backgroundColor: const Color(0xFF141414),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: (MediaQuery.sizeOf(context).width * 0.9)
-                      .clamp(280.0, 420.0),
-                  maxHeight: MediaQuery.sizeOf(context).height * 0.8,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.tune_rounded,
-                            color: Color(0xFF7C3AED),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text(
-                              'Subtitle Settings',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          ForjaCloseButton.compact(
-                            onTap: close,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Divider(color: Colors.white10, height: 1),
-                    Flexible(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _SubSlider(
-                              label: 'Size',
-                              value: values.size,
-                              min: 10,
-                              max: 80,
-                              trailing: '${values.size.toInt()}',
-                              tvFocus: tv,
-                              autofocus: tv,
-                              onChanged: (v) => apply(() => values =
-                                  PlayerSubtitleSettingsValues(
-                                    size: v,
-                                    delay: values.delay,
-                                    color: values.color,
-                                    bgOpacity: values.bgOpacity,
-                                    bottomPadding: values.bottomPadding,
-                                    bold: values.bold,
-                                    font: values.font,
-                                  )),
-                            ),
-                            const SizedBox(height: 8),
-                            _DelayRow(
-                              delay: values.delay,
-                              tvFocus: tv,
-                              onChanged: (d) {
-                                apply(() => values =
-                                    PlayerSubtitleSettingsValues(
-                                      size: values.size,
-                                      delay: d,
-                                      color: values.color,
-                                      bgOpacity: values.bgOpacity,
-                                      bottomPadding: values.bottomPadding,
-                                      bold: values.bold,
-                                      font: values.font,
-                                    ));
-                                _applyDelay(player, d);
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Text Color',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: _colorOptions.entries.map((e) {
-                                final selected =
-                                    values.color.toARGB32() ==
-                                    e.value.toARGB32();
-                                final swatch = Container(
-                                  width: 34,
-                                  height: 34,
-                                  decoration: BoxDecoration(
-                                    color: e.value,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: selected
-                                          ? ForjaShellColors.brandGreen
-                                          : Colors.white24,
-                                      width: selected ? 3 : 1,
-                                    ),
-                                  ),
-                                  child: selected
-                                      ? Icon(
-                                          Icons.check,
-                                          size: 16,
-                                          color: ForjaShellColors.brandGreen,
-                                        )
-                                      : null,
-                                );
-                                if (!tv) {
-                                  return GestureDetector(
-                                    onTap: () {
-                                      apply(() {
-                                        values =
-                                            PlayerSubtitleSettingsValues(
-                                          size: values.size,
-                                          delay: values.delay,
-                                          color: e.value,
-                                          bgOpacity: values.bgOpacity,
-                                          bottomPadding:
-                                              values.bottomPadding,
-                                          bold: values.bold,
-                                          font: values.font,
-                                        );
-                                        SettingsService()
-                                            .setSubColor(e.value.toARGB32());
-                                      });
-                                    },
-                                    child: swatch,
-                                  );
-                                }
-                                return shellFocusableTap(
-                                  context: context,
-                                  onTap: () {
-                                    apply(() {
-                                      values = PlayerSubtitleSettingsValues(
-                                        size: values.size,
-                                        delay: values.delay,
-                                        color: e.value,
-                                        bgOpacity: values.bgOpacity,
-                                        bottomPadding: values.bottomPadding,
-                                        bold: values.bold,
-                                        font: values.font,
-                                      );
-                                      SettingsService()
-                                          .setSubColor(e.value.toARGB32());
-                                    });
-                                  },
-                                  borderRadius: 17,
-                                  scaleOnFocus: 1.0,
-                                  showFocusBorder: true,
-                                  child: swatch,
-                                );
-                              }).toList(),
-                            ),
-                            const SizedBox(height: 16),
-                            _SubSlider(
-                              label: 'BG Opacity',
-                              value: values.bgOpacity,
-                              min: 0,
-                              max: 1,
-                              trailing:
-                                  '${(values.bgOpacity * 100).toInt()}%',
-                              tvFocus: tv,
-                              onChanged: (v) => apply(() => values =
-                                  PlayerSubtitleSettingsValues(
-                                    size: values.size,
-                                    delay: values.delay,
-                                    color: values.color,
-                                    bgOpacity: v,
-                                    bottomPadding: values.bottomPadding,
-                                    bold: values.bold,
-                                    font: values.font,
-                                  )),
-                            ),
-                            const SizedBox(height: 8),
-                            _SubSlider(
-                              label: 'Position',
-                              value: values.bottomPadding,
-                              min: 0,
-                              max: 120,
-                              trailing:
-                                  '${values.bottomPadding.toInt()}',
-                              tvFocus: tv,
-                              onChanged: (v) => apply(() => values =
-                                  PlayerSubtitleSettingsValues(
-                                    size: values.size,
-                                    delay: values.delay,
-                                    color: values.color,
-                                    bgOpacity: values.bgOpacity,
-                                    bottomPadding: v,
-                                    bold: values.bold,
-                                    font: values.font,
-                                  )),
-                            ),
-                            const SizedBox(height: 8),
-                            _BoldRow(
-                              bold: values.bold,
-                              tvFocus: tv,
-                              onChanged: (v) {
-                                apply(() => values =
-                                    PlayerSubtitleSettingsValues(
-                                      size: values.size,
-                                      delay: values.delay,
-                                      color: values.color,
-                                      bgOpacity: values.bgOpacity,
-                                      bottomPadding: values.bottomPadding,
-                                      bold: v,
-                                      font: values.font,
-                                    ));
-                                SettingsService().setSubBold(v);
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Font',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: _fonts.map((f) {
-                                final selected = values.font == f;
-                                final chip = Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 7,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: selected
-                                        ? ForjaShellColors.brandGreen
-                                            .withValues(alpha: 0.14)
-                                        : Colors.white.withValues(alpha: 0.06),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: selected
-                                          ? ForjaShellColors.brandGreen
-                                          : Colors.white12,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    f,
-                                    style: TextStyle(
-                                      color: selected
-                                          ? ForjaShellColors.brandGreen
-                                          : Colors.white54,
-                                      fontSize: 12,
-                                      fontWeight: selected
-                                          ? FontWeight.w600
-                                          : FontWeight.normal,
-                                    ),
-                                  ),
-                                );
-                                if (!tv) {
-                                  return GestureDetector(
-                                    onTap: () {
-                                      apply(() {
-                                        values =
-                                            PlayerSubtitleSettingsValues(
-                                          size: values.size,
-                                          delay: values.delay,
-                                          color: values.color,
-                                          bgOpacity: values.bgOpacity,
-                                          bottomPadding:
-                                              values.bottomPadding,
-                                          bold: values.bold,
-                                          font: f,
-                                        );
-                                        SettingsService().setSubFont(f);
-                                      });
-                                    },
-                                    child: chip,
-                                  );
-                                }
-                                return shellFocusableTap(
-                                  context: context,
-                                  onTap: () {
-                                    apply(() {
-                                      values = PlayerSubtitleSettingsValues(
-                                        size: values.size,
-                                        delay: values.delay,
-                                        color: values.color,
-                                        bgOpacity: values.bgOpacity,
-                                        bottomPadding: values.bottomPadding,
-                                        bold: values.bold,
-                                        font: f,
-                                      );
-                                      SettingsService().setSubFont(f);
-                                    });
-                                  },
-                                  borderRadius: 8,
-                                  scaleOnFocus: 1.0,
-                                  showFocusBorder: true,
-                                  child: chip,
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-
-            if (!tv) return dialogBody;
-
-            return TvOverlayScope(
-              onDismiss: close,
-              policy: ReadingOrderTraversalPolicy(),
-              child: dialogBody,
-            );
-          },
-        );
-      },
-    ).whenComplete(() {
-      _isShowing = false;
-      _dismiss = null;
-      playerMenuRestoreReturnFocus();
-    });
+    _entry = OverlayEntry(
+      builder: (_) => ShellScopeBuilder(
+        builder: (ctx, _) => _SubtitleSettingsOverlay(
+          initial: initial,
+          onChanged: onChanged,
+          player: player,
+          onClose: close,
+        ),
+      ),
+    );
+    overlay.insert(_entry!);
+    return _completer!.future;
   }
 
   static void _applyDelay(Player? player, double delay) {
@@ -440,6 +113,403 @@ class PlayerSubtitleSettingsDialog {
     'Orange': Color(0xFFFFAB40),
     'Pink': Color(0xFFFF80AB),
   };
+}
+
+class _SubtitleSettingsOverlay extends StatefulWidget {
+  const _SubtitleSettingsOverlay({
+    required this.initial,
+    required this.onChanged,
+    required this.onClose,
+    this.player,
+  });
+
+  final PlayerSubtitleSettingsValues initial;
+  final void Function(PlayerSubtitleSettingsValues values) onChanged;
+  final VoidCallback onClose;
+  final Player? player;
+
+  @override
+  State<_SubtitleSettingsOverlay> createState() =>
+      _SubtitleSettingsOverlayState();
+}
+
+class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
+  late PlayerSubtitleSettingsValues _values = widget.initial;
+
+  void _apply(void Function() mutate) {
+    setState(mutate);
+    widget.onChanged(_values);
+  }
+
+  void _close() {
+    SettingsService().setSubSize(_values.size);
+    SettingsService().setSubBgOpacity(_values.bgOpacity);
+    SettingsService().setSubBottomPadding(_values.bottomPadding);
+    widget.onClose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+    final panel = Material(
+      type: MaterialType.transparency,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth:
+              (MediaQuery.sizeOf(context).width * 0.9).clamp(280.0, 420.0),
+          maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+        ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xFF141414),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: PlayerPopupTokens.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.tune_rounded,
+                      color: Color(0xFF7C3AED),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Subtitle Settings',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    ForjaCloseButton.compact(onTap: _close),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white10, height: 1),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SubSlider(
+                        label: 'Size',
+                        value: _values.size,
+                        min: 10,
+                        max: 80,
+                        trailing: '${_values.size.toInt()}',
+                        tvFocus: tv,
+                        autofocus: tv,
+                        onChanged: (v) => _apply(() => _values =
+                            PlayerSubtitleSettingsValues(
+                              size: v,
+                              delay: _values.delay,
+                              color: _values.color,
+                              bgOpacity: _values.bgOpacity,
+                              bottomPadding: _values.bottomPadding,
+                              bold: _values.bold,
+                              font: _values.font,
+                            )),
+                      ),
+                      const SizedBox(height: 8),
+                      _DelayRow(
+                        delay: _values.delay,
+                        tvFocus: tv,
+                        onChanged: (d) {
+                          _apply(() => _values = PlayerSubtitleSettingsValues(
+                                size: _values.size,
+                                delay: d,
+                                color: _values.color,
+                                bgOpacity: _values.bgOpacity,
+                                bottomPadding: _values.bottomPadding,
+                                bold: _values.bold,
+                                font: _values.font,
+                              ));
+                          PlayerSubtitleSettingsDialog._applyDelay(
+                            widget.player,
+                            d,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Text Color',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: PlayerSubtitleSettingsDialog._colorOptions
+                            .entries
+                            .map((e) {
+                          final selected = _values.color.toARGB32() ==
+                              e.value.toARGB32();
+                          final swatch = Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: e.value,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: selected
+                                    ? ForjaShellColors.brandGreen
+                                    : Colors.white24,
+                                width: selected ? 3 : 1,
+                              ),
+                            ),
+                            child: selected
+                                ? Icon(
+                                    Icons.check,
+                                    size: 16,
+                                    color: ForjaShellColors.brandGreen,
+                                  )
+                                : null,
+                          );
+                          if (!tv) {
+                            return GestureDetector(
+                              key: ValueKey('sub-color-${e.key}'),
+                              onTap: () {
+                                _apply(() {
+                                  _values = PlayerSubtitleSettingsValues(
+                                    size: _values.size,
+                                    delay: _values.delay,
+                                    color: e.value,
+                                    bgOpacity: _values.bgOpacity,
+                                    bottomPadding: _values.bottomPadding,
+                                    bold: _values.bold,
+                                    font: _values.font,
+                                  );
+                                  SettingsService()
+                                      .setSubColor(e.value.toARGB32());
+                                });
+                              },
+                              child: swatch,
+                            );
+                          }
+                          return KeyedSubtree(
+                            key: ValueKey('sub-color-${e.key}'),
+                            child: shellFocusableTap(
+                              context: context,
+                              onTap: () {
+                                _apply(() {
+                                  _values = PlayerSubtitleSettingsValues(
+                                    size: _values.size,
+                                    delay: _values.delay,
+                                    color: e.value,
+                                    bgOpacity: _values.bgOpacity,
+                                    bottomPadding: _values.bottomPadding,
+                                    bold: _values.bold,
+                                    font: _values.font,
+                                  );
+                                  SettingsService()
+                                      .setSubColor(e.value.toARGB32());
+                                });
+                              },
+                              borderRadius: 17,
+                              scaleOnFocus: 1.0,
+                              showFocusBorder: true,
+                              child: swatch,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                      _SubSlider(
+                        label: 'BG Opacity',
+                        value: _values.bgOpacity,
+                        min: 0,
+                        max: 1,
+                        trailing: '${(_values.bgOpacity * 100).toInt()}%',
+                        tvFocus: tv,
+                        onChanged: (v) => _apply(() => _values =
+                            PlayerSubtitleSettingsValues(
+                              size: _values.size,
+                              delay: _values.delay,
+                              color: _values.color,
+                              bgOpacity: v,
+                              bottomPadding: _values.bottomPadding,
+                              bold: _values.bold,
+                              font: _values.font,
+                            )),
+                      ),
+                      const SizedBox(height: 8),
+                      _SubSlider(
+                        label: 'Position',
+                        value: _values.bottomPadding,
+                        min: 0,
+                        max: 120,
+                        trailing: '${_values.bottomPadding.toInt()}',
+                        tvFocus: tv,
+                        onChanged: (v) => _apply(() => _values =
+                            PlayerSubtitleSettingsValues(
+                              size: _values.size,
+                              delay: _values.delay,
+                              color: _values.color,
+                              bgOpacity: _values.bgOpacity,
+                              bottomPadding: v,
+                              bold: _values.bold,
+                              font: _values.font,
+                            )),
+                      ),
+                      const SizedBox(height: 8),
+                      _BoldRow(
+                        bold: _values.bold,
+                        tvFocus: tv,
+                        onChanged: (v) {
+                          _apply(() => _values = PlayerSubtitleSettingsValues(
+                                size: _values.size,
+                                delay: _values.delay,
+                                color: _values.color,
+                                bgOpacity: _values.bgOpacity,
+                                bottomPadding: _values.bottomPadding,
+                                bold: v,
+                                font: _values.font,
+                              ));
+                          SettingsService().setSubBold(v);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Font',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: PlayerSubtitleSettingsDialog._fonts.map((f) {
+                          final selected = _values.font == f;
+                          final chip = Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? ForjaShellColors.brandGreen
+                                      .withValues(alpha: 0.14)
+                                  : Colors.white.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: selected
+                                    ? ForjaShellColors.brandGreen
+                                    : Colors.white12,
+                              ),
+                            ),
+                            child: Text(
+                              f,
+                              style: TextStyle(
+                                color: selected
+                                    ? ForjaShellColors.brandGreen
+                                    : Colors.white54,
+                                fontSize: 12,
+                                fontWeight: selected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          );
+                          if (!tv) {
+                            return GestureDetector(
+                              key: ValueKey('sub-font-$f'),
+                              onTap: () {
+                                _apply(() {
+                                  _values = PlayerSubtitleSettingsValues(
+                                    size: _values.size,
+                                    delay: _values.delay,
+                                    color: _values.color,
+                                    bgOpacity: _values.bgOpacity,
+                                    bottomPadding: _values.bottomPadding,
+                                    bold: _values.bold,
+                                    font: f,
+                                  );
+                                  SettingsService().setSubFont(f);
+                                });
+                              },
+                              child: chip,
+                            );
+                          }
+                          return KeyedSubtree(
+                            key: ValueKey('sub-font-$f'),
+                            child: shellFocusableTap(
+                              context: context,
+                              onTap: () {
+                                _apply(() {
+                                  _values = PlayerSubtitleSettingsValues(
+                                    size: _values.size,
+                                    delay: _values.delay,
+                                    color: _values.color,
+                                    bgOpacity: _values.bgOpacity,
+                                    bottomPadding: _values.bottomPadding,
+                                    bold: _values.bold,
+                                    font: f,
+                                  );
+                                  SettingsService().setSubFont(f);
+                                });
+                              },
+                              borderRadius: 8,
+                              scaleOnFocus: 1.0,
+                              showFocusBorder: true,
+                              child: chip,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final body = Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: _close,
+            behavior: HitTestBehavior.opaque,
+            child: ColoredBox(color: Colors.black.withValues(alpha: 0.62)),
+          ),
+        ),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: panel,
+          ),
+        ),
+      ],
+    );
+
+    if (!tv) return body;
+
+    // Linear reading-order so color/font chips are reachable — spatial
+    // focusInDirection skips the small Wrap circles between wide sliders.
+    return TvOverlayScope(
+      onDismiss: _close,
+      linear: true,
+      policy: ReadingOrderTraversalPolicy(),
+      child: body,
+    );
+  }
 }
 
 class _SubSlider extends StatefulWidget {
