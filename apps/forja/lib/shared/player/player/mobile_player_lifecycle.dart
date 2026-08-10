@@ -345,13 +345,18 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
   }
 
   List<StreamSource>? get _effectiveCurrentSources {
+    final pid = _s._currentProvider ?? widget.activeProvider;
+    if (pid != null && pid.isNotEmpty) {
+      final fuller = preferFullerProviderSources(
+        providerId: pid,
+        live: _s._currentSources,
+        cached: _s._liveProviderSourcesCache.value[pid],
+      );
+      if (fuller.isNotEmpty) return fuller;
+    }
     if (_s._currentSources != null && _s._currentSources!.isNotEmpty) {
       return _s._currentSources;
     }
-    final pid = _s._currentProvider ?? widget.activeProvider;
-    if (pid == null || pid.isEmpty) return _s._currentSources;
-    final cached = _s._liveProviderSourcesCache.value[pid];
-    if (cached != null && cached.isNotEmpty) return cached;
     return _s._currentSources;
   }
 
@@ -371,10 +376,13 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       catalogUrl: _s._currentPlayingCatalogUrl,
       playUrl: playUrl,
     );
+    final cached = _s._liveProviderSourcesCache.value[pid];
     var sources = List<StreamSource>.from(
-      _s._currentSources != null && _s._currentSources!.isNotEmpty
-          ? _s._currentSources!
-          : (_s._liveProviderSourcesCache.value[pid] ?? const <StreamSource>[]),
+      preferFullerProviderSources(
+        providerId: pid,
+        live: _s._currentSources,
+        cached: cached,
+      ),
     );
     sources.removeWhere((s) => isUnplayableCachedStreamUrl(s.url));
     sources = [

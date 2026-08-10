@@ -238,12 +238,12 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
   }
 
   List<StreamSource> _streamsFor(String providerId) {
-    if (providerId == widget.currentProviderId) {
-      final live = widget.currentSources;
-      if (live != null && live.isNotEmpty) return live;
-    }
-    return widget.providerSourcesCache.value[providerId] ??
-        const <StreamSource>[];
+    final isCurrent = providerId == widget.currentProviderId;
+    return preferFullerProviderSources(
+      providerId: providerId,
+      live: isCurrent ? widget.currentSources : null,
+      cached: widget.providerSourcesCache.value[providerId],
+    );
   }
 
   PlayerSourceStatus _serverStatus(String providerId) {

@@ -54,6 +54,10 @@ class VidnestExtractor {
     _VidnestServer('ophim', 'Ophim', 'klikxxi/movie', 'klikxxi/tv'),
   ];
 
+  /// Mirror labels used in stream titles (`Gama · …`) - ownership filter.
+  static List<String> get serverDisplayNames =>
+      [for (final s in _servers) s.displayName];
+
   static var _generation = 0;
   static http.Client? _sharedClient;
 

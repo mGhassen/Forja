@@ -50,21 +50,42 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
         return null;
       }
       if (hit != null && hit.streamSources.isNotEmpty) {
-        final sources = dedupeStreamSources(hit.streamSources);
-        _s._liveProviderSourcesCache.value = {
-          ..._s._liveProviderSourcesCache.value,
-          providerId: sources,
-        };
-        // Current server list prefers live [_currentSources] over session
-        // cache - refresh it so panel reload is not a no-op after cache play.
-        if (forceRefresh &&
-            (_s._currentProvider == providerId ||
-                ((_s._currentProvider == null ||
-                        _s._currentProvider!.isEmpty) &&
-                    widget.activeProvider == providerId))) {
-          _s._currentSources = sources;
-          _s._failedSourceIndices.clear();
-          _s._checkingSourceIndices.clear();
+        if (hit.providerId.isNotEmpty && hit.providerId != providerId) {
+          debugPrint(
+            '[Player] refuse cache $providerId ← hit ${hit.providerId}',
+          );
+          _s._markProviderLoadFailed(providerId);
+          _s._sourceMenuRevision.value++;
+          return null;
+        }
+        final sources = sourcesOwnedByProvider(
+          providerId,
+          dedupeStreamSources(hit.streamSources),
+        );
+        if (sources.isEmpty) {
+          _s._markProviderLoadFailed(providerId);
+          _s._sourceMenuRevision.value++;
+          return null;
+        }
+        _s._cacheProviderSources(providerId, sources);
+        // Keep live session list as full as the server cache - selecting a
+        // stream must not leave [_currentSources] as a singleton forever.
+        final isActive =
+            _s._currentProvider == providerId ||
+            ((_s._currentProvider == null || _s._currentProvider!.isEmpty) &&
+                widget.activeProvider == providerId);
+        if (isActive &&
+            (forceRefresh ||
+                (_s._currentSources?.length ?? 0) < sources.length)) {
+          _s._currentSources = preferFullerProviderSources(
+            providerId: providerId,
+            live: _s._currentSources,
+            cached: _s._liveProviderSourcesCache.value[providerId] ?? sources,
+          );
+          if (forceRefresh) {
+            _s._failedSourceIndices.clear();
+            _s._checkingSourceIndices.clear();
+          }
         }
         _s._markProviderLoadSucceeded(providerId);
         _s._scoreServerUp(providerId);
@@ -250,10 +271,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
         widget.onPlaybackStarted?.call();
         final selectedSources = _s._currentSources;
         if (selectedSources != null && selectedSources.isNotEmpty) {
-          _s._liveProviderSourcesCache.value = {
-            ..._s._liveProviderSourcesCache.value,
-            newProvider: selectedSources,
-          };
+          _s._cacheProviderSources(newProvider, selectedSources);
           _s._markProviderLoadSucceeded(newProvider);
           if (!usedCache) _s._scoreServerUp(newProvider);
           unawaited(

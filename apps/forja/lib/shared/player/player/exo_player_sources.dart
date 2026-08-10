@@ -122,12 +122,29 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         return null;
       }
       if (hit != null && hit.streamSources.isNotEmpty) {
-        final sources = dedupeStreamSources(hit.streamSources);
+        if (hit.providerId.isNotEmpty && hit.providerId != providerId) {
+          _s.ref.read(playerResolveStatusProvider.notifier).setError(
+                'No streams found',
+              );
+          return null;
+        }
+        final sources = sourcesOwnedByProvider(
+          providerId,
+          dedupeStreamSources(hit.streamSources),
+        );
+        if (sources.isEmpty) {
+          _s.ref.read(playerResolveStatusProvider.notifier).setError(
+                'No streams found',
+              );
+          return null;
+        }
         _s._providerSourcesCache.value = {
           ..._s._providerSourcesCache.value,
           providerId: sources,
         };
-        if (forceRefresh && providerId == _s._currentProvider) {
+        if (providerId == _s._currentProvider &&
+            (forceRefresh ||
+                (_s._currentSources?.length ?? 0) < sources.length)) {
           _s._currentSources = sources;
         }
         _s.ref.read(playerResolveStatusProvider.notifier).setReady();
@@ -237,13 +254,44 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       if (!mounted || _s._disposed || switchGen != _s._fallbackGen) return;
 
       final cached = _s._providerSourcesCache.value[providerId];
-      final sessionSources = (cached != null && cached.isNotEmpty)
-          ? cached
-          : dedupeStreamSources([source]);
+      var sessionSources = preferFullerProviderSources(
+        providerId: providerId,
+        live: _s._currentSources,
+        cached: cached,
+      );
+      if (sessionSources.isEmpty) {
+        sessionSources = sourcesOwnedByProvider(
+          providerId,
+          dedupeStreamSources([source]),
+        );
+      }
+      if (sessionSources.isEmpty) {
+        sessionSources = dedupeStreamSources([source]);
+      }
+      // Keep selected row identity even when live had collapsed to a singleton.
+      final match = sessionSources.indexWhere((s) => s.url == source.url);
+      final at = match >= 0 ? match : index.clamp(0, sessionSources.length - 1);
+      if (at >= 0 && at < sessionSources.length) {
+        final prev = sessionSources[at];
+        sessionSources = [
+          for (var i = 0; i < sessionSources.length; i++)
+            if (i == at)
+              source.copyWith(
+                providerId: source.providerId ?? prev.providerId ?? providerId,
+                catalogUrl: source.catalogUrl ?? prev.catalogUrl ?? source.url,
+              )
+            else
+              sessionSources[i],
+        ];
+      }
 
       setState(() {
         _s._currentProvider = providerId;
         _s._currentSources = sessionSources;
+        _s._providerSourcesCache.value = {
+          ..._s._providerSourcesCache.value,
+          providerId: sessionSources,
+        };
         _s._currentUrl = openUrl;
         _s._hasError = false;
         _s._errorMessage = '';
@@ -255,9 +303,9 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
               headers: s.headers ?? headers,
             ),
         ];
-        _s._sourceIndex = index.clamp(0, _s._sources.length - 1);
-        final match = _s._sources.indexWhere((s) => s.url == source.url);
-        if (match >= 0) _s._sourceIndex = match;
+        _s._sourceIndex = at.clamp(0, _s._sources.length - 1);
+        final playMatch = _s._sources.indexWhere((s) => s.url == source.url);
+        if (playMatch >= 0) _s._sourceIndex = playMatch;
       });
 
       _s._opening = false;

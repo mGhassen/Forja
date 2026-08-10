@@ -1111,6 +1111,8 @@ mixin _DesktopPlayerPlayback
                       ? 'dash'
                       : 'mp4',
                   headers: headers,
+                  providerId: newProvider,
+                  catalogUrl: streamUrl,
                 ),
               ];
         if (resolvedSources.isEmpty) {

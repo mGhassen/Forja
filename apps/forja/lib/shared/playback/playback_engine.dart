@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/playback/host_provider_adapter.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/tv_stream_fallback.dart';
 import 'package:forja/shared/webview/atv_webview_guard.dart';
 import 'package:rust/rust.dart';
@@ -193,7 +194,9 @@ abstract final class PlaybackEngine {
   ) {
     final out = <String, List<StreamSource>>{};
     for (final hit in hits) {
-      out[hit.providerId] = hit.streamSources;
+      final owned = sourcesOwnedByProvider(hit.providerId, hit.streamSources);
+      if (owned.isEmpty) continue;
+      out[hit.providerId] = owned;
     }
     return out;
   }

@@ -37,6 +37,9 @@ class StreamProviderDisplay {
     'torrent': 'Torrent',
   };
 
+  /// Built-in web provider ids that have a player label (ownership / panel).
+  static Iterable<String> get labeledProviderIds => _labels.keys;
+
   /// Language/country flag emoji keyed by country/language code.
   static const _flags = <String, String>{
     'multi': '🌐',

@@ -3,6 +3,9 @@ library;
 
 import 'dart:convert';
 
+import 'package:forja/shared/extractors/providers/vidnest/vidnest_extractor.dart';
+import 'package:forja/shared/extractors/providers/vidsrcwin/profile.dart';
+import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:rust/rust.dart';
 
 /// True for built-in webstreaming extractors (Videasy, VidSrc, …).
@@ -166,4 +169,127 @@ bool streamSourceMatchesPlaying(
   if (hit(url, playTarget) || hit(sourceCatalog, playTarget)) return true;
   if (hit(urlTarget, catalog) || hit(urlTarget, playTarget)) return true;
   return false;
+}
+
+/// True when [title] matches Videasy Servers-tab mirror labels (`Yoru · …`).
+///
+/// Used to reject Videasy API rows that were wrongly cached under another
+/// server (VSEmbed / VidLink / …) after a shared-sniff race.
+bool hasVideasyMirrorTitle(String title) {
+  return _titleMatchesAnyLabel(title, VideasyExtractor.serverChipLabels);
+}
+
+/// True when [title] matches VidNest API mirror labels (`Gama · …`).
+bool hasVidnestMirrorTitle(String title) {
+  return _titleMatchesAnyLabel(title, VidnestExtractor.serverDisplayNames);
+}
+
+/// True when [title] matches VidSrc.win chip labels (`Alpha · …`).
+bool hasVidsrcwinMirrorTitle(String title) {
+  return _titleMatchesAnyLabel(title, vidsrcwinExtractProfile.serverChipLabels);
+}
+
+bool _titleMatchesAnyLabel(String title, Iterable<String> labels) {
+  final t = title.trim();
+  if (t.isEmpty) return false;
+  for (final label in labels) {
+    final l = label.trim();
+    if (l.isEmpty) continue;
+    if (t == l ||
+        t.startsWith('$l ·') ||
+        t.startsWith('$l -') ||
+        t.startsWith('$l ')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// True when [title] is clearly another provider's row (display name or
+/// mirror chips) - catches restamped/null providerId cache poison.
+bool hasForeignProviderTitle(String bucketId, String title) {
+  final want = StreamProviderDisplay.canonicalId(bucketId);
+  if (want.isEmpty) return false;
+  final t = title.trim();
+  if (t.isEmpty) return false;
+
+  if (want != 'videasy' && hasVideasyMirrorTitle(t)) return true;
+  if (want != 'vidnest' && hasVidnestMirrorTitle(t)) return true;
+  if (want != 'vidsrcwin' && hasVidsrcwinMirrorTitle(t)) return true;
+
+  for (final id in StreamProviderDisplay.labeledProviderIds) {
+    final other = StreamProviderDisplay.canonicalId(id);
+    if (other.isEmpty || other == want) continue;
+    // Modes / non-stream labels are not mirror titles.
+    if (isCatalogSourcesMode(other)) continue;
+    final label = StreamProviderDisplay.playerLabel(other);
+    if (_titleMatchesAnyLabel(t, [label])) return true;
+  }
+  return false;
+}
+
+bool _providerIdsCompatible(String bucketId, String sourceId) {
+  final want = StreamProviderDisplay.canonicalId(bucketId);
+  final got = StreamProviderDisplay.canonicalId(sourceId);
+  if (want == got) return true;
+  // Nuvio pipes: `nuvio:vidsrc` sources may carry either form.
+  if (want.startsWith('nuvio:') && got == want.split(':').last) return true;
+  if (got.startsWith('nuvio:') && want == got.split(':').last) return true;
+  return false;
+}
+
+/// Whether [source] may appear under the Sources panel row for [providerId].
+bool sourceBelongsToProvider(String providerId, StreamSource source) {
+  final want = StreamProviderDisplay.canonicalId(providerId);
+  if (want.isEmpty) return true;
+
+  final raw = source.providerId?.trim();
+  if (raw != null && raw.isNotEmpty) {
+    if (!_providerIdsCompatible(want, raw)) return false;
+  }
+
+  // After host ingest, providerId is often restamped to the requested server
+  // while the foreign title survives - never show those under another server.
+  if (hasForeignProviderTitle(want, source.title)) return false;
+  return true;
+}
+
+/// Keep only rows that belong to [providerId]; stamp [providerId] on survivors.
+List<StreamSource> sourcesOwnedByProvider(
+  String providerId,
+  List<StreamSource> sources,
+) {
+  final want = providerId.trim();
+  if (want.isEmpty || sources.isEmpty) return sources;
+  final out = <StreamSource>[];
+  for (final s in sources) {
+    if (!sourceBelongsToProvider(want, s)) continue;
+    final pid = s.providerId?.trim();
+    if (pid == null || pid.isEmpty) {
+      out.add(s.copyWith(providerId: want));
+    } else {
+      out.add(s);
+    }
+  }
+  return out;
+}
+
+/// Panel / session list for a server - never prefer a short live list over a
+/// fuller cache (selecting a stream must not wipe sibling mirrors).
+List<StreamSource> preferFullerProviderSources({
+  required String providerId,
+  List<StreamSource>? live,
+  List<StreamSource>? cached,
+}) {
+  final a = sourcesOwnedByProvider(
+    providerId,
+    live == null || live.isEmpty ? const [] : dedupeStreamSources(live),
+  );
+  final b = sourcesOwnedByProvider(
+    providerId,
+    cached == null || cached.isEmpty ? const [] : dedupeStreamSources(cached),
+  );
+  if (b.length > a.length) return b;
+  if (a.isNotEmpty) return a;
+  return b;
 }

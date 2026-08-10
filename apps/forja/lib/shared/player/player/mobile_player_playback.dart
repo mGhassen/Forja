@@ -1120,6 +1120,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
                       ? 'dash'
                       : 'mp4',
                   headers: headers,
+                  providerId: newProvider,
+                  catalogUrl: streamUrl,
                 ),
               ];
         if (resolvedSources.isEmpty) {

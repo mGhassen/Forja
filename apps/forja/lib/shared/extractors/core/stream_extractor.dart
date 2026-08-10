@@ -15,6 +15,7 @@ class StreamExtractor {
   Timer? _timeoutTimer;
   bool _cancelled = false;
   bool _completing = false;
+  Future<void>? _cancelInFlight;
 
   String? _capturedVideo;
   String? _capturedAudio;
@@ -132,38 +133,67 @@ class StreamExtractor {
   /// Manual provider switches call this while another sniff may already have
   /// a playable URL (or be mid cookie-harvest). Prefer returning that hit over
   /// discarding it as `null` - the next extract still starts cleanly after.
+  ///
+  /// Completes the **captured** session completer only. Never touch a newer
+  /// [extract] completer if one replaced [_completer] mid-await (shared host
+  /// WebView + unawaited [cancel] used to poison the next provider's result).
   Future<void> cancel() async {
+    final inFlight = _cancelInFlight;
+    if (inFlight != null) {
+      await inFlight;
+      return;
+    }
+    final done = Completer<void>();
+    _cancelInFlight = done.future;
+    try {
+      await _cancelBody();
+    } finally {
+      done.complete();
+      if (identical(_cancelInFlight, done.future)) {
+        _cancelInFlight = null;
+      }
+    }
+  }
+
+  Future<void> _cancelBody() async {
+    final completer = _completer;
     final referer = _playbackReferer(_originalEmbedUrl ?? '');
     final playable = _bestPlayableCaptured();
 
     // Cookie harvest already running - let it finish (do not null the completer).
-    if (_completing && _completer != null && !_completer!.isCompleted) {
+    if (_completing && completer != null && !completer.isCompleted) {
       _log('Cancel during complete - keeping in-flight result');
       try {
-        await _completer!.future.timeout(const Duration(seconds: 8));
+        await completer.future.timeout(const Duration(seconds: 8));
       } catch (_) {}
-      await _cleanup();
-      _activeProviderId = null;
+      if (identical(_completer, completer)) {
+        await _cleanup();
+        _activeProviderId = null;
+      }
       return;
     }
 
     // Stream already sniffed - complete with it instead of discarding.
-    if (playable != null && _completer != null && !_completer!.isCompleted) {
+    if (playable != null && completer != null && !completer.isCompleted) {
       _log('Cancel with captured stream - completing instead of discard');
       _capturedVideo = playable;
       _cancelled = false;
       _completing = true;
-      await _finishWithCookies(referer);
-      _activeProviderId = null;
+      await _finishWithCookies(referer, target: completer);
+      if (identical(_completer, completer)) {
+        _activeProviderId = null;
+      }
       return;
     }
 
     _cancelled = true;
     _completing = false;
     await _cleanup();
-    _activeProviderId = null;
-    if (_completer != null && !_completer!.isCompleted) {
-      _completer!.complete(null);
+    if (identical(_completer, completer)) {
+      _activeProviderId = null;
+    }
+    if (completer != null && !completer.isCompleted) {
+      completer.complete(null);
     }
   }
 
@@ -200,8 +230,10 @@ class StreamExtractor {
         : (providerId != null && providerId.trim().isNotEmpty
               ? providerId
               : null);
-    // Dispose any prior WebView without dropping the new session tag.
-    await _cleanup();
+    // Settle the prior session fully before opening a new one - bare
+    // [_cleanup] raced unawaited [cancel] and completed the new completer
+    // with the previous provider's capture (e.g. Videasy → VSEmbed).
+    await cancel();
     _profile = resolved;
     _activeProviderId = sessionTag;
     if (isAndroidTvHeadlessWebViewBlocked) {
@@ -944,20 +976,25 @@ class StreamExtractor {
 
   void _completeWithCaptured(String referer) {
     if (_completing) return;
-    if (_completer == null || _completer!.isCompleted) return;
+    final completer = _completer;
+    if (completer == null || completer.isCompleted) return;
     _completing = true;
-    unawaited(_finishWithCookies(referer));
+    unawaited(_finishWithCookies(referer, target: completer));
   }
 
-  Future<void> _finishWithCookies(String referer) async {
-    if (_completer == null || _completer!.isCompleted) {
-      _completing = false;
+  Future<void> _finishWithCookies(
+    String referer, {
+    Completer<ExtractedMedia?>? target,
+  }) async {
+    final completer = target ?? _completer;
+    if (completer == null || completer.isCompleted) {
+      if (identical(_completer, completer)) _completing = false;
       return;
     }
     // Prefer a non-audio playable URL if we have one (cancel / late refine).
     final video = _bestPlayableCaptured() ?? _capturedVideo;
     if (video == null || video.isEmpty) {
-      _completing = false;
+      if (identical(_completer, completer)) _completing = false;
       return;
     }
     _capturedVideo = video;
@@ -979,8 +1016,8 @@ class StreamExtractor {
     }
     _capturedHeaders = headers;
 
-    if (_completer != null && !_completer!.isCompleted) {
-      _completer!.complete(
+    if (!completer.isCompleted) {
+      completer.complete(
         ExtractedMedia(
           url: video,
           audioUrl: _capturedAudio,
@@ -989,8 +1026,12 @@ class StreamExtractor {
         ),
       );
     }
-    await _cleanup();
-    _completing = false;
+    // Only tear down if we still own the active session - a newer extract()
+    // may have replaced [_completer] while cookie harvest awaited.
+    if (identical(_completer, completer)) {
+      await _cleanup();
+      _completing = false;
+    }
   }
 
   /// Pull cookies for embed + stream hosts so CDN probe/open matches the browser.

@@ -277,10 +277,44 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
 
   void _cacheProviderSources(String providerId, List<StreamSource> sources) {
     if (_s._disposed || providerId.isEmpty || sources.isEmpty) return;
+    final owned = sourcesOwnedByProvider(providerId, sources);
+    if (owned.isEmpty) return;
+    final existingMap = _liveProviderSourcesCache.value;
+    final withoutForeignUrls = <StreamSource>[
+      for (final s in owned)
+        if (!_urlOwnedByOtherProvider(
+          providerId: providerId,
+          url: s.url,
+          cache: existingMap,
+        ))
+          s,
+    ];
+    if (withoutForeignUrls.isEmpty) return;
+    final existing = existingMap[providerId];
+    final next = preferFullerProviderSources(
+      providerId: providerId,
+      live: withoutForeignUrls,
+      cached: existing,
+    );
     _liveProviderSourcesCache.value = {
-      ..._liveProviderSourcesCache.value,
-      providerId: dedupeStreamSources(sources),
+      ...existingMap,
+      providerId: next,
     };
+  }
+
+  bool _urlOwnedByOtherProvider({
+    required String providerId,
+    required String url,
+    required Map<String, List<StreamSource>> cache,
+  }) {
+    final want = StreamProviderDisplay.canonicalId(providerId);
+    final u = url.trim();
+    if (u.isEmpty) return false;
+    for (final e in cache.entries) {
+      if (StreamProviderDisplay.canonicalId(e.key) == want) continue;
+      if (e.value.any((s) => s.url.trim() == u)) return true;
+    }
+    return false;
   }
 
   void _syncProbeStatus(String providerId, StreamProviderProbeStatus status) {
@@ -612,11 +646,28 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
   }
 
   Future<void> _switchToStreamSource(StreamSource source, int index) async {
+    final pid = _s._currentProvider ?? widget.activeProvider ?? '';
+    if (pid.isNotEmpty) {
+      final fuller = preferFullerProviderSources(
+        providerId: pid,
+        live: _s._currentSources,
+        cached: _s._liveProviderSourcesCache.value[pid],
+      );
+      if (fuller.isNotEmpty &&
+          fuller.length > (_s._currentSources?.length ?? 0)) {
+        setState(() => _s._currentSources = List<StreamSource>.from(fuller));
+      }
+    }
     if (_s._currentSources == null || _s._currentSources!.isEmpty) {
       final effective = _s._effectiveCurrentSources;
       if (effective != null && effective.isNotEmpty) {
         setState(() => _s._currentSources = List<StreamSource>.from(effective));
       }
+    }
+    var targetIndex = index;
+    if (_s._currentSources != null && _s._currentSources!.isNotEmpty) {
+      final byUrl = _s._currentSources!.indexWhere((s) => s.url == source.url);
+      if (byUrl >= 0) targetIndex = byUrl;
     }
 
     final isCurrent = _s._currentProvider == 'service111477'
@@ -643,10 +694,10 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       _s._hasError = false;
       _s._errorMessage = '';
     });
-    _markSourceChecking(index);
+    _markSourceChecking(targetIndex);
 
     final currentPos = _s._positionNotifier.value;
-    final statusId = 'source-switch-$index';
+    final statusId = 'source-switch-$targetIndex';
     final resolvePid = source.providerId ?? source.title;
     ref.read(playerResolveStatusProvider.notifier).setLoading(resolvePid);
     _s._statusController.upsert(
@@ -668,14 +719,21 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );
-        _markSourceFailed(index);
+        _markSourceFailed(targetIndex);
         unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
         return;
       }
 
       var openUrl = validated.openUrl;
       Map<String, String>? headers = validated.headers;
-      var resolved = validated.resolved;
+      var resolved = validated.resolved.copyWith(
+        providerId: validated.resolved.providerId ?? source.providerId,
+        catalogUrl:
+            validated.resolved.catalogUrl ?? source.catalogUrl ?? source.url,
+        title: validated.resolved.title.trim().isNotEmpty
+            ? validated.resolved.title
+            : source.title,
+      );
 
       if (_s._currentProvider == 'service111477') {
         if (site111477_proxy.is111477ProxyRunning) {
@@ -724,7 +782,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );
-        _markSourceFailed(index);
+        _markSourceFailed(targetIndex);
         unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
         return;
       }
@@ -748,7 +806,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );
-        _markSourceFailed(index);
+        _markSourceFailed(targetIndex);
         unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
         return;
       }
@@ -758,7 +816,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
           _s._currentUrl = openUrl;
           _s._current111477FileUrl = source.url;
           // Keep the selected index - resetting to 0 played a different stream.
-          _s._currentFallbackSourceIndex = index.clamp(
+          _s._currentFallbackSourceIndex = targetIndex.clamp(
             0,
             (_s._currentSources?.length ?? 1) - 1,
           );
@@ -767,14 +825,14 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         });
       } else {
         if (_s._currentSources != null &&
-            index >= 0 &&
-            index < _s._currentSources!.length) {
-          _s._currentSources![index] = resolved;
+            targetIndex >= 0 &&
+            targetIndex < _s._currentSources!.length) {
+          _s._currentSources![targetIndex] = resolved;
         }
         setState(() {
           _s._currentUrl = openUrl;
           _s._currentPlayingCatalogUrl = source.url;
-          _s._currentFallbackSourceIndex = index.clamp(
+          _s._currentFallbackSourceIndex = targetIndex.clamp(
             0,
             (_s._currentSources?.length ?? 1) - 1,
           );
@@ -808,7 +866,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       }
       _s._statusController.complete();
       ref.read(playerResolveStatusProvider.notifier).setReady();
-      _markSourceActive(index);
+      _markSourceActive(targetIndex);
       _syncPanelAfterPlaybackConfirmed();
       unawaited(_recordStreamPlaySuccess(_s._currentProvider ?? ''));
       unawaited(widget.onSourcePinned?.call(source.url, source.title));
@@ -823,7 +881,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
-      _markSourceFailed(index);
+      _markSourceFailed(targetIndex);
       unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
     }
   }

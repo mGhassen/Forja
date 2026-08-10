@@ -351,10 +351,13 @@ class PlayerStreamMenu {
     required Map<String, List<StreamSource>> cache,
   }) {
     final isCurrent = providerId == state.currentProviderId;
-    if (!isCurrent) return cache[providerId] ?? const <StreamSource>[];
-    final live = state.sources;
-    if (live != null && live.isNotEmpty) return live;
-    return cache[providerId] ?? const <StreamSource>[];
+    // Current server used to prefer live [_currentSources] blindly - after
+    // picking one mirror that list often shrank to 1 and wiped the panel.
+    return preferFullerProviderSources(
+      providerId: providerId,
+      live: isCurrent ? state.sources : null,
+      cached: cache[providerId],
+    );
   }
 
   static String _engineScoringId(String providerId, dynamic provider) {

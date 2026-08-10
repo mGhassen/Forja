@@ -192,6 +192,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [169-[open]-…](169-[open]-vidfast-w-path-bundled-hls.md) | VidFast `/w/` + bundled HLS sniff | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [170-[open]-…](170-[open]-vidzee-cloudflare-sniff.md) | Vidzee Cloudflare sniff wait | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [171-[open]-…](171-[open]-android-tv-details-focus-after-player.md) | ATV details empty focus after player | P1 | High | open | 2/2 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [172-[open]-…](172-[open]-vsembed-shows-videasy-streams.md) | VSEmbed panel shows Videasy streams | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
