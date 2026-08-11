@@ -6,6 +6,68 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
+/// Green sparkles beside admin-only Settings titles (`accounts.is_admin`).
+class SettingsAdminTitle extends StatelessWidget {
+  const SettingsAdminTitle({
+    super.key,
+    required this.title,
+    required this.style,
+    this.sparkSize = 14,
+    this.maxLines = 1,
+  });
+
+  final String title;
+  final TextStyle style;
+  final double sparkSize;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.auto_awesome,
+          size: sparkSize,
+          color: ForjaShellColors.brandGreen,
+        ),
+        SizedBox(width: sparkSize * 0.45),
+        Flexible(
+          child: Text(
+            title,
+            style: style,
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Widget settingsTitleText(
+  String title,
+  TextStyle style, {
+  bool adminOnly = false,
+  double sparkSize = 14,
+  int maxLines = 1,
+}) {
+  if (!adminOnly) {
+    return Text(
+      title,
+      style: style,
+      maxLines: maxLines,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+  return SettingsAdminTitle(
+    title: title,
+    style: style,
+    sparkSize: sparkSize,
+    maxLines: maxLines,
+  );
+}
+
 /// Category row in the Settings hub list / sidebar.
 ///
 /// Chrome is only the green left bar / icon (selection). TV D-pad focus does
@@ -18,6 +80,7 @@ class SettingsCategoryTile extends StatelessWidget {
     this.subtitle,
     required this.selected,
     required this.onTap,
+    this.adminOnly = false,
     this.onFocusSelect,
     this.focusNode,
     this.listIndex,
@@ -31,6 +94,7 @@ class SettingsCategoryTile extends StatelessWidget {
   final String? subtitle;
   final bool selected;
   final VoidCallback onTap;
+  final bool adminOnly;
 
   /// TV split: focus lands on a tile → select only (do not enter detail).
   /// When null, [onTap] is used (compact list / non-TV).
@@ -76,13 +140,15 @@ class SettingsCategoryTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                settingsTitleText(
                   title,
-                  style: TextStyle(
+                  TextStyle(
                     color: titleColor,
                     fontSize: SettingsTokens.categoryTitleSize,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
+                  adminOnly: adminOnly,
+                  sparkSize: 13,
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
@@ -238,6 +304,7 @@ class SettingsPageScaffold extends StatefulWidget {
     this.showBack = false,
     this.onBack,
     this.scrollable = true,
+    this.adminOnly = false,
   });
 
   final String title;
@@ -247,6 +314,9 @@ class SettingsPageScaffold extends StatefulWidget {
 
   /// When false, [child] fills the remaining height (no outer scroll).
   final bool scrollable;
+
+  /// Admin category — sparkles on the page title.
+  final bool adminOnly;
 
   @override
   State<SettingsPageScaffold> createState() => _SettingsPageScaffoldState();
@@ -447,14 +517,16 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
             ),
           ),
         Expanded(
-          child: Text(
+          child: settingsTitleText(
             widget.title,
-            style: const TextStyle(
+            const TextStyle(
               color: ForjaShellColors.textPrimary,
               fontSize: SettingsTokens.pageTitleSize,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.3,
             ),
+            adminOnly: widget.adminOnly,
+            sparkSize: 18,
           ),
         ),
       ],
@@ -551,6 +623,7 @@ class SettingsToggleRow extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.enabled = true,
+    this.adminOnly = false,
   });
 
   final String title;
@@ -558,6 +631,7 @@ class SettingsToggleRow extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
   final bool enabled;
+  final bool adminOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -574,13 +648,15 @@ class SettingsToggleRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  settingsTitleText(
                     title,
-                    style: TextStyle(
+                    TextStyle(
                       color: titleColor,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
+                    adminOnly: adminOnly,
+                    sparkSize: 13,
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -621,6 +697,9 @@ class SettingsToggleRow extends StatelessWidget {
   }
 }
 /// Dropdown select row used inside [SettingsGroup].
+///
+/// Desktop/phone: Material [DropdownButton] (same chrome as before).
+/// TV: same chrome, focus on the row; OK opens a D-pad option list.
 class SettingsSelectRow extends StatelessWidget {
   const SettingsSelectRow({
     super.key,
@@ -637,8 +716,21 @@ class SettingsSelectRow extends StatelessWidget {
   final List<String> options;
   final ValueChanged<String?> onChanged;
 
+  Future<void> _openPicker(BuildContext context) async {
+    if (options.isEmpty) return;
+    final picked = await showSettingsSelectDialog(
+      context: context,
+      title: title,
+      value: value,
+      options: options,
+    );
+    if (!context.mounted || picked == null) return;
+    onChanged(picked);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final content = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
       child: Row(
@@ -669,39 +761,72 @@ class SettingsSelectRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           ExcludeFocus(
-            excluding: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+            excluding: tv,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: ForjaShellColors.sectionIconBg,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: ForjaShellColors.borderSubtle),
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: value,
-                  dropdownColor: ForjaShellColors.cinematic.menuSurface,
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: ForjaShellColors.brandGreen,
-                    size: 20,
-                  ),
-                  style: const TextStyle(
-                    color: ForjaShellColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                  items: options
-                      .map(
-                        (o) => DropdownMenuItem(
-                          value: o,
-                          child: Text(o),
+              child: tv
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 220),
+                          child: Text(
+                            value,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: ForjaShellColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
-                      )
-                      .toList(),
-                  onChanged: onChanged,
-                ),
-              ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: ForjaShellColors.brandGreen,
+                          size: 20,
+                        ),
+                      ],
+                    )
+                  : DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: options.contains(value) ? value : null,
+                        hint: Text(
+                          value,
+                          style: const TextStyle(
+                            color: ForjaShellColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        dropdownColor: ForjaShellColors.cinematic.menuSurface,
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: ForjaShellColors.brandGreen,
+                          size: 20,
+                        ),
+                        style: const TextStyle(
+                          color: ForjaShellColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        items: options
+                            .map(
+                              (o) => DropdownMenuItem(
+                                value: o,
+                                child: Text(o),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: onChanged,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -710,18 +835,194 @@ class SettingsSelectRow extends StatelessWidget {
 
     return shellFocusableTap(
       context: context,
-      onTap: () {
-        if (options.isEmpty) return;
-        final i = options.indexOf(value);
-        final next = options[((i < 0 ? 0 : i) + 1) % options.length];
-        onChanged(next);
-      },
+      onTap: () => _openPicker(context),
+      onKeyEvent: tv
+          ? (node, event) {
+              if (shellTvIsActivateKey(event)) {
+                _openPicker(context);
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            }
+          : null,
       scaleOnFocus: 1.0,
       showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       child: content,
+    );
+  }
+}
+
+/// Option list for [SettingsSelectRow] (TV D-pad / desktop click).
+Future<String?> showSettingsSelectDialog({
+  required BuildContext context,
+  required String title,
+  required String value,
+  required List<String> options,
+}) {
+  return showDialog<String>(
+    context: context,
+    useRootNavigator: true,
+    barrierDismissible: true,
+    builder: (ctx) => ShellScope.rehost(
+      context,
+      _SettingsSelectDialog(
+        title: title,
+        value: value,
+        options: options,
+      ),
+    ),
+  );
+}
+
+class _SettingsSelectDialog extends StatefulWidget {
+  const _SettingsSelectDialog({
+    required this.title,
+    required this.value,
+    required this.options,
+  });
+
+  final String title;
+  final String value;
+  final List<String> options;
+
+  @override
+  State<_SettingsSelectDialog> createState() => _SettingsSelectDialogState();
+}
+
+class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
+  late final List<FocusNode> _nodes = List.generate(
+    widget.options.length,
+    (i) => FocusNode(debugLabel: 'settings-select-$i'),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      var i = widget.options.indexOf(widget.value);
+      if (i < 0) i = 0;
+      final node = _nodes[i.clamp(0, _nodes.length - 1)];
+      if (node.canRequestFocus) node.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final n in _nodes) {
+      n.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final size = MediaQuery.sizeOf(context);
+    final maxH = size.height * 0.65;
+    final maxW = (size.width * 0.45).clamp(320.0, 520.0);
+
+    Widget optionRow(int index) {
+      final option = widget.options[index];
+      final selected = option == widget.value;
+      final row = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                option,
+                style: TextStyle(
+                  color: selected
+                      ? ForjaShellColors.textPrimary
+                      : ForjaShellColors.textSecondary,
+                  fontSize: 15,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+            if (selected)
+              const Icon(
+                Icons.check_rounded,
+                color: ForjaShellColors.brandGreen,
+                size: 22,
+              ),
+          ],
+        ),
+      );
+
+      void pick() => Navigator.of(context, rootNavigator: true).pop(option);
+
+      if (!tv) {
+        return InkWell(
+          onTap: pick,
+          borderRadius: BorderRadius.circular(10),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: selected ? ForjaShellColors.inkHover : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: Border(
+                left: BorderSide(
+                  color: selected
+                      ? ForjaShellColors.brandGreen
+                      : Colors.transparent,
+                  width: 2.5,
+                ),
+              ),
+            ),
+            child: row,
+          ),
+        );
+      }
+
+      return shellFocusableTap(
+        context: context,
+        focusNode: _nodes[index],
+        onTap: pick,
+        borderRadius: 10,
+        scaleOnFocus: 1.0,
+        showFocusRail: true,
+        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        child: row,
+      );
+    }
+
+    final list = SizedBox(
+      width: maxW,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxH),
+        child: ListView.separated(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          itemCount: widget.options.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 2),
+          itemBuilder: (_, i) => optionRow(i),
+        ),
+      ),
+    );
+
+    final dialog = AlertDialog(
+      backgroundColor: ForjaShellColors.cinematic.menuSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: ForjaShellColors.borderSubtle),
+      ),
+      title: Text(
+        widget.title,
+        style: const TextStyle(
+          color: ForjaShellColors.textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      content: list,
+    );
+
+    if (!tv) return dialog;
+    return ShellTvContainDpad(
+      child: ShellTvLinearFocusScope(child: dialog),
     );
   }
 }
@@ -737,6 +1038,7 @@ class SettingsActionRow extends StatelessWidget {
     this.destructive = false,
     required this.onTap,
     this.busy = false,
+    this.adminOnly = false,
   });
 
   final String title;
@@ -746,6 +1048,7 @@ class SettingsActionRow extends StatelessWidget {
   final bool destructive;
   final VoidCallback? onTap;
   final bool busy;
+  final bool adminOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -765,13 +1068,15 @@ class SettingsActionRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                settingsTitleText(
                   title,
-                  style: TextStyle(
+                  TextStyle(
                     color: titleColor,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
+                  adminOnly: adminOnly,
+                  sparkSize: 13,
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 4),

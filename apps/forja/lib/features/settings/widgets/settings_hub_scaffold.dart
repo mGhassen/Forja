@@ -255,6 +255,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                                 policy: ReadingOrderTraversalPolicy(),
                                 child: SettingsPageScaffold(
                                   title: selectedMeta?.title ?? 'Settings',
+                                  adminOnly: selectedMeta?.adminOnly ?? false,
                                   scrollable:
                                       !(selectedMeta?.fillViewport ?? false),
                                   child: buildSettingsCategoryBody(
@@ -269,6 +270,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                       )
                     : SettingsPageScaffold(
                         title: selectedMeta?.title ?? 'Settings',
+                        adminOnly: selectedMeta?.adminOnly ?? false,
                         scrollable: !(selectedMeta?.fillViewport ?? false),
                         child: buildSettingsCategoryBody(
                           widget.selectedId,
@@ -315,6 +317,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                     title: c.title,
                     subtitle: c.subtitle,
                     selected: false,
+                    adminOnly: c.adminOnly,
                     listIndex: index,
                     focusNode: index == 0 ? widget.firstTileFocusNode : null,
                     onTap: () => widget.onSelect(c.id),
@@ -371,6 +374,7 @@ class _CategorySidebar extends StatelessWidget {
                 title: c.title,
                 subtitle: c.subtitle,
                 selected: c.id == selectedId,
+                adminOnly: c.adminOnly,
                 listIndex: index,
                 focusNode: index == 0 ? firstTileFocusNode : null,
                 tvRowId: categoryRowId,

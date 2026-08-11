@@ -101,6 +101,7 @@ class _SettingsCrashReportingRowState
           : 'Unavailable in this build (no Sentry DSN). Preference still saved.',
       value: enabled,
       onChanged: _setCrashReporting,
+      adminOnly: true,
     );
   }
 
@@ -142,6 +143,7 @@ class _SettingsProductAnalyticsRowState
           : 'Unavailable in this build (no PostHog API key). Preference still saved.',
       value: enabled,
       onChanged: _setEnabled,
+      adminOnly: true,
     );
   }
 
@@ -184,6 +186,7 @@ class _SettingsMacOsKeychainRowState
           'Forja explains first; the system may ask for your password once.',
       value: enabled,
       onChanged: _setEnabled,
+      adminOnly: true,
     );
   }
 

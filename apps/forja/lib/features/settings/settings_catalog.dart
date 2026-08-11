@@ -37,6 +37,7 @@ class SettingsCategoryMeta {
     required this.subtitle,
     required this.icon,
     this.fillViewport = false,
+    this.adminOnly = false,
   });
 
   final String id;
@@ -46,6 +47,9 @@ class SettingsCategoryMeta {
 
   /// When true, the detail body fills the pane (no outer scroll) - for tabbed UIs.
   final bool fillViewport;
+
+  /// Admin-only category — sparkles on the hub tile / page title.
+  final bool adminOnly;
 }
 
 /// Ordered catalog of Settings categories for the active [visibility].
@@ -86,6 +90,7 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
         title: 'WebStreamr',
         subtitle: 'Countries, extractors, MFP, TMDB',
         icon: Icons.language_rounded,
+        adminOnly: true,
       ),
     if (visibility.showDebrid)
       const SettingsCategoryMeta(
@@ -93,6 +98,7 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
         title: 'Debrid',
         subtitle: 'Real-Debrid, TorBox, and more',
         icon: Icons.cloud_download_rounded,
+        adminOnly: true,
       ),
     if (visibility.showAccounts)
       const SettingsCategoryMeta(
@@ -108,6 +114,7 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
         subtitle: 'Trakt & MDBlist custom lists',
         icon: Icons.list_alt_rounded,
         fillViewport: true,
+        adminOnly: true,
       ),
     if (visibility.showDataCategory)
       const SettingsCategoryMeta(

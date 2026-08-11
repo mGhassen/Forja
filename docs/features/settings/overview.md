@@ -16,7 +16,7 @@ Select the profile avatar / Guest item pinned at the bottom of the desktop or
 
 ## Categories
 
-Categories appear only when they match your profile. **VOD tabs** = Home, Search, Anime, Asian Drama, or My List.
+Categories appear only when they match your profile. **VOD tabs** = Home, Search, Anime, Asian Drama, or My List. Admin-only entries (WebStreamr, Debrid, Lists, and some About / Playback rows) show green sparkles next to the title when you can see them.
 
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
@@ -50,8 +50,9 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   holding **↑/↓** speeds up the further you hold; D-pad stays in the
   right pane. **Back** returns to the selected
   category, then first category, then the nav rail. **←** on the first category
-  also returns to the nav rail. **OK** in the detail pane flips a toggle /
-  cycles a dropdown; nested switches do not steal focus. Text fields
+  also returns to the nav rail. **OK** in the detail pane flips a toggle or
+  opens a select’s option list (current choice highlighted; **Back** dismisses).
+  Nested switches do not steal focus. Text fields
   (API keys, URLs, etc.) take **focus** with the D-pad without opening the
   keyboard — press **OK** to type; **Back** leaves typing and keeps the field
   focused

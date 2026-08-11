@@ -95,6 +95,7 @@ class SettingsCategoryPage extends ConsumerWidget {
             policy: ReadingOrderTraversalPolicy(),
             child: SettingsPageScaffold(
               title: meta?.title ?? 'Settings',
+              adminOnly: meta?.adminOnly ?? false,
               showBack: true,
               scrollable: !(meta?.fillViewport ?? false),
               child: buildSettingsCategoryBody(categoryId, visibility),
@@ -764,6 +765,7 @@ class SettingsAboutPageBody extends ConsumerWidget {
                 ),
                 title: 'Preview Splash Screen',
                 subtitle: 'Show the boot splash without restarting',
+                adminOnly: true,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => const SplashPreviewScreen(),
@@ -779,6 +781,7 @@ class SettingsAboutPageBody extends ConsumerWidget {
                 subtitle: Telemetry.isActive
                     ? 'Send a test exception to the Forja Flutter project'
                     : 'Enable Crash reporting first, then tap again',
+                adminOnly: true,
                 onTap: () async {
                   try {
                     await Telemetry.sendTestException();
@@ -797,6 +800,7 @@ class SettingsAboutPageBody extends ConsumerWidget {
                 subtitle: Telemetry.isAnalyticsActive
                     ? 'Send analytics_verify to your PostHog project'
                     : 'Enable Product analytics first, then tap again',
+                adminOnly: true,
                 onTap: () async {
                   try {
                     await ProductAnalytics.sendTestEvent();

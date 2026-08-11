@@ -9,6 +9,7 @@ Widget settingsFocusableToggle(
   bool value,
   ValueChanged<bool> onChanged, {
   bool enabled = true,
+  bool adminOnly = false,
 }) {
   return SettingsToggleRow(
     title: title,
@@ -16,6 +17,7 @@ Widget settingsFocusableToggle(
     value: value,
     onChanged: onChanged,
     enabled: enabled,
+    adminOnly: adminOnly,
   );
 }
 

@@ -198,6 +198,7 @@ class _SettingsPlaybackSectionState
                     );
                     schedulePreferencesSyncPush();
                   },
+                  adminOnly: true,
                 ),
             ],
           ),
