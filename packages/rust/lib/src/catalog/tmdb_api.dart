@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:rust/rust.dart';
 import '../models/media_details_extras.dart';
 import '../models/watch_provider.dart';
+import 'search_query_parser.dart';
 
 class TmdbApi {
   static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
@@ -193,6 +194,147 @@ class TmdbApi {
         .where((json) => json['media_type'] == 'movie' || json['media_type'] == 'tv')
         .map((json) => Movie.fromJson(json))
         .toList();
+  }
+
+  Future<List<TmdbPersonHit>> searchPerson(String query) async {
+    final decoded =
+        await _fetchMap('search/person?query=${Uri.encodeComponent(query)}');
+    return (decoded['results'] as List? ?? const [])
+        .whereType<Map>()
+        .map(
+          (json) => TmdbPersonHit(
+            id: (json['id'] as num?)?.toInt() ?? 0,
+            name: (json['name'] ?? '').toString(),
+            popularity: (json['popularity'] as num?)?.toDouble() ?? 0,
+          ),
+        )
+        .where((p) => p.id > 0 && p.name.isNotEmpty)
+        .toList();
+  }
+
+  /// Title multi-search plus discover for year / genre / person (e.g. `nolan 2022-2025`, `horror 2025`).
+  Future<List<Movie>> searchStructured(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return const [];
+
+    final parsed = parseSearchQuery(trimmed);
+    final bounds = parsed.yearBounds;
+
+    Future<List<Movie>> safe(Future<List<Movie>> Function() run) async {
+      try {
+        return await run();
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    final multiFutures = <Future<List<Movie>>>[
+      safe(() => searchMulti(trimmed)),
+    ];
+    if (parsed.remainder.isNotEmpty &&
+        parsed.remainder.toLowerCase() != trimmed.toLowerCase()) {
+      multiFutures.add(safe(() => searchMulti(parsed.remainder)));
+    }
+
+    int? personId;
+    if (parsed.hasPersonCandidate) {
+      personId = await _resolvePersonId(parsed.remainder);
+    }
+
+    final gte = bounds != null ? '${bounds.$1}-01-01' : null;
+    final lte = bounds != null ? '${bounds.$2}-12-31' : null;
+    final singleYear =
+        bounds != null && bounds.$1 == bounds.$2 ? bounds.$1 : null;
+
+    final discoverFutures = <Future<List<Movie>>>[];
+
+    void addMovieDiscover({List<int>? genres, int? people}) {
+      discoverFutures.add(
+        safe(
+          () => discoverMovies(
+            genres: genres,
+            withPeople: people,
+            year: singleYear,
+            releaseDateGte: singleYear == null ? gte : null,
+            releaseDateLte: singleYear == null ? lte : null,
+          ),
+        ),
+      );
+    }
+
+    void addTvDiscover({List<int>? genres, int? people}) {
+      discoverFutures.add(
+        safe(
+          () => discoverTvShows(
+            genres: genres,
+            withPeople: people,
+            year: singleYear,
+            releaseDateGte: singleYear == null ? gte : null,
+            releaseDateLte: singleYear == null ? lte : null,
+          ),
+        ),
+      );
+    }
+
+    if (personId != null || parsed.hasGenre || bounds != null) {
+      if (parsed.hasGenre) {
+        if (parsed.movieGenreIds.isNotEmpty) {
+          addMovieDiscover(genres: parsed.movieGenreIds, people: personId);
+        }
+        if (parsed.tvGenreIds.isNotEmpty) {
+          addTvDiscover(genres: parsed.tvGenreIds, people: personId);
+        }
+      } else if (personId != null) {
+        addMovieDiscover(people: personId);
+        addTvDiscover(people: personId);
+      } else if (bounds != null && !parsed.hasPersonCandidate) {
+        addMovieDiscover();
+        addTvDiscover();
+      }
+    }
+
+    final lists = await Future.wait([
+      ...multiFutures,
+      ...discoverFutures,
+    ]);
+
+    final seen = <String>{};
+    final out = <Movie>[];
+    void addAll(List<Movie> items, {required bool applyYearFilter}) {
+      for (final m in items) {
+        if (applyYearFilter &&
+            bounds != null &&
+            !releaseDateInYearBounds(m.releaseDate, bounds)) {
+          continue;
+        }
+        final key = '${m.mediaType}:${m.id}';
+        if (!seen.add(key)) continue;
+        out.add(m);
+      }
+    }
+
+    for (var i = 0; i < multiFutures.length; i++) {
+      addAll(lists[i], applyYearFilter: bounds != null);
+    }
+    for (var i = multiFutures.length; i < lists.length; i++) {
+      addAll(lists[i], applyYearFilter: false);
+    }
+    return out;
+  }
+
+  Future<int?> _resolvePersonId(String text) async {
+    final hits = await searchPerson(text);
+    if (hits.isEmpty) return null;
+    final q = text.toLowerCase().trim();
+    final tokens = q.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+    for (final p in hits.take(8)) {
+      final name = p.name.toLowerCase();
+      if (name == q) return p.id;
+      if (tokens.every(name.contains)) return p.id;
+    }
+    final top = hits.first;
+    if (top.popularity >= 3.0) return top.id;
+    return null;
   }
 
   Future<List<Movie>> searchMovies(String query) async {

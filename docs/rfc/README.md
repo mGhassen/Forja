@@ -78,6 +78,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [055-[open]-…](055-[open]-native-youtube-trailer-player.md) | Native YouTube trailer player (resolve + media_kit) | v1.0.1 | open | 3/3 · 6/9 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S202 · B101-S211 · smoke R55-A06/A08/A09 ⬜ |
 | [056-[open]-…](056-[open]-installer-download-stats.md) | Installer download stats (admin) | v1.0.1 | open | 3/3 · 4/5 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S214 · env R56-A03 ⬜ |
 | [057-[partial]-…](057-[partial]-home-watch-provider-filter.md) | Home watch-provider filter | v1.4 | partial | 3/3 · 7/8 | [1.4.0](../backlog/1.4.0-[draft].md) |
+| [058-[partial]-…](058-[partial]-structured-search.md) | Structured Search (person / genre / year) | v1.4 | partial | 2/2 · 5/6 | [1.4.0](../backlog/1.4.0-[draft].md) |
 
 ## Related
 

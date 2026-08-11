@@ -136,7 +136,7 @@ final searchResultsProvider = FutureProvider.autoDispose
   final sections = <SearchResultSection>[];
 
   try {
-    final results = await api.searchMulti(query);
+    final results = await api.searchStructured(query);
     final movies = results.where((m) => m.mediaType == 'movie').toList();
     final shows = results.where((m) => m.mediaType == 'tv').toList();
     if (movies.isNotEmpty) {

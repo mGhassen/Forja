@@ -3,6 +3,7 @@ export 'kisskh_subtitle_decryptor.dart';
 export 'mdblist_service.dart';
 export 'mysubs_service.dart';
 export 'paper2audio_service.dart';
+export 'search_query_parser.dart';
 export 'subtitlecat_service.dart';
 export 'stremio_addon_features.dart';
 export 'stremio_service.dart';
