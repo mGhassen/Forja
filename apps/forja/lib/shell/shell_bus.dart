@@ -56,7 +56,8 @@ class ShellBus {
   );
 
   /// True while any fullscreen video player surface is mounted.
-  /// Hides shell nav for overlay players (IPTV) and update toasts over playback.
+  /// Drives tab purge, image-cache trim, and update-toast suppression — not
+  /// nav hide. Overlay players (IPTV) set [hideGlobalNav] themselves.
   static final ValueNotifier<bool> playerSurfaceActive = ValueNotifier<bool>(
     false,
   );

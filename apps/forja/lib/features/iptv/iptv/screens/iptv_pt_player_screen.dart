@@ -475,6 +475,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   void initState() {
     super.initState();
     ShellBus.enterPlayerSurface();
+    // Shell-overlay player sits beside the rail — hide chrome for full-bleed.
+    // Root-navigator handoffs (e.g. Live Matches) leave the rail alone.
+    if (ShellBus.shellOverlayHasPage.value) {
+      ShellBus.hideGlobalNav.value = true;
+    }
     PlayerBackExitGate.setTryFocusBack(() {
       if (_disposed || !mounted) return false;
       if (_isPipMode) return false;
@@ -870,6 +875,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     PlayerBackExitGate.setTryFocusBack(null);
     PlayerBackExitGate.setTryConsumePlayerOverlay(null);
     ShellBus.leavePlayerSurface();
+    ShellBus.clearHideGlobalNav();
     _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onRemoteControlsActivity);

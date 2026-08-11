@@ -341,7 +341,7 @@ class _HubHeroMainColumn extends StatelessWidget {
     height: 1.6,
     color: Color(0xB8FFFFFF),
   );
-  static const _titleBlockHeight = 96.0;
+  static const _titleBlockHeight = 120.0;
   static const _titleMinHeight = 32.0;
   static const _subtitleBlockHeight = 26.0;
   static const _genreBlockHeight = 30.0;
@@ -481,11 +481,9 @@ class _HubHeroMainColumn extends StatelessWidget {
         if (bounded)
           SizedBox(
             height: titleHeight,
-            child: ClipRect(
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: HubHeroTitle(title: title, slotHeight: titleHeight),
-              ),
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: HubHeroTitle(title: title),
             ),
           )
         else
@@ -591,21 +589,17 @@ class _HubHeroMainColumn extends StatelessWidget {
 }
 
 class HubHeroTitle extends StatelessWidget {
-  const HubHeroTitle({super.key, required this.title, this.slotHeight});
+  const HubHeroTitle({super.key, required this.title});
 
   final String title;
-  final double? slotHeight;
 
   @override
   Widget build(BuildContext context) {
-    final fit = slotHeight == null
-        ? (fontSize: 48.0, maxLines: 2)
-        : heroTitleFit(slotHeight!);
     return ChromaticHeroTitleText(
       title: title,
-      maxLines: fit.maxLines,
-      style: TextStyle(
-        fontSize: fit.fontSize,
+      maxLines: 2,
+      style: const TextStyle(
+        fontSize: 48,
         fontWeight: FontWeight.w900,
         color: Colors.white,
         height: kHeroTitleLineHeight,

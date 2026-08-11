@@ -6,8 +6,7 @@ import 'package:rust/rust.dart';
 
 enum HeroTitleStyle { details, home }
 
-/// Line height for details fallback titles. `1.0` smashes wrapped lines;
-/// keep enough leading for descenders without colliding line 2 into line 1.
+/// Line height for details fallback titles. `1.0` smashes wrapped lines.
 const double kHeroTitleLineHeight = 1.12;
 
 /// Cyan/amber offset layers under white — desktop/mobile details look.
@@ -25,9 +24,9 @@ class ChromaticHeroTitleText extends StatelessWidget {
   final TextStyle style;
   final int maxLines;
 
-  /// Neg letterSpacing + ±1.5 chromatic offsets paint past the layout box;
-  /// parent [ClipRect] title slots need a few px so first/last strokes survive.
-  static const double _bleedH = 3.0;
+  /// Keeps neg letterSpacing / chromatic offsets + descenders / line-2 out of
+  /// the parent clip and off the genre row.
+  static const _pad = EdgeInsets.fromLTRB(4, 2, 4, 8);
 
   Text _titleText(String value, TextStyle textStyle) => Text(
         value,
@@ -39,15 +38,14 @@ class ChromaticHeroTitleText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final plain = _titleText(title, style);
-    const pad = EdgeInsets.symmetric(horizontal: _bleedH);
     if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
       return Padding(
-        padding: pad,
+        padding: _pad,
         child: wrapDesktopSelectableTitle(context, plain),
       );
     }
     return Padding(
-      padding: pad,
+      padding: _pad,
       child: wrapDesktopSelectableTitle(
         context,
         Stack(
@@ -81,14 +79,6 @@ class ChromaticHeroTitleText extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Font size + line count that fits [slotHeight] without ClipRect eating line 2.
-({double fontSize, int maxLines}) heroTitleFit(double slotHeight) {
-  final maxLines = slotHeight < 64 ? 1 : 2;
-  final fontSize =
-      (slotHeight / (maxLines * kHeroTitleLineHeight)).clamp(22.0, 48.0);
-  return (fontSize: fontSize, maxLines: maxLines);
 }
 
 /// TMDB logo or stylized title for hero surfaces (Home carousel, media details).
@@ -156,24 +146,21 @@ class _DetailsHeroTitle extends StatelessWidget {
         height: logoHeight,
         fit: BoxFit.contain,
         alignment: Alignment.centerLeft,
-        placeholder: (_, _) => _fallbackTitle(movie, slotHeight),
-        errorWidget: (_, _, _) => _fallbackTitle(movie, slotHeight),
+        placeholder: (_, _) => _fallbackTitle(movie, logoHeight),
+        errorWidget: (_, _, _) => _fallbackTitle(movie, logoHeight),
       );
     }
-    return _fallbackTitle(movie, slotHeight);
+    return _fallbackTitle(movie, logoHeight);
   }
 
-  /// [maxHeight] null = unconstrained hero: full 48px, grow with wrap.
-  /// Otherwise scale so [maxLines] fit inside the clipped title slot.
-  Widget _fallbackTitle(Movie movie, double? maxHeight) {
-    final fit = maxHeight == null
-        ? (fontSize: 48.0, maxLines: 2)
-        : heroTitleFit(maxHeight);
+  Widget _fallbackTitle(Movie movie, double maxHeight) {
+    final fontSize = maxHeight <= 56 ? 32.0 : maxHeight <= 72 ? 40.0 : 48.0;
+    final maxLines = maxHeight <= 56 ? 1 : 2;
     return ChromaticHeroTitleText(
       title: movie.title,
-      maxLines: fit.maxLines,
+      maxLines: maxLines,
       style: TextStyle(
-        fontSize: fit.fontSize,
+        fontSize: fontSize,
         fontWeight: FontWeight.w900,
         color: Colors.white,
         height: kHeroTitleLineHeight,
