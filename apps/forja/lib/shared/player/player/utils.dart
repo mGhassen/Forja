@@ -1125,6 +1125,91 @@ String formatPlayerTrackLabel({
   return 'Track $id';
 }
 
+bool _sameTrackText(String a, String? b) {
+  if (b == null) return false;
+  return a.trim().toLowerCase() == b.trim().toLowerCase();
+}
+
+bool _titleIsLanguageOnly(String title, String languageLabel, String? language) {
+  if (_sameTrackText(title, languageLabel) || _sameTrackText(title, language)) {
+    return true;
+  }
+  final asLang = languageEndonym(title);
+  if (asLang != null &&
+      asLang != 'Unknown' &&
+      _sameTrackText(asLang, languageLabel)) {
+    return true;
+  }
+  return false;
+}
+
+String? _composeAudioTechFormat({
+  String? codec,
+  String? channels,
+  int? channelscount,
+  int? samplerate,
+  int? bitrate,
+}) {
+  final parts = <String>[];
+  final c = codec?.trim();
+  if (c != null && c.isNotEmpty) parts.add(c);
+
+  final ch = channels?.trim();
+  if (ch != null && ch.isNotEmpty) {
+    parts.add(ch);
+  } else if (channelscount != null && channelscount > 0) {
+    parts.add('$channelscount ch');
+  }
+
+  if (samplerate != null && samplerate > 0) {
+    parts.add(
+      samplerate % 1000 == 0
+          ? '${samplerate ~/ 1000} kHz'
+          : '${(samplerate / 1000).toStringAsFixed(1)} kHz',
+    );
+  }
+
+  if (bitrate != null && bitrate > 0) {
+    parts.add(
+      bitrate >= 1000 ? '${(bitrate / 1000).round()} kbps' : '$bitrate bps',
+    );
+  }
+
+  if (parts.isEmpty) return null;
+  return parts.join(' · ');
+}
+
+/// Secondary line under the language in the audio menu — container title or
+/// demux codec / channels / rate / bitrate. Null when nothing useful beyond
+/// the language label.
+String? formatPlayerAudioFormatSubtitle({
+  required String languageLabel,
+  String? title,
+  String? language,
+  String? codec,
+  String? channels,
+  int? channelscount,
+  int? samplerate,
+  int? bitrate,
+}) {
+  final trimmedTitle = title?.trim();
+  if (trimmedTitle != null &&
+      trimmedTitle.isNotEmpty &&
+      !_titleIsLanguageOnly(trimmedTitle, languageLabel, language)) {
+    return trimmedTitle;
+  }
+
+  final composed = _composeAudioTechFormat(
+    codec: codec,
+    channels: channels,
+    channelscount: channelscount,
+    samplerate: samplerate,
+    bitrate: bitrate,
+  );
+  if (composed == null || _sameTrackText(composed, languageLabel)) return null;
+  return composed;
+}
+
 Future<String?> _mpvTrackProperty(Player player, String property) async {
   if (player.platform is! NativePlayer) return null;
   try {

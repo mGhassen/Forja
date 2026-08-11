@@ -36,29 +36,52 @@ class PlayerAudioMenu {
                 style: TextStyle(color: PlayerPopupTokens.muted),
               )
             : Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (var i = 0; i < tracks.length; i++) ...[
-                    if (i != 0) const SizedBox(height: 8),
-                    PlayerPopupOptionChip(
-                      label: formatPlayerTrackLabel(
-                        id: tracks[i].id,
-                        title: tracks[i].title,
-                        language: tracks[i].language,
-                      ),
-                      selected: tracks[i].id == selectedId,
-                      expanded: true,
-                      onTap: () {
-                        PlayerPopupPanel.dismiss();
-                        if (tracks[i].id != selectedId) {
-                          onTrackSelected?.call();
-                          player.setAudioTrack(tracks[i]);
-                        }
-                      },
+                  for (final track in tracks)
+                    _tile(
+                      track: track,
+                      selected: track.id == selectedId,
+                      onTrackSelected: onTrackSelected,
+                      player: player,
                     ),
-                  ],
                 ],
               ),
       ),
+    );
+  }
+
+  static Widget _tile({
+    required AudioTrack track,
+    required bool selected,
+    required VoidCallback? onTrackSelected,
+    required Player player,
+  }) {
+    final label = formatPlayerTrackLabel(
+      id: track.id,
+      title: track.title,
+      language: track.language,
+    );
+    return PlayerPopupListTile(
+      label: label,
+      subtitle: formatPlayerAudioFormatSubtitle(
+        languageLabel: label,
+        title: track.title,
+        language: track.language,
+        codec: track.codec,
+        channels: track.channels,
+        channelscount: track.channelscount,
+        samplerate: track.samplerate,
+        bitrate: track.bitrate,
+      ),
+      selected: selected,
+      onTap: () {
+        PlayerPopupPanel.dismiss();
+        if (!selected) {
+          onTrackSelected?.call();
+          player.setAudioTrack(track);
+        }
+      },
     );
   }
 }

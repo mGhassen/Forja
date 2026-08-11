@@ -18,14 +18,8 @@ abstract final class ExoPlayerMenus {
       title: 'Audio',
       leadingIcon: Icons.audiotrack_rounded,
       anchorContext: anchorContext,
-      child: _trackChipColumn(
+      child: _audioTrackColumn(
         tracks: tracks.audio,
-        emptyLabel: 'None available',
-        labelOf: (t) => formatPlayerTrackLabel(
-          id: t.id,
-          title: t.label,
-          language: t.language,
-        ),
         onSelect: onSelect,
       ),
     );
@@ -200,38 +194,51 @@ abstract final class ExoPlayerMenus {
     );
   }
 
-  static Widget _trackChipColumn({
+  static Widget _audioTrackColumn({
     required List<ExoTrackInfo> tracks,
-    required String emptyLabel,
-    required String Function(ExoTrackInfo) labelOf,
     required Future<void> Function(String trackId) onSelect,
   }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
       child: tracks.isEmpty
-          ? Text(
-              emptyLabel,
-              style: const TextStyle(color: PlayerPopupTokens.muted),
+          ? const Text(
+              'None available',
+              style: TextStyle(color: PlayerPopupTokens.muted),
             )
           : Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (var i = 0; i < tracks.length; i++) ...[
-                  if (i != 0) const SizedBox(height: 8),
-                  PlayerPopupOptionChip(
-                    label: labelOf(tracks[i]),
-                    selected: tracks[i].selected,
-                    expanded: true,
-                    onTap: () async {
-                      PlayerPopupPanel.dismiss();
-                      if (!tracks[i].selected) {
-                        await onSelect(tracks[i].id);
-                      }
-                    },
-                  ),
-                ],
+                for (final track in tracks)
+                  _audioTile(track: track, onSelect: onSelect),
               ],
             ),
+    );
+  }
+
+  static Widget _audioTile({
+    required ExoTrackInfo track,
+    required Future<void> Function(String trackId) onSelect,
+  }) {
+    final label = formatPlayerTrackLabel(
+      id: track.id,
+      title: track.label,
+      language: track.language,
+    );
+    return PlayerPopupListTile(
+      label: label,
+      subtitle: formatPlayerAudioFormatSubtitle(
+        languageLabel: label,
+        title: track.label,
+        language: track.language,
+        bitrate: track.bitrate > 0 ? track.bitrate : null,
+      ),
+      selected: track.selected,
+      onTap: () async {
+        PlayerPopupPanel.dismiss();
+        if (!track.selected) {
+          await onSelect(track.id);
+        }
+      },
     );
   }
 }
