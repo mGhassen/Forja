@@ -8,6 +8,8 @@ void main() {
   tearDown(() {
     ShellBus.clearHideGlobalNav();
     ShellBus.selectDefaultTabOnNextNavLoad = false;
+    ShellBus.homeProviderMenuVisible.value = false;
+    ShellBus.selectedWatchProviderId.value = null;
     while (ShellBus.playerSurfaceActive.value) {
       ShellBus.leavePlayerSurface();
     }
@@ -45,6 +47,30 @@ void main() {
     ShellBus.requestTab.value = 'search';
     expect(ShellBus.requestTab.value, 'search');
     ShellBus.requestTab.value = null;
+  });
+
+  test('ShellBus provider menu show + top logo clear filter', () {
+    ShellBus.homeProviderMenuVisible.value = false;
+    ShellBus.selectedWatchProviderId.value = null;
+
+    ShellBus.showHomeProviderMenu();
+    expect(ShellBus.homeProviderMenuVisible.value, isTrue);
+
+    ShellBus.selectedWatchProviderId.value = 8;
+    ShellBus.onTopProviderLogoTap();
+    expect(ShellBus.homeProviderMenuVisible.value, isTrue);
+    expect(ShellBus.selectedWatchProviderId.value, isNull);
+
+    ShellBus.homeProviderMenuVisible.value = false;
+    ShellBus.onTopProviderLogoTap();
+    expect(ShellBus.homeProviderMenuVisible.value, isTrue);
+
+    ShellBus.onLeaveHomeTab();
+    expect(ShellBus.homeProviderMenuVisible.value, isFalse);
+
+    ShellBus.showHomeProviderMenu();
+    ShellBus.hideHomeProviderMenu();
+    expect(ShellBus.homeProviderMenuVisible.value, isFalse);
   });
 
   test('ShellBus.selectDefaultTabOnNextNavLoad defaults false and is mutable', () {

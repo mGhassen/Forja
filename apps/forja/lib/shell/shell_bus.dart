@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -16,10 +18,73 @@ class ShellBus {
   static final ValueNotifier<String?> homeSelectedGenreId =
       ValueNotifier<String?>(null);
 
-  /// TMDB watch-provider filter for Home desktop top bar (`null` = all providers).
+  /// TMDB watch-provider filter for Home (`null` = all providers).
   static final ValueNotifier<int?> selectedWatchProviderId = ValueNotifier(
     null,
   );
+
+  /// Floating Home provider panel (hover/hold Home, or top-logo tap).
+  /// Session UI only — not persisted. Hide on leave-Home, tap-outside, or
+  /// desktop unhover after [homeProviderMenuHideDelay].
+  static final ValueNotifier<bool> homeProviderMenuVisible = ValueNotifier(
+    false,
+  );
+
+  /// [TapRegion.groupId] for the panel + top-bar selected-provider mark.
+  static const Object homeProviderMenuTapGroup = Object();
+
+  static const Duration homeProviderMenuRevealDelay = Duration(
+    milliseconds: 500,
+  );
+
+  /// Desktop: hide after pointer leaves Home nav / provider panel.
+  static const Duration homeProviderMenuHideDelay = Duration(seconds: 1);
+
+  static Timer? _homeProviderHideTimer;
+
+  static void cancelHomeProviderMenuHide() {
+    _homeProviderHideTimer?.cancel();
+    _homeProviderHideTimer = null;
+  }
+
+  /// Start (or restart) the desktop unhover hide timer.
+  static void scheduleHomeProviderMenuHide() {
+    if (!homeProviderMenuVisible.value) return;
+    cancelHomeProviderMenuHide();
+    _homeProviderHideTimer = Timer(homeProviderMenuHideDelay, () {
+      _homeProviderHideTimer = null;
+      hideHomeProviderMenu();
+    });
+  }
+
+  static void showHomeProviderMenu() {
+    cancelHomeProviderMenuHide();
+    if (!homeProviderMenuVisible.value) {
+      homeProviderMenuVisible.value = true;
+    }
+  }
+
+  static void hideHomeProviderMenu() {
+    cancelHomeProviderMenuHide();
+    if (homeProviderMenuVisible.value) {
+      homeProviderMenuVisible.value = false;
+    }
+  }
+
+  /// Top-bar selected-provider mark: open panel, or clear filter if already open.
+  static void onTopProviderLogoTap() {
+    if (!homeProviderMenuVisible.value) {
+      homeProviderMenuVisible.value = true;
+      cancelHomeProviderMenuHide();
+      return;
+    }
+    selectedWatchProviderId.value = null;
+  }
+
+  /// Leaving Home hides the panel; filter stays until cleared.
+  static void onLeaveHomeTab() {
+    hideHomeProviderMenu();
+  }
 
   /// Home feed vertical scroll - [HomeTopBar] slides away near [homeHeroHeight].
   static final ValueNotifier<double> homeScrollOffset = ValueNotifier(0);

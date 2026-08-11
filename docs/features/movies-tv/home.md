@@ -13,7 +13,8 @@ Tap **Home** in the navigation bar (first tab by default).
 ## What you can do
 
 - Browse featured and trending movies and series
-- **Films / TV Shows / Categories** (desktop hero menu) filter every Home rail — hero, featured, popular, mood row, new releases, and the three genre rows at the bottom. With no tab selected, rows mix films and series; pick **Films** or **TV Shows** to limit all rails to that type. **Categories** narrows by TMDB genre (or **All** to clear). The menu overlays the hero and slides away as you scroll past it.
+- **Films / TV Shows / Categories** (desktop / TV / phone hero menu) filter every Home rail — hero, featured, popular, mood row, new releases, and the three genre rows at the bottom. With no tab selected, rows mix films and series; pick **Films** or **TV Shows** to limit all rails to that type. **Categories** narrows by TMDB genre (or **All** to clear). The menu overlays the hero and slides away as you scroll past it.
+- **Watch services** — on **desktop**, hover **Home** in the nav for ~500ms to open a floating streaming-service panel beside the rail (rectangle tiles); leave the panel / Home for ~1s to hide it. On **Android TV**, hold **OK** on Home for ~500ms (or long-press on phone). The selected service appears as a **rectangle** mark before **Films**; tap it to open the panel, tap again to clear the filter. Tap a service in the panel to filter Home; tap the same service again to clear. Click/tap outside the panel (or leave Home) hides it. On TV, ←/→ dismiss the panel; ↑/↓ stay inside it.
 - See **Featured This Month** — popular titles released in the current month
 - Pick a mood circle under **What's your mood?** to filter the mood results row
 - See **Tonight's Pick** and **Because you watched…** (BestSimilar) suggestions — the seed title re-rolls on every Home pull-to-refresh (and when you use the shuffle control), picking a different in-progress Continue Watching title when more than one is available

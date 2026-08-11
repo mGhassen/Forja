@@ -93,7 +93,7 @@ abstract final class ShellTokens {
   static const double shellCategoryUnderlineGap = 6;
   static const double shellProviderCardWidth = 132;
   static const double shellProviderCardHeight = 74;
-  static const double shellProviderCardRadius = 6;
+  static const double shellProviderCardRadius = 8;
   static const double shellProviderCardGap = 4;
   static const double shellProviderHoverScale = 1.18;
   static const double shellProviderCenterFocusThreshold = 1.35;
@@ -101,10 +101,28 @@ abstract final class ShellTokens {
   static const double shellProviderEdgePeekFraction = 0.5;
   static const double shellProviderRowRightInset = 0;
 
+  /// Vertical Home provider panel (floating next to nav rail).
+  /// Desktop: wider rectangle tiles. Top menu mark stays square.
+  static const double shellProviderTileWidth = 96;
+  static const double shellProviderTileHeight = 54;
+  static const double shellProviderTileSize = shellProviderTileHeight;
+  static const double shellProviderRailGap = 10;
+  static const double shellProviderRailPadH = 12;
+  static const double shellProviderRailPadV = 14;
+  static const double shellProviderRailWidth =
+      shellProviderTileWidth + shellProviderRailPadH * 2;
+  static const double shellProviderRailInset = 10;
+  static const double shellProviderRailRadius = 18;
+  /// Selected-provider mark before Films — rectangle (wordmark-friendly).
+  static const double shellProviderTopBarIconWidth = 88;
+  static const double shellProviderTopBarIconHeight = 40;
+  static const double shellProviderTopBarIconWidthTv = 92;
+  static const double shellProviderTopBarIconHeightTv = 42;
+
   static const double shellProviderStripHeight =
       shellProviderCardHeight * shellProviderHoverScale + 4;
 
-  /// Width of the top-bar provider strip (center cards + half-card peeks on edges).
+  /// Width of the legacy top-bar provider strip.
   static double get shellProviderRowViewportWidth {
     final cardSlots =
         shellProviderVisibleCount + shellProviderEdgePeekFraction * 2;
@@ -115,9 +133,11 @@ abstract final class ShellTokens {
   static const double shellTopBarHeight = shellProviderStripHeight + 20;
 
   /// Home Films / TV / Categories text menu (not provider strip).
+  /// Label band for Films / TV / Categories (underline sits below).
+  static const double homeMenuRowHeight = 34;
   static const double homeTopBarHeight =
       shellHeaderTopPadding +
-      34 +
+      homeMenuRowHeight +
       shellCategoryUnderlineGap +
       shellNavUnderlineHeight;
 

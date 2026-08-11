@@ -137,6 +137,7 @@ flutter:
     - assets/videasy/
     - assets/nuvio/
     - assets/textures/
+    - assets/watch_providers/
 
 dependency_overrides:
   media_kit:

@@ -359,39 +359,58 @@ final homeFeaturedProvider =
     FutureProvider.autoDispose<List<Movie>>((ref) async {
   final ctx = _watchHomeFeedContext(ref);
   final range = _currentMonthDateRange();
-  return _fetchMediaFiltered(
-    filter: ctx.filter,
-    movieFetch: () => _fetchMovies(
-      api: ctx.api,
-      standard: () => ctx.api.discoverMovies(
-        releaseDateGte: range.gte,
-        releaseDateLte: range.lte,
-        minRating: 6.0,
+
+  Future<List<Movie>> load({
+    String? releaseDateGte,
+    String? releaseDateLte,
+    double? minRating,
+  }) {
+    return _fetchMediaFiltered(
+      filter: ctx.filter,
+      movieFetch: () => _fetchMovies(
+        api: ctx.api,
+        standard: () => ctx.api.discoverMovies(
+          releaseDateGte: releaseDateGte,
+          releaseDateLte: releaseDateLte,
+          minRating: minRating,
+          watchProviderId: ctx.providerId,
+          sortBy: 'popularity.desc',
+        ),
+        genres: ctx.genres.movie,
+        releaseDateGte: releaseDateGte,
+        releaseDateLte: releaseDateLte,
+        minRating: minRating,
         watchProviderId: ctx.providerId,
         sortBy: 'popularity.desc',
       ),
-      genres: ctx.genres.movie,
-      releaseDateGte: range.gte,
-      releaseDateLte: range.lte,
-      minRating: 6.0,
-      watchProviderId: ctx.providerId,
-      sortBy: 'popularity.desc',
-    ),
-    tvFetch: () => _fetchTv(
-      api: ctx.api,
-      standard: () => ctx.api.discoverTvShows(
-        releaseDateGte: range.gte,
-        releaseDateLte: range.lte,
-        minRating: 6.0,
+      tvFetch: () => _fetchTv(
+        api: ctx.api,
+        standard: () => ctx.api.discoverTvShows(
+          releaseDateGte: releaseDateGte,
+          releaseDateLte: releaseDateLte,
+          minRating: minRating,
+          watchProviderId: ctx.providerId,
+          sortBy: 'popularity.desc',
+        ),
+        genres: ctx.genres.tv,
+        releaseDateGte: releaseDateGte,
+        releaseDateLte: releaseDateLte,
+        minRating: minRating,
         watchProviderId: ctx.providerId,
         sortBy: 'popularity.desc',
       ),
-      genres: ctx.genres.tv,
-      releaseDateGte: range.gte,
-      releaseDateLte: range.lte,
-      minRating: 6.0,
-      watchProviderId: ctx.providerId,
-      sortBy: 'popularity.desc',
-    ),
+    );
+  }
+
+  final month = await load(
+    releaseDateGte: range.gte,
+    releaseDateLte: range.lte,
+    minRating: 6.0,
   );
+  // Provider + calendar-month discover is often empty — keep the row by
+  // falling back to popular titles available on that service.
+  if (month.isEmpty && ctx.providerId != null) {
+    return load();
+  }
+  return month;
 });

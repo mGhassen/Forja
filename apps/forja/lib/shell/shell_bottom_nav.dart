@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/nav_config.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -40,6 +41,9 @@ class ShellBottomNav extends StatelessWidget {
                   hoverColor: ForjaShellColors.inkHover,
                   splashColor: ForjaShellColors.inkSplash,
                   onTap: () => onItemTapped(idx),
+                  onLongPress: id == 'home'
+                      ? () => ShellBus.showHomeProviderMenu()
+                      : null,
                   child: SizedBox(
                     width: ShellTokens.bottomNavItemWidth,
                     child: Center(

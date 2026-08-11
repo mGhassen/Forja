@@ -239,7 +239,11 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final id = _visibleIds[index];
     if (previousId != null && previousId != id) {
       _notifyTabHidden(previousId);
+      if (previousId == 'home') {
+        ShellBus.onLeaveHomeTab();
+      }
     }
+    // Same-tab Home re-select must not dismiss the provider panel.
     setState(() {
       _mountedTabIds.add(id);
       _selectedIndex = index;
@@ -287,6 +291,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
   void initState() {
     super.initState();
     ShellBus.selectedWatchProviderId.value = null;
+    ShellBus.homeProviderMenuVisible.value = false;
     WidgetsBinding.instance.addObserver(this);
     ShellBus.stremioSearchNotifier.addListener(_onStremioSearch);
     ShellBus.requestTab.addListener(_onRequestTab);

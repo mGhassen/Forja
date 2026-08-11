@@ -9,10 +9,11 @@ class WatchProvider {
   final String name;
   final String logoPath;
 
-  String get logoUrl => 'https://image.tmdb.org/t/p/w92$logoPath';
+  /// Small chrome (chip / before Films). w185 stays sharp on 2–3x displays.
+  String get logoUrl => 'https://image.tmdb.org/t/p/w185$logoPath';
 
-  /// Higher-res tile for top-bar cards (fills the card).
-  String get logoCardUrl => 'https://image.tmdb.org/t/p/w300$logoPath';
+  /// Strip cards — TMDB logos are brand marks, not fill art; pair with contain.
+  String get logoCardUrl => 'https://image.tmdb.org/t/p/w500$logoPath';
 
   factory WatchProvider.fromJson(Map<String, dynamic> json) {
     return WatchProvider(

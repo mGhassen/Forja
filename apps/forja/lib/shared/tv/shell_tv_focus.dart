@@ -18,6 +18,8 @@ abstract final class ShellTvFocus {
   static FocusNode? homeHeroGallery;
   static FocusNode? homeSearch;
   static FocusNode? homeMenu;
+  static FocusNode? homeProviderRailFirst;
+  static final Map<int, FocusNode> homeProviderRailById = {};
 
   static final Map<String, FocusNode> _navNodes = {};
 
@@ -82,6 +84,48 @@ abstract final class ShellTvFocus {
     if (node == null || !node.canRequestFocus) return false;
     node.requestFocus();
     return true;
+  }
+
+  static bool focusHomeProviderRail() {
+    final node = homeProviderRailFirst;
+    if (node == null || !node.canRequestFocus) return false;
+    node.requestFocus();
+    return true;
+  }
+
+  /// Focus the rail tile for [providerId], or the first tile if null / missing.
+  static bool focusHomeProviderById(int? providerId) {
+    final node = providerId == null
+        ? null
+        : homeProviderRailById[providerId];
+    final target = (node != null && node.canRequestFocus)
+        ? node
+        : homeProviderRailFirst;
+    if (target == null || !target.canRequestFocus) return false;
+    target.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = target.context;
+      if (ctx == null || !ctx.mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.4,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+      );
+    });
+    return true;
+  }
+
+  /// After opening the rail (may need a rebuild), land on [providerId].
+  static void scheduleFocusHomeProviderById(int? providerId) {
+    void attempt(int n) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (focusHomeProviderById(providerId)) return;
+        if (n < 2) attempt(n + 1);
+      });
+    }
+
+    attempt(0);
   }
 
   /// Hub hero search (anime, asian drama, …) - one active tab at a time.

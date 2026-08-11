@@ -3,6 +3,7 @@ import 'package:forja/shell/shell_body.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shell/shell_top_bar.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -109,13 +110,15 @@ class _ShellScaffoldState extends State<ShellScaffold> {
             ),
           ),
         ),
-        if (widget.shellTopBar != null)
-          Positioned(
-            top: 0,
-            left: contentLeftInset,
-            right: tvSafeRight,
-            child: widget.shellTopBar!,
-          ),
+        // Always reserve this slot so overlay open/close does not reshuffle
+        // later Stack children (provider rail / nav) onto the wrong Elements.
+        Positioned(
+          key: const ValueKey('shell-home-top-bar'),
+          top: 0,
+          left: contentLeftInset,
+          right: tvSafeRight,
+          child: widget.shellTopBar ?? const SizedBox.shrink(),
+        ),
         if (compactNav && widget.shellTopBar == null)
           Positioned(
             top: 0,
@@ -137,6 +140,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
           ),
         if (mountRail)
           Positioned(
+            key: const ValueKey('shell-nav-rail'),
             left: tvSafeLeft,
             top: 0,
             bottom: 0,
@@ -153,6 +157,21 @@ class _ShellScaffoldState extends State<ShellScaffold> {
                   ),
                 ),
               ),
+            ),
+          ),
+        // Above the nav rail so the panel stays hittable; keyed so Home
+        // re-select / top-bar chrome toggles cannot steal this Element.
+        if (widget.visibleIds.isNotEmpty &&
+            widget.selectedIndex < widget.visibleIds.length &&
+            widget.visibleIds[widget.selectedIndex] == 'home')
+          Positioned(
+            key: const ValueKey('shell-home-provider-rail'),
+            left: contentLeftInset + ShellTokens.shellProviderRailInset,
+            top: 0,
+            bottom: 0,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: HomeWatchProviderRail()),
             ),
           ),
       ],

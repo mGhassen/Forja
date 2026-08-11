@@ -216,16 +216,16 @@ class TmdbApi {
   }
 
   static const List<WatchProvider> fallbackWatchProviders = [
-    WatchProvider(id: 8, name: 'Netflix', logoPath: '/t2yyOv40HZolWobUddeOKCzK00l.png'),
-    WatchProvider(id: 337, name: 'Disney Plus', logoPath: '/7rDHAkCx4R4x9uYkl25W2YiOinRd9EwK.png'),
-    WatchProvider(id: 9, name: 'Prime Video', logoPath: '/emthp39XA2YScoYLtFEer2eNJ0U.png'),
-    WatchProvider(id: 350, name: 'Apple TV+', logoPath: '/6LfztECW4G3jXb16TzXBIy9XW19.png'),
-    WatchProvider(id: 1899, name: 'Max', logoPath: '/pbbY8oE2AxGcH2ww1iflHQ4bTzM.png'),
-    WatchProvider(id: 15, name: 'Hulu', logoPath: '/bnoevw11yf2tcsc7dol6y688nkm.png'),
-    WatchProvider(id: 531, name: 'Paramount+', logoPath: '/6uhHDRkj59HQD3TCfDm2N1Kc5P.png'),
-    WatchProvider(id: 386, name: 'Peacock', logoPath: '/8UGimH0nX3WHQfB6eTJkksbef2.png'),
-    WatchProvider(id: 283, name: 'Crunchyroll', logoPath: '/8n0UUKuxl2AdGYrpQxdSA3KWW69.png'),
-    WatchProvider(id: 73, name: 'Tubi', logoPath: '/7w3aFA8jP8fRWGj8n007iPorQGn.png'),
+    WatchProvider(id: 8, name: 'Netflix', logoPath: '/pbpMk2JmcoNnQwx5JGpXngfoWtp.jpg'),
+    WatchProvider(id: 337, name: 'Disney Plus', logoPath: '/97yvRBw1GzX7fXprcF80er19ot.jpg'),
+    WatchProvider(id: 9, name: 'Prime Video', logoPath: '/pvske1MyAoymrs5bguRfVqYiM9a.jpg'),
+    WatchProvider(id: 350, name: 'Apple TV+', logoPath: '/mcbz1LgtErU9p4UdbZ0rG6RTWHX.jpg'),
+    WatchProvider(id: 1899, name: 'Max', logoPath: '/jbe4gVSfRlbPTdESXhEKpornsfu.jpg'),
+    WatchProvider(id: 15, name: 'Hulu', logoPath: '/bxBlRPEPpMVDc4jMhSrTf2339DW.jpg'),
+    WatchProvider(id: 2303, name: 'Paramount+', logoPath: '/fts6X10Jn4QT0X6ac3udKEn2tJA.jpg'),
+    WatchProvider(id: 386, name: 'Peacock', logoPath: '/2aGrp1xw3qhwCYvNGAJZPdjfeeX.jpg'),
+    WatchProvider(id: 283, name: 'Crunchyroll', logoPath: '/fzN5Jok5Ig1eJ7gyNGoMhnLSCfh.jpg'),
+    WatchProvider(id: 73, name: 'Tubi', logoPath: '/zLYr7OPvpskMA4S79E3vlCi71iC.jpg'),
     WatchProvider(id: 300, name: 'Pluto TV', logoPath: '/4nTKDysENfAwArWP6XDNLmntQ3.png'),
     WatchProvider(id: 43, name: 'Starz', logoPath: '/giYWxN6DcOQGXYInphosLu3K5m.png'),
   ];

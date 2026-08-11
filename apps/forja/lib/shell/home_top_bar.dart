@@ -8,6 +8,7 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shell/shell_top_bar.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -35,6 +36,9 @@ class _HomeTopBarState extends State<HomeTopBar> {
   bool _searchHovered = false;
   final FocusNode _menuFocus = FocusNode(debugLabel: 'home-menu');
   final FocusNode _searchFocus = FocusNode(debugLabel: 'home-search');
+  final FocusNode _providerLogoFocus = FocusNode(
+    debugLabel: 'home-provider-logo',
+  );
   final FocusNode _categoriesTabFocus = FocusNode(
     debugLabel: 'home-categories-tab',
   );
@@ -55,6 +59,7 @@ class _HomeTopBarState extends State<HomeTopBar> {
     if (ShellTvFocus.homeSearch == _searchFocus) ShellTvFocus.homeSearch = null;
     _menuFocus.dispose();
     _searchFocus.dispose();
+    _providerLogoFocus.dispose();
     _categoriesTabFocus.dispose();
     _categoriesMenuFocus.dispose();
     super.dispose();
@@ -223,7 +228,10 @@ class _HomeTopBarState extends State<HomeTopBar> {
     );
   }
 
-  Widget _buildSearchAction({required bool tvFocus}) {
+  Widget _buildSearchAction({
+    required bool tvFocus,
+    required int listIndex,
+  }) {
     final searchW = shellScaled(context, 44).clamp(32.0, 44.0);
     final iconSize = shellScaled(context, 30).clamp(20.0, 30.0);
     final icon = ForjaTopBarIcon(
@@ -240,11 +248,11 @@ class _HomeTopBarState extends State<HomeTopBar> {
         onTap: _openSearch,
         borderRadius: shellScaled(context, 22).clamp(14.0, 22.0),
         scaleOnFocus: ShellTokens.focusActiveScale,
-        listIndex: 3,
+        listIndex: listIndex,
         tvTabId: 'home',
         tvRowId: 'top-bar',
         tvZone: ShellTvZone.topBar,
-        tvItemIndex: 3,
+        tvItemIndex: listIndex,
         focusNode: _searchFocus,
         onDownEdge: () => ShellTvFocus.focusHomeHeroGallery(),
         onFocusChange: (focused) => setState(() => _searchFocused = focused),
@@ -260,13 +268,14 @@ class _HomeTopBarState extends State<HomeTopBar> {
     Widget menu, {
     required bool tvFocus,
     required double tabGap,
+    required int searchListIndex,
   }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(child: menu),
         SizedBox(width: tabGap),
-        _buildSearchAction(tvFocus: tvFocus),
+        _buildSearchAction(tvFocus: tvFocus, listIndex: searchListIndex),
       ],
     );
   }
@@ -277,158 +286,222 @@ class _HomeTopBarState extends State<HomeTopBar> {
         MediaQuery.sizeOf(context).width < ShellTokens.shellNavCompactMaxWidth;
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
-    return ValueListenableBuilder<double>(
-      valueListenable: ShellBus.homeScrollOffset,
-      builder: (context, scrollOffset, child) {
-        return ValueListenableBuilder<double>(
-          valueListenable: ShellBus.homeHeroHeight,
-          builder: (context, heroHeight, menu) {
-            final topInset = MediaQuery.paddingOf(context).top;
-            final barHeight = topInset + ShellTokens.homeTopBarHeight;
-            final hideStart = math.max(0.0, heroHeight - barHeight);
-            final hideProgress = heroHeight <= 0
-                ? 0.0
-                : ((scrollOffset - hideStart) / HomeTopBar._hideSlideDistance)
-                      .clamp(0.0, 1.0);
+    return ValueListenableBuilder<int?>(
+      valueListenable: ShellBus.selectedWatchProviderId,
+      builder: (context, selectedProviderId, _) {
+        final hasProviderLogo = selectedProviderId != null;
+        final usesTv = ShellScope.metricsOf(context).usesTvDensity;
+        final logoWidth = usesTv
+            ? ShellTokens.shellProviderTopBarIconWidthTv
+            : ShellTokens.shellProviderTopBarIconWidth;
+        final logoHeight = usesTv
+            ? ShellTokens.shellProviderTopBarIconHeightTv
+            : ShellTokens.shellProviderTopBarIconHeight;
+        final barContentHeight = ShellTokens.homeTopBarHeight;
 
-            return Transform.translate(
-              offset: Offset(0, -barHeight * hideProgress),
-              child: child,
+        return ValueListenableBuilder<double>(
+          valueListenable: ShellBus.homeScrollOffset,
+          builder: (context, scrollOffset, child) {
+            return ValueListenableBuilder<double>(
+              valueListenable: ShellBus.homeHeroHeight,
+              builder: (context, heroHeight, menu) {
+                final topInset = MediaQuery.paddingOf(context).top;
+                final barHeight = topInset + barContentHeight;
+                final hideStart = math.max(0.0, heroHeight - barHeight);
+                final hideProgress = heroHeight <= 0
+                    ? 0.0
+                    : ((scrollOffset - hideStart) /
+                              HomeTopBar._hideSlideDistance)
+                          .clamp(0.0, 1.0);
+
+                return Transform.translate(
+                  offset: Offset(0, -barHeight * hideProgress),
+                  child: child,
+                );
+              },
             );
           },
-        );
-      },
-      child: SafeArea(
-        bottom: false,
-        left: false,
-        right: false,
-        child: SizedBox(
-          height: ShellTokens.homeTopBarHeight,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              compactNav
-                  ? ShellTokens.compactMenuLeadingInset(context)
-                  : ShellTokens.bodyHorizontalPadding +
-                        ShellTokens.homeTopBarMenuLeadingInset,
-              ShellTokens.shellHeaderTopPadding,
-              ShellTokens.bodyHorizontalPadding,
-              0,
-            ),
-            child: ValueListenableBuilder<ShellHomeCategory?>(
-              valueListenable: ShellBus.homeCategory,
-              builder: (context, mediaFilter, _) {
-                return ValueListenableBuilder<String?>(
-                  valueListenable: ShellBus.homeSelectedGenreId,
-                  builder: (context, genreId, _) {
-                    final categoriesLabel =
-                        homeGenreLabel(genreId) ?? 'Categories';
-                    final categoriesActive = _categoriesOpen || genreId != null;
-                    final usesTv = ShellScope.metricsOf(context).usesTvDensity;
-                    final tabGap = usesTv
-                        ? 28.0
-                        : MediaQuery.sizeOf(context).width < 560
-                        ? 20.0
-                        : 36.0;
+          child: SafeArea(
+            bottom: false,
+            left: false,
+            right: false,
+            child: SizedBox(
+              height: barContentHeight,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  compactNav
+                      ? ShellTokens.compactMenuLeadingInset(context)
+                      : ShellTokens.bodyHorizontalPadding +
+                            ShellTokens.homeTopBarMenuLeadingInset,
+                  ShellTokens.shellHeaderTopPadding,
+                  ShellTokens.bodyHorizontalPadding,
+                  0,
+                ),
+                child: ValueListenableBuilder<ShellHomeCategory?>(
+                  valueListenable: ShellBus.homeCategory,
+                  builder: (context, mediaFilter, _) {
+                    return ValueListenableBuilder<String?>(
+                      valueListenable: ShellBus.homeSelectedGenreId,
+                      builder: (context, genreId, _) {
+                        final categoriesLabel =
+                            homeGenreLabel(genreId) ?? 'Categories';
+                        final categoriesActive =
+                            _categoriesOpen || genreId != null;
+                        final tabGap = usesTv
+                            ? 28.0
+                            : MediaQuery.sizeOf(context).width < 560
+                            ? 20.0
+                            : 36.0;
+                        // Same band as _CategoryTab label — not gap/underline.
+                        final tabTextHeight =
+                            shellScaled(context, 34).clamp(28.0, 34.0);
+                        // Provider logo is index 0 when visible; Films stays
+                        // home-menu anchor either way.
+                        final filmsIndex = hasProviderLogo ? 1 : 0;
+                        final tvShowsIndex = filmsIndex + 1;
+                        final categoriesIndex = filmsIndex + 2;
+                        final searchIndex = filmsIndex + 3;
 
-                    final tabs = FocusTraversalGroup(
-                      policy: ReadingOrderTraversalPolicy(),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _CategoryTab(
-                            label: 'Films',
-                            isActive: mediaFilter == ShellHomeCategory.films,
-                            onTap: () =>
-                                _toggleMediaFilter(ShellHomeCategory.films),
-                            tvFocus: tvFocus,
-                            listIndex: 0,
-                            focusNode: tvFocus ? _menuFocus : null,
-                            onDownEdge: tvFocus
-                                ? () => ShellTvFocus.focusHomeHeroGallery()
-                                : null,
-                          ),
-                          SizedBox(width: tabGap),
-                          _CategoryTab(
-                            label: 'TV Shows',
-                            isActive: mediaFilter == ShellHomeCategory.tvShows,
-                            onTap: () =>
-                                _toggleMediaFilter(ShellHomeCategory.tvShows),
-                            tvFocus: tvFocus,
-                            listIndex: 1,
-                            onDownEdge: tvFocus
-                                ? () => ShellTvFocus.focusHomeHeroGallery()
-                                : null,
-                          ),
-                          SizedBox(width: tabGap),
-                          _CategoryTab(
-                            key: _categoriesKey,
-                            label: categoriesLabel,
-                            isActive: categoriesActive,
-                            showChevron: true,
-                            onTap: _openCategoriesMenu,
-                            tvFocus: tvFocus,
-                            listIndex: 2,
-                            focusNode: tvFocus ? _categoriesTabFocus : null,
-                            onDownEdge: tvFocus
-                                ? () => ShellTvFocus.focusHomeHeroGallery()
-                                : null,
-                          ),
-                        ],
-                      ),
-                    );
-
-                    Widget menuRow;
-                    if (!compactNav || tvFocus) {
-                      menuRow = _wrapMenuRow(
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          physics: const ClampingScrollPhysics(),
-                          child: tabs,
-                        ),
-                        tvFocus: tvFocus,
-                        tabGap: tabGap,
-                      );
-                    } else {
-                      menuRow = _wrapMenuRow(
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          physics: const ClampingScrollPhysics(),
+                        final tabs = FocusTraversalGroup(
+                          policy: ReadingOrderTraversalPolicy(),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(
-                                height: 34,
-                                child: Center(
-                                  child: ShellNavMenuButton(
-                                    onPressed: () =>
-                                        Scaffold.of(context).openDrawer(),
+                              if (hasProviderLogo) ...[
+                                // Align to Films label band (not underline).
+                                // No OverflowBox — it breaks width in a
+                                // horizontal SingleChildScrollView.
+                                Transform.translate(
+                                  offset: Offset(
+                                    0,
+                                    (tabTextHeight - logoHeight) / 2,
+                                  ),
+                                  child: SizedBox(
+                                    width: logoWidth,
+                                    height: logoHeight,
+                                    child: HomeSelectedWatchProviderLogo(
+                                      width: logoWidth,
+                                      height: logoHeight,
+                                      tvFocus: tvFocus,
+                                      focusNode:
+                                          tvFocus ? _providerLogoFocus : null,
+                                      listIndex: tvFocus ? 0 : null,
+                                      onDownEdge: tvFocus
+                                          ? () => ShellTvFocus
+                                              .focusHomeHeroGallery()
+                                          : null,
+                                    ),
                                   ),
                                 ),
+                                SizedBox(width: tabGap),
+                              ],
+                              _CategoryTab(
+                                label: 'Films',
+                                isActive:
+                                    mediaFilter == ShellHomeCategory.films,
+                                onTap: () => _toggleMediaFilter(
+                                  ShellHomeCategory.films,
+                                ),
+                                tvFocus: tvFocus,
+                                listIndex: filmsIndex,
+                                focusNode: tvFocus ? _menuFocus : null,
+                                onDownEdge: tvFocus
+                                    ? () =>
+                                          ShellTvFocus.focusHomeHeroGallery()
+                                    : null,
                               ),
                               SizedBox(width: tabGap),
-                              tabs,
+                              _CategoryTab(
+                                label: 'TV Shows',
+                                isActive:
+                                    mediaFilter == ShellHomeCategory.tvShows,
+                                onTap: () => _toggleMediaFilter(
+                                  ShellHomeCategory.tvShows,
+                                ),
+                                tvFocus: tvFocus,
+                                listIndex: tvShowsIndex,
+                                onDownEdge: tvFocus
+                                    ? () =>
+                                          ShellTvFocus.focusHomeHeroGallery()
+                                    : null,
+                              ),
+                              SizedBox(width: tabGap),
+                              _CategoryTab(
+                                key: _categoriesKey,
+                                label: categoriesLabel,
+                                isActive: categoriesActive,
+                                showChevron: true,
+                                onTap: _openCategoriesMenu,
+                                tvFocus: tvFocus,
+                                listIndex: categoriesIndex,
+                                focusNode:
+                                    tvFocus ? _categoriesTabFocus : null,
+                                onDownEdge: tvFocus
+                                    ? () =>
+                                          ShellTvFocus.focusHomeHeroGallery()
+                                    : null,
+                              ),
                             ],
                           ),
-                        ),
-                        tvFocus: tvFocus,
-                        tabGap: tabGap,
-                      );
-                    }
+                        );
 
-                    return TvCatalogRow(
-                      tabId: 'home',
-                      rowId: 'top-bar',
-                      sortOrder: -2,
-                      itemCount: tvFocus ? 4 : 0,
-                      child: menuRow,
+                        Widget menuRow;
+                        if (!compactNav || tvFocus) {
+                          menuRow = _wrapMenuRow(
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const ClampingScrollPhysics(),
+                              child: tabs,
+                            ),
+                            tvFocus: tvFocus,
+                            tabGap: tabGap,
+                            searchListIndex: searchIndex,
+                          );
+                        } else {
+                          menuRow = _wrapMenuRow(
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const ClampingScrollPhysics(),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(
+                                    height: 34,
+                                    child: Center(
+                                      child: ShellNavMenuButton(
+                                        onPressed: () => Scaffold.of(
+                                          context,
+                                        ).openDrawer(),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: tabGap),
+                                  tabs,
+                                ],
+                              ),
+                            ),
+                            tvFocus: tvFocus,
+                            tabGap: tabGap,
+                            searchListIndex: searchIndex,
+                          );
+                        }
+
+                        return TvCatalogRow(
+                          tabId: 'home',
+                          rowId: 'top-bar',
+                          sortOrder: -2,
+                          itemCount: tvFocus ? (searchIndex + 1) : 0,
+                          child: menuRow,
+                        );
+                      },
                     );
                   },
-                );
-              },
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

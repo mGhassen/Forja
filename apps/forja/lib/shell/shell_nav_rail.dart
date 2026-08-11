@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -750,7 +751,12 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   bool _focused = false;
   bool _typing = false;
   Timer? _revealTimer;
+  Timer? _providerRevealTimer;
+  Timer? _providerHoldTimer;
+  bool _providerHoldFired = false;
   late final FocusNode _focusNode;
+
+  bool get _isHome => widget.destination.id == 'home';
 
   @override
   void initState() {
@@ -768,6 +774,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       ShellTvFocus.unregisterNav(oldWidget.destination.id, _focusNode);
       ShellTvFocus.registerNav(widget.destination.id, _focusNode);
       _focusNode.debugLabel = 'nav-${widget.destination.id}';
+      _cancelProviderReveal();
     }
   }
 
@@ -776,7 +783,25 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     ShellTvFocus.unregisterNav(widget.destination.id, _focusNode);
     _focusNode.dispose();
     _revealTimer?.cancel();
+    _cancelProviderReveal();
     super.dispose();
+  }
+
+  void _cancelProviderReveal() {
+    _providerRevealTimer?.cancel();
+    _providerRevealTimer = null;
+    _providerHoldTimer?.cancel();
+    _providerHoldTimer = null;
+    _providerHoldFired = false;
+  }
+
+  void _scheduleProviderMenuReveal() {
+    if (!_isHome) return;
+    _providerRevealTimer?.cancel();
+    _providerRevealTimer = Timer(ShellBus.homeProviderMenuRevealDelay, () {
+      if (!mounted) return;
+      ShellBus.showHomeProviderMenu();
+    });
   }
 
   void _onHoverEnter() {
@@ -791,11 +816,18 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       if (!mounted || !_hover) return;
       setState(() => _typing = true);
     });
+    ShellBus.cancelHomeProviderMenuHide();
+    _scheduleProviderMenuReveal();
   }
 
   void _onHoverExit() {
     if (!ShellScope.inputPolicyOf(context).scaleOnHover) return;
     _revealTimer?.cancel();
+    _providerRevealTimer?.cancel();
+    _providerRevealTimer = null;
+    if (ShellBus.homeProviderMenuVisible.value) {
+      ShellBus.scheduleHomeProviderMenuHide();
+    }
     setState(() {
       _hover = false;
       _pressed = false;
@@ -942,6 +974,33 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
           widget.onFocusChanged();
         },
         onKeyEvent: (node, event) {
+          if (_isHome) {
+            if (shellTvIsActivateKey(event)) {
+              _providerHoldFired = false;
+              _providerHoldTimer?.cancel();
+              _providerHoldTimer = Timer(
+                ShellBus.homeProviderMenuRevealDelay,
+                () {
+                  if (!mounted) return;
+                  _providerHoldFired = true;
+                  ShellBus.showHomeProviderMenu();
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    ShellTvFocus.focusHomeProviderRail();
+                  });
+                },
+              );
+              return KeyEventResult.handled;
+            }
+            if (shellTvIsActivateKeyUp(event)) {
+              _providerHoldTimer?.cancel();
+              _providerHoldTimer = null;
+              if (!_providerHoldFired) {
+                _enterPageFromNav();
+              }
+              _providerHoldFired = false;
+              return KeyEventResult.handled;
+            }
+          }
           if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
           if (shellTvIsActivateKey(event)) {
             _enterPageFromNav();
@@ -950,6 +1009,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
           if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
             final arrow = event.logicalKey;
             if (arrow == LogicalKeyboardKey.arrowRight) {
+              if (_isHome &&
+                  ShellBus.homeProviderMenuVisible.value &&
+                  ShellTvFocus.focusHomeProviderRail()) {
+                return KeyEventResult.handled;
+              }
               _returnToActivePage();
               return KeyEventResult.handled;
             }
@@ -979,6 +1043,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                     onTapUp: (_) => setState(() => _pressed = false),
                     onTapCancel: () => setState(() => _pressed = false),
                     onTap: _enterPageFromNav,
+                    onLongPress: _isHome
+                        ? () {
+                            ShellBus.showHomeProviderMenu();
+                          }
+                        : null,
                     behavior: HitTestBehavior.opaque,
                     child: SizedBox(
                       width: ShellTokens.navRailWidth,

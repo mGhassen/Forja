@@ -1,74 +1,219 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/watch_provider_chrome.dart';
 import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
-import 'package:rust/rust.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
-/// TMDB watch-provider strip for desktop shell.
-///
-/// Hidden on Home for v1.0 - mount via [kShowShellProviderMenuOnHome] or embed
-/// on Search (and other tabs) when that UX ships.
-const bool kShowShellProviderMenuOnHome = false;
-
-class ShellTopBar extends StatefulWidget {
-  const ShellTopBar({super.key});
-
-  @override
-  State<ShellTopBar> createState() => _ShellTopBarState();
+/// Toggle TMDB watch-provider filter; clears when [providerId] is already selected.
+void toggleHomeWatchProvider(int providerId) {
+  final current = ShellBus.selectedWatchProviderId.value;
+  ShellBus.selectedWatchProviderId.value =
+      current == providerId ? null : providerId;
 }
 
-class _ShellTopBarState extends State<ShellTopBar> {
-  final TmdbApi _api = TmdbApi();
-  late Future<List<WatchProvider>> _providersFuture;
+/// Local SVG logo on a contrasting tile (inset / optional white recolor).
+class WatchProviderLogoMark extends StatelessWidget {
+  const WatchProviderLogoMark({
+    super.key,
+    required this.chrome,
+    required this.width,
+    required this.height,
+    this.inset,
+    this.borderRadius,
+    this.showTile = true,
+  });
 
-  @override
-  void initState() {
-    super.initState();
-    _providersFuture = _api.getTopWatchProviders();
-  }
-
-  void _onProviderTap(int providerId) {
-    final current = ShellBus.selectedWatchProviderId.value;
-    ShellBus.selectedWatchProviderId.value =
-        current == providerId ? null : providerId;
-    ShellBus.requestTab.value = 'home';
-  }
+  final WatchProviderChrome chrome;
+  final double width;
+  final double height;
+  final double? inset;
+  final BorderRadius? borderRadius;
+  final bool showTile;
 
   @override
   Widget build(BuildContext context) {
-    return _buildMenu(context);
+    final radius =
+        borderRadius ??
+        BorderRadius.circular(ShellTokens.shellProviderCardRadius);
+    final pad = (width < height ? width : height) * (inset ?? chrome.inset);
+    Widget logo = SvgPicture.asset(
+      chrome.assetPath,
+      fit: BoxFit.contain,
+      alignment: Alignment.center,
+      allowDrawingOutsideViewBox: false,
+      colorFilter: chrome.forceWhiteLogo
+          ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
+          : null,
+    );
+    logo = Padding(padding: EdgeInsets.all(pad), child: logo);
+    return ClipRRect(
+      borderRadius: radius,
+      child: ColoredBox(
+        color: showTile ? chrome.tileColor : Colors.transparent,
+        child: SizedBox(width: width, height: height, child: logo),
+      ),
+    );
   }
+}
 
-  Widget _buildMenu(BuildContext context) {
-    return SafeArea(
-      bottom: false,
+/// Selected provider mark before Films — rectangle SVG logo tile.
+class HomeSelectedWatchProviderLogo extends StatelessWidget {
+  const HomeSelectedWatchProviderLogo({
+    super.key,
+    this.width = ShellTokens.shellProviderTopBarIconWidth,
+    this.height = ShellTokens.shellProviderTopBarIconHeight,
+    this.tvFocus = false,
+    this.focusNode,
+    this.listIndex,
+    this.onDownEdge,
+  });
+
+  final double width;
+  final double height;
+  final bool tvFocus;
+  final FocusNode? focusNode;
+  final int? listIndex;
+  final VoidCallback? onDownEdge;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int?>(
+      valueListenable: ShellBus.selectedWatchProviderId,
+      builder: (context, selectedId, _) {
+        if (selectedId == null) return const SizedBox.shrink();
+        final chrome = watchProviderChromeById(selectedId);
+        if (chrome == null) return const SizedBox.shrink();
+        if (tvFocus) {
+          return _TvSelectedWatchProviderLogo(
+            chrome: chrome,
+            width: width,
+            height: height,
+            focusNode: focusNode,
+            listIndex: listIndex,
+            onDownEdge: onDownEdge,
+          );
+        }
+        return ForjaInteractive(
+          onTap: ShellBus.onTopProviderLogoTap,
+          hoverScale: 1.04,
+          pressScale: 0.96,
+          builder: (hover, _) {
+            return MouseRegion(
+              onEnter: (_) => ShellBus.cancelHomeProviderMenuHide(),
+              onExit: (_) => ShellBus.scheduleHomeProviderMenuHide(),
+              child: _ProviderTopMark(
+                chrome: chrome,
+                width: width,
+                height: height,
+                showRing: hover,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _TvSelectedWatchProviderLogo extends StatefulWidget {
+  const _TvSelectedWatchProviderLogo({
+    required this.chrome,
+    required this.width,
+    required this.height,
+    this.focusNode,
+    this.listIndex,
+    this.onDownEdge,
+  });
+
+  final WatchProviderChrome chrome;
+  final double width;
+  final double height;
+  final FocusNode? focusNode;
+  final int? listIndex;
+  final VoidCallback? onDownEdge;
+
+  @override
+  State<_TvSelectedWatchProviderLogo> createState() =>
+      _TvSelectedWatchProviderLogoState();
+}
+
+class _TvSelectedWatchProviderLogoState
+    extends State<_TvSelectedWatchProviderLogo> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return shellFocusableTap(
+      context: context,
+      onTap: () {
+        // Open rail + land focus on the selected provider (don't clear filter).
+        ShellBus.showHomeProviderMenu();
+        ShellTvFocus.scheduleFocusHomeProviderById(widget.chrome.id);
+      },
+      borderRadius: 8,
+      scaleOnFocus: ShellTokens.focusActiveScale,
+      listIndex: widget.listIndex,
+      tvTabId: 'home',
+      tvRowId: 'top-bar',
+      tvZone: ShellTvZone.topBar,
+      tvItemIndex: widget.listIndex,
+      focusNode: widget.focusNode,
+      onDownEdge: widget.onDownEdge,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: _ProviderTopMark(
+        chrome: widget.chrome,
+        width: widget.width,
+        height: widget.height,
+        showRing: _focused,
+      ),
+    );
+  }
+}
+
+class _ProviderTopMark extends StatelessWidget {
+  const _ProviderTopMark({
+    required this.chrome,
+    required this.width,
+    required this.height,
+    required this.showRing,
+  });
+
+  final WatchProviderChrome chrome;
+  final double width;
+  final double height;
+  final bool showRing;
+
+  @override
+  Widget build(BuildContext context) {
+    const ring = 1.5;
+    return TapRegion(
+      groupId: ShellBus.homeProviderMenuTapGroup,
       child: SizedBox(
-        width: double.infinity,
-        height: ShellTokens.shellTopBarHeight,
-        child: Padding(
-          padding: const EdgeInsets.only(
-            left: ShellTokens.bodyHorizontalPadding,
-            right: ShellTokens.shellProviderRowRightInset,
+        width: width,
+        height: height,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: showRing ? Colors.white : Colors.transparent,
+              width: ring,
+            ),
           ),
-          child: FutureBuilder<List<WatchProvider>>(
-            future: _providersFuture,
-            builder: (context, snapshot) {
-              final providers = snapshot.data ?? TmdbApi.fallbackWatchProviders;
-              return ValueListenableBuilder<int?>(
-                valueListenable: ShellBus.selectedWatchProviderId,
-                builder: (context, selectedId, _) {
-                  return Align(
-                    alignment: Alignment.centerRight,
-                    child: _ProviderFilterStrip(
-                      providers: providers,
-                      selectedId: selectedId,
-                      onProviderTap: _onProviderTap,
-                    ),
-                  );
-                },
-              );
-            },
+          child: Padding(
+            padding: const EdgeInsets.all(ring),
+            child: WatchProviderLogoMark(
+              chrome: chrome,
+              width: width - ring * 2,
+              height: height - ring * 2,
+              inset: 0.14,
+              borderRadius: BorderRadius.circular(6.5),
+            ),
           ),
         ),
       ),
@@ -76,131 +221,100 @@ class _ShellTopBarState extends State<ShellTopBar> {
   }
 }
 
-class _ProviderFilterStrip extends StatefulWidget {
-  const _ProviderFilterStrip({
-    required this.providers,
+/// Floating service-provider panel — same paint as nav rail, beside it.
+class HomeWatchProviderRail extends StatelessWidget {
+  const HomeWatchProviderRail({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: ShellBus.homeProviderMenuVisible,
+      builder: (context, visible, _) {
+        if (!visible) return const SizedBox.shrink();
+        return ValueListenableBuilder<int?>(
+          valueListenable: ShellBus.selectedWatchProviderId,
+          builder: (context, selectedId, _) {
+            return TapRegion(
+              groupId: ShellBus.homeProviderMenuTapGroup,
+              onTapOutside: (_) => ShellBus.hideHomeProviderMenu(),
+              child: MouseRegion(
+                onEnter: (_) => ShellBus.cancelHomeProviderMenuHide(),
+                onExit: (_) => ShellBus.scheduleHomeProviderMenuHide(),
+                child: _ProviderRailPanel(
+                  selectedId: selectedId,
+                  onProviderTap: toggleHomeWatchProvider,
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ProviderRailPanel extends StatefulWidget {
+  const _ProviderRailPanel({
     required this.selectedId,
     required this.onProviderTap,
   });
 
-  final List<WatchProvider> providers;
   final int? selectedId;
   final ValueChanged<int> onProviderTap;
 
   @override
-  State<_ProviderFilterStrip> createState() => _ProviderFilterStripState();
+  State<_ProviderRailPanel> createState() => _ProviderRailPanelState();
 }
 
-class _ProviderFilterStripState extends State<_ProviderFilterStrip> {
-  static const int _loopCopies = 3;
-
-  final ScrollController _scrollController = ScrollController();
-  bool _isLoopJumping = false;
-
-  static const double _itemStride =
-      ShellTokens.shellProviderCardWidth + ShellTokens.shellProviderCardGap;
-
-  int get _providerCount => widget.providers.length;
-
-  int get _loopedItemCount => _providerCount * _loopCopies;
-
-  double get _loopExtent => _providerCount * _itemStride;
+class _ProviderRailPanelState extends State<_ProviderRailPanel> {
+  late final List<FocusNode> _focusNodes;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToMiddleLoop());
+    _focusNodes = List<FocusNode>.generate(
+      kHomeWatchProviderChrome.length,
+      (i) => FocusNode(debugLabel: 'home-provider-$i'),
+    );
+    if (_focusNodes.isNotEmpty) {
+      ShellTvFocus.homeProviderRailFirst = _focusNodes.first;
+    }
+    for (var i = 0; i < kHomeWatchProviderChrome.length; i++) {
+      ShellTvFocus.homeProviderRailById[kHomeWatchProviderChrome[i].id] =
+          _focusNodes[i];
+    }
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
+    if (_focusNodes.isNotEmpty &&
+        identical(ShellTvFocus.homeProviderRailFirst, _focusNodes.first)) {
+      ShellTvFocus.homeProviderRailFirst = null;
+    }
+    for (final chrome in kHomeWatchProviderChrome) {
+      final node = ShellTvFocus.homeProviderRailById[chrome.id];
+      if (node != null && _focusNodes.contains(node)) {
+        ShellTvFocus.homeProviderRailById.remove(chrome.id);
+      }
+    }
+    for (final n in _focusNodes) {
+      n.dispose();
+    }
     super.dispose();
   }
 
-  void _jumpToMiddleLoop() {
-    if (!_scrollController.hasClients || _providerCount == 0) return;
-    _isLoopJumping = true;
-    final peek =
-        ShellTokens.shellProviderCardWidth * ShellTokens.shellProviderEdgePeekFraction;
-    _scrollController.jumpTo(_loopExtent - peek);
-    _isLoopJumping = false;
-    if (mounted) setState(() {});
-  }
-
-  void _onScroll() {
-    if (_isLoopJumping || !_scrollController.hasClients || _providerCount == 0) {
-      return;
-    }
-
-    final offset = _scrollController.offset;
-    if (offset < _loopExtent * 0.5) {
-      _isLoopJumping = true;
-      _scrollController.jumpTo(offset + _loopExtent);
-      _isLoopJumping = false;
-    } else if (offset > _loopExtent * 2.5) {
-      _isLoopJumping = true;
-      _scrollController.jumpTo(offset - _loopExtent);
-      _isLoopJumping = false;
-    }
-
-    setState(() {});
-  }
-
-  /// 0 = far from center, 1 = centered in the viewport (drives default scale).
-  double _centerFocusForIndex(int index) {
-    if (!_scrollController.hasClients) return 0;
-    final viewport = _scrollController.position.viewportDimension;
-    final cardCenter =
-        index * _itemStride + ShellTokens.shellProviderCardWidth / 2;
-    final viewCenter = _scrollController.offset + viewport / 2;
-    final distance = (cardCenter - viewCenter).abs();
-    final threshold =
-        _itemStride * ShellTokens.shellProviderCenterFocusThreshold;
-    return (1 - distance / threshold).clamp(0.0, 1.0);
-  }
-
-  int? _centeredListIndex() {
-    if (!_scrollController.hasClients || _loopedItemCount == 0) return null;
-    var bestIndex = 0;
-    var bestFocus = -1.0;
-    for (var i = 0; i < _loopedItemCount; i++) {
-      final focus = _centerFocusForIndex(i);
-      if (focus > bestFocus) {
-        bestFocus = focus;
-        bestIndex = i;
-      }
-    }
-    return bestFocus > 0.35 ? bestIndex : null;
-  }
-
-  @override
-  void didUpdateWidget(covariant _ProviderFilterStrip oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.providers.length != oldWidget.providers.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToMiddleLoop());
-    }
-    if (widget.selectedId != oldWidget.selectedId && widget.selectedId != null) {
-      _scrollToSelected();
-    }
-  }
-
-  void _scrollToSelected() {
-    final selectedId = widget.selectedId;
-    if (selectedId == null || _providerCount == 0) return;
-    final index = widget.providers.indexWhere((p) => p.id == selectedId);
-    if (index < 0) return;
-
+  void _focusTile(int index) {
+    if (index < 0 || index >= _focusNodes.length) return;
+    final node = _focusNodes[index];
+    if (!node.canRequestFocus) return;
+    node.requestFocus();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      final viewport = _scrollController.position.viewportDimension;
-      final loopIndex = _providerCount + index;
-      final target = (loopIndex * _itemStride) - (viewport - _itemStride) / 2;
-      _scrollController.animateTo(
-        target.clamp(0.0, _scrollController.position.maxScrollExtent),
-        duration: ShellTokens.navSelectionAnimation,
+      final ctx = node.context;
+      if (ctx == null || !ctx.mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.4,
+        duration: const Duration(milliseconds: 140),
         curve: Curves.easeOutCubic,
       );
     });
@@ -208,184 +322,170 @@ class _ProviderFilterStripState extends State<_ProviderFilterStrip> {
 
   @override
   Widget build(BuildContext context) {
-    final centeredIndex = _centeredListIndex();
-
-    return SizedBox(
-        width: ShellTokens.shellProviderRowViewportWidth,
-        height: ShellTokens.shellProviderStripHeight,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            ListView.separated(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxH = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : MediaQuery.sizeOf(context).height * 0.88;
+        return Material(
+          color: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            width: ShellTokens.shellProviderRailWidth,
+            constraints: BoxConstraints(maxHeight: maxH),
+            decoration: BoxDecoration(
+              color: AppTheme.bgDark,
+              borderRadius: BorderRadius.circular(
+                ShellTokens.shellProviderRailRadius,
               ),
-              clipBehavior: Clip.none,
-              itemCount: _loopedItemCount,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(width: ShellTokens.shellProviderCardGap),
-              itemBuilder: (context, index) {
-                final provider = widget.providers[index % _providerCount];
-                final isCentered = centeredIndex == index;
-                final centerFocus =
-                    isCentered ? 0.0 : _centerFocusForIndex(index);
-                return Visibility(
-                  visible: !isCentered,
-                  maintainState: true,
-                  maintainAnimation: true,
-                  maintainSize: true,
-                  child: _ProviderFilterCard(
-                    key: ValueKey('watch-provider-${provider.id}-$index'),
-                    provider: provider,
-                    isActive: widget.selectedId == provider.id,
-                    isCenterFocused: false,
-                    centerFocus: centerFocus,
-                    onTap: () => widget.onProviderTap(provider.id),
-                  ),
-                );
-              },
-            ),
-            if (centeredIndex != null && _scrollController.hasClients)
-              Positioned(
-                left: centeredIndex * _itemStride - _scrollController.offset,
-                width: ShellTokens.shellProviderCardWidth,
-                height: ShellTokens.shellProviderStripHeight,
-                child: _ProviderFilterCard(
-                  key: ValueKey(
-                    'watch-provider-overlay-${widget.providers[centeredIndex % _providerCount].id}-$centeredIndex',
-                  ),
-                  provider: widget.providers[centeredIndex % _providerCount],
-                  isActive: widget.selectedId ==
-                      widget.providers[centeredIndex % _providerCount].id,
-                  isCenterFocused: true,
-                  centerFocus: 1,
-                  onTap: () => widget.onProviderTap(
-                    widget.providers[centeredIndex % _providerCount].id,
-                  ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
                 ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: FocusTraversalGroup(
+              policy: OrderedTraversalPolicy(),
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(
+                  vertical: ShellTokens.shellProviderRailPadV,
+                  horizontal: ShellTokens.shellProviderRailPadH,
+                ),
+                itemCount: kHomeWatchProviderChrome.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: ShellTokens.shellProviderRailGap),
+                itemBuilder: (context, i) {
+                  return FocusTraversalOrder(
+                    order: NumericFocusOrder(i.toDouble()),
+                    child: _ProviderRailTile(
+                      chrome: kHomeWatchProviderChrome[i],
+                      index: i,
+                      focusNodes: _focusNodes,
+                      selected: widget.selectedId ==
+                          kHomeWatchProviderChrome[i].id,
+                      onTap: () => widget
+                          .onProviderTap(kHomeWatchProviderChrome[i].id),
+                      onFocusNeighbor: _focusTile,
+                    ),
+                  );
+                },
               ),
-          ],
-        ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
-class _ProviderFilterCard extends StatelessWidget {
-  const _ProviderFilterCard({
-    super.key,
-    required this.provider,
-    required this.isActive,
-    required this.isCenterFocused,
-    required this.centerFocus,
+class _ProviderRailTile extends StatelessWidget {
+  const _ProviderRailTile({
+    required this.chrome,
+    required this.index,
+    required this.focusNodes,
+    required this.selected,
     required this.onTap,
+    required this.onFocusNeighbor,
   });
 
-  final WatchProvider provider;
-  final bool isActive;
-  final bool isCenterFocused;
-  final double centerFocus;
+  final WatchProviderChrome chrome;
+  final int index;
+  final List<FocusNode> focusNodes;
+  final bool selected;
   final VoidCallback onTap;
+  final ValueChanged<int> onFocusNeighbor;
 
-  double get _targetScale {
-    final centerScale = 1 +
-        (ShellTokens.shellProviderHoverScale - 1) * centerFocus;
-    return centerScale;
-  }
+  FocusNode get focusNode => focusNodes[index];
 
   @override
   Widget build(BuildContext context) {
-    const width = ShellTokens.shellProviderCardWidth;
-    const height = ShellTokens.shellProviderCardHeight;
-    final showElevated = isCenterFocused || isActive;
-
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          ForjaInteractive(
-            onTap: onTap,
-            hoverScale: 1,
-            pressScale: 1,
-            builder: (hover, _) {
-              final scale = hover
-                  ? ShellTokens.shellProviderHoverScale
-                  : _targetScale;
-              return AnimatedScale(
-                scale: scale,
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                child: AnimatedContainer(
-                  duration: ShellTokens.navSelectionAnimation,
-                  width: width,
-                  height: height,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF141414),
-                    borderRadius: BorderRadius.circular(
-                      ShellTokens.shellProviderCardRadius,
-                    ),
-                    border: Border.all(
-                      color: showElevated || hover
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.1),
-                      width: showElevated || hover ? 2 : 1,
-                    ),
-                    boxShadow: hover || isCenterFocused
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.45),
-                              blurRadius: 14,
-                              offset: const Offset(0, 6),
-                            ),
-                          ]
-                        : null,
-                    image: provider.logoPath.isNotEmpty
-                        ? DecorationImage(
-                            image: CachedNetworkImageProvider(
-                              provider.logoCardUrl,
-                            ),
-                            fit: BoxFit.cover,
-                            alignment: Alignment.center,
-                          )
-                        : null,
-                  ),
-                  child: provider.logoPath.isEmpty
-                      ? Center(
-                          child: Text(
-                            provider.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        )
-                      : null,
-                ),
-              );
-            },
-          ),
-          if (isActive)
-            Positioned(
-              top: 6,
-              right: 6,
-              child: const _ProviderSelectedMark(),
+    const w = ShellTokens.shellProviderTileWidth;
+    const h = ShellTokens.shellProviderTileHeight;
+    final radius = BorderRadius.circular(ShellTokens.shellProviderCardRadius);
+    return ForjaInteractive(
+      focusNode: focusNode,
+      onTap: onTap,
+      hoverScale: 1.06,
+      pressScale: 0.96,
+      onKeyEvent: (node, event) {
+        if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+        final key = event.logicalKey;
+        // ←/→ dismiss panel. ↑/↓ stay inside (never home rows).
+        if (key == LogicalKeyboardKey.arrowLeft) {
+          ShellBus.hideHomeProviderMenu();
+          final home = ShellTvFocus.navNode('home');
+          if (home != null && home.canRequestFocus) {
+            home.requestFocus();
+          }
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.arrowRight) {
+          ShellBus.hideHomeProviderMenu();
+          ShellTvFocusCoordinator.restoreTabFocusAfterNav('home');
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.arrowUp) {
+          if (index > 0) onFocusNeighbor(index - 1);
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.arrowDown) {
+          if (index < focusNodes.length - 1) onFocusNeighbor(index + 1);
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      builder: (active, _) {
+        final showRing = selected || active;
+        const ring = 2.0;
+        return Tooltip(
+          message: chrome.name,
+          waitDuration: const Duration(milliseconds: 400),
+          child: AnimatedContainer(
+            duration: ShellTokens.navSelectionAnimation,
+            width: w,
+            height: h,
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              border: Border.all(
+                // Fixed width always — logo inset below so straight edges of
+                // the ring aren't covered (looked like corner brackets).
+                color: showRing ? Colors.white : Colors.transparent,
+                width: ring,
+              ),
             ),
-        ],
-      ),
+            child: Padding(
+              padding: const EdgeInsets.all(ring),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  WatchProviderLogoMark(
+                    chrome: chrome,
+                    width: w - ring * 2,
+                    height: h - ring * 2,
+                    borderRadius: BorderRadius.circular(
+                      ShellTokens.shellProviderCardRadius - 1,
+                    ),
+                  ),
+                  if (selected)
+                    const Positioned(
+                      top: 1,
+                      right: 1,
+                      child: _ProviderSelectedMark(),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
-/// Thin line check - always visible when provider filter is active.
 class _ProviderSelectedMark extends StatelessWidget {
   const _ProviderSelectedMark();
 
@@ -401,7 +501,7 @@ class _ProviderSelectedMark extends StatelessWidget {
         ],
       ),
       child: CustomPaint(
-        size: const Size(16, 12),
+        size: const Size(12, 10),
         painter: _LineCheckPainter(color: Colors.white),
       ),
     );
@@ -432,4 +532,26 @@ class _LineCheckPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _LineCheckPainter oldDelegate) =>
       oldDelegate.color != color;
+}
+
+/// Legacy alias — vertical rail is [HomeWatchProviderRail].
+@Deprecated('Use HomeWatchProviderRail')
+class HomeWatchProviderStrip extends StatelessWidget {
+  const HomeWatchProviderStrip({super.key});
+
+  @override
+  Widget build(BuildContext context) => const HomeWatchProviderRail();
+}
+
+/// Standalone host kept for tests.
+class ShellTopBar extends StatelessWidget {
+  const ShellTopBar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      width: ShellTokens.shellProviderRailWidth,
+      child: HomeWatchProviderRail(),
+    );
+  }
 }

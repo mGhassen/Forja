@@ -10,6 +10,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_scaffold.dart';
 import 'package:forja/shell/home_top_bar.dart';
+import 'package:forja/shell/shell_top_bar.dart';
 import 'package:forja/shared/design/src/forja_buttons.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
@@ -44,6 +45,7 @@ void main() {
     ShellBus.homeHeroHeight.value = 0;
     ShellBus.homeScrollOffset.value = 0;
     ShellBus.selectedWatchProviderId.value = null;
+    ShellBus.homeProviderMenuVisible.value = false;
     ShellBus.requestTab.value = null;
     ShellBus.selectDefaultTabOnNextNavLoad = false;
     ShellBus.shellOverlayHasPage.value = false;
@@ -65,11 +67,12 @@ void main() {
   ShellScaffold desktopScaffold({
     bool hideGlobalNav = false,
     Widget? shellTopBar,
+    int selectedIndex = 1,
   }) {
     return ShellScaffold(
       useNavRail: true,
       visibleIds: visibleIds,
-      selectedIndex: 1,
+      selectedIndex: selectedIndex,
       mountedTabIds: const {'home', 'search'},
       onDestinationSelected: (_) {},
       tabFor: (id) => Center(child: Text(id)),
@@ -185,6 +188,39 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(ShellBus.homeCategory.value, isNull);
+  });
+
+  testWidgets('HomeTopBar shows provider rail when menu visible', (
+    tester,
+  ) async {
+    ShellBus.homeProviderMenuVisible.value = true;
+    await pumpScaffold(
+      tester,
+      desktopScaffold(
+        shellTopBar: const HomeTopBar(),
+        selectedIndex: 0,
+      ),
+      size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
+    );
+    await tester.pump();
+
+    expect(find.byType(HomeWatchProviderRail), findsOneWidget);
+  });
+
+  testWidgets('HomeTopBar shows selected provider logo before Films', (
+    tester,
+  ) async {
+    ShellBus.selectedWatchProviderId.value = 8; // Netflix
+    await pumpScaffold(
+      tester,
+      desktopScaffold(shellTopBar: const HomeTopBar()),
+      size: const Size(1200, 800),
+      profile: ShellProfile.desktop,
+    );
+    await tester.pump();
+
+    expect(find.byType(HomeSelectedWatchProviderLogo), findsOneWidget);
   });
 
   testWidgets('HomeTopBar slides away after scrolling past hero height', (
