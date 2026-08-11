@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **11 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs, historical) · **2 / 3** acceptance (R2 changelog archive) · **4 / 4** acceptance (per-platform latest) |
-| **Current slice** | In-session auto-check + dismiss/throttle shipped; hosted smoke A37 / A45 still open |
+| **Progress** | **7 / 7** acceptance (v1.0) · **11 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs, historical) · **2 / 3** acceptance (R2 changelog archive) · **4 / 4** acceptance (per-platform latest) · **1 / 1** acceptance (ATV focus trap) |
+| **Current slice** | ATV update-dialog focus trap shipped (smoke open); hosted smoke A37 / A45 still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -152,6 +152,14 @@
 | 2 | R15-A47 | `latest/manifest.json` carries `platforms.{id}.{version,assets}`; prune keeps any version still referenced as a platform latest | ✅ |
 | 3 | R15-A48 | Web `/download` shows each platform’s own latest version + that version’s changelog notes | ✅ |
 | 4 | R15-A49 | `AppUpdaterService` compares against this device’s platform entry in `platforms` (not a single global max version) | ✅ |
+
+---
+
+## Acceptance (Android TV focus)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A50 | Update gate wraps `TvOverlayScope` and claims Install / Continue focus so ATV D-pad cannot drive the shell underneath | ✅ |
 
 ---
 

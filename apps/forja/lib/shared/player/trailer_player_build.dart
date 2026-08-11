@@ -356,6 +356,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                               ? _s._nextTrailerFocus
                               : _s._backFocus,
                           onTvFocusDown: () => _s._playFocus.requestFocus(),
+                          onTvFocusLeft: () => _s._playFocus.requestFocus(),
+                          onTvFocusRight: () => _s._subsFocus.requestFocus(),
                         ),
                       )
                     : CustomSeekbar(

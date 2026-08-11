@@ -8,6 +8,7 @@ import 'package:forja/shared/services/app_update_download_service.dart';
 import 'package:forja/shared/services/app_updater_release_notes.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/forja_logo.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -234,6 +235,8 @@ class UpdateDialog extends StatefulWidget {
 class _UpdateDialogState extends State<UpdateDialog> {
   final AppUpdateDownloadService _desktopDownload =
       AppUpdateDownloadService.instance;
+  final FocusNode _installFocus = FocusNode(debugLabel: 'update-install');
+  final FocusNode _downloadFocus = FocusNode(debugLabel: 'update-download-bg');
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
   bool _showingDownloadComplete = false;
@@ -253,6 +256,22 @@ class _UpdateDialogState extends State<UpdateDialog> {
       // in-memory service still said "completed".
       unawaited(_reconcileCachedInstaller());
     }
+    // Non-opaque showGeneralDialog leaves shell focusable; claim Install (or
+    // Continue) so ATV D-pad cannot drive IPTV/channels under the gate.
+    _claimPrimaryFocus();
+  }
+
+  /// Retries a few frames — Install mounts after the fade and shell reclaim.
+  void _claimPrimaryFocus({int attempt = 0}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final node = _isDownloading ? _downloadFocus : _installFocus;
+      if (node.canRequestFocus) {
+        node.requestFocus();
+        return;
+      }
+      if (attempt < 4) _claimPrimaryFocus(attempt: attempt + 1);
+    });
   }
 
   Future<void> _reconcileCachedInstaller() async {
@@ -266,6 +285,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
   @override
   void dispose() {
     _desktopDownload.state.removeListener(_onDesktopDownloadChanged);
+    _installFocus.dispose();
+    _downloadFocus.dispose();
     super.dispose();
   }
 
@@ -277,12 +298,15 @@ class _UpdateDialogState extends State<UpdateDialog> {
     }
 
     if (current.phase == AppUpdateDownloadPhase.downloading) {
+      final wasDownloading = _isDownloading;
       setState(() {
         _isDownloading = true;
         _downloadProgress = current.progress;
       });
+      if (!wasDownloading) _claimPrimaryFocus();
     } else if (current.phase == AppUpdateDownloadPhase.failed) {
       setState(() => _isDownloading = false);
+      _claimPrimaryFocus();
     } else if (current.phase == AppUpdateDownloadPhase.completed) {
       setState(() {
         _isDownloading = false;
@@ -313,65 +337,70 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppTheme.bgDark,
-      child: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final layout = _UpdateLayout.of(
-              context,
-              width: constraints.maxWidth,
-              height: constraints.maxHeight,
-            );
+    return TvOverlayScope(
+      debugLabel: 'update-dialog',
+      autofocusFirst: false,
+      child: Material(
+        color: AppTheme.bgDark,
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final layout = _UpdateLayout.of(
+                context,
+                width: constraints.maxWidth,
+                height: constraints.maxHeight,
+              );
 
-            if (_isDownloading) {
-              return SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: layout.padHorizontal,
-                  vertical: layout.padTop,
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - layout.padTop * 2,
-                    maxWidth: layout.contentWidth,
+              if (_isDownloading) {
+                return SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: layout.padHorizontal,
+                    vertical: layout.padTop,
                   ),
-                  child: Center(
-                    child: _buildDownloadingBody(layout),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - layout.padTop * 2,
+                      maxWidth: layout.contentWidth,
+                    ),
+                    child: Center(
+                      child: _buildDownloadingBody(layout),
+                    ),
+                  ),
+                );
+              }
+
+              // Fill the viewport: header + footer pinned, only changelog scrolls.
+              return Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: layout.contentWidth,
+                  height: constraints.maxHeight,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      24,
+                      layout.padTop,
+                      24,
+                      layout.padBottom,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildOfferHeader(layout),
+                        Expanded(child: _buildReleaseNotes(layout)),
+                        SizedBox(height: layout.footerGap),
+                        _UpdateFooter(
+                          layout: layout,
+                          installFocus: _installFocus,
+                          onUpdate: _handleUpdate,
+                          onSkip: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
-            }
-
-            // Fill the viewport: header + footer pinned, only changelog scrolls.
-            return Align(
-              alignment: Alignment.topCenter,
-              child: SizedBox(
-                width: layout.contentWidth,
-                height: constraints.maxHeight,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    24,
-                    layout.padTop,
-                    24,
-                    layout.padBottom,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildOfferHeader(layout),
-                      Expanded(child: _buildReleaseNotes(layout)),
-                      SizedBox(height: layout.footerGap),
-                      _UpdateFooter(
-                        layout: layout,
-                        onUpdate: _handleUpdate,
-                        onSkip: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
+            },
+          ),
         ),
       ),
     );
@@ -630,6 +659,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
         _UpdateTextAction(
           layout: layout,
           label: 'Continue in background',
+          autoFocus: true,
+          focusNode: _downloadFocus,
           onTap: () {
             _desktopDownload.continueInBackground();
             Navigator.of(context).pop();
@@ -679,6 +710,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       _isDownloading = true;
       _downloadProgress = 0.0;
     });
+    _claimPrimaryFocus();
 
     try {
       OtaUpdate()
@@ -732,11 +764,13 @@ class _UpdateDialogState extends State<UpdateDialog> {
 class _UpdateFooter extends StatelessWidget {
   const _UpdateFooter({
     required this.layout,
+    required this.installFocus,
     required this.onUpdate,
     required this.onSkip,
   });
 
   final _UpdateLayout layout;
+  final FocusNode installFocus;
   final VoidCallback onUpdate;
   final VoidCallback onSkip;
 
@@ -746,6 +780,7 @@ class _UpdateFooter extends StatelessWidget {
       layout: layout,
       label: 'Install update',
       autoFocus: true,
+      focusNode: installFocus,
       onTap: onUpdate,
     );
 
@@ -1012,18 +1047,21 @@ class _UpdatePrimaryAction extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.autoFocus = false,
+    this.focusNode,
   });
 
   final _UpdateLayout layout;
   final String label;
   final VoidCallback onTap;
   final bool autoFocus;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
     return ForjaInteractive(
       onTap: onTap,
       autoFocus: autoFocus,
+      focusNode: focusNode,
       builder: (hover, pressed) {
         final active = hover || pressed;
         return AnimatedContainer(
@@ -1056,16 +1094,22 @@ class _UpdateTextAction extends StatelessWidget {
     required this.layout,
     required this.label,
     required this.onTap,
+    this.autoFocus = false,
+    this.focusNode,
   });
 
   final _UpdateLayout layout;
   final String label;
   final VoidCallback onTap;
+  final bool autoFocus;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
     return ForjaInteractive(
       onTap: onTap,
+      autoFocus: autoFocus,
+      focusNode: focusNode,
       builder: (hover, pressed) {
         final active = hover || pressed;
         return Padding(
@@ -1425,102 +1469,107 @@ class _DownloadCompleteScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppTheme.bgDark,
-      child: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final layout = _UpdateLayout.of(
-              context,
-              width: constraints.maxWidth,
-              height: constraints.maxHeight,
-            );
-
-            return Align(
-              alignment: Alignment.topCenter,
-              child: SizedBox(
-                width: layout.contentWidth,
+    return TvOverlayScope(
+      debugLabel: 'update-download-complete',
+      autofocusFirst: false,
+      child: Material(
+        color: AppTheme.bgDark,
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final layout = _UpdateLayout.of(
+                context,
+                width: constraints.maxWidth,
                 height: constraints.maxHeight,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    layout.padHorizontal > 24 ? 0 : 24,
-                    layout.padTop,
-                    layout.padHorizontal > 24 ? 0 : 24,
-                    layout.padBottom,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Spacer(),
-                      Text(
-                        'Download\ncomplete',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: layout.headlineSize,
-                          fontWeight: FontWeight.w800,
-                          height: 1.08,
-                          letterSpacing: -0.8,
-                          color: ForjaShellColors.textPrimary,
+              );
+
+              return Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: layout.contentWidth,
+                  height: constraints.maxHeight,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      layout.padHorizontal > 24 ? 0 : 24,
+                      layout.padTop,
+                      layout.padHorizontal > 24 ? 0 : 24,
+                      layout.padBottom,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Spacer(),
+                        Text(
+                          'Download\ncomplete',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: layout.headlineSize,
+                            fontWeight: FontWeight.w800,
+                            height: 1.08,
+                            letterSpacing: -0.8,
+                            color: ForjaShellColors.textPrimary,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: layout.isTv ? 14 : 20),
-                      SelectableText(
-                        filePath,
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: layout.isTv ? 10 : 12,
-                          height: 1.5,
-                          color: ForjaShellColors.brandGreen,
+                        SizedBox(height: layout.isTv ? 14 : 20),
+                        SelectableText(
+                          filePath,
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: layout.isTv ? 10 : 12,
+                            height: 1.5,
+                            color: ForjaShellColors.brandGreen,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: layout.isTv ? 16 : 24),
-                      Text(
-                        Platform.isWindows
-                            ? 'Forja must close before you install the update. Choose Install to close Forja and launch the installer, or skip for now.'
-                            : Platform.isMacOS
-                            ? 'Forja must close before you install the update. Choose Install to close Forja and open the disk image, or skip for now.'
-                            : 'Make the file executable, then run it:\n'
-                                  'chmod +x "$fileName"\n./$fileName',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: layout.bodySize,
-                          height: 1.55,
-                          color: ForjaShellColors.textSecondary,
+                        SizedBox(height: layout.isTv ? 16 : 24),
+                        Text(
+                          Platform.isWindows
+                              ? 'Forja must close before you install the update. Choose Install to close Forja and launch the installer, or skip for now.'
+                              : Platform.isMacOS
+                              ? 'Forja must close before you install the update. Choose Install to close Forja and open the disk image, or skip for now.'
+                              : 'Make the file executable, then run it:\n'
+                                    'chmod +x "$fileName"\n./$fileName',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: layout.bodySize,
+                            height: 1.55,
+                            color: ForjaShellColors.textSecondary,
+                          ),
                         ),
-                      ),
-                      const Spacer(flex: 2),
-                      _UpdatePrimaryAction(
-                        layout: layout,
-                        label: Platform.isMacOS || Platform.isWindows
-                            ? 'Install and close Forja'
-                            : 'Done',
-                        onTap: Platform.isMacOS || Platform.isWindows
-                            ? () => _installDesktopUpdate(context)
-                            : () => Navigator.of(context).pop(),
-                      ),
-                      SizedBox(height: layout.isTv ? 8 : 12),
-                      Center(
-                        child: _UpdateTextAction(
+                        const Spacer(flex: 2),
+                        _UpdatePrimaryAction(
                           layout: layout,
                           label: Platform.isMacOS || Platform.isWindows
-                              ? 'Skip for now'
-                              : 'Open downloads folder',
+                              ? 'Install and close Forja'
+                              : 'Done',
+                          autoFocus: true,
                           onTap: Platform.isMacOS || Platform.isWindows
-                              ? () => Navigator.of(context).pop()
-                              : () async {
-                                  if (Platform.isLinux) {
-                                    await Process.run('xdg-open', [dirPath]);
-                                  }
-                                  if (context.mounted) {
-                                    Navigator.of(context).pop();
-                                  }
-                                },
+                              ? () => _installDesktopUpdate(context)
+                              : () => Navigator.of(context).pop(),
                         ),
-                      ),
-                      SizedBox(height: layout.isTv ? 8 : 12),
-                    ],
+                        SizedBox(height: layout.isTv ? 8 : 12),
+                        Center(
+                          child: _UpdateTextAction(
+                            layout: layout,
+                            label: Platform.isMacOS || Platform.isWindows
+                                ? 'Skip for now'
+                                : 'Open downloads folder',
+                            onTap: Platform.isMacOS || Platform.isWindows
+                                ? () => Navigator.of(context).pop()
+                                : () async {
+                                    if (Platform.isLinux) {
+                                      await Process.run('xdg-open', [dirPath]);
+                                    }
+                                    if (context.mounted) {
+                                      Navigator.of(context).pop();
+                                    }
+                                  },
+                          ),
+                        ),
+                        SizedBox(height: layout.isTv ? 8 : 12),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );

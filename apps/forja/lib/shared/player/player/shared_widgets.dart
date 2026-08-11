@@ -111,6 +111,8 @@ class CustomSeekbar extends StatefulWidget {
   final FocusNode? tvFocusUpNode;
   final VoidCallback? onTvFocusUp;
   final VoidCallback? onTvFocusDown;
+  final VoidCallback? onTvFocusLeft;
+  final VoidCallback? onTvFocusRight;
   final Duration tvSeekStep;
 
   const CustomSeekbar({
@@ -126,6 +128,8 @@ class CustomSeekbar extends StatefulWidget {
     this.tvFocusUpNode,
     this.onTvFocusUp,
     this.onTvFocusDown,
+    this.onTvFocusLeft,
+    this.onTvFocusRight,
     this.tvSeekStep = const Duration(seconds: 10),
   });
 
@@ -137,7 +141,8 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
   bool _isDragging = false;
   double _dragValue = 0.0; // In milliseconds
   bool _tvFocused = false;
-  /// TV: OK engages thumb scrub; L/R nudge preview; OK commits; Back cancels.
+  /// TV: OK arms thumb scrub; then L/R nudge preview; OK commits; Back cancels.
+  /// Unarmed L/R leave focus to left/right chrome (not seek).
   bool _tvScrubArmed = false;
 
   // Hover state for Desktop
@@ -178,27 +183,13 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
   void _nudgeTvScrub(int direction) {
     final total = widget.duration;
     if (total <= Duration.zero) return;
-    final base = _tvScrubArmed
-        ? Duration(milliseconds: _dragValue.toInt())
-        : widget.position;
+    final base = Duration(milliseconds: _dragValue.toInt());
     var next = base + widget.tvSeekStep * direction;
     if (next < Duration.zero) next = Duration.zero;
     if (next > total) next = total;
     setState(() {
-      _tvScrubArmed = true;
-      _isDragging = true;
       _dragValue = next.inMilliseconds.toDouble();
     });
-    widget.onDragStart?.call();
-  }
-
-  void _seekRelativeTv(int direction) {
-    final total = widget.duration;
-    if (total <= Duration.zero || playerChromeOverlayBlocksSeek()) return;
-    var next = widget.position + widget.tvSeekStep * direction;
-    if (next < Duration.zero) next = Duration.zero;
-    if (next > total) next = total;
-    widget.onSeek?.call(next);
   }
 
   void _commitTvScrub() {
@@ -249,23 +240,35 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
       }
       return KeyEventResult.ignored;
     }
-    // Always move progress while the bar is focused — never let ←/→ leak to
-    // Play (left) or Sources/catalog (right) via focus traversal.
+    // Scrub only after OK arms the thumb. Unarmed ←/→ leave the bar to
+    // left/right chrome (Play / Sources), same as ↑/↓.
     if (key == LogicalKeyboardKey.arrowLeft) {
       if (_tvScrubArmed) {
         _nudgeTvScrub(-1);
-      } else {
-        _seekRelativeTv(-1);
+        return KeyEventResult.handled;
       }
-      return KeyEventResult.handled;
+      if (widget.onTvFocusLeft != null) {
+        widget.onTvFocusLeft!();
+        return KeyEventResult.handled;
+      }
+      if (node.focusInDirection(TraversalDirection.left)) {
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
     }
     if (key == LogicalKeyboardKey.arrowRight) {
       if (_tvScrubArmed) {
         _nudgeTvScrub(1);
-      } else {
-        _seekRelativeTv(1);
+        return KeyEventResult.handled;
       }
-      return KeyEventResult.handled;
+      if (widget.onTvFocusRight != null) {
+        widget.onTvFocusRight!();
+        return KeyEventResult.handled;
+      }
+      if (node.focusInDirection(TraversalDirection.right)) {
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
     }
     if (key == LogicalKeyboardKey.arrowUp) {
       if (_tvScrubArmed) {

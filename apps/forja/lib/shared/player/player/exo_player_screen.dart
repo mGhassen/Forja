@@ -674,6 +674,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _focusDownFromSeekbar() => _claimPlayFocus();
 
+  void _focusLeftFromSeekbar() => _claimPlayFocus();
+
+  void _focusRightFromSeekbar() => _focusFirstRightTransport();
+
   void _focusUpFromSeekbar() {
     if (_backFocus.canRequestFocus) {
       _backFocus.requestFocus();
@@ -1520,6 +1524,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                             tvFocusUpNode: _backFocus,
                             onTvFocusUp: _focusUpFromSeekbar,
                             onTvFocusDown: _focusDownFromSeekbar,
+                            onTvFocusLeft: _focusLeftFromSeekbar,
+                            onTvFocusRight: _focusRightFromSeekbar,
                             onSeek: (t) {
                               unawaited(ExoPlayerBridge.seekTo(_viewId, t));
                             },

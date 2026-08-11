@@ -730,6 +730,27 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     });
   }
 
+  /// Progress bar → : first right-cluster control (Subs / Episodes / Search / Source).
+  void _focusRightFromSeekbar() {
+    if (!iptvUseTvFocus(context) || !_s._controlsVisible) return;
+    final nodes = <FocusNode>[
+      if (_showTrackButtons) _s._subtitleFocus,
+      if (_showEpisodesButton) _s._episodesFocus,
+      if (widget.channelGuide != null) _s._searchChromeFocus,
+      if (_s._sources.length > 1) _s._bottomSourceFocus,
+    ];
+    for (final node in nodes) {
+      if (!node.canRequestFocus) continue;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_s._controlsVisible) return;
+        if (playerChromeOverlayBlocksFocusClaim()) return;
+        if (node.canRequestFocus) node.requestFocus();
+      });
+      return;
+    }
+    _claimPlayFocus();
+  }
+
   /// Alias used by engine boot — same as movie/Exo [claimPlayFocus].
   void _focusPlayerChrome() => _claimPlayFocus();
 
@@ -1566,9 +1587,12 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 _claimPlayFocus();
                 return KeyEventResult.handled;
               }
-              // Duration unknown — don't leak ←/→ into the transport row.
-              if (key == LogicalKeyboardKey.arrowLeft ||
-                  key == LogicalKeyboardKey.arrowRight) {
+              if (key == LogicalKeyboardKey.arrowLeft) {
+                _claimPlayFocus();
+                return KeyEventResult.handled;
+              }
+              if (key == LogicalKeyboardKey.arrowRight) {
+                _focusRightFromSeekbar();
                 return KeyEventResult.handled;
               }
               return KeyEventResult.ignored;
@@ -1647,6 +1671,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         tvFocusable: true,
         onTvFocusUp: () => _claimBackFocus(),
         onTvFocusDown: () => _claimPlayFocus(),
+        onTvFocusLeft: () => _claimPlayFocus(),
+        onTvFocusRight: _focusRightFromSeekbar,
         onDragStart: () {
           setState(() {
             _s._isSeeking = true;

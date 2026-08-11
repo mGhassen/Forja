@@ -97,7 +97,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
             _s._buffering = false;
             // Soft reopen succeeded — drop reconnect UI even if the watchdog
             // healthy streak has not elapsed yet (live isLoading used to block it).
-            if (_s._retryAttempt > 0 || _s._lastRecoveryAt != null) {
+            // Also clear ATV source/channel reseat "Switching to …".
+            if (_s._retryAttempt > 0 ||
+                _s._lastRecoveryAt != null ||
+                (_s._statusBanner?.startsWith('Switching to') ?? false)) {
               _s._statusBanner = null;
             }
           });
@@ -635,7 +638,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _s._playing = p;
         if (p &&
             _s._statusBanner != null &&
-            (_s._retryAttempt > 0 || _s._lastRecoveryAt != null)) {
+            (_s._retryAttempt > 0 ||
+                _s._lastRecoveryAt != null ||
+                (_s._statusBanner?.startsWith('Switching to') ?? false))) {
           _s._statusBanner = null;
         }
       });
@@ -800,25 +805,38 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   }
 
   Future<void>? _openInFlight;
+  int _openEpoch = 0;
 
-  Future<void> _openCurrent() async {
+  bool get _atvHardReseatStreams =>
+      !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
+
+  Future<void> _openCurrent({bool hardRecreate = false}) async {
     // Serialize opens — Player-menu switch sets _playerReady before the first
     // open finishes; a second open (reload) on a busy mpv ANRs ATV.
+    // Latest epoch wins: waiting for an in-flight open must still apply the
+    // newest source/channel (rapid Source taps used to drop the new URL).
+    final epoch = ++_openEpoch;
     final existing = _openInFlight;
     if (existing != null) {
       await existing;
-      return;
     }
+    if (_s._disposed || epoch != _openEpoch) return;
+
     final gate = Completer<void>();
     _openInFlight = gate.future;
     try {
+      if (hardRecreate && _atvHardReseatStreams) {
+        await _reseatAtvPlayerForNewStream();
+        if (_s._disposed || epoch != _openEpoch) return;
+      }
       final src = _s._sources[_s._sourceIdx];
       _playbackStarted = false;
       _s._exoSurfaceFallback?.resetForNewOpen();
-      // Connect silently - no banner. The buffering indicator (if any) will
-      // appear naturally while the stream loads.
+      // Soft path: silent connect (buffering chrome only). Hard ATV reseat
+      // already set "Switching to …" on the loading scaffold.
       try {
         await _engineOpenSource(src);
+        if (_s._disposed || epoch != _openEpoch) return;
         _s._userPlayWhenReady = true;
         _s._pausedAt = null;
         _s._lastPos = Duration.zero;
@@ -831,7 +849,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         // Clear banner after a short successful run (do not require !_buffering —
         // Exo live prefetch used to keep isLoading true and leave reconnect UI up).
         Future.delayed(const Duration(seconds: 2), () {
-          if (!mounted) return;
+          if (!mounted || epoch != _openEpoch) return;
           if (_s._statusBanner == null) return;
           if (_s._playing &&
               (_s._lastPos > Duration.zero || !_s._buffering)) {
@@ -839,6 +857,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           }
         });
       } catch (e) {
+        if (epoch != _openEpoch) return;
         _triggerRecovery(reason: 'open failed: $e');
       }
     } finally {
@@ -847,6 +866,57 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _openInFlight = null;
       }
     }
+  }
+
+  /// ATV source/channel change: full surface unmount + same-engine boot.
+  /// Soft [ExoPlayerBridge.open] / [Player.open] alone often leaves MediaCodec
+  /// black until the user switches Player (which already reseats).
+  ///
+  /// UI: existing `!_playerReady` loading scaffold + status banner — same as
+  /// Player-menu engine switch, not a separate loading route.
+  Future<void> _reseatAtvPlayerForNewStream() async {
+    final label = _s._sources.isNotEmpty
+        ? _s._sources[_s._sourceIdx].label
+        : 'stream';
+    if (mounted) {
+      setState(() {
+        _s._playerReady = false;
+        _s._statusBanner = 'Switching to $label…';
+      });
+    }
+    await WidgetsBinding.instance.endOfFrame;
+    if (_s._disposed || !mounted) return;
+
+    await _releaseEngineForHotSwap();
+    if (_s._disposed || !mounted) return;
+
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (_s._disposed || !mounted) return;
+
+    if (_s._exoBackend) {
+      await MpvExclusiveSession.instance.prepareForVideoPlayer(
+        timeout: const Duration(milliseconds: 1200),
+      );
+      if (_s._disposed || !mounted) return;
+      _s._exoViewId = _IptvPtPlayerScreenState._nextExoViewId++;
+      _s._exoSurfaceFallback?.dispose();
+      _s._exoSurfaceFallback = ExoAtvSurfaceFallback(
+        enabled: false,
+        onFallback: _reopenAfterExoSurfaceFallback,
+      );
+      _s._exoEventSub =
+          ExoPlayerBridge.eventsFor(_s._exoViewId!).listen(_onExoEvent);
+      if (mounted) setState(() => _s._playerReady = true);
+      await Future<void>.delayed(Duration.zero);
+      return;
+    }
+
+    await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    if (_s._disposed || !mounted) return;
+    _initPlayerInstances();
+    await _applyMpvTunables();
+    if (_s._disposed || !mounted) return;
+    if (mounted) setState(() => _s._playerReady = true);
   }
 
   /// Manual reload control: live MediaKit rejoins the edge first, then falls
@@ -1240,7 +1310,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
             setState(() =>
                 _s._statusBanner = 'Switching to ${_s._sources[_s._sourceIdx].label}…');
           }
-          await _openCurrent();
+          await _openCurrent(hardRecreate: _atvHardReseatStreams);
           return;
         }
         // Movies/series: stop after the ladder (no forever cold-retry).
@@ -1517,7 +1587,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       _s._sourceIdx = idx;
       _s._retryAttempt = 0;
     });
-    await _openCurrent();
+    await _openCurrent(hardRecreate: _atvHardReseatStreams);
   }
 
   Future<void> _switchChannel(IptvGuideChannel ch) async {
@@ -1559,6 +1629,6 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (xtream != null) {
       widget.onChannelChanged?.call(xtream);
     }
-    await _openCurrent();
+    await _openCurrent(hardRecreate: _atvHardReseatStreams);
   }
 }

@@ -596,6 +596,8 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                           focusNode: _s._seekbarFocus,
                                           onTvFocusUp: _s._focusUpFromSeekbar,
                                           onTvFocusDown: _s._focusDownFromSeekbar,
+                                          onTvFocusLeft: _s._focusLeftFromSeekbar,
+                                          onTvFocusRight: _s._focusRightFromSeekbar,
                                           onSeek: (t) => unawaited(_s._seekTo(t)),
                                         ),
                                       )

@@ -858,7 +858,7 @@ class PlayerPopupOptionChip extends StatelessWidget {
   }
 }
 
-class PlayerPopupListTile extends StatelessWidget {
+class PlayerPopupListTile extends StatefulWidget {
   const PlayerPopupListTile({
     super.key,
     required this.label,
@@ -890,12 +890,21 @@ class PlayerPopupListTile extends StatelessWidget {
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
 
+  @override
+  State<PlayerPopupListTile> createState() => _PlayerPopupListTileState();
+}
+
+class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
   static const double _statusSlot = 18;
 
+  bool _focused = false;
+  bool _hovered = false;
+
   Widget? _statusGlyph() {
+    final status = widget.status;
     if (status == null) return null;
-    final color = playerSourceStatusColor(status!);
-    final Widget glyph = switch (status!) {
+    final color = playerSourceStatusColor(status);
+    final Widget glyph = switch (status) {
       PlayerSourceStatus.active => Icon(
         Icons.play_circle_filled_rounded,
         color: color,
@@ -931,72 +940,84 @@ class PlayerPopupListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final failed = status == PlayerSourceStatus.failed;
-    final active = status == PlayerSourceStatus.active;
+    final failed = widget.status == PlayerSourceStatus.failed;
+    final active = widget.status == PlayerSourceStatus.active;
+    final selected = widget.selected;
     final statusGlyph = _statusGlyph();
-    final rowColor = selected || active
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final highlight = _focused || _hovered;
+    final chromeDuration = tvFocus
+        ? Duration.zero
+        : const Duration(milliseconds: 120);
+    // TV / hover: brand-green chrome. Selected/active keep accent fill underneath.
+    final rowColor = highlight
+        ? PlayerPopupTokens.accentFill
+        : selected || active
         ? PlayerPopupTokens.accentFill
         : failed
         ? const Color(0xFFEF4444).withValues(alpha: 0.08)
         : Colors.transparent;
+    final borderColor = highlight
+        ? PlayerPopupTokens.accent
+        : selected || active
+        ? PlayerPopupTokens.accentBorder
+        : PlayerPopupTokens.border;
     final fg = failed
         ? Colors.white.withValues(alpha: 0.45)
-        : selected || active
+        : highlight || selected || active
         ? Colors.white
         : Colors.white.withValues(alpha: 0.92);
-    final subFg = selected || active
+    final subFg = highlight || selected || active
         ? PlayerPopupTokens.accent.withValues(alpha: 0.85)
         : PlayerPopupTokens.muted;
 
-    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final tile = Material(
       color: rowColor,
       borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         canRequestFocus: false,
-        onTap: tvFocus ? null : onTap,
+        onTap: tvFocus ? null : widget.onTap,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        hoverColor: ForjaShellColors.inkHover,
+        hoverColor: Colors.transparent,
         splashColor: ForjaShellColors.inkSplash,
-        child: Container(
+        child: AnimatedContainer(
+          duration: chromeDuration,
+          curve: Curves.easeOut,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
             border: Border.all(
-              color: selected
-                  ? PlayerPopupTokens.accentBorder
-                  : active
-                  ? PlayerPopupTokens.accentBorder
-                  : PlayerPopupTokens.border,
+              color: borderColor,
+              width: highlight ? 1.5 : 1,
             ),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
           child: Row(
             children: [
-              if (badge != null) ...[
+              if (widget.badge != null) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 7,
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: selected || active
+                    color: highlight || selected || active
                         ? PlayerPopupTokens.accent.withValues(alpha: 0.12)
-                        : (badgeColor ?? PlayerPopupTokens.cardBg),
+                        : (widget.badgeColor ?? PlayerPopupTokens.cardBg),
                     borderRadius: BorderRadius.circular(5),
                     border: Border.all(
-                      color: selected || active
+                      color: highlight || selected || active
                           ? PlayerPopupTokens.accentBorder
                           : PlayerPopupTokens.border,
                     ),
                   ),
                   child: Text(
-                    badge!,
+                    widget.badge!,
                     style: TextStyle(
-                      color: selected || active
+                      color: highlight || selected || active
                           ? PlayerPopupTokens.accent
-                          : badgeColor != null &&
-                                badgeColor != const Color(0xFF2A2A2A)
+                          : widget.badgeColor != null &&
+                                widget.badgeColor != const Color(0xFF2A2A2A)
                           ? Colors.white.withValues(alpha: 0.92)
                           : PlayerPopupTokens.muted,
                       fontSize: 10,
@@ -1012,31 +1033,31 @@ class PlayerPopupListTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      label,
+                      widget.label,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: fg,
                         fontSize: 13,
-                        fontWeight: selected || active
+                        fontWeight: highlight || selected || active
                             ? FontWeight.w600
                             : FontWeight.w500,
                         decoration: failed ? TextDecoration.lineThrough : null,
                         decorationColor: Colors.white38,
                       ),
                     ),
-                    if (subtitle != null)
+                    if (widget.subtitle != null)
                       Text(
-                        subtitle!,
+                        widget.subtitle!,
                         style: TextStyle(color: subFg, fontSize: 11),
                       ),
-                    if (status != null &&
-                        status != PlayerSourceStatus.ready &&
-                        status != PlayerSourceStatus.unchecked)
+                    if (widget.status != null &&
+                        widget.status != PlayerSourceStatus.ready &&
+                        widget.status != PlayerSourceStatus.unchecked)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
-                          switch (status!) {
+                          switch (widget.status!) {
                             PlayerSourceStatus.active => 'Playing',
                             PlayerSourceStatus.failed => 'Unavailable',
                             PlayerSourceStatus.checking => 'Checking…',
@@ -1044,9 +1065,9 @@ class PlayerPopupListTile extends StatelessWidget {
                             PlayerSourceStatus.unchecked => '',
                           },
                           style: TextStyle(
-                            color: selected
+                            color: selected || highlight
                                 ? subFg
-                                : playerSourceStatusColor(status!),
+                                : playerSourceStatusColor(widget.status!),
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1067,16 +1088,25 @@ class PlayerPopupListTile extends StatelessWidget {
                 )
               else if (statusGlyph != null)
                 statusGlyph
-              else if (trailing != null)
-                trailing!,
+              else if (widget.trailing != null)
+                widget.trailing!,
             ],
           ),
         ),
       ),
     );
 
-    if (!tvFocus || onTap == null) {
-      return Padding(padding: const EdgeInsets.only(bottom: 5), child: tile);
+    Widget body = tile;
+    if (!tvFocus) {
+      body = MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: tile,
+      );
+    }
+
+    if (!tvFocus || widget.onTap == null) {
+      return Padding(padding: const EdgeInsets.only(bottom: 5), child: body);
     }
 
     return Padding(
@@ -1085,16 +1115,19 @@ class PlayerPopupListTile extends StatelessWidget {
         // Prefer the current value; else first row claims via fallback nextFocus.
         autoFocus:
             selected && PlayerPopupListFocusScope.claimAutofocus(context),
-        focusNode: focusNode,
-        onTap: onTap,
+        focusNode: widget.focusNode,
+        onTap: widget.onTap,
         borderRadius: PlayerPopupTokens.chipRadius,
         scaleOnFocus: 1.0,
-        showFocusBorder: true,
+        // Tile paints brand-green focus itself — skip gray/white overlay.
+        showFocusBorder: false,
+        showFocusFill: false,
         ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-        onLeftEdge: onLeftEdge,
-        onRightEdge: onRightEdge,
-        onUpEdge: onUpEdge,
-        onDownEdge: onDownEdge,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
+        onUpEdge: widget.onUpEdge,
+        onDownEdge: widget.onDownEdge,
         child: tile,
       ),
     );

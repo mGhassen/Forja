@@ -14,6 +14,7 @@ import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
 
@@ -173,9 +174,24 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
     if (id != null && id.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        _pinServerFocus(id);
         unawaited(_ensureServerLoaded(id));
       });
     }
+  }
+
+  /// Keep D-pad on the tapped server after setState swaps the streams column
+  /// (spinner / empty) — otherwise focus falls to Close / top of list.
+  /// Does not steal focus from a stream row the user already moved to.
+  void _pinServerFocus(String providerId) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final primary = FocusManager.instance.primaryFocus;
+      if (_serverFocusNodes.values.any((n) => identical(n, primary))) return;
+      if (_streamFocusNodes.values.any((n) => identical(n, primary))) return;
+      final node = _serverFocus(providerId);
+      if (node.canRequestFocus) node.requestFocus();
+    });
   }
 
   @override
@@ -270,6 +286,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
         _failedServers.remove(providerId);
         _selectedServerId = providerId;
       });
+      _pinServerFocus(providerId);
       return;
     }
 
@@ -280,6 +297,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
       _loadingServers.add(providerId);
       _failedServers.remove(providerId);
     });
+    _pinServerFocus(providerId);
 
     try {
       final sources = await widget.onLoadServer(
@@ -295,6 +313,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
           _failedServers.remove(providerId);
         }
       });
+      _pinServerFocus(providerId);
       if (sources != null && sources.isNotEmpty) {
         unawaited(_probeStreams(providerId, sources));
       }
@@ -304,6 +323,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
         _loadingServers.remove(providerId);
         _failedServers.add(providerId);
       });
+      _pinServerFocus(providerId);
     }
   }
 
@@ -362,6 +382,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
       children: [
         for (var i = 0; i < servers.length; i++)
           PlayerPopupListTile(
+            key: ValueKey('server-${servers[i].key}'),
             label: _serverLabel(servers[i].key),
             badge: _serverBadge(servers[i].key),
             selected: servers[i].key == _selectedServerId,
@@ -433,13 +454,17 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
               style: const TextStyle(color: Colors.white54, fontSize: 13),
             ),
             const SizedBox(height: 10),
-            TextButton(
-              onPressed: () => unawaited(
-                _ensureServerLoaded(serverId, forceRefresh: true),
-              ),
-              child: Text(
-                failed ? 'Retry' : 'Check',
-                style: const TextStyle(color: PlayerPopupTokens.accent),
+            // Not focusable on TV — remounting Check/Retry must not steal D-pad
+            // from the server column; OK the server row again to retry.
+            ExcludeFocus(
+              child: TextButton(
+                onPressed: () => unawaited(
+                  _ensureServerLoaded(serverId, forceRefresh: true),
+                ),
+                child: Text(
+                  failed ? 'Retry' : 'Check',
+                  style: const TextStyle(color: PlayerPopupTokens.accent),
+                ),
               ),
             ),
           ],
@@ -466,6 +491,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
                   : (_urlStatuses[source.url] ?? PlayerSourceStatus.unchecked);
               final type = source.type.trim().toUpperCase();
               return PlayerPopupListTile(
+                key: ValueKey('stream-${source.url}'),
                 label: source.title.trim().isEmpty
                     ? 'Stream ${i + 1}'
                     : source.title,
@@ -489,91 +515,93 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
   }
 
   Widget _buildBody() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        PlayerSidePanelHeader(
-          title: 'Sources',
-          onClose: widget.onClose,
-          leading: Icon(
-            Icons.layers_outlined,
-            color: ForjaShellColors.cinematic.textSecondary,
-            size: 18,
-          ),
-        ),
-        Expanded(
-          // Independent columns: ↑/↓ stay in-column; ←/→ cross via edge hooks.
-          child: ShellTvDisableLinearFocus(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: FocusTraversalGroup(
-                    policy: WidgetOrderTraversalPolicy(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(14, 4, 8, 0),
-                          child: Text(
-                            'Servers',
-                            style: TextStyle(
-                              color: ForjaShellColors.cinematic.textSecondary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                        Expanded(child: _buildServersColumn()),
-                      ],
-                    ),
-                  ),
-                ),
-                VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: PlayerPopupTokens.border,
-                ),
-                Expanded(
-                  flex: 6,
-                  child: FocusTraversalGroup(
-                    policy: WidgetOrderTraversalPolicy(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(10, 4, 14, 0),
-                          child: Text(
-                            _selectedServerId == null
-                                ? 'Streams'
-                                : 'Streams · ${_serverLabel(_selectedServerId!)}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: ForjaShellColors.cinematic.textSecondary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: ListenableBuilder(
-                            listenable: widget.providerSourcesCache,
-                            builder: (context, _) => _buildStreamsColumn(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+    return PlayerPopupListFocusScope(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PlayerSidePanelHeader(
+            title: 'Sources',
+            onClose: widget.onClose,
+            leading: Icon(
+              Icons.layers_outlined,
+              color: ForjaShellColors.cinematic.textSecondary,
+              size: 18,
             ),
           ),
-        ),
-      ],
+          Expanded(
+            // Independent columns: ↑/↓ stay in-column; ←/→ cross via edge hooks.
+            child: ShellTvDisableLinearFocus(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 5,
+                    child: FocusTraversalGroup(
+                      policy: WidgetOrderTraversalPolicy(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 4, 8, 0),
+                            child: Text(
+                              'Servers',
+                              style: TextStyle(
+                                color: ForjaShellColors.cinematic.textSecondary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: _buildServersColumn()),
+                        ],
+                      ),
+                    ),
+                  ),
+                  VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: PlayerPopupTokens.border,
+                  ),
+                  Expanded(
+                    flex: 6,
+                    child: FocusTraversalGroup(
+                      policy: WidgetOrderTraversalPolicy(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(10, 4, 14, 0),
+                            child: Text(
+                              _selectedServerId == null
+                                  ? 'Streams'
+                                  : 'Streams · ${_serverLabel(_selectedServerId!)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: ForjaShellColors.cinematic.textSecondary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: ListenableBuilder(
+                              listenable: widget.providerSourcesCache,
+                              builder: (context, _) => _buildStreamsColumn(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -595,9 +623,11 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
     final width = (size.width * 0.88).clamp(560.0, 960.0);
     final maxHeight = size.height * 0.82;
 
-    return PlayerPopupPanel.tvFocusableOverlay(
-      overlayContext: context,
+    // Single TV focus scope; autofocusFirst false — selected server claims via
+    // PlayerPopupListFocusScope + _pinServerFocus (Close must not win first).
+    return TvOverlayScope(
       onDismiss: widget.onClose,
+      autofocusFirst: false,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -630,11 +660,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
                       borderRadius: BorderRadius.circular(
                         PlayerPopupTokens.shellRadius,
                       ),
-                      child: playerSidePanelTvScope(
-                        context: context,
-                        onClose: widget.onClose,
-                        child: _buildBody(),
-                      ),
+                      child: _buildBody(),
                     ),
                   ),
                 ),
