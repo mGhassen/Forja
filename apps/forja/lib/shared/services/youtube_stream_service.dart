@@ -30,11 +30,12 @@ class YoutubeQuality {
 
 /// Resolved playable URLs for a single YouTube video.
 class YoutubeResolvedStreams {
-  /// Video stream. When [audioUrl] is set this is video-only adaptive;
-  /// otherwise muxed progressive.
+  /// Default open URL. Prefer muxed progressive (A+V) when YouTube offers it;
+  /// otherwise a video-only adaptive URL that needs [audioUrl].
   final String? playUrl;
 
-  /// Separate AAC track for a video-only [playUrl].
+  /// Separate AAC for video-only URLs in [qualities] (and adaptive [playUrl]).
+  /// Null when [playUrl] is muxed-only and no adaptive ladder exists.
   final String? audioUrl;
 
   final String? title;
@@ -202,11 +203,6 @@ class YoutubeStreamService {
           qualities.add(YoutubeQuality(height: h, videoUrl: s.url.toString()));
         }
 
-        final atOrBelow =
-            qualities.where((q) => q.height <= maxHeight).toList();
-        playUrl =
-            (atOrBelow.isNotEmpty ? atOrBelow.first : qualities.last).videoUrl;
-
         audioStreams.sort(
           (a, b) =>
               b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond),
@@ -214,9 +210,15 @@ class YoutubeStreamService {
         audioUrl = audioStreams.first.url.toString();
       }
 
-      if (playUrl == null) {
+      // Muxed first — baked-in audio (adaptive video-only was silent when
+      // mpv audio-file failed to attach). Keep [audioUrl]/[qualities] for HD.
+      if (bestMuxed != null) {
         playUrl = bestMuxed;
-        audioUrl = null;
+      } else if (qualities.isNotEmpty) {
+        final atOrBelow =
+            qualities.where((q) => q.height <= maxHeight).toList();
+        playUrl =
+            (atOrBelow.isNotEmpty ? atOrBelow.first : qualities.last).videoUrl;
       }
       if (playUrl == null) return null;
 

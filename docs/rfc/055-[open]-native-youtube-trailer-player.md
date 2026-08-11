@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **6 / 8** acceptance |
-| **Current slice** | Native player + ATV D-pad chrome — device smoke remaining |
+| **Progress** | **3 / 3** components · **6 / 9** acceptance |
+| **Current slice** | Muxed-first + audio-add fallback shipped — audio/device smoke remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -37,6 +37,7 @@
 | 6 | R55-A06 | Desktop / TV smoke: Trailer from details plays contain-fit native video | ⬜ |
 | 7 | R55-A07 | ATV D-pad: More videos ←/→/OK + ↑ Back; transport/seekbar neighbors; Back arms then exits | ✅ |
 | 8 | R55-A08 | ATV device smoke: trailer D-pad + Back/Exit (`I154-A01`–`A03`) | ⬜ |
+| 9 | R55-A09 | Trailer opens with audible audio (muxed default; adaptive uses audio-add fallback) | ⬜ |
 
 ---
 
@@ -59,7 +60,8 @@ Replace the fullscreen trailer YouTube iframe (and its 1.35× overscan hack to h
 
 - Default height cap: **1080p** H.264; VP9 listed above; AV1 excluded
 - Prefer `YoutubeApiClient.androidVr` for googlevideo URLs that open in mpv
-- Adaptive = video-only + separate AAC; muxed MP4 fallback
+- **Default open:** muxed progressive MP4 when available (baked-in audio); else adaptive video-only + AAC
+- Adaptive HD stays in the quality ladder; desktop always `audio-add` after open; ATV prefers `audio-file` then `audio-add` if no track
 - Resolve off UI isolate; short TTL cache; re-resolve on open / trailer switch
 - No iframe fallback on resolve failure
 

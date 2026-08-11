@@ -6,6 +6,10 @@ import 'package:rust/rust.dart';
 
 enum HeroTitleStyle { details, home }
 
+/// Line height for details fallback titles. `1.0` smashes wrapped lines;
+/// keep enough leading for descenders without colliding line 2 into line 1.
+const double kHeroTitleLineHeight = 1.12;
+
 /// Cyan/amber offset layers under white — desktop/mobile details look.
 /// On TV, a single plain [Text]: stacked translucent offsets read as a
 /// double image with soft antialiasing on Android TV GLES.
@@ -21,35 +25,21 @@ class ChromaticHeroTitleText extends StatelessWidget {
   final TextStyle style;
   final int maxLines;
 
-  /// Room for neg letterSpacing overhang + ±1.5 chromatic offsets so a parent
-  /// [ClipRect] (details title slot) does not eat first/last strokes.
+  /// Neg letterSpacing + ±1.5 chromatic offsets paint past the layout box;
+  /// parent [ClipRect] title slots need a few px so first/last strokes survive.
   static const double _bleedH = 3.0;
-
-  /// `height: 1.0` shrinks the line box; descenders (g/y/p) paint past it and
-  /// get clipped by the title-slot [ClipRect]. Keep them inside the clip.
-  static EdgeInsets _bleedFor(TextStyle style) {
-    final size = style.fontSize ?? 48.0;
-    final bottom = (size * 0.22).clamp(6.0, 12.0);
-    return EdgeInsets.fromLTRB(_bleedH, 0, _bleedH, bottom);
-  }
-
-  static const _titleHeightBehavior = TextHeightBehavior(
-    applyHeightToFirstAscent: false,
-    applyHeightToLastDescent: false,
-  );
 
   Text _titleText(String value, TextStyle textStyle) => Text(
         value,
         style: textStyle,
         maxLines: maxLines,
         overflow: TextOverflow.ellipsis,
-        textHeightBehavior: _titleHeightBehavior,
       );
 
   @override
   Widget build(BuildContext context) {
     final plain = _titleText(title, style);
-    final pad = _bleedFor(style);
+    const pad = EdgeInsets.symmetric(horizontal: _bleedH);
     if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
       return Padding(
         padding: pad,
@@ -91,6 +81,14 @@ class ChromaticHeroTitleText extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Font size + line count that fits [slotHeight] without ClipRect eating line 2.
+({double fontSize, int maxLines}) heroTitleFit(double slotHeight) {
+  final maxLines = slotHeight < 64 ? 1 : 2;
+  final fontSize =
+      (slotHeight / (maxLines * kHeroTitleLineHeight)).clamp(22.0, 48.0);
+  return (fontSize: fontSize, maxLines: maxLines);
 }
 
 /// TMDB logo or stylized title for hero surfaces (Home carousel, media details).
@@ -158,24 +156,27 @@ class _DetailsHeroTitle extends StatelessWidget {
         height: logoHeight,
         fit: BoxFit.contain,
         alignment: Alignment.centerLeft,
-        placeholder: (_, _) => _fallbackTitle(movie, logoHeight),
-        errorWidget: (_, _, _) => _fallbackTitle(movie, logoHeight),
+        placeholder: (_, _) => _fallbackTitle(movie, slotHeight),
+        errorWidget: (_, _, _) => _fallbackTitle(movie, slotHeight),
       );
     }
-    return _fallbackTitle(movie, logoHeight);
+    return _fallbackTitle(movie, slotHeight);
   }
 
-  Widget _fallbackTitle(Movie movie, double maxHeight) {
-    final fontSize = maxHeight <= 56 ? 32.0 : maxHeight <= 72 ? 40.0 : 48.0;
-    final maxLines = maxHeight <= 56 ? 1 : 2;
+  /// [maxHeight] null = unconstrained hero: full 48px, grow with wrap.
+  /// Otherwise scale so [maxLines] fit inside the clipped title slot.
+  Widget _fallbackTitle(Movie movie, double? maxHeight) {
+    final fit = maxHeight == null
+        ? (fontSize: 48.0, maxLines: 2)
+        : heroTitleFit(maxHeight);
     return ChromaticHeroTitleText(
       title: movie.title,
-      maxLines: maxLines,
+      maxLines: fit.maxLines,
       style: TextStyle(
-        fontSize: fontSize,
+        fontSize: fit.fontSize,
         fontWeight: FontWeight.w900,
         color: Colors.white,
-        height: 1.0,
+        height: kHeroTitleLineHeight,
         letterSpacing: -1.2,
       ),
     );

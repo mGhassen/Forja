@@ -1342,19 +1342,25 @@ class _HeroMainColumn extends StatelessWidget {
 
     final metaColumn = <Widget>[
       if (titleHeight > 0)
-        SizedBox(
-          height: titleHeight,
-          child: ClipRect(
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: HeroTitle(
-                movie: movie,
-                logoUrl: logoUrl,
-                slotHeight: bounded ? titleHeight : null,
+        if (bounded)
+          SizedBox(
+            height: titleHeight,
+            child: ClipRect(
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: HeroTitle(
+                  movie: movie,
+                  logoUrl: logoUrl,
+                  slotHeight: titleHeight,
+                ),
               ),
             ),
+          )
+        else
+          HeroTitle(
+            movie: movie,
+            logoUrl: logoUrl,
           ),
-        ),
       if (showGenres) ...[
         const SizedBox(height: 10),
         Text(

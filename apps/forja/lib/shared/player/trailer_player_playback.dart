@@ -192,6 +192,33 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     }
   }
 
+  /// True when [videoUrl] is adaptive video-only (needs [streams.audioUrl]).
+  bool _needsExternalAudio(YoutubeResolvedStreams streams, String videoUrl) {
+    final audio = streams.audioUrl;
+    if (audio == null || audio.isEmpty) return false;
+    return streams.qualities.any((q) => q.videoUrl == videoUrl);
+  }
+
+  bool _hasSelectableAudio(Player player) {
+    return player.state.tracks.audio.any(
+      (t) => t.id != 'no' && t.id != 'auto',
+    );
+  }
+
+  Future<bool> _waitForSelectableAudio(Player player) async {
+    if (_hasSelectableAudio(player)) return true;
+    try {
+      await player.stream.tracks
+          .firstWhere(
+            (t) => t.audio.any((a) => a.id != 'no' && a.id != 'auto'),
+          )
+          .timeout(const Duration(milliseconds: 1500));
+      return true;
+    } catch (_) {
+      return _hasSelectableAudio(player);
+    }
+  }
+
   Future<void> _openResolved(
     YoutubeResolvedStreams streams, {
     Duration? resumeAt,
@@ -200,31 +227,46 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     if (player == null) return;
     final videoUrl = streams.playUrl!;
     final audioUrl = streams.audioUrl;
-    await player.setVolume(_s._volume);
+    final needsExternalAudio = _needsExternalAudio(streams, videoUrl);
+    final atv = _atvMediaKit;
 
-    // Bind separate AAC *before* open so A/V join together. Post-open
-    // setAudioTrack forces a demuxer resync hitch (visible on ATV MediaCodec).
-    var boundViaAudioFile = false;
     final platform = player.platform;
     if (platform is NativePlayer) {
       if (!await mediaKitPlayerHandleReady(platform)) return;
       try {
-        await platform.setProperty(
-          'audio-file',
-          (audioUrl != null && audioUrl.isNotEmpty) ? audioUrl : '',
-        );
-        boundViaAudioFile = audioUrl != null && audioUrl.isNotEmpty;
-      } catch (e) {
-        debugPrint('[Trailer] audio-file bind failed: $e');
+        await platform.setProperty('mute', 'no');
+      } catch (_) {}
+      // Clear sticky external audio from a prior adaptive open (muxed path).
+      try {
+        await platform.setProperty('audio-file', '');
+      } catch (_) {}
+      // ATV: bind AAC before open to avoid MediaCodec resync hitch.
+      if (needsExternalAudio && atv && audioUrl != null) {
+        try {
+          await platform.setProperty('audio-file', audioUrl);
+        } catch (e) {
+          debugPrint('[Trailer] audio-file bind failed: $e');
+        }
       }
     }
 
+    await player.setVolume(_s._volume);
     await openPlayerStream(player, url: videoUrl);
-    if (!boundViaAudioFile &&
-        audioUrl != null &&
-        audioUrl.isNotEmpty) {
-      await player.setAudioTrack(AudioTrack.uri(audioUrl));
+
+    if (needsExternalAudio && audioUrl != null && audioUrl.isNotEmpty) {
+      // Desktop: audio-file is unreliable for googlevideo — always audio-add.
+      // ATV: only audio-add when audio-file did not attach a track.
+      final needAudioAdd =
+          !atv || !await _waitForSelectableAudio(player);
+      if (needAudioAdd) {
+        try {
+          await player.setAudioTrack(AudioTrack.uri(audioUrl));
+        } catch (e) {
+          debugPrint('[Trailer] audio-add failed: $e');
+        }
+      }
     }
+
     if (resumeAt != null && resumeAt > Duration.zero) {
       await player.seek(resumeAt);
     }
