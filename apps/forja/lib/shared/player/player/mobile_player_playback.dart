@@ -938,30 +938,110 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     }
   }
 
-  /// Mid-playback failure — stop on the current server; never auto-hop.
+  /// Mid-playback fatal error.
+  /// Auto (not pinned): remaining siblings → full re-resolve like first Play,
+  /// seeking back to the watch position. Pin / Auto Off: stop for Retry.
   Future<void> _showPlaybackFailureOnWatch({String? reason}) async {
-    if (_s._hasError || _s._disposed) return;
+    if (_s._hasError || _s._disposed || _s._isInitPlaybackRunning) return;
+
+    final pinned = _s._providerPinned || _s._sourcePinned || widget.pinSource;
+    final canAutoHop =
+        !pinned &&
+        !widget.streamsPrevalidated &&
+        widget.movie != null &&
+        ((widget.providers != null && widget.providers!.isNotEmpty) ||
+            widget.onReloadStreams != null);
+
+    if (!canAutoHop) {
+      debugPrint(
+        '[Player] Playback stopped during watch - no auto failover'
+        '${pinned ? ' (pinned)' : ''}'
+        '${reason != null ? ' ($reason)' : ''}',
+      );
+      _s._fallbackGen++;
+      try {
+        await _s._player.stop();
+      } catch (_) {}
+      _s._markPlaybackConfirmed(false);
+      if (!mounted || _s._disposed) return;
+      _s._finalizeProbeStatusesAfterPlayback();
+      _s._statusController.upsert(
+        'playback-failed',
+        'Failed to stream',
+        kind: StatusRouletteKind.failed,
+      );
+      setState(() {
+        _s._hasError = true;
+        _s._showControls = true;
+        _s._errorMessage = 'Playback stopped. Tap Retry to reload this server.';
+      });
+      return;
+    }
+
+    final resumeAt = _s._positionNotifier.value;
+    final failedIdx = _s._currentFallbackSourceIndex;
+    final seek = resumeAt.inSeconds > 0 ? resumeAt : null;
+
     debugPrint(
-      '[Player] Playback stopped during watch - no auto failover'
-      '${reason != null ? ' ($reason)' : ''}',
+      '[Player] Mid-watch failure - Auto hopping'
+      '${reason != null ? ' ($reason)' : ''}'
+      ' @${resumeAt.inSeconds}s',
     );
     _s._fallbackGen++;
+    final chainGen = _s._fallbackGen;
+    _s._isInitPlaybackRunning = true;
+    _s._abortiveCompletedLatched = false;
+
     try {
-      await _s._player.stop();
-    } catch (_) {}
-    _s._markPlaybackConfirmed(false);
-    if (!mounted || _s._disposed) return;
-    _s._finalizeProbeStatusesAfterPlayback();
-    _s._statusController.upsert(
-      'playback-failed',
-      'Failed to stream',
-      kind: StatusRouletteKind.failed,
-    );
-    setState(() {
-      _s._hasError = true;
-      _s._showControls = true;
-      _s._errorMessage = 'Playback stopped. Tap Retry to reload this server.';
-    });
+      try {
+        await _s._player.stop();
+      } catch (_) {}
+      _s._markPlaybackConfirmed(false);
+      _s._markSourceFailed(failedIdx);
+      unawaited(_s._recordStreamPlayFailure(_s._currentProvider ?? ''));
+      if (!mounted || _s._disposed || _fallbackAborted(chainGen)) return;
+
+      _s._statusController.upsert(
+        'mid-watch-hop',
+        'Finding another stream…',
+        kind: StatusRouletteKind.loading,
+      );
+      setState(() {
+        _s._hasError = false;
+        _s._errorMessage = '';
+        _s._showControls = true;
+      });
+
+      final nextIdx = failedIdx + 1;
+      if (_s._currentSources != null &&
+          nextIdx < _s._currentSources!.length) {
+        final played = await _trySourcesFromIndex(
+          nextIdx,
+          chainGen: chainGen,
+          seekAfterOpen: seek,
+        );
+        if (played) return;
+        if (_fallbackAborted(chainGen)) return;
+        if (_s._currentProvider != null) {
+          _s._markProviderLoadFailed(_s._currentProvider!);
+        }
+      }
+
+      await _invalidateWebstreamingCacheForCurrent();
+      if (_fallbackAborted(chainGen)) return;
+
+      final recovered = await _reresolveLikeFirstPlay(
+        chainGen: chainGen,
+        seekAfterOpen: seek,
+      );
+      if (!recovered && !_fallbackAborted(chainGen)) {
+        await _failPlaybackNoFailover(
+          message: 'Could not find any working stream from any provider.',
+        );
+      }
+    } finally {
+      _s._isInitPlaybackRunning = false;
+    }
   }
 
   Future<void> _retryCurrentPlayback() async {
