@@ -729,12 +729,14 @@ class _SettingsNavigationPageBodyState
   }
 }
 
-class SettingsAboutPageBody extends StatelessWidget {
+class SettingsAboutPageBody extends ConsumerWidget {
   const SettingsAboutPageBody({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(accountFeaturesProvider).isAdmin;
     final showSplashPreview =
+        isAdmin &&
         kDebugMode &&
         (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
 
@@ -742,14 +744,15 @@ class SettingsAboutPageBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsGroup(label: 'Updates', children: const [SettingsAboutPanel()]),
-        SettingsGroup(
-          label: 'Privacy',
-          children: [
-            const SettingsCrashReportingRow(),
-            const SettingsProductAnalyticsRow(),
-            if (Platform.isMacOS) const SettingsMacOsKeychainRow(),
-          ],
-        ),
+        if (isAdmin)
+          SettingsGroup(
+            label: 'Privacy',
+            children: [
+              const SettingsCrashReportingRow(),
+              const SettingsProductAnalyticsRow(),
+              if (Platform.isMacOS) const SettingsMacOsKeychainRow(),
+            ],
+          ),
         if (showSplashPreview)
           SettingsGroup(
             label: 'Developer',

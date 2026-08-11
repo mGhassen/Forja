@@ -23,22 +23,22 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
 | [Playback](playback-settings.md) | Play sources, audio, auto next/skip, quality, IPTV EPG | Always (play sources / episode extras need a VOD tab; IPTV EPG needs the IPTV tab; on Android TV, Direct torrent / Stremio / Nuvio appear after LAN pair) |
 | [Sources](torrent-settings.md) | Server reliability, torrents, Stremio / Nuvio / Jackett / Prowlarr | VOD tab + Webstreaming / Direct torrent / Stremio / Nuvio on — never on Android TV |
-| [WebStreamr](../scrapers/webstreamr-settings.md) | Country sources, extractors, resolutions, MFP, FlareSolverr, TMDB | VOD tab + Webstreaming on — never on Android TV |
-| Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link | VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
+| [WebStreamr](../scrapers/webstreamr-settings.md) | Country sources, extractors, resolutions, MFP, FlareSolverr, TMDB | Admin only · VOD tab + Webstreaming on — never on Android TV |
+| Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link | Admin only · VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
 | Connected services | Trakt, Simkl, MDBlist | VOD tab |
-| [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists | VOD tab — never on Android TV |
+| [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists | Admin only · VOD tab — never on Android TV |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
 | [LAN](lan.md) | Desktop server, pairing, torrent relay to phone/TV | Always |
 | [Navigation](navigation-bar.md) | Tab visibility, order, default menu | Always |
-| [About](app-updates.md) | Check for updates, crash reporting + product analytics opt-in, app version | Always |
+| [About](app-updates.md) | Check for updates, app version; Privacy / Developer rows for admins | Always |
 
 ## Tips
 
 - Only the selected category loads — opening Settings is lighter than the old all-sections page
 - IPTV / Live Matches alone → movie Settings stay hidden until you turn a VOD tab back on in **Navigation**, then play sources under **Playback**
 - On **TV**, the bottom rail item is your **profile avatar** (same as desktop).
-  **↑/↓** moves through the category sidebar (green left bar only — no gray
-  focus ring; focusing a category selects it and updates the right pane, but
+  **↑/↓** moves through the category sidebar (flat green left bar + ink fill —
+  no rounded hover card; focusing a category selects it and updates the right pane, but
   focus stays on the left). **OK** or **→** opens that category’s right pane
   and moves focus to the first control there (each category’s detail is its own
   focus zone). Detail rows use the **same green left bar + tint** on hover /

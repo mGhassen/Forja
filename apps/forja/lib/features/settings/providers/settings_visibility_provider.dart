@@ -7,5 +7,6 @@ final settingsVisibilityProvider =
     FutureProvider<SettingsVisibility>((ref) async {
   ref.watch(navbarRevisionProvider);
   ref.watch(playSourceRevisionProvider);
+  ref.watch(accountFeaturesRevisionProvider);
   return SettingsVisibility.resolve();
 });

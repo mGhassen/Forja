@@ -16,7 +16,7 @@ Debrid services store popular torrents on fast servers. When you enable debrid, 
 
 ## How to open it
 
-**Settings → Debrid** — enable debrid, pick a service, enter credentials.
+**Settings → Debrid** (admin accounts only — enable debrid, pick a service, enter credentials).
 
 ## What you can do
 

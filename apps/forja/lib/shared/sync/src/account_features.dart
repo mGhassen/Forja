@@ -35,8 +35,9 @@ class AccountFeatures {
   /// Credits for dealing portals from the catalog pool (RFC-040).
   int get iptvCredits => _iptvCredits;
 
-  /// `accounts.is_admin` - experimental / ops toggles in Settings; unlimited
-  /// IPTV portals.
+  /// `accounts.is_admin` — experimental / ops toggles in Settings (WebStreamr
+  /// hub, Debrid, Lists, About Privacy/Developer, Simple resolve, …);
+  /// unlimited IPTV portals.
   bool get isAdmin => _isAdmin;
 
   /// Configured max portals per profile (`features.maxIptvPortals`, default 5).

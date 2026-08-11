@@ -1,5 +1,6 @@
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:rust/rust.dart';
 
@@ -8,7 +9,7 @@ import 'package:rust/rust.dart';
 /// VOD tabs ([BootNeeds.vodNavIds]) gate movie/series Settings the same way boot
 /// gates engines. IPTV-only / Live-only profiles keep Profile, Playback (IPTV +
 /// player), Navigation, About. Android TV also hides Sources, WebStreamr, Lists,
-/// and Data & backup (lean leanback Settings).
+/// and Data & backup (lean leanback Settings). WebStreamr Settings is admin-only.
 class SettingsVisibility {
   const SettingsVisibility({
     required this.playSourceTorrent,
@@ -76,13 +77,19 @@ class SettingsVisibility {
 
   /// Debrid serves torrent + Stremio hashes (+ Nuvio magnets).
   /// Lean Android TV Settings keep Debrid off (desktop relay only).
+  /// Admin accounts only (`accounts.is_admin`).
   bool get showDebrid =>
       !_isAndroidTv &&
       vodTab &&
-      (playSourceTorrent || playSourceStremio || playSourceNuvio);
+      (playSourceTorrent || playSourceStremio || playSourceNuvio) &&
+      AccountFeatures.instance.isAdmin;
 
+  /// Country / extractor / MFP hub — admin accounts only (`accounts.is_admin`).
   bool get showWebstreamr =>
-      !_isAndroidTv && vodTab && playSourceWebstreaming;
+      !_isAndroidTv &&
+      vodTab &&
+      playSourceWebstreaming &&
+      AccountFeatures.instance.isAdmin;
 
   /// Server reliability / provider order (webstreaming extractors).
   /// Lives under Sources — hidden with that category on Android TV.
@@ -92,8 +99,9 @@ class SettingsVisibility {
   /// Trakt / Simkl / MDBlist.
   bool get showAccounts => vodTab;
 
-  /// Embedded Lists screen.
-  bool get showLists => !_isAndroidTv && vodTab;
+  /// Embedded Lists screen — admin accounts only (`accounts.is_admin`).
+  bool get showLists =>
+      !_isAndroidTv && vodTab && AccountFeatures.instance.isAdmin;
 
   /// Settings → Data & backup (cache clear, export/import, IPTV portals CSV).
   bool get showDataCategory => !_isAndroidTv;

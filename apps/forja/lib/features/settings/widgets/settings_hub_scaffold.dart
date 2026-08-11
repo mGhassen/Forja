@@ -196,6 +196,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     ref.listen(navbarRevisionProvider, (_, _) {
       ref.invalidate(settingsVisibilityProvider);
     });
+    ref.listen(accountFeaturesRevisionProvider, (_, _) {
+      ref.invalidate(settingsVisibilityProvider);
+    });
 
     final visibility = visibilityAsync.valueOrNull ?? _visibility;
     if (visibility == null) {
@@ -359,7 +362,7 @@ class _CategorySidebar extends StatelessWidget {
         ),
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+            padding: const EdgeInsets.fromLTRB(0, 4, 0, 8),
             itemCount: categories.length,
             itemBuilder: (context, index) {
               final c = categories[index];

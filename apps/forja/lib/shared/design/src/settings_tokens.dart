@@ -7,7 +7,8 @@ abstract final class SettingsTokens {
 
   static const double sidebarWidth = 260;
   static const double detailMaxWidth = 720;
-  static const double categoryTileRadius = 10;
+  /// Category rail rows are flat (green left bar + ink) — no card radius.
+  static const double categoryTileRadius = 0;
   static const double groupRadius = 12;
   static const double rowMinHeight = 56;
   static const double groupSpacing = 24;

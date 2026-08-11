@@ -8,7 +8,7 @@ WebStreamr runs locally inside Forja's Rust engine. This settings screen control
 
 ## How to open it
 
-**Settings → WebStreamr** (category appears when **Webstreaming** is enabled under **Settings → Playback**)
+**Settings → WebStreamr** (admin accounts only — category appears when **Webstreaming** is enabled under **Settings → Playback** and the signed-in account has `is_admin`)
 
 ## What you can do
 

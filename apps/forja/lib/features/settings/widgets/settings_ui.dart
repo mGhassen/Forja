@@ -112,6 +112,7 @@ class SettingsCategoryTile extends StatelessWidget {
     return shellFocusableTap(
       context: context,
       onTap: onTap,
+      borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
       // Category rail chrome is the green left bar - never the gray menu ring.
       showFocusBorder: false,

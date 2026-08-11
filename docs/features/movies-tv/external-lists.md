@@ -8,7 +8,7 @@ Beyond My List, Forja can show lists you've created or follow on Trakt and MDBLi
 
 ## How to open it
 
-**Settings → Lists** (opens the lists manager screen).
+**Settings → Lists** (admin accounts only — opens the lists manager screen).
 
 ## What you can do
 

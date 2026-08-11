@@ -16,10 +16,10 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
   dialog opens; if you are already on the latest, you get a success toast; if
   the check fails (no network, bad manifest, missing CDN config), you get an
   **error** toast (Forja does not claim you are up to date when the check failed)
-- Toggle **Crash reporting** under **Privacy** (off by default) to send anonymized crash reports via Sentry when this build includes a DSN — stream URLs, magnets, and tokens are stripped
-- Toggle **Product analytics** under **Privacy** (off by default) to send anonymous usage events via PostHog with masked session replay. Screen names follow real tabs (`home`, `anime`, …) and routes (`media_details`, `player`) — not Flutter’s `/` root.
+- Toggle **Crash reporting** under **Privacy** (admin only; off by default) to send anonymized crash reports via Sentry when this build includes a DSN — stream URLs, magnets, and tokens are stripped
+- Toggle **Product analytics** under **Privacy** (admin only; off by default) to send anonymous usage events via PostHog with masked session replay. Screen names follow real tabs (`home`, `anime`, …) and routes (`media_details`, `player`) — not Flutter’s `/` root.
 - The **web portal** also sends anonymous PostHog pageviews (and masked session replay) when the deploy has a PostHog key — it does not use the in-app About toggle
-- On **macOS**, toggle **Store secrets in Keychain** under **Privacy** (off by default — local app file). Turning it on shows an explain dialog first; macOS may then ask for your password once.
+- On **macOS**, toggle **Store secrets in Keychain** under **Privacy** (admin only; off by default — local app file). Turning it on shows an explain dialog first; macOS may then ask for your password once.
 - Accept update prompt when a newer version exists
 - On **Android TV**, the update gate takes D-pad focus on **Install update** (and **Continue in background** while downloading) so the remote cannot activate the page underneath
 - Browse **What’s new** per version (left list, newest first, max 16 since your build)
@@ -36,7 +36,7 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 
 ## Tips
 
-- Crash reporting and product analytics stay off until you enable them; local builds without `SENTRY_DSN` / `POSTHOG_API_KEY` keep the toggles but send nothing
+- Crash reporting, product analytics, and Keychain toggles (plus debug Developer rows) appear only for **admin** accounts under About → Privacy / Developer; non-admins still get Updates + version. Local builds without `SENTRY_DSN` / `POSTHOG_API_KEY` keep the admin toggles but send nothing
 - Enable **Record user sessions** in PostHog project settings for session replay
 - Web portal analytics needs its own `VITE_POSTHOG_KEY` (separate PostHog project from the app); empty key means the site never loads PostHog
 - Published releases (CI on forjahq): `./scripts/release_ci.sh` or `melos run release` — searchable tag list locally (needs `gh` CLI)
