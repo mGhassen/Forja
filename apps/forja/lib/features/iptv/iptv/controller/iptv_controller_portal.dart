@@ -241,33 +241,51 @@ mixin _IptvControllerPortal on ChangeNotifier {
 
   Future<void> deleteSelected() async {
     if (_c.selected.isEmpty) return;
-    for (final k in _c.selected) {
+    final keys = Set<String>.from(_c.selected);
+    if (keys.any(_c._deletingPortalKeys.contains)) return;
+    _c._deletingPortalKeys.addAll(keys);
+    notifyListeners();
+
+    for (final k in keys) {
       _c._invalidatePortalCatalogCache(k);
       _c._newPortalKeys.remove(k);
       _c._portalRecencyKeys.remove(k);
     }
-    final keep = _c.verified.where((v) => !_c.selected.contains(v.key)).toList();
-    _c.verified = keep;
-    _c._verifiedKeys
-      ..clear()
-      ..addAll(keep.map((v) => v.credKey));
-    if (_c.activePortal != null && _c.selected.contains(_c.activePortal!.key)) {
+    final keep =
+        _c.verified.where((v) => !keys.contains(v.key)).toList(growable: false);
+    if (_c.activePortal != null && keys.contains(_c.activePortal!.key)) {
       _c.activePortal = null;
       _c.activeSection = null;
       _c.categories = const [];
       _c.browserAllStreams = const [];
       await IptvStore.clearLastPortalKey();
+      notifyListeners();
     }
+
+    try {
+      // Intentional delete - allow cloud assignment count to drop (issue 118).
+      await IptvStore.save(keep, scheduleSync: false);
+    } catch (_) {
+      _c._deletingPortalKeys.removeAll(keys);
+      notifyListeners();
+      return;
+    }
+
+    _c.verified = keep;
+    _c._verifiedKeys
+      ..clear()
+      ..addAll(keep.map((v) => v.credKey));
     _c.selected.clear();
     _c.editMode = false;
-    // Intentional delete - allow cloud assignment count to drop (issue 118).
-    await IptvStore.save(keep, scheduleSync: false);
-    if (keep.isEmpty) {
-      await SyncDomainBridge.instance.pushEmptyIptvInventory();
-    } else {
-      await SyncDomainBridge.instance.pushIptvInventoryAfterDelete();
-    }
+    _c._deletingPortalKeys.removeAll(keys);
     notifyListeners();
+
+    // Cloud push must not block the panel — local inventory is already gone.
+    if (keep.isEmpty) {
+      unawaited(SyncDomainBridge.instance.pushEmptyIptvInventory());
+    } else {
+      unawaited(SyncDomainBridge.instance.pushIptvInventoryAfterDelete());
+    }
   }
 
   Future<void> deletePortal(String key) async {

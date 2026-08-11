@@ -114,6 +114,9 @@ class IptvController extends ChangeNotifier
   // Manual edit
   bool editMode = false;
   final Set<String> selected = {};
+  /// Portal keys mid-delete — row stays visible (striped) until local save finishes.
+  final Set<String> _deletingPortalKeys = {};
+  bool isDeletingPortal(String key) => _deletingPortalKeys.contains(key);
   bool showAddDialog = false;
   bool isAdding = false;
   String? addError;
