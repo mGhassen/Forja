@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **14 / 14** fix · **0 / 5** acceptance · **1** deferred (A05) |
+| **Progress** | **15 / 15** fix · **0 / 6** acceptance · **1** deferred (A05) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -33,6 +33,7 @@
 | 12 | I136-T12 | TV catalog + guide: keep already-shown logos on scroll; only defer *new* viewport tiles (mid-viewport ↑/↓ never flashes) | ✅ |
 | 13 | I136-T13 | Clear channel-pane ExcludeFocus when HW drops float (stuck `_tvCategoryPinFocused` blocked OK/→ into channels) | ✅ |
 | 14 | I136-T14 | TV category pin: after pin/unpin, scroll rail to new index + focus that row (supersedes freeze-scroll of T07) | ✅ |
+| 15 | I136-T15 | TV category rail: sync-clear focus chrome on blur; selected-only = left bar (no second inkHover fill) | ✅ |
 
 ---
 
@@ -46,6 +47,7 @@
 | 4 | I136-A04 | Android TV: hold OK to float — ↑/↓ one step; no scroll until 2nd visible slot, then pin there until ends; focus stays on float | ⬜ |
 | 5 | I136-A05 | Android TV: → on a Live group focuses pin on first press; OK on pin does not jump category rail scroll | ⏭️ |
 | 6 | I136-A06 | Android TV: OK on pin focuses the pinned/unpinned group and scrolls the category rail to its new index | ⬜ |
+| 7 | I136-A07 | Android TV: ↑/↓ through catalog categories shows only one hover fill at a time (no ghost previous row + selected inkHover) | ⬜ |
 
 ---
 
@@ -72,6 +74,8 @@ D-pad focus on IPTV **catalog** (category rail + channel grid/list) and **in-pla
 **Follow-up (I136-T13):** Enter float set `_tvCategoryPinFocused` (ExcludeFocus channels); HW OK/← cleared float without clearing that flag — OK/→ after pin/reorder stayed on the category rail. Clear the flag when float drops (and on row dispose).
 
 **Follow-up (I136-T14):** T07 froze rail scroll on pin so the old viewport slot kept focus while the row jumped to the top of the movable list — focus looked lost. Pin/unpin now scrolls to the row’s new index and focuses it (`I136-A06`; `I136-A05` freeze-scroll deferred).
+
+**Follow-up (I136-T15):** ↑/↓ left a ghost focus fill for one frame (deferred `_focused=false`) plus selected `inkHover` — looked like 2–3 hovers. Blur clears focus chrome sync; on TV selected-only keeps the green left bar without a second fill (`I136-A07`).
 
 ## Related
 

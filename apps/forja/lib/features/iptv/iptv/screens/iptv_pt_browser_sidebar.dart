@@ -263,17 +263,19 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       return;
     }
     _cancelOkGestures();
-    // Pin / floating may claim focus next frame — keep rail chrome until then.
+    // Sync-clear hover chrome — deferred clear left a ghost row lit for a
+    // frame during ↑/↓ (looked like 2–3 hovers with selected + next focus).
+    // Pin / float still keep chrome via _chromeLit without _focused.
+    if (_focused) setState(() => _focused = false);
+    widget.onTvFocusChange?.call(false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_pinFocus.hasFocus || _floating) return;
+      if (_pinFocus.hasFocus || _floating || _rowFocus.hasFocus) return;
       if (_tvPinRevealed) {
         setState(() => _tvPinRevealed = false);
         widget.onPinFocusChange?.call(false);
       }
-      setState(() => _focused = false);
       _releaseChrome();
-      widget.onTvFocusChange?.call(false);
     });
   }
 
@@ -441,6 +443,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
+    final tv = iptvUseTvFocus(context);
     final highlight = selected || _tvFocused;
     final emphatic = selected || _active || _tvFocused;
     final iconColor = _tvFocused || selected
@@ -453,21 +456,19 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
         : emphatic
             ? Colors.white
             : ForjaShellColors.textSecondary;
-    final tv = iptvUseTvFocus(context);
     // Desktop drag proxy wraps the row — same brighter green as TV floating.
     final lifted =
         _floating || _IptvCategoryDragProxyScope.isProxy(context);
 
-    // Floating / drag = same row chrome, slightly brighter green (no card lift).
+    // TV: only the focused row paints hover fill — selected alone keeps the
+    // green left bar (open group mark) so ↑/↓ never shows two ink hovers.
     final fillColor = lifted
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.28)
         : _tvFocused
             ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-            : selected
+            : (!tv && (selected || _active))
                 ? ForjaShellColors.inkHover
-                : _active
-                    ? ForjaShellColors.inkHover
-                    : Colors.transparent;
+                : Colors.transparent;
 
     Widget rowBody = AnimatedContainer(
       duration: tv ? Duration.zero : const Duration(milliseconds: 140),
