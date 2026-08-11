@@ -893,6 +893,7 @@ class _SettingsSelectDialog extends StatefulWidget {
 }
 
 class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
+  final ScrollController _scrollController = ScrollController();
   late final List<FocusNode> _nodes = List.generate(
     widget.options.length,
     (i) => FocusNode(debugLabel: 'settings-select-$i'),
@@ -912,6 +913,7 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     for (final n in _nodes) {
       n.dispose();
     }
@@ -994,12 +996,18 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
       width: maxW,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: maxH),
-        child: ListView.separated(
-          shrinkWrap: true,
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          itemCount: widget.options.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 2),
-          itemBuilder: (_, i) => optionRow(i),
+        child: Scrollbar(
+          controller: _scrollController,
+          thumbVisibility: true,
+          interactive: true,
+          child: ListView.separated(
+            controller: _scrollController,
+            shrinkWrap: true,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            itemCount: widget.options.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 2),
+            itemBuilder: (_, i) => optionRow(i),
+          ),
         ),
       ),
     );
