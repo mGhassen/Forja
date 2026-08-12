@@ -196,32 +196,31 @@ class _MovieStatusPinState extends State<_MovieStatusPin> {
             ),
             if (_open) ...[
               SizedBox(height: shellScaled(context, 6).clamp(4.0, 6.0)),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.82),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.12),
+              IntrinsicWidth(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.82),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.12),
+                    ),
                   ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 4,
-                    horizontal: 4,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (final s in _listStatuses)
-                        _StatusRow(
-                          selected: s.id == status,
-                          icon: s.id == status ? s.selectedIcon : s.icon,
-                          label: s.label,
-                          onTap: _busy ? null : () => _setStatus(s.id),
-                          tvFocus: policy.useFocusableMoodChips,
-                        ),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final s in _listStatuses)
+                          _StatusRow(
+                            selected: s.id == status,
+                            icon: s.id == status ? s.selectedIcon : s.icon,
+                            label: s.label,
+                            onTap: _busy ? null : () => _setStatus(s.id),
+                            tvFocus: policy.useFocusableMoodChips,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -287,20 +286,16 @@ class _StatusRowState extends State<_StatusRow> {
     final accent = _active
         ? ForjaShellColors.brandGreen
         : (widget.selected
-              ? ForjaShellColors.brandGreen.withValues(alpha: 0.75)
-              : Colors.white);
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.75)
+            : Colors.white);
     final row = AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       curve: Curves.easeOut,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-      decoration: BoxDecoration(
-        color: _active
-            ? Colors.white.withValues(alpha: 0.12)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      color: _active
+          ? Colors.white.withValues(alpha: 0.08)
+          : Colors.transparent,
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(widget.icon, size: 16, color: accent),
           const SizedBox(width: 8),
@@ -333,7 +328,7 @@ class _StatusRowState extends State<_StatusRow> {
 
     return FocusableControl(
       onTap: widget.onTap,
-      borderRadius: 8,
+      borderRadius: 0,
       scaleOnFocus: 1.0,
       onFocusChange: (f) => setState(() => _focused = f),
       onHoverChange: (h) => setState(() => _hovered = h),

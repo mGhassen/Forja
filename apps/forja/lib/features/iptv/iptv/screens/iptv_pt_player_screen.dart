@@ -55,6 +55,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 part 'iptv_pt_player_engine.dart';
@@ -212,6 +213,18 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
             )
             .toList(),
       );
+
+  /// Root-navigator push — same full-window cover + Back slide as movies.
+  /// Catalog/details underlay stays laid out with the rail (no Offstage reflow).
+  static Future<T?> open<T>(BuildContext context, IptvPtPlayerScreen player) {
+    final hostContext = context;
+    return Navigator.of(context, rootNavigator: true).push<T>(
+      AppRouter.slideRoute(
+        (_) => ShellScope.rehost(hostContext, player),
+        settings: const RouteSettings(name: 'iptv_player'),
+      ),
+    );
+  }
 
   @override
   ConsumerState<IptvPtPlayerScreen> createState() =>
@@ -474,10 +487,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   @override
   void initState() {
     super.initState();
-    // Shell-overlay IPTV sits beside the rail — Offstage for full-bleed.
-    // Set before [enterPlayerSurface]; do not gate on [shellOverlayHasPage]
-    // (still false in this initState before the overlay observer syncs).
-    ShellBus.hideGlobalNav.value = true;
     ShellBus.enterPlayerSurface();
     PlayerBackExitGate.setTryFocusBack(() {
       if (_disposed || !mounted) return false;
@@ -774,7 +783,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       return;
     }
     _exitInProgress = true;
-    final nav = Navigator.of(context);
+    final nav = Navigator.of(context, rootNavigator: true);
     await _stopPlaybackForExit();
     if (!mounted || _disposed) return;
     if (_playerReady) {
@@ -874,7 +883,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     PlayerBackExitGate.setTryFocusBack(null);
     PlayerBackExitGate.setTryConsumePlayerOverlay(null);
     ShellBus.leavePlayerSurface();
-    ShellBus.clearHideGlobalNav();
     _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onRemoteControlsActivity);

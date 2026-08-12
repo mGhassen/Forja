@@ -214,14 +214,12 @@ class _IptvMovieDetailsScreenState
         ForjaToast.error('Could not open stream');
         return;
       }
-      await pushShellRoute(
+      await IptvPtPlayerScreen.open(
         context,
-        AppRouter.slideShellRoute(
-          (_) => IptvPtPlayerScreen.singleStream(
-            url: url,
-            stream: widget.movie,
-            portalName: widget.portal.displayLabel,
-          ),
+        IptvPtPlayerScreen.singleStream(
+          url: url,
+          stream: widget.movie,
+          portalName: widget.portal.displayLabel,
         ),
       );
     } finally {

@@ -360,29 +360,27 @@ class _IptvSeriesDetailsScreenState
     );
     if (url == null || url.isEmpty) return;
     if (!mounted) return;
-    pushShellRoute(
+    IptvPtPlayerScreen.open(
       context,
-      AppRouter.slideShellRoute(
-        (_) => IptvPtPlayerScreen(
-          sources: [
-            IptvPlaySource(url: url, label: widget.portal.displayLabel),
-          ],
-          title: 'Ep ${episode.episode} · ${_episodeDisplayTitle(episode)}',
-          subtitle: '$_displayTitle · Season ${episode.season}',
-          logoUrl: episode.image.isNotEmpty
-              ? episode.image
-              : widget.series.icon,
-          engineContext: BuiltInPlayerContext.vod,
-          vodPlayback: true,
-          onlineSubtitles: true,
-          subtitleSearchTitle: _displayTitle,
-          subtitleSeason: episode.season,
-          subtitleEpisode: episode.episode,
-          subtitleYear: _cleaned.year,
-          seriesEpisodes: List<IptvEpisode>.from(_episodes),
-          seriesPortal: widget.portal.portal,
-          seriesShowTitle: _displayTitle,
-        ),
+      IptvPtPlayerScreen(
+        sources: [
+          IptvPlaySource(url: url, label: widget.portal.displayLabel),
+        ],
+        title: 'Ep ${episode.episode} · ${_episodeDisplayTitle(episode)}',
+        subtitle: '$_displayTitle · Season ${episode.season}',
+        logoUrl: episode.image.isNotEmpty
+            ? episode.image
+            : widget.series.icon,
+        engineContext: BuiltInPlayerContext.vod,
+        vodPlayback: true,
+        onlineSubtitles: true,
+        subtitleSearchTitle: _displayTitle,
+        subtitleSeason: episode.season,
+        subtitleEpisode: episode.episode,
+        subtitleYear: _cleaned.year,
+        seriesEpisodes: List<IptvEpisode>.from(_episodes),
+        seriesPortal: widget.portal.portal,
+        seriesShowTitle: _displayTitle,
       ),
     );
   }

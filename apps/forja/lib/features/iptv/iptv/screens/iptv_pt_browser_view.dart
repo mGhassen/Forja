@@ -1414,16 +1414,14 @@ class _BrowserViewState extends State<_BrowserView> {
             streamHealth: Map<String, bool>.from(ctrl.streamHealth),
           )
         : null;
-    await pushShellRoute(
+    await IptvPtPlayerScreen.open(
       context,
-      AppRouter.slideShellRoute(
-        (_) => IptvPtPlayerScreen.singleStream(
-          url: url,
-          stream: s,
-          portalName: p.displayLabel,
-          channelGuide: channelGuide,
-          onChannelChanged: (next) => focusStream = next,
-        ),
+      IptvPtPlayerScreen.singleStream(
+        url: url,
+        stream: s,
+        portalName: p.displayLabel,
+        channelGuide: channelGuide,
+        onChannelChanged: (next) => focusStream = next,
       ),
     );
     if (!mounted) return;
