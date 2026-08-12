@@ -2336,29 +2336,47 @@ class _LiveMatchesEmbedPlayerScreenState
     );
   }
 
-  Widget _buildTopBar() {
-    final tv = _tvFocus();
+  /// Opaque hit target — WKWebView/WebView2 steal taps when chrome is only
+  /// painted over the platform view (macOS especially). Keep even for overlay.
+  Widget _buildBackControl() {
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      child: iptvBackButton(
+        context,
+        onTap: () => unawaited(_exitPlayer()),
+        color: Colors.white,
+        size: 26,
+        focusNode: _backFocusNode,
+        tvRowId: _topRowId,
+        tvItemIndex: 0,
+        onDownEdge: () => _focusEmbedRow(_controlsRowId, 0),
+      ),
+    );
+  }
+
+  Widget _wrapTopChrome(Widget bar) {
+    if (!_tvFocus()) return bar;
+    return TvCatalogRow(
+      tabId: _tvTabId,
+      rowId: _topRowId,
+      sortOrder: 0,
+      itemCount: 1,
+      child: FocusScope(
+        debugLabel: 'live-embed-chrome',
+        child: FocusTraversalGroup(child: bar),
+      ),
+    );
+  }
+
+  /// Loading only: reserved strip above the WebView (safe hit targets + title).
+  Widget _buildLoadingTopBar() {
     final bar = Material(
       color: Colors.transparent,
       child: Padding(
         padding: EdgeInsets.fromLTRB(8, _topBarTopPadding(context), 72, 16),
         child: Row(
           children: [
-            // Opaque hit target - WKWebView/WebView2 steal taps when chrome is
-            // only painted over the platform view (macOS especially).
-            Listener(
-              behavior: HitTestBehavior.opaque,
-              child: iptvBackButton(
-                context,
-                onTap: () => unawaited(_exitPlayer()),
-                color: Colors.white,
-                size: 26,
-                focusNode: _backFocusNode,
-                tvRowId: _topRowId,
-                tvItemIndex: 0,
-                onDownEdge: () => _focusEmbedRow(_controlsRowId, 0),
-              ),
-            ),
+            _buildBackControl(),
             const SizedBox(width: 8),
             Flexible(
               child: Column(
@@ -2388,17 +2406,35 @@ class _LiveMatchesEmbedPlayerScreenState
         ),
       ),
     );
-    if (!tv) return bar;
-    return TvCatalogRow(
-      tabId: _tvTabId,
-      rowId: _topRowId,
-      sortOrder: 0,
-      itemCount: 1,
-      child: FocusScope(
-        debugLabel: 'live-embed-chrome',
-        child: FocusTraversalGroup(child: bar),
+    return _wrapTopChrome(bar);
+  }
+
+  /// After load: floating Back (and mute/badge) over the video — no reserved bar.
+  Widget _buildOverlayTopChrome() {
+    final top = _topBarTopPadding(context);
+    final bar = Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(8, top, 16, 0),
+        child: Row(
+          children: [
+            _buildBackControl(),
+            const Spacer(),
+            if (!_tvFocus()) ...[
+              IptvRoundIcon(
+                icon: _muted
+                    ? Icons.volume_off_rounded
+                    : Icons.volume_up_rounded,
+                onTap: () => unawaited(_toggleMute()),
+              ),
+              const SizedBox(width: 10),
+            ],
+            _buildSourceBadge(),
+          ],
+        ),
       ),
     );
+    return _wrapTopChrome(bar);
   }
 
   /// TV-only bottom chrome: Play/Pause · Mute (WebView steals D-pad).
@@ -2446,14 +2482,16 @@ class _LiveMatchesEmbedPlayerScreenState
   @override
   Widget build(BuildContext context) {
     final embedUrl = widget.embedUrl;
-    // Keep the WebView *below* the chrome so the platform view cannot steal
-    // Back taps (overlay-on-WKWebView is unreliable on desktop).
-    final Widget? chrome = !_isFullscreen
+    // While loading: reserve a black strip *above* the WebView (issue 058 —
+    // overlay-on-WKWebView steals Back taps). After ready: full-bleed video +
+    // floating opaque Back/mute/badge over the platform view.
+    final showLoadingChrome = !_isFullscreen && !_ready;
+    final Widget? loadingChrome = showLoadingChrome
         ? ColoredBox(
             color: Colors.black,
             child: Stack(
               children: [
-                _buildTopBar(),
+                _buildLoadingTopBar(),
                 Positioned(
                   top: _topBarTopPadding(context),
                   right: 16,
@@ -2497,7 +2535,7 @@ class _LiveMatchesEmbedPlayerScreenState
             Widget body = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ?chrome,
+                ?loadingChrome,
                 Expanded(
                   child: Stack(
                     fit: StackFit.expand,
@@ -2767,6 +2805,8 @@ class _LiveMatchesEmbedPlayerScreenState
                             ),
                           ),
                         ),
+                      // Post-load floating chrome over the WebView (opaque Back).
+                      if (!_isFullscreen && _ready) _buildOverlayTopChrome(),
                       // Off-screen host for ad window.open - required by some Streamed
                       // embeds; never visible.
                       if (_adWindowId != null)
