@@ -12,7 +12,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 ## What you can do
 
-- Tap any tab to switch sections instantly (recently used tabs stay mounted for fast switching; Android TV keeps fewer tabs in memory, and opening the fullscreen player unloads other tabs — keeping the screen under the player — so playback gets max resources). The nav rail stays mounted for root fullscreen players (movies, trailers, Live Matches) the same way as the underlay tab — only IPTV’s shell-overlay player hides the rail Offstage for full-width video. On **Android TV**, details and player opens are an instant cut (no slide) so older sets do not stutter while the new screen loads.
+- Tap any tab to switch sections instantly (recently used tabs stay mounted for fast switching; Android TV keeps fewer tabs in memory, and opening the fullscreen player unloads other tabs — keeping the screen under the player — so playback gets max resources). While any fullscreen player is open (movies, trailers, Live Matches, IPTV), the nav rail stays mounted but Offstage (hidden) so exit does not remount it. On **Android TV**, details and player opens are an instant cut (no slide) so older sets do not stutter while the new screen loads.
 - On desktop, the left rail is a **fixed-width** column; the body is inset so content is not hidden under icons
 - On **Home (desktop)**, a **Search** icon then **Films / TV Shows / Categories** menu overlays the hero and slides away as you scroll
 - **Search (desktop)** uses a full-page layout with a left search column — no separate shell search bar

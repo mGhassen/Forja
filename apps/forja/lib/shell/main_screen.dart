@@ -297,6 +297,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.requestTab.addListener(_onRequestTab);
     ShellBus.shellChromeRevision.addListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
+    ShellBus.playerSurfaceActive.addListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.addListener(_onPlayerResourcePurge);
     MacOsShellChannel.listen(onFind: _onFindShortcut);
 
@@ -469,6 +470,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.requestTab.removeListener(_onRequestTab);
     ShellBus.shellChromeRevision.removeListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
+    ShellBus.playerSurfaceActive.removeListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
     ShellBus.clearHideGlobalNav();
     MacOsShellChannel.dispose();
@@ -499,10 +501,10 @@ class _MainScreenState extends ConsumerState<MainScreen>
             tabFor: _tabFor,
             shellHeader: _shellHeader(),
             shellTopBar: showHomeTopBar ? const HomeTopBar() : null,
-            // Root fullscreen players leave the rail mounted/painted under the
-            // opaque route (same lifecycle as the underlay tab). Overlay players
-            // (IPTV) set [ShellBus.hideGlobalNav] themselves for full-bleed.
-            hideGlobalNav: ShellBus.hideGlobalNav.value,
+            // Offstage keep-alive while any player is up (root VOD/trailer or
+            // IPTV overlay). Rail Element stays mounted — no TV remount flash.
+            hideGlobalNav: ShellBus.hideGlobalNav.value ||
+                ShellBus.playerSurfaceActive.value,
           ),
         );
 
