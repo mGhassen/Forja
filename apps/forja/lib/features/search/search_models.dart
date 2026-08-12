@@ -25,6 +25,7 @@ class _FlatSearchResult {
     this.backdropUrl,
     this.year,
     this.rating,
+    this.kind,
     required this.isTmdb,
     required this.raw,
   });
@@ -36,8 +37,18 @@ class _FlatSearchResult {
   final String? backdropUrl;
   final String? year;
   final double? rating;
+  final String? kind;
   final bool isTmdb;
   final dynamic raw;
+
+  String? get metaLine {
+    final parts = <String>[
+      if (year != null && year!.isNotEmpty) year!,
+      if (kind != null && kind!.isNotEmpty) kind!,
+    ];
+    if (parts.isEmpty) return null;
+    return parts.join(' • ');
+  }
 }
 
 class _SearchHelperEntry {

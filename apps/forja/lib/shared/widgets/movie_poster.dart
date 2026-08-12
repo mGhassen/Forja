@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
-import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/my_list_button.dart';
 
 class MoviePoster extends StatefulWidget {
   final Movie movie;
@@ -128,43 +128,13 @@ class _MoviePosterState extends State<MoviePoster> {
                   ),
                 ),
 
-                // My List add/remove button
                 Positioned(
-                  top: 6, left: 6,
-                  child: ValueListenableBuilder<int>(
-                    valueListenable: MyListService.changeNotifier,
-                    builder: (context, _, _) {
-                      final uid = MyListService.movieId(widget.movie.id, widget.movie.mediaType);
-                      final inList = MyListService().contains(uid);
-                      return GestureDetector(
-                        onTap: () async {
-                          final added = await MyListService().toggleMovie(
-                            tmdbId: widget.movie.id,
-                            imdbId: widget.movie.imdbId,
-                            title: widget.movie.title,
-                            posterPath: widget.movie.posterPath,
-                            mediaType: widget.movie.mediaType,
-                            voteAverage: widget.movie.voteAverage,
-                            releaseDate: widget.movie.releaseDate,
-                          );
-                          if (context.mounted) {
-                            ForjaToast.success(added ? 'Added to My List' : 'Removed from My List', duration: const Duration(seconds: 1));
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            inList ? Icons.bookmark : Icons.add,
-                            size: 16,
-                            color: inList ? Colors.deepPurpleAccent : Colors.white70,
-                          ),
-                        ),
-                      );
-                    },
+                  top: 6,
+                  left: 6,
+                  child: MyListButton.movie(
+                    movie: widget.movie,
+                    excludeFromTvTraversal: true,
+                    iconSize: 16,
                   ),
                 ),
               ],

@@ -25,6 +25,7 @@ class _SearchFilmCard extends StatelessWidget {
     final grid = TvGridScope.maybeOf(context);
     final index = gridIndex;
     final meta = index != null ? grid?.metaFor(index) : null;
+    final line = result.metaLine;
 
     return shellFocusableTap(
       context: context,
@@ -161,10 +162,12 @@ class _SearchFilmCard extends StatelessWidget {
                           height: 1.2,
                         ),
                       ),
-                      if (result.year != null && result.year!.isNotEmpty) ...[
+                      if (line != null) ...[
                         const SizedBox(height: 4),
                         Text(
-                          result.year!,
+                          line,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.5),
                             fontSize: 11,
@@ -199,6 +202,18 @@ class _SearchCard extends StatelessWidget {
     final imageUrl = movie.posterPath.isNotEmpty
         ? TmdbApi.getImageUrl(movie.posterPath)
         : '';
+    final year = movie.releaseDate.length >= 4
+        ? movie.releaseDate.substring(0, 4)
+        : null;
+    final kind = movie.mediaType == 'tv'
+        ? 'TV'
+        : movie.mediaType == 'movie'
+        ? 'FILM'
+        : null;
+    final meta = [
+      if (year != null && year.isNotEmpty) year,
+      if (kind != null) kind,
+    ].join(' • ');
 
     return shellFocusableTap(
       context: context,
@@ -280,11 +295,29 @@ class _SearchCard extends StatelessWidget {
                     colors: [Colors.black87, Colors.transparent],
                   ),
                 ),
-                child: Text(
-                  movie.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Colors.white),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      movie.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11, color: Colors.white),
+                    ),
+                    if (meta.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        meta,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: Colors.white.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -318,6 +351,13 @@ class _StremioSearchCard extends StatelessWidget {
     final name = item['name']?.toString() ?? 'Unknown';
     final rating = item['imdbRating']?.toString() ?? '';
     final type = item['type']?.toString() ?? '';
+    final kind = type == 'series' || type == 'tv'
+        ? 'TV'
+        : type == 'movie'
+        ? 'FILM'
+        : type.isNotEmpty
+        ? type.toUpperCase()
+        : '';
 
     return shellFocusableTap(
       context: context,
@@ -372,7 +412,7 @@ class _StremioSearchCard extends StatelessWidget {
                 ),
               ),
 
-            if (type.isNotEmpty)
+            if (kind.isNotEmpty)
               Positioned(
                 top: 5,
                 left: 5,
@@ -382,13 +422,13 @@ class _StremioSearchCard extends StatelessWidget {
                     vertical: 1,
                   ),
                   decoration: BoxDecoration(
-                    color: type == 'series'
+                    color: kind == 'TV'
                         ? Colors.blue.withValues(alpha: 0.7)
                         : AppTheme.current.primaryColor.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Text(
-                    type.toUpperCase(),
+                    kind,
                     style: const TextStyle(
                       fontSize: 7,
                       fontWeight: FontWeight.bold,

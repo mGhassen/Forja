@@ -26,6 +26,11 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
                   ? item.releaseDate.substring(0, 4)
                   : null,
               rating: item.voteAverage > 0 ? item.voteAverage : null,
+              kind: item.mediaType == 'tv'
+                  ? 'TV'
+                  : item.mediaType == 'movie'
+                  ? 'FILM'
+                  : null,
               isTmdb: true,
               raw: item,
             ),
@@ -37,6 +42,7 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
           if (id.isEmpty || !seen.add(key)) continue;
           final poster = map['poster']?.toString() ?? '';
           final ratingStr = map['imdbRating']?.toString() ?? '';
+          final type = map['type']?.toString() ?? '';
           out.add(
             _FlatSearchResult(
               key: key,
@@ -46,6 +52,11 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
               backdropUrl: map['background']?.toString() ?? poster,
               year: map['releaseInfo']?.toString(),
               rating: double.tryParse(ratingStr),
+              kind: type == 'series' || type == 'tv'
+                  ? 'TV'
+                  : type == 'movie'
+                  ? 'FILM'
+                  : null,
               isTmdb: false,
               raw: map,
             ),

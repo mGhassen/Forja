@@ -72,6 +72,7 @@ class HomeMovieCard extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(radius),
           child: Stack(
+            clipBehavior: Clip.none,
             fit: StackFit.expand,
             children: [
               ColoredBox(

@@ -4,7 +4,7 @@
 
 ## What it is
 
-Search combines TMDB results with every installed Stremio addon that supports search. Sections stream in as each source responds, so you see fast results first and more fill in over time.
+Search combines TMDB results with every installed Stremio addon that supports search. Sections stream in as each source responds, so you see fast results first and more fill in over time. Cards show **FILM** or **TV** next to the year (same labels as Home).
 
 On TMDB, Search also understands **structured queries**: a person name (`nolan`, `christopher nolan`), a genre (`horror`, `sci-fi`), a year (`2025`), or a year range (`2022-2025`) — alone or combined (`nolan 2022-2025`, `horror 2025`). Those use TMDB discover under the hood and still show only movie/TV cards (not people). Addon sections still search the exact text you typed.
 
