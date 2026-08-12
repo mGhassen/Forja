@@ -798,7 +798,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   void _scheduleProviderMenuReveal() {
     if (!_isHome) return;
     _providerRevealTimer?.cancel();
-    _providerRevealTimer = Timer(ShellBus.homeProviderMenuRevealDelay, () {
+    _providerRevealTimer = Timer(ShellBus.homeProviderMenuHoverDelay, () {
       if (!mounted) return;
       ShellBus.showHomeProviderMenu();
     });
@@ -979,7 +979,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
               _providerHoldFired = false;
               _providerHoldTimer?.cancel();
               _providerHoldTimer = Timer(
-                ShellBus.homeProviderMenuRevealDelay,
+                ShellBus.homeProviderMenuHoldDelay,
                 () {
                   if (!mounted) return;
                   _providerHoldFired = true;

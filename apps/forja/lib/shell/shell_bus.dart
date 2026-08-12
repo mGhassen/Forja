@@ -33,7 +33,11 @@ class ShellBus {
   /// [TapRegion.groupId] for the panel + top-bar selected-provider mark.
   static const Object homeProviderMenuTapGroup = Object();
 
-  static const Duration homeProviderMenuRevealDelay = Duration(
+  /// Desktop: hover Home nav this long before the provider panel opens.
+  static const Duration homeProviderMenuHoverDelay = Duration(seconds: 1);
+
+  /// TV: hold OK on Home this long before the provider panel opens.
+  static const Duration homeProviderMenuHoldDelay = Duration(
     milliseconds: 500,
   );
 

@@ -118,7 +118,6 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
       onOpenSources: _s._openSourcesPanel,
       onClearProgress: hasClearableProgress ? _clearProgress : null,
       onPlayStreaming: _s._onPlayStreamingPressed,
-      onDownload: _s._openSourcesPanel,
       onOverflowAction: _handleHeroOverflowAction,
       trailers: _s._trailers,
       trailerLanguageCode: _s._originalLanguage,
@@ -145,6 +144,13 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
     final uniqueId = progress['uniqueId'] as String?;
     if (uniqueId == null || uniqueId.isEmpty) return;
     await WatchHistoryService().removeItem(uniqueId);
+    syncProgressClearedToTrackers(
+      tmdbId: _s._movie.id,
+      imdbId: _s._movie.imdbId,
+      mediaType: _s._movie.mediaType,
+      season: progress['season'] as int?,
+      episode: progress['episode'] as int?,
+    );
 
     // Drop cached provider extract(s) for this title so Play re-resolves.
     final isTv = _s._movie.mediaType == 'tv';

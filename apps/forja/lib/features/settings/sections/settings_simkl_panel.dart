@@ -118,6 +118,8 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
 
     try {
       final watchlistCount = await _service.importWatchlistToMyList();
+      final watchingCount = await _service.importWatchingProgress();
+      final moviesCount = await _service.importCompletedMovies();
       final episodesImported = await _service.importWatchedEpisodes();
       final exportedCount = await _service.exportMyListToWatchlist();
       final episodesExported = await _service.exportWatchedEpisodes();
@@ -125,7 +127,8 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
       if (mounted) {
         ForjaToast.success(
           'Simkl sync done! Imported $watchlistCount watchlist, '
-          '$episodesImported episodes. '
+          '$moviesCount movies, $episodesImported episodes, '
+          '$watchingCount in progress. '
           'Exported $exportedCount watchlist, $episodesExported episodes.',
           duration: const Duration(seconds: 4),
         );

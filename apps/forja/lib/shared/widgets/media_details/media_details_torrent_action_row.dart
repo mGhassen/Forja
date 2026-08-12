@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
@@ -15,7 +18,6 @@ class MediaDetailsTorrentActionRow extends StatefulWidget {
     required this.hasResume,
     required this.onOpenSources,
     this.onClearProgress,
-    this.onDownload,
     this.onPlayStreaming,
     this.showPlayStreaming = false,
     this.isStreamingExtracting = false,
@@ -37,7 +39,6 @@ class MediaDetailsTorrentActionRow extends StatefulWidget {
   final bool hasResume;
   final VoidCallback onOpenSources;
   final VoidCallback? onClearProgress;
-  final VoidCallback? onDownload;
   final VoidCallback? onPlayStreaming;
   final bool showPlayStreaming;
   final bool isStreamingExtracting;
@@ -63,6 +64,123 @@ class _MediaDetailsTorrentActionRowState
     extends State<MediaDetailsTorrentActionRow> {
   /// Hero ⋮ menu (Trakt/Simkl) - kept wired; hide until product wants it back.
   static const bool _overflowVisible = false;
+
+  static const _simklStatuses = <({String id, String label, IconData icon, IconData selectedIcon})>[
+    (id: 'plantowatch', label: 'Plan to Watch', icon: Icons.bookmark_add_outlined, selectedIcon: Icons.bookmark_rounded),
+    (id: 'watching', label: 'Watching', icon: Icons.play_circle_outline_rounded, selectedIcon: Icons.play_circle_rounded),
+    (id: 'hold', label: 'On Hold', icon: Icons.pause_circle_outline_rounded, selectedIcon: Icons.pause_circle_rounded),
+    (id: 'completed', label: 'Completed', icon: Icons.check_circle_outline_rounded, selectedIcon: Icons.check_circle_rounded),
+    (id: 'dropped', label: 'Dropped', icon: Icons.cancel_outlined, selectedIcon: Icons.cancel_rounded),
+  ];
+
+  bool _simklLoggedIn = false;
+  bool _simklMenuOpen = false;
+  String? _simklStatus;
+  bool _simklBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSimkl();
+  }
+
+  @override
+  void didUpdateWidget(covariant MediaDetailsTorrentActionRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.movie.id != widget.movie.id ||
+        oldWidget.movie.mediaType != widget.movie.mediaType) {
+      _simklMenuOpen = false;
+      _simklStatus = null;
+      _loadSimkl();
+    }
+  }
+
+  Future<void> _loadSimkl() async {
+    final simkl = SimklService();
+    if (!await simkl.isLoggedIn()) {
+      if (mounted) setState(() => _simklLoggedIn = false);
+      return;
+    }
+    final status = await simkl.getListStatus(
+      tmdbId: widget.movie.id,
+      mediaType: widget.movie.mediaType,
+    );
+    if (!mounted) return;
+    setState(() {
+      _simklLoggedIn = true;
+      _simklStatus = status;
+    });
+  }
+
+  void _invalidateSimklLists() {
+    try {
+      ProviderScope.containerOf(context, listen: false)
+          .invalidate(simklWatchlistProvider);
+    } catch (_) {}
+  }
+
+  IconData _plusIcon() {
+    if (!_simklLoggedIn) {
+      return Icons.add_rounded;
+    }
+    for (final s in _simklStatuses) {
+      if (s.id == _simklStatus) return s.selectedIcon;
+    }
+    return Icons.add_rounded;
+  }
+
+  String _plusLabel() {
+    if (!_simklLoggedIn) return 'My List';
+    for (final s in _simklStatuses) {
+      if (s.id == _simklStatus) return s.label;
+    }
+    return 'Simkl';
+  }
+
+  Future<void> _onPlusTap() async {
+    if (_simklLoggedIn) {
+      setState(() => _simklMenuOpen = !_simklMenuOpen);
+      return;
+    }
+    await MyListHeroPillButton.toggle(context, movie: widget.movie);
+  }
+
+  Future<void> _setSimklStatus(String to) async {
+    if (_simklBusy) return;
+    setState(() => _simklBusy = true);
+    final ok = await SimklService().setListStatus(
+      tmdbId: widget.movie.id,
+      imdbId: widget.movie.imdbId,
+      mediaType: widget.movie.mediaType,
+      to: to,
+    );
+    if (to == 'plantowatch' && ok) {
+      await MyListService().addMovie(
+        tmdbId: widget.movie.id,
+        imdbId: widget.movie.imdbId,
+        title: widget.movie.title,
+        posterPath: widget.movie.posterPath,
+        mediaType: widget.movie.mediaType,
+        voteAverage: widget.movie.voteAverage,
+        releaseDate: widget.movie.releaseDate,
+      );
+    }
+    if (!mounted) return;
+    setState(() {
+      _simklBusy = false;
+      if (ok) {
+        _simklStatus = to;
+        _simklMenuOpen = false;
+      }
+    });
+    if (ok) {
+      _invalidateSimklLists();
+      final label = _simklStatuses.where((s) => s.id == to).firstOrNull?.label ?? to;
+      ForjaToast.success('Simkl · $label');
+    } else {
+      ForjaToast.error('Couldn’t update Simkl');
+    }
+  }
 
   void _openBestTrailer(BuildContext context) {
     if (widget.trailers.isEmpty) return;
@@ -123,10 +241,12 @@ class _MediaDetailsTorrentActionRowState
 
   int _iconGroupSlotCount() {
     var n = 1;
-    if (widget.showPlay) n++;
     if (_overflowVisible) n++;
     return n;
   }
+
+  int _simklStatusSlotCount() =>
+      _simklLoggedIn && _simklMenuOpen ? _simklStatuses.length : 0;
 
   int _focusableActionCount() {
     final canPlay = !widget.isStreamingExtracting;
@@ -136,6 +256,7 @@ class _MediaDetailsTorrentActionRowState
     if (widget.onClearProgress != null) n++;
     if (widget.trailers.isNotEmpty) n++;
     n += _iconGroupSlotCount();
+    n += _simklStatusSlotCount();
     return n;
   }
 
@@ -239,8 +360,16 @@ class _MediaDetailsTorrentActionRowState
           slots: [
             HeroPillIconSlot(
               icon: Icons.delete_outline_rounded,
+              label: 'Clear',
               tooltip: 'Clear progress & stream cache',
-              onTap: widget.onClearProgress,
+              onTap: () {
+                widget.onClearProgress?.call();
+                Future<void>.delayed(const Duration(milliseconds: 400), () async {
+                  if (!mounted) return;
+                  _invalidateSimklLists();
+                  await _loadSimkl();
+                });
+              },
             ),
           ],
         ),
@@ -272,17 +401,37 @@ class _MediaDetailsTorrentActionRowState
         tvItemIndexStart: iconStart,
         onUpEdge: widget.tvFocusUp,
         slots: [
-          MyListHeroPillButton.movieSlot(context, movie: widget.movie),
-          if (widget.showPlay)
-            HeroPillIconSlot(
-              icon: Icons.download_outlined,
-              tooltip: 'Download',
-              onTap: widget.onDownload ?? widget.onOpenSources,
-            ),
+          HeroPillIconSlot(
+            label: _plusLabel(),
+            iconWidget: _simklLoggedIn
+                ? Icon(_plusIcon(), size: 20, color: Colors.white)
+                : MyListHeroIcon.movie(movie: widget.movie),
+            onTap: _onPlusTap,
+          ),
           if (_overflowVisible) _buildOverflowSlot(context),
         ],
       ),
     );
+
+    if (_simklLoggedIn && _simklMenuOpen) {
+      children.addAll([
+        const SizedBox(width: 10),
+        HeroPillIconGroup(
+          tvTabId: widget.tvTabId,
+          tvRowId: widget.tvTabId != null ? MediaDetailsTv.heroRowId : null,
+          tvItemIndexStart: tvIndex,
+          onUpEdge: widget.tvFocusUp,
+          slots: [
+            for (final s in _simklStatuses)
+              HeroPillIconSlot(
+                label: s.label,
+                icon: s.id == _simklStatus ? s.selectedIcon : s.icon,
+                onTap: _simklBusy ? null : () => _setSimklStatus(s.id),
+              ),
+          ],
+        ),
+      ]);
+    }
 
     return HeroPillActionRow(children: children);
   }

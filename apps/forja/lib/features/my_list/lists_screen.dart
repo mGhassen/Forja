@@ -9,6 +9,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 class ListsScreen extends ConsumerStatefulWidget {
   const ListsScreen({super.key, this.embedded = false});
@@ -134,10 +135,13 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
     pushShellRoute(
       context,
       AppRouter.slideShellRoute(
-        (_) => _TraktListItemsScreen(
-          listId: slug,
-          listName: name,
-          itemCount: itemCount,
+        (_) => ColoredBox(
+          color: AppTheme.bgDark,
+          child: _TraktListItemsScreen(
+            listId: slug,
+            listName: name,
+            itemCount: itemCount,
+          ),
         ),
       ),
     );
@@ -150,10 +154,13 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
     pushShellRoute(
       context,
       AppRouter.slideShellRoute(
-        (_) => _MdblistItemsScreen(
-          listId: id,
-          listName: name,
-          isUserList: isUserList,
+        (_) => ColoredBox(
+          color: AppTheme.bgDark,
+          child: _MdblistItemsScreen(
+            listId: id,
+            listName: name,
+            isUserList: isUserList,
+          ),
         ),
       ),
     );
@@ -246,7 +253,9 @@ class _ListsScreenState extends ConsumerState<ListsScreen>
       ],
     );
 
-    if (widget.embedded) return body;
+    if (widget.embedded) {
+      return ColoredBox(color: AppTheme.bgDark, child: body);
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
@@ -606,31 +615,12 @@ class _TraktListItemsScreenState extends State<_TraktListItemsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.bgDark,
-      appBar: AppBar(
-        backgroundColor: AppTheme.bgDark,
-        title: Text(widget.listName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: _loading
-        ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
-        : _movies.isEmpty
-          ? const Center(child: Text('No items', style: TextStyle(color: Colors.white38)))
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: _movies.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final movie = _movies[index];
-                return _movieListTile(
-                  context: context,
-                  movie: movie,
-                  onTap: () => AppRouter.openDetails(context, movie: movie),
-                  onRemove: () => _removeItem(movie),
-                );
-              },
-            ),
+    return _ListItemsPage(
+      title: widget.listName,
+      loading: _loading,
+      movies: _movies,
+      onTap: (movie) => AppRouter.openDetails(context, movie: movie),
+      onRemove: _removeItem,
     );
   }
 }
@@ -712,121 +702,221 @@ class _MdblistItemsScreenState extends State<_MdblistItemsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.bgDark,
-      appBar: AppBar(
-        backgroundColor: AppTheme.bgDark,
-        title: Text(widget.listName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: _loading
-        ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor))
-        : _movies.isEmpty
-          ? const Center(child: Text('No items', style: TextStyle(color: Colors.white38)))
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: _movies.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final movie = _movies[index];
-                return _movieListTile(
-                  context: context,
-                  movie: movie,
-                  onTap: () => AppRouter.openDetails(context, movie: movie),
-                  onRemove: widget.isUserList ? () => _removeItem(movie) : null,
-                );
-              },
-            ),
+    return _ListItemsPage(
+      title: widget.listName,
+      loading: _loading,
+      movies: _movies,
+      onTap: (movie) => AppRouter.openDetails(context, movie: movie),
+      onRemove: widget.isUserList ? _removeItem : null,
     );
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  SHARED MOVIE LIST TILE
-// ═══════════════════════════════════════════════════════════════════════════════
+class _ListItemsPage extends StatelessWidget {
+  const _ListItemsPage({
+    required this.title,
+    required this.loading,
+    required this.movies,
+    required this.onTap,
+    this.onRemove,
+  });
 
-Widget _movieListTile({
-  required BuildContext context,
-  required Movie movie,
-  required VoidCallback onTap,
-  VoidCallback? onRemove,
-  String tvTabId = 'settings',
-}) {
-  final posterUrl = movie.posterPath.isNotEmpty
-      ? TmdbApi.getImageUrl(movie.posterPath)
-      : '';
-  final policy = ShellScope.inputPolicyOf(context);
+  final String title;
+  final bool loading;
+  final List<Movie> movies;
+  final void Function(Movie movie) onTap;
+  final Future<void> Function(Movie movie)? onRemove;
 
-  return shellFocusableTap(
-    context: context,
-    onTap: onTap,
-    borderRadius: 14,
-    showFocusBorder: true,
-    tvTabId: tvTabId,
-    tvZone: ShellTvZone.settings,
-    child: Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: posterUrl.isNotEmpty
-              ? Image.network(posterUrl, width: 50, height: 75, fit: BoxFit.cover)
-              : Container(
-                  width: 50, height: 75,
-                  color: Colors.white10,
-                  child: const Icon(Icons.movie, color: Colors.white24, size: 24),
-                ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(movie.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    if (movie.releaseDate.isNotEmpty)
-                      Text(movie.releaseDate.split('-').first,
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
-                    if (movie.mediaType == 'tv') ...[
-                      if (movie.releaseDate.isNotEmpty)
-                        Text('  •  ', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 12)),
-                      Text('TV', style: TextStyle(color: AppTheme.primaryColor.withValues(alpha: 0.8), fontSize: 11, fontWeight: FontWeight.bold)),
-                    ],
-                    if (movie.voteAverage > 0) ...[
-                      Text('  •  ', style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 12)),
-                      const Icon(Icons.star_rounded, size: 13, color: Colors.amber),
-                      const SizedBox(width: 2),
-                      Text(movie.voteAverage.toStringAsFixed(1),
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
-                    ],
-                  ],
-                ),
-              ],
+  @override
+  Widget build(BuildContext context) {
+    final crossAxisCount = shellGridCrossAxisCount(context);
+    return Material(
+      color: AppTheme.bgDark,
+      child: Scaffold(
+        backgroundColor: AppTheme.bgDark,
+        appBar: AppBar(
+          backgroundColor: AppTheme.bgDark,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          title: Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          if (onRemove != null)
-            ExcludeFocus(
-              excluding: !policy.scaleOnHover,
-              child: IconButton(
-                icon: Icon(
-                  Icons.remove_circle_outline,
-                  color: Colors.redAccent.withValues(alpha: 0.7),
-                  size: 22,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: ColoredBox(
+          color: AppTheme.bgDark,
+          child: loading
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppTheme.primaryColor),
+                )
+              : movies.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No items',
+                        style: TextStyle(color: Colors.white38),
+                      ),
+                    )
+                  : TvFocusGraph(
+                      tabId: 'settings',
+                      child: TvGrid(
+                        rowId: 'list-items',
+                        sortOrder: 0,
+                        columns: crossAxisCount,
+                        itemCount: movies.length,
+                        child: GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(
+                            ShellTokens.bodyHorizontalPadding,
+                            8,
+                            ShellTokens.bodyHorizontalPadding,
+                            ShellTokens.bodyHorizontalPadding,
+                          ),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 2 / 3,
+                          ),
+                          itemCount: movies.length,
+                          itemBuilder: (context, index) {
+                            final movie = movies[index];
+                            return _ListPosterCard(
+                              movie: movie,
+                              gridIndex: index,
+                              onTap: () => onTap(movie),
+                              onRemove: onRemove == null
+                                  ? null
+                                  : () => onRemove!(movie),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ListPosterCard extends StatelessWidget {
+  const _ListPosterCard({
+    required this.movie,
+    required this.onTap,
+    required this.gridIndex,
+    this.onRemove,
+  });
+
+  final Movie movie;
+  final VoidCallback onTap;
+  final VoidCallback? onRemove;
+  final int gridIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final posterUrl = movie.posterPath.isNotEmpty
+        ? TmdbApi.getImageUrl(movie.posterPath)
+        : '';
+    final policy = ShellScope.inputPolicyOf(context);
+    final meta = TvGridScope.maybeOf(context)?.metaFor(gridIndex);
+
+    return shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 12,
+      showFocusBorder: true,
+      gridIndex: meta?.gridIndex ?? gridIndex,
+      gridColumns: meta?.gridColumns,
+      tvTabId: meta?.tvTabId ?? 'settings',
+      tvRowId: meta?.tvRowId ?? 'list-items',
+      tvZone: meta?.tvZone ?? ShellTvZone.grid,
+      tvItemIndex: meta?.tvItemIndex ?? gridIndex,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: ColoredBox(
+          color: AppTheme.bgCard,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (posterUrl.isNotEmpty)
+                Image.network(
+                  posterUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => _titleFallback(movie.title),
+                )
+              else
+                _titleFallback(movie.title),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black87],
+                    stops: [0.55, 1.0],
+                  ),
                 ),
-                onPressed: onRemove,
               ),
-            ),
-        ],
+              Positioned(
+                left: 8,
+                right: onRemove != null ? 28 : 8,
+                bottom: 8,
+                child: Text(
+                  movie.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              if (onRemove != null)
+                Positioned(
+                  bottom: 4,
+                  right: 4,
+                  child: ExcludeFocus(
+                    excluding: !policy.scaleOnHover,
+                    child: shellFocusableTap(
+                      context: context,
+                      onTap: onRemove,
+                      borderRadius: 20,
+                      scaleOnFocus: ShellTokens.focusActiveScale,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Color(0xCCF44336),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _titleFallback(String title) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 10, color: Colors.white38),
+        ),
+      ),
+    );
+  }
 }

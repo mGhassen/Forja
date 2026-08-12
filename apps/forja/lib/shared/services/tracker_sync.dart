@@ -94,3 +94,32 @@ void syncMyListRemoveFromTrackers(
     );
   });
 }
+
+/// Details trash / clear progress — drop tracker history so Completed does not stick.
+void syncProgressClearedToTrackers({
+  required int tmdbId,
+  String? imdbId,
+  required String mediaType,
+  int? season,
+  int? episode,
+}) {
+  TraktService().isLoggedIn().then((loggedIn) {
+    if (!loggedIn) return;
+    TraktService().removeFromHistory(
+      tmdbId: tmdbId,
+      mediaType: mediaType,
+      season: season,
+      episode: episode,
+    );
+  });
+  SimklService().isLoggedIn().then((loggedIn) {
+    if (!loggedIn) return;
+    SimklService().clearWatched(
+      tmdbId: tmdbId,
+      imdbId: imdbId,
+      mediaType: mediaType,
+      season: season,
+      episode: episode,
+    );
+  });
+}

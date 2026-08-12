@@ -50,6 +50,7 @@ import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/services/tracker_sync.dart';
 import 'package:forja/features/media/details/widgets/details_collection_section.dart';
 
 part 'details_screen_torrent.dart';

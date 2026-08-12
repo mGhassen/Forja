@@ -152,7 +152,7 @@ class MyListHeroIcon extends StatelessWidget {
 class MyListHeroPillButton {
   MyListHeroPillButton._();
 
-  static Future<void> _toggle(
+  static Future<void> toggle(
     BuildContext context, {
     Movie? movie,
     Map<String, dynamic>? stremioItem,
@@ -191,7 +191,7 @@ class MyListHeroPillButton {
     return HeroPillIconSlot(
       label: 'My List',
       iconWidget: MyListHeroIcon.movie(movie: movie),
-      onTap: () => _toggle(context, movie: movie),
+      onTap: () => toggle(context, movie: movie),
     );
   }
 
@@ -202,7 +202,7 @@ class MyListHeroPillButton {
     return HeroPillIconSlot(
       label: 'My List',
       iconWidget: MyListHeroIcon.stremio(stremioItem: stremioItem),
-      onTap: () => _toggle(context, stremioItem: stremioItem),
+      onTap: () => toggle(context, stremioItem: stremioItem),
     );
   }
 }

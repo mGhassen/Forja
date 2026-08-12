@@ -1,8 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// One Simkl watchlist status bucket (plan to watch, watching, …).
+class SimklWatchlistBucket {
+  const SimklWatchlistBucket({
+    required this.status,
+    required this.label,
+    required this.items,
+  });
+
+  final String status;
+  final String label;
+  final List<Map<String, dynamic>> items;
+
+  int get count => items.length;
+}
 
 /// Full Simkl integration - PIN-based auth, watchlist sync,
 /// scrobble, history, ratings, and two-way import/export.
@@ -253,6 +269,106 @@ class SimklService {
     );
   }
 
+  /// Move a title into a Simkl list bucket (`plantowatch`, `watching`, `hold`,
+  /// `completed`, `dropped`). Movies also get history add/remove so Completed
+  /// matches watched state.
+  Future<bool> setListStatus({
+    int? tmdbId,
+    String? imdbId,
+    required String mediaType,
+    required String to,
+  }) async {
+    if (tmdbId == null && imdbId == null) return false;
+
+    final ids = <String, dynamic>{};
+    if (tmdbId != null) ids['tmdb'] = tmdbId;
+    if (imdbId != null) ids['imdb'] = imdbId;
+
+    final item = {'ids': ids, 'to': to};
+    final hist = {'ids': ids};
+    final type =
+        (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
+    final ok = await _addToList(
+      shows: type == 'shows' ? [item] : [],
+      movies: type == 'movies' ? [item] : [],
+    );
+    if (!ok) return false;
+
+    if (type == 'movies') {
+      if (to == 'completed') {
+        await addToHistory(movies: [hist]);
+      } else {
+        await removeFromHistory(movies: [hist]);
+      }
+    }
+    return true;
+  }
+
+  /// Current Simkl list status for a TMDB title, or null if not in the library.
+  Future<String?> getListStatus({
+    required int tmdbId,
+    required String mediaType,
+  }) async {
+    final token = await _secureRead(_keyAccessToken);
+    if (token == null) return null;
+    final type =
+        (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
+    try {
+      for (final item in await _allItems(token, type, status: 'all')) {
+        if (_asInt(_ids(_media(item))['tmdb']) == tmdbId) {
+          return item['status']?.toString();
+        }
+      }
+    } catch (e) {
+      debugPrint('[Simkl] getListStatus error: $e');
+    }
+    return null;
+  }
+
+  /// Drop watched history (and Completed list status for movies) after local
+  /// progress trash.
+  Future<bool> clearWatched({
+    required int tmdbId,
+    String? imdbId,
+    required String mediaType,
+    int? season,
+    int? episode,
+  }) async {
+    final ids = <String, dynamic>{'tmdb': tmdbId};
+    if (imdbId != null && imdbId.isNotEmpty) ids['imdb'] = imdbId;
+
+    if (mediaType == 'tv' && season != null && episode != null) {
+      return removeFromHistory(shows: [
+        {
+          'ids': ids,
+          'seasons': [
+            {
+              'number': season,
+              'episodes': [
+                {'number': episode},
+              ],
+            }
+          ],
+        }
+      ]);
+    }
+
+    final hist = {'ids': ids};
+    final type =
+        (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
+    final ok = await removeFromHistory(
+      shows: type == 'shows' ? [hist] : [],
+      movies: type == 'movies' ? [hist] : [],
+    );
+    if (type == 'movies') {
+      final status = await getListStatus(tmdbId: tmdbId, mediaType: mediaType);
+      if (status == 'completed') {
+        await _removeFromList(movies: [hist]);
+      }
+    }
+    return ok;
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   //  H I S T O R Y
   // ═══════════════════════════════════════════════════════════════════════
@@ -445,9 +561,9 @@ class SimklService {
 
         for (final raw in items) {
           final item = raw as Map<String, dynamic>;
-          final show = item['show'] ?? item['movie'] ?? item;
-          final ids = show['ids'] as Map<String, dynamic>? ?? {};
-          final tmdbId = ids['tmdb'] as int?;
+          final show = _media(item);
+          final ids = _ids(show);
+          final tmdbId = _asInt(ids['tmdb']);
           final imdbId = ids['imdb']?.toString();
           final title = show['title']?.toString() ?? 'Unknown';
           final mediaType = type == 'shows' ? 'tv' : 'movie';
@@ -508,10 +624,12 @@ class SimklService {
 
       final savedAll = await _secureRead('simkl_last_activity');
 
-      int watchlistCount = 0, episodesImported = 0;
+      int watchlistCount = 0, moviesImported = 0, watchingImported = 0, episodesImported = 0;
 
       if (force || savedAll != lastAll) {
         watchlistCount = await importWatchlistToMyList();
+        watchingImported = await importWatchingProgress();
+        moviesImported = await importCompletedMovies();
         episodesImported = await importWatchedEpisodes();
         if (lastAll.isNotEmpty) await _secureWrite('simkl_last_activity', lastAll);
       } else {
@@ -519,7 +637,11 @@ class SimklService {
       }
 
       _initialSyncDone = true;
-      debugPrint('[Simkl] Smart sync done - watchlist: $watchlistCount, episodes: $episodesImported');
+      debugPrint(
+        '[Simkl] Smart sync done - watchlist: $watchlistCount, '
+        'watching: $watchingImported, movies: $moviesImported, '
+        'episodes: $episodesImported',
+      );
     } finally {
       _syncInProgress = null;
       completer.complete();
@@ -562,51 +684,126 @@ class SimklService {
     return ok ? total : 0;
   }
 
+  static const _watchlistStatusOrder = <(String, String)>[
+    ('plantowatch', 'Plan to Watch'),
+    ('watching', 'Watching'),
+    ('hold', 'On Hold'),
+    ('completed', 'Completed'),
+    ('dropped', 'Dropped'),
+  ];
+
+  /// All Simkl watchlist buckets (movies + shows + anime), grouped by status.
+  Future<List<SimklWatchlistBucket>> getWatchlistBuckets() async {
+    final token = await _secureRead(_keyAccessToken);
+    if (token == null) return const [];
+
+    final byStatus = <String, List<Map<String, dynamic>>>{};
+    for (final type in ['movies', 'shows', 'anime']) {
+      try {
+        final items = await _allItems(token, type, status: 'all');
+        for (final item in items) {
+          final status = item['status']?.toString() ?? '';
+          byStatus.putIfAbsent(status, () => []).add({
+            ...item,
+            '_simklType': type,
+          });
+        }
+      } catch (e) {
+        debugPrint('[Simkl] Library fetch ($type) error: $e');
+      }
+    }
+
+    return [
+      for (final (status, label) in _watchlistStatusOrder)
+        SimklWatchlistBucket(
+          status: status,
+          label: label,
+          items: byStatus[status] ?? const [],
+        ),
+    ];
+  }
+
   // ═══════════════════════════════════════════════════════════════════════
   //  W A T C H E D   E P I S O D E S   S Y N C
   // ═══════════════════════════════════════════════════════════════════════
 
-  /// Import completed shows/episodes from Simkl into EpisodeWatchedService.
+  /// Import completed TV + anime episodes into local watched marks.
   Future<int> importWatchedEpisodes() async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
-    int imported = 0;
+    const q = '?extended=full&include_all_episodes=yes&episode_watched_at=yes';
+    var imported = 0;
     try {
-      final resp = await animeHttp('GET', '$_baseUrl/sync/all-items/shows/completed', headers: _authHeaders(token), maxRetries: 0);
-      if (resp.status != 200) return 0;
-
-      final data = json.decode(resp.body);
-      final List shows = data is List
-          ? data
-          : (data is Map && data.containsKey('shows') ? data['shows'] as List : []);
-
-      for (final raw in shows) {
-        final item = raw as Map<String, dynamic>;
-        final show = item['show'] ?? item;
-        final ids = show['ids'] as Map<String, dynamic>? ?? {};
-        final tmdbId = ids['tmdb'] as int?;
-        if (tmdbId == null) continue;
-
-        final seasons = item['seasons'] as List? ?? [];
-        for (final s in seasons) {
-          final sNum = s['number'] as int? ?? 0;
-          if (sNum == 0) continue;
-          final episodes = s['episodes'] as List? ?? [];
-          for (final ep in episodes) {
-            final eNum = ep['number'] as int? ?? 0;
-            if (eNum == 0) continue;
-            final already = await EpisodeWatchedService().isWatched(tmdbId, sNum, eNum);
-            if (!already) {
-              await EpisodeWatchedService().setWatchedLocal(tmdbId, sNum, eNum, true);
-              imported++;
-            }
-          }
-        }
+      for (final item in await _allItems(token, 'shows', status: 'completed', query: q)) {
+        imported += await _markShowEpisodes(item);
+      }
+      for (final item in await _allItems(token, 'anime', status: 'completed', query: q)) {
+        imported += await _markAnimeEpisodes(item);
       }
       debugPrint('[Simkl] Imported $imported watched episodes');
     } catch (e) {
       debugPrint('[Simkl] Import watched episodes error: $e');
+    }
+    return imported;
+  }
+
+  /// Completed movies → local watch history (finished, so Home CW hides them).
+  Future<int> importCompletedMovies() async {
+    final token = await _secureRead(_keyAccessToken);
+    if (token == null) return 0;
+
+    var imported = 0;
+    try {
+      for (final item in await _allItems(token, 'movies', status: 'completed')) {
+        final movie = _media(item);
+        final ids = _ids(movie);
+        final tmdbId = _asInt(ids['tmdb']);
+        if (tmdbId == null) continue;
+        if (await WatchHistoryService().getProgress(tmdbId) != null) continue;
+
+        final info = await _fetchTmdbInfo(tmdbId, 'movie');
+        final durationMs = info['runtimeMs'] as int;
+        await WatchHistoryService().saveProgress(
+          tmdbId: tmdbId,
+          imdbId: ids['imdb']?.toString(),
+          title: movie['title']?.toString() ?? 'Unknown',
+          posterPath: info['poster'] as String,
+          backdropPath: info['backdrop'] as String,
+          method: 'simkl_import',
+          sourceId: 'simkl',
+          position: durationMs,
+          duration: durationMs,
+          mediaType: 'movie',
+        );
+        imported++;
+      }
+      debugPrint('[Simkl] Imported $imported completed movies');
+    } catch (e) {
+      debugPrint('[Simkl] Import completed movies error: $e');
+    }
+    return imported;
+  }
+
+  /// In-progress Simkl watching → Home / Anime continue watching.
+  Future<int> importWatchingProgress() async {
+    final token = await _secureRead(_keyAccessToken);
+    if (token == null) return 0;
+
+    const q = '?extended=full&next_watch_info=yes&episode_watched_at=yes';
+    var imported = 0;
+    try {
+      for (final item in await _allItems(token, 'shows', status: 'watching', query: q)) {
+        await _markShowEpisodes(item);
+        imported += await _importShowResume(item);
+      }
+      for (final item in await _allItems(token, 'anime', status: 'watching', query: q)) {
+        await _markAnimeEpisodes(item);
+        imported += await _importAnimeResume(item);
+      }
+      debugPrint('[Simkl] Imported $imported watching resume items');
+    } catch (e) {
+      debugPrint('[Simkl] Import watching error: $e');
     }
     return imported;
   }
@@ -683,6 +880,256 @@ class SimklService {
         'simkl-api-key': _clientId,
         'Authorization': 'Bearer $token',
       };
+
+  int? _asInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString());
+  }
+
+  Map<String, dynamic> _media(Map<String, dynamic> item) {
+    final raw = item['show'] ?? item['movie'] ?? item['anime'] ?? item;
+    return raw is Map<String, dynamic> ? raw : item;
+  }
+
+  Map<String, dynamic> _ids(Map<String, dynamic> media) {
+    final raw = media['ids'];
+    return raw is Map<String, dynamic> ? raw : const {};
+  }
+
+  List<Map<String, dynamic>> _entries(dynamic decoded, String key) {
+    if (decoded is List) return decoded.cast<Map<String, dynamic>>();
+    if (decoded is Map && decoded[key] is List) {
+      return (decoded[key] as List).cast<Map<String, dynamic>>();
+    }
+    return const [];
+  }
+
+  Future<List<Map<String, dynamic>>> _allItems(
+    String token,
+    String type, {
+    String? status,
+    String query = '',
+  }) async {
+    final path = status == null
+        ? '/sync/all-items/$type$query'
+        : '/sync/all-items/$type/$status$query';
+    final resp = await animeHttp(
+      'GET',
+      '$_baseUrl$path',
+      headers: _authHeaders(token),
+      maxRetries: 0,
+    );
+    if (resp.status != 200) {
+      debugPrint('[Simkl] GET $path → ${resp.status}');
+      return const [];
+    }
+    return _entries(json.decode(resp.body), type);
+  }
+
+  /// Simkl `last_watched` / `next_to_watch`: `S08E02` or anime `E20`.
+  ({int season, int episode})? _parseEpisodeCode(String? code) {
+    if (code == null || code.isEmpty) return null;
+    final se = RegExp(r'^S(\d+)E(\d+)$', caseSensitive: false).firstMatch(code);
+    if (se != null) {
+      return (season: int.parse(se.group(1)!), episode: int.parse(se.group(2)!));
+    }
+    final ep = RegExp(r'^E(\d+)$', caseSensitive: false).firstMatch(code);
+    if (ep != null) {
+      return (season: 1, episode: int.parse(ep.group(1)!));
+    }
+    return null;
+  }
+
+  List<({int season, int episode, String? watchedAt})> _episodeRows(
+    Map<String, dynamic> item, {
+    required bool flattenToSeason1,
+  }) {
+    final seasons = item['seasons'] as List? ?? [];
+    final rows = <({int season, int episode, String? watchedAt})>[];
+    final usable = <Map<String, dynamic>>[];
+    for (final raw in seasons) {
+      if (raw is! Map<String, dynamic>) continue;
+      if ((_asInt(raw['number']) ?? 0) == 0) continue;
+      usable.add(raw);
+    }
+    var abs = 0;
+    for (final s in usable) {
+      final sNum = _asInt(s['number']) ?? 1;
+      final episodes = s['episodes'] as List? ?? [];
+      for (final raw in episodes) {
+        if (raw is! Map<String, dynamic>) continue;
+        final eNum = _asInt(raw['number']) ?? 0;
+        if (eNum == 0) continue;
+        abs++;
+        final season = flattenToSeason1 ? 1 : sNum;
+        final episode = flattenToSeason1
+            ? (usable.length <= 1 ? eNum : abs)
+            : eNum;
+        rows.add((
+          season: season,
+          episode: episode,
+          watchedAt: raw['watched_at']?.toString(),
+        ));
+      }
+    }
+    return rows;
+  }
+
+  Future<int> _markShowEpisodes(Map<String, dynamic> item) async {
+    final tmdbId = _asInt(_ids(_media(item))['tmdb']);
+    if (tmdbId == null) return 0;
+    var imported = 0;
+    var rows = _episodeRows(item, flattenToSeason1: false);
+    if (rows.isEmpty) {
+      final n = _asInt(item['watched_episodes_count']) ?? 0;
+      rows = [
+        for (var i = 1; i <= n; i++)
+          (season: 1, episode: i, watchedAt: item['last_watched_at']?.toString()),
+      ];
+    }
+    for (final row in rows) {
+      final already =
+          await EpisodeWatchedService().isWatched(tmdbId, row.season, row.episode);
+      if (already) continue;
+      await EpisodeWatchedService().setWatchedLocalWithTimestamp(
+        tmdbId,
+        row.season,
+        row.episode,
+        true,
+        row.watchedAt,
+      );
+      imported++;
+    }
+    return imported;
+  }
+
+  Future<int> _markAnimeEpisodes(Map<String, dynamic> item) async {
+    final anilistId = _asInt(_ids(_media(item))['anilist']);
+    if (anilistId == null) return 0;
+    var imported = 0;
+    var rows = _episodeRows(item, flattenToSeason1: true);
+    if (rows.isEmpty) {
+      final n = _asInt(item['watched_episodes_count']) ?? 0;
+      rows = [
+        for (var i = 1; i <= n; i++)
+          (season: 1, episode: i, watchedAt: item['last_watched_at']?.toString()),
+      ];
+    }
+    for (final row in rows) {
+      final already = await EpisodeWatchedService().isWatched(
+        anilistId,
+        1,
+        row.episode,
+        catalog: EpisodeWatchedService.catalogAnilist,
+      );
+      if (already) continue;
+      await EpisodeWatchedService().setWatchedLocalWithTimestamp(
+        anilistId,
+        1,
+        row.episode,
+        true,
+        row.watchedAt,
+        catalog: EpisodeWatchedService.catalogAnilist,
+      );
+      imported++;
+    }
+    return imported;
+  }
+
+  ({int season, int episode})? _resumePoint(Map<String, dynamic> item) {
+    final info = item['next_to_watch_info'];
+    if (info is Map<String, dynamic>) {
+      final s = _asInt(info['season']) ?? 1;
+      final e = _asInt(info['episode']);
+      if (e != null && e > 0) return (season: s, episode: e);
+    }
+    return _parseEpisodeCode(item['next_to_watch']?.toString()) ??
+        _parseEpisodeCode(item['last_watched']?.toString());
+  }
+
+  Future<int> _importShowResume(Map<String, dynamic> item) async {
+    final media = _media(item);
+    final ids = _ids(media);
+    final tmdbId = _asInt(ids['tmdb']);
+    final point = _resumePoint(item);
+    if (tmdbId == null || point == null) return 0;
+    final existing = await WatchHistoryService().getProgress(
+      tmdbId,
+      season: point.season,
+      episode: point.episode,
+    );
+    if (existing != null) return 0;
+
+    final info = await _fetchTmdbInfo(tmdbId, 'tv');
+    final durationMs = info['runtimeMs'] as int;
+    final positionMs = (durationMs * 0.05).round().clamp(1, durationMs - 1);
+    await WatchHistoryService().saveProgress(
+      tmdbId: tmdbId,
+      imdbId: ids['imdb']?.toString(),
+      title: media['title']?.toString() ?? 'Unknown',
+      posterPath: info['poster'] as String,
+      backdropPath: info['backdrop'] as String,
+      method: 'simkl_import',
+      sourceId: 'simkl',
+      position: positionMs,
+      duration: durationMs,
+      season: point.season,
+      episode: point.episode,
+      mediaType: 'tv',
+    );
+    return 1;
+  }
+
+  Future<int> _importAnimeResume(Map<String, dynamic> item) async {
+    final media = _media(item);
+    final anilistId = _asInt(_ids(media)['anilist']);
+    final point = _resumePoint(item);
+    if (anilistId == null || point == null) return 0;
+    final existing = await AnimeService().getProgress(anilistId);
+    if (existing != null) return 0;
+    try {
+      final card = await AnimeService().getDetails(anilistId);
+      final runtimeMin = _asInt(media['runtime']) ?? 24;
+      final duration = Duration(minutes: runtimeMin);
+      await AnimeService().recordWatch(
+        anime: card,
+        episodeNumber: point.episode,
+        position: Duration(milliseconds: (duration.inMilliseconds * 0.05).round()),
+        duration: duration,
+      );
+      return 1;
+    } catch (e) {
+      debugPrint('[Simkl] Anime resume $anilistId failed: $e');
+      return 0;
+    }
+  }
+
+  Future<Map<String, dynamic>> _fetchTmdbInfo(int tmdbId, String mediaType) async {
+    try {
+      final type = mediaType == 'tv' ? 'tv' : 'movie';
+      final raw = await runTmdbGetJson('$type/$tmdbId');
+      final data = json.decode(raw);
+      if (data is Map<String, dynamic> && data['error'] == null) {
+        final poster = data['poster_path']?.toString() ?? '';
+        final backdrop = data['backdrop_path']?.toString() ?? '';
+        var runtimeMs = 6000000;
+        if (type == 'movie' && data['runtime'] is int && (data['runtime'] as int) > 0) {
+          runtimeMs = (data['runtime'] as int) * 60000;
+        } else if (type == 'tv') {
+          final epRuntimes = data['episode_run_time'] as List?;
+          if (epRuntimes != null && epRuntimes.isNotEmpty) {
+            runtimeMs = ((_asInt(epRuntimes.first) ?? 100) * 60000);
+          }
+        }
+        return {'poster': poster, 'backdrop': backdrop, 'runtimeMs': runtimeMs};
+      }
+    } catch (e) {
+      debugPrint('[Simkl] TMDB info fetch failed for $tmdbId: $e');
+    }
+    return {'poster': '', 'backdrop': '', 'runtimeMs': 6000000};
+  }
 
   Future<bool> _scrobble(
     String action, {

@@ -444,8 +444,6 @@ class HeroPillIconSlot {
   final VoidCallback? onTap;
   final String? tooltip;
   final String? label;
-
-  String get resolvedLabel => label ?? tooltip ?? '';
 }
 
 /// Horizontal hero CTA cluster - spatial ←/→ on TV, no escape to catalog.
@@ -470,7 +468,7 @@ class HeroPillActionRow extends StatelessWidget {
   }
 }
 
-/// Secondary hero actions in one sliced glass pill - focused slot expands right.
+/// Secondary hero actions in one sliced glass pill — hover / focus expands the slot with its label.
 class HeroPillIconGroup extends StatelessWidget {
   const HeroPillIconGroup({
     super.key,
@@ -510,7 +508,7 @@ class HeroPillIconGroup extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.22),
               ),
             _HeroPillGroupedSlot(
-              label: slots[i].resolvedLabel,
+              label: slots[i].label ?? '',
               icon: slots[i].icon,
               iconWidget: slots[i].iconWidget,
               onTap: slots[i].onTap,
@@ -775,8 +773,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
             iconWidget: iconWidget,
             active: active,
             pressed: pressed,
-            compact: useTvCompact && !active,
-            useTvCompact: useTvCompact,
+            compact: !active,
             isFirst: isFirst,
             isLast: isLast,
           );
@@ -792,7 +789,6 @@ class _HeroPillGroupedSlotSurface extends StatefulWidget {
     required this.active,
     required this.pressed,
     required this.compact,
-    required this.useTvCompact,
     required this.isFirst,
     required this.isLast,
     this.icon,
@@ -805,7 +801,6 @@ class _HeroPillGroupedSlotSurface extends StatefulWidget {
   final bool active;
   final bool pressed;
   final bool compact;
-  final bool useTvCompact;
   final bool isFirst;
   final bool isLast;
 
@@ -840,14 +835,13 @@ class _HeroPillGroupedSlotSurfaceState extends State<_HeroPillGroupedSlotSurface
   @override
   void didUpdateWidget(covariant _HeroPillGroupedSlotSurface oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.compact != oldWidget.compact ||
-        widget.useTvCompact != oldWidget.useTvCompact) {
+    if (widget.compact != oldWidget.compact) {
       _syncController(animate: true);
     }
   }
 
   void _syncController({required bool animate}) {
-    final target = widget.useTvCompact && widget.compact ? 0.0 : 1.0;
+    final target = widget.compact ? 0.0 : 1.0;
     if (!animate) {
       _controller.value = target;
       return;
@@ -894,22 +888,16 @@ class _HeroPillGroupedSlotSurfaceState extends State<_HeroPillGroupedSlotSurface
               ),
             ),
           ),
-          if (widget.useTvCompact)
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, _) {
-                return _groupedSlotRow(
-                  leading: leading,
-                  morph: _expand.value,
-                  labelOpacity: _labelOpacity.value,
-                );
-              },
-            )
-          else
-            SizedBox(
-              width: _kHeroPillHeight,
-              child: Center(child: leading),
-            ),
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              return _groupedSlotRow(
+                leading: leading,
+                morph: _expand.value,
+                labelOpacity: _labelOpacity.value,
+              );
+            },
+          ),
         ],
       ),
     );
@@ -939,6 +927,9 @@ class _HeroPillGroupedSlotSurfaceState extends State<_HeroPillGroupedSlotSurface
                   padding: const EdgeInsets.only(right: 14),
                   child: Text(
                     widget.label,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.clip,
                     style: GoogleFonts.plusJakartaSans(
                       color: Colors.white,
                       fontSize: 15,

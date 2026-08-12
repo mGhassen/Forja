@@ -15,7 +15,7 @@ Beyond My List, Forja can show lists you've created or follow on Trakt and MDBLi
 - Browse your Trakt lists when logged in
 - Browse your MDBList lists when an API key is configured
 - Explore MDBList top/public lists
-- Open any list item to view details and play — on **TV**, list detail opens in the shell overlay so **Back** returns to Settings → Lists
+- Open a list for a poster grid, then tap a title to play — on **TV**, list detail opens in the shell overlay so **Back** returns to Settings → Lists
 
 ## Setup (if needed)
 
@@ -26,6 +26,7 @@ Beyond My List, Forja can show lists you've created or follow on Trakt and MDBLi
 
 - Lists are read from the remote service — edits on Trakt/MDBList appear after refresh
 - Playback still flows through Forja's normal details and player
+- Simkl watchlist buckets live on the **My List** tab, not here
 
 ## Related
 
