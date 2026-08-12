@@ -38,7 +38,7 @@ Tap any movie or series poster from Home, Discover, Search, or lists.
 - Returning to the same title/episode reuses a cached **webstreaming** extract when still reachable (see [Webstreaming](direct-streaming-mode.md)) — not Stremio Direct or torrent
 - White **Play** / **Resume** (link icon) opens **Sources** so you pick a torrent/Stremio stream
 - **Trailer** (when available) opens the in-app trailer player on the best-matching official trailer
-- Add or remove from **My List** (**+** in the hero). If you’re logged into [Simkl](../accounts/simkl.md), **+** opens Plan to Watch / Watching / On Hold / Completed / Dropped
+- Add or move a title on **My List** (**+** in the hero) — Plan to Watch / Watching / On Hold / Completed / Dropped. Same buckets locally; Simkl updates when you’re logged in
 - Trakt/Simkl/collect actions via the **⋯** overflow menu in the hero
 - See resume progress in the hero for movies and the selected TV episode
 - Clear resume progress with the trash icon next to **Resume** (removes that movie or selected episode from continue watching, drops the cached stream, and removes Simkl/Trakt watched history so a finished movie is no longer Completed)

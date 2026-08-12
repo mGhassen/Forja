@@ -34,10 +34,10 @@ final externalListsGateProvider =
 });
 
 final simklWatchlistProvider =
-    FutureProvider.autoDispose<List<SimklWatchlistBucket>>((ref) async {
+    FutureProvider.family<List<Map<String, dynamic>>, String>((ref, status) async {
   final gate = await ref.watch(externalListsGateProvider.future);
   if (!gate.simklLoggedIn) return const [];
-  return ref.watch(simklServiceProvider).getWatchlistBuckets();
+  return ref.watch(simklServiceProvider).getWatchlistStatus(status);
 });
 
 final traktUserListsProvider =

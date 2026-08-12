@@ -14,9 +14,9 @@ Simkl is the tracker everyone can connect. Log in via PIN and sync what you watc
 
 - Connect with a Simkl PIN (opens simkl.com/pin)
 - View logged-in username
-- Sync plan-to-watch → My List
-- Browse Plan to Watch / Watching / On Hold / Completed / Dropped as underline tabs + poster grid on the **My List** tab (local Saved hides while you’re connected)
-- Set Plan to Watch / Watching / On Hold / Completed / Dropped from details **+**
+- Sync Simkl list buckets → local My List (backup if you disconnect)
+- Browse Plan to Watch / Watching / On Hold / Completed / Dropped on the **My List** tab (Films / TV Shows / Anime filter like Home; Simkl lists while connected)
+- Set Plan to Watch / Watching / On Hold / Completed / Dropped from details **+** (always writes local; Simkl when connected)
 - Clearing progress (trash next to Resume) removes Simkl watched history so the title leaves Completed
 - Import completed movies into local watch history
 - Import completed TV + anime episodes as watched marks (anime uses AniList ids)

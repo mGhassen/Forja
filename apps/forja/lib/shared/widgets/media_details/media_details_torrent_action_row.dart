@@ -6,7 +6,6 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
-import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
@@ -96,19 +95,24 @@ class _MediaDetailsTorrentActionRowState
   }
 
   Future<void> _loadSimkl() async {
+    await MyListService().ensureLoaded();
+    final uid = MyListService.movieId(widget.movie.id, widget.movie.mediaType);
+    final local = MyListService().contains(uid)
+        ? MyListService().statusOf(uid)
+        : null;
     final simkl = SimklService();
-    if (!await simkl.isLoggedIn()) {
-      if (mounted) setState(() => _simklLoggedIn = false);
-      return;
+    final loggedIn = await simkl.isLoggedIn();
+    String? remote;
+    if (loggedIn) {
+      remote = await simkl.getListStatus(
+        tmdbId: widget.movie.id,
+        mediaType: widget.movie.mediaType,
+      );
     }
-    final status = await simkl.getListStatus(
-      tmdbId: widget.movie.id,
-      mediaType: widget.movie.mediaType,
-    );
     if (!mounted) return;
     setState(() {
-      _simklLoggedIn = true;
-      _simklStatus = status;
+      _simklLoggedIn = loggedIn;
+      _simklStatus = remote ?? local;
     });
   }
 
@@ -120,9 +124,6 @@ class _MediaDetailsTorrentActionRowState
   }
 
   IconData _plusIcon() {
-    if (!_simklLoggedIn) {
-      return Icons.add_rounded;
-    }
     for (final s in _simklStatuses) {
       if (s.id == _simklStatus) return s.selectedIcon;
     }
@@ -130,55 +131,51 @@ class _MediaDetailsTorrentActionRowState
   }
 
   String _plusLabel() {
-    if (!_simklLoggedIn) return 'My List';
     for (final s in _simklStatuses) {
       if (s.id == _simklStatus) return s.label;
     }
-    return 'Simkl';
+    return 'My List';
   }
 
   Future<void> _onPlusTap() async {
-    if (_simklLoggedIn) {
-      setState(() => _simklMenuOpen = !_simklMenuOpen);
-      return;
-    }
-    await MyListHeroPillButton.toggle(context, movie: widget.movie);
+    setState(() => _simklMenuOpen = !_simklMenuOpen);
   }
 
   Future<void> _setSimklStatus(String to) async {
     if (_simklBusy) return;
     setState(() => _simklBusy = true);
-    final ok = await SimklService().setListStatus(
+    await MyListService().upsertMovie(
       tmdbId: widget.movie.id,
       imdbId: widget.movie.imdbId,
+      title: widget.movie.title,
+      posterPath: widget.movie.posterPath,
       mediaType: widget.movie.mediaType,
-      to: to,
+      voteAverage: widget.movie.voteAverage,
+      releaseDate: widget.movie.releaseDate,
+      listStatus: to,
     );
-    if (to == 'plantowatch' && ok) {
-      await MyListService().addMovie(
+    var ok = true;
+    if (_simklLoggedIn) {
+      ok = await SimklService().setListStatus(
         tmdbId: widget.movie.id,
         imdbId: widget.movie.imdbId,
-        title: widget.movie.title,
-        posterPath: widget.movie.posterPath,
         mediaType: widget.movie.mediaType,
-        voteAverage: widget.movie.voteAverage,
-        releaseDate: widget.movie.releaseDate,
+        to: to,
       );
     }
     if (!mounted) return;
     setState(() {
       _simklBusy = false;
-      if (ok) {
-        _simklStatus = to;
-        _simklMenuOpen = false;
-      }
+      _simklStatus = to;
+      _simklMenuOpen = false;
     });
+    _invalidateSimklLists();
+    final label =
+        _simklStatuses.where((s) => s.id == to).firstOrNull?.label ?? to;
     if (ok) {
-      _invalidateSimklLists();
-      final label = _simklStatuses.where((s) => s.id == to).firstOrNull?.label ?? to;
-      ForjaToast.success('Simkl · $label');
+      ForjaToast.success(label);
     } else {
-      ForjaToast.error('Couldn’t update Simkl');
+      ForjaToast.error('Saved locally · Simkl failed');
     }
   }
 
@@ -246,7 +243,7 @@ class _MediaDetailsTorrentActionRowState
   }
 
   int _simklStatusSlotCount() =>
-      _simklLoggedIn && _simklMenuOpen ? _simklStatuses.length : 0;
+      _simklMenuOpen ? _simklStatuses.length : 0;
 
   int _focusableActionCount() {
     final canPlay = !widget.isStreamingExtracting;
@@ -403,9 +400,7 @@ class _MediaDetailsTorrentActionRowState
         slots: [
           HeroPillIconSlot(
             label: _plusLabel(),
-            iconWidget: _simklLoggedIn
-                ? Icon(_plusIcon(), size: 20, color: Colors.white)
-                : MyListHeroIcon.movie(movie: widget.movie),
+            icon: _plusIcon(),
             onTap: _onPlusTap,
           ),
           if (_overflowVisible) _buildOverflowSlot(context),
@@ -413,7 +408,7 @@ class _MediaDetailsTorrentActionRowState
       ),
     );
 
-    if (_simklLoggedIn && _simklMenuOpen) {
+    if (_simklMenuOpen) {
       children.addAll([
         const SizedBox(width: 10),
         HeroPillIconGroup(

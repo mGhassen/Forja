@@ -4,7 +4,7 @@
 
 ## What it is
 
-My List is a poster grid you can scroll. With Simkl connected, underline tabs switch **Plan to Watch**, **Watching**, **On Hold**, **Completed**, and **Dropped** — posters in that tab are grouped under **Films**, **TV**, and **Anime** (year and rating sit under the title, not as stamps). Without Simkl, the same grid shows local bookmarks. Local copies still write in the background so they come back if you disconnect Simkl.
+My List is a poster grid you can scroll. The top menu is the same language as Home: **Films**, **TV Shows**, **Anime** (tap again to show everything). A second row switches **Plan to Watch**, **Watching**, **On Hold**, **Completed**, and **Dropped** — local bookmarks use those statuses too. With Simkl connected, that row shows your Simkl lists (local copies still write in the background so they come back if you disconnect). Year and rating sit under the poster title.
 
 ## How to open it
 
@@ -12,15 +12,15 @@ Tap **My List** in the navigation bar.
 
 ## What you can do
 
-- Scroll a poster grid (Films / TV / Anime sections when mixed)
-- With Simkl, switch status with the underline tabs — the grid stays, the set changes
-- Open a title — on **TV**, **↓** moves between sections; **←** from the first column returns to the nav rail
-- Add items from any details screen via **+** (Simkl statuses when connected)
-- Remove a local bookmark from details. With Simkl, the grid follows your Simkl account
+- Filter the grid with **Films / TV Shows / Anime** (same toggle as Home)
+- Switch **Plan to Watch / Watching / On Hold / Completed / Dropped** — local uses the same buckets; with Simkl, the open tab loads from Simkl
+- Open a title — on **TV**, **↓** from the type menu goes to status then the grid; **←** from the first column returns to the nav rail
+- Add or move a title from details **+** (same five statuses, with or without Simkl)
+- Disconnect Simkl and the local buckets are still there
 
 ## Tips
 
-- Without Simkl, My List is stored locally on your device. With Simkl, the tab shows Simkl grids; local copies still save as a fallback
+- My List statuses are stored locally on your device. With Simkl connected, the tab shows Simkl; local copies still save as a fallback
 - Use [Backup & restore](../settings/backup-restore.md) to move lists to another install
 
 ## Related

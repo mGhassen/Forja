@@ -522,7 +522,11 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     final railFocus = widget.showFocusRail;
     final flatMenuFocus =
         !railFocus && widget.showFocusBorder && widget.scaleOnFocus <= 1.0;
-    final bleed = widget.showFocusBorder && !flatMenuFocus && !railFocus
+    // 0 = caller already reserved scale room (e.g. a grid cell).
+    final bleed = widget.showFocusBorder &&
+            !flatMenuFocus &&
+            !railFocus &&
+            widget.focusBleedWidth != 0
         ? shellMovieCardFocusBleed(
             context,
             scaleOnFocus: widget.scaleOnFocus,

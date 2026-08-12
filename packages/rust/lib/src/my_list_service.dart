@@ -84,6 +84,53 @@ class MyListService {
     return _items.any((e) => e['uniqueId'] == uniqueId);
   }
 
+  static const defaultStatus = 'plantowatch';
+
+  Future<void> ensureLoaded() => _ensureLoaded();
+
+  String statusOf(String uniqueId) {
+    for (final e in _items) {
+      if (e['uniqueId'] == uniqueId) {
+        return e['listStatus']?.toString() ?? defaultStatus;
+      }
+    }
+    return defaultStatus;
+  }
+
+  Future<void> upsertMovie({
+    required int tmdbId,
+    String? imdbId,
+    required String title,
+    required String posterPath,
+    required String mediaType,
+    double voteAverage = 0,
+    String releaseDate = '',
+    required String listStatus,
+  }) async {
+    await _ensureLoaded();
+    final uid = movieId(tmdbId, mediaType);
+    final idx = _items.indexWhere((e) => e['uniqueId'] == uid);
+    final row = <String, dynamic>{
+      if (idx >= 0) ..._items[idx],
+      'uniqueId': uid,
+      'tmdbId': tmdbId,
+      'imdbId': imdbId,
+      'title': title,
+      'posterPath': posterPath,
+      'mediaType': mediaType,
+      'voteAverage': voteAverage,
+      'releaseDate': releaseDate,
+      'source': 'tmdb',
+      'listStatus': listStatus,
+      'addedAt': idx >= 0
+          ? _items[idx]['addedAt']
+          : DateTime.now().millisecondsSinceEpoch,
+    };
+    if (idx >= 0) _items.removeAt(idx);
+    _items.insert(0, row);
+    await _save();
+  }
+
   Future<void> addMovie({
     required int tmdbId,
     String? imdbId,
@@ -106,6 +153,7 @@ class MyListService {
       'voteAverage': voteAverage,
       'releaseDate': releaseDate,
       'source': 'tmdb',
+      'listStatus': defaultStatus,
       'addedAt': DateTime.now().millisecondsSinceEpoch,
     });
     await _save();
@@ -127,6 +175,7 @@ class MyListService {
       'releaseDate': item['releaseInfo']?.toString() ?? '',
       'source': 'stremio',
       'stremioType': item['type']?.toString(),
+      'listStatus': defaultStatus,
       'addedAt': DateTime.now().millisecondsSinceEpoch,
     });
     await _save();

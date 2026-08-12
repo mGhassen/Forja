@@ -5,21 +5,6 @@ import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// One Simkl watchlist status bucket (plan to watch, watching, …).
-class SimklWatchlistBucket {
-  const SimklWatchlistBucket({
-    required this.status,
-    required this.label,
-    required this.items,
-  });
-
-  final String status;
-  final String label;
-  final List<Map<String, dynamic>> items;
-
-  int get count => items.length;
-}
-
 /// Full Simkl integration - PIN-based auth, watchlist sync,
 /// scrobble, history, ratings, and two-way import/export.
 class SimklService {
@@ -543,61 +528,47 @@ class SimklService {
   //  I M P O R T   -   W A T C H L I S T   >   M Y   L I S T
   // ═══════════════════════════════════════════════════════════════════════
 
-  /// Import the user's Simkl "plan to watch" list into the local My List.
+  /// Mirror Simkl list buckets onto local My List (backup if Simkl is removed).
   Future<int> importWatchlistToMyList() async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
-    int imported = 0;
-    for (final type in ['movies', 'shows']) {
-      try {
-        final resp = await animeHttp('GET', '$_baseUrl/sync/all-items/$type/plantowatch', headers: _authHeaders(token), maxRetries: 0);
-        if (resp.status != 200) continue;
-
-        final data = json.decode(resp.body);
-        final List items = data is List
-            ? data
-            : (data is Map && data.containsKey(type) ? data[type] as List : []);
-
-        for (final raw in items) {
-          final item = raw as Map<String, dynamic>;
-          final show = _media(item);
-          final ids = _ids(show);
-          final tmdbId = _asInt(ids['tmdb']);
-          final imdbId = ids['imdb']?.toString();
-          final title = show['title']?.toString() ?? 'Unknown';
-          final mediaType = type == 'shows' ? 'tv' : 'movie';
-
-          if (tmdbId == null && imdbId == null) continue;
-          final uid = tmdbId != null
-              ? MyListService.movieId(tmdbId, mediaType)
-              : 'stremio_${type == 'shows' ? 'series' : 'movie'}_$imdbId';
-
-          if (!MyListService().contains(uid)) {
-            if (tmdbId != null) {
-              await MyListService().addMovie(
-                tmdbId: tmdbId,
-                imdbId: imdbId,
-                title: title,
-                posterPath: '',
-                mediaType: mediaType,
-              );
-            } else {
-              await MyListService().addStremioItem({
-                'imdb_id': imdbId,
-                'name': title,
-                'type': mediaType == 'tv' ? 'series' : 'movie',
-                'poster': '',
-              });
-            }
+    const statuses = [
+      'plantowatch',
+      'watching',
+      'hold',
+      'completed',
+      'dropped',
+    ];
+    var imported = 0;
+    for (final status in statuses) {
+      for (final type in ['movies', 'shows']) {
+        try {
+          final items = await _allItems(token, type, status: status);
+          for (final item in items) {
+            final show = _media(item);
+            final ids = _ids(show);
+            final tmdbId = _asInt(ids['tmdb']);
+            final imdbId = ids['imdb']?.toString();
+            final title = show['title']?.toString() ?? 'Unknown';
+            final mediaType = type == 'shows' ? 'tv' : 'movie';
+            if (tmdbId == null) continue;
+            await MyListService().upsertMovie(
+              tmdbId: tmdbId,
+              imdbId: imdbId,
+              title: title,
+              posterPath: '',
+              mediaType: mediaType,
+              listStatus: status,
+            );
             imported++;
           }
+        } catch (e) {
+          debugPrint('[Simkl] Import My List ($type/$status) error: $e');
         }
-      } catch (e) {
-        debugPrint('[Simkl] Import watchlist ($type) error: $e');
       }
     }
-    debugPrint('[Simkl] Imported $imported items to My List');
+    debugPrint('[Simkl] Mirrored $imported items to local My List');
     return imported;
   }
 
@@ -684,43 +655,23 @@ class SimklService {
     return ok ? total : 0;
   }
 
-  static const _watchlistStatusOrder = <(String, String)>[
-    ('plantowatch', 'Plan to Watch'),
-    ('watching', 'Watching'),
-    ('hold', 'On Hold'),
-    ('completed', 'Completed'),
-    ('dropped', 'Dropped'),
-  ];
-
-  /// All Simkl watchlist buckets (movies + shows + anime), grouped by status.
-  Future<List<SimklWatchlistBucket>> getWatchlistBuckets() async {
+  /// Movies + shows + anime for one status. Simkl `all-items` has no page param.
+  Future<List<Map<String, dynamic>>> getWatchlistStatus(String status) async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return const [];
 
-    final byStatus = <String, List<Map<String, dynamic>>>{};
+    final out = <Map<String, dynamic>>[];
     for (final type in ['movies', 'shows', 'anime']) {
       try {
-        final items = await _allItems(token, type, status: 'all');
+        final items = await _allItems(token, type, status: status);
         for (final item in items) {
-          final status = item['status']?.toString() ?? '';
-          byStatus.putIfAbsent(status, () => []).add({
-            ...item,
-            '_simklType': type,
-          });
+          out.add({...item, '_simklType': type});
         }
       } catch (e) {
-        debugPrint('[Simkl] Library fetch ($type) error: $e');
+        debugPrint('[Simkl] Library fetch ($type/$status) error: $e');
       }
     }
-
-    return [
-      for (final (status, label) in _watchlistStatusOrder)
-        SimklWatchlistBucket(
-          status: status,
-          label: label,
-          items: byStatus[status] ?? const [],
-        ),
-    ];
+    return out;
   }
 
   // ═══════════════════════════════════════════════════════════════════════

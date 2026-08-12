@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/anime/anime_details_screen.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
@@ -14,7 +17,6 @@ import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/services/tracker/simkl_service.dart';
 
 class MyListScreen extends ConsumerStatefulWidget {
   const MyListScreen({super.key});
@@ -37,6 +39,7 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
   ];
 
   String _status = 'plantowatch';
+  String? _kind;
 
   @override
   Duration get shellStaleAfter => ShellTokens.tabStaleDefault;
@@ -55,15 +58,13 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
       'mylist',
       enterFromNavFocus: _focusEntry,
       restoreFocus: () {
+        if (ShellTvFocusCoordinator.focusRowItem('mylist', 'kind', 0)) {
+          return true;
+        }
         if (ShellTvFocusCoordinator.focusRowItem('mylist', 'tabs', 0)) {
           return true;
         }
-        for (final id in ['films', 'tv', 'anime', 'grid']) {
-          if (ShellTvFocusCoordinator.focusRowItem('mylist', id, 0)) {
-            return true;
-          }
-        }
-        return false;
+        return ShellTvFocusCoordinator.focusRowItem('mylist', 'grid', 0);
       },
     );
     markShellTabFresh();
@@ -77,15 +78,19 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
   }
 
   void _focusEntry() {
+    if (ShellTvFocusCoordinator.focusRowItem('mylist', 'kind', 0)) return;
     if (ShellTvFocusCoordinator.focusRowItem('mylist', 'tabs', 0)) return;
-    for (final id in ['films', 'tv', 'anime', 'grid']) {
-      if (ShellTvFocusCoordinator.focusRowItem('mylist', id, 0)) return;
-    }
+    ShellTvFocusCoordinator.focusRowItem('mylist', 'grid', 0);
   }
 
   void _selectStatus(String id) {
     if (_status == id) return;
     setState(() => _status = id);
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+  }
+
+  void _toggleKind(String kind) {
+    setState(() => _kind = _kind == kind ? null : kind);
     if (_scroll.hasClients) _scroll.jumpTo(0);
   }
 
@@ -189,26 +194,26 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
     final localItems = ref.watch(myListItemsProvider);
     final gate = ref.watch(externalListsGateProvider).valueOrNull;
     final simklLoggedIn = gate?.simklLoggedIn ?? false;
-    final simklAsync =
-        simklLoggedIn ? ref.watch(simklWatchlistProvider) : null;
-    final buckets = simklAsync?.valueOrNull ?? const <SimklWatchlistBucket>[];
-    final simklLoading = simklLoggedIn &&
+    final simklAsync = simklLoggedIn
+        ? ref.watch(simklWatchlistProvider(_status))
+        : null;
+    final simklLoading =
+        simklLoggedIn &&
         simklAsync != null &&
         simklAsync.isLoading &&
         !simklAsync.hasValue;
-
-    final byStatus = {
-      for (final b in buckets)
-        b.status: [
-          for (final raw in b.items) _simklCardItem(raw),
-        ].whereType<Map<String, dynamic>>().toList(),
-    };
-    final items = simklLoggedIn
-        ? (byStatus[_status] ?? const <Map<String, dynamic>>[])
-        : localItems;
-    final groups = _groups(items);
-    final columns = shellGridCrossAxisCount(context);
-
+    final simklItems = [
+      for (final raw
+          in simklAsync?.valueOrNull ?? const <Map<String, dynamic>>[])
+        _simklCardItem(raw),
+    ].whereType<Map<String, dynamic>>().toList();
+    final localForStatus = localItems
+        .where((e) => (e['listStatus']?.toString() ?? 'plantowatch') == _status)
+        .toList();
+    final items = simklLoggedIn ? simklItems : localForStatus;
+    final filtered = _kind == null
+        ? items
+        : items.where((e) => _itemKind(e) == _kind).toList();
     return TvFocusGraph(
       tabId: 'mylist',
       child: ColoredBox(
@@ -216,115 +221,77 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ShellTabHeader(
-              title: 'My List',
-              actions: [
-                if (!simklLoading && items.isNotEmpty)
-                  Text(
-                    '${items.length}',
-                    style: const TextStyle(
-                      color: Colors.white38,
-                      fontSize: 14,
-                    ),
-                  ),
-              ],
+            _KindMenu(
+              selected: _kind,
+              count: simklLoading ? null : filtered.length,
+              onSelect: _toggleKind,
+              onDown: () =>
+                  ShellTvFocusCoordinator.focusRowItem('mylist', 'tabs', 0),
             ),
-            if (simklLoggedIn)
-              _StatusTabs(
-                selected: _status,
-                onSelect: _selectStatus,
-              ),
+            _StatusTabs(
+              selected: _status,
+              onSelect: _selectStatus,
+              onUp: () =>
+                  ShellTvFocusCoordinator.focusRowItem('mylist', 'kind', 0),
+              onDown: () =>
+                  ShellTvFocusCoordinator.focusRowItem('mylist', 'grid', 0),
+            ),
             Expanded(
-              child: simklLoading
-                  ? _loadingGrid(context, columns)
-                  : groups.isEmpty
-                      ? _emptyState(simklLoggedIn)
-                      : CustomScrollView(
-                          controller: _scroll,
-                          physics: const BouncingScrollPhysics(
-                            parent: AlwaysScrollableScrollPhysics(),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final grid = _homeGrid(context, constraints.maxWidth);
+                  if (simklLoading) return _loadingGrid(context, grid);
+                  if (filtered.isEmpty) return _emptyState(kind: _kind);
+                  return TvGrid(
+                    tabId: 'mylist',
+                    rowId: 'grid',
+                    sortOrder: 2,
+                    columns: grid.columns,
+                    itemCount: filtered.length,
+                    onFocusUp: () {
+                      ShellTvFocusCoordinator.focusRowItem('mylist', 'tabs', 0);
+                    },
+                    child: CustomScrollView(
+                      controller: _scroll,
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      slivers: [
+                        SliverPadding(
+                          padding: EdgeInsets.fromLTRB(
+                            grid.leading,
+                            grid.topPad,
+                            grid.rightPad,
+                            48,
                           ),
-                          slivers: [
-                            for (var i = 0; i < groups.length; i++)
-                              SliverToBoxAdapter(
-                                child: TvGrid(
-                                  tabId: 'mylist',
-                                  rowId: groups[i].id,
-                                  sortOrder: i,
-                                  columns: columns,
-                                  itemCount: groups[i].items.length,
-                                  onFocusUp: i == 0
-                                      ? (simklLoggedIn
-                                          ? () {
-                                              ShellTvFocusCoordinator
-                                                  .focusRowItem(
-                                                'mylist',
-                                                'tabs',
-                                                0,
-                                              );
-                                            }
-                                          : null)
-                                      : () {
-                                          ShellTvFocusCoordinator.focusRowItem(
-                                            'mylist',
-                                            groups[i - 1].id,
-                                            0,
-                                          );
-                                        },
-                                  child: Padding(
-                                    padding: EdgeInsets.fromLTRB(
-                                      ShellTokens.bodyHorizontalPadding,
-                                      i == 0 ? 4 : 22,
-                                      ShellTokens.bodyHorizontalPadding,
-                                      i == groups.length - 1 ? 48 : 0,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        if (groups.length > 1) ...[
-                                          Text(
-                                            groups[i].title,
-                                            style: TextStyle(
-                                              color: ForjaShellColors
-                                                  .textSecondary,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              letterSpacing: 0.6,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                        ],
-                                        GridView.builder(
-                                          shrinkWrap: true,
-                                          physics:
-                                              const NeverScrollableScrollPhysics(),
-                                          gridDelegate:
-                                              SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: columns,
-                                            mainAxisSpacing: 12,
-                                            crossAxisSpacing: 12,
-                                            childAspectRatio: 2 / 3,
-                                          ),
-                                          itemCount: groups[i].items.length,
-                                          itemBuilder: (context, index) {
-                                            final item = groups[i].items[index];
-                                            return _ListPoster(
-                                              item: item,
-                                              gridIndex: index,
-                                              columns: columns,
-                                              tvRowId: groups[i].id,
-                                              onTap: () => _openItem(item),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                          sliver: SliverGrid(
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: grid.columns,
+                                  mainAxisSpacing: grid.gap,
+                                  crossAxisSpacing: grid.gap,
+                                  childAspectRatio: grid.cardW / grid.cardH,
                                 ),
-                              ),
-                          ],
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final item = filtered[index];
+                              return _ListPoster(
+                                item: item,
+                                gridIndex: index,
+                                columns: grid.columns,
+                                tvRowId: 'grid',
+                                onTap: () => _openItem(item),
+                              );
+                            }, childCount: filtered.length),
+                          ),
                         ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -332,33 +299,34 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
     );
   }
 
-  Widget _loadingGrid(BuildContext context, int columns) {
+  Widget _loadingGrid(BuildContext context, _HomeGrid grid) {
     return homeLoadingShimmer(
       GridView.builder(
-        padding: const EdgeInsets.fromLTRB(
-          ShellTokens.bodyHorizontalPadding,
-          0,
-          ShellTokens.bodyHorizontalPadding,
+        padding: EdgeInsets.fromLTRB(
+          grid.leading,
+          grid.topPad,
+          grid.rightPad,
           ShellTokens.bodyHorizontalPadding,
         ),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: columns,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 2 / 3,
+          crossAxisCount: grid.columns,
+          mainAxisSpacing: grid.gap,
+          crossAxisSpacing: grid.gap,
+          childAspectRatio: grid.cardW / grid.cardH,
         ),
-        itemCount: columns * 2,
+        itemCount: grid.columns * 2,
         itemBuilder: (context, _) => DecoratedBox(
           decoration: BoxDecoration(
             color: AppTheme.bgCard,
-            borderRadius: const BorderRadius.all(Radius.circular(12)),
+            borderRadius: BorderRadius.circular(shellCardBorderRadius(context)),
           ),
         ),
       ),
     );
   }
 
-  Widget _emptyState(bool simkl) {
+  Widget _emptyState({String? kind}) {
+    final filtered = kind != null;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -372,7 +340,13 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
             ),
             const SizedBox(height: 14),
             Text(
-              simkl ? 'Nothing in this list' : 'Your list is empty',
+              filtered
+                  ? 'Nothing in ${switch (kind) {
+                      'tv' => 'TV Shows',
+                      'anime' => 'Anime',
+                      _ => 'Films',
+                    }}'
+                  : 'Nothing in this list',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -381,9 +355,9 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
             ),
             const SizedBox(height: 6),
             Text(
-              simkl
-                  ? 'Tap + on a title to set its Simkl status'
-                  : 'Tap + on a movie or show to add it here',
+              filtered
+                  ? 'Tap Films, TV Shows, or Anime again to show everything'
+                  : 'Tap + on a title to set Plan to Watch / Watching / On Hold / Completed / Dropped',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
@@ -397,24 +371,235 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
   }
 }
 
-class _StatusTabs extends StatelessWidget {
-  const _StatusTabs({required this.selected, required this.onSelect});
+class _KindMenu extends StatelessWidget {
+  const _KindMenu({
+    required this.selected,
+    required this.onSelect,
+    required this.onDown,
+    this.count,
+  });
 
-  final String selected;
+  final String? selected;
   final ValueChanged<String> onSelect;
+  final VoidCallback onDown;
+  final int? count;
+
+  static const _items = [
+    (id: 'movie', label: 'Films'),
+    (id: 'tv', label: 'TV Shows'),
+    (id: 'anime', label: 'Anime'),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final useTv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    return SizedBox(
-      height: 42,
+    final tabGap = useTv
+        ? 28.0
+        : MediaQuery.sizeOf(context).width < 560
+        ? 20.0
+        : 36.0;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        ShellTokens.compactChromeLeadingInset(context),
+        ShellTokens.tabHeaderTopPadding,
+        ShellTokens.bodyHorizontalPadding,
+        4,
+      ),
       child: Row(
         children: [
-          for (var i = 0; i < _MyListScreenState._tabs.length; i++)
-            Expanded(
-              child: _tab(context, i, useTv),
+          for (var i = 0; i < _items.length; i++) ...[
+            if (i > 0) SizedBox(width: tabGap),
+            _KindTab(
+              label: _items[i].label,
+              isActive: selected == _items[i].id,
+              onTap: () => onSelect(_items[i].id),
+              tvFocus: useTv,
+              listIndex: i,
+              onDownEdge: onDown,
+            ),
+          ],
+          const Spacer(),
+          if (count != null && count! > 0)
+            Text(
+              '$count',
+              style: const TextStyle(color: Colors.white38, fontSize: 14),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _KindTab extends StatefulWidget {
+  const _KindTab({
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+    required this.tvFocus,
+    required this.listIndex,
+    required this.onDownEdge,
+  });
+
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+  final bool tvFocus;
+  final int listIndex;
+  final VoidCallback onDownEdge;
+
+  @override
+  State<_KindTab> createState() => _KindTabState();
+}
+
+class _KindTabState extends State<_KindTab> {
+  static const _animDuration = Duration(milliseconds: 280);
+  static const _hoverT = 0.62;
+  static const _selectedT = 1.0;
+
+  bool _hovered = false;
+  bool _focused = false;
+
+  double get _visualTarget {
+    if (widget.isActive) return _selectedT;
+    if (_hovered || _focused) return _hoverT;
+    return 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final child = TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: _visualTarget),
+      duration: _animDuration,
+      curve: Curves.easeInOutCubic,
+      builder: (context, t, _) {
+        final idle = ForjaShellColors.cinematic.textSecondary;
+        final hoverWhite = Colors.white.withValues(alpha: 0.92);
+        final color = t <= 0
+            ? idle
+            : t < _hoverT
+            ? Color.lerp(idle, hoverWhite, t / _hoverT)!
+            : Color.lerp(
+                hoverWhite,
+                Colors.white,
+                (t - _hoverT) / (_selectedT - _hoverT),
+              )!;
+        final tabHeight = shellScaled(context, 34).clamp(28.0, 34.0);
+        final tabFont = shellScaled(context, 17).clamp(14.0, 17.0);
+        final hoverW = shellScaled(context, 28).clamp(14.0, 28.0);
+        final underline = t <= 0
+            ? 0.0
+            : t < _hoverT
+            ? hoverW * (t / _hoverT)
+            : hoverW +
+                  shellScaled(context, 4).clamp(2.0, 4.0) *
+                      ((t - _hoverT) / (_selectedT - _hoverT));
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: tabHeight,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  widget.label,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: tabFont,
+                    fontWeight: FontWeight.lerp(
+                      FontWeight.w500,
+                      FontWeight.w700,
+                      t,
+                    ),
+                    color: color,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: shellScaled(
+                context,
+                ShellTokens.shellCategoryUnderlineGap,
+              ).clamp(2.0, ShellTokens.shellCategoryUnderlineGap),
+            ),
+            Container(
+              height: shellScaled(
+                context,
+                ShellTokens.shellNavUnderlineHeight,
+              ).clamp(1.0, ShellTokens.shellNavUnderlineHeight),
+              width: underline,
+              decoration: BoxDecoration(
+                color: underline > 0 ? color : Colors.transparent,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (widget.tvFocus) {
+      return shellFocusableTap(
+        context: context,
+        onTap: widget.onTap,
+        borderRadius: 4,
+        scaleOnFocus: ShellTokens.focusActiveScale,
+        listIndex: widget.listIndex,
+        tvTabId: 'mylist',
+        tvRowId: 'kind',
+        tvZone: ShellTvZone.topBar,
+        tvItemIndex: widget.listIndex,
+        onDownEdge: widget.onDownEdge,
+        onFocusChange: (f) => setState(() => _focused = f),
+        onHoverChange: (h) => setState(() => _hovered = h),
+        child: child,
+      );
+    }
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _StatusTabs extends StatelessWidget {
+  const _StatusTabs({
+    required this.selected,
+    required this.onSelect,
+    this.onUp,
+    this.onDown,
+  });
+
+  final String selected;
+  final ValueChanged<String> onSelect;
+  final VoidCallback? onUp;
+  final VoidCallback? onDown;
+
+  @override
+  Widget build(BuildContext context) {
+    final useTv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        ShellTokens.compactChromeLeadingInset(context),
+        0,
+        ShellTokens.bodyHorizontalPadding,
+        0,
+      ),
+      child: SizedBox(
+        height: 42,
+        child: Row(
+          children: [
+            for (var i = 0; i < _MyListScreenState._tabs.length; i++)
+              Expanded(child: _tab(context, i, useTv)),
+          ],
+        ),
       ),
     );
   }
@@ -446,10 +631,7 @@ class _StatusTabs extends StatelessWidget {
       ],
     );
     if (!useTv) {
-      return InkWell(
-        onTap: () => onSelect(tab.id),
-        child: body,
-      );
+      return InkWell(onTap: () => onSelect(tab.id), child: body);
     }
     return shellFocusableTap(
       context: context,
@@ -459,6 +641,8 @@ class _StatusTabs extends StatelessWidget {
       tvTabId: 'mylist',
       tvRowId: 'tabs',
       tvZone: ShellTvZone.chipStrip,
+      onUpEdge: onUp,
+      onDownEdge: onDown,
       child: body,
     );
   }
@@ -486,11 +670,13 @@ class _ListPoster extends StatelessWidget {
     final caption = _caption(item);
     final meta = TvGridScope.maybeOf(context)?.metaFor(gridIndex);
 
+    final radius = shellCardBorderRadius(context);
     return shellFocusableTap(
       context: context,
       onTap: onTap,
-      borderRadius: 12,
+      borderRadius: radius,
       showFocusBorder: true,
+      focusBleedWidth: 0,
       gridIndex: meta?.gridIndex ?? gridIndex,
       gridColumns: meta?.gridColumns ?? columns,
       tvTabId: meta?.tvTabId ?? 'mylist',
@@ -498,7 +684,7 @@ class _ListPoster extends StatelessWidget {
       tvZone: meta?.tvZone ?? ShellTvZone.grid,
       tvItemIndex: meta?.tvItemIndex ?? gridIndex,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(radius),
         child: ColoredBox(
           color: AppTheme.bgCard,
           child: Stack(
@@ -508,8 +694,7 @@ class _ListPoster extends StatelessWidget {
                 CachedNetworkImage(
                   imageUrl: imageUrl,
                   fit: BoxFit.cover,
-                  placeholder: (_, _) =>
-                      ColoredBox(color: AppTheme.bgCard),
+                  placeholder: (_, _) => ColoredBox(color: AppTheme.bgCard),
                   errorWidget: (_, _, _) => _titleFallback(title),
                 )
               else
@@ -579,27 +764,46 @@ class _ListPoster extends StatelessWidget {
   }
 }
 
-List<({String id, String title, List<Map<String, dynamic>> items})> _groups(
-  List<Map<String, dynamic>> items,
-) {
-  final films = <Map<String, dynamic>>[];
-  final tv = <Map<String, dynamic>>[];
-  final anime = <Map<String, dynamic>>[];
-  for (final item in items) {
-    switch (_itemKind(item)) {
-      case 'anime':
-        anime.add(item);
-      case 'tv':
-        tv.add(item);
-      default:
-        films.add(item);
-    }
-  }
-  return [
-    if (films.isNotEmpty) (id: 'films', title: 'Films', items: films),
-    if (tv.isNotEmpty) (id: 'tv', title: 'TV', items: tv),
-    if (anime.isNotEmpty) (id: 'anime', title: 'Anime', items: anime),
-  ];
+class _HomeGrid {
+  const _HomeGrid({
+    required this.columns,
+    required this.cardW,
+    required this.cardH,
+    required this.gap,
+    required this.leading,
+    required this.rightPad,
+    required this.topPad,
+  });
+
+  final int columns;
+  final double cardW;
+  final double cardH;
+  final double gap;
+  final double leading;
+  final double rightPad;
+  final double topPad;
+}
+
+_HomeGrid _homeGrid(BuildContext context, double maxWidth) {
+  final cardW = shellMovieCardWidth(context);
+  final cardH = shellMovieCardHeight(context);
+  final gap = shellMovieCardRowGap(context);
+  final leading = ShellTokens.compactChromeLeadingInset(context);
+  final trailing = ShellTokens.bodyHorizontalPadding;
+  final inner = math.max(0.0, maxWidth - leading - trailing);
+  final columns = math.max(1, ((inner + gap) / (cardW + gap)).floor());
+  final gridW = columns * cardW + (columns - 1) * gap;
+  final rightPad = math.max(trailing, maxWidth - leading - gridW);
+  final topPad = cardH * (ShellTokens.focusActiveScale - 1) / 2 + 4;
+  return _HomeGrid(
+    columns: columns,
+    cardW: cardW,
+    cardH: cardH,
+    gap: gap,
+    leading: leading,
+    rightPad: rightPad,
+    topPad: topPad,
+  );
 }
 
 String _itemKind(Map<String, dynamic> item) {
@@ -651,8 +855,8 @@ Map<String, dynamic>? _simklCardItem(Map<String, dynamic> item) {
   final posterUrl = (poster == null || poster.isEmpty)
       ? ''
       : (poster.startsWith('http')
-          ? poster
-          : 'https://simkl.in/posters/${poster}_c.jpg');
+            ? poster
+            : 'https://simkl.in/posters/${poster}_c.jpg');
   final year = media['year']?.toString() ?? '';
   return {
     'title': title,
