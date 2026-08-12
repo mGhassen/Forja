@@ -36,7 +36,7 @@ class AccountFeatures {
   int get iptvCredits => _iptvCredits;
 
   /// `accounts.is_admin` — experimental / ops toggles in Settings (WebStreamr
-  /// hub, Debrid, Lists, About Privacy/Developer, Simple resolve, …);
+  /// hub, Debrid, Lists, Trakt, About Privacy/Developer, Simple resolve, …);
   /// unlimited IPTV portals.
   bool get isAdmin => _isAdmin;
 

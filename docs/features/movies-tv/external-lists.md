@@ -19,7 +19,7 @@ Beyond My List, Forja can show lists you've created or follow on Trakt and MDBLi
 
 ## Setup (if needed)
 
-- [Trakt](../accounts/trakt.md) — OAuth login in Settings
+- [Trakt](../accounts/trakt.md) — OAuth login in Settings (admin only)
 - [MDBList](../accounts/mdblist.md) — API key in Settings
 
 ## Tips

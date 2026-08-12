@@ -22,6 +22,9 @@ class SimklService {
   static const String _clientSecret =
       String.fromEnvironment('SIMKL_CLIENT_SECRET');
 
+  /// False when this build has no `SIMKL_CLIENT_ID` dart-define.
+  static bool get isConfigured => _clientId.trim().isNotEmpty;
+
   // ── Secure Storage Keys ────────────────────────────────────────────────
   static const String _keyAccessToken = 'simkl_access_token';
 
@@ -45,6 +48,10 @@ class SimklService {
   /// Step 1: Request a PIN code from Simkl.
   /// Returns {"user_code": "ABCD1234", "verification_url": "https://simkl.com/pin/ABCD1234", "expires_in": 900, "interval": 5}
   Future<Map<String, dynamic>?> requestPin() async {
+    if (!isConfigured) {
+      debugPrint('[Simkl] Request PIN skipped: SIMKL_CLIENT_ID not set');
+      return null;
+    }
     try {
       final resp = await animeHttp('GET', '$_baseUrl/oauth/pin?client_id=$_clientId&redirect=', headers: _publicHeaders, maxRetries: 0);
       if (resp.status == 200) {

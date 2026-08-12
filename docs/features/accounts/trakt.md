@@ -6,9 +6,11 @@
 
 Trakt connects your Forja activity to Trakt.tv — OAuth login, sync watched items, recommendations on Home, TV/movie calendars, user lists, and rating from details screens.
 
+**Admin only.** Regular accounts do not see Trakt in Settings. Use [Simkl](simkl.md) instead.
+
 ## How to open it
 
-**Settings → Accounts → Trakt**
+**Settings → Connected services → Trakt** (admin accounts — green sparkles on the group)
 
 ## What you can do
 
@@ -21,7 +23,9 @@ Trakt connects your Forja activity to Trakt.tv — OAuth login, sync watched ite
 
 ## Setup
 
-1. Tap **Connect Trakt** in Settings
+Needs `TRAKT_CLIENT_ID` / `TRAKT_CLIENT_SECRET` at build time (`.env` or dart-define). Register an app at [trakt.tv/oauth/applications](https://trakt.tv/oauth/applications) with redirect URI `urn:ietf:wg:oauth:2.0:oob`, then full-restart `flutter run`.
+
+1. Tap **Login with Trakt** in Settings
 2. Enter the code shown at trakt.tv/activate
 3. Wait for authorization — app polls automatically
 

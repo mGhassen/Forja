@@ -29,6 +29,7 @@ env:
   # Optional PostHog product analytics (RFC-043).
   POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
   POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+  SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
 
 jobs:
   validate_config:
@@ -81,7 +82,8 @@ jobs:
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
-            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
       - uses: actions/upload-artifact@v4
@@ -115,7 +117,8 @@ jobs:
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
-            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
       - uses: actions/upload-artifact@v4
@@ -148,7 +151,8 @@ jobs:
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
-            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
       - shell: bash
         run: ./scripts/embed_rust_in_release_output.sh windows
       - shell: bash
@@ -188,7 +192,8 @@ jobs:
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
-            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
       - run: ./scripts/embed_rust_in_release_output.sh linux
       - run: ./scripts/verify_installer_payload.sh linux
       - uses: actions/upload-artifact@v4
@@ -231,7 +236,8 @@ jobs:
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
-            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Android

@@ -83,6 +83,7 @@ void main() {
     expect(v.showStremioAddons, isFalse);
     expect(v.showNuvio, isFalse);
     expect(v.showAccounts, isTrue);
+    expect(v.showTrakt, isFalse);
 
     final ids = settingsCategories(v).map((c) => c.id).toSet();
     expect(ids.contains(SettingsCategoryId.sources), isFalse);

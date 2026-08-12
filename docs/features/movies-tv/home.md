@@ -29,7 +29,8 @@ Tap **Home** in the navigation bar (first tab by default).
 
 ## Setup (if needed)
 
-- **Trakt** (optional): Settings → Accounts → Trakt — unlocks recommendations and calendars on Home
+- **Trakt** (optional, admin): Settings → Connected services → Trakt — unlocks recommendations and calendars on Home
+- **Simkl** (optional): Settings → Connected services → Simkl — watchlist / history sync
 - **Stremio addons** (optional): Settings → Sources — stream addons like Torrentio appear under Sources → Stremio on details; Search can still surface catalog sections when configured
 
 ## Tips

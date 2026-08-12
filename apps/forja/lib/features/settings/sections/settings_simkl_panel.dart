@@ -31,6 +31,12 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
   }
 
   void _startLogin() async {
+    if (!SimklService.isConfigured) {
+      if (mounted) {
+        ForjaToast.error('Simkl login isn’t available in this build');
+      }
+      return;
+    }
     final data = await _service.requestPin();
     if (data == null) {
       if (mounted) {

@@ -101,10 +101,10 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
         adminOnly: true,
       ),
     if (visibility.showAccounts)
-      const SettingsCategoryMeta(
+      SettingsCategoryMeta(
         id: SettingsCategoryId.accounts,
         title: 'Connected services',
-        subtitle: 'Trakt, Simkl, MDBlist',
+        subtitle: visibility.showTrakt ? 'Trakt, Simkl, MDBlist' : 'Simkl, MDBlist',
         icon: Icons.sync_rounded,
       ),
     if (visibility.showLists)

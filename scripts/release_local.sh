@@ -1154,7 +1154,8 @@ build_macos() {
       --dart-define=TURNSTILE_SITE_KEY="${TURNSTILE_SITE_KEY:-}" \
       --dart-define=SENTRY_DSN="${SENTRY_DSN:-}" \
       --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
-      --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}"
+      --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
+      --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}"
   )
   echo "==> Ad-hoc codesign"
   ./scripts/codesign_macos_adhoc.sh
@@ -1271,6 +1272,7 @@ build_android_tv() {
       --dart-define=SENTRY_DSN="${SENTRY_DSN:-}" \
       --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
       --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
+      --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
       -PFORJA_KEYSTORE_PATH="$keystore" \
       -PFORJA_KEYSTORE_PASSWORD="${FORJA_KEYSTORE_PASSWORD}" \
       -PFORJA_KEY_ALIAS="$key_alias" \

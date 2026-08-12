@@ -87,6 +87,7 @@ env:
   # Optional PostHog product analytics (RFC-043).
   POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
   POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+  SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
 
 jobs:
   resolve_version:
@@ -333,7 +334,8 @@ jobs:
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
-            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
 
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
@@ -402,7 +404,8 @@ jobs:
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
-            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
 
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
@@ -470,7 +473,8 @@ jobs:
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
-            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
 
       - name: Embed Rust in release output
         shell: bash
@@ -562,7 +566,8 @@ jobs:
             --dart-define=TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY" \
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
-            --dart-define=POSTHOG_HOST="$POSTHOG_HOST"
+            --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
 
       - name: Embed Rust in release output
         run: ./scripts/embed_rust_in_release_output.sh linux
@@ -696,6 +701,7 @@ jobs:
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
             -PFORJA_KEYSTORE_PATH="${{ github.workspace }}/apps/forja/android/release.keystore" \
             -PFORJA_KEYSTORE_PASSWORD="${{ secrets.FORJA_KEYSTORE_PASSWORD }}" \
             -PFORJA_KEY_ALIAS="${FORJA_KEY_ALIAS:-forja}" \

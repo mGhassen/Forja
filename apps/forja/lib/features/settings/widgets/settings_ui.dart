@@ -210,10 +210,12 @@ class SettingsGroup extends StatelessWidget {
   const SettingsGroup({
     super.key,
     this.label,
+    this.adminOnly = false,
     required this.children,
   });
 
   final String? label;
+  final bool adminOnly;
   final List<Widget> children;
 
   @override
@@ -235,14 +237,16 @@ class SettingsGroup extends StatelessWidget {
                     color: ForjaShellColors.brandGreen,
                   ),
                   const SizedBox(width: 8),
-                  Text(
+                  settingsTitleText(
                     label!.toUpperCase(),
-                    style: const TextStyle(
+                    const TextStyle(
                       color: ForjaShellColors.brandGreen,
                       fontSize: SettingsTokens.groupLabelSize,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.6,
                     ),
+                    adminOnly: adminOnly,
+                    sparkSize: 12,
                   ),
                 ],
               ),

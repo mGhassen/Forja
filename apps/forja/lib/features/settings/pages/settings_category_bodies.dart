@@ -55,7 +55,7 @@ Widget buildSettingsCategoryBody(
     case SettingsCategoryId.debrid:
       return const SettingsDebridSection();
     case SettingsCategoryId.accounts:
-      return const SettingsAccountsPageBody();
+      return SettingsAccountsPageBody(visibility: visibility);
     case SettingsCategoryId.lists:
       return const ListsScreen(embedded: true);
     case SettingsCategoryId.data:
@@ -137,14 +137,21 @@ class SettingsProfileAccountPageBody extends StatelessWidget {
 }
 
 class SettingsAccountsPageBody extends StatelessWidget {
-  const SettingsAccountsPageBody({super.key});
+  const SettingsAccountsPageBody({super.key, required this.visibility});
+
+  final SettingsVisibility visibility;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsGroup(label: 'Trakt', children: const [SettingsTraktPanel()]),
+        if (visibility.showTrakt)
+          const SettingsGroup(
+            label: 'Trakt',
+            adminOnly: true,
+            children: [SettingsTraktPanel()],
+          ),
         SettingsGroup(label: 'Simkl', children: const [SettingsSimklPanel()]),
         SettingsGroup(
           label: 'MDBlist',
