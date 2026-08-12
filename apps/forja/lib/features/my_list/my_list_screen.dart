@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/anime/anime_details_screen.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/features/asian_drama/asian_drama_details_screen.dart';
+import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/features/my_list/providers/my_list_providers.dart';
 import 'package:rust/rust.dart';
@@ -107,6 +109,36 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
     final title = item['title']?.toString() ?? 'Unknown';
     final poster = item['posterPath']?.toString() ?? '';
     final mediaType = item['mediaType']?.toString() ?? 'movie';
+    final anilistId = item['anilistId'] as int?;
+    final kisskhId = item['kisskhId'] as int?;
+
+    if (mediaType == 'anime' || anilistId != null) {
+      final id = anilistId ?? tmdbId;
+      if (id != null) {
+        try {
+          final card = await AnimeService().getDetails(id);
+          if (mounted) await openAnimeDetails(context, card);
+          return;
+        } catch (_) {}
+      }
+    }
+
+    if (mediaType == 'asian_drama' || kisskhId != null) {
+      final id = kisskhId;
+      if (id != null && mounted) {
+        await openAsianDramaDetails(
+          context,
+          KdramaCard(
+            id: id,
+            title: title,
+            cover: poster,
+            year: item['releaseDate']?.toString(),
+            type: item['kissKhType']?.toString(),
+          ),
+        );
+        return;
+      }
+    }
 
     if (source == 'tmdb' && tmdbId != null) {
       try {
@@ -210,7 +242,9 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
     final localForStatus = localItems
         .where((e) => (e['listStatus']?.toString() ?? 'plantowatch') == _status)
         .toList();
-    final items = simklLoggedIn ? simklItems : localForStatus;
+    final items = simklLoggedIn
+        ? _mergeLocalHubs(simklItems, localForStatus)
+        : localForStatus;
     final filtered = _kind == null
         ? items
         : items.where((e) => _itemKind(e) == _kind).toList();
@@ -812,8 +846,37 @@ String _itemKind(Map<String, dynamic> item) {
   if (simkl == 'shows') return 'tv';
   if (simkl == 'movies') return 'movie';
   final mt = item['mediaType']?.toString() ?? 'movie';
-  if (mt == 'tv' || mt == 'series') return 'tv';
+  if (mt == 'anime') return 'anime';
+  if (mt == 'tv' || mt == 'series' || mt == 'asian_drama') return 'tv';
   return 'movie';
+}
+
+List<Map<String, dynamic>> _mergeLocalHubs(
+  List<Map<String, dynamic>> simklItems,
+  List<Map<String, dynamic>> localForStatus,
+) {
+  final out = [...simklItems];
+  final seenAnilist = <int>{
+    for (final e in simklItems)
+      if (e['anilistId'] is int) e['anilistId'] as int,
+  };
+  final seenTmdb = <int>{
+    for (final e in simklItems)
+      if (e['tmdbId'] is int) e['tmdbId'] as int,
+  };
+  for (final local in localForStatus) {
+    final mt = local['mediaType']?.toString();
+    if (mt == 'anime') {
+      final id = local['anilistId'] as int?;
+      if (id != null && seenAnilist.contains(id)) continue;
+      out.add(local);
+    } else if (mt == 'asian_drama') {
+      final tmdb = local['tmdbId'] as int?;
+      if (tmdb != null && seenTmdb.contains(tmdb)) continue;
+      out.add(local);
+    }
+  }
+  return out;
 }
 
 String _posterUrl(Map<String, dynamic> item) {

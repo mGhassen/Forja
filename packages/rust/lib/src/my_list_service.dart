@@ -97,6 +97,59 @@ class MyListService {
     return defaultStatus;
   }
 
+  static String anilistId(int id) => 'anilist_$id';
+
+  static String kisskhId(int id) => 'kisskh_$id';
+
+  Map<String, dynamic>? itemOf(String uniqueId) {
+    for (final e in _items) {
+      if (e['uniqueId'] == uniqueId) return Map<String, dynamic>.from(e);
+    }
+    return null;
+  }
+
+  Future<void> upsertHub({
+    required String uniqueId,
+    required String mediaType,
+    required String title,
+    required String posterPath,
+    required String listStatus,
+    int? anilistId,
+    int? kisskhId,
+    int? tmdbId,
+    String? tmdbMediaType,
+    String? imdbId,
+    double voteAverage = 0,
+    String releaseDate = '',
+    String? kissKhType,
+  }) async {
+    await _ensureLoaded();
+    final idx = _items.indexWhere((e) => e['uniqueId'] == uniqueId);
+    final row = <String, dynamic>{
+      if (idx >= 0) ..._items[idx],
+      'uniqueId': uniqueId,
+      'title': title,
+      'posterPath': posterPath,
+      'mediaType': mediaType,
+      'voteAverage': voteAverage,
+      'releaseDate': releaseDate,
+      'source': mediaType,
+      'listStatus': listStatus,
+      if (anilistId != null) 'anilistId': anilistId,
+      if (kisskhId != null) 'kisskhId': kisskhId,
+      if (tmdbId != null) 'tmdbId': tmdbId,
+      if (tmdbMediaType != null) 'tmdbMediaType': tmdbMediaType,
+      if (imdbId != null) 'imdbId': imdbId,
+      if (kissKhType != null) 'kissKhType': kissKhType,
+      'addedAt': idx >= 0
+          ? _items[idx]['addedAt']
+          : DateTime.now().millisecondsSinceEpoch,
+    };
+    if (idx >= 0) _items.removeAt(idx);
+    _items.insert(0, row);
+    await _save();
+  }
+
   Future<void> upsertMovie({
     required int tmdbId,
     String? imdbId,

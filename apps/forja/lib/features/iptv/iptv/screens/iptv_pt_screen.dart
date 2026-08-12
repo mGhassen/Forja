@@ -115,6 +115,10 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
   void _syncShellNav() {
     final ctrl = _navListenerCtrl;
     if (ctrl == null) return;
+    // Catalog stays mounted under the overlay player; VisibilityDetector can
+    // still fire with visibleFraction > 0. Do not restore the rail until the
+    // player has left (dispose already clears hide).
+    if (ShellBus.playerSurfaceActive.value) return;
     if (ShellBus.hideGlobalNav.value) {
       ShellBus.hideGlobalNav.value = false;
       ShellBus.notifyShellChromeChanged();

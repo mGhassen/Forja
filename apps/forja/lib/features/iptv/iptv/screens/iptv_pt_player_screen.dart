@@ -474,12 +474,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   @override
   void initState() {
     super.initState();
+    // Shell-overlay IPTV sits beside the rail — Offstage for full-bleed.
+    // Set before [enterPlayerSurface]; do not gate on [shellOverlayHasPage]
+    // (still false in this initState before the overlay observer syncs).
+    ShellBus.hideGlobalNav.value = true;
     ShellBus.enterPlayerSurface();
-    // Shell-overlay player sits beside the rail — hide chrome for full-bleed.
-    // Root-navigator handoffs (e.g. Live Matches) leave the rail alone.
-    if (ShellBus.shellOverlayHasPage.value) {
-      ShellBus.hideGlobalNav.value = true;
-    }
     PlayerBackExitGate.setTryFocusBack(() {
       if (_disposed || !mounted) return false;
       if (_isPipMode) return false;

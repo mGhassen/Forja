@@ -119,7 +119,7 @@ class EpisodeWatchedService {
 
   /// Auto-mark when playback hits [watchFinishedThreshold]. No-op if already
   /// watched. Manual unwatch sticks until the next ≥threshold save.
-  Future<void> markWatchedIfFinished({
+  Future<bool> markWatchedIfFinished({
     required int mediaId,
     required int season,
     required int episode,
@@ -127,16 +127,17 @@ class EpisodeWatchedService {
     required int durationMs,
     String? catalog,
   }) async {
-    if (!isWatchFinished(positionMs, durationMs)) return;
+    if (!isWatchFinished(positionMs, durationMs)) return false;
     final map = await _load();
     final id = _id(mediaId, season, episode, catalog: catalog);
-    if (map[id] == true) return;
+    if (map[id] == true) return false;
     map[id] = true;
     await _save();
     debugPrint('[EpisodeWatched] Auto-marked $id (≥${(watchFinishedThreshold * 100).round()}%)');
     if (catalog == null || catalog.isEmpty) {
       _syncEpisodeState(mediaId, season, episode, true);
     }
+    return true;
   }
 
   Future<void> setWatchedLocal(

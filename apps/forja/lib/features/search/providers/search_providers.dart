@@ -137,25 +137,13 @@ final searchResultsProvider = FutureProvider.autoDispose
 
   try {
     final results = await api.searchStructured(query);
-    final movies = results.where((m) => m.mediaType == 'movie').toList();
-    final shows = results.where((m) => m.mediaType == 'tv').toList();
-    if (movies.isNotEmpty) {
+    if (results.isNotEmpty) {
       sections.add(
         SearchResultSection(
-          key: 'tmdb_movies',
-          title: 'TMDB Movies',
+          key: 'tmdb',
+          title: 'TMDB',
           isTmdb: true,
-          results: movies,
-        ),
-      );
-    }
-    if (shows.isNotEmpty) {
-      sections.add(
-        SearchResultSection(
-          key: 'tmdb_shows',
-          title: 'TMDB Shows',
-          isTmdb: true,
-          results: shows,
+          results: results,
         ),
       );
     }

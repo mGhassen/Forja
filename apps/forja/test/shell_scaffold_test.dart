@@ -695,16 +695,30 @@ void main() {
     );
 
     // Keep-alive: rail Element stays mounted so player exit does not remount.
-    expect(find.byType(ShellNavRail), findsOneWidget);
-    final offstage = tester.widget<Offstage>(
-      find.ancestor(
-        of: find.byType(ShellNavRail),
-        matching: find.byType(Offstage),
-      ),
-    );
+    final rail = find.byType(ShellNavRail, skipOffstage: false);
+    expect(rail, findsOneWidget);
+    expect(find.byType(ShellNavRail), findsNothing);
+    final offstage = tester
+        .widgetList<Offstage>(find.byType(Offstage, skipOffstage: false))
+        .firstWhere((o) => o.offstage);
     expect(offstage.offstage, isTrue);
     expect(find.byType(HomeTopBar), findsNothing);
   });
+
+  testWidgets(
+    'ShellScaffold collapses rail gutter when hideGlobalNav is true',
+    (tester) async {
+      await pumpScaffold(
+        tester,
+        desktopScaffold(hideGlobalNav: true),
+        size: const Size(1200, 800),
+        profile: ShellProfile.desktop,
+      );
+
+      final bodyBox = tester.renderObject<RenderBox>(find.byType(ShellBody));
+      expect(bodyBox.size.width, 1200);
+    },
+  );
 
   testWidgets(
     'ForjaGhostButton is text-only; ForjaPlainIcon has no border box',

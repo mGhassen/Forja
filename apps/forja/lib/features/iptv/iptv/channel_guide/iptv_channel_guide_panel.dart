@@ -37,7 +37,7 @@ class IptvChannelGuidePanel extends StatefulWidget {
   /// Compact overlay — leaves video visible on the right (was 660).
   static const double panelWidthWide = 480;
   static const double panelWidthNarrow = 300;
-  /// Desktop/phone floating inset — TV uses a flush full-height left rail.
+  /// Desktop/phone bottom inset — left edge is flush. TV is a full-height rail.
   static const double panelEdgeGap = 10;
   static const double panelRadius = 12;
   /// Phone only — cap guide height so it does not fill the player.
@@ -409,8 +409,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   EdgeInsets _panelPadding(BuildContext context) {
     // Android TV: flush left rail from top to bottom (no floating inset).
     if (iptvUseTvFocus(context)) return EdgeInsets.zero;
-    // Desktop: top chrome + edge gap, bottom flush to a thin edge gap so the
-    // panel reaches the bottom of the player. Phone keeps a larger bottom gap.
+    // Desktop: top chrome + edge gap, flush left, thin bottom gap.
+    // Phone keeps a larger bottom gap. Left is always flush.
     final desktop = DesktopWindowChrome.isDesktop;
     return EdgeInsets.only(
       top: DesktopWindowChrome.topInset(context) +
@@ -418,7 +418,6 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       bottom: desktop
           ? IptvChannelGuidePanel.panelEdgeGap
           : IptvChannelGuidePanel.panelVerticalGap,
-      left: IptvChannelGuidePanel.panelEdgeGap,
     );
   }
 
@@ -749,9 +748,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 child: _buildPanelShell(wide: wide, tvRail: true),
               )
             else if (DesktopWindowChrome.isDesktop)
-              // Dock under window chrome → bottom of the player (no height cap).
+              // Flush left, dock under window chrome → bottom of the player.
               Positioned(
-                left: IptvChannelGuidePanel.panelEdgeGap,
+                left: 0,
                 top: DesktopWindowChrome.topInset(context) +
                     IptvChannelGuidePanel.panelVerticalGap,
                 bottom: IptvChannelGuidePanel.panelEdgeGap,

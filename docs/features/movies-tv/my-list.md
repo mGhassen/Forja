@@ -15,7 +15,8 @@ Tap **My List** in the navigation bar.
 - Filter the grid with **Films / TV Shows / Anime** (same toggle as Home)
 - Switch **Plan to Watch / Watching / On Hold / Completed / Dropped** — local uses the same buckets; with Simkl, the open tab loads from Simkl
 - Open a title — on **TV**, **↓** from the type menu goes to status then the grid; **←** from the first column returns to the nav rail
-- Add or move a title from details **+** (same five statuses, with or without Simkl)
+- Add or move a title from details **+** (same five statuses, with or without Simkl) — movies/TV, Anime, and Asian Drama
+- Asian Drama titles sit under **TV Shows**. Unmatched KissKH titles stay local and still show while Simkl is connected
 - Disconnect Simkl and the local buckets are still there
 
 ## Tips

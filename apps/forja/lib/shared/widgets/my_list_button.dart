@@ -10,37 +10,37 @@ import 'package:rust/rust.dart';
 
 const _listStatuses =
     <({String id, String label, IconData icon, IconData selectedIcon})>[
-  (
-    id: 'plantowatch',
-    label: 'Plan to Watch',
-    icon: Icons.bookmark_add_outlined,
-    selectedIcon: Icons.bookmark_rounded,
-  ),
-  (
-    id: 'watching',
-    label: 'Watching',
-    icon: Icons.play_circle_outline_rounded,
-    selectedIcon: Icons.play_circle_rounded,
-  ),
-  (
-    id: 'hold',
-    label: 'On Hold',
-    icon: Icons.pause_circle_outline_rounded,
-    selectedIcon: Icons.pause_circle_rounded,
-  ),
-  (
-    id: 'completed',
-    label: 'Completed',
-    icon: Icons.check_circle_outline_rounded,
-    selectedIcon: Icons.check_circle_rounded,
-  ),
-  (
-    id: 'dropped',
-    label: 'Dropped',
-    icon: Icons.cancel_outlined,
-    selectedIcon: Icons.cancel_rounded,
-  ),
-];
+      (
+        id: 'plantowatch',
+        label: 'Plan to Watch',
+        icon: Icons.bookmark_add_outlined,
+        selectedIcon: Icons.bookmark_rounded,
+      ),
+      (
+        id: 'watching',
+        label: 'Watching',
+        icon: Icons.play_circle_outline_rounded,
+        selectedIcon: Icons.play_circle_rounded,
+      ),
+      (
+        id: 'hold',
+        label: 'On Hold',
+        icon: Icons.pause_circle_outline_rounded,
+        selectedIcon: Icons.pause_circle_rounded,
+      ),
+      (
+        id: 'completed',
+        label: 'Completed',
+        icon: Icons.check_circle_outline_rounded,
+        selectedIcon: Icons.check_circle_rounded,
+      ),
+      (
+        id: 'dropped',
+        label: 'Dropped',
+        icon: Icons.cancel_outlined,
+        selectedIcon: Icons.cancel_rounded,
+      ),
+    ];
 
 class MyListButton extends StatelessWidget {
   const MyListButton.movie({
@@ -146,8 +146,10 @@ class _MovieStatusPinState extends State<_MovieStatusPin> {
       );
       if (mounted) {
         try {
-          ProviderScope.containerOf(context, listen: false)
-              .invalidate(simklWatchlistProvider);
+          ProviderScope.containerOf(
+            context,
+            listen: false,
+          ).invalidate(simklWatchlistProvider);
         } catch (_) {}
       }
     }
@@ -168,7 +170,8 @@ class _MovieStatusPinState extends State<_MovieStatusPin> {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    final exclude = widget.excludeFromTvTraversal && policy.useFocusableMoodChips;
+    final exclude =
+        widget.excludeFromTvTraversal && policy.useFocusableMoodChips;
     final size = widget.iconSize ?? 18.0;
 
     Widget body = ValueListenableBuilder<int>(
@@ -202,18 +205,21 @@ class _MovieStatusPinState extends State<_MovieStatusPin> {
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 4,
+                    horizontal: 4,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       for (final s in _listStatuses)
-                        _statusRow(
-                          policy: policy,
+                        _StatusRow(
                           selected: s.id == status,
                           icon: s.id == status ? s.selectedIcon : s.icon,
                           label: s.label,
                           onTap: _busy ? null : () => _setStatus(s.id),
+                          tvFocus: policy.useFocusableMoodChips,
                         ),
                     ],
                   ),
@@ -248,47 +254,89 @@ class _MovieStatusPinState extends State<_MovieStatusPin> {
       child: SizedBox(width: 40, height: 40, child: Center(child: child)),
     );
   }
+}
 
-  Widget _statusRow({
-    required ShellInputPolicy policy,
-    required bool selected,
-    required IconData icon,
-    required String label,
-    VoidCallback? onTap,
-  }) {
-    final row = Padding(
+/// Always shows icon + label. Hover = background + green.
+class _StatusRow extends StatefulWidget {
+  const _StatusRow({
+    required this.selected,
+    required this.icon,
+    required this.label,
+    required this.tvFocus,
+    this.onTap,
+  });
+
+  final bool selected;
+  final IconData icon;
+  final String label;
+  final bool tvFocus;
+  final VoidCallback? onTap;
+
+  @override
+  State<_StatusRow> createState() => _StatusRowState();
+}
+
+class _StatusRowState extends State<_StatusRow> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool get _active => _hovered || _focused;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = _active
+        ? ForjaShellColors.brandGreen
+        : (widget.selected
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.75)
+              : Colors.white);
+    final row = AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      decoration: BoxDecoration(
+        color: _active
+            ? Colors.white.withValues(alpha: 0.12)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: selected ? ForjaShellColors.brandGreen : Colors.white,
-          ),
+          Icon(widget.icon, size: 16, color: accent),
           const SizedBox(width: 8),
           Text(
-            label,
+            widget.label,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? ForjaShellColors.brandGreen : Colors.white,
+              fontWeight: widget.selected || _active
+                  ? FontWeight.w700
+                  : FontWeight.w500,
+              color: accent,
             ),
           ),
         ],
       ),
     );
-    if (!policy.useFocusableMoodChips) {
-      return GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: row,
+
+    if (!widget.tvFocus) {
+      return MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          behavior: HitTestBehavior.opaque,
+          child: row,
+        ),
       );
     }
+
     return FocusableControl(
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: 8,
       scaleOnFocus: 1.0,
+      onFocusChange: (f) => setState(() => _focused = f),
+      onHoverChange: (h) => setState(() => _hovered = h),
       child: row,
     );
   }
@@ -314,7 +362,9 @@ class _LegacyTogglePin extends StatelessWidget {
   final bool excludeFromTvTraversal;
 
   String get _uniqueId {
-    if (movie != null) return MyListService.movieId(movie!.id, movie!.mediaType);
+    if (movie != null) {
+      return MyListService.movieId(movie!.id, movie!.mediaType);
+    }
     return MyListService.stremioItemId(stremioItem!);
   }
 
@@ -357,32 +407,29 @@ class _LegacyTogglePin extends StatelessWidget {
         final inList = MyListService().contains(_uniqueId);
         final icon = Icon(
           useHeartIcon
-              ? (inList ? Icons.favorite_rounded : Icons.favorite_border_rounded)
+              ? (inList
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded)
               : (inList ? Icons.bookmark_rounded : Icons.add_rounded),
           size: iconSize ?? (useHeartIcon ? 24 : 20),
           color: inList
               ? (iconColorActive ??
-                  (useHeartIcon ? Colors.white : ForjaShellColors.iconActive))
+                    (useHeartIcon ? Colors.white : ForjaShellColors.iconActive))
               : (iconColor ??
-                  (useHeartIcon ? Colors.white70 : ForjaShellColors.iconMuted)),
+                    (useHeartIcon
+                        ? Colors.white70
+                        : ForjaShellColors.iconMuted)),
         );
 
         if (!policy.useFocusableMoodChips) {
-          return GestureDetector(
-            onTap: () => _toggle(context),
-            child: icon,
-          );
+          return GestureDetector(onTap: () => _toggle(context), child: icon);
         }
 
         return FocusableControl(
           onTap: () => _toggle(context),
           borderRadius: 20,
           scaleOnFocus: ShellTokens.focusActiveScale,
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: Center(child: icon),
-          ),
+          child: SizedBox(width: 40, height: 40, child: Center(child: icon)),
         );
       },
     );
@@ -397,7 +444,7 @@ class _LegacyTogglePin extends StatelessWidget {
 /// Dynamic icon for the grouped hero My List slice.
 class MyListHeroIcon extends StatelessWidget {
   const MyListHeroIcon.movie({super.key, required this.movie})
-      : stremioItem = null;
+    : stremioItem = null;
 
   const MyListHeroIcon.stremio({
     super.key,
@@ -408,7 +455,9 @@ class MyListHeroIcon extends StatelessWidget {
   final Map<String, dynamic>? stremioItem;
 
   String get _uniqueId {
-    if (movie != null) return MyListService.movieId(movie!.id, movie!.mediaType);
+    if (movie != null) {
+      return MyListService.movieId(movie!.id, movie!.mediaType);
+    }
     return MyListService.stremioItemId(stremioItem!);
   }
 

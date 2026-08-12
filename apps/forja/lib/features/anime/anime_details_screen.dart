@@ -15,6 +15,8 @@ import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/hub_list_status_hero.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
@@ -70,6 +72,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
 
   String _category = 'sub';
   int _selectedEpisode = 1;
+  bool _listMenuOpen = false;
 
   @override
   void initState() {
@@ -105,6 +108,17 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
   AnimeCard get _data => _full ?? _activeSeed;
 
   int get _activeId => _data.id;
+
+  HubListFollowTarget get _followTarget {
+    final a = _data;
+    return HubListFollowTarget.anime(
+      anilistId: a.id,
+      title: a.displayTitle,
+      posterPath: a.coverUrl,
+      voteAverage: (a.averageScore ?? 0) / 10.0,
+      releaseDate: a.seasonYear?.toString() ?? '',
+    );
+  }
 
   Future<void> _refreshProgress() async {
     try {
@@ -310,6 +324,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
   }
 
   void _play(int epNumber, {Duration? startPosition}) {
+    HubListFollow.markWatchingOnPlay(_followTarget);
     openAnimePlayer(
       context,
       anime: _data,
@@ -351,6 +366,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     // Match movies/TV trash: drop cached extracts + sticky provider pin so
     // next Play re-resolves (not "Using saved source…").
     await _service.clearPlaybackCachesForShow(animeId: id);
+    await HubListFollow.clearProgress(_followTarget);
     if (mounted) setState(() => _progress = null);
   }
 
@@ -372,6 +388,13 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
       episode,
       catalog: EpisodeWatchedService.catalogAnilist,
     );
+    final watched = await _episodeWatchedService.isWatched(
+      _activeId,
+      season,
+      episode,
+      catalog: EpisodeWatchedService.catalogAnilist,
+    );
+    HubListFollow.syncEpisodeWatched(_followTarget, episode: episode, watched: watched);
     await _loadWatchedEpisodes();
   }
 
@@ -543,6 +566,14 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
 
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _focusDetailsBack : null;
+    final listExtra = HubListStatusHero.extraFocusSlots(_listMenuOpen);
+    var tvIndex = 0;
+    final playIndex = tvIndex++;
+    final clearIndex = _progress != null ? tvIndex++ : null;
+    final listIndex = tvIndex++;
+    tvIndex += listExtra;
+    final subDubIndex = tvIndex;
+    final heroActionCount = tvIndex + 2;
     final showEpisodeRail = _episodesLoading || _episodes.isNotEmpty;
     final related = _relatedFiltered;
     final trailers = [
@@ -641,7 +672,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
             seriesProgress: _seriesProgressWidget(),
             actionRow: DetailsHeroTvActionScope(
               tabId: MediaDetailsTv.tabId,
-              itemCount: (_progress != null ? 2 : 1) + 2,
+              itemCount: heroActionCount,
               onFocusUp: heroPopUp,
               child: Row(
                 children: [
@@ -654,14 +685,14 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
                     focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
                     onUpEdge: heroPopUp,
                     tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                    tvItemIndex: 0,
+                    tvItemIndex: playIndex,
                   ),
                   if (_progress != null) ...[
                     const SizedBox(width: 10),
                     HeroPillIconGroup(
                       tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                       tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-                      tvItemIndexStart: 1,
+                      tvItemIndexStart: clearIndex,
                       onUpEdge: heroPopUp,
                       slots: [
                         HeroPillIconSlot(
@@ -673,12 +704,22 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
                     ),
                   ],
                   const SizedBox(width: 10),
+                  HubListStatusHero(
+                    target: _followTarget,
+                    tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                    tvItemIndexStart: listIndex,
+                    onUpEdge: heroPopUp,
+                    onMenuOpenChanged: (open) {
+                      setState(() => _listMenuOpen = open);
+                    },
+                  ),
+                  const SizedBox(width: 10),
                   HeroPillSegmentedChoice<String>(
                     selected: _category,
                     onSelected: (cat) => setState(() => _category = cat),
                     tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                     tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-                    tvItemIndexStart: _progress != null ? 2 : 1,
+                    tvItemIndexStart: subDubIndex,
                     onUpEdge: heroPopUp,
                     segments: const [
                       HeroPillSegment(

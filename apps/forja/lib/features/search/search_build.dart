@@ -464,12 +464,13 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
     } else if (_s._sections.isEmpty && !_s._isSearching) {
       body = _buildEmpty(hint: 'No results found');
     } else {
+      final mobile = _mobileSections();
       body = ListView.builder(
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.only(bottom: bottomPad),
-        itemCount: _s._sections.length + (_s._isSearching ? 1 : 0),
+        itemCount: mobile.length + (_s._isSearching ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index >= _s._sections.length) {
+          if (index >= mobile.length) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(
@@ -484,8 +485,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               ),
             );
           }
-          final section = _s._sections[index];
-          return _buildSliderSection(section);
+          return _buildSliderSection(mobile[index]);
         },
       );
     }
@@ -496,6 +496,48 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
       ),
       child: body,
     );
+  }
+
+  /// Mobile keeps separate Movies / Shows rows; desktop grid uses mixed TMDB order.
+  List<_SearchSection> _mobileSections() {
+    final out = <_SearchSection>[];
+    for (final section in _s._sections) {
+      if (!section.isTmdb) {
+        out.add(section);
+        continue;
+      }
+      final movies = <Movie>[];
+      final shows = <Movie>[];
+      for (final raw in section.results) {
+        if (raw is! Movie) continue;
+        if (raw.mediaType == 'tv') {
+          shows.add(raw);
+        } else {
+          movies.add(raw);
+        }
+      }
+      if (movies.isNotEmpty) {
+        out.add(
+          _SearchSection(
+            key: 'tmdb_movies',
+            title: 'TMDB Movies',
+            isTmdb: true,
+            results: movies,
+          ),
+        );
+      }
+      if (shows.isNotEmpty) {
+        out.add(
+          _SearchSection(
+            key: 'tmdb_shows',
+            title: 'TMDB Shows',
+            isTmdb: true,
+            results: shows,
+          ),
+        );
+      }
+    }
+    return out;
   }
 
   Widget _buildSliderSection(_SearchSection section) {

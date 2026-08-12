@@ -26,8 +26,9 @@ class MobileShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Keep landscape rail mounted while Offstage (IPTV) — do not tie
+    // useNavRail to hideGlobalNav or exit remounts the rail.
     final useNavRail =
-        !hideGlobalNav &&
         MediaQuery.orientationOf(context) == Orientation.landscape;
 
     return ShellScaffold(

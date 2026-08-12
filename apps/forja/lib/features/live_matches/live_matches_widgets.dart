@@ -2310,11 +2310,12 @@ class _LiveMatchesEmbedPlayerScreenState
     return true;
   }
 
-  double _topBarTopPadding(BuildContext context) {
+  /// Title-bar / status-bar gap — same as trailer / VOD chrome.
+  double _chromeTopInset(BuildContext context) {
     if (DesktopWindowChrome.isDesktop) {
-      return DesktopWindowChrome.topInset(context) + 8;
+      return DesktopWindowChrome.topInset(context);
     }
-    return MediaQuery.paddingOf(context).top + 8;
+    return MediaQuery.paddingOf(context).top;
   }
 
   Widget _buildSourceBadge() {
@@ -2368,12 +2369,28 @@ class _LiveMatchesEmbedPlayerScreenState
     );
   }
 
-  /// Loading only: reserved strip above the WebView (safe hit targets + title).
+  Widget _buildTrailingChrome() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!_tvFocus()) ...[
+          IptvRoundIcon(
+            icon: _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+            onTap: () => unawaited(_toggleMute()),
+          ),
+          const SizedBox(width: 10),
+        ],
+        _buildSourceBadge(),
+      ],
+    );
+  }
+
+  /// Loading only: reserved strip *below* the traffic lights / status bar.
   Widget _buildLoadingTopBar() {
     final bar = Material(
       color: Colors.transparent,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(8, _topBarTopPadding(context), 72, 16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Row(
           children: [
             _buildBackControl(),
@@ -2402,6 +2419,8 @@ class _LiveMatchesEmbedPlayerScreenState
                 ],
               ),
             ),
+            const SizedBox(width: 8),
+            _buildTrailingChrome(),
           ],
         ),
       ),
@@ -2411,30 +2430,22 @@ class _LiveMatchesEmbedPlayerScreenState
 
   /// After load: floating Back (and mute/badge) over the video — no reserved bar.
   Widget _buildOverlayTopChrome() {
-    final top = _topBarTopPadding(context);
     final bar = Material(
       color: Colors.transparent,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(8, top, 16, 0),
-        child: Row(
-          children: [
-            _buildBackControl(),
-            const Spacer(),
-            if (!_tvFocus()) ...[
-              IptvRoundIcon(
-                icon: _muted
-                    ? Icons.volume_off_rounded
-                    : Icons.volume_up_rounded,
-                onTap: () => unawaited(_toggleMute()),
-              ),
-              const SizedBox(width: 10),
-            ],
-            _buildSourceBadge(),
-          ],
-        ),
+      child: Row(
+        children: [
+          _buildBackControl(),
+          const Spacer(),
+          _buildTrailingChrome(),
+        ],
       ),
     );
-    return _wrapTopChrome(bar);
+    return Positioned(
+      top: _chromeTopInset(context) + 6,
+      left: 16,
+      right: 16,
+      child: _wrapTopChrome(bar),
+    );
   }
 
   /// TV-only bottom chrome: Play/Pause · Mute (WebView steals D-pad).
@@ -2482,41 +2493,11 @@ class _LiveMatchesEmbedPlayerScreenState
   @override
   Widget build(BuildContext context) {
     final embedUrl = widget.embedUrl;
-    // While loading: reserve a black strip *above* the WebView (issue 058 —
-    // overlay-on-WKWebView steals Back taps). After ready: full-bleed video +
-    // floating opaque Back/mute/badge over the platform view.
+    // While loading: reserve a strip *below* the traffic lights so Back is
+    // outside the WebView (issue 058). After ready: full-bleed + overlay chrome
+    // at the same inset as trailer / VOD.
     final showLoadingChrome = !_isFullscreen && !_ready;
-    final Widget? loadingChrome = showLoadingChrome
-        ? ColoredBox(
-            color: Colors.black,
-            child: Stack(
-              children: [
-                _buildLoadingTopBar(),
-                Positioned(
-                  top: _topBarTopPadding(context),
-                  right: 16,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Desktop / phone: embeds often start muted (autoplay
-                      // policy). TV has Mute in the bottom chrome instead.
-                      if (!_tvFocus()) ...[
-                        IptvRoundIcon(
-                          icon: _muted
-                              ? Icons.volume_off_rounded
-                              : Icons.volume_up_rounded,
-                          onTap: () => unawaited(_toggleMute()),
-                        ),
-                        const SizedBox(width: 10),
-                      ],
-                      _buildSourceBadge(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          )
-        : null;
+    final chromeInset = _chromeTopInset(context);
 
     return PopScope(
       canPop: false,
@@ -2535,7 +2516,13 @@ class _LiveMatchesEmbedPlayerScreenState
             Widget body = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ?loadingChrome,
+                if (showLoadingChrome) ...[
+                  SizedBox(height: chromeInset),
+                  ColoredBox(
+                    color: Colors.black,
+                    child: _buildLoadingTopBar(),
+                  ),
+                ],
                 Expanded(
                   child: Stack(
                     fit: StackFit.expand,
@@ -2842,7 +2829,12 @@ class _LiveMatchesEmbedPlayerScreenState
             if (_tvFocus()) {
               body = TvFocusGraph(tabId: _tvTabId, child: body);
             }
-            return body;
+            return Stack(
+              children: [
+                body,
+                DesktopWindowChrome.overlayDragStrip(),
+              ],
+            );
           },
         ),
       ),

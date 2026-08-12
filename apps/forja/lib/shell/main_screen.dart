@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/audiobooks/audiobook_screen.dart';
@@ -297,7 +298,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.requestTab.addListener(_onRequestTab);
     ShellBus.shellChromeRevision.addListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
-    ShellBus.playerSurfaceActive.addListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.addListener(_onPlayerResourcePurge);
     MacOsShellChannel.listen(onFind: _onFindShortcut);
 
@@ -373,8 +373,24 @@ class _MainScreenState extends ConsumerState<MainScreen>
     _loadNavbarConfig();
   }
 
+  bool _shellChromeRebuildPending = false;
+
   void _onShellChromeChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // Overlay players set [hideGlobalNav] from initState (mid-build). Same
+    // deferral as [ShellBus.enterPlayerSurface] so we never mark dirty now.
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      setState(() {});
+      return;
+    }
+    if (_shellChromeRebuildPending) return;
+    _shellChromeRebuildPending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _shellChromeRebuildPending = false;
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -470,7 +486,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.requestTab.removeListener(_onRequestTab);
     ShellBus.shellChromeRevision.removeListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
-    ShellBus.playerSurfaceActive.removeListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
     ShellBus.clearHideGlobalNav();
     MacOsShellChannel.dispose();
@@ -501,10 +516,10 @@ class _MainScreenState extends ConsumerState<MainScreen>
             tabFor: _tabFor,
             shellHeader: _shellHeader(),
             shellTopBar: showHomeTopBar ? const HomeTopBar() : null,
-            // Offstage keep-alive while any player is up (root VOD/trailer or
-            // IPTV overlay). Rail Element stays mounted — no TV remount flash.
-            hideGlobalNav: ShellBus.hideGlobalNav.value ||
-                ShellBus.playerSurfaceActive.value,
+            // Root fullscreen players (movies, trailers, Live Matches) leave
+            // the rail mounted/painted under the opaque route. Overlay players
+            // (IPTV) set [ShellBus.hideGlobalNav] for full-bleed Offstage.
+            hideGlobalNav: ShellBus.hideGlobalNav.value,
           ),
         );
 

@@ -15,6 +15,7 @@ import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
@@ -1358,7 +1359,17 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           positionMs: pos.inMilliseconds,
           durationMs: dur.inMilliseconds,
           catalog: EpisodeWatchedService.catalogAnilist,
-        );
+        ).then((marked) {
+          if (!marked) return;
+          HubListFollow.syncEpisodeWatched(
+            HubListFollowTarget.anime(
+              anilistId: widget.anime.id,
+              title: widget.anime.displayTitle,
+              posterPath: widget.anime.coverUrl,
+            ),
+            episode: widget.episodeNumber,
+          );
+        });
       },
       onSourcePinned: (url, title) async {
         final key = urlKeys[url] ?? titleKeys[title];
@@ -1383,6 +1394,15 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       fadeTransition: true,
       sourcesListNotifier: sourcesListNotifier,
       onPlaybackStarted: () {
+        HubListFollow.markWatchingOnPlay(
+          HubListFollowTarget.anime(
+            anilistId: widget.anime.id,
+            title: widget.anime.displayTitle,
+            posterPath: widget.anime.coverUrl,
+            voteAverage: (widget.anime.averageScore ?? 0) / 10.0,
+            releaseDate: widget.anime.seasonYear?.toString() ?? '',
+          ),
+        );
         _autoRecheckUsed = 0;
         _awaitingManualRecheck = false;
         _launchedFromSavedOrCache = false;

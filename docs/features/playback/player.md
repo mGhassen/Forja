@@ -27,7 +27,7 @@ On **Android TV** (MediaKit or ExoPlayer), when chrome is visible D-pad moves fo
 
 Tap **Play** on any details screen, stream list, IPTV channel, or hub episode.
 
-On desktop and Android TV, playback opens in a **full-window layer** above the app shell — the left nav rail stays **mounted but Offstage** (hidden) for the whole session so exit does not remount it. **IPTV** uses the same Offstage path from the shell overlay. Opening any fullscreen player (movie, trailer, IPTV, Live Matches handoff) also clears poster/image memory and unloads other shell tabs so decode gets max resources — the screen under the player stays mounted for a fast Back. On **Android TV**, those opens are an instant cut (no slide) so the set does not stutter while the player starts.
+On desktop and Android TV, playback opens in a **full-window layer** above the app shell — the left nav rail stays mounted under that layer (same lifecycle as the screen under the player). **IPTV** is the exception: its player opens in the shell overlay and hides the rail Offstage for full-width video (rail Element kept alive so exit does not remount). Opening any fullscreen player (movie, trailer, IPTV, Live Matches handoff) also clears poster/image memory and unloads other shell tabs so decode gets max resources — the screen under the player stays mounted for a fast Back. On **Android TV**, those opens are an instant cut (no slide) so the set does not stutter while the player starts.
 
 ## What you can do
 

@@ -102,7 +102,7 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | [1.0.7-[draft].md](1.0.7-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — unified auth + TV connect (11/14; RFC-042 · RFC-046) |
 | [1.0.8-[draft].md](1.0.8-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — IPTV multi-protocol portals (7/8; RFC-051) |
 | [1.0.9-[draft].md](1.0.9-[draft].md) | 1.0.x patch checklist | Bab Souika | draft — LAN desktop→TV torrent (12/13; RFC-022 · 026) |
-| [1.4.0-[draft].md](1.4.0-[draft].md) | 1.4.0 minor checklist | Atarin | draft — Home watch-provider filter + Structured Search (8/10; RFC-057 · RFC-058) |
+| [1.4.0-[draft].md](1.4.0-[draft].md) | 1.4.0 minor checklist | Atarin | draft — Home watch-provider filter + Structured Search + hub list follow (12/14; RFC-057 · RFC-058 · RFC-059) |
 | `apps/forja` (`feat/android-tv`) | **1.2.x** | **Dabaghin** | shipping — leanback + D-pad |
 
 ## Done — v1

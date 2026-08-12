@@ -12,6 +12,7 @@ import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
@@ -615,11 +616,34 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           positionMs: pos.inMilliseconds,
           durationMs: dur.inMilliseconds,
           catalog: EpisodeWatchedService.catalogKisskh,
-        );
+        ).then((marked) {
+          if (!marked) return;
+          HubListFollow.syncEpisodeWatched(
+            HubListFollowTarget.drama(
+              kisskhId: drama.id,
+              title: drama.title,
+              posterPath: drama.cover,
+              releaseDate: drama.year ?? '',
+              kissKhType: drama.type,
+            ),
+            episode: epKey,
+          );
+        });
       },
       hasNextEpisode: hasNext,
       onNextEpisode: hasNext ? goNext : null,
       fadeTransition: true,
+      onPlaybackStarted: () {
+        HubListFollow.markWatchingOnPlay(
+          HubListFollowTarget.drama(
+            kisskhId: drama.id,
+            title: drama.title,
+            posterPath: drama.cover,
+            releaseDate: drama.year ?? '',
+            kissKhType: drama.type,
+          ),
+        );
+      },
     );
     // Keep this route under the player for the whole session. Removing it on
     // fade disposed Source cache notifiers while the player was still open.

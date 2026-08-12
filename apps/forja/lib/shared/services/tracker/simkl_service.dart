@@ -218,19 +218,15 @@ class SimklService {
   Future<bool> addToWatchlist({
     int? tmdbId,
     String? imdbId,
+    int? anilistId,
     required String mediaType,
   }) async {
-    if (tmdbId == null && imdbId == null) return false;
-
-    final ids = <String, dynamic>{};
-    if (tmdbId != null) ids['tmdb'] = tmdbId;
-    if (imdbId != null) ids['imdb'] = imdbId;
-
-    final item = {'ids': ids, 'to': 'plantowatch'};
-    final type = (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
-    return _addToList(
-      shows: type == 'shows' ? [item] : [],
-      movies: type == 'movies' ? [item] : [],
+    return setListStatus(
+      tmdbId: tmdbId,
+      imdbId: imdbId,
+      anilistId: anilistId,
+      mediaType: mediaType,
+      to: 'plantowatch',
     );
   }
 
@@ -260,9 +256,19 @@ class SimklService {
   Future<bool> setListStatus({
     int? tmdbId,
     String? imdbId,
+    int? anilistId,
     required String mediaType,
     required String to,
   }) async {
+    if (mediaType == 'anime') {
+      if (anilistId == null) return false;
+      final item = {
+        'ids': {'anilist': anilistId},
+        'to': to,
+      };
+      return _addToList(anime: [item]);
+    }
+
     if (tmdbId == null && imdbId == null) return false;
 
     final ids = <String, dynamic>{};
@@ -291,16 +297,25 @@ class SimklService {
 
   /// Current Simkl list status for a TMDB title, or null if not in the library.
   Future<String?> getListStatus({
-    required int tmdbId,
+    int? tmdbId,
+    int? anilistId,
     required String mediaType,
   }) async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return null;
-    final type =
-        (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
+    final type = mediaType == 'anime'
+        ? 'anime'
+        : (mediaType == 'tv' || mediaType == 'series')
+            ? 'shows'
+            : 'movies';
     try {
       for (final item in await _allItems(token, type, status: 'all')) {
-        if (_asInt(_ids(_media(item))['tmdb']) == tmdbId) {
+        final ids = _ids(_media(item));
+        if (type == 'anime') {
+          if (anilistId != null && _asInt(ids['anilist']) == anilistId) {
+            return item['status']?.toString();
+          }
+        } else if (tmdbId != null && _asInt(ids['tmdb']) == tmdbId) {
           return item['status']?.toString();
         }
       }
@@ -313,12 +328,31 @@ class SimklService {
   /// Drop watched history (and Completed list status for movies) after local
   /// progress trash.
   Future<bool> clearWatched({
-    required int tmdbId,
+    int? tmdbId,
     String? imdbId,
+    int? anilistId,
     required String mediaType,
     int? season,
     int? episode,
   }) async {
+    if (mediaType == 'anime' && anilistId != null) {
+      final ids = <String, dynamic>{'anilist': anilistId};
+      if (episode != null) {
+        return removeFromHistory(anime: [
+          {
+            'ids': ids,
+            'episodes': [
+              {'number': episode},
+            ],
+          }
+        ]);
+      }
+      final hist = {'ids': ids};
+      await removeFromHistory(anime: [hist]);
+      return _removeFromList(anime: [hist]);
+    }
+
+    if (tmdbId == null) return false;
     final ids = <String, dynamic>{'tmdb': tmdbId};
     if (imdbId != null && imdbId.isNotEmpty) ids['imdb'] = imdbId;
 
@@ -362,6 +396,7 @@ class SimklService {
   Future<bool> addToHistory({
     List<Map<String, dynamic>> shows = const [],
     List<Map<String, dynamic>> movies = const [],
+    List<Map<String, dynamic>> anime = const [],
   }) async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
@@ -369,6 +404,7 @@ class SimklService {
     final body = <String, dynamic>{};
     if (shows.isNotEmpty) body['shows'] = shows;
     if (movies.isNotEmpty) body['movies'] = movies;
+    if (anime.isNotEmpty) body['anime'] = anime;
     if (body.isEmpty) return false;
 
     try {
@@ -384,6 +420,7 @@ class SimklService {
   Future<bool> removeFromHistory({
     List<Map<String, dynamic>> shows = const [],
     List<Map<String, dynamic>> movies = const [],
+    List<Map<String, dynamic>> anime = const [],
   }) async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
@@ -391,6 +428,7 @@ class SimklService {
     final body = <String, dynamic>{};
     if (shows.isNotEmpty) body['shows'] = shows;
     if (movies.isNotEmpty) body['movies'] = movies;
+    if (anime.isNotEmpty) body['anime'] = anime;
     if (body.isEmpty) return false;
 
     try {
@@ -1089,6 +1127,12 @@ class SimklService {
     int? season,
     int? episode,
   }) async {
+    if (tmdbId <= 0) return false;
+    if (mediaType != 'movie' &&
+        mediaType != 'tv' &&
+        mediaType != 'series') {
+      return false;
+    }
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
 

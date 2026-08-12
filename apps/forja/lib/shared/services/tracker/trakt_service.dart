@@ -1495,6 +1495,12 @@ class TraktService {
     int? episode,
     required double progressPercent,
   }) async {
+    if (tmdbId <= 0) return false;
+    if (mediaType != 'movie' &&
+        mediaType != 'tv' &&
+        mediaType != 'series') {
+      return false;
+    }
     final token = await _getValidToken();
     if (token == null) return false;
 

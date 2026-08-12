@@ -12,6 +12,8 @@ import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/hub_list_status_hero.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/media_details/media_details.dart';
@@ -68,6 +70,7 @@ class _AsianDramaDetailsScreenState
   bool _loading = true;
   String? _error;
   int _selectedEpisode = 1;
+  bool _listMenuOpen = false;
 
   @override
   void initState() {
@@ -175,8 +178,24 @@ class _AsianDramaDetailsScreenState
     return raw;
   }
 
+  HubListFollowTarget _followTarget(KdramaDetails det, RichMediaDetails? tmdb) {
+    return HubListFollowTarget.drama(
+      kisskhId: det.id,
+      title: det.title,
+      posterPath: det.cover,
+      tmdbId: tmdb?.movie.id,
+      tmdbMediaType: tmdb?.movie.mediaType,
+      releaseDate: det.year ?? '',
+      kissKhType: det.type,
+      voteAverage: tmdb?.movie.voteAverage ?? 0,
+    );
+  }
+
   void _play(KdramaEpisode ep, {Duration? startPosition}) {
     final det = _details!;
+    final enrich =
+        ref.read(asianDramaTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
+    HubListFollow.markWatchingOnPlay(_followTarget(det, enrich?.rich));
     openAsianDramaPlayer(
       context,
       drama: det.toCard(),
@@ -210,6 +229,12 @@ class _AsianDramaDetailsScreenState
 
   Future<void> _clearProgress() async {
     await _service.removeFromHistory(widget.drama.id);
+    final det = _details;
+    if (det != null) {
+      final enrich =
+          ref.read(asianDramaTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
+      await HubListFollow.clearProgress(_followTarget(det, enrich?.rich));
+    }
     if (mounted) setState(() => _progress = null);
   }
 
@@ -228,6 +253,22 @@ class _AsianDramaDetailsScreenState
       episode,
       catalog: EpisodeWatchedService.catalogKisskh,
     );
+    final watched = await _episodeWatchedService.isWatched(
+      widget.drama.id,
+      season,
+      episode,
+      catalog: EpisodeWatchedService.catalogKisskh,
+    );
+    final det = _details;
+    if (det != null) {
+      final enrich =
+          ref.read(asianDramaTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
+      HubListFollow.syncEpisodeWatched(
+        _followTarget(det, enrich?.rich),
+        episode: episode,
+        watched: watched,
+      );
+    }
     await _loadWatchedEpisodes();
   }
 
@@ -498,6 +539,13 @@ class _AsianDramaDetailsScreenState
 
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _focusDetailsBack : null;
+    final listExtra = HubListStatusHero.extraFocusSlots(_listMenuOpen);
+    var tvIndex = 0;
+    final playIndex = tvIndex++;
+    final clearIndex = _progress != null ? tvIndex++ : null;
+    final listIndex = tvIndex++;
+    tvIndex += listExtra;
+    final heroActionCount = tvIndex;
 
     final showCast = cast.isNotEmpty;
     final showCrew = crew.isNotEmpty;
@@ -621,7 +669,7 @@ class _AsianDramaDetailsScreenState
         seriesProgress: _seriesProgressWidget(det),
         actionRow: DetailsHeroTvActionScope(
           tabId: MediaDetailsTv.tabId,
-          itemCount: _progress != null ? 2 : 1,
+          itemCount: heroActionCount,
           onFocusUp: heroPopUp,
           child: Row(
             children: [
@@ -634,14 +682,14 @@ class _AsianDramaDetailsScreenState
                 focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
                 onUpEdge: heroPopUp,
                 tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                tvItemIndex: 0,
+                tvItemIndex: playIndex,
               ),
               if (_progress != null) ...[
                 const SizedBox(width: 10),
                 HeroPillIconGroup(
                   tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                   tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-                  tvItemIndexStart: 1,
+                  tvItemIndexStart: clearIndex,
                   onUpEdge: heroPopUp,
                   slots: [
                     HeroPillIconSlot(
@@ -652,6 +700,16 @@ class _AsianDramaDetailsScreenState
                   ],
                 ),
               ],
+              const SizedBox(width: 10),
+              HubListStatusHero(
+                target: _followTarget(det, tmdb),
+                tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                tvItemIndexStart: listIndex,
+                onUpEdge: heroPopUp,
+                onMenuOpenChanged: (open) {
+                  setState(() => _listMenuOpen = open);
+                },
+              ),
             ],
           ),
         ),
