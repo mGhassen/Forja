@@ -1068,6 +1068,15 @@ mixin _DesktopPlayerEpisodes
                     setPage(() {});
                   },
                 ),
+                const SizedBox(height: 12),
+                PlayerPopupToggleRow(
+                  label: 'Content warnings',
+                  value: SettingsService.contentWarningsNotifier.value,
+                  onChanged: (on) async {
+                    await SettingsService().setContentWarnings(on);
+                    setPage(() {});
+                  },
+                ),
               ],
             ),
           ),

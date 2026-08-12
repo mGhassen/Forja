@@ -27,6 +27,7 @@ class SettingsPlaybackSnapshot {
     required this.avoidUnsupportedAudio,
     required this.autoNextEpisode,
     required this.autoSkipIntro,
+    required this.contentWarnings,
     required this.autoPipOnDesktopSwitch,
     required this.playInBackground,
     required this.iptvEpgEnabled,
@@ -51,6 +52,7 @@ class SettingsPlaybackSnapshot {
   final bool avoidUnsupportedAudio;
   final bool autoNextEpisode;
   final bool autoSkipIntro;
+  final bool contentWarnings;
   final bool autoPipOnDesktopSwitch;
   final bool playInBackground;
   final bool iptvEpgEnabled;
@@ -75,6 +77,7 @@ class SettingsPlaybackSnapshot {
     bool? avoidUnsupportedAudio,
     bool? autoNextEpisode,
     bool? autoSkipIntro,
+    bool? contentWarnings,
     bool? autoPipOnDesktopSwitch,
     bool? playInBackground,
     bool? iptvEpgEnabled,
@@ -102,6 +105,7 @@ class SettingsPlaybackSnapshot {
           avoidUnsupportedAudio ?? this.avoidUnsupportedAudio,
       autoNextEpisode: autoNextEpisode ?? this.autoNextEpisode,
       autoSkipIntro: autoSkipIntro ?? this.autoSkipIntro,
+      contentWarnings: contentWarnings ?? this.contentWarnings,
       autoPipOnDesktopSwitch:
           autoPipOnDesktopSwitch ?? this.autoPipOnDesktopSwitch,
       playInBackground: playInBackground ?? this.playInBackground,
@@ -162,6 +166,7 @@ class SettingsPlaybackNotifier
       avoidUnsupportedAudio: await s.getAvoidUnsupportedAudio(),
       autoNextEpisode: await s.getAutoNextEpisode(),
       autoSkipIntro: await s.getAutoSkipIntro(),
+      contentWarnings: await s.getContentWarnings(),
       autoPipOnDesktopSwitch: await s.getAutoPipOnDesktopSwitch(),
       playInBackground: await s.getPlayInBackground(),
       iptvEpgEnabled: iptvEpgEnabled,

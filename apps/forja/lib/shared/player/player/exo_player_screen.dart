@@ -21,6 +21,7 @@ import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';
 import 'package:forja/shared/player/controls/player_server_stream_dialog.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
+import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_touch_seekbar.dart';
@@ -478,7 +479,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         _statusController.complete();
         _exoReady = true;
         if (!_playbackStartedNotified) {
-          _playbackStartedNotified = true;
+          setState(() => _playbackStartedNotified = true);
           widget.onPlaybackStarted?.call();
           _scrobbleStart();
         }
@@ -2013,6 +2014,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   bufferingListenable: _isBufferingNotifier,
                   header: 'CHECKING SOURCES',
                 ),
+              ParentalGuideLayer(
+                imdbId: widget.movie?.imdbId,
+                playbackStarted: _playbackStartedNotified,
+              ),
             ],
           ),
         ),

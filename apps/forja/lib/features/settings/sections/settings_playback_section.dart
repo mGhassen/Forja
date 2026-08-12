@@ -283,6 +283,17 @@ class _SettingsPlaybackSectionState
                 schedulePreferencesSyncPush();
               },
             ),
+            settingsFocusableToggle(
+              context,
+              'Content warnings',
+              'Show nudity, violence, and other IMDb parents-guide ratings when a movie or episode starts.',
+              snap.contentWarnings,
+              (val) async {
+                await _settings.setContentWarnings(val);
+                await _playback.patch((s) => s.copyWith(contentWarnings: val));
+                schedulePreferencesSyncPush();
+              },
+            ),
             ],
             // Android TV always pauses on Home/app switch (device-local; not synced).
             if (SettingsService.platformProfile != PlatformProfile.androidTv)

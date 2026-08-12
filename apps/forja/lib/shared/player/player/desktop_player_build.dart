@@ -130,6 +130,12 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                     controller: _s._statusController,
                     bufferingListenable: _s._isBufferingNotifier,
                   ),
+
+                if (!pipMode)
+                  ParentalGuideLayer(
+                    imdbId: widget.movie?.imdbId,
+                    playbackStarted: _s._playbackConfirmed,
+                  ),
               ],
             ),
             ),

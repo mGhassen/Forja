@@ -97,6 +97,7 @@ class SyncDomainBridge {
       'avoid_unsupported_audio': true,
       'auto_next_episode': true,
       'auto_skip_intro': false,
+      'content_warnings': true,
       'iptv_epg_enabled': defaults.iptvEpgEnabled,
       'max_playback_height': 0,
     });
@@ -704,6 +705,7 @@ class SyncDomainBridge {
       'avoid_unsupported_audio': await _settings.getAvoidUnsupportedAudio(),
       'auto_next_episode': await _settings.getAutoNextEpisode(),
       'auto_skip_intro': await _settings.getAutoSkipIntro(),
+      'content_warnings': await _settings.getContentWarnings(),
       'auto_pip_on_desktop_switch': await _settings.getAutoPipOnDesktopSwitch(),
       // play_in_background is device-local (desktop on / phone·TV off).
       'iptv_epg_enabled': await _settings.isIptvEpgEnabled(),
@@ -758,6 +760,9 @@ class SyncDomainBridge {
     }
     if (payload.containsKey('auto_skip_intro')) {
       await _settings.setAutoSkipIntro(payload['auto_skip_intro'] as bool);
+    }
+    if (payload.containsKey('content_warnings')) {
+      await _settings.setContentWarnings(payload['content_warnings'] as bool);
     }
     if (payload.containsKey('auto_pip_on_desktop_switch')) {
       await _settings.setAutoPipOnDesktopSwitch(

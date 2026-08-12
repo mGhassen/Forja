@@ -33,6 +33,7 @@ final playerAutoSettingsProvider =
   // Hydrate live notifiers used by skip/next episode and the Episodes panel.
   await s.getAutoNextEpisode();
   await s.getAutoSkipIntro();
+  await s.getContentWarnings();
   await s.getAutoPipOnDesktopSwitch();
   await s.getPlayInBackground();
   return PlayerAutoSettings(

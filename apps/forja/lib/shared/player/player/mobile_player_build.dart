@@ -249,6 +249,11 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                     controller: _s._statusController,
                     bufferingListenable: _s._isBufferingNotifier,
                   ),
+
+                ParentalGuideLayer(
+                  imdbId: widget.movie?.imdbId,
+                  playbackStarted: _s._playbackConfirmed,
+                ),
               ],
             ),
           ),

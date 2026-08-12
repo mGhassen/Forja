@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **17 / 18** components · **23 / 28** acceptance · handoff/smoke (C08, A01–A03, A06–A07) remain |
-| **Current slice** | Details UX + player chrome/controls + auto next/skip + brand-green menu restyle + stream panel accent + no background stream probe while playing + Stremio/Nuvio Sources + macOS PiP all-Spaces; next: play-flow handoff + issue 018 gate |
+| **Progress** | **18 / 19** components · **28 / 34** acceptance · handoff/smoke (C08, A01–A03, A06–A07, A34) remain |
+| **Current slice** | Details UX + player chrome/controls + auto next/skip + brand-green menu restyle + stream panel accent + no background stream probe while playing + Stremio/Nuvio Sources + macOS PiP all-Spaces + content-warnings overlay; next: play-flow handoff + issue 018 gate |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -37,6 +37,7 @@
 | 16 | R26-C16 | `MediaDetailsScrollPage` + `MediaDetailsRecommendationsSection` | ✅ |
 | 17 | R26-C17 | `TorrentSourcesPanel` + `TorrentSourceFilters` + `TorrentSourceTile` / `StremioSourceTile` | ✅ |
 | 18 | R26-C18 | `MediaDetailsTorrentActionRow` (shared torrent + direct-streaming Play / Sources) | ✅ |
+| 19 | R26-C19 | Parental-guide overlay — tiffara fetch + Nuvio stagger animation at VOD start | ✅ |
 
 ---
 
@@ -79,6 +80,19 @@
 | 19 | R26-A26 | Player Sources panel — Nuvio kind chip + scraper toggles (parity with media-details) | ✅ |
 | 20 | R26-A27 | Once a stream is playing, do not auto-probe sibling streams or keep scanning other providers in the background | ✅ |
 | 21 | R26-A28 | macOS desktop PiP — `canJoinAllSpaces` + `fullScreenAuxiliary` so the compact window follows Spaces / fullscreen apps | ✅ |
+
+---
+
+## Acceptance (content warnings)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R26-A29 | Fetch IMDb parents guide via `api.tiffara.com` from `imdbId`; map Nuvio categories | ✅ |
+| 2 | R26-A30 | Overlay: red bar grows, rows fade in one-by-one, hold ~5s, reverse out | ✅ |
+| 3 | R26-A31 | Shows once at VOD playback start (desktop / mobile / Exo) when IMDb id exists | ✅ |
+| 4 | R26-A32 | Settings → Playback + in-player Settings toggle **Content warnings** (on by default) | ✅ |
+| 5 | R26-A33 | Feature docs + changelog updated | ✅ |
+| 6 | R26-A34 | Device smoke — movie/episode start shows overlay; toggle off hides it | ⬜ |
 
 ---
 

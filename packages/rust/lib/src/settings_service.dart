@@ -85,6 +85,7 @@ class SettingsService {
   static const String _autoNextEpisodeKey = 'auto_next_episode';
   static const String _legacyAutoNextKey = 'forja_auto_next';
   static const String _autoSkipIntroKey = 'auto_skip_intro';
+  static const String _contentWarningsKey = 'content_warnings';
   /// Desktop Space / virtual-desktop switch → enter PiP (default off).
   static const String _autoPipOnDesktopSwitchKey = 'auto_pip_on_desktop_switch';
   /// Keep VOD/IPTV playing when the app leaves the foreground.
@@ -206,6 +207,8 @@ class SettingsService {
   static final ValueNotifier<bool> autoSkipIntroNotifier = ValueNotifier<bool>(
     false,
   );
+  static final ValueNotifier<bool> contentWarningsNotifier =
+      ValueNotifier<bool>(true);
   static final ValueNotifier<bool> autoPipOnDesktopSwitchNotifier =
       ValueNotifier<bool>(false);
   static final ValueNotifier<bool> playInBackgroundNotifier =
@@ -286,6 +289,20 @@ class SettingsService {
   Future<void> setAutoSkipIntro(bool v) async {
     await kvSetBool(_autoSkipIntroKey, v);
     autoSkipIntroNotifier.value = v;
+  }
+
+  /// When on, show IMDb parents-guide overlay at playback start.
+  Future<bool> getContentWarnings() async {
+    final v = await kvGetBool(_contentWarningsKey, fallback: true);
+    if (contentWarningsNotifier.value != v) {
+      contentWarningsNotifier.value = v;
+    }
+    return v;
+  }
+
+  Future<void> setContentWarnings(bool v) async {
+    await kvSetBool(_contentWarningsKey, v);
+    contentWarningsNotifier.value = v;
   }
 
   /// When on (desktop), Space / virtual-desktop switch auto-enters PiP.

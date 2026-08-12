@@ -45,6 +45,7 @@ import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/player_metadata.dart';

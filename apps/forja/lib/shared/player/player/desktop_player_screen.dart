@@ -62,6 +62,7 @@ import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
