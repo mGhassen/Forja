@@ -711,7 +711,7 @@ class _ListPoster extends StatelessWidget {
     final inset = shellScaled(context, 10).clamp(4.0, 10.0);
     final titleSize = shellHubCardTitleFontSize(context);
     final metaSize = shellScaled(context, 11).clamp(7.0, 11.0);
-    final pin = _listPin(context, item, inset);
+    final pin = _listPin(context, item);
 
     return shellFocusableTap(
       context: context,
@@ -825,7 +825,7 @@ class _ListPoster extends StatelessWidget {
   }
 }
 
-Widget? _listPin(BuildContext context, Map<String, dynamic> item, double inset) {
+Widget? _listPin(BuildContext context, Map<String, dynamic> item) {
   final iconSize = shellScaled(context, 18).clamp(12.0, 18.0);
   final title = item['title']?.toString() ?? 'Unknown';
   final poster = item['posterPath']?.toString() ?? '';
