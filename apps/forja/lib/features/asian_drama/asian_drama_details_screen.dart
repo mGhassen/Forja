@@ -362,6 +362,12 @@ class _AsianDramaDetailsScreenState
     return TmdbApi.getBackdropUrl(path);
   }
 
+  String? _tmdbLogoUrl(RichMediaDetails? tmdb) {
+    final path = tmdb?.movie.logoPath.trim() ?? '';
+    if (path.isEmpty) return null;
+    return path.startsWith('http') ? path : TmdbApi.getImageUrl(path);
+  }
+
   List<String> _heroBackdropUrls({
     required String primary,
     required List<String> screenshotPaths,
@@ -662,6 +668,7 @@ class _AsianDramaDetailsScreenState
         rating: rating,
         overview: _overview(det, tmdb),
         facts: _facts(det, tmdb),
+        logoUrl: _tmdbLogoUrl(tmdb),
         height: heroHeight,
         pageBottomChild: episodePicker,
         positionMs: posMs,

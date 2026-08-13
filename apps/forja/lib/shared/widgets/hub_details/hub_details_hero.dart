@@ -24,6 +24,7 @@ class HubDetailsHero extends StatelessWidget {
     this.overview = '',
     this.facts = const [],
     this.richFacts,
+    this.logoUrl,
     this.actionRow,
     this.height,
     this.positionMs,
@@ -46,6 +47,8 @@ class HubDetailsHero extends StatelessWidget {
   final List<MapEntry<String, String>> facts;
   /// When set, right column uses the same [HeroFactsPanel] as Home details.
   final RichMediaDetails? richFacts;
+  /// Title logo when [richFacts] is not used (AniList / KissKH + TMDB match).
+  final String? logoUrl;
   final Widget? actionRow;
   final double? height;
   final int? positionMs;
@@ -75,9 +78,7 @@ class HubDetailsHero extends StatelessWidget {
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final cinematicDesktop = viewportWidth >= 900;
     final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
-    // Hub heroes (IPTV / anime / Asian Drama) sit a bit higher than Home.
-    final heroContentTop =
-        topInset + DetailsTokens.heroContentTopInset - 24;
+    final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
     final bodyOverlap =
         this.bodyOverlap ?? DetailsTokens.heroBodyOverlap;
     final pageBleed = bleed > 0;
@@ -150,6 +151,7 @@ class HubDetailsHero extends StatelessWidget {
                           overview: overview,
                           facts: facts,
                           richFacts: richFacts,
+                          logoUrl: logoUrl,
                           actionRow: actionRow,
                           positionMs: positionMs,
                           durationMs: durationMs,
@@ -203,6 +205,7 @@ class _HubHeroLayout extends StatelessWidget {
     required this.overview,
     required this.facts,
     this.richFacts,
+    this.logoUrl,
     this.actionRow,
     this.positionMs,
     this.durationMs,
@@ -219,6 +222,7 @@ class _HubHeroLayout extends StatelessWidget {
   final String overview;
   final List<MapEntry<String, String>> facts;
   final RichMediaDetails? richFacts;
+  final String? logoUrl;
   final Widget? actionRow;
   final int? positionMs;
   final int? durationMs;
@@ -231,7 +235,24 @@ class _HubHeroLayout extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 900;
     final leftColumnWidth = width * DetailsTokens.heroDescriptionWidthFraction;
+    final tmdb = richFacts?.movie;
+    final rawLogo = (logoUrl ?? tmdb?.logoPath ?? '').trim();
+    final resolvedLogo = rawLogo.isEmpty
+        ? null
+        : (rawLogo.startsWith('http')
+            ? rawLogo
+            : TmdbApi.getImageUrl(rawLogo));
     final mainColumn = _HubHeroMainColumn(
+      movie: tmdb?.copyWith(title: title) ??
+          Movie(
+            id: 0,
+            title: title,
+            posterPath: '',
+            backdropPath: '',
+            voteAverage: 0,
+            releaseDate: '',
+          ),
+      logoUrl: resolvedLogo,
       title: title,
       subtitle: subtitle,
       genres: genres,
@@ -322,6 +343,8 @@ class _HubHeroLayout extends StatelessWidget {
 
 class _HubHeroMainColumn extends StatelessWidget {
   const _HubHeroMainColumn({
+    required this.movie,
+    this.logoUrl,
     required this.title,
     this.subtitle,
     required this.genres,
@@ -342,15 +365,19 @@ class _HubHeroMainColumn extends StatelessWidget {
     color: Color(0xB8FFFFFF),
   );
   static const _titleBlockHeight = 120.0;
+  /// 2 lines at 32px + chromatic pad — not Home's 48px logo-slot fallback.
+  static const _textTitleBlockHeight = 84.0;
   static const _titleMinHeight = 32.0;
   static const _subtitleBlockHeight = 26.0;
-  static const _genreBlockHeight = 30.0;
+  static const _genreBlockHeight = 20.0;
   static const _metaBlockHeight = 24.0;
   static const _overviewGap = 14.0;
   static const _actionGap = 18.0;
   static const _progressBlockHeight = 36.0;
   static const _seriesProgressBlockHeight = 28.0;
 
+  final Movie movie;
+  final String? logoUrl;
   final String title;
   final String? subtitle;
   final List<String> genres;
@@ -373,6 +400,33 @@ class _HubHeroMainColumn extends StatelessWidget {
 
   bool get _hasSubtitle =>
       subtitle != null && subtitle!.isNotEmpty && subtitle != title;
+
+  bool get _hasLogo => logoUrl != null && logoUrl!.isNotEmpty;
+
+  double get _defaultTitleHeight =>
+      _hasLogo ? _titleBlockHeight : _textTitleBlockHeight;
+
+  Widget _titleWidget(double slotHeight) {
+    if (_hasLogo) {
+      return HeroTitle(
+        movie: movie,
+        logoUrl: logoUrl,
+        slotHeight: slotHeight,
+      );
+    }
+    final fontSize = slotHeight <= 56 ? 24.0 : slotHeight <= 64 ? 28.0 : 32.0;
+    return ChromaticHeroTitleText(
+      title: title,
+      maxLines: slotHeight <= 56 ? 1 : 2,
+      style: TextStyle(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w900,
+        color: Colors.white,
+        height: kHeroTitleLineHeight,
+        letterSpacing: -0.8,
+      ),
+    );
+  }
 
   double _footerReserve({
     required bool showProgress,
@@ -414,11 +468,9 @@ class _HubHeroMainColumn extends StatelessWidget {
     var showProgress =
         positionMs != null && durationMs != null && durationMs! > 0;
     var showSeriesProgress = seriesProgress != null;
-    var titleHeight = _titleBlockHeight;
+    var titleHeight = _defaultTitleHeight;
 
-    // Actions + progress under synopsis. Keep title + Play first; drop
-    // secondary chrome, then synopsis, before shrinking the title. Never zero
-    // the title while synopsis is still showing (720p ATV / short phones).
+    // Keep title + Play first. Text titles shrink before dropping overview.
     double? metaBudget;
     if (bounded) {
       metaBudget = (maxHeight! -
@@ -450,6 +502,9 @@ class _HubHeroMainColumn extends StatelessWidget {
       if (overBudget()) showGenres = false;
       if (overBudget()) showSubtitle = false;
       if (overBudget()) showMetaLine = false;
+      if (!_hasLogo && overBudget()) {
+        titleHeight = 64.0;
+      }
       // Synopsis yields before title - empty hero with only overview is worse.
       if (overBudget()) showOverview = false;
       if (overBudget() && showSeriesProgress) {
@@ -468,9 +523,9 @@ class _HubHeroMainColumn extends StatelessWidget {
           showMetaLine: showMetaLine,
           titleHeight: 0,
         );
-        titleHeight = (metaBudget! - rest).clamp(0.0, _titleBlockHeight);
+        titleHeight = (metaBudget! - rest).clamp(0.0, _defaultTitleHeight);
         if (titleHeight < _titleMinHeight) {
-          titleHeight = metaBudget!.clamp(0.0, _titleBlockHeight);
+          titleHeight = metaBudget!.clamp(0.0, _defaultTitleHeight);
           if (titleHeight < _titleMinHeight) titleHeight = 0;
         }
       }
@@ -483,11 +538,11 @@ class _HubHeroMainColumn extends StatelessWidget {
             height: titleHeight,
             child: Align(
               alignment: Alignment.bottomLeft,
-              child: HubHeroTitle(title: title, slotHeight: titleHeight),
+              child: _titleWidget(titleHeight),
             ),
           )
         else
-          HubHeroTitle(title: title),
+          _titleWidget(_defaultTitleHeight),
       if (showSubtitle) ...[
         const SizedBox(height: 6),
         Text(
@@ -583,31 +638,6 @@ class _HubHeroMainColumn extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [...metaColumn, ...footer],
         ),
-      ),
-    );
-  }
-}
-
-class HubHeroTitle extends StatelessWidget {
-  const HubHeroTitle({super.key, required this.title, this.slotHeight});
-
-  final String title;
-  final double? slotHeight;
-
-  @override
-  Widget build(BuildContext context) {
-    final maxHeight = slotHeight ?? 96.0;
-    final fontSize = maxHeight <= 56 ? 24.0 : maxHeight <= 72 ? 28.0 : 32.0;
-    final maxLines = maxHeight <= 56 ? 1 : 2;
-    return ChromaticHeroTitleText(
-      title: title,
-      maxLines: maxLines,
-      style: TextStyle(
-        fontSize: fontSize,
-        fontWeight: FontWeight.w900,
-        color: Colors.white,
-        height: kHeroTitleLineHeight,
-        letterSpacing: -0.8,
       ),
     );
   }

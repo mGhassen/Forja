@@ -6,6 +6,8 @@ import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
@@ -419,6 +421,7 @@ class _StatusRow extends StatefulWidget {
     required this.label,
     required this.statusColor,
     required this.tvFocus,
+    this.autoFocus = false,
     this.onTap,
   });
 
@@ -427,6 +430,7 @@ class _StatusRow extends StatefulWidget {
   final String label;
   final Color statusColor;
   final bool tvFocus;
+  final bool autoFocus;
   final VoidCallback? onTap;
 
   @override
@@ -484,6 +488,7 @@ class _StatusRowState extends State<_StatusRow> {
 
     return FocusableControl(
       onTap: widget.onTap,
+      autoFocus: widget.autoFocus,
       borderRadius: 0,
       scaleOnFocus: 1.0,
       onFocusChange: (f) => setState(() => _focused = f),
@@ -660,12 +665,14 @@ class ListStatusHeroControl extends StatefulWidget {
 class _ListStatusHeroControlState extends State<ListStatusHeroControl> {
   final LayerLink _link = LayerLink();
   OverlayEntry? _entry;
+  FocusNode? _returnFocus;
   bool _busy = false;
 
   bool get _open => _entry != null;
 
   @override
   void dispose() {
+    _clearTvDismiss();
     _removeOverlay();
     super.dispose();
   }
@@ -677,90 +684,127 @@ class _ListStatusHeroControlState extends State<ListStatusHeroControl> {
     entry.remove();
   }
 
+  void _registerTvDismiss() {
+    ShellTvFocusCoordinator.setTransientOverlayDismiss(() {
+      if (_entry == null) return false;
+      _close();
+      return true;
+    });
+  }
+
+  void _clearTvDismiss() {
+    ShellTvFocusCoordinator.setTransientOverlayDismiss(null);
+  }
+
   void _close() {
     if (_entry == null) return;
+    _clearTvDismiss();
     _removeOverlay();
     widget.onMenuOpenChanged?.call(false);
+    final back = _returnFocus;
+    _returnFocus = null;
     if (mounted) setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (back != null && back.canRequestFocus) back.requestFocus();
+    });
   }
 
   void _openMenu() {
     if (_entry != null || _busy) return;
     final overlay = Overlay.of(context, rootOverlay: true);
     final policy = ShellScope.inputPolicyOf(context);
+    _returnFocus = FocusManager.instance.primaryFocus;
     late OverlayEntry entry;
     entry = OverlayEntry(
       builder: (ctx) {
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _close,
-                child: const ColoredBox(color: Colors.transparent),
-              ),
-            ),
-            CompositedTransformFollower(
-              link: _link,
-              showWhenUnlinked: false,
-              offset: const Offset(0, 46),
-              child: Material(
-                color: Colors.transparent,
-                child: ValueListenableBuilder<int>(
-                  valueListenable: MyListService.changeNotifier,
-                  builder: (context, _, _) {
-                    final inList = MyListService().contains(widget.uniqueId);
-                    final status = inList
-                        ? MyListService().statusOf(widget.uniqueId)
-                        : null;
-                    return IntrinsicWidth(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.92),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.12),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.45),
-                              blurRadius: 18,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              for (final s in _listStatuses)
-                                _StatusRow(
-                                  selected: s.id == status,
-                                  icon: s.id == status
-                                      ? s.selectedIcon
-                                      : s.icon,
-                                  label: s.label,
-                                  statusColor: s.color,
-                                  onTap: _busy ? null : () => _setStatus(s.id),
-                                  tvFocus: policy.useFocusableMoodChips,
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+        return ShellScope.rehost(
+          context,
+          TvOverlayScope(
+            enabled: policy.useFocusableMoodChips,
+            linear: true,
+            onDismiss: _close,
+            debugLabel: 'list-status-menu',
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _close,
+                    child: const ColoredBox(color: Colors.transparent),
+                  ),
                 ),
-              ),
+                CompositedTransformFollower(
+                  link: _link,
+                  showWhenUnlinked: false,
+                  offset: const Offset(0, 46),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: MyListService.changeNotifier,
+                      builder: (context, _, _) {
+                        final inList = MyListService().contains(
+                          widget.uniqueId,
+                        );
+                        final status = inList
+                            ? MyListService().statusOf(widget.uniqueId)
+                            : null;
+                        final focusId = status ?? _listStatuses.first.id;
+                        return IntrinsicWidth(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.12),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.45),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  for (final s in _listStatuses)
+                                    _StatusRow(
+                                      selected: s.id == status,
+                                      icon: s.id == status
+                                          ? s.selectedIcon
+                                          : s.icon,
+                                      label: s.label,
+                                      statusColor: s.color,
+                                      onTap: _busy
+                                          ? null
+                                          : () => _setStatus(s.id),
+                                      tvFocus: policy.useFocusableMoodChips,
+                                      autoFocus:
+                                          policy.useFocusableMoodChips &&
+                                          s.id == focusId,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
     _entry = entry;
     overlay.insert(entry);
+    if (policy.useFocusableMoodChips) _registerTvDismiss();
     widget.onMenuOpenChanged?.call(true);
     setState(() {});
   }

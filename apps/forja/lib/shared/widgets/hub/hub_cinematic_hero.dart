@@ -364,10 +364,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                     builder: (context, constraints) {
                       return ClipRect(
                         child: Align(
-                          alignment: Alignment(
-                            -1,
-                            ShellTokens.heroTextColumnVerticalAlign,
-                          ),
+                          alignment: Alignment.bottomLeft,
                           child: SizedBox(
                             width: math.min(
                               MediaQuery.sizeOf(context).width * 0.34,

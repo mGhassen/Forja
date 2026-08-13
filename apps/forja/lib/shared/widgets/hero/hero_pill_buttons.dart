@@ -870,79 +870,69 @@ class _HeroPillGroupedSlotSurfaceState extends State<_HeroPillGroupedSlotSurface
   Widget build(BuildContext context) {
     final leading = _leading();
 
-    return SizedBox(
-      height: _kHeroPillHeight,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: widget.active
-                    ? _heroPillHoverFill(pressed: widget.pressed)
-                    : Colors.transparent,
-                borderRadius: _heroPillSlotBorderRadius(
-                  isFirst: widget.isFirst,
-                  isLast: widget.isLast,
-                ),
-              ),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Container(
+          height: _kHeroPillHeight,
+          decoration: BoxDecoration(
+            color: widget.active
+                ? _heroPillHoverFill(pressed: widget.pressed)
+                : Colors.transparent,
+            borderRadius: _heroPillSlotBorderRadius(
+              isFirst: widget.isFirst,
+              isLast: widget.isLast,
             ),
           ),
-          AnimatedBuilder(
-            animation: _controller,
-            builder: (context, _) {
-              return _groupedSlotRow(
-                leading: leading,
-                morph: _expand.value,
-                labelOpacity: _labelOpacity.value,
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _groupedSlotRow({
-    required Widget? leading,
-    required double morph,
-    required double labelOpacity,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: _kHeroPillHeight,
-          height: _kHeroPillHeight,
-          child: Center(child: leading),
-        ),
-        if (widget.label.isNotEmpty)
-          ClipRect(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              widthFactor: morph,
-              child: Opacity(
-                opacity: labelOpacity,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 14),
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.clip,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.2,
-                      height: 1.0,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: _kHeroPillHeight,
+                height: _kHeroPillHeight,
+                child: Center(
+                  child: leading == null
+                      ? null
+                      : IconTheme(
+                          data: const IconThemeData(
+                            size: _kHeroPillIconSize,
+                            color: Colors.white,
+                          ),
+                          child: leading,
+                        ),
+                ),
+              ),
+              if (widget.label.isNotEmpty)
+                ClipRect(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: _expand.value,
+                    child: Opacity(
+                      opacity: _labelOpacity.value,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 14),
+                        child: Text(
+                          widget.label,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.clip,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.2,
+                            height: 1.0,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
+            ],
           ),
-      ],
+        );
+      },
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:rust/rust.dart';
 
 final animeServiceProvider = Provider<AnimeService>((ref) => AnimeService());
 
@@ -38,4 +39,17 @@ final animeRecommendationsProvider = FutureProvider.autoDispose
 final animeProgressProvider = FutureProvider.autoDispose
     .family<Map<String, dynamic>?, int>((ref, animeId) {
   return ref.watch(animeServiceProvider).getProgress(animeId);
+});
+
+/// TMDB logo / overview / facts (null when no match).
+typedef AnimeTmdbQuery = ({String title, int? year, bool isMovie});
+
+final animeTmdbEnrichmentProvider = FutureProvider.autoDispose
+    .family<RichMediaDetails?, AnimeTmdbQuery>((ref, query) async {
+  if (query.title.isEmpty) return null;
+  return ref.watch(animeServiceProvider).getTmdbRichDetails(
+        title: query.title,
+        year: query.year,
+        isMovie: query.isMovie,
+      );
 });

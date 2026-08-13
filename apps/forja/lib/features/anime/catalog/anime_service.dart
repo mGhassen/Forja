@@ -109,26 +109,17 @@ class AnimeService {
 
   /// TMDB backdrop CDN URLs for details hero rotation (primary + extras).
   Future<List<String>> resolveTmdbHeroUrls(AnimeCard card) async {
-    final query = card.titleEnglish.trim().isNotEmpty
-        ? card.titleEnglish.trim()
-        : card.titleRomaji.trim();
-    if (query.isEmpty) return const [];
+    final best = await _searchTmdbMatch(
+      title: card.titleEnglish.trim().isNotEmpty
+          ? card.titleEnglish.trim()
+          : card.titleRomaji.trim(),
+      year: card.seasonYear,
+      isMovie: (card.format ?? '').toUpperCase() == 'MOVIE',
+    );
+    if (best == null) return const [];
+    final isMovie = (card.format ?? '').toUpperCase() == 'MOVIE';
+    final mediaType = _tmdbMediaType(best, isMovie: isMovie);
     try {
-      final isMovie = (card.format ?? '').toUpperCase() == 'MOVIE';
-      var results = isMovie
-          ? await _tmdb.searchMovies(query)
-          : await _tmdb.searchTvShows(query);
-      if (results.isEmpty) {
-        results = isMovie
-            ? await _tmdb.searchTvShows(query)
-            : await _tmdb.searchMovies(query);
-      }
-      final best = _pickTmdbMatch(results, card.seasonYear);
-      if (best == null) return const [];
-      final mediaType =
-          best.mediaType == 'movie' || best.mediaType == 'tv'
-              ? best.mediaType
-              : (isMovie ? 'movie' : 'tv');
       final paths = <String>[];
       if (best.backdropPath.isNotEmpty) paths.add(best.backdropPath);
       final extras = await _tmdb.getBackdrops(best.id, mediaType: mediaType);
@@ -144,12 +135,63 @@ class AnimeService {
     }
   }
 
+  /// Full TMDB details (logo, overview, facts) after the same title/year match.
+  Future<RichMediaDetails?> getTmdbRichDetails({
+    required String title,
+    int? year,
+    bool isMovie = false,
+  }) async {
+    final best = await _searchTmdbMatch(
+      title: title,
+      year: year,
+      isMovie: isMovie,
+    );
+    if (best == null) return null;
+    final mediaType = _tmdbMediaType(best, isMovie: isMovie);
+    try {
+      return await _tmdb.getRichDetails(best.id, mediaType);
+    } catch (e) {
+      debugPrint('[AnimeService] TMDB rich details failed for $title: $e');
+      return null;
+    }
+  }
+
+  Future<Movie?> _searchTmdbMatch({
+    required String title,
+    int? year,
+    required bool isMovie,
+  }) async {
+    final query = title.trim();
+    if (query.isEmpty) return null;
+    try {
+      var results = isMovie
+          ? await _tmdb.searchMovies(query)
+          : await _tmdb.searchTvShows(query);
+      if (results.isEmpty) {
+        results = isMovie
+            ? await _tmdb.searchTvShows(query)
+            : await _tmdb.searchMovies(query);
+      }
+      return _pickTmdbMatch(results, year);
+    } catch (e) {
+      debugPrint('[AnimeService] TMDB search failed for $query: $e');
+      return null;
+    }
+  }
+
+  static String _tmdbMediaType(Movie best, {required bool isMovie}) {
+    if (best.mediaType == 'movie' || best.mediaType == 'tv') {
+      return best.mediaType;
+    }
+    return isMovie ? 'movie' : 'tv';
+  }
+
   static Movie? _pickTmdbMatch(List<Movie> results, int? seasonYear) {
     Movie? withBackdrop(Iterable<Movie> list) {
       for (final m in list) {
         if (m.backdropPath.isNotEmpty) return m;
       }
-      return null;
+      return list.isEmpty ? null : list.first;
     }
 
     int? yearOf(Movie m) {

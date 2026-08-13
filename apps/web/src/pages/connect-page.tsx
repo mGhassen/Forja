@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from '@tanstack/react-router'
 import { CheckCircle2, Loader2, Tv } from 'lucide-react'
 import { LiquidGlass } from '@/components/liquid-glass'
@@ -14,11 +14,15 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/use-auth'
+import { closeDesktopHandoffWindow } from '@/lib/desktop-auth-callback'
 import {
   approveDeviceLink,
   normalizeDeviceUserCode,
 } from '@/lib/device-link'
 import { authConfig } from '@forja/auth'
+
+const AUTO_LINK_SECONDS = 5
+const CLOSE_TAB_SECONDS = 5
 
 type ConnectPageProps = {
   initialCode?: string
@@ -39,6 +43,19 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const [autoSecondsLeft, setAutoSecondsLeft] = useState<number | null>(null)
+  const [closeSecondsLeft, setCloseSecondsLeft] = useState(CLOSE_TAB_SECONDS)
+  const [closeBlocked, setCloseBlocked] = useState(false)
+  const [autoCancelled, setAutoCancelled] = useState(false)
+  const submitStarted = useRef(false)
+
+  const fromDeepLink = normalizeDeviceUserCode(initialCode).length >= 6
+  const sessionReady =
+    !loading &&
+    configured &&
+    !!user &&
+    !isPasswordRecovery &&
+    !(authConfig.mfaTotp && requiresMfa)
 
   useEffect(() => {
     const next = normalizeDeviceUserCode(initialCode)
@@ -55,6 +72,74 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
       code?: string
     }
   }, [code, initialCode])
+
+  const submitCode = useCallback(async (raw: string) => {
+    if (submitStarted.current) return
+    submitStarted.current = true
+    setAutoSecondsLeft(null)
+    setError(null)
+    setSubmitting(true)
+    const result = await approveDeviceLink(raw)
+    setSubmitting(false)
+    if (!result.ok) {
+      submitStarted.current = false
+      setError(result.error)
+      return
+    }
+    setDone(true)
+  }, [])
+
+  // Deep link / QR: show 5s countdown, then approve.
+  useEffect(() => {
+    if (!sessionReady || !fromDeepLink || done || submitting || autoCancelled) {
+      return
+    }
+    if (autoSecondsLeft !== null) return
+    setAutoSecondsLeft(AUTO_LINK_SECONDS)
+  }, [
+    sessionReady,
+    fromDeepLink,
+    done,
+    submitting,
+    autoCancelled,
+    autoSecondsLeft,
+  ])
+
+  useEffect(() => {
+    if (autoSecondsLeft === null || done || submitting || autoCancelled) return
+    if (autoSecondsLeft <= 0) {
+      void submitCode(normalizeDeviceUserCode(initialCode || code))
+      return
+    }
+    const id = window.setTimeout(() => {
+      setAutoSecondsLeft((s) => (s === null ? null : s - 1))
+    }, 1000)
+    return () => window.clearTimeout(id)
+  }, [
+    autoSecondsLeft,
+    done,
+    submitting,
+    autoCancelled,
+    initialCode,
+    code,
+    submitCode,
+  ])
+
+  // Success: 5s then best-effort close tab.
+  useEffect(() => {
+    if (!done) return
+    if (closeSecondsLeft <= 0) {
+      closeDesktopHandoffWindow()
+      const id = window.setTimeout(() => {
+        if (!window.closed) setCloseBlocked(true)
+      }, 50)
+      return () => window.clearTimeout(id)
+    }
+    const id = window.setTimeout(() => {
+      setCloseSecondsLeft((s) => s - 1)
+    }, 1000)
+    return () => window.clearTimeout(id)
+  }, [done, closeSecondsLeft])
 
   if (loading) {
     return (
@@ -86,15 +171,21 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    setError(null)
-    setSubmitting(true)
-    const result = await approveDeviceLink(code)
-    setSubmitting(false)
-    if (!result.ok) {
-      setError(result.error)
-      return
-    }
-    setDone(true)
+    setAutoCancelled(true)
+    setAutoSecondsLeft(null)
+    await submitCode(code)
+  }
+
+  function onCancelAuto() {
+    setAutoCancelled(true)
+    setAutoSecondsLeft(null)
+  }
+
+  function onCloseNow() {
+    closeDesktopHandoffWindow()
+    window.setTimeout(() => {
+      if (!window.closed) setCloseBlocked(true)
+    }, 50)
   }
 
   return (
@@ -106,13 +197,13 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
               <div className="flex items-center gap-2 text-forja-accent">
                 <Tv className="size-5" aria-hidden />
                 <span className="text-sm font-medium tracking-wide">
-                  Android TV
+                  Device link
                 </span>
               </div>
-              <CardTitle className="text-2xl">Link your TV</CardTitle>
+              <CardTitle className="text-2xl">Link your device</CardTitle>
               <CardDescription>
-                Enter the code shown on Forja for Android TV. Your TV will sign
-                in automatically.
+                Enter the code shown on Forja. Your app will sign in
+                automatically.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -124,25 +215,48 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
                       aria-hidden
                     />
                     <div>
-                      <p className="font-medium">TV signed in</p>
+                      <p className="font-medium">Device signed in</p>
                       <p className="mt-1 text-forja-muted">
-                        Return to your TV — it should continue in a moment.
+                        Return to Forja — it should continue in a moment.
                       </p>
                     </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="w-full"
-                    onClick={() => void navigate({ to: '/account/profiles' })}
-                  >
-                    Go to account
-                  </Button>
+                  {closeBlocked ? (
+                    <p className="text-center text-sm text-forja-muted">
+                      This tab could not close automatically. Close it and
+                      return to Forja.
+                    </p>
+                  ) : (
+                    <p className="text-center font-mono text-xs uppercase tracking-[0.16em] text-forja-muted">
+                      Closing in{' '}
+                      <span className="tabular-nums text-[#EDE6DA]">
+                        {closeSecondsLeft}
+                      </span>
+                      s
+                    </p>
+                  )}
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={onCloseNow}
+                    >
+                      Close tab
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => void navigate({ to: '/account/profiles' })}
+                    >
+                      Go to account
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <form className="space-y-4" onSubmit={(e) => void onSubmit(e)}>
                   <div className="space-y-2">
-                    <Label htmlFor="tv-code">TV code</Label>
+                    <Label htmlFor="tv-code">Device code</Label>
                     <Input
                       id="tv-code"
                       name="code"
@@ -152,14 +266,33 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
                       inputMode="text"
                       placeholder="ABCD2345"
                       value={code}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        setAutoCancelled(true)
+                        setAutoSecondsLeft(null)
                         setCode(normalizeDeviceUserCode(e.target.value))
-                      }
+                      }}
                       className="font-mono text-lg tracking-[0.2em]"
                       maxLength={12}
                       required
+                      disabled={submitting}
                     />
                   </div>
+                  {autoSecondsLeft !== null && !submitting ? (
+                    <p className="text-center text-sm text-forja-muted">
+                      Linking automatically in{' '}
+                      <span className="tabular-nums font-medium text-[#EDE6DA]">
+                        {autoSecondsLeft}
+                      </span>
+                      s
+                      <button
+                        type="button"
+                        className="ml-2 underline underline-offset-2"
+                        onClick={onCancelAuto}
+                      >
+                        Cancel
+                      </button>
+                    </p>
+                  ) : null}
                   {error ? (
                     <p className="text-sm text-red-400" role="alert">
                       {error}
@@ -175,8 +308,10 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
                         <Loader2 className="size-4 animate-spin" />
                         Linking…
                       </>
+                    ) : autoSecondsLeft !== null ? (
+                      'Link now'
                     ) : (
-                      'Confirm on this TV'
+                      'Confirm link'
                     )}
                   </Button>
                   <p className="text-center text-xs text-forja-muted">

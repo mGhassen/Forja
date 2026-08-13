@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum _TvLinkStep { welcome, connect, linking, error }
 
@@ -666,6 +668,7 @@ class _ConnectPage extends StatelessWidget {
                     creating: creating,
                     qrUri: qrUri,
                     displayCode: display,
+                    openInBrowser: PlatformInfo.isDesktop,
                   ),
                 ],
               ),
@@ -682,21 +685,28 @@ class _QrWithCode extends StatelessWidget {
     required this.creating,
     required this.qrUri,
     required this.displayCode,
+    this.openInBrowser = false,
   });
 
   final bool creating;
   final String? qrUri;
   final String? displayCode;
+  /// Desktop only — click opens `/connect?code=` in the system browser.
+  final bool openInBrowser;
+
+  Future<void> _openUri() async {
+    final raw = qrUri;
+    if (raw == null || raw.isEmpty) return;
+    final uri = Uri.tryParse(raw);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
 
   @override
   Widget build(BuildContext context) {
     const size = 168.0;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (creating || qrUri == null)
-          SizedBox(
+    final qr = creating || qrUri == null
+        ? SizedBox(
             width: size + 20,
             height: size + 20,
             child: const Center(
@@ -710,8 +720,7 @@ class _QrWithCode extends StatelessWidget {
               ),
             ),
           )
-        else
-          DecoratedBox(
+        : DecoratedBox(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
@@ -733,7 +742,25 @@ class _QrWithCode extends StatelessWidget {
                 ),
               ),
             ),
-          ),
+          );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (openInBrowser && !creating && qrUri != null)
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: Tooltip(
+              message: 'Open link page in browser',
+              child: GestureDetector(
+                onTap: () => unawaited(_openUri()),
+                child: qr,
+              ),
+            ),
+          )
+        else
+          qr,
         const SizedBox(height: 18),
         if (creating || displayCode == null)
           const SizedBox(

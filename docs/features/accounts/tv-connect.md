@@ -15,7 +15,8 @@ Cold start on **Android TV and desktop** is the same centered welcome (logo, **Y
 
 ## What you can do
 
-- Switch between code and QR on the same screen while the TV waits for approval
+- Switch between code and QR on the same screen while the app waits for approval
+- On **desktop**, click the QR to open `/connect?code=…` in your browser — if you are already signed in, the portal counts down 5s then approves (Cancel or Link now). On success it shows OK and closes the tab after 5s
 - Approve on the portal while signed in
 - Continue as guest without linking
 - After link: pick a profile on **Who’s watching?** (avatar profile splash). On Android TV the picker and splash use a tighter centered layout than desktop so title, avatars, and loading status fit leanback screens.

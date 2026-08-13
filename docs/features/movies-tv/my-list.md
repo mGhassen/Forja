@@ -4,7 +4,7 @@
 
 ## What it is
 
-My List is a poster grid you can scroll. The top menu is the same language as Home: **Films**, **TV Shows**, **Anime** (tap again to show everything). A second row switches **Plan to Watch**, **Watching**, **On Hold**, **Completed**, and **Dropped** — local bookmarks use those statuses too. With Simkl connected, that row shows your Simkl lists (local copies still write in the background so they come back if you disconnect). Cards match Home: status bookmark (colored by that tab/status even for Simkl-only rows; **hidden on Android TV** — change status from details), score badge, and `year • FILM` / `TV` / `ANIME` under the title.
+My List is a poster grid you can scroll. The top menu is the same language as Home: **Films**, **TV Shows**, **Anime** (tap again to show everything). A second row switches **Plan to Watch**, **Watching**, **On Hold**, **Completed**, and **Dropped** — local bookmarks use those statuses too. With Simkl connected, that row shows your Simkl lists (local copies still write in the background so they come back if you disconnect). Cards match Home: status bookmark (colored by that tab/status even for Simkl-only rows; **hidden on Android TV** — change status from details / hero: **OK** opens the menu, **↑↓** stay in it, **OK** / **Back** close), score badge, and `year • FILM` / `TV` / `ANIME` under the title.
 
 ## How to open it
 
@@ -21,7 +21,7 @@ Tap **My List** in the navigation bar.
 
 ## Tips
 
-- My List statuses are stored locally on your device. With Simkl connected, the tab shows Simkl; local copies still save as a fallback. Connecting or Sync Now asks Keep local / Use Simkl / Merge (or Skip for history only)
+- My List statuses are stored locally on your device. With Simkl connected, the tab shows Simkl; local copies still save as a fallback. Connecting or Sync Now asks Keep local / Use Simkl / Merge — or No sync / Back to do nothing
 - Use [Backup & restore](../settings/backup-restore.md) to move lists to another install
 
 ## Related

@@ -217,8 +217,23 @@ abstract final class ShellTvFocusCoordinator {
   static void resetBackDebounceForTest() {
     _lastBackHandledAt = null;
     _backStepPending = false;
+    _dismissTransientOverlay = null;
     PlayerBackExitGate.resetForTest();
     ShellTvAppExit.resetForTest();
+  }
+
+  /// Shell OverlayEntry menus (hero My List status). HardwareKeyboard steals
+  /// goBack before Focus onKey — register so Back dismisses the menu first.
+  static bool Function()? _dismissTransientOverlay;
+
+  static void setTransientOverlayDismiss(bool Function()? dismiss) {
+    _dismissTransientOverlay = dismiss;
+  }
+
+  static bool tryDismissTransientOverlay() {
+    final cb = _dismissTransientOverlay;
+    if (cb == null) return false;
+    return cb();
   }
 
   static bool _consumeDuplicateBack() {
@@ -250,6 +265,14 @@ abstract final class ShellTvFocusCoordinator {
     // In-player overlays (IPTV search ladder, …). Same twin stamp as chrome
     // OverlayEntries — HardwareKeyboard steals Focus onKey for goBack.
     if (PlayerBackExitGate.tryConsumePlayerOverlay()) {
+      PlayerBackExitGate.exitReady = false;
+      _backStepPending = false;
+      ShellTvAppExit.clear();
+      _lastBackHandledAt = DateTime.now();
+      return true;
+    }
+
+    if (tryDismissTransientOverlay()) {
       PlayerBackExitGate.exitReady = false;
       _backStepPending = false;
       ShellTvAppExit.clear();

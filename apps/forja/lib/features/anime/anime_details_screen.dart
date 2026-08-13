@@ -10,6 +10,8 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/widgets/hero/hero_utils.dart';
+import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
@@ -17,6 +19,7 @@ import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/hub_list_status_hero.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
+import 'package:forja/shared/widgets/media_details/media_details.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
@@ -108,6 +111,18 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
   AnimeCard get _data => _full ?? _activeSeed;
 
   int get _activeId => _data.id;
+
+  AnimeTmdbQuery get _tmdbQuery {
+    final a = _data;
+    final title = a.titleEnglish.trim().isNotEmpty
+        ? a.titleEnglish.trim()
+        : a.titleRomaji.trim();
+    return (
+      title: title,
+      year: a.seasonYear,
+      isMovie: (a.format ?? '').toUpperCase() == 'MOVIE',
+    );
+  }
 
   HubListFollowTarget get _followTarget {
     final a = _data;
@@ -407,27 +422,88 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     return WatchSeriesProgress(watched: watched, total: total);
   }
 
-  List<String> _metaParts(AnimeCard a) {
+  List<String> _metaParts(AnimeCard a, RichMediaDetails? tmdb) {
+    final cert = tmdb?.extras.certification.trim() ?? '';
     return [
       if (a.format != null && a.format!.isNotEmpty) a.format!,
       if (a.seasonYear != null) '${a.seasonYear}',
       if (a.episodes != null) '${a.episodes} eps',
       if (a.status != null && a.status!.isNotEmpty) _statusLabel(a.status!),
+      if (cert.isNotEmpty) cert,
     ];
   }
 
-  List<MapEntry<String, String>> _facts(AnimeCard a) {
+  List<MapEntry<String, String>> _facts(AnimeCard a, RichMediaDetails? tmdb) {
+    final extras = tmdb?.extras;
+    final director = extras == null ? null : pickDirectorFromCrew(extras.crew);
+    final creators = extras?.creators ?? const <String>[];
+    final networks = extras?.networks ?? const <String>[];
+    final languages = extras?.spokenLanguages ?? const <String>[];
+    final companies = extras?.productionCompanies ?? const <String>[];
     return [
       if (a.mainStudio != null && a.mainStudio!.isNotEmpty)
-        MapEntry('Studio', a.mainStudio!),
+        MapEntry('Studio', a.mainStudio!)
+      else if (companies.isNotEmpty)
+        MapEntry('Studio', companies.take(2).join(', ')),
       if (a.duration != null) MapEntry('Duration', '${a.duration} min/ep'),
       if (a.season != null && a.seasonYear != null)
         MapEntry(
           'Season',
           '${a.season![0]}${a.season!.substring(1).toLowerCase()} ${a.seasonYear}',
         ),
-      if (a.popularity != null) MapEntry('Popularity', _compactNum(a.popularity!)),
-      if (a.genres.isNotEmpty) MapEntry('Genres', a.genres.join(', ')),
+      if (a.popularity != null)
+        MapEntry('Popularity', _compactNum(a.popularity!))
+      else if ((extras?.popularity ?? 0) > 0)
+        MapEntry('Popularity', _compactNum(extras!.popularity.round())),
+      if (a.genres.isNotEmpty)
+        MapEntry('Genres', a.genres.join(', '))
+      else if ((tmdb?.movie.genres ?? const <String>[]).isNotEmpty)
+        MapEntry('Genres', tmdb!.movie.genres.take(4).join(', ')),
+      if (director != null && director.isNotEmpty)
+        MapEntry('Director', director),
+      if (creators.isNotEmpty)
+        MapEntry('Created by', creators.take(3).join(', ')),
+      if (networks.isNotEmpty)
+        MapEntry('Network', networks.take(2).join(', ')),
+      if (languages.isNotEmpty)
+        MapEntry('Language', languages.take(2).join(', ')),
+    ];
+  }
+
+  String _overview(AnimeCard a, RichMediaDetails? tmdb) {
+    final anilist = a.cleanDescription;
+    if (anilist.isNotEmpty) return anilist;
+    return tmdb?.movie.overview.trim() ?? '';
+  }
+
+  String? _tmdbLogoUrl(RichMediaDetails? tmdb) {
+    final path = tmdb?.movie.logoPath.trim() ?? '';
+    if (path.isEmpty) return null;
+    return path.startsWith('http') ? path : TmdbApi.getImageUrl(path);
+  }
+
+  List<String> _heroUrls(AnimeCard a, RichMediaDetails? tmdb) {
+    final urls = <String>[
+      ..._heroBackdropUrls,
+      if (a.heroBackdrop.isNotEmpty) a.heroBackdrop,
+      for (final raw in tmdb?.movie.screenshots ?? const <String>[])
+        if (raw.trim().isNotEmpty)
+          raw.trim().startsWith('http')
+              ? raw.trim()
+              : TmdbApi.getBackdropUrl(raw.trim()),
+    ];
+    return RotatingHeroBackdrop.normalizeUrls(urls);
+  }
+
+  List<Map<String, String>> _crewAsCast(List<Map<String, String>> crew) {
+    return [
+      for (final c in crew)
+        if ((c['name'] ?? '').trim().isNotEmpty)
+          {
+            'name': c['name']!,
+            'character': (c['job'] ?? '').trim(),
+            'profilePath': (c['profilePath'] ?? '').trim(),
+          },
     ];
   }
 
@@ -531,6 +607,8 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
 
   Widget _buildScrollLayout() {
     final a = _data;
+    final tmdb =
+        ref.watch(animeTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
     final resumeEp = (_progress?['episodeNumber'] as num?)?.toInt();
     final rawPosMs = (_progress?['positionMs'] as num?)?.toInt();
     final rawDurMs = (_progress?['durationMs'] as num?)?.toInt();
@@ -576,13 +654,20 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     final heroActionCount = tvIndex + 2;
     final showEpisodeRail = _episodesLoading || _episodes.isNotEmpty;
     final related = _relatedFiltered;
-    final trailers = [
-      if (_data.mediaTrailer != null) _data.mediaTrailer!,
-    ];
-    final showCharacters = _characters.isNotEmpty;
-    final showStaff = _staff.isNotEmpty;
+    final tmdbCast = tmdb?.extras.cast ?? const <Map<String, String>>[];
+    final tmdbCrew = _crewAsCast(tmdb?.extras.crew ?? const []);
+    final tmdbTrailers = tmdb?.extras.trailers ?? const <MediaTrailer>[];
+    final tmdbRecs = tmdb?.extras.recommendations ?? const <Movie>[];
+    final characters = _characters.isNotEmpty ? _characters : tmdbCast;
+    final staff = _staff.isNotEmpty ? _staff : tmdbCrew;
+    final trailers = a.mediaTrailer != null
+        ? <MediaTrailer>[a.mediaTrailer!]
+        : tmdbTrailers;
+    final useTmdbRecs = _recommendations.isEmpty && tmdbRecs.isNotEmpty;
+    final showCharacters = characters.isNotEmpty;
+    final showStaff = staff.isNotEmpty;
     final showTrailers = trailers.isNotEmpty;
-    final showRecs = _recommendations.isNotEmpty;
+    final showRecs = _recommendations.isNotEmpty || useTmdbRecs;
     final showRelated = related.isNotEmpty;
     final hasMetaRows =
         showCharacters || showStaff || showTrailers || showRecs || showRelated;
@@ -654,16 +739,23 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         children: [
           HubDetailsHero(
             backdropUrl: a.heroBackdrop,
-            backdropUrls: _heroBackdropUrls,
+            backdropUrls: _heroUrls(a, tmdb),
             title: a.displayTitle,
             subtitle: a.titleNative.isNotEmpty && a.titleNative != a.displayTitle
                 ? a.titleNative
                 : null,
-            genres: a.genres,
-            metaParts: _metaParts(a),
-            rating: (a.averageScore ?? 0) > 0 ? (a.averageScore! / 10) : null,
-            overview: a.cleanDescription,
-            facts: _facts(a),
+            genres: a.genres.isNotEmpty
+                ? a.genres
+                : (tmdb?.movie.genres ?? const <String>[]),
+            metaParts: _metaParts(a, tmdb),
+            rating: (a.averageScore ?? 0) > 0
+                ? a.averageScore! / 10
+                : ((tmdb?.movie.voteAverage ?? 0) > 0
+                    ? tmdb!.movie.voteAverage
+                    : null),
+            overview: _overview(a, tmdb),
+            facts: _facts(a, tmdb),
+            logoUrl: _tmdbLogoUrl(tmdb),
             height: heroHeight,
             pageBottomChild: episodePicker,
             showSeasonRail: showSeasonRail,
@@ -756,7 +848,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
                     if (showRelated)
                       const SizedBox(height: DetailsTokens.sectionSpacing),
                     MediaDetailsCastSection(
-                      cast: _characters,
+                      cast: characters,
                       title: 'Characters',
                       tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                       tvRowId: 'characters',
@@ -768,7 +860,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
                     if (showRelated || showCharacters)
                       const SizedBox(height: DetailsTokens.sectionSpacing),
                     MediaDetailsCastSection(
-                      cast: _staff,
+                      cast: staff,
                       title: 'Staff',
                       tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                       tvRowId: 'staff',
@@ -796,16 +888,32 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
                         showStaff ||
                         showTrailers)
                       const SizedBox(height: DetailsTokens.sectionSpacing),
-                    _buildRecommendations(
-                      items: _recommendations,
-                      tvRowOrder: recsOrder!,
-                      tvFocusUp: (showRelated ||
-                              showCharacters ||
-                              showStaff ||
-                              showTrailers)
-                          ? null
-                          : firstMetaFocusUp,
-                    ),
+                    if (useTmdbRecs)
+                      MediaDetailsRecommendationsSection(
+                        movies: tmdbRecs,
+                        onMovieTap: (movie) =>
+                            AppRouter.openDetails(context, movie: movie),
+                        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                        tvRowId: 'recommendations',
+                        tvRowOrder: recsOrder!,
+                        tvFocusUp: (showRelated ||
+                                showCharacters ||
+                                showStaff ||
+                                showTrailers)
+                            ? null
+                            : firstMetaFocusUp,
+                      )
+                    else
+                      _buildRecommendations(
+                        items: _recommendations,
+                        tvRowOrder: recsOrder!,
+                        tvFocusUp: (showRelated ||
+                                showCharacters ||
+                                showStaff ||
+                                showTrailers)
+                            ? null
+                            : firstMetaFocusUp,
+                      ),
                   ],
                 ],
               ),

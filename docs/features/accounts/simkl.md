@@ -18,7 +18,7 @@ Simkl is the tracker everyone can connect. Log in via PIN and sync what you watc
   - **Keep local** — push this device’s statuses to Simkl
   - **Use Simkl** — overwrite this device from Simkl
   - **Merge** — combine both; same title with different status keeps the device
-  - **Skip** — dismiss the picker; leave list buckets alone; still sync watch history / progress
+  - **No sync** — do nothing (Back / dismiss also does nothing)
 - Browse Plan to Watch / Watching / On Hold / Completed / Dropped on the **My List** tab (Films / TV Shows / Anime filter like Home; Simkl lists while connected)
 - Set Plan to Watch / Watching / On Hold / Completed / Dropped from details glass **+**, Home / Anime / Asian Drama poster **+**, or Home poster bookmark (same floating menu; always writes local; Simkl when connected) — movies/TV, Anime (AniList id), and Asian Drama (TMDB id when the KissKH title matches)
 - Playing Anime or Asian Drama that is new or Plan to Watch moves it to Watching
@@ -33,7 +33,7 @@ Simkl is the tracker everyone can connect. Log in via PIN and sync what you watc
 
 1. Tap **Login with Simkl**
 2. Enter the displayed code at the verification URL (copied + opened automatically)
-3. When login succeeds, pick Keep local / Use Simkl / Merge (or Skip for history only)
+3. When login succeeds, pick Keep local / Use Simkl / Merge — or **No sync** / Back to skip entirely
 4. Use **Sync Now** anytime to choose again
 
 The app must be built with `SIMKL_CLIENT_ID` (repo-root `.env` for local `flutter run --dart-define-from-file`, GitHub secret for release). Register at [simkl.com/settings/developer](https://simkl.com/settings/developer). Full-restart after adding the key — hot reload will not pick it up.

@@ -118,16 +118,12 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
   Future<void> _sync() async {
     if (_isSyncing || !mounted) return;
     final mode = await showSimklSyncModeDialog(context);
-    if (!mounted) return;
+    // Back / dismiss / No sync → do nothing.
+    if (mode == null || !mounted) return;
 
     setState(() => _isSyncing = true);
     try {
-      final SimklSyncResult result;
-      if (mode == null) {
-        result = await _service.syncHistoryOnly();
-      } else {
-        result = await _service.syncWithMode(mode);
-      }
+      final result = await _service.syncWithMode(mode);
       ref.invalidate(externalListsGateProvider);
       ref.invalidate(simklWatchlistProvider);
       if (mounted) {
@@ -147,10 +143,10 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
 
   String _syncToast(SimklSyncResult r) {
     final modeLabel = switch (r.mode) {
-      null => 'History only',
       SimklListSyncMode.keepLocal => 'Kept local',
       SimklListSyncMode.useSimkl => 'Used Simkl',
       SimklListSyncMode.merge => 'Merged',
+      null => 'Synced',
     };
     return '$modeLabel · list ↑${r.watchlistExported} ↓${r.watchlistImported}, '
         'progress ${r.watchingImported}, movies ${r.moviesImported}, '
@@ -256,6 +252,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
 }
 
 Future<SimklListSyncMode?> showSimklSyncModeDialog(BuildContext context) async {
+  const noSync = 'No sync';
   const labels = <String, SimklListSyncMode>{
     'Keep local': SimklListSyncMode.keepLocal,
     'Use Simkl': SimklListSyncMode.useSimkl,
@@ -264,9 +261,9 @@ Future<SimklListSyncMode?> showSimklSyncModeDialog(BuildContext context) async {
   final picked = await showSettingsSelectDialog(
     context: context,
     title: 'How should lists sync?',
-    value: 'Merge',
-    options: labels.keys.toList(),
+    value: noSync,
+    options: [...labels.keys, noSync],
   );
-  if (picked == null) return null;
+  if (picked == null || picked == noSync) return null;
   return labels[picked];
 }
