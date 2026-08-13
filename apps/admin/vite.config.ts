@@ -69,6 +69,7 @@ function bridgeEnv(mode: string) {
     'INNGEST_EVENT_KEY',
     'INNGEST_SIGNING_KEY',
     'INNGEST_DEV',
+    'REDDIT_CLIENT_IDS',
     'ANTHROPIC_API_KEY',
     'IPTV_LLM_MODEL',
     'IPTV_LLM_EXTRACT',

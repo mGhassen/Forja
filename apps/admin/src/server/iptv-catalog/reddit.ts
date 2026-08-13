@@ -17,7 +17,13 @@ import {
 const OAUTH_UA = 'Forja/1.3.6 (by /u/ForjaApp)'
 const SCRAPE_UA =
   'Mozilla/5.0 (Linux; Android 11; Forja) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36'
-const OAUTH_CLIENT_IDS = ['ohXpoqrZYub1kg', 'NOe2iKrPPzwscA', 'JrPdG8Z6dkWNxA']
+
+function redditClientIds(): string[] {
+  return (process.env.REDDIT_CLIENT_IDS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
 
 /** Banned / 404 subs dropped — only live listing source for catalog scrape. */
 const CATALOG_SUBS = ['IPTV_ZONENEW']
@@ -122,10 +128,13 @@ let cachedToken: { token: string; expiry: number; idx: number } | null = null
 async function getOauthToken(): Promise<string | null> {
   if (cachedToken && Date.now() < cachedToken.expiry) return cachedToken.token
 
+  const ids = redditClientIds()
+  if (ids.length === 0) return null
+
   const start = cachedToken?.idx ?? 0
-  for (let i = 0; i < OAUTH_CLIENT_IDS.length; i++) {
-    const idx = (start + i) % OAUTH_CLIENT_IDS.length
-    const clientId = OAUTH_CLIENT_IDS[idx]!
+  for (let i = 0; i < ids.length; i++) {
+    const idx = (start + i) % ids.length
+    const clientId = ids[idx]!
     const auth = btoa(`${clientId}:`)
     try {
       const resp = await fetchWithTimeout(

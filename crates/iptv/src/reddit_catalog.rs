@@ -14,11 +14,20 @@ const OAUTH_UA: &str = "Forja/1.3.6 (by /u/ForjaApp)";
 const SCRAPE_UA: &str = "Mozilla/5.0 (Linux; Android 11; Forja) \
     AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36";
 
-const OAUTH_CLIENT_IDS: &[&str] = &[
-    "ohXpoqrZYub1kg",
-    "NOe2iKrPPzwscA",
-    "JrPdG8Z6dkWNxA",
-];
+/// Comma-separated installed-app client IDs from `REDDIT_CLIENT_IDS`
+/// (repo `.env` / CI secret) at compile time — never commit real values.
+const REDDIT_CLIENT_IDS_RAW: &str = match option_env!("REDDIT_CLIENT_IDS") {
+    Some(v) => v,
+    None => "",
+};
+
+fn oauth_client_ids() -> Vec<&'static str> {
+    REDDIT_CLIENT_IDS_RAW
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .collect()
+}
 
 const CATALOG_SUBS: &[&str] = &["IPTV_ZONENEW", "FreeIPTV", "iptvguru", "IPTVfree"];
 
@@ -733,11 +742,16 @@ fn get_oauth_token() -> Option<String> {
         }
     }
 
+    let ids = oauth_client_ids();
+    if ids.is_empty() {
+        return None;
+    }
+
     let start_idx = OAUTH_CACHE.lock().ok()?.client_idx;
 
-    for i in 0..OAUTH_CLIENT_IDS.len() {
-        let idx = (start_idx + i) % OAUTH_CLIENT_IDS.len();
-        let client_id = OAUTH_CLIENT_IDS[idx];
+    for i in 0..ids.len() {
+        let idx = (start_idx + i) % ids.len();
+        let client_id = ids[idx];
         let auth = base64::engine::general_purpose::STANDARD.encode(format!("{client_id}:"));
         let mut headers = HashMap::new();
         headers.insert("User-Agent".into(), OAUTH_UA.into());
@@ -772,7 +786,7 @@ fn get_oauth_token() -> Option<String> {
     }
 
     if let Ok(mut cache) = OAUTH_CACHE.lock() {
-        cache.client_idx = (cache.client_idx + 1) % OAUTH_CLIENT_IDS.len();
+        cache.client_idx = (cache.client_idx + 1) % ids.len();
         cache.token = None;
         cache.expiry = None;
     }

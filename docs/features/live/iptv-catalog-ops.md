@@ -26,7 +26,7 @@ Operators scrape Reddit IPTV posts, mark rows on shared **`iptv_portals`** with 
 
 Production scrape runs in **TypeScript** on `apps/admin` via Inngest (Rust `iptv-worker` is optional/local only).
 
-1. Set on the admin deploy: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` — **do not** set `INNGEST_DEV` on Vercel (that forces localhost Inngest and 502s scrape start)
+1. Set on the admin deploy: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, `REDDIT_CLIENT_IDS` (comma-separated Reddit installed-app client IDs) — **do not** set `INNGEST_DEV` on Vercel (that forces localhost Inngest and 502s scrape start)
 2. Sync `https://<admin-host>/api/inngest` in the Inngest dashboard
 3. Scheduled scrape: Inngest has a **daily 06:00 UTC** kick plus a minute tick. The real schedule is **`iptv_ops_settings.scrape_cron`** (UTC 5-field cron, default `0 6 * * *`) with **due/catch-up** (a late tick still runs once per slot; source `inngest-cron`). Edit it in Scrape → Automation. Toggle **Scheduled scrape** via `scrape_cron_enabled` — off = ticks no-op; manual run still works
 4. Reddit listing today is **`r/IPTV_ZONENEW`** (other old catalog subs are banned). Posts are usually base64 → encrypted **paste.sh** links — scrape decrypts those (L2), then runs **mechanical** credential extract (get.php, status cards, table dumps, `Portal`+user/pass sheets, stalker `Portal`/`MAC Addr`/`Exp date` cards). Optional LLM agent is **off unless** `IPTV_LLM_EXTRACT=1` + API key (and never fails the run). Every platform upserts into the deal pool; deep-ref rows keep **`type`** + full **`output`**. **alive** stays null until Pool → Check status.
