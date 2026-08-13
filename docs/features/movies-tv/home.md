@@ -20,8 +20,8 @@ Tap **Home** in the navigation bar (first tab by default).
 - See **Tonight's Pick** and **Because you watched…** (BestSimilar) suggestions — the seed title re-rolls on every Home pull-to-refresh (and when you use the shuffle control), picking a different in-progress Continue Watching title when more than one is available
 - Resume from **Continue watching** (local watch history)
 - Tap **Play** on the hero to auto-start **webstreaming** (best extractor) on the details screen — not torrent search
-- **Info | +** pill opens details or toggles My List (hover/focus expands the slot with its label, same as Play)
-- Poster **+** / bookmark (top-left on Home cards) opens Plan to Watch / Watching / On Hold / Completed / Dropped — hover a row for background + green highlight
+- **Info** pill opens details; glass **+** opens the floating Plan to Watch / Watching / On Hold / Completed / Dropped menu (same as posters / details)
+- Poster **+** / bookmark (top-left on Home, Anime, and Asian Drama cards) opens Plan to Watch / Watching / On Hold / Completed / Dropped — floating menu; hover a row for background + green highlight
 - Swipe or drag on the hero (or tap the step indicators on the right) to cycle featured titles — the full hero slide moves together: backdrop, title, metadata, overview, and actions
 - On **desktop**, **Cmd+F** (macOS) or **Ctrl+F** (Windows/Linux) opens the films search overlay (same as the search icon in the hero menu). On macOS this also enables **Edit → Find…**.
 - On **Android TV**, first open focuses the **Home** nav rail item; **RIGHT** or **Enter** moves into the page (hero Play). D-pad **←/→** on the hero gallery swaps the entire hero slide; **OK** on the gallery opens details for the current title. From a catalog row under the hero, **↑** focuses hero **Play** (not the gallery). **←** to the nav rail and **→** restores the same row/card you left.

@@ -42,6 +42,14 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                   useAniBanner ? Alignment.center : Alignment.centerRight,
               onPlay: () => _s._openDetails(a),
               onDetails: () => _s._openDetails(a),
+              listTarget: HubListFollowTarget.anime(
+                anilistId: a.id,
+                title: a.displayTitle,
+                posterPath: a.coverUrl,
+                voteAverage:
+                    (a.averageScore ?? 0) > 0 ? (a.averageScore! / 10) : 0,
+                releaseDate: a.seasonYear?.toString() ?? '',
+              ),
             );
           },
         )
@@ -55,24 +63,45 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
     String? tvRowId,
     VoidCallback? onUpEdge,
   }) {
-    final subtitle = [
-      if (anime.seasonYear != null) '${anime.seasonYear}',
-      if (anime.episodes != null) '${anime.episodes} eps',
-    ].join(' · ');
-
     return HubPosterCard(
       imageUrl: anime.coverUrl,
       title: anime.displayTitle,
-      subtitle: subtitle.isEmpty ? null : subtitle,
+      subtitle: _animeCardMeta(anime),
       rating: (anime.averageScore ?? 0) > 0 ? (anime.averageScore! / 10) : null,
-      badge: anime.format,
       rank: rank,
       listIndex: listIndex,
       tvTabId: 'anime',
       tvRowId: tvRowId,
       onUpEdge: onUpEdge,
       onTap: () => _s._openDetails(anime),
+      listTarget: HubListFollowTarget.anime(
+        anilistId: anime.id,
+        title: anime.displayTitle,
+        posterPath: anime.coverUrl,
+        voteAverage:
+            (anime.averageScore ?? 0) > 0 ? (anime.averageScore! / 10) : 0,
+        releaseDate: anime.seasonYear?.toString() ?? '',
+      ),
     );
+  }
+
+  /// Bottom meta like Home (`year • FILM` / `year • TV`).
+  /// Series keep episode count — no TV / TV Shows label.
+  String? _animeCardMeta(AnimeCard anime) {
+    final parts = <String>[];
+    if (anime.seasonYear != null) parts.add('${anime.seasonYear}');
+    final fmt = (anime.format ?? '').toUpperCase();
+    if (fmt == 'TV' || fmt == 'TV_SHORT') {
+      if (anime.episodes != null) parts.add('${anime.episodes} eps');
+    } else if (fmt == 'MOVIE') {
+      parts.add('FILM');
+    } else if (fmt.isNotEmpty) {
+      parts.add(fmt.replaceAll('_', ' '));
+    } else if (anime.episodes != null) {
+      parts.add('${anime.episodes} eps');
+    }
+    if (parts.isEmpty) return null;
+    return parts.join(' • ');
   }
 
   // ──────────────────────────────────────────────────────────────

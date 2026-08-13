@@ -10,6 +10,7 @@ import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub/hub_cinematic_hero.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/widgets/anime_continue_watching_section.dart';

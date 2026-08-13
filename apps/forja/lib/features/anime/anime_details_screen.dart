@@ -847,13 +847,20 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
       cardBuilder: (context, a, index) => HubPosterCard(
         imageUrl: a.coverUrl,
         title: a.displayTitle,
-        subtitle: a.seasonYear?.toString(),
+        subtitle: _animeDetailsCardMeta(a),
         onTap: () => openAnimeDetails(context, a),
         listIndex: index,
         tvTabId: ShellScope.inputPolicyOf(context).useFocusableMoodChips
             ? MediaDetailsTv.tabId
             : null,
         tvRowId: 'recommendations',
+        listTarget: HubListFollowTarget.anime(
+          anilistId: a.id,
+          title: a.displayTitle,
+          posterPath: a.coverUrl,
+          voteAverage: (a.averageScore ?? 0) > 0 ? (a.averageScore! / 10) : 0,
+          releaseDate: a.seasonYear?.toString() ?? '',
+        ),
       ),
     );
   }
@@ -876,7 +883,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
       cardBuilder: (context, r, index) => HubPosterCard(
         imageUrl: r.anime.coverUrl,
         title: r.anime.displayTitle,
-        subtitle: r.formatLabel,
+        subtitle: _animeDetailsCardMeta(r.anime),
         badge: r.label,
         onTap: () => openAnimeDetails(context, r.anime),
         listIndex: index,
@@ -884,7 +891,34 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
             ? MediaDetailsTv.tabId
             : null,
         tvRowId: 'related',
+        listTarget: HubListFollowTarget.anime(
+          anilistId: r.anime.id,
+          title: r.anime.displayTitle,
+          posterPath: r.anime.coverUrl,
+          voteAverage: (r.anime.averageScore ?? 0) > 0
+              ? (r.anime.averageScore! / 10)
+              : 0,
+          releaseDate: r.anime.seasonYear?.toString() ?? '',
+        ),
       ),
     );
+  }
+
+  /// Same bottom meta as hub posters — series keep eps, never “TV”.
+  String? _animeDetailsCardMeta(AnimeCard anime) {
+    final parts = <String>[];
+    if (anime.seasonYear != null) parts.add('${anime.seasonYear}');
+    final fmt = (anime.format ?? '').toUpperCase();
+    if (fmt == 'TV' || fmt == 'TV_SHORT') {
+      if (anime.episodes != null) parts.add('${anime.episodes} eps');
+    } else if (fmt == 'MOVIE') {
+      parts.add('FILM');
+    } else if (fmt.isNotEmpty) {
+      parts.add(fmt.replaceAll('_', ' '));
+    } else if (anime.episodes != null) {
+      parts.add('${anime.episodes} eps');
+    }
+    if (parts.isEmpty) return null;
+    return parts.join(' • ');
   }
 }

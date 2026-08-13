@@ -9,7 +9,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
+import 'package:forja/shared/widgets/my_list_button.dart';
 import 'asian_drama_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
@@ -563,94 +565,115 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
   }
 
   Widget _card(KdramaCard a) {
-    return HoverScale(
-      onTap: () => _open(a),
-      radius: 10,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (a.cover.isNotEmpty)
-                    CachedNetworkImage(
-                      imageUrl: a.cover,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => Container(color: AppTheme.bgCard),
-                      errorWidget: (_, _, _) =>
-                          Container(color: AppTheme.bgCard),
-                    )
-                  else
-                    Container(color: AppTheme.bgCard),
-                  if (a.label != null && a.label!.isNotEmpty)
-                    Positioned(
-                      left: 6,
-                      top: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.65),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: Text(
-                          a.label!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        HoverScale(
+          onTap: () => _open(a),
+          radius: 10,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (a.cover.isNotEmpty)
+                        CachedNetworkImage(
+                          imageUrl: a.cover,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) =>
+                              Container(color: AppTheme.bgCard),
+                          errorWidget: (_, _, _) =>
+                              Container(color: AppTheme.bgCard),
+                        )
+                      else
+                        Container(color: AppTheme.bgCard),
+                      if (a.label != null && a.label!.isNotEmpty)
+                        Positioned(
+                          left: 34,
+                          top: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Text(
+                              a.label!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  if (a.episodesCount > 0)
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFFFB300), Color(0xFFFF8F00)],
+                      if (a.episodesCount > 0)
+                        Positioned(
+                          right: 6,
+                          top: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFFB300), Color(0xFFFF8F00)],
+                              ),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Text(
+                              'EP ${a.episodesCount}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(5),
                         ),
-                        child: Text(
-                          'EP ${a.episodesCount}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 6),
+              Text(
+                a.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1.2,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            a.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              height: 1.2,
+        ),
+        Positioned(
+          top: 6,
+          left: 6,
+          child: MyListButton.hub(
+            hubTarget: HubListFollowTarget.drama(
+              kisskhId: a.id,
+              title: a.title,
+              posterPath: a.cover,
+              releaseDate: a.year ?? '',
+              kissKhType: a.type,
             ),
+            excludeFromTvTraversal: true,
+            iconSize: 18,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

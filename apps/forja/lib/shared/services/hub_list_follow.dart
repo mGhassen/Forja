@@ -120,6 +120,9 @@ class HubListFollow {
           mediaType: t.tmdbMediaType ?? 'tv',
           to: to,
         );
+      } else {
+        // Logged in but no AniList/TMDB id to send — local still saved.
+        ok = false;
       }
     }
     if (t.tmdbId != null &&

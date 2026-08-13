@@ -5,7 +5,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/hover_scale.dart';
+import 'package:forja/shared/widgets/my_list_button.dart';
 import 'anime_details_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
@@ -432,92 +434,113 @@ class _AnimeDiscoverScreenState extends State<AnimeDiscoverScreen> {
   }
 
   Widget _gridCard(AnimeCard a) {
-    return HoverScale(
-      onTap: () => _open(a),
-      radius: 12,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Container(
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: AppTheme.bgCard,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.06),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        HoverScale(
+          onTap: () => _open(a),
+          radius: 12,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: AppTheme.bgCard,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.06),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (a.coverUrl.isNotEmpty)
-                    CachedNetworkImage(
-                      imageUrl: a.coverUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) =>
-                          Container(color: AppTheme.bgCard),
-                      errorWidget: (_, _, _) => Container(
-                        color: AppTheme.bgCard,
-                        child: const Icon(Icons.broken_image,
-                            color: Colors.white24),
-                      ),
-                    ),
-                  if ((a.averageScore ?? 0) > 0)
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(8),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (a.coverUrl.isNotEmpty)
+                        CachedNetworkImage(
+                          imageUrl: a.coverUrl,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) =>
+                              Container(color: AppTheme.bgCard),
+                          errorWidget: (_, _, _) => Container(
+                            color: AppTheme.bgCard,
+                            child: const Icon(Icons.broken_image,
+                                color: Colors.white24),
+                          ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.star_rounded,
-                                color: Colors.amber, size: 11),
-                            const SizedBox(width: 2),
-                            Text(
-                              ((a.averageScore ?? 0) / 10)
-                                  .toStringAsFixed(1),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
+                      if ((a.averageScore ?? 0) > 0)
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                          ],
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.star_rounded,
+                                    color: Colors.amber, size: 11),
+                                const SizedBox(width: 2),
+                                Text(
+                                  ((a.averageScore ?? 0) / 10)
+                                      .toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 6),
+              Text(
+                a.displayTitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1.2,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            a.displayTitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              height: 1.2,
+        ),
+        Positioned(
+          top: 6,
+          left: 6,
+          child: MyListButton.hub(
+            hubTarget: HubListFollowTarget.anime(
+              anilistId: a.id,
+              title: a.displayTitle,
+              posterPath: a.coverUrl,
+              voteAverage:
+                  (a.averageScore ?? 0) > 0 ? (a.averageScore! / 10) : 0,
+              releaseDate: a.seasonYear?.toString() ?? '',
             ),
+            excludeFromTvTraversal: true,
+            iconSize: 18,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

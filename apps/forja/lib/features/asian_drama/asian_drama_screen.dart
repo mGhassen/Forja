@@ -12,6 +12,7 @@ import 'package:forja/features/asian_drama/widgets/asian_drama_continue_watching
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub/hub_cinematic_hero.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 import 'asian_drama_details_screen.dart';
 import 'asian_drama_player_screen.dart';
 import 'asian_drama_search_screen.dart';
@@ -409,6 +410,13 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
       // KissKH list thumbs are 16:9 banners (often TMDB w1000_and_h563_face).
       aspect: HubPosterAspect.landscape,
       onTap: () => _openDetails(card),
+      listTarget: HubListFollowTarget.drama(
+        kisskhId: card.id,
+        title: card.title,
+        posterPath: card.cover,
+        releaseDate: card.year ?? '',
+        kissKhType: card.type,
+      ),
     );
   }
 
@@ -424,6 +432,13 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
             badge: a.heroMediaBadge,
             onPlay: () => _openDetails(a),
             onDetails: () => _openDetails(a),
+            listTarget: HubListFollowTarget.drama(
+              kisskhId: a.id,
+              title: a.title,
+              posterPath: a.cover,
+              releaseDate: a.year ?? '',
+              kissKhType: a.type,
+            ),
           ),
         )
         .toList();

@@ -1252,8 +1252,14 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               tooltip: 'Details',
               onTap: () => widget.onOpenDetails(heroMovie),
             ),
-            MyListHeroPillButton.movieSlot(context, movie: heroMovie),
           ],
+        ),
+        const SizedBox(width: 10),
+        MyListHeroStatusPill(
+          movie: heroMovie,
+          tvTabId: tvNav ? 'home' : null,
+          tvItemIndexStart: tvNav ? 2 : 0,
+          onUpEdge: tvNav ? _focusHomeHeroGallery : null,
         ),
       ],
     );

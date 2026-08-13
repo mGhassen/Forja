@@ -15,6 +15,8 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
+import 'package:forja/shared/widgets/hub_list_status_hero.dart';
 
 bool hubIsFullCinematicHero(BuildContext context) {
   if (ShellScope.metricsOf(context).usesTvDensity) return true;
@@ -36,6 +38,7 @@ class HubHeroSlide {
     this.genres = const [],
     this.imageFit = BoxFit.cover,
     this.imageAlignment = Alignment.centerRight,
+    this.listTarget,
     required this.onPlay,
     required this.onDetails,
   });
@@ -53,6 +56,7 @@ class HubHeroSlide {
   /// zooms them into a tight crop - anime passes [BoxFit.fitWidth].
   final BoxFit imageFit;
   final Alignment imageAlignment;
+  final HubListFollowTarget? listTarget;
   final VoidCallback onPlay;
   final VoidCallback onDetails;
 }
@@ -884,12 +888,21 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
             ),
           ],
         ),
+        if (slide.listTarget != null) ...[
+          const SizedBox(width: 10),
+          HubListStatusHero(
+            target: slide.listTarget!,
+            tvTabId: tvNav ? tabId : null,
+            tvItemIndexStart: tvNav ? 2 : 0,
+            onUpEdge: tvNav ? focusHubSearch : null,
+          ),
+        ],
       ],
     );
     if (!tvNav || tabId == null) return row;
     return DetailsHeroTvActionScope(
       tabId: tabId,
-      itemCount: 2,
+      itemCount: slide.listTarget != null ? 3 : 2,
       onFocusUp: focusHubSearch,
       child: row,
     );

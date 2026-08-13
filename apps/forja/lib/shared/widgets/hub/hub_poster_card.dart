@@ -1,8 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/home_movie_card.dart';
+import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Poster frame for hub catalog rows.
@@ -21,6 +23,7 @@ class HubPosterCard extends StatelessWidget {
     this.rating,
     this.rank,
     this.badge,
+    this.listTarget,
     this.listIndex,
     this.tvTabId,
     this.tvRowId,
@@ -34,6 +37,7 @@ class HubPosterCard extends StatelessWidget {
   final double? rating;
   final int? rank;
   final String? badge;
+  final HubListFollowTarget? listTarget;
   final int? listIndex;
   final String? tvTabId;
   final String? tvRowId;
@@ -97,6 +101,7 @@ class HubPosterCard extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(radius),
           child: Stack(
+            clipBehavior: Clip.none,
             fit: StackFit.expand,
             children: [
               ColoredBox(
@@ -160,7 +165,9 @@ class HubPosterCard extends StatelessWidget {
               if (badge != null && badge!.isNotEmpty)
                 Positioned(
                   top: inset,
-                  left: inset,
+                  left: !compact && listTarget != null
+                      ? inset + shellScaled(context, 26).clamp(20.0, 26.0)
+                      : inset,
                   child: Container(
                     padding: EdgeInsets.symmetric(
                       horizontal: shellScaled(context, 6).clamp(3.0, 6.0),
@@ -219,6 +226,17 @@ class HubPosterCard extends StatelessWidget {
                   ],
                 ),
               ),
+              // Same top-left bookmark pin as [HomeMovieCard].
+              if (!compact && listTarget != null)
+                Positioned(
+                  top: inset,
+                  left: inset,
+                  child: MyListButton.hub(
+                    hubTarget: listTarget!,
+                    excludeFromTvTraversal: true,
+                    iconSize: shellScaled(context, 18).clamp(12.0, 18.0),
+                  ),
+                ),
             ],
           ),
         ),
