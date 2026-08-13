@@ -11,38 +11,51 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
 const _listStatuses =
-    <({String id, String label, IconData icon, IconData selectedIcon})>[
+    <({String id, String label, IconData icon, IconData selectedIcon, Color color})>[
       (
         id: 'plantowatch',
         label: 'Plan to Watch',
         icon: Icons.bookmark_add_outlined,
         selectedIcon: Icons.bookmark_rounded,
+        color: Color(0xFFFBBF24), // amber
       ),
       (
         id: 'watching',
         label: 'Watching',
         icon: Icons.play_circle_outline_rounded,
         selectedIcon: Icons.play_circle_rounded,
+        color: ForjaShellColors.brandGreen,
       ),
       (
         id: 'hold',
         label: 'On Hold',
         icon: Icons.pause_circle_outline_rounded,
         selectedIcon: Icons.pause_circle_rounded,
+        color: Color(0xFFFB923C), // orange
       ),
       (
         id: 'completed',
         label: 'Completed',
         icon: Icons.check_circle_outline_rounded,
         selectedIcon: Icons.check_circle_rounded,
+        color: Color(0xFF38BDF8), // sky
       ),
       (
         id: 'dropped',
         label: 'Dropped',
         icon: Icons.cancel_outlined,
         selectedIcon: Icons.cancel_rounded,
+        color: Color(0xFFF87171), // rose
       ),
     ];
+
+Color _statusPinColor(String? status) {
+  if (status == null) return ForjaShellColors.iconMuted;
+  for (final s in _listStatuses) {
+    if (s.id == status) return s.color;
+  }
+  return ForjaShellColors.iconActive;
+}
 
 class MyListButton extends StatelessWidget {
   const MyListButton.movie({
@@ -298,6 +311,7 @@ class _StatusPinState extends State<_StatusPin> {
                                       ? s.selectedIcon
                                       : s.icon,
                                   label: s.label,
+                                  statusColor: s.color,
                                   onTap: _busy
                                       ? null
                                       : () => _setStatus(s.id),
@@ -350,7 +364,7 @@ class _StatusPinState extends State<_StatusPin> {
               _pinIcon(status),
               size: size,
               color: status != null
-                  ? (widget.iconColorActive ?? ForjaShellColors.iconActive)
+                  ? _statusPinColor(status)
                   : (widget.iconColor ?? ForjaShellColors.iconMuted),
             ),
           );
@@ -383,12 +397,13 @@ class _StatusPinState extends State<_StatusPin> {
   }
 }
 
-/// Always shows icon + label. Hover = background + green.
+/// Always shows icon + label. Hover = background; selected = status color.
 class _StatusRow extends StatefulWidget {
   const _StatusRow({
     required this.selected,
     required this.icon,
     required this.label,
+    required this.statusColor,
     required this.tvFocus,
     this.onTap,
   });
@@ -396,6 +411,7 @@ class _StatusRow extends StatefulWidget {
   final bool selected;
   final IconData icon;
   final String label;
+  final Color statusColor;
   final bool tvFocus;
   final VoidCallback? onTap;
 
@@ -412,16 +428,16 @@ class _StatusRowState extends State<_StatusRow> {
   @override
   Widget build(BuildContext context) {
     final accent = _active
-        ? ForjaShellColors.brandGreen
+        ? widget.statusColor
         : (widget.selected
-            ? ForjaShellColors.brandGreen.withValues(alpha: 0.75)
+            ? widget.statusColor
             : Colors.white);
     final row = AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       curve: Curves.easeOut,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       color: _active
-          ? Colors.white.withValues(alpha: 0.08)
+          ? widget.statusColor.withValues(alpha: 0.12)
           : Colors.transparent,
       child: Row(
         children: [
@@ -600,7 +616,7 @@ class MyListHeroIcon extends StatelessWidget {
             }
           }
         }
-        return Icon(icon, size: 20, color: Colors.white);
+        return Icon(icon, size: 20, color: _statusPinColor(status));
       },
     );
   }
@@ -717,6 +733,7 @@ class _ListStatusHeroControlState extends State<ListStatusHeroControl> {
                                       ? s.selectedIcon
                                       : s.icon,
                                   label: s.label,
+                                  statusColor: s.color,
                                   onTap: _busy
                                       ? null
                                       : () => _setStatus(s.id),
@@ -799,7 +816,11 @@ class _ListStatusHeroControlState extends State<ListStatusHeroControl> {
             slots: [
               HeroPillIconSlot(
                 label: _label(status),
-                icon: _icon(status),
+                iconWidget: Icon(
+                  _icon(status),
+                  size: 20,
+                  color: _statusPinColor(status),
+                ),
                 onTap: _busy ? null : _toggle,
               ),
             ],
