@@ -66,6 +66,7 @@ class MyListButton extends StatelessWidget {
     this.iconColorActive,
     this.iconSize,
     this.excludeFromTvTraversal = false,
+    this.knownStatus,
   })  : stremioItem = null,
         hubTarget = null;
 
@@ -76,6 +77,7 @@ class MyListButton extends StatelessWidget {
     this.iconColor,
     this.iconColorActive,
     this.excludeFromTvTraversal = false,
+    this.knownStatus,
   })  : movie = null,
         stremioItem = null,
         useHeartIcon = false;
@@ -89,7 +91,8 @@ class MyListButton extends StatelessWidget {
     this.iconSize,
     this.excludeFromTvTraversal = false,
   })  : movie = null,
-        hubTarget = null;
+        hubTarget = null,
+        knownStatus = null;
 
   final Movie? movie;
   final Map<String, dynamic>? stremioItem;
@@ -102,6 +105,10 @@ class MyListButton extends StatelessWidget {
   /// Row cards: keep D-pad on the poster tile, not the overlay button.
   final bool excludeFromTvTraversal;
 
+  /// When local My List has no row yet (e.g. Simkl-only Watching tab), use this
+  /// status for the pin icon/color until a write lands.
+  final String? knownStatus;
+
   @override
   Widget build(BuildContext context) {
     if (hubTarget != null) {
@@ -111,6 +118,7 @@ class MyListButton extends StatelessWidget {
         iconColor: iconColor,
         iconColorActive: iconColorActive,
         excludeFromTvTraversal: excludeFromTvTraversal,
+        knownStatus: knownStatus,
         onSetStatus: (to) async {
           ProviderContainer? container;
           try {
@@ -131,6 +139,7 @@ class MyListButton extends StatelessWidget {
         iconColor: iconColor,
         iconColorActive: iconColorActive,
         excludeFromTvTraversal: excludeFromTvTraversal,
+        knownStatus: knownStatus,
         onSetStatus: (to) => _setMovieStatus(context, movie!, to),
       );
     }
@@ -189,6 +198,7 @@ class _StatusPin extends StatefulWidget {
     this.iconColor,
     this.iconColorActive,
     this.excludeFromTvTraversal = false,
+    this.knownStatus,
   });
 
   final String uniqueId;
@@ -197,6 +207,7 @@ class _StatusPin extends StatefulWidget {
   final Color? iconColor;
   final Color? iconColorActive;
   final bool excludeFromTvTraversal;
+  final String? knownStatus;
 
   @override
   State<_StatusPin> createState() => _StatusPinState();
@@ -281,7 +292,7 @@ class _StatusPinState extends State<_StatusPin> {
                     final inList = MyListService().contains(widget.uniqueId);
                     final status = inList
                         ? MyListService().statusOf(widget.uniqueId)
-                        : null;
+                        : widget.knownStatus;
                     return IntrinsicWidth(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
@@ -356,7 +367,9 @@ class _StatusPinState extends State<_StatusPin> {
         valueListenable: MyListService.changeNotifier,
         builder: (context, _, _) {
           final inList = MyListService().contains(widget.uniqueId);
-          final status = inList ? MyListService().statusOf(widget.uniqueId) : null;
+          final status = inList
+              ? MyListService().statusOf(widget.uniqueId)
+              : widget.knownStatus;
           return _pinHit(
             policy: policy,
             onTap: _busy ? null : _toggle,

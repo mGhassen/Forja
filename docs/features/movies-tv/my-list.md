@@ -4,7 +4,7 @@
 
 ## What it is
 
-My List is a poster grid you can scroll. The top menu is the same language as Home: **Films**, **TV Shows**, **Anime** (tap again to show everything). A second row switches **Plan to Watch**, **Watching**, **On Hold**, **Completed**, and **Dropped** — local bookmarks use those statuses too. With Simkl connected, that row shows your Simkl lists (local copies still write in the background so they come back if you disconnect). Cards match Home: status bookmark (colored by status), score badge, and `year • FILM` / `TV` / `ANIME` under the title.
+My List is a poster grid you can scroll. The top menu is the same language as Home: **Films**, **TV Shows**, **Anime** (tap again to show everything). A second row switches **Plan to Watch**, **Watching**, **On Hold**, **Completed**, and **Dropped** — local bookmarks use those statuses too. With Simkl connected, that row shows your Simkl lists (local copies still write in the background so they come back if you disconnect). Cards match Home: status bookmark (colored by that tab/status even for Simkl-only rows), score badge, and `year • FILM` / `TV` / `ANIME` under the title.
 
 ## How to open it
 

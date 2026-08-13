@@ -316,6 +316,7 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
                               final item = filtered[index];
                               return _ListPoster(
                                 item: item,
+                                tabStatus: _status,
                                 gridIndex: index,
                                 columns: grid.columns,
                                 tvRowId: 'grid',
@@ -688,6 +689,7 @@ class _StatusTabs extends StatelessWidget {
 class _ListPoster extends StatelessWidget {
   const _ListPoster({
     required this.item,
+    required this.tabStatus,
     required this.onTap,
     required this.gridIndex,
     required this.columns,
@@ -695,6 +697,7 @@ class _ListPoster extends StatelessWidget {
   });
 
   final Map<String, dynamic> item;
+  final String tabStatus;
   final VoidCallback onTap;
   final int gridIndex;
   final int columns;
@@ -711,7 +714,9 @@ class _ListPoster extends StatelessWidget {
     final inset = shellScaled(context, 10).clamp(4.0, 10.0);
     final titleSize = shellHubCardTitleFontSize(context);
     final metaSize = shellScaled(context, 11).clamp(7.0, 11.0);
-    final pin = _listPin(context, item);
+    final knownStatus =
+        item['listStatus']?.toString() ?? tabStatus;
+    final pin = _listPin(context, item, knownStatus: knownStatus);
 
     return shellFocusableTap(
       context: context,
@@ -825,7 +830,11 @@ class _ListPoster extends StatelessWidget {
   }
 }
 
-Widget? _listPin(BuildContext context, Map<String, dynamic> item) {
+Widget? _listPin(
+  BuildContext context,
+  Map<String, dynamic> item, {
+  String? knownStatus,
+}) {
   final iconSize = shellScaled(context, 18).clamp(12.0, 18.0);
   final title = item['title']?.toString() ?? 'Unknown';
   final poster = item['posterPath']?.toString() ?? '';
@@ -848,6 +857,7 @@ Widget? _listPin(BuildContext context, Map<String, dynamic> item) {
       ),
       excludeFromTvTraversal: true,
       iconSize: iconSize,
+      knownStatus: knownStatus,
     );
   }
 
@@ -866,6 +876,7 @@ Widget? _listPin(BuildContext context, Map<String, dynamic> item) {
       ),
       excludeFromTvTraversal: true,
       iconSize: iconSize,
+      knownStatus: knownStatus,
     );
   }
 
@@ -884,6 +895,7 @@ Widget? _listPin(BuildContext context, Map<String, dynamic> item) {
     ),
     excludeFromTvTraversal: true,
     iconSize: iconSize,
+    knownStatus: knownStatus,
   );
 }
 
