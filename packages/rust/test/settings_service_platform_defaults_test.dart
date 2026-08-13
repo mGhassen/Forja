@@ -169,6 +169,15 @@ void main() {
     },
   );
 
+  test('P2P acknowledgement defaults off and persists', () async {
+    final service = SettingsService();
+    expect(await service.isP2pStreamingAcknowledged(), isFalse);
+    await service.setP2pStreamingAcknowledged(true);
+    expect(await service.isP2pStreamingAcknowledged(), isTrue);
+    await service.setP2pStreamingAcknowledged(false);
+    expect(await service.isP2pStreamingAcknowledged(), isFalse);
+  });
+
   test('fresh phone install seeds phone nav defaults', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);

@@ -18,6 +18,7 @@ class SettingsPlaybackSnapshot {
     required this.playSourceStremio,
     required this.playSourceNuvio,
     required this.playSourceWebstreaming,
+    required this.p2pAcknowledged,
     required this.simpleStreamingResolve,
     required this.builtInEngine,
     required this.builtInEngineIptv,
@@ -43,6 +44,7 @@ class SettingsPlaybackSnapshot {
   final bool playSourceStremio;
   final bool playSourceNuvio;
   final bool playSourceWebstreaming;
+  final bool p2pAcknowledged;
   final bool simpleStreamingResolve;
   final BuiltInPlayerEngine builtInEngine;
   final BuiltInPlayerEngine builtInEngineIptv;
@@ -68,6 +70,7 @@ class SettingsPlaybackSnapshot {
     bool? playSourceStremio,
     bool? playSourceNuvio,
     bool? playSourceWebstreaming,
+    bool? p2pAcknowledged,
     bool? simpleStreamingResolve,
     BuiltInPlayerEngine? builtInEngine,
     BuiltInPlayerEngine? builtInEngineIptv,
@@ -94,6 +97,7 @@ class SettingsPlaybackSnapshot {
       playSourceNuvio: playSourceNuvio ?? this.playSourceNuvio,
       playSourceWebstreaming:
           playSourceWebstreaming ?? this.playSourceWebstreaming,
+      p2pAcknowledged: p2pAcknowledged ?? this.p2pAcknowledged,
       simpleStreamingResolve:
           simpleStreamingResolve ?? this.simpleStreamingResolve,
       builtInEngine: builtInEngine ?? this.builtInEngine,
@@ -151,6 +155,7 @@ class SettingsPlaybackNotifier
       playSourceStremio: await PlaySourceEffective.stremio(s, lanReady),
       playSourceNuvio: await PlaySourceEffective.nuvio(s, lanReady),
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
+      p2pAcknowledged: await s.isP2pStreamingAcknowledged(),
       simpleStreamingResolve: await s.isSimpleStreamingResolveEnabled(),
       builtInEngine: await s.getBuiltInPlayerEngine(
         context: BuiltInPlayerContext.vod,

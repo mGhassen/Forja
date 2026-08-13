@@ -46,6 +46,8 @@ Status shows **Paired** with a green/grey status dot and a small **Desktop onlin
 
 You do not re-enter a code per title. Unpair hides those Playback toggles again (Webstreaming stays). If the desktop goes **offline**, Direct torrent / Stremio / Nuvio turn off and stay disabled until it is online again — your previous checks come back automatically.
 
+If pairing would turn on Direct torrent / Stremio / Nuvio (stored prefs already on) and you have not acknowledged P2P on this TV, Forja shows the **P2P streaming** disclaimer first. Cancel leaves those sources off until you enable them in **Playback** (which asks again).
+
 ## Android TV — local torrent (optional)
 
 **Allow local torrent on this device** uses the on-box engine instead of the desktop. Leave **off** for the normal LAN setup.

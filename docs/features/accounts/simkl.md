@@ -20,7 +20,7 @@ Simkl is the tracker everyone can connect. Log in via PIN and sync what you watc
   - **Merge** — combine both; same title with different status keeps the device
   - **No sync** — do nothing (Back / dismiss also does nothing)
 - Browse Plan to Watch / Watching / On Hold / Completed / Dropped on the **My List** tab (Films / TV Shows / Anime filter like Home; Simkl lists while connected)
-- Set Plan to Watch / Watching / On Hold / Completed / Dropped from details glass **+**, Home / Anime / Asian Drama poster **+**, or Home poster bookmark (same floating menu; always writes local; Simkl when connected) — movies/TV, Anime (AniList id), and Asian Drama (TMDB id when the KissKH title matches)
+- Set Plan to Watch / Watching / On Hold / Completed / Dropped from details glass **+**, Home / Anime / Asian Drama poster **+**, or Home poster bookmark (same floating menu; always writes local; Simkl when connected) — movies/TV, Anime (AniList id), and Asian Drama (TMDB id when the KissKH title matches). Click the active status again to remove it from My List
 - Playing Anime or Asian Drama that is new or Plan to Watch moves it to Watching
 - Clearing progress (trash next to Resume) removes Simkl watched history so the title leaves Completed
 - Import completed movies into local watch history

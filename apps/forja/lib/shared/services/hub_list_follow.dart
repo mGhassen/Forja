@@ -91,6 +91,25 @@ class HubListFollow {
     ProviderContainer? container,
   }) async {
     var t = await _withDramaTmdb(raw);
+    if (to.isEmpty) {
+      await MyListService().remove(t.uniqueId);
+      var ok = true;
+      if (await SimklService().isLoggedIn()) {
+        if (t.mediaType == 'anime' && t.anilistId != null) {
+          ok = await SimklService().removeFromWatchlist(
+            anilistId: t.anilistId,
+            mediaType: 'anime',
+          );
+        } else if (t.tmdbId != null) {
+          ok = await SimklService().removeFromWatchlist(
+            tmdbId: t.tmdbId,
+            mediaType: t.tmdbMediaType ?? 'tv',
+          );
+        }
+      }
+      _invalidate(container);
+      return ok;
+    }
     await MyListService().upsertHub(
       uniqueId: t.uniqueId,
       mediaType: t.mediaType,

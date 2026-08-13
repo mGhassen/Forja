@@ -9,6 +9,7 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
+import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
@@ -28,6 +29,7 @@ class SettingsPlaybackSection extends ConsumerStatefulWidget {
 class _SettingsPlaybackSectionState
     extends ConsumerState<SettingsPlaybackSection> {
   final SettingsService _settings = SettingsService();
+  bool _p2pPromptQueued = false;
 
   SettingsPlaybackNotifier get _playback =>
       ref.read(settingsPlaybackProvider.notifier);
@@ -53,6 +55,33 @@ class _SettingsPlaybackSectionState
     await _playback.reload();
   }
 
+  Future<bool> _confirmP2pIfNeeded() async {
+    final snap = ref.read(settingsPlaybackProvider).valueOrNull;
+    if (snap?.p2pAcknowledged == true) return true;
+    final ok = await ensureP2pStreamingAcknowledged(context);
+    if (!ok || !mounted) return false;
+    await _playback.patch((s) => s.copyWith(p2pAcknowledged: true));
+    return true;
+  }
+
+  Future<void> _maybePromptP2pAck(SettingsPlaybackSnapshot snap) async {
+    if (snap.p2pAcknowledged || !mounted) return;
+    final ok = await _confirmP2pIfNeeded();
+    if (!mounted) return;
+    if (ok) return;
+    await _settings.setPlaySourceTorrentEnabled(false);
+    await _settings.setPlaySourceStremioEnabled(false);
+    await _settings.setPlaySourceNuvioEnabled(false);
+    await _playback.patch(
+      (s) => s.copyWith(
+        playSourceTorrent: false,
+        playSourceStremio: false,
+        playSourceNuvio: false,
+      ),
+    );
+    schedulePreferencesSyncPush();
+  }
+
   String _lanPlaySourceSubtitle({
     required String native,
     required String lanOnline,
@@ -72,6 +101,21 @@ class _SettingsPlaybackSectionState
     ref.watch(accountFeaturesProvider);
     final async = ref.watch(settingsPlaybackProvider);
     final snap = async.valueOrNull;
+    if (snap != null &&
+        !_p2pPromptQueued &&
+        !snap.p2pAcknowledged &&
+        (widget.visibility.showPlaySourceTorrentToggle ||
+            widget.visibility.showPlaySourceStremioToggle ||
+            widget.visibility.showPlaySourceNuvioToggle) &&
+        (snap.playSourceTorrent ||
+            snap.playSourceStremio ||
+            snap.playSourceNuvio)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _p2pPromptQueued) return;
+        _p2pPromptQueued = true;
+        unawaited(_maybePromptP2pAck(snap));
+      });
+    }
     if (snap == null) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -92,6 +136,22 @@ class _SettingsPlaybackSectionState
           SettingsGroup(
             label: 'Play sources',
             children: [
+              if (widget.visibility.showPlaySourceTorrentToggle ||
+                  widget.visibility.showPlaySourceStremioToggle ||
+                  widget.visibility.showPlaySourceNuvioToggle)
+                settingsFocusableToggle(
+                  context,
+                  'P2P streaming',
+                  snap.p2pAcknowledged
+                      ? 'Terms acknowledged. Direct torrent, Stremio, and Nuvio can be used.'
+                      : 'Required once before turning on Direct torrent, Stremio, or Nuvio.',
+                  snap.p2pAcknowledged,
+                  (val) async {
+                    if (!val) return;
+                    await _confirmP2pIfNeeded();
+                  },
+                  enabled: !snap.p2pAcknowledged,
+                ),
               if (widget.visibility.showPlaySourceTorrentToggle)
                 settingsFocusableToggle(
                   context,
@@ -106,6 +166,7 @@ class _SettingsPlaybackSectionState
                   ),
                   snap.playSourceTorrent,
                   (val) async {
+                    if (val && !await _confirmP2pIfNeeded()) return;
                     await _settings.setPlaySourceTorrentEnabled(val);
                     await _playback.patch(
                       (s) => s.copyWith(playSourceTorrent: val),
@@ -131,6 +192,7 @@ class _SettingsPlaybackSectionState
                   ),
                   snap.playSourceStremio,
                   (val) async {
+                    if (val && !await _confirmP2pIfNeeded()) return;
                     await _settings.setPlaySourceStremioEnabled(val);
                     await _playback.patch(
                       (s) => s.copyWith(playSourceStremio: val),
@@ -152,6 +214,7 @@ class _SettingsPlaybackSectionState
                   ),
                   snap.playSourceNuvio,
                   (val) async {
+                    if (val && !await _confirmP2pIfNeeded()) return;
                     await _settings.setPlaySourceNuvioEnabled(val);
                     await _playback.patch(
                       (s) => s.copyWith(playSourceNuvio: val),

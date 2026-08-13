@@ -268,8 +268,18 @@ class SimklService {
   Future<bool> removeFromWatchlist({
     int? tmdbId,
     String? imdbId,
+    int? anilistId,
     required String mediaType,
   }) async {
+    if (mediaType == 'anime') {
+      if (anilistId == null) return false;
+      return _removeFromList(anime: [
+        {
+          'ids': {'anilist': anilistId},
+        },
+      ]);
+    }
+
     if (tmdbId == null && imdbId == null) return false;
 
     final ids = <String, dynamic>{};
@@ -277,7 +287,8 @@ class SimklService {
     if (imdbId != null) ids['imdb'] = imdbId;
 
     final item = {'ids': ids};
-    final type = (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
+    final type =
+        (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
     return _removeFromList(
       shows: type == 'shows' ? [item] : [],
       movies: type == 'movies' ? [item] : [],

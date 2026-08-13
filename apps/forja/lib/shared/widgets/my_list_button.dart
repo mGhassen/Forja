@@ -67,6 +67,27 @@ Color _statusPinColor(String? status) {
   return ForjaShellColors.iconActive;
 }
 
+void _toastStatusWrite(bool ok, String to) {
+  if (to.isEmpty) {
+    if (ok) {
+      ForjaToast.success(
+        'Removed from My List',
+        duration: const Duration(seconds: 1),
+      );
+    } else {
+      ForjaToast.error('Removed locally · Simkl failed');
+    }
+    return;
+  }
+  final label =
+      _listStatuses.where((s) => s.id == to).firstOrNull?.label ?? to;
+  if (ok) {
+    ForjaToast.success(label, duration: const Duration(seconds: 1));
+  } else {
+    ForjaToast.error('Saved locally · Simkl failed');
+  }
+}
+
 class MyListButton extends StatelessWidget {
   const MyListButton.movie({
     super.key,
@@ -165,6 +186,28 @@ class MyListButton extends StatelessWidget {
     Movie movie,
     String to,
   ) async {
+    if (to.isEmpty) {
+      await MyListService().remove(
+        MyListService.movieId(movie.id, movie.mediaType),
+      );
+      var ok = true;
+      if (await SimklService().isLoggedIn()) {
+        ok = await SimklService().removeFromWatchlist(
+          tmdbId: movie.id,
+          imdbId: movie.imdbId,
+          mediaType: movie.mediaType,
+        );
+      }
+      if (context.mounted) {
+        try {
+          ProviderScope.containerOf(
+            context,
+            listen: false,
+          ).invalidate(simklWatchlistProvider);
+        } catch (_) {}
+      }
+      return ok;
+    }
     await MyListService().upsertMovie(
       tmdbId: movie.id,
       imdbId: movie.imdbId,
@@ -261,13 +304,7 @@ class _StatusPinState extends State<_StatusPin> {
     if (!mounted) return;
     setState(() => _busy = false);
     _close();
-    final label =
-        _listStatuses.where((s) => s.id == to).firstOrNull?.label ?? to;
-    if (ok) {
-      ForjaToast.success(label, duration: const Duration(seconds: 1));
-    } else {
-      ForjaToast.error('Saved locally · Simkl failed');
-    }
+    _toastStatusWrite(ok, to);
   }
 
   void _openMenu() {
@@ -329,7 +366,11 @@ class _StatusPinState extends State<_StatusPin> {
                                       : s.icon,
                                   label: s.label,
                                   statusColor: s.color,
-                                  onTap: _busy ? null : () => _setStatus(s.id),
+                                  onTap: _busy
+                                      ? null
+                                      : () => _setStatus(
+                                            s.id == status ? '' : s.id,
+                                          ),
                                   tvFocus: policy.useFocusableMoodChips,
                                 ),
                             ],
@@ -781,7 +822,9 @@ class _ListStatusHeroControlState extends State<ListStatusHeroControl> {
                                       statusColor: s.color,
                                       onTap: _busy
                                           ? null
-                                          : () => _setStatus(s.id),
+                                          : () => _setStatus(
+                                                s.id == status ? '' : s.id,
+                                              ),
                                       tvFocus: policy.useFocusableMoodChips,
                                       autoFocus:
                                           policy.useFocusableMoodChips &&
@@ -825,13 +868,7 @@ class _ListStatusHeroControlState extends State<ListStatusHeroControl> {
     if (!mounted) return;
     setState(() => _busy = false);
     _close();
-    final label =
-        _listStatuses.where((s) => s.id == to).firstOrNull?.label ?? to;
-    if (ok) {
-      ForjaToast.success(label, duration: const Duration(seconds: 1));
-    } else {
-      ForjaToast.error('Saved locally · Simkl failed');
-    }
+    _toastStatusWrite(ok, to);
   }
 
   IconData _icon(String? status) {
@@ -901,6 +938,28 @@ class MyListHeroStatusPill extends StatelessWidget {
   final ValueChanged<bool>? onMenuOpenChanged;
 
   Future<bool> _setStatus(BuildContext context, String to) async {
+    if (to.isEmpty) {
+      await MyListService().remove(
+        MyListService.movieId(movie.id, movie.mediaType),
+      );
+      var ok = true;
+      if (await SimklService().isLoggedIn()) {
+        ok = await SimklService().removeFromWatchlist(
+          tmdbId: movie.id,
+          imdbId: movie.imdbId,
+          mediaType: movie.mediaType,
+        );
+      }
+      if (context.mounted) {
+        try {
+          ProviderScope.containerOf(
+            context,
+            listen: false,
+          ).invalidate(simklWatchlistProvider);
+        } catch (_) {}
+      }
+      return ok;
+    }
     await MyListService().upsertMovie(
       tmdbId: movie.id,
       imdbId: movie.imdbId,

@@ -42,6 +42,9 @@ class SettingsService {
   static const String _playSourceNuvioKey = 'play_source_nuvio_enabled';
   static const String _playSourceWebstreamingKey =
       'play_source_webstreaming_enabled';
+  /// Device-local: first-time P2P disclaimer (torrent / Stremio / Nuvio).
+  static const String _p2pStreamingAcknowledgedKey =
+      'p2p_streaming_acknowledged';
   static const String _simpleStreamingResolveKey =
       'simple_streaming_resolve_enabled';
   static const String _crashReportingEnabledKey = 'crash_reporting_enabled';
@@ -613,6 +616,13 @@ class SettingsService {
     await kvSetBool(_playSourceWebstreamingKey, enabled);
     playSourceChangeNotifier.value++;
   }
+
+  /// Once per device — not cloud-synced. Gates the P2P disclaimer dialog.
+  Future<bool> isP2pStreamingAcknowledged() async =>
+      kvGetBool(_p2pStreamingAcknowledgedKey, fallback: false);
+
+  Future<void> setP2pStreamingAcknowledged(bool acknowledged) async =>
+      kvSetBool(_p2pStreamingAcknowledgedKey, acknowledged);
 
   /// Experimental: provider → filter → probe → open once (RFC-038).
   /// On by default; Off = production race / player failover path.
@@ -1475,6 +1485,8 @@ class SettingsService {
     prefsMap[_playSourceNuvioKey] = await isPlaySourceNuvioStored();
     prefsMap[_playSourceWebstreamingKey] =
         await isPlaySourceWebstreamingEnabled();
+    prefsMap[_p2pStreamingAcknowledgedKey] =
+        await isP2pStreamingAcknowledged();
     for (final key in [
       _sortPreferenceKey,
       _enabledTorrentProvidersKey,
@@ -1580,6 +1592,7 @@ class SettingsService {
       _playSourceStremioKey,
       _playSourceNuvioKey,
       _playSourceWebstreamingKey,
+      _p2pStreamingAcknowledgedKey,
     ]) {
       if (prefsMap.containsKey(key)) {
         await kvSetBool(key, prefsMap[key] as bool);

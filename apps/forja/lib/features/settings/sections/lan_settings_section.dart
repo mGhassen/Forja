@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
+import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan.dart';
@@ -298,6 +299,34 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     );
     _pairCodeController.clear();
     await _load();
+    _refreshPlaySourceGates();
+    await _maybeAckP2pAfterPair();
+  }
+
+  /// Pairing can honor stored torrent/Stremio/Nuvio — prompt once if that
+  /// would turn P2P on and this device has no native play-source caps (ATV).
+  Future<void> _maybeAckP2pAfterPair() async {
+    final caps = PlatformPlayback.capabilities;
+    if (caps.playSourceTorrent ||
+        caps.playSourceStremio ||
+        caps.playSourceNuvio) {
+      return;
+    }
+    final settings = SettingsService();
+    if (await settings.isP2pStreamingAcknowledged()) return;
+    final wouldActivate = await settings.isPlaySourceTorrentStored() ||
+        await settings.isPlaySourceStremioStored() ||
+        await settings.isPlaySourceNuvioStored();
+    if (!wouldActivate || !mounted) return;
+    final ok = await ensureP2pStreamingAcknowledged(context);
+    if (!mounted) return;
+    if (ok) {
+      ref.invalidate(settingsPlaybackProvider);
+      return;
+    }
+    await settings.setPlaySourceTorrentEnabled(false);
+    await settings.setPlaySourceStremioEnabled(false);
+    await settings.setPlaySourceNuvioEnabled(false);
     _refreshPlaySourceGates();
   }
 
