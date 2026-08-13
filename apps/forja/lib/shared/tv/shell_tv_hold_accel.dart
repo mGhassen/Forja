@@ -53,6 +53,14 @@ abstract final class ShellTvHoldAccel {
     return 1;
   }
 
+  /// Player progress-bar scrub: 0–3s 10s · 3–7s 20s · 7–11s 30s · 11s+ 50s.
+  static int seekStepForHoldMs(int holdMs) {
+    if (holdMs >= 11000) return 5;
+    if (holdMs >= 7000) return 3;
+    if (holdMs >= 3000) return 2;
+    return 1;
+  }
+
   static void reset() {
     _startedAt = null;
     _key = null;

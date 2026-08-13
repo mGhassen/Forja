@@ -18,4 +18,17 @@ void main() {
       expect(ShellTvHoldAccel.stepForHoldMs(10_000), 8);
     });
   });
+
+  group('ShellTvHoldAccel.seekStepForHoldMs', () {
+    test('ramps at 3s / 7s / 11s', () {
+      expect(ShellTvHoldAccel.seekStepForHoldMs(0), 1);
+      expect(ShellTvHoldAccel.seekStepForHoldMs(2999), 1);
+      expect(ShellTvHoldAccel.seekStepForHoldMs(3000), 2);
+      expect(ShellTvHoldAccel.seekStepForHoldMs(6999), 2);
+      expect(ShellTvHoldAccel.seekStepForHoldMs(7000), 3);
+      expect(ShellTvHoldAccel.seekStepForHoldMs(10999), 3);
+      expect(ShellTvHoldAccel.seekStepForHoldMs(11000), 5);
+      expect(ShellTvHoldAccel.seekStepForHoldMs(20_000), 5);
+    });
+  });
 }

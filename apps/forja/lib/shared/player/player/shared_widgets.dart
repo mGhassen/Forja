@@ -144,6 +144,9 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
   /// TV: OK arms thumb scrub; then L/R nudge preview; OK commits; Back cancels.
   /// Unarmed L/R leave focus to left/right chrome (not seek).
   bool _tvScrubArmed = false;
+  DateTime? _tvHoldStartedAt;
+  LogicalKeyboardKey? _tvHoldKey;
+  int _tvHoldStride = 1;
 
   // Hover state for Desktop
   bool _isHovering = false;
@@ -176,15 +179,53 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
       _isDragging = false;
       _isHovering = false;
       _tvScrubArmed = false;
+      _resetTvScrubHold();
     });
     if (wasDragging) widget.onDragEnd?.call();
   }
 
-  void _nudgeTvScrub(int direction) {
+  void _resetTvScrubHold() {
+    _tvHoldStartedAt = null;
+    _tvHoldKey = null;
+    _tvHoldStride = 1;
+  }
+
+  String? get _tvScrubSpeedLabel {
+    if (!_tvScrubArmed || _tvHoldKey == null) return null;
+    final left = _tvHoldKey == LogicalKeyboardKey.arrowLeft;
+    return switch (_tvHoldStride) {
+      5 => left ? '<x' : 'x>',
+      3 => left ? '<<<' : '>>>',
+      2 => left ? '<<' : '>>',
+      _ => left ? '<' : '>',
+    };
+  }
+
+  int _tvScrubStride(KeyEvent event) {
+    final key = event.logicalKey;
+    if (event is KeyDownEvent) {
+      _tvHoldStartedAt = DateTime.now();
+      _tvHoldKey = key;
+      _tvHoldStride = 1;
+      return 1;
+    }
+    if (event is KeyRepeatEvent &&
+        _tvHoldKey == key &&
+        _tvHoldStartedAt != null) {
+      _tvHoldStride = ShellTvHoldAccel.seekStepForHoldMs(
+        DateTime.now().difference(_tvHoldStartedAt!).inMilliseconds,
+      );
+      return _tvHoldStride;
+    }
+    return 1;
+  }
+
+  void _nudgeTvScrub(int direction, {int stride = 1}) {
     final total = widget.duration;
     if (total <= Duration.zero) return;
+    final steps = stride < 1 ? 1 : stride;
     final base = Duration(milliseconds: _dragValue.toInt());
-    var next = base + widget.tvSeekStep * direction;
+    var next = base + widget.tvSeekStep * (direction * steps);
     if (next < Duration.zero) next = Duration.zero;
     if (next > total) next = total;
     setState(() {
@@ -198,6 +239,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
     setState(() {
       _tvScrubArmed = false;
       _isDragging = false;
+      _resetTvScrubHold();
     });
     if (!playerChromeOverlayBlocksSeek()) {
       widget.onSeek?.call(seekTo);
@@ -210,6 +252,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
     setState(() {
       _tvScrubArmed = false;
       _isDragging = false;
+      _resetTvScrubHold();
     });
     widget.onDragEnd?.call();
   }
@@ -244,7 +287,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
     // left/right chrome (Play / Sources), same as ↑/↓.
     if (key == LogicalKeyboardKey.arrowLeft) {
       if (_tvScrubArmed) {
-        _nudgeTvScrub(-1);
+        _nudgeTvScrub(-1, stride: _tvScrubStride(event));
         return KeyEventResult.handled;
       }
       if (widget.onTvFocusLeft != null) {
@@ -258,7 +301,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
     }
     if (key == LogicalKeyboardKey.arrowRight) {
       if (_tvScrubArmed) {
-        _nudgeTvScrub(1);
+        _nudgeTvScrub(1, stride: _tvScrubStride(event));
         return KeyEventResult.handled;
       }
       if (widget.onTvFocusRight != null) {
@@ -439,27 +482,46 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                           : _isHovering
                               ? (_hoverValue / safeTotal * constraints.maxWidth)
                               : (relativePosition * constraints.maxWidth)) - 24,
-                      top: -35,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          formatDuration(Duration(
-                            milliseconds: _isDragging
-                                ? _dragValue.toInt()
-                                : _isHovering
-                                    ? _hoverValue.toInt()
-                                    : widget.position.inMilliseconds,
-                          )),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                      top: _tvScrubSpeedLabel != null ? -52 : -35,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              formatDuration(Duration(
+                                milliseconds: _isDragging
+                                    ? _dragValue.toInt()
+                                    : _isHovering
+                                        ? _hoverValue.toInt()
+                                        : widget.position.inMilliseconds,
+                              )),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (_tvScrubSpeedLabel case final speed?)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                speed,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                 ],
@@ -478,6 +540,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
               if (!focused && _tvScrubArmed) {
                 _tvScrubArmed = false;
                 _isDragging = false;
+                _resetTvScrubHold();
               }
             });
           },
