@@ -977,24 +977,22 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
       void pick() => Navigator.of(context, rootNavigator: true).pop(option);
 
       if (!tv) {
-        return InkWell(
+        return shellRoundedInkHost(
+          radius: 10,
           onTap: pick,
-          borderRadius: BorderRadius.circular(10),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: selected ? ForjaShellColors.inkHover : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              border: Border(
-                left: BorderSide(
-                  color: selected
-                      ? ForjaShellColors.brandGreen
-                      : Colors.transparent,
-                  width: 2.5,
-                ),
+          decoration: BoxDecoration(
+            color: selected ? ForjaShellColors.inkHover : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border(
+              left: BorderSide(
+                color: selected
+                    ? ForjaShellColors.brandGreen
+                    : Colors.transparent,
+                width: 2.5,
               ),
             ),
-            child: row,
           ),
+          child: row,
         );
       }
 
