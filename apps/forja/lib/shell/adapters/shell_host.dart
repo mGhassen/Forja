@@ -16,6 +16,7 @@ class ShellHost extends StatelessWidget {
     this.shellHeader,
     this.shellTopBar,
     this.hideGlobalNav = false,
+    this.maskUnderPlayer = false,
   });
 
   final List<String> visibleIds;
@@ -26,6 +27,7 @@ class ShellHost extends StatelessWidget {
   final Widget? shellHeader;
   final Widget? shellTopBar;
   final bool hideGlobalNav;
+  final bool maskUnderPlayer;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +41,7 @@ class ShellHost extends StatelessWidget {
           shellHeader: shellHeader,
           shellTopBar: shellTopBar,
           hideGlobalNav: hideGlobalNav,
+          maskUnderPlayer: maskUnderPlayer,
         ),
       ShellProfile.desktop => DesktopShell(
           visibleIds: visibleIds,
@@ -49,6 +52,7 @@ class ShellHost extends StatelessWidget {
           shellHeader: shellHeader,
           shellTopBar: shellTopBar,
           hideGlobalNav: hideGlobalNav,
+          maskUnderPlayer: maskUnderPlayer,
         ),
       ShellProfile.tv => TvShell(
           visibleIds: visibleIds,
@@ -59,6 +63,7 @@ class ShellHost extends StatelessWidget {
           shellHeader: shellHeader,
           shellTopBar: shellTopBar,
           hideGlobalNav: hideGlobalNav,
+          maskUnderPlayer: maskUnderPlayer,
         ),
     };
   }

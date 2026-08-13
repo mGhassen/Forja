@@ -10,6 +10,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Desktop email/password/passkey/Web login. Kept but hidden from cold start
+/// (`kShowDesktopEmailAuth` in desktop_startup_gate.dart).
 class AccountEntryScreen extends StatefulWidget {
   const AccountEntryScreen({
     super.key,

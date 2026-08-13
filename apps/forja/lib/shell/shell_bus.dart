@@ -119,6 +119,13 @@ class ShellBus {
   /// When true, shell hides global rail / bottom nav (IPTV deep views, Music desktop).
   static final ValueNotifier<bool> hideGlobalNav = ValueNotifier<bool>(false);
 
+  /// Opaque black cover over the shell while a root IPTV player is up.
+  /// Hides the catalog/rail underlay during slide enter/exit (no layout reflow).
+  /// Movies/Live Matches leave this false — underlay stays under their opaque route.
+  static final ValueNotifier<bool> maskShellUnderPlayer = ValueNotifier<bool>(
+    false,
+  );
+
   /// True when [ShellOverlayNavigator] has a route above the transparent root.
   static final ValueNotifier<bool> shellOverlayHasPage = ValueNotifier<bool>(
     false,
@@ -205,6 +212,13 @@ class ShellBus {
   static void clearHideGlobalNav() {
     if (hideGlobalNav.value) {
       hideGlobalNav.value = false;
+      notifyShellChromeChanged();
+    }
+  }
+
+  static void clearMaskShellUnderPlayer() {
+    if (maskShellUnderPlayer.value) {
+      maskShellUnderPlayer.value = false;
       notifyShellChromeChanged();
     }
   }

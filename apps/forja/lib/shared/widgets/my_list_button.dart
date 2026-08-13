@@ -11,7 +11,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:rust/rust.dart';
 
 const _listStatuses =
-    <({String id, String label, IconData icon, IconData selectedIcon, Color color})>[
+    <
+      ({
+        String id,
+        String label,
+        IconData icon,
+        IconData selectedIcon,
+        Color color,
+      })
+    >[
       (
         id: 'plantowatch',
         label: 'Plan to Watch',
@@ -67,8 +75,8 @@ class MyListButton extends StatelessWidget {
     this.iconSize,
     this.excludeFromTvTraversal = false,
     this.knownStatus,
-  })  : stremioItem = null,
-        hubTarget = null;
+  }) : stremioItem = null,
+       hubTarget = null;
 
   const MyListButton.hub({
     super.key,
@@ -78,9 +86,9 @@ class MyListButton extends StatelessWidget {
     this.iconColorActive,
     this.excludeFromTvTraversal = false,
     this.knownStatus,
-  })  : movie = null,
-        stremioItem = null,
-        useHeartIcon = false;
+  }) : movie = null,
+       stremioItem = null,
+       useHeartIcon = false;
 
   const MyListButton.stremio({
     super.key,
@@ -90,9 +98,9 @@ class MyListButton extends StatelessWidget {
     this.iconColorActive,
     this.iconSize,
     this.excludeFromTvTraversal = false,
-  })  : movie = null,
-        hubTarget = null,
-        knownStatus = null;
+  }) : movie = null,
+       hubTarget = null,
+       knownStatus = null;
 
   final Movie? movie;
   final Map<String, dynamic>? stremioItem;
@@ -124,11 +132,7 @@ class MyListButton extends StatelessWidget {
           try {
             container = ProviderScope.containerOf(context, listen: false);
           } catch (_) {}
-          return HubListFollow.setStatus(
-            hubTarget!,
-            to,
-            container: container,
-          );
+          return HubListFollow.setStatus(hubTarget!, to, container: container);
         },
       );
     }
@@ -323,9 +327,7 @@ class _StatusPinState extends State<_StatusPin> {
                                       : s.icon,
                                   label: s.label,
                                   statusColor: s.color,
-                                  onTap: _busy
-                                      ? null
-                                      : () => _setStatus(s.id),
+                                  onTap: _busy ? null : () => _setStatus(s.id),
                                   tvFocus: policy.useFocusableMoodChips,
                                 ),
                             ],
@@ -357,11 +359,13 @@ class _StatusPinState extends State<_StatusPin> {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    final exclude =
-        widget.excludeFromTvTraversal && policy.useFocusableMoodChips;
+    // Poster cards: D-pad targets the tile only — hide the pin on TV.
+    if (widget.excludeFromTvTraversal && policy.useFocusableMoodChips) {
+      return const SizedBox.shrink();
+    }
     final size = widget.iconSize ?? 18.0;
 
-    Widget body = CompositedTransformTarget(
+    return CompositedTransformTarget(
       link: _link,
       child: ValueListenableBuilder<int>(
         valueListenable: MyListService.changeNotifier,
@@ -384,9 +388,6 @@ class _StatusPinState extends State<_StatusPin> {
         },
       ),
     );
-
-    if (exclude) body = ExcludeFocus(child: body);
-    return body;
   }
 
   Widget _pinHit({
@@ -442,9 +443,7 @@ class _StatusRowState extends State<_StatusRow> {
   Widget build(BuildContext context) {
     final accent = _active
         ? widget.statusColor
-        : (widget.selected
-            ? widget.statusColor
-            : Colors.white);
+        : (widget.selected ? widget.statusColor : Colors.white);
     final row = AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       curve: Curves.easeOut,
@@ -551,9 +550,11 @@ class _LegacyTogglePin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    final exclude = excludeFromTvTraversal && policy.useFocusableMoodChips;
+    if (excludeFromTvTraversal && policy.useFocusableMoodChips) {
+      return const SizedBox.shrink();
+    }
 
-    Widget body = ValueListenableBuilder<int>(
+    return ValueListenableBuilder<int>(
       valueListenable: MyListService.changeNotifier,
       builder: (context, _, _) {
         final inList = MyListService().contains(_uniqueId);
@@ -585,11 +586,6 @@ class _LegacyTogglePin extends StatelessWidget {
         );
       },
     );
-
-    if (exclude) {
-      body = ExcludeFocus(child: body);
-    }
-    return body;
   }
 }
 
@@ -747,9 +743,7 @@ class _ListStatusHeroControlState extends State<ListStatusHeroControl> {
                                       : s.icon,
                                   label: s.label,
                                   statusColor: s.color,
-                                  onTap: _busy
-                                      ? null
-                                      : () => _setStatus(s.id),
+                                  onTap: _busy ? null : () => _setStatus(s.id),
                                   tvFocus: policy.useFocusableMoodChips,
                                 ),
                             ],
@@ -819,8 +813,9 @@ class _ListStatusHeroControlState extends State<ListStatusHeroControl> {
         valueListenable: MyListService.changeNotifier,
         builder: (context, _, _) {
           final inList = MyListService().contains(widget.uniqueId);
-          final status =
-              inList ? MyListService().statusOf(widget.uniqueId) : null;
+          final status = inList
+              ? MyListService().statusOf(widget.uniqueId)
+              : null;
           return HeroPillIconGroup(
             tvTabId: tv,
             tvRowId: tv != null ? MediaDetailsTv.heroRowId : null,

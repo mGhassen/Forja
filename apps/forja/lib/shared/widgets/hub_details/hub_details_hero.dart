@@ -483,7 +483,7 @@ class _HubHeroMainColumn extends StatelessWidget {
             height: titleHeight,
             child: Align(
               alignment: Alignment.bottomLeft,
-              child: HubHeroTitle(title: title),
+              child: HubHeroTitle(title: title, slotHeight: titleHeight),
             ),
           )
         else
@@ -589,21 +589,25 @@ class _HubHeroMainColumn extends StatelessWidget {
 }
 
 class HubHeroTitle extends StatelessWidget {
-  const HubHeroTitle({super.key, required this.title});
+  const HubHeroTitle({super.key, required this.title, this.slotHeight});
 
   final String title;
+  final double? slotHeight;
 
   @override
   Widget build(BuildContext context) {
+    final maxHeight = slotHeight ?? 96.0;
+    final fontSize = maxHeight <= 56 ? 24.0 : maxHeight <= 72 ? 28.0 : 32.0;
+    final maxLines = maxHeight <= 56 ? 1 : 2;
     return ChromaticHeroTitleText(
       title: title,
-      maxLines: 2,
-      style: const TextStyle(
-        fontSize: 48,
+      maxLines: maxLines,
+      style: TextStyle(
+        fontSize: fontSize,
         fontWeight: FontWeight.w900,
         color: Colors.white,
         height: kHeroTitleLineHeight,
-        letterSpacing: -1.2,
+        letterSpacing: -0.8,
       ),
     );
   }

@@ -121,7 +121,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 - [Trakt](accounts/trakt.md)
 - [Simkl](accounts/simkl.md)
 - [MDBList](accounts/mdblist.md)
-- [Link Android TV](accounts/tv-connect.md) — code / QR → portal `/connect`
+- [Link Android TV](accounts/tv-connect.md) — desktop and TV code / QR → portal `/connect`
 - [Cloud sync](settings/cloud-sync.md) — Forja account (Supabase)
 
 ---
@@ -161,4 +161,4 @@ How Forja finds torrents, streams, and subtitles from the web.
 | Clear cache or watch history | [Cache & data](settings/cache-data.md) |
 | Customize the app | [Settings overview](settings/overview.md) · [Features](settings/navigation-bar.md) |
 | Opt in to crash reports | [App updates](settings/app-updates.md) |
-| Link Android TV with a code | [Link Android TV](accounts/tv-connect.md) |
+| Sign in with a code or QR | [Link Android TV](accounts/tv-connect.md) |

@@ -298,6 +298,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.requestTab.addListener(_onRequestTab);
     ShellBus.shellChromeRevision.addListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
+    ShellBus.maskShellUnderPlayer.addListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.addListener(_onPlayerResourcePurge);
     MacOsShellChannel.listen(onFind: _onFindShortcut);
 
@@ -486,8 +487,10 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.requestTab.removeListener(_onRequestTab);
     ShellBus.shellChromeRevision.removeListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
+    ShellBus.maskShellUnderPlayer.removeListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
     ShellBus.clearHideGlobalNav();
+    ShellBus.clearMaskShellUnderPlayer();
     MacOsShellChannel.dispose();
     super.dispose();
   }
@@ -517,9 +520,11 @@ class _MainScreenState extends ConsumerState<MainScreen>
             shellHeader: _shellHeader(),
             shellTopBar: showHomeTopBar ? const HomeTopBar() : null,
             // Root fullscreen players (movies, trailers, Live Matches) leave
-            // the rail mounted/painted under the opaque route. Overlay players
-            // (IPTV) set [ShellBus.hideGlobalNav] for full-bleed Offstage.
+            // the rail mounted/painted under the opaque route. IPTV sets
+            // [ShellBus.maskShellUnderPlayer] so the catalog is not visible
+            // under the slide. Overlay Music still uses [hideGlobalNav].
             hideGlobalNav: ShellBus.hideGlobalNav.value,
+            maskUnderPlayer: ShellBus.maskShellUnderPlayer.value,
           ),
         );
 

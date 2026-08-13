@@ -21,8 +21,8 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 - The **web portal** also sends anonymous PostHog pageviews (and masked session replay) when the deploy has a PostHog key — it does not use the in-app About toggle
 - On **macOS**, toggle **Store secrets in Keychain** under **Privacy** (admin only; off by default — local app file). Turning it on shows an explain dialog first; macOS may then ask for your password once.
 - Accept update prompt when a newer version exists
-- On **Android TV**, the update gate takes D-pad focus on **Install update** (and **Continue in background** while downloading) so the remote cannot activate the page underneath
-- Browse **What’s new** per version (left list, newest first, max 16 since your build)
+- On **Android TV**, the update gate takes D-pad focus on **Install update** (and **Continue in background** while downloading) so the remote cannot activate the page underneath. Layout matches desktop: header top-center, version list + wider notes, Install at the bottom. ↑ focuses What’s new (label turns green — no box around the notes). OK enters: ↑↓ moves versions (the focused version stays fully on screen), → then ↑↓ scrolls notes, ← back to versions; OK or Back leaves; ↓ returns to Install
+- Browse **What’s new** per version (left list, newest first, max 16 since your build). Add / Change / Fix / Remove tags stay on one line
 - Open **See full changelog on the web** for the complete history on the portal
 - Install updates on Android through the update dialog when supported
 - On macOS, download the `.dmg`, then choose **Install and close Forja** to open it and quit the app, or **Skip for now** to keep using Forja; if Downloads is unavailable, the app falls back to its own updates folder

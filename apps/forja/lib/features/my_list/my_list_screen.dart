@@ -21,6 +21,7 @@ import 'package:forja/shared/widgets/home_movie_card.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 class MyListScreen extends ConsumerStatefulWidget {
@@ -34,6 +35,12 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
     with ShellTabRefresh<MyListScreen> {
   final TmdbApi _api = TmdbApi();
   final _scroll = ScrollController();
+  final FocusNode _filmsFocus = FocusNode(debugLabel: 'mylist-films');
+
+  static const _tabId = 'mylist';
+  static const _kindRowId = 'kind';
+  static const _tabsRowId = 'tabs';
+  static const _gridRowId = 'grid';
 
   static const _tabs = [
     (id: 'plantowatch', title: 'Plan to Watch'),
@@ -60,16 +67,12 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
   void initState() {
     super.initState();
     TvHeroActions.bind(
-      'mylist',
+      _tabId,
       enterFromNavFocus: _focusEntry,
       restoreFocus: () {
-        if (ShellTvFocusCoordinator.focusRowItem('mylist', 'kind', 0)) {
-          return true;
-        }
-        if (ShellTvFocusCoordinator.focusRowItem('mylist', 'tabs', 0)) {
-          return true;
-        }
-        return ShellTvFocusCoordinator.focusRowItem('mylist', 'grid', 0);
+        if (_focusRow(_kindRowId, 0)) return true;
+        if (_focusRow(_tabsRowId, 0)) return true;
+        return _focusRow(_gridRowId, 0);
       },
     );
     markShellTabFresh();
@@ -78,14 +81,35 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
   @override
   void dispose() {
     _scroll.dispose();
-    ShellTvFocusCoordinator.clearTab('mylist');
+    _filmsFocus.dispose();
+    ShellTvFocusCoordinator.clearTab(_tabId);
     super.dispose();
   }
 
+  bool _focusRow(String rowId, int index) =>
+      ShellTvFocusCoordinator.focusRowItem(_tabId, rowId, index);
+
+  bool _focusRowLast(String rowId) {
+    final handle = ShellTvFocusCoordinator.rowHandle(_tabId, rowId);
+    if (handle == null || handle.itemCount <= 0) return false;
+    final idx = handle.lastFocusedIndex.clamp(0, handle.itemCount - 1);
+    return _focusRow(rowId, idx);
+  }
+
   void _focusEntry() {
-    if (ShellTvFocusCoordinator.focusRowItem('mylist', 'kind', 0)) return;
-    if (ShellTvFocusCoordinator.focusRowItem('mylist', 'tabs', 0)) return;
-    ShellTvFocusCoordinator.focusRowItem('mylist', 'grid', 0);
+    bool tryFocus() {
+      if (_filmsFocus.context != null && _filmsFocus.canRequestFocus) {
+        _filmsFocus.requestFocus();
+        return true;
+      }
+      return _focusRow(_kindRowId, 0);
+    }
+
+    if (tryFocus()) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || ShellTvFocus.currentNavTabId != _tabId) return;
+      tryFocus();
+    });
   }
 
   void _selectStatus(String id) {
@@ -262,16 +286,14 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
               selected: _kind,
               count: simklLoading ? null : filtered.length,
               onSelect: _toggleKind,
-              onDown: () =>
-                  ShellTvFocusCoordinator.focusRowItem('mylist', 'tabs', 0),
+              filmsFocus: _filmsFocus,
+              onDown: () => _focusRowLast(_tabsRowId) || _focusRow(_tabsRowId, 0),
             ),
             _StatusTabs(
               selected: _status,
               onSelect: _selectStatus,
-              onUp: () =>
-                  ShellTvFocusCoordinator.focusRowItem('mylist', 'kind', 0),
-              onDown: () =>
-                  ShellTvFocusCoordinator.focusRowItem('mylist', 'grid', 0),
+              onUp: () => _focusRowLast(_kindRowId) || _focusRow(_kindRowId, 0),
+              onDown: () => _focusRowLast(_gridRowId) || _focusRow(_gridRowId, 0),
             ),
             Expanded(
               child: LayoutBuilder(
@@ -280,14 +302,13 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
                   if (simklLoading) return _loadingGrid(context, grid);
                   if (filtered.isEmpty) return _emptyState(kind: _kind);
                   return TvGrid(
-                    tabId: 'mylist',
-                    rowId: 'grid',
+                    tabId: _tabId,
+                    rowId: _gridRowId,
                     sortOrder: 2,
                     columns: grid.columns,
                     itemCount: filtered.length,
-                    onFocusUp: () {
-                      ShellTvFocusCoordinator.focusRowItem('mylist', 'tabs', 0);
-                    },
+                    onFocusUp: () =>
+                        _focusRowLast(_tabsRowId) || _focusRow(_tabsRowId, 0),
                     child: CustomScrollView(
                       controller: _scroll,
                       physics: const BouncingScrollPhysics(
@@ -319,8 +340,13 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
                                 tabStatus: _status,
                                 gridIndex: index,
                                 columns: grid.columns,
-                                tvRowId: 'grid',
+                                tvRowId: _gridRowId,
                                 onTap: () => _openItem(item),
+                                onUpEdge: index < grid.columns
+                                    ? () =>
+                                        _focusRowLast(_tabsRowId) ||
+                                        _focusRow(_tabsRowId, 0)
+                                    : null,
                               );
                             }, childCount: filtered.length),
                           ),
@@ -414,12 +440,14 @@ class _KindMenu extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     required this.onDown,
+    required this.filmsFocus,
     this.count,
   });
 
   final String? selected;
   final ValueChanged<String> onSelect;
   final VoidCallback onDown;
+  final FocusNode filmsFocus;
   final int? count;
 
   static const _items = [
@@ -436,33 +464,44 @@ class _KindMenu extends StatelessWidget {
         : MediaQuery.sizeOf(context).width < 560
         ? 20.0
         : 36.0;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        ShellTokens.compactChromeLeadingInset(context),
-        ShellTokens.tabHeaderTopPadding,
-        ShellTokens.bodyHorizontalPadding,
-        4,
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < _items.length; i++) ...[
-            if (i > 0) SizedBox(width: tabGap),
-            _KindTab(
-              label: _items[i].label,
-              isActive: selected == _items[i].id,
-              onTap: () => onSelect(_items[i].id),
-              tvFocus: useTv,
-              listIndex: i,
-              onDownEdge: onDown,
-            ),
-          ],
-          const Spacer(),
-          if (count != null && count! > 0)
-            Text(
-              '$count',
-              style: const TextStyle(color: Colors.white38, fontSize: 14),
-            ),
-        ],
+    return TvCatalogRow(
+      tabId: _MyListScreenState._tabId,
+      rowId: _MyListScreenState._kindRowId,
+      sortOrder: 0,
+      itemCount: _items.length,
+      onFocusUp: () {},
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          ShellTokens.compactChromeLeadingInset(context),
+          ShellTokens.tabHeaderTopPadding,
+          ShellTokens.bodyHorizontalPadding,
+          4,
+        ),
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: Row(
+            children: [
+              for (var i = 0; i < _items.length; i++) ...[
+                if (i > 0) SizedBox(width: tabGap),
+                _KindTab(
+                  label: _items[i].label,
+                  isActive: selected == _items[i].id,
+                  onTap: () => onSelect(_items[i].id),
+                  tvFocus: useTv,
+                  listIndex: i,
+                  onDownEdge: onDown,
+                  focusNode: i == 0 ? filmsFocus : null,
+                ),
+              ],
+              const Spacer(),
+              if (count != null && count! > 0)
+                Text(
+                  '$count',
+                  style: const TextStyle(color: Colors.white38, fontSize: 14),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -476,6 +515,7 @@ class _KindTab extends StatefulWidget {
     required this.tvFocus,
     required this.listIndex,
     required this.onDownEdge,
+    this.focusNode,
   });
 
   final String label;
@@ -484,6 +524,7 @@ class _KindTab extends StatefulWidget {
   final bool tvFocus;
   final int listIndex;
   final VoidCallback onDownEdge;
+  final FocusNode? focusNode;
 
   @override
   State<_KindTab> createState() => _KindTabState();
@@ -583,11 +624,12 @@ class _KindTabState extends State<_KindTab> {
         borderRadius: 4,
         scaleOnFocus: ShellTokens.focusActiveScale,
         listIndex: widget.listIndex,
-        tvTabId: 'mylist',
-        tvRowId: 'kind',
-        tvZone: ShellTvZone.topBar,
+        tvTabId: _MyListScreenState._tabId,
+        tvRowId: _MyListScreenState._kindRowId,
+        tvZone: ShellTvZone.row,
         tvItemIndex: widget.listIndex,
         onDownEdge: widget.onDownEdge,
+        focusNode: widget.focusNode,
         onFocusChange: (f) => setState(() => _focused = f),
         onHoverChange: (h) => setState(() => _hovered = h),
         child: child,
@@ -623,20 +665,31 @@ class _StatusTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final useTv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        ShellTokens.compactChromeLeadingInset(context),
-        0,
-        ShellTokens.bodyHorizontalPadding,
-        0,
-      ),
-      child: SizedBox(
-        height: 42,
-        child: Row(
-          children: [
-            for (var i = 0; i < _MyListScreenState._tabs.length; i++)
-              Expanded(child: _tab(context, i, useTv)),
-          ],
+    return TvCatalogRow(
+      tabId: _MyListScreenState._tabId,
+      rowId: _MyListScreenState._tabsRowId,
+      sortOrder: 1,
+      itemCount: _MyListScreenState._tabs.length,
+      onFocusUp: onUp,
+      onFocusDown: onDown,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          ShellTokens.compactChromeLeadingInset(context),
+          0,
+          ShellTokens.bodyHorizontalPadding,
+          0,
+        ),
+        child: SizedBox(
+          height: 42,
+          child: FocusTraversalGroup(
+            policy: ReadingOrderTraversalPolicy(),
+            child: Row(
+              children: [
+                for (var i = 0; i < _MyListScreenState._tabs.length; i++)
+                  Expanded(child: _tab(context, i, useTv)),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -645,43 +698,109 @@ class _StatusTabs extends StatelessWidget {
   Widget _tab(BuildContext context, int i, bool useTv) {
     final tab = _MyListScreenState._tabs[i];
     final on = tab.id == selected;
+    if (!useTv) {
+      final label = Text(
+        tab.title,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: on
+              ? ForjaShellColors.textPrimary
+              : ForjaShellColors.textSecondary,
+          fontWeight: on ? FontWeight.w600 : FontWeight.w500,
+          fontSize: 13,
+        ),
+      );
+      return InkWell(
+        onTap: () => onSelect(tab.id),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(child: Center(child: label)),
+            Container(
+              height: 2,
+              color: on ? ForjaShellColors.brandGreen : Colors.transparent,
+            ),
+          ],
+        ),
+      );
+    }
+    return _StatusTabFocus(
+      label: tab.title,
+      selected: on,
+      listIndex: i,
+      onTap: () => onSelect(tab.id),
+      onUp: onUp,
+      onDown: onDown,
+    );
+  }
+}
+
+class _StatusTabFocus extends StatefulWidget {
+  const _StatusTabFocus({
+    required this.label,
+    required this.selected,
+    required this.listIndex,
+    required this.onTap,
+    this.onUp,
+    this.onDown,
+  });
+
+  final String label;
+  final bool selected;
+  final int listIndex;
+  final VoidCallback onTap;
+  final VoidCallback? onUp;
+  final VoidCallback? onDown;
+
+  @override
+  State<_StatusTabFocus> createState() => _StatusTabFocusState();
+}
+
+class _StatusTabFocusState extends State<_StatusTabFocus> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final emphasize = widget.selected || _focused;
     final label = Text(
-      tab.title,
+      widget.label,
       textAlign: TextAlign.center,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
-        color: on
+        color: emphasize
             ? ForjaShellColors.textPrimary
             : ForjaShellColors.textSecondary,
-        fontWeight: on ? FontWeight.w600 : FontWeight.w500,
+        fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
         fontSize: 13,
       ),
     );
-    final body = Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Expanded(child: Center(child: label)),
-        Container(
-          height: 2,
-          color: on ? ForjaShellColors.brandGreen : Colors.transparent,
-        ),
-      ],
-    );
-    if (!useTv) {
-      return InkWell(onTap: () => onSelect(tab.id), child: body);
-    }
     return shellFocusableTap(
       context: context,
-      onTap: () => onSelect(tab.id),
+      onTap: widget.onTap,
       borderRadius: 0,
-      listIndex: i,
-      tvTabId: 'mylist',
-      tvRowId: 'tabs',
+      listIndex: widget.listIndex,
+      tvTabId: _MyListScreenState._tabId,
+      tvRowId: _MyListScreenState._tabsRowId,
       tvZone: ShellTvZone.chipStrip,
-      onUpEdge: onUp,
-      onDownEdge: onDown,
-      child: body,
+      tvItemIndex: widget.listIndex,
+      onUpEdge: widget.onUp,
+      onDownEdge: widget.onDown,
+      onFocusChange: (f) => setState(() => _focused = f),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(child: Center(child: label)),
+          Container(
+            height: 2,
+            color: widget.selected
+                ? ForjaShellColors.brandGreen
+                : Colors.transparent,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -694,6 +813,7 @@ class _ListPoster extends StatelessWidget {
     required this.gridIndex,
     required this.columns,
     required this.tvRowId,
+    this.onUpEdge,
   });
 
   final Map<String, dynamic> item;
@@ -702,6 +822,7 @@ class _ListPoster extends StatelessWidget {
   final int gridIndex;
   final int columns;
   final String tvRowId;
+  final VoidCallback? onUpEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -726,10 +847,11 @@ class _ListPoster extends StatelessWidget {
       focusBleedWidth: 0,
       gridIndex: meta?.gridIndex ?? gridIndex,
       gridColumns: meta?.gridColumns ?? columns,
-      tvTabId: meta?.tvTabId ?? 'mylist',
+      tvTabId: meta?.tvTabId ?? _MyListScreenState._tabId,
       tvRowId: meta?.tvRowId ?? tvRowId,
       tvZone: meta?.tvZone ?? ShellTvZone.grid,
       tvItemIndex: meta?.tvItemIndex ?? gridIndex,
+      onUpEdge: onUpEdge,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
         child: Stack(

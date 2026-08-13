@@ -1,15 +1,15 @@
 # Link Android TV
 
-> Sign in on Android TV with a short code or QR — approve on the web portal at `/connect`.
+> Sign in on Android TV or desktop with a short code or QR — approve on the web portal at `/connect`.
 
 ## What it is
 
-Android TV cannot use desktop Web login (no loopback browser). Cold start is a centered welcome (logo, **Your cinema**, **Sign in** / **Continue as guest**) over the animated background, with a soft dark shadow under the copy for readability. Sign in opens the code + QR screen the same way (code under the QR as `XXXX-XXXX`); approve on `/connect`. After a successful link, Forja opens **Who’s watching?** so you can pick a profile — same flow as desktop.
+Cold start on **Android TV and desktop** is the same centered welcome (logo, **Your cinema**, **Sign in** / **Continue as guest**) over the animated background, with a soft dark shadow under the copy for readability. Sign in opens the code + QR screen (code under the QR as `XXXX-XXXX`); approve on `/connect`. After a successful link, Forja opens **Who’s watching?** so you can pick a profile. Desktop email/password, passkey, and Web login are not on this screen (they stay in Settings if you continue as guest).
 
 ## How to open it
 
-- **Cold start (Android TV):** after the update check, choose **Sign in** or **Continue as guest**.
-- **Sign in:** TV shows the link code and QR; approve on the portal.
+- **Cold start (desktop and Android TV):** after the update check, choose **Sign in** or **Continue as guest**.
+- **Sign in:** the app shows the link code and QR; approve on the portal.
 - **Settings:** open the profile avatar at the bottom of the TV rail → **Profile & account** → **Link with code or QR** when signed out.
 - **Web:** open `/connect` (or scan the QR). You must be signed in; otherwise you are sent to login and returned to `/connect` with the code.
 
@@ -20,8 +20,8 @@ Android TV cannot use desktop Web login (no loopback browser). Cold start is a c
 - Continue as guest without linking
 - After link: pick a profile on **Who’s watching?** (avatar profile splash). On Android TV the picker and splash use a tighter centered layout than desktop so title, avatars, and loading status fit leanback screens.
 - Next cold start (same install): skip link + Who’s watching — open on the last active profile via the logo boot splash. The app refreshes the access token before cloud sync so a stale JWT from the previous day does not fail the boot pull.
-- Sign out on TV to return to the link welcome screen
-- Revoke the TV session later from Account → Connections (“Forja Android TV”)
+- Sign out on desktop or TV to return to the link welcome screen
+- Revoke the device-link session later from Account → Connections (“Forja Android TV”)
 
 ## Setup (if needed)
 

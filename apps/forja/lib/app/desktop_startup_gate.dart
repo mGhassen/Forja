@@ -29,7 +29,11 @@ DesktopStartupDestination resolveDesktopStartupDestination({
   return DesktopStartupDestination.account;
 }
 
-/// Cold-start account gate for desktop (email/Web login) and Android TV (device link).
+/// Email/password/passkey/Web login ([AccountEntryScreen]). Hidden — desktop
+/// cold start uses [TvAccountLinkScreen] (code/QR) like Android TV.
+const bool kShowDesktopEmailAuth = false;
+
+/// Cold-start account gate for desktop and Android TV (device link).
 DesktopStartupDestination resolveAuthStartupDestination({
   required bool needsAccountGate,
   required bool supabaseConfigured,
@@ -232,19 +236,20 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     // here - title bar is hidden app-wide, and WindowCaption only lives in
     // DesktopWindowChrome.wrapShell.
     final child = switch (_stage) {
-      _StartupStage.account => _isAndroidTv
-          ? TvAccountLinkScreen(
-              onAuthenticated: () =>
-                  setState(() => _stage = _StartupStage.profiles),
-              onContinueAsGuest: () =>
-                  setState(() => _stage = _StartupStage.splash),
-            )
-          : AccountEntryScreen(
-              onAuthenticated: () =>
-                  setState(() => _stage = _StartupStage.profiles),
-              onContinueAsGuest: () =>
-                  setState(() => _stage = _StartupStage.splash),
-            ),
+      _StartupStage.account =>
+        (_isAndroidTv || !kShowDesktopEmailAuth)
+            ? TvAccountLinkScreen(
+                onAuthenticated: () =>
+                    setState(() => _stage = _StartupStage.profiles),
+                onContinueAsGuest: () =>
+                    setState(() => _stage = _StartupStage.splash),
+              )
+            : AccountEntryScreen(
+                onAuthenticated: () =>
+                    setState(() => _stage = _StartupStage.profiles),
+                onContinueAsGuest: () =>
+                    setState(() => _stage = _StartupStage.splash),
+              ),
       _StartupStage.profiles => ProfileChooserScreen(
         prepareCurrentOnSwitch: false,
         useLogoIntroSplash: false,

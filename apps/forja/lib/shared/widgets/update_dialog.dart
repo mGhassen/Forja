@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_update_auto_check.dart';
 import 'package:forja/shared/services/app_update_download_service.dart';
 import 'package:forja/shared/services/app_updater_release_notes.dart';
 import 'package:forja/shared/services/app_updater_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/forja_logo.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -97,35 +99,38 @@ class _UpdateLayout {
     double lerp(double a, double b) => a + (b - a) * scale;
 
     if (isTv) {
-      final contentWidth = (width * 0.44).clamp(280.0, 380.0);
-      final logoHeight = (height * 0.08).clamp(36.0, 56.0);
+      // Wider than a card so changelog notes can use the screen instead of wrapping.
+      final contentWidth = (width * 0.72).clamp(480.0, 880.0);
+      final logoHeight = (height * 0.06).clamp(28.0, 44.0);
+      // j hangs ~21% below the x-height; keep headline gap from the letters, not the tail.
+      final descender = logoHeight * 0.22;
       return _UpdateLayout._(
         isTv: true,
         contentWidth: contentWidth,
         logoWidth: logoHeight * forjaLogoAspectRatio,
         logoHeight: logoHeight,
-        headlineSize: 26,
-        versionSize: 18,
+        headlineSize: 20,
+        versionSize: 16,
         metaSize: 12,
-        bodySize: 13,
+        bodySize: 12,
         sectionSize: 11,
-        logoTopGap: lerp(10, 22),
-        blockGap: lerp(6, 10),
-        metaGap: 6,
-        noticeGap: 8,
-        dividerBeforeGap: lerp(10, 16),
-        dividerAfterGap: lerp(6, 10),
+        logoTopGap: lerp(8, 16) + descender,
+        blockGap: lerp(6, 8),
+        metaGap: 4,
+        noticeGap: 6,
+        dividerBeforeGap: lerp(8, 14),
+        dividerAfterGap: lerp(6, 8),
         sectionLabelGap: 6,
-        footerGap: 14,
-        padTop: 16,
-        padBottom: 16,
-        padHorizontal: ((width - contentWidth) / 2).clamp(40.0, width),
-        buttonHeight: 42,
-        buttonFontSize: 14,
+        footerGap: 4,
+        padTop: 8,
+        padBottom: 10,
+        padHorizontal: ((width - contentWidth) / 2).clamp(24.0, width),
+        buttonHeight: 32,
+        buttonFontSize: 13,
         skipFontSize: 13,
-        downloadPercentSize: 38,
-        downloadLogoWidth: (width.clamp(240.0, 400.0) * 0.22),
-        downloadGapLarge: 28,
+        downloadPercentSize: 34,
+        downloadLogoWidth: (width.clamp(240.0, 400.0) * 0.2),
+        downloadGapLarge: 24,
         downloadGapSmall: 8,
       );
     }
@@ -139,18 +144,20 @@ class _UpdateLayout {
       0.0,
       contentWidth * 0.85,
     );
+    final resolvedLogoHeight = logoWidth / forjaLogoAspectRatio;
+    final descender = resolvedLogoHeight * 0.22;
 
     return _UpdateLayout._(
       isTv: false,
       contentWidth: contentWidth,
       logoWidth: logoWidth,
-      logoHeight: logoWidth / forjaLogoAspectRatio,
+      logoHeight: resolvedLogoHeight,
       headlineSize: lerp(24, width > 600 ? 34 : 28),
       versionSize: lerp(17, 22),
       metaSize: 14,
       bodySize: 15,
       sectionSize: 13,
-      logoTopGap: lerp(10, 28),
+      logoTopGap: lerp(10, 28) + descender,
       blockGap: lerp(6, 12),
       metaGap: lerp(4, 10),
       noticeGap: lerp(6, 12),
@@ -158,7 +165,7 @@ class _UpdateLayout {
       dividerAfterGap: lerp(8, 14),
       sectionLabelGap: 8,
       footerGap: lerp(10, 16),
-      padTop: lerp(12, 24),
+      padTop: lerp(8, 14),
       padBottom: lerp(12, 24),
       padHorizontal: contentWidth >= width - 56
           ? 28
@@ -236,16 +243,23 @@ class _UpdateDialogState extends State<UpdateDialog> {
   final AppUpdateDownloadService _desktopDownload =
       AppUpdateDownloadService.instance;
   final FocusNode _installFocus = FocusNode(debugLabel: 'update-install');
+  final FocusNode _skipFocus = FocusNode(debugLabel: 'update-skip');
+  final FocusNode _changelogFocus = FocusNode(debugLabel: 'update-changelog');
   final FocusNode _downloadFocus = FocusNode(debugLabel: 'update-download-bg');
+  final ScrollController _notesController = ScrollController();
+  final GlobalKey _selectedRailItemKey = GlobalKey();
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
   bool _showingDownloadComplete = false;
   int _selectedChangelog = 0;
+  bool _changelogActive = false;
+  bool _changelogOnRail = true;
 
   @override
   void initState() {
     super.initState();
     _desktopDownload.state.addListener(_onDesktopDownloadChanged);
+    _changelogFocus.addListener(_onChangelogFocusChanged);
     final current = _desktopDownload.state.value;
     if (current.phase == AppUpdateDownloadPhase.downloading &&
         current.updateInfo?.latestVersion == widget.updateInfo.latestVersion) {
@@ -261,7 +275,161 @@ class _UpdateDialogState extends State<UpdateDialog> {
     _claimPrimaryFocus();
   }
 
-  /// Retries a few frames — Install mounts after the fade and shell reclaim.
+  void _onChangelogFocusChanged() {
+    if (!mounted) return;
+    if (!_changelogFocus.hasFocus && _changelogActive) {
+      setState(() {
+        _changelogActive = false;
+        _changelogOnRail = true;
+      });
+      return;
+    }
+    setState(() {});
+  }
+
+  void _setChangelogActive(bool active) {
+    if (_changelogActive == active) return;
+    setState(() {
+      _changelogActive = active;
+      if (active) {
+        _changelogOnRail = widget.updateInfo.changelogs.length > 1;
+      }
+    });
+  }
+
+  void _selectChangelog(int index) {
+    final changelogs = widget.updateInfo.changelogs;
+    if (changelogs.isEmpty) return;
+    final next = index.clamp(0, changelogs.length - 1).toInt();
+    if (next == _selectedChangelog) return;
+    setState(() => _selectedChangelog = next);
+    if (_notesController.hasClients) {
+      _notesController.jumpTo(0);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _selectedRailItemKey.currentContext;
+      if (ctx == null) return;
+      const zero = Duration.zero;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.0,
+        duration: zero,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+      );
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 1.0,
+        duration: zero,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
+  }
+
+  void _scrollNotes(double delta) {
+    if (!_notesController.hasClients) return;
+    final pos = _notesController.position;
+    _notesController.jumpTo(
+      (pos.pixels + delta).clamp(pos.minScrollExtent, pos.maxScrollExtent),
+    );
+  }
+
+  KeyEventResult _onInstallKey(FocusNode node, KeyEvent event) {
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowUp) {
+      _changelogFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      _skipFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowRight) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _onSkipKey(FocusNode node, KeyEvent event) {
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowUp) {
+      _installFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown ||
+        key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowRight) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _onChangelogKey(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        (event.logicalKey == LogicalKeyboardKey.goBack ||
+            event.logicalKey == LogicalKeyboardKey.escape)) {
+      if (_changelogActive) {
+        _setChangelogActive(false);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    final multi = widget.updateInfo.changelogs.length > 1;
+
+    if (!_changelogActive) {
+      if (key == LogicalKeyboardKey.arrowDown) {
+        _installFocus.requestFocus();
+        return KeyEventResult.handled;
+      }
+      if (key == LogicalKeyboardKey.arrowUp ||
+          key == LogicalKeyboardKey.arrowLeft ||
+          key == LogicalKeyboardKey.arrowRight) {
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    if (_changelogOnRail && multi) {
+      if (key == LogicalKeyboardKey.arrowUp) {
+        _selectChangelog(_selectedChangelog - 1);
+        return KeyEventResult.handled;
+      }
+      if (key == LogicalKeyboardKey.arrowDown) {
+        _selectChangelog(_selectedChangelog + 1);
+        return KeyEventResult.handled;
+      }
+      if (key == LogicalKeyboardKey.arrowRight) {
+        setState(() => _changelogOnRail = false);
+        return KeyEventResult.handled;
+      }
+      if (key == LogicalKeyboardKey.arrowLeft) {
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    if (key == LogicalKeyboardKey.arrowUp) {
+      _scrollNotes(-64);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      _scrollNotes(64);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft && multi) {
+      setState(() => _changelogOnRail = true);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowRight) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
   void _claimPrimaryFocus({int attempt = 0}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -285,8 +453,12 @@ class _UpdateDialogState extends State<UpdateDialog> {
   @override
   void dispose() {
     _desktopDownload.state.removeListener(_onDesktopDownloadChanged);
+    _changelogFocus.removeListener(_onChangelogFocusChanged);
     _installFocus.dispose();
+    _skipFocus.dispose();
+    _changelogFocus.dispose();
     _downloadFocus.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -388,11 +560,17 @@ class _UpdateDialogState extends State<UpdateDialog> {
                         _buildOfferHeader(layout),
                         Expanded(child: _buildReleaseNotes(layout)),
                         SizedBox(height: layout.footerGap),
-                        _UpdateFooter(
-                          layout: layout,
-                          installFocus: _installFocus,
-                          onUpdate: _handleUpdate,
-                          onSkip: () => Navigator.of(context).pop(),
+                        ExcludeFocus(
+                          excluding: layout.isTv && _changelogActive,
+                          child: _UpdateFooter(
+                            layout: layout,
+                            installFocus: _installFocus,
+                            skipFocus: layout.isTv ? _skipFocus : null,
+                            onUpdate: _handleUpdate,
+                            onSkip: () => Navigator.of(context).pop(),
+                            onInstallKey: layout.isTv ? _onInstallKey : null,
+                            onSkipKey: layout.isTv ? _onSkipKey : null,
+                          ),
                         ),
                       ],
                     ),
@@ -432,15 +610,19 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ),
         ),
         SizedBox(height: layout.logoTopGap),
-        Text(
-          'A new version\nis ready',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: layout.headlineSize,
-            fontWeight: FontWeight.w800,
-            height: 1.08,
-            letterSpacing: -0.8,
-            color: ForjaShellColors.textPrimary,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'A new version is ready',
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: layout.headlineSize,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+              letterSpacing: layout.isTv ? -0.4 : -0.8,
+              color: ForjaShellColors.textPrimary,
+            ),
           ),
         ),
         SizedBox(height: layout.blockGap),
@@ -486,7 +668,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
             fontSize: layout.sectionSize,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.4,
-            color: ForjaShellColors.textSecondary,
+            color: layout.isTv && _changelogFocus.hasFocus
+                ? ForjaShellColors.brandGreen
+                : ForjaShellColors.textSecondary,
           ),
         ),
         SizedBox(height: layout.sectionLabelGap),
@@ -498,41 +682,91 @@ class _UpdateDialogState extends State<UpdateDialog> {
     final changelogs = widget.updateInfo.changelogs;
     final showRail = changelogs.length > 1;
     final railWidth = layout.isTv ? 96.0 : 118.0;
-
     final notesBody = _buildSelectedChangelogBody(layout, changelogs);
+
+    Widget notes = showRail
+        ? Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: railWidth,
+                child: ExcludeFocus(
+                  excluding: layout.isTv,
+                  child: _ChangelogVersionRail(
+                    layout: layout,
+                    changelogs: changelogs,
+                    selected: _selectedChangelog,
+                    interactive: !layout.isTv,
+                    railActive: layout.isTv &&
+                        _changelogActive &&
+                        _changelogOnRail,
+                    selectedItemKey: layout.isTv ? _selectedRailItemKey : null,
+                    onSelect: _selectChangelog,
+                  ),
+                ),
+              ),
+              SizedBox(width: layout.isTv ? 12 : 18),
+              Expanded(
+                child: _ReleaseNotesScroller(
+                  layout: layout,
+                  controller: layout.isTv ? _notesController : null,
+                  child: notesBody,
+                ),
+              ),
+            ],
+          )
+        : _ReleaseNotesScroller(
+            layout: layout,
+            controller: layout.isTv ? _notesController : null,
+            child: notesBody,
+          );
+
+    if (layout.isTv) {
+      final notesChild = notes;
+      notes = ForjaInteractive(
+        focusNode: _changelogFocus,
+        onTap: () => _setChangelogActive(!_changelogActive),
+        onKeyEvent: _onChangelogKey,
+        hoverScale: 1.0,
+        pressScale: 1.0,
+        builder: (hover, pressed) => SizedBox.expand(child: notesChild),
+      );
+    }
+
+    final multi = showRail;
+    final hint = layout.isTv && _changelogFocus.hasFocus
+        ? (!_changelogActive
+            ? 'OK to browse'
+            : _changelogOnRail && multi
+            ? '↑↓ versions  ·  → notes  ·  OK to exit'
+            : multi
+            ? '↑↓ scroll  ·  ← versions  ·  OK to exit'
+            : '↑↓ scroll  ·  OK to exit')
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: showRail
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      width: railWidth,
-                      child: _ChangelogVersionRail(
-                        layout: layout,
-                        changelogs: changelogs,
-                        selected: _selectedChangelog,
-                        onSelect: (i) => setState(() => _selectedChangelog = i),
-                      ),
-                    ),
-                    SizedBox(width: layout.isTv ? 12 : 18),
-                    Expanded(
-                      child: _ReleaseNotesScroller(
-                        layout: layout,
-                        child: notesBody,
-                      ),
-                    ),
-                  ],
-                )
-              : _ReleaseNotesScroller(layout: layout, child: notesBody),
-        ),
-        SizedBox(height: layout.isTv ? 8 : 12),
-        _FullChangelogLink(
-          layout: layout,
-          url: widget.updateInfo.fullChangelogUrl,
+        Expanded(child: notes),
+        if (hint != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            hint,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              color: _changelogActive
+                  ? ForjaShellColors.brandGreen
+                  : ForjaShellColors.iconMuted,
+            ),
+          ),
+        ],
+        SizedBox(height: layout.isTv ? 4 : 12),
+        ExcludeFocus(
+          excluding: layout.isTv,
+          child: _FullChangelogLink(
+            layout: layout,
+            url: widget.updateInfo.fullChangelogUrl,
+          ),
         ),
       ],
     );
@@ -571,7 +805,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (changelogs.length == 1)
+        if (changelogs.length == 1 && !layout.isTv)
           _ReleaseNoteVersionHeader(
             title: selected.version,
             layout: layout,
@@ -767,12 +1001,18 @@ class _UpdateFooter extends StatelessWidget {
     required this.installFocus,
     required this.onUpdate,
     required this.onSkip,
+    this.skipFocus,
+    this.onInstallKey,
+    this.onSkipKey,
   });
 
   final _UpdateLayout layout;
   final FocusNode installFocus;
+  final FocusNode? skipFocus;
   final VoidCallback onUpdate;
   final VoidCallback onSkip;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onInstallKey;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onSkipKey;
 
   @override
   Widget build(BuildContext context) {
@@ -782,21 +1022,24 @@ class _UpdateFooter extends StatelessWidget {
       autoFocus: true,
       focusNode: installFocus,
       onTap: onUpdate,
+      onKeyEvent: onInstallKey,
     );
 
     final skip = _UpdateTextAction(
       layout: layout,
       label: 'Skip for now',
+      focusNode: skipFocus,
       onTap: onSkip,
+      onKeyEvent: onSkipKey,
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Divider(height: 1, color: ForjaShellColors.borderSubtle),
-        SizedBox(height: layout.isTv ? 12 : 16),
-        install,
-        SizedBox(height: layout.isTv ? 12 : 12),
+        SizedBox(height: layout.isTv ? 6 : 16),
+        layout.isTv ? Center(child: install) : install,
+        SizedBox(height: layout.isTv ? 8 : 12),
         Center(child: skip),
       ],
     );
@@ -811,12 +1054,18 @@ class _ChangelogVersionRail extends StatelessWidget {
     required this.changelogs,
     required this.selected,
     required this.onSelect,
+    this.interactive = true,
+    this.railActive = false,
+    this.selectedItemKey,
   });
 
   final _UpdateLayout layout;
   final List<VersionChangelog> changelogs;
   final int selected;
   final ValueChanged<int> onSelect;
+  final bool interactive;
+  final bool railActive;
+  final Key? selectedItemKey;
 
   @override
   Widget build(BuildContext context) {
@@ -827,50 +1076,100 @@ class _ChangelogVersionRail extends StatelessWidget {
         ),
       ),
       child: ListView.builder(
-        padding: EdgeInsets.only(right: layout.isTv ? 8 : 12),
+        padding: EdgeInsets.only(
+          top: 2,
+          bottom: 2,
+          right: layout.isTv ? 8 : 12,
+        ),
         itemCount: changelogs.length,
         itemBuilder: (context, index) {
           final version = changelogs[index].version;
           final active = index == selected;
-          return Padding(
-            padding: EdgeInsets.only(bottom: layout.isTv ? 4 : 6),
-            child: ForjaInteractive(
-              onTap: () => onSelect(index),
-              builder: (hover, pressed) {
-                final lit = active || hover || pressed;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: layout.isTv ? 8 : 10,
-                    vertical: layout.isTv ? 8 : 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: active
-                        ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-                        : lit
-                        ? ForjaShellColors.surfaceElevated
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: active
-                          ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
-                          : Colors.transparent,
-                    ),
-                  ),
-                  child: Text(
-                    'v$version',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: layout.isTv ? 12 : 13,
-                      fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                      color: active
-                          ? ForjaShellColors.brandGreen
-                          : ForjaShellColors.textSecondary,
-                    ),
-                  ),
-                );
-              },
+          final focused = active && railActive;
+          final tile = AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: EdgeInsets.symmetric(
+              horizontal: layout.isTv ? 8 : 10,
+              vertical: layout.isTv ? 6 : 10,
+            ),
+            decoration: BoxDecoration(
+              color: focused
+                  ? ForjaShellColors.brandGreen.withValues(alpha: 0.2)
+                  : active
+                  ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                width: 2,
+                color: focused
+                    ? ForjaShellColors.brandGreen
+                    : active
+                    ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
+                    : Colors.transparent,
+              ),
+            ),
+            child: Text(
+              'v$version',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: layout.isTv ? 11 : 13,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                color: active
+                    ? ForjaShellColors.brandGreen
+                    : ForjaShellColors.textSecondary,
+              ),
             ),
           );
+          Widget row = Padding(
+            padding: EdgeInsets.only(bottom: layout.isTv ? 4 : 6),
+            child: interactive
+                ? ForjaInteractive(
+                    onTap: () => onSelect(index),
+                    builder: (hover, pressed) {
+                      final lit = active || hover || pressed;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: layout.isTv ? 8 : 10,
+                          vertical: layout.isTv ? 8 : 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: active
+                              ? ForjaShellColors.brandGreen.withValues(
+                                  alpha: 0.14,
+                                )
+                              : lit
+                              ? ForjaShellColors.surfaceElevated
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            width: 2,
+                            color: active
+                                ? ForjaShellColors.brandGreen.withValues(
+                                    alpha: 0.45,
+                                  )
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Text(
+                          'v$version',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: layout.isTv ? 11 : 13,
+                            fontWeight:
+                                active ? FontWeight.w700 : FontWeight.w600,
+                            color: active
+                                ? ForjaShellColors.brandGreen
+                                : ForjaShellColors.textSecondary,
+                          ),
+                        ),
+                      );
+                    },
+                  )
+                : tile,
+          );
+          if (active && selectedItemKey != null) {
+            row = KeyedSubtree(key: selectedItemKey, child: row);
+          }
+          return row;
         },
       ),
     );
@@ -931,21 +1230,35 @@ class _FullChangelogLink extends StatelessWidget {
 }
 
 class _ReleaseNotesScroller extends StatefulWidget {
-  const _ReleaseNotesScroller({required this.layout, required this.child});
+  const _ReleaseNotesScroller({
+    required this.layout,
+    required this.child,
+    this.controller,
+  });
 
   final _UpdateLayout layout;
   final Widget child;
+  final ScrollController? controller;
 
   @override
   State<_ReleaseNotesScroller> createState() => _ReleaseNotesScrollerState();
 }
 
 class _ReleaseNotesScrollerState extends State<_ReleaseNotesScroller> {
-  final ScrollController _controller = ScrollController();
+  ScrollController? _owned;
+  ScrollController get _controller => widget.controller ?? _owned!;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.controller == null) {
+      _owned = ScrollController();
+    }
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _owned?.dispose();
     super.dispose();
   }
 
@@ -1048,6 +1361,7 @@ class _UpdatePrimaryAction extends StatelessWidget {
     required this.onTap,
     this.autoFocus = false,
     this.focusNode,
+    this.onKeyEvent,
   });
 
   final _UpdateLayout layout;
@@ -1055,18 +1369,21 @@ class _UpdatePrimaryAction extends StatelessWidget {
   final VoidCallback onTap;
   final bool autoFocus;
   final FocusNode? focusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
   Widget build(BuildContext context) {
-    return ForjaInteractive(
+    final action = ForjaInteractive(
       onTap: onTap,
       autoFocus: autoFocus,
       focusNode: focusNode,
+      onKeyEvent: onKeyEvent,
       builder: (hover, pressed) {
         final active = hover || pressed;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           height: layout.buttonHeight,
+          padding: EdgeInsets.symmetric(horizontal: layout.isTv ? 20 : 0),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: active
@@ -1086,6 +1403,8 @@ class _UpdatePrimaryAction extends StatelessWidget {
         );
       },
     );
+    if (!layout.isTv) return action;
+    return UnconstrainedBox(child: action);
   }
 }
 
@@ -1096,6 +1415,7 @@ class _UpdateTextAction extends StatelessWidget {
     required this.onTap,
     this.autoFocus = false,
     this.focusNode,
+    this.onKeyEvent,
   });
 
   final _UpdateLayout layout;
@@ -1103,6 +1423,7 @@ class _UpdateTextAction extends StatelessWidget {
   final VoidCallback onTap;
   final bool autoFocus;
   final FocusNode? focusNode;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -1110,6 +1431,7 @@ class _UpdateTextAction extends StatelessWidget {
       onTap: onTap,
       autoFocus: autoFocus,
       focusNode: focusNode,
+      onKeyEvent: onKeyEvent,
       builder: (hover, pressed) {
         final active = hover || pressed;
         return Padding(
@@ -1174,7 +1496,7 @@ class _ReleaseNoteRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: layout.isTv ? 54 : 68,
+            width: layout.isTv ? 76 : 68,
             child: Align(alignment: Alignment.topLeft, child: leading),
           ),
           SizedBox(width: layout.isTv ? 8 : 12),
@@ -1229,6 +1551,8 @@ class _ReleaseNoteTag extends StatelessWidget {
       ),
       child: Text(
         prefix.toUpperCase(),
+        maxLines: 1,
+        softWrap: false,
         style: GoogleFonts.plusJakartaSans(
           fontSize: (layout.bodySize - 4).clamp(9, 12).toDouble(),
           fontWeight: FontWeight.w700,

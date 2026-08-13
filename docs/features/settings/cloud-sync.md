@@ -15,12 +15,13 @@ profile is known — another profile’s settings are never shown first.
 ## How to open it
 
 - **Desktop startup:** if a newer build is available, the update prompt appears
-  first; then sign in with email/password, **Sign in with passkey** (macOS /
-  Windows), use **Web login** (browser handoff), or choose **Continue without an
-  account**. On Windows / Linux the sign-in and Who’s watching screens keep the
-  same window caption (min / max / close) as the main app. New accounts are
-  created only on the web (**Create an account on the web**). Linux and phones
-  keep password and/or web login only.
+  first; then the same welcome as Android TV (logo, **Sign in** / **Continue as
+  guest**). Sign in shows a code + QR — approve on the portal at `/connect`.
+  See [Link Android TV](../accounts/tv-connect.md). Email/password, passkey, and
+  **Web login** are not on that screen; they remain in **Settings → Profile &
+  account** if you continue as guest. On Windows / Linux the sign-in and Who’s
+  watching screens keep the same window caption (min / max / close) as the main
+  app. New accounts are created only on the web.
 - **Android TV startup:** after the update check, choose **Sign in** (then code or
   QR) or **Continue as guest**. After a successful link, pick a profile on
   **Who’s watching?** See [Link Android TV](../accounts/tv-connect.md). The TV
@@ -75,23 +76,26 @@ Not synced — device-specific or sensitive:
 
 ## What you can do
 
-- Sign in with email and password in the desktop app (Cloudflare Turnstile appears
-  when Auth captcha is configured), **Sign in with passkey** on macOS and Windows
-  (Touch ID / Windows Hello), or use **Web login** to authenticate in the
-  browser (one portal tab; the app finishes when you sign in there — no second
-  localhost page). After handoff the portal mints a **separate** session for the
-  desktop app and **stays signed in** in the browser. Optional **Google OAuth**
-  appears on web login when configured. Optional **authenticator (TOTP)** is
-  under web **Account** — after you enable it, sign-in asks for a 6-digit code
-  (Web login completes MFA in the browser before minting the desktop session;
-  in-app password sign-in shows the same challenge). Portal **Sign out** clears
-  this browser only; **Account → Connections** lists every active session (device,
-  location with flag, IP, signed-in / last active) and can
-  revoke one or **Sign out all devices** (including the desktop app). Already
-  signed in on the portal? Web login skips the credentials form and finishes the
-  handoff (or use **Return to Forja**). Create accounts only on the web
-  (`/signup`). Forgot password is web-only: `/forgot-password` →
-  `/reset-password`.
+- Cold start on desktop and Android TV: **Sign in** (code or QR → portal
+  `/connect`) or **Continue as guest**. After approve, pick a profile on
+  **Who’s watching?** Device-link sessions show as **Forja Android TV** under
+  Account → Connections. From **Settings → Profile & account** (guest), you can
+  still sign in with email and password (Cloudflare Turnstile when Auth captcha
+  is configured), **Sign in with passkey** on macOS and Windows (Touch ID /
+  Windows Hello), or **Web login** in the browser (one portal tab; the app
+  finishes when you sign in there — no second localhost page). After Web login
+  handoff the portal mints a **separate** session for the desktop app and
+  **stays signed in** in the browser. Optional **Google OAuth** appears on web
+  login when configured. Optional **authenticator (TOTP)** is under web
+  **Account** — after you enable it, sign-in asks for a 6-digit code (Web login
+  completes MFA in the browser before minting the desktop session; in-app
+  password sign-in shows the same challenge). Portal **Sign out** clears this
+  browser only; **Account → Connections** lists every active session (device,
+  location with flag, IP, signed-in / last active) and can revoke one or
+  **Sign out all devices** (including the desktop app). Already signed in on the
+  portal? Web login skips the credentials form and finishes the handoff (or use
+  **Return to Forja**). Create accounts only on the web (`/signup`). Forgot
+  password is web-only: `/forgot-password` → `/reset-password`.
 - Continue as a guest; the current local-only app behavior remains available
 - Tap **Watching now** under **Settings → Profile & account** (desktop rail
   avatar opens that page) to open **Who’s watching?** / **Manage profiles**
@@ -114,8 +118,8 @@ Not synced — device-specific or sensitive:
   avatar profile splash as mid-session switches (settings sync, then warm like
   the intro splash), then opens the app — not a second logo boot splash.
 - **Sign out** from Profile & account (or the profile chooser) returns to the
-  desktop sign-in screen and unloads the main app. You must sign in again or
-  choose **Continue without an account**. Account-bound local data on this
+  code/QR welcome screen and unloads the main app. You must sign in again or
+  choose **Continue as guest**. Account-bound local data on this
   device is cleared (IPTV portals and passwords, synced playback/nav prefs reset
   to platform defaults); cloud sync stops until you sign in again
 - Cloud sessions expire after **30 days without a refresh** (Auth inactivity
@@ -126,7 +130,7 @@ Not synced — device-specific or sensitive:
   — they do not pretend you have no profiles, keep a stale “Synced” hero, or
   trap you without a way to clear the session when the network is down. If the session is
   lost while you are already using the app (for example after a failed token
-  refresh), Forja returns to the desktop sign-in screen and clears the same
+  refresh), Forja returns to the code/QR welcome screen and clears the same
   account-bound local data — it does **not** stay open as Guest with your prior
   portals still loaded. Sign in again (or continue as guest with a clean local
   slate) to keep using the app. Web portal and desktop can stay signed in

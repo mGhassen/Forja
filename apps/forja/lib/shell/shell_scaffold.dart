@@ -21,6 +21,7 @@ class ShellScaffold extends StatefulWidget {
     this.shellHeader,
     this.shellTopBar,
     this.hideGlobalNav = false,
+    this.maskUnderPlayer = false,
   });
 
   final bool useNavRail;
@@ -32,6 +33,9 @@ class ShellScaffold extends StatefulWidget {
   final Widget? shellHeader;
   final Widget? shellTopBar;
   final bool hideGlobalNav;
+
+  /// Full-window black cover (no layout reflow) while IPTV root player is up.
+  final bool maskUnderPlayer;
 
   @override
   State<ShellScaffold> createState() => _ShellScaffoldState();
@@ -173,6 +177,11 @@ class _ShellScaffoldState extends State<ShellScaffold> {
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(child: HomeWatchProviderRail()),
             ),
+          ),
+        if (widget.maskUnderPlayer)
+          const Positioned.fill(
+            key: ValueKey('shell-player-underlay-mask'),
+            child: ColoredBox(color: Colors.black),
           ),
       ],
     );

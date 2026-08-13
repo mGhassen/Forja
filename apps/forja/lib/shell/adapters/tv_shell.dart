@@ -12,6 +12,7 @@ class TvShell extends StatelessWidget {
     this.shellHeader,
     this.shellTopBar,
     this.hideGlobalNav = false,
+    this.maskUnderPlayer = false,
   });
 
   final List<String> visibleIds;
@@ -22,6 +23,7 @@ class TvShell extends StatelessWidget {
   final Widget? shellHeader;
   final Widget? shellTopBar;
   final bool hideGlobalNav;
+  final bool maskUnderPlayer;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +39,7 @@ class TvShell extends StatelessWidget {
       shellHeader: shellHeader,
       shellTopBar: shellTopBar,
       hideGlobalNav: hideGlobalNav,
+      maskUnderPlayer: maskUnderPlayer,
     );
   }
 }

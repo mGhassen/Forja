@@ -5,6 +5,40 @@ import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// How list buckets sync when the user connects or taps Sync Now.
+enum SimklListSyncMode {
+  /// Push device My List statuses to Simkl. Do not mirror Simkl-only titles
+  /// into the local cache (they still appear in My List while connected).
+  keepLocal,
+
+  /// Overwrite local My List statuses from Simkl. No list export.
+  useSimkl,
+
+  /// Push local titles, then pull Simkl into local. Same title, different
+  /// status → device wins.
+  merge,
+}
+
+class SimklSyncResult {
+  const SimklSyncResult({
+    this.mode,
+    required this.watchlistImported,
+    required this.watchlistExported,
+    required this.watchingImported,
+    required this.moviesImported,
+    required this.episodesImported,
+    required this.episodesExported,
+  });
+
+  final SimklListSyncMode? mode;
+  final int watchlistImported;
+  final int watchlistExported;
+  final int watchingImported;
+  final int moviesImported;
+  final int episodesImported;
+  final int episodesExported;
+}
+
 /// Full Simkl integration - PIN-based auth, watchlist sync,
 /// scrobble, history, ratings, and two-way import/export.
 class SimklService {
@@ -633,10 +667,11 @@ class SimklService {
 
       final savedAll = await _secureRead('simkl_last_activity');
 
-      int watchlistCount = 0, moviesImported = 0, watchingImported = 0, episodesImported = 0;
+      int moviesImported = 0, watchingImported = 0, episodesImported = 0;
 
       if (force || savedAll != lastAll) {
-        watchlistCount = await importWatchlistToMyList();
+        // List buckets only via explicit Sync Now / connect chooser — never
+        // silent overwrite of local My List from background fullSync.
         watchingImported = await importWatchingProgress();
         moviesImported = await importCompletedMovies();
         episodesImported = await importWatchedEpisodes();
@@ -647,9 +682,8 @@ class SimklService {
 
       _initialSyncDone = true;
       debugPrint(
-        '[Simkl] Smart sync done - watchlist: $watchlistCount, '
-        'watching: $watchingImported, movies: $moviesImported, '
-        'episodes: $episodesImported',
+        '[Simkl] Smart sync done - watching: $watchingImported, '
+        'movies: $moviesImported, episodes: $episodesImported',
       );
     } finally {
       _syncInProgress = null;
@@ -657,40 +691,98 @@ class SimklService {
     }
   }
 
-  /// Push the entire local My List to Simkl watchlist.
+  /// Push local My List buckets to Simkl with each item's real [listStatus].
   Future<int> exportMyListToWatchlist() async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
+    await MyListService().ensureLoaded();
     final items = MyListService().items;
     if (items.isEmpty) return 0;
 
     final movies = <Map<String, dynamic>>[];
     final shows = <Map<String, dynamic>>[];
+    final anime = <Map<String, dynamic>>[];
 
     for (final item in items) {
+      final status =
+          item['listStatus']?.toString() ?? MyListService.defaultStatus;
+      final mt = item['mediaType']?.toString() ?? 'movie';
+
+      if (mt == 'anime') {
+        final anilist = item['anilistId'] as int?;
+        if (anilist == null) continue;
+        anime.add({
+          'ids': {'anilist': anilist},
+          'to': status,
+        });
+        continue;
+      }
+
       final ids = <String, dynamic>{};
       final tmdb = item['tmdbId'] as int?;
       final imdb = item['imdbId']?.toString();
       if (tmdb != null) ids['tmdb'] = tmdb;
-      if (imdb != null) ids['imdb'] = imdb;
+      if (imdb != null && imdb.isNotEmpty) ids['imdb'] = imdb;
       if (ids.isEmpty) continue;
 
-      final entry = {'ids': ids, 'to': 'plantowatch'};
-      final mt = item['mediaType']?.toString() ?? 'movie';
-      if (mt == 'tv' || mt == 'series') {
+      final entry = {'ids': ids, 'to': status};
+      if (mt == 'tv' || mt == 'series' || mt == 'asian_drama') {
         shows.add(entry);
       } else {
         movies.add(entry);
       }
     }
 
-    if (movies.isEmpty && shows.isEmpty) return 0;
+    if (movies.isEmpty && shows.isEmpty && anime.isEmpty) return 0;
 
-    final ok = await _addToList(movies: movies, shows: shows);
-    final total = movies.length + shows.length;
+    final ok = await _addToList(movies: movies, shows: shows, anime: anime);
+    final total = movies.length + shows.length + anime.length;
     debugPrint('[Simkl] Exported $total items: ${ok ? 'success' : 'failed'}');
     return ok ? total : 0;
+  }
+
+  /// List + history sync for connect / Sync Now after the user picks a mode.
+  Future<SimklSyncResult> syncWithMode(SimklListSyncMode mode) async {
+    var watchlistImported = 0;
+    var watchlistExported = 0;
+
+    switch (mode) {
+      case SimklListSyncMode.useSimkl:
+        watchlistImported = await importWatchlistToMyList();
+      case SimklListSyncMode.keepLocal:
+        watchlistExported = await exportMyListToWatchlist();
+      case SimklListSyncMode.merge:
+        watchlistExported = await exportMyListToWatchlist();
+        watchlistImported = await importWatchlistToMyList();
+    }
+
+    final history = await syncHistoryOnly();
+    return SimklSyncResult(
+      mode: mode,
+      watchlistImported: watchlistImported,
+      watchlistExported: watchlistExported,
+      watchingImported: history.watchingImported,
+      moviesImported: history.moviesImported,
+      episodesImported: history.episodesImported,
+      episodesExported: history.episodesExported,
+    );
+  }
+
+  /// Progress / completed / episodes only (no My List bucket push/pull).
+  Future<SimklSyncResult> syncHistoryOnly() async {
+    final watchingImported = await importWatchingProgress();
+    final moviesImported = await importCompletedMovies();
+    final episodesImported = await importWatchedEpisodes();
+    final episodesExported = await exportWatchedEpisodes();
+    return SimklSyncResult(
+      watchlistImported: 0,
+      watchlistExported: 0,
+      watchingImported: watchingImported,
+      moviesImported: moviesImported,
+      episodesImported: episodesImported,
+      episodesExported: episodesExported,
+    );
   }
 
   /// Movies + shows + anime for one status. Simkl `all-items` has no page param.

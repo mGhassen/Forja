@@ -902,10 +902,22 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
     widget.options.length,
     (i) => FocusNode(debugLabel: 'settings-select-$i'),
   );
+  int? _focusedIndex;
 
   @override
   void initState() {
     super.initState();
+    for (var i = 0; i < _nodes.length; i++) {
+      final index = i;
+      _nodes[index].addListener(() {
+        if (!mounted) return;
+        if (_nodes[index].hasFocus) {
+          setState(() => _focusedIndex = index);
+        } else if (_focusedIndex == index) {
+          setState(() => _focusedIndex = null);
+        }
+      });
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       var i = widget.options.indexOf(widget.value);
@@ -934,6 +946,8 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
     Widget optionRow(int index) {
       final option = widget.options[index];
       final selected = option == widget.value;
+      final focused = _focusedIndex == index;
+      final emphasize = selected || focused;
       final row = Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
@@ -942,11 +956,11 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
               child: Text(
                 option,
                 style: TextStyle(
-                  color: selected
+                  color: emphasize
                       ? ForjaShellColors.textPrimary
                       : ForjaShellColors.textSecondary,
                   fontSize: 15,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),

@@ -215,10 +215,17 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
       );
 
   /// Root-navigator push — same full-window cover + Back slide as movies.
-  /// Catalog/details underlay stays laid out with the rail (no Offstage reflow).
-  static Future<T?> open<T>(BuildContext context, IptvPtPlayerScreen player) {
+  /// Masks the shell underlay (no catalog peek during the slide) without
+  /// Offstage/reflow of the rail.
+  static Future<T?> open<T>(BuildContext context, IptvPtPlayerScreen player) async {
     final hostContext = context;
-    return Navigator.of(context, rootNavigator: true).push<T>(
+    ShellBus.maskShellUnderPlayer.value = true;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!hostContext.mounted) {
+      ShellBus.clearMaskShellUnderPlayer();
+      return null;
+    }
+    return Navigator.of(hostContext, rootNavigator: true).push<T>(
       AppRouter.slideRoute(
         (_) => ShellScope.rehost(hostContext, player),
         settings: const RouteSettings(name: 'iptv_player'),
@@ -487,6 +494,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   @override
   void initState() {
     super.initState();
+    // Cover catalog/rail under the opaque route (set again from [open] before
+    // push so the first slide frame is already masked).
+    ShellBus.maskShellUnderPlayer.value = true;
     ShellBus.enterPlayerSurface();
     PlayerBackExitGate.setTryFocusBack(() {
       if (_disposed || !mounted) return false;
@@ -786,7 +796,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     final nav = Navigator.of(context, rootNavigator: true);
     await _stopPlaybackForExit();
     if (!mounted || _disposed) return;
-    if (_playerReady) {
+    // Android: unmount MediaCodec before pop (ANR). Desktop keeps the
+    // surface so the slide does not flash the underlay mid-transition.
+    if (!kIsWeb && Platform.isAndroid && _playerReady) {
       setState(() => _playerReady = false);
       await WidgetsBinding.instance.endOfFrame;
     }
@@ -883,6 +895,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     PlayerBackExitGate.setTryFocusBack(null);
     PlayerBackExitGate.setTryConsumePlayerOverlay(null);
     ShellBus.leavePlayerSurface();
+    ShellBus.clearMaskShellUnderPlayer();
     _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onRemoteControlsActivity);
