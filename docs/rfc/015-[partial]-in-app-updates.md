@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** acceptance (v1.0) · **11 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs, historical) · **2 / 3** acceptance (R2 changelog archive) · **4 / 4** acceptance (per-platform latest) · **1 / 1** acceptance (ATV focus trap) · **2 / 2** acceptance (ATV two-column changelog, historical) · **1 / 1** acceptance (ATV stacked changelog) |
-| **Current slice** | ATV stacked header + version-rail D-pad shipped (smoke open); hosted smoke A37 / A45 still open |
+| **Progress** | **7 / 7** acceptance (v1.0) · **11 / 13** acceptance (v1.1 slice) · **3 / 3** acceptance (Supabase release mirror, historical) · **2 / 2** acceptance (GitHub-only) · **5 / 5** acceptance (Supabase Storage downloads, historical) · **5 / 6** acceptance (Cloudflare R2 downloads) · **1 / 1** acceptance (startup order) · **3 / 3** acceptance (R2 discovery + dialog changelogs, historical) · **2 / 3** acceptance (R2 changelog archive) · **4 / 4** acceptance (per-platform latest) · **4 / 4** acceptance (per-arch latest) · **1 / 1** acceptance (ATV focus trap) · **2 / 2** acceptance (ATV two-column changelog, historical) · **1 / 1** acceptance (ATV stacked changelog) |
+| **Current slice** | Per-arch `arches` map shipped; hosted smoke A37 / A45 still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -180,9 +180,20 @@
 
 ---
 
+## Acceptance (per-arch latest)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R15-A54 | R2 upload writes `platforms.*.arches.{arch}.{version,filename,published_at}`; platform `version` stays max across arches | ✅ |
+| 2 | R15-A55 | Partial arch upload keeps sibling arch entries (version + published_at) | ✅ |
+| 3 | R15-A56 | `AppUpdaterService` compares/downloads using host-arch entry only (no cross-arch fallback; no platform-max offer) | ✅ |
+| 4 | R15-A57 | Web `/download` asset versions come from `arches` (filename fallback) | ✅ |
+
+---
+
 ## Summary
 
-Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — **per-platform** latest installers), then downloads the platform installer from the versioned R2 path. A macOS-only release updates only the macOS entry and leaves Windows/Linux/Android TV latest files in place. Changelog bodies for the dialog come from the permanent R2 `changelog/` archive (`index.json` + `{version}.md`), with GitHub Releases as fallback; the UI lists up to 16 versions since the installed build and links to the portal `/changelog`. The download page shows each platform’s own version and notes.
+Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — **per-platform** and **per-arch** latest installers), then downloads the matching arch installer from `latest/{filename}` (versioned `v{version}/` as fallback). A macOS-only or single-arch publish updates only that arch entry and leaves sibling arches and other platforms in place. Changelog bodies for the dialog come from the permanent R2 `changelog/` archive (`index.json` + `{version}.md`), with GitHub Releases as fallback; the UI lists up to 16 versions since the installed build and links to the portal `/changelog`. The download page shows each platform’s own version and notes (per download button / arch).
 
 ## Goals
 
@@ -225,23 +236,45 @@ Forja checks Cloudflare R2 for a newer version (`latest/manifest.json` — **per
 
 ```json
 {
-  "published_at": "2026-07-21T23:42:43Z",
+  "published_at": "2026-08-12T00:20:29Z",
   "platforms": {
     "macos": {
-      "version": "1.2.406",
-      "published_at": "2026-07-21T23:42:43Z",
-      "assets": ["Forja-1.2.406-macos-arm64.dmg"]
+      "version": "1.3.267",
+      "published_at": "2026-08-12T00:20:29Z",
+      "assets": [
+        "Forja-1.3.267-macos-arm64.dmg",
+        "Forja-1.3.247-macos-x86_64.dmg"
+      ],
+      "arches": {
+        "arm64": {
+          "version": "1.3.267",
+          "filename": "Forja-1.3.267-macos-arm64.dmg",
+          "published_at": "2026-08-12T00:20:29Z"
+        },
+        "x86_64": {
+          "version": "1.3.247",
+          "filename": "Forja-1.3.247-macos-x86_64.dmg",
+          "published_at": "2026-08-10T19:00:14Z"
+        }
+      }
     },
     "windows": {
-      "version": "1.2.400",
-      "published_at": "2026-07-01T12:00:00Z",
-      "assets": ["Forja-1.2.400-windows-setup.exe"]
+      "version": "1.3.247",
+      "published_at": "2026-08-10T19:00:14Z",
+      "assets": ["Forja-1.3.247-windows-setup.exe"],
+      "arches": {
+        "default": {
+          "version": "1.3.247",
+          "filename": "Forja-1.3.247-windows-setup.exe",
+          "published_at": "2026-08-10T19:00:14Z"
+        }
+      }
     }
   }
 }
 ```
 
-`platforms` is the only source of truth on `latest/manifest.json`. Web + updater read per-platform entries; upload CI merges partial releases into this map.
+`platforms` is the source of truth on `latest/manifest.json`. Platform `version` is the **max** across arches (glance / old clients). Update offers use `arches.{arch}` only. Web + updater read those entries; upload CI merges partial releases by arch into this map.
 
 ## Update manifest (GitHub Releases)
 

@@ -2,18 +2,27 @@
  * Server-side fetch of R2 `latest/manifest.json`.
  * Browser uses /api/latest-release — CDN has no CORS for the portal.
  *
- * Manifest is per-platform: partial releases merge into `platforms` and keep
- * other platforms' previous latest installers.
+ * Manifest is per-platform and per-arch: partial releases merge into
+ * `platforms` / `arches` and keep other platforms' and sibling arches'
+ * previous latest installers.
  */
 
 import {
   releaseCdnLatestUrl,
 } from '@/lib/release-storage'
 
+export type R2ArchEntry = {
+  version: string
+  filename: string
+  published_at?: string
+}
+
 export type R2PlatformEntry = {
   version: string
   published_at?: string
   assets: string[]
+  /** Per-CPU installer truth (split-arch latest). */
+  arches?: Record<string, R2ArchEntry>
   /** AFTVnews Downloader short codes keyed by arch (android_tv only). */
   downloader_codes?: Record<string, string>
 }
@@ -136,6 +145,52 @@ function normalizeDownloaderCodes(
   return Object.keys(out).length ? out : undefined
 }
 
+function normalizeArches(
+  raw: unknown,
+  opts: {
+    assets: string[]
+    fallbackVersion: string
+    fallbackPublishedAt?: string
+  },
+): Record<string, R2ArchEntry> | undefined {
+  const { assets, fallbackVersion, fallbackPublishedAt } = opts
+  const out: Record<string, R2ArchEntry> = {}
+  if (raw && typeof raw === 'object') {
+    for (const [arch, meta] of Object.entries(raw as Record<string, unknown>)) {
+      if (!arch.trim() || !meta || typeof meta !== 'object') continue
+      const m = meta as Record<string, unknown>
+      const filename =
+        typeof m.filename === 'string' ? m.filename.trim() : ''
+      const version =
+        typeof m.version === 'string'
+          ? m.version.replace(/^v/, '').trim()
+          : versionFromFilename(filename) ?? ''
+      if (!filename || !version) continue
+      const entry: R2ArchEntry = { version, filename }
+      if (typeof m.published_at === 'string' && m.published_at.trim()) {
+        entry.published_at = m.published_at.trim()
+      } else if (fallbackPublishedAt) {
+        entry.published_at = fallbackPublishedAt
+      }
+      out[arch.trim()] = entry
+    }
+  }
+  if (Object.keys(out).length) return out
+
+  // Derive from assets when arches missing.
+  for (const name of assets) {
+    const arch = detectArchFromFilename(name)
+    const version = versionFromFilename(name) ?? fallbackVersion
+    if (!version) continue
+    out[arch] = {
+      version,
+      filename: name,
+      ...(fallbackPublishedAt ? { published_at: fallbackPublishedAt } : {}),
+    }
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
 function normalizePlatforms(
   manifest: R2LatestManifest,
 ): Record<
@@ -144,6 +199,7 @@ function normalizePlatforms(
     version: string
     published_at?: string
     assets: string[]
+    arches?: Record<string, R2ArchEntry>
     downloader_codes?: Record<string, string>
   }
 > {
@@ -153,6 +209,7 @@ function normalizePlatforms(
       version: string
       published_at?: string
       assets: string[]
+      arches?: Record<string, R2ArchEntry>
       downloader_codes?: Record<string, string>
     }
   > = {}
@@ -165,13 +222,24 @@ function normalizePlatforms(
       const assets = Array.isArray(entry.assets)
         ? entry.assets.filter((a): a is string => typeof a === 'string' && a.trim().length > 0)
         : []
-      if (!version || !assets.length) continue
+      const published_at =
+        typeof entry.published_at === 'string' ? entry.published_at : undefined
+      const arches = normalizeArches(entry.arches, {
+        assets,
+        fallbackVersion: version,
+        fallbackPublishedAt: published_at,
+      })
+      const resolvedAssets =
+        arches && Object.keys(arches).length
+          ? Object.values(arches).map((a) => a.filename)
+          : assets
+      if (!version || !resolvedAssets.length) continue
       const codes = normalizeDownloaderCodes(entry.downloader_codes)
       out[key] = {
         version,
-        published_at:
-          typeof entry.published_at === 'string' ? entry.published_at : undefined,
-        assets,
+        published_at,
+        assets: resolvedAssets,
+        ...(arches ? { arches } : {}),
         ...(codes ? { downloader_codes: codes } : {}),
       }
     }
@@ -199,6 +267,14 @@ function normalizePlatforms(
     bucket.assets.push(name)
     out[platform] = bucket
   }
+  for (const [platform, bucket] of Object.entries(out)) {
+    const arches = normalizeArches(undefined, {
+      assets: bucket.assets,
+      fallbackVersion: bucket.version,
+      fallbackPublishedAt: bucket.published_at,
+    })
+    if (arches) out[platform] = { ...bucket, arches }
+  }
   return out
 }
 
@@ -224,13 +300,28 @@ export function fromR2Manifest(
       maxVersion = entry.version
     }
     if (entry.published_at) publishedAt = entry.published_at
-    for (let i = 0; i < entry.assets.length; i++) {
-      const name = entry.assets[i]
-      const fileVersion = versionFromFilename(name) ?? entry.version
-      const arch = detectArchFromFilename(name)
+
+    const archEntries = entry.arches
+      ? Object.entries(entry.arches)
+      : entry.assets.map((name) => {
+          const arch = detectArchFromFilename(name)
+          return [
+            arch,
+            {
+              version: versionFromFilename(name) ?? entry.version,
+              filename: name,
+              published_at: entry.published_at,
+            } satisfies R2ArchEntry,
+          ] as const
+        })
+
+    let i = 0
+    for (const [arch, meta] of archEntries) {
+      const name = meta.filename
+      const fileVersion = meta.version || versionFromFilename(name) || entry.version
       const code = entry.downloader_codes?.[arch]
       assets.push({
-        id: `r2-asset-${platform}-${fileVersion}-${i}`,
+        id: `r2-asset-${platform}-${fileVersion}-${arch}-${i}`,
         release_id: `r2-${fileVersion}`,
         platform,
         version: fileVersion,
@@ -239,6 +330,7 @@ export function fromR2Manifest(
         size_bytes: null,
         downloader_code: code ?? null,
       })
+      i++
     }
   }
 
@@ -308,15 +400,17 @@ export async function fetchR2LatestRelease(): Promise<R2LatestRelease | null> {
   const platforms = normalizePlatforms(decoded as R2LatestManifest)
   if (!Object.keys(platforms).length) return null
 
-  // Include filename semvers so split-arch releases (e.g. macOS arm64 ≠ Intel)
+  // Include arch + filename semvers so split-arch releases (e.g. macOS arm64 ≠ Intel)
   // still get their changelog bodies, not only the platform bucket version.
   const uniqueVersions = [
     ...new Set(
       Object.values(platforms).flatMap((p) => [
         p.version,
-        ...p.assets
-          .map((name) => versionFromFilename(name))
-          .filter((v): v is string => !!v),
+        ...(p.arches
+          ? Object.values(p.arches).map((a) => a.version)
+          : p.assets
+              .map((name) => versionFromFilename(name))
+              .filter((v): v is string => !!v)),
       ]),
     ),
   ]

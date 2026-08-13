@@ -153,10 +153,12 @@ class SettingsAccountsPageBody extends StatelessWidget {
             children: [SettingsTraktPanel()],
           ),
         SettingsGroup(label: 'Simkl', children: const [SettingsSimklPanel()]),
-        SettingsGroup(
-          label: 'MDBlist',
-          children: const [SettingsMdblistPanel()],
-        ),
+        if (visibility.showMdblist)
+          const SettingsGroup(
+            label: 'MDBlist',
+            adminOnly: true,
+            children: [SettingsMdblistPanel()],
+          ),
       ],
     );
   }

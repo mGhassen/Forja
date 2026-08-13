@@ -25,7 +25,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | [Sources](torrent-settings.md) | Server reliability, torrents, Stremio / Nuvio / Jackett / Prowlarr | VOD tab + Webstreaming / Direct torrent / Stremio / Nuvio on — never on Android TV |
 | [WebStreamr](../scrapers/webstreamr-settings.md) | Country sources, extractors, resolutions, MFP, FlareSolverr, TMDB | Admin only · VOD tab + Webstreaming on — never on Android TV |
 | Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link | Admin only · VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
-| Connected services | Simkl, MDBlist; Trakt (admin) | VOD tab (Trakt row is admin-only) |
+| Connected services | Simkl; Trakt & MDBlist (admin) | VOD tab (Trakt / MDBlist rows are admin-only) |
 | [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists | Admin only · VOD tab — never on Android TV |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
 | [LAN](lan.md) | Desktop server, pairing, torrent relay to phone/TV | Always |

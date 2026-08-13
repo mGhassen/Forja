@@ -13,9 +13,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// In-app updates.
 ///
-/// Discovery: Cloudflare R2 `latest/manifest.json` (per-platform).
+/// Discovery: Cloudflare R2 `latest/manifest.json` (per-platform + per-arch).
 /// Download: `latest/{file}` (same mirror as the website; versioned `v{ver}/`
-/// as fallback). Manifest merge keeps other platforms on partial releases.
+/// as fallback). Manifest merge keeps other platforms / sibling arches on
+/// partial releases. Compare against the host-arch entry only.
 /// Changelog bodies: R2 `changelog/` (permanent); GitHub Releases as fallback.
 class AppUpdaterService {
   static const String githubRepo = 'mGhassen/Forja';
@@ -103,39 +104,32 @@ class AppUpdaterService {
       return UpdateCheckResult.upToDate();
     }
 
-    final target = AppUpdaterManifest.resolve(
+    final arch = _hostArchKey();
+    final target = AppUpdaterManifest.resolveForArch(
       manifest: decoded,
       platformKey: key,
+      arch: arch,
     );
     if (target == null) {
       return UpdateCheckResult.failed(
-        'No installer is published for this platform yet.',
+        'No installer is published for this device architecture yet.',
       );
     }
 
-    final filename = _pickInstallerFilename(target.assets);
-    if (filename == null || filename.isEmpty) {
-      return UpdateCheckResult.failed(
-        'Found ${target.version} but no matching installer asset.',
-      );
-    }
-
-    // Split-arch latest can keep an older sibling arch — compare against the
-    // asset this device would actually download, not the platform max.
-    final assetVersion =
-        AppUpdaterManifest.versionFromFilename(filename) ?? target.version;
-
-    if (!AppUpdaterReleaseNotes.isNewerVersion(currentVersion, assetVersion)) {
+    if (!AppUpdaterReleaseNotes.isNewerVersion(
+      currentVersion,
+      target.version,
+    )) {
       return UpdateCheckResult.upToDate();
     }
 
     final downloadUrl = ReleaseStorageUrls.preferStorage(
-      version: assetVersion,
-      filename: filename,
+      version: target.version,
+      filename: target.filename,
     );
     if (downloadUrl.isEmpty) {
       return UpdateCheckResult.failed(
-        'Found $assetVersion but no matching installer asset.',
+        'Found ${target.version} but no matching installer asset.',
       );
     }
 
@@ -143,13 +137,13 @@ class AppUpdaterService {
 
     final changelogs = await _fetchChangelogs(
       currentVersion: currentVersion,
-      latestVersion: assetVersion,
+      latestVersion: target.version,
     );
 
     return UpdateCheckResult.available(
       UpdateInfo(
         currentVersion: currentVersion,
-        latestVersion: assetVersion,
+        latestVersion: target.version,
         downloadUrl: downloadUrl,
         changelogs: changelogs,
         fullChangelogUrl: fullChangelogUrl(),
@@ -304,88 +298,31 @@ class AppUpdaterService {
     }
   }
 
-  String? _pickInstallerFilename(List<String> assets) {
-    if (Platform.isWindows) {
-      return _firstMatching(
-        assets,
-        (n) => n.contains('windows') && n.endsWith('.exe'),
-      );
-    }
-    if (Platform.isLinux) {
-      return _firstMatching(
-        assets,
-        (n) =>
-            n.contains('linux') &&
-            (n.endsWith('.appimage') || n.endsWith('.deb')),
-      );
-    }
+  /// R2 `arches` key for this process (never cross-arch fallback).
+  String _hostArchKey() {
     if (Platform.isMacOS) {
-      return _pickMacosFilename(assets);
+      try {
+        final result = Process.runSync('uname', ['-m']);
+        final machine = (result.stdout as String).trim().toLowerCase();
+        if (machine == 'x86_64' || machine == 'i386') return 'x86_64';
+        if (machine == 'arm64' || machine == 'aarch64') return 'arm64';
+      } catch (_) {}
+      return 'arm64';
     }
     if (Platform.isAndroid) {
-      return _pickAndroidFilename(assets);
+      return sizeOf<IntPtr>() == 8 ? 'arm64' : 'armeabi-v7a';
     }
-    return null;
-  }
-
-  String? _firstMatching(List<String> assets, bool Function(String lower) test) {
-    for (final name in assets) {
-      if (test(name.toLowerCase())) return name;
+    if (Platform.isLinux) {
+      try {
+        final result = Process.runSync('uname', ['-m']);
+        final machine = (result.stdout as String).trim().toLowerCase();
+        if (machine == 'x86_64' || machine == 'amd64') return 'x86_64';
+        if (machine == 'aarch64' || machine == 'arm64') return 'arm64';
+      } catch (_) {}
+      return 'default';
     }
-    return null;
-  }
-
-  String? _pickMacosFilename(List<String> assets) {
-    final macos = assets
-        .where((n) {
-          final lower = n.toLowerCase();
-          return lower.contains('macos') &&
-              (lower.endsWith('.dmg') || lower.endsWith('.zip'));
-        })
-        .toList();
-    if (macos.isEmpty) return null;
-
-    final arch = _macosArchNeedle();
-    for (final name in macos) {
-      final lower = name.toLowerCase();
-      if (lower.contains(arch) && lower.endsWith('.dmg')) return name;
-    }
-    for (final name in macos) {
-      if (name.toLowerCase().endsWith('.dmg')) return name;
-    }
-    return macos.first;
-  }
-
-  String? _pickAndroidFilename(List<String> assets) {
-    final apks =
-        assets.where((n) => n.toLowerCase().endsWith('.apk')).toList();
-    if (apks.isEmpty) return null;
-
-    final tv = apks
-        .where((n) => n.toLowerCase().contains('android-tv'))
-        .toList();
-    final candidates = tv.isNotEmpty ? tv : apks;
-
-    final is64Bit = sizeOf<IntPtr>() == 8;
-    final abiNeedle = is64Bit ? 'arm64' : 'armeabi-v7a';
-    final abiFallback = is64Bit ? 'v7a' : 'arm64';
-
-    for (final needle in [abiNeedle, abiFallback]) {
-      for (final name in candidates) {
-        if (name.toLowerCase().contains(needle)) return name;
-      }
-    }
-    return candidates.first;
-  }
-
-  String _macosArchNeedle() {
-    try {
-      final result = Process.runSync('uname', ['-m']);
-      final machine = (result.stdout as String).trim().toLowerCase();
-      if (machine == 'x86_64' || machine == 'i386') return 'x86_64';
-      if (machine == 'arm64' || machine == 'aarch64') return 'arm64';
-    } catch (_) {}
-    return 'arm64';
+    // Windows setup EXE (and any single-installer platform).
+    return 'default';
   }
 
   Future<void> openDownloadPage(String url) async {

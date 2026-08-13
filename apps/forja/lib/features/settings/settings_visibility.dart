@@ -102,6 +102,9 @@ class SettingsVisibility {
   /// Trakt login / sync — admin accounts only (`accounts.is_admin`).
   bool get showTrakt => vodTab && AccountFeatures.instance.isAdmin;
 
+  /// MDBlist API key — admin accounts only (`accounts.is_admin`).
+  bool get showMdblist => vodTab && AccountFeatures.instance.isAdmin;
+
   /// Embedded Lists screen — admin accounts only (`accounts.is_admin`).
   bool get showLists =>
       !_isAndroidTv && vodTab && AccountFeatures.instance.isAdmin;

@@ -157,8 +157,64 @@ class MergePlatformManifestTest(unittest.TestCase):
         )
         self.assertEqual(macos["version"], "1.3.24")
         self.assertEqual(
+            macos["arches"],
+            {
+                "arm64": {
+                    "version": "1.3.9",
+                    "filename": "Forja-1.3.9-macos-arm64.dmg",
+                    "published_at": "2026-07-26T14:40:16Z",
+                },
+                "x86_64": {
+                    "version": "1.3.24",
+                    "filename": "Forja-1.3.24-macos-x86_64.dmg",
+                    "published_at": "2026-07-27T00:30:43Z",
+                },
+            },
+        )
+        self.assertEqual(
             merged["platforms"]["windows"]["assets"],
             ["Forja-1.3.24-windows-setup.exe"],
+        )
+        self.assertEqual(
+            merged["platforms"]["windows"]["arches"]["default"]["version"],
+            "1.3.24",
+        )
+
+    def test_android_tv_split_arch_versions(self) -> None:
+        existing = {
+            "published_at": "2026-08-01T00:00:00Z",
+            "platforms": {
+                "android_tv": {
+                    "version": "1.3.10",
+                    "published_at": "2026-08-01T00:00:00Z",
+                    "assets": [
+                        "Forja-1.3.10-android-tv-arm64.apk",
+                        "Forja-1.3.10-android-tv-armeabi-v7a.apk",
+                    ],
+                    "downloader_codes": {"arm64": "100", "armeabi-v7a": "200"},
+                },
+            },
+        }
+        incoming = platforms_from_filenames(
+            ["Forja-1.3.20-android-tv-arm64.apk"],
+            version="1.3.20",
+            published_at="2026-08-02T00:00:00Z",
+        )
+        incoming["android_tv"]["downloader_codes"] = {"arm64": "300"}
+        merged = merge_platform_manifest(
+            existing, incoming, published_at="2026-08-02T00:00:00Z"
+        )
+        atv = merged["platforms"]["android_tv"]
+        self.assertEqual(atv["version"], "1.3.20")
+        self.assertEqual(atv["arches"]["arm64"]["version"], "1.3.20")
+        self.assertEqual(atv["arches"]["armeabi-v7a"]["version"], "1.3.10")
+        self.assertEqual(
+            atv["arches"]["armeabi-v7a"]["published_at"],
+            "2026-08-01T00:00:00Z",
+        )
+        self.assertEqual(
+            atv["downloader_codes"],
+            {"arm64": "300", "armeabi-v7a": "200"},
         )
 
     def test_legacy_flat_manifest_promotes(self) -> None:

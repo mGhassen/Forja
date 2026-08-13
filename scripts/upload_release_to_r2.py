@@ -21,16 +21,38 @@ Manifest shape (latest/manifest.json):
   {
     "published_at": "…",
     "platforms": {
-      "macos": { "version": "1.2.406", "published_at": "…", "assets": ["…dmg"] },
-      "windows": { "version": "1.2.400", "published_at": "…", "assets": ["…exe"] },
+      "macos": {
+        "version": "1.2.406",
+        "published_at": "…",
+        "assets": ["…-arm64.dmg", "…-x86_64.dmg"],
+        "arches": {
+          "arm64": { "version": "1.2.406", "filename": "…-arm64.dmg", "published_at": "…" },
+          "x86_64": { "version": "1.2.400", "filename": "…-x86_64.dmg", "published_at": "…" }
+        }
+      },
+      "windows": {
+        "version": "1.2.400",
+        "published_at": "…",
+        "assets": ["…exe"],
+        "arches": {
+          "default": { "version": "1.2.400", "filename": "…exe", "published_at": "…" }
+        }
+      },
       "android_tv": {
         "version": "1.3.120",
         "published_at": "…",
         "assets": ["…-arm64.apk", "…-armeabi-v7a.apk"],
+        "arches": {
+          "arm64": { "version": "1.3.120", "filename": "…-arm64.apk", "published_at": "…" },
+          "armeabi-v7a": { "version": "1.3.110", "filename": "…-armeabi-v7a.apk", "published_at": "…" }
+        },
         "downloader_codes": { "arm64": "482913", "armeabi-v7a": "482914" }
       }
     }
   }
+
+`platforms.*.version` is the max semver across arches (glance / old clients).
+Truth for updates = `arches.{arch}.{version,filename}`.
 
 Optional env:
   FORJA_DOWNLOADER_CODES=arm64=482913,armeabi-v7a=482914
@@ -298,6 +320,107 @@ def max_semver(versions: list[str]) -> str | None:
     return max(cleaned, key=semver_key)
 
 
+def build_arches(
+    filenames: list[str],
+    *,
+    published_at: str,
+    prior_arches: dict[str, dict] | None = None,
+    incoming_arches: set[str] | None = None,
+    fallback_version: str | None = None,
+) -> dict[str, dict]:
+    """
+    Per-arch version + filename map.
+
+    Replaced arches (in incoming_arches) get [published_at]; siblings keep prior
+    arch published_at when present.
+    """
+    prior = prior_arches if isinstance(prior_arches, dict) else {}
+    replaced = incoming_arches if incoming_arches is not None else set()
+    out: dict[str, dict] = {}
+    for name in filenames:
+        if not isinstance(name, str) or not name.strip():
+            continue
+        arch = detect_arch(name)
+        ver = version_from_filename(name) or (
+            fallback_version.strip().lstrip("v")
+            if isinstance(fallback_version, str) and fallback_version.strip()
+            else None
+        )
+        if not ver:
+            continue
+        prior_entry = prior.get(arch) if isinstance(prior.get(arch), dict) else None
+        if arch in replaced or prior_entry is None:
+            arch_published = published_at
+        else:
+            prior_pub = prior_entry.get("published_at")
+            arch_published = (
+                prior_pub
+                if isinstance(prior_pub, str) and prior_pub.strip()
+                else published_at
+            )
+        out[arch] = {
+            "version": ver,
+            "filename": name,
+            "published_at": arch_published,
+        }
+    return {
+        arch: out[arch]
+        for arch in sorted(out, key=lambda a: (_ARCH_ORDER.get(a, 50), a))
+    }
+
+
+def assets_from_arches(arches: dict[str, dict]) -> list[str]:
+    return [
+        entry["filename"]
+        for arch in sorted(arches, key=lambda a: (_ARCH_ORDER.get(a, 50), a))
+        if isinstance((entry := arches[arch]), dict)
+        and isinstance(entry.get("filename"), str)
+        and entry["filename"].strip()
+    ]
+
+
+def prior_arches_from_entry(entry: dict | None) -> dict[str, dict]:
+    if not isinstance(entry, dict):
+        return {}
+    raw = entry.get("arches")
+    if isinstance(raw, dict) and raw:
+        out: dict[str, dict] = {}
+        for arch, meta in raw.items():
+            if not isinstance(arch, str) or not isinstance(meta, dict):
+                continue
+            filename = meta.get("filename")
+            version = meta.get("version")
+            if not isinstance(filename, str) or not filename.strip():
+                continue
+            ver = (
+                version.strip().lstrip("v")
+                if isinstance(version, str) and version.strip()
+                else version_from_filename(filename)
+            )
+            if not ver:
+                continue
+            arch_entry: dict = {"version": ver, "filename": filename}
+            pub = meta.get("published_at")
+            if isinstance(pub, str) and pub.strip():
+                arch_entry["published_at"] = pub
+            out[arch] = arch_entry
+        if out:
+            return out
+    # Derive from assets list when arches missing (legacy manifests).
+    assets = entry.get("assets")
+    if not isinstance(assets, list):
+        return {}
+    names = [a for a in assets if isinstance(a, str) and a.strip()]
+    platform_pub = entry.get("published_at")
+    published = platform_pub if isinstance(platform_pub, str) else ""
+    fallback = entry.get("version")
+    return build_arches(
+        names,
+        published_at=published or "",
+        fallback_version=fallback if isinstance(fallback, str) else None,
+    )
+
+
 def platforms_from_filenames(
     filenames: list[str],
     *,
@@ -312,14 +435,25 @@ def platforms_from_filenames(
             print(f"::warning::Skipping unrecognized asset (no platform): {name}")
             continue
         by_platform.setdefault(platform, []).append(name)
-    return {
-        platform: {
-            "version": version,
+    out: dict[str, dict] = {}
+    for platform, names in sorted(by_platform.items()):
+        arches = build_arches(
+            names,
+            published_at=published_at,
+            incoming_arches={detect_arch(n) for n in names},
+            fallback_version=version,
+        )
+        if not arches:
+            continue
+        assets = assets_from_arches(arches)
+        plat_ver = max_semver([e["version"] for e in arches.values()]) or version
+        out[platform] = {
+            "version": plat_ver,
             "published_at": published_at,
-            "assets": names,
+            "assets": assets,
+            "arches": arches,
         }
-        for platform, names in sorted(by_platform.items())
-    }
+    return out
 
 
 _ARCH_ORDER = {"arm64": 0, "x86_64": 1, "armeabi-v7a": 2, "x86": 3, "default": 4}
@@ -430,29 +564,47 @@ def _normalize_platform_entry(
     *,
     fallback_published_at: str | None,
 ) -> dict | None:
-    assets = entry.get("assets")
-    if not isinstance(assets, list) or not assets:
+    published = entry.get("published_at")
+    if not isinstance(published, str) or not published.strip():
+        published = fallback_published_at
+    published_s = published if isinstance(published, str) and published.strip() else ""
+
+    arches = prior_arches_from_entry(entry)
+    if not arches and isinstance(entry.get("assets"), list):
+        names = [a for a in entry["assets"] if isinstance(a, str) and a.strip()]
+        fallback = entry.get("version")
+        arches = build_arches(
+            names,
+            published_at=published_s,
+            fallback_version=fallback if isinstance(fallback, str) else None,
+        )
+    if not arches:
         return None
-    names = [a for a in assets if isinstance(a, str) and a.strip()]
-    if not names:
-        return None
-    from_names = [v for n in names if (v := version_from_filename(n))]
+
+    # Refresh published_at on arch entries missing it.
+    for arch, meta in list(arches.items()):
+        if "published_at" not in meta and published_s:
+            arches[arch] = {**meta, "published_at": published_s}
+
+    assets = assets_from_arches(arches)
+    from_names = [e["version"] for e in arches.values() if isinstance(e.get("version"), str)]
     ver = entry.get("version")
     if isinstance(ver, str) and ver.strip():
         from_names.append(ver.strip().lstrip("v"))
     version = max_semver(from_names)
     if not version:
         return None
-    published = entry.get("published_at")
-    if not isinstance(published, str) or not published.strip():
-        published = fallback_published_at
-    out: dict = {"version": version, "assets": names}
-    if isinstance(published, str) and published.strip():
-        out["published_at"] = published
+
+    out: dict = {
+        "version": version,
+        "assets": assets,
+        "arches": arches,
+    }
+    if published_s:
+        out["published_at"] = published_s
     codes = normalize_downloader_codes(entry.get("downloader_codes"))
     if codes:
-        # Drop codes for arches no longer present in assets.
-        present = {detect_arch(n) for n in names}
+        present = set(arches)
         codes = {a: c for a, c in codes.items() if a in present}
         if codes:
             out["downloader_codes"] = {
@@ -492,7 +644,8 @@ def merge_platform_manifest(
     - Platforms not in this upload are kept untouched.
     - Platforms in this upload merge **by architecture**: only the uploaded
       arch(es) replace prior files; sibling arches stay (may be older versions).
-    - Platform `version` is the max semver among remaining asset filenames.
+    - Platform `version` is the max semver among remaining arch entries.
+    - `arches` is the per-arch source of truth (version + filename).
     - `downloader_codes` merge by arch (Android TV AFTVnews codes).
     """
     platforms: dict[str, dict] = {}
@@ -554,7 +707,24 @@ def merge_platform_manifest(
         )
         incoming_codes = normalize_downloader_codes(entry.get("downloader_codes"))
         merged_names = merge_assets_by_arch(prior_names, new_names)
-        from_names = [v for n in merged_names if (v := version_from_filename(n))]
+        incoming_arch_keys = {detect_arch(n) for n in new_names}
+        entry_published = (
+            entry.get("published_at")
+            if isinstance(entry.get("published_at"), str)
+            else published_at
+        )
+        arches = build_arches(
+            merged_names,
+            published_at=entry_published,
+            prior_arches=prior_arches_from_entry(prior),
+            incoming_arches=incoming_arch_keys,
+            fallback_version=(
+                entry.get("version")
+                if isinstance(entry.get("version"), str)
+                else None
+            ),
+        )
+        from_names = [e["version"] for e in arches.values()]
         entry_ver = entry.get("version")
         if isinstance(entry_ver, str) and entry_ver.strip():
             from_names.append(entry_ver.strip().lstrip("v"))
@@ -563,16 +733,13 @@ def merge_platform_manifest(
             if isinstance(entry_ver, str) and entry_ver.strip()
             else None
         )
-        if not version:
+        if not version or not arches:
             continue
         platform_entry: dict = {
             "version": version,
-            "published_at": (
-                entry.get("published_at")
-                if isinstance(entry.get("published_at"), str)
-                else published_at
-            ),
-            "assets": merged_names,
+            "published_at": entry_published,
+            "assets": assets_from_arches(arches),
+            "arches": arches,
         }
         codes = merge_downloader_codes(
             prior_codes=prior_codes,
@@ -585,7 +752,7 @@ def merge_platform_manifest(
             platform_entry["downloader_codes"] = codes
         if key == "android_tv":
             for arch in sorted(
-                {detect_arch(n) for n in new_names},
+                incoming_arch_keys,
                 key=lambda a: (_ARCH_ORDER.get(a, 50), a),
             ):
                 if arch not in codes:

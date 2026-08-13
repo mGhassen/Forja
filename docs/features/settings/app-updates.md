@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/manifest.json` — **per-platform** version and installer filenames). A release that only ships macOS updates the macOS entry and leaves Windows/Linux/Android TV alone. Installer files download from the same `latest/{filename}` mirror as the website (versioned `v{version}/` is only a fallback). The update dialog loads release notes from the same CDN (`changelog/index.json` + `changelog/{version}.md` for every version since yours, up to 16), with a left version list and a link to the full web changelog. Those note files stay on the CDN permanently (unlike installers, which keep only the newest few versions, plus any version still serving as a platform’s latest). Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
+Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/manifest.json` — **per-platform** and **per-arch** version + installer filenames). A release that only ships macOS arm64 updates that arch entry and leaves Intel macOS, Windows, Linux, and Android TV alone. The in-app updater compares against **your CPU’s** arch version — not the platform max — so Intel macOS is not offered an arm64-only build. Installer files download from the same `latest/{filename}` mirror as the website (versioned `v{version}/` is only a fallback). The update dialog loads release notes from the same CDN (`changelog/index.json` + `changelog/{version}.md` for every version since yours, up to 16), with a left version list and a link to the full web changelog. Those note files stay on the CDN permanently (unlike installers, which keep only the newest few versions, plus any version still serving as a platform’s latest). Android can install the APK in-app; Windows, Linux, and macOS download the installer (`.exe` / AppImage / `.dmg`) with progress and open it when ready.
 
 ## How to open it
 
@@ -45,8 +45,8 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 - First-time Windows VM toolchain (inside the guest, elevated PowerShell): `.\scripts\setup_windows_vm.ps1` — or from Mac: `./scripts/release_local.sh setup-windows`
 - Or in GitHub: Actions → **Release Forja** → **New version** or **Existing tag**; each arch is its own checkbox (macOS arm64, macOS Intel, Android TV arm64, Android TV v7a)
 - Tag backfill: Actions → **Backfill version tags** (requires repo secret `BACKFILL_GITHUB_TOKEN` — fine-grained PAT with Contents + Workflows write on this repo)
-- Android TV releases publish two APKs: `Forja-{version}-android-tv-arm64.apk` and `Forja-{version}-android-tv-armeabi-v7a.apk`; the in-app updater picks the matching ABI. On the [web download page](https://forjahq.xyz/download), each APK has its own download button.
-- macOS releases publish `Forja-{version}-macos-arm64.dmg` and `Forja-{version}-macos-x86_64.dmg`; the updater and the [web download page](https://forjahq.xyz/download) both pick the host arch
+- Android TV releases publish two APKs: `Forja-{version}-android-tv-arm64.apk` and `Forja-{version}-android-tv-armeabi-v7a.apk`; the in-app updater and CDN manifest track each ABI’s own latest version. On the [web download page](https://forjahq.xyz/download), each APK has its own download button.
+- macOS releases publish `Forja-{version}-macos-arm64.dmg` and `Forja-{version}-macos-x86_64.dmg`; the updater offers only the host-arch version (split-arch latest can leave Intel behind arm64). The [web download page](https://forjahq.xyz/download) shows a button per architecture.
 - Optional smoke build: Actions → **Build Forja** (workflow artifacts only, no release)
 - Download latest builds from the [web download page](https://forjahq.xyz/download) if in-app update fails or no platform asset is attached
 - See [Platforms](../getting-started/platforms.md) for per-OS install formats
