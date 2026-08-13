@@ -15,7 +15,10 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/shared/widgets/home_movie_card.dart';
+import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
@@ -701,10 +704,15 @@ class _ListPoster extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = item['title']?.toString() ?? 'Unknown';
     final imageUrl = _posterUrl(item);
-    final caption = _caption(item);
+    final metaLine = _metaLine(item);
+    final rating = (item['voteAverage'] as num?)?.toDouble() ?? 0;
     final meta = TvGridScope.maybeOf(context)?.metaFor(gridIndex);
-
     final radius = shellCardBorderRadius(context);
+    final inset = shellScaled(context, 10).clamp(4.0, 10.0);
+    final titleSize = shellHubCardTitleFontSize(context);
+    final metaSize = shellScaled(context, 11).clamp(7.0, 11.0);
+    final pin = _listPin(context, item, inset);
+
     return shellFocusableTap(
       context: context,
       onTap: onTap,
@@ -719,66 +727,85 @@ class _ListPoster extends StatelessWidget {
       tvItemIndex: meta?.tvItemIndex ?? gridIndex,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
-        child: ColoredBox(
-          color: AppTheme.bgCard,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (imageUrl.isNotEmpty)
-                CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (_, _) => ColoredBox(color: AppTheme.bgCard),
-                  errorWidget: (_, _, _) => _titleFallback(title),
-                )
-              else
-                _titleFallback(title),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black87],
-                    stops: [0.55, 1.0],
-                  ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(
+              color: AppTheme.bgDark,
+              child: imageUrl.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      filterQuality: FilterQuality.medium,
+                      placeholder: (_, _) =>
+                          ColoredBox(color: AppTheme.bgDark),
+                      errorWidget: (_, _, _) => _titleFallback(title),
+                    )
+                  : _titleFallback(title),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.7),
+                    Colors.black.withValues(alpha: 0.95),
+                  ],
+                  stops: const [0.0, 0.45, 0.8, 1.0],
                 ),
               ),
+            ),
+            if (rating > 0)
               Positioned(
-                left: 8,
-                right: 8,
-                bottom: 8,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                top: inset,
+                right: inset,
+                child: HomeMovieRatingBadge(voteAverage: rating),
+              ),
+            Positioned(
+              bottom: inset,
+              left: inset,
+              right: inset,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: titleSize,
+                      height: 1.15,
+                    ),
+                  ),
+                  if (metaLine.isNotEmpty) ...[
+                    SizedBox(height: shellScaled(context, 4).clamp(1.0, 4.0)),
                     Text(
-                      title,
-                      maxLines: 2,
+                      metaLine,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        height: 1.15,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: metaSize,
                       ),
                     ),
-                    if (caption.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        caption,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.55),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+            if (pin != null)
+              Positioned(
+                top: inset,
+                left: inset,
+                child: pin,
+              ),
+          ],
         ),
       ),
     );
@@ -796,6 +823,68 @@ class _ListPoster extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget? _listPin(BuildContext context, Map<String, dynamic> item, double inset) {
+  final iconSize = shellScaled(context, 18).clamp(12.0, 18.0);
+  final title = item['title']?.toString() ?? 'Unknown';
+  final poster = item['posterPath']?.toString() ?? '';
+  final vote = (item['voteAverage'] as num?)?.toDouble() ?? 0;
+  final date = item['releaseDate']?.toString() ?? '';
+  final mt = item['mediaType']?.toString() ?? 'movie';
+  final anilistId = item['anilistId'] as int?;
+  final kisskhId = item['kisskhId'] as int?;
+  final tmdbId = item['tmdbId'] as int?;
+
+  if (mt == 'anime' || anilistId != null) {
+    if (anilistId == null) return null;
+    return MyListButton.hub(
+      hubTarget: HubListFollowTarget.anime(
+        anilistId: anilistId,
+        title: title,
+        posterPath: poster,
+        voteAverage: vote,
+        releaseDate: date,
+      ),
+      excludeFromTvTraversal: true,
+      iconSize: iconSize,
+    );
+  }
+
+  if (mt == 'asian_drama' || kisskhId != null) {
+    if (kisskhId == null) return null;
+    return MyListButton.hub(
+      hubTarget: HubListFollowTarget.drama(
+        kisskhId: kisskhId,
+        title: title,
+        posterPath: poster,
+        tmdbId: tmdbId,
+        tmdbMediaType: item['tmdbMediaType']?.toString(),
+        releaseDate: date,
+        kissKhType: item['kissKhType']?.toString(),
+        voteAverage: vote,
+      ),
+      excludeFromTvTraversal: true,
+      iconSize: iconSize,
+    );
+  }
+
+  if (tmdbId == null) return null;
+  final mediaType = (mt == 'tv' || mt == 'series') ? 'tv' : 'movie';
+  return MyListButton.movie(
+    movie: Movie(
+      id: tmdbId,
+      imdbId: item['imdbId']?.toString(),
+      title: title,
+      posterPath: poster.startsWith('http') ? poster : poster,
+      backdropPath: '',
+      voteAverage: vote,
+      releaseDate: date,
+      mediaType: mediaType,
+    ),
+    excludeFromTvTraversal: true,
+    iconSize: iconSize,
+  );
 }
 
 class _HomeGrid {
@@ -887,15 +976,32 @@ String _posterUrl(Map<String, dynamic> item) {
   return poster;
 }
 
-String _caption(Map<String, dynamic> item) {
+/// Home-style bottom meta: `year • FILM` / `TV` / `ANIME`.
+String _metaLine(Map<String, dynamic> item) {
   final parts = <String>[];
   final date = item['releaseDate']?.toString() ?? '';
   if (date.isNotEmpty) {
     parts.add(date.contains('-') ? date.split('-').first : date);
   }
-  final rating = (item['voteAverage'] as num?)?.toDouble() ?? 0;
-  if (rating > 0) parts.add(rating.toStringAsFixed(1));
-  return parts.join('  ·  ');
+  final type = _typeLabel(item);
+  if (type != null) parts.add(type);
+  return parts.join(' • ');
+}
+
+String? _typeLabel(Map<String, dynamic> item) {
+  final mt = item['mediaType']?.toString() ?? 'movie';
+  final simkl = item['_simklType']?.toString();
+  if (simkl == 'anime' || mt == 'anime') return 'ANIME';
+  if (mt == 'asian_drama') {
+    final kt = (item['kissKhType'] ?? '').toString().toLowerCase();
+    if (kt == 'movie') return 'FILM';
+    if (kt == 'anime') return 'ANIME';
+    if (kt == 'hollywood') return 'HOLLYWOOD';
+    return 'TV';
+  }
+  if (simkl == 'shows' || mt == 'tv' || mt == 'series') return 'TV';
+  if (simkl == 'movies' || mt == 'movie') return 'FILM';
+  return null;
 }
 
 int? _asInt(dynamic v) {
@@ -921,14 +1027,17 @@ Map<String, dynamic>? _simklCardItem(Map<String, dynamic> item) {
             ? poster
             : 'https://simkl.in/posters/${poster}_c.jpg');
   final year = media['year']?.toString() ?? '';
+  final anilist = _asInt(ids['anilist']);
   return {
     'title': title,
     'posterPath': posterUrl,
     'source': 'simkl',
-    'mediaType': kind == 'movies' ? 'movie' : 'tv',
+    'mediaType': kind == 'anime'
+        ? 'anime'
+        : (kind == 'movies' ? 'movie' : 'tv'),
     '_simklType': kind,
     'tmdbId': _asInt(ids['tmdb']),
-    'anilistId': _asInt(ids['anilist']),
+    'anilistId': anilist,
     'imdbId': ids['imdb']?.toString(),
     'voteAverage': 0,
     'releaseDate': year,
