@@ -8,6 +8,7 @@ import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:rust/rust.dart';
 
 Movie movieFromWatchHistory(Map<String, dynamic> item) {
@@ -278,6 +279,21 @@ Future<bool> _resumeStremioDirectStream(
 
   final profile = PlatformPlayback.capabilities;
   final settings = SettingsService();
+  final useDebrid = await settings.useDebridForStreams();
+  final debridService = await settings.getDebridService();
+  final precheck = classifyStremioStream(
+    matched,
+    profile,
+    useDebrid: useDebrid,
+    debridService: debridService,
+  );
+  if (precheck == null) {
+    if (!context.mounted) return false;
+    if (!await ensureLanP2pPlayback(context)) {
+      return false;
+    }
+    if (!context.mounted) return false;
+  }
   final resolved = await resolveStremioStream(
     stream: matched,
     profile: profile,
@@ -333,6 +349,11 @@ Future<bool> _resumeTorrentStream(
   final useDebridSetting = await SettingsService().useDebridForStreams();
   final debridService = await SettingsService().getDebridService();
   final useDebrid = useDebridSetting && debridService != 'None';
+  if (!context.mounted) return false;
+  if (!await ensureLanP2pPlayback(context)) {
+    return false;
+  }
+  if (!context.mounted) return false;
 
   final playback = await resolveMagnetForPlayback(
     magnet: magnetLink,

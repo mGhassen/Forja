@@ -12,6 +12,7 @@ import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/sync/sync.dart';
 
@@ -82,18 +83,9 @@ class _SettingsPlaybackSectionState
     schedulePreferencesSyncPush();
   }
 
-  String _lanPlaySourceSubtitle({
-    required String native,
-    required String lanOnline,
-    required String lanOffline,
-  }) {
-    final caps = PlatformPlayback.capabilities;
-    if (caps.playSourceTorrent ||
-        caps.playSourceStremio ||
-        caps.playSourceNuvio) {
-      return native;
-    }
-    return widget.visibility.lanPlaySourcesEditable ? lanOnline : lanOffline;
+  String _playSourceSubtitle({required String native, required String atv}) {
+    if (PlatformPlayback.capabilities.localTorrentEngine) return native;
+    return atv;
   }
 
   @override
@@ -132,37 +124,50 @@ class _SettingsPlaybackSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.visibility.showPlaySources)
+        if (widget.visibility.showPlaySources) ...[
+          if (widget.visibility.showPlaySourceTorrentToggle ||
+              widget.visibility.showPlaySourceStremioToggle ||
+              widget.visibility.showPlaySourceNuvioToggle)
+            SettingsGroup(
+              children: [
+                SettingsActionRow(
+                  title: snap.p2pAcknowledged
+                      ? 'You are aware of P2P streaming'
+                      : 'Confirm you are aware of P2P streaming',
+                  subtitle: snap.p2pAcknowledged
+                      ? 'Direct torrent, Stremio, and Nuvio can be used. Tap to review.'
+                      : 'Required once before turning on Direct torrent, Stremio, or Nuvio.',
+                  trailing: snap.p2pAcknowledged
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: ForjaShellColors.brandGreen,
+                        )
+                      : const SizedBox.shrink(),
+                  onTap: () async {
+                    if (snap.p2pAcknowledged) {
+                      await showP2pStreamingAckDialog(
+                        context,
+                        reviewOnly: true,
+                      );
+                    } else {
+                      await _confirmP2pIfNeeded();
+                    }
+                  },
+                ),
+              ],
+            ),
           SettingsGroup(
             label: 'Play sources',
             children: [
-              if (widget.visibility.showPlaySourceTorrentToggle ||
-                  widget.visibility.showPlaySourceStremioToggle ||
-                  widget.visibility.showPlaySourceNuvioToggle)
-                settingsFocusableToggle(
-                  context,
-                  'P2P streaming',
-                  snap.p2pAcknowledged
-                      ? 'Terms acknowledged. Direct torrent, Stremio, and Nuvio can be used.'
-                      : 'Required once before turning on Direct torrent, Stremio, or Nuvio.',
-                  snap.p2pAcknowledged,
-                  (val) async {
-                    if (!val) return;
-                    await _confirmP2pIfNeeded();
-                  },
-                  enabled: !snap.p2pAcknowledged,
-                ),
               if (widget.visibility.showPlaySourceTorrentToggle)
                 settingsFocusableToggle(
                   context,
                   'Direct torrent',
-                  _lanPlaySourceSubtitle(
+                  _playSourceSubtitle(
                     native:
                         'Search Forja indexers (Jackett / Prowlarr) in Sources.',
-                    lanOnline:
-                        'Search torrents via your paired desktop (Settings → LAN).',
-                    lanOffline:
-                        'Desktop offline — turn LAN server on to use torrents.',
+                    atv:
+                        'Search torrents here. Playing a magnet needs a paired desktop (Settings → LAN).',
                   ),
                   snap.playSourceTorrent,
                   (val) async {
@@ -184,11 +189,10 @@ class _SettingsPlaybackSectionState
                 settingsFocusableToggle(
                   context,
                   'Stremio',
-                  _lanPlaySourceSubtitle(
+                  _playSourceSubtitle(
                     native: 'Play from installed Stremio addon streams.',
-                    lanOnline: 'Play Stremio streams via your paired desktop.',
-                    lanOffline:
-                        'Desktop offline — turn LAN server on to use Stremio.',
+                    atv:
+                        'Direct HTTP plays on this TV. Magnets need a paired desktop (Settings → LAN).',
                   ),
                   snap.playSourceStremio,
                   (val) async {
@@ -205,12 +209,11 @@ class _SettingsPlaybackSectionState
                 settingsFocusableToggle(
                   context,
                   'Nuvio',
-                  _lanPlaySourceSubtitle(
+                  _playSourceSubtitle(
                     native:
                         'Play from installed Nuvio scraper addons in Sources.',
-                    lanOnline: 'Play Nuvio scrapers via your paired desktop.',
-                    lanOffline:
-                        'Desktop offline — turn LAN server on to use Nuvio.',
+                    atv:
+                        'Direct HTTP plays on this TV. Magnets need a paired desktop (Settings → LAN).',
                   ),
                   snap.playSourceNuvio,
                   (val) async {
@@ -265,6 +268,7 @@ class _SettingsPlaybackSectionState
                 ),
             ],
           ),
+        ],
         SettingsGroup(
           label: 'Player',
           children: [

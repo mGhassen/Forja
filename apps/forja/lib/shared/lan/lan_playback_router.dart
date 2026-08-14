@@ -43,7 +43,9 @@ class LanPlaybackRouter {
       LanRouteDecision.playDirect;
 
   static Future<LanRouteDecision> routeTorrent(PlaybackProfile profile) async {
-    if (isDesktopServer) return LanRouteDecision.localEngine;
+    if (isDesktopServer && profile.localTorrentEngine) {
+      return LanRouteDecision.localEngine;
+    }
     if (profile.localTorrentEngine &&
         await LanPrefs.instance.allowLocalTorrentOnDevice()) {
       return LanRouteDecision.localEngine;

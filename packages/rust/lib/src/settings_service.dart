@@ -45,6 +45,8 @@ class SettingsService {
   /// Device-local: first-time P2P disclaimer (torrent / Stremio / Nuvio).
   static const String _p2pStreamingAcknowledgedKey =
       'p2p_streaming_acknowledged';
+  /// One-shot: ATV used to seed torrent/Stremio/Nuvio off; turn them on.
+  static const String _atvCatalogPlaySourcesKey = 'atv_catalog_play_sources_v1';
   static const String _simpleStreamingResolveKey =
       'simple_streaming_resolve_enabled';
   static const String _crashReportingEnabledKey = 'crash_reporting_enabled';
@@ -553,14 +555,9 @@ class SettingsService {
   Future<bool> isPlaySourceTorrentStored() async =>
       kvGetBool(_playSourceTorrentKey, fallback: _defaults.playSourceTorrent);
 
-  /// Effective for UI / playback — always off on Android TV.
-  ///
-  /// Paired ATV clients honor stored toggles via host
-  /// `PlaySourceEffective` (desktop relay), not this getter.
-  Future<bool> isPlaySourceTorrentEnabled() async {
-    if (platformProfile == PlatformProfile.androidTv) return false;
-    return isPlaySourceTorrentStored();
-  }
+  /// Effective for UI / playback. Android TV magnets still need a paired
+  /// desktop at play time — this toggle only shows Sources.
+  Future<bool> isPlaySourceTorrentEnabled() async => isPlaySourceTorrentStored();
 
   Future<void> setPlaySourceTorrentEnabled(bool enabled) async {
     await kvSetBool(_playSourceTorrentKey, enabled);
@@ -571,12 +568,9 @@ class SettingsService {
   Future<bool> isPlaySourceStremioStored() async =>
       kvGetBool(_playSourceStremioKey, fallback: _defaults.playSourceStremio);
 
-  /// Effective for UI / playback — always off on Android TV.
-  /// Paired ATV: see `PlaySourceEffective` on the host.
-  Future<bool> isPlaySourceStremioEnabled() async {
-    if (platformProfile == PlatformProfile.androidTv) return false;
-    return isPlaySourceStremioStored();
-  }
+  /// Effective for UI / playback. ATV HTTP streams play locally; magnets
+  /// need a paired desktop at play time.
+  Future<bool> isPlaySourceStremioEnabled() async => isPlaySourceStremioStored();
 
   Future<void> setPlaySourceStremioEnabled(bool enabled) async {
     await kvSetBool(_playSourceStremioKey, enabled);
@@ -595,12 +589,9 @@ class SettingsService {
     return isPlaySourceTorrentStored();
   }
 
-  /// Effective for UI / playback — always off on Android TV.
-  /// Paired ATV: see `PlaySourceEffective` on the host.
-  Future<bool> isPlaySourceNuvioEnabled() async {
-    if (platformProfile == PlatformProfile.androidTv) return false;
-    return isPlaySourceNuvioStored();
-  }
+  /// Effective for UI / playback. ATV HTTP streams play locally; magnets
+  /// need a paired desktop at play time.
+  Future<bool> isPlaySourceNuvioEnabled() async => isPlaySourceNuvioStored();
 
   Future<void> setPlaySourceNuvioEnabled(bool enabled) async {
     await kvSetBool(_playSourceNuvioKey, enabled);
@@ -1240,11 +1231,25 @@ class SettingsService {
     await kvSetString(_playInBackgroundDeviceLocalKey, '1');
   }
 
+  /// Older ATV seeds stored Direct torrent / Stremio / Nuvio off. Catalog
+  /// Sources now work unpaired (HTTP local; P2P via desktop at play time).
+  Future<void> _migrateAtvCatalogPlaySources() async {
+    if (await kvHasKey(_atvCatalogPlaySourcesKey)) return;
+    if (platformProfile == PlatformProfile.androidTv) {
+      await kvSetBool(_playSourceTorrentKey, true);
+      await kvSetBool(_playSourceStremioKey, true);
+      await kvSetBool(_playSourceNuvioKey, true);
+      playSourceChangeNotifier.value++;
+    }
+    await kvSetString(_atvCatalogPlaySourcesKey, '1');
+  }
+
   Future<void> ensurePlatformDefaultsSeeded(PlatformProfile profile) async {
     configurePlatformProfile(profile);
     await ensureCanonicalSettingsMigrated();
     await _migrateBuiltInEngineDefaultToMediaKit();
     await _migratePlayInBackgroundDeviceLocal();
+    await _migrateAtvCatalogPlaySources();
     if (await kvHasKey(_platformDefaultsSeededKey)) return;
 
     final hasExistingConfig =

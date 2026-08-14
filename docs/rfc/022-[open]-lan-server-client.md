@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components (desktop→TV) · **9 / 10** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
-| **Current slice** | Idle TV pause→stop+clean (R22-A22); first-frame smoke still open |
+| **Progress** | **8 / 8** components (desktop→TV) · **10 / 11** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
+| **Current slice** | ATV unpaired HTTP + P2P pair dialog (R22-A23); first-frame smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -80,6 +80,7 @@ Historical C01–C07 above were never on `main` (stale ✅ from `feat/forja-serv
 | 20 | R22-A20 | Leaving or cancelling a LAN torrent play on TV/phone stops the matching desktop download (cache/history kept until Delete) | ✅ |
 | 21 | R22-A21 | `/close` uses `stop_on_engine` (no nested `block_on`); client closes without requiring parsed info_hash; cancel-before-`play_url` and TV Back→maybePop still stop the desktop swarm | ✅ |
 | 22 | R22-A22 | Desktop idle-watch: owner TV idle 120s → pause swarm; still idle +120s → stop + delete cache/history (resume if TV returns during grace) | ✅ |
+| 23 | R22-A23 | Unpaired ATV: Direct torrent / Stremio / Nuvio Sources on; HTTP plays on TV; P2P play shows pair dialog; paired P2P stays on desktop | ✅ |
 
 ---
 

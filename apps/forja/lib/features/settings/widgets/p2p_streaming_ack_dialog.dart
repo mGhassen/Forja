@@ -22,17 +22,25 @@ Future<bool> ensureP2pStreamingAcknowledged(BuildContext context) async {
   return accepted;
 }
 
-Future<bool> showP2pStreamingAckDialog(BuildContext context) async {
+Future<bool> showP2pStreamingAckDialog(
+  BuildContext context, {
+  bool reviewOnly = false,
+}) async {
   final result = await showDialog<bool>(
     context: context,
-    barrierDismissible: false,
-    builder: (ctx) => ShellScope.rehost(context, const _P2pStreamingAckDialog()),
+    barrierDismissible: reviewOnly,
+    builder: (ctx) => ShellScope.rehost(
+      context,
+      _P2pStreamingAckDialog(reviewOnly: reviewOnly),
+    ),
   );
   return result == true;
 }
 
 class _P2pStreamingAckDialog extends StatefulWidget {
-  const _P2pStreamingAckDialog();
+  const _P2pStreamingAckDialog({this.reviewOnly = false});
+
+  final bool reviewOnly;
 
   @override
   State<_P2pStreamingAckDialog> createState() => _P2pStreamingAckDialogState();
@@ -48,7 +56,8 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
-      if (_cancelFocus.canRequestFocus) _cancelFocus.requestFocus();
+      final node = widget.reviewOnly ? _confirmFocus : _cancelFocus;
+      if (node.canRequestFocus) node.requestFocus();
     });
   }
 
@@ -82,7 +91,7 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'This stream uses peer-to-peer (P2P) technology. By enabling P2P, you acknowledge and agree that:',
+                'This stream uses peer-to-peer (P2P) technology. By continuing, you confirm you are aware that:',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   height: 1.4,
@@ -117,7 +126,7 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
               ],
               const SizedBox(height: 4),
               const Text(
-                'You use this feature entirely at your own risk. P2P can be disabled anytime in Settings.',
+                'You use this feature entirely at your own risk. Direct torrent, Stremio, and Nuvio can be turned off anytime in Settings.',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   height: 1.4,
@@ -128,13 +137,14 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
         ),
       ),
       actions: [
-        ForjaButton(
-          label: 'Cancel',
-          focusNode: _cancelFocus,
-          onPressed: () => Navigator.pop(context, false),
-        ),
+        if (!widget.reviewOnly)
+          ForjaButton(
+            label: 'Cancel',
+            focusNode: _cancelFocus,
+            onPressed: () => Navigator.pop(context, false),
+          ),
         ForjaButton.primary(
-          label: 'Enable P2P',
+          label: widget.reviewOnly ? 'Close' : 'I am aware',
           focusNode: _confirmFocus,
           onPressed: () => Navigator.pop(context, true),
         ),

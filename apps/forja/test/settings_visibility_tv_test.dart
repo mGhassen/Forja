@@ -48,7 +48,7 @@ void main() {
     await LanPrefs.instance.clearServer();
   });
 
-  test('Android TV hides Sources, WebStreamr, Lists, Data, Debrid, torrent',
+  test('Android TV unpaired honors stored torrent/Stremio/Nuvio; hub stays lean',
       () async {
     PlatformPlayback.override = PlaybackProfile.androidTv;
     SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
@@ -62,26 +62,26 @@ void main() {
       'iptv',
       'mylist',
     ]);
-    // Synced phone prefs must not reopen TV-hidden tiles.
     await service.setPlaySourceTorrentEnabled(true);
     await service.setPlaySourceStremioEnabled(true);
     await service.setPlaySourceNuvioEnabled(true);
     await service.setPlaySourceWebstreamingEnabled(true);
 
     final v = await SettingsVisibility.resolve(service);
-    expect(v.playSourceTorrent, isFalse);
-    expect(v.playSourceStremio, isFalse);
-    expect(v.playSourceNuvio, isFalse);
+    expect(v.playSourceTorrent, isTrue);
+    expect(v.playSourceStremio, isTrue);
+    expect(v.playSourceNuvio, isTrue);
     expect(v.playSourceWebstreaming, isTrue);
+    expect(v.showPlaySourceTorrentToggle, isTrue);
+    expect(v.showPlaySourceStremioToggle, isTrue);
+    expect(v.showPlaySourceNuvioToggle, isTrue);
+    expect(v.lanPlaySourcesEditable, isTrue);
     expect(v.showProviderScoring, isFalse);
     expect(v.showSourcesCategory, isFalse);
     expect(v.showWebstreamr, isFalse);
     expect(v.showLists, isFalse);
     expect(v.showDataCategory, isFalse);
     expect(v.showDebrid, isFalse);
-    expect(v.showTorrentEngine, isFalse);
-    expect(v.showStremioAddons, isFalse);
-    expect(v.showNuvio, isFalse);
     expect(v.showAccounts, isTrue);
     expect(v.showTrakt, isFalse);
     expect(v.showMdblist, isFalse);
@@ -96,9 +96,7 @@ void main() {
     expect(ids.contains(SettingsCategoryId.accounts), isTrue);
     expect(ids.contains(SettingsCategoryId.navigation), isTrue);
     expect(ids.contains(SettingsCategoryId.about), isTrue);
-    expect(v.showPlaySourceTorrentToggle, isFalse);
-    expect(v.showPlaySourceStremioToggle, isFalse);
-    expect(v.showPlaySourceNuvioToggle, isFalse);
+    expect(ids.contains(SettingsCategoryId.lan), isTrue);
   });
 
   test('Android TV paired + online unlocks Playback toggles; honors stored',
@@ -137,7 +135,7 @@ void main() {
     expect(await PlaySourceEffective.nuvio(service), isTrue);
   });
 
-  test('Android TV paired + offline deactivates play sources; keeps stored',
+  test('Android TV paired + offline keeps play sources; hub stays lean',
       () async {
     PlatformPlayback.override = PlaybackProfile.androidTv;
     SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
@@ -159,16 +157,14 @@ void main() {
 
     final v = await SettingsVisibility.resolve(service);
     expect(v.showPlaySourceTorrentToggle, isTrue);
-    expect(v.lanPlaySourcesEditable, isFalse);
-    expect(v.playSourceTorrent, isFalse);
-    expect(v.playSourceStremio, isFalse);
-    expect(v.playSourceNuvio, isFalse);
+    expect(v.lanPlaySourcesEditable, isTrue);
+    expect(v.playSourceTorrent, isTrue);
+    expect(v.playSourceStremio, isTrue);
+    expect(v.playSourceNuvio, isTrue);
+    expect(v.showSourcesCategory, isFalse);
+    expect(v.showDebrid, isFalse);
 
     expect(await service.isPlaySourceTorrentStored(), isTrue);
-    expect(await service.isPlaySourceStremioStored(), isTrue);
-    expect(await service.isPlaySourceNuvioStored(), isTrue);
-
-    PlaySourceEffective.debugForceLanDesktopOnline = true;
     expect(await PlaySourceEffective.torrent(service), isTrue);
     expect(await PlaySourceEffective.stremio(service), isTrue);
     expect(await PlaySourceEffective.nuvio(service), isTrue);

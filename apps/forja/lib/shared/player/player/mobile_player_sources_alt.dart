@@ -172,6 +172,11 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
   /// ready, then open a fresh player.
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
     if (_s._isLoadingNextEp) return;
+    final settings = SettingsService();
+    final useDebrid = await settings.useDebridForStreams();
+    if (!mounted) return;
+    if (!await ensureLanP2pPlayback(context)) return;
+    if (!mounted) return;
     final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
         .toString();
     _s._beginEpisodeLoading(
@@ -182,8 +187,6 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     if (!mounted) return;
 
     try {
-      final settings = SettingsService();
-      final useDebrid = await settings.useDebridForStreams();
       final debridService = await settings.getDebridService();
       _s._setEpisodeLoadingStatus(
         playbackResolveLabel(
@@ -246,6 +249,11 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
 
   Future<void> _switchTorrentSource(TorrentResult result) async {
     if (_s._isLoadingNextEp) return;
+    final settings = SettingsService();
+    final useDebrid = await settings.useDebridForStreams();
+    if (!mounted) return;
+    if (!await ensureLanP2pPlayback(context)) return;
+    if (!mounted) return;
     // Keep current video playing with the loading card while the new magnet
     // resolves in the background. Only replace the player when the stream is
     // ready - never tear down the active swarm first (that freezes mpv).
@@ -257,8 +265,6 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     if (!mounted) return;
 
     try {
-      final settings = SettingsService();
-      final useDebrid = await settings.useDebridForStreams();
       final debridService = await settings.getDebridService();
       final localEngine = PlatformPlayback.capabilities.localTorrentEngine;
       _s._setEpisodeLoadingStatus(

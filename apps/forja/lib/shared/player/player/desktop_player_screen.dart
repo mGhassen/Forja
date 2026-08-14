@@ -65,6 +65,7 @@ import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
+import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/player/providers/player_prefs_providers.dart';

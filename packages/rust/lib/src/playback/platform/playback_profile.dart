@@ -61,14 +61,15 @@ class PlaybackProfile {
     playSourceNuvio: true,
   );
 
-  /// Android TV — local webstreaming only; torrent / Stremio / Nuvio via LAN pair.
+  /// Android TV — no local librqbit. HTTP Stremio/Nuvio play on device;
+  /// magnets / infoHash play via paired desktop (pair dialog if not).
   static const androidTv = PlaybackProfile(
     localTorrentEngine: false,
-    stremioInfoHash: StremioInfoHashPolicy.hidden,
-    builtinTorrentSearch: false,
-    playSourceTorrent: false,
-    playSourceStremio: false,
-    playSourceNuvio: false,
+    stremioInfoHash: StremioInfoHashPolicy.localEngine,
+    builtinTorrentSearch: true,
+    playSourceTorrent: true,
+    playSourceStremio: true,
+    playSourceNuvio: true,
   );
 
   bool get canPlayInfoHashLocally =>

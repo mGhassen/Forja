@@ -49,10 +49,10 @@ void main() {
     expect(await service.getSubSize(), 52);
     expect(await service.getSubBottomPadding(), 48);
     expect(await service.getTorrentRamCacheMb(), 128);
-    expect(await service.isPlaySourceWebstreamingEnabled(), isTrue);
-    expect(await service.isPlaySourceTorrentEnabled(), isFalse);
-    expect(await service.isPlaySourceStremioEnabled(), isFalse);
-    expect(await service.isPlaySourceNuvioEnabled(), isFalse);
+      expect(await service.isPlaySourceWebstreamingEnabled(), isTrue);
+      expect(await service.isPlaySourceTorrentEnabled(), isTrue);
+      expect(await service.isPlaySourceStremioEnabled(), isTrue);
+      expect(await service.isPlaySourceNuvioEnabled(), isTrue);
   });
 
   test(
@@ -143,7 +143,7 @@ void main() {
   });
 
   test(
-    'Android TV play sources stay off even when stored prefs are on',
+    'Android TV play sources honor stored prefs',
     () async {
       addTearDown(() {
         PlatformPlayback.clearOverride();
@@ -160,12 +160,12 @@ void main() {
       expect(await service.isPlaySourceTorrentStored(), isTrue);
       expect(await service.isPlaySourceStremioStored(), isTrue);
       expect(await service.isPlaySourceNuvioStored(), isTrue);
-      expect(await service.isPlaySourceTorrentEnabled(), isFalse);
-      expect(await service.isPlaySourceStremioEnabled(), isFalse);
-      expect(await service.isPlaySourceNuvioEnabled(), isFalse);
-      expect(PlatformPlayback.capabilities.playSourceTorrent, isFalse);
-      expect(PlatformPlayback.capabilities.playSourceStremio, isFalse);
-      expect(PlatformPlayback.capabilities.playSourceNuvio, isFalse);
+      expect(await service.isPlaySourceTorrentEnabled(), isTrue);
+      expect(await service.isPlaySourceStremioEnabled(), isTrue);
+      expect(await service.isPlaySourceNuvioEnabled(), isTrue);
+      expect(PlatformPlayback.capabilities.playSourceTorrent, isTrue);
+      expect(PlatformPlayback.capabilities.playSourceStremio, isTrue);
+      expect(PlatformPlayback.capabilities.playSourceNuvio, isTrue);
     },
   );
 
@@ -210,6 +210,27 @@ void main() {
 
     expect(await service.getPlayInBackground(), isFalse);
   });
+
+  test(
+    'ATV catalog play sources migration turns torrent/Stremio/Nuvio on',
+    () async {
+      addTearDown(() {
+        SettingsService.configurePlatformProfile(PlatformProfile.phone);
+      });
+      await kvSetBool('play_source_torrent_enabled', false);
+      await kvSetBool('play_source_stremio_enabled', false);
+      await kvSetBool('play_source_nuvio_enabled', false);
+      await kvSetString('platform_defaults_seeded_v1', 'androidTv');
+      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+
+      final service = SettingsService();
+      await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
+
+      expect(await service.isPlaySourceTorrentEnabled(), isTrue);
+      expect(await service.isPlaySourceStremioEnabled(), isTrue);
+      expect(await service.isPlaySourceNuvioEnabled(), isTrue);
+    },
+  );
 
   test(
     'ATV resets cloud-polluted play_in_background and always pauses',

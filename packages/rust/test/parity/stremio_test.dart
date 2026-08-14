@@ -107,6 +107,26 @@ void main() {
       expect((out as StremioPlayable).streamUrl, 'https://cdn.example/a.m3u8');
     });
 
+    test('HTTP url is direct playable on Android TV', () {
+      final out = classifyStremioStream(
+        {'url': 'https://cdn.example/a.m3u8', 'title': '1080p'},
+        PlaybackProfile.androidTv,
+        useDebrid: false,
+        debridService: 'None',
+      );
+      expect(out, isA<StremioPlayable>());
+    });
+
+    test('infoHash streams stay visible on Android TV', () {
+      expect(
+        isStremioStreamVisible(
+          {'infoHash': 'c3b7fe335840e824e2ab9131fdeebabc58b126e8'},
+          PlaybackProfile.androidTv,
+        ),
+        isTrue,
+      );
+    });
+
     test('magnet url is not direct playable — falls through to resolve', () {
       final out = classifyStremioStream(
         {

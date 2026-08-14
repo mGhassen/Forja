@@ -26,9 +26,9 @@ void main() {
       expect(tv.subBottomPadding, 48);
       expect(tv.torrentRamCacheMb, 128);
       expect(tv.playSourceWebstreaming, isTrue);
-      expect(tv.playSourceTorrent, isFalse);
-      expect(tv.playSourceStremio, isFalse);
-      expect(tv.playSourceNuvio, isFalse);
+      expect(tv.playSourceTorrent, isTrue);
+      expect(tv.playSourceStremio, isTrue);
+      expect(tv.playSourceNuvio, isTrue);
       expect(tv.playInBackground, isFalse);
     });
 

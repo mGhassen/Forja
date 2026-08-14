@@ -1,7 +1,13 @@
 package com.forjahq.app
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterShellArgs
@@ -9,13 +15,33 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : AudioServiceActivity() {
     private val exoPlugin = ForjaExoPlayerPlugin()
+    private var screenOffReceiver: BroadcastReceiver? = null
+    private var exiting = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (isAndroidTv()) {
             window.statusBarColor = APP_BACKGROUND
             window.navigationBarColor = APP_BACKGROUND
+            registerTvStandbyExit()
         }
+    }
+
+    override fun onDestroy() {
+        unregisterTvStandbyExit()
+        super.onDestroy()
+    }
+
+    // Power is often eaten before Flutter; catch it here if the box delivers it.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (isAndroidTv() &&
+            event.action == KeyEvent.ACTION_DOWN &&
+            isPowerKey(event.keyCode)
+        ) {
+            exitCompletely()
+            return true
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     // Belt-and-suspenders with ForjaApplication: MediaKit + Impeller =
@@ -52,10 +78,9 @@ class MainActivity : AudioServiceActivity() {
                     result.success(null)
                 }
                 "exitAppCompletely" -> {
-                    // Double Back on nav / remote Exit — leave leanback and
-                    // free process memory so the next open is a cold start.
-                    finishAndRemoveTask()
-                    android.os.Process.killProcess(android.os.Process.myPid())
+                    // Double Back on nav / remote Exit / TV power — leave
+                    // leanback and free process memory so the next open is cold.
+                    exitCompletely()
                     result.success(null)
                 }
                 // MediaKit IPTV (issue 150): same window mode switch Exo uses
@@ -77,6 +102,53 @@ class MainActivity : AudioServiceActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private fun registerTvStandbyExit() {
+        if (screenOffReceiver != null) return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val action = intent?.action ?: return
+                if (action == Intent.ACTION_SCREEN_OFF ||
+                    action == Intent.ACTION_SHUTDOWN
+                ) {
+                    exitCompletely()
+                }
+            }
+        }
+        screenOffReceiver = receiver
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SHUTDOWN)
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(receiver, filter)
+        }
+    }
+
+    private fun unregisterTvStandbyExit() {
+        val receiver = screenOffReceiver ?: return
+        screenOffReceiver = null
+        try {
+            unregisterReceiver(receiver)
+        } catch (_: IllegalArgumentException) {
+        }
+    }
+
+    private fun isPowerKey(keyCode: Int): Boolean =
+        keyCode == KeyEvent.KEYCODE_POWER ||
+            keyCode == KeyEvent.KEYCODE_SLEEP ||
+            keyCode == KeyEvent.KEYCODE_STB_POWER ||
+            keyCode == KeyEvent.KEYCODE_TV_POWER
+
+    private fun exitCompletely() {
+        if (exiting) return
+        exiting = true
+        finishAndRemoveTask()
+        android.os.Process.killProcess(android.os.Process.myPid())
     }
 
     private fun isAndroidTv(): Boolean = PlatformUtils.isAndroidTv(this)

@@ -268,6 +268,8 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
     }
 
     if (!mounted) return;
+    if (!await ensureLanP2pPlayback(context)) return;
+    if (!mounted) return;
     _s._streamCancelled = false;
     final overlayMessage = ValueNotifier<String>(
       stremioResolveLoadingMessage(
@@ -476,6 +478,8 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
 
     final useDebrid = await _s._settings.useDebridForStreams();
     final debridService = await _s._settings.getDebridService();
+    if (!mounted || _s._streamCancelled) return;
+    if (!await ensureLanP2pPlayback(context)) return;
     if (!mounted || _s._streamCancelled) return;
 
     final overlayMessage = ValueNotifier<String>(

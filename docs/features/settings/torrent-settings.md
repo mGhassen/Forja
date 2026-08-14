@@ -18,7 +18,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 - Choose **cache type**: RAM or disk
 - Adjust **RAM cache size** (MB) when using RAM cache — on **TV**, focus the slider and use **Left/Right**
 - Set **connection limit** for the torrent engine — same D-pad nudge on **TV**
-- Install **Stremio** / **Nuvio** addons and configure Jackett / Prowlarr when those play sources are on (never on Android TV for torrent/Stremio/Nuvio)
+- Install **Stremio** / **Nuvio** addons and configure Jackett / Prowlarr when those play sources are on (**Settings → Sources** is never on Android TV — use phone/desktop or cloud sync)
 
 ## Tips
 

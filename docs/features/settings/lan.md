@@ -44,9 +44,9 @@ Status shows **Paired** with a green/grey status dot and a small **Desktop onlin
 5. When you leave the player (or cancel before it opens), the desktop **stops that download** — cached files stay until you delete them under **Torrent activity**
 6. If the TV goes **Idle** (no contact for ~2 minutes) while a torrent is still open, the desktop **pauses** the download; if the TV stays idle another ~2 minutes, the desktop **stops and deletes** that cached download (same as trash in Torrent activity). If the TV comes back during the pause window, download **resumes**
 
-You do not re-enter a code per title. Unpair hides those Playback toggles again (Webstreaming stays). If the desktop goes **offline**, Direct torrent / Stremio / Nuvio turn off and stay disabled until it is online again — your previous checks come back automatically.
+You do not re-enter a code per title. Direct HTTP Stremio/Nuvio streams still play on the TV when unpaired or when the desktop is offline. Magnets / torrents need the desktop — if you pick one while unpaired (or the desktop is offline), the TV shows a dialog with **Open LAN**.
 
-If pairing would turn on Direct torrent / Stremio / Nuvio (stored prefs already on) and you have not acknowledged P2P on this TV, Forja shows the **P2P streaming** disclaimer first. Cancel leaves those sources off until you enable them in **Playback** (which asks again).
+If you turn on Direct torrent / Stremio / Nuvio and have not acknowledged P2P on this TV, Forja shows the **P2P streaming** disclaimer in **Playback**. Cancel leaves that source off.
 
 ## Android TV — local torrent (optional)
 

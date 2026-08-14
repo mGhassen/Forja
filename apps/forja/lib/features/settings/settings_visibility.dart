@@ -30,12 +30,12 @@ class SettingsVisibility {
   final bool playSourceNuvio;
   final bool playSourceWebstreaming;
 
-  /// Settings → Playback rows (caps, or LAN-paired ATV client).
+  /// Settings → Playback rows (platform play-source caps).
   final bool showPlaySourceTorrentToggle;
   final bool showPlaySourceStremioToggle;
   final bool showPlaySourceNuvioToggle;
 
-  /// ATV LAN toggles: editable only while desktop is online.
+  /// ATV LAN leftover: always editable when the platform exposes the toggles.
   final bool lanPlaySourcesEditable;
 
   /// Any tab that can open VOD details / Sources (same set as [BootNeeds]).
@@ -55,7 +55,7 @@ class SettingsVisibility {
       playSourceTorrent &&
       PlatformPlayback.capabilities.builtinTorrentSearch;
 
-  /// Nuvio scrapers (own play source). Hidden on Android TV for all accounts.
+  /// Nuvio scrapers (own play source). Settings Sources hub stays hidden on ATV.
   bool get showNuvio => vodTab && playSourceNuvio;
 
   /// Stremio addons — VOD Sources and/or Live Matches sport servers.

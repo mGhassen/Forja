@@ -22,7 +22,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 - Paste a Nuvio `manifest.json` URL and install more
 - Toggle each scraper on/off without removing the addon
 - Remove a user-installed addon (trash → Yes / No confirm; not the built-in one)
-- In **Sources → Nuvio**, tap **All** to select every scraper, or tap individual scraper chips (tap again to remove their sources); the selection is remembered on this device across titles. **All** runs every selected scraper one after another (reopening Sources continues any that had not finished yet). Play a result (magnets use the local torrent engine; HTTP links play directly)
+- In **Sources → Nuvio**, tap **All** to select every scraper, or tap individual scraper chips (tap again to remove their sources); the selection is remembered on this device across titles. **All** runs every selected scraper one after another (reopening Sources continues any that had not finished yet). Play a result (HTTP links play directly; magnets use the local torrent engine, or a paired desktop on Android TV)
 
 ## Setup
 

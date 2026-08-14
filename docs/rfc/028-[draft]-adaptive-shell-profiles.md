@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **4 / 4** acceptance (slice 1c TV coordinator) · **3 / 4** acceptance (slice 1d TV desktop visual parity) · **1 / 1** acceptance (slice 1e card motion) · **1 / 1** acceptance (slice 1f nav defaults) · **1 / 1** acceptance (slice 1g TV app exit) · **1 / 1** acceptance (slice 1h Features D-pad) · **0 / 4** acceptance (slice 2 mobile) |
+| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **4 / 4** acceptance (slice 1c TV coordinator) · **3 / 4** acceptance (slice 1d TV desktop visual parity) · **1 / 1** acceptance (slice 1e card motion) · **1 / 1** acceptance (slice 1f nav defaults) · **2 / 2** acceptance (slice 1g TV app exit) · **1 / 1** acceptance (slice 1h Features D-pad) · **0 / 4** acceptance (slice 2 mobile) |
 | **Current slice** | Slice 1h Settings → Features star + ↑/↓ reorder on TV shipped; slice 1d leanback manual smoke still blocks `[fixed]` ([issue 025](../issues/025-[open]-android-tv-leanback-smoke-unverified.md) · [issue 119](../issues/119-[open]-android-tv-double-back-exit.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -99,6 +99,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 29 | R28-A29 | TV: Back on nav rail double-confirms quit; remote Exit (Escape) double-confirms quit from anywhere; Back elsewhere stays in-app ([issue 119](../issues/119-[open]-android-tv-double-back-exit.md)) | ✅ |
+| 31 | R28-A31 | TV: remote power / screen-off / shutdown quits Forja (same kill as double Back); Home does not ([issue 119](../issues/119-[open]-android-tv-double-back-exit.md) `I119-T05`) | ✅ |
 
 ---
 

@@ -34,6 +34,7 @@ import 'package:forja/shared/extractors/providers/arabic/arabic_service.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
+import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
