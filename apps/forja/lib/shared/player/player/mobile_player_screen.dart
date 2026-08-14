@@ -230,17 +230,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   final FocusNode _transportSettingsFocus =
       FocusNode(debugLabel: 'player-transport-settings');
   final FocusNode _backFocus = FocusNode(debugLabel: 'player-back');
-  /// First TV Back focused the Back control — next Back exits even before
-  /// the post-frame [requestFocus] lands.
+  /// First TV Back hid chrome (or armed while hidden) — next Back exits.
   bool _tvBackExitArmed = false;
-
-  void _onTvBackFocusChanged() {
-    if (_backFocus.hasFocus) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!_backFocus.hasFocus) _tvBackExitArmed = false;
-    });
-  }
 
   final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'player-menu');
   final FocusNode _retryFocus = FocusNode(debugLabel: 'player-retry');
@@ -490,7 +481,6 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     _transportSubsFocus.dispose();
     _transportQualityFocus.dispose();
     _transportSettingsFocus.dispose();
-    _backFocus.removeListener(_onTvBackFocusChanged);
     _backFocus.dispose();
     _playerMenuFocus.dispose();
     _retryFocus.dispose();

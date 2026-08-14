@@ -517,21 +517,23 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         _tvBackExitArmed = false;
         _hideControlsTimer?.cancel();
         _scheduleHideControls();
-        _focusPlayerBack();
         return true;
       }
-      if (_backFocus.hasFocus || _tvBackExitArmed) {
-        _tvBackExitArmed = false;
-        // Consume Back and exit ourselves — silence + unmount Video before
-        // pop so MediaKit/MediaCodec teardown cannot ANR (issue 128).
+      final stay = PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: _controlsVisible,
+        armed: _tvBackExitArmed,
+        hideChrome: () {
+          _hideControlsTimer?.cancel();
+          setState(() => _controlsVisible = false);
+        },
+        setArmed: (v) => _tvBackExitArmed = v,
+      );
+      if (!stay) {
+        // Silence + unmount Video before pop so MediaKit/MediaCodec
+        // teardown cannot ANR (issue 128).
         unawaited(_exitIptvPlayer());
         return true;
       }
-      _tvBackExitArmed = true;
-      setState(() => _controlsVisible = true);
-      _hideControlsTimer?.cancel();
-      _scheduleHideControls();
-      _focusPlayerBack();
       return true;
     });
     PlayerBackExitGate.setTryConsumePlayerOverlay(() {
@@ -550,10 +552,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       _tvBackExitArmed = false;
       _hideControlsTimer?.cancel();
       _scheduleHideControls();
-      _focusPlayerBack();
       return true;
     });
-    // First Back focuses Back; second (Back focused / armed) exits.
     _sources = List<IptvPlaySource>.from(widget.sources);
     _title = widget.title;
     _subtitle = widget.subtitle;

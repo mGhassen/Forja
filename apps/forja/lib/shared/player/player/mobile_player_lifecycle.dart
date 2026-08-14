@@ -21,19 +21,16 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     super.initState();
     PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted || _s._disposed) return false;
-      if (_s._backFocus.hasFocus || _s._tvBackExitArmed) {
-        _s._tvBackExitArmed = false;
-        return false;
-      }
-      _s._tvBackExitArmed = true;
-      setState(() => _s._showControls = true);
-      _s._hideTimer?.cancel();
-      _s._startHideTimer();
-      _s._claimBackFocus();
-      return true;
+      return PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: _s._showControls,
+        armed: _s._tvBackExitArmed,
+        hideChrome: () {
+          _s._hideTimer?.cancel();
+          setState(() => _s._showControls = false);
+        },
+        setArmed: (v) => _s._tvBackExitArmed = v,
+      );
     });
-    // First Back focuses Back; second (Back focused / armed) exits.
-    _s._backFocus.addListener(_s._onTvBackFocusChanged);
     _s._ownedProviderSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
       {},
     );

@@ -89,8 +89,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   final FocusNode _nextTrailerFocus = FocusNode(debugLabel: 'trailer-next');
   final FocusNode _seekbarFocus = FocusNode(debugLabel: 'trailer-seekbar');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'trailer-player-tv-keys');
-  /// First TV Back focused the Back control — next Back exits even before
-  /// geometry reports focus (same arming as MobilePlayer / Exo).
+  /// First TV Back hid chrome (or armed while hidden) — next Back exits.
   bool _tvBackExitArmed = false;
   bool _tvFocus = false;
   bool _initialFocusClaimed = false;
@@ -184,19 +183,17 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     _currentIndex = widget.initialIndex;
     _pickerIndex = _pickerIndexAfter(_currentIndex);
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
-    _backFocus.addListener(_onTvBackFocusChanged);
     PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted) return false;
-      if (_backFocus.hasFocus || _tvBackExitArmed) {
-        _tvBackExitArmed = false;
-        return false;
-      }
-      _tvBackExitArmed = true;
-      setState(() => _showControls = true);
-      _hideTimer?.cancel();
-      _startHideTimer();
-      _showChromeAndFocusBack();
-      return true;
+      return PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: _showControls,
+        armed: _tvBackExitArmed,
+        hideChrome: () {
+          _hideTimer?.cancel();
+          setState(() => _showControls = false);
+        },
+        setArmed: (v) => _tvBackExitArmed = v,
+      );
     });
     if (!DesktopWindowChrome.isDesktop) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -217,7 +214,6 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     ShellBus.leavePlayerSurface();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     PlayerBackExitGate.setTryFocusBack(null);
-    _backFocus.removeListener(_onTvBackFocusChanged);
     _backFocus.dispose();
     _playFocus.dispose();
     _rewindFocus.dispose();
@@ -276,10 +272,6 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
       if (playerChromeOverlayBlocksFocusClaim()) return;
       _backFocus.requestFocus();
     });
-  }
-
-  void _onTvBackFocusChanged() {
-    if (!_backFocus.hasFocus) _tvBackExitArmed = false;
   }
 
   void _focusSeekbar() {

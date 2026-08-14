@@ -4,15 +4,16 @@ import 'package:forja/shell/shell_bus.dart';
 /// TV remote Back while a player surface is active:
 /// 1. Menus/panels dismiss first ([dismissAnyPlayerChromeOverlay]).
 /// 2. In-player overlays (search ladder, …) via [tryConsumePlayerOverlay].
-/// 3. First Back shows chrome and focuses the player Back control.
-/// 4. Second Back (Back already focused) exits the player.
+/// 3. Chrome visible → hide chrome (stay). Chrome hidden → first Back arms,
+///    second Back exits. The Back icon (OK / tap) still exits immediately.
 abstract final class PlayerBackExitGate {
   static bool Function()? _tryFocusBack;
   static bool Function()? _tryConsumePlayerOverlay;
   static bool _listening = false;
 
-  /// True after a Back that focused the Back control — next Back may exit
-  /// without being swallowed by the shell debounce window.
+  /// True after a Back that is ready to exit the player — next Back may skip
+  /// the shell debounce window. Stay steps (hide chrome) must leave this false
+  /// so HW + didPopRoute twins do not pop the player on the same press.
   static bool exitReady = false;
 
   static void _ensureSurfaceListener() {
@@ -27,11 +28,8 @@ abstract final class PlayerBackExitGate {
     });
   }
 
-  /// When Back would leave: close guide/search, show chrome, focus Back.
-  ///
-  /// Return `true` to keep the player open.
-  /// Return `false` when Back is already focused (or cannot focus) so exit
-  /// may proceed.
+  /// Hide chrome or arm the confirming Back. Return `true` to stay.
+  /// Return `false` so the confirming Back may exit.
   static void setTryFocusBack(bool Function()? callback) {
     _ensureSurfaceListener();
     _tryFocusBack = callback;
@@ -73,13 +71,37 @@ abstract final class PlayerBackExitGate {
     }
     try {
       final stay = cb();
-      exitReady = stay;
+      // Stay must not set [exitReady] — that skips the HW + didPopRoute
+      // debounce and the twin would exit on the same press.
+      exitReady = false;
       return stay;
     } catch (e, st) {
       debugPrint('[PlayerBackExitGate] tryFocusBack failed: $e\n$st');
       exitReady = false;
       return false;
     }
+  }
+
+  /// Chrome up → hide. Chrome down + armed → allow exit. Else arm.
+  ///
+  /// Return `true` to keep the player open.
+  static bool consumeChromeOrArmExit({
+    required bool chromeVisible,
+    required bool armed,
+    required VoidCallback hideChrome,
+    required void Function(bool armed) setArmed,
+  }) {
+    if (chromeVisible) {
+      hideChrome();
+      setArmed(true);
+      return true;
+    }
+    if (armed) {
+      setArmed(false);
+      return false;
+    }
+    setArmed(true);
+    return true;
   }
 
   /// Test-only.

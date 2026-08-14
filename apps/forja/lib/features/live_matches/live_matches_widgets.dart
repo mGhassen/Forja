@@ -1238,6 +1238,9 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _exiting = false;
   bool _playing = false;
   bool _muted = false;
+  /// Chrome stays visible (WebView would steal D-pad if hidden). First Back
+  /// arms; second Back exits. Back icon still exits immediately.
+  bool _tvBackExitArmed = false;
   /// True when we paused because the app left the foreground (not user pause).
   bool _pausedByLifecycle = false;
 
@@ -1385,6 +1388,19 @@ class _LiveMatchesEmbedPlayerScreenState
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     ShellBus.enterPlayerSurface();
+    PlayerBackExitGate.setTryFocusBack(() {
+      if (!mounted || _exiting) return false;
+      if (_isFullscreen) {
+        unawaited(_exitFullscreen());
+        return true;
+      }
+      return PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: false,
+        armed: _tvBackExitArmed,
+        hideChrome: () {},
+        setArmed: (v) => _tvBackExitArmed = v,
+      );
+    });
     final embedUrl = widget.embedUrl;
     // Catalog-origin iframe wrapper so document.referrer matches the site
     // (issue 046). On Android, System WebView cannot play embeds in-page
@@ -2266,6 +2282,7 @@ class _LiveMatchesEmbedPlayerScreenState
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     ShellBus.leavePlayerSurface();
+    PlayerBackExitGate.setTryFocusBack(null);
     _loadingWatchdog?.cancel();
     _adWindowCloseTimer?.cancel();
     _androidHandoffWatchdog?.cancel();
@@ -2297,10 +2314,15 @@ class _LiveMatchesEmbedPlayerScreenState
 
   bool _handleEmbedKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
-    if (event.logicalKey != LogicalKeyboardKey.escape &&
-        event.logicalKey != LogicalKeyboardKey.goBack &&
-        event.logicalKey != LogicalKeyboardKey.browserBack) {
-      return false;
+    final key = event.logicalKey;
+    final isBack = key == LogicalKeyboardKey.goBack ||
+        key == LogicalKeyboardKey.browserBack;
+    final isEscape = key == LogicalKeyboardKey.escape;
+    if (!isBack && !isEscape) return false;
+    if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+      if (isEscape) return false;
+      ShellTvFocusCoordinator.handleShellBackKey();
+      return true;
     }
     if (_isFullscreen) {
       unawaited(_exitFullscreen());

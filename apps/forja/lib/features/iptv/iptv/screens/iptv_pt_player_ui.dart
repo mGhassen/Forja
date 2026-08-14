@@ -751,12 +751,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     _claimPlayFocus();
   }
 
-  /// Alias used by engine boot — same as movie/Exo [claimPlayFocus].
   void _focusPlayerChrome() => _claimPlayFocus();
-
-  void _focusPlayerBack() => _claimBackFocus();
-
-  bool _isPlayerBackFocused() => _s._backFocus.hasFocus;
 
   void _revealControlsAndFocus({required bool back}) {
     setState(() => _s._controlsVisible = true);
@@ -1345,16 +1340,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 onDownEdge: () {
                   _s._tvBackExitArmed = false;
                   downFromTop();
-                },
-                onFocusChange: (focused) {
-                  if (focused) return;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (!mounted) return;
-                    if (!_isPlayerBackFocused()) {
-                      _s._tvBackExitArmed = false;
-                      PlayerBackExitGate.exitReady = false;
-                    }
-                  });
                 },
               ),
             ),

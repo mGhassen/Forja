@@ -19,12 +19,78 @@ void main() {
     PlayerBackExitGate.resetForTest();
   });
 
-  testWidgets('TV Back focuses player Back before exiting', (tester) async {
-    var backFocused = false;
+  test('consumeChromeOrArmExit hides chrome then exits', () {
+    var chrome = true;
+    var armed = false;
+    var hidden = 0;
+
+    expect(
+      PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: chrome,
+        armed: armed,
+        hideChrome: () {
+          hidden++;
+          chrome = false;
+        },
+        setArmed: (v) => armed = v,
+      ),
+      isTrue,
+    );
+    expect(hidden, 1);
+    expect(chrome, isFalse);
+    expect(armed, isTrue);
+
+    expect(
+      PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: chrome,
+        armed: armed,
+        hideChrome: () => hidden++,
+        setArmed: (v) => armed = v,
+      ),
+      isFalse,
+    );
+    expect(hidden, 1);
+    expect(armed, isFalse);
+  });
+
+  test('consumeChromeOrArmExit arms when chrome already hidden', () {
+    var armed = false;
+
+    expect(
+      PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: false,
+        armed: armed,
+        hideChrome: () {},
+        setArmed: (v) => armed = v,
+      ),
+      isTrue,
+    );
+    expect(armed, isTrue);
+
+    expect(
+      PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: false,
+        armed: armed,
+        hideChrome: () {},
+        setArmed: (v) => armed = v,
+      ),
+      isFalse,
+    );
+    expect(armed, isFalse);
+  });
+
+  testWidgets('TV Back hides chrome then exits; twin does not exit', (
+    tester,
+  ) async {
+    var chrome = true;
+    var armed = false;
     PlayerBackExitGate.setTryFocusBack(() {
-      if (backFocused) return false;
-      backFocused = true;
-      return true;
+      return PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: chrome,
+        armed: armed,
+        hideChrome: () => chrome = false,
+        setArmed: (v) => armed = v,
+      );
     });
 
     await tester.pumpWidget(
@@ -46,7 +112,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    shellOverlayNavigatorKey.currentState!.push(
+    Navigator.of(
+      shellOverlayNavigatorKey.currentContext!,
+      rootNavigator: true,
+    ).push(
       MaterialPageRoute<void>(
         builder: (_) => const _FakePlayerRoute(),
       ),
@@ -54,15 +123,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
 
-    // First Back focuses Back control - stays in player.
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
-    expect(backFocused, isTrue);
+    expect(chrome, isFalse);
+    expect(armed, isTrue);
 
-    await tester.pump(const Duration(milliseconds: 450));
+    // HW + didPopRoute twin on the same press must not exit.
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text('player-body'), findsOneWidget);
 
-    // Second Back (Back already focused) exits.
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsNothing);
@@ -80,6 +155,7 @@ void main() {
     });
 
     expect(PlayerBackExitGate.tryFocusBackStay(), isTrue);
+    expect(PlayerBackExitGate.exitReady, isFalse);
     expect(focused, isTrue);
     expect(PlayerBackExitGate.tryFocusBackStay(), isFalse);
   });

@@ -209,6 +209,10 @@ abstract final class ShellTvFocusCoordinator {
   static DateTime? _lastBackHandledAt;
   static const Duration _backDebounceWindow = Duration(milliseconds: 400);
 
+  /// HW + didPopRoute land a few ms apart. Shorter than [_backDebounceWindow]
+  /// so a real second Back can confirm after a stay step.
+  static const Duration _backTwinWindow = Duration(milliseconds: 80);
+
   /// True after a Back that only moved focus (player/details Back control) so
   /// the confirming Back is not swallowed by [_backDebounceWindow].
   static bool _backStepPending = false;
@@ -281,9 +285,13 @@ abstract final class ShellTvFocusCoordinator {
     }
 
     // Confirming exit / pop must not be swallowed by debounce.
-    // When exit is armed, still debounce same-press duplicates
-    // (HardwareKeyboard + didPopRoute); [ShellTvAppExit.minConfirmGap] also
-    // rejects instant confirms.
+    // Same-press twins (HardwareKeyboard + didPopRoute) still land inside
+    // [_backTwinWindow] even when a stay step set [_backStepPending].
+    final lastBack = _lastBackHandledAt;
+    if (lastBack != null &&
+        DateTime.now().difference(lastBack) < _backTwinWindow) {
+      return true;
+    }
     if (!_backStepPending &&
         !PlayerBackExitGate.exitReady &&
         _consumeDuplicateBack()) {
@@ -291,11 +299,13 @@ abstract final class ShellTvFocusCoordinator {
     }
     _backStepPending = false;
 
-    // TV players: first Back focuses the Back control; second exits.
+    // TV players: first Back hides chrome (or arms); second exits.
     if (tvBackPolicyEnabled && PlayerBackExitGate.tryFocusBackStay()) {
       _backStepPending = true;
+      PlayerBackExitGate.exitReady = false;
+      _lastBackHandledAt = DateTime.now();
       ShellTvAppExit.clear();
-      debugPrint('[NavBack] focused player back - stay in player');
+      debugPrint('[NavBack] player back consumed - stay in player');
       return true;
     }
 

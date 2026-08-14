@@ -212,39 +212,26 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   final FocusNode _streamActionFocus =
       FocusNode(debugLabel: 'exo-player-stream-action');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'exo-player-tv-keys');
-  /// First TV Back focused the Back control — next Back exits even before
-  /// the post-frame [requestFocus] lands.
+  /// First TV Back hid chrome (or armed while hidden) — next Back exits.
   bool _tvBackExitArmed = false;
-
-  void _onBackFocusChanged() {
-    if (_backFocus.hasFocus) return;
-    // Deferred: ignore the brief gap between arming and requestFocus landing.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!_backFocus.hasFocus) _tvBackExitArmed = false;
-    });
-  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
-    _backFocus.addListener(_onBackFocusChanged);
     PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted || _disposed) return false;
-      if (_backFocus.hasFocus || _tvBackExitArmed) {
-        _tvBackExitArmed = false;
-        return false;
-      }
-      _tvBackExitArmed = true;
-      setState(() => _showControls = true);
-      _hideTimer?.cancel();
-      _startHideTimer();
-      _claimBackFocus();
-      return true;
+      return PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: _showControls,
+        armed: _tvBackExitArmed,
+        hideChrome: () {
+          _hideTimer?.cancel();
+          setState(() => _showControls = false);
+        },
+        setArmed: (v) => _tvBackExitArmed = v,
+      );
     });
-    // First Back focuses Back; second (Back focused / armed) exits.
     _sources = [];
     if (widget.audioUrl != null && widget.audioUrl!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1272,7 +1259,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _transportSubsFocus.dispose();
     _transportQualityFocus.dispose();
     _transportSettingsFocus.dispose();
-    _backFocus.removeListener(_onBackFocusChanged);
     _backFocus.dispose();
     _seekFocus.dispose();
     _playerMenuFocus.dispose();
