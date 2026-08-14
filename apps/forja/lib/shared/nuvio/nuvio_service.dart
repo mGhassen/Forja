@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:forja/shared/playback/hubcloud_drive_quota.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'nuvio_runtime.dart';
@@ -167,6 +168,22 @@ class NuvioStreamResult {
       'sourceName': 'Nuvio · ${sourceLabel ?? name}',
     };
   }
+}
+
+Map<String, String> _nuvioStreamRequestHeaders(Map<String, dynamic> stream) {
+  final hints = stream['behaviorHints'];
+  if (hints is! Map) return const {};
+  final proxy = hints['proxyHeaders'];
+  if (proxy is! Map) return const {};
+  final request = proxy['request'];
+  if (request is! Map) return const {};
+  final out = <String, String>{};
+  request.forEach((k, v) {
+    final ks = k.toString().trim();
+    final vs = v.toString().trim();
+    if (ks.isNotEmpty && vs.isNotEmpty) out[ks] = vs;
+  });
+  return out;
 }
 
 class NuvioService {
@@ -780,7 +797,7 @@ class NuvioService {
         isCancelled: () => gen != _scraperGeneration,
       );
       if (gen != _scraperGeneration) return [];
-      return raw
+      final mapped = raw
           .map((m) {
             final headers = <String, String>{};
             final h = m['headers'];
@@ -814,6 +831,12 @@ class NuvioService {
           })
           .where((m) => (m['url'] as String?)?.isNotEmpty == true)
           .toList();
+      return dropHubCloudDriveQuotaRows(
+        rows: mapped,
+        urlOf: (m) => m['url']?.toString() ?? '',
+        headersOf: _nuvioStreamRequestHeaders,
+        isCancelled: () => gen != _scraperGeneration,
+      );
     } catch (e) {
       debugPrint('[NuvioService] ${s.id} failed: $e');
       return [];
@@ -900,7 +923,12 @@ class NuvioService {
           ),
         );
       }
-      return out;
+      return dropHubCloudDriveQuotaRows(
+        rows: out,
+        urlOf: (r) => r.url,
+        headersOf: (r) => r.headers,
+        isCancelled: () => gen != _scraperGeneration,
+      );
     } catch (e) {
       debugPrint('[NuvioService] runOneScraper(${target.id}) failed: $e');
       return const [];

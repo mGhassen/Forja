@@ -22,7 +22,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 - Paste a Nuvio `manifest.json` URL and install more
 - Toggle each scraper on/off without removing the addon
 - Remove a user-installed addon (trash → Yes / No confirm; not the built-in one)
-- In **Sources → Nuvio**, tap **All** to select every scraper, or tap individual scraper chips (tap again to remove their sources); the selection is remembered on this device across titles, and play a result (magnets use the local torrent engine; HTTP links play directly)
+- In **Sources → Nuvio**, tap **All** to select every scraper, or tap individual scraper chips (tap again to remove their sources); the selection is remembered on this device across titles. **All** runs every selected scraper one after another (reopening Sources continues any that had not finished yet). Play a result (magnets use the local torrent engine; HTTP links play directly)
 
 ## Setup
 
@@ -37,6 +37,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 - Refreshing an addon merges new scrapers while keeping your enabled/disabled choices
 - **Webstreaming** (green **Play**) uses VidLink, WebStreamr, Videasy, etc. — not Nuvio
 - Playing a Nuvio HTTP link from **Sources** must show video — if only audio starts (or the picture stays black), Forja fails that row so you can pick another instead of sitting on a blank screen
+- HubCloud / 4kHdHub Drive proxies (`*.workers.dev` with `::` in the path) are probed before they appear. Google Drive **download quota exceeded** files are omitted — they cannot play until Drive resets that file (~24h)
 
 ## Related
 

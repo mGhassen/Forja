@@ -10,6 +10,7 @@ import 'engine_jobs.dart';
 import 'engine_worker.dart';
 import 'isolate_runner.dart';
 import 'library_path.dart';
+import 'playback/torrent/torrent_search_providers.dart';
 import 'settings_service.dart';
 
 /// Rust engine facade — native library required for parser/torrent features.
@@ -184,6 +185,62 @@ abstract final class Engine {
     return (jsonDecode(json) as List)
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
+  }
+
+  /// Same as [searchTorrents] but one engine job per provider. [onPartial]
+  /// receives the merged list after each provider returns (not after all).
+  static Future<List<Map<String, dynamic>>> searchTorrentsProgressive(
+    String query, {
+    String? imdbId,
+    int? season,
+    int? episode,
+    List<String>? enabledProviders,
+    void Function(List<Map<String, dynamic>> soFar)? onPartial,
+    bool Function()? isCancelled,
+  }) async {
+    _requireReady();
+    final enabled = enabledProviders ??
+        await SettingsService().getEnabledTorrentProviders();
+    if (enabled.isEmpty) return [];
+
+    bool cancelled() => isCancelled?.call() == true;
+
+    if (enabled.length == 1) {
+      final one = await searchTorrents(
+        query,
+        imdbId: imdbId,
+        season: season,
+        episode: episode,
+        enabledProviders: enabled,
+      );
+      if (cancelled()) return [];
+      onPartial?.call(one);
+      return one;
+    }
+
+    final byMagnet = <String, Map<String, dynamic>>{};
+    await Future.wait([
+      for (final id in enabled)
+        () async {
+          List<Map<String, dynamic>> batch = const [];
+          try {
+            batch = await searchTorrents(
+              query,
+              imdbId: imdbId,
+              season: season,
+              episode: episode,
+              enabledProviders: [id],
+            );
+          } catch (_) {}
+          if (cancelled()) return;
+          TorrentSearchProviders.mergeByMagnet(byMagnet, batch);
+          onPartial?.call(
+            List<Map<String, dynamic>>.from(byMagnet.values),
+          );
+        }(),
+    ]);
+    if (cancelled()) return [];
+    return byMagnet.values.toList();
   }
 
   static Future<List<Map<String, dynamic>>> filterTorrents(

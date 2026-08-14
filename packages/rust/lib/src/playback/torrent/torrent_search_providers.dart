@@ -65,6 +65,26 @@ class TorrentSearchProviders {
     return null;
   }
 
+  static int seedersOfJson(Map<String, dynamic> row) {
+    final raw = row['seeders']?.toString() ?? '0';
+    return int.tryParse(raw.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+  }
+
+  /// Merge [batch] into [into] keyed by magnet; keep the higher-seeder copy.
+  static void mergeByMagnet(
+    Map<String, Map<String, dynamic>> into,
+    List<Map<String, dynamic>> batch,
+  ) {
+    for (final row in batch) {
+      final magnet = row['magnet']?.toString() ?? '';
+      if (magnet.isEmpty) continue;
+      final existing = into[magnet];
+      if (existing == null || seedersOfJson(row) > seedersOfJson(existing)) {
+        into[magnet] = row;
+      }
+    }
+  }
+
   /// Whether [resultSource] belongs to the selected Torrents chip.
   static bool matchesResultSource(String selectedChipId, String resultSource) {
     if (selectedChipId == allId ||

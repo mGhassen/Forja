@@ -77,39 +77,85 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       _s._allTorrentResults = [];
       _s._errorMessage = null;
     });
+    var closed = false;
+    var paintSeq = 0;
+    var seasonSoFar = <Map<String, dynamic>>[];
+    var episodeSoFar = <Map<String, dynamic>>[];
     try {
-      final results = await Future.wait([
-        Engine.searchTorrents(
+      Future<void> paint(int seq) async {
+        if (!mounted || gen != _s._torrentSearchGen || closed) return;
+        final episodeFiltered = (await Engine.filterTorrents(
+          episodeSoFar,
+          _s._movie.title,
+          requiredSeason: _s._selectedSeason,
+          requiredEpisode: _s._selectedEpisode,
+        )).map(TorrentResult.fromJson);
+        if (!mounted || gen != _s._torrentSearchGen || closed || seq != paintSeq) {
+          return;
+        }
+        final seasonFiltered = (await Engine.filterTorrents(
+          seasonSoFar,
+          _s._movie.title,
+          requiredSeason: _s._selectedSeason,
+        )).map(TorrentResult.fromJson);
+        if (!mounted || gen != _s._torrentSearchGen || closed || seq != paintSeq) {
+          return;
+        }
+        final combined = <String, TorrentResult>{};
+        for (final r in episodeFiltered) {
+          combined[r.magnet] = r;
+        }
+        for (final r in seasonFiltered) {
+          combined.putIfAbsent(r.magnet, () => r);
+        }
+        setState(() => _s._allTorrentResults = combined.values.toList());
+      }
+
+      await Future.wait([
+        Engine.searchTorrentsProgressive(
           seasonQuery,
           imdbId: _s._movie.imdbId,
           season: _s._selectedSeason,
-        ).then((list) => list.map(TorrentResult.fromJson).toList()),
-        Engine.searchTorrents(
+          isCancelled: () => !mounted || gen != _s._torrentSearchGen || closed,
+          onPartial: (batch) {
+            if (closed) return;
+            seasonSoFar = batch;
+            unawaited(paint(++paintSeq));
+          },
+        ),
+        Engine.searchTorrentsProgressive(
           episodeQuery,
           imdbId: _s._movie.imdbId,
           season: _s._selectedSeason,
           episode: _s._selectedEpisode,
-        ).then((list) => list.map(TorrentResult.fromJson).toList()),
+          isCancelled: () => !mounted || gen != _s._torrentSearchGen || closed,
+          onPartial: (batch) {
+            if (closed) return;
+            episodeSoFar = batch;
+            unawaited(paint(++paintSeq));
+          },
+        ),
       ]);
+      closed = true;
       if (!mounted || gen != _s._torrentSearchGen) return;
-      final filteredSeason = (await Engine.filterTorrents(
-        results[0].map((e) => e.toJson()).toList(),
-        _s._movie.title,
-        requiredSeason: _s._selectedSeason,
-      )).map(TorrentResult.fromJson).toList();
-      if (!mounted || gen != _s._torrentSearchGen) return;
-      final filteredEpisode = (await Engine.filterTorrents(
-        results[1].map((e) => e.toJson()).toList(),
+      final episodeFiltered = (await Engine.filterTorrents(
+        episodeSoFar,
         _s._movie.title,
         requiredSeason: _s._selectedSeason,
         requiredEpisode: _s._selectedEpisode,
-      )).map(TorrentResult.fromJson).toList();
+      )).map(TorrentResult.fromJson);
+      if (!mounted || gen != _s._torrentSearchGen) return;
+      final seasonFiltered = (await Engine.filterTorrents(
+        seasonSoFar,
+        _s._movie.title,
+        requiredSeason: _s._selectedSeason,
+      )).map(TorrentResult.fromJson);
       final combined = <String, TorrentResult>{};
-      for (var r in filteredEpisode) {
+      for (final r in episodeFiltered) {
         combined[r.magnet] = r;
       }
-      for (var r in filteredSeason) {
-        combined[r.magnet] = r;
+      for (final r in seasonFiltered) {
+        combined.putIfAbsent(r.magnet, () => r);
       }
       if (!mounted || gen != _s._torrentSearchGen) return;
       setState(() {
@@ -121,6 +167,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
           .setReady();
       _sortResults();
     } catch (e) {
+      closed = true;
       if (mounted && gen == _s._torrentSearchGen) {
         setState(() {
           _s._errorMessage = e.toString();
@@ -144,14 +191,36 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       _s._allTorrentResults = [];
       _s._errorMessage = null;
     });
+    var closed = false;
+    var paintSeq = 0;
     try {
-      final results = (await Engine.searchTorrents(
+      final raw = await Engine.searchTorrentsProgressive(
         query,
         imdbId: _s._movie.imdbId,
-      )).map(TorrentResult.fromJson).toList();
+        isCancelled: () => !mounted || gen != _s._torrentSearchGen || closed,
+        onPartial: (batch) {
+          if (closed) return;
+          final seq = ++paintSeq;
+          unawaited(() async {
+            if (!mounted || gen != _s._torrentSearchGen || closed) return;
+            final filtered = (await Engine.filterTorrents(
+              batch,
+              _s._movie.title,
+            )).map(TorrentResult.fromJson).toList();
+            if (!mounted ||
+                gen != _s._torrentSearchGen ||
+                closed ||
+                seq != paintSeq) {
+              return;
+            }
+            setState(() => _s._allTorrentResults = filtered);
+          }());
+        },
+      );
+      closed = true;
       if (!mounted || gen != _s._torrentSearchGen) return;
       final filtered = (await Engine.filterTorrents(
-        results.map((e) => e.toJson()).toList(),
+        raw,
         _s._movie.title,
       )).map(TorrentResult.fromJson).toList();
       if (!mounted || gen != _s._torrentSearchGen) return;
@@ -164,6 +233,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
           .setReady();
       _sortResults();
     } catch (e) {
+      closed = true;
       if (mounted && gen == _s._torrentSearchGen) {
         setState(() {
           _s._errorMessage = e.toString();

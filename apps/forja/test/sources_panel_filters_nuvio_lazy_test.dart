@@ -47,6 +47,14 @@ void main() {
         ),
         isNull,
       );
+      expect(
+        nextNuvioScraperId(
+          orderedIds: const ['a', 'b', 'c'],
+          selectedIds: const {'a', 'b', 'c'},
+          fetchedIds: const {'a'},
+        ),
+        'b',
+      );
     });
 
     test('provider filter badge ignores all-selected default', () {

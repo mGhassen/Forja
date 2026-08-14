@@ -505,12 +505,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final stremioOn = await PlaySourceEffective.stremio(_settings, lanReady);
     final nuvioOn = await PlaySourceEffective.nuvio(_settings, lanReady);
     final local = _profile.localTorrentEngine;
-    List<Map<String, dynamic>> addons = const [];
-    if (stremioOn) {
-      try {
-        addons = await _stremio.getAddonsForResource('stream');
-      } catch (_) {}
-    }
     List<NuvioAddon> nuvioAddons = const [];
     Set<String> nuvioSelected = {};
     if (nuvioOn) {
@@ -523,14 +517,22 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     if (!mounted) return;
 
-    final hasStremio = stremioOn && addons.isNotEmpty;
-    final hasTorrent = torrentOn;
     final hasNuvio = nuvioOn && nuvioAddons.isNotEmpty;
     final kind = _resolveInitialKind(
-      hasTorrent: hasTorrent,
-      hasStremio: hasStremio,
+      hasTorrent: torrentOn,
+      hasStremio: stremioOn,
       hasNuvio: hasNuvio,
     );
+
+    List<Map<String, dynamic>> addons = const [];
+    if (stremioOn && kind == 'stremio') {
+      try {
+        addons = await _stremio.getAddonsForResource('stream');
+      } catch (_) {}
+    }
+    if (!mounted) return;
+
+    final hasStremio = stremioOn && (kind != 'stremio' || addons.isNotEmpty);
 
     setState(() {
       _sortPreference = sort;
@@ -538,7 +540,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _prowlarrConfigured = prowlarr;
       _enabledTorrentProviders = enabledProviders;
       _localTorrentEngine = local;
-      _showTorrents = hasTorrent;
+      _showTorrents = torrentOn;
       _showStremio = hasStremio;
       _showNuvio = hasNuvio;
       _nuvioAddons = nuvioAddons;
@@ -559,8 +561,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
     // Load only the selected kind(s) - no prefetch of other categories.
     _ensureVisibleKindsLoaded();
-    // Bootstrap can miss installs (race / empty catch). Re-probe so the
-    // Stremio tab + chips appear without remounting the player panel.
+    // Hydrate addons in the background when Torrents opened first so search
+    // is not blocked on sequential manifest fetches.
     if (stremioOn) unawaited(_refreshStreamAddons());
   }
 
@@ -664,20 +666,23 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       await _fetchNextNuvioScraper(reset: true);
       return;
     }
-    if (_nuvioStreams.isNotEmpty || _nuvioFetching) return;
-    final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
-    if (cached != null) {
-      if (!mounted) return;
-      setState(() {
-        _nuvioStreams = cached.streams;
-        _nuvioFetchedScraperIds = cached.fetchedScraperIds;
-        _error = null;
-      });
-      _focusPlayingSourceIfNeeded();
-      _requestScrollToCurrent();
-      return;
+    if (_nuvioFetching) return;
+    if (_nuvioStreams.isEmpty) {
+      final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
+      if (cached != null) {
+        if (!mounted) return;
+        setState(() {
+          _nuvioStreams = cached.streams;
+          _nuvioFetchedScraperIds = cached.fetchedScraperIds;
+          _error = null;
+        });
+        _focusPlayingSourceIfNeeded();
+        _requestScrollToCurrent();
+      }
     }
-    await _fetchNextNuvioScraper(reset: true);
+    if (_pendingNuvioScraperIds.isNotEmpty) {
+      await _fetchNextNuvioScraper();
+    }
   }
 
   void _reloadKind(String kind) {
@@ -1009,40 +1014,32 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     });
 
     try {
-      final List<TorrentResult> found;
       final isTv = widget.movie.mediaType == 'tv';
       final season = widget.season ?? 1;
       final episode = widget.episode ?? 1;
 
       if (_selectedSourceId == 'jackett') {
-        found = await _searchJackett(
-          isTv: isTv,
-          season: season,
-          episode: episode,
+        await _finishTorrentSearch(
+          gen,
+          await _searchJackett(isTv: isTv, season: season, episode: episode),
         );
-      } else if (_selectedSourceId == 'prowlarr') {
-        found = await _searchProwlarr(
-          isTv: isTv,
-          season: season,
-          episode: episode,
+        return;
+      }
+      if (_selectedSourceId == 'prowlarr') {
+        await _finishTorrentSearch(
+          gen,
+          await _searchProwlarr(isTv: isTv, season: season, episode: episode),
         );
-      } else if (isTv) {
-        found = await _searchForjaTv(season: season, episode: episode);
-      } else {
-        found = await _searchForjaMovie();
+        return;
       }
 
+      if (isTv) {
+        await _searchForjaTvProgressive(gen, season: season, episode: episode);
+      } else {
+        await _searchForjaMovieProgressive(gen);
+      }
       if (!mounted || gen != _searchGen) return;
-      CatalogSourcesSessionCache.writeTorrents(_catalogCacheKey, found);
-      setState(() {
-        _results = found;
-        _searching = false;
-        if (found.isEmpty && !_showsStremio && !_showsNuvio) {
-          _error = 'No torrents found';
-        }
-      });
-      _focusPlayingSourceIfNeeded();
-      _requestScrollToCurrent();
+      await _finishTorrentSearch(gen, _results);
     } catch (e) {
       if (!mounted || gen != _searchGen) return;
       setState(() {
@@ -1050,6 +1047,145 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _error = e.toString().replaceFirst('Exception: ', '');
       });
     }
+  }
+
+  Future<void> _finishTorrentSearch(int gen, List<TorrentResult> found) async {
+    if (!mounted || gen != _searchGen) return;
+    CatalogSourcesSessionCache.writeTorrents(_catalogCacheKey, found);
+    setState(() {
+      _results = found;
+      _searching = false;
+      if (found.isEmpty && !_showsStremio && !_showsNuvio) {
+        _error = 'No torrents found';
+      }
+    });
+    _focusPlayingSourceIfNeeded();
+    _requestScrollToCurrent();
+  }
+
+  Future<void> _searchForjaMovieProgressive(int gen) async {
+    final query = _year.isNotEmpty
+        ? '${widget.movie.title} $_year'
+        : widget.movie.title;
+    var closed = false;
+    var paintSeq = 0;
+    final raw = await Engine.searchTorrentsProgressive(
+      query,
+      imdbId: widget.movie.imdbId,
+      isCancelled: () => !mounted || gen != _searchGen || closed,
+      onPartial: (batch) {
+        if (closed) return;
+        final seq = ++paintSeq;
+        unawaited(() async {
+          if (!mounted || gen != _searchGen || closed) return;
+          final filtered = (await Engine.filterTorrents(
+            batch,
+            widget.movie.title,
+          )).map(TorrentResult.fromJson).toList();
+          if (!mounted || gen != _searchGen || closed || seq != paintSeq) {
+            return;
+          }
+          setState(() => _results = filtered);
+        }());
+      },
+    );
+    closed = true;
+    if (!mounted || gen != _searchGen) return;
+    final filtered = (await Engine.filterTorrents(
+      raw,
+      widget.movie.title,
+    )).map(TorrentResult.fromJson).toList();
+    if (!mounted || gen != _searchGen) return;
+    setState(() => _results = filtered);
+  }
+
+  Future<void> _searchForjaTvProgressive(
+    int gen, {
+    required int season,
+    required int episode,
+  }) async {
+    final s = season.toString().padLeft(2, '0');
+    final e = episode.toString().padLeft(2, '0');
+    final seasonQuery = '${widget.movie.title} S$s';
+    final episodeQuery = '${widget.movie.title} S${s}E$e';
+    var closed = false;
+    var paintSeq = 0;
+    var seasonSoFar = <Map<String, dynamic>>[];
+    var episodeSoFar = <Map<String, dynamic>>[];
+
+    Future<void> paint(int seq) async {
+      if (!mounted || gen != _searchGen || closed) return;
+      final episodeFiltered = (await Engine.filterTorrents(
+        episodeSoFar,
+        widget.movie.title,
+        requiredSeason: season,
+        requiredEpisode: episode,
+      )).map(TorrentResult.fromJson);
+      if (!mounted || gen != _searchGen || closed || seq != paintSeq) return;
+      final seasonFiltered = (await Engine.filterTorrents(
+        seasonSoFar,
+        widget.movie.title,
+        requiredSeason: season,
+      )).map(TorrentResult.fromJson);
+      if (!mounted || gen != _searchGen || closed || seq != paintSeq) return;
+      final combined = <String, TorrentResult>{};
+      for (final r in episodeFiltered) {
+        combined[r.magnet] = r;
+      }
+      for (final r in seasonFiltered) {
+        combined.putIfAbsent(r.magnet, () => r);
+      }
+      setState(() => _results = combined.values.toList());
+    }
+
+    await Future.wait([
+      Engine.searchTorrentsProgressive(
+        seasonQuery,
+        imdbId: widget.movie.imdbId,
+        season: season,
+        isCancelled: () => !mounted || gen != _searchGen || closed,
+        onPartial: (batch) {
+          if (closed) return;
+          seasonSoFar = batch;
+          unawaited(paint(++paintSeq));
+        },
+      ),
+      Engine.searchTorrentsProgressive(
+        episodeQuery,
+        imdbId: widget.movie.imdbId,
+        season: season,
+        episode: episode,
+        isCancelled: () => !mounted || gen != _searchGen || closed,
+        onPartial: (batch) {
+          if (closed) return;
+          episodeSoFar = batch;
+          unawaited(paint(++paintSeq));
+        },
+      ),
+    ]);
+    closed = true;
+    if (!mounted || gen != _searchGen) return;
+    final episodeFiltered = (await Engine.filterTorrents(
+      episodeSoFar,
+      widget.movie.title,
+      requiredSeason: season,
+      requiredEpisode: episode,
+    )).map(TorrentResult.fromJson);
+    if (!mounted || gen != _searchGen) return;
+    final seasonFiltered = (await Engine.filterTorrents(
+      seasonSoFar,
+      widget.movie.title,
+      requiredSeason: season,
+    )).map(TorrentResult.fromJson);
+    if (!mounted || gen != _searchGen) return;
+    final combined = <String, TorrentResult>{};
+    for (final r in episodeFiltered) {
+      combined[r.magnet] = r;
+    }
+    for (final r in seasonFiltered) {
+      combined.putIfAbsent(r.magnet, () => r);
+    }
+    setState(() => _results = combined.values.toList());
   }
 
   Future<void> _fetchStremioStreams() async {
@@ -1187,25 +1323,31 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _error = null;
     });
     final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
-    final batch = await NuvioService.instance.runSourcesScraper(
-      scraperId: scraperId,
-      tmdbId: widget.movie.id.toString(),
-      type: type,
-      season: widget.movie.mediaType == 'tv' ? widget.season : null,
-      episode: widget.movie.mediaType == 'tv' ? widget.episode : null,
-    );
+    NuvioScraperResult? batch;
+    try {
+      batch = await NuvioService.instance.runSourcesScraper(
+        scraperId: scraperId,
+        tmdbId: widget.movie.id.toString(),
+        type: type,
+        season: widget.movie.mediaType == 'tv' ? widget.season : null,
+        episode: widget.movie.mediaType == 'tv' ? widget.episode : null,
+      );
+    } catch (e) {
+      debugPrint('[Nuvio] scraper $scraperId failed: $e');
+    }
     if (!mounted || gen != _nuvioFetchGen) return;
     setState(() {
       _nuvioFetchedScraperIds.add(scraperId);
       _nuvioInFlightScraperId = null;
       if (batch != null && batch.streams.isNotEmpty) {
+        final result = batch;
         _nuvioStreams.addAll(
-          batch.streams.map(
+          result.streams.map(
             (s) => <String, dynamic>{
               ...s,
-              '_nuvioScraperId': batch.scraperId,
-              '_addonName': s['sourceName'] ?? batch.scraperName,
-              '_addonBaseUrl': 'nuvio:${batch.scraperId}',
+              '_nuvioScraperId': result.scraperId,
+              '_addonName': s['sourceName'] ?? result.scraperName,
+              '_addonBaseUrl': 'nuvio:${result.scraperId}',
             },
           ),
         );
@@ -1258,58 +1400,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   String get _year {
     final d = widget.movie.releaseDate;
     return d.length >= 4 ? d.substring(0, 4) : '';
-  }
-
-  Future<List<TorrentResult>> _searchForjaMovie() async {
-    final query = _year.isNotEmpty
-        ? '${widget.movie.title} $_year'
-        : widget.movie.title;
-    final results = (await Engine.searchTorrents(
-      query,
-      imdbId: widget.movie.imdbId,
-    )).map(TorrentResult.fromJson).toList();
-    return (await Engine.filterTorrents(
-      results.map((r) => r.toJson()).toList(),
-      widget.movie.title,
-    )).map(TorrentResult.fromJson).toList();
-  }
-
-  Future<List<TorrentResult>> _searchForjaTv({
-    required int season,
-    required int episode,
-  }) async {
-    final s = season.toString().padLeft(2, '0');
-    final e = episode.toString().padLeft(2, '0');
-    final seasonQuery = '${widget.movie.title} S$s';
-    final episodeQuery = '${widget.movie.title} S${s}E$e';
-    final seasonRaw = (await Engine.searchTorrents(
-      seasonQuery,
-      imdbId: widget.movie.imdbId,
-      season: season,
-    )).map(TorrentResult.fromJson).toList();
-    final episodeRaw = (await Engine.searchTorrents(
-      episodeQuery,
-      imdbId: widget.movie.imdbId,
-      season: season,
-      episode: episode,
-    )).map(TorrentResult.fromJson).toList();
-    final combined = <String, TorrentResult>{};
-    for (final r in (await Engine.filterTorrents(
-      episodeRaw.map((r) => r.toJson()).toList(),
-      widget.movie.title,
-      requiredSeason: season,
-      requiredEpisode: episode,
-    )).map(TorrentResult.fromJson)) {
-      combined[r.magnet] = r;
-    }
-    for (final r in (await Engine.filterTorrents(
-      seasonRaw.map((r) => r.toJson()).toList(),
-      widget.movie.title,
-      requiredSeason: season,
-    )).map(TorrentResult.fromJson)) {
-      combined[r.magnet] = r;
-    }
-    return combined.values.toList();
   }
 
   Future<List<TorrentResult>> _searchJackett({
@@ -1448,7 +1538,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final enabled = enabledNuvioScraperIds(_nuvioAddons);
       if (enabled.isEmpty) return;
       final alreadyAll = enabled.every(_nuvioSelectedScraperIds.contains);
-      if (alreadyAll) return;
+      if (alreadyAll) {
+        if (!_nuvioFetching) {
+          unawaited(_fetchNextNuvioScraper());
+        }
+        return;
+      }
       setState(() {
         _selectedSourceId = 'all_nuvio';
         _error = null;

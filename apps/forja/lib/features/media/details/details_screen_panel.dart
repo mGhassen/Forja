@@ -231,7 +231,12 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       final enabled = enabledNuvioScraperIds(_s._nuvioAddons);
       if (enabled.isEmpty) return;
       final alreadyAll = enabled.every(_s._nuvioSelectedScraperIds.contains);
-      if (alreadyAll) return;
+      if (alreadyAll) {
+        if (!_s._isNuvioFetching) {
+          unawaited(_s._fetchNextNuvioScraper());
+        }
+        return;
+      }
       setState(() {
         _s._selectedSourceId = 'all_nuvio';
         _s._errorMessage = null;

@@ -212,25 +212,31 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
       if (_s._selectedSourceId == 'all_nuvio') _s._errorMessage = null;
     });
     final type = _s._movie.mediaType == 'tv' ? 'tv' : 'movie';
-    final batch = await NuvioService.instance.runSourcesScraper(
-      scraperId: scraperId,
-      tmdbId: _s._movie.id.toString(),
-      type: type,
-      season: _s._movie.mediaType == 'tv' ? _s._selectedSeason : null,
-      episode: _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
-    );
+    NuvioScraperResult? batch;
+    try {
+      batch = await NuvioService.instance.runSourcesScraper(
+        scraperId: scraperId,
+        tmdbId: _s._movie.id.toString(),
+        type: type,
+        season: _s._movie.mediaType == 'tv' ? _s._selectedSeason : null,
+        episode: _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
+      );
+    } catch (e) {
+      debugPrint('[Nuvio] scraper $scraperId failed: $e');
+    }
     if (!mounted || gen != _s._nuvioFetchGen) return;
     setState(() {
       _s._nuvioFetchedScraperIds.add(scraperId);
       _s._nuvioInFlightScraperId = null;
       if (batch != null && batch.streams.isNotEmpty) {
+        final result = batch;
         _s._nuvioStreams.addAll(
-          batch.streams.map(
+          result.streams.map(
             (s) => <String, dynamic>{
               ...s,
-              '_nuvioScraperId': batch.scraperId,
-              '_addonName': s['sourceName'] ?? batch.scraperName,
-              '_addonBaseUrl': 'nuvio:${batch.scraperId}',
+              '_nuvioScraperId': result.scraperId,
+              '_addonName': s['sourceName'] ?? result.scraperName,
+              '_addonBaseUrl': 'nuvio:${result.scraperId}',
             },
           ),
         );

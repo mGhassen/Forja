@@ -748,17 +748,20 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       await _fetchNextNuvioScraper(reset: true);
       return;
     }
-    if (_nuvioStreams.isNotEmpty || _isNuvioFetching) return;
-    final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
-    if (cached != null) {
-      setState(() {
-        _nuvioStreams = cached.streams;
-        _nuvioFetchedScraperIds = cached.fetchedScraperIds;
-        _errorMessage = null;
-      });
-      return;
+    if (_isNuvioFetching) return;
+    if (_nuvioStreams.isEmpty) {
+      final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
+      if (cached != null) {
+        setState(() {
+          _nuvioStreams = cached.streams;
+          _nuvioFetchedScraperIds = cached.fetchedScraperIds;
+          _errorMessage = null;
+        });
+      }
     }
-    await _fetchNextNuvioScraper(reset: true);
+    if (_pendingNuvioScraperIds.isNotEmpty) {
+      await _fetchNextNuvioScraper();
+    }
   }
 
   void _reloadPanelKind(String kind) {

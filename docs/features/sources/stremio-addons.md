@@ -40,7 +40,7 @@ Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highf
 ## Tips
 
 - Not every addon implements catalog, stream, and search — check the addon's manifest resources
-- Cloud sync stores addon URLs + feature targets; the app re-fetches each manifest on sync / Sources so stream chips stay correct
+- Cloud sync stores addon URLs + feature targets; the app re-fetches missing manifests in parallel (a few at a time) on sync / Sources so stream chips stay correct. Addons that time out or return 403 are skipped for a short cooldown instead of stalling the whole list
 - Community addon lists change frequently — verify manifests are trustworthy
 - **Hash-based streams** (`infoHash`, e.g. Torrentio): on desktop and Android phone, Forja plays these via the local torrent engine or debrid. On **web**, only direct `url` streams and debrid-resolved hashes work — hash-only addons need debrid configured or streams are hidden. **Android TV** shows VOD Stremio / Direct torrent / Nuvio in Settings → Playback only after you pair a desktop (LAN) — then they play via that desktop; sport addons for Live Matches still work when that tab is enabled
 - If **Torrentio** fails (Cloudflare / HTTP 403) while another stream addon works, Sources switches the provider chip to the addon that returned streams — pick Torrentio again only if you want to retry that addon alone

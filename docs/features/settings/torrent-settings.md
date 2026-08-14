@@ -23,7 +23,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 ## Tips
 
 - **Server reliability**: tabs for Movies / Series / Anime / Asian Drama (one list at a time). Drag (desktop) or **↑/↓** (TV) to prefer a server where ordering is enabled. **Score** rises when a check **finishes** with linked server+stream outcomes (extract+stream OK → +4; extract OK but streams dead → net 0; never below **0**). Cancel / extract-only does not add a lone +2. **Tries** (1st, 2nd, …) is the order Auto tries them. Asian Drama enables only `kisskh.nl`; `.co`, `.ovh`, `.la`, and `.do` remain visible as **On hold** and cannot be reordered, preventing automatic mirror checks from triggering KissKH's shared-IP rate limit. In the player Source panel, the **badge number** is the same Score; **+/−** prefixes are this film/episode only (see [Stream providers](../sources/stream-providers.md)). Stream quality (codec, resolution, latency) is scored **after** resolve.
-- Disable providers you don’t use to speed up search
+- Disable providers you don’t use to speed up search. Rows still appear as each remaining provider returns — a slow one no longer holds the list empty.
 - Higher RAM cache smooths playback on fast connections
 - Disk cache helps on memory-constrained devices with large files
 - Sort by seeders for fastest starts on [torrent playback](../playback/torrent-playback.md)

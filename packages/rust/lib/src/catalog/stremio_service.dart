@@ -9,6 +9,26 @@ class _StremioHttpResponse {
   final String body;
 }
 
+bool stremioErrorIsTimeout(Object error) {
+  final m = error.toString().toLowerCase();
+  return m.contains('timeout') ||
+      m.contains('timed out') ||
+      m.contains('deadline');
+}
+
+bool stremioStatusIsNoRetry(int statusCode) {
+  if (statusCode == 404 ||
+      statusCode == 401 ||
+      statusCode == 403) {
+    return true;
+  }
+  return statusCode >= 400 && statusCode < 500 && statusCode != 429;
+}
+
+bool stremioStatusShouldCooldown(int statusCode) {
+  return statusCode == 403 || statusCode == 429 || statusCode >= 500;
+}
+
 ({String baseUrl, String? queryParams}) _splitStremioAddonUrl(String url) {
   final m = jsonDecode(RustLib.instance.splitStremioAddonUrlJson(url))
       as Map<String, dynamic>;
@@ -80,10 +100,10 @@ class StremioService {
   final SettingsService _settings = SettingsService();
 
   /// Retry a GET via Rust engine with exponential backoff.
-  /// Does NOT retry on 404 (content simply doesn't exist).
+  /// Does NOT retry on 404 (content simply doesn't exist), 403, or timeouts.
   Future<_StremioHttpResponse> _retryGet(
     Uri uri, {
-    int retries = 2,
+    int retries = 1,
     Duration timeout = const Duration(seconds: 15),
   }) async {
     _StremioHttpResponse? lastResponse;
@@ -93,18 +113,12 @@ class StremioService {
         final response = await _rustGet(uri, timeout: timeout);
         if (response.statusCode == 200) return response;
         lastResponse = response;
-        // Do not retry missing content or hard client blocks (Cloudflare 403
-        // on torrentio.strem.fun, etc.) — backoff only wastes panel time.
-        if (response.statusCode == 404 ||
-            response.statusCode == 401 ||
-            response.statusCode == 403 ||
-            (response.statusCode >= 400 &&
-                response.statusCode < 500 &&
-                response.statusCode != 429)) {
+        if (stremioStatusIsNoRetry(response.statusCode)) {
           break;
         }
       } catch (e) {
         lastError = e;
+        if (stremioErrorIsTimeout(e)) break;
       }
       if (attempt < retries) {
         await Future.delayed(Duration(milliseconds: 500 * (1 << attempt)));
@@ -190,14 +204,25 @@ class StremioService {
     final encodedId = id.contains('/') ? Uri.encodeComponent(id) : id;
     final resourcePath = '/stream/$type/$encodedId.json';
     final url = _buildResourceUrl(baseUrl, resourcePath);
+    final now = DateTime.now();
+    _streamFailedUntil.removeWhere((_, until) => until.isBefore(now));
+    final failedUntil = _streamFailedUntil[url];
+    if (failedUntil != null && failedUntil.isAfter(now)) {
+      return [];
+    }
     debugPrint('[StremioService.getStreams] URL: $url');
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
+        _streamFailedUntil.remove(url);
         return _parseStremioStreams(response.body);
+      }
+      if (stremioStatusShouldCooldown(response.statusCode)) {
+        _streamFailedUntil[url] = now.add(_failTtl);
       }
       debugPrint('[StremioService] Stream fetch HTTP ${response.statusCode} ($url)');
     } catch (e) {
+      _streamFailedUntil[url] = now.add(_failTtl);
       debugPrint('[StremioService] Stream fetch error ($url): $e');
     }
     return [];
@@ -237,7 +262,11 @@ class StremioService {
 
   /// Avoid hammering dead lean rows; TTL so a transient fail can recover.
   final Map<String, DateTime> _hydrateFailedUntil = {};
+  final Map<String, DateTime> _streamFailedUntil = {};
+  static const _failTtl = Duration(seconds: 45);
+  static const _hydrateConcurrency = 4;
   Future<List<Map<String, dynamic>>>? _hydrateInFlight;
+  Future<void> _hydratePersistChain = Future.value();
 
   static bool _hasManifestResources(Map<String, dynamic> addon) {
     final manifest = addon['manifest'];
@@ -287,46 +316,58 @@ class StremioService {
     if (all.isEmpty) return const [];
     final now = DateTime.now();
     _hydrateFailedUntil.removeWhere((_, until) => until.isBefore(now));
-    final out = <Map<String, dynamic>>[];
-    for (final addon in all) {
-      if (!_needsManifestHydrate(addon)) {
-        out.add(addon);
-        continue;
+    final out = List<Map<String, dynamic>?>.filled(all.length, null);
+    var next = 0;
+    Future<void> worker() async {
+      while (true) {
+        final i = next++;
+        if (i >= all.length) return;
+        out[i] = await _hydrateOneAddon(all[i], now);
       }
-      final baseUrl = SettingsService.normalizeStremioAddonBaseUrl(
-        addon['baseUrl']?.toString() ?? '',
-      );
-      if (baseUrl.isEmpty) continue;
-      final failedUntil = _hydrateFailedUntil[baseUrl];
-      if (failedUntil != null && failedUntil.isAfter(now)) {
-        out.add(addon);
-        continue;
-      }
-      try {
-        final fresh = await fetchManifest(baseUrl);
-        if (fresh != null && _hasManifestResources(fresh)) {
-          // Keep user feature targets across lean-row rehydrate.
-          final kept = StremioAddonFeatures.normalize(
-            addon['features'],
-            manifest: fresh['manifest'] is Map
-                ? Map<String, dynamic>.from(fresh['manifest'] as Map)
-                : null,
-          );
-          fresh['features'] = kept;
-          // Silent persist — notifying would re-enter Home catalog load forever.
-          await _settings.saveStremioAddon(fresh, notify: false);
-          _hydrateFailedUntil.remove(baseUrl);
-          out.add(fresh);
-          continue;
-        }
-        _hydrateFailedUntil[baseUrl] = now.add(const Duration(seconds: 45));
-      } catch (e) {
-        _hydrateFailedUntil[baseUrl] = now.add(const Duration(seconds: 45));
-        debugPrint('[StremioService] hydrate failed ($baseUrl): $e');
-      }
-      out.add(addon);
     }
-    return out;
+    final n = all.length < _hydrateConcurrency
+        ? all.length
+        : _hydrateConcurrency;
+    await Future.wait([for (var w = 0; w < n; w++) worker()]);
+    return out.whereType<Map<String, dynamic>>().toList();
+  }
+
+  Future<Map<String, dynamic>?> _hydrateOneAddon(
+    Map<String, dynamic> addon,
+    DateTime now,
+  ) async {
+    if (!_needsManifestHydrate(addon)) return addon;
+    final baseUrl = SettingsService.normalizeStremioAddonBaseUrl(
+      addon['baseUrl']?.toString() ?? '',
+    );
+    if (baseUrl.isEmpty) return null;
+    final failedUntil = _hydrateFailedUntil[baseUrl];
+    if (failedUntil != null && failedUntil.isAfter(now)) return addon;
+    try {
+      final fresh = await fetchManifest(baseUrl);
+      if (fresh != null && _hasManifestResources(fresh)) {
+        final kept = StremioAddonFeatures.normalize(
+          addon['features'],
+          manifest: fresh['manifest'] is Map
+              ? Map<String, dynamic>.from(fresh['manifest'] as Map)
+              : null,
+        );
+        fresh['features'] = kept;
+        final prev = _hydratePersistChain;
+        final persist = prev.then(
+          (_) => _settings.saveStremioAddon(fresh, notify: false),
+        );
+        _hydratePersistChain = persist.catchError((_) {});
+        await persist;
+        _hydrateFailedUntil.remove(baseUrl);
+        return fresh;
+      }
+      _hydrateFailedUntil[baseUrl] = now.add(_failTtl);
+    } catch (e) {
+      _hydrateFailedUntil[baseUrl] = now.add(_failTtl);
+      debugPrint('[StremioService] hydrate failed ($baseUrl): $e');
+    }
+    return addon;
   }
 
   /// Helper to get all installed addons that support a specific resource.

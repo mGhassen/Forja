@@ -4,7 +4,7 @@
 
 ## What it is
 
-When you open a movie or series in torrent mode, Forja searches the **enabled** built-in providers in parallel (Knaben, The Pirate Bay, UIndex, Torrents CSV, Nyaa, YTS, SolidTorrents, TheRARBG, and Torrentio when an IMDb id is available). Results are deduplicated by infohash and merged into the torrent list. Each row shows which provider found it.
+When you open a movie or series in torrent mode, Forja searches the **enabled** built-in providers in parallel (Knaben, The Pirate Bay, UIndex, Torrents CSV, Nyaa, YTS, SolidTorrents, TheRARBG, and Torrentio when an IMDb id is available). Rows appear as each provider returns — a slow indexer no longer holds the whole list empty. Results are deduplicated by infohash and merged into the torrent list. Each row shows which provider found it.
 
 ## How to open it
 

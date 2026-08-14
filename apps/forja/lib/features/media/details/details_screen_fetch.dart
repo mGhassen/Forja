@@ -35,12 +35,11 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
     final bool isCustomId = _s._isCustomStremioItem;
 
     try {
-      final streamAddons = await _s._stremio.getAddonsForResource('stream');
-      // Publish addons immediately - TMDB/rich fetch must not leave chips empty
-      // if it throws after this point.
-      if (mounted) {
+      final streamAddonsFuture = _s._stremio.getAddonsForResource('stream');
+      unawaited(streamAddonsFuture.then((streamAddons) {
+        if (!mounted) return;
         setState(() => _s._streamAddons = streamAddons);
-      }
+      }, onError: (_) {}));
 
       // If this is a custom-ID Stremio item, skip TMDB fetch - we already
       // have all the info we need from the search result.
@@ -75,6 +74,7 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
           );
         }
 
+        final streamAddons = await streamAddonsFuture;
         if (mounted) {
           setState(() {
             _s._streamAddons = streamAddons;
@@ -109,6 +109,7 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
         rich = await ref.read(detailsMetaProvider(_s._metaKey).future);
       }
       final similar = await similarFuture;
+      final streamAddons = await streamAddonsFuture;
       if (mounted) {
         setState(() {
           _s._movie = rich.movie;
