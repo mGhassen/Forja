@@ -24,7 +24,7 @@ void main() {
       expect(tv.builtInPlayerEngine, BuiltInPlayerEngine.mediaKit);
       expect(tv.subSize, 52);
       expect(tv.subBottomPadding, 48);
-      expect(tv.torrentRamCacheMb, 128);
+      expect(tv.torrentDiskCacheGb, 1);
       expect(tv.playSourceWebstreaming, isTrue);
       expect(tv.playSourceTorrent, isTrue);
       expect(tv.playSourceStremio, isTrue);
@@ -37,7 +37,7 @@ void main() {
       expect(phone.visibleNavIds, PlatformDefaults.phoneNavIds);
       expect(phone.builtInPlayerEngine, BuiltInPlayerEngine.mediaKit);
       expect(phone.subSize, 24);
-      expect(phone.torrentRamCacheMb, 200);
+      expect(phone.torrentDiskCacheGb, 1);
       expect(phone.playInBackground, isFalse);
     });
 
@@ -46,6 +46,7 @@ void main() {
       expect(desktop.subSize, 44);
       expect(desktop.visibleNavIds, PlatformDefaults.phoneNavIds);
       expect(desktop.playInBackground, isTrue);
+      expect(desktop.torrentDiskCacheGb, 2);
     });
   });
 }

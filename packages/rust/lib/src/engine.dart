@@ -644,6 +644,14 @@ class RustLib {
   void torrentSetPeerLimit(int limit) =>
       _native.ffi_torrent_set_peer_limit(limit);
 
+  void torrentSetDiskCacheBytes(int bytes) =>
+      _native.ffi_torrent_set_disk_cache_bytes(bytes);
+
+  String torrentReclaimDiskCacheJson({int targetBytes = -1}) =>
+      _readString(_native.ffi_torrent_reclaim_disk_cache_json(
+        targetBytes < 0 ? 0xFFFFFFFFFFFFFFFF : targetBytes,
+      ));
+
   String torrentStreamJson(
     String magnet, {
     int? season,
@@ -1200,6 +1208,16 @@ final class _FfiNative {
               'ffi_torrent_set_peer_limit',
             )
             .asFunction(),
+        ffi_torrent_set_disk_cache_bytes = lib
+            .lookup<ffi.NativeFunction<_TorrentSetDiskCacheNative>>(
+              'ffi_torrent_set_disk_cache_bytes',
+            )
+            .asFunction(),
+        ffi_torrent_reclaim_disk_cache_json = lib
+            .lookup<ffi.NativeFunction<_TorrentReclaimDiskCacheNative>>(
+              'ffi_torrent_reclaim_disk_cache_json',
+            )
+            .asFunction(),
         ffi_torrent_stream_json = lib
             .lookup<ffi.NativeFunction<_TorrentStreamJsonNative>>(
               'ffi_torrent_stream_json',
@@ -1545,6 +1563,8 @@ final class _FfiNative {
   final int Function() ffi_torrent_engine_port;
   final void Function() ffi_torrent_engine_stop;
   final void Function(int) ffi_torrent_set_peer_limit;
+  final void Function(int) ffi_torrent_set_disk_cache_bytes;
+  final ffi.Pointer<ffi.Char> Function(int) ffi_torrent_reclaim_disk_cache_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     int,
@@ -1679,6 +1699,10 @@ typedef _EngineSubmitJobNative = ffi.Uint64 Function(
 typedef _EngineTakeJobNative =
     ffi.Pointer<ffi.Char> Function(ffi.Uint64);
 typedef _TorrentSetPeerLimitNative = ffi.Void Function(ffi.Uint32);
+typedef _TorrentSetDiskCacheNative = ffi.Void Function(ffi.Uint64);
+typedef _TorrentReclaimDiskCacheNative = ffi.Pointer<ffi.Char> Function(
+  ffi.Uint64,
+);
 typedef _TorrentIsRunningNative = ffi.Bool Function();
 typedef _TorrentStreamJsonNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,

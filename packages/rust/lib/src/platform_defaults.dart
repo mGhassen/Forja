@@ -14,7 +14,7 @@ class PlatformDefaults {
     required this.playSourceStremio,
     required this.playSourceNuvio,
     required this.playSourceWebstreaming,
-    required this.torrentRamCacheMb,
+    required this.torrentDiskCacheGb,
     required this.showTorrentStatsOverlay,
     required this.playInBackground,
   });
@@ -29,7 +29,7 @@ class PlatformDefaults {
   final bool playSourceStremio;
   final bool playSourceNuvio;
   final bool playSourceWebstreaming;
-  final int torrentRamCacheMb;
+  final int torrentDiskCacheGb;
   final bool showTorrentStatsOverlay;
 
   /// Desktop keeps audio/video when the window blurs; phone/TV pause (process stays warm).
@@ -59,7 +59,7 @@ class PlatformDefaults {
         playSourceStremio: true,
         playSourceNuvio: true,
         playSourceWebstreaming: true,
-        torrentRamCacheMb: 128,
+        torrentDiskCacheGb: 1,
         showTorrentStatsOverlay: false,
         playInBackground: false,
       ),
@@ -74,7 +74,7 @@ class PlatformDefaults {
         playSourceStremio: true,
         playSourceNuvio: true,
         playSourceWebstreaming: true,
-        torrentRamCacheMb: 200,
+        torrentDiskCacheGb: 2,
         showTorrentStatsOverlay: false,
         playInBackground: true,
       ),
@@ -89,7 +89,7 @@ class PlatformDefaults {
         playSourceStremio: true,
         playSourceNuvio: true,
         playSourceWebstreaming: true,
-        torrentRamCacheMb: 200,
+        torrentDiskCacheGb: 1,
         showTorrentStatsOverlay: false,
         playInBackground: false,
       ),

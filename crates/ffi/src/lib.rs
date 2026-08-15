@@ -572,6 +572,27 @@ fn torrent_set_peer_limit(limit: u32) {
     }
 }
 
+fn torrent_set_disk_cache_bytes(bytes: u64) {
+    #[cfg(feature = "torrent-engine")]
+    engine_torrent::torrent_set_disk_cache_bytes(bytes);
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        let _ = bytes;
+    }
+}
+
+fn torrent_reclaim_disk_cache_json(target_bytes: u64) -> String {
+    #[cfg(feature = "torrent-engine")]
+    {
+        engine_torrent::torrent_reclaim_disk_cache_json(target_bytes)
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        let _ = target_bytes;
+        r#"{"error":"torrent_engine_unavailable"}"#.into()
+    }
+}
+
 fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32) -> String {
     #[cfg(feature = "torrent-engine")]
     {

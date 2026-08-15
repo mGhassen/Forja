@@ -369,8 +369,7 @@ abstract final class Engine {
     'prowlarr_base_url',
     'prowlarr_api_key',
     'prowlarr_tag_ids',
-    'torrent_cache_type',
-    'torrent_ram_cache_mb',
+    'torrent_disk_cache_gb',
     'torrent_connections_limit',
     'theme_preset',
     'preferred_audio_lang',
@@ -471,7 +470,6 @@ abstract final class Engine {
         'jackett_api_key',
         'prowlarr_base_url',
         'prowlarr_api_key',
-        'torrent_cache_type',
         'theme_preset',
         'preferred_audio_lang',
         'sub_font',
@@ -489,7 +487,7 @@ abstract final class Engine {
         migrateBool(k);
       }
 
-      migrateInt('torrent_ram_cache_mb');
+      migrateInt('torrent_disk_cache_gb');
       migrateInt('torrent_connections_limit');
       migrateInt('sub_color');
       migrateDouble('sub_size');

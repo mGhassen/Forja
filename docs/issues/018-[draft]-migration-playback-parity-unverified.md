@@ -120,7 +120,7 @@ cd packages/rust && flutter test test/parity/
 | [020](020-[draft]-cancel-gen-token-discard-unverified.md) | Gen-token may discard valid results |
 | [021](021-[draft]-catalog-vertical-import-smoke-unverified.md) | 14 verticals rename-only, no smoke |
 | [022](022-[draft]-playback-widget-integration-tests.md) | No widget tests with mocked slow FFI |
-| [002](002-[draft]-torrent-disk-cache-not-cleaned.md) | Torrent disk cache (pre-existing, not parity) |
+| [002](fixed/002-[fixed]-torrent-disk-cache-not-cleaned.md) | Torrent disk cache (pre-existing, not parity) |
 
 
 ## If this file is deleted

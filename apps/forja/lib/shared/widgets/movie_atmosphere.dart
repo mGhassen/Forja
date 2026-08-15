@@ -195,8 +195,8 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
       _syncMotion(context);
     }
     if (_motionEnabled != true) return;
-    if (oldWidget.imageUrl != widget.imageUrl ||
-        oldWidget.cycleDuration != widget.cycleDuration ||
+    // imageUrl crossfades inside SettledNetworkImage — keep the pan running.
+    if (oldWidget.cycleDuration != widget.cycleDuration ||
         oldWidget.minScale != widget.minScale ||
         oldWidget.maxScale != widget.maxScale ||
         oldWidget.panBegin != widget.panBegin ||

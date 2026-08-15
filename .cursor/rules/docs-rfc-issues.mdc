@@ -205,7 +205,7 @@ After metadata block (`**Status:**`, `**Priority:**`, `**Severity:**`, `**Area:*
 3. **`## Acceptance`** / **`## Fix tasks`** — emoji task tables (`I*-A*`, `I*-T*`)
 4. **`## Summary`**, root cause, related links
 
-**Reference:** [002](../../docs/issues/002-[draft]-torrent-disk-cache-not-cleaned.md) · [018](../../docs/issues/018-[draft]-migration-playback-parity-unverified.md)
+**Reference:** [002](../../docs/issues/fixed/002-[fixed]-torrent-disk-cache-not-cleaned.md) · [018](../../docs/issues/018-[draft]-migration-playback-parity-unverified.md)
 
 Update [issues README](../../docs/issues/README.md) **Progress** column when rows change.
 

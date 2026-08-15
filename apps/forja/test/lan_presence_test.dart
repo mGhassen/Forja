@@ -10,7 +10,7 @@ void main() {
       expect(
         LanPresence.desktop(
           running: false,
-          hasDevices: true,
+          lastSeen: [nowSecs],
           lanTorrentActive: true,
         ),
         LanPresence.hidden,
@@ -21,7 +21,7 @@ void main() {
       expect(
         LanPresence.desktop(
           running: true,
-          hasDevices: false,
+          lastSeen: const [],
           lanTorrentActive: false,
         ),
         const LanPresence(
@@ -31,12 +31,13 @@ void main() {
       );
     });
 
-    test('paired devices keep server up even with no recent traffic', () {
+    test('recent peer is paired — server stays up', () {
       expect(
         LanPresence.desktop(
           running: true,
-          hasDevices: true,
+          lastSeen: [nowSecs - 30],
           lanTorrentActive: false,
+          now: now,
         ),
         const LanPresence(
           server: LanServerMark.up,
@@ -45,12 +46,28 @@ void main() {
       );
     });
 
+    test('stale peers are idle — server stays up', () {
+      expect(
+        LanPresence.desktop(
+          running: true,
+          lastSeen: [nowSecs - 121],
+          lanTorrentActive: false,
+          now: now,
+        ),
+        const LanPresence(
+          server: LanServerMark.up,
+          session: LanSessionMark.idle,
+        ),
+      );
+    });
+
     test('playing is session only — server stays up', () {
       expect(
         LanPresence.desktop(
           running: true,
-          hasDevices: true,
+          lastSeen: [nowSecs - 121],
           lanTorrentActive: true,
+          now: now,
         ),
         const LanPresence(
           server: LanServerMark.up,
@@ -72,7 +89,7 @@ void main() {
       );
     });
 
-    test('paired but desktop down keeps session paired', () {
+    test('paired but desktop down is idle session', () {
       expect(
         LanPresence.client(
           paired: true,
@@ -81,7 +98,7 @@ void main() {
         ),
         const LanPresence(
           server: LanServerMark.down,
-          session: LanSessionMark.paired,
+          session: LanSessionMark.idle,
         ),
       );
     });
@@ -100,7 +117,7 @@ void main() {
       );
     });
 
-    test('desktop up idle traffic is still paired not down', () {
+    test('desktop up not playing is paired', () {
       expect(
         LanPresence.client(
           paired: true,
@@ -178,7 +195,7 @@ void main() {
           history: history,
           now: now,
         ),
-        LanDeviceTalk.quiet,
+        LanDeviceTalk.idle,
       );
     });
   });

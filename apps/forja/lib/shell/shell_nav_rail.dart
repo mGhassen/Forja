@@ -359,11 +359,15 @@ class _ShellNavRailState extends State<ShellNavRail> {
                           preferredIconSize * profileAvatarScale;
                       final profileSpacing =
                           isTv ? 4.0 : metrics.navRailItemSpacing;
+                      final profileLabelSlot = math.max(
+                        preferredLabelFont,
+                        LanPresenceMark.railSlotHeight(tv: isTv),
+                      );
                       final profileBlockHeight = settingsIndex == null
                           ? 0.0
                           : _navRailItemContentHeight(
                                 iconSize: profileIconSize,
-                                labelFontSize: preferredLabelFont,
+                                labelFontSize: profileLabelSlot,
                               ) +
                               profileSpacing;
                       const navPadV = 4.0;
@@ -673,11 +677,15 @@ class _NavRailLabel extends StatelessWidget {
     required this.text,
     required this.style,
     this.presence = LanPresence.hidden,
+    this.markSize = 5,
+    this.showBar = true,
   });
 
   final String text;
   final TextStyle style;
   final LanPresence presence;
+  final double markSize;
+  final bool showBar;
 
   @override
   Widget build(BuildContext context) {
@@ -692,8 +700,12 @@ class _NavRailLabel extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        LanPresenceMark(presence: presence, size: 5),
-        const SizedBox(width: 4),
+        LanPresenceMark(
+          presence: presence,
+          size: markSize,
+          showBar: showBar,
+        ),
+        const SizedBox(width: 5),
         Flexible(child: label),
       ],
     );
@@ -876,18 +888,25 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final customIconSize = widget.customIconSize;
     final labelFont =
         widget.labelFontSize ?? shellNavRailLabelFontSize(context);
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final labelSlot = widget.alwaysShowLabel
+        ? math.max(
+            labelFont,
+            LanPresenceMark.railSlotHeight(tv: tv),
+          )
+        : labelFont;
     if (customIconSize == null) {
       return shellNavRailItemContentHeight(
         context,
         iconSize: widget.iconSize,
-        labelFontSize: labelFont,
+        labelFontSize: labelSlot,
       );
     }
     return customIconSize * ShellTokens.navRailIconHoverScale +
         ShellTokens.navRailIconUnderlineGap +
         ShellTokens.shellNavUnderlineHeight +
         ShellTokens.navRailIconLabelGap +
-        labelFont;
+        labelSlot;
   }
 
   @override
@@ -899,6 +918,15 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final renderedIconSize = widget.customIconSize ?? iconSize;
     final labelFontSize =
         widget.labelFontSize ?? shellNavRailLabelFontSize(context);
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final lanShowBar = LanServerService.canRunServer;
+    final lanMarkSize = LanPresenceMark.sizeFor(tv: tv);
+    final labelSlotHeight = widget.alwaysShowLabel
+        ? math.max(
+            labelFontSize,
+            LanPresenceMark.railSlotHeight(tv: tv),
+          )
+        : labelFontSize;
     final contentHeight = _contentHeight(context);
     final underlineWidth = shellScaled(context, 24).clamp(14.0, 24.0);
     final destinationAccent =
@@ -1099,7 +1127,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                             height: ShellTokens.navRailIconLabelGap,
                           ),
                           SizedBox(
-                            height: labelFontSize,
+                            height: labelSlotHeight,
                             width: ShellTokens.navRailWidth,
                             child: Center(
                               child: showLabel
@@ -1107,6 +1135,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                       text: label,
                                       style: labelStyle,
                                       presence: widget.labelPresence,
+                                      markSize: lanMarkSize,
+                                      showBar: lanShowBar,
                                     )
                                   : _TypewriterLabel(
                                       text: label,

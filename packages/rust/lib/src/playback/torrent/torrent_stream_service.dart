@@ -122,6 +122,7 @@ class TorrentStreamService {
         200,
       );
       RustLib.instance.torrentSetPeerLimit(connLimit);
+      await _applyDiskCacheBudget();
       final port = RustLib.instance.torrentEngineStart(0);
       if (port <= 0) {
         final detail = RustLib.instance.torrentEngineLastError();
@@ -158,6 +159,26 @@ class TorrentStreamService {
       await start();
     }
     _log('Connections limit set to $clamped');
+  }
+
+  static const int _bytesPerGb = 1024 * 1024 * 1024;
+
+  Future<void> _applyDiskCacheBudget() async {
+    if (!RustLib.isInitialized) return;
+    final gb = await _settings.getTorrentDiskCacheGb();
+    RustLib.instance.torrentSetDiskCacheBytes(gb * _bytesPerGb);
+  }
+
+  Future<void> applyDiskCacheGb(int gb) async {
+    final clamped = gb.clamp(
+      SettingsService.minTorrentDiskCacheGb,
+      SettingsService.maxTorrentDiskCacheGb,
+    );
+    await _settings.setTorrentDiskCacheGb(clamped);
+    if (RustLib.isInitialized) {
+      RustLib.instance.torrentSetDiskCacheBytes(clamped * _bytesPerGb);
+    }
+    _log('Disk cache budget set to $clamped GB');
   }
 
   Future<List<TorrentFileEntry>?> listTorrentFiles(String magnetLink) async {
@@ -327,9 +348,14 @@ class TorrentStreamService {
   }
 
   Future<void> clearCacheDirectory() async {
+    await stop();
+    if (RustLib.isInitialized) {
+      RustLib.instance.torrentReclaimDiskCacheJson(targetBytes: 0);
+      _log('Reclaimed torrent stream cache');
+      return;
+    }
     final dir = cacheDirectory();
     if (!await dir.exists()) return;
-    await stop();
     try {
       await dir.delete(recursive: true);
       _log('Cleared torrent stream cache (${dir.path})');

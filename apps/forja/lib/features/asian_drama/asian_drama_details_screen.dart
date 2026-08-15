@@ -7,6 +7,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero/hero_utils.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
+import 'package:forja/shared/widgets/hero/tmdb_paint_gate.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -503,26 +504,49 @@ class _AsianDramaDetailsScreenState
 
   Widget _buildScrollLayout() {
     final det = _details!;
-    final tmdbAsync = ref.watch(asianDramaTmdbEnrichmentProvider(_tmdbQuery));
-    final enrich = tmdbAsync.asData?.value;
+    final enrich =
+        ref.watch(asianDramaTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
+    return TmdbPaintGate(
+      ready: enrich != null,
+      builder: (context, level) => _buildPaintedLayout(det, enrich, level),
+    );
+  }
+
+  Widget _buildPaintedLayout(
+    KdramaDetails det,
+    AsianDramaTmdbEnrichment? enrich,
+    TmdbPaintLevel level,
+  ) {
     final tmdb = enrich?.rich;
-    final cast = tmdb?.extras.cast ?? const <Map<String, String>>[];
-    final crew = _crewAsCast(tmdb?.extras.crew ?? const []);
-    final trailers = tmdb?.extras.trailers ?? const <MediaTrailer>[];
-    final recommendations =
-        tmdb?.extras.recommendations ?? const <Movie>[];
-    final genres = tmdb?.movie.genres ?? const <String>[];
-    final rating = (tmdb?.movie.voteAverage ?? 0) > 0
+    final cast = level.hasRows
+        ? (tmdb?.extras.cast ?? const <Map<String, String>>[])
+        : const <Map<String, String>>[];
+    final crew = level.hasRows
+        ? _crewAsCast(tmdb?.extras.crew ?? const [])
+        : const <Map<String, String>>[];
+    final trailers = level.hasRows
+        ? (tmdb?.extras.trailers ?? const <MediaTrailer>[])
+        : const <MediaTrailer>[];
+    final recommendations = level.hasRows
+        ? (tmdb?.extras.recommendations ?? const <Movie>[])
+        : const <Movie>[];
+    final genres = level.hasChrome
+        ? (tmdb?.movie.genres ?? const <String>[])
+        : const <String>[];
+    final rating = level.hasChrome && (tmdb?.movie.voteAverage ?? 0) > 0
         ? tmdb!.movie.voteAverage
         : null;
-    final backdrop = _tmdbBackdropUrl(tmdb) ?? det.cover;
+    final backdrop = level.hasArt
+        ? (_tmdbBackdropUrl(tmdb) ?? det.cover)
+        : det.cover;
     final heroBackdrops = _heroBackdropUrls(
       primary: backdrop,
       screenshotPaths: [
         if (det.cover.isNotEmpty) det.cover,
-        ...enrich?.imagePaths ?? const [],
+        if (level.hasArt) ...enrich?.imagePaths ?? const [],
       ],
     );
+    final chromeTmdb = level.hasChrome ? tmdb : null;
 
     final resumeEp = (_progress?['episodeNumber'] as num?)?.toInt();
     final rawPosMs = (_progress?['positionMs'] as num?)?.toInt();
@@ -589,8 +613,12 @@ class _AsianDramaDetailsScreenState
               fallbackPosterPath: det.cover,
               customEpisodesBySeason: _episodeMaps(
                 det,
-                stills: enrich?.episodeStills ?? const {},
-                meta: enrich?.episodeMeta ?? const {},
+                stills: level.hasRows
+                    ? (enrich?.episodeStills ?? const {})
+                    : const {},
+                meta: level.hasRows
+                    ? (enrich?.episodeMeta ?? const {})
+                    : const {},
               ),
               episodeProgress: _episodeProgressMap(),
               onSeasonSelected: (_) {},
@@ -672,11 +700,11 @@ class _AsianDramaDetailsScreenState
         backdropUrls: heroBackdrops,
         title: det.title,
         genres: genres,
-        metaParts: _metaParts(det, tmdb),
+        metaParts: _metaParts(det, chromeTmdb),
         rating: rating,
-        overview: _overview(det, tmdb),
-        facts: _facts(det, tmdb),
-        logoUrl: _tmdbLogoUrl(tmdb),
+        overview: _overview(det, chromeTmdb),
+        facts: _facts(det, chromeTmdb),
+        logoUrl: level.hasChrome ? _tmdbLogoUrl(tmdb) : null,
         height: heroHeight,
         pageBottomChild: episodePicker,
         positionMs: posMs,

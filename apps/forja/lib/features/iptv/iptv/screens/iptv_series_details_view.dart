@@ -17,6 +17,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
+import 'package:forja/shared/widgets/hero/tmdb_paint_gate.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/media_details/media_details_scroll_page.dart';
@@ -234,6 +235,12 @@ class _IptvSeriesDetailsScreenState
     return widget.series.icon.trim();
   }
 
+  String? _logoUrl() {
+    final path = _movie?.logoPath.trim() ?? '';
+    if (path.isEmpty) return null;
+    return path.startsWith('http') ? path : TmdbApi.getImageUrl(path);
+  }
+
   List<String> _heroBackdropUrls() {
     final primary = _backdropUrl();
     final icon = widget.series.icon.trim();
@@ -249,19 +256,22 @@ class _IptvSeriesDetailsScreenState
     ]);
   }
 
-  String _overview() {
+  String _overview({bool tmdbChrome = true}) {
     for (final e in _episodes) {
       final plot = e.plot.trim();
       if (plot.isNotEmpty) return plot;
     }
+    if (!tmdbChrome) return '';
     return _movie?.overview.trim() ?? '';
   }
 
-  List<String> _metaParts() {
+  List<String> _metaParts({bool tmdbChrome = true}) {
     final parts = <String>[];
-    final date = _movie?.releaseDate.trim() ?? '';
+    final date = tmdbChrome ? (_movie?.releaseDate.trim() ?? '') : '';
     if (date.length >= 4) parts.add(date.substring(0, 4));
-    final cert = _enrich?.rich.extras.certification.trim() ?? '';
+    final cert = tmdbChrome
+        ? (_enrich?.rich.extras.certification.trim() ?? '')
+        : '';
     if (cert.isNotEmpty) parts.add(cert);
     final seasons = _seasons.length;
     if (seasons > 0) {
@@ -274,14 +284,14 @@ class _IptvSeriesDetailsScreenState
     return parts;
   }
 
-  List<MapEntry<String, String>> _facts() {
+  List<MapEntry<String, String>> _facts({bool tmdbChrome = true}) {
     final year = _cleaned.year ??
         (_movie != null && (_movie!.releaseDate.length >= 4)
             ? int.tryParse(_movie!.releaseDate.substring(0, 4))
             : null);
     final portal = widget.portal.displayLabel.trim();
     return iptvTmdbFacts(
-      _enrich?.rich,
+      tmdbChrome ? _enrich?.rich : null,
       preferTv: true,
       fallback: iptvPortalFacts(
         year: year,
@@ -292,9 +302,14 @@ class _IptvSeriesDetailsScreenState
     );
   }
 
-  Map<int, List<Map<String, dynamic>>> _episodeMaps() {
-    final stills = _enrich?.episodeStills ?? const {};
-    final meta = _enrich?.episodeMeta ?? const {};
+  Map<int, List<Map<String, dynamic>>> _episodeMaps({
+    bool includeTmdb = true,
+  }) {
+    final stills =
+        includeTmdb ? (_enrich?.episodeStills ?? const {}) : const <int, String>{};
+    final meta = includeTmdb
+        ? (_enrich?.episodeMeta ?? const {})
+        : const <int, Map<String, dynamic>>{};
     final seasons = _seasons;
     final out = <int, List<Map<String, dynamic>>>{};
     for (var i = 0; i < seasons.length; i++) {
@@ -437,45 +452,8 @@ class _IptvSeriesDetailsScreenState
     }
 
     final multiSeason = _pickerSeasonCount > 1;
-    final backdrop = _backdropUrl();
-    final heroBackdrops = _heroBackdropUrls();
-    final rating =
-        (_movie?.voteAverage ?? 0) > 0 ? _movie!.voteAverage : null;
-    final heroHeight = DetailsTokens.heroHeight(
-      context,
-      showEpisodeRail: true,
-      showSeasonRail: multiSeason,
-    );
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _focusDetailsBack : null;
-
-    final metaBase = multiSeason ? 2 : 1;
-    final sections = buildIptvDetailsMetaSections(
-      context: context,
-      rich: _enrich?.rich,
-      catalogRecommendations: _catalogRecs,
-      onCatalogRecTap: (hit) {
-        if (hit.stream.kind == 'series') {
-          openIptvSeriesDetails(
-            context,
-            series: hit.stream,
-            portal: widget.portal,
-          );
-        } else {
-          openIptvMovieDetails(
-            context,
-            movie: hit.stream,
-            portal: widget.portal,
-          );
-        }
-      },
-      tvFocus: tvFocus,
-      tvTabId: MediaDetailsTv.tabId,
-      tvRowOrderBase: metaBase,
-      castTitle: 'Characters',
-      // First meta row ↑ goes to episodes (coordinator), then hero via picker.
-      tvFocusUp: null,
-    );
 
     if (tvFocus && policy.heroPlayAutoFocus && !_heroFocusDone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -488,88 +466,143 @@ class _IptvSeriesDetailsScreenState
       });
     }
 
-    final episodePicker = MediaDetailsBody.padContent(
-      context,
-      TvSeasonEpisodePicker(
-        tmdbId: _movie?.id ?? 0,
-        seasonCount: _pickerSeasonCount,
-        selectedSeason: _selectedSeasonIndex,
-        selectedEpisode: _selectedEpisode,
-        isLoadingSeason: false,
-        seasonData: null,
-        watchedEpisodes: const {},
-        fallbackPosterPath: widget.series.icon,
-        seasonPosters: {
-          for (var i = 0; i < _seasons.length; i++)
-            i + 1: widget.series.icon,
-        },
-        customEpisodesBySeason: _episodeMaps(),
-        onSeasonSelected: (season) {
-          setState(() {
-            _selectedSeasonIndex = season;
-            final eps = _episodesForPickerSeason(season);
-            _selectedEpisode = eps.isEmpty ? 1 : eps.first.episode;
-          });
-        },
-        onEpisodeSelected: (ep) => setState(() => _selectedEpisode = ep),
-        onEpisodePlay: (ep) {
-          setState(() => _selectedEpisode = ep);
-          final hit = _episodeAt(_selectedSeasonIndex, ep);
-          if (hit != null) _playEpisode(hit);
-        },
-        onToggleWatched: (_, _) {},
-        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-        tvSeasonRowId: multiSeason ? 'seasons' : null,
-        tvEpisodeRowId: 'episodes',
-        tvRowOrderBase: 0,
-        tvFocusUp: heroFocusUp,
-      ),
-    );
-
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          MediaDetailsScrollPage(
-            scrollController: _scroll,
-            tvHeroPlayFocus: _heroPlayFocus,
-            tvBackFocus: _backFocus,
-            bodyOverlap: 0,
-            topSpacing: DetailsTokens.bodyTopSpacingWithEpisodes,
-            backgroundColor: AppTheme.bgDark,
-            sections: sections,
-            hero: HubDetailsHero(
-              backdropUrl: backdrop,
-              backdropUrls: heroBackdrops,
-              title: _displayTitle,
-              genres: _movie?.genres ?? const [],
-              metaParts: _metaParts(),
-              rating: rating,
-              overview: _overview(),
-              facts: _facts(),
-              height: heroHeight,
-              showSeasonRail: multiSeason,
-              pageBottomChild: episodePicker,
-              actionRow: DetailsHeroTvActionScope(
-                tabId: MediaDetailsTv.tabId,
-                itemCount: 1,
-                onFocusUp: heroPopUp,
-                child: HubDetailsPlayRow(
-                  label: 'Play Ep $_selectedEpisode',
-                  enabled: _episodeAt(
-                        _selectedSeasonIndex,
-                        _selectedEpisode,
-                      ) !=
-                      null,
-                  onPlay: _playSelected,
-                  focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
-                  onUpEdge: heroPopUp,
+          TmdbPaintGate(
+            ready: _enrich != null,
+            builder: (context, level) {
+              final icon = widget.series.icon.trim();
+              final backdrop = level.hasArt ? _backdropUrl() : icon;
+              final heroBackdrops = level.hasArt
+                  ? _heroBackdropUrls()
+                  : RotatingHeroBackdrop.normalizeUrls(
+                      [if (icon.isNotEmpty) icon],
+                    );
+              final rating =
+                  level.hasChrome && (_movie?.voteAverage ?? 0) > 0
+                      ? _movie!.voteAverage
+                      : null;
+              final heroHeight = DetailsTokens.heroHeight(
+                context,
+                showEpisodeRail: true,
+                showSeasonRail: multiSeason,
+              );
+              final metaBase = multiSeason ? 2 : 1;
+              final sections = level.hasRows
+                  ? buildIptvDetailsMetaSections(
+                      context: context,
+                      rich: _enrich?.rich,
+                      catalogRecommendations: _catalogRecs,
+                      onCatalogRecTap: (hit) {
+                        if (hit.stream.kind == 'series') {
+                          openIptvSeriesDetails(
+                            context,
+                            series: hit.stream,
+                            portal: widget.portal,
+                          );
+                        } else {
+                          openIptvMovieDetails(
+                            context,
+                            movie: hit.stream,
+                            portal: widget.portal,
+                          );
+                        }
+                      },
+                      tvFocus: tvFocus,
+                      tvTabId: MediaDetailsTv.tabId,
+                      tvRowOrderBase: metaBase,
+                      castTitle: 'Characters',
+                      tvFocusUp: null,
+                    )
+                  : const <Widget>[];
+              final episodePicker = MediaDetailsBody.padContent(
+                context,
+                TvSeasonEpisodePicker(
+                  tmdbId: _movie?.id ?? 0,
+                  seasonCount: _pickerSeasonCount,
+                  selectedSeason: _selectedSeasonIndex,
+                  selectedEpisode: _selectedEpisode,
+                  isLoadingSeason: false,
+                  seasonData: null,
+                  watchedEpisodes: const {},
+                  fallbackPosterPath: widget.series.icon,
+                  seasonPosters: {
+                    for (var i = 0; i < _seasons.length; i++)
+                      i + 1: widget.series.icon,
+                  },
+                  customEpisodesBySeason: _episodeMaps(
+                    includeTmdb: level.hasRows,
+                  ),
+                  onSeasonSelected: (season) {
+                    setState(() {
+                      _selectedSeasonIndex = season;
+                      final eps = _episodesForPickerSeason(season);
+                      _selectedEpisode = eps.isEmpty ? 1 : eps.first.episode;
+                    });
+                  },
+                  onEpisodeSelected: (ep) =>
+                      setState(() => _selectedEpisode = ep),
+                  onEpisodePlay: (ep) {
+                    setState(() => _selectedEpisode = ep);
+                    final hit = _episodeAt(_selectedSeasonIndex, ep);
+                    if (hit != null) _playEpisode(hit);
+                  },
+                  onToggleWatched: (_, _) {},
                   tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                  tvItemIndex: 0,
+                  tvSeasonRowId: multiSeason ? 'seasons' : null,
+                  tvEpisodeRowId: 'episodes',
+                  tvRowOrderBase: 0,
+                  tvFocusUp: heroFocusUp,
                 ),
-              ),
-            ),
+              );
+              return MediaDetailsScrollPage(
+                scrollController: _scroll,
+                tvHeroPlayFocus: _heroPlayFocus,
+                tvBackFocus: _backFocus,
+                bodyOverlap: 0,
+                topSpacing: DetailsTokens.bodyTopSpacingWithEpisodes,
+                backgroundColor: AppTheme.bgDark,
+                sections: sections,
+                hero: HubDetailsHero(
+                  backdropUrl: backdrop,
+                  backdropUrls: heroBackdrops,
+                  title: _displayTitle,
+                  genres: level.hasChrome
+                      ? (_movie?.genres ?? const [])
+                      : const [],
+                  metaParts: _metaParts(tmdbChrome: level.hasChrome),
+                  rating: rating,
+                  overview: _overview(tmdbChrome: level.hasChrome),
+                  facts: _facts(tmdbChrome: level.hasChrome),
+                  logoUrl: level.hasChrome ? _logoUrl() : null,
+                  height: heroHeight,
+                  showSeasonRail: multiSeason,
+                  pageBottomChild: episodePicker,
+                  actionRow: DetailsHeroTvActionScope(
+                    tabId: MediaDetailsTv.tabId,
+                    itemCount: 1,
+                    onFocusUp: heroPopUp,
+                    child: HubDetailsPlayRow(
+                      label: 'Play Ep $_selectedEpisode',
+                      enabled: _episodeAt(
+                            _selectedSeasonIndex,
+                            _selectedEpisode,
+                          ) !=
+                          null,
+                      onPlay: _playSelected,
+                      focusNode:
+                          policy.heroPlayAutoFocus ? _heroPlayFocus : null,
+                      onUpEdge: heroPopUp,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvItemIndex: 0,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
           MediaDetailsBackButton(focusNode: _backFocus),
         ],

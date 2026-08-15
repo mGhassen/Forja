@@ -85,34 +85,26 @@ class SettingsSearchTorrentsSection extends ConsumerWidget {
         SettingsGroup(
           label: 'Torrent engine',
           children: [
-            settingsFocusableDropdown(
-              context,
-              'Cache Type',
-              'Where torrent data is cached during streaming.',
-              snap.cacheType == 'ram' ? 'RAM' : 'Disk',
-              const ['RAM', 'Disk'],
-              (val) async {
-                if (val != null) {
-                  final type = val == 'RAM' ? 'ram' : 'disk';
-                  await settings.setTorrentCacheType(type);
-                  notifier.patch((s) => s.copyWith(cacheType: type));
-                }
+            settingsFocusableSlider(
+              title: 'Disk cache: ${snap.diskCacheGb} GB',
+              subtitle:
+                  'Max torrent data kept on disk. Playing now is never deleted; oldest idle downloads are removed when over this size.',
+              value: snap.diskCacheGb.toDouble().clamp(
+                SettingsService.minTorrentDiskCacheGb.toDouble(),
+                SettingsService.maxTorrentDiskCacheGb.toDouble(),
+              ),
+              min: SettingsService.minTorrentDiskCacheGb.toDouble(),
+              max: SettingsService.maxTorrentDiskCacheGb.toDouble(),
+              divisions: SettingsService.maxTorrentDiskCacheGb -
+                  SettingsService.minTorrentDiskCacheGb,
+              label: '${snap.diskCacheGb} GB',
+              onChanged: (val) => notifier.patch(
+                (s) => s.copyWith(diskCacheGb: val.round()),
+              ),
+              onChangeEnd: (val) async {
+                await TorrentStreamService().applyDiskCacheGb(val.round());
               },
             ),
-            if (snap.cacheType == 'ram')
-              settingsFocusableSlider(
-                title: 'RAM Cache Size: ${snap.ramCacheMb} MB',
-                value: snap.ramCacheMb.toDouble(),
-                min: 50,
-                max: 2048,
-                divisions: 39,
-                label: '${snap.ramCacheMb} MB',
-                onChanged: (val) => notifier.patch(
-                  (s) => s.copyWith(ramCacheMb: val.round()),
-                ),
-                onChangeEnd: (val) async =>
-                    await settings.setTorrentRamCacheMb(val.round()),
-              ),
             settingsFocusableSlider(
               title: 'Connections per torrent: ${snap.connectionsLimit}',
               subtitle:

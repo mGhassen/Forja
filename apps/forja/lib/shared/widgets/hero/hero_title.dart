@@ -125,7 +125,7 @@ class HeroTitle extends StatelessWidget {
   }
 }
 
-class _DetailsHeroTitle extends StatelessWidget {
+class _DetailsHeroTitle extends StatefulWidget {
   const _DetailsHeroTitle({
     required this.movie,
     this.logoUrl,
@@ -137,22 +137,66 @@ class _DetailsHeroTitle extends StatelessWidget {
   final double? slotHeight;
 
   @override
-  Widget build(BuildContext context) {
-    final hasLogo = logoUrl != null && logoUrl!.isNotEmpty;
-    final logoHeight = slotHeight ?? 96.0;
-    if (hasLogo) {
-      return CachedNetworkImage(
-        imageUrl: logoUrl!,
-        height: logoHeight,
-        fit: BoxFit.contain,
-        alignment: Alignment.centerLeft,
-        placeholder: (_, _) => _fallbackTitle(movie, logoHeight),
-        errorWidget: (_, _, _) => _fallbackTitle(movie, logoHeight),
-        fadeInDuration: const Duration(milliseconds: 250),
-        fadeOutDuration: Duration.zero,
-      );
+  State<_DetailsHeroTitle> createState() => _DetailsHeroTitleState();
+}
+
+class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
+  bool _logoReady = false;
+
+  @override
+  void didUpdateWidget(covariant _DetailsHeroTitle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.logoUrl != widget.logoUrl) {
+      _logoReady = false;
     }
-    return _fallbackTitle(movie, logoHeight);
+  }
+
+  void _revealLogo() {
+    if (!mounted || _logoReady) return;
+    setState(() => _logoReady = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final logoUrl = widget.logoUrl?.trim() ?? '';
+    final logoHeight = widget.slotHeight ?? 96.0;
+    final title = _fallbackTitle(widget.movie, logoHeight);
+    if (logoUrl.isEmpty) return title;
+
+    return Stack(
+      alignment: Alignment.centerLeft,
+      children: [
+        IgnorePointer(
+          ignoring: _logoReady,
+          child: AnimatedOpacity(
+            opacity: _logoReady ? 0 : 1,
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeOutCubic,
+            child: title,
+          ),
+        ),
+        Image(
+          image: CachedNetworkImageProvider(logoUrl),
+          height: logoHeight,
+          fit: BoxFit.contain,
+          alignment: Alignment.centerLeft,
+          gaplessPlayback: true,
+          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+          frameBuilder: (context, child, frame, sync) {
+            if (frame == null && !sync) return const SizedBox.shrink();
+            if (!_logoReady) {
+              WidgetsBinding.instance.addPostFrameCallback((_) => _revealLogo());
+            }
+            return AnimatedOpacity(
+              opacity: _logoReady ? 1 : 0,
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              child: child,
+            );
+          },
+        ),
+      ],
+    );
   }
 
   Widget _fallbackTitle(Movie movie, double maxHeight) {
@@ -241,8 +285,8 @@ class _HomeHeroTitleSlot extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       placeholder: (_, _) => title,
                       errorWidget: (_, _, _) => title,
-                      fadeInDuration: const Duration(milliseconds: 250),
-                      fadeOutDuration: Duration.zero,
+                      fadeInDuration: const Duration(milliseconds: 550),
+                      fadeOutDuration: const Duration(milliseconds: 450),
                     )
                   : title,
             ),

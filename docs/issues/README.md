@@ -23,7 +23,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | File | Title | P | Sev | Status | Progress | Backlog |
 |------|-------|---|-----|--------|----------|---------|
 | [001-[fixed]-…](fixed/001-[fixed]-webstreamr-blocks-ui.md) | WebStreamr blocks UI thread | P1 | High | fixed | Complete | [0.4.2](../backlog/done/0.4.2-[done].md) |
-| [002-[draft]-…](002-[draft]-torrent-disk-cache-not-cleaned.md) | Torrent cache never purged | P2 | High | draft | 0/6 | — |
+| [002-[fixed]-…](fixed/002-[fixed]-torrent-disk-cache-not-cleaned.md) | Torrent cache never purged | P2 | High | fixed | Complete · 8/8 · A 2/3 | — |
 | [003-[fixed]-…](fixed/003-[fixed]-stremio-platform-playback-model.md) | Stremio playback model | P2 | Medium | fixed | 7/7 | [0.2.0](../backlog/done/0.2.0-[done].md) |
 | [004-[fixed]-…](fixed/004-[fixed]-sync-ffi-ui-thread-audit.md) | Sync FFI UI thread audit | P1 | High | fixed | 4/4 | [0.4.1](../backlog/done/0.4.1-[done].md) |
 | [005-[fixed]-…](fixed/005-[fixed]-stremio-http-blocks-ui.md) | Stremio HTTP blocks UI | P1 | High | fixed | 1/2 · QA ⬜ | [0.4.2](../backlog/done/0.4.2-[done].md) |

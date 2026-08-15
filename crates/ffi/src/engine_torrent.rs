@@ -69,6 +69,14 @@ pub fn torrent_set_peer_limit(limit: u32) {
     TORRENT.set_peer_limit(limit);
 }
 
+pub fn torrent_set_disk_cache_bytes(bytes: u64) {
+    TORRENT.set_disk_cache_capacity_bytes(bytes);
+}
+
+pub fn torrent_reclaim_disk_cache_json(target_bytes: u64) -> String {
+    TORRENT.reclaim_disk_cache_json(target_bytes)
+}
+
 pub fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32) -> String {
     let season = if season < 0 { None } else { Some(season) };
     let episode = if episode < 0 { None } else { Some(episode) };

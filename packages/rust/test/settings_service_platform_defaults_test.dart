@@ -48,7 +48,7 @@ void main() {
     );
     expect(await service.getSubSize(), 52);
     expect(await service.getSubBottomPadding(), 48);
-    expect(await service.getTorrentRamCacheMb(), 128);
+    expect(await service.getTorrentDiskCacheGb(), 1);
       expect(await service.isPlaySourceWebstreamingEnabled(), isTrue);
       expect(await service.isPlaySourceTorrentEnabled(), isTrue);
       expect(await service.isPlaySourceStremioEnabled(), isTrue);
@@ -192,7 +192,7 @@ void main() {
       'mylist',
     ]);
     expect(await service.getSubSize(), 24);
-    expect(await service.getTorrentRamCacheMb(), 200);
+    expect(await service.getTorrentDiskCacheGb(), 1);
   });
 
   test('fresh desktop install seeds desktop subtitle default', () async {
@@ -202,6 +202,7 @@ void main() {
     expect(await service.getSubSize(), 44);
     expect(await service.getNavbarConfig(), PlatformDefaults.phoneNavIds);
     expect(await service.getPlayInBackground(), isTrue);
+    expect(await service.getTorrentDiskCacheGb(), 2);
   });
 
   test('fresh Android TV install pauses in background by default', () async {

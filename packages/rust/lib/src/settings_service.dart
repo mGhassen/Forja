@@ -68,8 +68,7 @@ class SettingsService {
   static const String _prowlarrApiKeyKey = 'prowlarr_api_key';
   static const String _prowlarrTagIdsKey = 'prowlarr_tag_ids';
   static const String _themePresetKey = 'theme_preset';
-  static const String _torrentCacheTypeKey = 'torrent_cache_type';
-  static const String _torrentRamCacheMbKey = 'torrent_ram_cache_mb';
+  static const String _torrentDiskCacheGbKey = 'torrent_disk_cache_gb';
   static const String _torrentConnectionsLimitKey = 'torrent_connections_limit';
   static const String _subSizeKey = 'sub_size';
   static const String _subColorKey = 'sub_color';
@@ -1027,17 +1026,21 @@ class SettingsService {
     tagIds.map((id) => id.toString()).toList(),
   );
 
-  Future<String> getTorrentCacheType() async =>
-      await kvGetString(_torrentCacheTypeKey) ?? 'ram';
+  static const int minTorrentDiskCacheGb = 1;
+  static const int maxTorrentDiskCacheGb = 16;
 
-  Future<void> setTorrentCacheType(String type) async =>
-      kvSetString(_torrentCacheTypeKey, type);
+  Future<int> getTorrentDiskCacheGb() async {
+    final gb = await kvGetInt(
+      _torrentDiskCacheGbKey,
+      fallback: _defaults.torrentDiskCacheGb,
+    );
+    return gb.clamp(minTorrentDiskCacheGb, maxTorrentDiskCacheGb);
+  }
 
-  Future<int> getTorrentRamCacheMb() async =>
-      kvGetInt(_torrentRamCacheMbKey, fallback: _defaults.torrentRamCacheMb);
-
-  Future<void> setTorrentRamCacheMb(int mb) async =>
-      kvSetInt(_torrentRamCacheMbKey, mb);
+  Future<void> setTorrentDiskCacheGb(int gb) async => kvSetInt(
+    _torrentDiskCacheGbKey,
+    gb.clamp(minTorrentDiskCacheGb, maxTorrentDiskCacheGb),
+  );
 
   Future<int> getTorrentConnectionsLimit() async =>
       kvGetInt(_torrentConnectionsLimitKey, fallback: 200);
@@ -1279,7 +1282,7 @@ class SettingsService {
         _playSourceWebstreamingKey,
         defaults.playSourceWebstreaming,
       );
-      await kvSetInt(_torrentRamCacheMbKey, defaults.torrentRamCacheMb);
+      await kvSetInt(_torrentDiskCacheGbKey, defaults.torrentDiskCacheGb);
       await kvSetBool(
         _showTorrentStatsOverlayKey,
         defaults.showTorrentStatsOverlay,
@@ -1499,15 +1502,11 @@ class SettingsService {
       _externalPlayerKey,
       _jackettBaseUrlKey,
       _prowlarrBaseUrlKey,
-      _torrentCacheTypeKey,
     ]) {
       final v = await kvGetString(key);
       if (v != null && v.isNotEmpty) prefsMap[key] = v;
     }
-    prefsMap[_torrentRamCacheMbKey] = await kvGetInt(
-      _torrentRamCacheMbKey,
-      fallback: 200,
-    );
+    prefsMap[_torrentDiskCacheGbKey] = await getTorrentDiskCacheGb();
     prefsMap[_torrentConnectionsLimitKey] = await kvGetInt(
       _torrentConnectionsLimitKey,
       fallback: 200,
@@ -1610,7 +1609,6 @@ class SettingsService {
       _externalPlayerKey,
       _jackettBaseUrlKey,
       _prowlarrBaseUrlKey,
-      _torrentCacheTypeKey,
       'webstreamr_mfp_url',
       'webstreamr_flare_url',
       'nuvio_addons_v1',
@@ -1619,10 +1617,10 @@ class SettingsService {
         await kvSetString(key, prefsMap[key] as String);
       }
     }
-    if (prefsMap.containsKey(_torrentRamCacheMbKey)) {
+    if (prefsMap.containsKey(_torrentDiskCacheGbKey)) {
       await kvSetInt(
-        _torrentRamCacheMbKey,
-        prefsMap[_torrentRamCacheMbKey] as int,
+        _torrentDiskCacheGbKey,
+        prefsMap[_torrentDiskCacheGbKey] as int,
       );
     }
     if (prefsMap.containsKey(_torrentConnectionsLimitKey)) {

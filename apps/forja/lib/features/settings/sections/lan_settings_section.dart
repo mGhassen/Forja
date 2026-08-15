@@ -940,6 +940,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                   presence: presence,
                   size: 9,
                   bordered: true,
+                  showBar: false,
                 ),
               ),
           ],

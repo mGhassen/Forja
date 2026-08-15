@@ -217,29 +217,25 @@ class SettingsPlaybackNotifier
 class SettingsTorrentSnapshot {
   const SettingsTorrentSnapshot({
     required this.sortPreference,
-    required this.cacheType,
-    required this.ramCacheMb,
+    required this.diskCacheGb,
     required this.connectionsLimit,
     required this.enabledProviders,
   });
 
   final String sortPreference;
-  final String cacheType;
-  final int ramCacheMb;
+  final int diskCacheGb;
   final int connectionsLimit;
   final List<String> enabledProviders;
 
   SettingsTorrentSnapshot copyWith({
     String? sortPreference,
-    String? cacheType,
-    int? ramCacheMb,
+    int? diskCacheGb,
     int? connectionsLimit,
     List<String>? enabledProviders,
   }) {
     return SettingsTorrentSnapshot(
       sortPreference: sortPreference ?? this.sortPreference,
-      cacheType: cacheType ?? this.cacheType,
-      ramCacheMb: ramCacheMb ?? this.ramCacheMb,
+      diskCacheGb: diskCacheGb ?? this.diskCacheGb,
       connectionsLimit: connectionsLimit ?? this.connectionsLimit,
       enabledProviders: enabledProviders ?? this.enabledProviders,
     );
@@ -257,8 +253,7 @@ class SettingsTorrentNotifier extends AsyncNotifier<SettingsTorrentSnapshot> {
     final s = SettingsService();
     return SettingsTorrentSnapshot(
       sortPreference: await s.getSortPreference(),
-      cacheType: await s.getTorrentCacheType(),
-      ramCacheMb: await s.getTorrentRamCacheMb(),
+      diskCacheGb: await s.getTorrentDiskCacheGb(),
       connectionsLimit: await s.getTorrentConnectionsLimit(),
       enabledProviders: await s.getEnabledTorrentProviders(),
     );

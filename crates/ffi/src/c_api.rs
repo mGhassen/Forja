@@ -642,6 +642,16 @@ pub extern "C" fn ffi_torrent_set_peer_limit(limit: u32) {
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_torrent_set_disk_cache_bytes(bytes: u64) {
+    crate::torrent_set_disk_cache_bytes(bytes);
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_torrent_reclaim_disk_cache_json(target_bytes: u64) -> *mut c_char {
+    to_c_string(crate::torrent_reclaim_disk_cache_json(target_bytes))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_torrent_stream_json(
     magnet: *const c_char,
     season: i32,

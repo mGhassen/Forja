@@ -148,7 +148,6 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
       }
     }
     if (oldWidget.isLoadingSeason != widget.isLoadingSeason ||
-        oldWidget.customEpisodesBySeason != widget.customEpisodesBySeason ||
         oldWidget.seasonData != widget.seasonData) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _syncEpisodeChunk());
     }

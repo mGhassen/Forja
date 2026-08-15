@@ -316,7 +316,7 @@ class _HubHeroLayout extends StatelessWidget {
               child: mainColumn,
             ),
           ),
-          if (factsChild != null && maxHeight != null)
+          if (maxHeight != null)
             Align(
               alignment: Alignment.bottomRight,
               child: ConstrainedBox(
@@ -326,11 +326,18 @@ class _HubHeroLayout extends StatelessWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: ListView(
-                    shrinkWrap: true,
-                    padding: EdgeInsets.zero,
-                    physics: const ClampingScrollPhysics(),
-                    children: [factsChild],
+                  child: AnimatedOpacity(
+                    opacity: hasFacts ? 1 : 0,
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.easeOutCubic,
+                    child: factsChild == null
+                        ? const SizedBox.shrink()
+                        : ListView(
+                            shrinkWrap: true,
+                            padding: EdgeInsets.zero,
+                            physics: const ClampingScrollPhysics(),
+                            children: [factsChild],
+                          ),
                   ),
                 ),
               ),
@@ -488,8 +495,7 @@ class _HubHeroMainColumn extends StatelessWidget {
       if (!_hasLogo && overBudget()) {
         titleHeight = 64.0;
       }
-      // Synopsis yields before title - empty hero with only overview is worse.
-      if (overBudget()) showOverview = false;
+      // Keep synopsis — TMDB chrome must not yank the source overview.
       if (overBudget() && showSeriesProgress) {
         showSeriesProgress = false;
         refreshBudget();
@@ -603,10 +609,15 @@ class _HubHeroMainColumn extends StatelessWidget {
     if (!bounded) {
       return SizedBox(
         width: maxContentWidth,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [...metaColumn, ...footer],
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topLeft,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [...metaColumn, ...footer],
+          ),
         ),
       );
     }
@@ -616,10 +627,15 @@ class _HubHeroMainColumn extends StatelessWidget {
       height: maxHeight,
       child: Align(
         alignment: Alignment.topLeft,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [...metaColumn, ...footer],
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topLeft,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [...metaColumn, ...footer],
+          ),
         ),
       ),
     );

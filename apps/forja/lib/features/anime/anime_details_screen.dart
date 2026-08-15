@@ -12,6 +12,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero/hero_utils.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
+import 'package:forja/shared/widgets/hero/tmdb_paint_gate.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
@@ -612,6 +613,18 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     final a = _data;
     final tmdb =
         ref.watch(animeTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
+    return TmdbPaintGate(
+      ready: tmdb != null,
+      builder: (context, level) => _buildPaintedLayout(a, tmdb, level),
+    );
+  }
+
+  Widget _buildPaintedLayout(
+    AnimeCard a,
+    RichMediaDetails? tmdb,
+    TmdbPaintLevel level,
+  ) {
+    final paintTmdb = level.hasChrome || level.hasRows ? tmdb : null;
     final resumeEp = (_progress?['episodeNumber'] as num?)?.toInt();
     final rawPosMs = (_progress?['positionMs'] as num?)?.toInt();
     final rawDurMs = (_progress?['durationMs'] as num?)?.toInt();
@@ -657,10 +670,18 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     final heroActionCount = tvIndex + 2;
     final showEpisodeRail = _episodesLoading || _episodes.isNotEmpty;
     final related = _relatedFiltered;
-    final tmdbCast = tmdb?.extras.cast ?? const <Map<String, String>>[];
-    final tmdbCrew = _crewAsCast(tmdb?.extras.crew ?? const []);
-    final tmdbTrailers = tmdb?.extras.trailers ?? const <MediaTrailer>[];
-    final tmdbRecs = tmdb?.extras.recommendations ?? const <Movie>[];
+    final tmdbCast = level.hasRows
+        ? (tmdb?.extras.cast ?? const <Map<String, String>>[])
+        : const <Map<String, String>>[];
+    final tmdbCrew = level.hasRows
+        ? _crewAsCast(tmdb?.extras.crew ?? const [])
+        : const <Map<String, String>>[];
+    final tmdbTrailers = level.hasRows
+        ? (tmdb?.extras.trailers ?? const <MediaTrailer>[])
+        : const <MediaTrailer>[];
+    final tmdbRecs = level.hasRows
+        ? (tmdb?.extras.recommendations ?? const <Movie>[])
+        : const <Movie>[];
     final characters = _characters.isNotEmpty ? _characters : tmdbCast;
     final staff = _staff.isNotEmpty ? _staff : tmdbCrew;
     final trailers = a.mediaTrailer != null
@@ -742,23 +763,29 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         children: [
           HubDetailsHero(
             backdropUrl: a.heroBackdrop,
-            backdropUrls: _heroUrls(a, tmdb),
+            backdropUrls: level.hasArt
+                ? _heroUrls(a, tmdb)
+                : RotatingHeroBackdrop.normalizeUrls(
+                    [if (a.heroBackdrop.isNotEmpty) a.heroBackdrop],
+                  ),
             title: a.displayTitle,
             subtitle: a.titleNative.isNotEmpty && a.titleNative != a.displayTitle
                 ? a.titleNative
                 : null,
             genres: a.genres.isNotEmpty
                 ? a.genres
-                : (tmdb?.movie.genres ?? const <String>[]),
-            metaParts: _metaParts(a, tmdb),
+                : (level.hasChrome
+                    ? (tmdb?.movie.genres ?? const <String>[])
+                    : const <String>[]),
+            metaParts: _metaParts(a, paintTmdb),
             rating: (a.averageScore ?? 0) > 0
                 ? a.averageScore! / 10
-                : ((tmdb?.movie.voteAverage ?? 0) > 0
+                : (level.hasChrome && (tmdb?.movie.voteAverage ?? 0) > 0
                     ? tmdb!.movie.voteAverage
                     : null),
-            overview: _overview(a, tmdb),
-            facts: _facts(a, tmdb),
-            logoUrl: _tmdbLogoUrl(tmdb),
+            overview: _overview(a, paintTmdb),
+            facts: _facts(a, paintTmdb),
+            logoUrl: level.hasChrome ? _tmdbLogoUrl(tmdb) : null,
             height: heroHeight,
             pageBottomChild: episodePicker,
             showSeasonRail: showSeasonRail,

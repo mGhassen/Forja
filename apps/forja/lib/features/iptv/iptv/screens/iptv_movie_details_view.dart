@@ -15,6 +15,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
+import 'package:forja/shared/widgets/hero/tmdb_paint_gate.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/media_details/media_details_scroll_page.dart';
@@ -151,6 +152,12 @@ class _IptvMovieDetailsScreenState
     return widget.movie.icon.trim();
   }
 
+  String? _logoUrl() {
+    final path = _movie?.logoPath.trim() ?? '';
+    if (path.isEmpty) return null;
+    return path.startsWith('http') ? path : TmdbApi.getImageUrl(path);
+  }
+
   List<String> _heroBackdropUrls() {
     final primary = _backdropUrl();
     final icon = widget.movie.icon.trim();
@@ -166,22 +173,24 @@ class _IptvMovieDetailsScreenState
     ]);
   }
 
-  List<String> _metaParts() {
+  List<String> _metaParts({bool tmdbChrome = true}) {
     final parts = <String>[];
-    final date = _movie?.releaseDate.trim() ?? '';
+    final date = tmdbChrome ? (_movie?.releaseDate.trim() ?? '') : '';
     if (date.length >= 4) {
       parts.add(date.substring(0, 4));
     } else if (_cleaned.year != null) {
       parts.add('${_cleaned.year}');
     }
-    final cert = _enrich?.rich.extras.certification.trim() ?? '';
+    final cert = tmdbChrome
+        ? (_enrich?.rich.extras.certification.trim() ?? '')
+        : '';
     if (cert.isNotEmpty) parts.add(cert);
-    final runtime = _movie?.runtime ?? 0;
+    final runtime = tmdbChrome ? (_movie?.runtime ?? 0) : 0;
     if (runtime > 0) parts.add('${runtime}m');
     return parts;
   }
 
-  List<MapEntry<String, String>> _facts() {
+  List<MapEntry<String, String>> _facts({bool tmdbChrome = true}) {
     final year = _cleaned.year ??
         (_movie != null && (_movie!.releaseDate.length >= 4)
             ? int.tryParse(_movie!.releaseDate.substring(0, 4))
@@ -189,7 +198,7 @@ class _IptvMovieDetailsScreenState
     final runtime = _movie?.runtime ?? 0;
     final portal = widget.portal.displayLabel.trim();
     return iptvTmdbFacts(
-      _enrich?.rich,
+      tmdbChrome ? _enrich?.rich : null,
       preferTv: false,
       fallback: iptvPortalFacts(
         year: year,
@@ -237,38 +246,8 @@ class _IptvMovieDetailsScreenState
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
-    final backdrop = _backdropUrl();
-    final heroBackdrops = _heroBackdropUrls();
-    final rating =
-        (_movie?.voteAverage ?? 0) > 0 ? _movie!.voteAverage : null;
-    final heroHeight = DetailsTokens.heroHeight(context);
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _focusDetailsBack : null;
-
-    final sections = buildIptvDetailsMetaSections(
-      context: context,
-      rich: _enrich?.rich,
-      catalogRecommendations: _catalogRecs,
-      onCatalogRecTap: (hit) {
-        if (hit.stream.kind == 'series') {
-          openIptvSeriesDetails(
-            context,
-            series: hit.stream,
-            portal: widget.portal,
-          );
-        } else {
-          openIptvMovieDetails(
-            context,
-            movie: hit.stream,
-            portal: widget.portal,
-          );
-        }
-      },
-      tvFocus: tvFocus,
-      tvTabId: MediaDetailsTv.tabId,
-      tvRowOrderBase: 0,
-      tvFocusUp: heroFocusUp,
-    );
 
     if (tvFocus && policy.heroPlayAutoFocus && !_heroFocusDone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -286,38 +265,86 @@ class _IptvMovieDetailsScreenState
       body: Stack(
         fit: StackFit.expand,
         children: [
-          MediaDetailsScrollPage(
-            scrollController: _scroll,
-            tvHeroPlayFocus: _heroPlayFocus,
-            tvBackFocus: _backFocus,
-            bodyOverlap: 0,
-            backgroundColor: AppTheme.bgDark,
-            sections: sections,
-            hero: HubDetailsHero(
-              backdropUrl: backdrop,
-              backdropUrls: heroBackdrops,
-              title: _displayTitle,
-              genres: _movie?.genres ?? const [],
-              metaParts: _metaParts(),
-              rating: rating,
-              overview: _movie?.overview.trim() ?? '',
-              facts: _facts(),
-              height: heroHeight,
-              actionRow: DetailsHeroTvActionScope(
-                tabId: MediaDetailsTv.tabId,
-                itemCount: 1,
-                onFocusUp: heroPopUp,
-                child: HubDetailsPlayRow(
-                  label: _playing ? 'Opening…' : 'Play',
-                  enabled: !_playing,
-                  onPlay: _play,
-                  focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
-                  onUpEdge: heroPopUp,
-                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                  tvItemIndex: 0,
+          TmdbPaintGate(
+            ready: _enrich != null,
+            builder: (context, level) {
+              final icon = widget.movie.icon.trim();
+              final backdrop = level.hasArt ? _backdropUrl() : icon;
+              final heroBackdrops = level.hasArt
+                  ? _heroBackdropUrls()
+                  : RotatingHeroBackdrop.normalizeUrls(
+                      [if (icon.isNotEmpty) icon],
+                    );
+              final rating = level.hasChrome && (_movie?.voteAverage ?? 0) > 0
+                  ? _movie!.voteAverage
+                  : null;
+              final heroHeight = DetailsTokens.heroHeight(context);
+              final sections = level.hasRows
+                  ? buildIptvDetailsMetaSections(
+                      context: context,
+                      rich: _enrich?.rich,
+                      catalogRecommendations: _catalogRecs,
+                      onCatalogRecTap: (hit) {
+                        if (hit.stream.kind == 'series') {
+                          openIptvSeriesDetails(
+                            context,
+                            series: hit.stream,
+                            portal: widget.portal,
+                          );
+                        } else {
+                          openIptvMovieDetails(
+                            context,
+                            movie: hit.stream,
+                            portal: widget.portal,
+                          );
+                        }
+                      },
+                      tvFocus: tvFocus,
+                      tvTabId: MediaDetailsTv.tabId,
+                      tvRowOrderBase: 0,
+                      tvFocusUp: heroFocusUp,
+                    )
+                  : const <Widget>[];
+              return MediaDetailsScrollPage(
+                scrollController: _scroll,
+                tvHeroPlayFocus: _heroPlayFocus,
+                tvBackFocus: _backFocus,
+                bodyOverlap: 0,
+                backgroundColor: AppTheme.bgDark,
+                sections: sections,
+                hero: HubDetailsHero(
+                  backdropUrl: backdrop,
+                  backdropUrls: heroBackdrops,
+                  title: _displayTitle,
+                  genres: level.hasChrome
+                      ? (_movie?.genres ?? const [])
+                      : const [],
+                  metaParts: _metaParts(tmdbChrome: level.hasChrome),
+                  rating: rating,
+                  overview: level.hasChrome
+                      ? (_movie?.overview.trim() ?? '')
+                      : '',
+                  facts: _facts(tmdbChrome: level.hasChrome),
+                  logoUrl: level.hasChrome ? _logoUrl() : null,
+                  height: heroHeight,
+                  actionRow: DetailsHeroTvActionScope(
+                    tabId: MediaDetailsTv.tabId,
+                    itemCount: 1,
+                    onFocusUp: heroPopUp,
+                    child: HubDetailsPlayRow(
+                      label: _playing ? 'Opening…' : 'Play',
+                      enabled: !_playing,
+                      onPlay: _play,
+                      focusNode:
+                          policy.heroPlayAutoFocus ? _heroPlayFocus : null,
+                      onUpEdge: heroPopUp,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvItemIndex: 0,
+                    ),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
           MediaDetailsBackButton(focusNode: _backFocus),
         ],

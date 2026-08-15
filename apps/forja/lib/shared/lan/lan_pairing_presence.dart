@@ -17,10 +17,10 @@ const Color _lanDown = Color(0xFFF87171);
 enum LanServerMark { off, up, down }
 
 /// Pairing / playback session. Never encodes whether the server is listening.
-enum LanSessionMark { none, waiting, paired, playing }
+enum LanSessionMark { none, waiting, paired, idle, playing }
 
 /// Per-device talk on the desktop paired-devices list (not the rail).
-enum LanDeviceTalk { quiet, active, playing }
+enum LanDeviceTalk { idle, active, playing }
 
 /// Split LAN chrome: [server] is the dot, [session] is the bar under it.
 class LanPresence {
@@ -38,7 +38,9 @@ class LanPresence {
       server != LanServerMark.off || session != LanSessionMark.none;
 
   bool get paired =>
-      session == LanSessionMark.paired || session == LanSessionMark.playing;
+      session == LanSessionMark.paired ||
+      session == LanSessionMark.idle ||
+      session == LanSessionMark.playing;
 
   Color get serverColor => switch (server) {
         LanServerMark.off => Colors.transparent,
@@ -49,6 +51,8 @@ class LanPresence {
   Color get sessionColor => switch (session) {
         LanSessionMark.none => Colors.transparent,
         LanSessionMark.waiting => _lanAmber,
+        LanSessionMark.idle =>
+          ForjaShellColors.textSecondary.withValues(alpha: 0.7),
         LanSessionMark.paired || LanSessionMark.playing =>
           ForjaShellColors.brandGreen,
       };
@@ -66,6 +70,7 @@ class LanPresence {
       LanSessionMark.none => '',
       LanSessionMark.waiting => 'waiting for pair',
       LanSessionMark.paired => 'paired',
+      LanSessionMark.idle => 'idle',
       LanSessionMark.playing => 'playing',
     };
     if (s.isEmpty) return c.isEmpty ? '' : c;
@@ -75,16 +80,33 @@ class LanPresence {
 
   factory LanPresence.desktop({
     required bool running,
-    required bool hasDevices,
+    required List<Object?> lastSeen,
     required bool lanTorrentActive,
+    DateTime? now,
   }) {
     if (!running) return hidden;
-    final session = lanTorrentActive
-        ? LanSessionMark.playing
-        : hasDevices
-            ? LanSessionMark.paired
-            : LanSessionMark.waiting;
-    return LanPresence(server: LanServerMark.up, session: session);
+    if (lastSeen.isEmpty) {
+      return const LanPresence(
+        server: LanServerMark.up,
+        session: LanSessionMark.waiting,
+      );
+    }
+    if (lanTorrentActive) {
+      return const LanPresence(
+        server: LanServerMark.up,
+        session: LanSessionMark.playing,
+      );
+    }
+    if (lastSeen.any((s) => deviceOnline(s, now: now))) {
+      return const LanPresence(
+        server: LanServerMark.up,
+        session: LanSessionMark.paired,
+      );
+    }
+    return const LanPresence(
+      server: LanServerMark.up,
+      session: LanSessionMark.idle,
+    );
   }
 
   factory LanPresence.client({
@@ -93,11 +115,21 @@ class LanPresence {
     required bool lanTorrentActive,
   }) {
     if (!paired) return hidden;
-    return LanPresence(
-      server: desktopOnline ? LanServerMark.up : LanServerMark.down,
-      session: desktopOnline && lanTorrentActive
-          ? LanSessionMark.playing
-          : LanSessionMark.paired,
+    if (!desktopOnline) {
+      return const LanPresence(
+        server: LanServerMark.down,
+        session: LanSessionMark.idle,
+      );
+    }
+    if (lanTorrentActive) {
+      return const LanPresence(
+        server: LanServerMark.up,
+        session: LanSessionMark.playing,
+      );
+    }
+    return const LanPresence(
+      server: LanServerMark.up,
+      session: LanSessionMark.paired,
     );
   }
 
@@ -150,7 +182,7 @@ class LanPresence {
     }
     return deviceOnline(lastSeen, now: now)
         ? LanDeviceTalk.active
-        : LanDeviceTalk.quiet;
+        : LanDeviceTalk.idle;
   }
 
   @override
@@ -165,7 +197,7 @@ class LanPresence {
 
 extension LanDeviceTalkX on LanDeviceTalk {
   Color get color => switch (this) {
-        LanDeviceTalk.quiet =>
+        LanDeviceTalk.idle =>
           ForjaShellColors.textSecondary.withValues(alpha: 0.55),
         LanDeviceTalk.active || LanDeviceTalk.playing =>
           ForjaShellColors.brandGreen,
@@ -174,7 +206,7 @@ extension LanDeviceTalkX on LanDeviceTalk {
   bool get pulse => this == LanDeviceTalk.playing;
 
   String get shortLabel => switch (this) {
-        LanDeviceTalk.quiet => 'Paired',
+        LanDeviceTalk.idle => 'Idle',
         LanDeviceTalk.active => 'Active',
         LanDeviceTalk.playing => 'Playing',
       };
@@ -211,7 +243,7 @@ class LanPairingPresence {
       final active = LanServerService.instance.activeTorrentStatus();
       return LanPresence.desktop(
         running: true,
-        hasDevices: devices.isNotEmpty,
+        lastSeen: devices.map((d) => d['last_seen']).toList(),
         lanTorrentActive: LanPresence.lanTorrentActive(active, history),
       );
     }
@@ -238,38 +270,53 @@ class LanPairingPresence {
   }
 }
 
-/// Dot = server. Underscore = session.
+/// Dot = server. Bar beside it = session (desktop server only).
 class LanPresenceMark extends StatelessWidget {
   const LanPresenceMark({
     super.key,
     required this.presence,
     this.size = 5,
     this.bordered = false,
+    this.showBar = true,
   });
 
   final LanPresence presence;
   final double size;
   final bool bordered;
+  /// Session bar beside the dot. Desktop server only — clients are a single reachability dot.
+  final bool showBar;
+
+  static double sizeFor({required bool tv}) => tv ? 8 : 5;
+
+  static double barWidth(double size) => size * 1.7;
+
+  static double railSlotHeight({required bool tv}) => sizeFor(tv: tv);
 
   @override
   Widget build(BuildContext context) {
     if (!presence.visible) return const SizedBox.shrink();
-    final mark = Column(
+    final drawBar = showBar && presence.session != LanSessionMark.none;
+    final mark = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (presence.server != LanServerMark.off)
           _circle(presence.serverColor, size, bordered),
-        if (presence.session != LanSessionMark.none) ...[
-          SizedBox(height: size * 0.28),
+        if (drawBar) ...[
+          SizedBox(width: size * 0.35),
           _bar(
             color: presence.sessionColor,
-            width: size,
+            width: barWidth(size),
+            height: size,
             pulse: presence.sessionPulse,
           ),
         ],
       ],
     );
-    final tip = presence.tooltip;
+    final tip = showBar ? presence.tooltip : switch (presence.server) {
+      LanServerMark.off => '',
+      LanServerMark.up => 'Desktop online',
+      LanServerMark.down => 'Desktop offline',
+    };
     if (tip.isEmpty) return mark;
     return Tooltip(message: tip, child: mark);
   }
@@ -291,14 +338,15 @@ class LanPresenceMark extends StatelessWidget {
   static Widget _bar({
     required Color color,
     required double width,
+    required double height,
     required bool pulse,
   }) {
     final bar = Container(
       width: width,
-      height: (width * 0.32).clamp(1.5, 2.5),
+      height: height,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(1),
+        borderRadius: BorderRadius.circular(height / 2),
       ),
     );
     if (!pulse) return bar;

@@ -38,19 +38,21 @@ class MediaDetailsScrollPage extends StatelessWidget {
         children: [
           hero,
           if (sections.isNotEmpty)
-            MediaDetailsBody(
-              backgroundColor: backgroundColor,
-              bodyOverlap: bodyOverlap,
-              topSpacing: topSpacing,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var i = 0; i < sections.length; i++) ...[
-                    if (i > 0)
-                      const SizedBox(height: DetailsTokens.sectionSpacing),
-                    sections[i],
+            _FadeIn(
+              child: MediaDetailsBody(
+                backgroundColor: backgroundColor,
+                bodyOverlap: bodyOverlap,
+                topSpacing: topSpacing,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < sections.length; i++) ...[
+                      if (i > 0)
+                        const SizedBox(height: DetailsTokens.sectionSpacing),
+                      sections[i],
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
         ],
@@ -73,6 +75,37 @@ class MediaDetailsScrollPage extends StatelessWidget {
         scroll,
         overlay!,
       ],
+    );
+  }
+}
+
+class _FadeIn extends StatefulWidget {
+  const _FadeIn({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_FadeIn> createState() => _FadeInState();
+}
+
+class _FadeInState extends State<_FadeIn> {
+  double _opacity = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _opacity = 1);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: _opacity,
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.easeOutCubic,
+      child: widget.child,
     );
   }
 }

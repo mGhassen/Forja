@@ -25,6 +25,9 @@ use tokio::net::TcpSocket;
 use tokio::sync::oneshot;
 use tokio_util::io::ReaderStream;
 
+mod disk_cache;
+pub use disk_cache::{clamp_capacity_bytes, DiskCacheStats, DEFAULT_DISK_CACHE_BYTES};
+
 /// Prefer this many head bytes before handing the URL to mpv (container probe).
 /// 64 KiB was too thin for some x265/MP4 probes; mpv then range-sought the
 /// undownloaded tail while the swarm filled the middle (black screen + GBs).
@@ -111,6 +114,7 @@ struct EngineInner {
     http_shutdown: Option<oneshot::Sender<()>>,
     active: Option<ActiveTorrent>,
     peer_limit: usize,
+    disk_cache_capacity_bytes: u64,
 }
 
 pub struct TorrentEngine {
@@ -134,6 +138,7 @@ impl TorrentEngine {
                 http_shutdown: None,
                 active: None,
                 peer_limit: 128,
+                disk_cache_capacity_bytes: DEFAULT_DISK_CACHE_BYTES,
             }),
             runtime: tokio::runtime::Runtime::new().expect("tokio runtime"),
         }
@@ -209,6 +214,78 @@ impl TorrentEngine {
         }
     }
 
+    pub fn set_disk_cache_capacity_bytes(&self, bytes: u64) {
+        let clamped = clamp_capacity_bytes(bytes);
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.disk_cache_capacity_bytes = clamped;
+        }
+        let _ = self.reclaim_disk_cache(clamped);
+    }
+
+    pub fn disk_cache_capacity_bytes(&self) -> u64 {
+        self.inner
+            .lock()
+            .map(|i| i.disk_cache_capacity_bytes)
+            .unwrap_or(DEFAULT_DISK_CACHE_BYTES)
+    }
+
+    /// Evict idle cached files until [used] <= [target_bytes]. `u64::MAX` uses the budget.
+    pub fn reclaim_disk_cache(&self, target_bytes: u64) -> DiskCacheStats {
+        let (capacity, protected) = match self.inner.lock() {
+            Ok(inner) => (
+                inner.disk_cache_capacity_bytes,
+                self.protected_relpaths_locked(&inner),
+            ),
+            Err(_) => (DEFAULT_DISK_CACHE_BYTES, HashSet::new()),
+        };
+        let target = if target_bytes == u64::MAX {
+            capacity
+        } else {
+            target_bytes
+        };
+        disk_cache::reclaim_download_dir(
+            &Self::download_dir(),
+            &protected,
+            target,
+            capacity,
+        )
+        .unwrap_or_else(|_| DiskCacheStats {
+            capacity_bytes: capacity,
+            ..DiskCacheStats::default()
+        })
+    }
+
+    pub fn reclaim_disk_cache_json(&self, target_bytes: u64) -> String {
+        serde_json::to_string(&self.reclaim_disk_cache(target_bytes)).unwrap_or_else(|_| {
+            r#"{"capacity_bytes":0,"used_bytes":0,"protected_bytes":0,"evictions":0,"reclaimed_bytes":0,"over_budget":false}"#.into()
+        })
+    }
+
+    fn protected_relpaths_locked(&self, inner: &EngineInner) -> HashSet<String> {
+        let Some(active) = inner.active.as_ref() else {
+            return HashSet::new();
+        };
+        let Some(api) = inner.api.as_ref() else {
+            return HashSet::new();
+        };
+        let Ok(details) = api.api_torrent_details(TorrentIdOrHash::Id(active.id)) else {
+            return HashSet::new();
+        };
+        details
+            .files
+            .unwrap_or_default()
+            .into_iter()
+            .map(|f| f.name.replace('\\', "/"))
+            .filter(|name| !name.is_empty() && !name.contains(".."))
+            .collect()
+    }
+
+    async fn delete_torrent_files(api: &Api, id: usize) {
+        let _ = api
+            .api_torrent_action_delete(TorrentIdOrHash::Id(id))
+            .await;
+    }
+
     pub fn start_engine(&self, preferred_port: u16) -> Result<u16, String> {
         self.runtime.block_on(async {
             let peer_limit = {
@@ -264,6 +341,7 @@ impl TorrentEngine {
 
     pub fn stop_engine(&self) {
         self.runtime.block_on(async {
+            self.stop_async().await;
             let Ok(mut inner) = self.inner.lock() else {
                 return;
             };
@@ -275,6 +353,7 @@ impl TorrentEngine {
             inner.session = None;
             inner.http_port = 0;
         });
+        let _ = self.reclaim_disk_cache(u64::MAX);
     }
 
     pub fn list_files_json(&self, magnet: &str) -> String {
@@ -453,9 +532,7 @@ impl TorrentEngine {
 
         // New stream is ready — drop the previous swarm (player will replace).
         if let Some(prev) = previous {
-            let _ = api
-                .api_torrent_action_forget(TorrentIdOrHash::Id(prev.id))
-                .await;
+            Self::delete_torrent_files(&api, prev.id).await;
         }
 
         let file_name = prepared
@@ -468,6 +545,8 @@ impl TorrentEngine {
             "http://127.0.0.1:{port}/torrents/{}/stream/{file_idx}/{encoded_name}",
             prepared.torrent_id
         );
+
+        self.reclaim_disk_cache(u64::MAX);
 
         Ok(StreamResponse {
             url,
@@ -612,9 +691,7 @@ impl TorrentEngine {
         if let Some(expected) = expected_info_hash.filter(|expected| {
             !details.info_hash.eq_ignore_ascii_case(expected)
         }) {
-            let _ = api
-                .api_torrent_action_forget(TorrentIdOrHash::Id(torrent_id))
-                .await;
+            Self::delete_torrent_files(&api, torrent_id).await;
             return Err(format!(
                 "Torrent metadata info hash mismatch (expected {expected}, got {})",
                 details.info_hash
@@ -643,9 +720,7 @@ impl TorrentEngine {
         failed_id: usize,
         previous: Option<ActiveTorrent>,
     ) {
-        let _ = api
-            .api_torrent_action_forget(TorrentIdOrHash::Id(failed_id))
-            .await;
+        Self::delete_torrent_files(api, failed_id).await;
         if let Ok(mut inner) = self.inner.lock() {
             inner.active = previous;
         }
@@ -670,23 +745,21 @@ impl TorrentEngine {
         });
     }
 
-    /// Pause + forget the active swarm. Safe to call from this engine's runtime.
+    /// Delete the active swarm and its files. Safe to call from this engine's runtime.
     async fn stop_async(&self) {
-        let pause = {
+        let delete = {
             let Ok(mut inner) = self.inner.lock() else {
                 return;
             };
-            if let (Some(session), Some(active)) = (inner.session.clone(), inner.active.take()) {
-                session
-                    .get(TorrentIdOrHash::Id(active.id))
-                    .map(|handle| (session, handle))
-            } else {
-                None
+            match (inner.api.clone(), inner.active.take()) {
+                (Some(api), Some(active)) => Some((api, active.id)),
+                _ => None,
             }
         };
-        if let Some((session, handle)) = pause {
-            let _ = session.pause(&handle).await;
+        if let Some((api, id)) = delete {
+            Self::delete_torrent_files(&api, id).await;
         }
+        self.reclaim_disk_cache(u64::MAX);
     }
 
     /// Pause the active swarm but keep it tracked (idle TV — may resume).
@@ -1152,6 +1225,22 @@ mod tests {
         let engine = TorrentEngine::new();
         engine.set_peer_limit(999);
         engine.set_peer_limit(1);
+    }
+
+    #[test]
+    fn disk_cache_capacity_clamps_and_reclaim_json() {
+        let engine = TorrentEngine::new();
+        engine.set_disk_cache_capacity_bytes(1);
+        assert_eq!(
+            engine.disk_cache_capacity_bytes(),
+            disk_cache::MIN_DISK_CACHE_BYTES
+        );
+        let json = engine.reclaim_disk_cache_json(u64::MAX);
+        let v: serde_json::Value = serde_json::from_str(&json).expect("json");
+        assert_eq!(
+            v["capacity_bytes"].as_u64(),
+            Some(disk_cache::MIN_DISK_CACHE_BYTES)
+        );
     }
 
     #[test]

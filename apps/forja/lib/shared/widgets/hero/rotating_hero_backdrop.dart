@@ -57,9 +57,10 @@ class _RotatingHeroBackdropState extends State<RotatingHeroBackdrop> {
     if (!_listEquals(_urls, next)) {
       final current =
           _urls.isEmpty ? '' : _urls[_index.clamp(0, _urls.length - 1)];
+      final oldFirst = _urls.isEmpty ? '' : _urls.first;
+      final newFirst = next.isEmpty ? '' : next.first;
       _urls = next;
-      final incoming = next.isEmpty ? '' : next.first;
-      if (incoming.isNotEmpty && incoming != current) {
+      if (newFirst.isNotEmpty && newFirst != oldFirst) {
         _index = 0;
       } else {
         final keep = current.isNotEmpty ? _urls.indexOf(current) : -1;
@@ -110,8 +111,7 @@ class _RotatingHeroBackdropState extends State<RotatingHeroBackdrop> {
       return const ColoredBox(color: Color(0xFF141414));
     }
     final url = _urls[_index.clamp(0, _urls.length - 1)];
-    // Same KenBurns state across URL changes so [SettledNetworkImage]
-    // gaplessPlayback can keep the current frame until TMDB art decodes.
+    // Same KenBurns state so SettledNetworkImage can crossfade the still.
     return KenBurnsBackdrop(
       imageUrl: url,
       showColorTint: widget.showColorTint,
