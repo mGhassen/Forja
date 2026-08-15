@@ -148,6 +148,8 @@ class _DetailsHeroTitle extends StatelessWidget {
         alignment: Alignment.centerLeft,
         placeholder: (_, _) => _fallbackTitle(movie, logoHeight),
         errorWidget: (_, _, _) => _fallbackTitle(movie, logoHeight),
+        fadeInDuration: const Duration(milliseconds: 250),
+        fadeOutDuration: Duration.zero,
       );
     }
     return _fallbackTitle(movie, logoHeight);

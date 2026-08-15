@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
@@ -8,6 +7,7 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/episode_air_date.dart';
 import 'package:forja/shared/widgets/episode_range_bar.dart';
+import 'package:forja/shared/widgets/hero/settled_network_image.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
@@ -706,10 +706,10 @@ class _SeasonCardState extends State<_SeasonCard> {
                   fit: StackFit.expand,
                   children: [
                     if (widget.posterUrl != null)
-                      CachedNetworkImage(
+                      SettledNetworkImage(
                         imageUrl: widget.posterUrl!,
                         fit: BoxFit.cover,
-                        errorWidget: (_, _, _) => _fallback(),
+                        errorWidget: _fallback(),
                       )
                     else
                       _fallback(),
@@ -953,7 +953,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                       fit: StackFit.expand,
                       children: [
                         widget.thumbnail != null
-                            ? CachedNetworkImage(
+                            ? SettledNetworkImage(
                                 imageUrl: widget.thumbnail
                                         .toString()
                                         .startsWith('http')
@@ -962,7 +962,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                                         widget.thumbnail.toString(),
                                       ),
                                 fit: BoxFit.cover,
-                                errorWidget: (_, _, _) => _thumbFallback(),
+                                errorWidget: _thumbFallback(),
                               )
                             : _thumbFallback(),
                         if (showProgress)

@@ -364,8 +364,6 @@ class _HubHeroMainColumn extends StatelessWidget {
     height: 1.6,
     color: Color(0xB8FFFFFF),
   );
-  static const _titleBlockHeight = 120.0;
-  /// 2 lines at 32px + chromatic pad — not Home's 48px logo-slot fallback.
   static const _textTitleBlockHeight = 84.0;
   static const _titleMinHeight = 32.0;
   static const _subtitleBlockHeight = 26.0;
@@ -403,28 +401,13 @@ class _HubHeroMainColumn extends StatelessWidget {
 
   bool get _hasLogo => logoUrl != null && logoUrl!.isNotEmpty;
 
-  double get _defaultTitleHeight =>
-      _hasLogo ? _titleBlockHeight : _textTitleBlockHeight;
+  double get _defaultTitleHeight => _textTitleBlockHeight;
 
   Widget _titleWidget(double slotHeight) {
-    if (_hasLogo) {
-      return HeroTitle(
-        movie: movie,
-        logoUrl: logoUrl,
-        slotHeight: slotHeight,
-      );
-    }
-    final fontSize = slotHeight <= 56 ? 24.0 : slotHeight <= 64 ? 28.0 : 32.0;
-    return ChromaticHeroTitleText(
-      title: title,
-      maxLines: slotHeight <= 56 ? 1 : 2,
-      style: TextStyle(
-        fontSize: fontSize,
-        fontWeight: FontWeight.w900,
-        color: Colors.white,
-        height: kHeroTitleLineHeight,
-        letterSpacing: -0.8,
-      ),
+    return HeroTitle(
+      movie: movie,
+      logoUrl: logoUrl,
+      slotHeight: slotHeight,
     );
   }
 

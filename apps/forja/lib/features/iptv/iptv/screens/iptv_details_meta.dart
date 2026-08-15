@@ -85,7 +85,16 @@ List<MapEntry<String, String>> iptvTmdbFacts(
     if (!isTv && extras.revenue > 0)
       MapEntry('Revenue', _formatIptvMoney(extras.revenue)),
   ];
-  return rows.isEmpty ? fallback : rows;
+  return rows.isEmpty ? fallback : _mergeIptvFacts(fallback, rows);
+}
+
+List<MapEntry<String, String>> _mergeIptvFacts(
+  List<MapEntry<String, String>> fallback,
+  List<MapEntry<String, String>> tmdb,
+) {
+  if (fallback.isEmpty) return tmdb;
+  final seen = {for (final e in fallback) e.key};
+  return [...fallback, ...tmdb.where((e) => !seen.contains(e.key))];
 }
 
 String _formatIptvFactDate(String iso) {

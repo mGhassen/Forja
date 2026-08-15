@@ -68,8 +68,6 @@ class _IptvMovieDetailsScreenState
   Movie? get _movie => _enrich?.rich.movie;
 
   String get _displayTitle {
-    final tmdbTitle = _movie?.title.trim() ?? '';
-    if (tmdbTitle.isNotEmpty) return tmdbTitle;
     final cleaned = _cleaned.title;
     if (cleaned.isNotEmpty) return cleaned;
     return widget.movie.name;
@@ -304,7 +302,6 @@ class _IptvMovieDetailsScreenState
               rating: rating,
               overview: _movie?.overview.trim() ?? '',
               facts: _facts(),
-              richFacts: _enrich?.rich,
               height: heroHeight,
               actionRow: DetailsHeroTvActionScope(
                 tabId: MediaDetailsTv.tabId,

@@ -552,8 +552,11 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(
               children: [
-                const LanPresenceDot(
-                  kind: LanPresenceKind.waiting,
+                const LanPresenceMark(
+                  presence: LanPresence(
+                    server: LanServerMark.up,
+                    session: LanSessionMark.waiting,
+                  ),
                   size: 9,
                   bordered: true,
                 ),
@@ -574,17 +577,12 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
             final label = (d['label'] as String?)?.trim();
             final title = (label != null && label.isNotEmpty) ? label : 'Device';
             final when = _formatPairedAt(d['paired_at']);
-            final playing = LanPresence.devicePlaying(
+            final talk = LanPresence.deviceTalk(
               deviceId: id,
+              lastSeen: d['last_seen'],
               active: _activeTorrent,
               history: _torrentHistory,
             );
-            final online = LanPresence.deviceOnline(d['last_seen']);
-            final kind = playing
-                ? LanPresenceKind.playing
-                : online
-                    ? LanPresenceKind.ready
-                    : LanPresenceKind.idle;
             return ListTile(
               contentPadding: EdgeInsets.zero,
               isThreeLine: true,
@@ -598,11 +596,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                   Positioned(
                     right: -2,
                     bottom: -2,
-                    child: LanPresenceDot(
-                      kind: kind,
-                      size: 9,
-                      bordered: true,
-                    ),
+                    child: LanDeviceTalkDot(talk: talk),
                   ),
                 ],
               ),
@@ -611,9 +605,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    kind.shortLabel,
+                    talk.shortLabel,
                     style: TextStyle(
-                      color: kind.color,
+                      color: talk.color,
                       fontSize: 12,
                       height: 1.25,
                     ),
@@ -916,7 +910,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
   }
 
   List<Widget> _clientBody() {
-    final kind = LanPresence.resolveClient(
+    final presence = LanPresence.client(
       paired: _paired,
       desktopOnline: _serverOnline,
       lanTorrentActive: _desktopPlaying,
@@ -934,17 +928,16 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                       ? Icons.tv_rounded
                       : Icons.cloud_off_rounded)
                   : Icons.link_rounded,
-              color: kind == LanPresenceKind.ready ||
-                      kind == LanPresenceKind.playing
+              color: presence.server == LanServerMark.up
                   ? ForjaShellColors.brandGreen
                   : ForjaShellColors.textSecondary,
             ),
-            if (kind.showDot)
+            if (presence.visible)
               Positioned(
                 right: -2,
                 bottom: -2,
-                child: LanPresenceDot(
-                  kind: kind,
+                child: LanPresenceMark(
+                  presence: presence,
                   size: 9,
                   bordered: true,
                 ),
@@ -957,13 +950,17 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           children: [
             if (_paired)
               Text(
-                kind == LanPresenceKind.playing
-                    ? 'Desktop playing'
-                    : kind == LanPresenceKind.offline
-                        ? 'Desktop offline'
-                        : 'Desktop online',
+                [
+                  if (presence.server == LanServerMark.up)
+                    'Desktop online'
+                  else
+                    'Desktop offline',
+                  if (presence.session == LanSessionMark.playing) 'playing',
+                ].join(' · '),
                 style: TextStyle(
-                  color: kind.color,
+                  color: presence.server == LanServerMark.up
+                      ? ForjaShellColors.brandGreen
+                      : presence.serverColor,
                   fontSize: 12,
                   height: 1.25,
                 ),

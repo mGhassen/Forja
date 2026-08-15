@@ -16,9 +16,9 @@ Pairing means **this TV trusts that desktop**. Do it once on the same Wi‑Fi.
 2. Note the **desktop address** (`IP:port`) and the **6-digit pairing code**
 3. Keep Forja running
 
-Paired TVs and phones appear under **Paired devices** with a status dot and a short line under the name: **Waiting** (amber, pulsing) while the server is on but nobody has paired yet; **Online** (green) = recent traffic; **Idle** (grey) = still paired, not talking right now; **Playing** (green, pulsing) = that device is streaming a LAN torrent. Date and device id sit on their own lines below. Use the **reload** icon if a device just paired and the list still says waiting. **Revoke** forces that device to pair again.
+Paired TVs and phones appear under **Paired devices** with a per-device talk dot and a short line under the name: **Active** (green) = recent traffic; **Paired** (grey) = still trusted, not talking right now (the server is still up — another device can pair/play); **Playing** (green, pulsing) = that device is streaming a LAN torrent. Date and device id sit on their own lines below. Use the **reload** icon if a device just paired and the list still says waiting. **Revoke** forces that device to pair again.
 
-When the LAN server is listening, the desktop nav profile name shows a status dot: amber while waiting for a pair, green when a TV/phone is online, grey when paired devices are idle, pulsing green while a LAN torrent is playing.
+The profile name on the nav rail uses **two marks**: a **dot** for the LAN server (green = listening, red = unreachable, hidden = off) and a short **bar under it** for the session (amber pulse = waiting for a pair, green = paired, green pulse = playing). A quiet paired TV does not turn the server dot grey.
 
 The desktop reuses the same LAN **port** across toggles and app restarts. If the IP still changes (or the sticky port is unavailable), a paired TV rediscovers this PC on Wi‑Fi (same server id) and updates the saved address — you do not re-enter the pairing code.
 
@@ -33,7 +33,7 @@ The desktop reuses the same LAN **port** across toggles and app restarts. If the
 
 On Android TV, **OK** on a field opens the keyboard and the page scrolls so the field stays visible above it.
 
-Status shows **Paired** with a status dot and a small line under it: **Desktop online** (green), **Desktop playing** (green, pulsing) while a LAN torrent is open, or **Desktop offline** (red). The screen periodically re-checks the desktop (and rediscovers it if the port changed). Use the **reload** icon next to the status to re-check now (D-pad focusable on Android TV). Unpair anytime from the same screen. While paired, the TV nav profile name shows the same status dot (red if the desktop is down).
+Status shows **Paired** with a two-part mark: **dot** = desktop reachable (green) or down (red); **bar** = session (green = paired, pulsing = a LAN torrent is open). The screen periodically re-checks the desktop (and rediscovers it if the port changed). Use the **reload** icon next to the status to re-check now (D-pad focusable on Android TV). Unpair anytime from the same screen. The TV nav profile name uses the same two marks.
 
 ## Every night — watch
 

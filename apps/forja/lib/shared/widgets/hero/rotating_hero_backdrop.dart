@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/design/src/shell_input_policy.dart';
-import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
 
 /// Ken Burns hero that crossfades through [imageUrls] on a random beat.
@@ -57,12 +55,16 @@ class _RotatingHeroBackdropState extends State<RotatingHeroBackdrop> {
     super.didUpdateWidget(oldWidget);
     final next = RotatingHeroBackdrop.normalizeUrls(widget.imageUrls);
     if (!_listEquals(_urls, next)) {
-      final current = _urls.isEmpty ? '' : _urls[_index.clamp(0, _urls.length - 1)];
+      final current =
+          _urls.isEmpty ? '' : _urls[_index.clamp(0, _urls.length - 1)];
       _urls = next;
-      final keep = current.isNotEmpty ? _urls.indexOf(current) : -1;
-      _index = keep >= 0
-          ? keep
-          : (_urls.isEmpty ? 0 : _rng.nextInt(_urls.length));
+      final incoming = next.isEmpty ? '' : next.first;
+      if (incoming.isNotEmpty && incoming != current) {
+        _index = 0;
+      } else {
+        final keep = current.isNotEmpty ? _urls.indexOf(current) : -1;
+        _index = keep >= 0 ? keep : 0;
+      }
       _scheduleNext();
     }
   }
@@ -108,20 +110,11 @@ class _RotatingHeroBackdropState extends State<RotatingHeroBackdrop> {
       return const ColoredBox(color: Color(0xFF141414));
     }
     final url = _urls[_index.clamp(0, _urls.length - 1)];
-    final policy =
-        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final crossfade = policy.kenBurnsBackdrop
-        ? const Duration(milliseconds: 800)
-        : Duration.zero;
-    return AnimatedSwitcher(
-      duration: crossfade,
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeIn,
-      child: KenBurnsBackdrop(
-        key: ValueKey(url),
-        imageUrl: url,
-        showColorTint: widget.showColorTint,
-      ),
+    // Same KenBurns state across URL changes so [SettledNetworkImage]
+    // gaplessPlayback can keep the current frame until TMDB art decodes.
+    return KenBurnsBackdrop(
+      imageUrl: url,
+      showColorTint: widget.showColorTint,
     );
   }
 }

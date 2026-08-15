@@ -5,107 +5,112 @@ void main() {
   final now = DateTime.utc(2026, 8, 15, 12);
   final nowSecs = now.millisecondsSinceEpoch ~/ 1000;
 
-  group('LanPresence.resolveServer', () {
-    test('off when not running', () {
+  group('LanPresence.desktop', () {
+    test('hidden when not running', () {
       expect(
-        LanPresence.resolveServer(
+        LanPresence.desktop(
           running: false,
-          lastSeen: [nowSecs],
+          hasDevices: true,
           lanTorrentActive: true,
         ),
-        LanPresenceKind.off,
+        LanPresence.hidden,
       );
     });
 
-    test('waiting when listening with no devices', () {
+    test('server stays up while waiting for pair', () {
       expect(
-        LanPresence.resolveServer(
+        LanPresence.desktop(
           running: true,
-          lastSeen: const [],
+          hasDevices: false,
           lanTorrentActive: false,
         ),
-        LanPresenceKind.waiting,
+        const LanPresence(
+          server: LanServerMark.up,
+          session: LanSessionMark.waiting,
+        ),
       );
     });
 
-    test('playing beats online', () {
+    test('paired devices keep server up even with no recent traffic', () {
       expect(
-        LanPresence.resolveServer(
+        LanPresence.desktop(
           running: true,
-          lastSeen: [nowSecs],
+          hasDevices: true,
+          lanTorrentActive: false,
+        ),
+        const LanPresence(
+          server: LanServerMark.up,
+          session: LanSessionMark.paired,
+        ),
+      );
+    });
+
+    test('playing is session only — server stays up', () {
+      expect(
+        LanPresence.desktop(
+          running: true,
+          hasDevices: true,
           lanTorrentActive: true,
         ),
-        LanPresenceKind.playing,
-      );
-    });
-
-    test('ready when a device was seen recently', () {
-      expect(
-        LanPresence.resolveServer(
-          running: true,
-          lastSeen: [nowSecs - 30],
-          lanTorrentActive: false,
-          now: now,
+        const LanPresence(
+          server: LanServerMark.up,
+          session: LanSessionMark.playing,
         ),
-        LanPresenceKind.ready,
-      );
-    });
-
-    test('idle when every device is stale', () {
-      expect(
-        LanPresence.resolveServer(
-          running: true,
-          lastSeen: [nowSecs - 121],
-          lanTorrentActive: false,
-          now: now,
-        ),
-        LanPresenceKind.idle,
       );
     });
   });
 
-  group('LanPresence.resolveClient', () {
-    test('off when unpaired', () {
+  group('LanPresence.client', () {
+    test('hidden when unpaired', () {
       expect(
-        LanPresence.resolveClient(
+        LanPresence.client(
           paired: false,
           desktopOnline: true,
           lanTorrentActive: true,
         ),
-        LanPresenceKind.off,
+        LanPresence.hidden,
       );
     });
 
-    test('offline when desktop is down', () {
+    test('paired but desktop down keeps session paired', () {
       expect(
-        LanPresence.resolveClient(
+        LanPresence.client(
           paired: true,
           desktopOnline: false,
           lanTorrentActive: true,
         ),
-        LanPresenceKind.offline,
+        const LanPresence(
+          server: LanServerMark.down,
+          session: LanSessionMark.paired,
+        ),
       );
     });
 
-    test('playing when desktop is serving', () {
+    test('desktop up + serving is playing session', () {
       expect(
-        LanPresence.resolveClient(
+        LanPresence.client(
           paired: true,
           desktopOnline: true,
           lanTorrentActive: true,
         ),
-        LanPresenceKind.playing,
+        const LanPresence(
+          server: LanServerMark.up,
+          session: LanSessionMark.playing,
+        ),
       );
     });
 
-    test('ready when paired and desktop is up', () {
+    test('desktop up idle traffic is still paired not down', () {
       expect(
-        LanPresence.resolveClient(
+        LanPresence.client(
           paired: true,
           desktopOnline: true,
           lanTorrentActive: false,
         ),
-        LanPresenceKind.ready,
+        const LanPresence(
+          server: LanServerMark.up,
+          session: LanSessionMark.paired,
+        ),
       );
     });
   });
@@ -141,25 +146,39 @@ void main() {
       expect(LanPresence.lanTorrentActive(null, const []), isFalse);
     });
 
-    test('devicePlaying requires owner device_id', () {
+    test('deviceTalk is per-device, not server status', () {
       const history = [
         {'info_hash': 'abc', 'device_id': 'tv-1'},
       ];
       expect(
-        LanPresence.devicePlaying(
+        LanPresence.deviceTalk(
           deviceId: 'tv-1',
+          lastSeen: nowSecs,
           active: {'info_hash': 'abc'},
           history: history,
+          now: now,
         ),
-        isTrue,
+        LanDeviceTalk.playing,
       );
       expect(
-        LanPresence.devicePlaying(
+        LanPresence.deviceTalk(
           deviceId: 'phone',
+          lastSeen: nowSecs,
           active: {'info_hash': 'abc'},
           history: history,
+          now: now,
         ),
-        isFalse,
+        LanDeviceTalk.active,
+      );
+      expect(
+        LanPresence.deviceTalk(
+          deviceId: 'phone',
+          lastSeen: nowSecs - 121,
+          active: {'info_hash': 'abc'},
+          history: history,
+          now: now,
+        ),
+        LanDeviceTalk.quiet,
       );
     });
   });

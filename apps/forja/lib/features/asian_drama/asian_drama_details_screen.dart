@@ -404,6 +404,7 @@ class _AsianDramaDetailsScreenState
           _episodeMapEntry(
             index: i,
             ep: det.episodes[i],
+            cover: det.cover,
             stills: stills,
             meta: meta,
           ),
@@ -414,6 +415,7 @@ class _AsianDramaDetailsScreenState
   Map<String, dynamic> _episodeMapEntry({
     required int index,
     required KdramaEpisode ep,
+    required String cover,
     required Map<int, String> stills,
     required Map<int, Map<String, dynamic>> meta,
   }) {
@@ -435,7 +437,7 @@ class _AsianDramaDetailsScreenState
           : 'Episode ${ep.displayNumber}',
       'overview': overview,
       'runtime': runtime,
-      if (still.isNotEmpty) 'still_path': still,
+      'still_path': still.isNotEmpty ? still : cover,
       if (aired.isNotEmpty) 'aired': aired,
     };
   }
@@ -516,7 +518,10 @@ class _AsianDramaDetailsScreenState
     final backdrop = _tmdbBackdropUrl(tmdb) ?? det.cover;
     final heroBackdrops = _heroBackdropUrls(
       primary: backdrop,
-      screenshotPaths: enrich?.imagePaths ?? const [],
+      screenshotPaths: [
+        if (det.cover.isNotEmpty) det.cover,
+        ...enrich?.imagePaths ?? const [],
+      ],
     );
 
     final resumeEp = (_progress?['episodeNumber'] as num?)?.toInt();

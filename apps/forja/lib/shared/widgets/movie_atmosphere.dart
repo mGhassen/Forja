@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
+import 'package:forja/shared/widgets/hero/settled_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:palette_generator/palette_generator.dart';
@@ -236,12 +237,11 @@ class _KenBurnsBackdropState extends State<KenBurnsBackdrop>
   }
 
   Widget _image() {
-    return CachedNetworkImage(
+    return SettledNetworkImage(
       imageUrl: widget.imageUrl,
       fit: widget.fit,
       alignment: widget.imageAlignment,
       filterQuality: widget.filterQuality,
-      errorWidget: (c, u, e) => Container(color: const Color(0xFF141414)),
     );
   }
 

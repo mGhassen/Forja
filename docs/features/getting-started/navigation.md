@@ -22,7 +22,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 ## Desktop shell layout
 
 - **Home menu (desktop):** Search, then Films / TV Shows / Categories overlaid on the hero; Categories opens a mood picker
-- **Left rail:** Forja logo (top), your configured tabs (center), then a larger active profile avatar / Guest with its name always visible (bottom). A colored dot next to the profile name is LAN status: amber = server waiting for a pair, green = paired/online, grey = idle, pulsing green = playing, red = desktop offline. Every destination is gray while idle and reveals its own accent color on hover or selection; the active underline keeps that same accent while hovered. The avatar uses its profile colors and opens Settings without a circular hover background.
+- **Left rail:** Forja logo (top), your configured tabs (center), then a larger active profile avatar / Guest with its name always visible (bottom). Next to the profile name, a LAN **dot** is the server (green = up, red = unreachable) and a short **bar under it** is the session (amber = waiting to pair, green = paired, pulse = playing). Every destination is gray while idle and reveals its own accent color on hover or selection; the active underline keeps that same accent while hovered. The avatar uses its profile colors and opens Settings without a circular hover background.
 - **Body:** flat `bgDark`; Home hero is full-bleed with **View details** plus a My List **+** pill
 
 ## Android TV

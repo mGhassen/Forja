@@ -7,57 +7,100 @@ import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/lan/lan_server_service.dart';
 
-/// Same window as Settings Online/Idle and `crates/lan` idle-watch.
+/// Same window as Settings device Active/Quiet and `crates/lan` idle-watch.
 const int kLanDeviceIdleSecs = 120;
 
-/// Rail + Settings LAN status. [off] hides the dot.
-enum LanPresenceKind {
-  off,
-  waiting,
-  offline,
-  idle,
-  ready,
-  playing,
-}
+const Color _lanAmber = Color(0xFFFBBF24);
+const Color _lanDown = Color(0xFFF87171);
 
-extension LanPresenceKindX on LanPresenceKind {
-  bool get showDot => this != LanPresenceKind.off;
+/// Reachability of the LAN HTTP server. Never encodes pairing or playback.
+enum LanServerMark { off, up, down }
 
-  bool get pulse =>
-      this == LanPresenceKind.waiting || this == LanPresenceKind.playing;
+/// Pairing / playback session. Never encodes whether the server is listening.
+enum LanSessionMark { none, waiting, paired, playing }
 
-  Color get color => switch (this) {
-        LanPresenceKind.off => Colors.transparent,
-        LanPresenceKind.waiting => const Color(0xFFFBBF24),
-        LanPresenceKind.offline => const Color(0xFFF87171),
-        LanPresenceKind.idle =>
-          ForjaShellColors.textSecondary.withValues(alpha: 0.55),
-        LanPresenceKind.ready || LanPresenceKind.playing =>
+/// Per-device talk on the desktop paired-devices list (not the rail).
+enum LanDeviceTalk { quiet, active, playing }
+
+/// Split LAN chrome: [server] is the dot, [session] is the bar under it.
+class LanPresence {
+  const LanPresence({
+    this.server = LanServerMark.off,
+    this.session = LanSessionMark.none,
+  });
+
+  static const hidden = LanPresence();
+
+  final LanServerMark server;
+  final LanSessionMark session;
+
+  bool get visible =>
+      server != LanServerMark.off || session != LanSessionMark.none;
+
+  bool get paired =>
+      session == LanSessionMark.paired || session == LanSessionMark.playing;
+
+  Color get serverColor => switch (server) {
+        LanServerMark.off => Colors.transparent,
+        LanServerMark.up => ForjaShellColors.brandGreen,
+        LanServerMark.down => _lanDown,
+      };
+
+  Color get sessionColor => switch (session) {
+        LanSessionMark.none => Colors.transparent,
+        LanSessionMark.waiting => _lanAmber,
+        LanSessionMark.paired || LanSessionMark.playing =>
           ForjaShellColors.brandGreen,
       };
 
-  String get tooltip => switch (this) {
-        LanPresenceKind.off => '',
-        LanPresenceKind.waiting => 'LAN waiting for pair',
-        LanPresenceKind.offline => 'Desktop offline',
-        LanPresenceKind.idle => 'LAN idle',
-        LanPresenceKind.ready => 'LAN paired',
-        LanPresenceKind.playing => 'LAN playing',
-      };
+  bool get sessionPulse =>
+      session == LanSessionMark.waiting || session == LanSessionMark.playing;
 
-  String get shortLabel => switch (this) {
-        LanPresenceKind.off => '',
-        LanPresenceKind.waiting => 'Waiting',
-        LanPresenceKind.offline => 'Offline',
-        LanPresenceKind.idle => 'Idle',
-        LanPresenceKind.ready => 'Online',
-        LanPresenceKind.playing => 'Playing',
-      };
-}
+  String get tooltip {
+    final s = switch (server) {
+      LanServerMark.off => '',
+      LanServerMark.up => 'Server up',
+      LanServerMark.down => 'Server unreachable',
+    };
+    final c = switch (session) {
+      LanSessionMark.none => '',
+      LanSessionMark.waiting => 'waiting for pair',
+      LanSessionMark.paired => 'paired',
+      LanSessionMark.playing => 'playing',
+    };
+    if (s.isEmpty) return c.isEmpty ? '' : c;
+    if (c.isEmpty) return s;
+    return '$s · $c';
+  }
 
-/// Pure resolver — unit-tested. Host wires live engine/prefs in
-/// [LanPairingPresence].
-abstract final class LanPresence {
+  factory LanPresence.desktop({
+    required bool running,
+    required bool hasDevices,
+    required bool lanTorrentActive,
+  }) {
+    if (!running) return hidden;
+    final session = lanTorrentActive
+        ? LanSessionMark.playing
+        : hasDevices
+            ? LanSessionMark.paired
+            : LanSessionMark.waiting;
+    return LanPresence(server: LanServerMark.up, session: session);
+  }
+
+  factory LanPresence.client({
+    required bool paired,
+    required bool desktopOnline,
+    required bool lanTorrentActive,
+  }) {
+    if (!paired) return hidden;
+    return LanPresence(
+      server: desktopOnline ? LanServerMark.up : LanServerMark.down,
+      session: desktopOnline && lanTorrentActive
+          ? LanSessionMark.playing
+          : LanSessionMark.paired,
+    );
+  }
+
   static bool deviceOnline(Object? lastSeenRaw, {DateTime? now}) {
     final secs = (lastSeenRaw as num?)?.toInt() ?? 0;
     if (secs <= 0) return false;
@@ -91,46 +134,60 @@ abstract final class LanPresence {
     });
   }
 
-  static LanPresenceKind resolveServer({
-    required bool running,
-    required List<Object?> lastSeen,
-    required bool lanTorrentActive,
+  static LanDeviceTalk deviceTalk({
+    required String deviceId,
+    required Object? lastSeen,
+    required Map<String, dynamic>? active,
+    required List<Map<String, dynamic>> history,
     DateTime? now,
   }) {
-    if (!running) return LanPresenceKind.off;
-    if (lastSeen.isEmpty) return LanPresenceKind.waiting;
-    if (lanTorrentActive) return LanPresenceKind.playing;
-    if (lastSeen.any((s) => deviceOnline(s, now: now))) {
-      return LanPresenceKind.ready;
+    if (devicePlaying(
+      deviceId: deviceId,
+      active: active,
+      history: history,
+    )) {
+      return LanDeviceTalk.playing;
     }
-    return LanPresenceKind.idle;
+    return deviceOnline(lastSeen, now: now)
+        ? LanDeviceTalk.active
+        : LanDeviceTalk.quiet;
   }
 
-  static LanPresenceKind resolveClient({
-    required bool paired,
-    required bool desktopOnline,
-    required bool lanTorrentActive,
-  }) {
-    if (!paired) return LanPresenceKind.off;
-    if (!desktopOnline) return LanPresenceKind.offline;
-    if (lanTorrentActive) return LanPresenceKind.playing;
-    return LanPresenceKind.ready;
-  }
+  @override
+  bool operator ==(Object other) =>
+      other is LanPresence &&
+      other.server == server &&
+      other.session == session;
+
+  @override
+  int get hashCode => Object.hash(server, session);
 }
 
-/// Live LAN presence for the nav-rail profile dot.
+extension LanDeviceTalkX on LanDeviceTalk {
+  Color get color => switch (this) {
+        LanDeviceTalk.quiet =>
+          ForjaShellColors.textSecondary.withValues(alpha: 0.55),
+        LanDeviceTalk.active || LanDeviceTalk.playing =>
+          ForjaShellColors.brandGreen,
+      };
+
+  bool get pulse => this == LanDeviceTalk.playing;
+
+  String get shortLabel => switch (this) {
+        LanDeviceTalk.quiet => 'Paired',
+        LanDeviceTalk.active => 'Active',
+        LanDeviceTalk.playing => 'Playing',
+      };
+}
+
+/// Live LAN presence for the nav-rail profile mark.
 class LanPairingPresence {
   LanPairingPresence._();
   static final LanPairingPresence instance = LanPairingPresence._();
 
-  final ValueNotifier<LanPresenceKind> status =
-      ValueNotifier(LanPresenceKind.off);
+  final ValueNotifier<LanPresence> status = ValueNotifier(LanPresence.hidden);
 
-  /// Desktop: ≥1 paired device. Client: saved token + address.
-  bool get paired {
-    final k = status.value;
-    return k != LanPresenceKind.off && k != LanPresenceKind.waiting;
-  }
+  bool get paired => status.value.paired;
 
   Future<void>? _inFlight;
 
@@ -145,72 +202,79 @@ class LanPairingPresence {
     if (status.value != next) status.value = next;
   }
 
-  Future<LanPresenceKind> _compute() async {
+  Future<LanPresence> _compute() async {
     if (LanServerService.canRunServer) {
       final running = LanServerService.instance.isRunning;
-      final devices = running
-          ? LanServerService.instance.listDevices()
-          : const <Map<String, dynamic>>[];
-      final history = running
-          ? LanServerService.instance.listTorrentHistory()
-          : const <Map<String, dynamic>>[];
-      final active =
-          running ? LanServerService.instance.activeTorrentStatus() : null;
-      return LanPresence.resolveServer(
-        running: running,
-        lastSeen: devices.map((d) => d['last_seen']).toList(),
+      if (!running) return LanPresence.hidden;
+      final devices = LanServerService.instance.listDevices();
+      final history = LanServerService.instance.listTorrentHistory();
+      final active = LanServerService.instance.activeTorrentStatus();
+      return LanPresence.desktop(
+        running: true,
+        hasDevices: devices.isNotEmpty,
         lanTorrentActive: LanPresence.lanTorrentActive(active, history),
       );
     }
 
     final paired = await LanPrefs.instance.isPaired;
-    if (!paired) return LanPresenceKind.off;
+    if (!paired) return LanPresence.hidden;
     final online = await LanClientService.instance.verifyPairedConnection();
-    if (!online) return LanPresenceKind.offline;
-    final host = await LanPrefs.instance.serverHost;
-    final port = await LanPrefs.instance.serverPort;
     var serving = false;
-    if (host != null && port != null) {
-      final payload = await LanClientService.instance.pingStatusJson(host, port);
-      serving = payload != null &&
-          (payload['info_hash']?.toString().isNotEmpty ?? false);
+    if (online) {
+      final host = await LanPrefs.instance.serverHost;
+      final port = await LanPrefs.instance.serverPort;
+      if (host != null && port != null) {
+        final payload =
+            await LanClientService.instance.pingStatusJson(host, port);
+        serving = payload != null &&
+            (payload['info_hash']?.toString().isNotEmpty ?? false);
+      }
     }
-    return LanPresence.resolveClient(
+    return LanPresence.client(
       paired: true,
-      desktopOnline: true,
+      desktopOnline: online,
       lanTorrentActive: serving,
     );
   }
 }
 
-class LanPresenceDot extends StatelessWidget {
-  const LanPresenceDot({
+/// Dot = server. Underscore = session.
+class LanPresenceMark extends StatelessWidget {
+  const LanPresenceMark({
     super.key,
-    required this.kind,
+    required this.presence,
     this.size = 5,
     this.bordered = false,
   });
 
-  final LanPresenceKind kind;
+  final LanPresence presence;
   final double size;
   final bool bordered;
 
   @override
   Widget build(BuildContext context) {
-    if (!kind.showDot) return const SizedBox.shrink();
-    final dot = kind.pulse
-        ? _PulsingPresenceDot(
-            color: kind.color,
-            size: size,
-            bordered: bordered,
-          )
-        : _staticDot(kind.color, size, bordered);
-    final tip = kind.tooltip;
-    if (tip.isEmpty) return dot;
-    return Tooltip(message: tip, child: dot);
+    if (!presence.visible) return const SizedBox.shrink();
+    final mark = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (presence.server != LanServerMark.off)
+          _circle(presence.serverColor, size, bordered),
+        if (presence.session != LanSessionMark.none) ...[
+          SizedBox(height: size * 0.28),
+          _bar(
+            color: presence.sessionColor,
+            width: size,
+            pulse: presence.sessionPulse,
+          ),
+        ],
+      ],
+    );
+    final tip = presence.tooltip;
+    if (tip.isEmpty) return mark;
+    return Tooltip(message: tip, child: mark);
   }
 
-  static Widget _staticDot(Color color, double size, bool bordered) {
+  static Widget _circle(Color color, double size, bool bordered) {
     return Container(
       width: size,
       height: size,
@@ -223,24 +287,62 @@ class LanPresenceDot extends StatelessWidget {
       ),
     );
   }
+
+  static Widget _bar({
+    required Color color,
+    required double width,
+    required bool pulse,
+  }) {
+    final bar = Container(
+      width: width,
+      height: (width * 0.32).clamp(1.5, 2.5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(1),
+      ),
+    );
+    if (!pulse) return bar;
+    return _Pulsing(child: bar);
+  }
 }
 
-class _PulsingPresenceDot extends StatefulWidget {
-  const _PulsingPresenceDot({
-    required this.color,
-    required this.size,
-    required this.bordered,
+/// Single device talk dot (Settings paired-devices list).
+class LanDeviceTalkDot extends StatelessWidget {
+  const LanDeviceTalkDot({
+    super.key,
+    required this.talk,
+    this.size = 9,
   });
 
-  final Color color;
+  final LanDeviceTalk talk;
   final double size;
-  final bool bordered;
 
   @override
-  State<_PulsingPresenceDot> createState() => _PulsingPresenceDotState();
+  Widget build(BuildContext context) {
+    final dot = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: talk.color,
+        border: Border.all(color: ForjaShellColors.surfaceElevated, width: 1.5),
+      ),
+    );
+    if (!talk.pulse) return dot;
+    return _Pulsing(child: dot);
+  }
 }
 
-class _PulsingPresenceDotState extends State<_PulsingPresenceDot>
+class _Pulsing extends StatefulWidget {
+  const _Pulsing({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_Pulsing> createState() => _PulsingState();
+}
+
+class _PulsingState extends State<_Pulsing>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
 
@@ -263,11 +365,7 @@ class _PulsingPresenceDotState extends State<_PulsingPresenceDot>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: Tween<double>(begin: 0.35, end: 1).animate(_ctrl),
-      child: LanPresenceDot._staticDot(
-        widget.color,
-        widget.size,
-        widget.bordered,
-      ),
+      child: widget.child,
     );
   }
 }

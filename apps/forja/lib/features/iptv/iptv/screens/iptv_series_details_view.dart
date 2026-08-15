@@ -94,8 +94,6 @@ class _IptvSeriesDetailsScreenState
   int get _pickerSeasonCount => _seasons.isEmpty ? 0 : _seasons.length;
 
   String get _displayTitle {
-    final tmdbTitle = _movie?.title.trim() ?? '';
-    if (tmdbTitle.isNotEmpty) return tmdbTitle;
     final cleaned = _cleaned.title;
     if (cleaned.isNotEmpty) return cleaned;
     return widget.series.name;
@@ -252,13 +250,11 @@ class _IptvSeriesDetailsScreenState
   }
 
   String _overview() {
-    final tmdb = _movie?.overview.trim() ?? '';
-    if (tmdb.isNotEmpty) return tmdb;
     for (final e in _episodes) {
       final plot = e.plot.trim();
       if (plot.isNotEmpty) return plot;
     }
-    return '';
+    return _movie?.overview.trim() ?? '';
   }
 
   List<String> _metaParts() {
@@ -552,7 +548,6 @@ class _IptvSeriesDetailsScreenState
               rating: rating,
               overview: _overview(),
               facts: _facts(),
-              richFacts: _enrich?.rich,
               height: heroHeight,
               showSeasonRail: multiSeason,
               pageBottomChild: episodePicker,

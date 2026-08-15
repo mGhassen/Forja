@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components (desktop→TV) · **11 / 12** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
-| **Current slice** | ATV unpaired HTTP + P2P pair dialog (R22-A23); LAN presence dots (R22-A24); first-frame smoke still open |
+| **Progress** | **8 / 8** components (desktop→TV) · **12 / 13** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
+| **Current slice** | Dual LAN marks (R22-A25); ATV unpaired HTTP + P2P pair dialog (R22-A23); first-frame smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -82,6 +82,7 @@ Historical C01–C07 above were never on `main` (stale ✅ from `feat/forja-serv
 | 22 | R22-A22 | Desktop idle-watch: owner TV idle 120s → pause swarm; still idle +120s → stop + delete cache/history (resume if TV returns during grace) | ✅ |
 | 23 | R22-A23 | Unpaired ATV: Direct torrent / Stremio / Nuvio Sources on; HTTP plays on TV; P2P play shows pair dialog; paired P2P stays on desktop | ✅ |
 | 24 | R22-A24 | Nav rail + Settings LAN dots: waiting (server up, unpaired), idle, paired/online, playing, client desktop-offline | ✅ |
+| 25 | R22-A25 | Rail/Settings LAN mark is two channels: dot = server up/down, bar = session waiting/paired/playing (no grey idle for a live server) | ✅ |
 
 ---
 
