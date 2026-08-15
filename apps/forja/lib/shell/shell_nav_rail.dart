@@ -677,7 +677,7 @@ class _NavRailLabel extends StatelessWidget {
     required this.text,
     required this.style,
     this.presence = LanPresence.hidden,
-    this.markSize = 5,
+    this.markSize = 8,
     this.showBar = true,
   });
 

@@ -270,12 +270,12 @@ class LanPairingPresence {
   }
 }
 
-/// Dot = server. Bar beside it = session (desktop server only).
+/// Dot = server. Vertical bar = session (desktop server only).
 class LanPresenceMark extends StatelessWidget {
   const LanPresenceMark({
     super.key,
     required this.presence,
-    this.size = 5,
+    this.size = 8,
     this.bordered = false,
     this.showBar = true,
   });
@@ -283,12 +283,13 @@ class LanPresenceMark extends StatelessWidget {
   final LanPresence presence;
   final double size;
   final bool bordered;
-  /// Session bar beside the dot. Desktop server only — clients are a single reachability dot.
+  /// Session `|` beside the dot. Desktop server only — clients are a single reachability dot.
   final bool showBar;
 
-  static double sizeFor({required bool tv}) => tv ? 8 : 5;
+  static double sizeFor({required bool tv}) => 8;
 
-  static double barWidth(double size) => size * 1.7;
+  /// Vertical `|` — a pipe, not a second circle.
+  static double barThickness(double size) => 3;
 
   static double railSlotHeight({required bool tv}) => sizeFor(tv: tv);
 
@@ -302,10 +303,10 @@ class LanPresenceMark extends StatelessWidget {
         if (presence.server != LanServerMark.off)
           _circle(presence.serverColor, size, bordered),
         if (drawBar) ...[
-          SizedBox(width: size * 0.35),
+          SizedBox(width: size * 0.4),
           _bar(
             color: presence.sessionColor,
-            width: barWidth(size),
+            width: barThickness(size),
             height: size,
             pulse: presence.sessionPulse,
           ),
@@ -346,7 +347,7 @@ class LanPresenceMark extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(height / 2),
+        borderRadius: BorderRadius.circular(1),
       ),
     );
     if (!pulse) return bar;

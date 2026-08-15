@@ -18,7 +18,7 @@ Pairing means **this TV trusts that desktop**. Do it once on the same Wi‑Fi.
 
 Paired TVs and phones appear under **Paired devices** with a per-device talk dot and a short line under the name: **Active** (green) = recent traffic; **Idle** (grey) = still trusted, not talking right now (the server is still up — another device can pair/play); **Playing** (green, pulsing) = that device is streaming a LAN torrent. Date and device id sit on their own lines below. Use the **reload** icon if a device just paired and the list still says waiting. **Revoke** forces that device to pair again.
 
-The profile name on the nav rail uses a LAN mark: **desktop** (the server) shows a **dot** then a **bar** beside it (dot = listening, bar = session: amber pulse = waiting for a pair, green = paired, grey = idle, green pulse = playing). Idle greys only the bar — the server dot stays green so you can still connect. **Android TV / phone** (clients) show only the **dot**: green = desktop reachable, red = unreachable.
+The profile name on the nav rail uses a LAN mark: **desktop** (the server) shows **● |** — a **dot** (listening) then a bold **vertical bar** (session: amber pulse = waiting for a pair, green = paired, grey = idle, green pulse = playing). Idle greys only the bar — the server dot stays green so you can still connect. **Android TV / phone** (clients) show only the **dot**: green = desktop reachable, red = unreachable.
 
 The desktop reuses the same LAN **port** across toggles and app restarts. If the IP still changes (or the sticky port is unavailable), a paired TV rediscovers this PC on Wi‑Fi (same server id) and updates the saved address — you do not re-enter the pairing code.
 
