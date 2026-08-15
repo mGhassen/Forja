@@ -1,6 +1,7 @@
 /// Builtin torrent search provider ids (must match `crates/scrapers` PROVIDER_IDS).
 class TorrentSearchProviders {
   static const allId = 'all_torrents';
+  static const noneId = 'none_torrents';
 
   static const knaben = 'knaben';
   static const pirateBay = 'pirate_bay';
@@ -58,6 +59,14 @@ class TorrentSearchProviders {
   static bool isBuiltinSearchChip(String id) =>
       id == allId || id == 'forja' || isBuiltin(id);
 
+  static bool isAllChip(String id) => id == allId || id == 'forja';
+
+  static bool isNoneChip(String id) => id == noneId;
+
+  /// Tap All: if All is already on, clear every builtin chip; otherwise select All.
+  static String nextIdAfterAllTap(String selectedSourceId) =>
+      isAllChip(selectedSourceId) ? noneId : allId;
+
   /// `null` → search every Settings-enabled provider; else only [id].
   static List<String>? searchEnabledForChip(String id) {
     if (id == allId || id == 'forja') return null;
@@ -87,6 +96,7 @@ class TorrentSearchProviders {
 
   /// Whether [resultSource] belongs to the selected Torrents chip.
   static bool matchesResultSource(String selectedChipId, String resultSource) {
+    if (selectedChipId == noneId) return false;
     if (selectedChipId == allId ||
         selectedChipId == 'forja' ||
         selectedChipId == 'jackett' ||

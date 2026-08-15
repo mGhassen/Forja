@@ -98,10 +98,9 @@ bool torrentProviderChipSelected({
   required String optionId,
   required String selectedSourceId,
 }) {
+  if (TorrentSearchProviders.isNoneChip(selectedSourceId)) return false;
   if (selectedSourceId == optionId) return true;
-  final allSelected =
-      selectedSourceId == TorrentSearchProviders.allId ||
-      selectedSourceId == 'forja';
+  final allSelected = TorrentSearchProviders.isAllChip(selectedSourceId);
   return allSelected && TorrentSearchProviders.isBuiltin(optionId);
 }
 

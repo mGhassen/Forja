@@ -42,4 +42,40 @@ void main() {
     ]);
     expect(into, isEmpty);
   });
+
+  test('All tap clears every chip when All is already selected', () {
+    expect(
+      TorrentSearchProviders.nextIdAfterAllTap(TorrentSearchProviders.allId),
+      TorrentSearchProviders.noneId,
+    );
+    expect(
+      TorrentSearchProviders.nextIdAfterAllTap('forja'),
+      TorrentSearchProviders.noneId,
+    );
+    expect(
+      TorrentSearchProviders.nextIdAfterAllTap(TorrentSearchProviders.noneId),
+      TorrentSearchProviders.allId,
+    );
+    expect(
+      TorrentSearchProviders.nextIdAfterAllTap(TorrentSearchProviders.yts),
+      TorrentSearchProviders.allId,
+    );
+  });
+
+  test('none chip matches no result sources', () {
+    expect(
+      TorrentSearchProviders.matchesResultSource(
+        TorrentSearchProviders.noneId,
+        'YTS',
+      ),
+      isFalse,
+    );
+    expect(
+      TorrentSearchProviders.matchesResultSource(
+        TorrentSearchProviders.allId,
+        'YTS',
+      ),
+      isTrue,
+    );
+  });
 }

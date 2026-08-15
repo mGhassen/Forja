@@ -1619,6 +1619,19 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
       return;
     }
+    if (id == TorrentSearchProviders.allId) {
+      final prev = _selectedSourceId;
+      final next = TorrentSearchProviders.nextIdAfterAllTap(prev);
+      if (next == prev) return;
+      setState(() => _selectedSourceId = next);
+      if (TorrentSearchProviders.isAllChip(next)) {
+        final fromIndexer = prev == 'jackett' || prev == 'prowlarr';
+        if (fromIndexer || _results.isEmpty) {
+          unawaited(_runTorrentSearch());
+        }
+      }
+      return;
+    }
     if (id == _selectedSourceId) return;
     final prev = _selectedSourceId;
     setState(() {
@@ -1815,7 +1828,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       );
     }
     if (totalCount == 0) {
-      final emptyMsg = _showsNuvio && _nuvioSelectedScraperIds.isEmpty
+      final emptyMsg =
+          (_showsNuvio && _nuvioSelectedScraperIds.isEmpty) ||
+              (_showsTorrents &&
+                  TorrentSearchProviders.isNoneChip(_selectedSourceId))
           ? 'Select at least one provider'
           : 'No matching sources';
       return Center(

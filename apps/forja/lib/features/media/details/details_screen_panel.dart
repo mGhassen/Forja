@@ -174,6 +174,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
 
   bool get _isTorrentSource =>
       TorrentSearchProviders.isBuiltinSearchChip(_s._selectedSourceId) ||
+      TorrentSearchProviders.isNoneChip(_s._selectedSourceId) ||
       _s._selectedSourceId == 'jackett' ||
       _s._selectedSourceId == 'prowlarr';
 
@@ -297,6 +298,19 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       );
       if (!wasSelected || cancelInFlight) {
         unawaited(_s._fetchNextNuvioScraper());
+      }
+      return;
+    }
+    if (id == TorrentSearchProviders.allId) {
+      final prev = _s._selectedSourceId;
+      final next = TorrentSearchProviders.nextIdAfterAllTap(prev);
+      if (next == prev) return;
+      setState(() => _s._selectedSourceId = next);
+      if (TorrentSearchProviders.isAllChip(next)) {
+        final fromIndexer = prev == 'jackett' || prev == 'prowlarr';
+        if (fromIndexer || _s._allTorrentResults.isEmpty) {
+          _s._autoSearch();
+        }
       }
       return;
     }
@@ -545,6 +559,9 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._activeAudioFilters.isNotEmpty &&
           _s._allTorrentResults.isNotEmpty) {
         msg = 'No results match the audio filter';
+      } else if (_panelShowsTorrents &&
+          TorrentSearchProviders.isNoneChip(_s._selectedSourceId)) {
+        msg = 'Select at least one provider';
       } else if (_panelShowsNuvio && _s._nuvioSelectedScraperIds.isEmpty) {
         msg = 'Select at least one provider';
       } else if (_panelShowsNuvio &&

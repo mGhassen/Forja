@@ -12,7 +12,7 @@ Automatic on [Media details](../movies-tv/media-details.md) when you view torren
 
 ## What you can do
 
-- Open **Sources → Torrents** and pick **All** (every enabled provider chip lights up, same as Nuvio All) or a single provider chip
+- Open **Sources → Torrents** and pick **All** (every enabled provider chip lights up, same as Nuvio All) or a single provider chip. Tap **All** again to deselect every provider.
 - See combined results from enabled providers
 - Toggle which providers appear/run in [Torrent settings](../settings/torrent-settings.md)
 - Sort by seeders, size, or other options

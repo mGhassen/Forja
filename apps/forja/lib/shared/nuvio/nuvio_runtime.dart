@@ -27,8 +27,8 @@
 //       - `Array.prototype.flat / flatMap`,
 //         `Object.entries / fromEntries`,
 //         `String.prototype.replaceAll`
-//       - Full `CryptoJS` façade (MD5/SHA1/SHA256/SHA512 + HMAC variants,
-//         enc.Hex / enc.Utf8 / enc.Base64), backed by Dart `package:crypto`
+//       - `CryptoJS` façade (MD5/SHA1/SHA256/SHA512 + HMAC, AES-CBC/GCM/ECB,
+//         enc.Hex / enc.Utf8 / enc.Base64), Dart `package:crypto` + pointycastle
 //       - Real cheerio (browserified UMD bundle in
 //         `assets/nuvio/cheerio.bundle.js`) exposed under `cheerio`,
 //         `cheerio-without-node-native`, and `react-native-cheerio`
@@ -50,6 +50,7 @@ import 'package:crypto/crypto.dart' as dart_crypto;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_js/flutter_js.dart';
+import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:http/http.dart' as http;
 
 class NuvioRuntime {
@@ -71,7 +72,7 @@ class NuvioRuntime {
   // dropped instead of feeding cancelled scrapers.
   int _fetchGeneration = 0;
   final Map<int, int> _fetchGens = {};
-  /// When false, [NuvioFetchStart] refuses new HTTP - stops orphaned JS
+  /// When false, [FetchStart] refuses new HTTP - stops orphaned JS
   /// scrapers from restarting requests after cancel/timeout.
   bool _acceptingFetches = false;
   int _activeGetStreams = 0;
@@ -125,7 +126,7 @@ class NuvioRuntime {
     }
 
     // console.{log,info,warn,error,debug}
-    br('NuvioConsole', (args) {
+    br('Console', (args) {
       try {
         final m = args is Map ? args : <String, dynamic>{};
         final level = (m['level'] ?? 'log').toString();
@@ -135,19 +136,23 @@ class NuvioRuntime {
       return null;
     });
 
-    // crypto.digest(algo, utf8) → hex
-    br('NuvioCryptoDigest', (args) {
+    // crypto.digest(algo, utf8 or hex bytes) → hex
+    br('CryptoDigest', (args) {
       try {
         final m = args is Map ? args : <String, dynamic>{};
-        return _digestHex(
-            (m['algo'] ?? 'SHA256').toString(), (m['data'] ?? '').toString());
+        final algo = (m['algo'] ?? 'SHA256').toString();
+        final hex = (m['hex'] ?? '').toString();
+        if (hex.isNotEmpty) {
+          return _hashFor(algo).convert(bytesFromHex(hex)).toString();
+        }
+        return _digestHex(algo, (m['data'] ?? '').toString());
       } catch (_) {
         return '';
       }
     });
 
     // crypto.hmac(algo, key, data) → hex
-    br('NuvioCryptoHmac', (args) {
+    br('CryptoHmac', (args) {
       try {
         final m = args is Map ? args : <String, dynamic>{};
         return _hmacHex(
@@ -160,59 +165,40 @@ class NuvioRuntime {
       }
     });
 
-    // base64 encode / decode  (utf8 ⇄ base64)
-    br('NuvioCryptoB64Enc', (args) {
+    br('CryptoUtf8ToHex', (args) {
       try {
         final m = args is Map ? args : <String, dynamic>{};
-        return base64.encode(utf8.encode((m['data'] ?? '').toString()));
+        return hexFromBytes(utf8.encode((m['data'] ?? '').toString()));
       } catch (_) {
         return '';
       }
     });
-    br('NuvioCryptoB64Dec', (args) {
+    br('CryptoHexToUtf8', (args) {
       try {
         final m = args is Map ? args : <String, dynamic>{};
-        final raw = (m['data'] ?? '').toString();
-        // Be lenient with padding.
-        final padded = raw + ('=' * ((4 - raw.length % 4) % 4));
-        final bytes = base64.decode(padded);
-        return utf8.decode(bytes, allowMalformed: true);
+        return utf8.decode(bytesFromHex((m['data'] ?? '').toString()),
+            allowMalformed: true);
       } catch (_) {
         return '';
       }
     });
-
-    // utf8 ⇄ hex helpers (used by CryptoJS façade)
-    br('NuvioCryptoUtf8ToHex', (args) {
+    br('CryptoAes', (args) {
       try {
         final m = args is Map ? args : <String, dynamic>{};
-        final bytes = utf8.encode((m['data'] ?? '').toString());
-        final sb = StringBuffer();
-        for (final b in bytes) {
-          sb.write(b.toRadixString(16).padLeft(2, '0'));
-        }
-        return sb.toString();
-      } catch (_) {
-        return '';
-      }
-    });
-    br('NuvioCryptoHexToUtf8', (args) {
-      try {
-        final m = args is Map ? args : <String, dynamic>{};
-        final hex = (m['data'] ?? '').toString();
-        final bytes = <int>[];
-        for (var i = 0; i + 1 < hex.length; i += 2) {
-          final v = int.tryParse(hex.substring(i, i + 2), radix: 16);
-          if (v != null) bytes.add(v);
-        }
-        return utf8.decode(bytes, allowMalformed: true);
+        return aesHex(
+          mode: (m['mode'] ?? 'AES-CBC').toString(),
+          keyHex: (m['key'] ?? '').toString(),
+          ivHex: (m['iv'] ?? '').toString(),
+          dataHex: (m['data'] ?? '').toString(),
+          encrypt: m['encrypt'] == true,
+        );
       } catch (_) {
         return '';
       }
     });
 
     // URL parse → component map
-    br('NuvioParseUrl', (args) {
+    br('ParseUrl', (args) {
       try {
         final m = args is Map ? args : <String, dynamic>{};
         return _parseUrl((m['url'] ?? '').toString());
@@ -223,7 +209,7 @@ class NuvioRuntime {
 
     // Async fetch start. Returns immediately; the response is delivered
     // back to JS by Dart calling `__nuvioFetchResolve(id, envelope)`.
-    br('NuvioFetchStart', (args) {
+    br('FetchStart', (args) {
       try {
         // Panel close / abort leaves scrapers' Promise chains alive on the
         // shared QuickJS loop - refuse new HTTP so they cannot keep loading.
@@ -253,7 +239,7 @@ class NuvioRuntime {
     });
 
     // Final result capture from the per-call IIFE.
-    br('NuvioCaptureResult', (args) {
+    br('CaptureResult', (args) {
       try {
         final m = args is Map ? args : <String, dynamic>{};
         final id = (m['id'] as num).toInt();
@@ -265,7 +251,7 @@ class NuvioRuntime {
     });
 
     // setTimeout / setInterval - backed by real Dart Timer.
-    br('NuvioTimerSchedule', (args) {
+    br('TimerSchedule', (args) {
       try {
         final m = args is Map ? args : <String, dynamic>{};
         final ms = ((m['ms'] as num?) ?? 0).toInt().clamp(0, 600000);
@@ -285,7 +271,7 @@ class NuvioRuntime {
         return 0;
       }
     });
-    br('NuvioTimerCancel', (args) {
+    br('TimerCancel', (args) {
       try {
         final m = args is Map ? args : <String, dynamic>{};
         final id = (m['id'] as num).toInt();
@@ -332,10 +318,10 @@ class NuvioRuntime {
       globalThis.__nuvioModules['cheerio-without-node-native'] = c;
       globalThis.__nuvioModules['react-native-cheerio'] = c;
     } else {
-      sendMessage('NuvioConsole', JSON.stringify({level:'error',msg:'[NuvioRuntime] cheerio bundle produced no export'}));
+      sendMessage('Console', JSON.stringify({level:'error',msg:'[NuvioRuntime] cheerio bundle produced no export'}));
     }
   } catch(e) {
-    sendMessage('NuvioConsole', JSON.stringify({level:'error',msg:'[NuvioRuntime] cheerio bundle load failed: ' + (e && e.message ? e.message : e)}));
+    sendMessage('Console', JSON.stringify({level:'error',msg:'[NuvioRuntime] cheerio bundle load failed: ' + (e && e.message ? e.message : e)}));
   }
 })();
 ''';
@@ -369,7 +355,7 @@ class NuvioRuntime {
   try {
     $code
   } catch (e) {
-    sendMessage('NuvioConsole', JSON.stringify({level:'error',msg:'[NuvioLoader:$scraperId] ' + (e && e.message ? e.message : e)}));
+    sendMessage('Console', JSON.stringify({level:'error',msg:'[NuvioLoader:$scraperId] ' + (e && e.message ? e.message : e)}));
     throw e;
   }
   // Snapshot the resolved entrypoint at load-time. Many community scrapers
@@ -425,19 +411,19 @@ class NuvioRuntime {
   var entry = globalThis.__nuvioRegistry[${jsonEncode(scraperId)}];
   var fn = entry && entry.getStreams;
   if (typeof fn !== 'function') {
-    sendMessage('NuvioCaptureResult', JSON.stringify({id:$callId, body:'[]'}));
+    sendMessage('CaptureResult', JSON.stringify({id:$callId, body:'[]'}));
     return;
   }
   Promise.resolve()
     .then(function(){ return fn($args); })
     .then(function(r){
-      try { sendMessage('NuvioCaptureResult', JSON.stringify({id:$callId, body: JSON.stringify(r == null ? [] : r)})); }
-      catch (e) { sendMessage('NuvioCaptureResult', JSON.stringify({id:$callId, body:'[]'})); }
+      try { sendMessage('CaptureResult', JSON.stringify({id:$callId, body: JSON.stringify(r == null ? [] : r)})); }
+      catch (e) { sendMessage('CaptureResult', JSON.stringify({id:$callId, body:'[]'})); }
     })
     .catch(function(e){
       var msg = (e && e.message) ? e.message : (e ? String(e) : 'unknown');
-      sendMessage('NuvioConsole', JSON.stringify({level:'error',msg:'[NuvioInvoker:'+${jsonEncode(scraperId)}+'] '+msg}));
-      sendMessage('NuvioCaptureResult', JSON.stringify({id:$callId, body:'[]'}));
+      sendMessage('Console', JSON.stringify({level:'error',msg:'[NuvioInvoker:'+${jsonEncode(scraperId)}+'] '+msg}));
+      sendMessage('CaptureResult', JSON.stringify({id:$callId, body:'[]'}));
     });
 })();
 ''';
@@ -724,7 +710,7 @@ const String _polyfillsJs = r'''
     } catch (e) { return ''; }
   }
   function _send(level, args){
-    try { sendMessage('NuvioConsole', JSON.stringify({level: level, msg: _stringifyArgs(args)})); } catch (e) {}
+    try { sendMessage('Console', JSON.stringify({level: level, msg: _stringifyArgs(args)})); } catch (e) {}
   }
   globalThis.console = {
     log:   function(){ _send('log',   arguments); },
@@ -872,7 +858,7 @@ const String _polyfillsJs = r'''
         fullUrl = b.replace(/\/[^\/]*$/, '/') + urlString;
       }
     }
-    var data = sendMessage('NuvioParseUrl', JSON.stringify({url: fullUrl}));
+    var data = sendMessage('ParseUrl', JSON.stringify({url: fullUrl}));
     this.href = fullUrl;
     this.protocol = data.protocol;
     this.host = data.host;
@@ -965,7 +951,7 @@ const String _polyfillsJs = r'''
           clone: function(){ return this; }
         });
       };
-      sendMessage('NuvioFetchStart', JSON.stringify({
+      sendMessage('FetchStart', JSON.stringify({
         id: id, url: String(url), method: method, headers: headers, body: bodyOut
       }));
     });
@@ -1023,25 +1009,25 @@ const String _polyfillsJs = r'''
     if (!entry) return;
     if (!entry.repeat) delete globalThis.__nuvioTimers[id];
     try { entry.fn.apply(null, entry.args); } catch (e) {
-      try { sendMessage('NuvioConsole', JSON.stringify({level:'err', msg: '[timer] ' + (e && e.message ? e.message : e)})); } catch(_) {}
+      try { sendMessage('Console', JSON.stringify({level:'err', msg: '[timer] ' + (e && e.message ? e.message : e)})); } catch(_) {}
     }
   };
   globalThis.setTimeout = function(fn, ms){
     var args = Array.prototype.slice.call(arguments, 2);
-    var id = sendMessage('NuvioTimerSchedule', JSON.stringify({ms: ms|0, repeat: false}));
+    var id = sendMessage('TimerSchedule', JSON.stringify({ms: ms|0, repeat: false}));
     globalThis.__nuvioTimers[id] = { fn: typeof fn === 'function' ? fn : function(){ try { eval(String(fn)); } catch(_){} }, args: args, repeat: false };
     return id;
   };
   globalThis.setInterval = function(fn, ms){
     var args = Array.prototype.slice.call(arguments, 2);
-    var id = sendMessage('NuvioTimerSchedule', JSON.stringify({ms: ms|0, repeat: true}));
+    var id = sendMessage('TimerSchedule', JSON.stringify({ms: ms|0, repeat: true}));
     globalThis.__nuvioTimers[id] = { fn: typeof fn === 'function' ? fn : function(){ try { eval(String(fn)); } catch(_){} }, args: args, repeat: true };
     return id;
   };
   globalThis.clearTimeout = function(id){
     if (id == null) return;
     delete globalThis.__nuvioTimers[id];
-    try { sendMessage('NuvioTimerCancel', JSON.stringify({id: id|0})); } catch(_) {}
+    try { sendMessage('TimerCancel', JSON.stringify({id: id|0})); } catch(_) {}
   };
   globalThis.clearInterval = globalThis.clearTimeout;
   // queueMicrotask shim (uses Promise.resolve)
@@ -1149,27 +1135,27 @@ const String _polyfillsJs = r'''
     if (!v) return '';
     if (typeof v.__hex === 'string') return v.__hex.toLowerCase();
     if (Array.isArray(v.words) && typeof v.sigBytes === 'number') return _wordsToHex(v.words, v.sigBytes);
-    return sendMessage('NuvioCryptoUtf8ToHex', JSON.stringify({data: String(v)}));
+    return sendMessage('CryptoUtf8ToHex', JSON.stringify({data: String(v)}));
   }
   function _waBuild(hex, utf8Override){
     var nh = (hex || '').toLowerCase();
     if (nh.length % 2 !== 0) nh = '0' + nh;
     var wa = {
       __hex: nh,
-      __utf8: utf8Override !== undefined ? utf8Override : sendMessage('NuvioCryptoHexToUtf8', JSON.stringify({data: nh})),
+      __utf8: utf8Override !== undefined ? utf8Override : sendMessage('CryptoHexToUtf8', JSON.stringify({data: nh})),
       sigBytes: nh.length / 2,
       words: _hexToWords(nh),
       toString: function(enc){
         if (!enc || enc === CryptoJS.enc.Hex) return this.__hex;
         if (enc === CryptoJS.enc.Utf8) return this.__utf8;
-        if (enc === CryptoJS.enc.Base64) return sendMessage('NuvioCryptoB64Enc', JSON.stringify({data: this.__utf8}));
+        if (enc === CryptoJS.enc.Base64) return _hexToB64(this.__hex);
         return this.__hex;
       },
       clamp: function(){ return this; },
       concat: function(o){
         var oh = _waToHex(o);
         this.__hex += oh;
-        this.__utf8 = sendMessage('NuvioCryptoHexToUtf8', JSON.stringify({data: this.__hex}));
+        this.__utf8 = sendMessage('CryptoHexToUtf8', JSON.stringify({data: this.__hex}));
         this.sigBytes = this.__hex.length / 2;
         this.words = _hexToWords(this.__hex);
         return this;
@@ -1180,24 +1166,69 @@ const String _polyfillsJs = r'''
   function _waFromHex(h){ return _waBuild(h, undefined); }
   function _waFromUtf8(t){
     var s = (t == null) ? '' : String(t);
-    return _waBuild(sendMessage('NuvioCryptoUtf8ToHex', JSON.stringify({data: s})), s);
+    return _waBuild(sendMessage('CryptoUtf8ToHex', JSON.stringify({data: s})), s);
   }
-  function _waFromBase64(b){
-    return _waFromUtf8(sendMessage('NuvioCryptoB64Dec', JSON.stringify({data: (b || '')})));
+  function _hexToLatin1(hex){
+    var s = '';
+    for (var i = 0; i + 1 < hex.length; i += 2) {
+      s += String.fromCharCode(parseInt(hex.substring(i, i + 2), 16));
+    }
+    return s;
+  }
+  function _latin1ToHex(s){
+    var hex = '';
+    for (var i = 0; i < s.length; i++) {
+      var h = (s.charCodeAt(i) & 0xff).toString(16);
+      hex += h.length < 2 ? '0' + h : h;
+    }
+    return hex;
+  }
+  function _b64ToHex(b){
+    var str = String(b || '').replace(/-/g, '+').replace(/_/g, '/');
+    while (str.length % 4) str += '=';
+    try { return _latin1ToHex(atob(str)); } catch (e) { return ''; }
+  }
+  function _hexToB64(hex){
+    try { return btoa(_hexToLatin1(hex)); } catch (e) { return ''; }
+  }
+  function _waFromBase64(b){ return _waFromHex(_b64ToHex(b)); }
+  function _aesModeName(mode, padding){
+    var name = mode && mode.name ? mode.name : mode;
+    name = String(name || 'AES-CBC');
+    if (name.indexOf('GCM') >= 0) name = 'AES-GCM';
+    else if (name.indexOf('ECB') >= 0) name = 'AES-ECB';
+    else name = 'AES-CBC';
+    if (padding === 'NoPadding' || (CryptoJS.pad && padding === CryptoJS.pad.NoPadding)) name += '-NoPadding';
+    return name;
+  }
+  function _nativeAes(encrypt, mode, keyHex, ivHex, dataHex){
+    return sendMessage('CryptoAes', JSON.stringify({
+      encrypt: !!encrypt, mode: mode, key: keyHex || '', iv: ivHex || '', data: dataHex || ''
+    }));
+  }
+  function _evpKdf(passHex, saltHex, keyLen, ivLen){
+    var need = (keyLen + ivLen) * 2;
+    var derived = '';
+    var block = '';
+    while (derived.length < need) {
+      block = sendMessage('CryptoDigest', JSON.stringify({algo: 'MD5', hex: block + passHex + (saltHex || '')}));
+      derived += block;
+    }
+    return { key: derived.substring(0, keyLen * 2), iv: derived.substring(keyLen * 2, keyLen * 2 + ivLen * 2) };
   }
   function _normInput(v){
     if (v && typeof v === 'object' && typeof v.__utf8 === 'string') return v.__utf8;
-    if (v && typeof v === 'object' && typeof v.__hex  === 'string') return sendMessage('NuvioCryptoHexToUtf8', JSON.stringify({data: v.__hex}));
-    if (v && typeof v === 'object' && Array.isArray(v.words) && typeof v.sigBytes === 'number') return sendMessage('NuvioCryptoHexToUtf8', JSON.stringify({data: _wordsToHex(v.words, v.sigBytes)}));
+    if (v && typeof v === 'object' && typeof v.__hex  === 'string') return sendMessage('CryptoHexToUtf8', JSON.stringify({data: v.__hex}));
+    if (v && typeof v === 'object' && Array.isArray(v.words) && typeof v.sigBytes === 'number') return sendMessage('CryptoHexToUtf8', JSON.stringify({data: _wordsToHex(v.words, v.sigBytes)}));
     if (v == null) return '';
     return String(v);
   }
   function _hashWa(algo, msg){
-    var hex = sendMessage('NuvioCryptoDigest', JSON.stringify({algo: algo, data: _normInput(msg)}));
+    var hex = sendMessage('CryptoDigest', JSON.stringify({algo: algo, data: _normInput(msg)}));
     return _waFromHex(hex);
   }
   function _hmacWa(algo, msg, key){
-    var hex = sendMessage('NuvioCryptoHmac', JSON.stringify({algo: algo, key: _normInput(key), data: _normInput(msg)}));
+    var hex = sendMessage('CryptoHmac', JSON.stringify({algo: algo, key: _normInput(key), data: _normInput(msg)}));
     return _waFromHex(hex);
   }
 
@@ -1210,23 +1241,58 @@ const String _polyfillsJs = r'''
       Utf8: {
         stringify: function(wa){
           if (wa && typeof wa.__utf8 === 'string') return wa.__utf8;
-          if (wa && typeof wa.__hex  === 'string') return sendMessage('NuvioCryptoHexToUtf8', JSON.stringify({data: wa.__hex}));
+          if (wa && typeof wa.__hex  === 'string') return sendMessage('CryptoHexToUtf8', JSON.stringify({data: wa.__hex}));
           return _normInput(wa);
         },
         parse: function(t){ return _waFromUtf8(t); }
       },
       Base64: {
-        stringify: function(wa){
-          if (wa && typeof wa.__utf8 === 'string') return sendMessage('NuvioCryptoB64Enc', JSON.stringify({data: wa.__utf8}));
-          return sendMessage('NuvioCryptoB64Enc', JSON.stringify({data: _normInput(wa)}));
-        },
+        stringify: function(wa){ return _hexToB64(_waToHex(wa)); },
         parse: function(b){ return _waFromBase64(b); }
       },
       Latin1: {
-        stringify: function(wa){ return _normInput(wa); },
-        parse: function(t){ return _waFromUtf8(t); }
+        stringify: function(wa){ return _hexToLatin1(_waToHex(wa)); },
+        parse: function(t){ return _waFromHex(_latin1ToHex(String(t == null ? '' : t))); }
       }
     },
+    lib: {
+      WordArray: {
+        create: function(words, sigBytes){
+          if (words == null) return _waBuild('');
+          if (words && typeof words.__hex === 'string') return _waBuild(words.__hex, words.__utf8);
+          if (typeof words === 'string') return _waFromUtf8(words);
+          var sb = typeof sigBytes === 'number' ? sigBytes : words.length * 4;
+          return _waBuild(_wordsToHex(words, sb));
+        },
+        random: function(nBytes){
+          var n = nBytes|0;
+          var hex = '';
+          for (var i = 0; i < n; i++) {
+            var h = Math.floor(Math.random() * 256).toString(16);
+            hex += h.length < 2 ? '0' + h : h;
+          }
+          return _waFromHex(hex);
+        }
+      }
+    },
+    format: {
+      OpenSSL: {
+        stringify: function(params){
+          var ct = _waToHex(params && params.ciphertext ? params.ciphertext : params);
+          if (params && params.salt) ct = '53616c7465645f5f' + _waToHex(params.salt) + ct;
+          return _hexToB64(ct);
+        },
+        parse: function(str){
+          var hex = _b64ToHex(str);
+          if (hex.indexOf('53616c7465645f5f') === 0 && hex.length >= 32) {
+            return { salt: _waFromHex(hex.substring(16, 32)), ciphertext: _waFromHex(hex.substring(32)) };
+          }
+          return { ciphertext: _waFromHex(hex) };
+        }
+      }
+    },
+    mode: { CBC: 'AES-CBC', GCM: 'AES-GCM', ECB: 'AES-ECB' },
+    pad: { Pkcs7: 'Pkcs7', NoPadding: 'NoPadding' },
     MD5:    function(m){ return _hashWa('MD5',    m); },
     SHA1:   function(m){ return _hashWa('SHA1',   m); },
     SHA256: function(m){ return _hashWa('SHA256', m); },
@@ -1234,7 +1300,45 @@ const String _polyfillsJs = r'''
     HmacMD5:    function(m, k){ return _hmacWa('MD5',    m, k); },
     HmacSHA1:   function(m, k){ return _hmacWa('SHA1',   m, k); },
     HmacSHA256: function(m, k){ return _hmacWa('SHA256', m, k); },
-    HmacSHA512: function(m, k){ return _hmacWa('SHA512', m, k); }
+    HmacSHA512: function(m, k){ return _hmacWa('SHA512', m, k); },
+    AES: {
+      encrypt: function(message, key, options){
+        options = options || {};
+        var dataHex = _waToHex(typeof message === 'string' ? _waFromUtf8(message) : message);
+        var keyHex, ivHex;
+        if (typeof key === 'string') {
+          var saltHex = options.salt ? _waToHex(options.salt) : _waToHex(CryptoJS.lib.WordArray.random(8));
+          var derived = _evpKdf(sendMessage('CryptoUtf8ToHex', JSON.stringify({data: key})), saltHex, 32, 16);
+          keyHex = derived.key;
+          ivHex = options.iv ? _waToHex(options.iv) : derived.iv;
+          var encHex = _nativeAes(true, _aesModeName(options.mode, options.padding), keyHex, ivHex, dataHex);
+          return {
+            ciphertext: _waFromHex(encHex),
+            salt: _waFromHex(saltHex),
+            toString: function(fmt){ return (fmt || CryptoJS.format.OpenSSL).stringify(this); }
+          };
+        }
+        keyHex = _waToHex(key);
+        ivHex = options.iv ? _waToHex(options.iv) : '';
+        return _waFromHex(_nativeAes(true, _aesModeName(options.mode, options.padding), keyHex, ivHex, dataHex));
+      },
+      decrypt: function(cipher, key, options){
+        options = options || {};
+        var parsed = typeof cipher === 'string' ? CryptoJS.format.OpenSSL.parse(cipher) : cipher;
+        var dataHex = parsed && parsed.ciphertext ? _waToHex(parsed.ciphertext) : _waToHex(parsed);
+        var keyHex, ivHex;
+        if (typeof key === 'string') {
+          var saltHex = options.salt ? _waToHex(options.salt) : (parsed && parsed.salt ? _waToHex(parsed.salt) : '');
+          var derived = _evpKdf(sendMessage('CryptoUtf8ToHex', JSON.stringify({data: key})), saltHex, 32, 16);
+          keyHex = derived.key;
+          ivHex = options.iv ? _waToHex(options.iv) : derived.iv;
+        } else {
+          keyHex = _waToHex(key);
+          ivHex = options.iv ? _waToHex(options.iv) : '';
+        }
+        return _waFromHex(_nativeAes(false, _aesModeName(options.mode, options.padding), keyHex, ivHex, dataHex));
+      }
+    }
   };
   globalThis.CryptoJS = CryptoJS;
 

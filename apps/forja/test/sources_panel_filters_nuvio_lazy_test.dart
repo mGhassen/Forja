@@ -245,5 +245,19 @@ void main() {
       ),
       isFalse,
     );
+    expect(
+      torrentProviderChipSelected(
+        optionId: TorrentSearchProviders.allId,
+        selectedSourceId: TorrentSearchProviders.noneId,
+      ),
+      isFalse,
+    );
+    expect(
+      torrentProviderChipSelected(
+        optionId: TorrentSearchProviders.yts,
+        selectedSourceId: TorrentSearchProviders.noneId,
+      ),
+      isFalse,
+    );
   });
 }
