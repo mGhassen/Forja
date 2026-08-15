@@ -430,7 +430,6 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
             overview: a.description.trim(),
             year: a.year,
             badge: a.heroMediaBadge,
-            onPlay: () => _openDetails(a),
             onDetails: () => _openDetails(a),
             listTarget: HubListFollowTarget.drama(
               kisskhId: a.id,

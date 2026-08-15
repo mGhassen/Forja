@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components (desktop→TV) · **10 / 11** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
-| **Current slice** | ATV unpaired HTTP + P2P pair dialog (R22-A23); first-frame smoke still open |
+| **Progress** | **8 / 8** components (desktop→TV) · **11 / 12** acceptance (desktop→TV) · **0 / 12** acceptance (full matrix) |
+| **Current slice** | ATV unpaired HTTP + P2P pair dialog (R22-A23); LAN presence dots (R22-A24); first-frame smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -81,6 +81,7 @@ Historical C01–C07 above were never on `main` (stale ✅ from `feat/forja-serv
 | 21 | R22-A21 | `/close` uses `stop_on_engine` (no nested `block_on`); client closes without requiring parsed info_hash; cancel-before-`play_url` and TV Back→maybePop still stop the desktop swarm | ✅ |
 | 22 | R22-A22 | Desktop idle-watch: owner TV idle 120s → pause swarm; still idle +120s → stop + delete cache/history (resume if TV returns during grace) | ✅ |
 | 23 | R22-A23 | Unpaired ATV: Direct torrent / Stremio / Nuvio Sources on; HTTP plays on TV; P2P play shows pair dialog; paired P2P stays on desktop | ✅ |
+| 24 | R22-A24 | Nav rail + Settings LAN dots: waiting (server up, unpaired), idle, paired/online, playing, client desktop-offline | ✅ |
 
 ---
 

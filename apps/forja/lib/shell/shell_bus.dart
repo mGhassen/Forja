@@ -106,6 +106,18 @@ class ShellBus {
   /// Switch nav tab from anywhere: `ShellBus.requestTab.value = 'home';`
   static final ValueNotifier<String?> requestTab = ValueNotifier<String?>(null);
 
+  /// Settings hub category to select on the next Settings show (`lan`, `playback`, …).
+  static final ValueNotifier<String?> requestSettingsCategory =
+      ValueNotifier<String?>(null);
+
+  /// Switch to Settings, optionally landing on [categoryId] in the split hub.
+  static void openSettings({String? categoryId}) {
+    if (categoryId != null) {
+      requestSettingsCategory.value = categoryId;
+    }
+    requestTab.value = 'settings';
+  }
+
   /// Mid-session profile switch: next navbar reload selects the profile default tab.
   /// Cleared by [MainScreen] when applied.
   static bool selectDefaultTabOnNextNavLoad = false;

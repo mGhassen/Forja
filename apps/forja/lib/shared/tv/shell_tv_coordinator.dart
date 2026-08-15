@@ -10,15 +10,7 @@ import 'package:forja/shared/tv/shell_tv_app_exit.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// Focus zone within a shell tab.
-enum ShellTvZone {
-  nav,
-  hero,
-  topBar,
-  chipStrip,
-  row,
-  grid,
-  settings,
-}
+enum ShellTvZone { nav, hero, topBar, chipStrip, row, grid, settings }
 
 /// Last-known TV focus for a tab.
 class ShellTvFocusMemory {
@@ -93,6 +85,7 @@ abstract final class ShellTvFocusCoordinator {
   static final Map<String, VoidCallback> _tabHeroReveal = {};
   static final Map<String, VoidCallback> _tabEnterFocus = {};
   static final Map<String, bool Function()> _tabRestoreFocus = {};
+
   /// Optional in-page Back step before focusing the nav rail (e.g. IPTV
   /// channels → category). Return true when Back was consumed.
   static final Map<String, bool Function()> _tabPageBack = {};
@@ -222,6 +215,7 @@ abstract final class ShellTvFocusCoordinator {
     _lastBackHandledAt = null;
     _backStepPending = false;
     _dismissTransientOverlay = null;
+    _dismissSourcesPanel = null;
     PlayerBackExitGate.resetForTest();
     ShellTvAppExit.resetForTest();
   }
@@ -229,6 +223,9 @@ abstract final class ShellTvFocusCoordinator {
   /// Shell OverlayEntry menus (hero My List status). HardwareKeyboard steals
   /// goBack before Focus onKey — register so Back dismisses the menu first.
   static bool Function()? _dismissTransientOverlay;
+
+  /// Details/player Sources panel. Separate from My List so they cannot clobber.
+  static bool Function()? _dismissSourcesPanel;
 
   static void setTransientOverlayDismiss(bool Function()? dismiss) {
     _dismissTransientOverlay = dismiss;
@@ -238,6 +235,23 @@ abstract final class ShellTvFocusCoordinator {
     final cb = _dismissTransientOverlay;
     if (cb == null) return false;
     return cb();
+  }
+
+  static void setSourcesPanelDismiss(bool Function()? dismiss) {
+    _dismissSourcesPanel = dismiss;
+  }
+
+  static bool tryDismissSourcesPanel() {
+    final cb = _dismissSourcesPanel;
+    if (cb == null) return false;
+    return cb();
+  }
+
+  static void _stampOverlayBackConsumed() {
+    PlayerBackExitGate.exitReady = false;
+    _backStepPending = false;
+    ShellTvAppExit.clear();
+    _lastBackHandledAt = DateTime.now();
   }
 
   static bool _consumeDuplicateBack() {
@@ -259,28 +273,25 @@ abstract final class ShellTvFocusCoordinator {
     // HW + didPopRoute on the same press closes the menu then pops the player
     // (IPTV Stream stats → catalog). Stamp so the twin delivery is swallowed.
     if (dismissAnyPlayerChromeOverlay()) {
-      PlayerBackExitGate.exitReady = false;
-      _backStepPending = false;
-      ShellTvAppExit.clear();
-      _lastBackHandledAt = DateTime.now();
+      _stampOverlayBackConsumed();
       return true;
     }
 
     // In-player overlays (IPTV search ladder, …). Same twin stamp as chrome
     // OverlayEntries — HardwareKeyboard steals Focus onKey for goBack.
     if (PlayerBackExitGate.tryConsumePlayerOverlay()) {
-      PlayerBackExitGate.exitReady = false;
-      _backStepPending = false;
-      ShellTvAppExit.clear();
-      _lastBackHandledAt = DateTime.now();
+      _stampOverlayBackConsumed();
+      return true;
+    }
+
+    // Sources/Filters: HardwareKeyboard steals goBack before TvOverlayScope.
+    if (tryDismissSourcesPanel()) {
+      _stampOverlayBackConsumed();
       return true;
     }
 
     if (tryDismissTransientOverlay()) {
-      PlayerBackExitGate.exitReady = false;
-      _backStepPending = false;
-      ShellTvAppExit.clear();
-      _lastBackHandledAt = DateTime.now();
+      _stampOverlayBackConsumed();
       return true;
     }
 
@@ -453,8 +464,8 @@ abstract final class ShellTvFocusCoordinator {
       LogicalKeyboardKey.arrowUp => focusPrevNavItem(),
       LogicalKeyboardKey.arrowLeft => true, // trap
       LogicalKeyboardKey.arrowRight => _restorePageFromNav(
-          ShellTvFocus.currentNavTabId ?? '',
-        ),
+        ShellTvFocus.currentNavTabId ?? '',
+      ),
       _ => false,
     };
   }
@@ -535,24 +546,25 @@ abstract final class ShellTvFocusCoordinator {
     return ctx != null && ctx.mounted;
   }
 
-  /// After the player route pops, details can land with an empty FocusScope
-  /// (loading-overlay strip + watch-history rebuild race). Reclaim hero
-  /// Play/Resume only when the page has no usable focus — never steal a
-  /// successful restore.
+  /// After the player route pops or stream loading is cancelled, put D-pad
+  /// on hero Play/Resume. Leftover focus (Cancel, empty overlay scope) is
+  /// not "usable" — always reclaim Play.
   static void claimHeroPlayAfterPlayerExit(
     FocusNode play, {
     required bool Function() isMounted,
+    bool Function()? skip,
     int frameRetries = 4,
   }) {
     if (!tvBackPolicyEnabled) return;
 
     void attempt({required int remaining}) {
       if (!isMounted()) return;
-      if (_pageHasFocus()) return;
-      if (play.context != null && play.canRequestFocus) {
-        play.requestFocus();
+      if (skip?.call() == true) return;
+      final ctx = play.context;
+      if (ctx != null && ctx.mounted && play.canRequestFocus) {
+        FocusScope.of(ctx).requestFocus(play);
       }
-      if (_pageHasFocus() || remaining <= 0) return;
+      if (remaining <= 0) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         attempt(remaining: remaining - 1);
       });
@@ -680,8 +692,7 @@ abstract final class ShellTvFocusCoordinator {
       isLastRow: handle.isLastRow,
       onFocusUp: handle.onFocusUp,
       onFocusDown: handle.onFocusDown,
-    )..lastFocusedIndex =
-        existing?.lastFocusedIndex ?? handle.lastFocusedIndex;
+    )..lastFocusedIndex = existing?.lastFocusedIndex ?? handle.lastFocusedIndex;
     list.add(h);
     list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     _recomputeRowEdges(handle.tabId);
@@ -705,15 +716,12 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   /// Clears remembered D-pad index for a row (next restore lands on [index]).
-  static void setRowLastFocusedIndex(
-    String tabId,
-    String rowId,
-    int index,
-  ) {
+  static void setRowLastFocusedIndex(String tabId, String rowId, int index) {
     final handle = _rowHandle(tabId, rowId);
     if (handle == null) return;
-    handle.lastFocusedIndex =
-        handle.itemCount <= 0 ? 0 : index.clamp(0, handle.itemCount - 1);
+    handle.lastFocusedIndex = handle.itemCount <= 0
+        ? 0
+        : index.clamp(0, handle.itemCount - 1);
   }
 
   static void _recomputeRowEdges(String tabId) {
@@ -805,11 +813,7 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   /// Focus a row item, or the next registered row below when empty/unavailable.
-  static bool focusRowItemOrNextBelow(
-    String tabId,
-    String rowId,
-    int index,
-  ) {
+  static bool focusRowItemOrNextBelow(String tabId, String rowId, int index) {
     if (focusRowItem(tabId, rowId, index)) return true;
     final handle = _rowHandle(tabId, rowId);
     if (handle == null) return false;
@@ -965,13 +969,11 @@ abstract final class ShellTvFocusCoordinator {
           return focusHero(revealFull: true, tabId: tabId);
         }
         if (prev.sortOrder < 0) {
-          final target =
-              prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
+          final target = prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
           if (focusRowItem(tabId, prev.rowId, target)) return true;
           return focusHero(revealFull: true, tabId: tabId);
         }
-        final target =
-            prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
+        final target = prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
         if (focusRowItem(tabId, prev.rowId, target)) return true;
         cursor = prev.sortOrder;
       }
@@ -1034,6 +1036,18 @@ abstract final class ShellTvFocusCoordinator {
 
   static FocusNode? itemNode(String tabId, String rowId, int index) =>
       _itemNodes[_itemKey(tabId, rowId, index)];
+
+  /// True when an attached item node for [tabId] currently has focus.
+  static bool tabHasAttachedFocus(String tabId) {
+    final prefix = '$tabId:';
+    for (final e in _itemNodes.entries) {
+      if (!e.key.startsWith(prefix)) continue;
+      try {
+        if (e.value.hasFocus) return true;
+      } catch (_) {}
+    }
+    return false;
+  }
 }
 
 /// Metadata attached to TV focusable widgets.
@@ -1067,13 +1081,13 @@ class ShellTvFocusMeta {
       final idx = itemIndex!;
       final cols = gridColumns!;
       return () => ShellTvFocusCoordinator.moveInGrid(
-            tabId: tid,
-            rowId: rid,
-            currentIndex: idx,
-            columns: cols,
-            rowDelta: ShellTvHoldAccel.lastStep,
-            colDelta: 0,
-          );
+        tabId: tid,
+        rowId: rid,
+        currentIndex: idx,
+        columns: cols,
+        rowDelta: ShellTvHoldAccel.lastStep,
+        colDelta: 0,
+      );
     }
     if (!_isHorizontalNavZone()) return null;
     final tid = tabId;
@@ -1101,11 +1115,11 @@ class ShellTvFocusMeta {
       };
     }
     return () => ShellTvFocusCoordinator.moveVerticalInTab(
-          tabId: tid,
-          rowId: rid,
-          currentIndex: idx,
-          down: true,
-        );
+      tabId: tid,
+      rowId: rid,
+      currentIndex: idx,
+      down: true,
+    );
   }
 
   bool Function()? resolveUpEdge() {
@@ -1116,13 +1130,13 @@ class ShellTvFocusMeta {
       final idx = itemIndex!;
       final cols = gridColumns!;
       return () => ShellTvFocusCoordinator.moveInGrid(
-            tabId: tid,
-            rowId: rid,
-            currentIndex: idx,
-            columns: cols,
-            rowDelta: -ShellTvHoldAccel.lastStep,
-            colDelta: 0,
-          );
+        tabId: tid,
+        rowId: rid,
+        currentIndex: idx,
+        columns: cols,
+        rowDelta: -ShellTvHoldAccel.lastStep,
+        colDelta: 0,
+      );
     }
     if (!_isHorizontalNavZone()) return null;
     final tid = tabId;
@@ -1150,11 +1164,11 @@ class ShellTvFocusMeta {
       };
     }
     return () => ShellTvFocusCoordinator.moveVerticalInTab(
-          tabId: tid,
-          rowId: rid,
-          currentIndex: idx,
-          down: false,
-        );
+      tabId: tid,
+      rowId: rid,
+      currentIndex: idx,
+      down: false,
+    );
   }
 
   bool Function()? resolveLeftEdge() {
@@ -1348,8 +1362,9 @@ void shellTvEnsureVisibleItem(
   final viewportBox = scrollable.context.findRenderObject();
   if (viewportBox is! RenderBox || !viewportBox.hasSize) return;
 
-  final topInViewport =
-      box.localToGlobal(Offset.zero, ancestor: viewportBox).dy;
+  final topInViewport = box
+      .localToGlobal(Offset.zero, ancestor: viewportBox)
+      .dy;
   final contentY = position.pixels + topInViewport;
   if (contentY <= topRevealSlackPx) {
     if (position.pixels > position.minScrollExtent + 0.5) {

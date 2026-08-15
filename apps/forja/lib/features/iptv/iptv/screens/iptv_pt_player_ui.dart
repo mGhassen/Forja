@@ -21,8 +21,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         _s._controlsVisible = true;
         _s._hideControlsTimer?.cancel();
         // Always open on the playing channel's category.
-        final playingGroup =
-            widget.channelGuide!.groupIdForChannel(_s._currentChannelId);
+        final playingGroup = widget.channelGuide!.groupIdForChannel(
+          _s._currentChannelId,
+        );
         if (playingGroup != null && playingGroup.isNotEmpty) {
           _s._selectedGroupId = playingGroup;
         }
@@ -72,9 +73,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   /// Progress bar via chrome profile — hide only ATV Exo pure live.
   bool get _showProgressChrome => _s._chrome.showProgressChrome(
-        exoBackend: _s._exoBackend,
-        isVodHeuristic: _s._isVod,
-      );
+    exoBackend: _s._exoBackend,
+    isVodHeuristic: _s._isVod,
+  );
 
   /// Seek chrome: catalog VOD **or** seekable live (duration > 1s).
   bool get _isVodChrome => _s._chrome.vodSeekChrome || _s._isVod;
@@ -91,8 +92,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
     final barPad = compact ? 12.0 : 18.0;
     const barHeight = 56.0;
-    final seekbar =
-        _showProgressChrome ? (compact ? 48.0 : 56.0) : 0.0;
+    final seekbar = _showProgressChrome ? (compact ? 48.0 : 56.0) : 0.0;
     return safeBottom + barPad + barHeight + seekbar + 12;
   }
 
@@ -135,7 +135,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final player = _s._player;
     if (player == null) return;
     final codec = track.codec?.toLowerCase() ?? '';
-    final isNativeCodec = codec.contains('ass') ||
+    final isNativeCodec =
+        codec.contains('ass') ||
         codec.contains('ssa') ||
         codec.contains('pgs') ||
         codec.contains('dvd') ||
@@ -143,8 +144,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         codec.contains('vobsub');
     final title = (track.title ?? track.id).toLowerCase();
     final looksAss = title.endsWith('.ass') || title.endsWith('.ssa');
-    final shouldUseNative =
-        track.id != 'no' && (isNativeCodec || looksAss);
+    final shouldUseNative = track.id != 'no' && (isNativeCodec || looksAss);
     if (shouldUseNative != _s._isNativeSubtitle) {
       setState(() => _s._isNativeSubtitle = shouldUseNative);
     }
@@ -169,11 +169,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         context: context,
         tracks: tracks,
         anchorContext: anchorContext,
-        onSelect: (trackId) => ExoPlayerBridge.selectTrack(
-          id,
-          type: 'audio',
-          trackId: trackId,
-        ),
+        onSelect: (trackId) =>
+            ExoPlayerBridge.selectTrack(id, type: 'audio', trackId: trackId),
       );
       return;
     }
@@ -215,20 +212,12 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         selectedExternalSubUrl: _s._selectedExternalSubUrl,
         isFetchingSubs: _s._isFetchingSubs,
         onOff: () async {
-          await ExoPlayerBridge.selectTrack(
-            id,
-            type: 'text',
-            trackId: null,
-          );
+          await ExoPlayerBridge.selectTrack(id, type: 'text', trackId: null);
           if (mounted) setState(() => _s._selectedExternalSubUrl = null);
         },
         onSelectEmbedded: (track) async {
           if (track == null) {
-            await ExoPlayerBridge.selectTrack(
-              id,
-              type: 'text',
-              trackId: null,
-            );
+            await ExoPlayerBridge.selectTrack(id, type: 'text', trackId: null);
             return;
           }
           await ExoPlayerBridge.selectTrack(
@@ -258,12 +247,12 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       updateSubVisibility: _updateSubVisibility,
       onExternalUrlChanged: (url) =>
           setState(() => _s._selectedExternalSubUrl = url),
-      onNativeSubtitleChanged: (v) =>
-          setState(() => _s._isNativeSubtitle = v),
+      onNativeSubtitleChanged: (v) => setState(() => _s._isNativeSubtitle = v),
       loadOnlineSubtitle: _loadOnlineSubtitle,
       onSubtitleSettings: _showSubtitleSettings,
-      onTitleSearch:
-          widget.onlineSubtitles ? () => unawaited(_showTitleSearchDialog()) : null,
+      onTitleSearch: widget.onlineSubtitles
+          ? () => unawaited(_showTitleSearchDialog())
+          : null,
       titleSearchHint: widget.onlineSubtitles ? hint : null,
       margin: EdgeInsets.only(
         left: 16,
@@ -356,7 +345,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     _s._subtitleFetchSub = stream.listen(
       (subs) {
         if (!mounted) return;
-        setState(() => _s._externalSubtitles = List<Map<String, dynamic>>.from(subs));
+        setState(
+          () => _s._externalSubtitles = List<Map<String, dynamic>>.from(subs),
+        );
       },
       onError: (e) {
         debugPrint('[IPTV Player] subtitle fetch error: $e');
@@ -458,7 +449,10 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     }
   }
 
-  Future<void> _loadOnlineSubtitleExo(Map<String, dynamic> s, String url) async {
+  Future<void> _loadOnlineSubtitleExo(
+    Map<String, dynamic> s,
+    String url,
+  ) async {
     final id = _s._exoViewId;
     if (id == null) return;
     final lang = (s['language'] ?? s['lang'] ?? 'und').toString();
@@ -608,11 +602,17 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Search', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Search',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -803,234 +803,246 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final size = MediaQuery.sizeOf(context);
     final compact = size.shortestSide < 600;
     // Include enter-pending: window shrinks before the stream sets _isPipMode.
-    final pipMode =
-        _s._isPipMode || PipService.instance.isDesktopActive;
+    final pipMode = _s._isPipMode || PipService.instance.isDesktopActive;
     final epgFuture = (!_s._guideVisible && !_s._searchVisible)
         ? _floatingEpgFuture()
         : null;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: PlayerTvKeyScope(
-        enabled:
-            iptvUseTvFocus(context) && !_s._guideVisible && !_s._searchVisible,
-        focusNode: _s._playerTvKeyFocus,
-        showControls: _s._controlsVisible,
-        onBack: () {
-          if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
-            ShellTvFocusCoordinator.handleShellBackKey();
-            return;
-          }
-          if (dismissAnyPlayerChromeOverlay()) return;
-          unawaited(_s._exitIptvPlayer());
-        },
-        onPlayPause: () {
-          if (_s._playing) {
-            unawaited(_s._enginePause());
-          } else {
-            unawaited(_s._enginePlay());
-          }
-          _scheduleHideControls();
-        },
-        onShowControls: () {
-          setState(() => _s._controlsVisible = true);
-          _scheduleHideControls();
-          _focusPlayerChrome();
-        },
-        onSeekBack: () {
-          if (!_isVodChrome || _s._duration.inSeconds <= 1) {
-            _revealControlsAndFocus(back: false);
-            return;
-          }
-          var target = _s._position - const Duration(seconds: 10);
-          if (target < Duration.zero) target = Duration.zero;
-          unawaited(_s._engineSeek(target));
-          _scheduleHideControls();
-        },
-        onSeekForward: () {
-          if (!_isVodChrome || _s._duration.inSeconds <= 1) {
-            _revealControlsAndFocus(back: false);
-            return;
-          }
-          var target = _s._position + const Duration(seconds: 10);
-          if (target > _s._duration) target = _s._duration;
-          unawaited(_s._engineSeek(target));
-          _scheduleHideControls();
-        },
-        onVolumeUp: () {
-          setState(() => _s._setCachedVolume((_s._volume + 5).clamp(0, 100)));
-        },
-        onVolumeDown: () {
-          setState(() => _s._setCachedVolume((_s._volume - 5).clamp(0, 100)));
-        },
-        onToggleControls: _toggleControls,
-        onFocusBack: () => _revealControlsAndFocus(back: true),
-        onFocusPlay: () => _revealControlsAndFocus(back: false),
-        onControlsActivity: _scheduleHideControls,
-        child: MouseRegion(
-          onHover: (_) => _onPlayerMouseMove(),
-          cursor: (_s._controlsVisible || _s._guideVisible || _s._searchVisible)
-              ? SystemMouseCursors.basic
-              : SystemMouseCursors.none,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: pipMode ? null : _toggleControls,
-            // Double-click / double-tap video → toggle fullscreen (same as films).
-            // Android TV is already immersive — no fullscreen toggle.
-            onDoubleTap: () {
-              if (pipMode ||
-                  _s._guideVisible ||
-                  _s._searchVisible ||
-                  iptvUseTvFocus(context)) {
-                return;
-              }
-              unawaited(_s._toggleFullscreen());
-            },
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Video - fill the stack like the main player (Center can leave
-                // a zero-sized surface on Android when Impeller composites siblings).
-                Positioned.fill(
-                  child: ExcludeFocus(
-                    child: RepaintBoundary(
-                      child: _s._exoBackend
-                          ? ExoPlayerView(
-                              viewId: _s._exoViewId!,
-                              // IPTV Exo always TextureView on ATV: physical
-                              // SurfaceView + hybrid composition went audio-only
-                              // black (even cold-open) and the composition-dead
-                              // surface still fires renderedFirstFrame, so the
-                              // watchdog cannot rescue it (issue 133).
-                              allowSurfaceView: false,
-                            )
-                          : Video(
-                              key: ValueKey(_s._videoEpoch),
-                              controller: _s._controller!,
-                              fit: BoxFit.contain,
-                              fill: Colors.black,
-                              controls: NoVideoControls,
-                              subtitleViewConfiguration:
-                                  const SubtitleViewConfiguration(
-                                visible: false,
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-                // Text subs (SRT/VTT) — same Flutter overlay as home movies.
-                // ASS/PGS stay on mpv via sub-visibility.
-                if (!pipMode &&
-                    !_s._exoBackend &&
-                    _s._player != null &&
-                    !_s._isNativeSubtitle)
-                  StreamBuilder<List<String>>(
-                    stream: _s._player!.stream.subtitle,
-                    initialData: _s._player!.state.subtitle,
-                    builder: (context, snap) {
-                      final lines = snap.data ?? [];
-                      final text = lines
-                          .where((l) => l.trim().isNotEmpty)
-                          .join('\n');
-                      if (text.isEmpty) return const SizedBox.shrink();
-                      const refHeight = 720.0;
-                      final winH = MediaQuery.of(context).size.height;
-                      final scale = (winH / refHeight).clamp(0.35, 1.0);
-                      final hSidePad = 24.0 * scale;
-                      return Positioned(
-                        left: hSidePad,
-                        right: hSidePad,
-                        bottom: _s._subtitleBottomPadding * scale,
-                        child: IgnorePointer(
-                          child: Text(
-                            text,
-                            style: _buildSubtitleTextStyle(scale: scale),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                // Reconnect/buffering banner - hidden in PiP
-                if (!pipMode &&
-                    (_s._buffering || _s._statusBanner != null))
-                  _buildBanner(),
-                // Top bar + bottom controls (below guide when open).
-                // Hidden entirely while PiP is active - replaced by the
-                // floating revert button below on desktop.
-                if (!pipMode)
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 220),
-                    opacity: _s._controlsVisible ? 1 : 0,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (ShellTvFocusCoordinator.tvBackPolicyEnabled &&
+            PlayerBackExitGate.tryFocusBackStay()) {
+          return;
+        }
+        unawaited(_s._exitIptvPlayer());
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: PlayerTvKeyScope(
+          enabled:
+              iptvUseTvFocus(context) &&
+              !_s._guideVisible &&
+              !_s._searchVisible,
+          focusNode: _s._playerTvKeyFocus,
+          showControls: _s._controlsVisible,
+          onBack: () {
+            if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+              ShellTvFocusCoordinator.handleShellBackKey();
+              return;
+            }
+            if (dismissAnyPlayerChromeOverlay()) return;
+            unawaited(_s._exitIptvPlayer());
+          },
+          onPlayPause: () {
+            if (_s._playing) {
+              unawaited(_s._enginePause());
+            } else {
+              unawaited(_s._enginePlay());
+            }
+            _scheduleHideControls();
+          },
+          onShowControls: () {
+            setState(() => _s._controlsVisible = true);
+            _scheduleHideControls();
+            _focusPlayerChrome();
+          },
+          onSeekBack: () {
+            if (!_isVodChrome || _s._duration.inSeconds <= 1) {
+              _revealControlsAndFocus(back: false);
+              return;
+            }
+            var target = _s._position - const Duration(seconds: 10);
+            if (target < Duration.zero) target = Duration.zero;
+            unawaited(_s._engineSeek(target));
+            _scheduleHideControls();
+          },
+          onSeekForward: () {
+            if (!_isVodChrome || _s._duration.inSeconds <= 1) {
+              _revealControlsAndFocus(back: false);
+              return;
+            }
+            var target = _s._position + const Duration(seconds: 10);
+            if (target > _s._duration) target = _s._duration;
+            unawaited(_s._engineSeek(target));
+            _scheduleHideControls();
+          },
+          onVolumeUp: () {
+            setState(() => _s._setCachedVolume((_s._volume + 5).clamp(0, 100)));
+          },
+          onVolumeDown: () {
+            setState(() => _s._setCachedVolume((_s._volume - 5).clamp(0, 100)));
+          },
+          onToggleControls: _toggleControls,
+          onFocusBack: () => _revealControlsAndFocus(back: true),
+          onFocusPlay: () => _revealControlsAndFocus(back: false),
+          onControlsActivity: _scheduleHideControls,
+          child: MouseRegion(
+            onHover: (_) => _onPlayerMouseMove(),
+            cursor:
+                (_s._controlsVisible || _s._guideVisible || _s._searchVisible)
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.none,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: pipMode ? null : _toggleControls,
+              // Double-click / double-tap video → toggle fullscreen (same as films).
+              // Android TV is already immersive — no fullscreen toggle.
+              onDoubleTap: () {
+                if (pipMode ||
+                    _s._guideVisible ||
+                    _s._searchVisible ||
+                    iptvUseTvFocus(context)) {
+                  return;
+                }
+                unawaited(_s._toggleFullscreen());
+              },
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Video - fill the stack like the main player (Center can leave
+                  // a zero-sized surface on Android when Impeller composites siblings).
+                  Positioned.fill(
                     child: ExcludeFocus(
-                      excluding:
-                          iptvUseTvFocus(context) &&
-                          (!_s._controlsVisible ||
-                              _s._guideVisible ||
-                              _s._searchVisible),
-                      child: IgnorePointer(
-                        ignoring:
-                            !_s._controlsVisible ||
-                            _s._guideVisible ||
-                            _s._searchVisible,
-                        child: _buildOverlay(compact),
+                      child: RepaintBoundary(
+                        child: _s._exoBackend
+                            ? ExoPlayerView(
+                                viewId: _s._exoViewId!,
+                                // IPTV Exo always TextureView on ATV: physical
+                                // SurfaceView + hybrid composition went audio-only
+                                // black (even cold-open) and the composition-dead
+                                // surface still fires renderedFirstFrame, so the
+                                // watchdog cannot rescue it (issue 133).
+                                allowSurfaceView: false,
+                              )
+                            : Video(
+                                key: ValueKey(_s._videoEpoch),
+                                controller: _s._controller!,
+                                fit: BoxFit.contain,
+                                fill: Colors.black,
+                                controls: NoVideoControls,
+                                subtitleViewConfiguration:
+                                    const SubtitleViewConfiguration(
+                                      visible: false,
+                                    ),
+                              ),
                       ),
                     ),
                   ),
-                if (pipMode) _buildPipRevertOverlay(),
-                // Positioned.fill must be a direct Stack child — wrapping the
-                // overlay (which used to return Positioned) in RepaintBoundary
-                // caused ParentDataWidget spam on every frame.
-                if (!pipMode &&
-                    _s._searchVisible &&
-                    widget.channelGuide != null)
-                  Positioned.fill(
-                    child: RepaintBoundary(
-                      child: IptvChannelSearchOverlay(
-                        guide: widget.channelGuide!,
-                        currentChannelId: _s._currentChannelId,
-                        onChannelSelected: _onSearchChannelSelected,
-                        onClose: () => setState(() {
-                          _s._searchVisible = false;
-                          _scheduleHideControls();
-                        }),
-                      ),
+                  // Text subs (SRT/VTT) — same Flutter overlay as home movies.
+                  // ASS/PGS stay on mpv via sub-visibility.
+                  if (!pipMode &&
+                      !_s._exoBackend &&
+                      _s._player != null &&
+                      !_s._isNativeSubtitle)
+                    StreamBuilder<List<String>>(
+                      stream: _s._player!.stream.subtitle,
+                      initialData: _s._player!.state.subtitle,
+                      builder: (context, snap) {
+                        final lines = snap.data ?? [];
+                        final text = lines
+                            .where((l) => l.trim().isNotEmpty)
+                            .join('\n');
+                        if (text.isEmpty) return const SizedBox.shrink();
+                        const refHeight = 720.0;
+                        final winH = MediaQuery.of(context).size.height;
+                        final scale = (winH / refHeight).clamp(0.35, 1.0);
+                        final hSidePad = 24.0 * scale;
+                        return Positioned(
+                          left: hSidePad,
+                          right: hSidePad,
+                          bottom: _s._subtitleBottomPadding * scale,
+                          child: IgnorePointer(
+                            child: Text(
+                              text,
+                              style: _buildSubtitleTextStyle(scale: scale),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                if (!pipMode &&
-                    _s._guideVisible &&
-                    widget.channelGuide != null)
-                  Positioned.fill(
-                    child: RepaintBoundary(
-                      child: IptvChannelGuidePanel(
-                        guide: widget.channelGuide!,
-                        selectedGroupId: _s._selectedGroupId,
-                        currentChannelId: _s._currentChannelId,
-                        onGroupSelected: (id) {
-                          setState(() => _s._selectedGroupId = id);
-                        },
-                        onChannelSelected: _s._switchChannel,
-                        onClose: _closeGuideAndFocusPlayer,
-                      ),
-                    ),
-                  ),
-                if (!pipMode && epgFuture != null)
-                  Positioned(
-                    right: 16,
-                    bottom: _floatingEpgBottomInset(context, compact),
-                    child: AnimatedOpacity(
+                  // Reconnect/buffering banner - hidden in PiP
+                  if (!pipMode && (_s._buffering || _s._statusBanner != null))
+                    _buildBanner(),
+                  // Top bar + bottom controls (below guide when open).
+                  // Hidden entirely while PiP is active - replaced by the
+                  // floating revert button below on desktop.
+                  if (!pipMode)
+                    AnimatedOpacity(
                       duration: const Duration(milliseconds: 220),
                       opacity: _s._controlsVisible ? 1 : 0,
-                      child: IgnorePointer(
-                        ignoring: !_s._controlsVisible,
-                        child: IptvFloatingEpg(
-                          key: ValueKey(_s._currentChannelId),
-                          future: epgFuture,
-                          maxWidth: compact ? 440 : 540,
+                      child: ExcludeFocus(
+                        excluding:
+                            iptvUseTvFocus(context) &&
+                            (!_s._controlsVisible ||
+                                _s._guideVisible ||
+                                _s._searchVisible),
+                        child: IgnorePointer(
+                          ignoring:
+                              !_s._controlsVisible ||
+                              _s._guideVisible ||
+                              _s._searchVisible,
+                          child: _buildOverlay(compact),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                  if (pipMode) _buildPipRevertOverlay(),
+                  // Positioned.fill must be a direct Stack child — wrapping the
+                  // overlay (which used to return Positioned) in RepaintBoundary
+                  // caused ParentDataWidget spam on every frame.
+                  if (!pipMode &&
+                      _s._searchVisible &&
+                      widget.channelGuide != null)
+                    Positioned.fill(
+                      child: RepaintBoundary(
+                        child: IptvChannelSearchOverlay(
+                          guide: widget.channelGuide!,
+                          currentChannelId: _s._currentChannelId,
+                          onChannelSelected: _onSearchChannelSelected,
+                          onClose: () => setState(() {
+                            _s._searchVisible = false;
+                            _scheduleHideControls();
+                          }),
+                        ),
+                      ),
+                    ),
+                  if (!pipMode &&
+                      _s._guideVisible &&
+                      widget.channelGuide != null)
+                    Positioned.fill(
+                      child: RepaintBoundary(
+                        child: IptvChannelGuidePanel(
+                          guide: widget.channelGuide!,
+                          selectedGroupId: _s._selectedGroupId,
+                          currentChannelId: _s._currentChannelId,
+                          onGroupSelected: (id) {
+                            setState(() => _s._selectedGroupId = id);
+                          },
+                          onChannelSelected: _s._switchChannel,
+                          onClose: _closeGuideAndFocusPlayer,
+                        ),
+                      ),
+                    ),
+                  if (!pipMode && epgFuture != null)
+                    Positioned(
+                      right: 16,
+                      bottom: _floatingEpgBottomInset(context, compact),
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 220),
+                        opacity: _s._controlsVisible ? 1 : 0,
+                        child: IgnorePointer(
+                          ignoring: !_s._controlsVisible,
+                          child: IptvFloatingEpg(
+                            key: ValueKey(_s._currentChannelId),
+                            future: epgFuture,
+                            maxWidth: compact ? 440 : 540,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1167,9 +1179,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           : null,
       position: vod ? _s._position : null,
       duration: vod ? _s._duration : null,
-      onSeekTo: vod
-          ? (pos) => unawaited(_s._engineSeek(pos))
-          : null,
+      onSeekTo: vod ? (pos) => unawaited(_s._engineSeek(pos)) : null,
     );
   }
 
@@ -1260,8 +1270,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   Widget _buildTopBar(bool compact) {
     // PiP is phone/desktop chrome - hide on Android TV (matches VOD player).
-    final showPip =
-        PipService.instance.isSupported && !iptvUseTvFocus(context);
+    final showPip = PipService.instance.isSupported && !iptvUseTvFocus(context);
     final tv = iptvUseTvFocus(context);
 
     void downFromTop() {
@@ -1391,8 +1400,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               focusNode: _s._statsFocus,
               onPressedWithContext: _showStatsMenu,
               onDownEdge: downFromTop,
-              onLeftEdge:
-                  tv ? () => claim(_s._playerMenuFocus) : null,
+              onLeftEdge: tv ? () => claim(_s._playerMenuFocus) : null,
             ),
             if (showPip)
               _topBarFlatAction(
@@ -1469,10 +1477,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                       final value = nowEntry != null
                           ? _epgProgress(nowEntry).clamp(0.0, 1.0)
                           : 1.0;
-                      return _liveProgressTrack(
-                        value: value,
-                        compact: compact,
-                      );
+                      return _liveProgressTrack(value: value, compact: compact);
                     },
                   ),
           ),
@@ -1758,6 +1763,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   Widget _buildBottomBar(bool compact) {
     final tvFocus = iptvUseTvFocus(context);
+
     /// Left transport (Play / Replay) → seekbar when present, else Back.
     void upFromLeftControls() {
       if (_showProgressChrome &&
@@ -1942,9 +1948,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 if (pausedAt != null &&
                     _s._chrome == IptvPlayerChromeProfile.live &&
                     iptvExoUrlLooksLive(
-                      _s._sources.isEmpty
-                          ? ''
-                          : _s._sources[_s._sourceIdx].url,
+                      _s._sources.isEmpty ? '' : _s._sources[_s._sourceIdx].url,
                     ) &&
                     DateTime.now().difference(pausedAt) >=
                         const Duration(seconds: 2)) {
@@ -2066,8 +2070,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 icon: Icons.audiotrack_rounded,
                 focusNode: _s._audioFocus,
                 onUpEdge: tvFocus ? upFromRightControls : null,
-                onLeftEdge:
-                    leftOfAudio() == null ? null : () => claim(leftOfAudio()!),
+                onLeftEdge: leftOfAudio() == null
+                    ? null
+                    : () => claim(leftOfAudio()!),
                 onRightEdge: rightOfAudio() == null
                     ? null
                     : () => claim(rightOfAudio()!),
@@ -2098,8 +2103,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               icon: Icons.search_rounded,
               focusNode: _s._searchChromeFocus,
               onUpEdge: tvFocus ? upFromRightControls : null,
-              onLeftEdge:
-                  leftOfSearch() == null ? null : () => claim(leftOfSearch()!),
+              onLeftEdge: leftOfSearch() == null
+                  ? null
+                  : () => claim(leftOfSearch()!),
               onRightEdge: rightOfSearch() == null
                   ? null
                   : () => claim(rightOfSearch()!),
@@ -2110,8 +2116,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               icon: Icons.grid_view_rounded,
               focusNode: _s._guideFocus,
               onUpEdge: tvFocus ? upFromRightControls : null,
-              onLeftEdge:
-                  leftOfGuide() == null ? null : () => claim(leftOfGuide()!),
+              onLeftEdge: leftOfGuide() == null
+                  ? null
+                  : () => claim(leftOfGuide()!),
               onRightEdge: rightOfGuide() == null
                   ? null
                   : () => claim(rightOfGuide()!),
@@ -2197,16 +2204,15 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         ? 'Episode ${episode.episode}'
         : episode.title.trim();
     setState(() {
-      _s._sources = [
-        IptvPlaySource(url: url, label: _s._sources.first.label),
-      ];
+      _s._sources = [IptvPlaySource(url: url, label: _s._sources.first.label)];
       _s._sourceIdx = 0;
       _s._title = 'Ep ${episode.episode} · $epTitle';
       _s._subtitle = show.isEmpty
           ? 'Season ${episode.season}'
           : '$show · Season ${episode.season}';
-      _s._logoUrl =
-          episode.image.trim().isNotEmpty ? episode.image : _s._logoUrl;
+      _s._logoUrl = episode.image.trim().isNotEmpty
+          ? episode.image
+          : _s._logoUrl;
       _s._playingSeason = episode.season;
       _s._playingEpisode = episode.episode;
       _s._subQuerySeason = episode.season;

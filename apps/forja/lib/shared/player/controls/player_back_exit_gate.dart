@@ -10,6 +10,9 @@ abstract final class PlayerBackExitGate {
   static bool Function()? _tryFocusBack;
   static bool Function()? _tryConsumePlayerOverlay;
   static bool _listening = false;
+  static DateTime? _lastStayAt;
+  static bool _exitCommitted = false;
+  static const _stayTwinWindow = Duration(milliseconds: 80);
 
   /// True after a Back that is ready to exit the player — next Back may skip
   /// the shell debounce window. Stay steps (hide chrome) must leave this false
@@ -24,6 +27,8 @@ abstract final class PlayerBackExitGate {
         _tryFocusBack = null;
         _tryConsumePlayerOverlay = null;
         exitReady = false;
+        _lastStayAt = null;
+        _exitCommitted = false;
       }
     });
   }
@@ -52,7 +57,9 @@ abstract final class PlayerBackExitGate {
     try {
       return cb();
     } catch (e, st) {
-      debugPrint('[PlayerBackExitGate] tryConsumePlayerOverlay failed: $e\n$st');
+      debugPrint(
+        '[PlayerBackExitGate] tryConsumePlayerOverlay failed: $e\n$st',
+      );
       return false;
     }
   }
@@ -64,6 +71,11 @@ abstract final class PlayerBackExitGate {
       exitReady = false;
       return false;
     }
+    if (_exitCommitted) return false;
+    if (_lastStayAt != null &&
+        DateTime.now().difference(_lastStayAt!) < _stayTwinWindow) {
+      return true;
+    }
     final cb = _tryFocusBack;
     if (cb == null) {
       exitReady = false;
@@ -71,10 +83,13 @@ abstract final class PlayerBackExitGate {
     }
     try {
       final stay = cb();
-      // Stay must not set [exitReady] — that skips the HW + didPopRoute
-      // debounce and the twin would exit on the same press.
       exitReady = false;
-      return stay;
+      if (stay) {
+        _lastStayAt = DateTime.now();
+        return true;
+      }
+      _exitCommitted = true;
+      return false;
     } catch (e, st) {
       debugPrint('[PlayerBackExitGate] tryFocusBack failed: $e\n$st');
       exitReady = false;
@@ -109,5 +124,7 @@ abstract final class PlayerBackExitGate {
     _tryFocusBack = null;
     _tryConsumePlayerOverlay = null;
     exitReady = false;
+    _lastStayAt = null;
+    _exitCommitted = false;
   }
 }

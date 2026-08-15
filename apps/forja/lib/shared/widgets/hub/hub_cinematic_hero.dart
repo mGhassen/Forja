@@ -39,7 +39,6 @@ class HubHeroSlide {
     this.imageFit = BoxFit.cover,
     this.imageAlignment = Alignment.centerRight,
     this.listTarget,
-    required this.onPlay,
     required this.onDetails,
   });
 
@@ -57,7 +56,6 @@ class HubHeroSlide {
   final BoxFit imageFit;
   final Alignment imageAlignment;
   final HubListFollowTarget? listTarget;
-  final VoidCallback onPlay;
   final VoidCallback onDetails;
 }
 
@@ -312,7 +310,11 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     final pageBleed = widget.pageBottomChild != null && !_compact;
     final imageHeight = _hubBackdropHeight();
     final topBarBleed = _desktopTopBarBleed();
-    final textTop = topBarBleed + ShellTokens.shellHeaderTopPadding;
+    final searchTop = topBarBleed + ShellTokens.shellHeaderTopPadding;
+    final textTop = topBarBleed +
+        (_compact
+            ? ShellTokens.shellHeaderTopPadding
+            : ShellTokens.heroTextColumnTopInsetDesktop);
     final textBottom = shellScaled(context, 16).clamp(8.0, 16.0);
     final textBottomInset = _hubHeroTextBottomInset(defaultBottom: textBottom);
     final tvNav = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -334,7 +336,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
           ),
           if (widget.onSearch != null)
             Positioned(
-              top: textTop,
+              top: searchTop,
               right: shellHomeSectionHorizontalPadding(context),
               child: _buildSearchAction(tvNav: tvNav),
             ),
@@ -364,7 +366,10 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                     builder: (context, constraints) {
                       return ClipRect(
                         child: Align(
-                          alignment: Alignment.bottomLeft,
+                          alignment: Alignment(
+                            -1,
+                            ShellTokens.heroTextColumnVerticalAlign,
+                          ),
                           child: SizedBox(
                             width: math.min(
                               MediaQuery.sizeOf(context).width * 0.34,
@@ -842,9 +847,12 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       ShellTvFocus.focusHubHeroSearch();
     }
 
-    final play = HeroPillPlayButton(
-      label: 'Play',
-      onTap: slide.onPlay,
+    final details = HeroPillPlayButton(
+      label: 'View details',
+      icon: Icons.info_outline_rounded,
+      primary: false,
+      alwaysShowLabel: true,
+      onTap: slide.onDetails,
       focusNode: policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
       tvTabId: tvNav ? tabId : null,
       tvRowId: tvNav && tabId != null ? MediaDetailsTv.heroRowId : null,
@@ -867,30 +875,15 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     final row = HeroPillActionRow(
       children: [
         if (tvNav)
-          FocusTraversalOrder(order: const NumericFocusOrder(1), child: play)
+          FocusTraversalOrder(order: const NumericFocusOrder(1), child: details)
         else
-          play,
-        const SizedBox(width: 10),
-        HeroPillIconGroup(
-          tvFocusOrderStart: tvNav ? 2 : null,
-          tvTabId: tvNav ? tabId : null,
-          tvRowId: tvNav && tabId != null ? MediaDetailsTv.heroRowId : null,
-          tvItemIndexStart: tvNav ? 1 : null,
-          onUpEdge: tvNav ? focusHubSearch : null,
-          slots: [
-            HeroPillIconSlot(
-              icon: Icons.info_outline_rounded,
-              tooltip: 'Details',
-              onTap: slide.onDetails,
-            ),
-          ],
-        ),
+          details,
         if (slide.listTarget != null) ...[
           const SizedBox(width: 10),
           HubListStatusHero(
             target: slide.listTarget!,
             tvTabId: tvNav ? tabId : null,
-            tvItemIndexStart: tvNav ? 2 : 0,
+            tvItemIndexStart: tvNav ? 1 : 0,
             onUpEdge: tvNav ? focusHubSearch : null,
           ),
         ],
@@ -899,7 +892,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     if (!tvNav || tabId == null) return row;
     return DetailsHeroTvActionScope(
       tabId: tabId,
-      itemCount: slide.listTarget != null ? 3 : 2,
+      itemCount: slide.listTarget != null ? 2 : 1,
       onFocusUp: focusHubSearch,
       child: row,
     );

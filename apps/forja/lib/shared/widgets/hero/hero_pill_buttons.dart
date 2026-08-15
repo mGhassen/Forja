@@ -107,6 +107,7 @@ class HeroPillPlayButton extends StatelessWidget {
     this.tone,
     this.autoFocus = false,
     this.focusNode,
+    this.alwaysShowLabel = false,
     this.onKeyEvent,
     this.tvTabId,
     this.onUpEdge,
@@ -120,6 +121,7 @@ class HeroPillPlayButton extends StatelessWidget {
   final VoidCallback? onTap;
   final bool primary;
   final HeroPillPlayTone? tone;
+  final bool alwaysShowLabel;
   final bool autoFocus;
   final FocusNode? focusNode;
   final KeyEventResult Function(FocusNode node, KeyEvent event)? onKeyEvent;
@@ -178,7 +180,7 @@ class HeroPillPlayButton extends StatelessWidget {
             style: style,
             active: active,
             pressed: pressed,
-            expanded: active,
+            expanded: alwaysShowLabel || active,
             label: label,
             leading: leading,
           );

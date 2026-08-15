@@ -408,10 +408,10 @@ class _ShellNavRailState extends State<ShellNavRail> {
                         children: [
                           Expanded(child: navArea),
                           if (settingsIndex != null)
-                            ValueListenableBuilder<bool>(
+                            ValueListenableBuilder<LanPresenceKind>(
                               valueListenable:
-                                  LanPairingPresence.instance.paired,
-                              builder: (context, lanPaired, _) {
+                                  LanPairingPresence.instance.status,
+                              builder: (context, lanKind, _) {
                                 return _ShellNavRailItem(
                                   key: const ValueKey('nav-rail-settings'),
                                   destination: navDestinations['settings']!,
@@ -425,7 +425,9 @@ class _ShellNavRailState extends State<ShellNavRail> {
                                           onProfile: _onActiveProfile,
                                         )
                                       : null,
-                                  labelDot: showDesktopProfile && lanPaired,
+                                  labelPresence: showDesktopProfile
+                                      ? lanKind
+                                      : LanPresenceKind.off,
                                   customIconSize: showDesktopProfile
                                       ? profileIconSize
                                       : null,
@@ -670,12 +672,12 @@ class _NavRailLabel extends StatelessWidget {
   const _NavRailLabel({
     required this.text,
     required this.style,
-    this.showDot = false,
+    this.presence = LanPresenceKind.off,
   });
 
   final String text;
   final TextStyle style;
-  final bool showDot;
+  final LanPresenceKind presence;
 
   @override
   Widget build(BuildContext context) {
@@ -686,18 +688,11 @@ class _NavRailLabel extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
       style: style,
     );
-    if (!showDot) return label;
+    if (!presence.showDot) return label;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 5,
-          height: 5,
-          decoration: const BoxDecoration(
-            color: ForjaShellColors.brandGreen,
-            shape: BoxShape.circle,
-          ),
-        ),
+        LanPresenceDot(kind: presence, size: 5),
         const SizedBox(width: 4),
         Flexible(child: label),
       ],
@@ -716,7 +711,7 @@ class _ShellNavRailItem extends StatefulWidget {
     required this.onFocusChanged,
     this.label,
     this.icon,
-    this.labelDot = false,
+    this.labelPresence = LanPresenceKind.off,
     this.iconSize,
     this.labelFontSize,
     this.customIconSize,
@@ -732,8 +727,8 @@ class _ShellNavRailItem extends StatefulWidget {
   final VoidCallback onFocusChanged;
   final String? label;
   final Widget? icon;
-  /// Brand-green status dot before the label (LAN pairing).
-  final bool labelDot;
+  /// LAN presence dot before the profile label.
+  final LanPresenceKind labelPresence;
   /// Fitted / preferred glyph size for destination icons.
   final double? iconSize;
   final double? labelFontSize;
@@ -1111,7 +1106,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                                   ? _NavRailLabel(
                                       text: label,
                                       style: labelStyle,
-                                      showDot: widget.labelDot,
+                                      presence: widget.labelPresence,
                                     )
                                   : _TypewriterLabel(
                                       text: label,

@@ -528,13 +528,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         },
         setArmed: (v) => _tvBackExitArmed = v,
       );
-      if (!stay) {
-        // Silence + unmount Video before pop so MediaKit/MediaCodec
-        // teardown cannot ANR (issue 128).
-        unawaited(_exitIptvPlayer());
-        return true;
-      }
-      return true;
+      return stay;
     });
     PlayerBackExitGate.setTryConsumePlayerOverlay(() {
       if (_disposed || !mounted || _isPipMode) return false;

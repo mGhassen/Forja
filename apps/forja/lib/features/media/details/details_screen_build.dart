@@ -241,8 +241,7 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
     final metaAsync = _s._isCustomStremioItem
         ? null
         : ref.watch(detailsMetaProvider(_s._metaKey));
-    final isLoading =
-        _s._isLoading || (metaAsync?.isLoading ?? false);
+    final isLoading = _s._isLoading || (metaAsync?.isLoading ?? false);
 
     if (isLoading) {
       return Scaffold(
@@ -272,13 +271,16 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
             TorrentSourcesPanel(
               isOpen: _s._sourcesPanelOpen,
               onClose: _s._closeSourcesPanel,
-              child: _s._sourcesPanelOpen
-                  ? SourcesPanelTv.wrapBody(
-                      context: context,
-                      onClose: _s._closeSourcesPanel,
-                      child: _buildSourcesPanelContent(),
-                    )
-                  : _buildSourcesPanelContent(),
+              child: ExcludeFocus(
+                excluding: tv && !_s._sourcesPanelOpen,
+                child: _s._sourcesPanelOpen
+                    ? SourcesPanelTv.wrapBody(
+                        context: context,
+                        onClose: _s._closeSourcesPanel,
+                        child: _buildSourcesPanelContent(),
+                      )
+                    : _buildSourcesPanelContent(),
+              ),
             ),
           ExcludeFocus(
             excluding: tv && _s._sourcesPanelOpen,
@@ -408,7 +410,8 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
           episodeLabel: _s._movie.mediaType == 'tv'
               ? 'S${_s._selectedSeason.toString().padLeft(2, '0')}E${_s._selectedEpisode.toString().padLeft(2, '0')}'
               : null,
-          isFetching: (_s._panelKindFilter == 'torrents' && _s._isSearching) ||
+          isFetching:
+              (_s._panelKindFilter == 'torrents' && _s._isSearching) ||
               (_s._panelKindFilter == 'stremio' && _s._isStremioFetching) ||
               (_s._panelKindFilter == 'nuvio' && _s._isNuvioFetching),
           onCancelFetch: _s._cancelActiveSourceFetch,

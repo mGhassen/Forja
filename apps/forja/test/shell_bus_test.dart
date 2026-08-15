@@ -7,6 +7,7 @@ void main() {
 
   tearDown(() {
     ShellBus.clearHideGlobalNav();
+    ShellBus.requestSettingsCategory.value = null;
     ShellBus.selectDefaultTabOnNextNavLoad = false;
     ShellBus.homeProviderMenuVisible.value = false;
     ShellBus.selectedWatchProviderId.value = null;
@@ -47,6 +48,16 @@ void main() {
     ShellBus.requestTab.value = 'search';
     expect(ShellBus.requestTab.value, 'search');
     ShellBus.requestTab.value = null;
+  });
+
+  test('ShellBus.openSettings switches to settings and optional category', () {
+    ShellBus.requestTab.value = null;
+    ShellBus.requestSettingsCategory.value = null;
+    ShellBus.openSettings(categoryId: 'lan');
+    expect(ShellBus.requestTab.value, 'settings');
+    expect(ShellBus.requestSettingsCategory.value, 'lan');
+    ShellBus.requestTab.value = null;
+    ShellBus.requestSettingsCategory.value = null;
   });
 
   test('ShellBus provider menu show + top logo clear filter', () {

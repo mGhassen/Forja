@@ -1,12 +1,12 @@
 ---
-description: RFC, issue, version backlog, migration, and feature user-guide doc lifecycle
-globs: docs/rfc/**,docs/issues/**,docs/backlog/**,docs/migration/**,docs/features/**
+description: RFC, issue, migration, and feature user-guide doc lifecycle
+globs: docs/rfc/**,docs/issues/**,docs/migration/**,docs/features/**
 alwaysApply: true
 ---
 
-# RFC, issue, and version backlog doc management
+# RFC, issue, and feature doc management
 
-Indexes: [RFC](../../docs/rfc/README.md) · [issues](../../docs/issues/README.md) · [backlog](../../docs/backlog/README.md) · [features (user guide)](../../docs/features/README.md)
+Indexes: [RFC](../../docs/rfc/README.md) · [issues](../../docs/issues/README.md) · [features (user guide)](../../docs/features/README.md)
 
 ## Golden rule
 
@@ -16,9 +16,27 @@ Update the folder README index and grep cross-links in the same turn as any rena
 
 ---
 
-## Progress tracker format (mandatory — all layers)
+## Backlog (`docs/backlog/`) — disabled
 
-**Same visual language as migration phases.** Every RFC, issue, backlog, and migration file uses this. Migration [Phase 2](../../docs/migration/fixed/02-[fixed]-rust-engine-complete.md) is the canonical reference.
+Do **not** create, update, rename, close, schedule, or git-tag from `docs/backlog/`. Those files do **not** follow live app versions.
+
+**Versions live in:** `pubspec` / `kReleaseCodename` · `docs/changelog/` · git tags from the release workflow.
+
+**Do not:**
+
+- Flip `B*-S*` rows or treat a backlog semver as a ship target
+- Wire RFCs/issues into a backlog version file
+- Add `**Target version:**` or backlog links to RFC/issue bodies
+- Close a backlog file and tag `vX.Y.Z` from it
+- Update backlog README **Active** / **Backlog** columns as part of normal work
+
+Leave `docs/backlog/` alone unless the user explicitly asks to edit it.
+
+---
+
+## Progress tracker format (mandatory — RFC / issue / migration)
+
+**Same visual language as migration phases.** Every RFC, issue, and migration file uses this. Migration [Phase 2](../../docs/migration/fixed/02-[fixed]-rust-engine-complete.md) is the canonical reference.
 
 ### Legend (required line immediately after glance table)
 
@@ -26,7 +44,7 @@ Update the folder README index and grep cross-links in the same turn as any rena
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 ```
 
-Issues omit ⏭️ unless deferred work exists. Done backlogs: `✅ done · ⬜ not started`.
+Issues omit ⏭️ unless deferred work exists.
 
 ### Task table shape (required)
 
@@ -41,7 +59,7 @@ Issues omit ⏭️ unless deferred work exists. Done backlogs: `✅ done · ⬜ 
 
 ---
 
-## Acceptance (0.8.0)
+## Acceptance (slice)
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
@@ -57,24 +75,23 @@ Use `---` before and after each task section block.
 | ✅ | Done / shipped / verified in code |
 | 🔄 | Actively in progress (partial implementation) |
 | ⬜ | Not started or not verified (incl. manual QA not run) |
-| ⏭️ | Explicitly deferred to a later slice/version |
+| ⏭️ | Explicitly deferred to a later slice |
 
 **Forbidden in task tables:** `Shipped`, `Stub`, `done`, `- [x]`, `- [ ]`.
 
 ### ID prefixes
 
-| Layer | Components | Acceptance / tasks | Backlog shipped |
-|-------|------------|--------------------|-----------------|
-| RFC NNN | `R{nnn}-C{nn}` | `R{nnn}-A{nn}` | — |
-| Issue NNN | `I{nnn}-T{nn}` (fix tasks) | `I{nnn}-A{nn}` | — |
-| Backlog X.Y.Z | — | — | `B{digits}-S{nn}` (0.8.0 → `B80-S01`) |
-| Migration | `P{n}-XX` (existing) | same | — |
+| Layer | Components | Acceptance / tasks |
+|-------|------------|--------------------|
+| RFC NNN | `R{nnn}-C{nn}` | `R{nnn}-A{nn}` |
+| Issue NNN | `I{nnn}-T{nn}` (fix tasks) | `I{nnn}-A{nn}` |
+| Migration | `P{n}-XX` (existing) | same |
 
 Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 
 ### Status at a glance — required
 
-**Version scheduling is backlog-only.** Which semver ships an RFC or issue lives in `docs/backlog/` and the folder README **Backlog** column — **not** in RFC/issue bodies. When a version slips, update the backlog file and README; do not touch RFC/issue metadata for scheduling.
+Do **not** put ship semver in RFC/issue bodies. Implementation state only.
 
 **RFC** (reference: [RFC-023](../../docs/rfc/fixed/023-[fixed]-app-shell-redesign.md)):
 
@@ -97,19 +114,7 @@ Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 | **Progress** | **3 / 13** verification |
 ```
 
-**Forbidden in RFC/issue bodies:** `**Target version:**`, `**Backlog**` row in glance, links to backlog files for ship scheduling.
-
-**Backlog** (reference: [0.8.0](../../docs/backlog/0.8.0-[partial].md)):
-
-```markdown
-## Status at a glance
-
-| | |
-|--|--|
-| **Progress** | **14 / 15** shipped (desktop) |
-| **Blocks close** | Mobile shell smoke (B80-S12) — deferred |
-| **Backlog** | [RFC-023](../rfc/fixed/023-[fixed]-app-shell-redesign.md) |
-```
+**Forbidden in RFC/issue bodies:** `**Target version:**`, `**Backlog**` row in glance, links to backlog files.
 
 ### Progress counts
 
@@ -122,11 +127,11 @@ Zero-pad RFC/issue numbers: RFC-023 → `R23-`, issue 002 → `I02-`.
 
 **One source of truth:** emoji task tables. No parallel checkbox lists.
 
-When any row changes: update RFC/issue glance **Progress** (and **Current slice** when relevant) **and** folder README **Progress** column in the **same turn**. Update backlog + README **Backlog** column when ship assignment changes — not the RFC/issue file.
+When any row changes: update RFC/issue glance **Progress** (and **Current slice** when relevant) **and** folder README **Progress** column in the **same turn**.
 
 ### RFC / issue task history — append-only (mandatory)
 
-Once an RFC or issue is linked from an **active or done backlog** version, task rows are **historical records**. Never rewrite or delete them.
+Task rows are **historical records**. Never rewrite or delete them.
 
 | Rule | Detail |
 |------|--------|
@@ -135,88 +140,10 @@ Once an RFC or issue is linked from an **active or done backlog** version, task 
 | **Frozen statuses** | Rows marked **🔄 in progress** or **✅ done** must **keep that status forever**. Do not revert to ⬜ or change the description. |
 | **New work → new rows** | New slices get **new IDs** (`R16-A06`, `R24-A01`, …) or a **child RFC** (e.g. RFC-024 for eviction). Do not renumber existing IDs. |
 | **New RFC instead of erase** | If scope diverges (eviction vs mount), add RFC-024 — do not overwrite RFC-016. |
-| **Version slip** | Move checklist lines to the next backlog file; update backlog + README **Backlog** column; RFC/issue task rows stay as-is with their frozen status |
 
 **Wrong:** Replace RFC-016 acceptance table and mark 11/11 ✅ while per-tab rows vanish.
 
 **Right:** Restore RFC-016 mount rows (frozen ✅/⬜), add RFC-024 for eviction/stale, append per-tab rows R24-A11+ as ⬜ until shipped.
-
----
-
-## Backlog (`docs/backlog/`)
-
-**One file per release version** (e.g. `0.7.6-[open].md`). The file body is that version's ship checklist.
-
-### Filename tags
-
-`[draft]` · `[open]` · `[partial]` · `[done]` (in `done/`) · `[canceled]` (in `canceled/`)
-
-Pattern: `{semver}-[{status}].md` — e.g. `0.7.6-[draft].md`
-
-### Body `**Status:**` ↔ filename
-
-| Body status | Filename | Location |
-|-------------|----------|----------|
-| `draft` | `X.Y.Z-[draft].md` | Version scoped, not started |
-| `open` | `X.Y.Z-[open].md` | Actively shipping |
-| `partial` | `X.Y.Z-[partial].md` | Release in progress |
-| `done` | `X.Y.Z-[done].md` | `docs/backlog/done/` |
-| `canceled` | `X.Y.Z-[canceled].md` | `docs/backlog/canceled/` — version dropped, will not ship |
-
-### Lifecycle
-
-```
-plan version   →  0.7.6-[draft].md
-start release  →  0.7.6-[open].md
-in progress    →  0.7.6-[partial].md
-shipped        →  done/0.7.6-[done].md  +  git tag v0.7.6  +  push tag
-dropped        →  canceled/0.7.6-[canceled].md
-```
-
-### Close version — git tag (mandatory)
-
-When a backlog version is **finished** (all in-scope `B*-S*` rows ✅, or remaining work moved to **Deferred → next version** honestly):
-
-1. Move `X.Y.Z-[open|partial].md` → `done/X.Y.Z-[done].md`; body `**Status:** done`
-2. Complete doc updates (RFC/issue rows, indexes, cross-links) in the **same turn**
-3. **Create and push an annotated git tag** on the commit that ships the version:
-
-```bash
-git tag -a vX.Y.Z -m "X.Y.Z — {codename if any}"
-git push origin vX.Y.Z
-```
-
-- **Tag name:** `v` + backlog semver — e.g. backlog `0.8.0` → tag `v0.8.0` (matches [RFC-015](../../docs/rfc/015-[partial]-in-app-updates.md) GitHub Releases / `AppUpdaterService`)
-- **Tag target:** HEAD (or the merge commit the user specifies) after ship docs are committed — tag **after** the closing commit, not before
-- **Do not** tag `[draft]` or in-progress `[open]` versions — only terminal **`[done]`** close
-- **Do not** force-push tags; if `vX.Y.Z` already exists, stop and tell the user — do not retag silently
-- If the user has not asked to commit yet: commit ship docs first (or ask), then tag and push
-
-**Forbidden:** moving backlog to `done/` without pushing `vX.Y.Z` when the version is declared shipped (unless push is blocked — say so explicitly).
-
----
-
-| Level | Semver | Codename? | When to bump |
-|-------|--------|-----------|--------------|
-| **Major era** | `0.x.x`, `1.x.x`, … | **Theme only** (Tunisia category for the whole era) | New product chapter — e.g. v0 engine, v1 player UX, v2 sync |
-| **Minor** | `X.Y.0` | **One codename** per minor open | New arc inside the major era |
-| **Patch** | `X.Y.Z` (Z ≥ 1) | **None** — version number only | Next real ship batch inside the arc |
-| **Origin** | `0.0.1` | One codename (first ship) | — |
-
-Patch count is **not standardized** — never pad patches to match other arcs.
-
-### Mandatory backlog file sections
-
-Every backlog file body includes (use `—` when empty):
-
-1. **`## Status at a glance`** — immediately after version intro (before RFCs/Issues)
-2. **`## Shipped`** — numbered emoji task table (`B*-S*` IDs). **Not** markdown checkboxes.
-3. **`## RFCs`** — link, slice shipped, status after this version
-4. **`## Issues`** — link, slice shipped, status after this version
-5. **`## Migration`** — phase link when a migration slice ships
-6. **`## Deferred → next version`** when items slip
-
-Update [RFC README](../../docs/rfc/README.md) and [issues README](../../docs/issues/README.md) **Backlog** column when a version ships.
 
 ---
 
@@ -241,12 +168,12 @@ Feature **specs** — numbered RFCs, not semver files.
 
 After `#` title + metadata block:
 
-**Metadata block — allowed fields only:** `**Status:**`, `**Depends on:**`, `**Area:**`. Optional product-era label `**Version:**` (e.g. v1.1 theme) — **not** a backlog semver assignment.
+**Metadata block — allowed fields only:** `**Status:**`, `**Depends on:**`, `**Area:**`. Optional product-era label `**Version:**` (e.g. v1.1 theme) — **not** a ship semver.
 
 1. **`## Status at a glance`** — **Progress** + **Current slice** only (implementation state, not ship version)
 2. **`**Legend:**`**
 3. **`## Components`** — when buildable pieces exist (skip for spec-only drafts)
-4. **`## Acceptance (slice)`** — name slices by work batch (e.g. desktop, mobile), not backlog semver
+4. **`## Acceptance (slice)`** — name slices by work batch (e.g. desktop, mobile), not a version number
 5. **`## Summary`** — then Goals / Problem / Contracts / Related
 
 **Reference:** [RFC-023](../../docs/rfc/fixed/023-[fixed]-app-shell-redesign.md)
@@ -271,7 +198,7 @@ Workaround requires user permission per [honesty-and-completion.mdc](./honesty-a
 
 ### Mandatory issue body section order
 
-After metadata block (`**Status:**`, `**Priority:**`, `**Severity:**`, `**Area:**` — no `**Target version:**` or backlog links):
+After metadata block (`**Status:**`, `**Priority:**`, `**Severity:**`, `**Area:**` — no `**Target version:**`):
 
 1. **`## Status at a glance`** — **Progress** only
 2. **`**Legend:**`**
@@ -286,7 +213,7 @@ Update [issues README](../../docs/issues/README.md) **Progress** column when row
 
 ## Feature user guides (`docs/features/`)
 
-**User-facing docs** — what the app does and how to use it. Not progress trackers (those stay in RFC/backlog/issue).
+**User-facing docs** — what the app does and how to use it. Not progress trackers (those stay in RFC/issue).
 
 Index: [features/README.md](../../docs/features/README.md) · Template: [TEMPLATE.md](../../docs/features/TEMPLATE.md)
 
@@ -322,23 +249,22 @@ Each feature file ([TEMPLATE.md](../../docs/features/TEMPLATE.md)) must reflect 
 2. Add link in [features/README.md](../../docs/features/README.md) (and **I want to…** table if user-facing)
 3. Grep `docs/features/` for old slug/path and fix cross-links
 
-RFC/issue/backlog track **ship status**; feature docs track **how it works for users**. Both update in the same turn when behavior changes.
+RFC/issue track **implementation status**; feature docs track **how it works for users**. Both update in the same turn when behavior changes.
 
 ---
 
-## Version ↔ RFC ↔ issue (three layers)
+## RFC ↔ issue
 
-| Layer | Owns | Slips how? |
-|-------|------|------------|
-| **Backlog** `0.7.6-[open].md` | Which items ship in which semver | Move item to next version file; close old version honestly |
+| Layer | Owns | When status changes |
+|-------|------|---------------------|
 | **RFC** `003-[partial]-….md` | Feature spec + full acceptance | **Same file** — status changes only when implementation state changes |
 | **Issue** `018-[open]-….md` | Bug, debt, verifiable sub-work | **Same file** — `[fixed]` or `[canceled]` when done or abandoned |
 
-**Version assignment lives in backlog and folder README indexes only** — never in RFC/issue filenames or bodies.
+Ship version is **changelog + git tag**, not RFC/issue filenames or bodies.
 
-### Active backlog — scope big work before coding
+### Scope big work before coding
 
-When the **active open/partial backlog** is in context (e.g. [0.8.1-[open].md](../../docs/backlog/0.8.1-[open].md)) or the user is clearly shipping that version arc, and they ask for something **substantial** — **create or extend docs first**, then implement. Do not jump straight to code without a tracked spec.
+When the user asks for something **substantial** — **create or extend docs first**, then implement. Do not jump straight to code without a tracked spec.
 
 **Substantial = needs an RFC or issue:**
 
@@ -346,99 +272,79 @@ When the **active open/partial backlog** is in context (e.g. [0.8.1-[open].md](.
 |------|--------|----------|
 | **RFC** | New `docs/rfc/NNN-[draft\|planned\|open\|partial]-….md` | New feature subsystem, multi-component architectural change, new acceptance slice that does not fit an existing RFC |
 | **Issue** | New `docs/issues/NNN-[draft\|open]-….md` | Concrete bug, engine debt, test gap, verifiable sub-work with its own fix |
-| **Extend existing** | Add rows to **existing** RFC/issue tables | Fits current RFC-023 scope → add `R23-A*` / `B80-S*` rows; do **not** clone a new RFC number |
+| **Extend existing** | Add rows to **existing** RFC/issue tables | Fits current RFC-023 scope → add `R23-A*` rows; do **not** clone a new RFC number |
 
 **Same turn — mandatory checklist when creating:**
 
 1. **Pick next free number** — grep `docs/rfc/` and `docs/issues/` for highest NNN; use NNN+1
-2. **Create the file** — full mandatory format ([Progress tracker](#progress-tracker-format-mandatory--all-layers), glance, legend, emoji task tables). New RFCs start `[draft]` or `[planned]`; new issues `[draft]` until work starts → `[open]`
-3. **Wire into active backlog** — add row to `## RFCs` or `## Issues` (slice + status after ship); add ⬜ row(s) to `## Shipped` with IDs linking to the new spec
-4. **Update indexes** — [RFC README](../../docs/rfc/README.md) and/or [issues README](../../docs/issues/README.md) **Backlog** column; [backlog README](../../docs/backlog/README.md) if version scope changed
-5. **Backlog only for scheduling** — do not add `**Target version:**` or backlog links to the RFC/issue body; backlog glance **Blocks close** / deferred if out of scope for this ship
+2. **Create the file** — full mandatory format ([Progress tracker](#progress-tracker-format-mandatory--rfc--issue--migration), glance, legend, emoji task tables). New RFCs start `[draft]` or `[planned]`; new issues `[draft]` until work starts → `[open]`
+3. **Update indexes** — [RFC README](../../docs/rfc/README.md) and/or [issues README](../../docs/issues/README.md) **Progress** column
+4. Do **not** add `**Target version:**` or backlog links to the RFC/issue body
 
-**If the ask is too big for the current version:** still create the RFC/issue, add to backlog `## Deferred → later X.Y.x` or create/next patch `[draft].md` — do not silently cram unrelated work into the open version without a backlog line.
+**If the ask is small** (one file, obvious fix inside an existing RFC slice): extend that RFC’s task table — no new RFC/issue file.
 
-**If the ask is small** (one file, obvious fix inside an existing RFC slice): extend that RFC’s task table + backlog Shipped row — no new RFC/issue file.
+**Do not wait** for the user to say “create the RFC” — if the work is big and untracked, file the RFC/issue in the **same turn** as you start (or before) implementation.
 
-**Do not wait** for the user to say “create the RFC” — if the work is big and untracked, file the doc and backlog entry in the **same turn** as you start (or before) implementation.
-
----
-
-1. Move old backlog → `done/X.Y.Z-[done].md` with **Shipped** and **Deferred → next version** sections
-2. Create/update next backlog (e.g. `0.7.7-[draft].md`) with deferred items
-3. RFC/issue stays `[partial]` / `[open]` / `[draft]` — do **not** `[fixed]` or `[canceled]` unless work is done or killed
-4. `[canceled]` on backlog = version dropped; `[canceled]` on RFC/issue = will never build/fix
-
-### Partial RFC shipped across versions — do not split
+### Partial RFC — do not split
 
 Ship incrementally from **one RFC per feature**. Use slices inside the spec, not new RFC numbers.
 
 **Inside the RFC:**
 
 - `## Components` + `## Acceptance (slice)` emoji task tables — flip row Status when code ships
-- Optional `## Slices` prose mapping ID ranges to ship batches
-
-**In backlog:**
-
-- Shipped rows name slice + IDs: `RFC-023: ShellScaffold (R23-C02) ✅`
-- Deferred references open row IDs: `R23-A10–A14 device smoke`
+- Optional `## Slices` prose mapping ID ranges to work batches
 
 **RFC status:**
 
 - Stays `[partial]` until **all** acceptance rows ✅ for that RFC → then `[fixed]`
-- Do **not** rename to `[fixed]` because one slice shipped in a version
-- Backlog `[done]` can honestly list partial RFC slices as shipped
+- Do **not** rename to `[fixed]` because one slice shipped
 
 ### When to split vs nest
 
 | Situation | Action |
 |-----------|--------|
-| Same feature, shipped in chunks across versions | **One RFC** — slices/phases inside |
+| Same feature, shipped in chunks | **One RFC** — slices/phases inside |
 | Different subsystem, independent ship/cancel | **Separate RFCs** (e.g. sync vs watch party) |
 | Release theme / milestone index | **Meta RFC** (e.g. v1.2 bundle) — links to child RFCs; spec stays in each child |
 | Concrete bug, test gap, debt with own fix | **Child issue** (parent links 019–022 pattern) |
-| “Ship this slice in 0.7.7” | **Backlog Shipped row** linking to RFC/issue ID |
 
-**Do not** invent IDs outside the prefixes in [Progress tracker format](#progress-tracker-format-mandatory--all-layers). Migration `P2-XX` IDs stay in migration docs only.
+**Do not** invent IDs outside the prefixes in [Progress tracker format](#progress-tracker-format-mandatory--rfc--issue--migration). Migration `P2-XX` IDs stay in migration docs only.
 
-**Do not:** clone an RFC for the next version; put semver in RFC filenames; use `[canceled]` when you mean deferred to next version.
+**Do not:** clone an RFC for the next version; put semver in RFC filenames; use `[canceled]` when you mean deferred.
 
 ---
 
 ## On status change
 
-1. Rename file (tag + move to terminal folder when `done` / `fixed` / `canceled`)
+1. Rename file (tag + move to terminal folder when `fixed` / `canceled`)
 2. Update `**Status:**` in body
 3. Update the folder README index
 4. Grep old path in `docs/` and fix links
-5. **Backlog → `[done]`:** create and push git tag `vX.Y.Z` — see [Close version — git tag](#close-version--git-tag-mandatory)
 
 ## After code changes (mandatory — same turn)
 
-When you land or materially advance work tied to a backlog version, RFC, or **user-visible feature**, **do not stop at code**. Update docs in the **same turn**:
+When you land or materially advance work tied to an RFC, issue, or **user-visible feature**, **do not stop at code**. Update docs in the **same turn**:
 
-1. **Backlog** — flip `B*-S*` rows; update glance; rename tag if lifecycle moved
-2. **RFC** — flip `R*-C*` / `R*-A*` rows; update glance **Progress** / **Current slice**; `**Status:**` if terminal
-3. **Issue** — flip `I*-A*` / `I*-T*` rows; update glance **Progress**; filename tag if terminal
-4. **Feature user guide** — update matching `docs/features/**/*.md` so How to open / What you can do / Setup match the code you just changed (see [Feature user guides](#feature-user-guides-docsfeatures))
-5. **Changelog** — add, edit, or remove bullets in the active `docs/changelog/*-[draft].md`; final truth only (see [changelog](../../.cursor/rules/changelog.mdc))
-6. **Indexes** — RFC README **Progress**; issues README **Progress**; backlog README **Active**; features README when adding/removing pages
-7. **Cross-links** — grep old filename slug under `docs/` and fix
+1. **RFC** — flip `R*-C*` / `R*-A*` rows; update glance **Progress** / **Current slice**; `**Status:**` if terminal
+2. **Issue** — flip `I*-A*` / `I*-T*` rows; update glance **Progress**; filename tag if terminal
+3. **Feature user guide** — update matching `docs/features/**/*.md` so How to open / What you can do / Setup match the code you just changed (see [Feature user guides](#feature-user-guides-docsfeatures))
+4. **Changelog** — add, edit, or remove bullets in the active `docs/changelog/*-[draft].md`; final truth only (see [changelog](../../.cursor/rules/changelog.mdc))
+5. **Indexes** — RFC README **Progress**; issues README **Progress**; features README when adding/removing pages
+6. **Cross-links** — grep old filename slug under `docs/` and fix
 
 **Forbidden:** code shipped with task rows still ⬜; aggregate-only glance with no item table; checkbox lists parallel to emoji tables; feature docs describing UI that no longer exists.
 
-Skip RFC/backlog/issue updates only when the change is unrelated to any version/RFC (pure refactor, typo, tooling). **Still update feature docs and changelog** if user-visible behavior changed.
+Skip RFC/issue updates only when the change is unrelated to any RFC (pure refactor, typo, tooling). **Still update feature docs and changelog** if user-visible behavior changed. **Never** update `docs/backlog/` as part of this checklist.
 
 | Folder | Terminal folders | Terminal statuses |
 |--------|------------------|-------------------|
-| `backlog/` | `done/` · `canceled/` | `done` · `canceled` |
 | `rfc/` | `fixed/` · `canceled/` | `fixed` · `canceled` |
 | `issues/` | `fixed/` · `canceled/` | `fixed` · `canceled` |
 | `migration/` | `fixed/` · `canceled/` | `fixed` · `canceled` |
 
 ## Migration (`docs/migration/`)
 
-Engine migration phases — numbered `01`–`03`, not RFCs. Same [Progress tracker format](#progress-tracker-format-mandatory--all-layers).
+Engine migration phases — numbered `01`–`03`, not RFCs. Same [Progress tracker format](#progress-tracker-format-mandatory--rfc--issue--migration).
 
 ### Filename tags
 

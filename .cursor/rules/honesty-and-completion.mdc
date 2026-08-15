@@ -89,18 +89,6 @@ See [docs-rfc-issues.mdc](./docs-rfc-issues.mdc) for full RFC vs issue lifecycle
 | `fixed` | `[fixed]` in `rfc/fixed/` |
 | `canceled` | `[canceled]` in `rfc/canceled/` |
 
-### Backlog (`docs/backlog/`)
-
-One file per version: `0.7.6-[draft].md` … `done/0.7.6-[done].md` · `canceled/0.7.6-[canceled].md`
-
-| Body status | Filename |
-|-------------|----------|
-| `draft` | `X.Y.Z-[draft].md` |
-| `open` | `X.Y.Z-[open].md` |
-| `partial` | `X.Y.Z-[partial].md` |
-| `done` | `X.Y.Z-[done].md` in `backlog/done/` |
-| `canceled` | `X.Y.Z-[canceled].md` in `backlog/canceled/` |
-
 ### Migration (`docs/migration/`)
 
 | Body status | Filename |
@@ -115,7 +103,7 @@ One file per version: `0.7.6-[draft].md` … `done/0.7.6-[done].md` · `canceled
 
 When status changes, update in the **same turn** as the code/doc fix:
 
-1. **Rename the file** — tag must match body; move to `fixed/` / `done/` / `canceled/` when terminal
+1. **Rename the file** — tag must match body; move to `fixed/` / `canceled/` when terminal
 2. **`**Status:**` line** — must match filename tag
 3. **README index**
 4. **Cross-links** — grep old slug in `docs/`

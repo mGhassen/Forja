@@ -40,7 +40,6 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
               imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
               imageAlignment:
                   useAniBanner ? Alignment.center : Alignment.centerRight,
-              onPlay: () => _s._openDetails(a),
               onDetails: () => _s._openDetails(a),
               listTarget: HubListFollowTarget.anime(
                 anilistId: a.id,

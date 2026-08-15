@@ -27,15 +27,15 @@ Widget _wrapTv(Widget child) {
 }
 
 Movie _testMovie() => Movie(
-      id: 1,
-      title: 'Test',
-      posterPath: '',
-      backdropPath: '',
-      voteAverage: 0,
-      releaseDate: '2024',
-      overview: '',
-      mediaType: 'movie',
-    );
+  id: 1,
+  title: 'Test',
+  posterPath: '',
+  backdropPath: '',
+  voteAverage: 0,
+  releaseDate: '2024',
+  overview: '',
+  mediaType: 'movie',
+);
 
 void main() {
   setUp(() {
@@ -51,7 +51,9 @@ void main() {
     ShellTvFocus.registerNav('home', home);
 
     await tester.pumpWidget(
-      _wrapTv(Focus(focusNode: home, child: const SizedBox(width: 40, height: 40))),
+      _wrapTv(
+        Focus(focusNode: home, child: const SizedBox(width: 40, height: 40)),
+      ),
     );
     await tester.pump();
 
@@ -165,12 +167,22 @@ void main() {
           children: [
             Row(
               children: nodes
-                  .map((n) => Focus(focusNode: n, child: const SizedBox(width: 40, height: 40)))
+                  .map(
+                    (n) => Focus(
+                      focusNode: n,
+                      child: const SizedBox(width: 40, height: 40),
+                    ),
+                  )
                   .toList(),
             ),
             Row(
               children: nodesB
-                  .map((n) => Focus(focusNode: n, child: const SizedBox(width: 40, height: 40)))
+                  .map(
+                    (n) => Focus(
+                      focusNode: n,
+                      child: const SizedBox(width: 40, height: 40),
+                    ),
+                  )
                   .toList(),
             ),
           ],
@@ -228,7 +240,9 @@ void main() {
     );
   });
 
-  testWidgets('FocusableControl activates on select key when focused', (tester) async {
+  testWidgets('FocusableControl activates on select key when focused', (
+    tester,
+  ) async {
     var tapped = false;
     final focusNode = FocusNode();
     await tester.pumpWidget(
@@ -256,7 +270,9 @@ void main() {
     expect(find.byType(FocusableControl), findsOneWidget);
   });
 
-  testWidgets('HomeMovieCard uses FocusableControl on tv profile', (tester) async {
+  testWidgets('HomeMovieCard uses FocusableControl on tv profile', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrapTv(HomeMovieCard(movie: _testMovie(), onTap: () {})),
     );
@@ -286,7 +302,10 @@ void main() {
       _wrapTv(
         Row(
           children: [
-            Focus(focusNode: homeNav, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: homeNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
             FocusableControl(
               focusNode: play,
               tvMeta: const ShellTvFocusMeta(
@@ -316,7 +335,9 @@ void main() {
     play.dispose();
   });
 
-  testWidgets('non-hero row left edge stays trapped at first item', (tester) async {
+  testWidgets('non-hero row left edge stays trapped at first item', (
+    tester,
+  ) async {
     final first = FocusNode(debugLabel: 'first-rec');
     ShellTvFocus.currentNavTabId = 'home';
     shellTvRegisterRow(
@@ -358,7 +379,9 @@ void main() {
     first.dispose();
   });
 
-  testWidgets('row-bound FocusableControl traps RIGHT at last item', (tester) async {
+  testWidgets('row-bound FocusableControl traps RIGHT at last item', (
+    tester,
+  ) async {
     final last = FocusNode(debugLabel: 'last-card');
     ShellTvFocus.currentNavTabId = 'home';
     shellTvRegisterRow(
@@ -426,8 +449,14 @@ void main() {
       _wrapTv(
         Row(
           children: [
-            Focus(focusNode: homeNav, child: const SizedBox(width: 40, height: 40)),
-            Focus(focusNode: pageNode, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: homeNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: pageNode,
+              child: const SizedBox(width: 40, height: 40),
+            ),
           ],
         ),
       ),
@@ -458,104 +487,103 @@ void main() {
     pageNode.dispose();
   });
 
-  testWidgets(
-    'nav RIGHT restores media-details memory while overlay open',
-    (tester) async {
-      final homeNav = FocusNode(debugLabel: 'nav-home');
-      final play = FocusNode(debugLabel: 'details-play');
-      final episode = FocusNode(debugLabel: 'details-ep');
-      ShellTvFocus.registerNav('home', homeNav);
-      ShellTvFocus.currentNavTabId = 'home';
+  testWidgets('nav RIGHT restores media-details memory while overlay open', (
+    tester,
+  ) async {
+    final homeNav = FocusNode(debugLabel: 'nav-home');
+    final play = FocusNode(debugLabel: 'details-play');
+    final episode = FocusNode(debugLabel: 'details-ep');
+    ShellTvFocus.registerNav('home', homeNav);
+    ShellTvFocus.currentNavTabId = 'home';
 
-      shellTvRegisterRow(
-        tabId: MediaDetailsTv.tabId,
+    shellTvRegisterRow(
+      tabId: MediaDetailsTv.tabId,
+      rowId: 'episodes',
+      sortOrder: 1,
+      itemCount: 1,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: MediaDetailsTv.tabId,
+      rowId: 'episodes',
+      index: 0,
+      node: episode,
+    );
+    ShellTvFocusCoordinator.saveFocus(
+      MediaDetailsTv.tabId,
+      ShellTvFocusMemory(
+        zone: ShellTvZone.row,
         rowId: 'episodes',
-        sortOrder: 1,
-        itemCount: 1,
-      );
-      ShellTvFocusCoordinator.registerItemNode(
-        tabId: MediaDetailsTv.tabId,
-        rowId: 'episodes',
-        index: 0,
+        itemIndex: 0,
         node: episode,
-      );
-      ShellTvFocusCoordinator.saveFocus(
-        MediaDetailsTv.tabId,
-        ShellTvFocusMemory(
-          zone: ShellTvZone.row,
-          rowId: 'episodes',
-          itemIndex: 0,
-          node: episode,
+      ),
+    );
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'home',
+      defaultFocus: () => play,
+    );
+    ShellTvFocusCoordinator.registerTabDefaults(
+      MediaDetailsTv.tabId,
+      defaultFocus: () => play,
+    );
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Stack(
+          children: [
+            Row(
+              children: [
+                Focus(
+                  focusNode: homeNav,
+                  child: const SizedBox(width: 40, height: 40),
+                ),
+                Focus(
+                  focusNode: play,
+                  child: const SizedBox(width: 40, height: 40),
+                ),
+                Focus(
+                  focusNode: episode,
+                  child: const SizedBox(width: 40, height: 40),
+                ),
+              ],
+            ),
+            const Positioned.fill(child: ShellOverlayNavigator()),
+          ],
         ),
-      );
-      ShellTvFocusCoordinator.registerTabDefaults(
-        'home',
-        defaultFocus: () => play,
-      );
-      ShellTvFocusCoordinator.registerTabDefaults(
-        MediaDetailsTv.tabId,
-        defaultFocus: () => play,
-      );
+      ),
+    );
+    await tester.pump();
 
-      await tester.pumpWidget(
-        _wrapTv(
-          Stack(
-            children: [
-              Row(
-                children: [
-                  Focus(
-                    focusNode: homeNav,
-                    child: const SizedBox(width: 40, height: 40),
-                  ),
-                  Focus(
-                    focusNode: play,
-                    child: const SizedBox(width: 40, height: 40),
-                  ),
-                  Focus(
-                    focusNode: episode,
-                    child: const SizedBox(width: 40, height: 40),
-                  ),
-                ],
-              ),
-              const Positioned.fill(child: ShellOverlayNavigator()),
-            ],
-          ),
-        ),
-      );
-      await tester.pump();
+    final overlay = shellOverlayNavigatorKey.currentState!;
+    await overlay.push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return const SizedBox.expand();
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(shellOverlayCanPop(), isTrue);
 
-      final overlay = shellOverlayNavigatorKey.currentState!;
-      await overlay.push(
-        PageRouteBuilder<void>(
-          opaque: false,
-          pageBuilder: (context, animation, secondaryAnimation) {
-            return const SizedBox.expand();
-          },
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(shellOverlayCanPop(), isTrue);
+    homeNav.requestFocus();
+    await tester.pump();
+    expect(homeNav.hasFocus, isTrue);
 
-      homeNav.requestFocus();
-      await tester.pump();
-      expect(homeNav.hasFocus, isTrue);
+    expect(
+      ShellTvFocusCoordinator.handleNavKey(LogicalKeyboardKey.arrowRight),
+      isTrue,
+    );
+    await tester.pump();
+    await tester.pump();
 
-      expect(
-        ShellTvFocusCoordinator.handleNavKey(LogicalKeyboardKey.arrowRight),
-        isTrue,
-      );
-      await tester.pump();
-      await tester.pump();
+    expect(episode.hasFocus, isTrue);
+    expect(play.hasFocus, isFalse);
+    expect(homeNav.hasFocus, isFalse);
 
-      expect(episode.hasFocus, isTrue);
-      expect(play.hasFocus, isFalse);
-      expect(homeNav.hasFocus, isFalse);
-
-      homeNav.dispose();
-      play.dispose();
-      episode.dispose();
-    },
-  );
+    homeNav.dispose();
+    play.dispose();
+    episode.dispose();
+  });
 
   testWidgets(
     'restoreTabFocusAfterNav keeps snapshot if Play pollutes memory',
@@ -651,7 +679,9 @@ void main() {
     pageNode.dispose();
   });
 
-  testWidgets('handleShellBackKey focuses active nav from page content', (tester) async {
+  testWidgets('handleShellBackKey focuses active nav from page content', (
+    tester,
+  ) async {
     final homeNav = FocusNode(debugLabel: 'nav-home');
     final page = FocusNode(debugLabel: 'page-item');
     ShellTvFocus.registerNav('home', homeNav);
@@ -661,8 +691,14 @@ void main() {
       _wrapTv(
         Row(
           children: [
-            Focus(focusNode: homeNav, child: const SizedBox(width: 40, height: 40)),
-            Focus(focusNode: page, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: homeNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: page,
+              child: const SizedBox(width: 40, height: 40),
+            ),
           ],
         ),
       ),
@@ -679,7 +715,9 @@ void main() {
     page.dispose();
   });
 
-  testWidgets('handleShellBackKey on nav: first Back arms exit', (tester) async {
+  testWidgets('handleShellBackKey on nav: first Back arms exit', (
+    tester,
+  ) async {
     ShellTvFocusCoordinator.resetBackDebounceForTest();
     ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
     var exited = 0;
@@ -711,7 +749,10 @@ void main() {
               focusNode: homeNav,
               child: const SizedBox(width: 40, height: 40),
             ),
-            Focus(focusNode: page, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: page,
+              child: const SizedBox(width: 40, height: 40),
+            ),
           ],
         ),
       ),
@@ -729,8 +770,9 @@ void main() {
     expect(ShellTvAppExit.isArmed, isTrue);
   });
 
-  testWidgets('handleShellExitKey: first Exit arms without quitting',
-      (tester) async {
+  testWidgets('handleShellExitKey: first Exit arms without quitting', (
+    tester,
+  ) async {
     ShellTvFocusCoordinator.resetBackDebounceForTest();
     ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
     var exited = 0;
@@ -748,8 +790,14 @@ void main() {
       _wrapTv(
         Row(
           children: [
-            Focus(focusNode: homeNav, child: const SizedBox(width: 40, height: 40)),
-            Focus(focusNode: page, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: homeNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: page,
+              child: const SizedBox(width: 40, height: 40),
+            ),
           ],
         ),
       ),
@@ -769,7 +817,9 @@ void main() {
     page.dispose();
   });
 
-  testWidgets('handleShellBackKey always consumes on root page', (tester) async {
+  testWidgets('handleShellBackKey always consumes on root page', (
+    tester,
+  ) async {
     final homeNav = FocusNode(debugLabel: 'nav-home');
     final page = FocusNode(debugLabel: 'page-item', skipTraversal: true);
     ShellTvFocus.registerNav('home', homeNav);
@@ -779,8 +829,14 @@ void main() {
       _wrapTv(
         Row(
           children: [
-            Focus(focusNode: homeNav, child: const SizedBox(width: 40, height: 40)),
-            Focus(focusNode: page, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: homeNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: page,
+              child: const SizedBox(width: 40, height: 40),
+            ),
           ],
         ),
       ),
@@ -797,7 +853,9 @@ void main() {
     page.dispose();
   });
 
-  testWidgets('handleShellBackKey pops shell overlay before nav focus', (tester) async {
+  testWidgets('handleShellBackKey pops shell overlay before nav focus', (
+    tester,
+  ) async {
     ShellTvFocusCoordinator.resetBackDebounceForTest();
     ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
     ShellTvFocus.currentNavTabId = 'home';
@@ -810,10 +868,7 @@ void main() {
             profile: ShellProfile.mobile,
             config: shellPlatformConfigFor(ShellProfile.mobile),
             child: const Stack(
-              children: [
-                SizedBox.expand(),
-                ShellOverlayNavigator(),
-              ],
+              children: [SizedBox.expand(), ShellOverlayNavigator()],
             ),
           ),
         ),
@@ -848,8 +903,14 @@ void main() {
       _wrapTv(
         Row(
           children: [
-            Focus(focusNode: homeNav, child: const SizedBox(width: 40, height: 40)),
-            Focus(focusNode: page, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: homeNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: page,
+              child: const SizedBox(width: 40, height: 40),
+            ),
           ],
         ),
       ),
@@ -869,7 +930,9 @@ void main() {
     page.dispose();
   });
 
-  testWidgets('tv back policy never returns false on page content', (tester) async {
+  testWidgets('tv back policy never returns false on page content', (
+    tester,
+  ) async {
     ShellTvFocusCoordinator.resetBackDebounceForTest();
     ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
     ShellTvFocus.currentNavTabId = null;
@@ -898,8 +961,14 @@ void main() {
       _wrapTv(
         Row(
           children: [
-            Focus(focusNode: play, child: const SizedBox(width: 40, height: 40)),
-            Focus(focusNode: other, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: play,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: other,
+              child: const SizedBox(width: 40, height: 40),
+            ),
           ],
         ),
       ),
@@ -924,7 +993,7 @@ void main() {
     other.dispose();
   });
 
-  testWidgets('claimHeroPlayAfterPlayerExit does not steal existing page focus', (
+  testWidgets('claimHeroPlayAfterPlayerExit always reclaims Play', (
     tester,
   ) async {
     ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
@@ -935,7 +1004,10 @@ void main() {
       _wrapTv(
         Row(
           children: [
-            Focus(focusNode: play, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: play,
+              child: const SizedBox(width: 40, height: 40),
+            ),
             Focus(
               focusNode: episode,
               child: const SizedBox(width: 40, height: 40),
@@ -955,10 +1027,38 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(episode.hasFocus, isTrue);
-    expect(play.hasFocus, isFalse);
+    expect(play.hasFocus, isTrue);
+    expect(episode.hasFocus, isFalse);
 
     play.dispose();
     episode.dispose();
+  });
+
+  testWidgets('claimHeroPlayAfterPlayerExit skip leaves Play unfocused', (
+    tester,
+  ) async {
+    ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
+    final play = FocusNode(debugLabel: 'details-hero-play');
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Focus(focusNode: play, child: const SizedBox(width: 40, height: 40)),
+      ),
+    );
+    await tester.pump();
+    play.unfocus();
+    await tester.pump();
+
+    ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
+      play,
+      isMounted: () => true,
+      skip: () => true,
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(play.hasFocus, isFalse);
+
+    play.dispose();
   });
 }

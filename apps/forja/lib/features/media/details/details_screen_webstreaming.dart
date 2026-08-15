@@ -175,6 +175,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       _s._webstreamingOnlyExtractionCancelled = true;
       PlaybackEngine.cancelAllPending();
       dismissLoading();
+      if (mounted) _s._claimTvHeroPlayAfterPlayer();
       // Extraction finally owns the flag after handoff — clearing here lets a
       // concurrent Play spawn a second overlay while the first resolve unwinds.
       if (handedToExtraction) return;

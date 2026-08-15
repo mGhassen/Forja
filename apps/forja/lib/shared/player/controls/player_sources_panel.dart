@@ -292,6 +292,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   static final _infoHashRe = RegExp(r'[0-9a-fA-F]{40}');
 
+  Key _playerStreamTileKey(Map<String, dynamic> s) {
+    final url = s['url']?.toString() ?? '';
+    if (url.isNotEmpty) return ValueKey(url);
+    final hash = s['infoHash']?.toString() ?? '';
+    if (hash.isNotEmpty) return ValueKey('ih:$hash');
+    return ValueKey(
+      '${s['_addonBaseUrl']}|${s['title'] ?? s['name']}|${s['description']}',
+    );
+  }
+
   String? _infoHashOf(String? magnetOrHash) {
     if (magnetOrHash == null || magnetOrHash.isEmpty) return null;
     return _infoHashRe.firstMatch(magnetOrHash)?.group(0)?.toLowerCase();
@@ -360,6 +370,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _requestScrollToCurrent() {
+    if (_listScrollController.hasClients &&
+        _listScrollController.offset > 8) {
+      return;
+    }
     _pendingScrollToCurrent = true;
     _scrollToCurrentAttempts = 0;
     _scheduleScrollToCurrent();
@@ -1393,6 +1407,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _selectedSourceId = TorrentSearchProviders.allId;
       }
     });
+    if (_listScrollController.hasClients) {
+      _listScrollController.jumpTo(0);
+    }
     _ensureVisibleKindsLoaded();
     _requestScrollToCurrent();
   }
@@ -1816,13 +1833,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _showsNuvio ||
         (_kindFilter == 'stremio' && _providerOptions.length > 1);
 
-    _scheduleScrollToCurrent();
+    if (!_isFetching) _scheduleScrollToCurrent();
 
     final currentIndex = _currentItemIndex(torrents, stremio, nuvio: nuvio);
 
     final tv = SourcesPanelTv.isTv(context);
     final list = ListView.separated(
       controller: _listScrollController,
+      primary: false,
       padding: const EdgeInsets.only(top: 2, bottom: 8),
       itemCount: totalCount,
       separatorBuilder: (_, _) => const SizedBox(height: 6),
@@ -1834,14 +1852,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           final r = torrents[i];
           final isCurrent = i == currentIndex;
           return KeyedSubtree(
-            key: isCurrent ? _currentTileKey : null,
-            child: TorrentSourceTile(
-              result: r,
-              highlightStart: isCurrent,
-              tvItemIndex: tvIndex,
-              onUpEdge: onUp,
-              onDownEdge: onDown,
-              onPlay: () => _selectTorrent(r),
+            key: ValueKey(r.magnet.isEmpty ? r.name : r.magnet),
+            child: KeyedSubtree(
+              key: isCurrent ? _currentTileKey : null,
+              child: TorrentSourceTile(
+                result: r,
+                highlightStart: isCurrent,
+                tvItemIndex: tvIndex,
+                onUpEdge: onUp,
+                onDownEdge: onDown,
+                onPlay: () => _selectTorrent(r),
+              ),
             ),
           );
         }
@@ -1853,23 +1874,26 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         final presentation = stremioTilePresentation(s, isResumable: false);
         final isCurrent = i == currentIndex;
         return KeyedSubtree(
-          key: isCurrent ? _currentTileKey : null,
-          child: StremioSourceTile(
-            title: title,
-            description: description,
-            leadingIcon: presentation.leadingIcon,
-            leadingColor: presentation.leadingColor,
-            isExternal: presentation.isExternal,
-            addonName: s['_addonName']?.toString(),
-            showAddonName: showAddonName,
-            sizeText: s['size']?.toString(),
-            seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
-            stream: s,
-            highlightStart: isCurrent,
-            tvItemIndex: tvIndex,
-            onUpEdge: onUp,
-            onDownEdge: onDown,
-            onTap: () => _selectStremio(s),
+          key: _playerStreamTileKey(s),
+          child: KeyedSubtree(
+            key: isCurrent ? _currentTileKey : null,
+            child: StremioSourceTile(
+              title: title,
+              description: description,
+              leadingIcon: presentation.leadingIcon,
+              leadingColor: presentation.leadingColor,
+              isExternal: presentation.isExternal,
+              addonName: s['_addonName']?.toString(),
+              showAddonName: showAddonName,
+              sizeText: s['size']?.toString(),
+              seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
+              stream: s,
+              highlightStart: isCurrent,
+              tvItemIndex: tvIndex,
+              onUpEdge: onUp,
+              onDownEdge: onDown,
+              onTap: () => _selectStremio(s),
+            ),
           ),
         );
       },

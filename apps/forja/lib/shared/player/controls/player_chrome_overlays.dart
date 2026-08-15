@@ -11,6 +11,7 @@ import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 
 export 'player_menu_return_focus.dart';
@@ -124,6 +125,9 @@ Widget playerSidePanelTvScope({
 /// For [PlayerPopupPanel] drill-ins (Settings → Speed, subtitle language, …),
 /// pops one layer (back to parent) instead of closing the whole stack.
 bool dismissAnyPlayerChromeOverlay() {
+  if (SourcesPanelTv.dismissFiltersIfOpen()) {
+    return true;
+  }
   if (PlayerSubtitleSettingsDialog.dismissIfShowing()) {
     return true;
   }

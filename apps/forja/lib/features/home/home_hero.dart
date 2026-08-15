@@ -28,12 +28,12 @@ bool homeIsFullCinematicHero(BuildContext context) {
 double homeHeroTextTopInset(BuildContext context) =>
     ShellTokens.heroTextColumnTopInsetDesktop;
 
-/// Bridges TV focus from catalog rows back to the hero play button.
+/// Bridges TV focus from catalog rows back to the hero details button.
 class HomeHeroController {
   VoidCallback? revealPlayFocus;
 }
 
-/// Cinematic home hero - carousel, metadata, play/details actions.
+/// Cinematic home hero - carousel, metadata, details actions.
 class HomeCinematicHero extends StatefulWidget {
   const HomeCinematicHero({
     super.key,
@@ -43,7 +43,6 @@ class HomeCinematicHero extends StatefulWidget {
     required this.scrollController,
     required this.controller,
     required this.onOpenDetails,
-    required this.onWatchNow,
     this.pageBottomChild,
   });
 
@@ -53,7 +52,6 @@ class HomeCinematicHero extends StatefulWidget {
   final ScrollController scrollController;
   final HomeHeroController controller;
   final Future<void> Function(Movie movie) onOpenDetails;
-  final Future<void> Function(Movie movie) onWatchNow;
 
   /// First catalog row rendered on the extended page backdrop (desktop/TV).
   final Widget? pageBottomChild;
@@ -1210,9 +1208,12 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final metrics = ShellScope.metricsOf(context);
     final policy = ShellScope.inputPolicyOf(context);
     final tvNav = policy.useFocusableMoodChips;
-    const heroItemCount = 3;
-    final play = HeroPillPlayButton(
-      label: 'Play',
+    const heroItemCount = 2;
+    final details = HeroPillPlayButton(
+      label: 'View details',
+      icon: Icons.info_outline_rounded,
+      primary: false,
+      alwaysShowLabel: true,
       focusNode: isActive && policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
       tvTabId: tvNav ? 'home' : null,
       tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
@@ -1231,34 +1232,19 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               return KeyEventResult.ignored;
             }
           : null,
-      onTap: () => widget.onWatchNow(heroMovie),
+      onTap: () => widget.onOpenDetails(heroMovie),
     );
     final row = HeroPillActionRow(
       children: [
         if (tvNav)
-          FocusTraversalOrder(order: const NumericFocusOrder(1), child: play)
+          FocusTraversalOrder(order: const NumericFocusOrder(1), child: details)
         else
-          play,
-        const SizedBox(width: 10),
-        HeroPillIconGroup(
-          tvFocusOrderStart: tvNav ? 2 : null,
-          tvTabId: tvNav ? 'home' : null,
-          tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
-          tvItemIndexStart: tvNav ? 1 : null,
-          onUpEdge: tvNav ? _focusHomeHeroGallery : null,
-          slots: [
-            HeroPillIconSlot(
-              icon: Icons.info_outline_rounded,
-              tooltip: 'Details',
-              onTap: () => widget.onOpenDetails(heroMovie),
-            ),
-          ],
-        ),
+          details,
         const SizedBox(width: 10),
         MyListHeroStatusPill(
           movie: heroMovie,
           tvTabId: tvNav ? 'home' : null,
-          tvItemIndexStart: tvNav ? 2 : 0,
+          tvItemIndexStart: tvNav ? 1 : 0,
           onUpEdge: tvNav ? _focusHomeHeroGallery : null,
         ),
       ],

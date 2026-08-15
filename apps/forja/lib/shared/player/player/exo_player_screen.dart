@@ -1898,6 +1898,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         // Forced pops (episode handoff / sources exhausted) must NOT strip the
         // loading host - those flows keep it for pushReplacement / reload UI.
         if (didPop) return;
+        if (_isTv &&
+            ShellTvFocusCoordinator.tvBackPolicyEnabled &&
+            PlayerBackExitGate.tryFocusBackStay()) {
+          return;
+        }
         await _exit();
       },
       child: Theme(

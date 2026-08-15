@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
-import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -93,6 +92,19 @@ List<SourcesPanelProviderOption> torrentProviderChipOptions({
   ];
 }
 
+/// Torrents chip selected chrome — All lights every builtin provider chip
+/// (Nuvio All does the same). Jackett / Prowlarr stay exclusive.
+bool torrentProviderChipSelected({
+  required String optionId,
+  required String selectedSourceId,
+}) {
+  if (selectedSourceId == optionId) return true;
+  final allSelected =
+      selectedSourceId == TorrentSearchProviders.allId ||
+      selectedSourceId == 'forja';
+  return allSelected && TorrentSearchProviders.isBuiltin(optionId);
+}
+
 const kTorrentAudioTags = [
   'Atmos',
   'TrueHD',
@@ -112,23 +124,6 @@ BoxDecoration _torrentPanelTrackDecoration({double radius = 24}) {
     color: Colors.white.withValues(alpha: 0.06),
     borderRadius: BorderRadius.circular(radius),
     border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
-  );
-}
-
-BoxDecoration _torrentPanelChipDecoration({
-  required bool selected,
-  double radius = 20,
-}) {
-  return BoxDecoration(
-    color: selected
-        ? ForjaShellColors.chipSelectedBg
-        : Colors.white.withValues(alpha: 0.07),
-    borderRadius: BorderRadius.circular(radius),
-    border: Border.all(
-      color: selected
-          ? ForjaShellColors.chipSelectedBorder
-          : ForjaShellColors.cinematic.borderSubtle,
-    ),
   );
 }
 
@@ -207,17 +202,28 @@ class _TorrentAudioFilterMenuState extends State<TorrentAudioFilterMenu> {
                     ),
                   ),
                   if (_selected.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        setState(() => _selected.clear());
-                        widget.onChanged({});
-                      },
-                      child: Text(
-                        'Clear',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: cinematic.textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          setState(() => _selected.clear());
+                          widget.onChanged({});
+                        },
+                        hoverColor: ForjaShellColors.inkHover,
+                        splashColor: ForjaShellColors.inkSplash,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          child: Text(
+                            'Clear',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: cinematic.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -240,6 +246,8 @@ class _TorrentAudioFilterMenuState extends State<TorrentAudioFilterMenu> {
                     });
                     widget.onChanged(Set<String>.from(_selected));
                   },
+                  hoverColor: ForjaShellColors.inkHover,
+                  splashColor: ForjaShellColors.inkSplash,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -396,8 +404,11 @@ class _SourceTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shortLabel = label;
-    return GestureDetector(
+    return shellFocusableTap(
+      context: context,
       onTap: onTap,
+      borderRadius: 20,
+      scaleOnFocus: 1.0,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(
@@ -505,7 +516,10 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
         option.id.substring('nuvio:'.length),
       );
     }
-    return widget.selectedSourceId == option.id;
+    return torrentProviderChipSelected(
+      optionId: option.id,
+      selectedSourceId: widget.selectedSourceId,
+    );
   }
 
   @override
@@ -534,13 +548,19 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                     for (var i = 0; i < widget.options.length; i++)
                       Padding(
                         padding: const EdgeInsets.only(right: 6),
-                        child: _ProviderChip(
+                        child: ForjaShellChip(
                           label: widget.options[i].label,
                           selected: _chipSelected(widget.options[i]),
                           onTap: () => widget.onChipTap(widget.options[i].id),
+                          radius: 999,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          fontSize: 12,
+                          listIndex: widget.tvRowId != null ? i : null,
                           tvTabId: widget.tvTabId,
                           tvRowId: widget.tvRowId,
-                          tvItemIndex: widget.tvRowId != null ? i : null,
                         ),
                       ),
                   ],
@@ -555,66 +575,6 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _ProviderChip extends StatelessWidget {
-  const _ProviderChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.tvTabId,
-    this.tvRowId,
-    this.tvItemIndex,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final String? tvTabId;
-  final String? tvRowId;
-  final int? tvItemIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final face = AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: _torrentPanelChipDecoration(
-        selected: selected,
-        radius: 999,
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: selected
-              ? ForjaShellColors.cinematic.textPrimary
-              : ForjaShellColors.cinematic.textSecondary,
-        ),
-      ),
-    );
-    if (tvTabId == null || tvRowId == null || tvItemIndex == null) {
-      return FocusableControl(
-        onTap: onTap,
-        borderRadius: 999,
-        scaleOnFocus: 1.0,
-        child: face,
-      );
-    }
-    return shellFocusableTap(
-      context: context,
-      onTap: onTap,
-      borderRadius: 999,
-      scaleOnFocus: 1.0,
-      listIndex: tvItemIndex,
-      tvTabId: tvTabId,
-      tvRowId: tvRowId,
-      tvItemIndex: tvItemIndex,
-      tvZone: ShellTvZone.chipStrip,
-      child: face,
     );
   }
 }
@@ -799,65 +759,73 @@ class _AudioFilterButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = activeFilters.isNotEmpty;
-    return GestureDetector(
-      onTapDown: (details) async {
-        final overlay =
-            Overlay.of(context).context.findRenderObject() as RenderBox;
-        final position = RelativeRect.fromRect(
-          Rect.fromLTWH(
-            details.globalPosition.dx,
-            details.globalPosition.dy,
-            1,
-            1,
-          ),
-          Offset.zero & overlay.size,
-        );
-        await showMenu(
-          context: context,
-          position: position,
-          color: ForjaShellColors.cinematic.menuSurface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
-          ),
-          items: [
-            PopupMenuItem(
-              enabled: false,
-              padding: EdgeInsets.zero,
-              child: TorrentAudioFilterMenu(
-                allTags: kTorrentAudioTags,
-                activeTags: Set<String>.from(activeFilters),
-                onChanged: onChanged,
-              ),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTapDown: (details) async {
+          final overlay =
+              Overlay.of(context).context.findRenderObject() as RenderBox;
+          final position = RelativeRect.fromRect(
+            Rect.fromLTWH(
+              details.globalPosition.dx,
+              details.globalPosition.dy,
+              1,
+              1,
             ),
-          ],
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: _torrentPanelControlDecoration(active: active),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.graphic_eq,
-              size: 14,
-              color: active
-                  ? ForjaShellColors.chipSelectedIcon
-                  : ForjaShellColors.cinematic.textSecondary,
+            Offset.zero & overlay.size,
+          );
+          await showMenu(
+            context: context,
+            position: position,
+            color: ForjaShellColors.cinematic.menuSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: ForjaShellColors.cinematic.borderSubtle),
             ),
-            if (active) ...[
-              const SizedBox(width: 4),
-              Text(
-                '${activeFilters.length}',
-                style: TextStyle(
-                  color: ForjaShellColors.cinematic.textPrimary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+            items: [
+              PopupMenuItem(
+                enabled: false,
+                padding: EdgeInsets.zero,
+                child: TorrentAudioFilterMenu(
+                  allTags: kTorrentAudioTags,
+                  activeTags: Set<String>.from(activeFilters),
+                  onChanged: onChanged,
                 ),
               ),
             ],
-          ],
+          );
+        },
+        borderRadius: BorderRadius.circular(8),
+        hoverColor: ForjaShellColors.inkHover,
+        splashColor: ForjaShellColors.inkSplash,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: _torrentPanelControlDecoration(active: active),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.graphic_eq,
+                size: 14,
+                color: active
+                    ? ForjaShellColors.chipSelectedIcon
+                    : ForjaShellColors.cinematic.textSecondary,
+              ),
+              if (active) ...[
+                const SizedBox(width: 4),
+                Text(
+                  '${activeFilters.length}',
+                  style: TextStyle(
+                    color: ForjaShellColors.cinematic.textPrimary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -872,18 +840,12 @@ class _ScrollArrow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return ForjaPlainIcon(
+      icon: icon,
+      size: 16,
+      hitSize: 28,
+      color: ForjaShellColors.cinematic.textSecondary,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Icon(
-          icon,
-          color: ForjaShellColors.cinematic.textSecondary.withValues(
-            alpha: 0.7,
-          ),
-          size: 16,
-        ),
-      ),
     );
   }
 }
@@ -966,9 +928,11 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
           ),
         ),
         if (hasData && !_clearing)
-          FocusableControl(
+          shellFocusableTap(
+            context: context,
             onTap: _clear,
             borderRadius: 6,
+            scaleOnFocus: 1.0,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
               child: Text(
@@ -1131,6 +1095,7 @@ class _TorrentSourceSearchToolbarState
   }
 
   void _removeFiltersOverlay() {
+    SourcesPanelTv.setFiltersDismiss(null);
     final entry = _filtersEntry;
     if (entry == null) return;
     _filtersEntry = null;
@@ -1149,6 +1114,7 @@ class _TorrentSourceSearchToolbarState
     late OverlayEntry entry;
 
     void close() {
+      SourcesPanelTv.setFiltersDismiss(null);
       if (_filtersEntry == entry) {
         _filtersEntry = null;
       }
@@ -1191,6 +1157,11 @@ class _TorrentSourceSearchToolbarState
     );
     _filtersEntry = entry;
     overlay.insert(entry);
+    SourcesPanelTv.setFiltersDismiss(() {
+      if (_filtersEntry == null) return false;
+      _closeFiltersOverlay();
+      return true;
+    });
     setState(() {});
   }
 
@@ -1209,11 +1180,15 @@ class _TorrentSourceSearchToolbarState
         ),
         if (_canFilter) ...[
           const SizedBox(width: 8),
-          FocusableControl(
+          shellFocusableTap(
+            context: context,
             onTap: _toggleFilters,
             focusNode: widget.filtersFocusNode,
             borderRadius: 10,
             scaleOnFocus: 1.0,
+            showFocusBorder: ShellScope.inputPolicyOf(
+              context,
+            ).useFocusableMoodChips,
             onUpEdge: widget.onFiltersUpEdge,
             onDownEdge: widget.onFiltersDownEdge,
             onRightEdge: widget.onFiltersRightEdge,
@@ -1360,11 +1335,7 @@ class _SearchFieldState extends State<_SearchField> {
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Row(
         children: [
-          Icon(
-            Icons.search_rounded,
-            size: 18,
-            color: secondary,
-          ),
+          Icon(Icons.search_rounded, size: 18, color: secondary),
           const SizedBox(width: 8),
           Expanded(child: field),
           if (widget.query.isNotEmpty)
@@ -1634,26 +1605,16 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     required VoidCallback onTap,
   }) {
     final metrics = ShellScope.metricsOf(context);
-    return FocusableControl(
+    return ForjaShellChip(
+      label: label,
+      selected: selected,
       onTap: onTap,
-      borderRadius: 16,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: metrics.torrentPanelChipHorizontalPadding,
-          vertical: metrics.torrentPanelChipVerticalPadding,
-        ),
-        decoration: _torrentPanelChipDecoration(selected: selected),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected
-                ? ForjaShellColors.cinematic.textPrimary
-                : ForjaShellColors.cinematic.textSecondary,
-            fontSize: metrics.torrentPanelChipFontSize,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+      radius: 16,
+      padding: EdgeInsets.symmetric(
+        horizontal: metrics.torrentPanelChipHorizontalPadding,
+        vertical: metrics.torrentPanelChipVerticalPadding,
       ),
+      fontSize: metrics.torrentPanelChipFontSize,
     );
   }
 }

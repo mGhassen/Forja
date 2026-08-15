@@ -101,7 +101,6 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
                     scrollController: _s._homeScrollController,
                     controller: _s._homeHeroController,
                     onOpenDetails: _s._openDetails,
-                    onWatchNow: _s._watchNow,
                     pageBottomChild: featuredSection,
                   ),
                 ),

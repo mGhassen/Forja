@@ -215,4 +215,35 @@ void main() {
     ]);
     expect(options.first.label, 'All');
   });
+
+  test('torrent All selects every builtin chip, not Jackett', () {
+    expect(
+      torrentProviderChipSelected(
+        optionId: TorrentSearchProviders.allId,
+        selectedSourceId: TorrentSearchProviders.allId,
+      ),
+      isTrue,
+    );
+    expect(
+      torrentProviderChipSelected(
+        optionId: TorrentSearchProviders.yts,
+        selectedSourceId: TorrentSearchProviders.allId,
+      ),
+      isTrue,
+    );
+    expect(
+      torrentProviderChipSelected(
+        optionId: 'jackett',
+        selectedSourceId: TorrentSearchProviders.allId,
+      ),
+      isFalse,
+    );
+    expect(
+      torrentProviderChipSelected(
+        optionId: TorrentSearchProviders.knaben,
+        selectedSourceId: TorrentSearchProviders.yts,
+      ),
+      isFalse,
+    );
+  });
 }

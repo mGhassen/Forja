@@ -341,6 +341,16 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
   //  STREAM LIST
   // ═══════════════════════════════════════════════════════════════════════════
 
+  Key _streamTileKey(Map<String, dynamic> s) {
+    final url = s['url']?.toString() ?? '';
+    if (url.isNotEmpty) return ValueKey(url);
+    final hash = s['infoHash']?.toString() ?? '';
+    if (hash.isNotEmpty) return ValueKey('ih:$hash');
+    return ValueKey(
+      '${s['_addonBaseUrl']}|${s['title'] ?? s['name']}|${s['description']}',
+    );
+  }
+
   Widget _torrentTileFor(TorrentResult r, {int? tvItemIndex, int? tvCount}) {
     double prog = 0;
     var preselected = false;
@@ -359,6 +369,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       }
     }
     return TorrentSourceTile(
+      key: ValueKey(r.magnet.isEmpty ? r.name : r.magnet),
       result: r,
       progress: prog,
       isResumable: preselected,
@@ -410,6 +421,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     }
     final presentation = stremioTilePresentation(s, isResumable: resumable);
     return StremioSourceTile(
+      key: _streamTileKey(s),
       title: title,
       description: description,
       leadingIcon: presentation.leadingIcon,
@@ -558,6 +570,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         (_panelShowsStremio && _providerOptions().length > 1);
 
     final list = ListView.separated(
+      controller: inPanel ? _s._sourcesListScrollController : null,
+      primary: false,
       shrinkWrap: !inPanel,
       physics: inPanel
           ? const BouncingScrollPhysics()
@@ -591,7 +605,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       },
     );
 
-    if (!inPanel || !SourcesPanelTv.isTv(context) || count == 0) {
+    if (!inPanel || !SourcesPanelTv.isTv(context)) {
       return list;
     }
     return TvCatalogRow(

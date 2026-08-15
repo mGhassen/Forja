@@ -27,7 +27,7 @@ Changelogs are **user-facing release notes**, not a commit log. One **in-progres
 | `1.2.x` (today) | `docs/changelog/1.2.x-[draft].md` |
 | `1.3.x` (future) | `docs/changelog/1.3.x-[draft].md` |
 
-Minor bumps (`1.2` → `1.3`) start a **new** `X.Y.x-[draft].md`. Patch backlog files (`docs/backlog/1.0.1-…`) schedule RFC/issue work — **changelog draft name follows app minor + `x`**, not backlog patch filenames.
+Minor bumps (`1.2` → `1.3`) start a **new** `X.Y.x-[draft].md`. Changelog draft name follows **app minor + `x`** (`pubspec` / `kReleaseCodename`), not any other version file.
 
 ## File lifecycle
 
@@ -50,7 +50,7 @@ On release (admin picks version, then git tag `vX.Y.Z`):
 
 The freeze is **idempotent** — if `done/X.Y.Z-[released].md` already exists or the draft is missing, it is a no-op (so re-runs and the "Existing tag" release mode are safe). Only run `changelog_freeze.sh` by hand when a release was tagged without it (older workflow) and you need to backfill.
 
-When bumping to a **new minor** (`1.2` → `1.3`): update `kReleaseCodename` in `app_version.dart` to the new minor's codename ([runway](../../docs/backlog/README.md#codename-runway)) and start `1.3.x-[draft].md`. CI reads the codename from `app_version.dart`, so this keeps the release title correct without editing the changelog title.
+When bumping to a **new minor** (`1.2` → `1.3`): update `kReleaseCodename` in `app_version.dart` to the new minor's codename and start `1.3.x-[draft].md`. CI reads the codename from `app_version.dart`, so this keeps the release title correct without editing the changelog title.
 
 ## CI integration (automatic release body)
 
@@ -74,7 +74,7 @@ That body is what `AppUpdaterService` fetches and the in-app update dialog shows
 | Internal refactor, tests, CI, docs-only (no user impact) | ❌ |
 | Workaround shipped — describe user impact honestly | ✅ |
 
-Derive bullets from **what changed for the user**, not backlog `B*-S*` IDs.
+Derive bullets from **what changed for the user**, not RFC/issue IDs.
 
 ## Writing style
 
@@ -169,10 +169,10 @@ Do **not** pre-fill all six groups with empty `###` headings.
 
 | Layer | Purpose |
 |-------|---------|
-| [Backlog](../../docs/backlog/) | Ship checklist, RFC/issue scheduling |
 | **Changelog draft** | What users get in the **next** tagged release |
 | **Changelog released** | Frozen notes for that exact `vX.Y.Z` tag |
 | [Feature docs](../../docs/features/README.md) | How to use what shipped |
+| RFC / issue | Implementation status — not ship version |
 
 ## Checklist (same turn as code)
 

@@ -45,8 +45,9 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        if (tvFocus && ShellTvFocusCoordinator.tvBackPolicyEnabled) {
-          ShellTvFocusCoordinator.handleShellBackKey();
+        if (tvFocus &&
+            ShellTvFocusCoordinator.tvBackPolicyEnabled &&
+            PlayerBackExitGate.tryFocusBackStay()) {
           return;
         }
         unawaited(_s._exitTrailer());

@@ -206,6 +206,9 @@ class _AsianDramaDetailsScreenState
       await _refreshProgress();
       _loadWatchedEpisodes();
       if (!mounted) return;
+      if (_detailsScrollController.hasClients) {
+        _detailsScrollController.jumpTo(0);
+      }
       ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
         _heroPlayFocus,
         isMounted: () => mounted,

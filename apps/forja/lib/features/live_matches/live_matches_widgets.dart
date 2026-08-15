@@ -2525,6 +2525,10 @@ class _LiveMatchesEmbedPlayerScreenState
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
+        if (ShellTvFocusCoordinator.tvBackPolicyEnabled &&
+            PlayerBackExitGate.tryFocusBackStay()) {
+          return;
+        }
         if (_isFullscreen) {
           await _exitFullscreen();
           return;

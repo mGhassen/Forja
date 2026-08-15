@@ -322,6 +322,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         fadeOutNotifier,
         failureNotifier,
       ]);
+      if (mounted) _s._claimTvHeroPlayAfterPlayer();
       return;
     }
 

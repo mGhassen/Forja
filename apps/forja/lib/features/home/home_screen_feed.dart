@@ -519,14 +519,8 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
     super.dispose();
   }
 
-
   Future<void> _openDetails(Movie movie) async {
     if (!mounted) return;
     await AppRouter.openMovie(context, movie: movie);
-  }
-
-  Future<void> _watchNow(Movie movie) async {
-    if (!mounted) return;
-    await AppRouter.openMovie(context, movie: movie, autoPlay: true);
   }
 }

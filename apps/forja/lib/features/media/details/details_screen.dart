@@ -109,10 +109,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   late Movie _movie;
   bool _isLoading = true;
 
-  DetailsMetaKey get _metaKey => DetailsMetaKey(
-        id: widget.movie.id,
-        mediaType: widget.movie.mediaType,
-      );
+  DetailsMetaKey get _metaKey =>
+      DetailsMetaKey(id: widget.movie.id, mediaType: widget.movie.mediaType);
 
   /// Cached in [initState] — dispose must not call [ref] (Riverpod element
   /// is already defunct by then; see cancel flags in [dispose]).
@@ -123,6 +121,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     final item = widget.stremioItem;
     return item != null && !(item['id']?.toString().startsWith('tt') ?? true);
   }
+
   final TmdbApi _api = TmdbApi();
   final SettingsService _settings = SettingsService();
   final StremioService _stremio = StremioService();
@@ -184,8 +183,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   Set<String> get _completedAddonBaseUrls => _play.completedAddonBaseUrls;
 
   bool get _userPickedStremioProvider => _play.userPickedStremioProvider;
-  set _userPickedStremioProvider(bool v) =>
-      _play.userPickedStremioProvider = v;
+  set _userPickedStremioProvider(bool v) => _play.userPickedStremioProvider = v;
 
   List<Map<String, dynamic>> get _nuvioStreams => _play.nuvioStreams;
   set _nuvioStreams(List<Map<String, dynamic>> v) => _play.nuvioStreams = v;
@@ -233,8 +231,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   set _webstreamingActiveProviderId(String? v) =>
       _play.webstreamingActiveProviderId = v;
 
-  bool get _isWebstreamingOnlyExtracting =>
-      _play.isWebstreamingOnlyExtracting;
+  bool get _isWebstreamingOnlyExtracting => _play.isWebstreamingOnlyExtracting;
   set _isWebstreamingOnlyExtracting(bool v) =>
       _play.isWebstreamingOnlyExtracting = v;
 
@@ -281,6 +278,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _streamCancelled = true;
     Engine.cancelPendingResolve();
     dismissLoadingOverlayRoute(dialogContext);
+    _claimTvHeroPlayAfterPlayer();
   }
 
   String? _trailerKey;
@@ -306,16 +304,19 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   final FocusNode _detailsHeroPlayFocus = FocusNode(
     debugLabel: 'details-hero-play',
   );
-  final FocusNode _detailsBackFocus = FocusNode(
-    debugLabel: 'details-back',
-  );
+  final FocusNode _detailsBackFocus = FocusNode(debugLabel: 'details-back');
+  final ScrollController _sourcesListScrollController = ScrollController();
   bool _detailsHeroInitialFocusDone = false;
 
-  /// TV: reclaim Play/Resume when player pop leaves an empty FocusScope.
+  /// TV: reclaim Play/Resume after player pop or loading cancel.
   void _claimTvHeroPlayAfterPlayer() {
+    if (_detailsScrollController.hasClients) {
+      _detailsScrollController.jumpTo(0);
+    }
     ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
       _detailsHeroPlayFocus,
       isMounted: () => mounted,
+      skip: () => _sourcesPanelOpen,
     );
   }
 
@@ -402,6 +403,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _detailsBackFocus.dispose();
     _detailsScrollController.dispose();
     _episodeScrollController.dispose();
+    _sourcesListScrollController.dispose();
     _watchHistorySub?.cancel();
     _jackett.dispose();
     _prowlarr.dispose();
@@ -702,40 +704,49 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (_panelKindFilter != 'stremio') return;
     // Re-read installs when opening/reloading - Settings installs after details
     // open used to leave the chip strip empty until remount.
-    unawaited(_refreshStreamAddons().then((_) {
-      if (!mounted || _panelKindFilter != 'stremio') return;
-      if (force) {
-        CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
+    unawaited(
+      _refreshStreamAddons().then((_) {
+        if (!mounted || _panelKindFilter != 'stremio') return;
+        if (force) {
+          CatalogSourcesSessionCache.invalidate(
+            _catalogCacheKey,
+            kind: 'stremio',
+          );
+          _fetchAllStremioStreams();
+          return;
+        }
+        if (_allCombinedStremioStreams.isNotEmpty || _isStremioFetching) return;
+        final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
+        // Empty cache is a miss - a prior all-failed fetch must not block YTS.
+        if (cached != null && cached.isNotEmpty) {
+          setState(() {
+            _allCombinedStremioStreams = cached;
+            _loadedAddonBaseUrls
+              ..clear()
+              ..addAll({
+                for (final s in cached)
+                  if (s['_addonBaseUrl'] is String)
+                    s['_addonBaseUrl'] as String,
+              });
+            _completedAddonBaseUrls
+              ..clear()
+              ..addAll(_loadedAddonBaseUrls);
+            _errorMessage = null;
+            _userPickedStremioProvider = false;
+            _syncStremioProviderSelection();
+            _applyStremioFilter();
+          });
+          return;
+        }
+        if (cached != null && cached.isEmpty) {
+          CatalogSourcesSessionCache.invalidate(
+            _catalogCacheKey,
+            kind: 'stremio',
+          );
+        }
         _fetchAllStremioStreams();
-        return;
-      }
-      if (_allCombinedStremioStreams.isNotEmpty || _isStremioFetching) return;
-      final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
-      // Empty cache is a miss - a prior all-failed fetch must not block YTS.
-      if (cached != null && cached.isNotEmpty) {
-        setState(() {
-          _allCombinedStremioStreams = cached;
-          _loadedAddonBaseUrls
-            ..clear()
-            ..addAll({
-              for (final s in cached)
-                if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
-            });
-          _completedAddonBaseUrls
-            ..clear()
-            ..addAll(_loadedAddonBaseUrls);
-          _errorMessage = null;
-          _userPickedStremioProvider = false;
-          _syncStremioProviderSelection();
-          _applyStremioFilter();
-        });
-        return;
-      }
-      if (cached != null && cached.isEmpty) {
-        CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
-      }
-      _fetchAllStremioStreams();
-    }));
+      }),
+    );
   }
 
   /// Loads addon metadata, then fetches one selected scraper at a time.
@@ -823,6 +834,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
           _selectedSourceId = TorrentSearchProviders.allId;
       }
     });
+    if (_sourcesListScrollController.hasClients) {
+      _sourcesListScrollController.jumpTo(0);
+    }
     _ensurePanelSourceLoaded();
   }
 

@@ -5,6 +5,7 @@ import 'package:forja/features/settings/pages/settings_category_bodies.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/widgets/settings_hub_scaffold.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
@@ -26,6 +27,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    final pending = ShellBus.requestSettingsCategory.value;
+    if (pending != null) {
+      _selectedId = pending;
+      ShellBus.requestSettingsCategory.value = null;
+    }
+    ShellBus.requestSettingsCategory.addListener(_applyRequestedCategory);
     TvHeroActions.bind(
       'settings',
       defaultFocus: () => _firstHubFocus,
@@ -46,9 +53,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    ShellBus.requestSettingsCategory.removeListener(_applyRequestedCategory);
     ShellTvFocusCoordinator.clearTab('settings');
     _firstHubFocus.dispose();
     super.dispose();
+  }
+
+  void _applyRequestedCategory() {
+    final id = ShellBus.requestSettingsCategory.value;
+    if (id == null || !mounted) return;
+    ShellBus.requestSettingsCategory.value = null;
+    if (id == _selectedId) return;
+    setState(() => _selectedId = id);
   }
 
   void _onSelect(String id) {

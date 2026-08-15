@@ -64,9 +64,14 @@ class LanClientService {
   }
 
   /// Authenticated ping so the desktop can mark this device online.
-  Future<bool> pingStatus(String host, int port) async {
+  Future<bool> pingStatus(String host, int port) async =>
+      await pingStatusJson(host, port) != null;
+
+  /// `null` = unreachable / 401. Empty map = online, no torrent.
+  /// Map with `info_hash` = desktop is serving a torrent.
+  Future<Map<String, dynamic>?> pingStatusJson(String host, int port) async {
     final token = await LanPrefs.instance.token;
-    if (token == null || token.isEmpty) return false;
+    if (token == null || token.isEmpty) return null;
     try {
       final r = await http
           .get(
@@ -77,11 +82,14 @@ class LanClientService {
       if (r.statusCode == 401) {
         await LanPrefs.instance.clearServer();
         LanPairingPresence.instance.notifyChanged();
-        return false;
+        return null;
       }
-      return r.statusCode == 200;
+      if (r.statusCode != 200) return null;
+      final decoded = jsonDecode(r.body);
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return const <String, dynamic>{};
     } catch (_) {
-      return false;
+      return null;
     }
   }
 

@@ -49,14 +49,19 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
     this.onSortChanged,
     this.cacheRefreshToken,
     this.showCacheLine = false,
+
     /// Details: true. Player: false (no freeze-frame / no live video blur).
     this.filterEnableBlur = true,
+
     /// Force-refetch the selected kind (`torrents` | `stremio` | `nuvio`).
     this.onReloadKind,
+
     /// When false after being true, dismisses Filters if open.
     this.sourcesPanelOpen = false,
+
     /// TV: ↓ from search/filters → source list (parent owns list graph).
     this.onFocusList,
+
     /// TV: claim initial focus when the panel opens (parent may also call).
     this.claimInitialFocus = true,
   });
@@ -144,6 +149,16 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     if (!widget.sourcesPanelOpen) {
       _didInitialFocus = false;
     }
+    if (widget.sourcesPanelOpen &&
+        _tv &&
+        (widget.resultCount ?? 0) > 0 &&
+        (oldWidget.resultCount ?? 0) == 0 &&
+        !SourcesPanelTv.hasItemFocus &&
+        !_searchFocus.hasFocus &&
+        !_filtersFocus.hasFocus &&
+        !_closeFocus.hasFocus) {
+      _claimPanelFocus();
+    }
   }
 
   @override
@@ -157,15 +172,25 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
   void _scheduleInitialFocus() {
     if (!widget.claimInitialFocus || _didInitialFocus) return;
     _didInitialFocus = true;
+    // initState cannot dependOn ShellScope (_tv). Kind/list nodes also
+    // register in their own initState after this chrome — wait a frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_tv || !widget.sourcesPanelOpen) return;
-      final count = widget.resultCount ?? 0;
-      if (count > 0 && widget.onFocusList != null) {
-        widget.onFocusList!();
-        return;
-      }
-      SourcesPanelTv.focusKindItem();
+      if (mounted) _claimPanelFocus();
     });
+  }
+
+  void _claimPanelFocus() {
+    if (!mounted || !_tv || !widget.sourcesPanelOpen) return;
+    final count = widget.resultCount ?? 0;
+    if (count > 0 && widget.onFocusList != null) {
+      widget.onFocusList!();
+      return;
+    }
+    SourcesPanelTv.claimFocus(
+      search: _searchFocus,
+      filters: _filtersFocus,
+      close: _closeFocus,
+    );
   }
 
   void _focusList() {
@@ -223,6 +248,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
       showStremio: widget.showStremio,
       showNuvio: widget.showNuvio,
       onChanged: widget.onKindChanged,
+      isFetching: widget.isFetching,
       onReloadKind: widget.isFetching ? null : widget.onReloadKind,
     );
     if (_tv && _kindCount > 0) {
@@ -273,10 +299,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
         ),
         SizedBox(height: gap),
         kind,
-        if (providers != null) ...[
-          SizedBox(height: gap),
-          providers,
-        ],
+        if (providers != null) ...[SizedBox(height: gap), providers],
         SizedBox(height: gap),
         TorrentSourceSearchToolbar(
           searchQuery: widget.searchQuery,
@@ -357,7 +380,8 @@ class _TitleRow extends StatelessWidget {
   final int? resultCount;
   final String? episodeLabel;
   final FocusNode? closeFocusNode;
-  final KeyEventResult Function(FocusNode node, KeyEvent event)? closeOnKeyEvent;
+  final KeyEventResult Function(FocusNode node, KeyEvent event)?
+  closeOnKeyEvent;
 
   @override
   Widget build(BuildContext context) {
@@ -379,8 +403,10 @@ class _TitleRow extends StatelessWidget {
               if (resultCount != null) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(999),
@@ -443,6 +469,7 @@ class _KindTabs extends StatelessWidget {
     required this.showStremio,
     required this.showNuvio,
     required this.onChanged,
+    this.isFetching = false,
     this.onReloadKind,
   });
 
@@ -451,34 +478,36 @@ class _KindTabs extends StatelessWidget {
   final bool showStremio;
   final bool showNuvio;
   final ValueChanged<String> onChanged;
+  final bool isFetching;
   final ValueChanged<String>? onReloadKind;
 
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
-    final options = <({String id, String label, IconData? iconData, Widget? icon})>[
-      if (showTorrents)
-        (
-          id: 'torrents',
-          label: 'Torrents',
-          iconData: null,
-          icon: const HeroMagnetIcon(size: 14),
-        ),
-      if (showStremio)
-        (
-          id: 'stremio',
-          label: 'Stremio',
-          iconData: Icons.extension_outlined,
-          icon: null,
-        ),
-      if (showNuvio)
-        (
-          id: 'nuvio',
-          label: 'Nuvio',
-          iconData: Icons.code_rounded,
-          icon: null,
-        ),
-    ];
+    final options =
+        <({String id, String label, IconData? iconData, Widget? icon})>[
+          if (showTorrents)
+            (
+              id: 'torrents',
+              label: 'Torrents',
+              iconData: null,
+              icon: const HeroMagnetIcon(size: 14),
+            ),
+          if (showStremio)
+            (
+              id: 'stremio',
+              label: 'Stremio',
+              iconData: Icons.extension_outlined,
+              icon: null,
+            ),
+          if (showNuvio)
+            (
+              id: 'nuvio',
+              label: 'Nuvio',
+              iconData: Icons.code_rounded,
+              icon: null,
+            ),
+        ];
     if (options.isEmpty) return const SizedBox.shrink();
 
     return DecoratedBox(
@@ -501,6 +530,7 @@ class _KindTabs extends StatelessWidget {
                   icon: options[i].icon,
                   iconData: options[i].iconData,
                   selected: selected == options[i].id,
+                  loading: isFetching && selected == options[i].id,
                   tvItemIndex: i,
                   onTap: () => onChanged(options[i].id),
                   onReload: onReloadKind == null || selected != options[i].id
@@ -521,6 +551,7 @@ class _KindTab extends StatefulWidget {
     required this.selected,
     required this.onTap,
     required this.tvItemIndex,
+    this.loading = false,
     this.icon,
     this.iconData,
     this.onReload,
@@ -530,6 +561,7 @@ class _KindTab extends StatefulWidget {
   final Widget? icon;
   final IconData? iconData;
   final bool selected;
+  final bool loading;
   final int tvItemIndex;
   final VoidCallback onTap;
   final VoidCallback? onReload;
@@ -551,13 +583,13 @@ class _KindTabState extends State<_KindTab> {
     final color = selected
         ? cinematic.textPrimary
         : (_hovered || _focused
-            ? cinematic.textPrimary.withValues(alpha: 0.88)
-            : cinematic.textSecondary);
+              ? cinematic.textPrimary.withValues(alpha: 0.88)
+              : cinematic.textSecondary);
     final indicatorColor = selected
         ? ForjaShellColors.sectionAccent
         : (_hovered || _focused
-            ? cinematic.textSecondary.withValues(alpha: 0.55)
-            : Colors.transparent);
+              ? cinematic.textSecondary.withValues(alpha: 0.55)
+              : Colors.transparent);
 
     final face = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -599,13 +631,18 @@ class _KindTabState extends State<_KindTab> {
                   curve: Curves.easeOutCubic,
                   child: IconTheme(
                     data: IconThemeData(size: 14, color: color),
-                    child: widget.icon ??
+                    child:
+                        widget.icon ??
                         Icon(widget.iconData, size: 14, color: color),
                   ),
                 ),
                 const SizedBox(width: 7),
               ],
               Text(widget.label),
+              if (widget.loading) ...[
+                const SizedBox(width: 4),
+                _KindTabLoadingDots(color: color),
+              ],
               if (widget.onReload != null) ...[
                 const SizedBox(width: 8),
                 ExcludeFocus(
@@ -693,6 +730,64 @@ class _SourcesCancelChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         child: label,
       ),
+    );
+  }
+}
+
+class _KindTabLoadingDots extends StatefulWidget {
+  const _KindTabLoadingDots({required this.color});
+
+  final Color color;
+
+  @override
+  State<_KindTabLoadingDots> createState() => _KindTabLoadingDotsState();
+}
+
+class _KindTabLoadingDotsState extends State<_KindTabLoadingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final lit = (_c.value * 3).floor() % 3;
+        return Text.rich(
+          TextSpan(
+            children: [
+              for (var i = 0; i < 3; i++)
+                TextSpan(
+                  text: '.',
+                  style: TextStyle(
+                    color: widget.color.withValues(alpha: i <= lit ? 1 : 0.25),
+                  ),
+                ),
+            ],
+          ),
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            height: 1.1,
+            letterSpacing: 0.4,
+          ),
+        );
+      },
     );
   }
 }

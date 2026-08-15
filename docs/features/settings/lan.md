@@ -16,9 +16,9 @@ Pairing means **this TV trusts that desktop**. Do it once on the same Wi‑Fi.
 2. Note the **desktop address** (`IP:port`) and the **6-digit pairing code**
 3. Keep Forja running
 
-Paired TVs and phones appear under **Paired devices** with a green/grey status dot and a small status line under the name (**Online** = recent traffic; **Idle** = still paired, not talking right now). Date and device id sit on their own lines below. Use the **reload** icon if a device just paired and the list still says waiting. **Revoke** forces that device to pair again.
+Paired TVs and phones appear under **Paired devices** with a status dot and a short line under the name: **Waiting** (amber, pulsing) while the server is on but nobody has paired yet; **Online** (green) = recent traffic; **Idle** (grey) = still paired, not talking right now; **Playing** (green, pulsing) = that device is streaming a LAN torrent. Date and device id sit on their own lines below. Use the **reload** icon if a device just paired and the list still says waiting. **Revoke** forces that device to pair again.
 
-When at least one device is paired, the desktop nav profile avatar shows a green cast badge (top-right).
+When the LAN server is listening, the desktop nav profile name shows a status dot: amber while waiting for a pair, green when a TV/phone is online, grey when paired devices are idle, pulsing green while a LAN torrent is playing.
 
 The desktop reuses the same LAN **port** across toggles and app restarts. If the IP still changes (or the sticky port is unavailable), a paired TV rediscovers this PC on Wi‑Fi (same server id) and updates the saved address — you do not re-enter the pairing code.
 
@@ -33,7 +33,7 @@ The desktop reuses the same LAN **port** across toggles and app restarts. If the
 
 On Android TV, **OK** on a field opens the keyboard and the page scrolls so the field stays visible above it.
 
-Status shows **Paired** with a green/grey status dot and a small **Desktop online/offline** line under it. The screen periodically re-checks the desktop (and rediscovers it if the port changed). Use the **reload** icon next to the status to re-check now (D-pad focusable on Android TV). Unpair anytime from the same screen. While paired, the TV nav profile avatar shows a green cast badge (top-right).
+Status shows **Paired** with a status dot and a small line under it: **Desktop online** (green), **Desktop playing** (green, pulsing) while a LAN torrent is open, or **Desktop offline** (red). The screen periodically re-checks the desktop (and rediscovers it if the port changed). Use the **reload** icon next to the status to re-check now (D-pad focusable on Android TV). Unpair anytime from the same screen. While paired, the TV nav profile name shows the same status dot (red if the desktop is down).
 
 ## Every night — watch
 
@@ -44,7 +44,7 @@ Status shows **Paired** with a green/grey status dot and a small **Desktop onlin
 5. When you leave the player (or cancel before it opens), the desktop **stops that download** — cached files stay until you delete them under **Torrent activity**
 6. If the TV goes **Idle** (no contact for ~2 minutes) while a torrent is still open, the desktop **pauses** the download; if the TV stays idle another ~2 minutes, the desktop **stops and deletes** that cached download (same as trash in Torrent activity). If the TV comes back during the pause window, download **resumes**
 
-You do not re-enter a code per title. Direct HTTP Stremio/Nuvio streams still play on the TV when unpaired or when the desktop is offline. Magnets / torrents need the desktop — if you pick one while unpaired (or the desktop is offline), the TV shows a dialog with **Open LAN**.
+You do not re-enter a code per title. Direct HTTP Stremio/Nuvio streams still play on the TV when unpaired or when the desktop is offline. Magnets / torrents need the desktop — if you pick one while unpaired (or the desktop is offline), the TV shows a dialog with **Open LAN** on top and **Cancel** as text under it. **Open LAN** switches to Settings with **LAN** selected in the hub (category list + pane).
 
 If you turn on Direct torrent / Stremio / Nuvio and have not acknowledged P2P on this TV, Forja shows the **P2P streaming** disclaimer in **Playback**. Cancel leaves that source off.
 

@@ -181,7 +181,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [158-[open]-…](158-[open]-android-tv-nav-right-loses-page-focus.md) | ATV nav RIGHT loses last page focus | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [159-[open]-…](159-[open]-android-tv-live-background-audio.md) | ATV live/IPTV audio continues after Home | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 7/7 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 7/7 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [162-[open]-…](162-[open]-iptv-more-like-this-catalog-only.md) | IPTV More like this = portal catalog only | P2 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 26/26 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [164-[open]-…](164-[open]-vsembed-new-player-chain.md) | VSEmbed new JS player (rcp/prorcp dead) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -191,7 +191,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [168-[open]-…](168-[open]-vidrock-multi-server-chip-rotate.md) | VidRock multi-server chip-rotate collect-all | P1 | Medium | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [169-[open]-…](169-[open]-vidfast-w-path-bundled-hls.md) | VidFast `/w/` + bundled HLS sniff | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [170-[open]-…](170-[open]-vidzee-cloudflare-sniff.md) | Vidzee Cloudflare sniff wait | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [171-[open]-…](171-[open]-android-tv-details-focus-after-player.md) | ATV details empty focus after player | P1 | High | open | 2/2 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [171-[open]-…](171-[open]-android-tv-details-focus-after-player.md) | ATV details empty focus after player | P1 | High | open | 3/3 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [172-[open]-…](172-[open]-vsembed-shows-videasy-streams.md) | VSEmbed panel shows Videasy streams | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [173-[open]-…](173-[open]-android-tv-update-dialog-focus-leak.md) | ATV update dialog D-pad under the gate | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [174-[open]-…](174-[open]-android-tv-iptv-source-switch-black-video.md) | ATV IPTV source/channel switch black video | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |

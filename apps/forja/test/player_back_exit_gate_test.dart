@@ -143,7 +143,7 @@ void main() {
     expect(find.text('player-body'), findsNothing);
   });
 
-  test('tryFocusBackStay stays then allows exit', () {
+  test('tryFocusBackStay twin stays; later press exits', () async {
     ShellBus.enterPlayerSurface();
     addTearDown(ShellBus.leavePlayerSurface);
 
@@ -157,6 +157,10 @@ void main() {
     expect(PlayerBackExitGate.tryFocusBackStay(), isTrue);
     expect(PlayerBackExitGate.exitReady, isFalse);
     expect(focused, isTrue);
+    // Same-press popRoute twin must not exit.
+    expect(PlayerBackExitGate.tryFocusBackStay(), isTrue);
+
+    await Future<void>.delayed(const Duration(milliseconds: 100));
     expect(PlayerBackExitGate.tryFocusBackStay(), isFalse);
   });
 }

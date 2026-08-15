@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
@@ -41,7 +40,8 @@ class TorrentSourceTile extends StatelessWidget {
       fallbackText: result.name,
     );
     final source = result.source.trim();
-    final provider = source.isNotEmpty &&
+    final provider =
+        source.isNotEmpty &&
             source.toLowerCase() != 'unknown' &&
             !result.name.toLowerCase().contains(source.toLowerCase())
         ? source
@@ -266,11 +266,11 @@ class StremioSourceTile extends StatelessWidget {
     final sizeLabel = isExternal
         ? null
         : (stream != null
-            ? TorrentReleaseMetadata.resolveStreamSizeLabel(stream!)
-            : TorrentReleaseMetadata.resolveSizeLabel(
-                sizeText: sizeText,
-                fallbackText: blob,
-              ));
+              ? TorrentReleaseMetadata.resolveStreamSizeLabel(stream!)
+              : TorrentReleaseMetadata.resolveSizeLabel(
+                  sizeText: sizeText,
+                  fallbackText: blob,
+                ));
     final seedsRaw = seeders?.trim();
     final seedsCount =
         int.tryParse((seedsRaw ?? '').replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
@@ -306,7 +306,10 @@ class StremioSourceTile extends StatelessWidget {
             ]
           : [
               if (meta.quality != null)
-                _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
+                _SourceBadgeSpec(
+                  meta.quality!,
+                  tone: _SourceBadgeTone.emphasis,
+                ),
               if (sizeLabel != null)
                 _SourceBadgeSpec(sizeLabel, tone: _SourceBadgeTone.size),
               if (meta.videoCodec != null) _SourceBadgeSpec(meta.videoCodec!),
@@ -325,7 +328,8 @@ StremioTilePresentation stremioTilePresentation(
   final externalUrl = stream['externalUrl']?.toString();
   final isExternal = externalUrl != null && externalUrl.isNotEmpty;
   final isStremioLink = isExternal && externalUrl.startsWith('stremio://');
-  final isWebLink = isExternal &&
+  final isWebLink =
+      isExternal &&
       (externalUrl.startsWith('http://') || externalUrl.startsWith('https://'));
 
   IconData leadingIcon;
@@ -425,270 +429,223 @@ class _SourceBadgeCard extends StatefulWidget {
 
 class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   bool _hovered = false;
-  bool _focused = false;
 
-  Color _backgroundColor(bool active) {
-    if (widget.accentFill != null) {
-      final base = widget.accentFill!;
-      return active
-          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.10), base)
-          : base;
-    }
+  Color _backgroundColor() {
+    if (widget.accentFill != null) return widget.accentFill!;
     if (widget.isResumable || widget.highlightStart) {
-      final base = ForjaShellColors.chipSelectedBg;
-      return active
-          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.06), base)
-          : base;
+      return ForjaShellColors.chipSelectedBg;
     }
-    return active
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.white.withValues(alpha: 0.04);
+    return Colors.white.withValues(alpha: 0.04);
   }
 
-  Color _borderColor(bool active) {
-    if (widget.accentBorder != null) {
-      final base = widget.accentBorder!;
-      return active
-          ? Color.alphaBlend(Colors.white.withValues(alpha: 0.18), base)
-          : base;
-    }
+  Color _borderColor() {
+    if (widget.accentBorder != null) return widget.accentBorder!;
     if (widget.isResumable || widget.highlightStart) {
       return ForjaShellColors.chipSelectedBorder;
     }
-    return active
-        ? Colors.white.withValues(alpha: 0.14)
-        : Colors.white.withValues(alpha: 0.07);
+    return Colors.white.withValues(alpha: 0.07);
   }
 
   @override
   Widget build(BuildContext context) {
     final metrics = ShellScope.metricsOf(context);
-    final policy = ShellScope.inputPolicyOf(context);
-    final active = ShellInputPolicy.interactiveActive(
-      policy,
-      hovered: _hovered,
-      focused: _focused,
-    );
     const padV = 10.0;
     const titleSize = 13.0;
     final cinematic = ForjaShellColors.cinematic;
     final hasProvider =
         widget.provider != null && widget.provider!.trim().isNotEmpty;
-    final hasSeeders = widget.seeders != null && widget.seeders!.trim().isNotEmpty;
+    final hasSeeders =
+        widget.seeders != null && widget.seeders!.trim().isNotEmpty;
     final hasFlags = widget.flags != null && widget.flags!.trim().isNotEmpty;
     final magnet = widget.magnet;
     final showCopyMagnet = magnet != null && magnet.isNotEmpty && _hovered;
     const seedColor = Color(0xFF22C55E);
 
-    final face = MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            color: _backgroundColor(active),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _borderColor(active)),
-          ),
-          child: Stack(
-            children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(12, padV, 12, padV),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (widget.leading != null) ...[
-                    widget.leading!,
-                    const SizedBox(width: 10),
-                  ],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (widget.isResumable)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
+    final face = AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        color: _backgroundColor(),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _borderColor()),
+      ),
+      child: Stack(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(12, padV, 12, padV),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.leading != null) ...[
+                  widget.leading!,
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (widget.isResumable)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(
+                            'RESUME',
+                            style: TextStyle(
+                              color: cinematic.textSecondary,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
                             child: Text(
-                              'RESUME',
+                              widget.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: cinematic.textSecondary,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.6,
+                                color: cinematic.textPrimary,
+                                fontSize: titleSize,
+                                height: 1.25,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
-                        // Row 1: title + copy magnet (hover) + provider / seeders
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                widget.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: cinematic.textPrimary,
-                                  fontSize: titleSize,
-                                  height: 1.25,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
+                          if (showCopyMagnet) ...[
+                            const SizedBox(width: 4),
+                            ForjaPlainIcon(
+                              icon: Icons.content_copy_rounded,
+                              tooltip: 'Copy magnet',
+                              size: 15,
+                              hitSize: 24,
+                              color: cinematic.textSecondary,
+                              onTap: () async {
+                                await Clipboard.setData(
+                                  ClipboardData(text: magnet),
+                                );
+                                ForjaToast.success(
+                                  'Magnet copied',
+                                  duration: const Duration(seconds: 2),
+                                );
+                              },
                             ),
-                            if (showCopyMagnet) ...[
-                              const SizedBox(width: 4),
-                              Tooltip(
-                                message: 'Copy magnet',
-                                child: Material(
-                                  type: MaterialType.transparency,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(8),
-                                    onTap: () async {
-                                      await Clipboard.setData(
-                                        ClipboardData(text: magnet),
-                                      );
-                                      ForjaToast.success(
-                                        'Magnet copied',
-                                        duration: const Duration(seconds: 2),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(4),
-                                      child: Icon(
-                                        Icons.content_copy_rounded,
-                                        size: 15,
+                          ],
+                          if (hasProvider || hasSeeders) ...[
+                            const SizedBox(width: 8),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: 120),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (hasProvider)
+                                    Text(
+                                      widget.provider!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.right,
+                                      style: TextStyle(
                                         color: cinematic.textSecondary,
+                                        fontSize:
+                                            metrics.torrentPanelMetaFontSize,
+                                        fontWeight: FontWeight.w500,
+                                        height: 1.25,
                                       ),
                                     ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                            if (hasProvider || hasSeeders) ...[
-                              const SizedBox(width: 8),
-                              ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxWidth: 120,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    if (hasProvider)
-                                      Text(
-                                        widget.provider!,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.right,
-                                        style: TextStyle(
-                                          color: cinematic.textSecondary,
-                                          fontSize: metrics.torrentPanelMetaFontSize,
-                                          fontWeight: FontWeight.w500,
-                                          height: 1.25,
+                                  if (hasSeeders) ...[
+                                    if (hasProvider) const SizedBox(height: 2),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.arrow_upward_rounded,
+                                          size:
+                                              metrics.torrentPanelMetaFontSize,
+                                          color: seedColor,
                                         ),
-                                      ),
-                                    if (hasSeeders) ...[
-                                      if (hasProvider) const SizedBox(height: 2),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.arrow_upward_rounded,
-                                            size: metrics.torrentPanelMetaFontSize,
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          widget.seeders!,
+                                          style: TextStyle(
                                             color: seedColor,
+                                            fontSize: metrics
+                                                .torrentPanelMetaFontSize,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.1,
                                           ),
-                                          const SizedBox(width: 2),
-                                          Text(
-                                            widget.seeders!,
-                                            style: TextStyle(
-                                              color: seedColor,
-                                              fontSize: metrics.torrentPanelMetaFontSize,
-                                              fontWeight: FontWeight.w600,
-                                              height: 1.1,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                        ),
+                                      ],
+                                    ),
                                   ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (hasFlags || widget.badges.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            if (hasFlags)
+                              Text(
+                                widget.flags!,
+                                style: TextStyle(
+                                  fontSize: metrics.torrentPanelChipFontSize,
+                                  height: 1.1,
                                 ),
                               ),
-                            ],
+                            for (final badge in widget.badges)
+                              _SourceMetaBadge(badge: badge),
                           ],
                         ),
-                        // Row 2: plain flags + quality / size / codec / tech
-                        if (hasFlags || widget.badges.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              if (hasFlags)
-                                Text(
-                                  widget.flags!,
-                                  style: TextStyle(
-                                    fontSize: metrics.torrentPanelChipFontSize,
-                                    height: 1.1,
-                                  ),
-                                ),
-                              for (final badge in widget.badges)
-                                _SourceMetaBadge(badge: badge),
-                            ],
-                          ),
-                        ],
                       ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (widget.isResumable && widget.progress > 0)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(10),
-                  ),
-                  child: LinearProgressIndicator(
-                    value: widget.progress,
-                    backgroundColor: Colors.transparent,
-                    color: ForjaShellColors.progressFill,
-                    minHeight: 2.5,
+                    ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
+          if (widget.isResumable && widget.progress > 0)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(10),
+                ),
+                child: LinearProgressIndicator(
+                  value: widget.progress,
+                  backgroundColor: Colors.transparent,
+                  color: ForjaShellColors.progressFill,
+                  minHeight: 2.5,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
 
-    final tvIndex = widget.tvItemIndex;
-    if (tvIndex != null && SourcesPanelTv.isTv(context)) {
-      return shellFocusableTap(
-        context: context,
-        onTap: widget.onTap,
-        borderRadius: 10,
-        scaleOnFocus: 1.0,
-        listIndex: tvIndex,
-        tvTabId: SourcesPanelTv.tabId,
-        tvRowId: SourcesPanelTv.listRowId,
-        tvItemIndex: tvIndex,
-        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-        onUpEdge: widget.onUpEdge,
-        onDownEdge: widget.onDownEdge,
-        onFocusChange: (focused) => setState(() => _focused = focused),
-        child: face,
-      );
-    }
-
-    return FocusableControl(
+    final tv = widget.tvItemIndex != null && SourcesPanelTv.isTv(context);
+    return shellFocusableTap(
+      context: context,
       onTap: widget.onTap,
       borderRadius: 10,
       scaleOnFocus: 1.0,
-      onFocusChange: (focused) => setState(() => _focused = focused),
+      showFocusBorder: tv,
+      listIndex: tv ? widget.tvItemIndex : null,
+      tvTabId: tv ? SourcesPanelTv.tabId : null,
+      tvRowId: tv ? SourcesPanelTv.listRowId : null,
+      tvItemIndex: tv ? widget.tvItemIndex : null,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      onUpEdge: widget.onUpEdge,
+      onDownEdge: widget.onDownEdge,
+      onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: face,
     );
   }
