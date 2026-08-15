@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 11** verification |
-| **Current slice** | Floating menus + Media3 track/rate/fit + Exo Sources dialog shipped; ASS / torrent localhost / seek preview / PiP / `audioUrl` still open |
+| **Progress** | **6 / 12** verification |
+| **Current slice** | Floating menus + Media3 track/rate/fit + Exo Sources dialog + catalog link Sources panel shipped; ASS / torrent localhost / seek preview / PiP / `audioUrl` still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -31,6 +31,7 @@
 | 9 | I32-A09 | Lean Settings on ExoPlayer (playback speed + fit) | ✅ |
 | 10 | I32-A10 | TMDB + hub Episodes panels on ExoPlayer | ✅ |
 | 11 | I32-A11 | Sources button + 2-column server/stream dialog on Exo (issue 105) | ✅ |
+| 12 | I32-A12 | Catalog link **Sources** panel on Exo chrome (torrent / Stremio / Nuvio) | ✅ |
 
 ---
 
@@ -38,6 +39,6 @@
 
 [RFC-029](../rfc/029-[open]-dual-built-in-playback-engines.md) ships ExoPlayer as Android default built-in engine.
 
-**Shipped on Exo:** floating `PlayerPopupPanel` menus for Episodes (hub + TMDB), Audio, Subtitles, Quality, lean Settings (speed + fit), and Player (engine / external); **Sources** 2-column server/stream dialog (issue [105](105-[open]-exoplayer-sources-dialog-missing.md)). Native bridge exposes `getTracks` / `selectTrack` / `setRate` / `setResizeMode`. **PiP** and **Cast** chrome buttons are hidden on Exo (not stubbed toasts).
+**Shipped on Exo:** floating `PlayerPopupPanel` menus for Episodes (hub + TMDB), Audio, Subtitles, Quality, lean Settings (speed + fit), and Player (engine / external); **Sources** 2-column server/stream dialog (issue [105](105-[open]-exoplayer-sources-dialog-missing.md)); catalog link **Sources** panel for torrent / Stremio / Nuvio. Native bridge exposes `getTracks` / `selectTrack` / `setRate` / `setResizeMode`. **PiP** and **Cast** chrome buttons are hidden on Exo (not stubbed toasts).
 
-**Still media_kit-only (or open):** ASS/SSA styling, torrent localhost, seek preview, PiP, separate `audioUrl`, catalog link **Sources** panel. Users can switch **Settings → Built-in engine → MediaKit** when needed.
+**Still media_kit-only (or open):** ASS/SSA styling, torrent localhost, seek preview, PiP, separate `audioUrl`. Users can switch **Settings → Built-in engine → MediaKit** when needed.

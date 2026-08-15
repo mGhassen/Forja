@@ -67,11 +67,60 @@ class TorrentSearchProviders {
   static String nextIdAfterAllTap(String selectedSourceId) =>
       isAllChip(selectedSourceId) ? noneId : allId;
 
-  /// `null` → search every Settings-enabled provider; else only [id].
+  /// `null` → search every Settings-enabled provider; else only those ids.
   static List<String>? searchEnabledForChip(String id) {
+    if (id == noneId) return const [];
     if (id == allId || id == 'forja') return null;
     if (isBuiltin(id)) return [id];
     return null;
+  }
+
+  static String? idForResultSource(String resultSource) {
+    for (final e in resultSources.entries) {
+      if (e.value == resultSource) return e.key;
+    }
+    return null;
+  }
+
+  /// Settings-enabled providers the [chipId] should query.
+  static List<String> enabledForChip(
+    String chipId,
+    Iterable<String> settingsEnabled,
+  ) {
+    if (chipId == noneId || chipId == 'jackett' || chipId == 'prowlarr') {
+      return const [];
+    }
+    final allow = settingsEnabled.toSet();
+    final chip = searchEnabledForChip(chipId);
+    final ids = chip ?? all;
+    return [for (final id in ids) if (allow.contains(id)) id];
+  }
+
+  static String defaultChipId(Iterable<String> settingsEnabled) {
+    final enabled = enabledForChip(allId, settingsEnabled);
+    return enabled.isEmpty ? allId : enabled.first;
+  }
+
+  static List<String> missingEnabledForChip({
+    required String chipId,
+    required Iterable<String> settingsEnabled,
+    required Iterable<String> fetchedProviderIds,
+  }) {
+    final have = fetchedProviderIds.toSet();
+    return [
+      for (final id in enabledForChip(chipId, settingsEnabled))
+        if (!have.contains(id)) id,
+    ];
+  }
+
+  static void addFetchedFromResultSources(
+    Set<String> fetched,
+    Iterable<String> resultSources,
+  ) {
+    for (final src in resultSources) {
+      final id = idForResultSource(src);
+      if (id != null) fetched.add(id);
+    }
   }
 
   static int seedersOfJson(Map<String, dynamic> row) {

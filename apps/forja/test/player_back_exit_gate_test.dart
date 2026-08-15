@@ -163,6 +163,26 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 100));
     expect(PlayerBackExitGate.tryFocusBackStay(), isFalse);
   });
+
+  test('markStay swallows armed exit on the overlay-dismiss twin', () async {
+    ShellBus.enterPlayerSurface();
+    addTearDown(ShellBus.leavePlayerSurface);
+
+    var chrome = false;
+    var armed = true;
+    PlayerBackExitGate.setTryFocusBack(() {
+      return PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: chrome,
+        armed: armed,
+        hideChrome: () => chrome = false,
+        setArmed: (v) => armed = v,
+      );
+    });
+
+    PlayerBackExitGate.markStay();
+    expect(PlayerBackExitGate.tryFocusBackStay(), isTrue);
+    expect(armed, isTrue);
+  });
 }
 
 class _FakePlayerRoute extends StatefulWidget {

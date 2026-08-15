@@ -7,18 +7,26 @@ import 'package:google_fonts/google_fonts.dart';
 /// Flat shell chip fill + border - matches sources panel / home filter style.
 BoxDecoration shellChipDecoration({
   required bool selected,
+  bool accentHover = false,
   double radius = 20,
 }) {
+  final Color fill;
+  final Color border;
+  if (selected) {
+    fill = ForjaShellColors.chipSelectedBg;
+    border = ForjaShellColors.chipSelectedBorder;
+  } else if (accentHover) {
+    // Tinted green, not solid brand fill.
+    fill = ForjaShellColors.brandGreen.withValues(alpha: 0.14);
+    border = ForjaShellColors.brandGreen.withValues(alpha: 0.5);
+  } else {
+    fill = Colors.white.withValues(alpha: 0.07);
+    border = ForjaShellColors.cinematic.borderSubtle;
+  }
   return BoxDecoration(
-    color: selected
-        ? ForjaShellColors.chipSelectedBg
-        : Colors.white.withValues(alpha: 0.07),
+    color: fill,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(
-      color: selected
-          ? ForjaShellColors.chipSelectedBorder
-          : ForjaShellColors.cinematic.borderSubtle,
-    ),
+    border: Border.all(color: border),
   );
 }
 
@@ -112,7 +120,7 @@ ButtonStyle shellMenuItemStyle({
 }
 
 /// Selectable pill chip for filters, moods, modes - no theme purple borders.
-class ForjaShellChip extends StatelessWidget {
+class ForjaShellChip extends StatefulWidget {
   const ForjaShellChip({
     super.key,
     required this.label,
@@ -131,6 +139,7 @@ class ForjaShellChip extends StatelessWidget {
     this.onUpEdge,
     this.onLeftEdge,
     this.onRightEdge,
+    this.accentHover = false,
   });
 
   final String label;
@@ -150,56 +159,77 @@ class ForjaShellChip extends StatelessWidget {
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
 
+  /// Desktop hover: tinted brand-green chrome instead of solid white ink.
+  final bool accentHover;
+
+  @override
+  State<ForjaShellChip> createState() => _ForjaShellChipState();
+}
+
+class _ForjaShellChipState extends State<ForjaShellChip> {
+  bool _hovered = false;
+
   @override
   Widget build(BuildContext context) {
+    final selected = widget.selected;
+    final accent = widget.accentHover && _hovered && !selected;
     final cinematic = ForjaShellColors.cinematic;
-    final fg = selected ? cinematic.textPrimary : cinematic.textSecondary;
-    final borderRadius = BorderRadius.circular(radius);
+    final fg = selected
+        ? cinematic.textPrimary
+        : accent
+            ? ForjaShellColors.brandGreen
+            : cinematic.textSecondary;
+    final borderRadius = BorderRadius.circular(widget.radius);
 
     final chip = Ink(
-      decoration: shellChipDecoration(selected: selected, radius: radius),
+      decoration: shellChipDecoration(
+        selected: selected,
+        accentHover: accent,
+        radius: widget.radius,
+      ),
       child: Padding(
-        padding: padding,
+        padding: widget.padding,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) ...[
-              Icon(icon, size: 14, color: fg),
+            if (widget.icon != null) ...[
+              Icon(widget.icon, size: 14, color: fg),
               const SizedBox(width: 6),
             ],
             Text(
-              label,
+              widget.label,
               style: GoogleFonts.plusJakartaSans(
                 color: fg,
-                fontSize: fontSize,
+                fontSize: widget.fontSize,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
-            if (trailing != null) ...[
+            if (widget.trailing != null) ...[
               const SizedBox(width: 4),
-              trailing!,
+              widget.trailing!,
             ],
           ],
         ),
       ),
     );
 
+    Widget body;
     if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
-      return shellFocusableTap(
+      body = shellFocusableTap(
         context: context,
-        onTap: onTap,
-        focusNode: focusNode,
-        borderRadius: radius,
+        onTap: widget.onTap,
+        focusNode: widget.focusNode,
+        borderRadius: widget.radius,
         scaleOnFocus: 1.0,
-        listIndex: listIndex,
-        tvTabId: tvTabId,
-        tvRowId: tvRowId,
-        tvItemIndex: listIndex,
+        listIndex: widget.listIndex,
+        tvTabId: widget.tvTabId,
+        tvRowId: widget.tvRowId,
+        tvItemIndex: widget.listIndex,
         tvZone: ShellTvZone.chipStrip,
-        onDownEdge: onDownEdge,
-        onUpEdge: onUpEdge,
-        onLeftEdge: onLeftEdge,
-        onRightEdge: onRightEdge,
+        onDownEdge: widget.onDownEdge,
+        onUpEdge: widget.onUpEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
         child: Material(
           color: Colors.transparent,
           borderRadius: borderRadius,
@@ -207,12 +237,20 @@ class ForjaShellChip extends StatelessWidget {
           child: chip,
         ),
       );
+    } else {
+      body = shellRoundedInkHost(
+        radius: widget.radius,
+        onTap: widget.onTap,
+        suppressInkHover: widget.accentHover,
+        child: chip,
+      );
     }
 
-    return shellRoundedInkHost(
-      radius: radius,
-      onTap: onTap,
-      child: chip,
+    if (!widget.accentHover) return body;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: body,
     );
   }
 }

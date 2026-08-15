@@ -53,7 +53,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [029-[draft]-…](029-[draft]-lan-range-seek-unverified.md) | LAN range seek unverified | P3 | Low | draft | 0/2 | — |
 | [030-[draft]-…](030-[draft]-lan-hdr-passthrough-unverified.md) | LAN HDR passthrough unverified | P3 | Low | draft | 0/1 | — |
 | [031-[workaround]-…](031-[workaround]-android-tv-webview-gles-crash.md) | Android TV WebView GLES crash | P1 | High | workaround | 5/5 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [032-[draft]-…](032-[draft]-exoplayer-parity-gaps.md) | ExoPlayer vs media_kit parity gaps | P2 | Medium | draft | 5/11 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [032-[draft]-…](032-[draft]-exoplayer-parity-gaps.md) | ExoPlayer vs media_kit parity gaps | P2 | Medium | draft | 6/12 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [033-[open]-…](033-[open]-vod-decoder-recovery.md) | VOD player decoder recovery | P2 | Medium | open | 4/5 | — |
 | [034-[open]-…](034-[open]-windows-release-missing-libmpv.md) | Windows release missing libmpv | P1 | High | open | 3/4 · A 0/1 | — |
 | [035-[fixed]-…](fixed/035-[fixed]-nuvio-torrent-scraper-in-direct-streaming.md) | Nuvio torrent scraper (Torrentio) in Direct Streaming | P1 | High | fixed | Complete · 7/7 | — |
@@ -126,7 +126,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [102-[open]-…](102-[open]-android-tv-exoplayer-tiled-frames.md) | Android TV ExoPlayer tiled / shifted frames | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [103-[open]-…](103-[open]-android-tv-anime-details-hero-focus.md) | Android TV anime details hero + focus chrome | P1 | High | open | 4/4 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [104-[open]-…](104-[open]-android-tv-live-matches-embed-dpad.md) | Android TV Live Matches embed Play/Back/player D-pad | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [105-[open]-…](105-[open]-exoplayer-sources-dialog-missing.md) | ExoPlayer Sources button / 2-column dialog | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [105-[open]-…](105-[open]-exoplayer-sources-dialog-missing.md) | ExoPlayer Sources button / 2-column dialog | P1 | High | open | 4/4 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [106-[open]-…](106-[open]-desktop-session-profile-chrome-desync.md) | Long-idle session / profile chrome desync | P1 | High | open | 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [107-[fixed]-…](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) | Android ≤7.0 TMDB posters (Let's Encrypt trust) | P1 | High | fixed | Complete · 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [108-[open]-…](108-[open]-android-tv-iptv-exo-choppy-fps.md) | Android TV IPTV Exo choppy FPS (weak / Android 7) | P1 | High | open | 30/30 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -181,7 +181,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [158-[open]-…](158-[open]-android-tv-nav-right-loses-page-focus.md) | ATV nav RIGHT loses last page focus | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [159-[open]-…](159-[open]-android-tv-live-background-audio.md) | ATV live/IPTV audio continues after Home | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 7/7 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 7/7 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 8/8 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [162-[open]-…](162-[open]-iptv-more-like-this-catalog-only.md) | IPTV More like this = portal catalog only | P2 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 26/26 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [164-[open]-…](164-[open]-vsembed-new-player-chain.md) | VSEmbed new JS player (rcp/prorcp dead) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -196,7 +196,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [173-[open]-…](173-[open]-android-tv-update-dialog-focus-leak.md) | ATV update dialog D-pad under the gate | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [174-[open]-…](174-[open]-android-tv-iptv-source-switch-black-video.md) | ATV IPTV source/channel switch black video | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [175-[open]-…](175-[open]-mid-watch-auto-failover.md) | Mid-watch CDN death Auto hop | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [176-[workaround]-…](176-[workaround]-macos-intel-metal-text-glitch.md) | macOS Intel Metal subtitle/card/text glitch | P1 | High | workaround | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [177-[open]-…](177-[open]-sources-selected-provider-lazy-fetch.md) | Sources: fetch only the selected provider / addon / scraper | P2 | Medium | open | 6/6 · A 0/4 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

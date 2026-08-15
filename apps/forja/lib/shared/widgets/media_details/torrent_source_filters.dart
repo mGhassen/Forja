@@ -551,6 +551,7 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                           label: widget.options[i].label,
                           selected: _chipSelected(widget.options[i]),
                           onTap: () => widget.onChipTap(widget.options[i].id),
+                          accentHover: true,
                           radius: 999,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,

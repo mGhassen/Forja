@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 5** acceptance |
+| **Progress** | **8 / 8** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 5 | I161-T05 | In-player torrent file picker list + close D-pad | ✅ |
 | 6 | I161-T06 | Reclaim panel focus on open (retries); ExcludeFocus closed panel; skip Play-claim while Sources is open | ✅ |
 | 7 | I161-T07 | Remote Back closes Sources/Filters only (HardwareKeyboard steal) — do not pop details or player | ✅ |
+| 8 | I161-T08 | Player PopScope / pair `showDialog`: Back dismisses dialog/overlay only — HW twin must not `_exit` the player | ✅ |
 
 ---
 
@@ -50,6 +51,8 @@ On **Android TV**, opening the torrent **Sources** panel left D-pad on the page 
 **I161-T06:** closed Sources still built focusable tiles off-screen; open claimed kind/list once (nodes not mounted yet → empty overlay). Closed panel is `ExcludeFocus`; open retries claim; Play-after-player skips while Sources is open.
 
 **I161-T07:** `HardwareKeyboard` consumes `goBack` before `TvOverlayScope`, so details Back popped the title (and a player twin could leave playback). Sources now registers a dismisser: Filters first, then the panel.
+
+**I161-T08:** Same-press HW + player `PopScope` still exited after the overlay was already dismissed (`_exit` saw `isShowing == false`). Pair-desktop uses `showDialog`, which is not an OverlayEntry — Back skipped it and ran the player exit ladder. `consumeOverlayBack` pops `PopupRoute`s first and `markStay` swallows the PopScope twin.
 
 ---
 

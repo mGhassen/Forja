@@ -781,7 +781,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// MediaKit/MediaCodec teardown is not on the Navigator.pop critical path.
   Future<void> _exitIptvPlayer() async {
     if (_disposed || _exitInProgress) return;
-    if (dismissAnyPlayerChromeOverlay()) {
+    if (ShellTvFocusCoordinator.consumeOverlayBack()) {
       _tvBackExitArmed = false;
       PlayerBackExitGate.exitReady = false;
       return;

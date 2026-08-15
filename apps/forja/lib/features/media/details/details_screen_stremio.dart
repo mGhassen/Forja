@@ -67,18 +67,48 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     if (changed && rebuild && mounted) setState(() {});
   }
 
-  Future<void> _fetchAllStremioStreams() async {
+  Future<void> _fetchStremioStreams({bool reset = false}) async {
     // Lazy: never hit Stremio addons unless the Stremio kind is open.
     if (_s._sourcesPanelOpen && _s._panelKindFilter != 'stremio') return;
     if (_s._streamAddons.isEmpty) return;
+
+    Map<String, dynamic>? addon;
+    for (final a in _s._streamAddons) {
+      if (a['baseUrl'] == _s._selectedSourceId) {
+        addon = a;
+        break;
+      }
+    }
+    addon ??= _s._streamAddons.first;
+    final baseUrl = addon['baseUrl'] as String;
+    final addonName = addon['name'] ?? 'Unknown';
+
+    if (_s._isStremioFetching && !reset) {
+      _s._stremioFetchGen++;
+      _s._isStremioFetching = false;
+    }
+
+    if (!reset && _s._completedAddonBaseUrls.contains(baseUrl)) {
+      setState(() {
+        _applyStremioFilter();
+        _s._errorMessage =
+            _s._stremioStreams.isEmpty
+            ? 'No streams found in $addonName'
+            : null;
+      });
+      return;
+    }
+
     final gen = ++_s._stremioFetchGen;
     setState(() {
       _s._isStremioFetching = true;
       _s._errorMessage = null;
-      _s._allCombinedStremioStreams = [];
-      _s._loadedAddonBaseUrls.clear();
-      _s._completedAddonBaseUrls.clear();
-      if (_s._selectedSourceId == 'all_stremio') _s._stremioStreams = [];
+      if (reset) {
+        _s._allCombinedStremioStreams = [];
+        _s._stremioStreams = [];
+        _s._loadedAddonBaseUrls.clear();
+        _s._completedAddonBaseUrls.clear();
+      }
     });
     try {
       String stremioId = _s._movie.imdbId ?? '';
@@ -88,86 +118,60 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
         }
         return;
       }
-      if (_s._movie.mediaType == 'tv')
-        stremioId = '${stremioId}:${_s._selectedSeason}:${_s._selectedEpisode}';
-      final type = _s._movie.mediaType == 'tv' ? 'series' : 'movie';
-
-      int pendingCount = _s._streamAddons.length;
-
-      void completeOne() {
-        if (!mounted || gen != _s._stremioFetchGen) return;
-        pendingCount--;
-        if (pendingCount <= 0) {
-          CatalogSourcesSessionCache.writeStremio(
-            _s._catalogCacheKey,
-            List<Map<String, dynamic>>.from(_s._allCombinedStremioStreams),
-          );
-          setState(() {
-            _s._isStremioFetching = false;
-            _s._syncStremioProviderSelection();
-            _applyStremioFilter();
-            if (_s._allCombinedStremioStreams.isEmpty) {
-              _s._errorMessage = 'No streams found from any addon';
-            }
-          });
-          _s._maybeAutoPlay();
-          if (_s._episodePlayPending &&
-              !_s._isStremioFetching &&
-              _s._allCombinedStremioStreams.isEmpty) {
-            _s._failEpisodePlayPending();
-          }
-        }
+      if (_s._movie.mediaType == 'tv') {
+        stremioId = '$stremioId:${_s._selectedSeason}:${_s._selectedEpisode}';
       }
-
-      for (final addon in _s._streamAddons) {
-        final baseUrl = addon['baseUrl'] as String;
-        _s._stremio
-            .getStreams(baseUrl: baseUrl, type: type, id: stremioId)
-            .then((streams) {
-              if (!mounted || gen != _s._stremioFetchGen) return;
-              final tagged = _s._filterStremioStreams(
-                streams.map((s) {
-                  if (s is Map<String, dynamic>) {
-                    return <String, dynamic>{
-                      ...s,
-                      '_addonName': addon['name'] ?? 'Unknown',
-                      '_addonBaseUrl': baseUrl,
-                    };
-                  }
-                  return <String, dynamic>{
-                    '_addonName': addon['name'],
-                    '_addonBaseUrl': baseUrl,
-                  };
-                }).toList(),
-              );
-
-              setState(() {
-                _s._completedAddonBaseUrls.add(baseUrl);
-                if (tagged.isNotEmpty) {
-                  _s._loadedAddonBaseUrls.add(baseUrl);
-                }
-                _s._allCombinedStremioStreams.addAll(tagged);
-                _s._syncStremioProviderSelection();
-                _applyStremioFilter();
-              });
-            })
-            .catchError((_) {
-              if (!mounted || gen != _s._stremioFetchGen) return;
-              setState(() {
-                _s._completedAddonBaseUrls.add(baseUrl);
-                _s._syncStremioProviderSelection();
-                _applyStremioFilter();
-              });
-            })
-            .whenComplete(() {
-              completeOne();
-            });
+      final type = _s._movie.mediaType == 'tv' ? 'series' : 'movie';
+      final streams = await _s._stremio.getStreams(
+        baseUrl: baseUrl,
+        type: type,
+        id: stremioId,
+      );
+      if (!mounted || gen != _s._stremioFetchGen) return;
+      final tagged = _s._filterStremioStreams(
+        streams.map((s) {
+          if (s is Map<String, dynamic>) {
+            return <String, dynamic>{
+              ...s,
+              '_addonName': addonName,
+              '_addonBaseUrl': baseUrl,
+            };
+          }
+          return <String, dynamic>{
+            '_addonName': addonName,
+            '_addonBaseUrl': baseUrl,
+          };
+        }).toList(),
+      );
+      setState(() {
+        _s._completedAddonBaseUrls.add(baseUrl);
+        if (tagged.isNotEmpty) _s._loadedAddonBaseUrls.add(baseUrl);
+        _s._allCombinedStremioStreams.removeWhere(
+          (s) => s['_addonBaseUrl'] == baseUrl,
+        );
+        _s._allCombinedStremioStreams.addAll(tagged);
+        _s._isStremioFetching = false;
+        _s._syncStremioProviderSelection();
+        _applyStremioFilter();
+        if (_s._stremioStreams.isEmpty) {
+          _s._errorMessage = 'No streams found in $addonName';
+        }
+      });
+      CatalogSourcesSessionCache.writeStremio(
+        _s._catalogCacheKey,
+        List<Map<String, dynamic>>.from(_s._allCombinedStremioStreams),
+      );
+      _s._maybeAutoPlay();
+      if (_s._episodePlayPending && _s._stremioStreams.isEmpty) {
+        _s._failEpisodePlayPending();
       }
     } catch (e) {
       if (mounted && gen == _s._stremioFetchGen) {
         setState(() {
+          _s._completedAddonBaseUrls.add(baseUrl);
           _s._errorMessage = 'Error: $e';
           _s._isStremioFetching = false;
+          _applyStremioFilter();
         });
       }
     }
@@ -186,21 +190,36 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
         id,
   ];
 
-  Future<void> _fetchNextNuvioScraper({bool reset = false}) async {
+  Future<void> _fetchNextNuvioScraper({
+    bool reset = false,
+    String? onlyId,
+  }) async {
     if (!_s._hasNuvioAddons || _s._movie.id <= 0) return;
-    if (_s._isNuvioFetching && !reset) return;
+    if (_s._isNuvioFetching && !reset) {
+      if (onlyId == null || onlyId == _s._nuvioInFlightScraperId) return;
+      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+      _s._nuvioFetchGen++;
+      _s._isNuvioFetching = false;
+      _s._nuvioInFlightScraperId = null;
+    }
     if (reset) {
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     }
     final fetchedIds = reset
         ? <String>{}
         : Set<String>.from(_s._nuvioFetchedScraperIds);
-    final scraperId = nextNuvioScraperId(
-      orderedIds: _orderedNuvioScraperIds,
-      selectedIds: _s._nuvioSelectedScraperIds,
-      fetchedIds: fetchedIds,
-    );
+    final scraperId = onlyId ??
+        nextNuvioScraperId(
+          orderedIds: _orderedNuvioScraperIds,
+          selectedIds: _s._nuvioSelectedScraperIds,
+          fetchedIds: fetchedIds,
+        );
     if (scraperId == null) return;
+    if (onlyId != null &&
+        (!_s._nuvioSelectedScraperIds.contains(onlyId) ||
+            (!reset && fetchedIds.contains(onlyId)))) {
+      return;
+    }
     final gen = ++_s._nuvioFetchGen;
     setState(() {
       _s._isNuvioFetching = true;
@@ -254,9 +273,6 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
       fetchedScraperIds: _s._nuvioFetchedScraperIds,
     );
     _s._maybeAutoPlay();
-    if (_pendingNuvioScraperIds.isNotEmpty) {
-      unawaited(_fetchNextNuvioScraper());
-    }
   }
 
   /// Fetches streams using the custom Stremio ID from the originating addon.
@@ -502,62 +518,6 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
       }
     }
     return null;
-  }
-
-  /// Fetches streams from a single selected addon only.
-  Future<void> _fetchStremioStreams() async {
-    if (_s._selectedSourceId == 'all_stremio') {
-      // "All" chip → just re-filter from cached results, or re-fetch if empty
-      if (_s._allCombinedStremioStreams.isEmpty) {
-        return _fetchAllStremioStreams();
-      }
-      setState(() {
-        _s._stremioStreams = _s._allCombinedStremioStreams;
-        _s._errorMessage = null;
-      });
-      return;
-    }
-    final addon = _s._streamAddons.firstWhere(
-      (a) => a['baseUrl'] == _s._selectedSourceId,
-      orElse: () => _s._streamAddons.isNotEmpty
-          ? _s._streamAddons.first
-          : <String, dynamic>{},
-    );
-    if (addon.isEmpty) return;
-    final gen = ++_s._stremioFetchGen;
-    setState(() {
-      _s._isStremioFetching = true;
-      _s._errorMessage = null;
-      _s._stremioStreams = [];
-    });
-    try {
-      String stremioId = _s._movie.imdbId ?? '';
-      if (_s._movie.mediaType == 'tv')
-        stremioId = '${stremioId}:${_s._selectedSeason}:${_s._selectedEpisode}';
-      final type = _s._movie.mediaType == 'tv' ? 'series' : 'movie';
-      final streams = await _s._stremio.getStreams(
-        baseUrl: addon['baseUrl'],
-        type: type,
-        id: stremioId,
-      );
-      if (!mounted || gen != _s._stremioFetchGen) return;
-      setState(() {
-        _s._stremioStreams = _s._filterStremioStreams(streams);
-        if (streams.isEmpty)
-          _s._errorMessage = 'No streams found in ${addon['name']}';
-      });
-    } catch (e) {
-      if (!mounted || gen != _s._stremioFetchGen) return;
-      setState(() => _s._errorMessage = 'Error: $e');
-    } finally {
-      if (mounted && gen == _s._stremioFetchGen) {
-        setState(() => _s._isStremioFetching = false);
-        _s._maybeAutoPlay();
-        if (_s._episodePlayPending && _s._stremioStreams.isEmpty) {
-          _s._failEpisodePlayPending();
-        }
-      }
-    }
   }
 
   /// Applies the current addon filter chip to _s._allCombinedStremioStreams.

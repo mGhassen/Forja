@@ -400,7 +400,6 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TorrentSourcesPanelChrome(
-          onClose: _s._closeSourcesPanel,
           kindFilter: _s._panelKindFilter,
           showTorrents: _s._panelShowTorrent,
           showStremio: _s._panelShowStremio,

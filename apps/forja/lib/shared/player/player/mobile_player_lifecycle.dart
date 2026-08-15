@@ -555,7 +555,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
   /// so the details page never sees stale landscape dimensions.
   Future<void> _exitPlayer() async {
     if (_s._exitInProgress) return;
-    if (dismissAnyPlayerChromeOverlay()) {
+    if (ShellTvFocusCoordinator.consumeOverlayBack()) {
       // Opener chrome button is refocused by playerMenuRestoreReturnFocus.
       return;
     }

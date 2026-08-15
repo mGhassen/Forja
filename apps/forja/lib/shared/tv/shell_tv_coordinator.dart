@@ -248,10 +248,62 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   static void _stampOverlayBackConsumed() {
+    PlayerBackExitGate.markStay();
     PlayerBackExitGate.exitReady = false;
     _backStepPending = false;
     ShellTvAppExit.clear();
     _lastBackHandledAt = DateTime.now();
+  }
+
+  /// Close a [showDialog] / bottom sheet on top of the player before exit.
+  ///
+  /// HardwareKeyboard steals goBack, so [DialogRoute] never sees the key.
+  /// [resolveBackTarget] is `player` while a popup is up, and the player
+  /// PopScope twin would then [_exit] after chrome overlays are already gone.
+  static bool tryPopPopupRoute() {
+    final ctx = FocusManager.instance.primaryFocus?.context;
+    if (ctx == null || !ctx.mounted) return false;
+    final route = ModalRoute.of(ctx);
+    if (route is! PopupRoute || !route.isActive) return false;
+    final nav = Navigator.maybeOf(ctx);
+    if (nav != null && nav.canPop()) {
+      nav.maybePop();
+      return true;
+    }
+    final rootNav = Navigator.maybeOf(ctx, rootNavigator: true);
+    if (rootNav != null && rootNav.canPop()) {
+      rootNav.maybePop();
+      return true;
+    }
+    return false;
+  }
+
+  /// Dismiss player menus, Sources, and dialogs. True = this Back is done.
+  ///
+  /// Player [PopScope] must call this before [_exit] — HW may already have
+  /// dismissed the overlay on the same press.
+  static bool consumeOverlayBack() {
+    if (dismissAnyPlayerChromeOverlay()) {
+      _stampOverlayBackConsumed();
+      return true;
+    }
+    if (PlayerBackExitGate.tryConsumePlayerOverlay()) {
+      _stampOverlayBackConsumed();
+      return true;
+    }
+    if (tryDismissSourcesPanel()) {
+      _stampOverlayBackConsumed();
+      return true;
+    }
+    if (tryDismissTransientOverlay()) {
+      _stampOverlayBackConsumed();
+      return true;
+    }
+    if (tryPopPopupRoute()) {
+      _stampOverlayBackConsumed();
+      return true;
+    }
+    return false;
   }
 
   static bool _consumeDuplicateBack() {
@@ -268,32 +320,10 @@ abstract final class ShellTvFocusCoordinator {
   /// Always returns true when [tvBackPolicyEnabled] (never finishes via a
   /// single Back — nav needs a second press; see [ShellTvAppExit]).
   static bool handleShellBackKey() {
-    // Player menus/panels are OverlayEntries (not routes). Dismiss them
-    // before debounce / exit arming — otherwise exitReady skips debounce and
-    // HW + didPopRoute on the same press closes the menu then pops the player
-    // (IPTV Stream stats → catalog). Stamp so the twin delivery is swallowed.
-    if (dismissAnyPlayerChromeOverlay()) {
-      _stampOverlayBackConsumed();
-      return true;
-    }
-
-    // In-player overlays (IPTV search ladder, …). Same twin stamp as chrome
-    // OverlayEntries — HardwareKeyboard steals Focus onKey for goBack.
-    if (PlayerBackExitGate.tryConsumePlayerOverlay()) {
-      _stampOverlayBackConsumed();
-      return true;
-    }
-
-    // Sources/Filters: HardwareKeyboard steals goBack before TvOverlayScope.
-    if (tryDismissSourcesPanel()) {
-      _stampOverlayBackConsumed();
-      return true;
-    }
-
-    if (tryDismissTransientOverlay()) {
-      _stampOverlayBackConsumed();
-      return true;
-    }
+    // Menus, Sources, [showDialog] — before debounce / player exit. HW +
+    // didPopRoute / PopScope twins would otherwise close the dialog then
+    // pop the player on the same press.
+    if (consumeOverlayBack()) return true;
 
     // Confirming exit / pop must not be swallowed by debounce.
     // Same-press twins (HardwareKeyboard + didPopRoute) still land inside

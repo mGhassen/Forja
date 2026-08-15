@@ -198,6 +198,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   final _profile = PlatformPlayback.capabilities;
 
   List<TorrentResult> _results = [];
+  final Set<String> _torrentFetchedProviderIds = {};
   List<Map<String, dynamic>> _stremioStreams = [];
   List<Map<String, dynamic>> _streamAddons = [];
   final Set<String> _loadedAddonBaseUrls = {};
@@ -229,7 +230,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   bool _showStremio = false;
   bool _showNuvio = false;
   String _kindFilter = 'torrents';
-  String _selectedSourceId = TorrentSearchProviders.allId;
+  String _selectedSourceId = TorrentSearchProviders.knaben;
   String _searchQuery = '';
   String _sortPreference = 'seeders';
   Set<String> _qualityFilters = {};
@@ -598,19 +599,22 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (!_showsTorrents) return;
     if (force) {
       CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'torrents');
-      unawaited(_runTorrentSearch());
+      unawaited(_runTorrentSearch(force: true));
       return;
     }
-    if (_results.isNotEmpty || _searching) return;
+    if (_searching) return;
     final cached = CatalogSourcesSessionCache.readTorrents(_catalogCacheKey);
-    if (cached != null) {
+    if (cached != null && _results.isEmpty) {
       setState(() {
         _results = cached;
+        TorrentSearchProviders.addFetchedFromResultSources(
+          _torrentFetchedProviderIds,
+          cached.map((r) => r.source),
+        );
         _error = null;
       });
       _focusPlayingSourceIfNeeded();
       _requestScrollToCurrent();
-      return;
     }
     unawaited(_runTorrentSearch());
   }
@@ -640,10 +644,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       if (!mounted || !_showsStremio) return;
       if (force) {
         CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
-        unawaited(_fetchStremioStreams());
+        unawaited(_fetchStremioStreams(reset: true));
         return;
       }
-      if (_stremioStreams.isNotEmpty || _stremioFetching) return;
+      if (_stremioFetching) return;
       final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
       if (cached != null && cached.isNotEmpty) {
         setState(() {
@@ -663,9 +667,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         });
         _focusPlayingSourceIfNeeded();
         _requestScrollToCurrent();
-        return;
-      }
-      if (cached != null && cached.isEmpty) {
+      } else if (cached != null && cached.isEmpty) {
         CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
       }
       unawaited(_fetchStremioStreams());
@@ -717,6 +719,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _searchGen++;
       _searching = false;
       _results = [];
+      _torrentFetchedProviderIds.clear();
     }
     if (keepKind != 'stremio' && _stremioFetching) {
       _stremioGen++;
@@ -743,7 +746,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                 ? addons.first['baseUrl'] as String
                 : TorrentSearchProviders.allId),
       'nuvio' => 'all_nuvio',
-      'torrents' => TorrentSearchProviders.allId,
+      'torrents' => TorrentSearchProviders.defaultChipId(
+        _enabledTorrentProviders,
+      ),
       _ => TorrentSearchProviders.allId,
     };
   }
@@ -912,6 +917,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<Map<String, dynamic>> get _filteredStremio {
     final q = _searchQuery.trim().toLowerCase();
     return _stremioStreams.where((s) {
+      if (_selectedSourceId.isNotEmpty &&
+          _selectedSourceId != 'all_stremio' &&
+          s['_addonBaseUrl'] != _selectedSourceId) {
+        return false;
+      }
       if (q.isEmpty) return true;
       final blob =
           '${s['title'] ?? ''} ${s['name'] ?? ''} ${s['description'] ?? ''}'
@@ -1019,38 +1029,104 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       (_showsStremio && _stremioFetching) ||
       (_showsNuvio && _nuvioFetching);
 
-  Future<void> _runTorrentSearch() async {
+  void _abortTorrentSearch() {
+    if (!_searching) return;
+    setState(() {
+      _searchGen++;
+      _searching = false;
+    });
+  }
+
+  void Function(String id) _onTorrentProviderDone(
+    int gen, {
+    required int hitsNeeded,
+  }) {
+    final hits = <String, int>{};
+    return (id) {
+      if (!mounted || gen != _searchGen) return;
+      hits[id] = (hits[id] ?? 0) + 1;
+      if (hits[id]! >= hitsNeeded) {
+        _torrentFetchedProviderIds.add(id);
+      }
+    };
+  }
+
+  Future<void> _runTorrentSearch({bool force = false}) async {
+    if (TorrentSearchProviders.isNoneChip(_selectedSourceId)) {
+      _searchGen++;
+      setState(() => _searching = false);
+      return;
+    }
     final gen = ++_searchGen;
+    if (force) _torrentFetchedProviderIds.clear();
+    final isTv = widget.movie.mediaType == 'tv';
+    final season = widget.season ?? 1;
+    final episode = widget.episode ?? 1;
+
+    if (_selectedSourceId == 'jackett' || _selectedSourceId == 'prowlarr') {
+      setState(() {
+        _searching = true;
+        _error = null;
+        _results = [];
+      });
+      try {
+        if (_selectedSourceId == 'jackett') {
+          await _finishTorrentSearch(
+            gen,
+            await _searchJackett(isTv: isTv, season: season, episode: episode),
+          );
+        } else {
+          await _finishTorrentSearch(
+            gen,
+            await _searchProwlarr(isTv: isTv, season: season, episode: episode),
+          );
+        }
+      } catch (e) {
+        if (!mounted || gen != _searchGen) return;
+        setState(() {
+          _searching = false;
+          _error = e.toString().replaceFirst('Exception: ', '');
+        });
+      }
+      return;
+    }
+
+    final enabled = force
+        ? TorrentSearchProviders.enabledForChip(
+            _selectedSourceId,
+            _enabledTorrentProviders,
+          )
+        : TorrentSearchProviders.missingEnabledForChip(
+            chipId: _selectedSourceId,
+            settingsEnabled: _enabledTorrentProviders,
+            fetchedProviderIds: _torrentFetchedProviderIds,
+          );
+    if (enabled.isEmpty) {
+      setState(() => _searching = false);
+      return;
+    }
+    final replace = force || _results.isEmpty;
     setState(() {
       _searching = true;
       _error = null;
-      _results = [];
+      if (replace) _results = [];
     });
 
     try {
-      final isTv = widget.movie.mediaType == 'tv';
-      final season = widget.season ?? 1;
-      final episode = widget.episode ?? 1;
-
-      if (_selectedSourceId == 'jackett') {
-        await _finishTorrentSearch(
-          gen,
-          await _searchJackett(isTv: isTv, season: season, episode: episode),
-        );
-        return;
-      }
-      if (_selectedSourceId == 'prowlarr') {
-        await _finishTorrentSearch(
-          gen,
-          await _searchProwlarr(isTv: isTv, season: season, episode: episode),
-        );
-        return;
-      }
-
       if (isTv) {
-        await _searchForjaTvProgressive(gen, season: season, episode: episode);
+        await _searchForjaTvProgressive(
+          gen,
+          season: season,
+          episode: episode,
+          enabledProviders: enabled,
+          replace: replace,
+        );
       } else {
-        await _searchForjaMovieProgressive(gen);
+        await _searchForjaMovieProgressive(
+          gen,
+          enabledProviders: enabled,
+          replace: replace,
+        );
       }
       if (!mounted || gen != _searchGen) return;
       await _finishTorrentSearch(gen, _results);
@@ -1077,7 +1153,25 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _requestScrollToCurrent();
   }
 
-  Future<void> _searchForjaMovieProgressive(int gen) async {
+  void _mergeTorrentResults(List<TorrentResult> batch) {
+    final byMagnet = <String, TorrentResult>{
+      for (final r in _results) r.magnet: r,
+    };
+    for (final r in batch) {
+      if (r.magnet.isEmpty) continue;
+      final existing = byMagnet[r.magnet];
+      if (existing == null || r.seedersCount > existing.seedersCount) {
+        byMagnet[r.magnet] = r;
+      }
+    }
+    _results = byMagnet.values.toList();
+  }
+
+  Future<void> _searchForjaMovieProgressive(
+    int gen, {
+    List<String>? enabledProviders,
+    bool replace = true,
+  }) async {
     final query = _year.isNotEmpty
         ? '${widget.movie.title} $_year'
         : widget.movie.title;
@@ -1086,7 +1180,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final raw = await Engine.searchTorrentsProgressive(
       query,
       imdbId: widget.movie.imdbId,
+      enabledProviders: enabledProviders,
       isCancelled: () => !mounted || gen != _searchGen || closed,
+      onProviderDone: _onTorrentProviderDone(gen, hitsNeeded: 1),
       onPartial: (batch) {
         if (closed) return;
         final seq = ++paintSeq;
@@ -1099,7 +1195,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           if (!mounted || gen != _searchGen || closed || seq != paintSeq) {
             return;
           }
-          setState(() => _results = filtered);
+          setState(() {
+            if (replace) {
+              _results = filtered;
+            } else {
+              _mergeTorrentResults(filtered);
+            }
+          });
         }());
       },
     );
@@ -1110,13 +1212,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       widget.movie.title,
     )).map(TorrentResult.fromJson).toList();
     if (!mounted || gen != _searchGen) return;
-    setState(() => _results = filtered);
+    setState(() {
+      if (replace) {
+        _results = filtered;
+      } else {
+        _mergeTorrentResults(filtered);
+      }
+    });
   }
 
   Future<void> _searchForjaTvProgressive(
     int gen, {
     required int season,
     required int episode,
+    List<String>? enabledProviders,
+    bool replace = true,
   }) async {
     final s = season.toString().padLeft(2, '0');
     final e = episode.toString().padLeft(2, '0');
@@ -1149,15 +1259,24 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       for (final r in seasonFiltered) {
         combined.putIfAbsent(r.magnet, () => r);
       }
-      setState(() => _results = combined.values.toList());
+      setState(() {
+        if (replace) {
+          _results = combined.values.toList();
+        } else {
+          _mergeTorrentResults(combined.values.toList());
+        }
+      });
     }
 
+    final onDone = _onTorrentProviderDone(gen, hitsNeeded: 2);
     await Future.wait([
       Engine.searchTorrentsProgressive(
         seasonQuery,
         imdbId: widget.movie.imdbId,
         season: season,
+        enabledProviders: enabledProviders,
         isCancelled: () => !mounted || gen != _searchGen || closed,
+        onProviderDone: onDone,
         onPartial: (batch) {
           if (closed) return;
           seasonSoFar = batch;
@@ -1169,7 +1288,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         imdbId: widget.movie.imdbId,
         season: season,
         episode: episode,
+        enabledProviders: enabledProviders,
         isCancelled: () => !mounted || gen != _searchGen || closed,
+        onProviderDone: onDone,
         onPartial: (batch) {
           if (closed) return;
           episodeSoFar = batch;
@@ -1199,10 +1320,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     for (final r in seasonFiltered) {
       combined.putIfAbsent(r.magnet, () => r);
     }
-    setState(() => _results = combined.values.toList());
+    setState(() {
+      if (replace) {
+        _results = combined.values.toList();
+      } else {
+        _mergeTorrentResults(combined.values.toList());
+      }
+    });
   }
 
-  Future<void> _fetchStremioStreams() async {
+  Future<void> _fetchStremioStreams({bool reset = false}) async {
     if (!_showsStremio) return;
     if (_streamAddons.isEmpty) return;
     final imdb = widget.movie.imdbId ?? '';
@@ -1214,13 +1341,36 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
 
+    Map<String, dynamic>? addon;
+    for (final a in _streamAddons) {
+      if (a['baseUrl'] == _selectedSourceId) {
+        addon = a;
+        break;
+      }
+    }
+    addon ??= _streamAddons.first;
+    final baseUrl = addon['baseUrl'] as String;
+    final addonName = addon['name'] ?? 'Unknown';
+
+    if (_stremioFetching && !reset) {
+      _stremioGen++;
+      _stremioFetching = false;
+    }
+
+    if (!reset && _completedAddonBaseUrls.contains(baseUrl)) {
+      setState(() => _syncStremioProviderSelection());
+      return;
+    }
+
     final gen = ++_stremioGen;
     setState(() {
       _stremioFetching = true;
-      _stremioStreams = [];
-      _loadedAddonBaseUrls.clear();
-      _completedAddonBaseUrls.clear();
       _error = null;
+      if (reset) {
+        _stremioStreams = [];
+        _loadedAddonBaseUrls.clear();
+        _completedAddonBaseUrls.clear();
+      }
     });
 
     var stremioId = imdb;
@@ -1228,73 +1378,55 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       stremioId = '$imdb:${widget.season ?? 1}:${widget.episode ?? 1}';
     }
     final type = widget.movie.mediaType == 'tv' ? 'series' : 'movie';
-    var pending = _streamAddons.length;
-
-    void completeOne() {
+    try {
+      final streams = await _stremio.getStreams(
+        baseUrl: baseUrl,
+        type: type,
+        id: stremioId,
+      );
       if (!mounted || gen != _stremioGen) return;
-      pending--;
-      if (pending <= 0) {
-        CatalogSourcesSessionCache.writeStremio(
-          _catalogCacheKey,
-          _stremioStreams,
-        );
-        setState(() {
-          _stremioFetching = false;
-          _syncStremioProviderSelection();
-          if (_stremioStreams.isEmpty && !_showsTorrents) {
-            _error = 'No streams found from any addon';
+      final tagged = filterStremioStreamsForProfile(
+        streams.map((s) {
+          if (s is Map<String, dynamic>) {
+            return <String, dynamic>{
+              ...s,
+              '_addonName': addonName,
+              '_addonBaseUrl': baseUrl,
+            };
           }
-        });
+          return <String, dynamic>{
+            '_addonName': addonName,
+            '_addonBaseUrl': baseUrl,
+          };
+        }).toList(),
+        _profile,
+      );
+      setState(() {
+        _completedAddonBaseUrls.add(baseUrl);
+        if (tagged.isNotEmpty) _loadedAddonBaseUrls.add(baseUrl);
+        _stremioStreams.removeWhere((s) => s['_addonBaseUrl'] == baseUrl);
+        _stremioStreams.addAll(tagged);
+        _stremioFetching = false;
+        _syncStremioProviderSelection();
+      });
+      CatalogSourcesSessionCache.writeStremio(
+        _catalogCacheKey,
+        _stremioStreams,
+      );
+      if (tagged.isNotEmpty) {
+        _focusPlayingSourceIfNeeded();
+        _requestScrollToCurrent();
       }
-    }
-
-    for (final addon in _streamAddons) {
-      final baseUrl = addon['baseUrl'] as String;
-      _stremio
-          .getStreams(
-            baseUrl: baseUrl,
-            type: type,
-            id: stremioId,
-          )
-          .then((streams) {
-            if (!mounted || gen != _stremioGen) return;
-            final tagged = filterStremioStreamsForProfile(
-              streams.map((s) {
-                if (s is Map<String, dynamic>) {
-                  return <String, dynamic>{
-                    ...s,
-                    '_addonName': addon['name'] ?? 'Unknown',
-                    '_addonBaseUrl': baseUrl,
-                  };
-                }
-                return <String, dynamic>{
-                  '_addonName': addon['name'],
-                  '_addonBaseUrl': baseUrl,
-                };
-              }).toList(),
-              _profile,
-            );
-            setState(() {
-              _completedAddonBaseUrls.add(baseUrl);
-              if (tagged.isNotEmpty) {
-                _loadedAddonBaseUrls.add(baseUrl);
-              }
-              _stremioStreams.addAll(tagged);
-              _syncStremioProviderSelection();
-            });
-            if (tagged.isNotEmpty) {
-              _focusPlayingSourceIfNeeded();
-              _requestScrollToCurrent();
-            }
-          })
-          .catchError((_) {
-            if (!mounted || gen != _stremioGen) return;
-            setState(() {
-              _completedAddonBaseUrls.add(baseUrl);
-              _syncStremioProviderSelection();
-            });
-          })
-          .whenComplete(completeOne);
+    } catch (_) {
+      if (!mounted || gen != _stremioGen) return;
+      setState(() {
+        _completedAddonBaseUrls.add(baseUrl);
+        _stremioFetching = false;
+        _syncStremioProviderSelection();
+        if (_stremioStreams.isEmpty && !_showsTorrents) {
+          _error = 'No streams found in $addonName';
+        }
+      });
     }
   }
 
@@ -1311,21 +1443,36 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         id,
   ];
 
-  Future<void> _fetchNextNuvioScraper({bool reset = false}) async {
+  Future<void> _fetchNextNuvioScraper({
+    bool reset = false,
+    String? onlyId,
+  }) async {
     if (_nuvioAddons.isEmpty || widget.movie.id <= 0) return;
-    if (_nuvioFetching && !reset) return;
+    if (_nuvioFetching && !reset) {
+      if (onlyId == null || onlyId == _nuvioInFlightScraperId) return;
+      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+      _nuvioFetchGen++;
+      _nuvioFetching = false;
+      _nuvioInFlightScraperId = null;
+    }
     if (reset) {
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     }
     final fetchedIds = reset
         ? <String>{}
         : Set<String>.from(_nuvioFetchedScraperIds);
-    final scraperId = nextNuvioScraperId(
-      orderedIds: _orderedNuvioScraperIds,
-      selectedIds: _nuvioSelectedScraperIds,
-      fetchedIds: fetchedIds,
-    );
+    final scraperId = onlyId ??
+        nextNuvioScraperId(
+          orderedIds: _orderedNuvioScraperIds,
+          selectedIds: _nuvioSelectedScraperIds,
+          fetchedIds: fetchedIds,
+        );
     if (scraperId == null) return;
+    if (onlyId != null &&
+        (!_nuvioSelectedScraperIds.contains(onlyId) ||
+            (!reset && fetchedIds.contains(onlyId)))) {
+      return;
+    }
     final gen = ++_nuvioFetchGen;
     setState(() {
       _nuvioFetching = true;
@@ -1378,9 +1525,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
     _focusPlayingSourceIfNeeded();
     _requestScrollToCurrent();
-    if (_pendingNuvioScraperIds.isNotEmpty) {
-      unawaited(_fetchNextNuvioScraper());
-    }
   }
 
   void _onKindChanged(String kind) {
@@ -1404,7 +1548,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _selectedSourceId = 'all_nuvio';
         _selectPlayingProviderIfNeeded();
       } else if (kind == 'torrents') {
-        _selectedSourceId = TorrentSearchProviders.allId;
+        _selectedSourceId = TorrentSearchProviders.defaultChipId(
+          _enabledTorrentProviders,
+        );
       }
     });
     if (_listScrollController.hasClients) {
@@ -1577,9 +1723,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
       final wasSelected = _nuvioSelectedScraperIds.contains(scraperId);
+      final fetched = _nuvioFetchedScraperIds.contains(scraperId);
       final cancelInFlight = wasSelected &&
           _nuvioFetching &&
           _nuvioInFlightScraperId == scraperId;
+      if (wasSelected && !fetched && !cancelInFlight) {
+        unawaited(_fetchNextNuvioScraper(onlyId: scraperId));
+        return;
+      }
       setState(() {
         _selectedSourceId = 'all_nuvio';
         _error = null;
@@ -1614,8 +1765,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           _nuvioSelectedScraperIds,
         ),
       );
-      if (!wasSelected || cancelInFlight) {
-        unawaited(_fetchNextNuvioScraper());
+      if (!wasSelected) {
+        unawaited(_fetchNextNuvioScraper(onlyId: scraperId));
       }
       return;
     }
@@ -1624,11 +1775,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final next = TorrentSearchProviders.nextIdAfterAllTap(prev);
       if (next == prev) return;
       setState(() => _selectedSourceId = next);
+      _abortTorrentSearch();
       if (TorrentSearchProviders.isAllChip(next)) {
-        final fromIndexer = prev == 'jackett' || prev == 'prowlarr';
-        if (fromIndexer || _results.isEmpty) {
-          unawaited(_runTorrentSearch());
-        }
+        unawaited(
+          _runTorrentSearch(force: prev == 'jackett' || prev == 'prowlarr'),
+        );
       }
       return;
     }
@@ -1645,14 +1796,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _searchQuery = '';
     });
     if (_kindFilter == 'stremio') {
-      // Streams already fetched; provider only filters which addon rows show.
+      unawaited(_fetchStremioStreams());
     } else if (_kindFilter == 'torrents') {
       final toIndexer = id == 'jackett' || id == 'prowlarr';
       final fromIndexer = prev == 'jackett' || prev == 'prowlarr';
-      final needSearch = toIndexer ||
+      if (toIndexer ||
           fromIndexer ||
-          (TorrentSearchProviders.isBuiltinSearchChip(id) && _results.isEmpty);
-      if (needSearch) unawaited(_runTorrentSearch());
+          TorrentSearchProviders.isBuiltinSearchChip(id)) {
+        _abortTorrentSearch();
+        unawaited(_runTorrentSearch(force: fromIndexer || toIndexer));
+      }
     }
   }
 
@@ -1698,7 +1851,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TorrentSourcesPanelChrome(
-          onClose: widget.onClose,
           kindFilter: _kindFilter,
           showTorrents: _showTorrents,
           showStremio: _showStremio,

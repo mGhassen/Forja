@@ -14,6 +14,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
         // Forced pops (episode handoff / sources exhausted) must NOT strip the
         // loading host - those flows keep it for pushReplacement / reload UI.
         if (didPop) return;
+        if (ShellTvFocusCoordinator.consumeOverlayBack()) return;
         if (widget.tvRemoteEnabled &&
             ShellTvFocusCoordinator.tvBackPolicyEnabled &&
             PlayerBackExitGate.tryFocusBackStay()) {

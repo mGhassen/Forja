@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
@@ -10,11 +8,10 @@ import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Compact top chrome for the Sources panel:
-/// title + count · kind tabs · provider chips · search/filters.
+/// kind tabs + count · provider chips · search/filters.
 class TorrentSourcesPanelChrome extends StatefulWidget {
   const TorrentSourcesPanelChrome({
     super.key,
-    required this.onClose,
     required this.kindFilter,
     required this.showTorrents,
     required this.showStremio,
@@ -66,7 +63,6 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
     this.claimInitialFocus = true,
   });
 
-  final VoidCallback onClose;
   final String kindFilter;
   final bool showTorrents;
   final bool showStremio;
@@ -113,7 +109,6 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
 }
 
 class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
-  final FocusNode _closeFocus = FocusNode(debugLabel: 'sources-close');
   final FocusNode _searchFocus = FocusNode(debugLabel: 'sources-search');
   final FocusNode _filtersFocus = FocusNode(debugLabel: 'sources-filters');
   bool _didInitialFocus = false;
@@ -155,15 +150,13 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
         (oldWidget.resultCount ?? 0) == 0 &&
         !SourcesPanelTv.hasItemFocus &&
         !_searchFocus.hasFocus &&
-        !_filtersFocus.hasFocus &&
-        !_closeFocus.hasFocus) {
+        !_filtersFocus.hasFocus) {
       _claimPanelFocus();
     }
   }
 
   @override
   void dispose() {
-    _closeFocus.dispose();
     _searchFocus.dispose();
     _filtersFocus.dispose();
     super.dispose();
@@ -189,7 +182,6 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     SourcesPanelTv.claimFocus(
       search: _searchFocus,
       filters: _filtersFocus,
-      close: _closeFocus,
     );
   }
 
@@ -221,23 +213,6 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     _focusList();
   }
 
-  KeyEventResult _onCloseKey(FocusNode node, KeyEvent event) {
-    if (!_tv || event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      _focusKindOrClose();
-      return KeyEventResult.handled;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      if (_filtersFocus.canRequestFocus) {
-        _filtersFocus.requestFocus();
-      } else if (_searchFocus.canRequestFocus) {
-        _searchFocus.requestFocus();
-      }
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-
   @override
   Widget build(BuildContext context) {
     const gap = 8.0;
@@ -250,6 +225,9 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
       onChanged: widget.onKindChanged,
       isFetching: widget.isFetching,
       onReloadKind: widget.isFetching ? null : widget.onReloadKind,
+      onCancelFetch: widget.isFetching ? widget.onCancelFetch : null,
+      resultCount: widget.resultCount,
+      episodeLabel: widget.episodeLabel,
     );
     if (_tv && _kindCount > 0) {
       kind = TvCatalogRow(
@@ -288,16 +266,6 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _TitleRow(
-          resultCount: widget.resultCount,
-          episodeLabel: widget.episodeLabel,
-          isFetching: widget.isFetching,
-          onCancelFetch: widget.onCancelFetch,
-          onClose: widget.onClose,
-          closeFocusNode: _tv ? _closeFocus : null,
-          closeOnKeyEvent: _tv ? _onCloseKey : null,
-        ),
-        SizedBox(height: gap),
         kind,
         if (providers != null) ...[SizedBox(height: gap), providers],
         SizedBox(height: gap),
@@ -348,115 +316,11 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
                 }
               : null,
           onFiltersDownEdge: _tv ? _focusList : null,
-          onFiltersRightEdge: _tv
-              ? () {
-                  if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
-                }
-              : null,
         ),
         if (widget.showCacheLine && widget.cacheRefreshToken != null) ...[
           const SizedBox(height: 4),
           TorrentCacheStorageLine(refreshToken: widget.cacheRefreshToken!),
         ],
-      ],
-    );
-  }
-}
-
-class _TitleRow extends StatelessWidget {
-  const _TitleRow({
-    required this.onClose,
-    required this.isFetching,
-    required this.onCancelFetch,
-    this.resultCount,
-    this.episodeLabel,
-    this.closeFocusNode,
-    this.closeOnKeyEvent,
-  });
-
-  final VoidCallback onClose;
-  final bool isFetching;
-  final VoidCallback onCancelFetch;
-  final int? resultCount;
-  final String? episodeLabel;
-  final FocusNode? closeFocusNode;
-  final KeyEventResult Function(FocusNode node, KeyEvent event)?
-  closeOnKeyEvent;
-
-  @override
-  Widget build(BuildContext context) {
-    final cinematic = ForjaShellColors.cinematic;
-    return Row(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Text(
-                'Sources',
-                style: TextStyle(
-                  color: cinematic.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 17,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              if (resultCount != null) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '$resultCount',
-                    style: TextStyle(
-                      color: cinematic.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-              if (episodeLabel != null) ...[
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    episodeLabel!,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: cinematic.textSecondary.withValues(alpha: 0.75),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-              if (isFetching) ...[
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: ForjaShellColors.sectionAccent,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                _SourcesCancelChip(onCancel: onCancelFetch),
-              ],
-            ],
-          ),
-        ),
-        ForjaCloseButton(
-          color: cinematic.textSecondary,
-          onTap: onClose,
-          focusNode: closeFocusNode,
-          onKeyEvent: closeOnKeyEvent,
-        ),
       ],
     );
   }
@@ -471,6 +335,9 @@ class _KindTabs extends StatelessWidget {
     required this.onChanged,
     this.isFetching = false,
     this.onReloadKind,
+    this.onCancelFetch,
+    this.resultCount,
+    this.episodeLabel,
   });
 
   final String selected;
@@ -480,6 +347,9 @@ class _KindTabs extends StatelessWidget {
   final ValueChanged<String> onChanged;
   final bool isFetching;
   final ValueChanged<String>? onReloadKind;
+  final VoidCallback? onCancelFetch;
+  final int? resultCount;
+  final String? episodeLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -519,27 +389,60 @@ class _KindTabs extends StatelessWidget {
           ),
         ),
       ),
-      child: DesktopSwipeBackIgnore(
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (var i = 0; i < options.length; i++)
-                _KindTab(
-                  label: options[i].label,
-                  icon: options[i].icon,
-                  iconData: options[i].iconData,
-                  selected: selected == options[i].id,
-                  loading: isFetching && selected == options[i].id,
-                  tvItemIndex: i,
-                  onTap: () => onChanged(options[i].id),
-                  onReload: onReloadKind == null || selected != options[i].id
-                      ? null
-                      : () => onReloadKind!(options[i].id),
+      child: Row(
+        children: [
+          Expanded(
+            child: DesktopSwipeBackIgnore(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < options.length; i++)
+                      _KindTab(
+                        label: options[i].label,
+                        icon: options[i].icon,
+                        iconData: options[i].iconData,
+                        selected: selected == options[i].id,
+                        loading: isFetching && selected == options[i].id,
+                        tvItemIndex: i,
+                        onTap: () => onChanged(options[i].id),
+                        onReload:
+                            onReloadKind == null || selected != options[i].id
+                            ? null
+                            : () => onReloadKind!(options[i].id),
+                        onCancel:
+                            onCancelFetch == null || selected != options[i].id
+                            ? null
+                            : onCancelFetch,
+                      ),
+                  ],
                 ),
-            ],
+              ),
+            ),
           ),
-        ),
+          if (episodeLabel != null || resultCount != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 8, right: 2, bottom: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (episodeLabel != null) ...[
+                    Text(
+                      episodeLabel!,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: cinematic.textSecondary.withValues(alpha: 0.75),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (resultCount != null) const SizedBox(width: 8),
+                  ],
+                  if (resultCount != null) _CountBadge(count: resultCount!),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -555,6 +458,7 @@ class _KindTab extends StatefulWidget {
     this.icon,
     this.iconData,
     this.onReload,
+    this.onCancel,
   });
 
   final String label;
@@ -565,6 +469,7 @@ class _KindTab extends StatefulWidget {
   final int tvItemIndex;
   final VoidCallback onTap;
   final VoidCallback? onReload;
+  final VoidCallback? onCancel;
 
   @override
   State<_KindTab> createState() => _KindTabState();
@@ -574,6 +479,7 @@ class _KindTabState extends State<_KindTab> {
   bool _hovered = false;
   bool _focused = false;
   bool _reloadHovered = false;
+  bool _busyHovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -641,7 +547,12 @@ class _KindTabState extends State<_KindTab> {
               Text(widget.label),
               if (widget.loading) ...[
                 const SizedBox(width: 4),
-                _KindTabLoadingDots(color: color),
+                _KindTabBusyGlyph(
+                  color: color,
+                  hovered: _busyHovered,
+                  onHover: (v) => setState(() => _busyHovered = v),
+                  onCancel: widget.onCancel,
+                ),
               ],
               if (widget.onReload != null) ...[
                 const SizedBox(width: 8),
@@ -682,6 +593,7 @@ class _KindTabState extends State<_KindTab> {
       onExit: (_) => setState(() {
         _hovered = false;
         _reloadHovered = false;
+        _busyHovered = false;
       }),
       cursor: SystemMouseCursors.click,
       child: shellFocusableTap(
@@ -700,35 +612,68 @@ class _KindTabState extends State<_KindTab> {
   }
 }
 
-class _SourcesCancelChip extends StatelessWidget {
-  const _SourcesCancelChip({required this.onCancel});
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.count});
 
-  final VoidCallback onCancel;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
-    final label = Text(
-      'Cancel',
-      style: TextStyle(
-        color: cinematic.textSecondary,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$count',
+        style: TextStyle(
+          color: cinematic.textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
-    if (!SourcesPanelTv.isTv(context)) {
-      return GestureDetector(onTap: onCancel, child: label);
-    }
-    // No tvRowId — spatial only so Cancel cannot trap ↓/← into a dead row.
-    return shellFocusableTap(
-      context: context,
-      onTap: onCancel,
-      borderRadius: 8,
-      scaleOnFocus: ShellTokens.focusActiveScale,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: label,
+  }
+}
+
+class _KindTabBusyGlyph extends StatelessWidget {
+  const _KindTabBusyGlyph({
+    required this.color,
+    required this.hovered,
+    required this.onHover,
+    this.onCancel,
+  });
+
+  final Color color;
+  final bool hovered;
+  final ValueChanged<bool> onHover;
+  final VoidCallback? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final showCancel = hovered && onCancel != null;
+    return ExcludeFocus(
+      child: MouseRegion(
+        cursor: onCancel == null
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
+        onEnter: (_) => onHover(true),
+        onExit: (_) => onHover(false),
+        child: GestureDetector(
+          onTap: onCancel,
+          behavior: HitTestBehavior.opaque,
+          child: SizedBox(
+            width: 18,
+            height: 16,
+            child: Center(
+              child: showCancel
+                  ? Icon(Icons.close_rounded, size: 14, color: color)
+                  : _KindTabLoadingDots(color: color),
+            ),
+          ),
+        ),
       ),
     );
   }

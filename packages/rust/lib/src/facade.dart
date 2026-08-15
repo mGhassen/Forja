@@ -189,6 +189,7 @@ abstract final class Engine {
 
   /// Same as [searchTorrents] but one engine job per provider. [onPartial]
   /// receives the merged list after each provider returns (not after all).
+  /// [onProviderDone] fires when that provider's job finished and was not cancelled.
   static Future<List<Map<String, dynamic>>> searchTorrentsProgressive(
     String query, {
     String? imdbId,
@@ -196,6 +197,7 @@ abstract final class Engine {
     int? episode,
     List<String>? enabledProviders,
     void Function(List<Map<String, dynamic>> soFar)? onPartial,
+    void Function(String providerId)? onProviderDone,
     bool Function()? isCancelled,
   }) async {
     _requireReady();
@@ -206,14 +208,18 @@ abstract final class Engine {
     bool cancelled() => isCancelled?.call() == true;
 
     if (enabled.length == 1) {
-      final one = await searchTorrents(
-        query,
-        imdbId: imdbId,
-        season: season,
-        episode: episode,
-        enabledProviders: enabled,
-      );
+      List<Map<String, dynamic>> one = const [];
+      try {
+        one = await searchTorrents(
+          query,
+          imdbId: imdbId,
+          season: season,
+          episode: episode,
+          enabledProviders: enabled,
+        );
+      } catch (_) {}
       if (cancelled()) return [];
+      onProviderDone?.call(enabled.first);
       onPartial?.call(one);
       return one;
     }
@@ -233,6 +239,7 @@ abstract final class Engine {
             );
           } catch (_) {}
           if (cancelled()) return;
+          onProviderDone?.call(id);
           TorrentSearchProviders.mergeByMagnet(byMagnet, batch);
           onPartial?.call(
             List<Map<String, dynamic>>.from(byMagnet.values),

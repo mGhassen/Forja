@@ -148,6 +148,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   int get _torrentSearchGen => _play.torrentSearchGen;
   set _torrentSearchGen(int v) => _play.torrentSearchGen = v;
 
+  Set<String> get _torrentFetchedProviderIds => _play.torrentFetchedProviderIds;
+
   int get _stremioFetchGen => _play.stremioFetchGen;
   set _stremioFetchGen(int v) => _play.stremioFetchGen = v;
 
@@ -564,7 +566,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   }
 
   String _defaultSourceId() {
-    if (_panelShowTorrent) return TorrentSearchProviders.allId;
+    if (_panelShowTorrent) {
+      return TorrentSearchProviders.defaultChipId(_enabledTorrentProviders);
+    }
     if (_panelShowStremio && _streamAddons.isNotEmpty) {
       return _streamAddons.first['baseUrl'] as String;
     }
@@ -625,6 +629,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _isStremioFetching = false;
     _isNuvioFetching = false;
     _allTorrentResults = [];
+    _torrentFetchedProviderIds.clear();
     _stremioStreams = [];
     _allCombinedStremioStreams = [];
     _loadedAddonBaseUrls.clear();
@@ -659,18 +664,21 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (_panelKindFilter != 'torrents') return;
     if (force) {
       CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'torrents');
-      _autoSearch();
+      _autoSearch(force: true);
       return;
     }
-    if (_allTorrentResults.isNotEmpty || _isSearching) return;
+    if (_isSearching) return;
     final cached = CatalogSourcesSessionCache.readTorrents(_catalogCacheKey);
-    if (cached != null) {
+    if (cached != null && _allTorrentResults.isEmpty) {
       setState(() {
         _allTorrentResults = cached;
+        TorrentSearchProviders.addFetchedFromResultSources(
+          _torrentFetchedProviderIds,
+          cached.map((r) => r.source),
+        );
         _errorMessage = null;
       });
       unawaited(_sortResults());
-      return;
     }
     _autoSearch();
   }
@@ -712,10 +720,10 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
             _catalogCacheKey,
             kind: 'stremio',
           );
-          _fetchAllStremioStreams();
+          _fetchStremioStreams(reset: true);
           return;
         }
-        if (_allCombinedStremioStreams.isNotEmpty || _isStremioFetching) return;
+        if (_isStremioFetching) return;
         final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
         // Empty cache is a miss - a prior all-failed fetch must not block YTS.
         if (cached != null && cached.isNotEmpty) {
@@ -736,15 +744,13 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
             _syncStremioProviderSelection();
             _applyStremioFilter();
           });
-          return;
-        }
-        if (cached != null && cached.isEmpty) {
+        } else if (cached != null && cached.isEmpty) {
           CatalogSourcesSessionCache.invalidate(
             _catalogCacheKey,
             kind: 'stremio',
           );
         }
-        _fetchAllStremioStreams();
+        _fetchStremioStreams();
       }),
     );
   }
@@ -796,6 +802,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _torrentSearchGen++;
       _isSearching = false;
       _allTorrentResults = [];
+      _torrentFetchedProviderIds.clear();
     }
     if (keepKind != 'stremio' && _isStremioFetching) {
       _stremioFetchGen++;
@@ -822,7 +829,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _errorMessage = null;
       switch (kind) {
         case 'torrents':
-          _selectedSourceId = TorrentSearchProviders.allId;
+          _selectedSourceId = TorrentSearchProviders.defaultChipId(
+            _enabledTorrentProviders,
+          );
         case 'stremio':
           _userPickedStremioProvider = false;
           _selectedSourceId = _defaultStremioSourceId();

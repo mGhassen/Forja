@@ -207,4 +207,84 @@ void main() {
       expect(shellOverlayCanPop(), isTrue);
     },
   );
+
+  testWidgets(
+    'Back closes player showDialog without popping the player',
+    (tester) async {
+      ShellTvFocusCoordinator.tvBackPolicyEnabled = true;
+      ShellTvFocusCoordinator.resetBackDebounceForTest();
+      ShellBus.enterPlayerSurface();
+      addTearDown(ShellBus.leavePlayerSurface);
+
+      var exitCalls = 0;
+      PlayerBackExitGate.setTryFocusBack(() {
+        exitCalls++;
+        return false;
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1920, 1080)),
+            child: ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: const Stack(
+                children: [
+                  SizedBox.expand(),
+                  ShellOverlayNavigator(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      shellOverlayNavigatorKey.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  showDialog<void>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('torrent-dialog'),
+                      actions: [
+                        TextButton(
+                          autofocus: true,
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancel'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: const Text('open-dialog'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('open-dialog'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('torrent-dialog'), findsOneWidget);
+
+      expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('torrent-dialog'), findsNothing);
+      expect(find.text('open-dialog'), findsOneWidget);
+      expect(exitCalls, 0);
+
+      expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+      await tester.pump();
+      expect(find.text('open-dialog'), findsOneWidget);
+      expect(exitCalls, 0);
+    },
+  );
 }

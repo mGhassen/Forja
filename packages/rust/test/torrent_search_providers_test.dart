@@ -62,6 +62,59 @@ void main() {
     );
   });
 
+  test('enabledForChip is the selected indexer only, not every Settings provider', () {
+    const settings = [
+      TorrentSearchProviders.knaben,
+      TorrentSearchProviders.yts,
+      TorrentSearchProviders.nyaa,
+    ];
+    expect(
+      TorrentSearchProviders.enabledForChip(
+        TorrentSearchProviders.yts,
+        settings,
+      ),
+      [TorrentSearchProviders.yts],
+    );
+    expect(
+      TorrentSearchProviders.enabledForChip(
+        TorrentSearchProviders.allId,
+        settings,
+      ),
+      [
+        TorrentSearchProviders.knaben,
+        TorrentSearchProviders.nyaa,
+        TorrentSearchProviders.yts,
+      ],
+    );
+    expect(
+      TorrentSearchProviders.enabledForChip(
+        TorrentSearchProviders.noneId,
+        settings,
+      ),
+      isEmpty,
+    );
+    expect(
+      TorrentSearchProviders.defaultChipId(settings),
+      TorrentSearchProviders.knaben,
+    );
+    expect(
+      TorrentSearchProviders.missingEnabledForChip(
+        chipId: TorrentSearchProviders.yts,
+        settingsEnabled: settings,
+        fetchedProviderIds: const [],
+      ),
+      [TorrentSearchProviders.yts],
+    );
+    expect(
+      TorrentSearchProviders.missingEnabledForChip(
+        chipId: TorrentSearchProviders.allId,
+        settingsEnabled: settings,
+        fetchedProviderIds: const [TorrentSearchProviders.yts],
+      ),
+      [TorrentSearchProviders.knaben, TorrentSearchProviders.nyaa],
+    );
+  });
+
   test('none chip matches no result sources', () {
     expect(
       TorrentSearchProviders.matchesResultSource(

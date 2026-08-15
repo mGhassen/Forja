@@ -71,11 +71,11 @@ abstract final class PlayerBackExitGate {
       exitReady = false;
       return false;
     }
-    if (_exitCommitted) return false;
     if (_lastStayAt != null &&
         DateTime.now().difference(_lastStayAt!) < _stayTwinWindow) {
       return true;
     }
+    if (_exitCommitted) return false;
     final cb = _tryFocusBack;
     if (cb == null) {
       exitReady = false;
@@ -95,6 +95,13 @@ abstract final class PlayerBackExitGate {
       exitReady = false;
       return false;
     }
+  }
+
+  /// Overlay / dialog Back was consumed — HW + PopScope twins must stay.
+  static void markStay() {
+    _lastStayAt = DateTime.now();
+    exitReady = false;
+    _exitCommitted = false;
   }
 
   /// Chrome up → hide. Chrome down + armed → allow exit. Else arm.

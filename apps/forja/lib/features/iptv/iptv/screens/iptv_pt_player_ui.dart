@@ -811,6 +811,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
+        if (ShellTvFocusCoordinator.consumeOverlayBack()) return;
         if (ShellTvFocusCoordinator.tvBackPolicyEnabled &&
             PlayerBackExitGate.tryFocusBackStay()) {
           return;

@@ -64,17 +64,69 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
     );
     _s._maybeAutoPlay();
   }
+  void _mergeTorrentResults(List<TorrentResult> batch) {
+    final byMagnet = <String, TorrentResult>{
+      for (final r in _s._allTorrentResults) r.magnet: r,
+    };
+    for (final r in batch) {
+      if (r.magnet.isEmpty) continue;
+      final existing = byMagnet[r.magnet];
+      if (existing == null || r.seedersCount > existing.seedersCount) {
+        byMagnet[r.magnet] = r;
+      }
+    }
+    _s._allTorrentResults = byMagnet.values.toList();
+  }
+
+  List<String> _torrentEnabledForSearch({bool force = false}) {
+    if (force) {
+      return TorrentSearchProviders.enabledForChip(
+        _s._selectedSourceId,
+        _s._enabledTorrentProviders,
+      );
+    }
+    return TorrentSearchProviders.missingEnabledForChip(
+      chipId: _s._selectedSourceId,
+      settingsEnabled: _s._enabledTorrentProviders,
+      fetchedProviderIds: _s._torrentFetchedProviderIds,
+    );
+  }
+
+  void _abortTorrentSearch() {
+    if (!_s._isSearching) return;
+    setState(() {
+      _s._torrentSearchGen++;
+      _s._isSearching = false;
+    });
+  }
+
+  void Function(String id) _onTorrentProviderDone(
+    int gen, {
+    required int hitsNeeded,
+  }) {
+    final hits = <String, int>{};
+    return (id) {
+      if (!mounted || gen != _s._torrentSearchGen) return;
+      hits[id] = (hits[id] ?? 0) + 1;
+      if (hits[id]! >= hitsNeeded) {
+        _s._torrentFetchedProviderIds.add(id);
+      }
+    };
+  }
+
   Future<void> _searchTvTorrents(
     String seasonQuery,
-    String episodeQuery,
-  ) async {
+    String episodeQuery, {
+    List<String>? enabledProviders,
+    bool replace = true,
+  }) async {
     final gen = ++_s._torrentSearchGen;
     _s.ref
         .read(detailsResolveStatusProvider(_s._metaKey).notifier)
         .setLoading();
     setState(() {
       _s._isSearching = true;
-      _s._allTorrentResults = [];
+      if (replace) _s._allTorrentResults = [];
       _s._errorMessage = null;
     });
     var closed = false;
@@ -108,15 +160,24 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
         for (final r in seasonFiltered) {
           combined.putIfAbsent(r.magnet, () => r);
         }
-        setState(() => _s._allTorrentResults = combined.values.toList());
+        setState(() {
+          if (replace) {
+            _s._allTorrentResults = combined.values.toList();
+          } else {
+            _s._mergeTorrentResults(combined.values.toList());
+          }
+        });
       }
 
+      final onDone = _onTorrentProviderDone(gen, hitsNeeded: 2);
       await Future.wait([
         Engine.searchTorrentsProgressive(
           seasonQuery,
           imdbId: _s._movie.imdbId,
           season: _s._selectedSeason,
+          enabledProviders: enabledProviders,
           isCancelled: () => !mounted || gen != _s._torrentSearchGen || closed,
+          onProviderDone: onDone,
           onPartial: (batch) {
             if (closed) return;
             seasonSoFar = batch;
@@ -128,7 +189,9 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
           imdbId: _s._movie.imdbId,
           season: _s._selectedSeason,
           episode: _s._selectedEpisode,
+          enabledProviders: enabledProviders,
           isCancelled: () => !mounted || gen != _s._torrentSearchGen || closed,
+          onProviderDone: onDone,
           onPartial: (batch) {
             if (closed) return;
             episodeSoFar = batch;
@@ -159,7 +222,11 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       }
       if (!mounted || gen != _s._torrentSearchGen) return;
       setState(() {
-        _s._allTorrentResults = combined.values.toList();
+        if (replace) {
+          _s._allTorrentResults = combined.values.toList();
+        } else {
+          _s._mergeTorrentResults(combined.values.toList());
+        }
         _s._isSearching = false;
       });
       _s.ref
@@ -181,14 +248,18 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
     }
   }
 
-  Future<void> _searchTorrents(String query) async {
+  Future<void> _searchTorrents(
+    String query, {
+    List<String>? enabledProviders,
+    bool replace = true,
+  }) async {
     final gen = ++_s._torrentSearchGen;
     _s.ref
         .read(detailsResolveStatusProvider(_s._metaKey).notifier)
         .setLoading();
     setState(() {
       _s._isSearching = true;
-      _s._allTorrentResults = [];
+      if (replace) _s._allTorrentResults = [];
       _s._errorMessage = null;
     });
     var closed = false;
@@ -197,7 +268,9 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       final raw = await Engine.searchTorrentsProgressive(
         query,
         imdbId: _s._movie.imdbId,
+        enabledProviders: enabledProviders,
         isCancelled: () => !mounted || gen != _s._torrentSearchGen || closed,
+        onProviderDone: _onTorrentProviderDone(gen, hitsNeeded: 1),
         onPartial: (batch) {
           if (closed) return;
           final seq = ++paintSeq;
@@ -213,7 +286,13 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
                 seq != paintSeq) {
               return;
             }
-            setState(() => _s._allTorrentResults = filtered);
+            setState(() {
+              if (replace) {
+                _s._allTorrentResults = filtered;
+              } else {
+                _s._mergeTorrentResults(filtered);
+              }
+            });
           }());
         },
       );
@@ -225,7 +304,11 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       )).map(TorrentResult.fromJson).toList();
       if (!mounted || gen != _s._torrentSearchGen) return;
       setState(() {
-        _s._allTorrentResults = filtered;
+        if (replace) {
+          _s._allTorrentResults = filtered;
+        } else {
+          _s._mergeTorrentResults(filtered);
+        }
         _s._isSearching = false;
       });
       _s.ref

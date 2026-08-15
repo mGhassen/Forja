@@ -254,9 +254,14 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
       final wasSelected = _s._nuvioSelectedScraperIds.contains(scraperId);
+      final fetched = _s._nuvioFetchedScraperIds.contains(scraperId);
       final cancelInFlight = wasSelected &&
           _s._isNuvioFetching &&
           _s._nuvioInFlightScraperId == scraperId;
+      if (wasSelected && !fetched && !cancelInFlight) {
+        unawaited(_s._fetchNextNuvioScraper(onlyId: scraperId));
+        return;
+      }
       setState(() {
         _s._selectedSourceId = 'all_nuvio';
         _s._errorMessage = null;
@@ -296,8 +301,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._nuvioSelectedScraperIds,
         ),
       );
-      if (!wasSelected || cancelInFlight) {
-        unawaited(_s._fetchNextNuvioScraper());
+      if (!wasSelected) {
+        unawaited(_s._fetchNextNuvioScraper(onlyId: scraperId));
       }
       return;
     }
@@ -306,11 +311,9 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       final next = TorrentSearchProviders.nextIdAfterAllTap(prev);
       if (next == prev) return;
       setState(() => _s._selectedSourceId = next);
+      _s._abortTorrentSearch();
       if (TorrentSearchProviders.isAllChip(next)) {
-        final fromIndexer = prev == 'jackett' || prev == 'prowlarr';
-        if (fromIndexer || _s._allTorrentResults.isEmpty) {
-          _s._autoSearch();
-        }
+        _s._autoSearch(force: prev == 'jackett' || prev == 'prowlarr');
       }
       return;
     }
@@ -324,12 +327,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       _resetPanelFilters();
     });
     if (TorrentSearchProviders.isBuiltinSearchChip(id)) {
-      // Always search the full Settings-enabled set; chips only filter the list.
-      // Re-search when coming back from Jackett/Prowlarr or when empty.
-      final fromIndexer = prev == 'jackett' || prev == 'prowlarr';
-      if (fromIndexer || _s._allTorrentResults.isEmpty) {
-        _s._autoSearch();
-      }
+      _s._abortTorrentSearch();
+      _s._autoSearch(force: prev == 'jackett' || prev == 'prowlarr');
     } else if (id == 'jackett') {
       _s._searchJackett();
     } else if (id == 'prowlarr') {
@@ -348,6 +347,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
             ? 'No streams found in ${chip.label}'
             : null;
       });
+      unawaited(_s._fetchStremioStreams());
     }
   }
 

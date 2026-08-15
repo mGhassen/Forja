@@ -228,15 +228,29 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
   }
 
 
-  void _autoSearch() {
+  void _autoSearch({bool force = false}) {
     _s._checkHistory();
+    if (TorrentSearchProviders.isNoneChip(_s._selectedSourceId)) return;
+    if (force) _s._torrentFetchedProviderIds.clear();
+    final enabled = _s._torrentEnabledForSearch(force: force);
+    if (enabled.isEmpty) return;
+    final replace = force || _s._allTorrentResults.isEmpty;
     final year = _s._movie.releaseDate.take(4);
     if (_s._movie.mediaType == 'tv') {
       final s = _s._selectedSeason.toString().padLeft(2, '0');
       final e = _s._selectedEpisode.toString().padLeft(2, '0');
-      _s._searchTvTorrents('${_s._movie.title} S$s', '${_s._movie.title} S${s}E$e');
+      _s._searchTvTorrents(
+        '${_s._movie.title} S$s',
+        '${_s._movie.title} S${s}E$e',
+        enabledProviders: enabled,
+        replace: replace,
+      );
     } else {
-      _s._searchTorrents('${_s._movie.title} $year');
+      _s._searchTorrents(
+        '${_s._movie.title} $year',
+        enabledProviders: enabled,
+        replace: replace,
+      );
     }
   }
 }

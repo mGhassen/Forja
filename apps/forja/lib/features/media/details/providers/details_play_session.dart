@@ -55,6 +55,7 @@ class DetailsPlaySession {
   List<TorrentResult> torrents = [];
   bool isSearching = false;
   int torrentSearchGen = 0;
+  final Set<String> torrentFetchedProviderIds = {};
   String? errorMessage;
 
   List<Map<String, dynamic>> streamAddons = [];

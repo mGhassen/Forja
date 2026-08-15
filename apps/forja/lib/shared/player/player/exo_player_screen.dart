@@ -19,7 +19,9 @@ import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';
+import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/player/controls/player_server_stream_dialog.dart';
+import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
@@ -187,12 +189,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   int _sourceIndex = 0;
   String? _currentProvider;
   String? _currentUrl;
+  String? _activeMagnet;
+  String? _catalogSourceKind;
+  String? _catalogAddonBaseUrl;
   List<StreamSource>? _currentSources;
   final Map<String, int> _providerLoadGens = {};
   int _fallbackGen = 0;
   final FocusNode _playFocus = FocusNode(debugLabel: 'exo-player-play');
   final FocusNode _rewindFocus = FocusNode(debugLabel: 'exo-player-rewind');
   final FocusNode _forwardFocus = FocusNode(debugLabel: 'exo-player-forward');
+  final FocusNode _transportSourcesFocus =
+      FocusNode(debugLabel: 'exo-player-transport-sources');
   final FocusNode _transportStreamFocus =
       FocusNode(debugLabel: 'exo-player-transport-stream');
   final FocusNode _transportEpisodesFocus =
@@ -233,6 +240,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       );
     });
     _sources = [];
+    _activeMagnet = widget.magnetLink;
+    _catalogAddonBaseUrl = widget.stremioAddonBaseUrl;
+    _catalogSourceKind = _initialCatalogSourceKind();
     if (widget.audioUrl != null && widget.audioUrl!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -683,6 +693,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _focusFirstRightTransport() {
     final nodes = <FocusNode>[
+      if (_usesCatalogSourcesPanel) _transportSourcesFocus,
       if (_hasStreamPicker) _transportStreamFocus,
       if (_hasEpisodePicker) _transportEpisodesFocus,
       _transportAudioFocus,
@@ -693,6 +704,44 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         return;
       }
     }
+  }
+
+  void _focusLeftOfRightTransport() {
+    _forwardFocus.requestFocus();
+  }
+
+  bool _fallbackAborted(int gen) =>
+      _disposed || !mounted || gen != _fallbackGen;
+
+  void _beginEpisodeLoading({
+    required String label,
+    String status = 'Loading episode info…',
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _loadingNextEp = true;
+      _episodeLoadingLabel = label;
+      _episodeLoadingStatus = status;
+      _episodeLoadingFailed = false;
+    });
+  }
+
+  void _setEpisodeLoadingStatus(String status, {bool failed = false}) {
+    if (!mounted || !_loadingNextEp) return;
+    setState(() {
+      _episodeLoadingStatus = status;
+      _episodeLoadingFailed = failed;
+    });
+  }
+
+  Future<void> _failEpisodeLoading(String status) async {
+    _setEpisodeLoadingStatus(status, failed: true);
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+    setState(() {
+      _loadingNextEp = false;
+      _episodeLoadingFailed = false;
+    });
   }
 
   void _focusSeekFromTransport() {
@@ -1134,7 +1183,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   Future<void> _exit() async {
     if (_exitInProgress || _disposed) return;
-    if (dismissAnyPlayerChromeOverlay()) {
+    if (ShellTvFocusCoordinator.consumeOverlayBack()) {
       // Opener chrome button is refocused by playerMenuRestoreReturnFocus.
       return;
     }
@@ -1247,12 +1296,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   void dispose() {
     _disposed = true;
     PlayerBackExitGate.setTryFocusBack(null);
+    PlayerSourcesPanel.dismiss(cancelEngine: false);
     PlayerServerStreamDialog.dismiss();
     PlayerSubtitleDialog.dismiss();
     PlayerSubtitleSettingsDialog.dismissIfShowing();
     _playFocus.dispose();
     _rewindFocus.dispose();
     _forwardFocus.dispose();
+    _transportSourcesFocus.dispose();
     _transportStreamFocus.dispose();
     _transportEpisodesFocus.dispose();
     _transportAudioFocus.dispose();
@@ -1292,6 +1343,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     const iconSz = 20.0;
     final compact = MediaQuery.sizeOf(context).width < 700;
     final tvFocus = _isTv;
+    final hasTorrentSources = _usesCatalogSourcesPanel;
     final topBarHeight = PlayerTopBar.totalHeight(
       context,
       hasStatusActions: _hasError,
@@ -1534,6 +1586,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     _buildTvExoTransportRow(
                       btnSize: btnSize,
                       iconSz: iconSz,
+                      hasTorrentSources: hasTorrentSources,
                     )
                   else
                     Row(
@@ -1586,6 +1639,15 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                         ),
                         Row(
                           children: [
+                            if (hasTorrentSources)
+                              PlayerFlatIconButton(
+                                icon: Icons.link_rounded,
+                                size: btnSize,
+                                iconSize: iconSz,
+                                tooltip: 'Sources',
+                                onPressed: () =>
+                                    unawaited(_showTorrentSourcesPanel()),
+                              ),
                             if (_hasStreamPicker)
                               PlayerStreamPickerButton(
                                 size: btnSize,
@@ -1658,6 +1720,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Widget _buildTvExoTransportRow({
     required double btnSize,
     required double iconSz,
+    required bool hasTorrentSources,
   }) {
     Widget ordered(int order, Widget child) => FocusTraversalOrder(
           order: NumericFocusOrder(order.toDouble()),
@@ -1737,6 +1800,33 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (hasTorrentSources)
+                ordered(
+                  6,
+                  PlayerFlatIconButton(
+                    tvFocusable: true,
+                    focusNode: _transportSourcesFocus,
+                    onUpEdge: _focusSeekFromTransport,
+                    onLeftEdge: _focusLeftOfRightTransport,
+                    onRightEdge: () {
+                      if (_hasStreamPicker &&
+                          _transportStreamFocus.canRequestFocus) {
+                        _transportStreamFocus.requestFocus();
+                      } else if (_hasEpisodePicker &&
+                          _transportEpisodesFocus.canRequestFocus) {
+                        _transportEpisodesFocus.requestFocus();
+                      } else {
+                        _transportAudioFocus.requestFocus();
+                      }
+                    },
+                    icon: Icons.link_rounded,
+                    size: btnSize,
+                    iconSize: iconSz,
+                    tooltip: 'Sources',
+                    onPressed: () => unawaited(_showTorrentSourcesPanel()),
+                  ),
+                ),
+              if (hasTorrentSources) const SizedBox(width: 2),
               if (_hasStreamPicker)
                 ordered(
                   7,
@@ -1744,7 +1834,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     tvFocusable: true,
                     focusNode: _transportStreamFocus,
                     onUpEdge: _focusSeekFromTransport,
-                    onLeftEdge: () => _forwardFocus.requestFocus(),
+                    onLeftEdge: () {
+                      if (hasTorrentSources &&
+                          _transportSourcesFocus.canRequestFocus) {
+                        _transportSourcesFocus.requestFocus();
+                      } else {
+                        _focusLeftOfRightTransport();
+                      }
+                    },
                     onRightEdge: () {
                       if (_hasEpisodePicker &&
                           _transportEpisodesFocus.canRequestFocus) {
@@ -1772,8 +1869,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                       if (_hasStreamPicker &&
                           _transportStreamFocus.canRequestFocus) {
                         _transportStreamFocus.requestFocus();
+                      } else if (hasTorrentSources &&
+                          _transportSourcesFocus.canRequestFocus) {
+                        _transportSourcesFocus.requestFocus();
                       } else {
-                        _forwardFocus.requestFocus();
+                        _focusLeftOfRightTransport();
                       }
                     },
                     onRightEdge: () => _transportAudioFocus.requestFocus(),
@@ -1798,8 +1898,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     } else if (_hasStreamPicker &&
                         _transportStreamFocus.canRequestFocus) {
                       _transportStreamFocus.requestFocus();
+                    } else if (hasTorrentSources &&
+                        _transportSourcesFocus.canRequestFocus) {
+                      _transportSourcesFocus.requestFocus();
                     } else {
-                      _forwardFocus.requestFocus();
+                      _focusLeftOfRightTransport();
                     }
                   },
                   onRightEdge: () => _transportSubsFocus.requestFocus(),
@@ -1898,6 +2001,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         // Forced pops (episode handoff / sources exhausted) must NOT strip the
         // loading host - those flows keep it for pushReplacement / reload UI.
         if (didPop) return;
+        // HW may already have dismissed Sources / pair dialog on this press.
+        if (ShellTvFocusCoordinator.consumeOverlayBack()) return;
         if (_isTv &&
             ShellTvFocusCoordinator.tvBackPolicyEnabled &&
             PlayerBackExitGate.tryFocusBackStay()) {

@@ -334,7 +334,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   }
 
   Future<void> _exitTrailer() async {
-    if (dismissAnyPlayerChromeOverlay()) {
+    if (ShellTvFocusCoordinator.consumeOverlayBack()) {
       _claimPlayFocus();
       return;
     }

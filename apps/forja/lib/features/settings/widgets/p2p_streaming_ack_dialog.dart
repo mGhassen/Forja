@@ -84,12 +84,14 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
         ),
       ),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420, maxHeight: 420),
+        constraints: const BoxConstraints(maxWidth: 420, maxHeight: 460),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              const _VpnRecommendBanner(),
+              const SizedBox(height: 14),
               const Text(
                 'This stream uses peer-to-peer (P2P) technology. By continuing, you confirm you are aware that:',
                 style: TextStyle(
@@ -149,6 +151,44 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
           onPressed: () => Navigator.pop(context, true),
         ),
       ],
+    );
+  }
+}
+
+class _VpnRecommendBanner extends StatelessWidget {
+  const _VpnRecommendBanner();
+
+  static const _amber = Color(0xFFFBBF24);
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _amber.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _amber.withValues(alpha: 0.35)),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.vpn_lock_rounded, size: 18, color: _amber),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'For better privacy, use a VPN. Your IP address is visible to other peers.',
+                style: TextStyle(
+                  color: ForjaShellColors.textPrimary,
+                  height: 1.35,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
