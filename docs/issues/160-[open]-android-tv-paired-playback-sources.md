@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 4** acceptance |
+| **Progress** | **8 / 8** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 5 | I160-T05 | Paired + desktop offline → effective off + toggles disabled; restore stored when online | ✅ |
 | 6 | I160-T06 | Unpaired ATV shows Direct torrent / Stremio / Nuvio; HTTP plays on device | ✅ |
 | 7 | I160-T07 | P2P / magnet play on ATV: pair dialog if unpaired or desktop offline; paired P2P stays on desktop | ✅ |
+| 8 | I160-T08 | In-player Sources torrent / Stremio magnet switch: pair dialog before dismiss/resolve (same gate as details Play) | ✅ |
 
 ---
 
@@ -47,6 +48,8 @@
 **T01–T05 (historical):** host `PlaySourceEffective` — unpaired ATV stayed off; paired ATV showed Playback toggles and honored stored prefs.
 
 **T06–T07:** unpaired ATV now shows the same play sources. Direct HTTP plays on the TV. Magnets / infoHash still need a paired desktop (`ensureLanP2pPlayback` + pair dialog). Paired P2P stays on the desktop; HTTP is never sent through LAN.
+
+**T08:** in-player Sources dismissed the panel then started magnet resolve. Unpaired ATV hit “Starting Local Torrent Engine” instead of the pair dialog. Gate is now in `_selectTorrent` / Stremio magnet `_selectStremio` before dismiss.
 
 ## Related
 

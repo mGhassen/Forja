@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
@@ -476,10 +479,63 @@ class _KindTab extends StatefulWidget {
 }
 
 class _KindTabState extends State<_KindTab> {
+  static const _tvReloadHoldDelay = Duration(seconds: 1);
+
   bool _hovered = false;
   bool _focused = false;
   bool _reloadHovered = false;
   bool _busyHovered = false;
+  bool _okHoldFired = false;
+  Timer? _okHoldTimer;
+
+  void _cancelOkHold({bool clearSpin = true, bool clearFired = true}) {
+    _okHoldTimer?.cancel();
+    _okHoldTimer = null;
+    if (clearFired) _okHoldFired = false;
+    if (clearSpin && _reloadHovered && mounted) {
+      setState(() => _reloadHovered = false);
+    }
+  }
+
+  KeyEventResult _onTvKey(FocusNode node, KeyEvent event) {
+    if (shellTvIsActivateKey(event)) {
+      if (widget.onReload == null) return KeyEventResult.ignored;
+      _okHoldFired = false;
+      _okHoldTimer?.cancel();
+      setState(() => _reloadHovered = true);
+      _okHoldTimer = Timer(_tvReloadHoldDelay, () {
+        if (!mounted || !_focused) return;
+        _okHoldFired = true;
+        widget.onReload?.call();
+      });
+      return KeyEventResult.handled;
+    }
+    if (shellTvIsActivateKeyUp(event)) {
+      if (_okHoldTimer == null && !_okHoldFired) {
+        return KeyEventResult.ignored;
+      }
+      final held = _okHoldFired;
+      _cancelOkHold();
+      if (!held) widget.onTap();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  void didUpdateWidget(covariant _KindTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.onReload == null) {
+      _okHoldTimer?.cancel();
+      _okHoldTimer = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _okHoldTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -599,13 +655,18 @@ class _KindTabState extends State<_KindTab> {
       child: shellFocusableTap(
         context: context,
         onTap: widget.onTap,
-        borderRadius: 8,
+        borderRadius: 0,
         scaleOnFocus: 1.0,
+        suppressInkHover: true,
         listIndex: widget.tvItemIndex,
         tvTabId: SourcesPanelTv.tabId,
         tvRowId: SourcesPanelTv.kindRowId,
         tvItemIndex: widget.tvItemIndex,
-        onFocusChange: (focused) => setState(() => _focused = focused),
+        onKeyEvent: widget.onReload == null ? null : _onTvKey,
+        onFocusChange: (focused) {
+          setState(() => _focused = focused);
+          if (!focused) _cancelOkHold();
+        },
         child: face,
       ),
     );

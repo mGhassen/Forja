@@ -270,13 +270,14 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
           if (!_s._isCollection && _s._hasPanelPlaySources)
             TorrentSourcesPanel(
               isOpen: _s._sourcesPanelOpen,
-              onClose: _s._closeSourcesPanel,
+              onClose: () => _s._closeSourcesPanel(restoreTvPlayFocus: true),
               child: ExcludeFocus(
                 excluding: tv && !_s._sourcesPanelOpen,
                 child: _s._sourcesPanelOpen
                     ? SourcesPanelTv.wrapBody(
                         context: context,
-                        onClose: _s._closeSourcesPanel,
+                        onClose: () =>
+                            _s._closeSourcesPanel(restoreTvPlayFocus: true),
                         child: _buildSourcesPanelContent(),
                       )
                     : _buildSourcesPanelContent(),

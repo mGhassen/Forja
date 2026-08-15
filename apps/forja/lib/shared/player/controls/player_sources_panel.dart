@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
@@ -1814,6 +1815,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       widget.onClose();
       return;
     }
+    // ATV: pair/offline dialog first. Do not dismiss or start local resolve.
+    if (!await ensureLanP2pPlayback(context)) return;
+    if (!mounted) return;
     // Close without cancelling engine jobs - resolve starts immediately and
     // dispose must not abort the new torrentStream (see [dismiss]).
     PlayerSourcesPanel.dismiss(cancelEngine: false);
@@ -1824,6 +1828,20 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (_isCurrentStremio(stream)) {
       widget.onClose();
       return;
+    }
+    final settings = SettingsService();
+    final useDebrid = await settings.useDebridForStreams();
+    final debridService = await settings.getDebridService();
+    if (!mounted) return;
+    final precheck = classifyStremioStream(
+      stream,
+      PlatformPlayback.capabilities,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    );
+    if (precheck == null) {
+      if (!await ensureLanP2pPlayback(context)) return;
+      if (!mounted) return;
     }
     PlayerSourcesPanel.dismiss(cancelEngine: false);
     await widget.onStremioSelected(stream);

@@ -310,6 +310,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   final ScrollController _sourcesListScrollController = ScrollController();
   bool _detailsHeroInitialFocusDone = false;
 
+  /// TV: button that opened Sources — restore on Back.
+  FocusNode? _sourcesPanelReturnFocus;
+
   /// TV: reclaim Play/Resume after player pop or loading cancel.
   void _claimTvHeroPlayAfterPlayer() {
     if (_detailsScrollController.hasClients) {
@@ -317,6 +320,38 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     }
     ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
       _detailsHeroPlayFocus,
+      isMounted: () => mounted,
+      skip: () => _sourcesPanelOpen,
+    );
+  }
+
+  void _captureSourcesPanelReturnFocus() {
+    final node = FocusManager.instance.primaryFocus;
+    if (node == null || identical(node, _detailsBackFocus)) {
+      _sourcesPanelReturnFocus = _detailsHeroPlayFocus;
+      return;
+    }
+    try {
+      if (!node.canRequestFocus) {
+        _sourcesPanelReturnFocus = _detailsHeroPlayFocus;
+        return;
+      }
+    } catch (_) {
+      _sourcesPanelReturnFocus = _detailsHeroPlayFocus;
+      return;
+    }
+    _sourcesPanelReturnFocus = node;
+  }
+
+  void _restoreTvFocusAfterSourcesPanel() {
+    final saved = _sourcesPanelReturnFocus ?? _detailsHeroPlayFocus;
+    _sourcesPanelReturnFocus = null;
+    if (identical(saved, _detailsHeroPlayFocus) &&
+        _detailsScrollController.hasClients) {
+      _detailsScrollController.jumpTo(0);
+    }
+    ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
+      saved,
       isMounted: () => mounted,
       skip: () => _sourcesPanelOpen,
     );
@@ -401,6 +436,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _webstreamingOnlyExtractionCancelled = true;
     _streamCancelled = true;
     _cancelActiveSourceFetch(rebuild: false);
+    _sourcesPanelReturnFocus = null;
     _detailsHeroPlayFocus.dispose();
     _detailsBackFocus.dispose();
     _detailsScrollController.dispose();
@@ -851,6 +887,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   void _openSourcesPanel() {
     if (!_hasPanelPlaySources) return;
+    _captureSourcesPanelReturnFocus();
     setState(() {
       _syncSelectedSourceToPlaySources();
       _sourcesPanelOpen = true;
@@ -862,7 +899,10 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   ///
   /// Pass [cancelEngineJobs]: false when closing to start playback so the
   /// magnet resolve is not aborted by [Engine.cancelPendingResolve].
-  void _closeSourcesPanel({bool cancelEngineJobs = true}) {
+  void _closeSourcesPanel({
+    bool cancelEngineJobs = true,
+    bool restoreTvPlayFocus = false,
+  }) {
     if (!_sourcesPanelOpen &&
         !_isSearching &&
         !_isStremioFetching &&
@@ -872,6 +912,11 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _cancelActiveSourceFetch(cancelEngineJobs: cancelEngineJobs);
     if (_sourcesPanelOpen && mounted) {
       setState(() => _sourcesPanelOpen = false);
+      if (restoreTvPlayFocus) {
+        _restoreTvFocusAfterSourcesPanel();
+      } else {
+        _sourcesPanelReturnFocus = null;
+      }
     }
   }
 

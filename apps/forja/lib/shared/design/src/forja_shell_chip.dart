@@ -168,11 +168,22 @@ class ForjaShellChip extends StatefulWidget {
 
 class _ForjaShellChipState extends State<ForjaShellChip> {
   bool _hovered = false;
+  bool _focused = false;
+
+  @override
+  void didUpdateWidget(covariant ForjaShellChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selected) {
+      _hovered = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
-    final accent = widget.accentHover && _hovered && !selected;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final accent =
+        widget.accentHover && !selected && (_hovered || _focused);
     final cinematic = ForjaShellColors.cinematic;
     final fg = selected
         ? cinematic.textPrimary
@@ -181,46 +192,48 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
             : cinematic.textSecondary;
     final borderRadius = BorderRadius.circular(widget.radius);
 
-    final chip = Ink(
+    final face = AnimatedContainer(
+      duration: tv ? Duration.zero : const Duration(milliseconds: 120),
+      curve: Curves.easeOut,
       decoration: shellChipDecoration(
         selected: selected,
         accentHover: accent,
         radius: widget.radius,
       ),
-      child: Padding(
-        padding: widget.padding,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (widget.icon != null) ...[
-              Icon(widget.icon, size: 14, color: fg),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              widget.label,
-              style: GoogleFonts.plusJakartaSans(
-                color: fg,
-                fontSize: widget.fontSize,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              ),
-            ),
-            if (widget.trailing != null) ...[
-              const SizedBox(width: 4),
-              widget.trailing!,
-            ],
+      padding: widget.padding,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (widget.icon != null) ...[
+            Icon(widget.icon, size: 14, color: fg),
+            const SizedBox(width: 6),
           ],
-        ),
+          Text(
+            widget.label,
+            style: GoogleFonts.plusJakartaSans(
+              color: fg,
+              fontSize: widget.fontSize,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            ),
+          ),
+          if (widget.trailing != null) ...[
+            const SizedBox(width: 4),
+            widget.trailing!,
+          ],
+        ],
       ),
     );
 
     Widget body;
-    if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+    if (tv) {
       body = shellFocusableTap(
         context: context,
         onTap: widget.onTap,
         focusNode: widget.focusNode,
         borderRadius: widget.radius,
         scaleOnFocus: 1.0,
+        showFocusBorder: false,
+        showFocusFill: false,
         listIndex: widget.listIndex,
         tvTabId: widget.tvTabId,
         tvRowId: widget.tvRowId,
@@ -230,11 +243,14 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         onUpEdge: widget.onUpEdge,
         onLeftEdge: widget.onLeftEdge,
         onRightEdge: widget.onRightEdge,
+        onFocusChange: widget.accentHover
+            ? (focused) => setState(() => _focused = focused)
+            : null,
         child: Material(
           color: Colors.transparent,
           borderRadius: borderRadius,
           clipBehavior: Clip.antiAlias,
-          child: chip,
+          child: face,
         ),
       );
     } else {
@@ -242,11 +258,11 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         radius: widget.radius,
         onTap: widget.onTap,
         suppressInkHover: widget.accentHover,
-        child: chip,
+        child: face,
       );
     }
 
-    if (!widget.accentHover) return body;
+    if (!widget.accentHover || selected || tv) return body;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
