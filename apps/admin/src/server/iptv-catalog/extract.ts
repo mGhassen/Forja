@@ -32,14 +32,33 @@ const EMOJI_CREDS =
   /(?:👤|👑)\s*(?:Username|Usu[áa]rio|Usuario|Us[ᴇe]rname|Us[ᴜu][ᴀa]r[ɪi][ᴏo]|User|Us[ᴇe]r|ᴜꜱᴇʀ)\s*[:=]\s*([^\s|<"'\n]+)[\s\S]{0,240}?(?:🔑|🔐|🔒)\s*(?:Password|Senha|Contrase[ñn]a|P[ᴀa]ssword|S[ᴇe]nh[ᴀa]|Pass|P[ᴀa]ss|ᴩᴀꜱꜱ|ᴘᴀꜱꜱ)\s*[:=]\s*([^\s|<"'\n]+)/gi
 
 const TABLE_LINE =
-  /^[^\S\n]*((?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})):([1-9]\d{1,4})[^\S\n]+([A-Za-z0-9._@+-]{3,64}):(\S{3,64})([^\n]*)/gim
+  /^[^\S\n]*(?:https?:\/\/)?((?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})):([1-9]\d{1,4})[^\S\n]+([A-Za-z0-9._@+-]{3,64})\s*:\s*(\S{3,64})([^\n]*)/gim
 
 const TABLE_CONN = /^(\d+)\/(\d+)$/
+const TABLE_CONN_SPACED = /\b(\d+)\s*\/\s*(\d+)\b/
 const TABLE_MON_DAY =
   /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(\d{1,2})$/i
-const TABLE_TZ = /^[A-Za-z]+\/[A-Za-z_/+]+$/
+const TABLE_TZ = /^(?:[A-Za-z]+\/[A-Za-z_/+]+|UTC|GMT)$/i
 const TABLE_OUTPUTS = /^(?:m3u8?|ts|rtmp)(?:,(?:m3u8?|ts|rtmp))+$/i
-const TABLE_STATUS = /^(?:Active|Expired|Banned|Disabled|Trial)$/i
+const TABLE_STATUS =
+  /^(?:Active|Expired|Banned|Disabled|Trial|Activa|Activo|Inactiva|Expirad[ao]|Banead[ao]|Prueba)$/i
+/** Spanish panel dumps: `25 jul de 2026` / `26 ago de 2026`. */
+const TABLE_ES_DATE =
+  /\b(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)[a-záéíóú]*\s+(?:de\s+)?(\d{4})\b/gi
+const TABLE_ES_MON: Record<string, string> = {
+  ene: 'Jan',
+  feb: 'Feb',
+  mar: 'Mar',
+  abr: 'Apr',
+  may: 'May',
+  jun: 'Jun',
+  jul: 'Jul',
+  ago: 'Aug',
+  sep: 'Sep',
+  oct: 'Oct',
+  nov: 'Nov',
+  dic: 'Dec',
+}
 
 /** App sentinel — same as `IptvPortalPlatform.m3uUsernameSentinel`. */
 const M3U_USER_SENTINEL = '__m3u__'
@@ -97,7 +116,7 @@ const KC_EXPIRES_LINE = new RegExp(
 
 const MAC_ADDR_RE = /^(?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}$/
 
-const BLOCK_TAGS = /<(?:p|br|div|li|h\d)[^>]*>/gi
+const BLOCK_TAGS = /<(?:p|br|div|li|h\d|tr|td|th|table)[^>]*>/gi
 const ANY_TAG = /<[^>]+>/g
 const MARKDOWN_LINK = /\[([^\]]*)]\((https?:\/\/[^)\s]+)\)/gi
 const ANGLE_URL = /<(https?:\/\/[^>\s]+)>/gi
@@ -122,9 +141,16 @@ const JUNK_CRED =
 /**
  * Dump sheets under a portal host:
  * `AliErdoTV jypCCT5A7hhp 226 Gün (Bitiş: 01/02/2027)`
+ * `e7112e5513e7  7d02fab71b  Expires: 17/01/2027`
+ * `G1  kmf2spi76q  06/07/2027  (AR,AT,CH, DE)`
  */
 const DUMP_CRED_LINE =
-  /^([A-Za-z0-9@._+-]{3,64})\s+(\S{3,64})(?:\s+\d+\s*G[uü]n)?(?:\s*\([^)]*Biti[sş]:\s*(\d{1,2}\/\d{1,2}\/\d{4})[^)]*\))?/i
+  /^([A-Za-z0-9@._+-]{2,64})\s+(\S{3,64})(?:\s+\d+\s*G[uü]n)?(?:\s*\([^)]*Biti[sş]:\s*(\d{1,2}\/\d{1,2}\/\d{4})[^)]*\))?(?:\s+(?:Expires?\s*:?\s*)?(\d{1,2}\/\d{1,2}\/\d{4})\b.*)?$/i
+
+const DUMP_HEADER =
+  /^(?:usr|user|username|usu[áa]rio)\s+(?:pw|pass|password|senha)\b/i
+
+const BARE_DUMP_HOST = /^(https?:\/\/[^\s/?#]+)\/?$/i
 
 /** `Portal : http://…/c/` + `MAC Addr:` / `🔑 MAC:` + optional `Exp date:` card. */
 const STALKER_CARD =
@@ -134,10 +160,12 @@ const STALKER_CARD =
  * MAC-checker / pipe dumps:
  * `[19:18:51] ✅ HIT: http://host:80 | 00:1A:79:… | Expires on February 16, 2027, 7:51 pm`
  * `http://host | 00:1A:79:… | Expires on November 22, 2027, 12:00 am`  (HIT: optional)
- * Portal may be bare host:port (no `/c/`). Expiry clause optional.
+ * Atlas: unicode pipes, tabs, or spaces between URL and MAC. Portal may be bare host:port.
  */
 const STALKER_HIT_LINE =
-  /(?:(?:✅\s*)?HIT:\s*)?(https?:\/\/[^\s|]+)\s*\|\s*((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})(?:\s*\|\s*Expires\s+on\s+([^\n|]+))?/gi
+  /(?:(?:✅\s*)?HIT:\s*)?(https?:\/\/[^\s|│┃｜]+)(?:\s*[|│┃｜]\s*|\s+)((?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})(?:\s*[|│┃｜]?\s*Expires\s+on\s+([^\n|│┃｜]+))?/gi
+
+const EXPIRES_ON = /Expires\s+on\s+(.+)/i
 
 /**
  * MAC Raider / KC cards (math-bold folded to ASCII):
@@ -145,7 +173,7 @@ const STALKER_HIT_LINE =
  */
 const RAIDER_SEP = String.raw`[➩:>\-✦═\s]+`
 const RAIDER_HOST_LINE = new RegExp(
-  String.raw`(?:Host|Portal)\s*${RAIDER_SEP}(https?:\/\/[^\s]+)`,
+  String.raw`(?:Host|Portal|Panel)\s*${RAIDER_SEP}(https?:\/\/[^\s]+)`,
   'i',
 )
 const RAIDER_MAC_LINE = new RegExp(
@@ -209,12 +237,24 @@ type CardMeta = {
 function cleanHtmlish(raw: string): string {
   const s = raw.replaceAll('&amp;', '&').replaceAll('&quot;', '"')
   return foldMathAlnum(
-    s
+    stripIptvNoteNoise(s)
       .replace(MARKDOWN_LINK, '$2')
       .replace(ANGLE_URL, '$1')
       .replace(BLOCK_TAGS, '\n')
       .replace(ANY_TAG, ''),
   )
+}
+
+/**
+ * Hit Hunter / Ishiro notes dump live category lists and Mag device blobs
+ * that dwarf the MAC cards (often >64k). Drop them before extract.
+ */
+export function stripIptvNoteNoise(s: string): string {
+  return s
+    .replace(/📺[\s\S]*?╰─+╯/g, '\n')
+    .replace(/╭[─✦\s]*📱[\s\S]*?╰[─✦]+/g, '\n')
+    .replace(/╰─📺[^\n]*(?:\n[^\n]*)?/g, '\n')
+    .replace(/^[^\n]*⚡[^\n]*⚡[^\n]*$/gm, '')
 }
 
 /**
@@ -287,6 +327,18 @@ function cleanPortalUrl(raw: string): string {
   while (clean.endsWith('/')) clean = clean.slice(0, -1)
   if (!clean.startsWith('http')) clean = `http://${clean}`
   return clean
+}
+
+function expiryFromMacRest(rest: string): string | null {
+  const on = EXPIRES_ON.exec(rest)?.[1]?.trim()
+  if (on) return formatPortalExpiry(on)
+  DATE_IN_BRACKETS.lastIndex = 0
+  let expiry: string | null = null
+  for (const dm of rest.matchAll(DATE_IN_BRACKETS)) {
+    const formatted = formatPortalExpiry((dm[1] ?? '').trim())
+    if (formatted) expiry = formatted
+  }
+  return expiry
 }
 
 /**
@@ -398,6 +450,7 @@ function parseCardMeta(block: string): CardMeta {
 /**
  * XML2-style rows:
  * `host:port  user:pass  0/500  Sep23  2026  Active  host:port  m3u8,ts  Europe/Rome`
+ * Spanish panel rows: `UTC  Activa  25 jul de 2026 (19 d)  25 jul de 2027  345  0 / 3  No`
  */
 function parseTableTail(
   tail: string,
@@ -411,6 +464,16 @@ function parseTableTail(
   let timezone: string | null = null
   const hostPort = `${host}:${port}`.toLowerCase()
   const hostLower = host.toLowerCase()
+
+  TABLE_ES_DATE.lastIndex = 0
+  const esDates = [...tail.matchAll(TABLE_ES_DATE)]
+  if (esDates.length > 0) {
+    const last = esDates[esDates.length - 1]!
+    const mon = TABLE_ES_MON[(last[2] ?? '').toLowerCase()]
+    if (mon) expiry = formatPortalExpiry(`${Number(last[1])} ${mon} ${last[3]}`)
+  }
+  const spacedConn = TABLE_CONN_SPACED.exec(tail)
+  if (spacedConn) maxConnections = spacedConn[2] ?? null
 
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i]!
@@ -993,9 +1056,22 @@ function extractM3uPlaylistUrls(
   }
 }
 
+function dumpPortalHost(raw: string): string | null {
+  const url = cleanPortalUrl(raw)
+  if (
+    !url ||
+    /\/c\/?$/i.test(url) ||
+    /portal\.php|stalker_portal/i.test(url)
+  ) {
+    return null
+  }
+  return url
+}
+
 /**
  * Sheets like j_1vsS7a: `Portal: http://host` then many
  * `user pass N Gün (Bitiş: dd/mm/yyyy)` lines.
+ * Also a lone `http://host:port` then `Usr / pw` columns with `Expires:`.
  */
 function extractPortalDumpLines(
   cleaned: string,
@@ -1010,27 +1086,26 @@ function extractPortalDumpLines(
     if (!trimmed) continue
     const portalLine = /^Portal\s*:\s*(https?:\/\/\S+)/i.exec(trimmed)
     if (portalLine?.[1]) {
-      const url = cleanPortalUrl(portalLine[1])
-      // Don't attach user/pass dump rows to stalker /c/ portals.
-      if (
-        !url ||
-        /\/c\/?$/i.test(url) ||
-        /portal\.php|stalker_portal/i.test(url)
-      ) {
-        currentPortal = null
-      } else {
-        currentPortal = url
-      }
+      currentPortal = dumpPortalHost(portalLine[1])
+      continue
+    }
+    const bareHost = BARE_DUMP_HOST.exec(trimmed)
+    if (bareHost?.[1]) {
+      currentPortal = dumpPortalHost(bareHost[1])
       continue
     }
     if (!currentPortal) continue
-    if (/user\s*name|password|expiry|subject:|allowed\s*outputs|maxconn/i.test(trimmed)) {
+    if (DUMP_HEADER.test(trimmed)) continue
+    if (
+      /user\s*name|password|subject:|allowed\s*outputs|maxconn/i.test(trimmed)
+    ) {
       continue
     }
     if (/^https?:\/\//i.test(trimmed)) continue
     const m = DUMP_CRED_LINE.exec(trimmed)
     if (!m?.[1] || !m[2]) continue
-    const expiry = m[3] ? formatPortalExpiry(m[3]) : null
+    const expiryRaw = m[3] || m[4] || ''
+    const expiry = expiryRaw ? formatPortalExpiry(expiryRaw) : null
     finalizeXtreamOrM3u(
       acc,
       currentPortal,
@@ -1124,7 +1199,11 @@ function extractKcPanelStalkerCards(
 
     let expiryRaw = KC_EXPIRES_LINE.exec(window)?.[1]?.trim() ?? null
     if (expiryRaw) {
-      expiryRaw = expiryRaw.replace(/\s+\d+\s+Days?\s*$/i, '').trim()
+      expiryRaw = expiryRaw
+        .replace(/\s*\(\d+\s+Days?\)\s*$/i, '')
+        .replace(/\s+\d+\s+Days?\s*$/i, '')
+        .trim()
+      if (/^unlimited$/i.test(expiryRaw)) expiryRaw = null
     }
     const expiry = expiryRaw ? formatPortalExpiry(expiryRaw) : null
 
@@ -1274,29 +1353,53 @@ function extractStalkerPortals(
     })
   }
 
-  // Line dumps: http://host/c/ then bare MAC lines with optional [date] brackets.
+  // Line dumps: http://host/c/ (or bare host:port) then MAC lines.
+  // Atlas HTML tables become URL / MAC / Expires on separate lines after td→newline.
   let currentPortal: string | null = null
+  let lastStalker: { url: string; mac: string } | null = null
   for (const line of cleaned.split(/\n/)) {
     const trimmed = line.trim()
     if (!trimmed) continue
 
+    const expOnly = /^Expires\s+on\s+(.+)/i.exec(trimmed)
+    if (expOnly?.[1] && lastStalker) {
+      put(acc, {
+        url: lastStalker.url,
+        username: lastStalker.mac,
+        password: '',
+        source,
+        platform: 'stalker',
+        type: '',
+        output: '',
+        expiry: formatPortalExpiry(expOnly[1].trim()),
+      })
+      continue
+    }
+
     const portalOnly = STALKER_PORTAL_ONLY_LINE.exec(trimmed)
     if (portalOnly?.[1]) {
-      const url = cleanPortalUrl(portalOnly[1])
+      const url = stalkerPortalUrl(portalOnly[1])
       if (url) currentPortal = url
+      lastStalker = null
+      continue
+    }
+    const bareHost = BARE_DUMP_HOST.exec(trimmed)
+    if (bareHost?.[1]) {
+      currentPortal = stalkerPortalUrl(bareHost[1])
+      lastStalker = null
       continue
     }
     // Also accept "Portal: http://…/c/"
     const portalLabeled = /^Portal\s*:\s*(https?:\/\/\S+)/i.exec(trimmed)
     if (portalLabeled?.[1]) {
-      const url = cleanPortalUrl(portalLabeled[1])
+      const raw = portalLabeled[1]
       if (
-        url &&
-        (/\/c\/?$/i.test(url) ||
-          /portal\.php|stalker_portal/i.test(url))
+        /\/c\/?$/i.test(raw) ||
+        /portal\.php|stalker_portal/i.test(raw)
       ) {
-        currentPortal = url
+        currentPortal = stalkerPortalUrl(raw)
       }
+      lastStalker = null
       continue
     }
 
@@ -1304,17 +1407,12 @@ function extractStalkerPortals(
     const macLine = BARE_MAC_LINE.exec(trimmed)
     if (!macLine?.[1]) continue
     const mac = macLine[1].toUpperCase().replace(/-/g, ':')
-    if (pairedMacs.has(mac)) continue
     const rest = macLine[2] ?? ''
-    let expiry: string | null = null
-    for (const dm of rest.matchAll(DATE_IN_BRACKETS)) {
-      const raw = (dm[1] ?? '').trim()
-      const formatted = raw ? formatPortalExpiry(raw) : null
-      if (formatted) expiry = formatted
-    }
+    const expiry = expiryFromMacRest(rest)
     const geo = regionFromChannelGeoBracket(rest)
     pairedMacs.add(mac)
     pairedPortals.add(currentPortal)
+    lastStalker = { url: currentPortal, mac }
     put(acc, {
       url: currentPortal,
       username: mac,

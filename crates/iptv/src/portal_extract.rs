@@ -32,9 +32,10 @@ static LABEL_USER_FIRST: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 /// Tabular dumps: `host:port   user:pass   0/1 …`
+/// Also `http://host:port  user : pass` (Spanish panel tables).
 static TABLE_LINE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r#"(?im)^[^\S\n]*((?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})):([1-9]\d{1,4})[^\S\n]+([A-Za-z0-9._@+-]{3,64}):(\S{3,64})"#,
+        r#"(?im)^[^\S\n]*(?:https?://)?((?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})):([1-9]\d{1,4})[^\S\n]+([A-Za-z0-9._@+-]{3,64})\s*:\s*(\S{3,64})"#,
     )
     .expect("table_line regex")
 });
@@ -390,6 +391,25 @@ mod tests {
         assert!(portals.iter().any(|p| p.username == "ogwv5yz53q2"));
         // user len < 3 rejected
         assert!(!portals.iter().any(|p| p.username == "4"));
+    }
+
+    #[test]
+    fn extracts_scheme_table_spaced_user_pass() {
+        let text = "\
+http://mundo2.pro:80	Danielpico2026 : Micasa2026	UTC	Activa	25 jul de 2026 (19 d)	25 jul de 2027	345	0 / 3	No
+http://mundo2.pro:80	9987423921 : 3119695122	UTC	Activa	24 jul de 2026 (20 d)	24 jul de 2027	344	0 / 3	No
+http://mundo2.pro:80	9842299745 : 1687141834	UTC	Activa	23 jul de 2026 (21 d)	23 ago de 2026	9	0 / 3	No
+http://mundo2.pro:80	9842299745 : 1687141834	UTC	Activa	23 jul de 2026 (21 d)	23 ago de 2026	9	0 / 3	No
+";
+        let portals = extract_portals(text, "Catalog");
+        assert_eq!(portals.len(), 3, "got: {portals:?}");
+        assert!(portals.iter().any(|p| {
+            p.url == "http://mundo2.pro:80"
+                && p.username == "Danielpico2026"
+                && p.password == "Micasa2026"
+        }));
+        assert!(portals.iter().any(|p| p.username == "9987423921"));
+        assert!(portals.iter().any(|p| p.username == "9842299745"));
     }
 
     #[test]

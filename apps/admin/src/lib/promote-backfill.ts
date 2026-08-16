@@ -1,8 +1,17 @@
 import { supabase } from '@/lib/supabase'
 
+export type PromoteBackfillRun = {
+  id: string
+  started_at: string
+  status: string
+  source?: string | null
+}
+
 export type PromoteBackfillResult = {
   ok: boolean
   jobId?: string
+  runId?: string
+  run?: PromoteBackfillRun
   limit?: number
   chunkSize?: number
   pending?: number
@@ -54,7 +63,30 @@ export async function startPromoteBackfill(opts: {
   return {
     ok: true,
     jobId: json.jobId,
+    runId: json.runId,
+    run: json.run,
     limit: json.limit,
     chunkSize: json.chunkSize,
+  }
+}
+
+export async function cancelPromoteBackfill(opts?: {
+  runId?: string
+}): Promise<PromoteBackfillResult> {
+  const res = await fetch('/api/iptv-promote-backfill', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({
+      action: 'cancel',
+      runId: opts?.runId,
+    }),
+  })
+  const json = (await res.json().catch(() => ({}))) as PromoteBackfillResult & {
+    error?: string
+  }
+  if (!res.ok) throw new Error(json.error || 'Cancel promote backfill failed')
+  return {
+    ok: true,
+    cancelledInngest: json.cancelledInngest,
   }
 }

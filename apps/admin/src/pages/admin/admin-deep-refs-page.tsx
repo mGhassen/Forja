@@ -23,6 +23,9 @@ import {
   EmptyState,
   MetricChip,
   PageHeader,
+  Panel,
+  PanelLabel,
+  StatusBadge,
   TablePagination,
   tableClassName,
   tableWrapClassName,
@@ -45,10 +48,22 @@ import { reprocessDeepRefForAdmin } from '@/lib/deep-ref-reprocess'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { fetchPasteBodyForAdmin } from '@/lib/paste-body'
 import {
+  cancelPromoteBackfill,
   countPromoteBackfillPending,
   startPromoteBackfill,
 } from '@/lib/promote-backfill'
 import { formatAdminDateTime } from '@/lib/iptv-portal-expiry'
+import { runDurationLabel } from '@/lib/ops-overview'
+import {
+  SCRAPE_RUNS_LATEST_KEY,
+  fetchScrapeRuns,
+  isPromoteBackfillRun,
+  markRunsStoppedInCache,
+  prependOptimisticRun,
+  refreshScrapeRuns,
+  scrapeRunMetricChips,
+  subscribeScrapeRuns,
+} from '@/lib/scrape-runs'
 import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
 
@@ -474,10 +489,21 @@ export function AdminDeepRefsPage() {
   const search = useSearch({ from: '/_ops/deep-refs' })
   const focusRefId = search.ref?.trim() || null
   const focusedOnce = useRef<string | null>(null)
+  const runs = useQuery({
+    queryKey: SCRAPE_RUNS_LATEST_KEY,
+    queryFn: () => fetchScrapeRuns(8),
+    refetchInterval: (q) =>
+      q.state.data?.some((r) => r.status === 'running') ? 1_500 : 8_000,
+    refetchOnWindowFocus: true,
+  })
+  const backfillRun =
+    runs.data?.find(
+      (r) => r.status === 'running' && isPromoteBackfillRun(r),
+    ) ?? null
   const list = useQuery({
     queryKey: DEEP_REFS_KEY,
     queryFn: fetchDeepRefs,
-    refetchInterval: 12_000,
+    refetchInterval: backfillRun ? 2_000 : 12_000,
   })
 
   const [q, setQ] = useState(() => focusRefId ?? '')
@@ -496,6 +522,24 @@ export function AdminDeepRefsPage() {
   useEffect(() => {
     setPanelWidth(readStoredPanelWidth())
   }, [])
+
+  useEffect(() => {
+    return subscribeScrapeRuns(() => {
+      void refreshScrapeRuns(qc)
+    })
+  }, [qc])
+
+  const backfillWasRunning = useRef(false)
+  useEffect(() => {
+    if (backfillRun) {
+      backfillWasRunning.current = true
+      return
+    }
+    if (!backfillWasRunning.current) return
+    backfillWasRunning.current = false
+    void qc.invalidateQueries({ queryKey: DEEP_REFS_KEY })
+    void qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
+  }, [backfillRun, qc])
 
   useEffect(() => {
     if (!focusRefId) return
@@ -576,12 +620,20 @@ export function AdminDeepRefsPage() {
       try {
         const result = await startPromoteBackfill(opts)
         setBackfillOpen(false)
+        if (result.run) {
+          prependOptimisticRun(qc, result.run)
+        } else if (result.runId) {
+          prependOptimisticRun(qc, {
+            id: result.runId,
+            started_at: new Date().toISOString(),
+            status: 'running',
+            source: 'promote-backfill',
+          })
+        }
+        await refreshScrapeRuns(qc)
         setActionInfo(
-          `Promote backfill queued · ≤${result.limit?.toLocaleString() ?? opts.limit} · chunk ${result.chunkSize ?? opts.chunkSize}` +
-            (result.jobId ? ` · job ${result.jobId.slice(0, 8)}…` : ''),
+          `Promote backfill running · ≤${result.limit?.toLocaleString() ?? opts.limit} · chunk ${result.chunkSize ?? opts.chunkSize}`,
         )
-        await qc.invalidateQueries({ queryKey: DEEP_REFS_KEY })
-        await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
       } catch (e) {
         setActionError(
           e instanceof Error ? e.message : 'Promote backfill failed',
@@ -592,6 +644,30 @@ export function AdminDeepRefsPage() {
     },
     [qc],
   )
+
+  const stopBackfill = useCallback(async () => {
+    if (!backfillRun) return
+    setActionError(null)
+    setBackfillBusy(true)
+    try {
+      await qc.cancelQueries({ queryKey: ['admin', 'scrape_runs'] })
+      markRunsStoppedInCache(qc, {
+        runId: backfillRun.id,
+        error: 'Stop requested from admin',
+      })
+      await cancelPromoteBackfill({ runId: backfillRun.id })
+      await refreshScrapeRuns(qc)
+      await qc.invalidateQueries({ queryKey: DEEP_REFS_KEY })
+      setActionInfo('Promote backfill stopped')
+    } catch (e) {
+      await refreshScrapeRuns(qc)
+      setActionError(
+        e instanceof Error ? e.message : 'Stop promote backfill failed',
+      )
+    } finally {
+      setBackfillBusy(false)
+    }
+  }, [backfillRun, qc])
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -694,9 +770,10 @@ export function AdminDeepRefsPage() {
                 variant="secondary"
                 size="sm"
                 className="text-amber-300"
+                disabled={Boolean(backfillRun) || backfillBusy}
                 onClick={() => setBackfillOpen(true)}
               >
-                Backfill promote
+                {backfillRun ? 'Backfill running' : 'Backfill promote'}
               </Button>
               <Button type="button" variant="ghost" size="sm" asChild>
                 <Link to="/scrape">← Scrape</Link>
@@ -708,8 +785,52 @@ export function AdminDeepRefsPage() {
         {actionError ? (
           <p className="text-sm text-red-400">{actionError}</p>
         ) : null}
-        {actionInfo ? (
+        {actionInfo && !backfillRun ? (
           <p className="text-sm text-forja-muted">{actionInfo}</p>
+        ) : null}
+
+        {backfillRun ? (
+          <Panel tone="accent">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 space-y-3">
+                <PanelLabel>Backfill promote</PanelLabel>
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={backfillRun.status} />
+                  <span className="text-xs text-forja-muted">
+                    {formatAdminDateTime(backfillRun.started_at)} ·{' '}
+                    {runDurationLabel(backfillRun)}
+                    {backfillRun.status === 'running' ? ' · in progress' : ''}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {scrapeRunMetricChips(backfillRun).map((c) => (
+                    <MetricChip
+                      key={c.label}
+                      label={c.label}
+                      value={c.value}
+                    />
+                  ))}
+                </div>
+                {backfillRun.error ? (
+                  <p className="text-sm text-red-400">{backfillRun.error}</p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="ghost" size="sm">
+                  <Link to="/scrape">View on Scrape</Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={backfillBusy}
+                  onClick={() => void stopBackfill()}
+                >
+                  {backfillBusy ? 'Stopping…' : 'Stop'}
+                </Button>
+              </div>
+            </div>
+          </Panel>
         ) : null}
         <div className="flex flex-wrap gap-2">
           <MetricChip label="Refs" value={stats.total} />

@@ -34,7 +34,14 @@ export const Route = createFileRoute('/api/iptv-catalog-scrape')({
               finished_at: new Date().toISOString(),
               error: 'Stop requested from admin',
             }
+            let source: string | null = null
             if (body.runId) {
+              const { data: row } = await sb
+                .from('iptv_scrape_runs')
+                .select('source')
+                .eq('id', body.runId)
+                .maybeSingle()
+              source = row?.source != null ? String(row.source) : null
               await sb
                 .from('iptv_scrape_runs')
                 .update(patch)
@@ -54,13 +61,26 @@ export const Route = createFileRoute('/api/iptv-catalog-scrape')({
                   .eq('id', row.id)
               }
             }
+            const cancelBackfill =
+              !body.runId || source === 'promote-backfill'
+            const cancelScrape =
+              !body.runId || source !== 'promote-backfill'
             let cancelledInngest = false
             try {
-              await sendInngestEvent({
-                name: 'iptv/catalog.scrape.cancel',
-                data: { jobId: body.jobId ?? null },
-              })
-              cancelledInngest = true
+              if (cancelScrape) {
+                await sendInngestEvent({
+                  name: 'iptv/catalog.scrape.cancel',
+                  data: { jobId: body.jobId ?? null },
+                })
+                cancelledInngest = true
+              }
+              if (cancelBackfill) {
+                await sendInngestEvent({
+                  name: 'iptv/catalog.promote-backfill.cancel',
+                  data: { jobId: body.jobId ?? null },
+                })
+                cancelledInngest = true
+              }
             } catch {
               // DB already closed; worker may still finish if Inngest is dead
             }

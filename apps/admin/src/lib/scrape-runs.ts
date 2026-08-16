@@ -9,6 +9,8 @@ export const SCRAPE_RUNS_LATEST_KEY = ['admin', 'scrape_runs', 'latest'] as cons
 export const SCRAPE_RUN_SELECT =
   'id, started_at, finished_at, status, source, posts_seen, l1_extract_count, deep_ref_count, l2_fetch_ok, l2_fetch_fail, l2_extract_count, unparsed_count, candidates_upserted, alive_count, error'
 
+export const PROMOTE_BACKFILL_SOURCE = 'promote-backfill'
+
 export type ScrapeRunRow = {
   id: string
   started_at: string
@@ -25,6 +27,49 @@ export type ScrapeRunRow = {
   candidates_upserted: number
   alive_count: number
   error?: string | null
+}
+
+export function isPromoteBackfillRun(run: {
+  source?: string | null
+}): boolean {
+  return run.source === PROMOTE_BACKFILL_SOURCE
+}
+
+export function scrapeSourceLabel(source?: string | null): string {
+  if (source === PROMOTE_BACKFILL_SOURCE) return 'backfill'
+  const s = source?.trim()
+  return s || '—'
+}
+
+export function scrapeRunFunnelLine(run: ScrapeRunRow): string {
+  if (isPromoteBackfillRun(run)) {
+    return `claimed ${run.l1_extract_count} · upserted ${run.candidates_upserted} · already ${run.alive_count} · skipped ${run.unparsed_count ?? 0}`
+  }
+  return `new ${run.posts_seen} · portals ${run.l1_extract_count} · deep ${run.deep_ref_count} · L2 ${run.l2_fetch_ok}/${run.l2_fetch_fail} · unparsed ${run.unparsed_count ?? 0} · upserted ${run.candidates_upserted}`
+}
+
+export function scrapeRunMetricChips(
+  run: ScrapeRunRow,
+): { label: string; value: string | number }[] {
+  if (isPromoteBackfillRun(run)) {
+    return [
+      { label: 'Claimed', value: run.l1_extract_count },
+      { label: 'Promoted', value: run.candidates_upserted },
+      { label: 'Already in DB', value: run.alive_count },
+      { label: 'Skipped', value: run.unparsed_count ?? 0 },
+    ]
+  }
+  return [
+    { label: 'New posts', value: run.posts_seen },
+    { label: 'Portals', value: run.l1_extract_count },
+    { label: 'Deep', value: run.deep_ref_count },
+    { label: 'L2 ok', value: run.l2_fetch_ok },
+    { label: 'L2 fail', value: run.l2_fetch_fail },
+    { label: 'L2 portals', value: run.l2_extract_count },
+    { label: 'Unparsed', value: run.unparsed_count ?? 0 },
+    { label: 'Upserted', value: run.candidates_upserted },
+    { label: 'Alive', value: run.alive_count },
+  ]
 }
 
 export function emptyScrapeRun(

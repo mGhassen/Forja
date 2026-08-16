@@ -22,6 +22,11 @@ import {
 } from '@/lib/ops-overview'
 import { formatAdminDateTime } from '@/lib/iptv-portal-expiry'
 import { humanizeScrapeCron } from '@/lib/scrape-cron'
+import {
+  isPromoteBackfillRun,
+  scrapeRunMetricChips,
+  scrapeSourceLabel,
+} from '@/lib/scrape-runs'
 import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
 
@@ -91,35 +96,27 @@ export function AdminDashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel tone="accent">
-          <PanelLabel>Latest run</PanelLabel>
+          <PanelLabel>
+            {latest && isPromoteBackfillRun(latest)
+              ? 'Latest backfill'
+              : 'Latest run'}
+          </PanelLabel>
           {latest ? (
             <div className="mt-3 space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={latest.status} />
                 <span className="text-xs text-forja-muted">
                   {formatAdminDateTime(latest.started_at)}
-                  {latest.source ? ` · ${latest.source}` : ''} ·{' '}
-                  {runDurationLabel(latest)}
+                  {latest.source
+                    ? ` · ${scrapeSourceLabel(latest.source)}`
+                    : ''}{' '}
+                  · {runDurationLabel(latest)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <MetricChip label="New posts" value={latest.posts_seen} />
-                <MetricChip label="Portals" value={latest.l1_extract_count} />
-                <MetricChip label="Deep refs" value={latest.deep_ref_count} />
-                <MetricChip
-                  label="L2 ok/fail"
-                  value={`${latest.l2_fetch_ok}/${latest.l2_fetch_fail}`}
-                />
-                <MetricChip label="L2 portals" value={latest.l2_extract_count} />
-                <MetricChip
-                  label="Unparsed"
-                  value={latest.unparsed_count ?? 0}
-                />
-                <MetricChip
-                  label="Upserted"
-                  value={latest.candidates_upserted}
-                />
-                <MetricChip label="Alive" value={latest.alive_count} />
+                {scrapeRunMetricChips(latest).map((c) => (
+                  <MetricChip key={c.label} label={c.label} value={c.value} />
+                ))}
               </div>
               {latest.error ? (
                 <p className="text-sm text-red-400">{latest.error}</p>
@@ -210,7 +207,10 @@ export function AdminDashboardPage() {
                 {paging.pageRows.map((r) => (
                   <tr
                     key={r.id}
-                    className="border-t border-forja-border/80 hover:bg-white/[0.02]"
+                    className={cn(
+                      'border-t border-forja-border/80 hover:bg-white/[0.02]',
+                      r.status === 'running' && 'bg-amber-400/[0.04]',
+                    )}
                   >
                     <td className={cn(tdClassName, 'whitespace-nowrap text-xs')}>
                       {formatAdminDateTime(r.started_at)}
@@ -224,28 +224,30 @@ export function AdminDashboardPage() {
                         'font-mono-ui text-xs text-forja-muted',
                       )}
                     >
-                      {r.source ?? '—'}
+                      {scrapeSourceLabel(r.source)}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums text-xs')}>
                       {runDurationLabel(r)}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
-                      {r.posts_seen}
+                      {isPromoteBackfillRun(r) ? '—' : r.posts_seen}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
                       {r.l1_extract_count}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
-                      {r.deep_ref_count}
+                      {isPromoteBackfillRun(r) ? '—' : r.deep_ref_count}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums text-xs')}>
-                      {r.l2_fetch_ok}/{r.l2_fetch_fail} · {r.l2_extract_count}
+                      {isPromoteBackfillRun(r)
+                        ? '—'
+                        : `${r.l2_fetch_ok}/${r.l2_fetch_fail} · ${r.l2_extract_count}`}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
                       {r.candidates_upserted}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
-                      {r.alive_count}
+                      {isPromoteBackfillRun(r) ? '—' : r.alive_count}
                     </td>
                   </tr>
                 ))}

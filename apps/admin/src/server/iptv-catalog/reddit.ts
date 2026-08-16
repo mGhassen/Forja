@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { extractPortals } from './extract'
+import { extractPortals, stripIptvNoteNoise } from './extract'
 import { extractPortalsHybrid } from './llm-extract'
 import { decryptFromPasteResponse } from './pastesh'
 import type {
@@ -42,8 +42,8 @@ const B64_HTTP = /aHR0c[a-zA-Z0-9+/=]{10,}/g
 const RAW_PASTE =
   /https?:\/\/(?:paste\.sh|pastebin\.com|justpaste\.it|controlc\.com|pastes\.dev|text\.is|rentry\.co)\/[a-zA-Z0-9#_=-]+/gi
 
-/** Cap in-memory paste / decoded body for extract (never persisted). */
-const PAYLOAD_TEXT_MAX = 64_000
+/** Cap in-memory paste after noise strip (never persisted). */
+const PAYLOAD_TEXT_MAX = 512_000
 
 const PASTE_FETCH_TIMEOUT_MS = 12_000
 /** Reddit OAuth / listing — no timeout hung the whole Vercel invoke until 300s kill. */
@@ -233,8 +233,9 @@ function hashPayload(s: string): string {
 
 function truncatePayload(text: string | null | undefined): string | null {
   if (!text) return null
-  if (text.length <= PAYLOAD_TEXT_MAX) return text
-  return text.slice(0, PAYLOAD_TEXT_MAX)
+  const s = stripIptvNoteNoise(text)
+  if (s.length <= PAYLOAD_TEXT_MAX) return s
+  return s.slice(0, PAYLOAD_TEXT_MAX)
 }
 
 function lastPathSegment(url: string): string | null {

@@ -8,7 +8,7 @@ import {
   fetchOpsOverview,
   runDurationLabel,
 } from '@/lib/ops-overview'
-import { refreshScrapeRuns, subscribeScrapeRuns } from '@/lib/scrape-runs'
+import { refreshScrapeRuns, scrapeRunFunnelLine, subscribeScrapeRuns } from '@/lib/scrape-runs'
 import { cn } from '@/lib/utils'
 
 function Cell({
@@ -106,11 +106,7 @@ export function OpsOverviewStrip() {
             <>
               <StatusBadge status={latest.status} />
               <span className="text-forja-muted">
-                new {latest.posts_seen} · portals {latest.l1_extract_count} · deep{' '}
-                {latest.deep_ref_count} · L2 {latest.l2_fetch_ok}/
-                {latest.l2_fetch_fail} · unparsed {latest.unparsed_count ?? 0} ·
-                upserted {latest.candidates_upserted} ·{' '}
-                {runDurationLabel(latest)}
+                {scrapeRunFunnelLine(latest)} · {runDurationLabel(latest)}
               </span>
             </>
           ) : (

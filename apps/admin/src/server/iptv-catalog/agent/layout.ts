@@ -104,6 +104,7 @@ function parseUserPass(
   const user = token.slice(0, i).trim()
   const pass = token.slice(i + 1).trim()
   if (user.length < minUser || pass.length < minPass) return null
+  if (/^https?$/i.test(user) || pass.startsWith('//')) return null
   return { user, pass }
 }
 
@@ -228,7 +229,8 @@ export function applyNoteLayout(
       }
 
       if (!url || !user || !pass) {
-        for (const tok of parts) {
+        for (let i = 0; i < parts.length; i++) {
+          const tok = parts[i]!
           if (!url) {
             const hp = parseHostPort(tok)
             if (hp) url = hp
@@ -238,6 +240,16 @@ export function applyNoteLayout(
             if (up) {
               user = up.user
               pass = up.pass
+            } else if (parts[i + 1] === ':' && parts[i + 2]) {
+              const spaced = parseUserPass(
+                `${tok}:${parts[i + 2]}`,
+                minUser,
+                minPass,
+              )
+              if (spaced) {
+                user = spaced.user
+                pass = spaced.pass
+              }
             }
           }
         }

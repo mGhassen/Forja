@@ -3,6 +3,8 @@ import {
   claimEligibleUnpromotedPortalIds,
   createCatalogAdminClient,
   getDeepRefPortalsForPromote,
+  insertScrapeRun,
+  patchScrapeRun,
   promoteDeepRefPortalRow,
 } from '@/server/iptv-catalog/supabase-admin'
 
@@ -13,8 +15,11 @@ const MAX_CHUNK = 50
 const MAX_LIMIT = 20_000
 const MAX_BATCHES = 4000
 
+export const PROMOTE_BACKFILL_SOURCE = 'promote-backfill'
+
 type BackfillData = {
   jobId?: string
+  runId?: string
   /** Cap how many eligible rows to promote this run. */
   limit?: number
   chunkSize?: number
@@ -32,9 +37,19 @@ function clampLimit(n: number | undefined): number {
   return Math.min(MAX_LIMIT, v)
 }
 
+async function markBackfillRun(runId: string, error?: string) {
+  const sb = createCatalogAdminClient()
+  await patchScrapeRun(sb, runId, {
+    status: 'error',
+    finished_at: new Date().toISOString(),
+    error: error ?? null,
+  })
+}
+
 /**
  * Ops recovery: promote stranded deep_ref_portals (portal_id null + canPromoteHit)
  * into iptv_portals. Claim-next from DB each step — never memoize id lists.
+ * Writes iptv_scrape_runs (source=promote-backfill) so Scrape / Deep refs show progress.
  */
 export const iptvPromoteBackfill = inngest.createFunction(
   {
@@ -44,12 +59,42 @@ export const iptvPromoteBackfill = inngest.createFunction(
     checkpointing: false,
     triggers: [{ event: 'iptv/catalog.promote-backfill' }],
     cancelOn: [{ event: 'iptv/catalog.promote-backfill.cancel' }],
+    onFailure: async ({ error }) => {
+      try {
+        const sb = createCatalogAdminClient()
+        const { data: rows } = await sb
+          .from('iptv_scrape_runs')
+          .select('id')
+          .eq('status', 'running')
+          .eq('source', PROMOTE_BACKFILL_SOURCE)
+          .order('started_at', { ascending: false })
+          .limit(1)
+        const id = rows?.[0]?.id
+        if (id) await markBackfillRun(id, error.message)
+      } catch {
+        // ignore
+      }
+    },
   },
   async ({ event, step }) => {
     const data = (event.data ?? {}) as BackfillData
     const jobId = String(data.jobId ?? crypto.randomUUID())
     const limit = clampLimit(data.limit)
     const chunkSize = clampChunk(data.chunkSize)
+
+    const runId = await step.run('create-backfill-run', async () => {
+      const sb = createCatalogAdminClient()
+      const existing = data.runId?.trim()
+      if (existing) {
+        const { data: row } = await sb
+          .from('iptv_scrape_runs')
+          .select('id')
+          .eq('id', existing)
+          .maybeSingle()
+        if (row?.id) return row.id as string
+      }
+      return insertScrapeRun(sb, PROMOTE_BACKFILL_SOURCE)
+    })
 
     let promoted = 0
     let wasExisting = 0
@@ -105,13 +150,37 @@ export const iptvPromoteBackfill = inngest.createFunction(
       wasExisting += n.wasExisting
       skipped += n.skipped
 
+      await step.run(`progress-promote-backfill-${i}`, async () => {
+        const sb = createCatalogAdminClient()
+        await patchScrapeRun(sb, runId, {
+          l1_extract_count: fetched,
+          candidates_upserted: promoted,
+          alive_count: wasExisting,
+          unparsed_count: skipped,
+        })
+      })
+
       if (n.fetched === 0 || n.done) break
 
       await step.sleep(`yield-promote-backfill-${i}`, '0s')
     }
 
+    await step.run('finalize-backfill-run', async () => {
+      const sb = createCatalogAdminClient()
+      await patchScrapeRun(sb, runId, {
+        status: 'ok',
+        finished_at: new Date().toISOString(),
+        l1_extract_count: fetched,
+        candidates_upserted: promoted,
+        alive_count: wasExisting,
+        unparsed_count: skipped,
+        error: null,
+      })
+    })
+
     return {
       jobId,
+      runId,
       limit,
       chunkSize,
       fetched,

@@ -41,9 +41,12 @@ import { runDurationLabel } from '@/lib/ops-overview'
 import {
   SCRAPE_RUNS_KEY,
   fetchScrapeRuns,
+  isPromoteBackfillRun,
   markRunsStoppedInCache,
   prependOptimisticRun,
   refreshScrapeRuns,
+  scrapeRunMetricChips,
+  scrapeSourceLabel,
   subscribeScrapeRuns,
   type ScrapeRunRow,
 } from '@/lib/scrape-runs'
@@ -277,41 +280,33 @@ export function AdminScrapePage() {
       <Panel tone="accent">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 space-y-3">
-            <PanelLabel>Current run</PanelLabel>
+            <PanelLabel>
+              {latest && isPromoteBackfillRun(latest)
+                ? 'Current backfill'
+                : 'Current run'}
+            </PanelLabel>
             {latest ? (
               <>
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge status={latest.status} />
                   <span className="text-xs text-forja-muted">
                     {formatAdminDateTime(latest.started_at)}
-                    {latest.source ? ` · ${latest.source}` : ''}
+                    {latest.source
+                      ? ` · ${scrapeSourceLabel(latest.source)}`
+                      : ''}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-9">
-                  <MetricChip label="New posts" value={latest.posts_seen} />
-                  <MetricChip label="Portals" value={latest.l1_extract_count} />
-                  <MetricChip label="Deep" value={latest.deep_ref_count} />
-                  <MetricChip
-                    label="L2 ok"
-                    value={latest.l2_fetch_ok}
-                  />
-                  <MetricChip
-                    label="L2 fail"
-                    value={latest.l2_fetch_fail}
-                  />
-                  <MetricChip
-                    label="L2 portals"
-                    value={latest.l2_extract_count}
-                  />
-                  <MetricChip
-                    label="Unparsed"
-                    value={latest.unparsed_count ?? 0}
-                  />
-                  <MetricChip
-                    label="Upserted"
-                    value={latest.candidates_upserted}
-                  />
-                  <MetricChip label="Alive" value={latest.alive_count} />
+                <div
+                  className={cn(
+                    'grid grid-cols-2 gap-2 sm:grid-cols-3',
+                    isPromoteBackfillRun(latest)
+                      ? 'lg:grid-cols-4'
+                      : 'lg:grid-cols-9',
+                  )}
+                >
+                  {scrapeRunMetricChips(latest).map((c) => (
+                    <MetricChip key={c.label} label={c.label} value={c.value} />
+                  ))}
                 </div>
                 <p className="text-xs text-forja-muted">
                   Duration {runDurationLabel(latest)}
@@ -579,8 +574,8 @@ export function AdminScrapePage() {
             <ExternalLink className="size-3.5" />
           </a>
           <p className="mt-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted">
-            iptv-catalog-scrape · scrape-reddit-page-* · fetch-paste-* ·
-            upsert-candidates-*
+            iptv-catalog-scrape · iptv-promote-backfill · scrape-reddit-page-* ·
+            fetch-paste-* · upsert-candidates-* · promote-backfill-*
           </p>
           {isInngestLocalUi ? (
             <pre className="mt-4 overflow-x-auto rounded-xl border border-forja-border bg-black/25 p-3 font-mono-ui text-[11px] text-forja-muted">
@@ -656,7 +651,7 @@ export function AdminScrapePage() {
                         'font-mono-ui text-xs text-forja-muted',
                       )}
                     >
-                      {r.source ?? '—'}
+                      {scrapeSourceLabel(r.source)}
                     </td>
                     <td className={tdClassName}>
                       <StatusBadge status={r.status} />
@@ -665,22 +660,26 @@ export function AdminScrapePage() {
                       {runDurationLabel(r)}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
-                      {r.posts_seen}
+                      {isPromoteBackfillRun(r) ? '—' : r.posts_seen}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
                       {r.l1_extract_count}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
-                      {r.deep_ref_count}
+                      {isPromoteBackfillRun(r) ? '—' : r.deep_ref_count}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
-                      {r.l2_fetch_ok}
+                      {isPromoteBackfillRun(r)
+                        ? '—'
+                        : r.l2_fetch_ok}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
-                      {r.l2_fetch_fail}
+                      {isPromoteBackfillRun(r)
+                        ? '—'
+                        : r.l2_fetch_fail}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
-                      {r.l2_extract_count}
+                      {isPromoteBackfillRun(r) ? '—' : r.l2_extract_count}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
                       {r.unparsed_count ?? 0}
@@ -689,7 +688,7 @@ export function AdminScrapePage() {
                       {r.candidates_upserted}
                     </td>
                     <td className={cn(tdClassName, 'tabular-nums')}>
-                      {r.alive_count}
+                      {isPromoteBackfillRun(r) ? '—' : r.alive_count}
                     </td>
                     <td
                       className={cn(

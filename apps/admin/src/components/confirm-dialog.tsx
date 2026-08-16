@@ -411,7 +411,8 @@ export function PromoteBackfillDialog({
           Upserts eligible deep-ref hits with{' '}
           <code className="font-mono-ui text-forja-text">portal_id</code> null
           into the pool (no paste re-fetch). Chunks of {BACKFILL_CHUNK} via
-          Inngest. Eligible pending:{' '}
+          Inngest — progress shows on this page and the Scrape runs table.
+          Eligible pending:{' '}
           <span className="font-semibold tabular-nums text-forja-text">
             {pendingLabel}
           </span>

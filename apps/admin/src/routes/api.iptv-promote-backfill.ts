@@ -12,6 +12,7 @@ function json(data: unknown, status = 200) {
 
 const MAX_LIMIT = 20_000
 const DEFAULT_CHUNK = 25
+const PROMOTE_BACKFILL_SOURCE = 'promote-backfill'
 
 export const Route = createFileRoute('/api/iptv-promote-backfill')({
   server: {
@@ -20,35 +21,67 @@ export const Route = createFileRoute('/api/iptv-promote-backfill')({
         try {
           const gate = await authedAdmin(request)
           if ('error' in gate && gate.error) return gate.error
+          const sb = gate.sb!
 
           const body = (await request.json().catch(() => ({}))) as {
             action?: 'start' | 'count' | 'cancel'
             limit?: number
             chunkSize?: number
             jobId?: string
+            runId?: string
           }
           const action = body.action ?? 'start'
 
           if (action === 'count') {
-            const sb = createCatalogAdminClient()
-            const pending = await countEligibleUnpromotedPortals(sb)
+            const pending = await countEligibleUnpromotedPortals(
+              createCatalogAdminClient(),
+            )
             return json({ ok: true, pending })
           }
 
           if (action === 'cancel') {
+            const patch = {
+              status: 'error',
+              finished_at: new Date().toISOString(),
+              error: 'Stop requested from admin',
+            }
+            if (body.runId) {
+              await sb
+                .from('iptv_scrape_runs')
+                .update(patch)
+                .eq('id', body.runId)
+                .eq('status', 'running')
+                .eq('source', PROMOTE_BACKFILL_SOURCE)
+            } else {
+              const { data: rows } = await sb
+                .from('iptv_scrape_runs')
+                .select('id')
+                .eq('status', 'running')
+                .eq('source', PROMOTE_BACKFILL_SOURCE)
+                .order('started_at', { ascending: false })
+                .limit(3)
+              for (const row of rows ?? []) {
+                await sb
+                  .from('iptv_scrape_runs')
+                  .update(patch)
+                  .eq('id', row.id)
+              }
+            }
+            let cancelledInngest = false
             try {
               await sendInngestEvent({
                 name: 'iptv/catalog.promote-backfill.cancel',
                 data: { jobId: body.jobId ?? null },
               })
-              return json({ ok: true, action: 'cancel', cancelledInngest: true })
+              cancelledInngest = true
             } catch {
-              return json({
-                ok: true,
-                action: 'cancel',
-                cancelledInngest: false,
-              })
+              // DB already closed; worker may still finish if Inngest is dead
             }
+            return json({
+              ok: true,
+              action: 'cancel',
+              cancelledInngest,
+            })
           }
 
           const limitRaw = Math.floor(Number(body.limit ?? MAX_LIMIT))
@@ -63,19 +96,53 @@ export const Route = createFileRoute('/api/iptv-promote-backfill')({
               : DEFAULT_CHUNK
 
           const jobId = crypto.randomUUID()
-          const { ids } = await sendInngestEvent({
-            name: 'iptv/catalog.promote-backfill',
-            data: { jobId, limit, chunkSize },
-          })
+          const { data: run, error: runErr } = await sb
+            .from('iptv_scrape_runs')
+            .insert({
+              status: 'running',
+              source: PROMOTE_BACKFILL_SOURCE,
+              posts_seen: 0,
+            })
+            .select('id, started_at, status, source')
+            .single()
+          if (runErr || !run?.id) {
+            return json(
+              {
+                error: runErr?.message ?? 'Failed to create backfill run',
+              },
+              500,
+            )
+          }
 
-          return json({
-            ok: true,
-            action: 'start',
-            jobId,
-            limit,
-            chunkSize,
-            ids,
-          })
+          try {
+            const { ids } = await sendInngestEvent({
+              name: 'iptv/catalog.promote-backfill',
+              data: { jobId, runId: run.id, limit, chunkSize },
+            })
+            return json({
+              ok: true,
+              action: 'start',
+              jobId,
+              runId: run.id,
+              run,
+              limit,
+              chunkSize,
+              ids,
+            })
+          } catch (e) {
+            await sb
+              .from('iptv_scrape_runs')
+              .update({
+                status: 'error',
+                finished_at: new Date().toISOString(),
+                error:
+                  e instanceof Error
+                    ? e.message
+                    : 'Failed to enqueue Inngest backfill',
+              })
+              .eq('id', run.id)
+            throw e
+          }
         } catch (error) {
           const message =
             error instanceof Error

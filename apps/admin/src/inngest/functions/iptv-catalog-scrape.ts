@@ -522,7 +522,7 @@ export const iptvCatalogScrape = inngest.createFunction(
   },
 )
 
-/** When Inngest cancels the scrape, close DB run so Pool UI unsticks. */
+/** When Inngest cancels scrape or backfill, close the matching DB run. */
 export const iptvCatalogScrapeCancelled = inngest.createFunction(
   {
     id: 'iptv-catalog-scrape-cancelled',
@@ -532,18 +532,25 @@ export const iptvCatalogScrapeCancelled = inngest.createFunction(
     const fnId = String(
       (event.data as { function_id?: string })?.function_id ?? '',
     )
-    if (!fnId.includes('iptv-catalog-scrape') || fnId.includes('cancelled')) {
+    const isBackfill =
+      fnId.includes('iptv-promote-backfill') && !fnId.includes('cancelled')
+    const isScrape =
+      fnId.includes('iptv-catalog-scrape') && !fnId.includes('cancelled')
+    if (!isBackfill && !isScrape) {
       return { skipped: true }
     }
     await step.run('mark-db-cancelled', async () => {
       const sb = createCatalogAdminClient()
       const { data: rows } = await sb
         .from('iptv_scrape_runs')
-        .select('id')
+        .select('id, source')
         .eq('status', 'running')
         .order('started_at', { ascending: false })
-        .limit(5)
+        .limit(8)
       for (const row of rows ?? []) {
+        const source = String(row.source ?? '')
+        const backfillRow = source === 'promote-backfill'
+        if (isBackfill !== backfillRow) continue
         await patchScrapeRun(sb, row.id as string, {
           status: 'error',
           finished_at: new Date().toISOString(),
