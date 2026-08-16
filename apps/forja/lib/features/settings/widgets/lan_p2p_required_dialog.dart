@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/navigation/shell_navigation_levels.dart';
+import 'package:forja/shared/tv/shell_tv_back_handler.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shell/shell_bus.dart';
 
@@ -22,6 +24,7 @@ class LanP2pRequiredDialog {
 
   static void dismiss({bool openLan = false}) {
     if (_entry == null) return;
+    if (openLan) ShellTvBackHandler.eatNextActivateUp();
     _entry?.remove();
     _entry = null;
     final c = _completer;
@@ -74,7 +77,13 @@ Future<void> showLanP2pRequiredDialog(
     neverPaired: neverPaired,
   );
   if (openLan != true) return;
-  ShellBus.openSettings(categoryId: SettingsCategoryId.lan);
+  if (ShellBus.playerSurfaceActive.value) {
+    ShellNavigationLevels.popRootRoute();
+  }
+  ShellBus.openSettings(
+    categoryId: SettingsCategoryId.lan,
+    enterDetail: true,
+  );
 }
 
 class _LanP2pRequiredDialog extends StatefulWidget {

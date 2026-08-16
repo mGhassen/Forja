@@ -5,6 +5,7 @@ import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -209,6 +210,16 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     final split = SettingsTokens.useSplitLayout(context);
     final selectedMeta = settingsCategoryById(widget.selectedId, visibility);
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (ShellBus.takeEnterSettingsDetail()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (tv) {
+          _enterDetail(widget.selectedId);
+        } else {
+          _focusSelectedCategory();
+        }
+      });
+    }
 
     if (split) {
       return TvFocusGraph(

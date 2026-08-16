@@ -110,12 +110,25 @@ class ShellBus {
   static final ValueNotifier<String?> requestSettingsCategory =
       ValueNotifier<String?>(null);
 
+  /// When true, the next Settings hub build should D-pad into the category pane.
+  static bool _enterSettingsDetail = false;
+
   /// Switch to Settings, optionally landing on [categoryId] in the split hub.
-  static void openSettings({String? categoryId}) {
+  ///
+  /// [enterDetail] (TV): after the tab shows, move focus into that category's
+  /// pane so leftover Select KeyUp cannot hit the nav rail.
+  static void openSettings({String? categoryId, bool enterDetail = false}) {
     if (categoryId != null) {
       requestSettingsCategory.value = categoryId;
     }
+    if (enterDetail) _enterSettingsDetail = true;
     requestTab.value = 'settings';
+  }
+
+  static bool takeEnterSettingsDetail() {
+    if (!_enterSettingsDetail) return false;
+    _enterSettingsDetail = false;
+    return true;
   }
 
   /// Mid-session profile switch: next navbar reload selects the profile default tab.
