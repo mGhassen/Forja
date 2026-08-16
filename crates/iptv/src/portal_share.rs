@@ -2,8 +2,6 @@
 //!
 //! Format: `F1.` + URL-safe base64 (no pad) of `iv[16] || aes-256-cbc-pkcs7(json)`.
 //! Key = SHA-256(`forja-iptv-share-embedded-v1`).
-//!
-//! Legacy 8-character codes still resolve via rentry on the host (not here).
 
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};

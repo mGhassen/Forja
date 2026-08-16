@@ -40,6 +40,10 @@
 
 Rentry outages made all IPTV share codes look “not found.” New shares are self-contained encrypted `F1.…` tokens (encrypt/decrypt only — no persistence). Legacy 8-character codes still fetch from rentry so existing codes are not orphaned.
 
+## Follow-up
+
+Rentry and 8-character import were removed. Copy and paste are `F1.` only (Rust encode/decode on the app; WebCrypto mirror on web/admin). Old `XXXX-XXXX` codes no longer resolve.
+
 ## Related
 
 - [IPTV — Xtream](../features/live/iptv-xtream.md)

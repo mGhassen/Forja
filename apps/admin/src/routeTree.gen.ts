@@ -25,7 +25,6 @@ import { Route as ApiIptvCatalogVerifyRouteImport } from './routes/api.iptv-cata
 import { Route as ApiIptvDeepRefReprocessRouteImport } from './routes/api.iptv-deep-ref-reprocess'
 import { Route as ApiIptvPasteBodyRouteImport } from './routes/api.iptv-paste-body'
 import { Route as ApiIptvPromoteBackfillRouteImport } from './routes/api.iptv-promote-backfill'
-import { Route as ApiIptvShareRouteImport } from './routes/api.iptv-share'
 import { Route as ApiR2DownloadStatsRouteImport } from './routes/api.r2-download-stats'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthLoginMfaRouteImport } from './routes/_auth/login.mfa'
@@ -108,11 +107,6 @@ const ApiIptvPromoteBackfillRoute = ApiIptvPromoteBackfillRouteImport.update({
   path: '/api/iptv-promote-backfill',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiIptvShareRoute = ApiIptvShareRouteImport.update({
-  id: '/api/iptv-share',
-  path: '/api/iptv-share',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiR2DownloadStatsRoute = ApiR2DownloadStatsRouteImport.update({
   id: '/api/r2-download-stats',
   path: '/api/r2-download-stats',
@@ -144,7 +138,6 @@ export interface FileRoutesByFullPath {
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
-  '/api/iptv-share': typeof ApiIptvShareRoute
   '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
@@ -164,7 +157,6 @@ export interface FileRoutesByTo {
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
-  '/api/iptv-share': typeof ApiIptvShareRoute
   '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
@@ -186,7 +178,6 @@ export interface FileRoutesById {
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
-  '/api/iptv-share': typeof ApiIptvShareRoute
   '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_ops/': typeof OpsIndexRoute
@@ -209,7 +200,6 @@ export interface FileRouteTypes {
     | '/api/iptv-deep-ref-reprocess'
     | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
-    | '/api/iptv-share'
     | '/api/r2-download-stats'
     | '/auth/callback'
     | '/login/mfa'
@@ -229,7 +219,6 @@ export interface FileRouteTypes {
     | '/api/iptv-deep-ref-reprocess'
     | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
-    | '/api/iptv-share'
     | '/api/r2-download-stats'
     | '/auth/callback'
     | '/login/mfa'
@@ -250,7 +239,6 @@ export interface FileRouteTypes {
     | '/api/iptv-deep-ref-reprocess'
     | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
-    | '/api/iptv-share'
     | '/api/r2-download-stats'
     | '/auth/callback'
     | '/_ops/'
@@ -266,7 +254,6 @@ export interface RootRouteChildren {
   ApiIptvDeepRefReprocessRoute: typeof ApiIptvDeepRefReprocessRoute
   ApiIptvPasteBodyRoute: typeof ApiIptvPasteBodyRoute
   ApiIptvPromoteBackfillRoute: typeof ApiIptvPromoteBackfillRoute
-  ApiIptvShareRoute: typeof ApiIptvShareRoute
   ApiR2DownloadStatsRoute: typeof ApiR2DownloadStatsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
@@ -385,13 +372,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIptvPromoteBackfillRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/iptv-share': {
-      id: '/api/iptv-share'
-      path: '/api/iptv-share'
-      fullPath: '/api/iptv-share'
-      preLoaderRoute: typeof ApiIptvShareRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/r2-download-stats': {
       id: '/api/r2-download-stats'
       path: '/api/r2-download-stats'
@@ -469,7 +449,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIptvDeepRefReprocessRoute: ApiIptvDeepRefReprocessRoute,
   ApiIptvPasteBodyRoute: ApiIptvPasteBodyRoute,
   ApiIptvPromoteBackfillRoute: ApiIptvPromoteBackfillRoute,
-  ApiIptvShareRoute: ApiIptvShareRoute,
   ApiR2DownloadStatsRoute: ApiR2DownloadStatsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }

@@ -240,7 +240,7 @@ export function IptvPortalActionRow({
                 <p className="text-[10px] font-semibold tracking-wider text-forja-muted">
                   SHARE CODE
                 </p>
-                <p className="mt-1 font-mono text-lg font-bold tracking-[0.18em] text-forja-green">
+                <p className="mt-1 break-all font-mono text-xs font-bold text-forja-green">
                   {shareCode}
                 </p>
               </>

@@ -50,7 +50,6 @@ class _PortalFormDialog extends StatefulWidget {
 }
 
 class _PortalFormDialogState extends State<_PortalFormDialog> {
-  static const _codeLen = IptvPortalShare.shareCodeLength;
   static const _portalDialogRowId = 'iptv-portal-dialog';
 
   bool get _tv => iptvUseTvFocus(context);
@@ -59,11 +58,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
 
   bool get _dense => _tv || _compact;
 
-  double get _codeBoxWidth => _tv ? 28.0 : (_compact ? 30.0 : 38.0);
-
   double get _codeBoxHeight => _tv ? 42.0 : (_compact ? 52.0 : 76.0);
-
-  double get _codeFontSize => _tv ? 17.0 : (_compact ? 20.0 : 26.0);
 
   late final TextEditingController _labelCtrl;
   late final TextEditingController _urlCtrl;
@@ -303,21 +298,6 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     super.dispose();
   }
 
-  String _joinedShareCode() {
-    final raw = _pasteCtrl.text.trim();
-    if (IptvPortalShare.isEmbeddedToken(raw)) return raw;
-    return IptvPortalShare.normalizeCode(raw);
-  }
-
-  bool get _pasteIsEmbedded =>
-      IptvPortalShare.isEmbeddedToken(_pasteCtrl.text.trim());
-
-  int get _activeCodeIndex {
-    final sel = _pasteCtrl.selection.baseOffset;
-    if (sel >= 0 && sel < _codeLen) return sel;
-    return _pasteCtrl.text.length.clamp(0, _codeLen - 1);
-  }
-
   void _onSharePasteChanged(String value) {
     if (_shareCodeError != null) {
       setState(() => _shareCodeError = null);
@@ -325,34 +305,15 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _lastImportedCode = null;
 
     final trimmed = value.trim();
-    // Embedded F1. token (paste) — keep base64 alphabet, do not force 8-char.
-    if (trimmed.startsWith(IptvPortalShare.embeddedPrefix) ||
-        trimmed.toUpperCase().startsWith('F1.')) {
-      final token = trimmed.startsWith(IptvPortalShare.embeddedPrefix)
-          ? trimmed
-          : 'F1.${trimmed.substring(3)}';
+    if (trimmed.toUpperCase().startsWith('F1.') &&
+        !trimmed.startsWith(IptvPortalShare.embeddedPrefix)) {
+      final token = 'F1.${trimmed.substring(3)}';
       if (token != value) {
         _pasteCtrl.value = TextEditingValue(
           text: token,
           selection: TextSelection.collapsed(offset: token.length),
         );
       }
-      setState(() {});
-      _tryAutoImportShareCode();
-      return;
-    }
-
-    final cleaned = value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    final clipped =
-        cleaned.length > _codeLen ? cleaned.substring(0, _codeLen) : cleaned;
-    if (clipped != value) {
-      _pasteCtrl.value = TextEditingValue(
-        text: clipped,
-        selection: TextSelection.collapsed(offset: clipped.length),
-      );
-      setState(() {});
-      _tryAutoImportShareCode();
-      return;
     }
     setState(() {});
     _tryAutoImportShareCode();
@@ -381,21 +342,10 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     }
   }
 
-  void _focusShareCodeCell(int index) {
-    _pasteFocus.requestFocus();
-    final offset = index.clamp(0, _pasteCtrl.text.length);
-    _pasteCtrl.selection = TextSelection.collapsed(offset: offset);
-    setState(() {});
-  }
-
   Future<void> _tryAutoImportShareCode() async {
-    final code = _joinedShareCode();
+    final code = _pasteCtrl.text.trim();
     if (_importingShareCode) return;
-    if (IptvPortalShare.isEmbeddedToken(code)) {
-      if (code.length < IptvPortalShare.embeddedPrefix.length + 16) return;
-    } else if (code.length != _codeLen) {
-      return;
-    }
+    if (!IptvPortalShare.isValidCode(code)) return;
     if (code == _lastImportedCode) return;
     await _importShareCode(code);
   }
@@ -414,9 +364,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       if (portal == null) {
         setState(() {
           _importingShareCode = false;
-          _shareCodeError = IptvPortalShare.isEmbeddedToken(code)
-              ? 'Share code invalid'
-              : 'Share code not found or invalid';
+          _shareCodeError = 'Share code invalid';
         });
         return;
       }
@@ -433,14 +381,11 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         if (!mounted) return;
         _labelFocus.requestFocus();
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-      final msg = e.toString().toLowerCase();
       setState(() {
         _importingShareCode = false;
-        _shareCodeError = msg.contains('unavailable')
-            ? 'Share service temporarily unavailable — try again later'
-            : 'Could not load share code';
+        _shareCodeError = 'Could not load share code';
       });
     }
   }
@@ -692,7 +637,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     final gapBetweenFields = _tv ? 14.0 : (_compact ? 18.0 : 28.0);
     final gapBeforeManual = _tv ? 14.0 : (_compact ? 18.0 : 28.0);
     final gapBeforeActions = _tv ? 10.0 : (_compact ? 12.0 : 20.0);
-    // Collapsed: room to vertically center "Share code" + code boxes as one block.
+    // Collapsed: room to vertically center "Share code" + paste field as one block.
     final collapsedBodyHeight = _tv ? 152.0 : (_compact ? 172.0 : 196.0);
     final surfacePadding = _tv
         ? const EdgeInsets.fromLTRB(14, 12, 10, 14)
@@ -1190,7 +1135,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }
 
   Widget _shareCodeSection() {
-    final embedded = _pasteIsEmbedded;
+    final token = _pasteCtrl.text.trim();
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1199,49 +1144,25 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
           height: _codeBoxHeight,
           child: Stack(
             children: [
-              if (embedded)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Text(
-                      _pasteCtrl.text.trim(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.jetBrainsMono(
-                        color: IptvShellStyle.accent,
-                        fontSize: _tv ? 11 : (_compact ? 12 : 13),
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.4,
-                      ),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    token.isEmpty ? 'Paste F1. token' : token,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.jetBrainsMono(
+                      color: token.isEmpty
+                          ? IptvShellStyle.textSecondary
+                          : IptvShellStyle.accent,
+                      fontSize: _tv ? 11 : (_compact ? 12 : 13),
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.4,
                     ),
                   ),
-                )
-              else
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    for (var i = 0; i < 4; i++) ...[
-                      if (i > 0) const SizedBox(width: 6),
-                      _shareCodeCell(i),
-                    ],
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(
-                        '-',
-                        style: GoogleFonts.jetBrainsMono(
-                          color: Colors.white.withValues(alpha: 0.35),
-                          fontSize: _tv ? 14 : (_compact ? 16 : 22),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    for (var i = 4; i < 8; i++) ...[
-                      if (i > 4) const SizedBox(width: 6),
-                      _shareCodeCell(i),
-                    ],
-                  ],
                 ),
+              ),
               Positioned.fill(
                 child: TextField(
                   controller: _pasteCtrl,
@@ -1250,11 +1171,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                   readOnly: iptvUseTvFocus(context) && !_pasteEditing,
                   enableInteractiveSelection:
                       !iptvUseTvFocus(context) || _pasteEditing,
-                  maxLength: embedded ? 512 : _codeLen,
                   textAlign: TextAlign.center,
-                  textCapitalization: embedded
-                      ? TextCapitalization.none
-                      : TextCapitalization.characters,
+                  textCapitalization: TextCapitalization.none,
                   autocorrect: false,
                   enableSuggestions: false,
                   keyboardType: TextInputType.visiblePassword,
@@ -1314,39 +1232,6 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
           ),
         ],
       ],
-    );
-  }
-
-  Widget _shareCodeCell(int index) {
-    final text = index < _pasteCtrl.text.length ? _pasteCtrl.text[index] : '';
-    final pasteFocused = _pasteFocus.hasFocus;
-    final active = pasteFocused && index == _activeCodeIndex;
-    final borderColor = iptvDialogFieldBorderColor(focused: pasteFocused);
-    return GestureDetector(
-      onTap: () => _focusShareCodeCell(index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        width: _codeBoxWidth,
-        height: _codeBoxHeight,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: active ? 0.08 : 0.05),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: borderColor,
-            width: pasteFocused ? 1.5 : 1,
-          ),
-        ),
-        child: Text(
-          text,
-          style: GoogleFonts.jetBrainsMono(
-            color: IptvShellStyle.textPrimary,
-            fontSize: _codeFontSize,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ),
     );
   }
 

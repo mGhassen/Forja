@@ -893,12 +893,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.jetBrainsMono(
             color: IptvShellStyle.accent,
-            fontSize: IptvPortalShare.isEmbeddedToken(_shareCode ?? '')
-                ? 12
-                : 18,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
-            letterSpacing:
-                IptvPortalShare.isEmbeddedToken(_shareCode ?? '') ? 0.4 : 2,
+            letterSpacing: 0.4,
           ),
         ),
       ],

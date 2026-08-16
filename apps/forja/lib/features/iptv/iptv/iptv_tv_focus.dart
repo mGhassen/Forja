@@ -104,10 +104,6 @@ BoxDecoration iptvFocusButtonDecoration({
   );
 }
 
-/// Border colors for IPTV share-code cells (boxed OTP style).
-Color iptvDialogFieldBorderColor({required bool focused}) =>
-    Colors.white.withValues(alpha: focused ? 0.35 : 0.12);
-
 /// Underline field chrome for portal URL / username / password (not card outlines).
 InputDecoration iptvDialogFieldDecoration({
   required bool focused,
