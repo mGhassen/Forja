@@ -38,6 +38,7 @@ class ForjaButton extends StatefulWidget {
     this.height = 44,
     this.autofocus = false,
     this.focusNode,
+    this.activateOnKeyUp = false,
   });
 
   /// Brand-green affirmative action.
@@ -51,6 +52,7 @@ class ForjaButton extends StatefulWidget {
     this.height = 44,
     this.autofocus = false,
     this.focusNode,
+    this.activateOnKeyUp = false,
   }) : variant = ForjaButtonVariant.primary;
 
   /// Red destructive action.
@@ -64,6 +66,7 @@ class ForjaButton extends StatefulWidget {
     this.height = 44,
     this.autofocus = false,
     this.focusNode,
+    this.activateOnKeyUp = false,
   }) : variant = ForjaButtonVariant.destructive;
 
   final String label;
@@ -79,6 +82,11 @@ class ForjaButton extends StatefulWidget {
   final bool autofocus;
   final FocusNode? focusNode;
 
+  /// TV: fire [onPressed] on Select KeyUp. KeyDown only arms, so a leftover
+  /// KeyUp from the control that opened this overlay cannot activate it, and
+  /// tearing down the overlay cannot deliver that KeyUp to the nav rail.
+  final bool activateOnKeyUp;
+
   @override
   State<ForjaButton> createState() => _ForjaButtonState();
 }
@@ -86,6 +94,7 @@ class ForjaButton extends StatefulWidget {
 class _ForjaButtonState extends State<ForjaButton> {
   bool _hovered = false;
   bool _focused = false;
+  bool _activateArmed = false;
 
   static const BorderRadius _radius = BorderRadius.all(Radius.circular(8));
 
@@ -168,7 +177,13 @@ class _ForjaButtonState extends State<ForjaButton> {
       borderRadius: _radius,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: enabled ? widget.onPressed : null,
+        onTap: !enabled
+            ? null
+            : () {
+                // D-pad Select often synthesizes a click after KeyDown.
+                if (widget.activateOnKeyUp && _activateArmed) return;
+                widget.onPressed!();
+              },
         onHover: (v) => setState(() => _hovered = v),
         onFocusChange: ownFocus ? null : (v) => setState(() => _focused = v),
         // TV / linear menus: parent [Focus] owns the node so D-pad does not
@@ -235,7 +250,19 @@ class _ForjaButtonState extends State<ForjaButton> {
             return KeyEventResult.handled;
           }
         }
-        if (enabled && shellTvIsActivateKey(event)) {
+        if (enabled && widget.activateOnKeyUp) {
+          if (shellTvIsActivateKey(event)) {
+            _activateArmed = true;
+            return KeyEventResult.handled;
+          }
+          if (shellTvIsActivateKeyUp(event)) {
+            if (_activateArmed) {
+              _activateArmed = false;
+              widget.onPressed!();
+            }
+            return KeyEventResult.handled;
+          }
+        } else if (enabled && shellTvIsActivateKey(event)) {
           widget.onPressed!();
           return KeyEventResult.handled;
         }
