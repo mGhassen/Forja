@@ -415,3 +415,14 @@ export async function rollupYesterday(): Promise<{
   const { view } = await rollupDaysFromCf({ fromDay: day, toDay: day })
   return { day, view }
 }
+
+/** GET catch-up after the 10:00 UTC job — skip if CF day likely incomplete. */
+export function missingYesterdayAfterCronHour(
+  rollup: DownloadsRollup,
+  now = new Date(),
+): boolean {
+  if (now.getUTCHours() < 10) return false
+  const yesterday = new Date(now)
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+  return !rollup.days[utcDayString(yesterday)]
+}

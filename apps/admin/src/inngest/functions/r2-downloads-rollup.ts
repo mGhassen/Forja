@@ -6,8 +6,8 @@ import {
 } from '@/server/r2-download-stats'
 
 /**
- * Daily 01:15 UTC: CF GraphQL GetObject for yesterday → R2 stats/downloads.json.
- * Manual: event `r2/downloads.rollup` (same — yesterday only).
+ * 10:00 UTC + noon catch-up: CF GraphQL GetObject for yesterday → R2.
+ * 01:15 was too early — CF analytics often incomplete. Manual: `r2/downloads.rollup`.
  */
 export const r2DownloadsRollup = inngest.createFunction(
   {
@@ -15,7 +15,11 @@ export const r2DownloadsRollup = inngest.createFunction(
     concurrency: { limit: 1 },
     retries: 2,
     checkpointing: false,
-    triggers: [{ cron: '15 1 * * *' }, { event: 'r2/downloads.rollup' }],
+    triggers: [
+      { cron: '0 10 * * *' },
+      { cron: '0 12 * * *' },
+      { event: 'r2/downloads.rollup' },
+    ],
   },
   async ({ step }) => {
     return step.run('rollup-yesterday', async () => rollupYesterday())

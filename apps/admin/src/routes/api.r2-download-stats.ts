@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { authedAdmin } from '@/server/admin-request'
 import {
+  missingYesterdayAfterCronHour,
   readDownloadsRollup,
   rollupDaysFromCf,
   rollupToView,
@@ -17,6 +18,14 @@ export const Route = createFileRoute('/api/r2-download-stats')({
 
         try {
           const rollup = await readDownloadsRollup()
+          if (missingYesterdayAfterCronHour(rollup)) {
+            try {
+              const result = await rollupYesterday()
+              return Response.json(result.view)
+            } catch {
+              // Cron miss + CF/R2 blip — still show what we have.
+            }
+          }
           return Response.json(rollupToView(rollup))
         } catch (e) {
           const message = e instanceof Error ? e.message : 'R2 stats failed'

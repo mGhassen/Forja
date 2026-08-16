@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **3 / 3** components · **4 / 5** acceptance |
-| **Current slice** | Daily Inngest → `stats/downloads.json` · admin reads rollup |
+| **Current slice** | Inngest 10:00 + 12:00 UTC · GET fills yesterday if cron missed |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -40,9 +40,11 @@
 ## Summary
 
 ```
-CF Analytics (~31d) → Inngest daily → R2 stats/downloads.json (forever)
-Admin UI ← S3 GET that JSON (CDN only if no S3 keys — edge can stale after overwrite)
+CF Analytics (~31d) → Inngest 10:00 UTC + 12:00 catch-up → R2 stats/downloads.json
+Admin GET ← S3 JSON; if yesterday missing after 10:00 UTC, roll up inline once
 ```
+
+01:15 UTC was too early — CF GraphQL GetObject for yesterday is often empty/partial. Manual “Roll up yesterday” stays as a force refresh.
 
 ### File shape (`stats/downloads.json`)
 
