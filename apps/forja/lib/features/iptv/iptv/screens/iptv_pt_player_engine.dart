@@ -1094,7 +1094,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (since == null) return false;
     if (_playheadRecentlyMoved) return false;
     return DateTime.now().difference(since) >=
-        _IptvPtPlayerScreenState._bufferingHardWall;
+        _IptvPtPlayerScreenState._bufferingHardWallDuration;
   }
 
   /// Sustained underrun / freeze without playhead — treat as dead for stall mode.

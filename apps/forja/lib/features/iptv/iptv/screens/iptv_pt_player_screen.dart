@@ -442,7 +442,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
   /// Continuous Buffering with a frozen playhead this long ⇒ dead, even if
   /// Stable still reports cache/feed. Same as detector 1 mid-stream grace.
-  static const Duration _bufferingHardWall = Duration(seconds: 12);
+  static const Duration _bufferingHardWallDuration = Duration(seconds: 12);
 
   /// Tunables ask for ~30 s readahead. Anything far above that is almost
   /// always a live PTS discontinuity (mpv reports multi-hour "cache"), not
