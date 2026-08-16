@@ -37,7 +37,7 @@ When you play a torrent or magnet link, Forja uses the built-in torrent engine (
 - Closing Sources to pick a torrent does not abort the magnet resolve that is about to start
 - Closing a torrent or switching titles deletes that download; leftover files stay under the disk cache cap
 - [Debrid](../sources/debrid.md) avoids slow swarms when the torrent is already cached remotely
-- On Android TV, Sources lists torrents without pairing; playing a magnet — including switching torrents in the player — needs a paired desktop in [LAN](../settings/lan.md) (dialog if unpaired or desktop offline; cancel stays on Sources and does not start P2P on the TV). **Back** closes that dialog and stays in the player. Direct HTTP Stremio/Nuvio still play on the TV. Phones can play magnets locally, or via the desktop when paired.
+- On Android TV, Sources lists torrents without pairing; playing a magnet — including switching torrents in the player — needs a paired desktop in [LAN](../settings/lan.md) (dialog in front of Sources if unpaired or desktop offline; cancel stays on Sources and does not start P2P on the TV). **Back** closes that dialog and stays in the player. Direct HTTP Stremio/Nuvio still play on the TV. Phones can play magnets locally, or via the desktop when paired.
 
 ## Related
 

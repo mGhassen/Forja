@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/features/settings/widgets/lan_p2p_required_dialog.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
@@ -20,7 +21,8 @@ bool _anyPlayerMenuOpen() {
       PlayerHubEpisodePanel.isShowing ||
       PlayerSourcesPanel.isShowing ||
       PlayerTorrentFilePanel.isShowing ||
-      PlayerSubtitleSettingsDialog.isShowing;
+      PlayerSubtitleSettingsDialog.isShowing ||
+      LanP2pRequiredDialog.isShowing;
 }
 
 bool _focusInPlayerTvMenu(FocusNode node) {

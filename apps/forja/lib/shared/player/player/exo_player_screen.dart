@@ -20,6 +20,7 @@ import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
+import 'package:forja/features/settings/widgets/lan_p2p_required_dialog.dart';
 import 'package:forja/shared/player/controls/player_server_stream_dialog.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
@@ -1300,6 +1301,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     PlayerServerStreamDialog.dismiss();
     PlayerSubtitleDialog.dismiss();
     PlayerSubtitleSettingsDialog.dismissIfShowing();
+    LanP2pRequiredDialog.dismissIfShowing();
     _playFocus.dispose();
     _rewindFocus.dispose();
     _forwardFocus.dispose();

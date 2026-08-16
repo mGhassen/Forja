@@ -57,6 +57,7 @@ import 'package:forja/shared/player/controls/player_torrent_stats_card.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_episode_loading_card.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
+import 'package:forja/features/settings/widgets/lan_p2p_required_dialog.dart';
 import 'package:forja/shared/player/controls/player_subtitle_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
@@ -396,6 +397,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
     _torrentStatsSub?.cancel();
     PlayerSubtitleSettingsDialog.dismissIfShowing();
+    LanP2pRequiredDialog.dismissIfShowing();
     PlayerTorrentFilePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     playerMenuClearReturnFocus();

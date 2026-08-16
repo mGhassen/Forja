@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/features/settings/widgets/lan_p2p_required_dialog.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_menu_return_focus.dart';
@@ -125,6 +126,9 @@ Widget playerSidePanelTvScope({
 /// For [PlayerPopupPanel] drill-ins (Settings → Speed, subtitle language, …),
 /// pops one layer (back to parent) instead of closing the whole stack.
 bool dismissAnyPlayerChromeOverlay() {
+  if (LanP2pRequiredDialog.dismissIfShowing()) {
+    return true;
+  }
   if (SourcesPanelTv.dismissFiltersIfOpen()) {
     return true;
   }
@@ -176,7 +180,8 @@ bool playerChromeOverlayBlocksSeek() {
       PlayerHubEpisodePanel.isShowing ||
       PlayerSourcesPanel.isShowing ||
       PlayerTorrentFilePanel.isShowing ||
-      PlayerSubtitleSettingsDialog.isShowing;
+      PlayerSubtitleSettingsDialog.isShowing ||
+      LanP2pRequiredDialog.isShowing;
 }
 
 /// True while a menu/panel owns the remote - do not steal focus back to Play.

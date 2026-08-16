@@ -49,6 +49,7 @@ import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
+import 'package:forja/features/settings/widgets/lan_p2p_required_dialog.dart';
 import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
@@ -494,6 +495,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     _trackAutoSelectTimer?.cancel();
     _trackAutoSelectTimer = null;
     PlayerSubtitleSettingsDialog.dismissIfShowing();
+    LanP2pRequiredDialog.dismissIfShowing();
     PlayerTorrentFilePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     playerMenuClearReturnFocus();
