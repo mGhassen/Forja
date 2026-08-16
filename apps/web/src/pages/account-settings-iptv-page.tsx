@@ -397,7 +397,7 @@ export function AccountSettingsIptvPage() {
       const code = await createPortalShare(portal)
       const formatted = formatShareCode(code)
       try {
-        await navigator.clipboard.writeText(code)
+        await navigator.clipboard.writeText(formatted)
       } catch {
         // Still show the code if clipboard permission is denied.
       }
@@ -675,7 +675,7 @@ export function AccountSettingsIptvPage() {
                             <p className="text-[10px] font-semibold tracking-wider text-forja-muted">
                               SHARE CODE
                             </p>
-                            <p className="mt-1 break-all font-mono text-xs font-bold text-forja-green">
+                            <p className="mt-1 font-mono text-lg font-bold tracking-[0.18em] text-forja-green">
                               {shownCode}
                             </p>
                           </>

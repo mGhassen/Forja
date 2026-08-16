@@ -228,7 +228,7 @@ Supabase `service_role` / `sb_secret_…` key in a desktop build.
 - **Cloud is master for portal assignments.** The device IPTV list is a cache. An empty local cache never deletes cloud portals (profile switch / sign-out wipe). Only deleting portals in the UI (or an intentional clear-all) updates cloud.
 - **Cloud is master for `profile_settings` too.** The device settings file is a cache of the active profile’s cloud row. Edits write the cache and push; wipe / pull / defaults never upload an empty or partial cache over Stremio, Nuvio, or navigation already in cloud. A **failed** pull (network / expired token) keeps the local cache and does **not** seed platform defaults or push — only a confirmed missing cloud row seeds a new profile. Debounced edits push only that domain (a playback toggle does not rewrite Features / default tab).
 - Cloud settings never store M3U playlists, M3U channel lists, or My List — those stay on each device. Playback prefs (including play sources and preferred subtitle language) sync in full.
-- Portal **share codes** are a peer handoff: self-contained encrypted `F1.…` tokens (no server). They are not stored in your sync payload.
+- Portal **share codes** are a peer handoff: copy gives an 8-character `XXXX-XXXX` code. Credentials are encrypted on the device; the short code is a lookup (not stored in your sync payload).
 - Each account always keeps at least one profile. Deleting a profile also deletes its remote settings.
 - Profile selection is local to each device; profile settings remain remote and account-owned.
 - Per-domain merge by timestamp is still evolving — sign in after web edits to refresh the app.

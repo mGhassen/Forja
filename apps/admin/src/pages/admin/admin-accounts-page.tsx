@@ -158,7 +158,7 @@ function AccountPortals({
       })
       const formatted = formatShareCode(code)
       try {
-        await navigator.clipboard.writeText(code)
+        await navigator.clipboard.writeText(formatted)
       } catch {
         // still show code if clipboard denied
       }

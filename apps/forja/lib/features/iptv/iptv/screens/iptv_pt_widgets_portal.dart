@@ -541,12 +541,12 @@ class _PortalCard extends StatelessWidget {
                       try {
                         final code =
                             await IptvPortalShare.createShare(v.portal);
-                        await Clipboard.setData(ClipboardData(text: code));
-                        final preview = code.length > 24
-                            ? '${code.substring(0, 20)}…'
-                            : code;
+                        final formatted = IptvPortalShare.formatCode(code);
+                        await Clipboard.setData(
+                          ClipboardData(text: formatted),
+                        );
                         ForjaToast.success(
-                          'Share code copied: $preview',
+                          'Share code copied: $formatted',
                           duration: const Duration(seconds: 3),
                         );
                       } catch (_) {

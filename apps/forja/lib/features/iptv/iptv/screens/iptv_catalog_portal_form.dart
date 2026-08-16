@@ -58,6 +58,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
 
   bool get _dense => _tv || _compact;
 
+  static const _codeLen = IptvPortalShare.shareCodeLength;
+
+  double get _codeBoxWidth => _tv ? 28.0 : (_compact ? 30.0 : 38.0);
+
+  double get _codeBoxHeight => _tv ? 42.0 : (_compact ? 52.0 : 76.0);
+
+  double get _codeFontSize => _tv ? 17.0 : (_compact ? 20.0 : 26.0);
+
   late final TextEditingController _labelCtrl;
   late final TextEditingController _urlCtrl;
   late final TextEditingController _userCtrl;
@@ -73,6 +81,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   late final FocusNode _expandFocus;
   late final FocusNode _submitFocus;
   late final FocusNode _cancelFocus;
+  late final List<FocusNode> _platformTabFocus;
   FocusOnKeyEventCallback? _pasteKeyHandler;
   bool _obscurePassword = true;
   bool _importingShareCode = false;
@@ -144,6 +153,11 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _expandFocus = FocusNode(debugLabel: 'iptv-portal-expand');
     _submitFocus = FocusNode(debugLabel: 'iptv-portal-submit');
     _cancelFocus = FocusNode(debugLabel: 'iptv-portal-cancel');
+    _platformTabFocus = [
+      FocusNode(debugLabel: 'iptv-portal-tab-xtream'),
+      FocusNode(debugLabel: 'iptv-portal-tab-m3u'),
+      FocusNode(debugLabel: 'iptv-portal-tab-stalker'),
+    ];
     if (_editing) _showManualForm = true;
     _pasteKeyHandler = _pasteFocus.onKeyEvent;
     _pasteFocus.onKeyEvent = _handlePasteKey;
@@ -161,7 +175,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       _registerPasteTvNode();
       if (iptvUseTvFocus(context)) {
         if (_editing) {
-          _labelFocus.requestFocus();
+          _focusSelectedPlatformTab();
         } else {
           _focusDialogItem(1);
         }
@@ -206,72 +220,79 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     return _pasteKeyHandler?.call(node, event) ?? KeyEventResult.ignored;
   }
 
-  int get _dialogTvItemCount {
-    if (_namingImported) return 3;
-    if (_editing) return 6;
-    if (_showManualForm) return 8;
-    return 2;
+  static const _kPlatformTabs = <(IptvPortalPlatform, String)>[
+    (IptvPortalPlatform.xtream, 'Xtream'),
+    (IptvPortalPlatform.m3u, 'M3U'),
+    (IptvPortalPlatform.stalker, 'Stalker'),
+  ];
+
+  int get _platformTabIndex => switch (_platform) {
+        IptvPortalPlatform.xtream => 0,
+        IptvPortalPlatform.m3u => 1,
+        IptvPortalPlatform.stalker => 2,
+      };
+
+  List<FocusNode> get _credentialFocusNodes =>
+      _platform == IptvPortalPlatform.m3u
+          ? [_uaFocus]
+          : [_userFocus, _passFocus];
+
+  List<FocusNode> get _dialogFocusChain {
+    if (_namingImported) {
+      return [_labelFocus, _submitFocus, _cancelFocus];
+    }
+    if (_editing) {
+      return [
+        ..._platformTabFocus,
+        _labelFocus,
+        _urlFocus,
+        ..._credentialFocusNodes,
+        _submitFocus,
+        _cancelFocus,
+      ];
+    }
+    if (_showManualForm) {
+      return [
+        _pasteFocus,
+        _expandFocus,
+        ..._platformTabFocus,
+        _labelFocus,
+        _urlFocus,
+        ..._credentialFocusNodes,
+        _submitFocus,
+        _cancelFocus,
+      ];
+    }
+    return [_pasteFocus, _expandFocus];
   }
 
-  int get _dialogOkIndex {
-    if (_namingImported) return 1;
-    if (_editing) return 4;
-    return _showManualForm ? 6 : 2;
-  }
+  int get _dialogTvItemCount => _dialogFocusChain.length;
 
-  int get _dialogCancelIndex {
-    if (_namingImported) return 2;
-    if (_editing) return 5;
-    return _showManualForm ? 7 : 3;
+  int _indexOfNode(FocusNode node) => _dialogFocusChain.indexOf(node);
+
+  int get _dialogOkIndex => _indexOfNode(_submitFocus);
+
+  int get _dialogCancelIndex => _indexOfNode(_cancelFocus);
+
+  int get _lastFieldIndex {
+    final submit = _dialogOkIndex;
+    return submit > 0 ? submit - 1 : 0;
   }
 
   void _focusDialogItem(int index) {
     if (!mounted || !iptvUseTvFocus(context)) return;
-    final clamped = index.clamp(0, _dialogTvItemCount - 1);
-    if (_namingImported) {
-      final nodes = [_labelFocus, _submitFocus, _cancelFocus];
-      nodes[clamped].requestFocus();
-      return;
-    }
-    if (_editing) {
-      final nodes = [
-        _labelFocus,
-        _urlFocus,
-        _userFocus,
-        _passFocus,
-        _submitFocus,
-        _cancelFocus,
-      ];
-      nodes[clamped].requestFocus();
-      return;
-    }
-    if (!_showManualForm) {
-      switch (clamped) {
-        case 0:
-          _pasteFocus.requestFocus();
-        default:
-          _expandFocus.requestFocus();
-      }
-      return;
-    }
-    switch (clamped) {
-      case 0:
-        _pasteFocus.requestFocus();
-      case 1:
-        _expandFocus.requestFocus();
-      case 2:
-        _labelFocus.requestFocus();
-      case 3:
-        _urlFocus.requestFocus();
-      case 4:
-        _userFocus.requestFocus();
-      case 5:
-        _passFocus.requestFocus();
-      case 6:
-        _submitFocus.requestFocus();
-      default:
-        _cancelFocus.requestFocus();
-    }
+    final nodes = _dialogFocusChain;
+    if (nodes.isEmpty) return;
+    nodes[index.clamp(0, nodes.length - 1)].requestFocus();
+  }
+
+  void _focusSelectedPlatformTab() {
+    _platformTabFocus[_platformTabIndex].requestFocus();
+  }
+
+  void _selectPlatform(IptvPortalPlatform platform) {
+    if (_platform == platform) return;
+    setState(() => _platform = platform);
   }
 
   @override
@@ -293,7 +314,25 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _expandFocus.dispose();
     _submitFocus.dispose();
     _cancelFocus.dispose();
+    for (final node in _platformTabFocus) {
+      node.dispose();
+    }
     super.dispose();
+  }
+
+  String _joinedShareCode() {
+    final raw = _pasteCtrl.text.trim();
+    if (IptvPortalShare.isEmbeddedToken(raw)) return raw;
+    return IptvPortalShare.normalizeCode(raw);
+  }
+
+  bool get _pasteIsEmbedded =>
+      IptvPortalShare.isEmbeddedToken(_pasteCtrl.text.trim());
+
+  int get _activeCodeIndex {
+    final sel = _pasteCtrl.selection.baseOffset;
+    if (sel >= 0 && sel < _codeLen) return sel;
+    return _pasteCtrl.text.length.clamp(0, _codeLen - 1);
   }
 
   void _onSharePasteChanged(String value) {
@@ -302,16 +341,34 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     }
     _lastImportedCode = null;
 
-    var next = value.replaceAll(RegExp(r'\s+'), '');
-    if (next.toUpperCase().startsWith('F1.') &&
-        !next.startsWith(IptvPortalShare.embeddedPrefix)) {
-      next = 'F1.${next.substring(3)}';
+    final trimmed = value.replaceAll(RegExp(r'\s+'), '');
+    if (trimmed.startsWith(IptvPortalShare.embeddedPrefix) ||
+        trimmed.toUpperCase().startsWith('F1.')) {
+      final token = trimmed.startsWith(IptvPortalShare.embeddedPrefix)
+          ? trimmed
+          : 'F1.${trimmed.substring(3)}';
+      if (token != value) {
+        _pasteCtrl.value = TextEditingValue(
+          text: token,
+          selection: TextSelection.collapsed(offset: token.length),
+        );
+      }
+      setState(() {});
+      _tryAutoImportShareCode();
+      return;
     }
-    if (next != value) {
+
+    final cleaned = trimmed.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    final clipped =
+        cleaned.length > _codeLen ? cleaned.substring(0, _codeLen) : cleaned;
+    if (clipped != value) {
       _pasteCtrl.value = TextEditingValue(
-        text: next,
-        selection: TextSelection.collapsed(offset: next.length),
+        text: clipped,
+        selection: TextSelection.collapsed(offset: clipped.length),
       );
+      setState(() {});
+      _tryAutoImportShareCode();
+      return;
     }
     setState(() {});
     _tryAutoImportShareCode();
@@ -324,7 +381,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     if (opening) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && iptvUseTvFocus(context)) {
-          _focusDialogItem(2);
+          _focusSelectedPlatformTab();
         } else if (mounted) {
           _labelFocus.requestFocus();
         }
@@ -340,10 +397,21 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     }
   }
 
+  void _focusShareCodeCell(int index) {
+    _pasteFocus.requestFocus();
+    final offset = index.clamp(0, _pasteCtrl.text.length);
+    _pasteCtrl.selection = TextSelection.collapsed(offset: offset);
+    setState(() {});
+  }
+
   Future<void> _tryAutoImportShareCode() async {
-    final code = _pasteCtrl.text.trim();
+    final code = _joinedShareCode();
     if (_importingShareCode) return;
-    if (!IptvPortalShare.isValidCode(code)) return;
+    if (IptvPortalShare.isEmbeddedToken(code)) {
+      if (code.length < IptvPortalShare.embeddedPrefix.length + 16) return;
+    } else if (code.length != _codeLen) {
+      return;
+    }
     if (code == _lastImportedCode) return;
     await _importShareCode(code);
   }
@@ -362,7 +430,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       if (portal == null) {
         setState(() {
           _importingShareCode = false;
-          _shareCodeError = 'Share code invalid';
+          _shareCodeError = IptvPortalShare.isEmbeddedToken(code)
+              ? 'Share code invalid'
+              : 'Share code not found or invalid';
         });
         return;
       }
@@ -379,11 +449,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         if (!mounted) return;
         _labelFocus.requestFocus();
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+      final msg = e.toString().toLowerCase();
       setState(() {
         _importingShareCode = false;
-        _shareCodeError = 'Could not load share code';
+        _shareCodeError = msg.contains('unavailable')
+            ? 'Share service temporarily unavailable — try again later'
+            : 'Could not load share code';
       });
     }
   }
@@ -593,29 +666,41 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     required int tvItemIndex,
   }) {
     final tv = iptvUseTvFocus(context);
+    final focused = tv && focusNode.hasFocus;
     final child = Tooltip(
       message: tooltip,
-      child: Icon(icon, color: color, size: _tv ? 22 : 24),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.all(6),
+        decoration: iptvFocusButtonDecoration(
+          active: false,
+          tvFocused: focused,
+          borderRadius: 8,
+          idleBg: Colors.transparent,
+          idleBorder: Colors.transparent,
+          subtle: true,
+        ),
+        child: Icon(icon, color: color, size: _tv ? 22 : 24),
+      ),
     );
     return iptvTap(
       context: context,
       onTap: onTap,
       borderRadius: 8,
+      scaleOnFocus: 1,
       focusNode: focusNode,
-      tvRowId: 'iptv-portal-dialog',
+      tvRowId: _portalDialogRowId,
       tvItemIndex: tvItemIndex,
-      onUpEdge: () => _focusDialogItem(tvItemIndex - 1),
-      onDownEdge: () => _focusDialogItem(tvItemIndex + 1),
+      onFocusChange: tv ? (_) => setState(() {}) : null,
+      onUpEdge: () => _focusDialogItem(_lastFieldIndex),
+      onDownEdge: () {},
       onLeftEdge: tv && tvItemIndex == _dialogCancelIndex
           ? () => _focusDialogItem(_dialogOkIndex)
-          : null,
+          : () {},
       onRightEdge: tv && tvItemIndex == _dialogOkIndex
           ? () => _focusDialogItem(_dialogCancelIndex)
-          : null,
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: child,
-      ),
+          : () {},
+      child: child,
     );
   }
 
@@ -623,22 +708,24 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   Widget build(BuildContext context) {
     final ctrl = widget.ctrl;
     final tv = iptvUseTvFocus(context);
-    final labelIndex = _namingImported
-        ? 0
-        : (_editing ? 0 : (_showManualForm ? 2 : -1));
-    final urlIndex = _editing ? 1 : (_showManualForm ? 3 : -1);
-    final userIndex = _editing ? 2 : (_showManualForm ? 4 : -1);
-    final passIndex = _editing ? 3 : (_showManualForm ? 5 : -1);
+    final labelIndex = _indexOfNode(_labelFocus);
+    final urlIndex = _indexOfNode(_urlFocus);
+    final userIndex = _indexOfNode(_userFocus);
+    final passIndex = _indexOfNode(_passFocus);
+    final uaIndex = _indexOfNode(_uaFocus);
     final shareOnlyCollapsed =
         !_editing && !_showManualForm && !_namingImported;
+    final fillBody = tv &&
+        (_editing || _showManualForm) &&
+        !_addSucceeded;
     final gapAfterTitle = _tv ? 8.0 : (_compact ? 14.0 : 22.0);
-    final gapBetweenFields = _tv ? 14.0 : (_compact ? 18.0 : 28.0);
-    final gapBeforeManual = _tv ? 14.0 : (_compact ? 18.0 : 28.0);
+    final gapBetweenFields = _tv ? 10.0 : (_compact ? 18.0 : 28.0);
+    final gapBeforeManual = _tv ? 12.0 : (_compact ? 18.0 : 28.0);
     final gapBeforeActions = _tv ? 10.0 : (_compact ? 12.0 : 20.0);
     // Collapsed: room to vertically center "Share code" + paste field as one block.
     final collapsedBodyHeight = _tv ? 152.0 : (_compact ? 172.0 : 196.0);
     final surfacePadding = _tv
-        ? const EdgeInsets.fromLTRB(14, 12, 10, 14)
+        ? const EdgeInsets.fromLTRB(16, 14, 12, 12)
         : _compact
             ? const EdgeInsets.fromLTRB(16, 16, 12, 16)
             : EdgeInsets.fromLTRB(
@@ -648,12 +735,13 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                 _editing || _showManualForm || _namingImported ? 24 : 20,
               );
     final screenH = MediaQuery.sizeOf(context).height;
+    final tvInsetV = 20.0;
     final maxHeight = _tv
-        ? (screenH * 0.62).clamp(320.0, 460.0)
+        ? (screenH - tvInsetV * 2).clamp(400.0, screenH)
         : screenH -
             MediaQuery.viewInsetsOf(context).bottom -
             (_compact ? 32.0 : 64.0);
-    final dialogMaxWidth = _tv ? 360.0 : 440.0;
+    final dialogMaxWidth = _tv ? 420.0 : 440.0;
     final titleLabel = _namingImported
         ? 'Portal name'
         : (_editing ? 'Edit Portal' : 'Add Portal');
@@ -679,14 +767,21 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
           },
           child: Focus(
             autofocus: false,
-            child: Dialog(
+            child: ShellTvContainDpad(
+              child: Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: EdgeInsets.symmetric(
-          horizontal: _tv ? 28 : (_compact ? 20 : 24),
-          vertical: _tv ? 36 : (_compact ? 16 : 32),
+          horizontal: _tv ? 24 : (_compact ? 20 : 24),
+          vertical: _tv ? tvInsetV : (_compact ? 16 : 32),
         ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: dialogMaxWidth, maxHeight: maxHeight),
+        child: SizedBox(
+          width: dialogMaxWidth,
+          height: fillBody && !adding ? maxHeight : null,
+          child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: dialogMaxWidth,
+            maxHeight: maxHeight,
+          ),
           child: Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.bottomCenter,
@@ -713,7 +808,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                               ? 'name'
                               : (shareOnlyCollapsed ? 'share' : 'manual'),
                         ),
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisSize: fillBody && !adding
+                            ? MainAxisSize.max
+                            : MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (_namingImported) ...[
@@ -827,28 +924,21 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                               ],
                             ),
                             SizedBox(height: gapAfterTitle),
+                            _platformTabs(),
+                            SizedBox(height: gapBetweenFields),
                             Flexible(
-                              fit: FlexFit.loose,
+                              fit: fillBody && !adding
+                                  ? FlexFit.tight
+                                  : FlexFit.loose,
                               child: SingleChildScrollView(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
-                                    if (!_editing) _shareCodeSection(),
-                                    AnimatedSize(
-                                      duration:
-                                          const Duration(milliseconds: 280),
-                                      curve: Curves.easeOutCubic,
-                                      alignment: Alignment.topCenter,
-                                      clipBehavior: Clip.hardEdge,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          if (!_editing)
-                                            SizedBox(height: gapBeforeManual),
-                                          _platformChips(),
-                                          SizedBox(height: gapBetweenFields),
+                                    if (!_editing) ...[
+                                      _shareCodeSection(),
+                                      SizedBox(height: gapBeforeManual),
+                                    ],
                                           _portalField(
                                             _labelCtrl,
                                             _platform == IptvPortalPlatform.m3u
@@ -985,12 +1075,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                               'User-Agent (optional)',
                                               hint: 'VLC/3.0.20 LibVLC/3.0.20',
                                               focusNode: _uaFocus,
-                                              dialogIndex: userIndex,
+                                              dialogIndex: uaIndex,
                                             ),
                                           ],
-                                        ],
-                                      ),
-                                    ),
                                     if (ctrl.addError != null) ...[
                                       SizedBox(
                                         height: _tv ? 6 : (_compact ? 8 : 12),
@@ -1052,7 +1139,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             ],
           ),
         ),
+        ),
       ),
+            ),
           ),
         );
         },
@@ -1119,7 +1208,13 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       tvItemIndex: tv ? 1 : null,
       onUpEdge: tv ? () => _focusDialogItem(0) : null,
       onDownEdge: tv
-          ? () => _focusDialogItem(_showManualForm ? 2 : 1)
+          ? () {
+              if (_showManualForm) {
+                _focusSelectedPlatformTab();
+              } else {
+                _focusDialogItem(1);
+              }
+            }
           : null,
       onFocusChange: tv
           ? (focused) => setState(() => _expandFocused = focused)
@@ -1133,44 +1228,95 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }
 
   Widget _shareCodeSection() {
-    final tv = iptvUseTvFocus(context);
-    final hintStyle = GoogleFonts.plusJakartaSans(
-      color: Colors.white.withValues(alpha: 0.25),
-      fontSize: _tv ? 12 : 13,
-    );
+    final embedded = _pasteIsEmbedded;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          controller: _pasteCtrl,
-          focusNode: _pasteFocus,
-          enabled: !_importingShareCode,
-          readOnly: tv && !_pasteEditing,
-          enableInteractiveSelection: !tv || _pasteEditing,
-          minLines: 2,
-          maxLines: 3,
-          textAlign: TextAlign.center,
-          textCapitalization: TextCapitalization.none,
-          autocorrect: false,
-          enableSuggestions: false,
-          keyboardType: TextInputType.visiblePassword,
-          style: GoogleFonts.jetBrainsMono(
-            color: IptvShellStyle.accent,
-            fontSize: _tv ? 11 : 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.4,
+        SizedBox(
+          height: _codeBoxHeight,
+          child: Stack(
+            children: [
+              if (embedded)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      _pasteCtrl.text.trim(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.jetBrainsMono(
+                        color: IptvShellStyle.accent,
+                        fontSize: _tv ? 11 : (_compact ? 12 : 13),
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < 4; i++) ...[
+                      if (i > 0) const SizedBox(width: 6),
+                      _shareCodeCell(i),
+                    ],
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        '-',
+                        style: GoogleFonts.jetBrainsMono(
+                          color: Colors.white.withValues(alpha: 0.35),
+                          fontSize: _tv ? 14 : (_compact ? 16 : 22),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    for (var i = 4; i < 8; i++) ...[
+                      if (i > 4) const SizedBox(width: 6),
+                      _shareCodeCell(i),
+                    ],
+                  ],
+                ),
+              Positioned.fill(
+                child: TextField(
+                  controller: _pasteCtrl,
+                  focusNode: _pasteFocus,
+                  enabled: !_importingShareCode,
+                  readOnly: iptvUseTvFocus(context) && !_pasteEditing,
+                  enableInteractiveSelection:
+                      !iptvUseTvFocus(context) || _pasteEditing,
+                  textAlign: TextAlign.center,
+                  textCapitalization: embedded
+                      ? TextCapitalization.none
+                      : TextCapitalization.characters,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.visiblePassword,
+                  showCursor: false,
+                  style: const TextStyle(
+                    color: Colors.transparent,
+                    fontSize: 1,
+                    height: 1,
+                  ),
+                  cursorColor: Colors.transparent,
+                  decoration: const InputDecoration(
+                    counterText: '',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'[A-Za-z0-9._\-]'),
+                    ),
+                  ],
+                  onChanged: _onSharePasteChanged,
+                ),
+              ),
+            ],
           ),
-          cursorColor: IptvShellStyle.accent,
-          decoration: iptvDialogFieldDecoration(
-            focused: _pasteFocus.hasFocus,
-            hintText: 'Paste F1. token',
-            hintStyle: hintStyle,
-          ),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9._\-]')),
-          ],
-          onChanged: _onSharePasteChanged,
         ),
         if (_importingShareCode) ...[
           const SizedBox(height: 12),
@@ -1208,52 +1354,155 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     );
   }
 
-  Widget _platformChips() {
-    Widget chip(IptvPortalPlatform p, String label) {
-      final selected = _platform == p;
-      return iptvTap(
-        context: context,
-        onTap: () {
-          if (_editing) return;
-          setState(() => _platform = p);
-        },
-        borderRadius: 8,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected
-                ? ForjaShellColors.brandGreen.withValues(alpha: 0.2)
-                : Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected
-                  ? ForjaShellColors.brandGreen
-                  : Colors.white.withValues(alpha: 0.1),
-            ),
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              color: selected
-                  ? ForjaShellColors.brandGreen
-                  : IptvShellStyle.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
+  Widget _shareCodeCell(int index) {
+    final text = index < _pasteCtrl.text.length ? _pasteCtrl.text[index] : '';
+    final pasteFocused = _pasteFocus.hasFocus;
+    final active = pasteFocused && index == _activeCodeIndex;
+    final borderColor = iptvDialogFieldBorderColor(focused: pasteFocused);
+    return GestureDetector(
+      onTap: () => _focusShareCodeCell(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        width: _codeBoxWidth,
+        height: _codeBoxHeight,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: active ? 0.08 : 0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: borderColor,
+            width: pasteFocused ? 1.5 : 1,
           ),
         ),
-      );
-    }
+        child: Text(
+          text,
+          style: GoogleFonts.jetBrainsMono(
+            color: IptvShellStyle.textPrimary,
+            fontSize: _codeFontSize,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
+    );
+  }
 
-    return Row(
-      children: [
-        chip(IptvPortalPlatform.xtream, 'Xtream'),
-        const SizedBox(width: 8),
-        chip(IptvPortalPlatform.m3u, 'M3U'),
-        const SizedBox(width: 8),
-        chip(IptvPortalPlatform.stalker, 'Stalker'),
-      ],
+  Widget _platformTabs() {
+    final tv = iptvUseTvFocus(context);
+    final tabH = _tv ? 40.0 : 36.0;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: SizedBox(
+        height: tabH,
+        child: Row(
+          children: [
+            for (var i = 0; i < _kPlatformTabs.length; i++) ...[
+              if (i > 0)
+                Container(
+                  width: 1,
+                  height: 16,
+                  color: Colors.white.withValues(alpha: 0.12),
+                ),
+              Expanded(child: _platformTab(index: i, height: tabH, tv: tv)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _platformTab({
+    required int index,
+    required double height,
+    required bool tv,
+  }) {
+    final (platform, label) = _kPlatformTabs[index];
+    final selected = _platform == platform;
+    final focused = tv && _platformTabFocus[index].hasFocus;
+    final radius = index == 0
+        ? const BorderRadius.only(
+            topLeft: Radius.circular(9),
+            bottomLeft: Radius.circular(9),
+          )
+        : index == _kPlatformTabs.length - 1
+            ? const BorderRadius.only(
+                topRight: Radius.circular(9),
+                bottomRight: Radius.circular(9),
+              )
+            : BorderRadius.zero;
+    final tabIndex = _indexOfNode(_platformTabFocus[index]);
+    final labelIndex = _indexOfNode(_labelFocus);
+    final firstTabIndex = _indexOfNode(_platformTabFocus.first);
+    final upTarget = firstTabIndex > 0 ? firstTabIndex - 1 : -1;
+
+    final face = AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      height: height,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: focused
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+            : selected
+                ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
+                : Colors.transparent,
+        borderRadius: radius,
+        border: focused
+            ? Border.all(color: ForjaShellColors.brandGreen, width: 1.5)
+            : selected
+                ? const Border(
+                    bottom: BorderSide(
+                      color: ForjaShellColors.brandGreen,
+                      width: 2,
+                    ),
+                  )
+                : null,
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          color: selected || focused
+              ? ForjaShellColors.brandGreen
+              : IptvShellStyle.textSecondary,
+          fontSize: 12,
+          fontWeight: selected || focused ? FontWeight.w700 : FontWeight.w600,
+        ),
+      ),
+    );
+
+    return iptvTap(
+      context: context,
+      onTap: () => _selectPlatform(platform),
+      borderRadius: 9,
+      scaleOnFocus: 1,
+      focusNode: tv ? _platformTabFocus[index] : null,
+      tvRowId: tv ? _portalDialogRowId : null,
+      tvItemIndex: tv ? tabIndex : null,
+      onFocusChange: tv ? (_) => setState(() {}) : null,
+      onLeftEdge: tv
+          ? () {
+              if (index > 0) {
+                _platformTabFocus[index - 1].requestFocus();
+              }
+            }
+          : null,
+      onRightEdge: tv
+          ? () {
+              if (index < _kPlatformTabs.length - 1) {
+                _platformTabFocus[index + 1].requestFocus();
+              }
+            }
+          : null,
+      onUpEdge: tv
+          ? () {
+              if (upTarget >= 0) _focusDialogItem(upTarget);
+            }
+          : null,
+      onDownEdge: tv ? () => _focusDialogItem(labelIndex) : null,
+      child: face,
     );
   }
 
@@ -1292,12 +1541,20 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             obscureText: obscure,
             hintText: hint,
             hintStyle: hintStyle,
-            suffixIcon: suffix,
+            suffixIcon: suffix == null ? null : ExcludeFocus(child: suffix),
             style: GoogleFonts.plusJakartaSans(
               color: IptvShellStyle.textPrimary,
               fontSize: _tv ? 13 : 14,
             ),
-            onArrowUp: () => _focusDialogItem(dialogIndex - 1),
+            onArrowUp: () {
+              if (identical(focusNode, _labelFocus) &&
+                  (_editing || _showManualForm) &&
+                  !_namingImported) {
+                _focusSelectedPlatformTab();
+                return;
+              }
+              _focusDialogItem(dialogIndex - 1);
+            },
             onArrowDown: () => _focusDialogItem(dialogIndex + 1),
             onSubmit: _trySubmitFromEnter,
           )

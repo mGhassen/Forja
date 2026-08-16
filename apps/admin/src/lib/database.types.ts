@@ -371,6 +371,24 @@ export type Database = {
           },
         ]
       }
+      iptv_share_codes: {
+        Row: {
+          code: string
+          created_at: string
+          token: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          token: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          token?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

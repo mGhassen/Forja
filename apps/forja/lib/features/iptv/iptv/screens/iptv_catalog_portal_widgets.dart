@@ -59,6 +59,17 @@ class _IptvPortalDialogFieldState extends State<_IptvPortalDialogField> {
     } else if (mounted) {
       setState(() {});
     }
+    if (widget.focusNode.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !widget.focusNode.hasFocus) return;
+        Scrollable.ensureVisible(
+          context,
+          alignment: 0.15,
+          duration: Duration.zero,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+        );
+      });
+    }
   }
 
   void _attachKeyHandler() {
@@ -322,12 +333,12 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     try {
       final code = await IptvPortalShare.createShare(widget.portal.portal);
       if (!mounted) return;
-      _shareCode = code;
+      _shareCode = IptvPortalShare.formatCode(code);
       setState(() {
         _sharing = false;
         _showShareCode = true;
       });
-      await Clipboard.setData(ClipboardData(text: code));
+      await Clipboard.setData(ClipboardData(text: _shareCode!));
       ForjaToast.success(
         'Share code copied',
         duration: const Duration(seconds: 2),
@@ -878,22 +889,27 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'SHARE CODE COPIED',
-          style: GoogleFonts.plusJakartaSans(
-            color: IptvShellStyle.accent,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.6,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Tap row to hide',
+          'SHARE CODE · TAP ROW TO HIDE',
           style: GoogleFonts.plusJakartaSans(
             color: IptvShellStyle.textSecondary,
             fontSize: 10,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          _shareCode ?? '-',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.jetBrainsMono(
+            color: IptvShellStyle.accent,
+            fontSize: IptvPortalShare.isEmbeddedToken(_shareCode ?? '')
+                ? 12
+                : 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing:
+                IptvPortalShare.isEmbeddedToken(_shareCode ?? '') ? 0.4 : 2,
           ),
         ),
       ],

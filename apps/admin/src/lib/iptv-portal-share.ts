@@ -1,7 +1,11 @@
-/** Client share-code helpers (same crypto as apps/web). */
+/** Client share-code helpers (same crypto + store as apps/web). */
 
+import { supabase, supabaseConfigured } from '@/lib/supabase'
+
+const SHARE_CODE_LENGTH = 8
 const EMBEDDED_PREFIX = 'F1.'
 const KEY_MATERIAL = 'forja-iptv-share-embedded-v1'
+const CHARSET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
 
 export type SharePortal = {
   url: string
@@ -13,8 +17,23 @@ export function isEmbeddedShareToken(raw: string): boolean {
   return raw.trim().startsWith(EMBEDDED_PREFIX)
 }
 
+export function normalizeShareCode(raw: string): string {
+  return raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
+}
+
 export function formatShareCode(raw: string): string {
-  return raw.trim()
+  const trimmed = raw.trim()
+  if (isEmbeddedShareToken(trimmed)) return trimmed
+  const code = normalizeShareCode(trimmed)
+  if (code.length <= 4) return code
+  return `${code.slice(0, 4)}-${code.slice(4)}`
+}
+
+function generateShareCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(SHARE_CODE_LENGTH))
+  let out = ''
+  for (const b of bytes) out += CHARSET[b % CHARSET.length]!
+  return out
 }
 
 async function sha256(text: string): Promise<Uint8Array> {
@@ -102,16 +121,36 @@ async function decodeEmbeddedShare(
   }
 }
 
-/** Encrypt credentials into a self-contained `F1.` token (no server). */
 export async function createPortalShare(portal: SharePortal): Promise<string> {
-  return encodeEmbeddedShare(portal)
+  if (!supabaseConfigured) throw new Error('Share service unavailable')
+  const token = await encodeEmbeddedShare(portal)
+  for (let i = 0; i < 6; i += 1) {
+    const code = generateShareCode()
+    const { error } = await supabase
+      .from('iptv_share_codes')
+      .insert({ code, token })
+    if (!error) return code
+    if (error.code === '23505') continue
+    throw new Error(error.message || 'Could not create share code')
+  }
+  throw new Error('Could not allocate share code')
 }
 
-/** Resolve an `F1.` token. */
 export async function resolvePortalShare(
   rawCode: string,
 ): Promise<SharePortal | null> {
   const trimmed = rawCode.trim()
-  if (!isEmbeddedShareToken(trimmed)) return null
-  return decodeEmbeddedShare(trimmed)
+  if (isEmbeddedShareToken(trimmed)) {
+    return decodeEmbeddedShare(trimmed)
+  }
+  const code = normalizeShareCode(trimmed)
+  if (code.length !== SHARE_CODE_LENGTH) return null
+  if (!supabaseConfigured) throw new Error('Share service unavailable')
+  const { data, error } = await supabase
+    .from('iptv_share_codes')
+    .select('token')
+    .eq('code', code)
+    .maybeSingle()
+  if (error || !data?.token) return null
+  return decodeEmbeddedShare(data.token)
 }

@@ -42,7 +42,7 @@ Rentry outages made all IPTV share codes look “not found.” New shares are se
 
 ## Follow-up
 
-Rentry and 8-character import were removed. Copy and paste are `F1.` only (Rust encode/decode on the app; WebCrypto mirror on web/admin). Old `XXXX-XXXX` codes no longer resolve.
+Rentry was removed. 8-character codes (`XXXX-XXXX`) are back: Rust encrypts an `F1.` payload, stored under the short code in `iptv_share_codes` (Supabase). Leftover `F1.` tokens still import. Old rentry 8-char codes do not.
 
 ## Related
 
