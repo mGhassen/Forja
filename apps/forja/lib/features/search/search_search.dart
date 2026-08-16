@@ -3,10 +3,6 @@ part of 'search_screen.dart';
 mixin _SearchSearch on ConsumerState<SearchScreen> {
   SearchScreenState get _s => this as SearchScreenState;
 
-  List<Map<String, dynamic>> get _addonProviders {
-    return ref.watch(searchAddonProvidersProvider).valueOrNull ?? const [];
-  }
-
   List<String> get _trendingHelperTitles {
     final key = _s._activeSearchQuery.trim().isNotEmpty
         ? _s._activeSearchQuery.trim()
@@ -82,19 +78,9 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
 
   /// Apply provider value into local fields without [setState].
   /// Safe to call from [build] (Riverpod watch path).
-  void _applySearchAsync(AsyncValue<List<SearchResultSection>> async) {
-    async.when(
-      loading: () {
-        _s._isSearching = true;
-      },
-      error: (_, _) {
-        _s._isSearching = false;
-      },
-      data: (sections) {
-        _s._sections = _mapSearchSections(sections);
-        _s._isSearching = false;
-      },
-    );
+  void _applySearchState(SearchResultsState search) {
+    _s._sections = _mapSearchSections(search.sections);
+    _s._isSearching = search.isSearching;
   }
 
   /// Debounced query change → immediate fetch (TV submit / external).
@@ -173,12 +159,13 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
     final query = _s._activeSearchQuery.trim();
     if (query.isEmpty) return;
 
-    final async = ref.watch(searchResultsProvider(query));
+    final search = ref.watch(searchResultsProvider(query));
     final wasSearching = _s._isSearching;
-    _applySearchAsync(async);
+    _applySearchState(search);
 
     // Focus after results land (post-frame — must not run mid-build).
-    if (async.hasValue &&
+    if (search.tmdbDone &&
+        search.sections.isNotEmpty &&
         wasSearching &&
         _s._pendingGridFocusIndex != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -65,6 +65,6 @@ Admin catalog scrape rewalked 500 posts every run, wrote empty `subreddit`, drop
 
 **Also (I142-T17):** Phase 2 always inserts junction rows with `portal_id` null; if Phase 3 dies mid-run, eligible hits stay **Not promoted**. Admin Deep refs → **Backfill promote** enqueues `iptv/catalog.promote-backfill` (claim-next null rows, chunk 25, limit presets 100/1k/5k/All) — no paste re-fetch.
 
-**Also (I142-T18):** Backfill inserts an `iptv_scrape_runs` row (`source=promote-backfill`) before the Inngest event, patches claimed/promoted counts per chunk, and finalizes ok/error — same table as scrape. Deep refs shows a live running panel + Stop.
+**Also (I142-T18):** Backfill inserts an `iptv_scrape_runs` row (`source=promote-backfill`) before the Inngest event, patches claimed/promoted counts per chunk, and finalizes ok/error — same table as scrape. Deep refs shows a live running panel + Stop. Own Inngest function `iptv-promote-backfill` / event `iptv/catalog.promote-backfill` (not scrape).
 
 **Apply migrations** `20260731184207_…` + `20260731184812_…` + `20260801115640_…` + `20260804001433_iptv_portals_drop_scrape_provenance.sql` + `20260806151925_iptv_scrape_deep_ref_portals_meta.sql` + `20260806151710_iptv_scrape_deep_refs_drop_paste_body.sql` before deploying admin (ask before `db push`). Junction meta for slim promote; deep refs never store paste plaintext — only `paste_url`. `iptv_portals.post_id` / `layer` stay dropped — scrape lineage via `portal_id`.

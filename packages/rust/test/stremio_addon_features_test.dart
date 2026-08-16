@@ -43,4 +43,38 @@ void main() {
       [StremioAddonFeatures.live],
     );
   });
+
+  test('live-named tv catalogs default to live only', () {
+    expect(
+      StremioAddonFeatures.catalogLooksLive({
+        'type': 'tv',
+        'id': 'essential-live-events',
+        'name': 'Essential Live Events',
+      }),
+      isTrue,
+    );
+    expect(
+      StremioAddonFeatures.inferFromManifest({
+        'types': ['tv'],
+        'catalogs': [
+          {'type': 'tv', 'id': 'essential-live-events', 'name': 'Live'},
+          {'type': 'tv', 'id': 'dlstreams-live', 'name': 'DL Streams Live'},
+        ],
+      }),
+      [StremioAddonFeatures.live],
+    );
+  });
+
+  test('movie plus live-named tv → vod + live', () {
+    expect(
+      StremioAddonFeatures.inferFromManifest({
+        'types': ['movie', 'tv'],
+        'catalogs': [
+          {'type': 'movie', 'id': 'top', 'name': 'Top'},
+          {'type': 'tv', 'id': 'sports_live', 'name': 'Sports Live'},
+        ],
+      }),
+      [StremioAddonFeatures.vod, StremioAddonFeatures.live],
+    );
+  });
 }

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 2** fix · **0 / 2** acceptance |
+| **Progress** | **3 / 3** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -21,6 +21,7 @@
 |--:|----|-------------|--------|
 | 1 | I174-T01 | ATV source/channel change: hard reseat same engine (unmount → release → cool-down → boot) before open; loading scaffold + `Switching to …` banner | ✅ |
 | 2 | I174-T02 | Open serialization: latest epoch wins so rapid Source taps do not drop the new URL after awaiting an in-flight open | ✅ |
+| 3 | I174-T03 | Channel-zap reseat banner uses channel name (not portal `displayLabel`); Source/failover still use source label | ✅ |
 
 ---
 
@@ -40,6 +41,8 @@ On Android TV, changing IPTV **Source** (or channel) only did a soft `ExoPlayerB
 **Root fix:** on ATV only, source/channel (and recovery source-rotate) call the same reseat path as engine switch, staying on the current backend. UI reuses the existing `!_playerReady` loading scaffold plus status banner — not a separate loading route. Desktop/phone keep soft reopen.
 
 Also fixed `_openCurrent` serialization: waiting for an in-flight open used to `return` without applying the newly selected source.
+
+Channel zap initially reused the Source-failover banner text (`sources[].label` = portal `displayLabel`). **I174-T03** passes the channel name into the reseat banner; Source menu / retry rotation keep the portal label.
 
 ---
 

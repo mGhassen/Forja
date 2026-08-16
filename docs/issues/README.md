@@ -194,10 +194,11 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [171-[open]-…](171-[open]-android-tv-details-focus-after-player.md) | ATV details empty focus after player | P1 | High | open | 3/3 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [172-[open]-…](172-[open]-vsembed-shows-videasy-streams.md) | VSEmbed panel shows Videasy streams | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [173-[open]-…](173-[open]-android-tv-update-dialog-focus-leak.md) | ATV update dialog D-pad under the gate | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [174-[open]-…](174-[open]-android-tv-iptv-source-switch-black-video.md) | ATV IPTV source/channel switch black video | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [174-[open]-…](174-[open]-android-tv-iptv-source-switch-black-video.md) | ATV IPTV source/channel switch black video | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [175-[open]-…](175-[open]-mid-watch-auto-failover.md) | Mid-watch CDN death Auto hop | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [177-[open]-…](177-[open]-sources-selected-provider-lazy-fetch.md) | Sources: fetch only the selected provider / addon / scraper | P2 | Medium | open | 6/6 · A 0/4 | — |
 | [178-[open]-…](178-[open]-nuvio-empty-first-scraper-hides-streams.md) | Nuvio empty first scraper hides later streams | P2 | Medium | open | 7/7 · A 5/7 | — |
+| [179-[fixed]-…](fixed/179-[fixed]-search-progressive-tmdb-live-stampede.md) | Search: TMDB blocked by Stremio live stampede | P1 | High | fixed | Complete · 5/5 · A 4/4 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

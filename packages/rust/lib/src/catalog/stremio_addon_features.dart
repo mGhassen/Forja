@@ -16,6 +16,17 @@ class StremioAddonFeatures {
     'other',
   };
 
+  /// Live / sport catalog (Search must skip these; Live Matches may use them).
+  static bool catalogLooksLive(Map catalog) {
+    final type = catalog['type']?.toString().trim().toLowerCase() ?? '';
+    final id = catalog['id']?.toString().trim().toLowerCase() ?? '';
+    final name = catalog['name']?.toString().trim().toLowerCase() ?? '';
+    if (type == 'sport') return true;
+    if (id.contains('live') || name.contains('live')) return true;
+    if (id.contains('sport') || name.contains('sport')) return true;
+    return false;
+  }
+
   /// Infer targets from a Stremio manifest (`types` + catalog types).
   static List<String> inferFromManifest(Map? manifest) {
     if (manifest == null) return const [vod];
@@ -28,16 +39,25 @@ class StremioAddonFeatures {
       }
     }
     final catalogs = manifest['catalogs'];
+    var hasLiveCatalog = false;
+    var hasNonLiveVodCatalog = false;
     if (catalogs is List) {
       for (final c in catalogs) {
         if (c is! Map) continue;
         final t = c['type']?.toString().trim().toLowerCase() ?? '';
         if (t.isNotEmpty) types.add(t);
+        if (catalogLooksLive(c)) {
+          hasLiveCatalog = true;
+        } else if (_vodTypes.contains(t) || t == 'tv') {
+          hasNonLiveVodCatalog = true;
+        }
       }
     }
 
-    final hasSport = types.contains('sport');
-    final hasVod = types.any(_vodTypes.contains);
+    final hasSport = types.contains('sport') || hasLiveCatalog;
+    // `tv` alone from live-named catalogs must not force VOD (flixnest, etc.).
+    final hasVod = hasNonLiveVodCatalog ||
+        types.any((t) => t != 'tv' && _vodTypes.contains(t));
     if (hasSport && hasVod) return [vod, live];
     if (hasSport) return const [live];
     return const [vod];

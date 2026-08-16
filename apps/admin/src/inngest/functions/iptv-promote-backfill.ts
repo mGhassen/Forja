@@ -48,8 +48,7 @@ async function markBackfillRun(runId: string, error?: string) {
 
 /**
  * Ops recovery: promote stranded deep_ref_portals (portal_id null + canPromoteHit)
- * into iptv_portals. Claim-next from DB each step — never memoize id lists.
- * Writes iptv_scrape_runs (source=promote-backfill) so Scrape / Deep refs show progress.
+ * into iptv_portals. Own Inngest function — not scrape.
  */
 export const iptvPromoteBackfill = inngest.createFunction(
   {

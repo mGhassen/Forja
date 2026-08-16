@@ -19,10 +19,11 @@ bool stremioErrorIsTimeout(Object error) {
 bool stremioStatusIsNoRetry(int statusCode) {
   if (statusCode == 404 ||
       statusCode == 401 ||
-      statusCode == 403) {
+      statusCode == 403 ||
+      statusCode == 429) {
     return true;
   }
-  return statusCode >= 400 && statusCode < 500 && statusCode != 429;
+  return statusCode >= 400 && statusCode < 500;
 }
 
 bool stremioStatusShouldCooldown(int statusCode) {
@@ -100,7 +101,7 @@ class StremioService {
   final SettingsService _settings = SettingsService();
 
   /// Retry a GET via Rust engine with exponential backoff.
-  /// Does NOT retry on 404 (content simply doesn't exist), 403, or timeouts.
+  /// Does NOT retry on 404/401/403/429, other 4xx, or timeouts.
   Future<_StremioHttpResponse> _retryGet(
     Uri uri, {
     int retries = 1,
@@ -263,6 +264,8 @@ class StremioService {
   /// Avoid hammering dead lean rows; TTL so a transient fail can recover.
   final Map<String, DateTime> _hydrateFailedUntil = {};
   final Map<String, DateTime> _streamFailedUntil = {};
+  /// Host-level catalog cooldown (429 / 5xx) so Search does not stampede.
+  final Map<String, DateTime> _catalogFailedUntil = {};
   static const _failTtl = Duration(seconds: 45);
   static const _hydrateConcurrency = 4;
   Future<List<Map<String, dynamic>>>? _hydrateInFlight;
@@ -537,21 +540,40 @@ class StremioService {
     final extra = parts.isNotEmpty ? '/${parts.join('&')}' : '';
     final resourcePath = '/catalog/$type/$id$extra.json';
     final url = _buildResourceUrl(baseUrl, resourcePath);
+    final host = Uri.tryParse(url)?.host ?? '';
+    final now = DateTime.now();
+    _catalogFailedUntil.removeWhere((_, until) => until.isBefore(now));
+    if (host.isNotEmpty) {
+      final failedUntil = _catalogFailedUntil[host];
+      if (failedUntil != null && failedUntil.isAfter(now)) {
+        debugPrint(
+          '[StremioService.getCatalog] cooldown ($host until $failedUntil)',
+        );
+        return [];
+      }
+    }
     debugPrint('[StremioService.getCatalog] URL: $url');
 
     try {
       final response = await _retryGet(Uri.parse(url));
       if (response.statusCode == 200) {
+        if (host.isNotEmpty) _catalogFailedUntil.remove(host);
         final items = _parseStremioCatalog(response.body);
         debugPrint(
           '[StremioService.getCatalog] ${response.statusCode} → ${items.length} metas',
         );
         return items;
       }
+      if (stremioStatusShouldCooldown(response.statusCode) && host.isNotEmpty) {
+        _catalogFailedUntil[host] = now.add(_failTtl);
+      }
       debugPrint(
         '[StremioService.getCatalog] HTTP ${response.statusCode} ($url)',
       );
     } catch (e) {
+      if (host.isNotEmpty) {
+        _catalogFailedUntil[host] = now.add(_failTtl);
+      }
       debugPrint('[StremioService] Catalog fetch error ($url): $e');
     }
     return [];

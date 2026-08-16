@@ -797,7 +797,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   bool get _atvHardReseatStreams =>
       !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
 
-  Future<void> _openCurrent({bool hardRecreate = false}) async {
+  Future<void> _openCurrent({
+    bool hardRecreate = false,
+    String? switchingLabel,
+  }) async {
     // Serialize opens — Player-menu switch sets _playerReady before the first
     // open finishes; a second open (reload) on a busy mpv ANRs ATV.
     // Latest epoch wins: waiting for an in-flight open must still apply the
@@ -813,7 +816,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     _openInFlight = gate.future;
     try {
       if (hardRecreate && _atvHardReseatStreams) {
-        await _reseatAtvPlayerForNewStream();
+        await _reseatAtvPlayerForNewStream(switchingLabel: switchingLabel);
         if (_s._disposed || epoch != _openEpoch) return;
       }
       final src = _s._sources[_s._sourceIdx];
@@ -861,10 +864,15 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   ///
   /// UI: existing `!_playerReady` loading scaffold + status banner — same as
   /// Player-menu engine switch, not a separate loading route.
-  Future<void> _reseatAtvPlayerForNewStream() async {
-    final label = _s._sources.isNotEmpty
-        ? _s._sources[_s._sourceIdx].label
-        : 'stream';
+  /// [switchingLabel] overrides the banner (channel name on zap; default =
+  /// source/portal label for Source menu + failover).
+  Future<void> _reseatAtvPlayerForNewStream({String? switchingLabel}) async {
+    final trimmed = switchingLabel?.trim();
+    final label = (trimmed != null && trimmed.isNotEmpty)
+        ? trimmed
+        : (_s._sources.isNotEmpty
+            ? _s._sources[_s._sourceIdx].label
+            : 'stream');
     if (mounted) {
       setState(() {
         _s._playerReady = false;
@@ -1648,6 +1656,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (xtream != null) {
       widget.onChannelChanged?.call(xtream);
     }
-    await _openCurrent(hardRecreate: _atvHardReseatStreams);
+    await _openCurrent(
+      hardRecreate: _atvHardReseatStreams,
+      switchingLabel: ch.name,
+    );
   }
 }
