@@ -18,6 +18,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 - Set **disk cache** size (1–16 GB) — oldest idle torrent files are deleted when over this cap; the title you are playing is never removed — on **TV**, focus the slider and use **Left/Right**
 - Set **connection limit** for the torrent engine — same D-pad nudge on **TV**
 - Install **Stremio** / **Nuvio** addons and configure Jackett / Prowlarr when those play sources are on (**Settings → Sources** is never on Android TV — use phone/desktop or cloud sync)
+- Toggle **Select All by default** under **Nuvio addons** — on opens Sources → Nuvio with every enabled scraper selected; off starts with none selected
 
 ## Tips
 

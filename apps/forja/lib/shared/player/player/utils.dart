@@ -361,12 +361,18 @@ Future<void> silenceMediaKitPlayer(Player player) async {
       // Skip native props if create never finished — waitForInitialization:
       // false would SIGSEGV on null ctx. Still try Dart pause/volume below.
       if (!await mediaKitPlayerHandleReady(mpv)) return;
-      // waitForInitialization: false - must not block exit on stuck VC init.
-      await mpv.setProperty('mute', 'yes', waitForInitialization: false);
-      await mpv.setProperty('pause', 'yes', waitForInitialization: false);
-      await mpv.setProperty('volume', '0', waitForInitialization: false);
-      // Detach audio output so decode cannot keep playing after the UI pops.
-      await mpv.setProperty('ao', 'null', waitForInitialization: false);
+      Future<void> prop(String key, String value) => mpv
+          .setProperty(key, value, waitForInitialization: false)
+          .timeout(const Duration(milliseconds: 150));
+      await prop('mute', 'yes');
+      await prop('pause', 'yes');
+      await prop('volume', '0');
+      // ao=null drains audiotrack/MediaCodec. On Android that FFI does not
+      // yield — Player-menu MediaKit→Exo ANRs (issue 128). mute+pause is enough;
+      // stop/dispose still run on the tracked teardown.
+      if (defaultTargetPlatform != TargetPlatform.android) {
+        await prop('ao', 'null');
+      }
     }
   } catch (_) {}
   try {

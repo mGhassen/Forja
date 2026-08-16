@@ -791,7 +791,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     );
   }
 
-  /// Loads addon metadata, then walks selected scrapers until one has streams.
+  /// Loads addon metadata, then fetches selected scrapers in batches of 5.
   Future<void> _ensureNuvioPanelLoaded({bool force = false}) async {
     await _checkAndFetchNuvio();
     if (!mounted || !_panelShowNuvio) return;
@@ -813,7 +813,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
         });
       }
     }
-    if (_nuvioStreams.isEmpty && _pendingNuvioScraperIds.isNotEmpty) {
+    if (_pendingNuvioScraperIds.isNotEmpty) {
       await _fetchNextNuvioScraper();
     }
   }

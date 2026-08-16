@@ -148,7 +148,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [124-[open]-…](124-[open]-android-tv-iptv-reconnect-banner-stuck.md) | Android TV IPTV reconnect banner stuck after recover | P1 | Medium | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [125-[open]-…](125-[open]-android-tv-iptv-exo-progress-bar-missing.md) | Android TV IPTV Exo progress bar missing | P1 | High | open | 5/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [126-[open]-…](126-[open]-android-tv-stale-settings-push-overwrites-cloud.md) | ATV stale local settings push overwrites cloud Features/nav | P0 | Critical | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 8/8 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 9/9 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 7/7 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 8/8 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [131-[open]-…](131-[open]-android-tv-live-matches-exo-dpad-dead.md) | ATV Live Matches Exo player D-pad dead after handoff | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -197,7 +197,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [174-[open]-…](174-[open]-android-tv-iptv-source-switch-black-video.md) | ATV IPTV source/channel switch black video | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [175-[open]-…](175-[open]-mid-watch-auto-failover.md) | Mid-watch CDN death Auto hop | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [177-[open]-…](177-[open]-sources-selected-provider-lazy-fetch.md) | Sources: fetch only the selected provider / addon / scraper | P2 | Medium | open | 6/6 · A 0/4 | — |
-| [178-[open]-…](178-[open]-nuvio-empty-first-scraper-hides-streams.md) | Nuvio empty first scraper hides later streams | P2 | Medium | open | 3/3 · A 2/3 | — |
+| [178-[open]-…](178-[open]-nuvio-empty-first-scraper-hides-streams.md) | Nuvio empty first scraper hides later streams | P2 | Medium | open | 7/7 · A 5/7 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

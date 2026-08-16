@@ -82,11 +82,34 @@ void main() {
       );
     });
 
-    test('walks empty selected scrapers until one returns streams', () {
+    test('All tap clears every scraper when All is already selected', () {
+      expect(
+        nextNuvioSelectedAfterAllTap(
+          selectedIds: const {'a', 'b'},
+          enabledIds: const {'a', 'b'},
+        ),
+        isEmpty,
+      );
+      expect(
+        nextNuvioSelectedAfterAllTap(
+          selectedIds: const {'a'},
+          enabledIds: const {'a', 'b'},
+        ),
+        {'a', 'b'},
+      );
+      expect(
+        nextNuvioSelectedAfterAllTap(
+          selectedIds: const {},
+          enabledIds: const {'a', 'b'},
+        ),
+        {'a', 'b'},
+      );
+    });
+
+    test('walks remaining selected scrapers until the set is exhausted', () {
       expect(
         shouldContinueNuvioScraperWalk(
           explicitScraper: false,
-          hasStreams: false,
           hasPendingSelected: true,
         ),
         isTrue,
@@ -94,15 +117,6 @@ void main() {
       expect(
         shouldContinueNuvioScraperWalk(
           explicitScraper: false,
-          hasStreams: true,
-          hasPendingSelected: true,
-        ),
-        isFalse,
-      );
-      expect(
-        shouldContinueNuvioScraperWalk(
-          explicitScraper: false,
-          hasStreams: false,
           hasPendingSelected: false,
         ),
         isFalse,
@@ -110,10 +124,36 @@ void main() {
       expect(
         shouldContinueNuvioScraperWalk(
           explicitScraper: true,
-          hasStreams: false,
           hasPendingSelected: true,
         ),
         isFalse,
+      );
+    });
+
+    test('batches the next 5 unfetched selected scrapers', () {
+      expect(
+        nextNuvioScraperBatch(
+          orderedIds: const ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+          selectedIds: const {'a', 'b', 'c', 'd', 'e', 'f', 'g'},
+          fetchedIds: const {},
+        ),
+        ['a', 'b', 'c', 'd', 'e'],
+      );
+      expect(
+        nextNuvioScraperBatch(
+          orderedIds: const ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+          selectedIds: const {'a', 'b', 'c', 'd', 'e', 'f', 'g'},
+          fetchedIds: const {'a', 'b', 'c', 'd', 'e'},
+        ),
+        ['f', 'g'],
+      );
+      expect(
+        nextNuvioScraperBatch(
+          orderedIds: const ['a', 'b', 'c', 'd', 'e', 'f'],
+          selectedIds: const {'b', 'd', 'f'},
+          fetchedIds: const {'b'},
+        ),
+        ['d', 'f'],
       );
     });
 
@@ -125,6 +165,15 @@ void main() {
           enabledIds: const {'allanime', 'Cineby'},
         ),
         {'allanime', 'Cineby'},
+      );
+      expect(
+        resolveNuvioSelectedScraperIds(
+          selectionSaved: false,
+          savedIds: const [],
+          enabledIds: const {'allanime', 'Cineby'},
+          selectAllDefault: false,
+        ),
+        isEmpty,
       );
       expect(
         resolveNuvioSelectedScraperIds(

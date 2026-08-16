@@ -697,7 +697,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _requestScrollToCurrent();
       }
     }
-    if (_nuvioStreams.isEmpty && _pendingNuvioScraperIds.isNotEmpty) {
+    if (_pendingNuvioScraperIds.isNotEmpty) {
       await _fetchNextNuvioScraper();
     }
   }
@@ -1444,6 +1444,49 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         id,
   ];
 
+  Future<void> _runAndApplyNuvioScraper({
+    required String scraperId,
+    required String type,
+    required int gen,
+  }) async {
+    NuvioScraperResult? batch;
+    try {
+      batch = await NuvioService.instance.runSourcesScraper(
+        scraperId: scraperId,
+        tmdbId: widget.movie.id.toString(),
+        type: type,
+        season: widget.movie.mediaType == 'tv' ? widget.season : null,
+        episode: widget.movie.mediaType == 'tv' ? widget.episode : null,
+      );
+    } catch (e) {
+      debugPrint('[Nuvio] scraper $scraperId failed: $e');
+    }
+    if (!mounted || gen != _nuvioFetchGen) return;
+    setState(() {
+      _nuvioFetchedScraperIds.add(scraperId);
+      if (batch != null && batch.streams.isNotEmpty) {
+        final result = batch;
+        _nuvioStreams.addAll(
+          result.streams.map(
+            (s) => <String, dynamic>{
+              ...s,
+              '_nuvioScraperId': result.scraperId,
+              '_addonName': s['sourceName'] ?? result.scraperName,
+              '_addonBaseUrl': 'nuvio:${result.scraperId}',
+            },
+          ),
+        );
+      }
+    });
+    CatalogSourcesSessionCache.writeNuvio(
+      _catalogCacheKey,
+      _nuvioStreams,
+      fetchedScraperIds: _nuvioFetchedScraperIds,
+    );
+    _focusPlayingSourceIfNeeded();
+    _requestScrollToCurrent();
+  }
+
   Future<void> _fetchNextNuvioScraper({
     bool reset = false,
     String? onlyId,
@@ -1463,13 +1506,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final fetchedIds = reset
         ? <String>{}
         : Set<String>.from(_nuvioFetchedScraperIds);
-    final scraperId = onlyId ??
-        nextNuvioScraperId(
-          orderedIds: _orderedNuvioScraperIds,
-          selectedIds: _nuvioSelectedScraperIds,
-          fetchedIds: fetchedIds,
-        );
-    if (scraperId == null) return;
+    final batchIds = onlyId != null
+        ? <String>[onlyId]
+        : nextNuvioScraperBatch(
+            orderedIds: _orderedNuvioScraperIds,
+            selectedIds: _nuvioSelectedScraperIds,
+            fetchedIds: fetchedIds,
+          );
+    if (batchIds.isEmpty) return;
     if (onlyId != null &&
         (!_nuvioSelectedScraperIds.contains(onlyId) ||
             (!reset && fetchedIds.contains(onlyId)))) {
@@ -1478,7 +1522,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final gen = ++_nuvioFetchGen;
     setState(() {
       _nuvioFetching = true;
-      _nuvioInFlightScraperId = scraperId;
+      _nuvioInFlightScraperId = batchIds.first;
       if (reset) {
         _nuvioStreams = [];
         _nuvioFetchedScraperIds = {};
@@ -1486,65 +1530,32 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _error = null;
     });
     final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
-    NuvioScraperResult? batch;
-    try {
-      batch = await NuvioService.instance.runSourcesScraper(
-        scraperId: scraperId,
-        tmdbId: widget.movie.id.toString(),
-        type: type,
-        season: widget.movie.mediaType == 'tv' ? widget.season : null,
-        episode: widget.movie.mediaType == 'tv' ? widget.episode : null,
-      );
-    } catch (e) {
-      debugPrint('[Nuvio] scraper $scraperId failed: $e');
-    }
+    await Future.wait([
+      for (final id in batchIds)
+        _runAndApplyNuvioScraper(scraperId: id, type: type, gen: gen),
+    ]);
     if (!mounted || gen != _nuvioFetchGen) return;
-    final added = batch != null && batch.streams.isNotEmpty;
-    final fetchedAfter = {..._nuvioFetchedScraperIds, scraperId};
     final pendingAfter = nextNuvioScraperId(
       orderedIds: _orderedNuvioScraperIds,
       selectedIds: _nuvioSelectedScraperIds,
-      fetchedIds: fetchedAfter,
+      fetchedIds: _nuvioFetchedScraperIds,
     );
     final continueWalk = shouldContinueNuvioScraperWalk(
       explicitScraper: onlyId != null,
-      hasStreams: _nuvioStreams.isNotEmpty || added,
       hasPendingSelected: pendingAfter != null,
     );
     setState(() {
-      _nuvioFetchedScraperIds.add(scraperId);
-      if (!continueWalk) _nuvioInFlightScraperId = null;
-      if (batch != null && batch.streams.isNotEmpty) {
-        final result = batch;
-        _nuvioStreams.addAll(
-          result.streams.map(
-            (s) => <String, dynamic>{
-              ...s,
-              '_nuvioScraperId': result.scraperId,
-              '_addonName': s['sourceName'] ?? result.scraperName,
-              '_addonBaseUrl': 'nuvio:${result.scraperId}',
-            },
-          ),
-        );
-      }
       _nuvioFetching = continueWalk;
+      if (!continueWalk) _nuvioInFlightScraperId = null;
       if (!continueWalk &&
           _nuvioStreams.isEmpty &&
           pendingAfter == null) {
         _error = 'No streams found from selected Nuvio providers';
       }
     });
-    CatalogSourcesSessionCache.writeNuvio(
-      _catalogCacheKey,
-      _nuvioStreams,
-      fetchedScraperIds: _nuvioFetchedScraperIds,
-    );
     if (continueWalk) {
       await _fetchNextNuvioScraper(chain: true);
-      return;
     }
-    _focusPlayingSourceIfNeeded();
-    _requestScrollToCurrent();
   }
 
   void _onKindChanged(String kind) {
@@ -1720,24 +1731,30 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (id == 'all_nuvio') {
       final enabled = enabledNuvioScraperIds(_nuvioAddons);
       if (enabled.isEmpty) return;
-      final alreadyAll = enabled.every(_nuvioSelectedScraperIds.contains);
-      if (alreadyAll) {
-        if (!_nuvioFetching) {
-          unawaited(_fetchNextNuvioScraper());
-        }
-        return;
-      }
+      final next = nextNuvioSelectedAfterAllTap(
+        selectedIds: _nuvioSelectedScraperIds,
+        enabledIds: enabled,
+      );
+      final clearing = next.isEmpty;
       setState(() {
         _selectedSourceId = 'all_nuvio';
         _error = null;
-        _nuvioSelectedScraperIds = Set<String>.from(enabled);
+        _nuvioSelectedScraperIds = next;
+        if (clearing) {
+          _nuvioFetchGen++;
+          _nuvioFetching = false;
+          _nuvioInFlightScraperId = null;
+          DomainStreamProviderResolver.cancelAllPending(
+            cancelEngineJobs: false,
+          );
+        }
       });
       unawaited(
-        NuvioService.instance.saveSourcesSelectedScraperIds(
-          _nuvioSelectedScraperIds,
-        ),
+        NuvioService.instance.saveSourcesSelectedScraperIds(next),
       );
-      unawaited(_fetchNextNuvioScraper());
+      if (!clearing) {
+        unawaited(_fetchNextNuvioScraper());
+      }
       return;
     }
     if (id.startsWith('nuvio:')) {

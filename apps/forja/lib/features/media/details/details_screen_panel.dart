@@ -231,24 +231,30 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     if (id == 'all_nuvio') {
       final enabled = enabledNuvioScraperIds(_s._nuvioAddons);
       if (enabled.isEmpty) return;
-      final alreadyAll = enabled.every(_s._nuvioSelectedScraperIds.contains);
-      if (alreadyAll) {
-        if (!_s._isNuvioFetching) {
-          unawaited(_s._fetchNextNuvioScraper());
-        }
-        return;
-      }
+      final next = nextNuvioSelectedAfterAllTap(
+        selectedIds: _s._nuvioSelectedScraperIds,
+        enabledIds: enabled,
+      );
+      final clearing = next.isEmpty;
       setState(() {
         _s._selectedSourceId = 'all_nuvio';
         _s._errorMessage = null;
-        _s._nuvioSelectedScraperIds = Set<String>.from(enabled);
+        _s._nuvioSelectedScraperIds = next;
+        if (clearing) {
+          _s._nuvioFetchGen++;
+          _s._isNuvioFetching = false;
+          _s._nuvioInFlightScraperId = null;
+          DomainStreamProviderResolver.cancelAllPending(
+            cancelEngineJobs: false,
+          );
+        }
       });
       unawaited(
-        NuvioService.instance.saveSourcesSelectedScraperIds(
-          _s._nuvioSelectedScraperIds,
-        ),
+        NuvioService.instance.saveSourcesSelectedScraperIds(next),
       );
-      unawaited(_s._fetchNextNuvioScraper());
+      if (!clearing) {
+        unawaited(_s._fetchNextNuvioScraper());
+      }
       return;
     }
     if (id.startsWith('nuvio:')) {

@@ -553,16 +553,20 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     await silenceMediaKitPlayer(_player);
   }
 
-  /// Full stop+dispose with timeouts after the route is gone.
+  /// Full stop+dispose with timeouts after the route / engine widget is gone.
   Future<void> _teardownMediaKitPlayer() async {
     _playbackStopped = true;
     MpvExclusiveSession.instance.untrackPlayer(_player);
-    // Exit-only fast path on Android — full timeouts on hot-swap (issue 128).
-    final disposeFuture = teardownMediaKitPlayer(
-      _player,
-      fast: _exitInProgress && Platform.isAndroid,
-    );
+    final player = _player;
+    final android = Platform.isAndroid;
+    // Android widget dispose runs mid-frame on Player-menu MediaKit→Exo
+    // (`_switchingBuiltInEngine`). Starting FFI here blocks `endOfFrame` past
+    // the ANR window (issue 128). Fast + deferred; switch already waits 1.2s.
+    Future<void> run() => teardownMediaKitPlayer(player, fast: android);
+    final disposeFuture = android
+        ? Future<void>.delayed(const Duration(milliseconds: 50), run)
+        : run();
     MpvExclusiveSession.instance.trackVideoDispose(disposeFuture);
-    await disposeFuture;
+    if (!android) await disposeFuture;
   }
 }

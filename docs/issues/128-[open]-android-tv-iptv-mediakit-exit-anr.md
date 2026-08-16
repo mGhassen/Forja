@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 2** acceptance |
+| **Progress** | **9 / 9** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,7 @@
 | 6 | I128-T06 | Hot-swap: VOD-style release — silence + tracked MediaKit dispose (do not await on switch); 250ms cool-down; `prepareForVideoPlayer` only when mounting MediaKit | ✅ |
 | 7 | I128-T07 | VOD movies/series/anime/drama: Player-menu switch cool-down + capped `prepareForVideoPlayer` (1.2s) when mounting Exo; Exo boot same cap on Android | ✅ |
 | 8 | I128-T08 | IPTV reload after Exo→MediaKit: live MediaKit reload = live-edge snap (no second `Player.open`); serialize opens; Exo soft reopen without MediaCodec release | ✅ |
+| 9 | I128-T09 | VOD MediaKit→Exo: skip `ao=null` on Android silence; widget dispose defers fast teardown (do not await FFI mid-frame) | ✅ |
 
 ---
 
@@ -37,6 +38,7 @@
 |--:|----|-------------|--------|
 | 1 | I128-A01 | Android TV IPTV: Player menu Exo → MediaKit, then Back — app stays alive (no ANR / force-finish) | ⬜ |
 | 2 | I128-A02 | Android TV IPTV/Live: after MediaKit exit or Exo↔MediaKit switch, reopen / switch again — video plays (no black / stuck spinner) | ⬜ |
+| 3 | I128-A03 | Android TV VOD: Player menu MediaKit → ExoPlayer — app stays alive (no ANR / force-finish) | ⬜ |
 
 ---
 
@@ -66,6 +68,8 @@ Flutter logs showed Select on `iptv-player-back` → `[NavBack]` then Signal Cat
 **Reload after switch (T08, emu64a 2026-08-05):** Player menu Exo → MediaKit succeeded (`ExoPlayerImpl Release`), then Select on `iptv-player-replay` ~7s later ANR’d (`Waited 5001ms for KeyEvent`, `mpv/audiotrack` ~98% CPU). Reload called `Player.open` on a live mpv instance on the UI isolate. Fix: live MediaKit reload snaps to the live edge instead of re-`open`; opens are serialized; Exo `open` soft-reuses the player (`setMediaItem`) and `stop` no longer `release()`s (dispose still does).
 
 **Regression (T08 follow-up):** An early T08 draft called `player.stop()` before every MediaKit open. On a virgin player that hung the UI isolate — first channel open after a persisted MediaKit preference ANR’d (~30s later on KeyEvent). Removed pre-open `stop`; ATV MediaKit keeps `cache-pause=no` (Lume-style pause-on-empty stays desktop/phone only).
+
+**VOD Player-menu MediaKit→Exo (T09, emu64a 2026-08-16):** Select on Exo in the VOD Player menu ANR’d (`[LAN] release skip` then SIGQUIT). T07 capped `prepareForVideoPlayer` at 1.2s, but widget `dispose` still started full `teardownMediaKitPlayer` (`fast: false`, `ao=null`) on the UI isolate during `endOfFrame` — Dart timeouts never fire while FFI is stuck in MediaCodec drain (4K goldfish decoder in the log). Fix: Android silence skips `ao=null`; dispose schedules fast teardown and does not await it.
 
 ## Related
 
