@@ -58,8 +58,6 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
 
   bool get _dense => _tv || _compact;
 
-  double get _codeBoxHeight => _tv ? 42.0 : (_compact ? 52.0 : 76.0);
-
   late final TextEditingController _labelCtrl;
   late final TextEditingController _urlCtrl;
   late final TextEditingController _userCtrl;
@@ -304,16 +302,16 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     }
     _lastImportedCode = null;
 
-    final trimmed = value.trim();
-    if (trimmed.toUpperCase().startsWith('F1.') &&
-        !trimmed.startsWith(IptvPortalShare.embeddedPrefix)) {
-      final token = 'F1.${trimmed.substring(3)}';
-      if (token != value) {
-        _pasteCtrl.value = TextEditingValue(
-          text: token,
-          selection: TextSelection.collapsed(offset: token.length),
-        );
-      }
+    var next = value.replaceAll(RegExp(r'\s+'), '');
+    if (next.toUpperCase().startsWith('F1.') &&
+        !next.startsWith(IptvPortalShare.embeddedPrefix)) {
+      next = 'F1.${next.substring(3)}';
+    }
+    if (next != value) {
+      _pasteCtrl.value = TextEditingValue(
+        text: next,
+        selection: TextSelection.collapsed(offset: next.length),
+      );
     }
     setState(() {});
     _tryAutoImportShareCode();
@@ -1135,69 +1133,44 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }
 
   Widget _shareCodeSection() {
-    final token = _pasteCtrl.text.trim();
+    final tv = iptvUseTvFocus(context);
+    final hintStyle = GoogleFonts.plusJakartaSans(
+      color: Colors.white.withValues(alpha: 0.25),
+      fontSize: _tv ? 12 : 13,
+    );
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          height: _codeBoxHeight,
-          child: Stack(
-            children: [
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    token.isEmpty ? 'Paste F1. token' : token,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.jetBrainsMono(
-                      color: token.isEmpty
-                          ? IptvShellStyle.textSecondary
-                          : IptvShellStyle.accent,
-                      fontSize: _tv ? 11 : (_compact ? 12 : 13),
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned.fill(
-                child: TextField(
-                  controller: _pasteCtrl,
-                  focusNode: _pasteFocus,
-                  enabled: !_importingShareCode,
-                  readOnly: iptvUseTvFocus(context) && !_pasteEditing,
-                  enableInteractiveSelection:
-                      !iptvUseTvFocus(context) || _pasteEditing,
-                  textAlign: TextAlign.center,
-                  textCapitalization: TextCapitalization.none,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  keyboardType: TextInputType.visiblePassword,
-                  showCursor: false,
-                  style: const TextStyle(
-                    color: Colors.transparent,
-                    fontSize: 1,
-                    height: 1,
-                  ),
-                  cursorColor: Colors.transparent,
-                  decoration: const InputDecoration(
-                    counterText: '',
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                      RegExp(r'[A-Za-z0-9._\-]'),
-                    ),
-                  ],
-                  onChanged: _onSharePasteChanged,
-                ),
-              ),
-            ],
+        TextField(
+          controller: _pasteCtrl,
+          focusNode: _pasteFocus,
+          enabled: !_importingShareCode,
+          readOnly: tv && !_pasteEditing,
+          enableInteractiveSelection: !tv || _pasteEditing,
+          minLines: 2,
+          maxLines: 3,
+          textAlign: TextAlign.center,
+          textCapitalization: TextCapitalization.none,
+          autocorrect: false,
+          enableSuggestions: false,
+          keyboardType: TextInputType.visiblePassword,
+          style: GoogleFonts.jetBrainsMono(
+            color: IptvShellStyle.accent,
+            fontSize: _tv ? 11 : 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.4,
           ),
+          cursorColor: IptvShellStyle.accent,
+          decoration: iptvDialogFieldDecoration(
+            focused: _pasteFocus.hasFocus,
+            hintText: 'Paste F1. token',
+            hintStyle: hintStyle,
+          ),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9._\-]')),
+          ],
+          onChanged: _onSharePasteChanged,
         ),
         if (_importingShareCode) ...[
           const SizedBox(height: 12),

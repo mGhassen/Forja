@@ -878,24 +878,22 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'SHARE CODE · TAP ROW TO HIDE',
+          'SHARE CODE COPIED',
           style: GoogleFonts.plusJakartaSans(
-            color: IptvShellStyle.textSecondary,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
+            color: IptvShellStyle.accent,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
             letterSpacing: 0.6,
           ),
         ),
         const SizedBox(height: 4),
         Text(
-          _shareCode ?? '-',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.jetBrainsMono(
-            color: IptvShellStyle.accent,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.4,
+          'Tap row to hide',
+          style: GoogleFonts.plusJakartaSans(
+            color: IptvShellStyle.textSecondary,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.6,
           ),
         ),
       ],
