@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** fix · **0 / 3** acceptance |
+| **Progress** | **10 / 10** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,6 +29,7 @@
 | 7 | I128-T07 | VOD movies/series/anime/drama: Player-menu switch cool-down + capped `prepareForVideoPlayer` (1.2s) when mounting Exo; Exo boot same cap on Android | ✅ |
 | 8 | I128-T08 | IPTV reload after Exo→MediaKit: live MediaKit reload = live-edge snap (no second `Player.open`); serialize opens; Exo soft reopen without MediaCodec release | ✅ |
 | 9 | I128-T09 | VOD MediaKit→Exo: skip `ao=null` on Android silence; widget dispose defers fast teardown (do not await FFI mid-frame) | ✅ |
+| 10 | I128-T10 | IPTV ATV MediaKit live: watchdog long-buffer recovery snaps live-edge (attempts 1–2); later retries reseat via hot-swap (no `open`/`stop` on busy mpv; `_recreatePlayer` does not await full dispose) | ✅ |
 
 ---
 
@@ -39,6 +40,7 @@
 | 1 | I128-A01 | Android TV IPTV: Player menu Exo → MediaKit, then Back — app stays alive (no ANR / force-finish) | ⬜ |
 | 2 | I128-A02 | Android TV IPTV/Live: after MediaKit exit or Exo↔MediaKit switch, reopen / switch again — video plays (no black / stuck spinner) | ⬜ |
 | 3 | I128-A03 | Android TV VOD: Player menu MediaKit → ExoPlayer — app stays alive (no ANR / force-finish) | ⬜ |
+| 4 | I128-A04 | Android TV IPTV MediaKit: long buffering / Reconnecting… — app stays alive (no ANR) | ⬜ |
 
 ---
 
@@ -70,6 +72,8 @@ Flutter logs showed Select on `iptv-player-back` → `[NavBack]` then Signal Cat
 **Regression (T08 follow-up):** An early T08 draft called `player.stop()` before every MediaKit open. On a virgin player that hung the UI isolate — first channel open after a persisted MediaKit preference ANR’d (~30s later on KeyEvent). Removed pre-open `stop`; ATV MediaKit keeps `cache-pause=no` (Lume-style pause-on-empty stays desktop/phone only).
 
 **VOD Player-menu MediaKit→Exo (T09, emu64a 2026-08-16):** Select on Exo in the VOD Player menu ANR’d (`[LAN] release skip` then SIGQUIT). T07 capped `prepareForVideoPlayer` at 1.2s, but widget `dispose` still started full `teardownMediaKitPlayer` (`fast: false`, `ao=null`) on the UI isolate during `endOfFrame` — Dart timeouts never fire while FFI is stuck in MediaCodec drain (4K goldfish decoder in the log). Fix: Android silence skips `ao=null`; dispose schedules fast teardown and does not await it.
+
+**IPTV long buffer → crash (T10):** Watchdog detector 1 after 12s buffering called `Player.open` (attempts 1–2) then `stop`+`open` (3–4) on a stalled live mpv — same ANR as T08 Reload. ATV MediaKit live now snaps to the live edge on early retries; later retries reseat with `_releaseEngineForHotSwap` (tracked dispose, 1.2s cap) then open a **new** Player.
 
 ## Related
 

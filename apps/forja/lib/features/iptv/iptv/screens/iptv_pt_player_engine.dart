@@ -911,7 +911,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       return;
     }
 
-    await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    await MpvExclusiveSession.instance.prepareForVideoPlayer(
+      timeout: !kIsWeb && Platform.isAndroid
+          ? const Duration(milliseconds: 1200)
+          : const Duration(seconds: 5),
+    );
     if (_s._disposed || !mounted) return;
     _initPlayerInstances();
     await _applyMpvTunables();
@@ -1371,7 +1375,16 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       final allowHardRecreate = forceHard &&
           _s._retryAttempt > 2 &&
           (!_s._windowsSoftwareDecode || _s._retryAttempt > 4);
-      if (allowHardRecreate) {
+      // Busy live mpv: Player.open / stop ANRs ATV (issue 128 T08). Snap first;
+      // later attempts get a new Player via [_recreatePlayer] then open.
+      final atvMkLive =
+          !_s._exoBackend && _s._atvMediaKit && _livePlaybackProfile;
+      if (atvMkLive && _s._retryAttempt <= 2) {
+        _scheduleJumpToLive(force: true);
+        try {
+          await _enginePlay().timeout(const Duration(milliseconds: 400));
+        } catch (_) {}
+      } else if (allowHardRecreate || (atvMkLive && _s._retryAttempt > 2)) {
         try {
           if (!await _recreatePlayer()) return;
           await _engineOpenSource(_s._sources[_s._sourceIdx]);
@@ -1398,7 +1411,6 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           await _engineOpenSource(_s._sources[_s._sourceIdx]);
         } catch (_) {}
       } else {
-        // Recreate
         try {
           if (!await _recreatePlayer()) return;
           await _engineOpenSource(_s._sources[_s._sourceIdx]);
@@ -1468,9 +1480,20 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       return !_s._disposed;
     }
     if (mounted) setState(() => _s._playerReady = false);
-    await _disposePlayer();
+    await WidgetsBinding.instance.endOfFrame;
     if (_s._disposed) return false;
-    await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    if (!kIsWeb && Platform.isAndroid) {
+      await _releaseEngineForHotSwap();
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (_s._disposed) return false;
+      await MpvExclusiveSession.instance.prepareForVideoPlayer(
+        timeout: const Duration(milliseconds: 1200),
+      );
+    } else {
+      await _disposePlayer();
+      if (_s._disposed) return false;
+      await MpvExclusiveSession.instance.prepareForVideoPlayer();
+    }
     if (_s._disposed) return false;
     _initPlayerInstances();
     await _applyMpvTunables();
