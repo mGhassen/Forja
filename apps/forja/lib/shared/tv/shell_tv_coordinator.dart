@@ -824,12 +824,14 @@ abstract final class ShellTvFocusCoordinator {
   /// Like [focusRowItem] but never falls back to index 0.
   /// Use when scrolling to a specific tile (e.g. return from IPTV player).
   static bool focusRowItemExact(String tabId, String rowId, int index) {
+    if (index < 0) return false;
     final handle = _rowHandle(tabId, rowId);
-    if (handle == null || handle.itemCount <= 0) return false;
-    if (index < 0 || index >= handle.itemCount) return false;
-    final node = handle.nodeAt(index);
-    if (node == null || !node.canRequestFocus) return false;
-    handle.lastFocusedIndex = index;
+    if (handle != null) {
+      if (handle.itemCount <= 0 || index >= handle.itemCount) return false;
+    }
+    final node = handle?.nodeAt(index) ?? itemNode(tabId, rowId, index);
+    if (node == null || !_canRequest(node)) return false;
+    if (handle != null) handle.lastFocusedIndex = index;
     saveFocus(
       tabId,
       ShellTvFocusMemory(
@@ -893,12 +895,20 @@ abstract final class ShellTvFocusCoordinator {
     int step = 1,
   }) {
     final handle = _rowHandle(tabId, rowId);
-    if (handle == null || handle.itemCount <= 0) return false;
     final stride = step < 1 ? 1 : step;
-    final delta = (right ? 1 : -1) * stride;
+    final dir = right ? 1 : -1;
+    if (handle == null) {
+      for (var n = stride; n >= 1; n--) {
+        final next = currentIndex + dir * n;
+        if (next < 0) return false;
+        if (focusRowItemExact(tabId, rowId, next)) return true;
+      }
+      return false;
+    }
+    if (handle.itemCount <= 0) return false;
+    final delta = dir * stride;
     final target = (currentIndex + delta).clamp(0, handle.itemCount - 1);
     if (target == currentIndex) return false;
-    final dir = right ? 1 : -1;
     // Prefer the accelerated target; walk back toward current if unmounted.
     for (var i = target; i != currentIndex; i -= dir) {
       if (focusRowItemExact(tabId, rowId, i)) return true;
@@ -1025,9 +1035,23 @@ abstract final class ShellTvFocusCoordinator {
     }
   }
 
+  static bool _canRequest(FocusNode node) {
+    try {
+      if (!node.canRequestFocus) return false;
+    } catch (_) {
+      return false;
+    }
+    final ctx = node.context;
+    return ctx != null && ctx.mounted;
+  }
+
+  /// Overlay [FocusScope] remount (reopen Sources): bare [FocusNode.requestFocus]
+  /// can no-op; request through the node's scope like panel claim does.
   static bool _request(FocusNode node) {
-    if (!node.canRequestFocus) return false;
-    node.requestFocus();
+    if (!_canRequest(node)) return false;
+    final ctx = node.context;
+    if (ctx == null || !ctx.mounted) return false;
+    FocusScope.of(ctx).requestFocus(node);
     return true;
   }
 

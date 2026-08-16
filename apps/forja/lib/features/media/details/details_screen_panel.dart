@@ -371,7 +371,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     );
   }
 
-  Widget _torrentTileFor(TorrentResult r, {int? tvItemIndex, int? tvCount}) {
+  Widget _torrentTileFor(TorrentResult r, {int? tvItemIndex}) {
     double prog = 0;
     var preselected = false;
     if (_s._lastProgress != null && _s._lastProgress!['method'] == 'torrent') {
@@ -396,11 +396,6 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       highlightStart: widget.startPosition != null,
       tvItemIndex: tvItemIndex,
       onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
-      onDownEdge: tvItemIndex != null &&
-              tvCount != null &&
-              tvItemIndex >= tvCount - 1
-          ? () {}
-          : null,
       onPlay: () => _s._playTorrent(
         r,
         startPosition: preselected
@@ -414,7 +409,6 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     Map<String, dynamic> s, {
     required bool showAddonName,
     int? tvItemIndex,
-    int? tvCount,
   }) {
     final title = s['title'] ?? s['name'] ?? 'Unknown Stream';
     final description = s['description'] ?? '';
@@ -457,11 +451,6 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       highlightStart: widget.startPosition != null,
       tvItemIndex: tvItemIndex,
       onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
-      onDownEdge: tvItemIndex != null &&
-              tvCount != null &&
-              tvItemIndex >= tvCount - 1
-          ? () {}
-          : null,
       onTap: () => _s._playStremioStream(
         s,
         startPosition: resumable
@@ -607,7 +596,6 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           return _torrentTileFor(
             torrents[i],
             tvItemIndex: tvIndex,
-            tvCount: count,
           );
         }
         final j = i - torrents.length;
@@ -616,14 +604,12 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
             stremio[j],
             showAddonName: showAddonName,
             tvItemIndex: tvIndex,
-            tvCount: count,
           );
         }
         return _stremioTileFor(
           nuvio[j - stremio.length],
           showAddonName: true,
           tvItemIndex: tvIndex,
-          tvCount: count,
         );
       },
     );

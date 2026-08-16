@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 Widget _wrapTv(Widget child) {
   return MaterialApp(
@@ -14,6 +18,21 @@ Widget _wrapTv(Widget child) {
         child: FocusScope(child: child),
       ),
     ),
+  );
+}
+
+FocusableControl _listTile(FocusNode node, int index) {
+  return FocusableControl(
+    focusNode: node,
+    scaleOnFocus: 1.0,
+    tvMeta: ShellTvFocusMeta(
+      tabId: SourcesPanelTv.tabId,
+      zone: ShellTvZone.row,
+      rowId: SourcesPanelTv.listRowId,
+      itemIndex: index,
+    ),
+    onTap: () {},
+    child: const SizedBox(width: 80, height: 40),
   );
 }
 
@@ -93,4 +112,90 @@ void main() {
     kind.dispose();
     list.dispose();
   });
+
+  testWidgets('vertical sources list: ↓ moves to the next tile', (tester) async {
+    final a = FocusNode(debugLabel: 'sources-list-0');
+    final b = FocusNode(debugLabel: 'sources-list-1');
+
+    await tester.pumpWidget(
+      _wrapTv(
+        TvOverlayScope(
+          autofocusFirst: false,
+          debugLabel: 'sources-panel-tv',
+          child: TvCatalogRow(
+            tabId: SourcesPanelTv.tabId,
+            rowId: SourcesPanelTv.listRowId,
+            sortOrder: SourcesPanelTv.listSort,
+            itemCount: 2,
+            orientation: ShellTvRowOrientation.vertical,
+            child: Column(
+              children: [_listTile(a, 0), _listTile(b, 1)],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    a.requestFocus();
+    await tester.pump();
+    expect(a.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(b.hasFocus, isTrue, reason: '↓ must leave sources-list-0');
+
+    a.dispose();
+    b.dispose();
+  });
+
+  testWidgets(
+    'vertical sources list: ↓ still moves after the row handle is gone',
+    (tester) async {
+      final a = FocusNode(debugLabel: 'sources-list-0');
+      final b = FocusNode(debugLabel: 'sources-list-1');
+
+      await tester.pumpWidget(
+        _wrapTv(
+          TvOverlayScope(
+            autofocusFirst: false,
+            debugLabel: 'sources-panel-tv',
+            child: Column(
+              children: [_listTile(a, 0), _listTile(b, 1)],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // Player file picker / Sources overlay unregistered the shared row.
+      shellTvUnregisterRow(
+        tabId: SourcesPanelTv.tabId,
+        rowId: SourcesPanelTv.listRowId,
+      );
+      expect(
+        ShellTvFocusCoordinator.rowHandle(
+          SourcesPanelTv.tabId,
+          SourcesPanelTv.listRowId,
+        ),
+        isNull,
+      );
+
+      a.requestFocus();
+      await tester.pump();
+      expect(a.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      expect(
+        b.hasFocus,
+        isTrue,
+        reason: 'missing sources-list handle must not swallow ↓',
+      );
+
+      a.dispose();
+      b.dispose();
+    },
+  );
 }
+

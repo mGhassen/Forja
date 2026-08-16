@@ -2069,7 +2069,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       itemBuilder: (context, i) {
         final tvIndex = tv ? i : null;
         final onUp = i == 0 ? SourcesPanelTv.focusProvidersItem : null;
-        final onDown = i >= totalCount - 1 ? () {} : null;
         if (i < torrents.length) {
           final r = torrents[i];
           final isCurrent = i == currentIndex;
@@ -2082,7 +2081,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                 highlightStart: isCurrent,
                 tvItemIndex: tvIndex,
                 onUpEdge: onUp,
-                onDownEdge: onDown,
                 onPlay: () => _selectTorrent(r),
               ),
             ),
@@ -2113,7 +2111,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               highlightStart: isCurrent,
               tvItemIndex: tvIndex,
               onUpEdge: onUp,
-              onDownEdge: onDown,
               onTap: () => _selectStremio(s),
             ),
           ),

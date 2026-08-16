@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** fix · **0 / 6** acceptance |
+| **Progress** | **10 / 10** fix · **0 / 7** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,7 @@
 | 7 | I161-T07 | Remote Back closes Sources/Filters only (HardwareKeyboard steal) — do not pop details or player | ✅ |
 | 8 | I161-T08 | Player PopScope / pair `showDialog`: Back dismisses dialog/overlay only — HW twin must not `_exit` the player | ✅ |
 | 9 | I161-T09 | Details: Back closing Sources restores D-pad to the Play control that opened it | ✅ |
+| 10 | I161-T10 | Reopen after player: ↓/↑ still move in the list when `sources-list` row handle was unregistered | ✅ |
 
 ---
 
@@ -41,6 +42,7 @@
 | 4 | I161-A04 | Android TV details: leave player → white Play → Sources still has D-pad in the panel | ⬜ |
 | 5 | I161-A05 | Android TV: Back on Sources closes the panel (Filters first if open) — stays on details / in the player | ⬜ |
 | 6 | I161-A06 | Android TV details: Back on Sources → D-pad on Play (not empty / Back chevron) | ⬜ |
+| 7 | I161-A07 | Android TV details: leave player → reopen Sources → ↓/↑ move between torrent rows (not stuck on first) | ⬜ |
 
 ---
 
@@ -55,6 +57,8 @@ On **Android TV**, opening the torrent **Sources** panel left D-pad on the page 
 **I161-T07:** `HardwareKeyboard` consumes `goBack` before `TvOverlayScope`, so details Back popped the title (and a player twin could leave playback). Sources now registers a dismisser: Filters first, then the panel.
 
 **I161-T09:** closing Sources left D-pad on an empty overlay scope (panel nodes unmounted, details still `ExcludeFocus` for a frame). Back now restores the Play control that opened the panel (retries after ExcludeFocus lifts). Playback-start close does not steal Play under the player.
+
+**I161-T10:** after leaving the player, the in-player Sources / torrent-file `TvCatalogRow` `dispose` unregisters the shared `sources-panel` / `sources-list` handle. Reopening details Sources still focused list-0, but ↓ was `handled` without moving (`moveVerticalInTab` failed, spatial never ran). Arrow resolvers now return ignored on a failed move so spatial can walk the list; `_request` uses the overlay `FocusScope` like claim does.
 
 ---
 

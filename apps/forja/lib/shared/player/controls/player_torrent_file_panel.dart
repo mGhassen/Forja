@@ -328,7 +328,6 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
                   if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
                 }
               : null,
-          onDownEdge: i >= files.length - 1 ? () {} : null,
           onPlay: () => _select(file),
         );
       },

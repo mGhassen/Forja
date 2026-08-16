@@ -336,9 +336,9 @@ KeyEventResult shellTvHandleRowArrows({
     }
     final up = tvMeta?.resolveUpEdge();
     if (up != null) {
-      // Still claim handled - geometry must not leak across catalog rows.
-      up();
-      return KeyEventResult.handled;
+      // False (missing row handle / unmounted neighbor) must not swallow —
+      // spatial focusInDirection still has a chance. Trap-at-edge returns true.
+      return up() ? KeyEventResult.handled : KeyEventResult.ignored;
     }
     if (rowBound || gridBound) return KeyEventResult.handled;
     return KeyEventResult.ignored;
@@ -350,8 +350,7 @@ KeyEventResult shellTvHandleRowArrows({
     }
     final down = tvMeta?.resolveDownEdge();
     if (down != null) {
-      down();
-      return KeyEventResult.handled;
+      return down() ? KeyEventResult.handled : KeyEventResult.ignored;
     }
     if (rowBound || gridBound) return KeyEventResult.handled;
     return KeyEventResult.ignored;
