@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 12** fix · **0 / 11** acceptance |
-| **Current slice** | Stall-reopen is a Stable checkbox (not a third dropdown peer); device smoke outstanding |
+| **Progress** | **13 / 13** fix · **0 / 12** acceptance |
+| **Current slice** | 30s Buffering hard wall on Stable (T13); stall checkbox; device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -33,6 +33,7 @@
 | 10 | I148-T10 | Reject absurd `demuxer-cache-duration` / buffer-ahead samples (>90 s) as PTS garbage — stats show `— (invalid PTS)`; Stable gate does not treat spikes as healthy cache | ✅ |
 | 11 | I148-T11 | **Stall-reopen test mode** — Settings third option (`stall`): Stable cache/feed hold, but ignore cache/feed when buffering/freeze past grace with no playhead; debounce `core-idle` flicker on `_bufferingSince` | ✅ |
 | 12 | I148-T12 | **Stall UX** — Settings dropdown is Stable/Classic only; **Reopen on buffer stall** is a checkbox under Stable (still stores `stall` / `buffered` / `classic`) | ✅ |
+| 13 | I148-T13 | 30s Buffering + frozen playhead forces reconnect on Stable (hard wall; ignores cache/feed hold) | ✅ |
 
 ---
 
@@ -51,12 +52,15 @@
 | 9 | I148-A09 | **Classic** mode: frozen-position detector reopens within ~8s without requiring empty cache | ⬜ |
 | 10 | I148-A10 | Stream stats: Cache stays in the seconds–tens range on healthy live; a PTS spike shows `— (invalid PTS)` not thousands of minutes; no multi-hour Buffered ahead | ⬜ |
 | 11 | I148-A11 | MediaKit + **Stable** + **Reopen on buffer stall**: sustained Buffering with frozen playhead reconnects within ~12s even when demuxer still reports cache/feed (`skip recovery` must not hold) | ⬜ |
+| 12 | I148-A12 | **Stable**: Buffering with frozen playhead for 30s reconnects even when cache/feed look healthy | ⬜ |
 
 ---
 
 ## Summary
 
 **Symptom (1.3.135+):** A live IPTV channel plays normally, then after ~1–2 minutes the picture stalls, the buffering spinner shows `Reconnecting… (attempt 1/8)`, and playback may resume on its own. The upstream feed is often still alive.
+
+> **Status update (I148-T13).** 30s of Buffering with a frozen playhead always reconnects on Stable, even when demuxer cache/feed still look healthy. Cache window stays 30s; the spinner does not sit forever.
 
 > **Status update (I148-T12).** Stall reopen is no longer a third dropdown peer next to 1.3.170 / 1.3.114. Settings → **IPTV live recovery** = Stable | Classic; with Stable selected, checkbox **Reopen on buffer stall** maps to stored `stall`.
 

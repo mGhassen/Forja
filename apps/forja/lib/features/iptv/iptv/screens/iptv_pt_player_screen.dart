@@ -440,6 +440,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// Have at least this much cache ⇒ stream is healthy, never auto-recover.
   static const double _minHealthyCacheSecs = 2.0;
 
+  /// Continuous Buffering with a frozen playhead this long ⇒ dead, even if
+  /// Stable still reports cache/feed. Matches live [cache-secs] (30).
+  static const Duration _bufferingHardWall = Duration(seconds: 30);
+
   /// Tunables ask for ~30 s readahead. Anything far above that is almost
   /// always a live PTS discontinuity (mpv reports multi-hour "cache"), not
   /// real buffered media — reject for the Stable recovery gate.

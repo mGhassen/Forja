@@ -1101,6 +1101,15 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       _s._playing &&
       DateTime.now().difference(_s._lastPosChange) < const Duration(seconds: 2);
 
+  /// 30s Buffering, no playhead — ignore Stable cache/feed hold.
+  bool get _bufferingHardWall {
+    final since = _s._bufferingSince;
+    if (since == null) return false;
+    if (_playheadRecentlyMoved) return false;
+    return DateTime.now().difference(since) >=
+        _IptvPtPlayerScreenState._bufferingHardWall;
+  }
+
   /// Sustained underrun / freeze without playhead — treat as dead for stall mode.
   bool get _stallWithoutPlayhead {
     if (!_stallReopenRecovery) return false;
@@ -1123,6 +1132,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   bool get _streamWorking {
     if (!_bufferedRecovery) return false;
     if (_stallWithoutPlayhead) return false;
+    if (_bufferingHardWall) return false;
     if (_s._cacheAheadSecs >=
         _IptvPtPlayerScreenState._minHealthyCacheSecs) {
       return true;
