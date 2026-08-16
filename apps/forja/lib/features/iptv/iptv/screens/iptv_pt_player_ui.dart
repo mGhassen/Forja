@@ -68,7 +68,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     if (!epgEnabled || _s._epgCache == null) return null;
     final stream = _currentGuideChannel()?.xtreamStream;
     if (stream == null) return null;
-    return _s._epgCache!.load(stream, limit: 8);
+    return _s._epgCache!.load(stream);
   }
 
   /// Progress bar via chrome profile — hide only ATV Exo pure live.

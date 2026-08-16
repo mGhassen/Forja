@@ -15,24 +15,26 @@ class IptvGuideEpgCache {
   final VerifiedPortal portal;
   final Map<String, Future<List<EpgEntry>>> _cache = {};
 
-  Future<List<EpgEntry>> load(IptvStream stream, {int limit = 6}) {
+  Future<List<EpgEntry>> load(
+    IptvStream stream, {
+    int limit = IptvClient.shortEpgLimit,
+  }) {
     final streamId = stream.streamId;
     final epgId = stream.epgChannelId;
     if (streamId.isEmpty && epgId.isEmpty) {
       return Future.value(const []);
     }
     final key = '${streamId.isEmpty ? epgId : streamId}:$epgId:$limit';
-    return _cache.putIfAbsent(key, () async {
-      if (streamId.isNotEmpty) {
-        final rows =
-            await IptvClient.shortEpg(portal.portal, streamId, limit: limit);
-        if (rows.isNotEmpty) return rows;
-      }
-      if (epgId.isNotEmpty && epgId != streamId) {
-        return IptvClient.shortEpg(portal.portal, epgId, limit: limit);
-      }
-      return const [];
-    });
+    return rememberIptvEpg(
+      _cache,
+      key,
+      () => IptvClient.shortEpgForStream(
+        portal.portal,
+        streamId: streamId,
+        epgChannelId: epgId,
+        limit: limit,
+      ),
+    );
   }
 
   void clear() => _cache.clear();

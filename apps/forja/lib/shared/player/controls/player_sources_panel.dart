@@ -697,7 +697,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _requestScrollToCurrent();
       }
     }
-    if (_pendingNuvioScraperIds.isNotEmpty) {
+    if (_nuvioStreams.isEmpty && _pendingNuvioScraperIds.isNotEmpty) {
       await _fetchNextNuvioScraper();
     }
   }
@@ -1447,9 +1447,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   Future<void> _fetchNextNuvioScraper({
     bool reset = false,
     String? onlyId,
+    bool chain = false,
   }) async {
     if (_nuvioAddons.isEmpty || widget.movie.id <= 0) return;
-    if (_nuvioFetching && !reset) {
+    if (_nuvioFetching && !reset && !chain) {
       if (onlyId == null || onlyId == _nuvioInFlightScraperId) return;
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _nuvioFetchGen++;
@@ -1498,9 +1499,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       debugPrint('[Nuvio] scraper $scraperId failed: $e');
     }
     if (!mounted || gen != _nuvioFetchGen) return;
+    final added = batch != null && batch.streams.isNotEmpty;
+    final fetchedAfter = {..._nuvioFetchedScraperIds, scraperId};
+    final pendingAfter = nextNuvioScraperId(
+      orderedIds: _orderedNuvioScraperIds,
+      selectedIds: _nuvioSelectedScraperIds,
+      fetchedIds: fetchedAfter,
+    );
+    final continueWalk = shouldContinueNuvioScraperWalk(
+      explicitScraper: onlyId != null,
+      hasStreams: _nuvioStreams.isNotEmpty || added,
+      hasPendingSelected: pendingAfter != null,
+    );
     setState(() {
       _nuvioFetchedScraperIds.add(scraperId);
-      _nuvioInFlightScraperId = null;
+      if (!continueWalk) _nuvioInFlightScraperId = null;
       if (batch != null && batch.streams.isNotEmpty) {
         final result = batch;
         _nuvioStreams.addAll(
@@ -1514,8 +1527,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           ),
         );
       }
-      _nuvioFetching = false;
-      if (_nuvioStreams.isEmpty && _pendingNuvioScraperIds.isEmpty) {
+      _nuvioFetching = continueWalk;
+      if (!continueWalk &&
+          _nuvioStreams.isEmpty &&
+          pendingAfter == null) {
         _error = 'No streams found from selected Nuvio providers';
       }
     });
@@ -1524,6 +1539,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _nuvioStreams,
       fetchedScraperIds: _nuvioFetchedScraperIds,
     );
+    if (continueWalk) {
+      await _fetchNextNuvioScraper(chain: true);
+      return;
+    }
     _focusPlayingSourceIfNeeded();
     _requestScrollToCurrent();
   }

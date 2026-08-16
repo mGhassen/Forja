@@ -431,16 +431,10 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   bool _hovered = false;
   bool _focused = false;
 
-  bool get _accent =>
-      (_hovered || _focused) &&
-      !widget.isResumable &&
-      !widget.highlightStart &&
-      widget.accentFill == null;
+  bool get _hover => _hovered || _focused;
 
   Color _backgroundColor() {
-    if (_accent) {
-      return ForjaShellColors.brandGreen.withValues(alpha: 0.14);
-    }
+    if (_hover) return ForjaShellColors.chipSelectedBg;
     if (widget.accentFill != null) return widget.accentFill!;
     if (widget.isResumable || widget.highlightStart) {
       return ForjaShellColors.chipSelectedBg;
@@ -449,9 +443,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   }
 
   Color _borderColor() {
-    if (_accent) {
-      return ForjaShellColors.brandGreen.withValues(alpha: 0.5);
-    }
+    if (_hover) return ForjaShellColors.chipSelectedBorder;
     if (widget.accentBorder != null) return widget.accentBorder!;
     if (widget.isResumable || widget.highlightStart) {
       return ForjaShellColors.chipSelectedBorder;
@@ -613,10 +605,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                 ),
                               ),
                             for (final badge in widget.badges)
-                              _SourceMetaBadge(
-                                badge: badge,
-                                accentHover: _accent,
-                              ),
+                              _SourceMetaBadge(badge: badge),
                           ],
                         ),
                       ],
@@ -671,10 +660,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
 }
 
 class _SourceMetaBadge extends StatelessWidget {
-  const _SourceMetaBadge({required this.badge, this.accentHover = false});
+  const _SourceMetaBadge({required this.badge});
 
   final _SourceBadgeSpec badge;
-  final bool accentHover;
 
   @override
   Widget build(BuildContext context) {
@@ -683,29 +671,23 @@ class _SourceMetaBadge extends StatelessWidget {
     late final Color bg;
     late final Color border;
 
-    if (accentHover) {
-      fg = ForjaShellColors.brandGreen;
-      bg = ForjaShellColors.brandGreen.withValues(alpha: 0.14);
-      border = ForjaShellColors.brandGreen.withValues(alpha: 0.5);
-    } else {
-      switch (badge.tone) {
-        case _SourceBadgeTone.emphasis:
-          fg = cinematic.textPrimary;
-          bg = Colors.white.withValues(alpha: 0.14);
-          border = Colors.white.withValues(alpha: 0.22);
-        case _SourceBadgeTone.size:
-          fg = cinematic.textPrimary;
-          bg = Colors.white.withValues(alpha: 0.10);
-          border = Colors.white.withValues(alpha: 0.18);
-        case _SourceBadgeTone.accent:
-          fg = const Color(0xFF60A5FA);
-          bg = const Color(0xFF60A5FA).withValues(alpha: 0.10);
-          border = const Color(0xFF60A5FA).withValues(alpha: 0.24);
-        case _SourceBadgeTone.muted:
-          fg = cinematic.textSecondary;
-          bg = Colors.white.withValues(alpha: 0.06);
-          border = Colors.white.withValues(alpha: 0.10);
-      }
+    switch (badge.tone) {
+      case _SourceBadgeTone.emphasis:
+        fg = cinematic.textPrimary;
+        bg = Colors.white.withValues(alpha: 0.14);
+        border = Colors.white.withValues(alpha: 0.22);
+      case _SourceBadgeTone.size:
+        fg = cinematic.textPrimary;
+        bg = Colors.white.withValues(alpha: 0.10);
+        border = Colors.white.withValues(alpha: 0.18);
+      case _SourceBadgeTone.accent:
+        fg = const Color(0xFF60A5FA);
+        bg = const Color(0xFF60A5FA).withValues(alpha: 0.10);
+        border = const Color(0xFF60A5FA).withValues(alpha: 0.24);
+      case _SourceBadgeTone.muted:
+        fg = cinematic.textSecondary;
+        bg = Colors.white.withValues(alpha: 0.06);
+        border = Colors.white.withValues(alpha: 0.10);
     }
 
     return Container(

@@ -193,9 +193,10 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
   Future<void> _fetchNextNuvioScraper({
     bool reset = false,
     String? onlyId,
+    bool chain = false,
   }) async {
     if (!_s._hasNuvioAddons || _s._movie.id <= 0) return;
-    if (_s._isNuvioFetching && !reset) {
+    if (_s._isNuvioFetching && !reset && !chain) {
       if (onlyId == null || onlyId == _s._nuvioInFlightScraperId) return;
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _s._nuvioFetchGen++;
@@ -244,9 +245,21 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
       debugPrint('[Nuvio] scraper $scraperId failed: $e');
     }
     if (!mounted || gen != _s._nuvioFetchGen) return;
+    final added = batch != null && batch.streams.isNotEmpty;
+    final fetchedAfter = {..._s._nuvioFetchedScraperIds, scraperId};
+    final pendingAfter = nextNuvioScraperId(
+      orderedIds: _orderedNuvioScraperIds,
+      selectedIds: _s._nuvioSelectedScraperIds,
+      fetchedIds: fetchedAfter,
+    );
+    final continueWalk = shouldContinueNuvioScraperWalk(
+      explicitScraper: onlyId != null,
+      hasStreams: _s._nuvioStreams.isNotEmpty || added,
+      hasPendingSelected: pendingAfter != null,
+    );
     setState(() {
       _s._nuvioFetchedScraperIds.add(scraperId);
-      _s._nuvioInFlightScraperId = null;
+      if (!continueWalk) _s._nuvioInFlightScraperId = null;
       if (batch != null && batch.streams.isNotEmpty) {
         final result = batch;
         _s._nuvioStreams.addAll(
@@ -260,10 +273,11 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
           ),
         );
       }
-      _s._isNuvioFetching = false;
-      if (_s._selectedSourceId == 'all_nuvio' &&
+      _s._isNuvioFetching = continueWalk;
+      if (!continueWalk &&
+          _s._selectedSourceId == 'all_nuvio' &&
           _s._nuvioStreams.isEmpty &&
-          _pendingNuvioScraperIds.isEmpty) {
+          pendingAfter == null) {
         _s._errorMessage = 'No streams found from selected Nuvio providers';
       }
     });
@@ -272,6 +286,10 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
       List<Map<String, dynamic>>.from(_s._nuvioStreams),
       fetchedScraperIds: _s._nuvioFetchedScraperIds,
     );
+    if (continueWalk) {
+      await _fetchNextNuvioScraper(chain: true);
+      return;
+    }
     _s._maybeAutoPlay();
   }
 

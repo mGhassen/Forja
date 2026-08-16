@@ -81,6 +81,68 @@ void main() {
         {'a', 'b'},
       );
     });
+
+    test('walks empty selected scrapers until one returns streams', () {
+      expect(
+        shouldContinueNuvioScraperWalk(
+          explicitScraper: false,
+          hasStreams: false,
+          hasPendingSelected: true,
+        ),
+        isTrue,
+      );
+      expect(
+        shouldContinueNuvioScraperWalk(
+          explicitScraper: false,
+          hasStreams: true,
+          hasPendingSelected: true,
+        ),
+        isFalse,
+      );
+      expect(
+        shouldContinueNuvioScraperWalk(
+          explicitScraper: false,
+          hasStreams: false,
+          hasPendingSelected: false,
+        ),
+        isFalse,
+      );
+      expect(
+        shouldContinueNuvioScraperWalk(
+          explicitScraper: true,
+          hasStreams: false,
+          hasPendingSelected: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('missing chip selection defaults to all enabled', () {
+      expect(
+        resolveNuvioSelectedScraperIds(
+          selectionSaved: false,
+          savedIds: const [],
+          enabledIds: const {'allanime', 'Cineby'},
+        ),
+        {'allanime', 'Cineby'},
+      );
+      expect(
+        resolveNuvioSelectedScraperIds(
+          selectionSaved: true,
+          savedIds: const [],
+          enabledIds: const {'allanime', 'Cineby'},
+        ),
+        isEmpty,
+      );
+      expect(
+        resolveNuvioSelectedScraperIds(
+          selectionSaved: true,
+          savedIds: const ['Cineby', 'gone'],
+          enabledIds: const {'allanime', 'Cineby'},
+        ),
+        {'Cineby'},
+      );
+    });
   });
 
   group('promoteStremioProviderId', () {

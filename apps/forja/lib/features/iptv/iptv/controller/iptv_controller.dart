@@ -747,7 +747,11 @@ class IptvController extends ChangeNotifier
   /// Lazy EPG fetch for a live stream. Returns the cached future (or fires a
   /// new request) so multiple `_StreamCard`s for the same id share one call.
   /// Safe to call from `FutureBuilder` - the Future is stable across rebuilds.
-  Future<List<EpgEntry>> epgFor(IptvStream s, {int limit = 2}) {
+  /// Card footer and long-press sheet share [IptvClient.shortEpgLimit].
+  Future<List<EpgEntry>> epgFor(
+    IptvStream s, {
+    int limit = IptvClient.shortEpgLimit,
+  }) {
     if (!_epgEnabled) return Future.value(const []);
     final p = activePortal;
     if (p == null ||
@@ -759,19 +763,16 @@ class IptvController extends ChangeNotifier
       return Future.value(const []);
     }
     final cacheKey = '${s.streamId.isEmpty ? s.epgChannelId : s.streamId}:$limit';
-    return _epgCache.putIfAbsent(
+    return rememberIptvEpg(
+      _epgCache,
       cacheKey,
-      () async {
-        if (s.streamId.isNotEmpty) {
-          final rows =
-              await IptvClient.shortEpg(p.portal, s.streamId, limit: limit);
-          if (rows.isNotEmpty) return rows;
-        }
-        if (s.epgChannelId.isNotEmpty && s.epgChannelId != s.streamId) {
-          return IptvClient.shortEpg(p.portal, s.epgChannelId, limit: limit);
-        }
-        return const [];
-      },
+      () => IptvClient.shortEpgForStream(
+        p.portal,
+        streamId: s.streamId,
+        epgChannelId: s.epgChannelId,
+        limit: limit,
+      ),
+      isAlive: () => !_disposed,
     );
   }
 
@@ -783,7 +784,10 @@ class IptvController extends ChangeNotifier
 
   /// Lazy EPG fetch for a hardcoded-channel hit. Same dedupe semantics as
   /// [epgFor] but keyed per (portal, stream).
-  Future<List<EpgEntry>> epgForHit(ChannelHit h, {int limit = 2}) {
+  Future<List<EpgEntry>> epgForHit(
+    ChannelHit h, {
+    int limit = IptvClient.shortEpgLimit,
+  }) {
     if (!_epgEnabled) return Future.value(const []);
     if (h.stream.kind != 'live' ||
         h.portal.platform != IptvPortalPlatform.xtream) {
@@ -796,22 +800,16 @@ class IptvController extends ChangeNotifier
     }
     final key =
         '${h.portal.key}|${streamId.isEmpty ? epgId : streamId}|$epgId|$limit';
-    return _hitEpgCache.putIfAbsent(
+    return rememberIptvEpg(
+      _hitEpgCache,
       key,
-      () async {
-        if (streamId.isNotEmpty) {
-          final rows = await IptvClient.shortEpg(
-            h.portal.portal,
-            streamId,
-            limit: limit,
-          );
-          if (rows.isNotEmpty) return rows;
-        }
-        if (epgId.isNotEmpty && epgId != streamId) {
-          return IptvClient.shortEpg(h.portal.portal, epgId, limit: limit);
-        }
-        return const [];
-      },
+      () => IptvClient.shortEpgForStream(
+        h.portal.portal,
+        streamId: streamId,
+        epgChannelId: epgId,
+        limit: limit,
+      ),
+      isAlive: () => !_disposed,
     );
   }
 

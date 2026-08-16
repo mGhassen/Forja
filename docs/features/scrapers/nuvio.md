@@ -4,7 +4,7 @@
 
 ## What it is
 
-Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Manage them in Settings, enable individual scrapers, and use them from the **Nuvio** tab in **Sources** on [media details](../movies-tv/media-details.md) (white **Play** / link icon — same panel as Forja torrent search). Provider chips under the **Nuvio** tab remember your selection on this device — tap a scraper to select it and load its sources; tap a fetched scraper again to deselect and clear that scraper’s rows. Opening Nuvio loads one selected scraper. Tap another selected (unfetched) chip or **All** to load the next (stops a scraper still running; tap it again to continue).
+Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Manage them in Settings, enable individual scrapers, and use them from the **Nuvio** tab in **Sources** on [media details](../movies-tv/media-details.md) (white **Play** / link icon — same panel as Forja torrent search). Provider chips under the **Nuvio** tab remember your selection on this device — tap a scraper to select it and load its sources; tap a fetched scraper again to deselect and clear that scraper’s rows. Opening Nuvio walks selected scrapers until one returns streams (AllAnime empty does not hide Cineby). Tap another selected (unfetched) chip or **All** to load the next (stops a scraper still running; tap it again to continue). First time, every enabled scraper starts selected.
 
 Forja ships a **built-in** All-in-One Nuvio catalog. It appears in **Settings → Nuvio addons** (same scrapers as **Sources → Nuvio**). You can toggle scrapers on or off; the built-in addon cannot be removed.
 
@@ -22,7 +22,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 - Paste a Nuvio `manifest.json` URL and install more
 - Toggle each scraper on/off without removing the addon
 - Remove a user-installed addon (trash → Yes / No confirm; not the built-in one)
-- In **Sources → Nuvio**, tap **All** to select every scraper, or tap individual scraper chips (tap a fetched scraper again to remove their sources); the selection is remembered on this device across titles. Opening Nuvio loads one scraper; tap another chip or **All** to load the next (that **stops** a scraper still running; tap it again to continue). Play a result (HTTP links play directly; magnets use the local torrent engine, or a paired desktop on Android TV)
+- In **Sources → Nuvio**, tap **All** to select every scraper, or tap individual scraper chips (tap a fetched scraper again to remove their sources); the selection is remembered on this device across titles. Opening Nuvio walks selected scrapers until one returns streams; tap another chip or **All** to load the next (that **stops** a scraper still running; tap it again to continue). Play a result (HTTP links play directly; magnets use the local torrent engine, or a paired desktop on Android TV)
 
 ## Setup
 

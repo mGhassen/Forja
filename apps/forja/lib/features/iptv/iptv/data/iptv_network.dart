@@ -79,9 +79,46 @@ class IptvCatalogFetch {
   );
 }
 
+class IptvEpgFetchException implements Exception {
+  const IptvEpgFetchException();
+}
+
+/// Memoize a successful short-EPG load (including empty listings).
+/// HTTP/parse failures complete as empty for this call, then drop from
+/// [cache] after [retryFailedAfter] so a later build can retry without
+/// refetching on every `notifyListeners`.
+Future<List<EpgEntry>> rememberIptvEpg(
+  Map<String, Future<List<EpgEntry>>> cache,
+  String key,
+  Future<List<EpgEntry>> Function() load, {
+  Duration retryFailedAfter = const Duration(seconds: 15),
+  bool Function()? isAlive,
+}) {
+  final hit = cache[key];
+  if (hit != null) return hit;
+  late final Future<List<EpgEntry>> future;
+  future = () async {
+    try {
+      return await load();
+    } catch (_) {
+      unawaited(Future<void>.delayed(retryFailedAfter, () {
+        if (isAlive != null && !isAlive()) return;
+        if (identical(cache[key], future)) cache.remove(key);
+      }));
+      return const <EpgEntry>[];
+    }
+  }();
+  cache[key] = future;
+  return future;
+}
+
 /// Xtream-Codes player_api client. Login + catalog + episodes via Rust.
 class IptvClient {
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
+
+  /// Shared `get_short_epg` page size — catalog cards and the long-press
+  /// sheet must use the same limit so they share one cache entry.
+  static const shortEpgLimit = 8;
 
   /// Large Live lineups (20k+ streams) need headroom for download + parse.
   static int _catalogTimeoutSecs(IptvSection kind) => switch (kind) {
@@ -387,10 +424,6 @@ class IptvClient {
     return url.isEmpty ? null : url;
   }
 
-  /// Fetches the next [limit] EPG programmes for [streamId] via Xtream's
-  /// `get_short_epg`. Returns an empty list on any failure (no panel EPG,
-  /// timeout, malformed JSON, etc.) so callers can simply hide the row.
-  ///
   /// Xtream encodes `title` and `description` as base64 strings.
   static String _decodeXtreamField(String s) {
     return RustLib.instance.decodeXtreamText(s);
@@ -455,23 +488,76 @@ class IptvClient {
     return deduped;
   }
 
-  static Future<List<EpgEntry>> shortEpg(
+  static Future<List<EpgEntry>?> _shortEpgOnce(
     IptvPortal p,
     String streamId, {
-    int limit = 2,
-    Duration timeout = const Duration(seconds: 6),
+    required int limit,
+    required Duration timeout,
   }) async {
     if (streamId.isEmpty) return const [];
     final url = '${p.url}/player_api.php?username=${_enc(p.username)}'
         '&password=${_enc(p.password)}'
         '&action=get_short_epg&stream_id=${_enc(streamId)}&limit=$limit';
     final text = await _httpGet(url, timeout: timeout);
-    if (text == null) return const [];
+    if (text == null) return null;
     try {
       return _parseEpgListings(text);
     } catch (_) {
-      return const [];
+      return null;
     }
+  }
+
+  /// Fetches the next [limit] EPG programmes for [streamId] via Xtream's
+  /// `get_short_epg`. Empty list = the panel has no listings.
+  ///
+  /// HTTP / parse failures retry once, then throw so callers can avoid
+  /// caching a sticky miss. Xtream encodes `title` and `description` as
+  /// base64 strings.
+  static Future<List<EpgEntry>> shortEpg(
+    IptvPortal p,
+    String streamId, {
+    int limit = shortEpgLimit,
+    Duration timeout = const Duration(seconds: 6),
+  }) async {
+    final first = await _shortEpgOnce(
+      p,
+      streamId,
+      limit: limit,
+      timeout: timeout,
+    );
+    if (first != null) return first;
+    final second = await _shortEpgOnce(
+      p,
+      streamId,
+      limit: limit,
+      timeout: timeout,
+    );
+    if (second != null) return second;
+    throw const IptvEpgFetchException();
+  }
+
+  /// `get_short_epg` by stream id, then `epg_channel_id` if that is empty.
+  static Future<List<EpgEntry>> shortEpgForStream(
+    IptvPortal p, {
+    required String streamId,
+    required String epgChannelId,
+    int limit = shortEpgLimit,
+  }) async {
+    Object? lastFail;
+    if (streamId.isNotEmpty) {
+      try {
+        final rows = await shortEpg(p, streamId, limit: limit);
+        if (rows.isNotEmpty) return rows;
+        if (epgChannelId.isEmpty || epgChannelId == streamId) return rows;
+      } catch (e) {
+        lastFail = e;
+      }
+    }
+    if (epgChannelId.isNotEmpty && epgChannelId != streamId) {
+      return shortEpg(p, epgChannelId, limit: limit);
+    }
+    if (lastFail != null) throw lastFail;
+    return const [];
   }
 
   /// Full EPG table for one live stream (`get_simple_data_table`).

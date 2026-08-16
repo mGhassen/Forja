@@ -45,4 +45,4 @@ Stremio fanned out `getStreams` to every installed addon, then chips filtered th
 
 **Root fix:** fetch only the selected chip. Cached rows stay; switching chips fetches that provider if it is missing. Nuvio All no longer walks every scraper on open. Switching chips mid-load aborts the in-flight indexer/addon/scraper (not marked complete); tapping it again continues.
 
-**Related:** [070](fixed/070-[fixed]-sources-filters-nuvio-scraper-lazy-load.md) (Nuvio lazy start) · [RFC-054](../rfc/054-[partial]-torrent-search-providers.md)
+**Related:** [070](fixed/070-[fixed]-sources-filters-nuvio-scraper-lazy-load.md) (Nuvio lazy start) · [178](178-[open]-nuvio-empty-first-scraper-hides-streams.md) (skip empty first scraper) · [RFC-054](../rfc/054-[partial]-torrent-search-providers.md)

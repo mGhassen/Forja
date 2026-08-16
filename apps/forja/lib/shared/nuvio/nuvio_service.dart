@@ -120,6 +120,17 @@ String? nextNuvioScraperId({
   return null;
 }
 
+/// Sequential open / All walk: skip empty scrapers until one returns rows.
+/// A specific chip tap ([explicitScraper]) is one-shot.
+bool shouldContinueNuvioScraperWalk({
+  required bool explicitScraper,
+  required bool hasStreams,
+  required bool hasPendingSelected,
+}) {
+  if (explicitScraper || hasStreams) return false;
+  return hasPendingSelected;
+}
+
 /// Enabled scraper ids from Sources-panel addons (order not significant).
 Set<String> enabledNuvioScraperIds(Iterable<NuvioAddon> addons) => {
   for (final addon in addons)
@@ -133,6 +144,19 @@ Set<String> filterNuvioSelectedScraperIds({
   required Set<String> enabledIds,
 }) =>
     {for (final id in savedIds) if (enabledIds.contains(id)) id};
+
+/// Missing chip selection → all enabled. Empty saved list is explicit none.
+Set<String> resolveNuvioSelectedScraperIds({
+  required bool selectionSaved,
+  required Iterable<String> savedIds,
+  required Set<String> enabledIds,
+}) {
+  if (!selectionSaved) return {...enabledIds};
+  return filterNuvioSelectedScraperIds(
+    savedIds: savedIds,
+    enabledIds: enabledIds,
+  );
+}
 
 class NuvioStreamResult {
   final String name; // provider display name (e.g. "SFlix (Global)")
@@ -375,11 +399,23 @@ class NuvioService {
     required Set<String> enabledIds,
   }) async {
     await _ensureAddonsInKv();
+    final selectionSaved = await kvHasKey(_sourcesSelectedKey);
+    if (!selectionSaved) {
+      if (enabledIds.isNotEmpty) {
+        await saveSourcesSelectedScraperIds(enabledIds);
+      }
+      return resolveNuvioSelectedScraperIds(
+        selectionSaved: false,
+        savedIds: const [],
+        enabledIds: enabledIds,
+      );
+    }
     final saved = await kvGetStringList(
       _sourcesSelectedKey,
       fallback: const [],
     );
-    return filterNuvioSelectedScraperIds(
+    return resolveNuvioSelectedScraperIds(
+      selectionSaved: true,
       savedIds: saved,
       enabledIds: enabledIds,
     );

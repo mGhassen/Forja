@@ -811,7 +811,7 @@ class _EpgSheet extends StatelessWidget {
               Flexible(
                 child: SingleChildScrollView(
                   child: FutureBuilder<List<EpgEntry>>(
-                    future: ctrl.epgFor(stream, limit: 8),
+                    future: ctrl.epgFor(stream),
                     builder: (_, snap) {
                       if (snap.connectionState != ConnectionState.done) {
                         return Padding(

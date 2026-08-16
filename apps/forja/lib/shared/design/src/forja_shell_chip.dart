@@ -12,13 +12,13 @@ BoxDecoration shellChipDecoration({
 }) {
   final Color fill;
   final Color border;
-  if (selected) {
-    fill = ForjaShellColors.chipSelectedBg;
-    border = ForjaShellColors.chipSelectedBorder;
-  } else if (accentHover) {
-    // Tinted green, not solid brand fill.
+  if (accentHover) {
+    // Tinted green, not solid brand fill. Wins over selected.
     fill = ForjaShellColors.brandGreen.withValues(alpha: 0.14);
     border = ForjaShellColors.brandGreen.withValues(alpha: 0.5);
+  } else if (selected) {
+    fill = ForjaShellColors.chipSelectedBg;
+    border = ForjaShellColors.chipSelectedBorder;
   } else {
     fill = Colors.white.withValues(alpha: 0.07);
     border = ForjaShellColors.cinematic.borderSubtle;
@@ -171,24 +171,15 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
   bool _focused = false;
 
   @override
-  void didUpdateWidget(covariant ForjaShellChip oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.selected) {
-      _hovered = false;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final accent =
-        widget.accentHover && !selected && (_hovered || _focused);
+    final accent = widget.accentHover && (_hovered || _focused);
     final cinematic = ForjaShellColors.cinematic;
-    final fg = selected
-        ? cinematic.textPrimary
-        : accent
-            ? ForjaShellColors.brandGreen
+    final fg = accent
+        ? ForjaShellColors.brandGreen
+        : selected
+            ? cinematic.textPrimary
             : cinematic.textSecondary;
     final borderRadius = BorderRadius.circular(widget.radius);
 
@@ -213,7 +204,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
             style: GoogleFonts.plusJakartaSans(
               color: fg,
               fontSize: widget.fontSize,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              fontWeight: selected || accent ? FontWeight.w600 : FontWeight.w500,
             ),
           ),
           if (widget.trailing != null) ...[
@@ -262,7 +253,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
       );
     }
 
-    if (!widget.accentHover || selected || tv) return body;
+    if (!widget.accentHover || tv) return body;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
