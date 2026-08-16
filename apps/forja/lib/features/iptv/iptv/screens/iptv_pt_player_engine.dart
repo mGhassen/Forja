@@ -1101,7 +1101,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       _s._playing &&
       DateTime.now().difference(_s._lastPosChange) < const Duration(seconds: 2);
 
-  /// 30s Buffering, no playhead — ignore Stable cache/feed hold.
+  /// 12s Buffering, no playhead — ignore Stable cache/feed hold.
   bool get _bufferingHardWall {
     final since = _s._bufferingSince;
     if (since == null) return false;
