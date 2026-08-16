@@ -3,6 +3,7 @@ import {
   iptvCatalogScrapeCancelled,
 } from './iptv-catalog-scrape'
 import { iptvPromoteBackfill } from './iptv-promote-backfill'
+import { iptvShareCodesPurge } from './iptv-share-codes-purge'
 import {
   r2DownloadsBackfill,
   r2DownloadsRollup,
@@ -12,6 +13,7 @@ export const functions = [
   iptvCatalogScrape,
   iptvCatalogScrapeCancelled,
   iptvPromoteBackfill,
+  iptvShareCodesPurge,
   r2DownloadsRollup,
   r2DownloadsBackfill,
 ]

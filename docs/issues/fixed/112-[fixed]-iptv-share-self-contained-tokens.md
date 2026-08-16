@@ -42,7 +42,7 @@ Rentry outages made all IPTV share codes look “not found.” New shares are se
 
 ## Follow-up
 
-Rentry was removed. 8-character codes (`XXXX-XXXX`) are back: Rust encrypts an `F1.` payload, stored under the short code in `iptv_share_codes` (Supabase). Leftover `F1.` tokens still import. Old rentry 8-char codes do not.
+Rentry was removed. 8-character codes (`XXXX-XXXX`) are back: Rust encrypts an `F1.` payload, stored under the short code in `iptv_share_codes` (Supabase). Rows older than 7 days are hidden on read. Inngest `iptv-share-codes-purge` (daily 04:20 UTC, event `iptv/share-codes.purge`) deletes them. Leftover `F1.` tokens still import. Old rentry 8-char codes do not.
 
 ## Related
 
