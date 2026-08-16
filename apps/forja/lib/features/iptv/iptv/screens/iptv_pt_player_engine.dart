@@ -140,10 +140,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         if (buffering == _s._buffering) return;
         setState(() => _s._buffering = buffering);
         if (buffering) {
+          _s._bufferingClearAt = null;
           _s._bufferingSince ??= DateTime.now();
         } else {
-          _s._bufferingSince = null;
-          _s._bufferingClearAt = null;
+          // Don't zero the 12s wall on a one-tick false — same as MediaKit.
+          _s._bufferingClearAt ??= DateTime.now();
         }
         break;
       case 'progress':
@@ -665,27 +666,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (b) {
         _s._bufferingClearAt = null;
         _s._bufferingSince ??= DateTime.now();
-      } else if (_stallReopenRecovery) {
-        // Keep [_bufferingSince] through brief core-idle clears; watchdog
-        // finalizes after [_bufferingClearHold].
+      } else {
+        // media_kit `core-idle` flickers. Zeroing [_bufferingSince] here
+        // never let the 12s wall (or reconnect 1/8) fire — spinner forever,
+        // then MediaCodec ANR. Watchdog finalizes after [_bufferingClearHold].
         _s._bufferingClearAt ??= DateTime.now();
         if (!_playbackStarted && _livePlaybackProfile) {
           _noteVideoFrame(reason: 'buffering done');
-        }
-      } else {
-        final since = _s._bufferingSince;
-        _s._bufferingSince = null;
-        _s._bufferingClearAt = null;
-        if (since != null) {
-          final ms = DateTime.now().difference(since).inMilliseconds;
-          if (ms >= 500) debugPrint('[IPTV Player] buffering window ${ms}ms');
-        }
-        if (!_playbackStarted) {
-          // VOD: only real playhead proves alive — buffering-done alone falsely
-          // armed Stable "working" before Failed to open (issue 163).
-          if (_livePlaybackProfile) {
-            _noteVideoFrame(reason: 'buffering done');
-          }
         }
         // No mid-stream live-edge snap here. Flushing the cache on every
         // underrun exit throws away the cushion that absorbs the next hiccup,
@@ -1150,7 +1137,6 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   }
 
   void _finalizeBufferingClearIfNeeded(DateTime now) {
-    if (!_stallReopenRecovery) return;
     final clearAt = _s._bufferingClearAt;
     if (clearAt == null || _s._buffering || _s._bufferingSince == null) {
       return;
