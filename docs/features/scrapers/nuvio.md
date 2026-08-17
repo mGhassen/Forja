@@ -40,6 +40,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 - Playing a Nuvio HTTP link from **Sources** must show video — if only audio starts (or the picture stays black), Forja fails that row so you can pick another instead of sitting on a blank screen
 - HubCloud / 4kHdHub Drive proxies (`*.workers.dev` with `::` in the path) are probed before they appear. Google Drive **download quota exceeded** files are omitted — they cannot play until Drive resets that file (~24h)
 - Scrapers that AES-decrypt their API (Castle and similar) run on Forja the same as on Nuvio
+- On Android (QuickJS), scrapers run one at a time on the shared JS runtime so Sources → Nuvio matches desktop instead of returning empty under parallel load
 
 ## Related
 

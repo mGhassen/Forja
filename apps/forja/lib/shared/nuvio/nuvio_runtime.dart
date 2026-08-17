@@ -13,6 +13,11 @@
 //     using `package:http`, with full header / body / status / redirect URL
 //     fidelity. This is what the upstream Nuvio host does and is the only
 //     way the third-party scrapers reliably resolve TMDB metadata.
+//   * One shared QuickJS/JSC heap — `loadScraper` / `getStreams` are
+//     serialized via [_jsLock]. Parallel Sources batches used to fight the
+//     single event loop (empty/timeout lists on Android QuickJS). Upstream
+//     NuvioMobile uses a fresh JsRuntime per call; we serialize on one
+//     warmed runtime (cheerio stays loaded) and reset the VM after abort.
 //   * No use of `flutter_js`'s `handlePromise` - its 20 ms polling loop
 //     builds a recursive `Future.delayed` chain that stack-overflows on
 //     long-running scrapers. Instead we drive the QuickJS event loop
@@ -53,6 +58,28 @@ import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:http/http.dart' as http;
 
+/// Chains async work so only one critical section runs at a time.
+///
+/// Used by [NuvioRuntime] so QuickJS/JSC never runs overlapping scrapers.
+@visibleForTesting
+class NuvioJsMutex {
+  Future<void> _tail = Future<void>.value();
+
+  Future<T> run<T>(Future<T> Function() action) {
+    final previous = _tail;
+    final done = Completer<void>();
+    _tail = done.future;
+    return () async {
+      await previous;
+      try {
+        return await action();
+      } finally {
+        if (!done.isCompleted) done.complete();
+      }
+    }();
+  }
+}
+
 class NuvioRuntime {
   NuvioRuntime._();
   static final NuvioRuntime instance = NuvioRuntime._();
@@ -62,6 +89,9 @@ class NuvioRuntime {
   bool _ready = false;
   Completer<void>? _initCompleter;
   final Set<String> _loadedScraperIds = {};
+  /// Source kept so abort can dispose the VM and still reload scrapers.
+  final Map<String, String> _scraperCode = {};
+  final NuvioJsMutex _jsLock = NuvioJsMutex();
 
   // --- per-call coordination ---------------------------------------------
   int _callSeq = 0;
@@ -341,8 +371,15 @@ class NuvioRuntime {
   Future<void> loadScraper({
     required String scraperId,
     required String code,
-  }) async {
-    await _ensureInit();
+  }) {
+    return _jsLock.run(() async {
+      await _ensureInit();
+      _scraperCode[scraperId] = code;
+      _loadScraperUnlocked(scraperId, code);
+    });
+  }
+
+  void _loadScraperUnlocked(String scraperId, String code) {
     final rt = _runtime!;
     final wrapped = '''
 (function(){
@@ -385,12 +422,40 @@ class NuvioRuntime {
     Map<String, dynamic>? scraperSettings,
     Duration timeout = const Duration(seconds: 30),
     bool Function()? isCancelled,
+  }) {
+    return _jsLock.run(() async {
+      await _ensureInit();
+      if (isCancelled?.call() == true) return [];
+      if (!_loadedScraperIds.contains(scraperId)) {
+        final code = _scraperCode[scraperId];
+        if (code == null) {
+          throw StateError('Scraper $scraperId not loaded');
+        }
+        _loadScraperUnlocked(scraperId, code);
+      }
+      return _getStreamsUnlocked(
+        scraperId: scraperId,
+        tmdbId: tmdbId,
+        mediaType: mediaType,
+        season: season,
+        episode: episode,
+        scraperSettings: scraperSettings,
+        timeout: timeout,
+        isCancelled: isCancelled,
+      );
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> _getStreamsUnlocked({
+    required String scraperId,
+    required String tmdbId,
+    required String mediaType,
+    int? season,
+    int? episode,
+    Map<String, dynamic>? scraperSettings,
+    required Duration timeout,
+    bool Function()? isCancelled,
   }) async {
-    await _ensureInit();
-    if (isCancelled?.call() == true) return [];
-    if (!_loadedScraperIds.contains(scraperId)) {
-      throw StateError('Scraper $scraperId not loaded');
-    }
     final rt = _runtime!;
     final callId = ++_callSeq;
     final completer = Completer<String>();
@@ -486,6 +551,9 @@ class NuvioRuntime {
   /// Hard-stop in-flight scraper work: cancel timers, complete pending
   /// captures empty, and recreate the HTTP client so open requests abort.
   /// Called from [NuvioService.cancelPending] when the user leaves a title.
+  ///
+  /// Also drops the JS VM so the next scraper gets a clean event loop
+  /// (poisoned Promises after cancel/timeout on QuickJS).
   void abortPendingWork() {
     final hadWork = _acceptingFetches ||
         _activeGetStreams > 0 ||
@@ -508,12 +576,21 @@ class NuvioRuntime {
       _http.close();
     } catch (_) {}
     _http = http.Client();
-    // Leave-path cancel is wired from several layers (details dispose, domain
-    // resolver, HostProviderAdapter) - only log when something was actually
-    // running so idle tab switches stay quiet.
     if (hadWork) {
+      _dropRuntime();
       debugPrint('[NuvioRuntime] abortPendingWork');
     }
+  }
+
+  void _dropRuntime() {
+    try {
+      _runtime?.dispose();
+    } catch (_) {}
+    _runtime = null;
+    _ready = false;
+    _loadedScraperIds.clear();
+    _initCompleter = null;
+    _activeGetStreams = 0;
   }
 
   void dispose() {
@@ -521,11 +598,8 @@ class NuvioRuntime {
     try {
       _http.close();
     } catch (_) {}
-    _runtime?.dispose();
-    _runtime = null;
-    _ready = false;
-    _loadedScraperIds.clear();
-    _initCompleter = null;
+    _dropRuntime();
+    _scraperCode.clear();
   }
 
   // ─── fetch implementation ──────────────────────────────────────────────
