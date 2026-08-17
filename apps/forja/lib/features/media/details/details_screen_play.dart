@@ -256,26 +256,36 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
       if (_s._sourcesPanelOpen) {
         _s._closeSourcesPanel(cancelEngineJobs: false);
       }
-      final proxied = await proxyCatalogHttpStreamIfNeeded(
-        streamUrl: precheck.streamUrl,
-        headers: precheck.headers,
-        stream: stream,
-      );
-      await AppRouter.openPlayer(
-        context,
-        streamUrl: proxied.url,
-        title: _s._movie.title,
-        headers: proxied.headers,
-        movie: _s._movie,
-        selectedSeason: isTv ? _s._selectedSeason : null,
-        selectedEpisode: isTv ? _s._selectedEpisode : null,
-        startPosition: startPosition,
-        activeProvider: catalogHttpPlayProviderId(stream),
-        externalSubtitles: catalogStreamExternalSubtitles(stream),
-        stremioId: stremioId,
-        stremioAddonBaseUrl: stremioAddonBaseUrl,
-      );
-      if (mounted) _s._claimTvHeroPlayAfterPlayer();
+      try {
+        final proxied = await proxyCatalogHttpStreamIfNeeded(
+          streamUrl: precheck.streamUrl,
+          headers: precheck.headers,
+          stream: stream,
+        );
+        if (!mounted) return;
+        await AppRouter.openPlayer(
+          context,
+          streamUrl: proxied.url,
+          title: _s._movie.title,
+          headers: proxied.headers,
+          movie: _s._movie,
+          selectedSeason: isTv ? _s._selectedSeason : null,
+          selectedEpisode: isTv ? _s._selectedEpisode : null,
+          startPosition: startPosition,
+          activeProvider: catalogHttpPlayProviderId(stream),
+          externalSubtitles: catalogStreamExternalSubtitles(stream),
+          stremioId: stremioId,
+          stremioAddonBaseUrl: stremioAddonBaseUrl,
+        );
+        if (mounted) _s._claimTvHeroPlayAfterPlayer();
+      } catch (e, st) {
+        debugPrint('[Details] Forja catalog play failed: $e\n$st');
+        if (mounted) {
+          ForjaToast.info(
+            'Couldn\'t start this stream. Try again or pick another source.',
+          );
+        }
+      }
       return;
     }
 

@@ -372,6 +372,7 @@ class _ServerRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (tv)
               const SizedBox(width: 28, height: 36)
@@ -401,7 +402,10 @@ class _ServerRow extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      _StatusDot(enabled: !disabled),
+                      const SizedBox(width: 10),
                       Flexible(
                         child: Text(
                           name,
@@ -414,17 +418,6 @@ class _ServerRow extends StatelessWidget {
                               ),
                         ),
                       ),
-                      if (disabled) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          'Off',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: ForjaShellColors.textSecondary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -444,6 +437,33 @@ class _ServerRow extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.enabled});
+
+  final bool enabled;
+
+  static const _on = Color(0xFF7DDEA0);
+  static const _off = Color(0xFFF87171);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 10,
+      height: 10,
+      child: Center(
+        child: Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: enabled ? _on : _off,
+          ),
         ),
       ),
     );

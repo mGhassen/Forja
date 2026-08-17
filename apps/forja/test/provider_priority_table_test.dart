@@ -68,7 +68,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('kisskh.nl'), findsOneWidget);
       expect(find.text('kisskh.co'), findsOneWidget);
-      expect(find.text('Off'), findsOneWidget);
+      expect(find.text('Off'), findsNothing);
       expect(find.byType(ForjaSwitch), findsNothing);
     });
 

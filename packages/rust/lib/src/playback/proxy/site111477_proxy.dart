@@ -3,13 +3,17 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 
-import '../../isolate_runner.dart';
+import '../../library_path.dart';
 
 Future<void>? _stopFuture;
+
+/// Serializes concurrent [start111477Proxy] calls (double-tap / failover).
+Future<void> _startChain = Future<void>.value();
 
 /// When true, [stop111477Proxy] is a no-op so an external player can keep
 /// reading the localhost seek proxy after the built-in player disposes.
@@ -28,7 +32,21 @@ bool is111477LocalProxyUrl(String url) {
   return proxyPort > 0 && uri.port == proxyPort;
 }
 
-Future<String> start111477Proxy(
+/// Starts the seek proxy on a one-shot isolate — not subject to
+/// [Engine.cancelPendingResolve] aborting in-flight EngineJobs.
+Future<String> _seek111477StartIsolated(String requestJson) {
+  final libraryPath =
+      RustLib.loadedLibraryPath ?? firstExistingRustLibrary();
+  if (libraryPath == null) {
+    throw StateError('Rust library not loaded');
+  }
+  return Isolate.run(() {
+    RustLib.initSync(libraryPath);
+    return RustLib.instance.seek111477StartJson(requestJson);
+  });
+}
+
+Future<String> _start111477ProxyImpl(
   String upstreamUrl, {
   Map<String, String>? headers,
 }) async {
@@ -46,7 +64,7 @@ Future<String> start111477Proxy(
   final tmp = await getTemporaryDirectory();
   final cacheDir = '${tmp.path}${Platform.pathSeparator}site111477_cache';
 
-  final raw = await runSeek111477StartJson(
+  final raw = await _seek111477StartIsolated(
     jsonEncode({
       'upstream_url': upstreamUrl,
       'headers': headers ?? <String, String>{},
@@ -64,6 +82,22 @@ Future<String> start111477Proxy(
     throw StateError('111477 proxy: no url in response');
   }
   return url;
+}
+
+Future<String> start111477Proxy(
+  String upstreamUrl, {
+  Map<String, String>? headers,
+}) async {
+  late final String proxiedUrl;
+  final task = _startChain.then((_) async {
+    proxiedUrl = await _start111477ProxyImpl(
+      upstreamUrl,
+      headers: headers,
+    );
+  });
+  _startChain = task.catchError((_) {});
+  await task;
+  return proxiedUrl;
 }
 
 int get site111477ProxyPort => RustLib.instance.seek111477Port();
