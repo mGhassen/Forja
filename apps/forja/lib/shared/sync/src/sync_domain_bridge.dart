@@ -700,6 +700,7 @@ class SyncDomainBridge {
           .isPlaySourceWebstreamingEnabled(),
       'simple_streaming_resolve_enabled': await _settings
           .isSimpleStreamingResolveEnabled(),
+      'streamcrypto_decrypt': await _settings.getStreamCryptoDecrypt(),
       'preferred_audio_lang': await _settings.getPreferredAudioLanguage(),
       'preferred_subtitle_lang': await _settings.getPreferredSubtitleLanguage(),
       'avoid_unsupported_audio': await _settings.getAvoidUnsupportedAudio(),
@@ -738,6 +739,11 @@ class SyncDomainBridge {
     if (payload.containsKey('simple_streaming_resolve_enabled')) {
       await _settings.setSimpleStreamingResolveEnabled(
         payload['simple_streaming_resolve_enabled'] as bool,
+      );
+    }
+    if (payload.containsKey('streamcrypto_decrypt')) {
+      await _settings.setStreamCryptoDecrypt(
+        payload['streamcrypto_decrypt'] as String,
       );
     }
     if (payload.containsKey('preferred_audio_lang')) {

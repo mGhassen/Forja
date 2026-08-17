@@ -13,7 +13,9 @@ abstract final class TvStreamFallback {
     if (!PlatformInfo.isAndroidTv) return false;
     if (SettingsService.allowAndroidTvHeadlessWebViewExtractors) return false;
     if (rustProviderKeys.contains(key)) return false;
-    if (key == 'videasy') return true;
+    // STREAMCRYPTO HTTP (Dart or JS host) — not a page sniff. Native decrypt
+    // works on TV; WebView decrypt still fails inside the extractor.
+    if (key == 'videasy' || key == 'vidsrcsbs') return false;
     final provider = providers[key];
     if (provider is Map &&
         provider['movie'] != null &&

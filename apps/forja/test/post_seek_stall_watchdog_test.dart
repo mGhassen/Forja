@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/player/post_seek_stall_watchdog.dart';
+import 'package:forja/shared/player/player/utils.dart';
 
 void main() {
   test('remounts once after buffering stall, not again until new seek', () async {
@@ -82,5 +83,41 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(remounts, isEmpty);
     w.dispose();
+  });
+
+  test('remountPlaybackLooksLive rejects open-at-zero after a mid-film target', () {
+    expect(
+      remountPlaybackLooksLive(
+        playing: true,
+        buffering: false,
+        position: Duration.zero,
+        target: const Duration(seconds: 4399),
+      ),
+      isFalse,
+    );
+  });
+
+  test('remountPlaybackLooksLive rejects still buffering', () {
+    expect(
+      remountPlaybackLooksLive(
+        playing: true,
+        buffering: true,
+        position: const Duration(seconds: 4399),
+        target: const Duration(seconds: 4399),
+      ),
+      isFalse,
+    );
+  });
+
+  test('remountPlaybackLooksLive accepts playing near target', () {
+    expect(
+      remountPlaybackLooksLive(
+        playing: true,
+        buffering: false,
+        position: const Duration(seconds: 4401),
+        target: const Duration(seconds: 4399),
+      ),
+      isTrue,
+    );
   });
 }

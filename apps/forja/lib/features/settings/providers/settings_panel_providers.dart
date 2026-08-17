@@ -20,6 +20,7 @@ class SettingsPlaybackSnapshot {
     required this.playSourceWebstreaming,
     required this.p2pAcknowledged,
     required this.simpleStreamingResolve,
+    required this.streamCryptoDecryptLabel,
     required this.builtInEngine,
     required this.builtInEngineIptv,
     required this.streamProviderOrder,
@@ -46,6 +47,7 @@ class SettingsPlaybackSnapshot {
   final bool playSourceWebstreaming;
   final bool p2pAcknowledged;
   final bool simpleStreamingResolve;
+  final String streamCryptoDecryptLabel;
   final BuiltInPlayerEngine builtInEngine;
   final BuiltInPlayerEngine builtInEngineIptv;
   final List<String> streamProviderOrder;
@@ -72,6 +74,7 @@ class SettingsPlaybackSnapshot {
     bool? playSourceWebstreaming,
     bool? p2pAcknowledged,
     bool? simpleStreamingResolve,
+    String? streamCryptoDecryptLabel,
     BuiltInPlayerEngine? builtInEngine,
     BuiltInPlayerEngine? builtInEngineIptv,
     List<String>? streamProviderOrder,
@@ -100,6 +103,8 @@ class SettingsPlaybackSnapshot {
       p2pAcknowledged: p2pAcknowledged ?? this.p2pAcknowledged,
       simpleStreamingResolve:
           simpleStreamingResolve ?? this.simpleStreamingResolve,
+      streamCryptoDecryptLabel:
+          streamCryptoDecryptLabel ?? this.streamCryptoDecryptLabel,
       builtInEngine: builtInEngine ?? this.builtInEngine,
       builtInEngineIptv: builtInEngineIptv ?? this.builtInEngineIptv,
       streamProviderOrder: streamProviderOrder ?? this.streamProviderOrder,
@@ -157,6 +162,9 @@ class SettingsPlaybackNotifier
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
       p2pAcknowledged: await s.isP2pStreamingAcknowledged(),
       simpleStreamingResolve: await s.isSimpleStreamingResolveEnabled(),
+      streamCryptoDecryptLabel: SettingsService.streamCryptoDecryptLabel(
+        await s.getStreamCryptoDecrypt(),
+      ),
       builtInEngine: await s.getBuiltInPlayerEngine(
         context: BuiltInPlayerContext.vod,
       ),

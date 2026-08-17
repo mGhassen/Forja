@@ -905,34 +905,104 @@ Future<void> seekPlayerPreservingProgress(
   onSeekCommitted?.call(target);
 }
 
-/// Re-open the same play URL and seek to [seekTarget] (post-seek stall remount).
+/// True when remount actually resumed — not just opened at 0:00.
+bool remountPlaybackLooksLive({
+  required bool playing,
+  required bool buffering,
+  required Duration position,
+  required Duration target,
+  Duration slop = const Duration(seconds: 12),
+}) {
+  if (!playing || buffering) return false;
+  if (target > const Duration(seconds: 5) &&
+      position < const Duration(seconds: 2)) {
+    return false;
+  }
+  return position + slop >= target;
+}
+
+Future<void> _mpvStartAt(Player player, Duration? start) async {
+  if (player.platform is! NativePlayer) return;
+  try {
+    final mpv = player.platform as NativePlayer;
+    if (start == null || start <= Duration.zero) {
+      await mpv.setProperty('start', 'none');
+    } else {
+      await mpv.setProperty(
+        'start',
+        (start.inMilliseconds / 1000.0).toStringAsFixed(3),
+      );
+    }
+  } catch (_) {}
+}
+
+/// Re-open the same play URL at [seekTarget] (post-seek stall remount).
+///
+/// Stops the hung demuxer first, opens with mpv `start` so HLS does not
+/// play 0:00 then Range-seek 70 minutes (that re-stalls 4K). Returns true
+/// only after playback is live near the target — not after first frame at 0.
 Future<bool> remountPlayerStreamAtPosition(
   Player player, {
   required String url,
   Map<String, String>? headers,
   String? providerId,
   required Duration seekTarget,
+  Duration resumeTimeout = const Duration(seconds: 15),
 }) async {
-  final openUrl = await openPlayerStream(
-    player,
-    url: url,
-    headers: headers,
-    providerId: providerId,
-  );
-  final opened = await waitForPlayerStreamOpen(
-    player,
-    streamUrl: openUrl,
-    headers: headers,
-    providerId: providerId,
-  );
+  await resetPlayerForOpen(player);
+  final useStart = seekTarget > Duration.zero;
+  if (useStart) await _mpvStartAt(player, seekTarget);
+  String? openUrl;
+  var opened = false;
+  try {
+    openUrl = await openPlayerStream(
+      player,
+      url: url,
+      headers: headers,
+      providerId: providerId,
+    );
+    opened = await waitForPlayerStreamOpen(
+      player,
+      streamUrl: openUrl,
+      headers: headers,
+      providerId: providerId,
+    );
+  } finally {
+    await _mpvStartAt(player, null);
+  }
   if (!opened) return false;
-  if (seekTarget > Duration.zero) {
+
+  final pos = player.state.position;
+  if (useStart && (pos - seekTarget).abs() > const Duration(seconds: 5)) {
+    if (player.platform is NativePlayer) {
+      try {
+        await (player.platform as NativePlayer).setProperty('hr-seek', 'no');
+      } catch (_) {}
+    }
     await player.seek(seekTarget);
   }
   if (!player.state.playing) {
     await player.play();
   }
-  return true;
+
+  final deadline = DateTime.now().add(resumeTimeout);
+  while (DateTime.now().isBefore(deadline)) {
+    if (remountPlaybackLooksLive(
+      playing: player.state.playing,
+      buffering: player.state.buffering,
+      position: player.state.position,
+      target: seekTarget,
+    )) {
+      return true;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+  return remountPlaybackLooksLive(
+    playing: player.state.playing,
+    buffering: player.state.buffering,
+    position: player.state.position,
+    target: seekTarget,
+  );
 }
 
 /// Clears stale duration/buffer from a prior failed open before trying again.

@@ -251,7 +251,7 @@ class _SettingsPlaybackSectionState
                 },
               ),
               if (snap.playSourceWebstreaming &&
-                  AccountFeatures.instance.isAdmin)
+                  AccountFeatures.instance.isAdmin) ...[
                 settingsFocusableToggle(
                   context,
                   'Simple resolve (experimental)',
@@ -266,6 +266,25 @@ class _SettingsPlaybackSectionState
                   },
                   adminOnly: true,
                 ),
+                settingsFocusableDropdown(
+                  context,
+                  'STREAMCRYPTO decrypt',
+                  'enc=2 player family (Videasy, VidSrc.sbs 4K, …). WebView is the current JS host; Native is Dart and skips that WebView.',
+                  snap.streamCryptoDecryptLabel,
+                  SettingsService.streamCryptoDecryptOptions.keys.toList(),
+                  (val) async {
+                    if (val == null) return;
+                    final stored =
+                        SettingsService.streamCryptoDecryptOptions[val] ??
+                        SettingsService.streamCryptoDecryptWebview;
+                    await _settings.setStreamCryptoDecrypt(stored);
+                    await _playback.patch(
+                      (s) => s.copyWith(streamCryptoDecryptLabel: val),
+                    );
+                    schedulePreferencesSyncPush();
+                  },
+                ),
+              ],
             ],
           ),
         ],

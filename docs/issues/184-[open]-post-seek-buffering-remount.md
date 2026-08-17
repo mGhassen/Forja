@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 2** acceptance |
+| **Progress** | **6 / 6** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -24,6 +24,7 @@
 | 3 | I184-T03 | ExoPlayer: arm on ±10s / scrub, remount via `ExoPlayerBridge.open` at seek target | ✅ |
 | 4 | I184-T04 | Unit test: remount once per seek; cancel when buffering clears / position advances | ✅ |
 | 5 | I184-T05 | Also remount on silent freeze (buffering=false, position stuck) — MediaKit primary | ✅ |
+| 6 | I184-T06 | Remount must resume at seek time (mpv `start`), not open 0 then seek; hop if still stalled | ✅ |
 
 ---
 
@@ -40,7 +41,7 @@
 
 User seek (±10s / scrub) only called `player.seek` / Exo `seekTo`. UI mirrored `buffering` forever when HLS/CDN stalled after the seek. Mid-watch Auto hop only runs on **fatal** errors — stuck BUFFERING never failed over. HTTP errors mid-play are ignored by design.
 
-**Root fix (option 1):** after a user seek, if playback does not resume within ≥10s — either BUFFERING stays true **or** MediaKit sits frozen with buffering=false and position stuck — remount the **same** play URL once at the seek target (no provider hop). Pause cancels. Torrents / loopback skipped. New seek re-arms.
+**Root fix (option 1):** after a user seek, if playback does not resume within ≥10s — either BUFFERING stays true **or** MediaKit sits frozen with buffering=false and position stuck — remount the **same** play URL once **starting at** the seek target (mpv `start`, not open-at-0 then a 70-minute HLS seek). Success only if playback is live near that time. If the same URL is still dead, Auto hops remaining streams / Retry. Pause cancels. Torrents / loopback skipped. New seek re-arms.
 
 ---
 

@@ -31,11 +31,12 @@ void main() {
       expect(TvStreamFallback.isSkippedOnTv('vidzee', catalog), isTrue);
     });
 
-    test('marks Videasy skipped on TV', () {
+    test('does not skip Videasy or VidSrc.sbs on TV (STREAMCRYPTO HTTP)', () {
       SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
       SettingsService.allowAndroidTvHeadlessWebViewExtractors = false;
 
-      expect(TvStreamFallback.isSkippedOnTv('videasy', catalog), isTrue);
+      expect(TvStreamFallback.isSkippedOnTv('videasy', catalog), isFalse);
+      expect(TvStreamFallback.isSkippedOnTv('vidsrcsbs', catalog), isFalse);
     });
 
     test('does not skip when allowAndroidTvHeadlessWebViewExtractors is true', () {

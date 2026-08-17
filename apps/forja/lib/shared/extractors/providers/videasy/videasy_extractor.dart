@@ -4,7 +4,8 @@
 //   1. Metadata from db.speedracelight.com/3 (same as the player page)
 //   2. GET /seed?mediaId=… (cached ~25s; refresh on 401)
 //   3. GET /{mirror}/sources-with-title?title&enc=2&seed=…&totalSeasons=…
-//   4. Decrypt payload in headless WebView (STREAMCRYPTO - seed + tmdbId)
+//   4. Decrypt payload (STREAMCRYPTO - seed + tmdbId): Dart or WebView JS
+//      per Settings → Playback → STREAMCRYPTO decrypt
 //   5. Parse JSON sources — every responsive mirror becomes a Sources row
 
 import 'dart:async';
@@ -12,6 +13,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:forja/shared/extractors/core/stream_crypto.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
@@ -173,10 +175,18 @@ class VideasyExtractor {
     final cancelled = () =>
         (isCancelled?.call() ?? false) || gen != _generation;
 
-    final crypto = await _VideasyDecryptHost.instance.ensureReady(onLog: onLog);
-    if (crypto == null) {
-      onLog('[Videasy] decrypt runtime unavailable');
-      return null;
+    final decryptMode = await SettingsService().getStreamCryptoDecrypt();
+    final useNative =
+        decryptMode == SettingsService.streamCryptoDecryptNative;
+    _VideasyDecryptHost? crypto;
+    if (useNative) {
+      onLog('[Videasy] STREAMCRYPTO native decrypt');
+    } else {
+      crypto = await _VideasyDecryptHost.instance.ensureReady(onLog: onLog);
+      if (crypto == null) {
+        onLog('[Videasy] decrypt runtime unavailable');
+        return null;
+      }
     }
     if (cancelled()) {
       onLog('[Videasy] cancelled');
@@ -442,7 +452,7 @@ class VideasyExtractor {
   /// Probe every mirror (bounded parallel). Sources lists each responsive
   /// server — do not abort the queue after the first hit.
   Future<ExtractedMedia?> _collectProviders({
-    required _VideasyDecryptHost crypto,
+    required _VideasyDecryptHost? crypto,
     required String tmdbId,
     required List<_ProviderJob> jobs,
     required int gen,
@@ -529,7 +539,7 @@ class VideasyExtractor {
   }
 
   Future<ExtractedMedia?> _probeProvider({
-    required _VideasyDecryptHost crypto,
+    required _VideasyDecryptHost? crypto,
     required String tmdbId,
     required _ProviderJob job,
     required int gen,
@@ -583,7 +593,12 @@ class VideasyExtractor {
 
       String json;
       try {
-        json = await crypto.decrypt(body, seed, tmdbId);
+        json = await _decryptPayload(
+          body: body,
+          seed: seed,
+          tmdbId: tmdbId,
+          crypto: crypto,
+        );
       } catch (e) {
         onLog('[Videasy] ${job.provider} decrypt error: $e');
         return null;
@@ -745,6 +760,12 @@ class VideasyExtractor {
     };
   }
 
+  /// enc=2 player embed (Videasy provider, VidSrc.sbs 4K nested, …).
+  static bool isStreamCryptoPlayerUrl(String url) => StreamCrypto.isPlayerUrl(
+    url,
+    configuredOrigin: ProviderRuntimeConfig.instance.api('videasyPlayerOrigin'),
+  );
+
   static String? yearFromReleaseDate(String? releaseDate) {
     final value = releaseDate?.trim() ?? '';
     if (value.length < 4) return null;
@@ -758,6 +779,18 @@ class VideasyExtractor {
     if (t.contains('720')) return 2;
     if (t.contains('480')) return 1;
     return 0;
+  }
+
+  Future<String> _decryptPayload({
+    required String body,
+    required String seed,
+    required String tmdbId,
+    required _VideasyDecryptHost? crypto,
+  }) async {
+    if (crypto == null) {
+      return StreamCrypto.decrypt(body, seed, tmdbId);
+    }
+    return crypto.decrypt(body, seed, tmdbId);
   }
 }
 
@@ -814,7 +847,7 @@ class _ProviderJob {
   final bool slow;
 }
 
-/// Hosts the STREAMCRYPTO decrypt routine from player.videasy.to.
+/// WebView STREAMCRYPTO runtime (enc=2 player family — not Videasy-only).
 class _VideasyDecryptHost {
   _VideasyDecryptHost._();
   static final _VideasyDecryptHost instance = _VideasyDecryptHost._();

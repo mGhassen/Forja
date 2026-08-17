@@ -1085,20 +1085,17 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
         _s._currentUrl = url;
         _s._positionNotifier.value = target;
         _s._statusController.complete();
-      } else {
-        debugPrint('[Player] Post-seek remount failed to open: $url');
-        _s._statusController.upsert(
-          'post-seek-remount',
-          'Reconnect failed',
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(milliseconds: 1500),
-        );
+        return;
       }
+      debugPrint('[Player] Post-seek remount failed to resume: $url');
     } catch (e) {
       debugPrint('[Player] Post-seek remount error: $e');
     } finally {
       if (!_s._disposed) _s._isInitPlaybackRunning = false;
     }
+    if (_s._disposed || !mounted) return;
+    // Same URL still dead — Auto hop / Retry (do not sit frozen).
+    unawaited(_showPlaybackFailureOnWatch(reason: 'post-seek remount stalled'));
   }
 
   void _ensurePostSeekStallWatchdog() {

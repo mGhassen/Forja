@@ -40,4 +40,31 @@ var CFG = {
       lessThanOrEqualTo(2),
     );
   });
+
+  test('videasy nested URLs use STREAMCRYPTO HTTP, not WebView sniff', () {
+    expect(
+      HostProviderAdapter.vidsrcsbsUsesStreamCrypto(
+        'https://player.videasy.net/movie/496243',
+      ),
+      isTrue,
+    );
+    expect(
+      HostProviderAdapter.vidsrcsbsUsesStreamCrypto(
+        'https://player.videasy.to/movie/496243',
+      ),
+      isTrue,
+    );
+    expect(
+      HostProviderAdapter.vidsrcsbsUsesStreamCrypto(
+        'https://cinesrc.st/embed/movie/496243',
+      ),
+      isFalse,
+    );
+    expect(
+      HostProviderAdapter.vidsrcsbsUsesStreamCrypto(
+        'https://web.nxsha.app/embed/movie/496243?server=AwsPly',
+      ),
+      isFalse,
+    );
+  });
 }

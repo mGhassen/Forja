@@ -49,6 +49,8 @@ class SettingsService {
   static const String _atvCatalogPlaySourcesKey = 'atv_catalog_play_sources_v1';
   static const String _simpleStreamingResolveKey =
       'simple_streaming_resolve_enabled';
+  /// STREAMCRYPTO `enc=2` decrypt: `webview` (JS host) | `native` (Dart).
+  static const String _streamCryptoDecryptKey = 'streamcrypto_decrypt';
   static const String _crashReportingEnabledKey = 'crash_reporting_enabled';
   static const String _productAnalyticsEnabledKey =
       'product_analytics_enabled';
@@ -621,6 +623,41 @@ class SettingsService {
 
   Future<void> setSimpleStreamingResolveEnabled(bool enabled) async =>
       kvSetBool(_simpleStreamingResolveKey, enabled);
+
+  static const String streamCryptoDecryptWebview = 'webview';
+  static const String streamCryptoDecryptNative = 'native';
+  static const String streamCryptoDecryptWebviewLabel = 'WebView (current)';
+  static const String streamCryptoDecryptNativeLabel = 'Native (Dart)';
+
+  static const Map<String, String> streamCryptoDecryptOptions = {
+    streamCryptoDecryptWebviewLabel: streamCryptoDecryptWebview,
+    streamCryptoDecryptNativeLabel: streamCryptoDecryptNative,
+  };
+
+  static String streamCryptoDecryptLabel(String stored) {
+    if (normalizeStreamCryptoDecrypt(stored) == streamCryptoDecryptNative) {
+      return streamCryptoDecryptNativeLabel;
+    }
+    return streamCryptoDecryptWebviewLabel;
+  }
+
+  static String normalizeStreamCryptoDecrypt(String? raw) {
+    final v = (raw ?? streamCryptoDecryptWebview).trim().toLowerCase();
+    if (v == streamCryptoDecryptNative || v == 'dart') {
+      return streamCryptoDecryptNative;
+    }
+    return streamCryptoDecryptWebview;
+  }
+
+  /// STREAMCRYPTO decrypt runtime. Default WebView (current JS host).
+  Future<String> getStreamCryptoDecrypt() async => normalizeStreamCryptoDecrypt(
+    await kvGetString(_streamCryptoDecryptKey),
+  );
+
+  Future<void> setStreamCryptoDecrypt(String mode) async => kvSetString(
+    _streamCryptoDecryptKey,
+    normalizeStreamCryptoDecrypt(mode),
+  );
 
   /// Opt-in crash reporting to Sentry (RFC-043). Default off.
   Future<bool> isCrashReportingEnabled() async =>

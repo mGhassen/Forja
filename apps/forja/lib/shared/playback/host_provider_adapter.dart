@@ -29,6 +29,10 @@ abstract final class HostProviderAdapter {
   static int get vidsrcsbsWebviewSniffConcurrencyForTest =>
       _webviewSniffConcurrency;
 
+  @visibleForTesting
+  static bool vidsrcsbsUsesStreamCrypto(String nestedUrl) =>
+      VideasyExtractor.isStreamCryptoPlayerUrl(nestedUrl);
+
   static Future<String?> resolveToSourcesJson({
     required String providerId,
     required String payloadJson,
@@ -199,7 +203,6 @@ abstract final class HostProviderAdapter {
     }
 
     if (providerId == 'vidsrcsbs') {
-      if (isAndroidTvHeadlessWebViewBlocked) return null;
       final fromPayload = payload['embedUrl']?.toString();
       final outerEmbed = (fromPayload != null && fromPayload.isNotEmpty)
           ? fromPayload
@@ -208,7 +211,8 @@ abstract final class HostProviderAdapter {
                 : 'https://vidsrc.sbs/embed/movie/${movie.id}');
 
       // Parse CFG.servers → sniff every top mirror (bounded parallel). Nested
-      // embeds rotate their own Servers chips (Pro Multi internals, …).
+      // enc=2 player URLs use STREAMCRYPTO HTTP (no WebView). Other mirrors
+      // rotate their own Servers chips (Pro Multi internals, …).
       final discovered = await VidsrcsbsExtractor(
         onLog: debugPrint,
       ).discoverServers(embedUrl: outerEmbed, isCancelled: cancelled);
@@ -217,6 +221,10 @@ abstract final class HostProviderAdapter {
           servers: discovered,
           isMovie: !isTv,
           tmdbId: movie.id.toString(),
+          title: movie.title,
+          year: VideasyExtractor.yearFromReleaseDate(movie.releaseDate),
+          imdbId: movie.imdbId,
+          totalSeasons: isTv ? movie.numberOfSeasons : null,
           season: isTv ? season : null,
           episode: isTv ? episode : null,
           outerEmbed: outerEmbed,
@@ -236,7 +244,7 @@ abstract final class HostProviderAdapter {
         }
       }
 
-      if (cancelled()) return null;
+      if (cancelled() || isAndroidTvHeadlessWebViewBlocked) return null;
       debugPrint('[vidsrcsbs] nested empty - fallback outer $outerEmbed');
       final outer = await _extractor.extract(
         outerEmbed,
@@ -358,12 +366,16 @@ abstract final class HostProviderAdapter {
     unawaited(KissKhExtractor.cancelAllPending());
   }
 
-  /// Sniff every CFG mirror (bounded concurrency). Nested embeds rotate their
-  /// Servers chips so Pro Multi / Cinesrc / 4K internals land in Sources.
+  /// Sniff every CFG mirror (bounded concurrency). Nested enc=2 player URLs
+  /// use STREAMCRYPTO HTTP; other embeds rotate Servers chips.
   static Future<List<StreamSource>> _sniffVidsrcsbsMirrors({
     required List<VidsrcsbsServer> servers,
     required bool isMovie,
     required String tmdbId,
+    required String title,
+    required String? year,
+    required String? imdbId,
+    required int? totalSeasons,
     required int? season,
     required int? episode,
     required String outerEmbed,
@@ -400,6 +412,26 @@ abstract final class HostProviderAdapter {
         episode: episode,
       );
       if (nested.isEmpty || !nested.startsWith('http')) return null;
+      if (VideasyExtractor.isStreamCryptoPlayerUrl(nested)) {
+        debugPrint('[vidsrcsbs] STREAMCRYPTO ${server.name}: $nested');
+        final sniffed = await VideasyExtractor(onLog: debugPrint).extract(
+          tmdbId: tmdbId,
+          isMovie: isMovie,
+          title: title,
+          year: year,
+          imdbId: imdbId,
+          season: season,
+          episode: episode,
+          totalSeasons: totalSeasons,
+          isCancelled: () => isCancelled() || done.isCompleted,
+        );
+        if (sniffed == null || sniffed.url.isEmpty) return null;
+        return _relabelVidsrcsbsSources(
+          sniffed: sniffed,
+          server: server,
+        );
+      }
+      if (isAndroidTvHeadlessWebViewBlocked) return null;
       debugPrint('[vidsrcsbs] sniffing ${server.name}: $nested');
       final extractor = StreamExtractor();
       sessionExtractors.add(extractor);
@@ -413,34 +445,7 @@ abstract final class HostProviderAdapter {
           providerId: 'vidsrcsbs',
         );
         if (sniffed == null || sniffed.url.isEmpty) return null;
-        return sniffed.sources
-                ?.map(
-                  (s) => StreamSource(
-                    url: s.url,
-                    title: s.title == 'Stream' || s.title.isEmpty
-                        ? server.name
-                        : s.title.toLowerCase().startsWith(
-                            server.name.toLowerCase(),
-                          )
-                        ? s.title
-                        : '${server.name} · ${s.title}',
-                    type: s.type,
-                    headers: s.headers,
-                    providerId: 'vidsrcsbs',
-                    catalogUrl: s.catalogUrl ?? s.url,
-                  ),
-                )
-                .toList() ??
-            [
-              StreamSource(
-                url: sniffed.url,
-                title: server.name,
-                type: _typeFromUrl(sniffed.url),
-                headers: sniffed.headers,
-                providerId: 'vidsrcsbs',
-                catalogUrl: sniffed.url,
-              ),
-            ];
+        return _relabelVidsrcsbsSources(sniffed: sniffed, server: server);
       } finally {
         sessionExtractors.remove(extractor);
         _parallelExtractors.remove(extractor);
@@ -479,6 +484,40 @@ abstract final class HostProviderAdapter {
     pump();
     await done.future;
     return hits;
+  }
+
+  static List<StreamSource> _relabelVidsrcsbsSources({
+    required ExtractedMedia sniffed,
+    required VidsrcsbsServer server,
+  }) {
+    return sniffed.sources
+            ?.map(
+              (s) => StreamSource(
+                url: s.url,
+                title: s.title == 'Stream' || s.title.isEmpty
+                    ? server.name
+                    : s.title.toLowerCase().startsWith(
+                        server.name.toLowerCase(),
+                      )
+                    ? s.title
+                    : '${server.name} · ${s.title}',
+                type: s.type,
+                headers: s.headers,
+                providerId: 'vidsrcsbs',
+                catalogUrl: s.catalogUrl ?? s.url,
+              ),
+            )
+            .toList() ??
+        [
+          StreamSource(
+            url: sniffed.url,
+            title: server.name,
+            type: _typeFromUrl(sniffed.url),
+            headers: sniffed.headers,
+            providerId: 'vidsrcsbs',
+            catalogUrl: sniffed.url,
+          ),
+        ];
   }
 
   static String _encodeResolveResult({
