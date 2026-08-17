@@ -879,6 +879,7 @@ Future<void> seekPlayerPreservingProgress(
   required ValueNotifier<Duration> positionNotifier,
   Duration? duration,
   void Function()? onSeekAwayFromEof,
+  void Function(Duration target)? onSeekCommitted,
   bool ensureTorrentSeekable = false,
 }) async {
   final dur = duration ?? player.state.duration;
@@ -901,6 +902,37 @@ Future<void> seekPlayerPreservingProgress(
     await player.play();
   }
   if (leavingEof) onSeekAwayFromEof?.call();
+  onSeekCommitted?.call(target);
+}
+
+/// Re-open the same play URL and seek to [seekTarget] (post-seek stall remount).
+Future<bool> remountPlayerStreamAtPosition(
+  Player player, {
+  required String url,
+  Map<String, String>? headers,
+  String? providerId,
+  required Duration seekTarget,
+}) async {
+  final openUrl = await openPlayerStream(
+    player,
+    url: url,
+    headers: headers,
+    providerId: providerId,
+  );
+  final opened = await waitForPlayerStreamOpen(
+    player,
+    streamUrl: openUrl,
+    headers: headers,
+    providerId: providerId,
+  );
+  if (!opened) return false;
+  if (seekTarget > Duration.zero) {
+    await player.seek(seekTarget);
+  }
+  if (!player.state.playing) {
+    await player.play();
+  }
+  return true;
 }
 
 /// Clears stale duration/buffer from a prior failed open before trying again.

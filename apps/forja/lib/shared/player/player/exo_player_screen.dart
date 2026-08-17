@@ -34,6 +34,7 @@ import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_menus.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
+import 'package:forja/shared/player/player/post_seek_stall_watchdog.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/player/player_screen.dart';
@@ -138,6 +139,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   late final ExoAtvSurfaceFallback _surfaceFallback = ExoAtvSurfaceFallback(
     enabled: false,
     onFallback: _reopenAfterSurfaceFallback,
+  );
+  late final PostSeekStallWatchdog _postSeekStall = PostSeekStallWatchdog(
+    onRemount: _remountCurrentStreamAt,
   );
 
   bool _disposed = false;
@@ -501,7 +505,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         }
         break;
       case 'buffering':
-        _isBufferingNotifier.value = event['value'] == true;
+        final buffering = event['value'] == true;
+        _isBufferingNotifier.value = buffering;
+        _postSeekStall.onBuffering(buffering);
         break;
       case 'progress':
         final posMs = (event['position'] as num?)?.toInt() ?? 0;
@@ -517,6 +523,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         // player tree twice a second over the platform view (issue 151).
         final needsRepaint = _showControls || nearEnd != _nearEndOfEpisode;
         _position = pos;
+        _postSeekStall.onPosition(pos);
         if (durMs > 0) _duration = Duration(milliseconds: durMs);
         _buffered = Duration(milliseconds: bufMs);
         _nearEndOfEpisode = nearEnd;
@@ -641,8 +648,84 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         : (_duration.inMilliseconds > 0 && target > _duration)
             ? _duration
             : target;
-    await ExoPlayerBridge.seekTo(_viewId, clamped);
+    await _seekTo(clamped);
+  }
+
+  Future<void> _seekTo(Duration target) async {
+    await ExoPlayerBridge.seekTo(_viewId, target);
+    _position = target;
+    _armPostSeekStall(target);
     _startHideTimer();
+  }
+
+  void _armPostSeekStall(Duration target) {
+    final url = _currentUrl ??
+        (_sources.isNotEmpty ? _sources[_sourceIndex].url : null);
+    _postSeekStall.enabled = url != null &&
+        !isLocalTorrentStreamUrl(url) &&
+        !isLocalLoopbackPlayUrl(url);
+    _postSeekStall.noteSeek(target);
+  }
+
+  Future<void> _remountCurrentStreamAt(Duration target) async {
+    if (_disposed || !mounted || _opening) return;
+    if (_sources.isEmpty) return;
+    final source = _sources[_sourceIndex];
+    if (isLocalTorrentStreamUrl(source.url) ||
+        isLocalLoopbackPlayUrl(source.url)) {
+      return;
+    }
+    _opening = true;
+    _exoReady = false;
+    _statusController.upsert(
+      'post-seek-remount',
+      'Reconnecting…',
+      kind: StatusRouletteKind.loading,
+    );
+    try {
+      final maxH = await SettingsService().getMaxPlaybackHeight();
+      final caps = exoVodCapsForMaxPlaybackHeight(maxH);
+      final subs = _sideloadedSubtitles
+          .map(
+            (s) => {
+              'url': s['url']!,
+              'lang': s['lang'] ?? 'und',
+              'label': s['label'] ?? s['lang'] ?? 'und',
+            },
+          )
+          .toList();
+      await ExoPlayerBridge.open(
+        viewId: _viewId,
+        url: source.url,
+        headers: source.headers,
+        startPosition: target,
+        subtitles: subs,
+        maxVideoHeight: caps.maxVideoHeight,
+        maxVideoBitrate: caps.maxVideoBitrate,
+      );
+      await ExoPlayerBridge.setVolume(_viewId, _volume / 100.0);
+      if (_rate != 1.0) {
+        await ExoPlayerBridge.setRate(_viewId, _rate);
+      }
+      await ExoPlayerBridge.setResizeMode(_viewId, _resizeMode);
+      await _applySubtitleStyle();
+      if (!_disposed && mounted) {
+        _position = target;
+        _statusController.complete();
+      }
+    } catch (e) {
+      debugPrint('[ExoPlayer] Post-seek remount failed: $e');
+      if (!_disposed && mounted) {
+        _statusController.upsert(
+          'post-seek-remount',
+          'Reconnect failed',
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(milliseconds: 1500),
+        );
+      }
+    } finally {
+      _opening = false;
+    }
   }
 
   void _togglePlayPause() {
@@ -1348,6 +1431,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _progressSaveTimer?.cancel();
+    _postSeekStall.dispose();
     _surfaceFallback.dispose();
     _eventSub?.cancel();
     unawaited(_teardownExoPlayer());
@@ -1592,7 +1676,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                             onTvFocusLeft: _focusLeftFromSeekbar,
                             onTvFocusRight: _focusRightFromSeekbar,
                             onSeek: (t) {
-                              unawaited(ExoPlayerBridge.seekTo(_viewId, t));
+                              unawaited(_seekTo(t));
                             },
                           ),
                         )
@@ -1601,8 +1685,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                           position: _position,
                           bufferedPosition: _buffered,
                           onSeek: (t) {
-                            unawaited(ExoPlayerBridge.seekTo(_viewId, t));
-                            _startHideTimer();
+                            unawaited(_seekTo(t));
                           },
                           onDragStart: () => _hideTimer?.cancel(),
                           onDragEnd: _startHideTimer,

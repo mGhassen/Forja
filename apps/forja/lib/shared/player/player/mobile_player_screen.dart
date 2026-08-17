@@ -40,6 +40,7 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
 import 'package:forja/shared/player/controls/player_menus.dart';
 import 'playback_recovery.dart';
+import 'post_seek_stall_watchdog.dart';
 import 'playable_source_bridge.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
@@ -263,6 +264,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   /// touch State after the route is gone.
   Timer? _trackAutoSelectTimer;
   PlaybackRecovery? _playbackRecovery;
+  PostSeekStallWatchdog? _postSeekStall;
   StreamSubscription<bool>? _pipSub;
   bool _autoTracksAppliedForSource = false;
   bool _androidMediaKitSafeMode = false;
@@ -408,7 +410,18 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
           _seekAwayFromEofAt = DateTime.now();
           _abortiveCompletedLatched = false;
         },
+        onSeekCommitted: _armPostSeekStall,
       );
+
+  void _armPostSeekStall(Duration target) {
+    final url = _currentQualityUrl ?? _currentUrl;
+    final w = _postSeekStall;
+    if (w == null) return;
+    w.enabled = url != null &&
+        !isLocalTorrentStreamUrl(url) &&
+        !isLocalLoopbackPlayUrl(url);
+    w.noteSeek(target);
+  }
   bool _isFetchingSubs = false;
   String? _selectedExternalSubUrl;
   /// Downloaded external subtitle file URIs keyed by source URL - reused when
@@ -452,6 +465,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     _disposed = true;
     PlayerBackExitGate.setTryFocusBack(null);
     _cancelPendingStreamWork();
+    _postSeekStall?.dispose();
+    _postSeekStall = null;
     _providerLoadFailures.dispose();
     if (widget.providerSourcesCache == null) {
       _ownedProviderSourcesCache.dispose();

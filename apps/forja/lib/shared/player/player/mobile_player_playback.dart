@@ -1051,6 +1051,62 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     await _initPlayback(sourceStartIndex: idx);
   }
 
+  /// Same URL reopen at [target] after post-seek BUFFERING stall (issue 184).
+  Future<void> _remountCurrentStreamAt(Duration target) async {
+    if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return;
+    final url = _s._currentQualityUrl ?? _s._currentUrl;
+    if (url == null ||
+        isLocalTorrentStreamUrl(url) ||
+        isLocalLoopbackPlayUrl(url)) {
+      return;
+    }
+    final src = _s._currentSources != null &&
+            _s._currentFallbackSourceIndex < _s._currentSources!.length
+        ? _s._currentSources![_s._currentFallbackSourceIndex]
+        : null;
+    final headers = _s._hlsMasterHeaders ?? src?.headers ?? widget.headers;
+    final pid = src?.providerId ?? _s._currentProvider;
+    _s._isInitPlaybackRunning = true;
+    _s._statusController.upsert(
+      'post-seek-remount',
+      'Reconnecting…',
+      kind: StatusRouletteKind.loading,
+    );
+    try {
+      final ok = await remountPlayerStreamAtPosition(
+        _s._player,
+        url: url,
+        headers: headers,
+        providerId: pid,
+        seekTarget: target,
+      );
+      if (_s._disposed || !mounted) return;
+      if (ok) {
+        _s._currentUrl = url;
+        _s._positionNotifier.value = target;
+        _s._statusController.complete();
+      } else {
+        debugPrint('[Player] Post-seek remount failed to open: $url');
+        _s._statusController.upsert(
+          'post-seek-remount',
+          'Reconnect failed',
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(milliseconds: 1500),
+        );
+      }
+    } catch (e) {
+      debugPrint('[Player] Post-seek remount error: $e');
+    } finally {
+      if (!_s._disposed) _s._isInitPlaybackRunning = false;
+    }
+  }
+
+  void _ensurePostSeekStallWatchdog() {
+    _s._postSeekStall ??= PostSeekStallWatchdog(
+      onRemount: _remountCurrentStreamAt,
+    );
+  }
+
   /// Stop on failure - no silent hop to the next provider.
   /// Used when the user pinned a server/stream (or Auto server is Off).
   Future<void> _failPlaybackNoFailover({required String message}) async {
@@ -1285,6 +1341,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     _s._tracksSub?.cancel();
     _s._logSub?.cancel();
     _s._autoTracksAppliedForSource = false;
+    _ensurePostSeekStallWatchdog();
 
     if (widget.builtInEngine == BuiltInPlayerEngine.mediaKit) {
       _s._playbackRecovery = PlaybackRecovery(
@@ -1345,6 +1402,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
         return;
       }
       _s._positionNotifier.value = pos;
+      _s._postSeekStall?.onPosition(pos);
 
       final dur = _s._durationNotifier.value;
       if (isMidEpisodePlayback(pos.inMilliseconds, dur.inMilliseconds)) {
@@ -1456,6 +1514,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     _s._bufferingSub = _s._player.stream.buffering.listen((buffering) {
       if (_s._disposed) return;
       _s._isBufferingNotifier.value = buffering;
+      _s._postSeekStall?.onBuffering(buffering);
     });
 
     // Surface only fatal errors - transient network blips are handled by mpv

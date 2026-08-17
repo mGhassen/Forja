@@ -16,6 +16,7 @@ import 'package:window_manager/window_manager.dart';
 import 'utils.dart';
 import 'package:forja/shared/player/controls/player_menus.dart';
 import 'playback_recovery.dart';
+import 'post_seek_stall_watchdog.dart';
 import 'playable_source_bridge.dart';
 
 import 'package:rust/rust.dart';
@@ -227,6 +228,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   /// touch State after the route is gone.
   Timer? _trackAutoSelectTimer;
   PlaybackRecovery? _playbackRecovery;
+  PostSeekStallWatchdog? _postSeekStall;
   bool _autoTracksAppliedForSource = false;
   // ── Value Notifiers (rebuild only what's needed, no full setState) ────────
   final ValueNotifier<Duration> _positionNotifier = ValueNotifier(
@@ -341,7 +343,18 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
           _seekAwayFromEofAt = DateTime.now();
           _abortiveCompletedLatched = false;
         },
+        onSeekCommitted: _armPostSeekStall,
       );
+
+  void _armPostSeekStall(Duration target) {
+    final url = _currentQualityUrl ?? _currentUrl;
+    final w = _postSeekStall;
+    if (w == null) return;
+    w.enabled = url != null &&
+        !isLocalTorrentStreamUrl(url) &&
+        !isLocalLoopbackPlayUrl(url);
+    w.noteSeek(target);
+  }
 
   // ── Feature State ────────────────────────────────────────────────────────
   _HwDecMode _hwDecMode = _HwDecMode.autoSafe;
@@ -380,6 +393,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     // to a disposed ValueNotifier.
     _disposed = true;
     _cancelPendingStreamWork();
+    _postSeekStall?.dispose();
+    _postSeekStall = null;
     _providerLoadFailures.dispose();
     if (widget.providerSourcesCache == null) {
       _ownedProviderSourcesCache.dispose();
