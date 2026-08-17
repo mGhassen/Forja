@@ -527,6 +527,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         break;
       case 'error':
         final msg = event['message']?.toString() ?? 'Playback error';
+        if (_opening) {
+          debugPrint('[ExoPlayer] error during open/switch (ignored): $msg');
+          return;
+        }
         if (isVideoDecoderError(msg)) {
           debugPrint('[ExoPlayer] decoder error: $msg');
         }

@@ -200,6 +200,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [178-[open]-…](178-[open]-nuvio-empty-first-scraper-hides-streams.md) | Nuvio empty first scraper hides later streams | P2 | Medium | open | 7/7 · A 5/7 | — |
 | [179-[fixed]-…](fixed/179-[fixed]-search-progressive-tmdb-live-stampede.md) | Search: TMDB blocked by Stremio live stampede | P1 | High | fixed | Complete · 5/5 · A 4/4 | — |
 | [180-[open]-…](180-[open]-android-tv-details-back-loses-catalog-focus.md) | ATV details Back lands on Home top menu | P1 | High | open | 3/3 · A 0/1 | — |
+| [181-[open]-…](181-[open]-player-source-switch-aborted-by-stale-error.md) | In-player source switch aborted by stale error | P1 | High | open | 6/6 · A 0/4 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

@@ -578,8 +578,14 @@ mixin _DesktopPlayerEpisodes
     final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
         .toString();
     final switchGen = ++_s._fallbackGen;
+    // Fence stop/open so the error listener does not abort this switch.
+    _s._isInitPlaybackRunning = true;
     // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
     final statusId = 'source-stremio-${stream.hashCode}';
+    setState(() {
+      _s._hasError = false;
+      _s._errorMessage = '';
+    });
     _s._markPlaybackConfirmed(false);
     _s._statusController.upsert(
       statusId,
@@ -588,7 +594,10 @@ mixin _DesktopPlayerEpisodes
     );
     // Let the overlay paint before heavy resolve work.
     await Future<void>.delayed(Duration.zero);
-    if (!mounted || _s._fallbackAborted(switchGen)) return;
+    if (!mounted || _s._fallbackAborted(switchGen)) {
+      if (switchGen == _s._fallbackGen) _s._isInitPlaybackRunning = false;
+      return;
+    }
 
     try {
       await _s._player.stop();
@@ -708,6 +717,10 @@ mixin _DesktopPlayerEpisodes
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
+    } finally {
+      if (switchGen == _s._fallbackGen) {
+        _s._isInitPlaybackRunning = false;
+      }
     }
   }
 
@@ -715,7 +728,8 @@ mixin _DesktopPlayerEpisodes
   /// current player running with a bottom-right card until the new stream is
   /// ready, then open a fresh player.
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
-    if (_s._isLoadingNextEp) return;
+    // Supersede a prior episode/magnet loading card — never silent-return
+    // after Sources already dismissed.
     final settings = SettingsService();
     final useDebrid = await settings.useDebridForStreams();
     if (!mounted) return;
@@ -796,7 +810,8 @@ mixin _DesktopPlayerEpisodes
   }
 
   Future<void> _switchTorrentSource(TorrentResult result) async {
-    if (_s._isLoadingNextEp) return;
+    // Supersede a prior episode/magnet loading card — never silent-return
+    // after Sources already dismissed.
     final settings = SettingsService();
     final useDebrid = await settings.useDebridForStreams();
     if (!mounted) return;

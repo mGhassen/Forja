@@ -677,9 +677,14 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
             playUrl: _s._currentUrl,
             catalogUrl: _s._currentPlayingCatalogUrl,
           );
-    if (isCurrent && _s._sourcePinned && _s._playbackConfirmed) return;
+    // Same catalog URL under a different quality row must still switch.
+    final alreadyPlayingRow =
+        isCurrent && targetIndex == _s._currentFallbackSourceIndex;
+    if (alreadyPlayingRow && _s._sourcePinned && _s._playbackConfirmed) {
+      return;
+    }
 
-    if (isCurrent && !_s._sourcePinned && _s._playbackConfirmed) {
+    if (alreadyPlayingRow && !_s._sourcePinned && _s._playbackConfirmed) {
       await SettingsService().setPlayerAutoSource(false);
       setState(() => _s._sourcePinned = true);
       unawaited(widget.onSourcePinned?.call(source.url, source.title));
@@ -690,6 +695,9 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     _s._sourcePinned = true;
     unawaited(SettingsService().setPlayerAutoSource(false));
     final switchGen = ++_s._fallbackGen;
+    // Fence stop/open so the error listener does not bump _fallbackGen and
+    // abort this switch (same as _initPlayback).
+    _s._isInitPlaybackRunning = true;
     setState(() {
       _s._hasError = false;
       _s._errorMessage = '';
@@ -706,21 +714,26 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       kind: StatusRouletteKind.loading,
     );
 
+    void abortSwitchUi() {
+      if (!mounted || _s._disposed) return;
+      ref
+          .read(playerResolveStatusProvider.notifier)
+          .setError('Failed: ${source.title}');
+      _s._statusController.upsert(
+        statusId,
+        source.title,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      _markSourceFailed(targetIndex);
+      unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
+    }
+
     try {
       final validated = await _resolveValidatedStream(source);
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       if (validated == null) {
-        ref
-            .read(playerResolveStatusProvider.notifier)
-            .setError('Failed: ${source.title}');
-        _s._statusController.upsert(
-          statusId,
-          source.title,
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        _markSourceFailed(targetIndex);
-        unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
+        abortSwitchUi();
         return;
       }
 
@@ -773,17 +786,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         try {
           await _s._player.stop();
         } catch (_) {}
-        ref
-            .read(playerResolveStatusProvider.notifier)
-            .setError('Failed: ${source.title}');
-        _s._statusController.upsert(
-          statusId,
-          source.title,
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        _markSourceFailed(targetIndex);
-        unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
+        abortSwitchUi();
         return;
       }
       final decoded = await confirmOpenedStreamVideoDecode(
@@ -797,17 +800,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         try {
           await _s._player.stop();
         } catch (_) {}
-        ref
-            .read(playerResolveStatusProvider.notifier)
-            .setError('Failed: ${source.title}');
-        _s._statusController.upsert(
-          statusId,
-          source.title,
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        _markSourceFailed(targetIndex);
-        unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
+        abortSwitchUi();
         return;
       }
 
@@ -872,17 +865,11 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       unawaited(widget.onSourcePinned?.call(source.url, source.title));
     } catch (_) {
       if (!mounted || _s._fallbackAborted(switchGen)) return;
-      ref
-          .read(playerResolveStatusProvider.notifier)
-          .setError('Failed: ${source.title}');
-      _s._statusController.upsert(
-        statusId,
-        source.title,
-        kind: StatusRouletteKind.failed,
-        dismissAfter: const Duration(seconds: 2),
-      );
-      _markSourceFailed(targetIndex);
-      unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
+      abortSwitchUi();
+    } finally {
+      if (switchGen == _s._fallbackGen) {
+        _s._isInitPlaybackRunning = false;
+      }
     }
   }
 }

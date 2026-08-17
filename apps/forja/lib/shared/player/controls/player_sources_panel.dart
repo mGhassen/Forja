@@ -337,6 +337,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       // Local torrent URL: Torrents tab owns the "playing" highlight via
       // infoHash. Do not mark Torrentio/Stremio/Nuvio rows as current.
       if (isLocalTorrentStreamUrl(playUrl)) return false;
+      // Remote HTTP session: identity is the play URL only — do not treat a
+      // different URL as current just because infoHash matches.
+      return false;
     }
     final current = _infoHashOf(widget.currentMagnet);
     if (current == null) return false;

@@ -212,6 +212,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     int index,
   ) async {
     final switchGen = ++_s._fallbackGen;
+    _s._opening = true;
     setState(() {
       _s._hasError = false;
       _s._errorMessage = '';
@@ -320,7 +321,6 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         if (playMatch >= 0) _s._sourceIndex = playMatch;
       });
 
-      _s._opening = false;
       _s._startPositionApplied = true;
       _s._preferredSubtitleApplied = false;
       final prepared = await _s._prepareOpenSubtitles(
@@ -367,6 +367,10 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
+    } finally {
+      if (switchGen == _s._fallbackGen) {
+        _s._opening = false;
+      }
     }
   }
 
@@ -407,6 +411,11 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
         .toString();
     final switchGen = ++_s._fallbackGen;
+    _s._opening = true;
+    setState(() {
+      _s._hasError = false;
+      _s._errorMessage = '';
+    });
     final statusId = 'source-stremio-${stream.hashCode}';
     _s._statusController.upsert(
       statusId,
@@ -414,7 +423,10 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       kind: StatusRouletteKind.loading,
     );
     await Future<void>.delayed(Duration.zero);
-    if (!mounted || _s._fallbackAborted(switchGen)) return;
+    if (!mounted || _s._fallbackAborted(switchGen)) {
+      if (switchGen == _s._fallbackGen) _s._opening = false;
+      return;
+    }
 
     try {
       try {
@@ -487,11 +499,16 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
+    } finally {
+      if (switchGen == _s._fallbackGen) {
+        _s._opening = false;
+      }
     }
   }
 
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
-    if (_s._loadingNextEp) return;
+    // Supersede a prior episode/magnet loading card — never silent-return
+    // after Sources already dismissed.
     final settings = SettingsService();
     final useDebrid = await settings.useDebridForStreams();
     if (!mounted) return;
@@ -571,7 +588,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
   }
 
   Future<void> _switchTorrentSource(TorrentResult result) async {
-    if (_s._loadingNextEp) return;
+    // Supersede a prior episode/magnet loading card — never silent-return
+    // after Sources already dismissed.
     final settings = SettingsService();
     final useDebrid = await settings.useDebridForStreams();
     if (!mounted) return;
@@ -651,7 +669,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     );
     if (!mounted || _s._fallbackAborted(switchGen)) return;
     _s._sideloadedSubtitles = prepared;
-    _s._opening = false;
+    // Keep _opening true through open so native error does not failover.
     _s._startPositionApplied = true;
     _s._preferredSubtitleApplied = false;
     final maxH = await SettingsService().getMaxPlaybackHeight();

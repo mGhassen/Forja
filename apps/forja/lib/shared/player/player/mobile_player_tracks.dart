@@ -454,14 +454,40 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
 
   Future<void> _switchQuality(HlsQuality q) async {
     final pos = _s._positionNotifier.value;
+    final switchGen = ++_s._fallbackGen;
+    _s._isInitPlaybackRunning = true;
     _s._currentQualityUrl = q.url;
-    if (mounted) setState(() {});
-    await openPlayerStream(
-      _s._player,
-      url: q.url,
-      headers: _s._hlsMasterHeaders,
-    );
-    if (pos.inSeconds > 0) await _s._player.seek(pos);
-    _s._startHideTimer();
+    if (mounted) {
+      setState(() {
+        _s._hasError = false;
+        _s._errorMessage = '';
+      });
+    }
+    try {
+      await openPlayerStream(
+        _s._player,
+        url: q.url,
+        headers: _s._hlsMasterHeaders,
+      );
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      final opened = await waitForPlayerStreamOpen(
+        _s._player,
+        streamUrl: q.url,
+        headers: _s._hlsMasterHeaders,
+      );
+      if (!mounted || _s._fallbackAborted(switchGen)) return;
+      if (!opened) {
+        debugPrint('[Player] HLS quality switch failed to open: ${q.url}');
+        return;
+      }
+      if (pos.inSeconds > 0) await _s._player.seek(pos);
+    } finally {
+      if (switchGen == _s._fallbackGen) {
+        _s._isInitPlaybackRunning = false;
+      }
+    }
+    if (mounted && switchGen == _s._fallbackGen) {
+      _s._startHideTimer();
+    }
   }
 }
