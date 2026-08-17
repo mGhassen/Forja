@@ -498,6 +498,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         setState(() {
           _isPlaying = event['value'] == true;
         });
+        _postSeekStall.onPlaying(_isPlaying);
         if (_isPlaying) {
           _clearDeadSurfaceCover();
           _isBufferingNotifier.value = false;

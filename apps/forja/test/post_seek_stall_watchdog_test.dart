@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/player/post_seek_stall_watchdog.dart';
 
 void main() {
-  test('remounts once after stall, not again until new seek', () async {
+  test('remounts once after buffering stall, not again until new seek', () async {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
@@ -32,7 +32,24 @@ void main() {
     w.dispose();
   });
 
-  test('cancels when buffering clears before stall', () async {
+  test('remounts on silent freeze (no buffering) after seek', () async {
+    final remounts = <Duration>[];
+    final w = PostSeekStallWatchdog(
+      stallAfter: const Duration(milliseconds: 40),
+      onRemount: (t) async {
+        remounts.add(t);
+      },
+    );
+
+    w.noteSeek(const Duration(seconds: 90));
+    // MediaKit: buffering never true; position stuck at seek target.
+    w.onPosition(const Duration(seconds: 90));
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(remounts, [const Duration(seconds: 90)]);
+    w.dispose();
+  });
+
+  test('does not remount when buffering clears and position advances', () async {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 60),
@@ -45,12 +62,13 @@ void main() {
     w.onBuffering(true);
     await Future<void>.delayed(const Duration(milliseconds: 20));
     w.onBuffering(false);
+    w.onPosition(const Duration(seconds: 53));
     await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(remounts, isEmpty);
     w.dispose();
   });
 
-  test('clears arm when position advances near target', () async {
+  test('pause after seek cancels remount', () async {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
@@ -59,11 +77,8 @@ void main() {
       },
     );
 
-    w.noteSeek(const Duration(seconds: 80));
-    w.onBuffering(true);
-    w.onBuffering(false);
-    w.onPosition(const Duration(seconds: 81));
-    w.onBuffering(true);
+    w.noteSeek(const Duration(seconds: 40));
+    w.onPlaying(false);
     await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(remounts, isEmpty);
     w.dispose();

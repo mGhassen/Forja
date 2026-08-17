@@ -1448,6 +1448,7 @@ mixin _DesktopPlayerPlayback
     _s._playingSub = _s._player.stream.playing.listen((playing) {
       if (_s._disposed) return;
       _s._isPlayingNotifier.value = playing;
+      _s._postSeekStall?.onPlaying(playing);
       if (playing) {
         _s._startHideTimer();
         // Scrobble resume
