@@ -548,9 +548,9 @@ class _KindTabState extends State<_KindTab> {
               ? cinematic.textPrimary.withValues(alpha: 0.88)
               : cinematic.textSecondary);
     final indicatorColor = selected
-        ? ForjaShellColors.sectionAccent
+        ? ForjaShellColors.brandGreen
         : (_hovered || _focused
-              ? cinematic.textSecondary.withValues(alpha: 0.55)
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
               : Colors.transparent);
 
     final face = AnimatedContainer(
