@@ -293,11 +293,13 @@ bool _isVidsrcCloudStreamPl(String url) {
 }
 
 /// VidNest Gama/MovieBox (and related) CDN - rejects any Referer with HTTP 429.
-bool _isVidnestMovieBoxCdn(String url) {
+bool isMovieBoxCdnStreamUrl(String url) {
   final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
   if (host.isEmpty) return false;
   return host.contains('hakunaymatata.com');
 }
+
+bool _isVidnestMovieBoxCdn(String url) => isMovieBoxCdnStreamUrl(url);
 
 /// Set mpv `user-agent` / `referrer` before `open`. Full header list goes on
 /// [Media.httpHeaders] - never via comma-joined `http-header-fields`.
@@ -559,10 +561,47 @@ bool isLocalTorrentStreamUrl(String url) {
 
 /// Catalog stream kind for logs - Nuvio vs Stremio from stream metadata.
 String catalogStreamKindLabel(Map<String, dynamic> stream) {
+  if (stream['_enginePluginId'] != null) return 'Forja';
   if (stream['_nuvioScraperId'] != null) return 'Nuvio';
   final base = stream['_addonBaseUrl']?.toString();
+  if (base != null && base.startsWith('engine:')) return 'Forja';
   if (base != null && base.startsWith('nuvio:')) return 'Nuvio';
   return 'Stremio';
+}
+
+/// `activeProvider` / RFC-044 identity for a Sources HTTP row.
+String catalogHttpPlayProviderId(Map<String, dynamic> stream) {
+  final engineId = stream['_enginePluginId']?.toString();
+  if (engineId != null && engineId.isNotEmpty) return 'engine:$engineId';
+  return 'stremio_direct';
+}
+
+/// Vidlink mwVault / MovieBox file rows need the local seek proxy (HTTP 428 direct).
+bool catalogStreamRequiresSeekProxy(Map<String, dynamic> stream) {
+  if (stream['requires_proxy'] == true) return true;
+  final url = stream['url']?.toString() ?? '';
+  if (url.isEmpty) return false;
+  return isMovieBoxCdnStreamUrl(url) &&
+      catalogHttpPlayProviderId(stream) == 'engine:vidlink';
+}
+
+/// Rewrites catalog HTTP streams that cannot be opened directly (Vidlink MovieBox).
+Future<({String url, Map<String, String> headers})> proxyCatalogHttpStreamIfNeeded({
+  required String streamUrl,
+  required Map<String, String> headers,
+  required Map<String, dynamic> stream,
+}) async {
+  if (!catalogStreamRequiresSeekProxy(stream)) {
+    return (url: streamUrl, headers: headers);
+  }
+  final pid = catalogHttpPlayProviderId(stream);
+  final upstream = resolvePlaybackHttpHeaders(
+    headers,
+    streamUrl: streamUrl,
+    providerId: pid,
+  );
+  final proxied = await start111477Proxy(streamUrl, headers: upstream);
+  return (url: proxied, headers: const <String, String>{});
 }
 
 bool isTransientTorrentProbeError(String err) {

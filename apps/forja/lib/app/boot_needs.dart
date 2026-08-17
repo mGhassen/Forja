@@ -18,10 +18,12 @@ class BootNeeds {
     required this.torrent,
     required this.stremio,
     required this.nuvio,
+    required this.engine,
     required this.webstreaming,
     required this.playSourceTorrent,
     required this.playSourceStremio,
     required this.playSourceNuvio,
+    required this.playSourceEngine,
     required this.playSourceWebstreaming,
     required this.vodTab,
   });
@@ -41,6 +43,9 @@ class BootNeeds {
   /// Effective: Nuvio on **and** a VOD tab visible.
   final bool nuvio;
 
+  /// Effective: engineJS (Forja tab) on **and** a VOD tab visible.
+  final bool engine;
+
   /// Effective: Webstreaming on **and** a VOD tab visible.
   final bool webstreaming;
 
@@ -48,6 +53,7 @@ class BootNeeds {
   final bool playSourceTorrent;
   final bool playSourceStremio;
   final bool playSourceNuvio;
+  final bool playSourceEngine;
   final bool playSourceWebstreaming;
 
   /// Any tab that can open VOD details / Sources.
@@ -73,6 +79,7 @@ class BootNeeds {
     final playSourceTorrent = await PlaySourceEffective.torrent(s, lanReady);
     final playSourceStremio = await PlaySourceEffective.stremio(s, lanReady);
     final playSourceNuvio = await PlaySourceEffective.nuvio(s, lanReady);
+    final playSourceEngine = await PlaySourceEffective.engine(s, lanReady);
     final playSourceWebstreaming = await s.isPlaySourceWebstreamingEnabled();
     final homeTab = nav.contains('home');
     final tmdb = nav.any(_tmdbNavIds.contains);
@@ -86,10 +93,12 @@ class BootNeeds {
       playSourceTorrent: playSourceTorrent,
       playSourceStremio: playSourceStremio,
       playSourceNuvio: playSourceNuvio,
+      playSourceEngine: playSourceEngine,
       playSourceWebstreaming: playSourceWebstreaming,
       torrent: playSourceTorrent && vodTab,
       stremio: playSourceStremio && vodTab,
       nuvio: playSourceNuvio && vodTab,
+      engine: playSourceEngine && vodTab,
       webstreaming: playSourceWebstreaming && vodTab,
     );
   }
@@ -100,5 +109,6 @@ class BootNeeds {
       'torrent=$torrent (flag=$playSourceTorrent), '
       'stremio=$stremio (flag=$playSourceStremio), '
       'nuvio=$nuvio (flag=$playSourceNuvio), '
+      'engine=$engine (flag=$playSourceEngine), '
       'webstreaming=$webstreaming (flag=$playSourceWebstreaming))';
 }

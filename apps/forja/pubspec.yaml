@@ -136,6 +136,7 @@ flutter:
     - assets/fonts/
     - assets/videasy/
     - assets/nuvio/
+    - assets/providers/
     - assets/textures/
     - assets/watch_providers/
 

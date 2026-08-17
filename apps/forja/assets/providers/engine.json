@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "name": "Forja",
+  "version": "1.1.0",
+  "plugins": [
+    {
+      "id": "videasy",
+      "name": "Videasy",
+      "entry": "videasy.js",
+      "types": ["movie", "tv"],
+      "kind": "http"
+    },
+    {
+      "id": "vidlink",
+      "name": "Vidlink",
+      "entry": "vidlink.js",
+      "types": ["movie", "tv"],
+      "kind": "http"
+    },
+    {
+      "id": "vixsrc",
+      "name": "Vixsrc",
+      "entry": "vixsrc.js",
+      "types": ["movie", "tv"],
+      "kind": "http"
+    },
+    {
+      "id": "dooflix",
+      "name": "DooFlix",
+      "entry": "dooflix.js",
+      "types": ["movie", "tv"],
+      "kind": "http"
+    },
+    {
+      "id": "yflix",
+      "name": "YFlix",
+      "entry": "yflix.js",
+      "types": ["movie", "tv"],
+      "kind": "http"
+    }
+  ]
+}

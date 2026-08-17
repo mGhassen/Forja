@@ -13,6 +13,7 @@ class PlatformDefaults {
     required this.playSourceTorrent,
     required this.playSourceStremio,
     required this.playSourceNuvio,
+    required this.playSourceEngine,
     required this.playSourceWebstreaming,
     required this.torrentDiskCacheGb,
     required this.showTorrentStatsOverlay,
@@ -28,6 +29,7 @@ class PlatformDefaults {
   final bool playSourceTorrent;
   final bool playSourceStremio;
   final bool playSourceNuvio;
+  final bool playSourceEngine;
   final bool playSourceWebstreaming;
   final int torrentDiskCacheGb;
   final bool showTorrentStatsOverlay;
@@ -58,6 +60,7 @@ class PlatformDefaults {
         playSourceTorrent: true,
         playSourceStremio: true,
         playSourceNuvio: true,
+        playSourceEngine: true,
         playSourceWebstreaming: true,
         torrentDiskCacheGb: 1,
         showTorrentStatsOverlay: false,
@@ -73,6 +76,7 @@ class PlatformDefaults {
         playSourceTorrent: true,
         playSourceStremio: true,
         playSourceNuvio: true,
+        playSourceEngine: true,
         playSourceWebstreaming: true,
         torrentDiskCacheGb: 2,
         showTorrentStatsOverlay: false,
@@ -88,6 +92,7 @@ class PlatformDefaults {
         playSourceTorrent: true,
         playSourceStremio: true,
         playSourceNuvio: true,
+        playSourceEngine: true,
         playSourceWebstreaming: true,
         torrentDiskCacheGb: 1,
         showTorrentStatsOverlay: false,

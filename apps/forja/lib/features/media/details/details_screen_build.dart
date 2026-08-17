@@ -405,6 +405,7 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
           showTorrents: _s._panelShowTorrent,
           showStremio: _s._panelShowStremio,
           showNuvio: _s._panelShowNuvio,
+          showEngine: _s._panelShowEngine,
           onKindChanged: _s._onPanelKindFilterChanged,
           resultCount: _s._panelVisibleCount,
           episodeLabel: _s._movie.mediaType == 'tv'
@@ -413,11 +414,14 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
           isFetching:
               (_s._panelKindFilter == 'torrents' && _s._isSearching) ||
               (_s._panelKindFilter == 'stremio' && _s._isStremioFetching) ||
-              (_s._panelKindFilter == 'nuvio' && _s._isNuvioFetching),
+              (_s._panelKindFilter == 'nuvio' && _s._isNuvioFetching) ||
+              (_s._panelKindFilter == EngineJsIds.kind &&
+                  _s._isEngineFetching),
           onCancelFetch: _s._cancelActiveSourceFetch,
           providerOptions: _s._providerOptions(),
           selectedSourceId: _s._selectedSourceId,
           nuvioSelectedScraperIds: _s._nuvioSelectedScraperIds,
+          engineSelectedPluginIds: _s._engineSelectedPluginIds,
           onProviderTap: _s._onSourceChipTap,
           searchQuery: _s._sourceSearchQuery,
           onSearchChanged: (q) => setState(() => _s._sourceSearchQuery = q),

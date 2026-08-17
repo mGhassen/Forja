@@ -15,10 +15,12 @@ class SettingsVisibility {
     required this.playSourceTorrent,
     required this.playSourceStremio,
     required this.playSourceNuvio,
+    required this.playSourceEngine,
     required this.playSourceWebstreaming,
     required this.showPlaySourceTorrentToggle,
     required this.showPlaySourceStremioToggle,
     required this.showPlaySourceNuvioToggle,
+    required this.showPlaySourceEngineToggle,
     required this.lanPlaySourcesEditable,
     required this.vodTab,
     required this.iptvNav,
@@ -28,12 +30,14 @@ class SettingsVisibility {
   final bool playSourceTorrent;
   final bool playSourceStremio;
   final bool playSourceNuvio;
+  final bool playSourceEngine;
   final bool playSourceWebstreaming;
 
   /// Settings → Playback rows (platform play-source caps).
   final bool showPlaySourceTorrentToggle;
   final bool showPlaySourceStremioToggle;
   final bool showPlaySourceNuvioToggle;
+  final bool showPlaySourceEngineToggle;
 
   /// ATV LAN leftover: always editable when the platform exposes the toggles.
   final bool lanPlaySourcesEditable;
@@ -58,6 +62,9 @@ class SettingsVisibility {
   /// Nuvio scrapers (own play source). Settings Sources hub stays hidden on ATV.
   bool get showNuvio => vodTab && playSourceNuvio;
 
+  /// engineJS plugins (Sources → Forja).
+  bool get showEngine => vodTab && playSourceEngine;
+
   /// Stremio addons — VOD Sources and/or Live Matches sport servers.
   bool get showStremioAddons =>
       (vodTab && playSourceStremio) || liveMatchesNav;
@@ -72,6 +79,7 @@ class SettingsVisibility {
               (playSourceTorrent ||
                   playSourceStremio ||
                   playSourceNuvio ||
+                  playSourceEngine ||
                   playSourceWebstreaming)) ||
           liveMatchesNav);
 
@@ -129,10 +137,12 @@ class SettingsVisibility {
       playSourceTorrent: await PlaySourceEffective.torrent(s, lanReady),
       playSourceStremio: await PlaySourceEffective.stremio(s, lanReady),
       playSourceNuvio: await PlaySourceEffective.nuvio(s, lanReady),
+      playSourceEngine: await PlaySourceEffective.engine(s, lanReady),
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
       showPlaySourceTorrentToggle: await PlaySourceEffective.showTorrentToggle(),
       showPlaySourceStremioToggle: await PlaySourceEffective.showStremioToggle(),
       showPlaySourceNuvioToggle: await PlaySourceEffective.showNuvioToggle(),
+      showPlaySourceEngineToggle: await PlaySourceEffective.showEngineToggle(),
       lanPlaySourcesEditable: lanEditable,
       vodTab: nav.any(BootNeeds.vodNavIds.contains),
       iptvNav: nav.contains('iptv'),

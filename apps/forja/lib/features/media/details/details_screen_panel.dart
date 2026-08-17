@@ -29,6 +29,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
 
   bool get _panelShowsNuvio => _s._panelKindFilter == 'nuvio';
 
+  bool get _panelShowsEngine => _s._panelKindFilter == EngineJsIds.kind;
+
   List<Map<String, dynamic>> get _filteredPanelStremioStreams {
     final streams = _s._selectedSourceId == 'all_stremio'
         ? _s._allCombinedStremioStreams
@@ -82,6 +84,13 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         ),
       );
     }
+    if (_panelShowsEngine) {
+      names.addAll(
+        _selectedEngineStreams.map(
+          (s) => '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}',
+        ),
+      );
+    }
     return names;
   }
 
@@ -111,6 +120,12 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     }
     if (_panelShowsNuvio) {
       for (final s in _selectedNuvioStreams) {
+        final bytes = _streamSizeBytes(s);
+        if (bytes > 0) sizes.add(bytes);
+      }
+    }
+    if (_panelShowsEngine) {
+      for (final s in _selectedEngineStreams) {
         final bytes = _streamSizeBytes(s);
         if (bytes > 0) sizes.add(bytes);
       }
@@ -169,6 +184,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     if (_panelShowsTorrents) count += _filteredTorrentResults.length;
     if (_panelShowsStremio) count += _filteredPanelStremioStreams.length;
     if (_panelShowsNuvio) count += _filteredPanelNuvioStreams.length;
+    if (_panelShowsEngine) count += _filteredPanelEngineStreams.length;
     return count;
   }
 
@@ -182,6 +198,30 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       _s._selectedSourceId == 'all_nuvio' ||
       _s._selectedSourceId.startsWith('nuvio:') ||
       _s._selectedSourceId.startsWith('nuvio://');
+
+  bool get _isEngineSource =>
+      _s._selectedSourceId == EngineJsIds.allChip ||
+      _s._selectedSourceId.startsWith(EngineJsIds.prefix);
+
+  List<Map<String, dynamic>> get _selectedEngineStreams => _s._engineStreams
+      .whereType<Map<String, dynamic>>()
+      .where(_engineStreamSelected)
+      .toList();
+
+  List<Map<String, dynamic>> get _filteredPanelEngineStreams =>
+      _selectedEngineStreams.where(_matchesPanelStreamFilters).toList();
+
+  bool _engineStreamSelected(Map<String, dynamic> s) {
+    final id = s['_enginePluginId'] as String?;
+    if (id != null) return _s._engineSelectedPluginIds.contains(id);
+    final base = s['_addonBaseUrl'] as String?;
+    if (base != null && base.startsWith(EngineJsIds.prefix)) {
+      return _s._engineSelectedPluginIds.contains(
+        base.substring(EngineJsIds.prefix.length),
+      );
+    }
+    return false;
+  }
 
   List<SourcesPanelProviderOption> _providerOptions() {
     final options = <SourcesPanelProviderOption>[];
@@ -202,6 +242,24 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           if (!s.enabled) continue;
           options.add(
             SourcesPanelProviderOption(id: 'nuvio:${s.id}', label: s.name),
+          );
+        }
+      }
+    } else if (_s._panelKindFilter == EngineJsIds.kind) {
+      options.add(
+        const SourcesPanelProviderOption(
+          id: EngineJsIds.allChip,
+          label: 'All',
+        ),
+      );
+      for (final a in _s._enginePacks) {
+        for (final s in a.plugins) {
+          if (!s.enabled || !s.isHttp) continue;
+          options.add(
+            SourcesPanelProviderOption(
+              id: EngineJsIds.pluginChip(s.id),
+              label: s.name,
+            ),
           );
         }
       }
@@ -309,6 +367,86 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       );
       if (!wasSelected) {
         unawaited(_s._fetchNextNuvioScraper(onlyId: scraperId));
+      }
+      return;
+    }
+    if (id == EngineJsIds.allChip) {
+      final enabled = enabledEnginePluginIds(_s._enginePacks);
+      if (enabled.isEmpty) return;
+      final next = nextEngineSelectedAfterAllTap(
+        selectedIds: _s._engineSelectedPluginIds,
+        enabledIds: enabled,
+      );
+      final clearing = next.isEmpty;
+      setState(() {
+        _s._selectedSourceId = EngineJsIds.allChip;
+        _s._errorMessage = null;
+        _s._engineSelectedPluginIds = next;
+        if (clearing) {
+          _s._engineFetchGen++;
+          _s._isEngineFetching = false;
+          _s._engineInFlightPluginId = null;
+          EngineJsService.instance.cancelPending();
+        }
+      });
+      unawaited(
+        EngineJsService.instance.saveSourcesSelectedPluginIds(next),
+      );
+      if (!clearing) {
+        unawaited(_s._fetchNextEnginePlugin());
+      }
+      return;
+    }
+    if (id.startsWith(EngineJsIds.prefix)) {
+      final pluginId = id.substring(EngineJsIds.prefix.length);
+      final wasSelected = _s._engineSelectedPluginIds.contains(pluginId);
+      final fetched = _s._engineFetchedPluginIds.contains(pluginId);
+      final cancelInFlight = wasSelected &&
+          _s._isEngineFetching &&
+          _s._engineInFlightPluginId == pluginId;
+      if (wasSelected && !fetched && !cancelInFlight) {
+        unawaited(_s._fetchNextEnginePlugin(onlyId: pluginId));
+        return;
+      }
+      setState(() {
+        _s._selectedSourceId = EngineJsIds.allChip;
+        _s._errorMessage = null;
+        if (wasSelected) {
+          _s._engineSelectedPluginIds = Set<String>.from(
+            _s._engineSelectedPluginIds,
+          )..remove(pluginId);
+          _s._engineStreams = _s._engineStreams
+              .whereType<Map<String, dynamic>>()
+              .where((s) => s['_enginePluginId'] != pluginId)
+              .toList();
+          _s._engineFetchedPluginIds = Set<String>.from(
+            _s._engineFetchedPluginIds,
+          )..remove(pluginId);
+          if (cancelInFlight) {
+            _s._engineFetchGen++;
+            _s._isEngineFetching = false;
+            _s._engineInFlightPluginId = null;
+            EngineJsService.instance.cancelPending();
+          }
+        } else {
+          _s._engineSelectedPluginIds = {
+            ..._s._engineSelectedPluginIds,
+            pluginId,
+          };
+        }
+      });
+      CatalogSourcesSessionCache.writeEngine(
+        _s._catalogCacheKey,
+        List<Map<String, dynamic>>.from(_s._engineStreams),
+        fetchedPluginIds: _s._engineFetchedPluginIds,
+      );
+      unawaited(
+        EngineJsService.instance.saveSourcesSelectedPluginIds(
+          _s._engineSelectedPluginIds,
+        ),
+      );
+      if (!wasSelected) {
+        unawaited(_s._fetchNextEnginePlugin(onlyId: pluginId));
       }
       return;
     }
@@ -472,6 +610,9 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     final nuvio = _panelShowsNuvio
         ? _filteredPanelNuvioStreams
         : <Map<String, dynamic>>[];
+    final engine = _panelShowsEngine
+        ? _filteredPanelEngineStreams
+        : <Map<String, dynamic>>[];
 
     // Auto-selected dead provider (Torrentio 403) while another addon has
     // rows — show the working addon's streams and fix selection after this
@@ -517,15 +658,17 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       }
     }
 
-    final count = torrents.length + stremio.length + nuvio.length;
+    final count = torrents.length + stremio.length + nuvio.length + engine.length;
     final rawCount =
         (_panelShowsTorrents ? _s._allTorrentResults.length : 0) +
         (_panelShowsStremio ? _s._allCombinedStremioStreams.length : 0) +
-        (_panelShowsNuvio ? _selectedNuvioStreams.length : 0);
+        (_panelShowsNuvio ? _selectedNuvioStreams.length : 0) +
+        (_panelShowsEngine ? _selectedEngineStreams.length : 0);
     final isFetching =
         (_panelShowsTorrents && _s._isSearching) ||
         (_panelShowsStremio && _s._isStremioFetching) ||
-        (_panelShowsNuvio && _s._isNuvioFetching);
+        (_panelShowsNuvio && _s._isNuvioFetching) ||
+        (_panelShowsEngine && _s._isEngineFetching);
 
     // Never replace a multi-addon result set with a sticky provider error.
     if (_s._errorMessage != null && count == 0 && !isFetching) {
@@ -559,9 +702,15 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         msg = 'Select at least one provider';
       } else if (_panelShowsNuvio && _s._nuvioSelectedScraperIds.isEmpty) {
         msg = 'Select at least one provider';
+      } else if (_panelShowsEngine && _s._engineSelectedPluginIds.isEmpty) {
+        msg = 'Select at least one provider';
       } else if (_panelShowsNuvio &&
           _s._nuvioStreams.isNotEmpty &&
           _selectedNuvioStreams.isEmpty) {
+        msg = 'No results match your filters';
+      } else if (_panelShowsEngine &&
+          _s._engineStreams.isNotEmpty &&
+          _selectedEngineStreams.isEmpty) {
         msg = 'No results match your filters';
       } else {
         msg = 'No streams found';
@@ -579,6 +728,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
 
     final showAddonName =
         _panelShowsNuvio ||
+        _panelShowsEngine ||
         (_panelShowsStremio && _providerOptions().length > 1);
 
     final list = ListView.separated(
@@ -606,8 +756,16 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
             tvItemIndex: tvIndex,
           );
         }
+        final k = j - stremio.length;
+        if (k < nuvio.length) {
+          return _stremioTileFor(
+            nuvio[k],
+            showAddonName: true,
+            tvItemIndex: tvIndex,
+          );
+        }
         return _stremioTileFor(
-          nuvio[j - stremio.length],
+          engine[k - nuvio.length],
           showAddonName: true,
           tvItemIndex: tvIndex,
         );

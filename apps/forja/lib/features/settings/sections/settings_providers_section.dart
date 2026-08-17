@@ -10,6 +10,7 @@ import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/engine_js/engine_js.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -37,6 +38,9 @@ class _SettingsProvidersSectionState
   final TextEditingController _nuvioController = TextEditingController();
   bool _nuvioInstalling = false;
   bool _nuvioSelectAllDefault = true;
+  final TextEditingController _engineController = TextEditingController();
+  bool _engineInstalling = false;
+  bool _engineSelectAllDefault = true;
 
   final TextEditingController _jackettUrlController = TextEditingController();
   final TextEditingController _jackettApiKeyController = TextEditingController();
@@ -56,6 +60,7 @@ class _SettingsProvidersSectionState
   void initState() {
     super.initState();
     unawaited(_hydrateNuvioSelectAllDefault());
+    unawaited(_hydrateEngineSelectAllDefault());
   }
 
   Future<void> _hydrateNuvioSelectAllDefault() async {
@@ -64,10 +69,17 @@ class _SettingsProvidersSectionState
     setState(() => _nuvioSelectAllDefault = v);
   }
 
+  Future<void> _hydrateEngineSelectAllDefault() async {
+    final v = await EngineJsService.instance.isSourcesSelectAllDefault();
+    if (!mounted) return;
+    setState(() => _engineSelectAllDefault = v);
+  }
+
   @override
   void dispose() {
     _addonController.dispose();
     _nuvioController.dispose();
+    _engineController.dispose();
     _jackettUrlController.dispose();
     _jackettApiKeyController.dispose();
     _prowlarrUrlController.dispose();
@@ -96,6 +108,7 @@ class _SettingsProvidersSectionState
     final addonsAsync = ref.watch(stremioAddonsProvider);
     final installedAddons = addonsAsync.valueOrNull ?? const [];
     final nuvioAddons = ref.watch(nuvioAddonsProvider).valueOrNull ?? const [];
+    final enginePacks = ref.watch(enginePacksProvider).valueOrNull ?? const [];
     final indexerSnap = ref.watch(settingsIndexerProvider).valueOrNull;
     if (indexerSnap != null && !_indexersHydrated) {
       _hydrateIndexers(indexerSnap);
@@ -138,6 +151,23 @@ class _SettingsProvidersSectionState
                 },
               ),
               _buildNuvioAddonSection(nuvioAddons),
+            ],
+          ),
+        if (v.showEngine)
+          SettingsGroup(
+            label: 'Forja plugins',
+            children: [
+              settingsFocusableToggle(
+                context,
+                'Select All by default',
+                'Open Sources → Forja with every enabled plugin selected. Off starts with none — pick chips in the panel.',
+                _engineSelectAllDefault,
+                (val) async {
+                  setState(() => _engineSelectAllDefault = val);
+                  await EngineJsService.instance.setSourcesSelectAllDefault(val);
+                },
+              ),
+              _buildEnginePackSection(enginePacks),
             ],
           ),
         if (v.showTorrentEngine) ...[
@@ -426,6 +456,127 @@ class _SettingsProvidersSectionState
       ForjaToast.error('$e');
     }
   }
+
+  Widget _buildEnginePackSection(List<EnginePack> packs) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SettingsTextField(
+            controller: _engineController,
+            label: 'Install engine.json',
+            hint: 'https://.../engine.json',
+            onSubmitted: (_) => _installEnginePack(),
+          ),
+          const SizedBox(height: 14),
+          SettingsFilledButton(
+            label: 'Install',
+            icon: Icons.add_rounded,
+            busy: _engineInstalling,
+            onPressed: _installEnginePack,
+          ),
+          if (packs.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const _MiniLabel('Forja plugins'),
+            const SizedBox(height: 4),
+            ...packs.map((pack) {
+              final builtIn = EngineJsService.isBundled(pack.sourceUrl);
+              return Theme(
+                data: Theme.of(
+                  context,
+                ).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 2),
+                  childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
+                  leading: const Icon(
+                    Icons.bolt_rounded,
+                    color: ForjaShellColors.iconActive,
+                  ),
+                  title: Text(
+                    builtIn ? '${pack.name} (Built-in)' : pack.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: ForjaShellColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${pack.plugins.length} plugin${pack.plugins.length == 1 ? '' : 's'} · v${pack.version}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: ForjaShellColors.textSecondary,
+                    ),
+                  ),
+                  trailing: builtIn
+                      ? null
+                      : _AddonRemoveActions(
+                          onRemove: () => _removeEnginePack(pack.sourceUrl),
+                        ),
+                  children: pack.plugins.map((p) {
+                    final subtitle = [
+                      if (p.description != null && p.description!.isNotEmpty)
+                        p.description!,
+                      if (p.types.isNotEmpty) p.types.join(', '),
+                      p.kind,
+                    ].join(' · ');
+                    return SettingsToggleRow(
+                      title: p.name,
+                      subtitle: subtitle,
+                      value: p.enabled,
+                      onChanged: (val) async {
+                        await EngineJsService.instance.setPluginEnabled(
+                          sourceUrl: pack.sourceUrl,
+                          pluginId: p.id,
+                          enabled: val,
+                        );
+                      },
+                    );
+                  }).toList(),
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _installEnginePack() async {
+    final url = _engineController.text.trim();
+    if (url.isEmpty) return;
+    setState(() => _engineInstalling = true);
+    try {
+      final pack = await EngineJsService.instance.install(url);
+      if (!mounted) return;
+      _engineController.clear();
+      ForjaToast.success(
+        'Installed ${pack.name} (${pack.plugins.length} plugins)',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ForjaToast.error('Install failed: $e');
+    } finally {
+      if (mounted) setState(() => _engineInstalling = false);
+    }
+  }
+
+  Future<void> _removeEnginePack(String sourceUrl) async {
+    if (EngineJsService.isBundled(sourceUrl)) {
+      if (!mounted) return;
+      ForjaToast.error('Built-in Forja pack cannot be removed');
+      return;
+    }
+    try {
+      await EngineJsService.instance.removePack(sourceUrl);
+      if (!mounted) return;
+      ForjaToast.success('Forja pack removed');
+    } catch (e) {
+      if (!mounted) return;
+      ForjaToast.error('$e');
+    }
+  }
+
   Widget _buildJackettConfig() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),

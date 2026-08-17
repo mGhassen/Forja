@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/engine_js/engine_js.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
@@ -223,14 +224,34 @@ class _SettingsPlaybackSectionState
                       (s) => s.copyWith(playSourceNuvio: val),
                     );
                     schedulePreferencesSyncPush();
-                    if (val &&
-                        PlatformPlayback.capabilities.playSourceNuvio) {
-                      debugPrint('[Init] Nuvio refresh (settings toggle)');
-                      unawaited(NuvioService.instance.refreshAllInstalled());
-                    }
-                  },
-                  enabled: widget.visibility.lanPlaySourcesEditable,
-                ),
+                  if (val &&
+                      PlatformPlayback.capabilities.playSourceNuvio) {
+                    debugPrint('[Init] Nuvio refresh (settings toggle)');
+                    unawaited(NuvioService.instance.refreshAllInstalled());
+                  }
+                },
+                enabled: widget.visibility.lanPlaySourcesEditable,
+              ),
+            if (widget.visibility.showPlaySourceEngineToggle)
+              settingsFocusableToggle(
+                context,
+                'Forja',
+                'Play from engineJS plugins in Sources → Forja.',
+                snap.playSourceEngine,
+                (val) async {
+                  await _settings.setPlaySourceEngineEnabled(val);
+                  await _playback.patch(
+                    (s) => s.copyWith(playSourceEngine: val),
+                  );
+                  schedulePreferencesSyncPush();
+                  if (val) {
+                    unawaited(
+                      EngineJsService.instance.ensureBundledInstalled(),
+                    );
+                  }
+                },
+                enabled: widget.visibility.lanPlaySourcesEditable,
+              ),
               settingsFocusableToggle(
                 context,
                 'Webstreaming',

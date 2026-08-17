@@ -6,7 +6,7 @@
 
 **Webstreaming** is a **play source** on the unified [media details](media-details.md) screen — not a tab in **Sources**. When enabled in **Settings → Playback**, the hero shows the default green **Play** / **Resume** pill with a play icon. It auto-searches extractors in your **Provider order** (VidLink, VixSrc, WebStreamr, Videasy, …) and starts playback when one works (loading roulette overlay).
 
-The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent providers, **Nuvio**, Stremio). The **Sources** panel is not used for webstreaming.
+The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent providers, **Nuvio**, **Forja**, Stremio). The **Sources** panel is not used for webstreaming.
 
 ## How to open it
 
@@ -33,7 +33,7 @@ The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent
 
 ## Tips
 
-- Keep **Direct torrent** / **Stremio** / **Nuvio** enabled for magnet **Sources**; use green **Play** when you want a direct HTTP/HLS link only
+- Keep **Direct torrent** / **Stremio** / **Nuvio** / **Forja** enabled for **Sources**; use green **Play** when you want a direct HTTP/HLS link only
 - Provider order matters — put your most reliable extractor first
 
 ## Related

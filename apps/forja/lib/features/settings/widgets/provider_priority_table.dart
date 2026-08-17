@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
@@ -130,6 +131,15 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
     _ => const <String>{},
   };
 
+  void _toggleAsianDramaMirror(String id, bool enabled) {
+    final next = KissKhService.toggleMirrorInOrder(
+      current: _order,
+      host: id,
+      enabled: enabled,
+    );
+    widget.onAsianDramaOrderChanged(next);
+  }
+
   @override
   Widget build(BuildContext context) {
     final order = _order;
@@ -204,6 +214,7 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
                         ProviderScoreMemory.globalScoreFor(id);
                     final tries =
                         row?.supported == true ? tryPositionById[id] : null;
+                    final asianDrama = _tab == _ScoringTab.asianDrama;
                     return _ServerRow(
                       key: ValueKey('${_tab.name}-$id'),
                       index: index,
@@ -212,6 +223,10 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
                       tries: disabled ? null : tries,
                       disabled: disabled,
                       reorderable: reorderable,
+                      mirrorToggle: asianDrama
+                          ? (enabled) => _toggleAsianDramaMirror(id, enabled)
+                          : null,
+                      mirrorEnabled: asianDrama ? !disabled : null,
                       onMoveUp: reorderable && index > 0
                           ? () => _moveServer(order, index, index - 1)
                           : null,
@@ -229,17 +244,23 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
               alignment: Alignment.centerLeft,
               child: _ResetOrderButton(onPressed: _onOrderReset),
             )
-          else
+          else ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _ResetOrderButton(onPressed: _onOrderReset),
+            ),
             Padding(
               padding: const EdgeInsets.only(left: 4, top: 10),
               child: Text(
-                'One KissKH host is enabled to avoid shared-IP rate limits. '
-                'Other mirrors are on hold.',
+                'Turn on the KissKH mirror you want. Playback uses the first '
+                'enabled host only — aliases share the same IP rate limit, so '
+                'Forja does not auto-failover.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: ForjaShellColors.textSecondary,
                 ),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -347,6 +368,8 @@ class _ServerRow extends StatelessWidget {
     required this.tries,
     required this.disabled,
     required this.reorderable,
+    this.mirrorToggle,
+    this.mirrorEnabled,
     this.onMoveUp,
     this.onMoveDown,
   });
@@ -357,6 +380,8 @@ class _ServerRow extends StatelessWidget {
   final int? tries;
   final bool disabled;
   final bool reorderable;
+  final ValueChanged<bool>? mirrorToggle;
+  final bool? mirrorEnabled;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
 
@@ -369,7 +394,12 @@ class _ServerRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
           children: [
-            if (!reorderable)
+            if (mirrorToggle != null)
+              ForjaSwitch(
+                value: mirrorEnabled ?? false,
+                onChanged: mirrorToggle,
+              )
+            else if (!reorderable)
               SizedBox(
                 width: 28,
                 height: 36,
@@ -429,7 +459,7 @@ class _ServerRow extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (disabled) ...[
+                  if (disabled && mirrorToggle == null) ...[
                     const SizedBox(width: 8),
                     Text(
                       'On hold',

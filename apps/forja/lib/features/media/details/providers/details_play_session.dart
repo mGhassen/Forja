@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/media/details/providers/details_providers.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/engine_js/engine_js.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:rust/rust.dart';
@@ -18,6 +19,7 @@ class DetailsPlaySources {
     required this.torrent,
     required this.stremio,
     required this.nuvio,
+    required this.engine,
     required this.webstreaming,
   });
 
@@ -25,23 +27,27 @@ class DetailsPlaySources {
       : torrent = true,
         stremio = true,
         nuvio = true,
+        engine = true,
         webstreaming = true;
 
   final bool torrent;
   final bool stremio;
   final bool nuvio;
+  final bool engine;
   final bool webstreaming;
 
   DetailsPlaySources copyWith({
     bool? torrent,
     bool? stremio,
     bool? nuvio,
+    bool? engine,
     bool? webstreaming,
   }) {
     return DetailsPlaySources(
       torrent: torrent ?? this.torrent,
       stremio: stremio ?? this.stremio,
       nuvio: nuvio ?? this.nuvio,
+      engine: engine ?? this.engine,
       webstreaming: webstreaming ?? this.webstreaming,
     );
   }
@@ -77,6 +83,16 @@ class DetailsPlaySession {
   Set<String> nuvioSelectedScraperIds = {};
   bool nuvioSelectionHydrated = false;
 
+  List<Map<String, dynamic>> engineStreams = [];
+  bool isEngineFetching = false;
+  bool hasEnginePacks = false;
+  Set<String> engineFetchedPluginIds = {};
+  int engineFetchGen = 0;
+  String? engineInFlightPluginId;
+  List<EnginePack> enginePacks = [];
+  Set<String> engineSelectedPluginIds = {};
+  bool engineSelectionHydrated = false;
+
   final Map<String, dynamic> webstreamingProviders = {
     ...StreamProviders.providers,
   };
@@ -87,13 +103,14 @@ class DetailsPlaySession {
   bool webstreamingOnlyExtractionCancelled = false;
   int webstreamingPlayGen = 0;
 
-  String selectedSourceId = TorrentSearchProviders.allId;
-  String panelKindFilter = 'torrents';
+  String selectedSourceId = EngineJsIds.allChip;
+  String panelKindFilter = EngineJsIds.kind;
 
   DetailsResolveStatus get resolveStatus {
     if (isSearching ||
         isStremioFetching ||
         isNuvioFetching ||
+        isEngineFetching ||
         isWebstreamingOnlyExtracting) {
       return DetailsResolveStatus.loading;
     }
@@ -101,12 +118,14 @@ class DetailsPlaySession {
         torrents.isEmpty &&
         stremioStreams.isEmpty &&
         nuvioStreams.isEmpty &&
+        engineStreams.isEmpty &&
         webstreamingStreams.isEmpty) {
       return DetailsResolveStatus.error;
     }
     if (torrents.isNotEmpty ||
         stremioStreams.isNotEmpty ||
         nuvioStreams.isNotEmpty ||
+        engineStreams.isNotEmpty ||
         webstreamingStreams.isNotEmpty) {
       return DetailsResolveStatus.ready;
     }
@@ -144,6 +163,7 @@ class DetailsPlaySessionNotifier
       torrent: await PlaySourceEffective.torrent(settings, lanReady),
       stremio: await PlaySourceEffective.stremio(settings, lanReady),
       nuvio: await PlaySourceEffective.nuvio(settings, lanReady),
+      engine: await PlaySourceEffective.engine(settings, lanReady),
       webstreaming: await settings.isPlaySourceWebstreamingEnabled(),
     );
     session.playSources = next;

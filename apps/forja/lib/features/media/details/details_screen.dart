@@ -10,6 +10,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/engine_js/engine_js.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/playback_service.dart';
@@ -56,6 +57,7 @@ import 'package:forja/features/media/details/widgets/details_collection_section.
 
 part 'details_screen_torrent.dart';
 part 'details_screen_stremio.dart';
+part 'details_screen_engine.dart';
 part 'details_screen_webstreaming.dart';
 part 'details_screen_episodes.dart';
 part 'details_screen_panel.dart';
@@ -100,6 +102,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
         AtmosphereMixin,
         _DetailsScreenTorrent,
         _DetailsScreenStremio,
+        _DetailsScreenEngine,
         _DetailsScreenWebstreaming,
         _DetailsScreenEpisodes,
         _DetailsScreenPlay,
@@ -158,6 +161,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   bool get _playSourceTorrent => _play.playSources.torrent;
   bool get _playSourceNuvio => _play.playSources.nuvio;
+  bool get _playSourceEngine => _play.playSources.engine;
   bool get _playSourceStremio => _play.playSources.stremio;
   bool get _playSourceWebstreaming => _play.playSources.webstreaming;
 
@@ -215,6 +219,35 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   bool get _nuvioSelectionHydrated => _play.nuvioSelectionHydrated;
   set _nuvioSelectionHydrated(bool v) => _play.nuvioSelectionHydrated = v;
+
+  List<Map<String, dynamic>> get _engineStreams => _play.engineStreams;
+  set _engineStreams(List<Map<String, dynamic>> v) => _play.engineStreams = v;
+
+  bool get _isEngineFetching => _play.isEngineFetching;
+  set _isEngineFetching(bool v) => _play.isEngineFetching = v;
+
+  bool get _hasEnginePacks => _play.hasEnginePacks;
+  set _hasEnginePacks(bool v) => _play.hasEnginePacks = v;
+
+  Set<String> get _engineFetchedPluginIds => _play.engineFetchedPluginIds;
+  set _engineFetchedPluginIds(Set<String> v) =>
+      _play.engineFetchedPluginIds = v;
+
+  int get _engineFetchGen => _play.engineFetchGen;
+  set _engineFetchGen(int v) => _play.engineFetchGen = v;
+
+  String? get _engineInFlightPluginId => _play.engineInFlightPluginId;
+  set _engineInFlightPluginId(String? v) => _play.engineInFlightPluginId = v;
+
+  List<EnginePack> get _enginePacks => _play.enginePacks;
+  set _enginePacks(List<EnginePack> v) => _play.enginePacks = v;
+
+  Set<String> get _engineSelectedPluginIds => _play.engineSelectedPluginIds;
+  set _engineSelectedPluginIds(Set<String> v) =>
+      _play.engineSelectedPluginIds = v;
+
+  bool get _engineSelectionHydrated => _play.engineSelectionHydrated;
+  set _engineSelectionHydrated(bool v) => _play.engineSelectionHydrated = v;
 
   Map<String, dynamic> get _webstreamingProviders =>
       _play.webstreamingProviders;
@@ -479,13 +512,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
           _panelKindFilter = 'torrents';
         }
       default:
-        if (_panelShowTorrent) {
-          _panelKindFilter = 'torrents';
-        } else if (_panelShowNuvio) {
-          _panelKindFilter = 'nuvio';
-        } else if (_panelShowStremio) {
-          _panelKindFilter = 'stremio';
-        }
+        _panelKindFilter = _defaultPanelKindFilter();
     }
   }
 
@@ -573,13 +600,22 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
           (!_playbackProfile.localTorrentEngine && _playSourceNuvio)) &&
       _hasNuvioAddons;
 
+  bool get _panelShowEngine =>
+      _playSourceEngine &&
+      (_playbackProfile.playSourceEngine ||
+          (!_playbackProfile.localTorrentEngine && _playSourceEngine));
+
   bool get _hasPanelPlaySources =>
-      _panelShowTorrent || _panelShowStremio || _panelShowNuvio;
+      _panelShowTorrent ||
+      _panelShowStremio ||
+      _panelShowNuvio ||
+      _panelShowEngine;
 
   String _defaultPanelKindFilter() {
+    if (_panelShowEngine) return EngineJsIds.kind;
     if (_panelShowTorrent) return 'torrents';
-    if (_panelShowNuvio) return 'nuvio';
     if (_panelShowStremio) return 'stremio';
+    if (_panelShowNuvio) return 'nuvio';
     return 'torrents';
   }
 
@@ -588,6 +624,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       if (_panelShowTorrent) 'torrents',
       if (_panelShowStremio) 'stremio',
       if (_panelShowNuvio) 'nuvio',
+      if (_panelShowEngine) EngineJsIds.kind,
     };
     if (!allowed.contains(_panelKindFilter)) {
       _panelKindFilter = _defaultPanelKindFilter();
@@ -597,17 +634,34 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   bool _isCurrentSourceAllowed() {
     if (_isTorrentSource) return _panelShowTorrent;
     if (_isNuvioSource) return _panelShowNuvio;
+    if (_isEngineSource) return _panelShowEngine;
     if (_isWebstreamingSource) return false;
     return _panelShowStremio;
   }
 
   String _defaultSourceId() {
+    switch (_panelKindFilter) {
+      case EngineJsIds.kind:
+        if (_panelShowEngine) return EngineJsIds.allChip;
+      case 'torrents':
+        if (_panelShowTorrent) {
+          return TorrentSearchProviders.defaultChipId(_enabledTorrentProviders);
+        }
+      case 'nuvio':
+        if (_panelShowNuvio) return 'all_nuvio';
+      case 'stremio':
+        if (_panelShowStremio && _streamAddons.isNotEmpty) {
+          return _streamAddons.first['baseUrl'] as String;
+        }
+    }
+    if (_panelShowEngine) return EngineJsIds.allChip;
     if (_panelShowTorrent) {
       return TorrentSearchProviders.defaultChipId(_enabledTorrentProviders);
     }
     if (_panelShowStremio && _streamAddons.isNotEmpty) {
       return _streamAddons.first['baseUrl'] as String;
     }
+    if (_panelShowNuvio) return 'all_nuvio';
     return TorrentSearchProviders.allId;
   }
 
@@ -661,9 +715,14 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _nuvioFetchGen++;
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     }
+    if (_isEngineFetching) {
+      _engineFetchGen++;
+      EngineJsService.instance.cancelPending();
+    }
     _isSearching = false;
     _isStremioFetching = false;
     _isNuvioFetching = false;
+    _isEngineFetching = false;
     _allTorrentResults = [];
     _torrentFetchedProviderIds.clear();
     _stremioStreams = [];
@@ -673,6 +732,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _userPickedStremioProvider = false;
     _nuvioStreams = [];
     _nuvioFetchedScraperIds = {};
+    _engineStreams = [];
+    _engineFetchedPluginIds = {};
     // Keep scraper chip selection - persisted preference, not per-title.
     _errorMessage = null;
   }
@@ -693,6 +754,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     }
     if (_panelShowNuvio && _panelKindFilter == 'nuvio') {
       unawaited(_ensureNuvioPanelLoaded(force: force));
+    }
+    if (_panelShowEngine && _panelKindFilter == EngineJsIds.kind) {
+      unawaited(_ensureEnginePanelLoaded(force: force));
     }
   }
 
@@ -818,6 +882,35 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     }
   }
 
+  Future<void> _ensureEnginePanelLoaded({bool force = false}) async {
+    await _checkAndFetchEngine();
+    if (!mounted || !_panelShowEngine) return;
+    if (_panelKindFilter != EngineJsIds.kind) return;
+    if (_engineSelectedPluginIds.isEmpty) return;
+    if (force) {
+      CatalogSourcesSessionCache.invalidate(
+        _catalogCacheKey,
+        kind: EngineJsIds.kind,
+      );
+      await _fetchNextEnginePlugin(reset: true);
+      return;
+    }
+    if (_isEngineFetching) return;
+    if (_engineStreams.isEmpty) {
+      final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
+      if (cached != null) {
+        setState(() {
+          _engineStreams = cached.streams;
+          _engineFetchedPluginIds = cached.fetchedPluginIds;
+          _errorMessage = null;
+        });
+      }
+    }
+    if (_pendingEnginePluginIds.isNotEmpty) {
+      await _fetchNextEnginePlugin();
+    }
+  }
+
   void _reloadPanelKind(String kind) {
     // Reload only the opened kind - never prefetch a hidden category.
     if (kind != _panelKindFilter) return;
@@ -828,6 +921,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
         _ensureStremioPanelLoaded(force: true);
       case 'nuvio':
         unawaited(_ensureNuvioPanelLoaded(force: true));
+      case 'engine':
+        unawaited(_ensureEnginePanelLoaded(force: true));
     }
   }
 
@@ -856,6 +951,14 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _nuvioStreams = [];
       _nuvioFetchedScraperIds = {};
     }
+    if (keepKind != EngineJsIds.kind && _isEngineFetching) {
+      _engineFetchGen++;
+      _isEngineFetching = false;
+      _engineInFlightPluginId = null;
+      EngineJsService.instance.cancelPending();
+      _engineStreams = [];
+      _engineFetchedPluginIds = {};
+    }
   }
 
   void _onPanelKindFilterChanged(String kind) {
@@ -875,6 +978,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
           _applyStremioFilter();
         case 'nuvio':
           _selectedSourceId = 'all_nuvio';
+        case 'engine':
+          _selectedSourceId = EngineJsIds.allChip;
         default:
           _selectedSourceId = TorrentSearchProviders.allId;
       }
@@ -889,7 +994,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (!_hasPanelPlaySources) return;
     _captureSourcesPanelReturnFocus();
     setState(() {
-      _syncSelectedSourceToPlaySources();
+      _panelKindFilter = _defaultPanelKindFilter();
+      _selectedSourceId = _defaultSourceId();
+      _resetPanelFilters();
       _sourcesPanelOpen = true;
     });
     _ensurePanelSourceLoaded();
@@ -906,7 +1013,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (!_sourcesPanelOpen &&
         !_isSearching &&
         !_isStremioFetching &&
-        !_isNuvioFetching) {
+        !_isNuvioFetching &&
+        !_isEngineFetching) {
       return;
     }
     _cancelActiveSourceFetch(cancelEngineJobs: cancelEngineJobs);

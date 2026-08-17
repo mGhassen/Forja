@@ -56,6 +56,14 @@ class ProfileEngineWarm {
       } else {
         debugPrint('[Init] Nuvio skip (no VOD tab)');
       }
+
+      if (needs.engine) {
+        debugPrint('[Init] engineJS defer hydrate to first Sources/Settings use');
+      } else if (!needs.playSourceEngine) {
+        debugPrint('[Init] engineJS skip (play source off)');
+      } else {
+        debugPrint('[Init] engineJS skip (no VOD tab)');
+      }
     }
 
     if (needs.torrent) {

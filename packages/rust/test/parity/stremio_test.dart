@@ -96,6 +96,27 @@ void main() {
   group('classifyStremioStream magnet url', () {
     const desktop = PlaybackProfile.desktop;
 
+    test('HTTP url copies top-level headers (engineJS / Nuvio)', () {
+      final out = classifyStremioStream(
+        {
+          'url': 'https://moon.peakstorm.top/r2/x/index.m3u8',
+          'headers': {
+            'Referer': 'https://player.videasy.to/',
+            'Origin': 'https://player.videasy.to',
+          },
+        },
+        desktop,
+        useDebrid: false,
+        debridService: 'None',
+      );
+      expect(out, isA<StremioPlayable>());
+      expect(
+        (out as StremioPlayable).headers['Referer'],
+        'https://player.videasy.to/',
+      );
+      expect(out.headers['Origin'], 'https://player.videasy.to');
+    });
+
     test('HTTP url is direct playable', () {
       final out = classifyStremioStream(
         {'url': 'https://cdn.example/a.m3u8', 'title': '1080p'},

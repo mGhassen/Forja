@@ -20,7 +20,7 @@ Tap **Asian Drama** in the navigation bar.
 - In the player, **Sources** lists only the enabled KissKH host
 - Resume from continue watching — **same player launch as details → Resume** (saved episode list + seek position; no extra kisskh call); clear progress with the trash icon next to **Resume** on details. On **TV**, D-pad order matches the page: **↓** from hero **View details** → **Latest Update** → **Continue Watching** → catalog rails; **↑** from Continue Watching lands on Latest (then View details); empty Continue Watching leaves the D-pad graph; close/info chips on the card are mouse-only
 - Mark episodes watched / unwatched on details — auto at **≥85%** playback, or right-click (secondary tap) an episode card. Finished episodes write Simkl/Trakt history when a TMDB match exists. Cleared with **Settings → Cache & data → Watched episode marks**. Details hero shows series progress (`N of T · %` or **Completed**)
-- Under **Settings → Sources → Server reliability → Asian Drama**, `kisskh.nl` is enabled and the other verified mirrors are shown **On hold**
+- Under **Settings → Sources → Server reliability → Asian Drama**, turn on the KissKH mirror you want (`kisskh.co`, `kisskh.nl`, `kisskh.ovh`, `kisskh.la`, or `kisskh.do`). Playback uses the first enabled host only
 - Hover a continue watching card (desktop) to scale it and show a play button; hover the play button to turn it brand-green, float it upward, and pulse the icon
 
 ## Tips
@@ -29,7 +29,7 @@ Tap **Asian Drama** in the navigation bar.
 - KissKH availability can vary by region and site status
 - Many KissKH posters are hosted on TMDB’s image CDN (`media.themoviedb.org` / `image.tmdb.org`). On **Android 7.0**, Forja embeds Let's Encrypt roots so those covers load (same path as Home posters)
 - Watch history is stored per drama in this hub
-- Forja currently uses only `kisskh.nl`. The compatible `.co`, `.ovh`, `.la`, and `.do` aliases are held disabled because automatic checks across them share the same client-IP rate limit
+- Forja defaults to `kisskh.co`. Turn on another mirror in Settings if that host works better for you. Aliases share the same IP rate limit, so Forja does not auto-failover across them
 - Stream resolve signs KissKH’s stream key in the app engine and fetches the episode URL directly (same path a normal browser uses — usually about a second). A hidden browser page is only used if that path fails. If KissKH rate-limits your IP (“Too many request”), Forja cools down and asks you to wait — it does **not** hop to another mirror (aliases share the same ban)
 - Playback and subtitle requests send the KissKh mirror `Referer`/`Origin` by provider identity (not the CDN hostname), including cached URLs on `streamingcdn` / `cdnvideo` hosts
 - **Escape** / **Cancel** during resolve or before video starts returns to details — not a stuck loading screen. Leaving the title or switching shell tabs mid-check also stops the extract (same stop as **Cancel**).

@@ -49,10 +49,14 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     bool rebuild = true,
   }) {
     final changed =
-        _s._isSearching || _s._isStremioFetching || _s._isNuvioFetching;
+        _s._isSearching ||
+        _s._isStremioFetching ||
+        _s._isNuvioFetching ||
+        _s._isEngineFetching;
     _s._torrentSearchGen++;
     _s._stremioFetchGen++;
     _s._nuvioFetchGen++;
+    _s._engineFetchGen++;
     if (cancelEngineJobs) {
       _s._webstreamingOnlyExtractionCancelled = true;
       _s._streamCancelled = true;
@@ -60,10 +64,13 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     DomainStreamProviderResolver.cancelAllPending(
       cancelEngineJobs: cancelEngineJobs,
     );
+    EngineJsService.instance.cancelPending();
     _s._isSearching = false;
     _s._isStremioFetching = false;
     _s._isNuvioFetching = false;
     _s._nuvioInFlightScraperId = null;
+    _s._isEngineFetching = false;
+    _s._engineInFlightPluginId = null;
     if (changed && rebuild && mounted) setState(() {});
   }
 

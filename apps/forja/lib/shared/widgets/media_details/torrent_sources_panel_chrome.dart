@@ -19,6 +19,7 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
     required this.showTorrents,
     required this.showStremio,
     required this.showNuvio,
+    this.showEngine = false,
     required this.onKindChanged,
     required this.resultCount,
     required this.isFetching,
@@ -38,6 +39,7 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
     this.providerOptions = const [],
     this.selectedSourceId,
     this.nuvioSelectedScraperIds = const {},
+    this.engineSelectedPluginIds = const {},
     this.onProviderTap,
     this.showAudioFilters = false,
     this.activeAudioFilters = const {},
@@ -70,6 +72,7 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
   final bool showTorrents;
   final bool showStremio;
   final bool showNuvio;
+  final bool showEngine;
   final ValueChanged<String> onKindChanged;
   final int? resultCount;
   final bool isFetching;
@@ -79,6 +82,7 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
   final List<SourcesPanelProviderOption> providerOptions;
   final String? selectedSourceId;
   final Set<String> nuvioSelectedScraperIds;
+  final Set<String> engineSelectedPluginIds;
   final ValueChanged<String>? onProviderTap;
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
@@ -126,6 +130,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     if (widget.showTorrents) n++;
     if (widget.showStremio) n++;
     if (widget.showNuvio) n++;
+    if (widget.showEngine) n++;
     return n;
   }
 
@@ -225,13 +230,35 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
       showTorrents: widget.showTorrents,
       showStremio: widget.showStremio,
       showNuvio: widget.showNuvio,
+      showEngine: widget.showEngine,
       onChanged: widget.onKindChanged,
       isFetching: widget.isFetching,
       onReloadKind: widget.isFetching ? null : widget.onReloadKind,
       onCancelFetch: widget.isFetching ? widget.onCancelFetch : null,
-      resultCount: widget.resultCount,
-      episodeLabel: widget.episodeLabel,
     );
+
+    final hasMeta = widget.episodeLabel != null || widget.resultCount != null;
+    if (hasMeta) {
+      kind = Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: kind),
+          Transform.translate(
+            offset: const Offset(0, -20),
+            child: _SourcesChromeMeta(
+              episodeLabel: widget.episodeLabel,
+              resultCount: widget.resultCount,
+            ),
+          ),
+        ],
+      );
+    } else {
+      kind = Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: kind,
+      );
+    }
+
     if (_tv && _kindCount > 0) {
       kind = TvCatalogRow(
         tabId: SourcesPanelTv.tabId,
@@ -249,6 +276,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
         options: widget.providerOptions,
         selectedSourceId: widget.selectedSourceId ?? '',
         nuvioSelectedScraperIds: widget.nuvioSelectedScraperIds,
+        engineSelectedPluginIds: widget.engineSelectedPluginIds,
         onChipTap: widget.onProviderTap!,
         tvTabId: _tv ? SourcesPanelTv.tabId : null,
         tvRowId: _tv ? SourcesPanelTv.providersRowId : null,
@@ -335,30 +363,35 @@ class _KindTabs extends StatelessWidget {
     required this.showTorrents,
     required this.showStremio,
     required this.showNuvio,
+    this.showEngine = false,
     required this.onChanged,
     this.isFetching = false,
     this.onReloadKind,
     this.onCancelFetch,
-    this.resultCount,
-    this.episodeLabel,
   });
 
   final String selected;
   final bool showTorrents;
   final bool showStremio;
   final bool showNuvio;
+  final bool showEngine;
   final ValueChanged<String> onChanged;
   final bool isFetching;
   final ValueChanged<String>? onReloadKind;
   final VoidCallback? onCancelFetch;
-  final int? resultCount;
-  final String? episodeLabel;
 
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
     final options =
         <({String id, String label, IconData? iconData, Widget? icon})>[
+          if (showEngine)
+            (
+              id: 'engine',
+              label: 'Forja',
+              iconData: Icons.bolt_rounded,
+              icon: null,
+            ),
           if (showTorrents)
             (
               id: 'torrents',
@@ -392,61 +425,61 @@ class _KindTabs extends StatelessWidget {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: DesktopSwipeBackIgnore(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (var i = 0; i < options.length; i++)
-                      _KindTab(
-                        label: options[i].label,
-                        icon: options[i].icon,
-                        iconData: options[i].iconData,
-                        selected: selected == options[i].id,
-                        loading: isFetching && selected == options[i].id,
-                        tvItemIndex: i,
-                        onTap: () => onChanged(options[i].id),
-                        onReload:
-                            onReloadKind == null || selected != options[i].id
-                            ? null
-                            : () => onReloadKind!(options[i].id),
-                        onCancel:
-                            onCancelFetch == null || selected != options[i].id
-                            ? null
-                            : onCancelFetch,
-                      ),
-                  ],
+      child: DesktopSwipeBackIgnore(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var i = 0; i < options.length; i++)
+                _KindTab(
+                  label: options[i].label,
+                  icon: options[i].icon,
+                  iconData: options[i].iconData,
+                  selected: selected == options[i].id,
+                  loading: isFetching && selected == options[i].id,
+                  tvItemIndex: i,
+                  onTap: () => onChanged(options[i].id),
+                  onReload: onReloadKind == null || selected != options[i].id
+                      ? null
+                      : () => onReloadKind!(options[i].id),
+                  onCancel: onCancelFetch == null || selected != options[i].id
+                      ? null
+                      : onCancelFetch,
                 ),
-              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SourcesChromeMeta extends StatelessWidget {
+  const _SourcesChromeMeta({this.episodeLabel, this.resultCount});
+
+  final String? episodeLabel;
+  final int? resultCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (episodeLabel != null) ...[
+          Text(
+            episodeLabel!,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: cinematic.textSecondary.withValues(alpha: 0.75),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          if (episodeLabel != null || resultCount != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 8, right: 2, bottom: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (episodeLabel != null) ...[
-                    Text(
-                      episodeLabel!,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: cinematic.textSecondary.withValues(alpha: 0.75),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (resultCount != null) const SizedBox(width: 8),
-                  ],
-                  if (resultCount != null) _CountBadge(count: resultCount!),
-                ],
-              ),
-            ),
+          if (resultCount != null) const SizedBox(width: 8),
         ],
-      ),
+        if (resultCount != null) _CountBadge(count: resultCount!),
+      ],
     );
   }
 }
@@ -556,7 +589,7 @@ class _KindTabState extends State<_KindTab> {
     final face = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
       transform: Matrix4.translationValues(
         0,
         (_hovered || _focused) && !selected ? -0.5 : 0,

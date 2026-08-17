@@ -356,6 +356,18 @@ void main() {
       expect(h['Origin'], 'https://player.videasy.to');
     });
 
+    test('RFC-044: engine:videasy forces player.videasy.to on peakstorm', () {
+      const url =
+          'https://moon.peakstorm.top/r2/cdn2/x/1080p/index.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: url,
+        providerId: 'engine:videasy',
+      );
+      expect(h['Referer'], 'https://player.videasy.to/');
+      expect(h['Origin'], 'https://player.videasy.to');
+    });
+
     test('forces megaplay Referer for watching.onl anime CDN', () {
       const url =
           'https://fxpy7.watching.onl/anime/abc/master.m3u8';

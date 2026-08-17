@@ -15,6 +15,7 @@ import 'package:rust/rust.dart';
 bool isWebStreamProviderId(String sourceId) {
   if (sourceId.isEmpty) return false;
   if (sourceId.startsWith('nuvio:')) return false;
+  if (sourceId.startsWith('engine:')) return false;
   if (isCatalogSourcesMode(sourceId)) return false;
   final id = StreamProviderDisplay.canonicalId(sourceId);
   if (StreamProviders.providers.containsKey(id)) return true;
@@ -27,6 +28,7 @@ bool isWebStreamProviderId(String sourceId) {
 bool isCatalogSourcesMode(String? providerId) {
   if (providerId == null || providerId.isEmpty) return false;
   if (providerId.startsWith('nuvio:')) return true;
+  if (providerId.startsWith('engine:')) return true;
   const modes = {'stremio_direct', 'amri', 'torrent'};
   return modes.contains(StreamProviderDisplay.canonicalId(providerId));
 }

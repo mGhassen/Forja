@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/engine_js/engine_js.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -17,6 +18,7 @@ class SettingsPlaybackSnapshot {
     required this.playSourceTorrent,
     required this.playSourceStremio,
     required this.playSourceNuvio,
+    required this.playSourceEngine,
     required this.playSourceWebstreaming,
     required this.p2pAcknowledged,
     required this.simpleStreamingResolve,
@@ -25,6 +27,7 @@ class SettingsPlaybackSnapshot {
     required this.builtInEngineIptv,
     required this.streamProviderOrder,
     required this.animeProviderOrder,
+    required this.asianDramaProviderOrder,
     required this.preferredAudioLang,
     required this.avoidUnsupportedAudio,
     required this.autoNextEpisode,
@@ -44,6 +47,7 @@ class SettingsPlaybackSnapshot {
   final bool playSourceTorrent;
   final bool playSourceStremio;
   final bool playSourceNuvio;
+  final bool playSourceEngine;
   final bool playSourceWebstreaming;
   final bool p2pAcknowledged;
   final bool simpleStreamingResolve;
@@ -52,6 +56,7 @@ class SettingsPlaybackSnapshot {
   final BuiltInPlayerEngine builtInEngineIptv;
   final List<String> streamProviderOrder;
   final List<String> animeProviderOrder;
+  final List<String> asianDramaProviderOrder;
   final String preferredAudioLang;
   final bool avoidUnsupportedAudio;
   final bool autoNextEpisode;
@@ -71,6 +76,7 @@ class SettingsPlaybackSnapshot {
     bool? playSourceTorrent,
     bool? playSourceStremio,
     bool? playSourceNuvio,
+    bool? playSourceEngine,
     bool? playSourceWebstreaming,
     bool? p2pAcknowledged,
     bool? simpleStreamingResolve,
@@ -79,6 +85,7 @@ class SettingsPlaybackSnapshot {
     BuiltInPlayerEngine? builtInEngineIptv,
     List<String>? streamProviderOrder,
     List<String>? animeProviderOrder,
+    List<String>? asianDramaProviderOrder,
     String? preferredAudioLang,
     bool? avoidUnsupportedAudio,
     bool? autoNextEpisode,
@@ -98,6 +105,7 @@ class SettingsPlaybackSnapshot {
       playSourceTorrent: playSourceTorrent ?? this.playSourceTorrent,
       playSourceStremio: playSourceStremio ?? this.playSourceStremio,
       playSourceNuvio: playSourceNuvio ?? this.playSourceNuvio,
+      playSourceEngine: playSourceEngine ?? this.playSourceEngine,
       playSourceWebstreaming:
           playSourceWebstreaming ?? this.playSourceWebstreaming,
       p2pAcknowledged: p2pAcknowledged ?? this.p2pAcknowledged,
@@ -109,6 +117,8 @@ class SettingsPlaybackSnapshot {
       builtInEngineIptv: builtInEngineIptv ?? this.builtInEngineIptv,
       streamProviderOrder: streamProviderOrder ?? this.streamProviderOrder,
       animeProviderOrder: animeProviderOrder ?? this.animeProviderOrder,
+      asianDramaProviderOrder:
+          asianDramaProviderOrder ?? this.asianDramaProviderOrder,
       preferredAudioLang: preferredAudioLang ?? this.preferredAudioLang,
       avoidUnsupportedAudio:
           avoidUnsupportedAudio ?? this.avoidUnsupportedAudio,
@@ -159,6 +169,7 @@ class SettingsPlaybackNotifier
       playSourceTorrent: await PlaySourceEffective.torrent(s, lanReady),
       playSourceStremio: await PlaySourceEffective.stremio(s, lanReady),
       playSourceNuvio: await PlaySourceEffective.nuvio(s, lanReady),
+      playSourceEngine: await PlaySourceEffective.engine(s, lanReady),
       playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
       p2pAcknowledged: await s.isP2pStreamingAcknowledged(),
       simpleStreamingResolve: await s.isSimpleStreamingResolveEnabled(),
@@ -173,6 +184,7 @@ class SettingsPlaybackNotifier
       ),
       streamProviderOrder: await s.getStreamProviderOrder(),
       animeProviderOrder: await s.getAnimeProviderOrder(),
+      asianDramaProviderOrder: await s.getAsianDramaProviderOrder(),
       preferredAudioLang: kTrackLanguageDisplayNames.contains(preferredAudio)
           ? preferredAudio
           : 'None',
@@ -522,6 +534,29 @@ final nuvioAddonsProvider =
     AsyncNotifierProvider<NuvioAddonsNotifier, List<NuvioAddon>>(
   NuvioAddonsNotifier.new,
 );
+
+final enginePacksProvider =
+    AsyncNotifierProvider<EnginePacksNotifier, List<EnginePack>>(
+  EnginePacksNotifier.new,
+);
+
+class EnginePacksNotifier extends AsyncNotifier<List<EnginePack>> {
+  @override
+  Future<List<EnginePack>> build() async {
+    final n = EngineJsService.changeNotifier;
+    void listener() => ref.invalidateSelf();
+    n.addListener(listener);
+    ref.onDispose(() => n.removeListener(listener));
+    return EngineJsService.instance.listPacks();
+  }
+
+  Future<void> reload() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(
+      () => EngineJsService.instance.listPacks(),
+    );
+  }
+}
 
 class NuvioAddonsNotifier extends AsyncNotifier<List<NuvioAddon>> {
   @override

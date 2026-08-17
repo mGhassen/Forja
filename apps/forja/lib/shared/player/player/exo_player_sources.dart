@@ -460,7 +460,11 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
 
       await _openCatalogHttpInExo(
         url: resolved.streamUrl,
-        headers: resolved.headers,
+        headers: resolvePlaybackHttpHeaders(
+          resolved.headers,
+          streamUrl: resolved.streamUrl,
+          providerId: catalogHttpPlayProviderId(stream),
+        ),
         switchGen: switchGen,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
@@ -482,7 +486,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
             : ((base != null && base.startsWith('nuvio:'))
                 ? 'nuvio'
                 : 'stremio');
-        _s._currentProvider = 'stremio_direct';
+        _s._currentProvider = catalogHttpPlayProviderId(stream);
       });
       _s._statusController.complete();
       widget.onPlaybackStarted?.call();

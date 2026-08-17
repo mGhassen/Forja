@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/settings/widgets/provider_priority_table.dart';
+import 'package:forja/shared/design/design.dart';
 
 import 'helpers/rust_engine.dart';
 
@@ -33,7 +34,7 @@ void main() {
                 onAnimeOrderReset: () {},
                 asianDramaCatalog: const {
                   'kisskh.nl': 'kisskh.nl',
-                  'kisskh.co': 'KissKH',
+                  'kisskh.co': 'kisskh.co',
                 },
                 asianDramaOrder: const ['kisskh.nl', 'kisskh.co'],
                 disabledAsianDramaProviders: const {'kisskh.co'},
@@ -61,8 +62,8 @@ void main() {
       await tester.tap(find.text('Asian Drama'));
       await tester.pumpAndSettle();
       expect(find.text('kisskh.nl'), findsOneWidget);
-      expect(find.text('KissKH'), findsOneWidget);
-      expect(find.text('On hold'), findsOneWidget);
+      expect(find.text('kisskh.co'), findsOneWidget);
+      expect(find.byType(ForjaSwitch), findsWidgets);
     });
 
     testWidgets('tries badge uses auto-try position not effective rank', (
@@ -84,8 +85,8 @@ void main() {
                 animeOrder: const [],
                 onAnimeOrderChanged: (_) {},
                 onAnimeOrderReset: () {},
-                asianDramaCatalog: const {'kisskh': 'KissKH'},
-                asianDramaOrder: const ['kisskh'],
+                asianDramaCatalog: const {'kisskh.co': 'kisskh.co'},
+                asianDramaOrder: const ['kisskh.co'],
                 disabledAsianDramaProviders: const {},
                 onAsianDramaOrderChanged: (_) {},
                 onAsianDramaOrderReset: () {},

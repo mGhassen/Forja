@@ -27,11 +27,15 @@ abstract final class PlaySourceEffective {
   static Future<bool> showNuvioToggle() async =>
       PlatformPlayback.capabilities.playSourceNuvio;
 
+  static Future<bool> showEngineToggle() async =>
+      PlatformPlayback.capabilities.playSourceEngine;
+
   /// Play-source toggles always accept input when the platform exposes them.
   static Future<bool> lanPlaySourcesEditable() async =>
       PlatformPlayback.capabilities.playSourceTorrent ||
       PlatformPlayback.capabilities.playSourceStremio ||
-      PlatformPlayback.capabilities.playSourceNuvio;
+      PlatformPlayback.capabilities.playSourceNuvio ||
+      PlatformPlayback.capabilities.playSourceEngine;
 
   static Future<bool> torrent([
     SettingsService? settings,
@@ -55,5 +59,13 @@ abstract final class PlaySourceEffective {
   ]) async {
     final s = settings ?? SettingsService();
     return s.isPlaySourceNuvioEnabled();
+  }
+
+  static Future<bool> engine([
+    SettingsService? settings,
+    bool? lanReady,
+  ]) async {
+    final s = settings ?? SettingsService();
+    return s.isPlaySourceEngineEnabled();
   }
 }

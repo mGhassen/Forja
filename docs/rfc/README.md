@@ -80,6 +80,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [057-[partial]-…](057-[partial]-home-watch-provider-filter.md) | Home watch-provider filter | v1.4 | partial | 4/4 · 8/9 | [1.4.0](../backlog/1.4.0-[draft].md) |
 | [058-[partial]-…](058-[partial]-structured-search.md) | Structured Search (person / genre / year) | v1.4 | partial | 2/2 · 5/6 | [1.4.0](../backlog/1.4.0-[draft].md) |
 | [059-[fixed]-…](fixed/059-[fixed]-hub-list-follow.md) | Anime & Asian Drama list follow | v1.4 | fixed | Complete · 4/4 · 8/8 | [1.4.0](../backlog/1.4.0-[draft].md) |
+| [060-[open]-…](060-[open]-enginejs-sources-forja-tab.md) | engineJS + Sources Forja tab | v1.3 | open | 4/4 · 11/12 | — |
 
 ## Related
 

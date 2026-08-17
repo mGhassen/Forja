@@ -49,6 +49,9 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
     if (_s._isNuvioSource || _s._selectedSourceId == 'all_nuvio') {
       return _s._nuvioStreams.where(_s._nuvioStreamSelected).toList();
     }
+    if (_s._isEngineSource || _s._selectedSourceId == EngineJsIds.allChip) {
+      return _s._engineStreams.where(_s._engineStreamSelected).toList();
+    }
     if (_s._selectedSourceId == 'all_stremio' || _s._isTorrentSource) {
       return _s._allCombinedStremioStreams;
     }
@@ -192,7 +195,10 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         _s._isSearching;
     final stremioPending = _s._playSourceStremio && _s._isStremioFetching;
     final nuvioPending = _s._panelShowNuvio && _s._isNuvioFetching;
-    if (torrentPending || stremioPending || nuvioPending) return;
+    final enginePending = _s._panelShowEngine && _s._isEngineFetching;
+    if (torrentPending || stremioPending || nuvioPending || enginePending) {
+      return;
+    }
 
     if (fromEpisode) {
       _failEpisodePlayPending();
@@ -250,16 +256,21 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
       if (_s._sourcesPanelOpen) {
         _s._closeSourcesPanel(cancelEngineJobs: false);
       }
+      final proxied = await proxyCatalogHttpStreamIfNeeded(
+        streamUrl: precheck.streamUrl,
+        headers: precheck.headers,
+        stream: stream,
+      );
       await AppRouter.openPlayer(
         context,
-        streamUrl: precheck.streamUrl,
+        streamUrl: proxied.url,
         title: _s._movie.title,
-        headers: precheck.headers,
+        headers: proxied.headers,
         movie: _s._movie,
         selectedSeason: isTv ? _s._selectedSeason : null,
         selectedEpisode: isTv ? _s._selectedEpisode : null,
         startPosition: startPosition,
-        activeProvider: 'stremio_direct',
+        activeProvider: catalogHttpPlayProviderId(stream),
         stremioId: stremioId,
         stremioAddonBaseUrl: stremioAddonBaseUrl,
       );
@@ -342,7 +353,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
             selectedEpisode: isTv ? _s._selectedEpisode : null,
             fileIndex: resolved.fileIndex,
             startPosition: startPosition,
-            activeProvider: 'stremio_direct',
+            activeProvider: catalogHttpPlayProviderId(stream),
             stremioId: stremioId,
             stremioAddonBaseUrl: stremioAddonBaseUrl,
             fadeTransition: true,

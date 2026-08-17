@@ -90,10 +90,12 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
 
       await _s._configureMpvProperties();
       await resetPlayerForOpen(_s._player);
+      final playPid = catalogHttpPlayProviderId(stream);
       final openedUrl = await openPlayerStream(
         _s._player,
         url: resolved.streamUrl,
         headers: resolved.headers,
+        providerId: playPid,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       _s._player.setVolume(_s._mpvVolume);
@@ -102,6 +104,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         _s._player,
         streamUrl: openedUrl,
         headers: resolved.headers,
+        providerId: playPid,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       if (!opened) {
@@ -152,7 +155,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         _s._catalogSourceKind = localTorrent
             ? 'torrents'
             : ((base != null && base.startsWith('nuvio:')) ? 'nuvio' : 'stremio');
-        _s._currentProvider = 'stremio_direct';
+        _s._currentProvider = catalogHttpPlayProviderId(stream);
       });
       _s._markPlaybackConfirmed(true);
       syncPlayerProgressNotifiers(

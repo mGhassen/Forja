@@ -19,7 +19,7 @@ void main() {
       expect(chain, isEmpty);
     });
 
-    test('asian drama default enables only the held active host', () {
+    test('asian drama default enables kisskh.co', () {
       final order = SourceEngine.orderProviders(
         domain: SourceDomain.asianDrama,
         candidateIds: const [
@@ -31,8 +31,8 @@ void main() {
         ],
         settingsOrder: SettingsService.defaultAsianDramaProviderOrder,
       );
-      expect(SettingsService.defaultAsianDramaProviderOrder, ['kisskh.nl']);
-      expect(order.orderedIds.first, 'kisskh.nl');
+      expect(SettingsService.defaultAsianDramaProviderOrder, ['kisskh.co']);
+      expect(order.orderedIds.first, 'kisskh.co');
       expect(order.rows.every((r) => r.supported), isTrue);
     });
 

@@ -28,8 +28,8 @@ class StreamProviderDisplay {
     'stremio_direct': 'Stremio Direct',
     'amri': 'Amri',
     'arabic': 'Arabic',
-    'kisskh': 'KissKH',
-    'kisskh.co': 'KissKH',
+    'kisskh': 'kisskh.co',
+    'kisskh.co': 'kisskh.co',
     'kisskh.nl': 'kisskh.nl',
     'kisskh.ovh': 'kisskh.ovh',
     'kisskh.la': 'kisskh.la',
@@ -108,6 +108,9 @@ class StreamProviderDisplay {
   static String canonicalId(String providerId) {
     if (providerId.startsWith('nuvio:')) {
       return providerId.substring(6);
+    }
+    if (providerId.startsWith('engine:')) {
+      return providerId.substring(7);
     }
     return providerId;
   }

@@ -294,6 +294,7 @@ class TorrentSourceKindFilter extends StatelessWidget {
     required this.showTorrents,
     required this.showStremio,
     required this.showNuvio,
+    this.showEngine = false,
     required this.onChanged,
   });
 
@@ -301,11 +302,13 @@ class TorrentSourceKindFilter extends StatelessWidget {
   final bool showTorrents;
   final bool showStremio;
   final bool showNuvio;
+  final bool showEngine;
   final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final options = <({String id, String label, IconData icon})>[
+      if (showEngine) (id: 'engine', label: 'Forja', icon: Icons.bolt_rounded),
       if (showTorrents)
         (id: 'torrents', label: 'Torrents', icon: Icons.downloading_rounded),
       if (showStremio)
@@ -463,6 +466,7 @@ class TorrentSourceChips extends StatefulWidget {
     required this.options,
     required this.selectedSourceId,
     required this.nuvioSelectedScraperIds,
+    this.engineSelectedPluginIds = const {},
     required this.onChipTap,
     this.tvTabId,
     this.tvRowId,
@@ -471,6 +475,7 @@ class TorrentSourceChips extends StatefulWidget {
   final List<SourcesPanelProviderOption> options;
   final String selectedSourceId;
   final Set<String> nuvioSelectedScraperIds;
+  final Set<String> engineSelectedPluginIds;
   final ValueChanged<String> onChipTap;
   final String? tvTabId;
   final String? tvRowId;
@@ -513,6 +518,19 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
     if (option.id.startsWith('nuvio:')) {
       return widget.nuvioSelectedScraperIds.contains(
         option.id.substring('nuvio:'.length),
+      );
+    }
+    if (option.id == 'all_engine') {
+      final pluginIds = [
+        for (final o in widget.options)
+          if (o.id.startsWith('engine:')) o.id.substring('engine:'.length),
+      ];
+      return pluginIds.isNotEmpty &&
+          pluginIds.every(widget.engineSelectedPluginIds.contains);
+    }
+    if (option.id.startsWith('engine:')) {
+      return widget.engineSelectedPluginIds.contains(
+        option.id.substring('engine:'.length),
       );
     }
     return torrentProviderChipSelected(

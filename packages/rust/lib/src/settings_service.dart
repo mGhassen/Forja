@@ -40,6 +40,7 @@ class SettingsService {
   static const String _playSourceTorrentKey = 'play_source_torrent_enabled';
   static const String _playSourceStremioKey = 'play_source_stremio_enabled';
   static const String _playSourceNuvioKey = 'play_source_nuvio_enabled';
+  static const String _playSourceEngineKey = 'play_source_engine_enabled';
   static const String _playSourceWebstreamingKey =
       'play_source_webstreaming_enabled';
   /// Device-local: first-time P2P disclaimer (torrent / Stremio / Nuvio).
@@ -599,6 +600,23 @@ class SettingsService {
     playSourceChangeNotifier.value++;
   }
 
+  Future<bool> isPlaySourceEngineStored() async {
+    if (await kvHasKey(_playSourceEngineKey)) {
+      return kvGetBool(
+        _playSourceEngineKey,
+        fallback: _defaults.playSourceEngine,
+      );
+    }
+    return _defaults.playSourceEngine;
+  }
+
+  Future<bool> isPlaySourceEngineEnabled() async => isPlaySourceEngineStored();
+
+  Future<void> setPlaySourceEngineEnabled(bool enabled) async {
+    await kvSetBool(_playSourceEngineKey, enabled);
+    playSourceChangeNotifier.value++;
+  }
+
   Future<bool> isPlaySourceWebstreamingEnabled() async => kvGetBool(
     _playSourceWebstreamingKey,
     fallback: _defaults.playSourceWebstreaming,
@@ -769,6 +787,22 @@ class SettingsService {
   Future<void> setStreamProviderOrder(List<String> order) async =>
       kvSetStringList(_streamProviderOrderKey, order);
 
+  static const String _disabledStreamProvidersKey =
+      'disabled_stream_providers';
+
+  Future<List<String>> getDisabledStreamProviders() async =>
+      kvGetStringList(_disabledStreamProvidersKey, fallback: const []);
+
+  Future<void> setDisabledStreamProviders(List<String> ids) async =>
+      kvSetStringList(_disabledStreamProvidersKey, ids);
+
+  /// Try-order for Auto resolve — full order minus disabled rows.
+  Future<List<String>> getEnabledStreamProviderOrder() async {
+    final order = await getStreamProviderOrder();
+    final off = (await getDisabledStreamProviders()).toSet();
+    return [for (final id in order) if (!off.contains(id)) id];
+  }
+
   static const String _animeProviderOrderKey = 'anime_provider_order';
 
   /// Default anime stream try-order. Kept in sync with
@@ -868,14 +902,26 @@ class SettingsService {
   static const String _asianDramaProviderOrderKey =
       'asian_drama_provider_order';
 
-  /// Asian Drama is intentionally single-host. KissKH aliases share the
-  /// client's rate limit, so probing/failover across them can cause a ban.
+  /// Enabled KissKH mirrors in catalog order (first = active). No auto-failover.
   static const List<String> defaultAsianDramaProviderOrder = <String>[
-    'kisskh.nl',
+    'kisskh.co',
   ];
 
   Future<List<String>> getAsianDramaProviderOrder() async {
-    return List<String>.from(defaultAsianDramaProviderOrder);
+    final raw = await kvGetStringList(
+      _asianDramaProviderOrderKey,
+      fallback: defaultAsianDramaProviderOrder,
+    );
+    if (raw.isEmpty) {
+      return List<String>.from(defaultAsianDramaProviderOrder);
+    }
+    return raw
+        .map((id) {
+          final v = id.trim().toLowerCase();
+          if (v.isEmpty || v == 'kisskh') return 'kisskh.co';
+          return v;
+        })
+        .toList();
   }
 
   Future<void> setAsianDramaProviderOrder(List<String> order) async =>
@@ -1279,6 +1325,7 @@ class SettingsService {
       await kvSetBool(_playSourceTorrentKey, true);
       await kvSetBool(_playSourceStremioKey, true);
       await kvSetBool(_playSourceNuvioKey, true);
+      await kvSetBool(_playSourceEngineKey, true);
       playSourceChangeNotifier.value++;
     }
     await kvSetString(_atvCatalogPlaySourcesKey, '1');
@@ -1315,6 +1362,7 @@ class SettingsService {
       await kvSetBool(_playSourceTorrentKey, defaults.playSourceTorrent);
       await kvSetBool(_playSourceStremioKey, defaults.playSourceStremio);
       await kvSetBool(_playSourceNuvioKey, defaults.playSourceNuvio);
+      await kvSetBool(_playSourceEngineKey, defaults.playSourceEngine);
       await kvSetBool(
         _playSourceWebstreamingKey,
         defaults.playSourceWebstreaming,
@@ -1528,6 +1576,7 @@ class SettingsService {
     prefsMap[_playSourceTorrentKey] = await isPlaySourceTorrentStored();
     prefsMap[_playSourceStremioKey] = await isPlaySourceStremioStored();
     prefsMap[_playSourceNuvioKey] = await isPlaySourceNuvioStored();
+    prefsMap[_playSourceEngineKey] = await isPlaySourceEngineStored();
     prefsMap[_playSourceWebstreamingKey] =
         await isPlaySourceWebstreamingEnabled();
     prefsMap[_p2pStreamingAcknowledgedKey] =
@@ -1632,6 +1681,7 @@ class SettingsService {
       _playSourceTorrentKey,
       _playSourceStremioKey,
       _playSourceNuvioKey,
+      _playSourceEngineKey,
       _playSourceWebstreamingKey,
       _p2pStreamingAcknowledgedKey,
     ]) {

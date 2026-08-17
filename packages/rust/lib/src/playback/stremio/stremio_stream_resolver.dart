@@ -114,6 +114,32 @@ List<Map<String, dynamic>> filterStremioStreamsForProfile(
       .toList();
 }
 
+/// HTTP request headers on a Stremio / Nuvio / engineJS stream map.
+///
+/// Stremio addons use `behaviorHints.proxyHeaders.request`. Nuvio and engineJS
+/// put the same map on `headers`. Both are merged; hints win on key clash.
+Map<String, String> stremioStreamRequestHeaders(Map<String, dynamic> stream) {
+  final out = <String, String>{};
+  void add(dynamic raw) {
+    if (raw is! Map) return;
+    raw.forEach((k, v) {
+      if (v == null) return;
+      final key = k.toString().trim();
+      final val = v.toString().trim();
+      if (key.isEmpty || val.isEmpty) return;
+      out[key] = val;
+    });
+  }
+
+  add(stream['headers']);
+  final hints = stream['behaviorHints'];
+  if (hints is Map) {
+    final proxy = hints['proxyHeaders'];
+    if (proxy is Map) add(proxy['request']);
+  }
+  return out;
+}
+
 /// Classifies a stream before resolution (for UI / pre-checks).
 StremioResolveOutcome? classifyStremioStream(
   Map<String, dynamic> stream,
@@ -132,9 +158,7 @@ StremioResolveOutcome? classifyStremioStream(
   if (url != null && url.isNotEmpty && !isStremioTorrentUrl(url)) {
     return StremioPlayable(
       streamUrl: url,
-      headers: Map<String, String>.from(
-        stream['behaviorHints']?['proxyHeaders']?['request'] ?? {},
-      ),
+      headers: stremioStreamRequestHeaders(stream),
       loadingMessage: '',
     );
   }

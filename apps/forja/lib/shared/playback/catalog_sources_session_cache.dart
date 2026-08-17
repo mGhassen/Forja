@@ -23,6 +23,15 @@ class CatalogSourcesSessionCache {
           Set<String> fetchedScraperIds,
         })
       >{};
+  static final _engine =
+      <
+        String,
+        ({
+          DateTime at,
+          List<Map<String, dynamic>> streams,
+          Set<String> fetchedPluginIds,
+        })
+      >{};
 
   /// Stable key - TV always uses 1-based season/episode.
   static String cacheKey({
@@ -107,7 +116,34 @@ class CatalogSourcesSessionCache {
     _trim(_nuvio);
   }
 
-  /// Drop one kind (`torrents` | `stremio` | `nuvio`) or all kinds for [key].
+  static ({List<Map<String, dynamic>> streams, Set<String> fetchedPluginIds})?
+  readEngine(String key) {
+    final entry = _engine[key];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.at) > ttl) {
+      _engine.remove(key);
+      return null;
+    }
+    return (
+      streams: [for (final s in entry.streams) Map<String, dynamic>.from(s)],
+      fetchedPluginIds: Set<String>.from(entry.fetchedPluginIds),
+    );
+  }
+
+  static void writeEngine(
+    String key,
+    List<Map<String, dynamic>> streams, {
+    required Set<String> fetchedPluginIds,
+  }) {
+    _engine[key] = (
+      at: DateTime.now(),
+      streams: [for (final s in streams) Map<String, dynamic>.from(s)],
+      fetchedPluginIds: Set<String>.from(fetchedPluginIds),
+    );
+    _trim(_engine);
+  }
+
+  /// Drop one kind (`torrents` | `stremio` | `nuvio` | `engine`) or all kinds for [key].
   static void invalidate(String key, {String? kind}) {
     switch (kind) {
       case 'torrents':
@@ -116,10 +152,13 @@ class CatalogSourcesSessionCache {
         _stremio.remove(key);
       case 'nuvio':
         _nuvio.remove(key);
+      case 'engine':
+        _engine.remove(key);
       default:
         _torrents.remove(key);
         _stremio.remove(key);
         _nuvio.remove(key);
+        _engine.remove(key);
     }
   }
 

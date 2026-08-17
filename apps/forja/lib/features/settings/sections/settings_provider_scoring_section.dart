@@ -45,12 +45,25 @@ class SettingsProviderScoringSection extends ConsumerWidget {
       animeCatalog.keys,
     );
     final asianDramaCatalog = KissKhService.settingsCatalog;
-    final asianDramaOrder = <String>[
-      KissKhService.activeMirrorHost,
-      ...asianDramaCatalog.keys.where(
-        (host) => host != KissKhService.activeMirrorHost,
-      ),
-    ];
+    final asianDramaOrder = KissKhService.mergeMirrorOrder(
+      snap.asianDramaProviderOrder,
+    );
+    final disabledAsianDrama = asianDramaCatalog.keys
+        .where((host) => !asianDramaOrder.contains(host))
+        .toSet();
+
+    Future<void> persistAsianDramaOrder(List<String> next) async {
+      final merged = KissKhService.mergeMirrorOrder(next);
+      await playback.patch(
+        (s) => s.copyWith(asianDramaProviderOrder: merged),
+      );
+      await settings.setAsianDramaProviderOrder(merged);
+      scheduleProvidersSyncPush();
+      final host = KissKhService.activeHostFromOrder(merged);
+      await KissKhService.activateEndpoint(
+        KissKhService.baseUrlForHost(host),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
@@ -91,9 +104,11 @@ class SettingsProviderScoringSection extends ConsumerWidget {
         },
         asianDramaCatalog: asianDramaCatalog,
         asianDramaOrder: asianDramaOrder,
-        disabledAsianDramaProviders: KissKhService.disabledMirrorHosts,
-        onAsianDramaOrderChanged: (_) {},
-        onAsianDramaOrderReset: () {},
+        disabledAsianDramaProviders: disabledAsianDrama,
+        onAsianDramaOrderChanged: persistAsianDramaOrder,
+        onAsianDramaOrderReset: () => persistAsianDramaOrder(
+          List<String>.from(SettingsService.defaultAsianDramaProviderOrder),
+        ),
       ),
     );
   }

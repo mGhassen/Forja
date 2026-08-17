@@ -31,6 +31,9 @@ class PlaybackProfile {
   /// Whether Settings / Sources may expose Nuvio.
   final bool playSourceNuvio;
 
+  /// Whether Settings / Sources may expose engineJS (Forja tab).
+  final bool playSourceEngine;
+
   const PlaybackProfile({
     required this.localTorrentEngine,
     required this.stremioInfoHash,
@@ -39,6 +42,7 @@ class PlaybackProfile {
     required this.playSourceTorrent,
     required this.playSourceStremio,
     required this.playSourceNuvio,
+    this.playSourceEngine = true,
   });
 
   /// Desktop / Android / iOS — full torrent engine + hash playback.

@@ -138,7 +138,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   KdramaEpisode? _resolvedEpisode;
   List<KdramaEpisode> _resolvedEpisodes = const [];
   String _resolvedOverview = '';
-  final List<String> _mirrorOrder = const [KissKhService.activeMirrorHost];
+  List<String> _mirrorOrder = [KissKhService.defaultMirrorHost];
+  String _activeHost = KissKhService.defaultMirrorHost;
   Map<String, dynamic> _providers = const {};
 
   @override
@@ -207,8 +208,8 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
   void _prepareActiveHost() {
     _probeNotifier.value = [
       StreamProviderProbe(
-        id: KissKhService.activeMirrorHost,
-        label: KissKhService.mirrorLabel(KissKhService.activeMirrorHost),
+        id: _activeHost,
+        label: KissKhService.mirrorLabel(_activeHost),
         status: StreamProviderProbeStatus.pending,
         isPreferred: true,
       ),
@@ -381,6 +382,13 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       final drama = ctx.drama;
       final episode = ctx.episode!;
 
+      final order = await SettingsService().getAsianDramaProviderOrder();
+      _mirrorOrder = KissKhService.mergeMirrorOrder(order);
+      _activeHost = KissKhService.activeHostFromOrder(_mirrorOrder);
+      await KissKhService.activateEndpoint(
+        KissKhService.baseUrlForHost(_activeHost),
+      );
+
       _providers = _kissKhProvidersForEpisode(
         drama: drama,
         episode: episode,
@@ -388,7 +396,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       );
 
       if (!mounted) return;
-      final activeHost = KissKhService.activeMirrorHost;
+      final activeHost = _activeHost;
       var sawRateLimit = false;
       var sawCountdown = false;
       _prepareActiveHost();

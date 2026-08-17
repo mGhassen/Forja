@@ -11,6 +11,7 @@ final tmdbApiProvider = Provider<TmdbApi>((ref) => TmdbApi());
 /// Primary KissKH hub feed load.
 final asianDramaFeedProvider =
     FutureProvider.autoDispose<KdramaHomeFeed>((ref) async {
+  await KissKhService.ensureActiveMirrorFromSettings();
   final service = ref.watch(kissKhServiceProvider);
   return service.getHome();
 });

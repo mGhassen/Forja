@@ -68,6 +68,15 @@ class ProviderRuntimeConfig {
     final key = _stripAnimePanelSuffix(providerId?.trim() ?? '').toLowerCase();
     if (key.isEmpty) return null;
 
+    if (key.startsWith('engine:')) {
+      final plugin = key.substring('engine:'.length);
+      if (plugin == 'dooflix') {
+        return _httpsOrigin('molop.art', fallback: 'molop.art');
+      }
+      final enginePolicy = _policyFromEmbedHost(plugin);
+      if (enginePolicy != null) return enginePolicy;
+    }
+
     // MegaPlay family (CDN rotates; Referer stays megaplay host).
     // Legacy `vidwish` is an alias (R44-C07).
     if (key == 'megaplay' ||
@@ -79,7 +88,9 @@ class ProviderRuntimeConfig {
     }
 
     // Videasy / wings CDN - same as the browser player origin.
-    if (key == 'videasy' || key.startsWith('videasy/')) {
+    if (key == 'videasy' ||
+        key.startsWith('videasy/') ||
+        key == 'engine:videasy') {
       final raw = (apis['videasyPlayerOrigin'] ?? 'https://player.videasy.to')
           .trim();
       return _httpsOrigin(_hostOf(raw), fallback: 'player.videasy.to');

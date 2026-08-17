@@ -1,3 +1,4 @@
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 
 /// Bridges legacy [StreamSource] lists with [PlayableSource] metadata in the player.
@@ -29,11 +30,18 @@ abstract final class PlayableSourceBridge {
   static bool requiresProxy(
     List<PlayableSource>? playable,
     int index,
-    String? providerId,
-  ) {
+    String? providerId, {
+    String? streamUrl,
+  }) {
     if (playable != null && index < playable.length) {
       return playable[index].requiresProxy;
     }
-    return providerId == 'service111477';
+    if (providerId == 'service111477') return true;
+    if (streamUrl != null &&
+        isMovieBoxCdnStreamUrl(streamUrl) &&
+        providerId == 'engine:vidlink') {
+      return true;
+    }
+    return false;
   }
 }

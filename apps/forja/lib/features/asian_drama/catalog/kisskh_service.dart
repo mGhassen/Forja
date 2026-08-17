@@ -13,13 +13,11 @@ import 'package:rust/rust.dart';
 
 class KissKhService {
   static const String primaryBaseUrl = 'https://kisskh.co';
-  static const String activeMirrorHost = 'kisskh.nl';
+  static const String defaultMirrorHost = 'kisskh.co';
 
-  /// API-compatible KissKH hosts retained for future reactivation.
-  ///
-  /// Playback deliberately uses only [activeMirrorHost]. Automatically probing
-  /// or failing over across these aliases can trigger KissKH's shared-IP rate
-  /// limit because all hosts count against the same client.
+  /// API-compatible KissKH hosts. Enable the ones you want under Settings →
+  /// Sources → Server reliability → Asian Drama. Playback uses the first
+  /// enabled host only — no automatic mirror failover (shared IP rate limit).
   static const List<String> mirrorHosts = <String>[
     'kisskh.co',
     'kisskh.nl',
@@ -33,13 +31,43 @@ class KissKhService {
     for (final host in mirrorHosts) host: mirrorLabel(host),
   };
 
-  static Set<String> get disabledMirrorHosts =>
-      mirrorHosts.where((host) => host != activeMirrorHost).toSet();
+  /// Enabled hosts in catalog order (first = active for catalog + playback).
+  static List<String> mergeMirrorOrder(List<String> enabled) {
+    final on = enabled.map(normalizeMirrorId).toSet();
+    return [
+      for (final host in mirrorHosts)
+        if (on.contains(host)) host,
+    ];
+  }
+
+  static String activeHostFromOrder(List<String> enabled) {
+    final merged = mergeMirrorOrder(enabled);
+    return merged.isEmpty ? defaultMirrorHost : merged.first;
+  }
+
+  static List<String> toggleMirrorInOrder({
+    required List<String> current,
+    required String host,
+    required bool enabled,
+  }) {
+    final id = normalizeMirrorId(host);
+    if (enabled) {
+      if (current.contains(id)) return mergeMirrorOrder(current);
+      return mergeMirrorOrder([...current, id]);
+    }
+    if (current.length <= 1) return mergeMirrorOrder(current);
+    return mergeMirrorOrder(current.where((h) => h != id).toList());
+  }
+
+  static Future<String> ensureActiveMirrorFromSettings() async {
+    final order = await SettingsService().getAsianDramaProviderOrder();
+    final host = activeHostFromOrder(order);
+    await activateEndpoint(baseUrlForHost(host));
+    return host;
+  }
 
   static String mirrorLabel(String hostOrId) {
-    final host = normalizeMirrorId(hostOrId);
-    if (host == 'kisskh.co') return 'KissKH';
-    return host;
+    return normalizeMirrorId(hostOrId);
   }
 
   /// Map legacy `kisskh` and URLs to a mirror host id.

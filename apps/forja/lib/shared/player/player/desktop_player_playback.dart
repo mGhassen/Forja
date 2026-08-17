@@ -101,13 +101,22 @@ mixin _DesktopPlayerPlayback
           _s._playableSources,
           i,
           _s._currentProvider,
+          streamUrl: source.url,
         )) {
           if (!site111477_proxy.is111477ProxyRunning ||
               _s._current111477FileUrl != source.url) {
             if (site111477_proxy.is111477ProxyRunning) {
               await site111477_proxy.stop111477Proxy();
             }
-            openUrl = await site111477_proxy.start111477Proxy(source.url);
+            final upstream = resolvePlaybackHttpHeaders(
+              source.headers ?? widget.headers,
+              streamUrl: source.url,
+              providerId: source.providerId ?? _s._currentProvider,
+            );
+            openUrl = await site111477_proxy.start111477Proxy(
+              source.url,
+              headers: upstream,
+            );
             _s._current111477FileUrl = source.url;
           } else {
             openUrl = site111477_proxy.site111477ProxyUrl!;
@@ -120,6 +129,7 @@ mixin _DesktopPlayerPlayback
               _s._playableSources,
               i,
               _s._currentProvider,
+              streamUrl: source.url,
             ) &&
             !isLocalTorrentStreamUrl(openUrl) &&
             widget.magnetLink == null;

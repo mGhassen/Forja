@@ -22,6 +22,7 @@ void main() {
       expect(isWebStreamProviderId('amri'), isFalse);
       expect(isWebStreamProviderId('torrent'), isFalse);
       expect(isWebStreamProviderId('nuvio:torrentio'), isFalse);
+      expect(isWebStreamProviderId('engine:videasy'), isFalse);
       expect(isWebStreamProviderId(''), isFalse);
     });
   });
@@ -32,6 +33,7 @@ void main() {
       expect(isCatalogSourcesMode('torrent'), isTrue);
       expect(isCatalogSourcesMode('amri'), isTrue);
       expect(isCatalogSourcesMode('nuvio:showbox'), isTrue);
+      expect(isCatalogSourcesMode('engine:videasy'), isTrue);
     });
 
     test('rejects web extractors and empty', () {
