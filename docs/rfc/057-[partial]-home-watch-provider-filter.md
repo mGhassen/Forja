@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **7 / 8** acceptance · **0 / 1** device smoke |
-| **Current slice** | Code + docs + unit/widget tests shipped — device smoke open |
+| **Progress** | **4 / 4** components · **8 / 9** acceptance · **0 / 1** device smoke |
+| **Current slice** | Family aliases shipped — device smoke open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -23,6 +23,7 @@
 | 1 | R57-C01 | `ShellBus.homeProviderMenuVisible` + Home re-press toggle/clear | ✅ |
 | 2 | R57-C02 | Provider logo strip mounted from `HomeTopBar` (desktop / TV / mobile) | ✅ |
 | 3 | R57-C03 | Selected provider logo before Films / TV / Categories | ✅ |
+| 4 | R57-C04 | Same-brand TMDB family per chip (Max = HBO / HBO Max + networks; regional SKUs) | ✅ |
 
 ---
 
@@ -38,6 +39,7 @@
 | 6 | R57-A06 | Works on desktop, phone, and Android TV | ⬜ |
 | 7 | R57-A07 | Feature doc + changelog updated | ✅ |
 | 8 | R57-A08 | Shell widget tests cover re-press + filter toggle | ✅ |
+| 9 | R57-A09 | Max (and other chips) union same-brand watch ids + TV networks; Featured pads when the month window is thin | ✅ |
 
 ---
 
@@ -61,3 +63,4 @@ Provider strip + discover filtering already exist (`ShellTopBar`) but were gated
 - Strip visibility is session UI only (`homeProviderMenuVisible`); not persisted.
 - Toggle active provider id clears filter without requiring strip dismiss.
 - `ShellBus.onHomeNavRepress` / `onLeaveHomeTab` own the nav chrome state machine.
+- Chip id is the chrome key. Discover ORs that service’s family (`WatchProviderFamily`): rebrands / regional SKUs, plus a separate TV `with_networks` query so new originals (e.g. HBO *Lanterns* on Max) show before JustWatch tags them. No Amazon/Apple “channel” add-ons.

@@ -4,6 +4,7 @@ import 'package:rust/rust.dart';
 import '../models/media_details_extras.dart';
 import '../models/watch_provider.dart';
 import 'search_query_parser.dart';
+import 'tmdb_watch_provider_family.dart';
 
 class TmdbApi {
   static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
@@ -429,7 +430,8 @@ class TmdbApi {
       path += '&with_original_language=$language';
     }
     if (watchProviderId != null) {
-      path += '&with_watch_providers=$watchProviderId';
+      path +=
+          '&with_watch_providers=${WatchProviderFamily.orQuery(WatchProviderFamily.watchIdsFor(watchProviderId))}';
     }
     if (withPeople != null) {
       path += '&with_people=$withPeople';
@@ -459,43 +461,90 @@ class TmdbApi {
     int page = 1,
   }) async {
     final region = watchRegion ?? TmdbWatchRegion.current;
-    var path = 'discover/tv?page=$page&watch_region=$region&sort_by=$sortBy';
-    if (genres != null && genres.isNotEmpty) {
-      path += '&with_genres=${genres.join(',')}';
-    }
-    if (year != null) {
-      path += '&first_air_date_year=$year';
-    }
-    if (releaseDateGte != null) {
-      path += '&first_air_date.gte=$releaseDateGte';
-    }
-    if (releaseDateLte != null) {
-      path += '&first_air_date.lte=$releaseDateLte';
-    }
-    if (minRating != null) {
-      path += '&vote_average.gte=$minRating';
-    }
-    if (minVoteCount != null) {
-      path += '&vote_count.gte=$minVoteCount';
-    }
-    if (language != null) {
-      path += '&with_original_language=$language';
-    }
-    if (watchProviderId != null) {
-      path += '&with_watch_providers=$watchProviderId';
-    }
-    if (withPeople != null) {
-      path += '&with_people=$withPeople';
-    }
-    if (withCompanies != null) {
-      path += '&with_companies=$withCompanies';
-    }
-    if (withNetworks != null) {
-      path += '&with_networks=$withNetworks';
+    final watchIds = watchProviderId == null
+        ? const <int>[]
+        : WatchProviderFamily.watchIdsFor(watchProviderId);
+    final familyNetworks =
+        watchProviderId != null && withNetworks == null
+            ? WatchProviderFamily.tvNetworkIdsFor(watchProviderId)
+            : const <int>[];
+
+    Future<List<Movie>> fetch({
+      String? watchProviders,
+      String? networks,
+    }) async {
+      var path = 'discover/tv?page=$page&watch_region=$region&sort_by=$sortBy';
+      if (genres != null && genres.isNotEmpty) {
+        path += '&with_genres=${genres.join(',')}';
+      }
+      if (year != null) {
+        path += '&first_air_date_year=$year';
+      }
+      if (releaseDateGte != null) {
+        path += '&first_air_date.gte=$releaseDateGte';
+      }
+      if (releaseDateLte != null) {
+        path += '&first_air_date.lte=$releaseDateLte';
+      }
+      if (minRating != null) {
+        path += '&vote_average.gte=$minRating';
+      }
+      if (minVoteCount != null) {
+        path += '&vote_count.gte=$minVoteCount';
+      }
+      if (language != null) {
+        path += '&with_original_language=$language';
+      }
+      if (watchProviders != null && watchProviders.isNotEmpty) {
+        path += '&with_watch_providers=$watchProviders';
+      }
+      if (withPeople != null) {
+        path += '&with_people=$withPeople';
+      }
+      if (withCompanies != null) {
+        path += '&with_companies=$withCompanies';
+      }
+      if (networks != null && networks.isNotEmpty) {
+        path += '&with_networks=$networks';
+      } else if (withNetworks != null) {
+        path += '&with_networks=$withNetworks';
+      }
+
+      final decoded = await _fetchMap(path);
+      return (decoded['results'] as List)
+          .map((json) => Movie.fromJson(json, mediaType: 'tv'))
+          .toList();
     }
 
-    final decoded = await _fetchMap(path);
-    return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'tv')).toList();
+    if (familyNetworks.isEmpty) {
+      return fetch(
+        watchProviders:
+            watchIds.isEmpty ? null : WatchProviderFamily.orQuery(watchIds),
+      );
+    }
+
+    final parts = await Future.wait([
+      fetch(watchProviders: WatchProviderFamily.orQuery(watchIds)),
+      fetch(networks: WatchProviderFamily.orQuery(familyNetworks)),
+    ]);
+    return _uniqueMovies(parts[0], parts[1]);
+  }
+
+  static List<Movie> _uniqueMovies(List<Movie> primary, List<Movie> extra) {
+    final out = <Movie>[];
+    final seen = <String>{};
+    void add(Movie movie) {
+      final key = '${movie.mediaType}:${movie.id}';
+      if (seen.add(key)) out.add(movie);
+    }
+
+    for (final movie in primary) {
+      add(movie);
+    }
+    for (final movie in extra) {
+      add(movie);
+    }
+    return out;
   }
 
   /// Titles related to [seed] by TMDB recs/similar + genre/year/lang/people/studio.

@@ -83,6 +83,23 @@ List<Movie> _enforceMediaFilter(List<Movie> items, ShellHomeCategory? filter) {
   return items;
 }
 
+List<Movie> _uniqueMedia(List<Movie> primary, List<Movie> extra) {
+  final out = <Movie>[];
+  final seen = <String>{};
+  void add(Movie movie) {
+    final key = '${movie.mediaType}:${movie.id}';
+    if (seen.add(key)) out.add(movie);
+  }
+
+  for (final movie in primary) {
+    add(movie);
+  }
+  for (final movie in extra) {
+    add(movie);
+  }
+  return out;
+}
+
 List<Movie> _interleaveMedia(List<Movie> movies, List<Movie> tv) {
   final out = <Movie>[];
   final seen = <String>{};
@@ -405,12 +422,12 @@ final homeFeaturedProvider =
   final month = await load(
     releaseDateGte: range.gte,
     releaseDateLte: range.lte,
-    minRating: 6.0,
+    minRating: ctx.providerId != null ? null : 6.0,
   );
-  // Provider + calendar-month discover is often empty — keep the row by
-  // falling back to popular titles available on that service.
-  if (month.isEmpty && ctx.providerId != null) {
-    return load();
-  }
-  return month;
+  if (ctx.providerId == null) return month;
+  // Calendar-month + service is often a handful of titles. Keep new-this-month
+  // first, then fill from popular on that service.
+  if (month.length >= 8) return month;
+  final popular = await load();
+  return _uniqueMedia(month, popular);
 });

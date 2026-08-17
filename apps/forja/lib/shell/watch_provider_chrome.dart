@@ -11,7 +11,8 @@ class WatchProviderChrome {
     this.forceWhiteLogo = false,
   });
 
-  /// TMDB watch provider id (`with_watch_providers`).
+  /// TMDB watch provider id (chrome key). Discover ORs same-brand ids
+  /// (Max includes HBO / HBO Max).
   final int id;
   final String name;
   final String assetPath;
