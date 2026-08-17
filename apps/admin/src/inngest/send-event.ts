@@ -28,6 +28,35 @@ function localDevBase(): string {
   return 'http://127.0.0.1:8288'
 }
 
+function serveOrigin(): string {
+  const fromEnv = process.env.INNGEST_SERVE_ORIGIN?.trim()
+  if (fromEnv) return fromEnv.replace(/\/$/, '')
+  return 'https://admin.forjahq.xyz'
+}
+
+/**
+ * Push current serve() functions to Inngest Cloud (out-of-band PUT sync).
+ * Event send does NOT register functions — without this, new jobs get
+ * events with no runs.
+ */
+export async function syncInngestApp(): Promise<void> {
+  if (useLocalDevServer()) return
+  const url = `${serveOrigin()}/api/inngest`
+  let res: Response
+  try {
+    res = await fetch(url, { method: 'PUT' })
+  } catch (e) {
+    const why = e instanceof Error ? e.message : String(e)
+    throw new Error(`Inngest sync unreachable (${url}): ${why}`)
+  }
+  const text = await res.text()
+  if (!res.ok) {
+    throw new Error(
+      `Inngest sync ${res.status} at ${url}. ${text.slice(0, 240)}`,
+    )
+  }
+}
+
 /**
  * Local (INNGEST_DEV): POST Dev Server /e/local.
  * Vercel/prod: Inngest Cloud via SDK (needs INNGEST_EVENT_KEY).

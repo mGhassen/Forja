@@ -69,6 +69,11 @@ class SearchScreenState extends ConsumerState<SearchScreen>
 
   bool _searchFieldEditing = false;
 
+  /// Ignore IME/key submit from the same OK that opened the field.
+  /// Android TV OK often delivers both Select and Enter.
+  bool _searchSubmitArmed = false;
+  int _searchEditEpoch = 0;
+
   /// Cached for debounce/invalidate without inherited lookup on inactive elements.
   ProviderContainer? _container;
 

@@ -172,7 +172,13 @@ bool shellOverlayCanPop() {
 void maybePopShellOverlay<T extends Object?>([T? result]) {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay?.canPop() ?? false) {
+    ShellTvFocus.captureOverlayReturnFocus();
     overlay!.pop(result);
+    if (overlay.canPop()) {
+      ShellTvFocus.discardOverlayReturnFocus();
+    } else {
+      ShellTvFocus.restoreOverlayReturnFocus();
+    }
   }
 }
 

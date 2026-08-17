@@ -200,6 +200,8 @@ abstract final class ShellTvFocusCoordinator {
   static bool tvBackPolicyEnabled = false;
 
   static DateTime? _lastBackHandledAt;
+  static String _overlayReturnTabId = '';
+  static ShellTvFocusMemory? _overlayReturnSnapshot;
   static const Duration _backDebounceWindow = Duration(milliseconds: 400);
 
   /// HW + didPopRoute land a few ms apart. Shorter than [_backDebounceWindow]
@@ -214,6 +216,8 @@ abstract final class ShellTvFocusCoordinator {
   static void resetBackDebounceForTest() {
     _lastBackHandledAt = null;
     _backStepPending = false;
+    _overlayReturnTabId = '';
+    _overlayReturnSnapshot = null;
     _dismissTransientOverlay = null;
     _dismissSourcesPanel = null;
     PlayerBackExitGate.resetForTest();
@@ -519,6 +523,103 @@ abstract final class ShellTvFocusCoordinator {
       return 'search';
     }
     return shellTabId;
+  }
+
+  /// Snapshot the underlying tab's focus before overlay chrome remounts.
+  ///
+  /// Home's top bar unmounts while details is open. On pop it remounts and
+  /// Flutter lands D-pad on Search / Films instead of the last catalog card.
+  static void captureOverlayReturnFocus() {
+    if (!tvBackPolicyEnabled) return;
+    _overlayReturnTabId = ShellTvFocus.currentNavTabId ?? '';
+    _overlayReturnSnapshot = memoryFor(_overlayReturnTabId);
+  }
+
+  /// Restore [captureOverlayReturnFocus] after the overlay stack is empty.
+  static void restoreCapturedOverlayReturnFocus() {
+    if (!tvBackPolicyEnabled) return;
+    final tabId = _overlayReturnTabId;
+    final snapshot = _overlayReturnSnapshot;
+    _overlayReturnTabId = '';
+    _overlayReturnSnapshot = null;
+    restoreTabFocusAfterOverlayPop(tabId, snapshot);
+  }
+
+  static void discardCapturedOverlayReturnFocus() {
+    _overlayReturnTabId = '';
+    _overlayReturnSnapshot = null;
+  }
+
+  /// After details/search overlay pop: last catalog card, not top-bar chrome.
+  ///
+  /// Does **not** fall back to hero Play when row memory exists — that would
+  /// scroll the feed to the top while the viewport is still on the card.
+  static void restoreTabFocusAfterOverlayPop(
+    String tabId, [
+    ShellTvFocusMemory? snapshot,
+  ]) {
+    if (!tvBackPolicyEnabled) return;
+    if (tabId.isEmpty) return;
+    final memory = snapshot ?? _tabMemory[tabId];
+
+    bool landed() {
+      if (memory == null || memory.zone == ShellTvZone.nav) {
+        return _pageHasFocus();
+      }
+      return _memoryHasFocus(tabId, memory);
+    }
+
+    void attempt() {
+      if (memory != null && memory.zone != ShellTvZone.nav) {
+        saveFocus(tabId, memory);
+        if (_restoreOverlayMemory(tabId, memory) && landed()) return;
+        if (_tryRestoreLiveNode(memory) && landed()) return;
+        return;
+      }
+      restoreTabFocus(tabId);
+    }
+
+    attempt();
+    if (landed()) return;
+
+    void scheduleAttempt({required int remaining}) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        attempt();
+        if (!landed() && remaining > 0) {
+          scheduleAttempt(remaining: remaining - 1);
+        }
+      });
+    }
+
+    scheduleAttempt(remaining: 4);
+  }
+
+  static bool _memoryHasFocus(String tabId, ShellTvFocusMemory memory) {
+    final node = memory.node;
+    if (node != null) {
+      try {
+        if (node.hasFocus) return true;
+      } catch (_) {}
+    }
+    final rowId = memory.rowId;
+    if (rowId == null) return false;
+    final item = itemNode(tabId, rowId, memory.itemIndex);
+    if (item == null) return false;
+    try {
+      return item.hasFocus;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static bool _restoreOverlayMemory(String tabId, ShellTvFocusMemory memory) {
+    if (memory.zone == ShellTvZone.row && memory.rowId != null) {
+      if (focusRowItemExact(tabId, memory.rowId!, memory.itemIndex)) {
+        return true;
+      }
+      return focusRowItem(tabId, memory.rowId!, memory.itemIndex);
+    }
+    return _restoreFromMemory(tabId, memory);
   }
 
   /// Restore page focus after the rail handles RIGHT.

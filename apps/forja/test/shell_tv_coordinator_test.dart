@@ -663,6 +663,92 @@ void main() {
     },
   );
 
+  testWidgets(
+    'restoreTabFocusAfterOverlayPop keeps catalog card if top bar remounts',
+    (tester) async {
+      final homeNav = FocusNode(debugLabel: 'nav-home');
+      final play = FocusNode(debugLabel: 'hero-play');
+      final card = FocusNode(debugLabel: 'catalog-card');
+      final search = FocusNode(debugLabel: 'top-bar-search');
+      ShellTvFocus.registerNav('home', homeNav);
+      ShellTvFocus.currentNavTabId = 'home';
+
+      shellTvRegisterRow(
+        tabId: 'home',
+        rowId: 'featured',
+        sortOrder: 0,
+        itemCount: 3,
+      );
+      ShellTvFocusCoordinator.registerItemNode(
+        tabId: 'home',
+        rowId: 'featured',
+        index: 2,
+        node: card,
+      );
+      ShellTvFocusCoordinator.saveFocus(
+        'home',
+        ShellTvFocusMemory(
+          zone: ShellTvZone.row,
+          rowId: 'featured',
+          itemIndex: 2,
+          node: card,
+        ),
+      );
+      ShellTvFocusCoordinator.registerTabDefaults(
+        'home',
+        defaultFocus: () => play,
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: homeNav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: search,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: play,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: card,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      search.requestFocus();
+      await tester.pump();
+      expect(search.hasFocus, isTrue);
+
+      ShellTvFocusCoordinator.captureOverlayReturnFocus();
+      ShellTvFocusCoordinator.saveFocus(
+        'home',
+        ShellTvFocusMemory(zone: ShellTvZone.topBar, node: search),
+      );
+      ShellTvFocusCoordinator.restoreCapturedOverlayReturnFocus();
+      await tester.pump();
+      await tester.pump();
+
+      expect(card.hasFocus, isTrue);
+      expect(search.hasFocus, isFalse);
+      expect(play.hasFocus, isFalse);
+
+      homeNav.dispose();
+      play.dispose();
+      card.dispose();
+      search.dispose();
+      ShellTvFocusCoordinator.clearTab('home');
+    },
+  );
+
   test('restoreTabFocus ignores stale nav-only memory', () {
     final pageNode = FocusNode(debugLabel: 'page-item');
     ShellTvFocusCoordinator.saveFocus(

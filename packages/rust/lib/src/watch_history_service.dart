@@ -16,13 +16,19 @@ class WatchHistoryService {
   static const String _dismissedKey = 'dismissed_history';
   final _controller = StreamController<List<Map<String, dynamic>>>.broadcast();
   List<Map<String, dynamic>> _current = [];
+  bool _loaded = false;
 
   Stream<List<Map<String, dynamic>>> get historyStream => _controller.stream;
   List<Map<String, dynamic>> get current => _current;
+  bool get isLoaded => _loaded;
 
   Future<void> _init() async {
-    _current = await getHistory();
-    _controller.add(_current);
+    try {
+      _current = await getHistory();
+    } finally {
+      _loaded = true;
+      _controller.add(_current);
+    }
   }
 
   Future<void> saveProgress({

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { sendInngestEvent } from '@/inngest/send-event'
+import { sendInngestEvent, syncInngestApp } from '@/inngest/send-event'
 import { authedAdmin } from '@/server/admin-request'
 import {
   countEligibleUnpromotedPortals,
@@ -96,6 +96,14 @@ export const Route = createFileRoute('/api/iptv-promote-backfill')({
               : DEFAULT_CHUNK
 
           const jobId = crypto.randomUUID()
+          try {
+            await syncInngestApp()
+          } catch (e) {
+            const message =
+              e instanceof Error ? e.message : 'Inngest sync failed'
+            return json({ error: message }, 502)
+          }
+
           const { data: run, error: runErr } = await sb
             .from('iptv_scrape_runs')
             .insert({

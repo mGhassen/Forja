@@ -732,35 +732,31 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     return compact
         ? LayoutBuilder(
             builder: (context, constraints) {
-              return ClipRect(
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: _buildCompactHeroTextColumn(
-                    movie,
-                    metrics: metrics,
-                    maxHeight: constraints.maxHeight,
-                    maxWidth: constraints.maxWidth,
-                    isActive: isActive,
-                  ),
+              return Align(
+                alignment: Alignment.bottomLeft,
+                child: _buildCompactHeroTextColumn(
+                  movie,
+                  metrics: metrics,
+                  maxHeight: constraints.maxHeight,
+                  maxWidth: constraints.maxWidth,
+                  isActive: isActive,
                 ),
               );
             },
           )
         : LayoutBuilder(
             builder: (context, constraints) {
-              return ClipRect(
-                child: Align(
-                  alignment: Alignment(
-                    -1,
-                    ShellTokens.heroTextColumnVerticalAlign,
-                  ),
-                  child: SizedBox(
-                    width: desktopTextWidth,
-                    child: _buildDesktopHeroTextColumn(
-                      movie,
-                      maxHeight: constraints.maxHeight,
-                      isActive: isActive,
-                    ),
+              return Align(
+                alignment: Alignment(
+                  -1,
+                  ShellTokens.heroTextColumnVerticalAlign,
+                ),
+                child: SizedBox(
+                  width: desktopTextWidth,
+                  child: _buildDesktopHeroTextColumn(
+                    movie,
+                    maxHeight: constraints.maxHeight,
+                    isActive: isActive,
                   ),
                 ),
               );
@@ -811,24 +807,32 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           mainAxisAlignment: MainAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              height: titleHeight,
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: _buildHeroTitleBlock(
-                  heroMovie,
-                  isLandscape: false,
-                  desktop: true,
-                  compact: true,
-                ),
-              ),
-            ),
-            SizedBox(height: metaGap),
-            SizedBox(
-              height: metaRowHeight,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _buildHeroMetaRow(heroMovie, singleLine: true),
+            ClipRect(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: titleHeight,
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: _buildHeroTitleBlock(
+                        heroMovie,
+                        isLandscape: false,
+                        desktop: true,
+                        compact: true,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: metaGap),
+                  SizedBox(
+                    height: metaRowHeight,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _buildHeroMetaRow(heroMovie, singleLine: true),
+                    ),
+                  ),
+                ],
               ),
             ),
             SizedBox(height: actionGap),
@@ -971,41 +975,49 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          height: layout.titleHeight,
-          child: Align(
-            alignment: Alignment.bottomLeft,
-            child: _buildHeroTitleBlock(
-              heroMovie,
-              isLandscape: false,
-              desktop: true,
-            ),
-          ),
-        ),
-        const SizedBox(height: titleGap),
-        SizedBox(
-          height: ShellTokens.heroMetaSlotHeightDesktop,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: _buildHeroMetaRow(heroMovie, singleLine: true),
-          ),
-        ),
-        if (layout.showOverview) ...[
-          SizedBox(height: ShellTokens.heroMetaOverviewGapDesktop),
-          SizedBox(
-            height: layout.overviewSlotHeight,
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: HeroOverviewText(
-                overview: heroMovie.overview,
-                style: overviewStyle,
-                maxLines: layout.overviewMaxLines,
-                shrinkWrap: false,
-                onReadMore: () => widget.onOpenDetails(heroMovie),
+        ClipRect(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: layout.titleHeight,
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: _buildHeroTitleBlock(
+                    heroMovie,
+                    isLandscape: false,
+                    desktop: true,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: titleGap),
+              SizedBox(
+                height: ShellTokens.heroMetaSlotHeightDesktop,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildHeroMetaRow(heroMovie, singleLine: true),
+                ),
+              ),
+              if (layout.showOverview) ...[
+                SizedBox(height: ShellTokens.heroMetaOverviewGapDesktop),
+                SizedBox(
+                  height: layout.overviewSlotHeight,
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: HeroOverviewText(
+                      overview: heroMovie.overview,
+                      style: overviewStyle,
+                      maxLines: layout.overviewMaxLines,
+                      shrinkWrap: false,
+                      onReadMore: () => widget.onOpenDetails(heroMovie),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
+        ),
         const SizedBox(height: actionGap),
         _buildHeroActionRow(heroMovie, isActive: isActive),
       ],

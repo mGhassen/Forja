@@ -116,6 +116,17 @@ abstract final class ShellTvFocus {
     return true;
   }
 
+  /// Snapshot the shell tab's D-pad memory before overlay chrome remounts.
+  static void captureOverlayReturnFocus() =>
+      ShellTvFocusCoordinator.captureOverlayReturnFocus();
+
+  /// Restore last catalog/hero focus after details/search overlay pops.
+  static void restoreOverlayReturnFocus() =>
+      ShellTvFocusCoordinator.restoreCapturedOverlayReturnFocus();
+
+  static void discardOverlayReturnFocus() =>
+      ShellTvFocusCoordinator.discardCapturedOverlayReturnFocus();
+
   /// After opening the rail (may need a rebuild), land on [providerId].
   static void scheduleFocusHomeProviderById(int? providerId) {
     void attempt(int n) {

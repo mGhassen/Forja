@@ -174,7 +174,9 @@ class HeroPillPlayButton extends StatelessWidget {
         tvMeta: tvMeta,
         hoverScale: 1.03,
         pressScale: 0.97,
-        scaleAlignment: Alignment.centerLeft,
+        // Bottom-left so TV focus scale grows into the action gap, not into
+        // the hero ClipRect / bottom inset (which ate the glass border).
+        scaleAlignment: Alignment.bottomLeft,
         builder: (active, pressed) {
           return _HeroPillPlaySurface(
             style: style,

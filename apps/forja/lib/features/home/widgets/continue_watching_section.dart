@@ -36,11 +36,11 @@ class HomeContinueWatchingSectionState extends State<HomeContinueWatchingSection
 
   Future<void> _resolveMissingBackdrops(List<Map<String, dynamic>> items) async {
     for (final item in items) {
-      final stored = item['backdropPath'] as String?;
+      final stored = item['backdropPath']?.toString();
       if (stored != null && stored.isNotEmpty) continue;
 
-      final tmdbId = item['tmdbId'] as int?;
-      if (tmdbId == null || _resolvedBackdrops.containsKey(tmdbId)) continue;
+      final tmdbId = watchHistoryInt(item['tmdbId'], -1);
+      if (tmdbId < 0 || _resolvedBackdrops.containsKey(tmdbId)) continue;
 
       final mediaType = item['mediaType']?.toString() ??
           (item['season'] != null ? 'tv' : 'movie');
@@ -140,19 +140,21 @@ class HomeContinueWatchingSectionState extends State<HomeContinueWatchingSection
 
   @override
   Widget build(BuildContext context) {
+    final svc = WatchHistoryService();
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: WatchHistoryService().historyStream,
+      stream: svc.historyStream,
+      initialData: svc.current,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (!svc.isLoaded) {
           return homeContinueWatchingSkeleton(
             context,
             compactTop: widget.compactTop,
           );
         }
-        if (snapshot.data!.isEmpty) {
+        final raw = snapshot.data ?? svc.current;
+        if (raw.isEmpty) {
           return const SizedBox.shrink();
         }
-        final raw = snapshot.data!;
         if (_resolvedBackdrops.length < raw.length) {
           _resolveMissingBackdrops(raw);
         }
@@ -190,13 +192,14 @@ class HomeContinueWatchingSectionState extends State<HomeContinueWatchingSection
                     SizedBox(width: shellMovieCardRowGap(context)),
                 itemBuilder: (context, index) {
                   final historyItem = history[index];
-                  final itemId = historyItem['uniqueId'] as String;
+                  final itemId = historyItem['uniqueId']?.toString() ?? '';
+                  final tmdbId = watchHistoryInt(historyItem['tmdbId'], -1);
                   return HomeHistoryCard(
                     listIndex: index,
                     tvRowId: _rowId,
                     item: historyItem,
                     resolvedBackdropPath:
-                        _resolvedBackdrops[historyItem['tmdbId'] as int?],
+                        tmdbId < 0 ? null : _resolvedBackdrops[tmdbId],
                     onTap: () => _resumePlayback(historyItem),
                     onRemove: () => _removeItem(historyItem),
                     onInfo: () => _openHistoryItemDetails(historyItem),
@@ -255,12 +258,12 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
 
   @override
   Widget build(BuildContext context) {
-    final posterPath = widget.item['posterPath'] as String;
-    final storedBackdrop = widget.item['backdropPath'] as String?;
+    final posterPath = widget.item['posterPath']?.toString() ?? '';
+    final storedBackdrop = widget.item['backdropPath']?.toString();
     final backdropPath = (storedBackdrop != null && storedBackdrop.isNotEmpty)
         ? storedBackdrop
         : widget.resolvedBackdropPath;
-    final title = widget.item['title'] as String;
+    final title = widget.item['title']?.toString() ?? '';
     final season = widget.item['season'] == null
         ? null
         : watchHistoryInt(widget.item['season']);

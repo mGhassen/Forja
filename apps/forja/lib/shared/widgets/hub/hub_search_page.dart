@@ -90,6 +90,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
   int _gridFocusedIndex = 0;
   int? _pendingGridFocusIndex;
   bool _searchFieldEditing = false;
+  bool _searchSubmitArmed = false;
+  int _searchEditEpoch = 0;
   bool _initialFocusScheduled = false;
   ModalRoute<void>? _route;
   AnimationStatusListener? _routeAnimationListener;
@@ -251,6 +253,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
   void _onSearchFieldFocusChange() {
     if (mounted) setState(() {});
     if (!_focusNode.hasFocus) {
+      _searchSubmitArmed = false;
+      _searchEditEpoch++;
       if (_searchFieldEditing && mounted) {
         setState(() => _searchFieldEditing = false);
       }
@@ -269,6 +273,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   void _focusSearchFieldBrowse() {
     if (!_focusNode.canRequestFocus) return;
+    _searchSubmitArmed = false;
+    _searchEditEpoch++;
     if (_searchFieldEditing) {
       setState(() => _searchFieldEditing = false);
     }
@@ -287,10 +293,18 @@ class _HubSearchPageState extends State<HubSearchPage> {
   }
 
   void _beginSearchFieldEditing() {
+    final epoch = ++_searchEditEpoch;
+    _searchSubmitArmed = false;
     setState(() => _searchFieldEditing = true);
     if (!_focusNode.hasFocus) {
       _focusNode.requestFocus();
     }
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted || epoch != _searchEditEpoch || !_searchFieldEditing) {
+        return;
+      }
+      _searchSubmitArmed = true;
+    });
   }
 
   @override
@@ -381,6 +395,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   void _submitSearchField() {
     if (!_tvFocus(context)) return;
+    if (!_searchSubmitArmed) return;
     final query = _controller.text.trim();
     if (query.isEmpty) return;
 
@@ -709,7 +724,6 @@ class _HubSearchPageState extends State<HubSearchPage> {
       return KeyEventResult.handled;
     }
     if (shellTvIsActivateKey(event) && _searchFieldEditing) {
-      _submitSearchField();
       return KeyEventResult.handled;
     }
     if (shellTvIsActivateKey(event) && !_searchFieldEditing) {
@@ -879,6 +893,11 @@ class _HubSearchPageState extends State<HubSearchPage> {
           showCursor: !browseOnly || _query.isNotEmpty,
           enableInteractiveSelection: !browseOnly,
           onChanged: _onSearchChanged,
+          onTap: tvFocus
+              ? () {
+                  if (!_searchFieldEditing) _beginSearchFieldEditing();
+                }
+              : null,
           onSubmitted: (v) {
             if (_tvFocus(context)) {
               _submitSearchField();

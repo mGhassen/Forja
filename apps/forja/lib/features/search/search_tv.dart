@@ -316,6 +316,8 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
     if (mounted) setState(() {});
     ShellBus.notifyShellChromeChanged();
     if (!_s._focusNode.hasFocus) {
+      _s._searchSubmitArmed = false;
+      _s._searchEditEpoch++;
       if (_s._searchFieldEditing && mounted) {
         setState(() => _s._searchFieldEditing = false);
       }
@@ -329,6 +331,8 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
 
   void _focusSearchFieldBrowse() {
     if (!_s._focusNode.canRequestFocus) return;
+    _s._searchSubmitArmed = false;
+    _s._searchEditEpoch++;
     if (_s._searchFieldEditing) {
       setState(() => _s._searchFieldEditing = false);
       ShellBus.notifyShellChromeChanged();
@@ -427,16 +431,25 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
   }
 
   void _beginSearchFieldEditing() {
+    final epoch = ++_s._searchEditEpoch;
+    _s._searchSubmitArmed = false;
     setState(() => _s._searchFieldEditing = true);
     ShellBus.notifyShellChromeChanged();
     if (!_s._focusNode.hasFocus) {
       _s._focusNode.requestFocus();
     }
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted || epoch != _s._searchEditEpoch || !_s._searchFieldEditing) {
+        return;
+      }
+      _s._searchSubmitArmed = true;
+    });
   }
 
   /// TV: OK / Enter after typing - run pending search and focus first result card.
   void _submitSearchField() {
     if (!_tvFocus(context)) return;
+    if (!_s._searchSubmitArmed) return;
     final query = _s._controller.text.trim();
     if (query.isEmpty) return;
 
@@ -473,7 +486,8 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
       return KeyEventResult.handled;
     }
     if (shellTvIsActivateKey(event) && _s._searchFieldEditing) {
-      _submitSearchField();
+      // Swallow the twin Select/Enter from the OK that opened editing.
+      // Submit comes from IME onSubmitted once armed.
       return KeyEventResult.handled;
     }
     if (shellTvIsActivateKey(event) && !_s._searchFieldEditing) {

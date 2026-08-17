@@ -350,35 +350,31 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
             child: _compact
                 ? LayoutBuilder(
                     builder: (context, constraints) {
-                      return ClipRect(
-                        child: Align(
-                          alignment: Alignment.bottomLeft,
-                          child: _buildCompactTextColumn(
-                            heroSlide,
-                            maxHeight: constraints.maxHeight,
-                            maxWidth: constraints.maxWidth,
-                          ),
+                      return Align(
+                        alignment: Alignment.bottomLeft,
+                        child: _buildCompactTextColumn(
+                          heroSlide,
+                          maxHeight: constraints.maxHeight,
+                          maxWidth: constraints.maxWidth,
                         ),
                       );
                     },
                   )
                 : LayoutBuilder(
                     builder: (context, constraints) {
-                      return ClipRect(
-                        child: Align(
-                          alignment: Alignment(
-                            -1,
-                            ShellTokens.heroTextColumnVerticalAlign,
+                      return Align(
+                        alignment: Alignment(
+                          -1,
+                          ShellTokens.heroTextColumnVerticalAlign,
+                        ),
+                        child: SizedBox(
+                          width: math.min(
+                            MediaQuery.sizeOf(context).width * 0.34,
+                            ShellTokens.heroTextColumnWidthDesktop,
                           ),
-                          child: SizedBox(
-                            width: math.min(
-                              MediaQuery.sizeOf(context).width * 0.34,
-                              ShellTokens.heroTextColumnWidthDesktop,
-                            ),
-                            child: _buildDesktopTextColumn(
-                              heroSlide,
-                              maxHeight: constraints.maxHeight,
-                            ),
+                          child: _buildDesktopTextColumn(
+                            heroSlide,
+                            maxHeight: constraints.maxHeight,
                           ),
                         ),
                       );
@@ -591,19 +587,27 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
           mainAxisAlignment: MainAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              height: titleHeight,
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: _buildTitle(slide, compact: true),
-              ),
-            ),
-            SizedBox(height: metaGap),
-            SizedBox(
-              height: metaRowHeight,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: _buildMetaRow(slide),
+            ClipRect(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: titleHeight,
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: _buildTitle(slide, compact: true),
+                    ),
+                  ),
+                  SizedBox(height: metaGap),
+                  SizedBox(
+                    height: metaRowHeight,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: _buildMetaRow(slide),
+                    ),
+                  ),
+                ],
               ),
             ),
             SizedBox(height: actionGap),
@@ -649,37 +653,45 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          height: layout.titleHeight,
-          child: Align(
-            alignment: Alignment.bottomLeft,
-            child: _buildTitle(slide),
-          ),
-        ),
-        const SizedBox(height: titleGap),
-        SizedBox(
-          height: ShellTokens.heroMetaSlotHeightDesktop,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: _buildMetaRow(slide),
-          ),
-        ),
-        if (layout.showOverview) ...[
-          SizedBox(height: ShellTokens.heroMetaOverviewGapDesktop),
-          SizedBox(
-            height: layout.overviewSlotHeight,
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: HeroOverviewText(
-                overview: slide.overview,
-                style: overviewStyle,
-                maxLines: layout.overviewMaxLines,
-                shrinkWrap: false,
-                onReadMore: slide.onDetails,
+        ClipRect(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: layout.titleHeight,
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: _buildTitle(slide),
+                ),
               ),
-            ),
+              const SizedBox(height: titleGap),
+              SizedBox(
+                height: ShellTokens.heroMetaSlotHeightDesktop,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildMetaRow(slide),
+                ),
+              ),
+              if (layout.showOverview) ...[
+                SizedBox(height: ShellTokens.heroMetaOverviewGapDesktop),
+                SizedBox(
+                  height: layout.overviewSlotHeight,
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: HeroOverviewText(
+                      overview: slide.overview,
+                      style: overviewStyle,
+                      maxLines: layout.overviewMaxLines,
+                      shrinkWrap: false,
+                      onReadMore: slide.onDetails,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
+        ),
         const SizedBox(height: actionGap),
         _buildActionRow(slide),
       ],

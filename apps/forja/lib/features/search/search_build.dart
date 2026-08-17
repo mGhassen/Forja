@@ -190,6 +190,11 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
           showCursor: !browseOnly || _s._query.isNotEmpty,
           enableInteractiveSelection: !browseOnly,
           onChanged: _s._onSearchChanged,
+          onTap: tvFocus
+              ? () {
+                  if (!_s._searchFieldEditing) _s._beginSearchFieldEditing();
+                }
+              : null,
           onSubmitted: (_) => _s._submitSearchField(),
           textInputAction: TextInputAction.search,
           style: TextStyle(
