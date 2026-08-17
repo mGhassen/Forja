@@ -149,6 +149,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _isPlaying = false;
   /// Paused because app left foreground — resume only if set (issue 134).
   bool _pausedByLifecycle = false;
+  /// ATV: hide dead MediaCodec texture after veille while still paused (issue 182).
+  bool _coverDeadSurface = false;
   bool _hasError = false;
   String _errorMessage = '';
   bool _playbackStartedNotified = false;
@@ -493,6 +495,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           _isPlaying = event['value'] == true;
         });
         if (_isPlaying) {
+          _clearDeadSurfaceCover();
           _isBufferingNotifier.value = false;
           _startHideTimer();
         }
@@ -595,6 +598,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       }
       unawaited(_saveProgress());
     } else if (state == AppLifecycleState.resumed) {
+      _armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();
     }
   }
@@ -612,6 +616,22 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (_disposed || !_pausedByLifecycle) return;
     _pausedByLifecycle = false;
     unawaited(ExoPlayerBridge.play(_viewId));
+  }
+
+  /// Veille kills the TextureView; paused decode leaves green YUV. Cover until play.
+  void _armDeadSurfaceCoverIfNeeded() {
+    if (_disposed || !_isTv || _pausedByLifecycle || _isPlaying) return;
+    if (_coverDeadSurface) return;
+    setState(() => _coverDeadSurface = true);
+  }
+
+  void _clearDeadSurfaceCover() {
+    if (!_coverDeadSurface) return;
+    if (mounted) {
+      setState(() => _coverDeadSurface = false);
+    } else {
+      _coverDeadSurface = false;
+    }
   }
 
   Future<void> _seekRelative(Duration delta) async {
@@ -2034,6 +2054,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   ),
                 ),
               ),
+              if (_coverDeadSurface)
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: ColoredBox(color: Colors.black),
+                  ),
+                ),
               Positioned.fill(
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,

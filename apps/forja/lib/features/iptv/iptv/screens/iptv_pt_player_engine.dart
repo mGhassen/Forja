@@ -124,6 +124,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           });
         }
         if (playing) {
+          _s._clearDeadSurfaceCover();
           _s._readyNotPlayingSince = null;
           _s._bufferingSince = null;
           _s._bufferingClearAt = null;
@@ -646,6 +647,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         }
       });
       if (p) {
+        _s._clearDeadSurfaceCover();
         _s._readyNotPlayingSince = null;
       } else if (_s._userPlayWhenReady) {
         // Soft poke only — live mid-stream never auto-reopens.

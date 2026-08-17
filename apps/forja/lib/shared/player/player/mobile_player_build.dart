@@ -46,6 +46,12 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                       )
                     : const ColoredBox(color: Colors.black),
               ),
+              if (_s._coverDeadSurface)
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: ColoredBox(color: Colors.black),
+                  ),
+                ),
 
                 // ── 1b. Custom subtitle overlay ─────────────────────────────
                 // Auto-scales relative to the rendered window height so

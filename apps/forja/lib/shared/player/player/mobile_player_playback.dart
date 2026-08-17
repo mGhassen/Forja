@@ -1408,6 +1408,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       if (_s._disposed) return;
       _s._isPlayingNotifier.value = playing;
       if (playing) {
+        _s._clearDeadSurfaceCover();
         _s._startHideTimer();
         // Scrobble resume
         if (widget.movie != null) {

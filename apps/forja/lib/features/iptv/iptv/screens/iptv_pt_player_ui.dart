@@ -930,6 +930,12 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                       ),
                     ),
                   ),
+                  if (_s._coverDeadSurface)
+                    const Positioned.fill(
+                      child: IgnorePointer(
+                        child: ColoredBox(color: Colors.black),
+                      ),
+                    ),
                   // Text subs (SRT/VTT) — same Flutter overlay as home movies.
                   // ASS/PGS stay on mpv via sub-visibility.
                   if (!pipMode &&

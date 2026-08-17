@@ -387,6 +387,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
   /// Paused because app left foreground — resume only if set (issue 134).
   bool _pausedByLifecycle = false;
+  /// ATV: hide dead MediaCodec texture after veille while still paused (issue 182).
+  bool _coverDeadSurface = false;
 
   // Retry state
   int _retryAttempt = 0;
@@ -857,6 +859,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         _pausedByLifecycle = true;
       }
     } else if (state == AppLifecycleState.resumed) {
+      _armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();
     }
   }
@@ -886,6 +889,27 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     if (_isPipMode || PipService.instance.isDesktopActive) return;
     _userPlayWhenReady = true;
     unawaited(_enginePlay());
+  }
+
+  /// Veille kills TextureView / mediacodec_embed; paused decode leaves green YUV.
+  void _armDeadSurfaceCoverIfNeeded() {
+    if (_disposed ||
+        !PlatformInfo.isAndroidTv ||
+        _pausedByLifecycle ||
+        _playing) {
+      return;
+    }
+    if (_coverDeadSurface) return;
+    setState(() => _coverDeadSurface = true);
+  }
+
+  void _clearDeadSurfaceCover() {
+    if (!_coverDeadSurface) return;
+    if (mounted) {
+      setState(() => _coverDeadSurface = false);
+    } else {
+      _coverDeadSurface = false;
+    }
   }
 
   @override

@@ -274,6 +274,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   /// True when we paused because the app left the foreground (not user pause).
   /// Resume only if this is set — keeps manual pause across app switch.
   bool _pausedByLifecycle = false;
+  /// ATV: hide dead mediacodec_embed texture after veille while still paused (issue 182).
+  bool _coverDeadSurface = false;
 
   // ── Value Notifiers ───────────────────────────────────────────────────────
   final ValueNotifier<Duration> _positionNotifier = ValueNotifier(

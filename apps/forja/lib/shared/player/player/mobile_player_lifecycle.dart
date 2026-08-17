@@ -631,6 +631,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     } else if (state == AppLifecycleState.resumed) {
       // Tell Trakt we're back
       _s._historySaved = false; // allow re-save on next exit
+      _s._armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();
       if (widget.movie != null && _s._isPlayingNotifier.value) {
         final pos = _s._positionNotifier.value.inMilliseconds;
@@ -661,6 +662,27 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     _s._pausedByLifecycle = false;
     if (_s._isPipMode) return;
     unawaited(_s._player.play());
+  }
+
+  /// Veille kills mediacodec_embed; paused decode leaves green YUV. Cover until play.
+  void _armDeadSurfaceCoverIfNeeded() {
+    if (_s._disposed ||
+        !PlatformInfo.isAndroidTv ||
+        _s._pausedByLifecycle ||
+        _s._player.state.playing) {
+      return;
+    }
+    if (_s._coverDeadSurface) return;
+    setState(() => _s._coverDeadSurface = true);
+  }
+
+  void _clearDeadSurfaceCover() {
+    if (!_s._coverDeadSurface) return;
+    if (mounted) {
+      setState(() => _s._coverDeadSurface = false);
+    } else {
+      _s._coverDeadSurface = false;
+    }
   }
 
   void _saveWatchHistory({bool isBgPause = false}) {
