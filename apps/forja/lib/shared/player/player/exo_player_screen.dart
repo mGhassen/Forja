@@ -316,7 +316,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     unawaited(_fetchSubtitles());
 
     _progressSaveTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      unawaited(_saveProgress());
+      if (!_disposed && _isPlaying) unawaited(_saveProgress());
     });
   }
 
@@ -485,7 +485,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         if (!_playbackStartedNotified) {
           setState(() => _playbackStartedNotified = true);
           widget.onPlaybackStarted?.call();
-          _scrobbleStart();
         }
         // Apply preferred text track only after READY — earlier selectTrack
         // races MergingMediaPeriod when sideloads are present (issue 132).
@@ -503,6 +502,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           _clearDeadSurfaceCover();
           _isBufferingNotifier.value = false;
           _startHideTimer();
+          _scrobbleStart();
+        } else {
+          unawaited(_saveProgress());
+          _scrobblePause();
         }
         break;
       case 'buffering':
@@ -575,7 +578,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       mediaType: movie.mediaType,
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
-      progressPercent: 0,
+      progressPercent: _scrobblePercent,
     );
     SimklService().scrobbleStart(
       tmdbId: movie.id,
@@ -583,6 +586,48 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
     );
+  }
+
+  void _scrobblePause() {
+    final movie = widget.movie;
+    if (movie == null) return;
+    TraktService().scrobblePause(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+      progressPercent: _scrobblePercent,
+    );
+    SimklService().scrobblePause(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+  }
+
+  void _scrobbleStop() {
+    final movie = widget.movie;
+    if (movie == null) return;
+    TraktService().scrobbleStop(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+      progressPercent: _scrobblePercent,
+    );
+    SimklService().scrobbleStop(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+  }
+
+  double get _scrobblePercent {
+    final dur = _duration.inMilliseconds;
+    if (dur <= 0) return 0.0;
+    return _position.inMilliseconds / dur * 100;
   }
 
   Future<void> _saveProgress() async {
@@ -977,6 +1022,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
     try {
       await _saveProgress();
+      _scrobbleStop();
       setState(() => _episodeLoadingStatus = 'Checking sources…');
 
       final chain = episodeProviderChain(
@@ -1300,6 +1346,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     // Capture before awaits - unmount must not skip loading dismiss (I101).
     final nav = Navigator.of(context, rootNavigator: true);
     await _saveProgress();
+    _scrobbleStop();
     // Stop Exo before pop - dispose alone is unawaited and can leave audio
     // after the route is gone (issue 059).
     try {

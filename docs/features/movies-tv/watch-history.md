@@ -24,6 +24,7 @@ Forja saves playback position locally when you watch movies or TV episodes. **Co
 ## Tips
 
 - Watch history is per-device local data (not included in [Backup & restore](../settings/backup-restore.md) export today)
+- Progress is saved while you watch (about every 15 seconds), when you pause, and when you leave. Pause does not keep rewriting Continue Watching
 - [Trakt](../accounts/trakt.md) sync can complement local history when logged in
 - Clearing continue watching from Settings only affects this device — Trakt / Simkl cloud history stays
 - Progress at **85%+** counts as finished: Continue Watching / Play starts from the beginning (not the credits). On details, use the trash control next to Play to clear a false “Watched” bar

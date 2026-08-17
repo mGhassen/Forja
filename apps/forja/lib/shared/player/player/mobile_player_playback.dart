@@ -1487,7 +1487,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
         }
       } else {
         if (mounted) setState(() => _s._showControls = true);
-        // Scrobble pause
+        _s._saveWatchHistory(isBgPause: true);
         if (widget.movie != null) {
           final pos = _s._positionNotifier.value.inMilliseconds;
           final dur = _s._durationNotifier.value.inMilliseconds;

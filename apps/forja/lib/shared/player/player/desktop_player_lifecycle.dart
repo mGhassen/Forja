@@ -121,7 +121,8 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
     HardwareKeyboard.instance.addHandler(_s._handleKeyEvent);
     unawaited(_createPlayer());
     _s._progressSaveTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (!_s._disposed) unawaited(_saveWatchHistory(isBgPause: true));
+      if (_s._disposed || !_s._isPlayingNotifier.value) return;
+      unawaited(_saveWatchHistory(isBgPause: true));
     });
   }
 
@@ -648,20 +649,10 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
           ),
         );
       }
-      // Periodic / lifecycle pause keeps writing; only exit latches the flag.
-      if (!isBgPause) _s._historySaved = true;
-
-      // Trakt + Simkl scrobble - fire and forget
-      final progressPercent = dur > 0 ? (pos / dur * 100) : 0.0;
-      if (isBgPause) {
-        TraktService().scrobblePause(
-          tmdbId: widget.movie!.id,
-          mediaType: widget.movie!.mediaType,
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-          progressPercent: progressPercent,
-        );
-      } else {
+      // Heartbeat / pause / lifecycle keep writing; only exit latches.
+      if (!isBgPause) {
+        _s._historySaved = true;
+        final progressPercent = dur > 0 ? (pos / dur * 100) : 0.0;
         TraktService().scrobbleStop(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
@@ -669,13 +660,13 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
           episode: widget.selectedEpisode,
           progressPercent: progressPercent,
         );
+        SimklService().scrobbleStop(
+          tmdbId: widget.movie!.id,
+          mediaType: widget.movie!.mediaType,
+          season: widget.selectedSeason,
+          episode: widget.selectedEpisode,
+        );
       }
-      SimklService().scrobbleStop(
-        tmdbId: widget.movie!.id,
-        mediaType: widget.movie!.mediaType,
-        season: widget.selectedSeason,
-        episode: widget.selectedEpisode,
-      );
     }
   }
 

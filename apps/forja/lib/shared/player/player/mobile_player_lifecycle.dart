@@ -612,7 +612,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
-      // Save local history + send scrobblePause (not stop - user may return)
+      // Local progress only — pause scrobble fires from playing=false.
       _saveWatchHistory(isBgPause: true);
       // Stop audio when another app takes the screen (e.g. Netflix on ATV).
       // Skip PiP — that path is meant to keep playing (issue 134).
@@ -706,7 +706,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       );
       return;
     }
-    _s._historySaved = true;
+    if (!isBgPause) _s._historySaved = true;
 
     // External progress hook (anime / arabic flows persist their own
     // per-source history). Always fire while we have a real position so
@@ -791,18 +791,8 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
         );
       }
 
-      // Trakt + Simkl scrobble - fire and forget
-      final progressPercent = dur > 0 ? (pos / dur * 100) : 0.0;
-      if (isBgPause) {
-        // App backgrounded - pause, don't stop (user may return)
-        TraktService().scrobblePause(
-          tmdbId: widget.movie!.id,
-          mediaType: widget.movie!.mediaType,
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-          progressPercent: progressPercent,
-        );
-      } else {
+      if (!isBgPause) {
+        final progressPercent = dur > 0 ? (pos / dur * 100) : 0.0;
         TraktService().scrobbleStop(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
@@ -810,13 +800,13 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
           episode: widget.selectedEpisode,
           progressPercent: progressPercent,
         );
+        SimklService().scrobbleStop(
+          tmdbId: widget.movie!.id,
+          mediaType: widget.movie!.mediaType,
+          season: widget.selectedSeason,
+          episode: widget.selectedEpisode,
+        );
       }
-      SimklService().scrobbleStop(
-        tmdbId: widget.movie!.id,
-        mediaType: widget.movie!.mediaType,
-        season: widget.selectedSeason,
-        episode: widget.selectedEpisode,
-      );
     }
   }
 
