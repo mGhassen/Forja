@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_episode_panel.dart';
@@ -13,6 +14,7 @@ import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 
@@ -134,6 +136,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
   late final Map<String, List<Map<String, dynamic>>> _byLangOnline;
   late final Map<String, List<ExoTrackInfo>> _byLangEmbedded;
   late final List<_SubGroup> _groups;
+  final FocusNode _closeFocus = FocusNode(debugLabel: 'subtitle-dialog-close');
 
   bool get _textOff =>
       widget.tracks.textOff ||
@@ -143,6 +146,39 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
   bool get _hideLoadFile =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips ||
       widget.onLoadFromFile == null;
+
+  bool get _tvFocus =>
+      ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+  void _focusClose() {
+    if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
+  }
+
+  /// [ForjaPlainIcon] Close only handles OK — arrows need spatial move.
+  KeyEventResult _onCloseKey(FocusNode node, KeyEvent event) {
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    final key = event.logicalKey;
+    TraversalDirection? direction;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      direction = TraversalDirection.left;
+    } else if (key == LogicalKeyboardKey.arrowRight) {
+      direction = TraversalDirection.right;
+    } else if (key == LogicalKeyboardKey.arrowUp) {
+      direction = TraversalDirection.up;
+    } else if (key == LogicalKeyboardKey.arrowDown) {
+      direction = TraversalDirection.down;
+    }
+    if (direction != null && node.focusInDirection(direction)) {
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  void dispose() {
+    _closeFocus.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -232,6 +268,8 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     required bool selected,
     required VoidCallback onTap,
     IconData? icon,
+    FocusNode? focusNode,
+    VoidCallback? onRightEdge,
   }) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final face = Container(
@@ -289,10 +327,51 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
       );
     }
     return FocusableControl(
+      focusNode: focusNode,
       onTap: onTap,
       borderRadius: PlayerPopupTokens.chipRadius,
       scaleOnFocus: 1.0,
       showFocusBorder: true,
+      onRightEdge: onRightEdge,
+      child: face,
+    );
+  }
+
+  /// Tune control — [ForjaPlainIcon] traps D-pad (no spatial arrows).
+  Widget _settingsChip() {
+    final onSettings = widget.onSubtitleSettings;
+    if (onSettings == null) return const SizedBox.shrink();
+    final face = SizedBox(
+      width: 32,
+      height: 32,
+      child: Icon(
+        Icons.tune_rounded,
+        size: 18,
+        color: ForjaShellColors.cinematic.textSecondary,
+      ),
+    );
+    if (!_tvFocus) {
+      return ForjaPlainIcon(
+        icon: Icons.tune_rounded,
+        size: 18,
+        hitSize: 32,
+        color: ForjaShellColors.cinematic.textSecondary,
+        tooltip: 'Subtitle settings',
+        onTap: () {
+          PlayerSubtitleDialog.dismiss();
+          onSettings();
+        },
+      );
+    }
+    return FocusableControl(
+      onTap: () {
+        PlayerSubtitleDialog.dismiss();
+        onSettings();
+      },
+      borderRadius: PlayerPopupTokens.chipRadius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
+      onRightEdge: _focusClose,
       child: face,
     );
   }
@@ -326,19 +405,20 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 8, 6, 12),
       children: [
-        for (final g in _groups)
+        for (var i = 0; i < _groups.length; i++)
           PlayerPopupListTile(
-            label: g.label,
+            label: _groups[i].label,
             trailing: Text(
-              '${g.count}',
+              '${_groups[i].count}',
               style: const TextStyle(
                 color: PlayerPopupTokens.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            selected: g.id == _selectedGroupId,
-            onTap: () => setState(() => _selectedGroupId = g.id),
+            selected: _groups[i].id == _selectedGroupId,
+            onUpEdge: i == 0 && _tvFocus ? _focusClose : null,
+            onTap: () => setState(() => _selectedGroupId = _groups[i].id),
           ),
       ],
     );
@@ -393,30 +473,34 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(6, 8, 10, 12),
       children: [
-        for (final t in embedded)
+        for (var i = 0; i < embedded.length; i++)
           PlayerPopupListTile(
             label: formatPlayerTrackLabel(
-              id: t.id,
-              title: t.label,
-              language: t.language,
+              id: embedded[i].id,
+              title: embedded[i].label,
+              language: embedded[i].language,
             ),
             subtitle: 'In-stream',
             selected: widget.selectedExternalSubUrl == null &&
                 !widget.tracks.textOff &&
-                t.selected,
+                embedded[i].selected,
+            onUpEdge: i == 0 && _tvFocus ? _focusClose : null,
             onTap: () async {
               PlayerSubtitleDialog.dismiss();
-              await widget.onSelectEmbedded(t);
+              await widget.onSelectEmbedded(embedded[i]);
             },
           ),
-        for (final s in online)
+        for (var i = 0; i < online.length; i++)
           PlayerPopupListTile(
-            label: s['display']?.toString() ?? languageDisplayName(langKey),
-            subtitle: (s['translated'] == true ? 'Translated · ' : '') +
-                (s['sourceName']?.toString() ?? 'opensubtitles'),
-            selected: s['url'] == widget.selectedExternalSubUrl,
+            label: online[i]['display']?.toString() ??
+                languageDisplayName(langKey),
+            subtitle: (online[i]['translated'] == true ? 'Translated · ' : '') +
+                (online[i]['sourceName']?.toString() ?? 'opensubtitles'),
+            selected: online[i]['url'] == widget.selectedExternalSubUrl,
+            onUpEdge:
+                i == 0 && embedded.isEmpty && _tvFocus ? _focusClose : null,
             onTap: () async {
-              await widget.onSelectExternal?.call(s);
+              await widget.onSelectExternal?.call(online[i]);
               PlayerSubtitleDialog.dismiss();
             },
           ),
@@ -435,6 +519,8 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
         PlayerSidePanelHeader(
           title: '',
           onClose: widget.onClose,
+          closeFocusNode: _tvFocus ? _closeFocus : null,
+          closeOnKeyEvent: _tvFocus ? _onCloseKey : null,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -445,6 +531,9 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
                   PlayerSubtitleDialog.dismiss();
                   unawaited(widget.onOff());
                 },
+                onRightEdge: _tvFocus && widget.onSubtitleSettings == null
+                    ? _focusClose
+                    : null,
               ),
               if (!_hideLoadFile) ...[
                 const SizedBox(width: 6),
@@ -457,17 +546,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
               ],
               if (widget.onSubtitleSettings != null) ...[
                 const SizedBox(width: 6),
-                ForjaPlainIcon(
-                  icon: Icons.tune_rounded,
-                  size: 18,
-                  hitSize: 32,
-                  color: ForjaShellColors.cinematic.textSecondary,
-                  tooltip: 'Subtitle settings',
-                  onTap: () {
-                    PlayerSubtitleDialog.dismiss();
-                    widget.onSubtitleSettings!();
-                  },
-                ),
+                _settingsChip(),
               ],
             ],
           ),
@@ -545,9 +624,11 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     final maxHeight = size.height * 0.82;
     final padding = TorrentSourcesPanel.defaultContentPadding(playerOverlay: true);
 
-    return PlayerPopupPanel.tvFocusableOverlay(
-      overlayContext: context,
+    // Single TV focus scope (same as Sources) — nested scopes trapped D-pad
+    // off the Close X after Off → Settings (ForjaPlainIcon had no arrows).
+    return TvOverlayScope(
       onDismiss: widget.onClose,
+      autofocusFirst: false,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -582,11 +663,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
                       ),
                       child: Padding(
                         padding: padding,
-                        child: playerSidePanelTvScope(
-                          context: context,
-                          onClose: widget.onClose,
-                          child: _buildBody(),
-                        ),
+                        child: PlayerPopupListFocusScope(child: _buildBody()),
                       ),
                     ),
                   ),

@@ -238,18 +238,22 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     if (mounted) setState(() {});
   }
 
-  /// Keep row chrome open for one frame so action focus can land on TV.
+  /// Desktop: keep `_focused` one frame so action focus can land.
+  /// TV: sync-clear — deferred clear leaves a ghost hover fill during ↑/↓.
   void _onRowFocusChange(bool focused) {
     final ctrl = widget.ctrl;
     final v = widget.portal;
+    final tv = iptvUseTvFocus(context);
     if (focused) {
-      setState(() => _focused = true);
-      if (ctrl.isNewPortal(v.key)) {
+      if (!_focused) setState(() => _focused = true);
+      // Desktop hover/focus dismisses NEW. TV: skim ↑/↓ must not — that
+      // notifyListeners rebuilds the panel mid-scroll (hover chrome flash).
+      if (!tv && ctrl.isNewPortal(v.key)) {
         ctrl.markPortalSeen(v.key);
       }
       // TV: 2s dwell before probe — instant focus probes stutter D-pad scroll
       // through long lists (notifyListeners rebuilds the IPTV shell).
-      if (iptvUseTvFocus(context)) {
+      if (tv) {
         ctrl.schedulePortalHealthCheck(
           v,
           delay: const Duration(seconds: 2),
@@ -257,11 +261,19 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       }
       return;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    void clear() {
       if (!mounted) return;
-      setState(() => _focused = false);
+      if (_focused) setState(() => _focused = false);
       ctrl.cancelPortalHealthCheck(v.key);
-    });
+    }
+
+    // TV: sync-clear like the category rail — deferred clear leaves a ghost
+    // hover fill on the previous row for a frame during ↑/↓.
+    if (tv) {
+      clear();
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => clear());
   }
 
   void _focusAction(FocusNode node) {
@@ -379,7 +391,11 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       setState(() => _showShareCode = false);
       return;
     }
-    widget.ctrl.selectPortal(widget.portal);
+    final ctrl = widget.ctrl;
+    if (ctrl.isNewPortal(widget.portal.key)) {
+      ctrl.markPortalSeen(widget.portal.key);
+    }
+    ctrl.selectPortal(widget.portal);
   }
 
   PlayerSourceStatus _activePortalStatus({
@@ -468,8 +484,10 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     // ListenableBuilder (that doubled work on every health/status tick).
     final isFav = ctrl.isFavoritePortal(v.key);
     final isNew = ctrl.isNewPortal(v.key);
+    // TV: star only when already favorited or action chrome is open (→).
+    // `_focused` would flash the desktop hover star on every ↑/↓ step.
     final showStar =
-        !deleting && (_reveal || isFav || _focused);
+        !deleting && (_reveal || isFav || (!tv && _focused));
     final showNewChrome =
         !deleting && isNew && !_reveal && !_showShareCode;
     final health = ctrl.portalHealthFor(v.key);
@@ -480,103 +498,111 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
         : const Duration(milliseconds: 180);
     final reveal = deleting ? false : _reveal;
 
-    final tile = MouseRegion(
-      onEnter: deleting
-          ? null
-          : (_) {
-              setState(() => _lineHover = true);
-              if (isNew) ctrl.markPortalSeen(v.key);
-              ctrl.schedulePortalHealthCheck(v);
-            },
-      onExit: deleting
-          ? null
-          : (_) {
-              _clearHover();
-              ctrl.cancelPortalHealthCheck(v.key);
-            },
-      child: ExcludeFocus(
-        excluding: deleting,
-        child: IgnorePointer(
-          ignoring: deleting,
-          child: Opacity(
-            opacity: deleting ? 0.55 : 1,
-            child: Stack(
-              fit: StackFit.passthrough,
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? playerSourceStatusColor(
-                            PlayerSourceStatus.active,
-                          ).withValues(alpha: 0.07)
-                        : showNewChrome
-                        ? IptvShellStyle.accent.withValues(alpha: 0.1)
-                        : (_lineHover || _focused || _showShareCode)
-                        ? Colors.white.withValues(alpha: 0.04)
-                        : Colors.transparent,
-                    border: showNewChrome
-                        ? Border(
-                            left: BorderSide(
-                              color: IptvShellStyle.accent,
-                              width: 3,
-                            ),
-                          )
-                        : null,
-                  ),
-                  child: SizedBox(
-                    height: _rowHeight,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: _buildPortalMainTap(
-                            ctrl: ctrl,
-                            v: v,
-                            isActive: isActive,
-                            isFav: isFav,
-                            showStar: showStar,
-                            showNewChrome: showNewChrome,
-                            health: health,
-                            checking: checking,
-                            title: title,
-                            instantStar: tv,
-                            deleting: deleting,
+    final fillColor = tv && _focused
+        ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+        : isActive
+            ? playerSourceStatusColor(
+                PlayerSourceStatus.active,
+              ).withValues(alpha: 0.07)
+            : showNewChrome
+                ? IptvShellStyle.accent.withValues(alpha: 0.1)
+                : (_lineHover || _focused || _showShareCode)
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : Colors.transparent;
+
+    Widget tile = ExcludeFocus(
+      excluding: deleting,
+      child: IgnorePointer(
+        ignoring: deleting,
+        child: Opacity(
+          opacity: deleting ? 0.55 : 1,
+          child: Stack(
+            fit: StackFit.passthrough,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: fillColor,
+                  border: showNewChrome
+                      ? Border(
+                          left: BorderSide(
+                            color: IptvShellStyle.accent,
+                            width: 3,
                           ),
+                        )
+                      : null,
+                ),
+                child: SizedBox(
+                  height: _rowHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _buildPortalMainTap(
+                          ctrl: ctrl,
+                          v: v,
+                          isActive: isActive,
+                          isFav: isFav,
+                          showStar: showStar,
+                          showNewChrome: showNewChrome,
+                          health: health,
+                          checking: checking,
+                          title: title,
+                          instantStar: tv,
+                          deleting: deleting,
                         ),
-                        AnimatedContainer(
-                          duration: railAnim,
-                          curve: Curves.easeOutCubic,
-                          width: reveal ? _actionW : 0,
-                          height: _rowHeight,
-                          child: !reveal
-                              ? const SizedBox.shrink()
-                              : ClipRect(
-                                  child: OverflowBox(
-                                    minWidth: _actionW,
-                                    maxWidth: _actionW,
-                                    alignment: Alignment.centerRight,
-                                    child: SizedBox(
-                                      width: _actionW,
-                                      height: _rowHeight,
-                                      child: _buildActionRail(),
-                                    ),
+                      ),
+                      AnimatedContainer(
+                        duration: railAnim,
+                        curve: Curves.easeOutCubic,
+                        width: reveal ? _actionW : 0,
+                        height: _rowHeight,
+                        child: !reveal
+                            ? const SizedBox.shrink()
+                            : ClipRect(
+                                child: OverflowBox(
+                                  minWidth: _actionW,
+                                  maxWidth: _actionW,
+                                  alignment: Alignment.centerRight,
+                                  child: SizedBox(
+                                    width: _actionW,
+                                    height: _rowHeight,
+                                    child: _buildActionRail(),
                                   ),
                                 ),
-                        ),
-                      ],
-                    ),
+                              ),
+                      ),
+                    ],
                   ),
                 ),
-                if (deleting)
-                  const Positioned.fill(
-                    child: CustomPaint(painter: _PortalDeletingStripePainter()),
-                  ),
-              ],
-            ),
+              ),
+              if (deleting)
+                const Positioned.fill(
+                  child: CustomPaint(painter: _PortalDeletingStripePainter()),
+                ),
+            ],
           ),
         ),
       ),
     );
+
+    if (!tv) {
+      tile = MouseRegion(
+        onEnter: deleting
+            ? null
+            : (_) {
+                setState(() => _lineHover = true);
+                if (isNew) ctrl.markPortalSeen(v.key);
+                ctrl.schedulePortalHealthCheck(v);
+              },
+        onExit: deleting
+            ? null
+            : (_) {
+                _clearHover();
+                ctrl.cancelPortalHealthCheck(v.key);
+              },
+        child: tile,
+      );
+    }
 
     // Only register the action row while revealed — itemCount 0↔4 on every
     // focus step was thrashing the TV focus graph during D-pad scroll.
@@ -611,9 +637,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       tvItemIndex: widget.listIndex,
       focusNode: _rowFocus,
       allowNestedFocus: iptvUseTvFocus(context) && !deleting,
-      // Vertical portal list owns scroll via ↑/↓ handlers — avoid double
-      // keepVisible + shellTvRevealCatalogRowFocus jumps per D-pad step.
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      // Panel `_focusPortalAt` owns the jump. `.item` uses settings 240px
+      // slack (snap-to-top) and fights the list jump — hover chrome flashes.
+      ensureVisibleMode: ShellTvEnsureVisibleMode.off,
       onUpEdge: widget.onUpEdge,
       onDownEdge: widget.onDownEdge,
       onLeftEdge: _trapLeftEdge,

@@ -201,10 +201,10 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     if (total <= 0) return;
     final clamped = index.clamp(0, total - 1);
     _lastFocusedPortalIndex = clamped;
+    _jumpPortalListToIndex(clamped);
     if (ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', clamped)) {
       return;
     }
-    _jumpPortalListToIndex(clamped);
     var tries = 0;
     void attempt() {
       if (!mounted || !widget.ctrl.portalPanelOpen) return;

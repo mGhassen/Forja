@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 3** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I147-T02 | `_focusPanelHeader` bails when focus is already inside the panel | ✅ |
 | 3 | I147-T03 | Skip active-portal / new-portal scroll while a portal row holds focus; compare active index against the filtered list | ✅ |
 | 4 | I147-T04 | ↓ from header returns to the last row reached with ↑/↓ (active portal only on first entry); reset on search change / panel close | ✅ |
+| 5 | I147-T05 | TV ↑/↓: no MouseRegion hover, sync-clear focus chrome, green fill only on the focused row, jump-then-focus (no `.item` ensureVisible) | ✅ |
 
 ---
 
@@ -33,6 +34,7 @@
 | 1 | I147-A01 | Android TV: open Portals, hold ↓ through the list — focus never jumps to the header or back to the playing portal | ⬜ |
 | 2 | I147-A02 | Dwell >2s on a row (status probe runs) — focus and scroll position stay put | ⬜ |
 | 3 | I147-A03 | ↑ from a row to the header, then ↓ — focus returns to that row, not the playing portal | ⬜ |
+| 4 | I147-A04 | Hold ↓ through the Portals list — only the focused row shows a green fill; no desktop hover star/rail on rows you skim past | ⬜ |
 
 ---
 
@@ -43,6 +45,8 @@ On Android TV, scrolling the Portals panel with the D-pad threw focus back to th
 **Root cause:** `_IptvPortalPanelState.initState` scheduled the open-time `_focusPanelHeader()` but never set `_didFocusHeaderOnOpen`. The flag was only set inside `_onCtrlChanged`, so the **first** `notifyListeners()` after the panel opened re-focused the header **Add (+)** button — and the panel guarantees one: focusing a row schedules a 2s portal health probe (`schedulePortalHealthCheck`), which notifies on start, on merge, and on completion. The user's next ↓ then ran `_focusPortalsFromHeader`, which always targeted `iptvActivePortalFocusIndex` — the playing portal.
 
 **Root fix:** the open handoff is consumed in `initState`, `_focusPanelHeader` refuses to take focus that is already inside the panel, scroll-to-active/new-portal is skipped while a portal row is focused, and header ↓ restores the row the user left.
+
+**Follow-up (I147-T05):** D-pad ↑/↓ through the list still painted desktop hover (white fill + star, often on two rows for a frame). Same treatment as category rail [I136-T15](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md): no `MouseRegion` on TV, sync-clear `_focused`, one brand-green fill, list jump owns scroll (`ensureVisible` off). NEW chrome clears on OK, not on skim.
 
 ## Related
 
