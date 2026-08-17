@@ -382,7 +382,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       final drama = ctx.drama;
       final episode = ctx.episode!;
 
-      final order = await SettingsService().getAsianDramaProviderOrder();
+      final order = await SettingsService().getEnabledAsianDramaProviderOrder();
       _mirrorOrder = KissKhService.mergeMirrorOrder(order);
       _activeHost = KissKhService.activeHostFromOrder(_mirrorOrder);
       await KissKhService.activateEndpoint(

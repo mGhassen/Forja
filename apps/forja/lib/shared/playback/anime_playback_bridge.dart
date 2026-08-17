@@ -199,7 +199,7 @@ abstract final class AnimePlaybackBridge {
     if (pair.isEmpty) return null;
 
     final order = providerOrder.isEmpty
-        ? await SettingsService().getAnimeProviderOrder()
+        ? await SettingsService().getEnabledAnimeProviderOrder()
         : providerOrder;
     final sortedKeys = SourceEngine.orderProviderIds(
       domain: SourceDomain.anime,

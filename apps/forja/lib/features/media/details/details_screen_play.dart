@@ -271,6 +271,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         selectedEpisode: isTv ? _s._selectedEpisode : null,
         startPosition: startPosition,
         activeProvider: catalogHttpPlayProviderId(stream),
+        externalSubtitles: catalogStreamExternalSubtitles(stream),
         stremioId: stremioId,
         stremioAddonBaseUrl: stremioAddonBaseUrl,
       );
@@ -354,6 +355,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
             fileIndex: resolved.fileIndex,
             startPosition: startPosition,
             activeProvider: catalogHttpPlayProviderId(stream),
+            externalSubtitles: catalogStreamExternalSubtitles(stream),
             stremioId: stremioId,
             stremioAddonBaseUrl: stremioAddonBaseUrl,
             fadeTransition: true,

@@ -854,7 +854,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
     }
   }
   Future<void> _loadWebstreamingProviderOrder() async {
-    final order = await _s._settings.getStreamProviderOrder();
+    final order = await _s._settings.getEnabledStreamProviderOrder();
     if (!mounted) return;
     setState(() => _s._webstreamingProviderOrder = order);
   }

@@ -60,7 +60,7 @@ class KissKhService {
   }
 
   static Future<String> ensureActiveMirrorFromSettings() async {
-    final order = await SettingsService().getAsianDramaProviderOrder();
+    final order = await SettingsService().getEnabledAsianDramaProviderOrder();
     final host = activeHostFromOrder(order);
     await activateEndpoint(baseUrlForHost(host));
     return host;

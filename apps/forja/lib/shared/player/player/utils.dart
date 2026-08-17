@@ -576,6 +576,29 @@ String catalogHttpPlayProviderId(Map<String, dynamic> stream) {
   return 'stremio_direct';
 }
 
+List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
+  Map<String, dynamic> stream,
+) {
+  final raw = stream['subtitles'];
+  if (raw is! List || raw.isEmpty) return null;
+  final out = <Map<String, dynamic>>[];
+  for (final item in raw) {
+    if (item is! Map) continue;
+    final url = item['url']?.toString().trim() ?? '';
+    if (url.isEmpty) continue;
+    out.add({
+      'url': url,
+      'language':
+          item['language']?.toString() ?? item['lang']?.toString() ?? 'en',
+      'name':
+          item['name']?.toString() ??
+          item['language']?.toString() ??
+          'Subtitle',
+    });
+  }
+  return out.isEmpty ? null : out;
+}
+
 /// Vidlink mwVault / MovieBox file rows need the local seek proxy (HTTP 428 direct).
 bool catalogStreamRequiresSeekProxy(Map<String, dynamic> stream) {
   if (stream['requires_proxy'] == true) return true;

@@ -338,6 +338,8 @@ class EngineJsService {
             'proxyHeaders': {'request': headers},
           },
         if (s['requiresProxy'] == true) 'requires_proxy': true,
+        if (s['subtitles'] is List && (s['subtitles'] as List).isNotEmpty)
+          'subtitles': s['subtitles'],
         '_addonBaseUrl': 'engine:${plugin.id}',
         '_addonName': plugin.name,
         '_enginePluginId': plugin.id,

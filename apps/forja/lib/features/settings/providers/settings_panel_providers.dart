@@ -26,8 +26,11 @@ class SettingsPlaybackSnapshot {
     required this.builtInEngine,
     required this.builtInEngineIptv,
     required this.streamProviderOrder,
+    required this.disabledStreamProviders,
     required this.animeProviderOrder,
+    required this.disabledAnimeProviders,
     required this.asianDramaProviderOrder,
+    required this.disabledAsianDramaProviders,
     required this.preferredAudioLang,
     required this.avoidUnsupportedAudio,
     required this.autoNextEpisode,
@@ -55,8 +58,11 @@ class SettingsPlaybackSnapshot {
   final BuiltInPlayerEngine builtInEngine;
   final BuiltInPlayerEngine builtInEngineIptv;
   final List<String> streamProviderOrder;
+  final List<String> disabledStreamProviders;
   final List<String> animeProviderOrder;
+  final List<String> disabledAnimeProviders;
   final List<String> asianDramaProviderOrder;
+  final List<String> disabledAsianDramaProviders;
   final String preferredAudioLang;
   final bool avoidUnsupportedAudio;
   final bool autoNextEpisode;
@@ -84,8 +90,11 @@ class SettingsPlaybackSnapshot {
     BuiltInPlayerEngine? builtInEngine,
     BuiltInPlayerEngine? builtInEngineIptv,
     List<String>? streamProviderOrder,
+    List<String>? disabledStreamProviders,
     List<String>? animeProviderOrder,
+    List<String>? disabledAnimeProviders,
     List<String>? asianDramaProviderOrder,
+    List<String>? disabledAsianDramaProviders,
     String? preferredAudioLang,
     bool? avoidUnsupportedAudio,
     bool? autoNextEpisode,
@@ -116,9 +125,15 @@ class SettingsPlaybackSnapshot {
       builtInEngine: builtInEngine ?? this.builtInEngine,
       builtInEngineIptv: builtInEngineIptv ?? this.builtInEngineIptv,
       streamProviderOrder: streamProviderOrder ?? this.streamProviderOrder,
+      disabledStreamProviders:
+          disabledStreamProviders ?? this.disabledStreamProviders,
       animeProviderOrder: animeProviderOrder ?? this.animeProviderOrder,
+      disabledAnimeProviders:
+          disabledAnimeProviders ?? this.disabledAnimeProviders,
       asianDramaProviderOrder:
           asianDramaProviderOrder ?? this.asianDramaProviderOrder,
+      disabledAsianDramaProviders:
+          disabledAsianDramaProviders ?? this.disabledAsianDramaProviders,
       preferredAudioLang: preferredAudioLang ?? this.preferredAudioLang,
       avoidUnsupportedAudio:
           avoidUnsupportedAudio ?? this.avoidUnsupportedAudio,
@@ -183,8 +198,11 @@ class SettingsPlaybackNotifier
         context: BuiltInPlayerContext.iptv,
       ),
       streamProviderOrder: await s.getStreamProviderOrder(),
+      disabledStreamProviders: await s.getDisabledStreamProviders(),
       animeProviderOrder: await s.getAnimeProviderOrder(),
+      disabledAnimeProviders: await s.getDisabledAnimeProviders(),
       asianDramaProviderOrder: await s.getAsianDramaProviderOrder(),
+      disabledAsianDramaProviders: await s.getDisabledAsianDramaProviders(),
       preferredAudioLang: kTrackLanguageDisplayNames.contains(preferredAudio)
           ? preferredAudio
           : 'None',

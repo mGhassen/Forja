@@ -744,7 +744,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       animeId: widget.anime.id,
       category: _category,
     );
-    final orderFuture = _settings.getAnimeProviderOrder();
+    final orderFuture = _settings.getEnabledAnimeProviderOrder();
 
     var cached = widget.freshResolve
         ? null

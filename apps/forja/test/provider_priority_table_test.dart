@@ -26,11 +26,15 @@ void main() {
                   'vidlink': 'VidLink',
                 },
                 streamOrder: const ['videasy', 'vidlink'],
+                disabledStreamProviders: const {'vidlink'},
                 onStreamOrderChanged: (_) {},
+                onStreamProviderToggle: (_) {},
                 onStreamOrderReset: () {},
                 animeCatalog: const {'miruro:bee': 'Miruro'},
                 animeOrder: const ['miruro:bee'],
+                disabledAnimeProviders: const {},
                 onAnimeOrderChanged: (_) {},
+                onAnimeProviderToggle: (_) {},
                 onAnimeOrderReset: () {},
                 asianDramaCatalog: const {
                   'kisskh.nl': 'kisskh.nl',
@@ -39,6 +43,7 @@ void main() {
                 asianDramaOrder: const ['kisskh.nl', 'kisskh.co'],
                 disabledAsianDramaProviders: const {'kisskh.co'},
                 onAsianDramaOrderChanged: (_) {},
+                onAsianDramaProviderToggle: (_) {},
                 onAsianDramaOrderReset: () {},
               ),
             ),
@@ -63,7 +68,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('kisskh.nl'), findsOneWidget);
       expect(find.text('kisskh.co'), findsOneWidget);
-      expect(find.byType(ForjaSwitch), findsWidgets);
+      expect(find.text('Off'), findsOneWidget);
+      expect(find.byType(ForjaSwitch), findsNothing);
     });
 
     testWidgets('tries badge uses auto-try position not effective rank', (
@@ -79,16 +85,21 @@ void main() {
                   'vidlink': 'VidLink',
                 },
                 streamOrder: const ['videasy', 'vidlink'],
+                disabledStreamProviders: const {},
                 onStreamOrderChanged: (_) {},
+                onStreamProviderToggle: (_) {},
                 onStreamOrderReset: () {},
                 animeCatalog: const {},
                 animeOrder: const [],
+                disabledAnimeProviders: const {},
                 onAnimeOrderChanged: (_) {},
+                onAnimeProviderToggle: (_) {},
                 onAnimeOrderReset: () {},
                 asianDramaCatalog: const {'kisskh.co': 'kisskh.co'},
                 asianDramaOrder: const ['kisskh.co'],
                 disabledAsianDramaProviders: const {},
                 onAsianDramaOrderChanged: (_) {},
+                onAsianDramaProviderToggle: (_) {},
                 onAsianDramaOrderReset: () {},
               ),
             ),

@@ -29,9 +29,15 @@ void main() {
           'kisskh.la',
           'kisskh.do',
         ],
-        settingsOrder: SettingsService.defaultAsianDramaProviderOrder,
+        settingsOrder: const ['kisskh.co'],
       );
-      expect(SettingsService.defaultAsianDramaProviderOrder, ['kisskh.co']);
+      expect(SettingsService.defaultAsianDramaProviderOrder, [
+        'kisskh.co',
+        'kisskh.nl',
+        'kisskh.ovh',
+        'kisskh.la',
+        'kisskh.do',
+      ]);
       expect(order.orderedIds.first, 'kisskh.co');
       expect(order.rows.every((r) => r.supported), isTrue);
     });

@@ -90,12 +90,12 @@ abstract final class PlayerSourceResolve {
     final settings = SettingsService();
     final t = movie.mediaType.toLowerCase();
     if (t == 'asian_drama' || t == 'asian' || t == 'drama') {
-      return settings.getAsianDramaProviderOrder();
+      return settings.getEnabledAsianDramaProviderOrder();
     }
     if (t == 'anime') {
-      return settings.getAnimeProviderOrder();
+      return settings.getEnabledAnimeProviderOrder();
     }
-    return settings.getStreamProviderOrder();
+    return settings.getEnabledStreamProviderOrder();
   }
 
   static Future<PlaybackResolveHit?> resolvePinnedForMovie({

@@ -261,12 +261,14 @@ void main() {
       expect(src, contains('requiresProxy'));
       expect(src, contains('hakunaymatata.com'));
     });
-    test('vixsrc uses JSON API + embed page (not SSR shell scrape)', () async {
+    test('vixsrc uses API, embed parse, m3u8 variants, and wyzie subs', () async {
       final src = await rootBundle.loadString('assets/providers/vixsrc.js');
       expect(src, contains('/api/tv/'));
       expect(src, contains('/api/movie/'));
-      expect(src, contains('data.src'));
-      expect(src, isNot(contains("BASE + '/tv/'")));
+      expect(src, contains('parseM3u8Variants'));
+      expect(src, contains('sub.wyzie.ru'));
+      expect(src, contains('resolveLegacyPage'));
+      expect(src, contains('1080p'));
     });
   });
 
@@ -288,6 +290,23 @@ void main() {
           '_enginePluginId': 'videasy',
         }),
         isFalse,
+      );
+    });
+
+    test('catalogStreamExternalSubtitles maps engine rows', () {
+      expect(
+        catalogStreamExternalSubtitles({
+          'subtitles': [
+            {'url': 'https://sub.example/en.vtt', 'language': 'en', 'name': 'English'},
+          ],
+        }),
+        [
+          {
+            'url': 'https://sub.example/en.vtt',
+            'language': 'en',
+            'name': 'English',
+          },
+        ],
       );
     });
   });

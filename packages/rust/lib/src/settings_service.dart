@@ -899,29 +899,109 @@ class SettingsService {
   Future<void> setAnimeProviderOrder(List<String> order) async =>
       kvSetStringList(_animeProviderOrderKey, order);
 
+  static const String _disabledAnimeProvidersKey = 'disabled_anime_providers';
+
+  Future<List<String>> getDisabledAnimeProviders() async =>
+      kvGetStringList(_disabledAnimeProvidersKey, fallback: const []);
+
+  Future<void> setDisabledAnimeProviders(List<String> ids) async =>
+      kvSetStringList(_disabledAnimeProvidersKey, ids);
+
+  Future<List<String>> getEnabledAnimeProviderOrder() async {
+    final order = await getAnimeProviderOrder();
+    final off = (await getDisabledAnimeProviders()).toSet();
+    return [for (final id in order) if (!off.contains(id)) id];
+  }
+
   static const String _asianDramaProviderOrderKey =
       'asian_drama_provider_order';
 
-  /// Enabled KissKH mirrors in catalog order (first = active). No auto-failover.
-  static const List<String> defaultAsianDramaProviderOrder = <String>[
+  static const String _disabledAsianDramaProvidersKey =
+      'disabled_asian_drama_providers';
+
+  static const List<String> asianDramaMirrorHosts = <String>[
     'kisskh.co',
+    'kisskh.nl',
+    'kisskh.ovh',
+    'kisskh.la',
+    'kisskh.do',
   ];
+
+  /// Full KissKH mirror list order (Settings UI). Enabled subset drives playback.
+  static const List<String> defaultAsianDramaProviderOrder =
+      asianDramaMirrorHosts;
 
   Future<List<String>> getAsianDramaProviderOrder() async {
     final raw = await kvGetStringList(
       _asianDramaProviderOrderKey,
-      fallback: defaultAsianDramaProviderOrder,
+      fallback: const [],
     );
-    if (raw.isEmpty) {
-      return List<String>.from(defaultAsianDramaProviderOrder);
+    final normalized = [
+      for (final id in raw)
+        if (asianDramaMirrorHosts.contains(_normalizeAsianDramaMirrorId(id)))
+          _normalizeAsianDramaMirrorId(id),
+    ];
+    if (normalized.isEmpty) {
+      return _migrateAsianDramaProviderOrder(const []);
     }
-    return raw
-        .map((id) {
-          final v = id.trim().toLowerCase();
-          if (v.isEmpty || v == 'kisskh') return 'kisskh.co';
-          return v;
-        })
-        .toList();
+    final disabled = await getDisabledAsianDramaProviders();
+    if (disabled.isEmpty && normalized.length < asianDramaMirrorHosts.length) {
+      return _migrateAsianDramaProviderOrder(normalized);
+    }
+    return mergeProviderOrder(normalized, asianDramaMirrorHosts);
+  }
+
+  String _normalizeAsianDramaMirrorId(String raw) {
+    final v = raw.trim().toLowerCase();
+    if (v.isEmpty || v == 'kisskh') return 'kisskh.co';
+    return v;
+  }
+
+  /// Older builds stored enabled-only mirrors; expand to full list + disabled key.
+  Future<List<String>> _migrateAsianDramaProviderOrder(
+    List<String> normalized,
+  ) async {
+    final disabled = await getDisabledAsianDramaProviders();
+    if (disabled.isEmpty &&
+        normalized.isNotEmpty &&
+        normalized.length < asianDramaMirrorHosts.length) {
+      final enabled = normalized.toSet();
+      final off = [
+        for (final host in asianDramaMirrorHosts)
+          if (!enabled.contains(host)) host,
+      ];
+      await setDisabledAsianDramaProviders(off);
+      final full = mergeProviderOrder(normalized, asianDramaMirrorHosts);
+      await setAsianDramaProviderOrder(full);
+      return full;
+    }
+    if (normalized.isEmpty) {
+      final full = List<String>.from(asianDramaMirrorHosts);
+      final off = [
+        for (final host in asianDramaMirrorHosts)
+          if (host != 'kisskh.co') host,
+      ];
+      await setDisabledAsianDramaProviders(off);
+      await setAsianDramaProviderOrder(full);
+      return full;
+    }
+    return mergeProviderOrder(normalized, asianDramaMirrorHosts);
+  }
+
+  Future<List<String>> getDisabledAsianDramaProviders() async =>
+      kvGetStringList(_disabledAsianDramaProvidersKey, fallback: const []);
+
+  Future<void> setDisabledAsianDramaProviders(List<String> ids) async =>
+      kvSetStringList(_disabledAsianDramaProvidersKey, ids);
+
+  /// Enabled KissKH mirrors in user order (first = active). No auto-failover.
+  Future<List<String>> getEnabledAsianDramaProviderOrder() async {
+    final order = await getAsianDramaProviderOrder();
+    final off = (await getDisabledAsianDramaProviders()).toSet();
+    return [
+      for (final id in order)
+        if (!off.contains(id)) id,
+    ];
   }
 
   Future<void> setAsianDramaProviderOrder(List<String> order) async =>

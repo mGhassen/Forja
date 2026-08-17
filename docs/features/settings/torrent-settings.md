@@ -12,7 +12,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 
 ## What you can do
 
-- Reorder **Server reliability** when **Webstreaming** is on — Movies, Series, and Anime: drag preference (desktop) or **↑/↓** (TV); **Reset order** is D-pad focusable on TV; **Score** is live reliability; **Tries** is Auto check order. Asian Drama: toggle which KissKH mirror is on (defaults to `kisskh.co`)
+- Reorder **Server reliability** when **Webstreaming** is on — Movies, Series, Anime, and Asian Drama: drag (desktop) or **↑/↓** (TV); tap a row to turn a server on or off; **Reset order** restores defaults
 - Enable or disable each **torrent provider** (Knaben, The Pirate Bay, UIndex, Torrents CSV, Nyaa, YTS, SolidTorrents, TheRARBG, Torrentio) — enabled ones show as chips under **Sources → Torrents** (plus **All**) — only when **Direct torrent** is on and built-in torrent search is available on this platform
 - Set **sort preference** (e.g. seeders high to low)
 - Set **disk cache** size (1–16 GB) — oldest idle torrent files are deleted when over this cap; the title you are playing is never removed — on **TV**, focus the slider and use **Left/Right**
@@ -23,7 +23,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 
 ## Tips
 
-- **Server reliability**: tabs for Movies / Series / Anime / Asian Drama (one list at a time). Drag (desktop) or **↑/↓** (TV) to prefer a server where ordering is enabled. **Score** rises when a check **finishes** with linked server+stream outcomes (extract+stream OK → +4; extract OK but streams dead → net 0; never below **0**). Cancel / extract-only does not add a lone +2. **Tries** (1st, 2nd, …) is the order Auto tries them. Asian Drama: use the switch on each KissKH mirror (`kisskh.co`, `kisskh.nl`, `kisskh.ovh`, `kisskh.la`, `kisskh.do`). Playback uses the first enabled host only — no auto-failover (aliases share KissKH's IP rate limit). In the player Source panel, the **badge number** is the same Score; **+/−** prefixes are this film/episode only (see [Stream providers](../sources/stream-providers.md)). Stream quality (codec, resolution, latency) is scored **after** resolve.
+- **Server reliability**: tabs for Movies / Series / Anime / Asian Drama (one list at a time). Drag (desktop) or **↑/↓** (TV) to set try order. **Tap a server row** to turn it on or off (disabled rows show **Off** and skip Auto). **Score** rises when a check **finishes** with linked server+stream outcomes (extract+stream OK → +4; extract OK but streams dead → net 0; never below **0**). Cancel / extract-only does not add a lone +2. **Tries** (1st, 2nd, …) is the order Auto tries **enabled** servers. Asian Drama keeps one KissKH mirror active at minimum; playback uses the first enabled mirror only (no auto-failover). In the player Source panel, the **badge number** is the same Score; **+/−** prefixes are this film/episode only (see [Stream providers](../sources/stream-providers.md)). Stream quality (codec, resolution, latency) is scored **after** resolve.
 - Disable providers you don’t use to speed up search. Rows still appear as each remaining provider returns — a slow one no longer holds the list empty.
 - Lower the disk cache size on phones or small SSDs if space is tight
 - Sort by seeders for fastest starts on [torrent playback](../playback/torrent-playback.md)

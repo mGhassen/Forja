@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
@@ -12,33 +11,43 @@ class ProviderScoringPanel extends StatefulWidget {
     super.key,
     required this.streamCatalog,
     required this.streamOrder,
+    required this.disabledStreamProviders,
     required this.onStreamOrderChanged,
+    required this.onStreamProviderToggle,
     required this.onStreamOrderReset,
     required this.animeCatalog,
     required this.animeOrder,
+    required this.disabledAnimeProviders,
     required this.onAnimeOrderChanged,
+    required this.onAnimeProviderToggle,
     required this.onAnimeOrderReset,
     required this.asianDramaCatalog,
     required this.asianDramaOrder,
     required this.disabledAsianDramaProviders,
     required this.onAsianDramaOrderChanged,
+    required this.onAsianDramaProviderToggle,
     required this.onAsianDramaOrderReset,
   });
 
   final Map<String, String> streamCatalog;
   final List<String> streamOrder;
+  final Set<String> disabledStreamProviders;
   final ValueChanged<List<String>> onStreamOrderChanged;
+  final ValueChanged<String> onStreamProviderToggle;
   final VoidCallback onStreamOrderReset;
 
   final Map<String, String> animeCatalog;
   final List<String> animeOrder;
+  final Set<String> disabledAnimeProviders;
   final ValueChanged<List<String>> onAnimeOrderChanged;
+  final ValueChanged<String> onAnimeProviderToggle;
   final VoidCallback onAnimeOrderReset;
 
   final Map<String, String> asianDramaCatalog;
   final List<String> asianDramaOrder;
   final Set<String> disabledAsianDramaProviders;
   final ValueChanged<List<String>> onAsianDramaOrderChanged;
+  final ValueChanged<String> onAsianDramaProviderToggle;
   final VoidCallback onAsianDramaOrderReset;
 
   @override
@@ -86,6 +95,12 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
     _ => widget.streamOrder,
   };
 
+  Set<String> get _disabledProviders => switch (_tab) {
+    _ScoringTab.anime => widget.disabledAnimeProviders,
+    _ScoringTab.asianDrama => widget.disabledAsianDramaProviders,
+    _ => widget.disabledStreamProviders,
+  };
+
   void _onOrderChanged(List<String> next) {
     switch (_tab) {
       case _ScoringTab.anime:
@@ -95,6 +110,18 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
       case _ScoringTab.movies:
       case _ScoringTab.series:
         widget.onStreamOrderChanged(next);
+    }
+  }
+
+  void _toggleProvider(String id) {
+    switch (_tab) {
+      case _ScoringTab.anime:
+        widget.onAnimeProviderToggle(id);
+      case _ScoringTab.asianDrama:
+        widget.onAsianDramaProviderToggle(id);
+      case _ScoringTab.movies:
+      case _ScoringTab.series:
+        widget.onStreamProviderToggle(id);
     }
   }
 
@@ -126,28 +153,18 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
     return out;
   }
 
-  Set<String> get _disabledProviders => switch (_tab) {
-    _ScoringTab.asianDrama => widget.disabledAsianDramaProviders,
-    _ => const <String>{},
-  };
-
-  void _toggleAsianDramaMirror(String id, bool enabled) {
-    final next = KissKhService.toggleMirrorInOrder(
-      current: _order,
-      host: id,
-      enabled: enabled,
-    );
-    widget.onAsianDramaOrderChanged(next);
-  }
-
   @override
   Widget build(BuildContext context) {
     final order = _order;
     final disabledProviders = _disabledProviders;
+    final enabledOrder = [
+      for (final id in order)
+        if (!disabledProviders.contains(id)) id,
+    ];
     final preview = SourceEngine.orderProviders(
       domain: _domain,
-      candidateIds: order,
-      settingsOrder: order,
+      candidateIds: enabledOrder,
+      settingsOrder: enabledOrder,
     );
     final rowById = preview.rowById;
     final tryPositionById = {
@@ -169,7 +186,7 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
           const SizedBox(height: 6),
           Text(
             'Score counts up or down across the titles you play (never below 0). '
-            'Auto tries servers in the Tries order - drag to prefer one.',
+            'Drag to set try order. Tap a server to turn it on or off.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: ForjaShellColors.textSecondary,
               height: 1.35,
@@ -184,9 +201,7 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
             builder: (context) {
               final tv =
                   ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-              final reorderable = _tab != _ScoringTab.asianDrama;
-              final moveCount =
-                  tv && reorderable ? order.length * 2 : 0;
+              final moveCount = tv ? order.length * 2 : 0;
               return TvCatalogRow(
                 tabId: 'settings',
                 rowId: 'scoring-move',
@@ -199,7 +214,6 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
                   buildDefaultDragHandles: false,
                   itemCount: order.length,
                   onReorderItem: (oldIndex, newIndex) {
-                    if (_tab == _ScoringTab.asianDrama) return;
                     final next = List<String>.from(order);
                     final item = next.removeAt(oldIndex);
                     next.insert(newIndex, item);
@@ -214,7 +228,6 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
                         ProviderScoreMemory.globalScoreFor(id);
                     final tries =
                         row?.supported == true ? tryPositionById[id] : null;
-                    final asianDrama = _tab == _ScoringTab.asianDrama;
                     return _ServerRow(
                       key: ValueKey('${_tab.name}-$id'),
                       index: index,
@@ -222,15 +235,11 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
                       score: score,
                       tries: disabled ? null : tries,
                       disabled: disabled,
-                      reorderable: reorderable,
-                      mirrorToggle: asianDrama
-                          ? (enabled) => _toggleAsianDramaMirror(id, enabled)
-                          : null,
-                      mirrorEnabled: asianDrama ? !disabled : null,
-                      onMoveUp: reorderable && index > 0
+                      onToggle: () => _toggleProvider(id),
+                      onMoveUp: index > 0
                           ? () => _moveServer(order, index, index - 1)
                           : null,
-                      onMoveDown: reorderable && index < order.length - 1
+                      onMoveDown: index < order.length - 1
                           ? () => _moveServer(order, index, index + 1)
                           : null,
                     );
@@ -239,28 +248,10 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
               );
             },
           ),
-          if (_tab != _ScoringTab.asianDrama)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _ResetOrderButton(onPressed: _onOrderReset),
-            )
-          else ...[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _ResetOrderButton(onPressed: _onOrderReset),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 4, top: 10),
-              child: Text(
-                'Turn on the KissKH mirror you want. Playback uses the first '
-                'enabled host only — aliases share the same IP rate limit, so '
-                'Forja does not auto-failover.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: ForjaShellColors.textSecondary,
-                ),
-              ),
-            ),
-          ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _ResetOrderButton(onPressed: _onOrderReset),
+          ),
         ],
       ),
     );
@@ -318,7 +309,6 @@ class _TabStrip extends StatelessWidget {
                 tvTabId: 'settings',
                 tvRowId: 'scoring-tabs',
                 onTap: () => onChanged(_tabs[i].$1),
-                // Stay in the detail pane — Back returns to the category rail.
                 onLeftEdge: edgesFor(i).onLeft,
                 onRightEdge: edgesFor(i).onRight,
                 onDownEdge: edgesFor(i).onDown,
@@ -367,9 +357,7 @@ class _ServerRow extends StatelessWidget {
     required this.score,
     required this.tries,
     required this.disabled,
-    required this.reorderable,
-    this.mirrorToggle,
-    this.mirrorEnabled,
+    required this.onToggle,
     this.onMoveUp,
     this.onMoveDown,
   });
@@ -379,9 +367,7 @@ class _ServerRow extends StatelessWidget {
   final int score;
   final int? tries;
   final bool disabled;
-  final bool reorderable;
-  final ValueChanged<bool>? mirrorToggle;
-  final bool? mirrorEnabled;
+  final VoidCallback onToggle;
   final VoidCallback? onMoveUp;
   final VoidCallback? onMoveDown;
 
@@ -394,26 +380,7 @@ class _ServerRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
           children: [
-            if (mirrorToggle != null)
-              ForjaSwitch(
-                value: mirrorEnabled ?? false,
-                onChanged: mirrorToggle,
-              )
-            else if (!reorderable)
-              SizedBox(
-                width: 28,
-                height: 36,
-                child: Icon(
-                  disabled
-                      ? Icons.pause_circle_outline_rounded
-                      : Icons.check_circle_outline_rounded,
-                  size: 17,
-                  color: disabled
-                      ? ForjaShellColors.iconMuted
-                      : const Color(0xFF7DDEA0),
-                ),
-              )
-            else if (tv)
+            if (tv)
               SizedBox(
                 width: 56,
                 height: 36,
@@ -448,28 +415,44 @@ class _ServerRow extends StatelessWidget {
                 ),
               ),
             Expanded(
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      name,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: disabled ? ForjaShellColors.textSecondary : null,
-                        fontWeight: FontWeight.w600,
+              child: shellFocusableTap(
+                context: context,
+                onTap: onToggle,
+                borderRadius: 8,
+                scaleOnFocus: ShellTokens.focusActiveScale,
+                tvTabId: 'settings',
+                tvRowId: 'scoring-row',
+                tvItemIndex: index,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          name,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: disabled
+                                    ? ForjaShellColors.textSecondary
+                                    : null,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
                       ),
-                    ),
+                      if (disabled) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          'Off',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: ForjaShellColors.textSecondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ],
+                    ],
                   ),
-                  if (disabled && mirrorToggle == null) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      'On hold',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: ForjaShellColors.textSecondary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
             ),
             SizedBox(
