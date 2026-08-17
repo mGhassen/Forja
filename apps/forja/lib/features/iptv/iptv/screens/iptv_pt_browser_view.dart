@@ -1171,6 +1171,7 @@ class _BrowserViewState extends State<_BrowserView> {
         _streamCrossAxisCount = cross;
         _streamTileExtent = cardH;
         _streamMainGap = gap;
+        final lastRowStart = ((list.length - 1) ~/ cross) * cross;
         // Fixed column count on TV so D-pad Left/Right match the visual row
         // (MaxCrossAxisExtent can disagree with our focus math and wrap).
         final grid = GridView.builder(
@@ -1197,6 +1198,7 @@ class _BrowserViewState extends State<_BrowserView> {
               onUpEdge: i < cross
                   ? iptvStreamUpEdge(widget.ctrl, index: i, columns: cross)
                   : null,
+              onDownEdge: i >= lastRowStart ? () {} : null,
               onRightEdge: atRightEdge
                   ? (widget.ctrl.portalPanelOpen
                       ? () => iptvFocusPortalList(widget.ctrl)
@@ -1263,6 +1265,7 @@ class _BrowserViewState extends State<_BrowserView> {
           onUpEdge: i == 0
               ? iptvStreamUpEdge(ctrl, index: 0, columns: 1)
               : null,
+          onDownEdge: i == list.length - 1 ? () {} : null,
           onTap: () => _onStreamTap(stream),
         );
       },

@@ -95,6 +95,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   bool _expandFocused = false;
   bool _expandHovered = false;
   bool _pasteEditing = false;
+  int? _tabHoverIndex;
   IptvPortalPlatform _platform = IptvPortalPlatform.xtream;
 
   bool get _editing => widget.existing != null;
@@ -715,9 +716,6 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     final uaIndex = _indexOfNode(_uaFocus);
     final shareOnlyCollapsed =
         !_editing && !_showManualForm && !_namingImported;
-    final fillBody = tv &&
-        (_editing || _showManualForm) &&
-        !_addSucceeded;
     final gapAfterTitle = _tv ? 8.0 : (_compact ? 14.0 : 22.0);
     final gapBetweenFields = _tv ? 10.0 : (_compact ? 18.0 : 28.0);
     final gapBeforeManual = _tv ? 12.0 : (_compact ? 18.0 : 28.0);
@@ -776,7 +774,6 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         ),
         child: SizedBox(
           width: dialogMaxWidth,
-          height: fillBody && !adding ? maxHeight : null,
           child: ConstrainedBox(
           constraints: BoxConstraints(
             maxWidth: dialogMaxWidth,
@@ -808,9 +805,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                               ? 'name'
                               : (shareOnlyCollapsed ? 'share' : 'manual'),
                         ),
-                        mainAxisSize: fillBody && !adding
-                            ? MainAxisSize.max
-                            : MainAxisSize.min,
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (_namingImported) ...[
@@ -927,9 +922,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                             _platformTabs(),
                             SizedBox(height: gapBetweenFields),
                             Flexible(
-                              fit: fillBody && !adding
-                                  ? FlexFit.tight
-                                  : FlexFit.loose,
+                              fit: FlexFit.loose,
                               child: SingleChildScrollView(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
@@ -1389,28 +1382,14 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
 
   Widget _platformTabs() {
     final tv = iptvUseTvFocus(context);
-    final tabH = _tv ? 40.0 : 36.0;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: SizedBox(
-        height: tabH,
-        child: Row(
-          children: [
-            for (var i = 0; i < _kPlatformTabs.length; i++) ...[
-              if (i > 0)
-                Container(
-                  width: 1,
-                  height: 16,
-                  color: Colors.white.withValues(alpha: 0.12),
-                ),
-              Expanded(child: _platformTab(index: i, height: tabH, tv: tv)),
-            ],
-          ],
-        ),
+    const tabH = 42.0;
+    return SizedBox(
+      height: tabH,
+      child: Row(
+        children: [
+          for (var i = 0; i < _kPlatformTabs.length; i++)
+            Expanded(child: _platformTab(index: i, height: tabH, tv: tv)),
+        ],
       ),
     );
   }
@@ -1423,85 +1402,79 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     final (platform, label) = _kPlatformTabs[index];
     final selected = _platform == platform;
     final focused = tv && _platformTabFocus[index].hasFocus;
-    final radius = index == 0
-        ? const BorderRadius.only(
-            topLeft: Radius.circular(9),
-            bottomLeft: Radius.circular(9),
-          )
-        : index == _kPlatformTabs.length - 1
-            ? const BorderRadius.only(
-                topRight: Radius.circular(9),
-                bottomRight: Radius.circular(9),
-              )
-            : BorderRadius.zero;
+    final hovered = !tv && _tabHoverIndex == index;
+    final active = selected || focused || hovered;
     final tabIndex = _indexOfNode(_platformTabFocus[index]);
     final labelIndex = _indexOfNode(_labelFocus);
     final firstTabIndex = _indexOfNode(_platformTabFocus.first);
     final upTarget = firstTabIndex > 0 ? firstTabIndex - 1 : -1;
+    final fg = focused || hovered
+        ? ForjaShellColors.brandGreen
+        : selected
+            ? ForjaShellColors.textPrimary
+            : IptvShellStyle.textSecondary;
 
-    final face = AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
+    final face = SizedBox(
       height: height,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: focused
-            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-            : selected
-                ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
-                : Colors.transparent,
-        borderRadius: radius,
-        border: focused
-            ? Border.all(color: ForjaShellColors.brandGreen, width: 1.5)
-            : selected
-                ? const Border(
-                    bottom: BorderSide(
-                      color: ForjaShellColors.brandGreen,
-                      width: 2,
-                    ),
-                  )
-                : null,
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.plusJakartaSans(
-          color: selected || focused
-              ? ForjaShellColors.brandGreen
-              : IptvShellStyle.textSecondary,
-          fontSize: 12,
-          fontWeight: selected || focused ? FontWeight.w700 : FontWeight.w600,
-        ),
+      child: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  color: fg,
+                  fontSize: 13,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          Container(
+            height: 2,
+            color: active ? ForjaShellColors.brandGreen : Colors.transparent,
+          ),
+        ],
       ),
     );
+
+    if (!tv) {
+      return MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _tabHoverIndex = index),
+        onExit: (_) {
+          if (_tabHoverIndex == index) setState(() => _tabHoverIndex = null);
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _selectPlatform(platform),
+          child: face,
+        ),
+      );
+    }
 
     return iptvTap(
       context: context,
       onTap: () => _selectPlatform(platform),
-      borderRadius: 9,
+      borderRadius: 0,
       scaleOnFocus: 1,
-      focusNode: tv ? _platformTabFocus[index] : null,
-      tvRowId: tv ? _portalDialogRowId : null,
-      tvItemIndex: tv ? tabIndex : null,
-      onFocusChange: tv ? (_) => setState(() {}) : null,
-      onLeftEdge: tv
-          ? () {
-              if (index > 0) {
-                _platformTabFocus[index - 1].requestFocus();
-              }
-            }
-          : null,
-      onRightEdge: tv
-          ? () {
-              if (index < _kPlatformTabs.length - 1) {
-                _platformTabFocus[index + 1].requestFocus();
-              }
-            }
-          : null,
-      onUpEdge: tv
-          ? () {
-              if (upTarget >= 0) _focusDialogItem(upTarget);
-            }
-          : null,
-      onDownEdge: tv ? () => _focusDialogItem(labelIndex) : null,
+      suppressInkHover: true,
+      focusNode: _platformTabFocus[index],
+      tvRowId: _portalDialogRowId,
+      tvItemIndex: tabIndex,
+      onFocusChange: (_) => setState(() {}),
+      onLeftEdge: () {
+        if (index > 0) _platformTabFocus[index - 1].requestFocus();
+      },
+      onRightEdge: () {
+        if (index < _kPlatformTabs.length - 1) {
+          _platformTabFocus[index + 1].requestFocus();
+        }
+      },
+      onUpEdge: () {
+        if (upTarget >= 0) _focusDialogItem(upTarget);
+      },
+      onDownEdge: () => _focusDialogItem(labelIndex),
       child: face,
     );
   }

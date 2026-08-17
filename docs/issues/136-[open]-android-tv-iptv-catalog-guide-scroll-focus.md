@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **15 / 15** fix · **0 / 6** acceptance · **1** deferred (A05) |
+| **Progress** | **16 / 16** fix · **0 / 7** acceptance · **1** deferred (A05) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -34,6 +34,7 @@
 | 13 | I136-T13 | Clear channel-pane ExcludeFocus when HW drops float (stuck `_tvCategoryPinFocused` blocked OK/→ into channels) | ✅ |
 | 14 | I136-T14 | TV category pin: after pin/unpin, scroll rail to new index + focus that row (supersedes freeze-scroll of T07) | ✅ |
 | 15 | I136-T15 | TV category rail: sync-clear focus chrome on blur; selected-only = left bar (no second inkHover fill) | ✅ |
+| 16 | I136-T16 | Channel grid last-row ↓ traps (no spatial wrap back to category rail); `moveInGrid` last-row down returns handled | ✅ |
 
 ---
 
@@ -48,6 +49,7 @@
 | 5 | I136-A05 | Android TV: → on a Live group focuses pin on first press; OK on pin does not jump category rail scroll | ⏭️ |
 | 6 | I136-A06 | Android TV: OK on pin focuses the pinned/unpinned group and scrolls the category rail to its new index | ⬜ |
 | 7 | I136-A07 | Android TV: ↑/↓ through catalog categories shows only one hover fill at a time (no ghost previous row + selected inkHover) | ⬜ |
+| 8 | I136-A08 | Android TV: ↓ on the last channel row stays on that row — does not wrap to the category list | ⬜ |
 
 ---
 
@@ -76,6 +78,8 @@ D-pad focus on IPTV **catalog** (category rail + channel grid/list) and **in-pla
 **Follow-up (I136-T14):** T07 froze rail scroll on pin so the old viewport slot kept focus while the row jumped to the top of the movable list — focus looked lost. Pin/unpin now scrolls to the row’s new index and focuses it (`I136-A06`; `I136-A05` freeze-scroll deferred).
 
 **Follow-up (I136-T15):** ↑/↓ left a ghost focus fill for one frame (deferred `_focused=false`) plus selected `inkHover` — looked like 2–3 hovers. Blur clears focus chrome sync; on TV selected-only keeps the green left bar without a second fill (`I136-A07`).
+
+**Follow-up (I136-T16):** Last channel-row **↓** was ignored (`moveInGrid` returned false) so Flutter spatial wrap landed on the category rail. Last-row ↓ now traps — same as last-column → (`I136-A08`).
 
 ## Related
 

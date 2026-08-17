@@ -947,14 +947,18 @@ abstract final class ShellTvFocusCoordinator {
       if (nextRow < 0) nextRow = 0;
       if (nextRow > maxRow) nextRow = maxRow;
     } else {
-      if (nextRow < 0 || nextRow > maxRow) return false;
+      if (nextRow < 0) return false;
+      // Last-row down: trap so Flutter closedLoop cannot wrap to another pane.
+      if (nextRow > maxRow) return true;
     }
     var nextIndex = nextRow * columns + nextCol;
     if (nextIndex < 0) return false;
     if (nextIndex >= handle.itemCount) {
       nextIndex = handle.itemCount - 1;
     }
-    if (nextIndex == currentIndex) return false;
+    if (nextIndex == currentIndex) {
+      return rowDelta > 0;
+    }
     if (focusRowItemExact(tabId, rowId, nextIndex)) return true;
     final step = nextIndex > currentIndex ? -1 : 1;
     for (var i = nextIndex; i != currentIndex; i += step) {

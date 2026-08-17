@@ -44,6 +44,7 @@ class _StreamCard extends StatefulWidget {
   final VoidCallback? onLeftEdge;
   final VoidCallback? onUpEdge;
   final VoidCallback? onRightEdge;
+  final VoidCallback? onDownEdge;
   const _StreamCard({
     required this.stream,
     required this.ctrl,
@@ -55,6 +56,7 @@ class _StreamCard extends StatefulWidget {
     this.onLeftEdge,
     this.onUpEdge,
     this.onRightEdge,
+    this.onDownEdge,
   });
 
   @override
@@ -168,6 +170,7 @@ class _StreamCardState extends State<_StreamCard> {
             onLeftEdge: widget.onLeftEdge,
             onUpEdge: widget.onUpEdge,
             onRightEdge: widget.onRightEdge,
+            onDownEdge: widget.onDownEdge,
             onFocusChange: _onFocus,
             onHoverChange: _onHover,
             child: column,
@@ -441,6 +444,7 @@ class _StreamRowTile extends StatefulWidget {
     this.onLeftEdge,
     this.onRightEdge,
     this.onUpEdge,
+    this.onDownEdge,
   });
 
   final IptvStream stream;
@@ -453,6 +457,7 @@ class _StreamRowTile extends StatefulWidget {
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
 
   @override
   State<_StreamRowTile> createState() => _StreamRowTileState();
@@ -550,6 +555,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
               onLeftEdge: widget.onLeftEdge,
               onRightEdge: widget.onRightEdge,
               onUpEdge: widget.onUpEdge,
+              onDownEdge: widget.onDownEdge,
               onFocusChange: _onFocus,
               onHoverChange: _onHover,
               child: Padding(
