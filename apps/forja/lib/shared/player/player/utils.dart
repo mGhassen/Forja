@@ -699,6 +699,27 @@ void syncPlayerProgressNotifiers(
   buffered.value = player.state.buffer;
 }
 
+/// Seekbar buffer-end from mpv `demuxer-cache-duration` (seconds ahead).
+///
+/// `stream.buffer` is `demuxer-cache-time` (absolute PTS) and often stays at
+/// 0 / playhead on HLS. Prefer whichever end is further ahead.
+Duration? bufferedEndFromCacheAhead({
+  required Duration position,
+  required Duration duration,
+  required double aheadSecs,
+  Duration cacheTime = Duration.zero,
+}) {
+  if (!aheadSecs.isFinite || aheadSecs < 0) return null;
+  var fromAhead = position +
+      Duration(milliseconds: (aheadSecs * 1000).round());
+  if (duration > Duration.zero && fromAhead > duration) {
+    fromAhead = duration;
+  }
+  if (cacheTime > fromAhead) return cacheTime;
+  if (aheadSecs <= 0 && cacheTime <= Duration.zero) return null;
+  return fromAhead;
+}
+
 /// Wall-clock time after [_playbackConfirmed] before EOF can count as natural.
 /// Local torrents demux a real duration then hit EOF within seconds.
 const kMinConfirmedPlaybackForNaturalEnd = Duration(seconds: 45);

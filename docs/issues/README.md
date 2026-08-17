@@ -206,6 +206,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [184-[open]-…](184-[open]-post-seek-buffering-remount.md) | Post-seek BUFFERING remount same URL | P1 | High | open | 6/6 · A 0/2 | — |
 | [185-[open]-…](185-[open]-streamcrypto-dart-webview.md) | STREAMCRYPTO Dart + WebView (shared enc=2) | P1 | High | open | 5/5 · A 2/4 | — |
 | [186-[open]-…](186-[open]-paused-playback-history-scrobble-heartbeat.md) | Paused play still heartbeats history/Simkl | P2 | Medium | open | 4/4 · A 0/1 | — |
+| [187-[open]-…](187-[open]-android-tv-mediakit-vod-cache-empty.md) | ATV movies MediaKit cache never fills | P1 | High | open | 2/2 · A 0/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

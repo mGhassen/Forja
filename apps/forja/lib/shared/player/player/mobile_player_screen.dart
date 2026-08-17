@@ -254,6 +254,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration>? _durationSub;
   StreamSubscription<Duration>? _bufferSub;
+  Timer? _cacheAheadPoll;
+  bool _cacheAheadProbeInFlight = false;
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<bool>? _bufferingSub;
   StreamSubscription<String>? _errorSub;
@@ -521,6 +523,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     _positionSub?.cancel();
     _durationSub?.cancel();
     _bufferSub?.cancel();
+    _cacheAheadPoll?.cancel();
+    _cacheAheadPoll = null;
     _playingSub?.cancel();
     _bufferingSub?.cancel();
     _errorSub?.cancel();

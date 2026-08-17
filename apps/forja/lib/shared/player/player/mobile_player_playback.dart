@@ -1331,6 +1331,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     _s._positionSub?.cancel();
     _s._durationSub?.cancel();
     _s._bufferSub?.cancel();
+    _s._cacheAheadPoll?.cancel();
+    _s._cacheAheadPoll = null;
     _s._playingSub?.cancel();
     _s._bufferingSub?.cancel();
     _s._errorSub?.cancel();
@@ -1456,7 +1458,11 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     _s._bufferSub = _s._player.stream.buffer.listen((buf) {
       if (_s._disposed) return;
       if (!_s._playbackConfirmed) return;
-      _s._bufferedNotifier.value = buf;
+      _applyBufferedEnd(cacheTime: buf);
+    });
+    _s._cacheAheadPoll?.cancel();
+    _s._cacheAheadPoll = Timer.periodic(const Duration(milliseconds: 750), (_) {
+      unawaited(_sampleDemuxerCacheAhead());
     });
 
     _s._playingSub = _s._player.stream.playing.listen((playing) {
@@ -1707,6 +1713,45 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     }
   }
 
+  void _applyBufferedEnd({Duration cacheTime = Duration.zero, double? aheadSecs}) {
+    if (_s._disposed || !_s._playbackConfirmed) return;
+    final pos = _s._positionNotifier.value;
+    final end = bufferedEndFromCacheAhead(
+      position: pos,
+      duration: _s._durationNotifier.value,
+      aheadSecs: aheadSecs ?? 0,
+      cacheTime: cacheTime,
+    );
+    if (end == null || end <= pos) {
+      if (_s._bufferedNotifier.value < pos) {
+        _s._bufferedNotifier.value = pos;
+      }
+      return;
+    }
+    _s._bufferedNotifier.value = end;
+  }
+
+  Future<void> _sampleDemuxerCacheAhead() async {
+    if (_s._disposed || !_s._playbackConfirmed || _s._cacheAheadProbeInFlight) {
+      return;
+    }
+    final platform = _s._player.platform;
+    if (platform is! NativePlayer) return;
+    _s._cacheAheadProbeInFlight = true;
+    try {
+      final raw = await platform.getProperty('demuxer-cache-duration');
+      final ahead = double.tryParse(raw.toString());
+      if (ahead == null) return;
+      _applyBufferedEnd(
+        cacheTime: _s._player.state.buffer,
+        aheadSecs: ahead,
+      );
+    } catch (_) {
+    } finally {
+      _s._cacheAheadProbeInFlight = false;
+    }
+  }
+
   Future<void> _configureMpvProperties() async {
     if (_s._player.platform is! NativePlayer) return;
     final mpv = _s._player.platform as NativePlayer;
@@ -1761,8 +1806,12 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     await safeSet('network-timeout', '30');
     await safeSet('tls-verify', 'no');
 
-    await safeSet('cache-pause', 'no');
-    await safeSet('cache-pause-initial', 'no');
+    // RAM packet cache. media_kit defaults cache-on-disk=yes; on ATV that
+    // prunes metadata and never builds an HLS ahead window (issue 187).
+    await safeSet('cache-on-disk', 'no');
+    await safeSet('cache-pause', 'yes');
+    await safeSet('cache-pause-wait', '3');
+    await safeSet('cache-pause-initial', 'yes');
 
     // Stay on the last frame at EOF so the seek bar still works (scrub back /
     // replay). Without this, mpv goes idle and seeks no-op after completed.
@@ -1784,8 +1833,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       await safeSet('hr-seek', 'yes');
       await safeSet('hr-seek-framedrop', 'no');
     } else {
-      // Fast first frame: short readahead + soft HLS ceiling. Mobile keeps
-      // a smaller RAM cache than desktop; Quality menu still locks a rung.
+      // Sliding RAM window (cache-secs wins over readahead). Pause-to-refill
+      // is set above so HLS underruns BUFFER instead of stuttering.
       await safeSet('cache', 'yes');
       await safeSet('cache-secs', '45');
       await safeSet('demuxer-max-bytes', '100MiB');
