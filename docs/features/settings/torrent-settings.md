@@ -12,7 +12,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 
 ## What you can do
 
-- Reorder **Server reliability** when **Webstreaming** is on — Movies, Series, Anime, and Asian Drama: drag (desktop) or **↑/↓** (TV); tap a row to turn a server on or off; **Reset order** restores defaults
+- Reorder **Server reliability** when **Webstreaming** is on — Movies, Series, Anime, and Asian Drama: drag (desktop) or **↓/↑** between server names on TV; tap or **OK** a row to turn a server on or off; **Reset order** restores defaults
 - Enable or disable each **torrent provider** (Knaben, The Pirate Bay, UIndex, Torrents CSV, Nyaa, YTS, SolidTorrents, TheRARBG, Torrentio) — enabled ones show as chips under **Sources → Torrents** (plus **All**) — only when **Direct torrent** is on and built-in torrent search is available on this platform
 - Set **sort preference** (e.g. seeders high to low)
 - Set **disk cache** size (1–16 GB) — oldest idle torrent files are deleted when over this cap; the title you are playing is never removed — on **TV**, focus the slider and use **Left/Right**

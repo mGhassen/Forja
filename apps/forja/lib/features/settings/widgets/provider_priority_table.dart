@@ -125,14 +125,6 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
     }
   }
 
-  void _moveServer(List<String> order, int from, int to) {
-    if (from == to || from < 0 || to < 0 || to >= order.length) return;
-    final next = List<String>.from(order);
-    final item = next.removeAt(from);
-    next.insert(to, item);
-    _onOrderChanged(next);
-  }
-
   VoidCallback get _onOrderReset => switch (_tab) {
     _ScoringTab.anime => widget.onAnimeOrderReset,
     _ScoringTab.asianDrama => widget.onAsianDramaOrderReset,
@@ -186,7 +178,7 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
           const SizedBox(height: 6),
           Text(
             'Score counts up or down across the titles you play (never below 0). '
-            'Drag to set try order. Tap a server to turn it on or off.',
+            'Drag to set try order. Tap or OK a server to turn it on or off.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: ForjaShellColors.textSecondary,
               height: 1.35,
@@ -201,12 +193,11 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
             builder: (context) {
               final tv =
                   ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-              final moveCount = tv ? order.length * 2 : 0;
               return TvCatalogRow(
                 tabId: 'settings',
-                rowId: 'scoring-move',
+                rowId: 'scoring-row',
                 sortOrder: 1,
-                itemCount: moveCount,
+                itemCount: tv ? order.length : 0,
                 orientation: ShellTvRowOrientation.vertical,
                 child: ReorderableListView.builder(
                   shrinkWrap: true,
@@ -236,21 +227,27 @@ class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
                       tries: disabled ? null : tries,
                       disabled: disabled,
                       onToggle: () => _toggleProvider(id),
-                      onMoveUp: index > 0
-                          ? () => _moveServer(order, index, index - 1)
-                          : null,
-                      onMoveDown: index < order.length - 1
-                          ? () => _moveServer(order, index, index + 1)
-                          : null,
                     );
                   },
                 ),
               );
             },
           ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: _ResetOrderButton(onPressed: _onOrderReset),
+          Builder(
+            builder: (context) {
+              final tv =
+                  ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+              final reset = _ResetOrderButton(onPressed: _onOrderReset);
+              if (!tv) return Align(alignment: Alignment.centerLeft, child: reset);
+              return TvCatalogRow(
+                tabId: 'settings',
+                rowId: 'scoring-reset',
+                sortOrder: 2,
+                itemCount: 1,
+                orientation: ShellTvRowOrientation.vertical,
+                child: Align(alignment: Alignment.centerLeft, child: reset),
+              );
+            },
           ),
         ],
       ),
@@ -295,7 +292,7 @@ class _TabStrip extends StatelessWidget {
       rowId: 'scoring-tabs',
       sortOrder: 0,
       itemCount: _tabs.length,
-      resultsRowId: 'scoring-move',
+      resultsRowId: 'scoring-row',
       builder: (context, edgesFor) {
         return Wrap(
           spacing: 8,
@@ -358,8 +355,6 @@ class _ServerRow extends StatelessWidget {
     required this.tries,
     required this.disabled,
     required this.onToggle,
-    this.onMoveUp,
-    this.onMoveDown,
   });
 
   final int index;
@@ -368,8 +363,6 @@ class _ServerRow extends StatelessWidget {
   final int? tries;
   final bool disabled;
   final VoidCallback onToggle;
-  final VoidCallback? onMoveUp;
-  final VoidCallback? onMoveDown;
 
   @override
   Widget build(BuildContext context) {
@@ -381,26 +374,7 @@ class _ServerRow extends StatelessWidget {
         child: Row(
           children: [
             if (tv)
-              SizedBox(
-                width: 56,
-                height: 36,
-                child: Row(
-                  children: [
-                    _MoveChip(
-                      icon: Icons.keyboard_arrow_up_rounded,
-                      enabled: onMoveUp != null,
-                      onTap: onMoveUp,
-                      tvItemIndex: index * 2,
-                    ),
-                    _MoveChip(
-                      icon: Icons.keyboard_arrow_down_rounded,
-                      enabled: onMoveDown != null,
-                      onTap: onMoveDown,
-                      tvItemIndex: index * 2 + 1,
-                    ),
-                  ],
-                ),
-              )
+              const SizedBox(width: 28, height: 36)
             else
               ReorderableDragStartListener(
                 index: index,
@@ -420,6 +394,7 @@ class _ServerRow extends StatelessWidget {
                 onTap: onToggle,
                 borderRadius: 8,
                 scaleOnFocus: ShellTokens.focusActiveScale,
+                showFocusRail: tv,
                 tvTabId: 'settings',
                 tvRowId: 'scoring-row',
                 tvItemIndex: index,
@@ -469,44 +444,6 @@ class _ServerRow extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MoveChip extends StatelessWidget {
-  const _MoveChip({
-    required this.icon,
-    required this.enabled,
-    required this.onTap,
-    required this.tvItemIndex,
-  });
-
-  final IconData icon;
-  final bool enabled;
-  final VoidCallback? onTap;
-  final int tvItemIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    return shellFocusableTap(
-      context: context,
-      onTap: enabled ? onTap : null,
-      borderRadius: 6,
-      scaleOnFocus: ShellTokens.focusActiveScale,
-      tvTabId: 'settings',
-      tvRowId: 'scoring-move',
-      tvItemIndex: tvItemIndex,
-      child: SizedBox(
-        width: 26,
-        height: 32,
-        child: Icon(
-          icon,
-          size: 18,
-          color: enabled
-              ? ForjaShellColors.textPrimary
-              : ForjaShellColors.iconMuted,
         ),
       ),
     );
