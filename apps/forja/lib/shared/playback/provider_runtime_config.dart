@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,6 +34,7 @@ class ProviderRuntimeConfig {
       _snap.animePlaybackProfiles;
   Map<String, ProviderUrlTemplates> get templates => _snap.templates;
   Map<String, String> get apis => _snap.apis;
+  Map<String, Map<String, dynamic>> get engine => _snap.engine;
   Map<String, String> get webstreamr => _snap.webstreamr;
 
   /// Per-[sourceKey] anime probe / PNG-strip policy (builtins ∪ remote).
@@ -671,6 +673,7 @@ class ProviderRuntimeSnapshot {
   final int schema;
   final Map<String, ProviderUrlTemplates> templates;
   final Map<String, String> apis;
+  final Map<String, Map<String, dynamic>> engine;
   final Map<String, String> webstreamr;
   final AnimeEmbedHostConfig megaplay;
   final List<String> miruroOrigins;
@@ -682,6 +685,7 @@ class ProviderRuntimeSnapshot {
     required this.schema,
     required this.templates,
     required this.apis,
+    required this.engine,
     required this.webstreamr,
     required this.megaplay,
     required this.miruroOrigins,
@@ -769,6 +773,7 @@ class ProviderRuntimeSnapshot {
           'index111477': 'https://a.111477.xyz',
           'rgshowsApi': 'https://api.rgshows.ru',
         },
+        engine: const {},
         webstreamr: const {
           // Aligned with WebStreamrMBG src/source bases (VSEmbed stays api.vidsrcEmbed).
           'vidsrc': 'https://vidsrcme.ru',
@@ -994,6 +999,15 @@ class ProviderRuntimeSnapshot {
         webstreamr[e.key.toString()] = v;
       }
     }
+    final engine = <String, Map<String, dynamic>>{};
+    final rawEngine = j['engine'] as Map?;
+    if (rawEngine != null) {
+      for (final e in rawEngine.entries) {
+        final id = e.key.toString().trim();
+        if (id.isEmpty || e.value is! Map) continue;
+        engine[id] = Map<String, dynamic>.from(e.value as Map);
+      }
+    }
     final profiles = <String, AnimePlaybackProfile>{};
     final rawProfiles =
         (anime?['playbackProfiles'] as Map?)?.cast<String, dynamic>();
@@ -1012,6 +1026,7 @@ class ProviderRuntimeSnapshot {
       schema: schema,
       templates: templates,
       apis: apis,
+      engine: engine,
       webstreamr: webstreamr,
       megaplay: megaplay,
       miruroOrigins: origins,
@@ -1028,6 +1043,13 @@ class ProviderRuntimeSnapshot {
     }
     final api = Map<String, String>.from(apis)..addAll(overlay.apis);
     final ws = Map<String, String>.from(webstreamr)..addAll(overlay.webstreamr);
+    final engineMerged = Map<String, Map<String, dynamic>>.from(engine);
+    for (final e in overlay.engine.entries) {
+      engineMerged[e.key] = mergeEngineConfig(
+        engineMerged[e.key] ?? const {},
+        e.value,
+      );
+    }
     final profiles = Map<String, AnimePlaybackProfile>.from(animePlaybackProfiles);
     for (final e in overlay.animePlaybackProfiles.entries) {
       if (e.key == 'vidwish') continue;
@@ -1043,6 +1065,7 @@ class ProviderRuntimeSnapshot {
       schema: overlay.schema,
       templates: tpl,
       apis: api,
+      engine: engineMerged,
       webstreamr: ws,
       megaplay: megaplay.merged(overlay.megaplay),
       miruroOrigins: overlay.miruroOrigins.isNotEmpty
@@ -1107,6 +1130,7 @@ class ProviderRuntimeSnapshot {
           for (final e in templates.entries) e.key: e.value.toJson(),
         },
         'apis': apis,
+        'engine': engine,
         'webstreamr': webstreamr,
         'anime': {
           'megaplay': megaplay.toJson(),

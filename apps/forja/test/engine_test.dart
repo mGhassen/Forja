@@ -307,27 +307,91 @@ void main() {
 
     test('fans out every player.videasy.to Servers-tab mirror', () async {
       final src = await rootBundle.loadString('assets/providers/videasy.js');
-      expect(src, contains("endpoint: 'cdn'"));
-      expect(src, contains("endpoint: 'downloader2'"));
-      expect(src, contains("endpoint: 'm4uhd'"));
-      expect(src, contains("endpoint: 'vsrc'"));
-      expect(src, contains("endpoint: 'hdmovie'"));
-      expect(src, contains("endpoint: 'meine'"));
-      expect(src, contains("endpoint: 'lamovie'"));
-      expect(src, contains("endpoint: 'superflix'"));
-      expect(src, contains("name: 'Yoru'"));
-      expect(src, contains("name: 'Raze'"));
+      expect(src, contains('ctx.config'));
+      expect(src, contains('cfg.mirrors'));
+      expect(src, contains('mirror.endpoint'));
+      expect(src, contains('mirror.name'));
       expect(src, contains('Promise.all'));
       expect(src, contains('parseM3u8'));
       expect(src, contains('quality:'));
       expect(src, contains('language:'));
-      expect(src, isNot(contains("/cdn/sources-with-title?' + q")));
+      expect(src, contains('ctx.crypto.streamDecrypt'));
+      final jsonStr = await rootBundle.loadString(
+        'assets/providers/engine.json',
+      );
+      final mirrors = ((jsonDecode(jsonStr) as Map)['plugins'] as List)
+          .cast<Map>()
+          .firstWhere((p) => p['id'] == 'videasy')['config']['mirrors']
+          as List;
+      expect(mirrors.map((m) => m['endpoint']), contains('cdn'));
+      expect(mirrors.map((m) => m['name']), contains('Yoru'));
+      expect(mirrors.map((m) => m['name']), contains('Raze'));
+    });
+
+    test('engine.json HTTP plugins ship opaque config bags', () async {
+      final jsonStr = await rootBundle.loadString(
+        'assets/providers/engine.json',
+      );
+      final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+      final plugins = map['plugins'] as List;
+      Map<String, dynamic> plugin(String id) => Map<String, dynamic>.from(
+            plugins.firstWhere((p) => (p as Map)['id'] == id) as Map,
+          );
+      expect(plugin('videasy')['config'], isNotNull);
+      expect(plugin('videasy')['config']['mirrors'], isA<List>());
+      expect(plugin('vidlink')['config']['api'], isNotEmpty);
+      expect(plugin('vixsrc')['config']['base'], isNotEmpty);
+      expect(plugin('vixsrc')['config']['subs'], isNotEmpty);
+    });
+
+    test('EnginePlugin.config parses and persists', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'videasy',
+        'name': 'Videasy',
+        'entry': 'videasy.js',
+        'config': {
+          'api': 'https://api.example',
+          'mirrors': [
+            {'endpoint': 'cdn', 'name': 'Yoru'},
+          ],
+        },
+      });
+      expect(plugin.config['api'], 'https://api.example');
+      expect(plugin.config['mirrors'], isA<List>());
+      expect(plugin.toJson()['config'], isNotNull);
+    });
+
+    test('mergeEngineConfig deep-merges maps and replaces lists', () {
+      final merged = mergeEngineConfig(
+        {
+          'api': 'https://base.example',
+          'origin': 'https://player.example',
+          'mirrors': [
+            {'endpoint': 'cdn', 'name': 'A'},
+          ],
+          'nested': {'a': 1, 'b': 2},
+        },
+        {
+          'api': 'https://overlay.example',
+          'mirrors': [
+            {'endpoint': 'vsrc', 'name': 'B'},
+          ],
+          'nested': {'b': 9, 'c': 3},
+        },
+      );
+      expect(merged['api'], 'https://overlay.example');
+      expect(merged['origin'], 'https://player.example');
+      expect(merged['mirrors'], [
+        {'endpoint': 'vsrc', 'name': 'B'},
+      ]);
+      expect(merged['nested'], {'a': 1, 'b': 9, 'c': 3});
     });
 
     test(
       'vidlink requests dash-hevc and keeps MovieBox playlist cookies',
       () async {
         final src = await rootBundle.loadString('assets/providers/vidlink.js');
+        expect(src, contains('ctx.config'));
         expect(src, contains('X-Playback-Environment'));
         expect(src, contains('dash-hevc'));
         expect(src, contains('playlistHeaders'));
@@ -340,10 +404,11 @@ void main() {
       'vixsrc uses API, embed parse, m3u8 variants, and wyzie subs',
       () async {
         final src = await rootBundle.loadString('assets/providers/vixsrc.js');
+        expect(src, contains('ctx.config'));
         expect(src, contains('/api/tv/'));
         expect(src, contains('/api/movie/'));
         expect(src, contains('parseM3u8Variants'));
-        expect(src, contains('sub.wyzie.ru'));
+        expect(src, contains('ctx.config.subs'));
         expect(src, contains('resolveLegacyPage'));
         expect(src, contains('1080p'));
         expect(src, contains("name: 'Vixsrc'"));
@@ -509,6 +574,93 @@ function extract(ctx) {
       expect(streams, hasLength(1));
       expect(streams.single['url'], 'https://cdn.example/a.m3u8');
       expect(streams.single['title'], json);
+    });
+
+    test('extract(ctx) decrypts via ctx.crypto.streamDecrypt alias', () async {
+      const seed = 'alias-seed';
+      const mediaId = '42';
+      const json = '{"alias":true}';
+      final payload = StreamCrypto.encryptForTest(json, seed, mediaId);
+      final rt = EngineRuntime.instance;
+      await rt.loadPlugin(
+        pluginId: 'crypto-alias',
+        code:
+            '''
+function extract(ctx) {
+  var body = ctx.crypto.streamDecrypt(${jsonEncode(payload)}, ${jsonEncode(seed)}, ctx.tmdbId);
+  return Promise.resolve([{ url: 'https://cdn.example/b.m3u8', title: body }]);
+}
+''',
+      );
+      final streams = await rt.extract(
+        pluginId: 'crypto-alias',
+        tmdbId: mediaId,
+        type: 'movie',
+      );
+      expect(streams.single['title'], json);
+    });
+
+    test('extract(ctx) receives imdbId and config', () async {
+      final rt = EngineRuntime.instance;
+      await rt.loadPlugin(
+        pluginId: 'ctx-meta',
+        code: '''
+function extract(ctx) {
+  return Promise.resolve([{
+    url: 'https://cdn.example/meta.m3u8',
+    title: ctx.imdbId + '|' + (ctx.config.api || '')
+  }]);
+}
+''',
+      );
+      final streams = await rt.extract(
+        pluginId: 'ctx-meta',
+        tmdbId: '99',
+        imdbId: 'tt123',
+        type: 'movie',
+        config: const {'api': 'https://cfg.example'},
+      );
+      expect(streams.single['title'], 'tt123|https://cfg.example');
+    });
+
+    test('extract(ctx) html loads cheerio', () async {
+      final rt = EngineRuntime.instance;
+      await rt.loadPlugin(
+        pluginId: 'html-test',
+        code: r'''
+function extract(ctx) {
+  var $ = ctx.html('<div class="x">hi</div>');
+  if (!$) return [];
+  var t = $('.x').text();
+  return [{ url: 'https://cdn.example/c.m3u8', title: t }];
+}
+''',
+      );
+      final streams = await rt.extract(
+        pluginId: 'html-test',
+        tmdbId: '1',
+        type: 'movie',
+      );
+      expect(streams.single['title'], 'hi');
+    });
+
+    test('extract(ctx) crypto MD5 via CryptoJS', () async {
+      final rt = EngineRuntime.instance;
+      await rt.loadPlugin(
+        pluginId: 'md5-test',
+        code: '''
+function extract(ctx) {
+  var h = CryptoJS.MD5('abc').toString();
+  return [{ url: 'https://cdn.example/d.m3u8', title: h }];
+}
+''',
+      );
+      final streams = await rt.extract(
+        pluginId: 'md5-test',
+        tmdbId: '1',
+        type: 'movie',
+      );
+      expect(streams.single['title'], '900150983cd24fb0d6963f7d28e17f72');
     });
   });
 }

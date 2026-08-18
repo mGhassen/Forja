@@ -17,14 +17,14 @@ void showSpeedMenu(
     width: 300,
     child: Padding(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: _kPlaybackSpeeds.map((speed) {
           final selected = speed == currentSpeed;
           return PlayerPopupOptionChip(
             label: speed == 1.0 ? 'Normal' : '${speed}x',
             selected: selected,
+            expanded: true,
             onTap: () {
               onSpeedChanged(speed);
               PlayerPopupPanel.dismiss();
@@ -211,32 +211,39 @@ void _openPlayerSettingsPage({
   );
 }
 
+/// Equal-width chips in a left/right row (On/Off, Fit, decode).
+Widget playerPopupChipRow(List<Widget> chips) {
+  return Row(
+    children: [
+      for (var i = 0; i < chips.length; i++) ...[
+        if (i != 0) const SizedBox(width: 6),
+        Expanded(child: chips[i]),
+      ],
+    ],
+  );
+}
+
 /// Lab-style toggle chip row used in floating Settings menus.
 Widget playerPopupOnOffChips({
   required bool value,
   required ValueChanged<bool> onChanged,
 }) {
-  return Row(
-    children: [
-      Expanded(
-        child: PlayerPopupOptionChip(
-          label: 'On',
-          selected: value,
-          expanded: true,
-          onTap: () => onChanged(true),
-        ),
-      ),
-      const SizedBox(width: 6),
-      Expanded(
-        child: PlayerPopupOptionChip(
-          label: 'Off',
-          selected: !value,
-          expanded: true,
-          onTap: () => onChanged(false),
-        ),
-      ),
-    ],
-  );
+  return playerPopupChipRow([
+    PlayerPopupOptionChip(
+      label: 'On',
+      selected: value,
+      expanded: true,
+      grouped: true,
+      onTap: () => onChanged(true),
+    ),
+    PlayerPopupOptionChip(
+      label: 'Off',
+      selected: !value,
+      expanded: true,
+      grouped: true,
+      onTap: () => onChanged(false),
+    ),
+  ]);
 }
 
 /// Labeled On/Off chip pair for Settings section cards.

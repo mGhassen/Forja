@@ -1,10 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart' as dart_crypto;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_js/flutter_js.dart';
+import 'package:forja/shared/engine/engine_polyfills.dart';
+import 'package:forja/shared/engine/host_resolver.dart';
+import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/extractors/core/stream_crypto.dart';
+import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:http/http.dart' as http;
+import 'package:rust/rust.dart';
 
 class EngineMutex {
   Future<void> _tail = Future<void>.value();
@@ -49,6 +56,15 @@ class EngineRuntime {
 
   http.Client _http = http.Client();
 
+  Movie? _extractMovie;
+  String? _extractImdbId;
+  String _extractTmdbId = '';
+  String _extractType = 'movie';
+  int _extractSeason = 1;
+  int _extractEpisode = 1;
+  String _extractTitle = '';
+  String _extractYear = '';
+
   Future<void> _ensureInit() async {
     if (_ready) return;
     if (_initCompleter != null) return _initCompleter!.future;
@@ -56,11 +72,13 @@ class EngineRuntime {
     try {
       final rt = getJavascriptRuntime(
         xhr: false,
-        extraArgs: const {'stackSize': 2 * 1024 * 1024},
+        extraArgs: const {'stackSize': 4 * 1024 * 1024},
       );
       _runtime = rt;
       _registerBridges(rt);
       _installHost(rt);
+      _installPolyfills(rt);
+      await _loadCheerio(rt);
       _ready = true;
       _initCompleter!.complete();
     } catch (e, st) {
@@ -105,6 +123,85 @@ class EngineRuntime {
       } catch (e) {
         return 'ENGINE_DECRYPT_ERROR:${e.toString()}';
       }
+    });
+
+    br('CryptoDigest', (args) {
+      try {
+        final m = _bridgeMap(args);
+        final algo = (m['algo'] ?? 'SHA256').toString();
+        final hex = (m['hex'] ?? '').toString();
+        if (hex.isNotEmpty) {
+          return _hashFor(algo).convert(bytesFromHex(hex)).toString();
+        }
+        return _digestHex(algo, (m['data'] ?? '').toString());
+      } catch (_) {
+        return '';
+      }
+    });
+    br('CryptoHmac', (args) {
+      try {
+        final m = _bridgeMap(args);
+        return _hmacHex(
+          (m['algo'] ?? 'SHA256').toString(),
+          (m['key'] ?? '').toString(),
+          (m['data'] ?? '').toString(),
+        );
+      } catch (_) {
+        return '';
+      }
+    });
+    br('CryptoUtf8ToHex', (args) {
+      try {
+        final m = _bridgeMap(args);
+        return hexFromBytes(utf8.encode((m['data'] ?? '').toString()));
+      } catch (_) {
+        return '';
+      }
+    });
+    br('CryptoHexToUtf8', (args) {
+      try {
+        final m = _bridgeMap(args);
+        return utf8.decode(
+          bytesFromHex((m['data'] ?? '').toString()),
+          allowMalformed: true,
+        );
+      } catch (_) {
+        return '';
+      }
+    });
+    br('CryptoAes', (args) {
+      try {
+        final m = _bridgeMap(args);
+        return aesHex(
+          mode: (m['mode'] ?? 'AES-CBC').toString(),
+          keyHex: (m['key'] ?? '').toString(),
+          ivHex: (m['iv'] ?? '').toString(),
+          dataHex: (m['data'] ?? '').toString(),
+          encrypt: m['encrypt'] == true,
+        );
+      } catch (_) {
+        return '';
+      }
+    });
+    br('ParseUrl', (args) {
+      try {
+        final m = _bridgeMap(args);
+        return _parseUrl((m['url'] ?? '').toString());
+      } catch (_) {
+        return _emptyUrlParts();
+      }
+    });
+
+    br('HostStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final hostId = (m['hostId'] ?? '').toString().trim();
+        final gen = _fetchGeneration;
+        unawaited(_dispatchHost(id: id, hostId: hostId, gen: gen));
+      } catch (_) {}
+      return null;
     });
 
     br('FetchStart', (args) {
@@ -195,6 +292,41 @@ class EngineRuntime {
     }
   }
 
+  void _installPolyfills(JavascriptRuntime rt) {
+    final res = rt.evaluate(kEnginePolyfillsJs, sourceUrl: 'engine://polyfills');
+    if (res.isError) {
+      throw StateError('engine polyfills failed: ${res.stringResult}');
+    }
+  }
+
+  Future<void> _loadCheerio(JavascriptRuntime rt) async {
+    try {
+      final code =
+          await rootBundle.loadString('assets/nuvio/cheerio.bundle.js');
+      final wrapped = '''
+(function(){
+  var module = { exports: {} };
+  var exports = module.exports;
+  try {
+    $code
+    var c = (module.exports && Object.keys(module.exports).length > 0)
+      ? module.exports
+      : (typeof cheerio !== 'undefined' ? cheerio : null);
+    if (c) globalThis.__engineCheerio = c;
+  } catch (e) {
+    sendMessage('Console', JSON.stringify({level:'error',msg:'[engine cheerio] ' + (e && e.message ? e.message : e)}));
+  }
+})();
+''';
+      final res = rt.evaluate(wrapped, sourceUrl: 'engine://cheerio');
+      if (res.isError) {
+        debugPrint('[engine] cheerio bundle error: ${res.stringResult}');
+      }
+    } catch (e) {
+      debugPrint('[engine] cheerio load failed: $e');
+    }
+  }
+
   Future<void> loadPlugin({required String pluginId, required String code}) {
     return _jsLock.run(() async {
       await _ensureInit();
@@ -236,11 +368,14 @@ class EngineRuntime {
   Future<List<Map<String, dynamic>>> extract({
     required String pluginId,
     required String tmdbId,
+    String? imdbId,
     required String type,
     int? season,
     int? episode,
     String? title,
     String? year,
+    Map<String, dynamic> config = const {},
+    Movie? movie,
     Duration timeout = const Duration(seconds: 30),
     bool Function()? isCancelled,
   }) {
@@ -257,11 +392,14 @@ class EngineRuntime {
       return _extractUnlocked(
         pluginId: pluginId,
         tmdbId: tmdbId,
+        imdbId: imdbId,
         type: type,
         season: season,
         episode: episode,
         title: title,
         year: year,
+        config: config,
+        movie: movie,
         timeout: timeout,
         isCancelled: isCancelled,
       );
@@ -271,15 +409,26 @@ class EngineRuntime {
   Future<List<Map<String, dynamic>>> _extractUnlocked({
     required String pluginId,
     required String tmdbId,
+    String? imdbId,
     required String type,
     int? season,
     int? episode,
     String? title,
     String? year,
+    Map<String, dynamic> config = const {},
+    Movie? movie,
     required Duration timeout,
     bool Function()? isCancelled,
   }) async {
     final rt = _runtime!;
+    _extractMovie = movie;
+    _extractImdbId = imdbId;
+    _extractTmdbId = tmdbId;
+    _extractType = type == 'tv' || type == 'series' ? 'tv' : 'movie';
+    _extractSeason = season ?? 1;
+    _extractEpisode = episode ?? 1;
+    _extractTitle = title ?? '';
+    _extractYear = year ?? '';
     final callId = ++_callSeq;
     final completer = Completer<String>();
     _pendingResults[callId] = completer;
@@ -289,11 +438,13 @@ class EngineRuntime {
     try {
       final ctx = jsonEncode({
         'tmdbId': tmdbId,
-        'type': type == 'tv' || type == 'series' ? 'tv' : 'movie',
-        'season': season ?? 1,
-        'episode': episode ?? 1,
-        'title': title ?? '',
-        'year': year ?? '',
+        'imdbId': imdbId ?? '',
+        'type': _extractType,
+        'season': _extractSeason,
+        'episode': _extractEpisode,
+        'title': _extractTitle,
+        'year': _extractYear,
+        'config': config,
       });
       final invoker = '''
 (function(){
@@ -304,27 +455,31 @@ class EngineRuntime {
     return;
   }
   var meta = $ctx;
+  var streamDecrypt = function(body, seed, tmdbId) {
+    var out = sendMessage('StreamCryptoDecrypt', JSON.stringify({
+      body: String(body == null ? '' : body),
+      seed: String(seed == null ? '' : seed),
+      tmdbId: String(tmdbId == null ? '' : tmdbId)
+    }));
+    if (typeof out === 'string' && out.indexOf('ENGINE_DECRYPT_ERROR:') === 0) {
+      throw new Error(out.substring('ENGINE_DECRYPT_ERROR:'.length));
+    }
+    return out;
+  };
   var ctx = {
     tmdbId: meta.tmdbId,
+    imdbId: meta.imdbId,
     type: meta.type,
     season: meta.season,
     episode: meta.episode,
     title: meta.title,
     year: meta.year,
+    config: meta.config || {},
     fetch: globalThis.fetch,
-    streamcrypto: {
-      decrypt: function(body, seed, tmdbId) {
-        var out = sendMessage('StreamCryptoDecrypt', JSON.stringify({
-          body: String(body == null ? '' : body),
-          seed: String(seed == null ? '' : seed),
-          tmdbId: String(tmdbId == null ? '' : tmdbId)
-        }));
-        if (typeof out === 'string' && out.indexOf('ENGINE_DECRYPT_ERROR:') === 0) {
-          throw new Error(out.substring('ENGINE_DECRYPT_ERROR:'.length));
-        }
-        return out;
-      }
-    }
+    html: globalThis.__engineHtml,
+    host: globalThis.__engineHost,
+    crypto: Object.assign({}, globalThis.CryptoJS || {}, { streamDecrypt: streamDecrypt }),
+    streamcrypto: { decrypt: streamDecrypt }
   };
   Promise.resolve()
     .then(function(){ return fn(ctx); })
@@ -505,6 +660,126 @@ class EngineRuntime {
     }
   }
 
+  Future<void> _dispatchHost({
+    required int id,
+    required String hostId,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    if (hostId.isEmpty) {
+      _resolveHost(id: id, gen: gen, streams: const []);
+      return;
+    }
+    final movie = _extractMovie ??
+        Movie(
+          id: int.tryParse(_extractTmdbId) ?? 0,
+          imdbId: _extractImdbId,
+          title: _extractTitle,
+          posterPath: '',
+          backdropPath: '',
+          voteAverage: 0,
+          releaseDate: _extractYear.isNotEmpty ? '$_extractYear-01-01' : '',
+          mediaType: _extractType,
+        );
+    final plugin = EnginePlugin(
+      id: 'host:$hostId',
+      name: hostId,
+      entry: '',
+      kind: 'host',
+      hostId: hostId,
+    );
+    List<Map<String, dynamic>> streams = const [];
+    try {
+      streams = await EngineHostResolver.resolve(
+        plugin: plugin,
+        movie: movie,
+        season: _extractSeason,
+        episode: _extractEpisode,
+        isCancelled: () => gen != _fetchGeneration,
+      );
+    } catch (e) {
+      debugPrint('[engine:host] resolve failed id=$hostId: $e');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveHost(id: id, gen: gen, streams: streams);
+  }
+
+  void _resolveHost({
+    required int id,
+    required int gen,
+    required List<Map<String, dynamic>> streams,
+  }) {
+    if (gen != _fetchGeneration) return;
+    final rt = _runtime;
+    if (rt == null) return;
+    try {
+      rt.evaluate(
+        'try { globalThis.__engineHostResolve($id, ${jsonEncode({'streams': streams})}); } catch (e) {}',
+        sourceUrl: 'engine://host/$id',
+      );
+    } catch (e) {
+      debugPrint('[engine:host] resolve callback failed id=$id: $e');
+    }
+  }
+
+  String _digestHex(String algo, String utf8Str) {
+    final bytes = utf8.encode(utf8Str);
+    final hash = _hashFor(algo).convert(bytes);
+    return hash.toString();
+  }
+
+  String _hmacHex(String algo, String key, String data) {
+    final h = dart_crypto.Hmac(_hashFor(algo), utf8.encode(key));
+    return h.convert(utf8.encode(data)).toString();
+  }
+
+  dart_crypto.Hash _hashFor(String algo) {
+    switch (algo.toUpperCase()) {
+      case 'MD5':
+        return dart_crypto.md5;
+      case 'SHA1':
+        return dart_crypto.sha1;
+      case 'SHA512':
+        return dart_crypto.sha512;
+      case 'SHA256':
+      default:
+        return dart_crypto.sha256;
+    }
+  }
+
+  Map<String, dynamic> _parseUrl(String input) {
+    try {
+      final u = Uri.parse(input);
+      final scheme = u.scheme.isEmpty ? 'https' : u.scheme;
+      final host = u.host;
+      final port = u.hasPort ? u.port.toString() : '';
+      final search = u.query.isEmpty ? '' : '?${u.query}';
+      final fragment = u.fragment.isEmpty ? '' : '#${u.fragment}';
+      final pathname = u.path.isEmpty ? '/' : u.path;
+      return {
+        'protocol': '$scheme:',
+        'host': port.isEmpty ? host : '$host:$port',
+        'hostname': host,
+        'port': port,
+        'pathname': pathname,
+        'search': search,
+        'hash': fragment,
+      };
+    } catch (_) {
+      return _emptyUrlParts();
+    }
+  }
+
+  Map<String, dynamic> _emptyUrlParts() => {
+        'protocol': '',
+        'host': '',
+        'hostname': '',
+        'port': '',
+        'pathname': '/',
+        'search': '',
+        'hash': '',
+      };
+
   static const _hostJs = r'''
 (function(){
   globalThis.__engineRegistry = globalThis.__engineRegistry || {};
@@ -570,6 +845,26 @@ class EngineRuntime {
     sendMessage('TimerCancel', JSON.stringify({id: id|0}));
   };
   globalThis.clearInterval = globalThis.clearTimeout;
+  globalThis.__engineHostPending = globalThis.__engineHostPending || {};
+  globalThis.__engineHostSeq = globalThis.__engineHostSeq || 0;
+  globalThis.__engineHostResolve = function(id, envelope){
+    var p = globalThis.__engineHostPending[id];
+    if (p) { delete globalThis.__engineHostPending[id]; p(envelope); }
+  };
+  globalThis.__engineHost = function(hostId){
+    return new Promise(function(resolve){
+      var id = ++globalThis.__engineHostSeq;
+      globalThis.__engineHostPending[id] = function(env){
+        resolve(env && env.streams ? env.streams : []);
+      };
+      sendMessage('HostStart', JSON.stringify({id: id, hostId: String(hostId)}));
+    });
+  };
+  globalThis.__engineHtml = function(html){
+    var c = globalThis.__engineCheerio;
+    if (!c || typeof c.load !== 'function') return null;
+    return c.load(String(html == null ? '' : html));
+  };
   if (typeof globalThis.queueMicrotask !== 'function') {
     globalThis.queueMicrotask = function(cb){ Promise.resolve().then(cb); };
   }

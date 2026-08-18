@@ -1,6 +1,9 @@
 function extract(ctx) {
-  var api = 'https://api.speedracelight.com';
-  var origin = 'https://player.videasy.to';
+  var cfg = ctx.config || {};
+  var api = cfg.api;
+  var origin = cfg.origin;
+  var mirrors = cfg.mirrors || [];
+  if (!api || !origin) return Promise.resolve([]);
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
   var headers = {
@@ -15,17 +18,6 @@ function extract(ctx) {
     Referer: origin + '/',
     Origin: origin,
   };
-  var mirrors = [
-    { endpoint: 'cdn', name: 'Yoru' },
-    { endpoint: 'downloader2', name: 'Cypher' },
-    { endpoint: 'm4uhd', name: 'Breach' },
-    { endpoint: 'vsrc', name: 'Neon' },
-    { endpoint: 'hdmovie', name: 'Vyse', qualityFilter: 'English' },
-    { endpoint: 'meine', name: 'Killjoy', language: 'german' },
-    { endpoint: 'hdmovie', name: 'Fade', qualityFilter: 'Hindi' },
-    { endpoint: 'lamovie', name: 'Omen' },
-    { endpoint: 'superflix', name: 'Raze' },
-  ];
   var isMovie = ctx.type === 'movie';
   var tmdbId = String(ctx.tmdbId);
 
@@ -180,7 +172,7 @@ function extract(ctx) {
           return [];
         }
         try {
-          return parseSources(JSON.parse(ctx.streamcrypto.decrypt(body, seed, tmdbId)), mirror);
+          return parseSources(JSON.parse(ctx.crypto.streamDecrypt(body, seed, tmdbId)), mirror);
         } catch (e) {
           return [];
         }

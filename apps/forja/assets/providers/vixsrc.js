@@ -1,5 +1,7 @@
 function extract(ctx) {
-  var BASE = 'https://vixsrc.to';
+  var cfg = ctx.config || {};
+  var BASE = cfg.base;
+  if (!BASE) return Promise.resolve([]);
   var ua =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   var isMovie = ctx.type === 'movie';
@@ -22,9 +24,12 @@ function extract(ctx) {
   }
 
   function subtitleApiUrl() {
+    var subs = (ctx.config && ctx.config.subs) || '';
+    if (!subs) return '';
     return isMovie
-      ? 'https://sub.wyzie.ru/search?id=' + encodeURIComponent(tmdbId)
-      : 'https://sub.wyzie.ru/search?id=' +
+      ? subs + '/search?id=' + encodeURIComponent(tmdbId)
+      : subs +
+          '/search?id=' +
           encodeURIComponent(tmdbId) +
           '&season=' +
           season +
@@ -236,7 +241,9 @@ function extract(ctx) {
     })
     .then(function (rows) {
       if (!rows || !rows.length) return [];
-      return fetchJson(subtitleApiUrl(), BASE + '/')
+      var subUrl = subtitleApiUrl();
+      if (!subUrl) return rows;
+      return fetchJson(subUrl, BASE + '/')
         .then(function (tracks) {
           var sub = pickEnglishSubtitle(Array.isArray(tracks) ? tracks : []);
           return attachSubtitle(rows, sub);

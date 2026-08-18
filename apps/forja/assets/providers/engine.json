@@ -1,21 +1,43 @@
 {
   "schema": 1,
   "name": "Forja",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "plugins": [
     {
       "id": "videasy",
       "name": "Videasy",
       "entry": "videasy.js",
       "types": ["movie", "tv"],
-      "kind": "http"
+      "kind": "http",
+      "config": {
+        "api": "https://api.speedracelight.com",
+        "origin": "https://player.videasy.to",
+        "mirrors": [
+          { "endpoint": "cdn", "name": "Yoru" },
+          { "endpoint": "downloader2", "name": "Cypher" },
+          { "endpoint": "m4uhd", "name": "Breach" },
+          { "endpoint": "vsrc", "name": "Neon" },
+          { "endpoint": "hdmovie", "name": "Vyse", "qualityFilter": "English" },
+          { "endpoint": "meine", "name": "Killjoy", "language": "german" },
+          { "endpoint": "hdmovie", "name": "Fade", "qualityFilter": "Hindi" },
+          { "endpoint": "lamovie", "name": "Omen" },
+          { "endpoint": "superflix", "name": "Raze" }
+        ]
+      }
     },
     {
       "id": "vidlink",
       "name": "VidLink",
       "entry": "vidlink.js",
       "types": ["movie", "tv"],
-      "kind": "http"
+      "kind": "http",
+      "config": {
+        "api": "https://vidlink.pro/api/b",
+        "enc": "https://enc-dec.app/api",
+        "origin": "https://vidlink.pro",
+        "proxy": "https://noon.mooncase.online/",
+        "tmdbKey": "68e094699525b18a70bab2f86b1fa706"
+      }
     },
     {
       "id": "vidsrc",
@@ -36,7 +58,11 @@
       "name": "VixSrc",
       "entry": "vixsrc.js",
       "types": ["movie", "tv"],
-      "kind": "http"
+      "kind": "http",
+      "config": {
+        "base": "https://vixsrc.to",
+        "subs": "https://sub.wyzie.ru"
+      }
     },
     {
       "id": "vidnest",
@@ -135,7 +161,12 @@
       "entry": "dooflix.js",
       "types": ["movie", "tv"],
       "kind": "http",
-      "enabled": false
+      "enabled": false,
+      "config": {
+        "api": "https://panel.watchkaroabhi.com",
+        "key": "qNhKLJiZVyoKdi9NCQGz8CIGrpUijujE",
+        "origin": "https://molop.art/"
+      }
     },
     {
       "id": "yflix",
@@ -143,7 +174,12 @@
       "entry": "yflix.js",
       "types": ["movie", "tv"],
       "kind": "http",
-      "enabled": false
+      "enabled": false,
+      "config": {
+        "enc": "https://enc-dec.app/api",
+        "db": "https://enc-dec.app/db/flix",
+        "ajax": "https://1moviesz.to/ajax"
+      }
     }
   ]
 }

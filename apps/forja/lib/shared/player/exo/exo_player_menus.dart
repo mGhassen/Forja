@@ -68,9 +68,8 @@ abstract final class ExoPlayerMenus {
       anchorContext: anchorContext,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             // While Auto/ABR is active, hide Auto and highlight the playing
             // track. Auto reappears once a fixed quality is locked.
@@ -78,6 +77,7 @@ abstract final class ExoPlayerMenus {
               PlayerPopupOptionChip(
                 label: 'Auto',
                 selected: false,
+                expanded: true,
                 onTap: () async {
                   PlayerPopupPanel.dismiss();
                   await onSelect(null);
@@ -93,6 +93,7 @@ abstract final class ExoPlayerMenus {
                 PlayerPopupOptionChip(
                   label: t.label,
                   selected: t.selected,
+                  expanded: true,
                   onTap: () async {
                     PlayerPopupPanel.dismiss();
                     // Lock even if this track is the Auto pick.
@@ -128,9 +129,8 @@ abstract final class ExoPlayerMenus {
             pageBuilder: (_) => StatefulBuilder(
               builder: (context, setPage) {
                 final current = rateOf();
-                return Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: const [
                     0.25,
                     0.5,
@@ -144,6 +144,7 @@ abstract final class ExoPlayerMenus {
                     return PlayerPopupOptionChip(
                       label: speed == 1.0 ? 'Normal' : '${speed}x',
                       selected: speed == current,
+                      expanded: true,
                       onTap: () async {
                         await onRate(speed);
                         setPage(() {});
@@ -171,21 +172,19 @@ abstract final class ExoPlayerMenus {
                   ('fill', 'Fill'),
                   ('zoom', 'Zoom'),
                 ];
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final (mode, label) in options)
-                      PlayerPopupOptionChip(
-                        label: label,
-                        selected: current == mode,
-                        onTap: () async {
-                          await onResize(mode);
-                          setPage(() {});
-                        },
-                      ),
-                  ],
-                );
+                return playerPopupChipRow([
+                  for (final (mode, label) in options)
+                    PlayerPopupOptionChip(
+                      label: label,
+                      selected: current == mode,
+                      expanded: true,
+                      grouped: true,
+                      onTap: () async {
+                        await onResize(mode);
+                        setPage(() {});
+                      },
+                    ),
+                ]);
               },
             ),
           ),

@@ -1,7 +1,9 @@
 function extract(ctx) {
-  var API = 'https://panel.watchkaroabhi.com';
-  var KEY = 'qNhKLJiZVyoKdi9NCQGz8CIGrpUijujE';
-  var REF = 'https://molop.art/';
+  var cfg = ctx.config || {};
+  var API = cfg.api;
+  var KEY = cfg.key;
+  var REF = cfg.origin;
+  if (!API || !KEY || !REF) return Promise.resolve([]);
   var apiHeaders = {
     'X-Package-Name': 'com.king.moja',
     'User-Agent': 'dooflix',

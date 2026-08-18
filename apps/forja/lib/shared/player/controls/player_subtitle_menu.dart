@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/player/utils.dart';
-import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
 
@@ -168,14 +167,14 @@ class PlayerSubtitleMenu {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _SubtitleHeaderChip(
+          PlayerPopupHeaderChip(
             label: 'Off',
             selected: subtitlesOff,
             onTap: turnOffSubtitles,
           ),
           if (!hideLoadFile) ...[
             const SizedBox(width: 6),
-            _SubtitleHeaderChip(
+            PlayerPopupHeaderChip(
               label: 'File',
               icon: Icons.upload_file_rounded,
               selected: false,
@@ -190,7 +189,7 @@ class PlayerSubtitleMenu {
           ],
           if (onTitleSearch != null) ...[
             const SizedBox(width: 6),
-            _SubtitleHeaderChip(
+            PlayerPopupHeaderChip(
               label: 'Search',
               icon: Icons.search_rounded,
               selected: false,
@@ -380,87 +379,6 @@ class PlayerSubtitleMenu {
             ),
         ],
       ),
-    );
-  }
-}
-
-/// Compact header chip (Off / File) beside Settings in the Subtitles menu.
-class _SubtitleHeaderChip extends StatelessWidget {
-  const _SubtitleHeaderChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.icon,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final face = Container(
-      height: 28,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: selected ? PlayerPopupTokens.accent : Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        border: Border.all(
-          color: selected
-              ? PlayerPopupTokens.accent
-              : PlayerPopupTokens.border,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(
-              icon,
-              size: 14,
-              color: selected
-                  ? PlayerPopupTokens.accentFg
-                  : PlayerPopupTokens.muted,
-            ),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              color: selected
-                  ? PlayerPopupTokens.accentFg
-                  : PlayerPopupTokens.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-    if (!tvFocus) {
-      return Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-          hoverColor: selected
-              ? Colors.black.withValues(alpha: 0.06)
-              : ForjaShellColors.inkHover,
-          child: face,
-        ),
-      );
-    }
-    return FocusableControl(
-      onTap: onTap,
-      borderRadius: PlayerPopupTokens.chipRadius,
-      scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      child: face,
     );
   }
 }

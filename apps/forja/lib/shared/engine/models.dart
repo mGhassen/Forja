@@ -8,6 +8,7 @@ class EnginePlugin {
     this.kind = 'http',
     this.hostId,
     this.enabled = true,
+    this.config = const {},
   });
 
   final String id;
@@ -20,6 +21,7 @@ class EnginePlugin {
   /// When [kind] is `host`, which built-in provider to resolve (`vidsrc`, …).
   final String? hostId;
   final bool enabled;
+  final Map<String, dynamic> config;
 
   bool get isHttp => kind == 'http';
   bool get isHost => kind == 'host';
@@ -57,6 +59,7 @@ class EnginePlugin {
           : 'http',
       hostId: (j['hostId'] as String?)?.trim(),
       enabled: (j['enabled'] as bool?) ?? true,
+      config: engineConfigMap(j['config']),
     );
   }
 
@@ -69,6 +72,7 @@ class EnginePlugin {
     'kind': kind,
     if (hostId != null) 'hostId': hostId,
     'enabled': enabled,
+    if (config.isNotEmpty) 'config': config,
   };
 
   EnginePlugin copyWith({bool? enabled}) => EnginePlugin(
@@ -80,6 +84,7 @@ class EnginePlugin {
     kind: kind,
     hostId: hostId,
     enabled: enabled ?? this.enabled,
+    config: config,
   );
 }
 
@@ -218,6 +223,33 @@ String? nextEnginePluginId({
     if (selectedIds.contains(id) && !fetchedIds.contains(id)) return id;
   }
   return null;
+}
+
+Map<String, dynamic> engineConfigMap(dynamic raw) {
+  if (raw is! Map) return const {};
+  return Map<String, dynamic>.from(raw);
+}
+
+/// Overlay wins. Nested maps merge; lists and scalars replace.
+Map<String, dynamic> mergeEngineConfig(
+  Map<String, dynamic> base,
+  Map<String, dynamic> overlay,
+) {
+  if (overlay.isEmpty) return Map<String, dynamic>.from(base);
+  if (base.isEmpty) return Map<String, dynamic>.from(overlay);
+  final out = Map<String, dynamic>.from(base);
+  overlay.forEach((key, value) {
+    final existing = out[key];
+    if (value is Map && existing is Map) {
+      out[key] = mergeEngineConfig(
+        Map<String, dynamic>.from(existing),
+        Map<String, dynamic>.from(value),
+      );
+    } else {
+      out[key] = value;
+    }
+  });
+  return out;
 }
 
 /// Card title matching Nuvio plugin rows: `Show S1E1 - (2026)`.

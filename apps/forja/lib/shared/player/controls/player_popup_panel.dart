@@ -388,6 +388,7 @@ class _PlayerPopupListFocusScopeState extends State<PlayerPopupListFocusScope> {
 }
 
 /// Floating-menu surface tokens - flat dark chrome + brand-green accent.
+/// Selected / hover is always a green *tint* ([accentFill]), never solid [accent].
 abstract final class PlayerPopupTokens {
   static const Color shellBg = Color(0xFF0E0E0E);
   static const Color cardBg = Color(0xFF161616);
@@ -396,8 +397,8 @@ abstract final class PlayerPopupTokens {
   static const Color accentFill = Color(0x291CE783); // green @ ~0.16
   static const Color accentBorder = Color(0x661CE783); // green @ ~0.40
   static const Color accentFg = Color(0xFF0A0A0A);
-  static const Color selectedFill = accent;
-  static const Color selectedFg = accentFg;
+  static const Color selectedFill = accentFill;
+  static const Color selectedFg = Colors.white;
   static const Color muted = Color(0xFF9CA3AF);
   static const double shellRadius = 12;
   static const double cardRadius = 8;
@@ -645,6 +646,7 @@ class PlayerPopupNavRow extends StatefulWidget {
 
 class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
   bool _focused = false;
+  bool _hovered = false;
 
   bool get _valueActive {
     if (widget.selected) return true;
@@ -659,17 +661,14 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
   @override
   Widget build(BuildContext context) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    // Opaque cardBg would cover FocusableControl's flat focus fill - paint
-    // the gray highlight on the row itself (same look as option chips).
-    final bg = widget.selected
+    final highlight = _focused || _hovered;
+    final bg = highlight || widget.selected
         ? PlayerPopupTokens.accentFill
-        : _focused
-        ? Colors.white.withValues(alpha: 0.08)
-        : PlayerPopupTokens.cardBg;
-    final border = widget.selected
+        : Colors.transparent;
+    final border = highlight
+        ? PlayerPopupTokens.accent
+        : widget.selected
         ? PlayerPopupTokens.accentBorder
-        : _focused
-        ? Colors.white.withValues(alpha: 0.28)
         : PlayerPopupTokens.border;
     final row = Material(
       color: bg,
@@ -679,13 +678,16 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
         canRequestFocus: false,
         onTap: tvFocus ? null : widget.onTap,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-        hoverColor: ForjaShellColors.inkHover,
+        hoverColor: Colors.transparent,
         splashColor: ForjaShellColors.inkSplash,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(PlayerPopupTokens.cardRadius),
-            border: Border.all(color: border),
+            border: Border.all(
+              color: border,
+              width: highlight ? 1.5 : 1,
+            ),
           ),
           child: Row(
             children: [
@@ -738,13 +740,23 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
       ),
     );
 
-    if (!tvFocus || widget.onTap == null) return row;
+    Widget body = row;
+    if (!tvFocus) {
+      body = MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: row,
+      );
+    }
+
+    if (!tvFocus || widget.onTap == null) return body;
     return FocusableControl(
       autoFocus: PlayerPopupListFocusScope.claimAutofocus(context),
       onTap: widget.onTap,
       borderRadius: PlayerPopupTokens.cardRadius,
       scaleOnFocus: 1.0,
       showFocusBorder: false,
+      showFocusFill: false,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onFocusChange: (focused) => setState(() => _focused = focused),
       child: row,
@@ -784,14 +796,16 @@ class PlayerPopupValueBadge extends StatelessWidget {
   }
 }
 
-/// Segmented option chip - selected = brand green fill / dark text.
-class PlayerPopupOptionChip extends StatelessWidget {
+/// Option row — same chrome as [PlayerPopupListTile]: idle uncolored,
+/// selected = green tint + check, hover/focus = green tint (never solid fill).
+class PlayerPopupOptionChip extends StatefulWidget {
   const PlayerPopupOptionChip({
     super.key,
     required this.label,
     required this.selected,
     this.onTap,
     this.expanded = false,
+    this.grouped = false,
   });
 
   final String label;
@@ -799,61 +813,245 @@ class PlayerPopupOptionChip extends StatelessWidget {
   final VoidCallback? onTap;
   final bool expanded;
 
+  /// Side-by-side group (On/Off, Fit) — skip the list-row bottom gap.
+  final bool grouped;
+
+  @override
+  State<PlayerPopupOptionChip> createState() => _PlayerPopupOptionChipState();
+}
+
+class _PlayerPopupOptionChipState extends State<PlayerPopupOptionChip> {
+  bool _focused = false;
+  bool _hovered = false;
+
   @override
   Widget build(BuildContext context) {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final selected = widget.selected;
+    final highlight = _focused || _hovered;
+    final chromeDuration = tvFocus
+        ? Duration.zero
+        : const Duration(milliseconds: 120);
+    final rowColor = highlight || selected
+        ? PlayerPopupTokens.accentFill
+        : Colors.transparent;
+    final borderColor = highlight
+        ? PlayerPopupTokens.accent
+        : selected
+        ? PlayerPopupTokens.accentBorder
+        : PlayerPopupTokens.border;
+    final fg = highlight || selected
+        ? Colors.white
+        : PlayerPopupTokens.muted;
+
     final chip = Material(
-      color: Colors.transparent,
+      color: rowColor,
       borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         canRequestFocus: false,
-        onTap: tvFocus ? null : onTap,
+        onTap: tvFocus ? null : widget.onTap,
         borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        hoverColor: selected
-            ? Colors.black.withValues(alpha: 0.06)
-            : ForjaShellColors.inkHover,
-        child: Container(
-          width: expanded ? double.infinity : null,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        hoverColor: Colors.transparent,
+        splashColor: ForjaShellColors.inkSplash,
+        child: AnimatedContainer(
+          duration: chromeDuration,
+          curve: Curves.easeOut,
+          width: widget.expanded ? double.infinity : null,
           decoration: BoxDecoration(
-            color: selected
-                ? PlayerPopupTokens.selectedFill
-                : Colors.transparent,
             borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
             border: Border.all(
-              color: selected
-                  ? PlayerPopupTokens.selectedFill
-                  : PlayerPopupTokens.border,
+              color: borderColor,
+              width: highlight ? 1.5 : 1,
             ),
           ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: selected
-                  ? PlayerPopupTokens.selectedFg
-                  : PlayerPopupTokens.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+          child: Row(
+            mainAxisSize:
+                widget.expanded ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              if (widget.expanded)
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: fg,
+                      fontSize: 13,
+                      fontWeight: highlight || selected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                    ),
+                  ),
+                )
+              else
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    color: fg,
+                    fontSize: 13,
+                    fontWeight: highlight || selected
+                        ? FontWeight.w600
+                        : FontWeight.w500,
+                  ),
+                ),
+              if (selected) ...[
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.check_rounded,
+                  color: PlayerPopupTokens.accent,
+                  size: 18,
+                ),
+              ],
+            ],
           ),
         ),
       ),
     );
 
-    if (!tvFocus || onTap == null) return chip;
+    Widget body = chip;
+    if (!tvFocus) {
+      body = MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: chip,
+      );
+    }
+
+    final padded = widget.grouped
+        ? body
+        : Padding(padding: const EdgeInsets.only(bottom: 5), child: body);
+
+    if (!tvFocus || widget.onTap == null) return padded;
+    return Padding(
+      padding: widget.grouped
+          ? EdgeInsets.zero
+          : const EdgeInsets.only(bottom: 5),
+      child: FocusableControl(
+        autoFocus:
+            selected && PlayerPopupListFocusScope.claimAutofocus(context),
+        onTap: widget.onTap,
+        borderRadius: PlayerPopupTokens.chipRadius,
+        scaleOnFocus: 1.0,
+        showFocusBorder: false,
+        showFocusFill: false,
+        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        onFocusChange: (focused) => setState(() => _focused = focused),
+        child: chip,
+      ),
+    );
+  }
+}
+
+/// Compact header chip (Off / File) — same tint/check chrome as option rows.
+class PlayerPopupHeaderChip extends StatefulWidget {
+  const PlayerPopupHeaderChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+    this.focusNode,
+    this.onRightEdge,
+    this.autoFocus = false,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final FocusNode? focusNode;
+  final VoidCallback? onRightEdge;
+  final bool autoFocus;
+
+  @override
+  State<PlayerPopupHeaderChip> createState() => _PlayerPopupHeaderChipState();
+}
+
+class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final selected = widget.selected;
+    final highlight = _hovered || _focused;
+    final bg = highlight || selected
+        ? PlayerPopupTokens.accentFill
+        : Colors.transparent;
+    final border = highlight
+        ? PlayerPopupTokens.accent
+        : selected
+        ? PlayerPopupTokens.accentBorder
+        : PlayerPopupTokens.border;
+    final fg = highlight || selected
+        ? PlayerPopupTokens.accent
+        : PlayerPopupTokens.muted;
+    final face = Container(
+      height: 28,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+        border: Border.all(color: border, width: highlight ? 1.5 : 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (widget.icon != null) ...[
+            Icon(widget.icon, size: 14, color: fg),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            widget.label,
+            style: TextStyle(
+              color: fg,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (selected) ...[
+            const SizedBox(width: 4),
+            Icon(
+              Icons.check_rounded,
+              size: 14,
+              color: PlayerPopupTokens.accent,
+            ),
+          ],
+        ],
+      ),
+    );
+    if (!tvFocus) {
+      return MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
+            hoverColor: Colors.transparent,
+            child: face,
+          ),
+        ),
+      );
+    }
     return FocusableControl(
-      // Prefer the current value; else first chip claims via fallback nextFocus.
-      autoFocus:
-          selected && PlayerPopupListFocusScope.claimAutofocus(context),
-      onTap: onTap,
+      autoFocus: widget.autoFocus,
+      focusNode: widget.focusNode,
+      onTap: widget.onTap,
       borderRadius: PlayerPopupTokens.chipRadius,
       scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      child: chip,
+      showFocusBorder: false,
+      showFocusFill: false,
+      onFocusChange: (f) => setState(() => _focused = f),
+      onRightEdge: widget.onRightEdge,
+      child: face,
     );
   }
 }

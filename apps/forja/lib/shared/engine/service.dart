@@ -6,6 +6,7 @@ import 'package:forja/shared/engine/host_resolver.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/runtime.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -134,12 +135,15 @@ class EngineService {
       ]);
       final same =
           prev.sourceUrl == bundledSourceUrl &&
+          prev.version == pack.version &&
           prev.plugins.length == pack.plugins.length &&
           List.generate(
             pack.plugins.length,
             (i) =>
                 prev.plugins[i].id == pack.plugins[i].id &&
-                prev.plugins[i].entry == pack.plugins[i].entry,
+                prev.plugins[i].entry == pack.plugins[i].entry &&
+                jsonEncode(prev.plugins[i].config) ==
+                    jsonEncode(pack.plugins[i].config),
           ).every((ok) => ok);
       if (same) return;
     }
@@ -301,7 +305,6 @@ class EngineService {
           movie ??
           Movie(
             id: int.tryParse(tmdbId) ?? 0,
-            imdbId: null,
             title: title ?? '',
             posterPath: '',
             backdropPath: '',
@@ -324,6 +327,8 @@ class EngineService {
       );
     }
 
+    final overlay = ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+    final config = mergeEngineConfig(plugin.config, overlay);
     final code = await _loadScript(plugin);
     if (gen != _extractGeneration || code == null) return null;
     final rt = EngineRuntime.instance;
@@ -334,11 +339,14 @@ class EngineService {
     final raw = await rt.extract(
       pluginId: plugin.id,
       tmdbId: tmdbId,
+      imdbId: movie?.imdbId,
       type: mediaType,
       season: season,
       episode: episode,
       title: title,
       year: year,
+      config: config,
+      movie: movie,
       isCancelled: () => gen != _extractGeneration,
     );
     if (gen != _extractGeneration) return null;

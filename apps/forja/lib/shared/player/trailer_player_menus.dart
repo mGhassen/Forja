@@ -89,14 +89,14 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
                 'No quality options for this trailer.',
                 style: TextStyle(color: PlayerPopupTokens.muted, fontSize: 13),
               )
-            : Wrap(
-                spacing: 8,
-                runSpacing: 8,
+            : Column(
+                mainAxisSize: MainAxisSize.min,
                 children: qualities.map((q) {
                   final selected = selectedHeight == q.height;
                   return PlayerPopupOptionChip(
                     label: q.label,
                     selected: selected,
+                    expanded: true,
                     onTap: () async {
                       PlayerPopupPanel.dismiss();
                       if (selected) return;
@@ -125,14 +125,14 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
       maxHeight: 360,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: _speedRates.map((rate) {
             final selected = (rate - currentRate).abs() < 0.01;
             return PlayerPopupOptionChip(
               label: '${_formatRate(rate)}x',
               selected: selected,
+              expanded: true,
               onTap: () async {
                 PlayerPopupPanel.dismiss();
                 await _s._setRate(rate);

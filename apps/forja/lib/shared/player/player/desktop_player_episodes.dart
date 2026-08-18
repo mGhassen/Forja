@@ -1111,31 +1111,26 @@ mixin _DesktopPlayerEpisodes
           subtitle: _s._hwDecMode.description,
           value: _s._hwDecMode.label,
           pageBuilder: (_) => StatefulBuilder(
-            builder: (context, setPage) => Row(
-              children: [
-                for (final mode in _HwDecMode.values) ...[
-                  if (mode != _HwDecMode.values.first) const SizedBox(width: 8),
-                  Expanded(
-                    child: PlayerPopupOptionChip(
-                      label: mode.label,
-                      selected: _s._hwDecMode == mode,
-                      expanded: true,
-                      onTap: () {
-                        if (_s._hwDecMode == mode) return;
-                        setState(() => _s._hwDecMode = mode);
-                        if (_s._player.platform is NativePlayer) {
-                          (_s._player.platform as NativePlayer).setProperty(
-                            'hwdec',
-                            mode.mpvValue,
-                          );
-                        }
-                        setPage(() {});
-                      },
-                    ),
-                  ),
-                ],
-              ],
-            ),
+            builder: (context, setPage) => playerPopupChipRow([
+              for (final mode in _HwDecMode.values)
+                PlayerPopupOptionChip(
+                  label: mode.label,
+                  selected: _s._hwDecMode == mode,
+                  expanded: true,
+                  grouped: true,
+                  onTap: () {
+                    if (_s._hwDecMode == mode) return;
+                    setState(() => _s._hwDecMode = mode);
+                    if (_s._player.platform is NativePlayer) {
+                      (_s._player.platform as NativePlayer).setProperty(
+                        'hwdec',
+                        mode.mpvValue,
+                      );
+                    }
+                    setPage(() {});
+                  },
+                ),
+            ]),
           ),
         ),
         PlayerSettingsEntry(
@@ -1146,9 +1141,8 @@ mixin _DesktopPlayerEpisodes
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) {
               final current = _s._player.state.rate;
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              return Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   for (final s in const [
                     0.25,
@@ -1163,6 +1157,7 @@ mixin _DesktopPlayerEpisodes
                     PlayerPopupOptionChip(
                       label: s == 1.0 ? 'Normal' : '${s}x',
                       selected: s == current,
+                      expanded: true,
                       onTap: () {
                         _s._player.setRate(s);
                         setPage(() {});
@@ -1179,28 +1174,23 @@ mixin _DesktopPlayerEpisodes
           subtitle: 'Fit video in the frame',
           value: _s._videoFitLabel,
           pageBuilder: (_) => StatefulBuilder(
-            builder: (context, setPage) => Row(
-              children: [
-                for (final entry in const [
-                  (BoxFit.contain, 'FIT'),
-                  (BoxFit.cover, 'CROP'),
-                  (BoxFit.fill, 'FILL'),
-                ]) ...[
-                  if (entry.$1 != BoxFit.contain) const SizedBox(width: 8),
-                  Expanded(
-                    child: PlayerPopupOptionChip(
-                      label: entry.$2,
-                      selected: _s._videoFit == entry.$1,
-                      expanded: true,
-                      onTap: () {
-                        setState(() => _s._videoFit = entry.$1);
-                        setPage(() {});
-                      },
-                    ),
-                  ),
-                ],
-              ],
-            ),
+            builder: (context, setPage) => playerPopupChipRow([
+              for (final entry in const [
+                (BoxFit.contain, 'FIT'),
+                (BoxFit.cover, 'CROP'),
+                (BoxFit.fill, 'FILL'),
+              ])
+                PlayerPopupOptionChip(
+                  label: entry.$2,
+                  selected: _s._videoFit == entry.$1,
+                  expanded: true,
+                  grouped: true,
+                  onTap: () {
+                    setState(() => _s._videoFit = entry.$1);
+                    setPage(() {});
+                  },
+                ),
+            ]),
           ),
         ),
         PlayerSettingsEntry(

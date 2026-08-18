@@ -180,6 +180,7 @@ void main() {
           schema: base.schema,
           templates: base.templates,
           apis: base.apis,
+          engine: base.engine,
           webstreamr: base.webstreamr,
           megaplay: base.megaplay,
           miruroOrigins: base.miruroOrigins,

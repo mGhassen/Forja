@@ -28,8 +28,7 @@ class PlayerProviderMenu {
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
         child: Column(
           children: [
-            for (var i = 0; i < entries.length; i++) ...[
-              if (i != 0) const SizedBox(height: 8),
+            for (var i = 0; i < entries.length; i++)
               Builder(
                 builder: (_) {
                   final key = entries[i].key;
@@ -49,7 +48,6 @@ class PlayerProviderMenu {
                   );
                 },
               ),
-            ],
           ],
         ),
       ),

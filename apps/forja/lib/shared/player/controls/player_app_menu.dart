@@ -73,20 +73,20 @@ class PlayerAppMenu {
       children: [
         if (showExternal) const _SectionLabel('Built-in'),
         if (Platform.isAndroid)
-          for (var i = 0; i < engines.length; i++) ...[
-            if (i != 0) const SizedBox(height: 6),
-            PlayerPopupOptionChip(
-              label: engines[i].displayName,
-              selected: usingBuiltIn && engines[i] == builtInEngine,
-              expanded: true,
-              onTap: () async {
-                onDismiss?.call();
-                if (usingBuiltIn && engines[i] == builtInEngine) {
-                  return;
-                }
-                await onSelect(builtInEngine: engines[i]);
-              },
-            ),
+          ...[
+            for (final engine in engines)
+              PlayerPopupOptionChip(
+                label: engine.displayName,
+                selected: usingBuiltIn && engine == builtInEngine,
+                expanded: true,
+                onTap: () async {
+                  onDismiss?.call();
+                  if (usingBuiltIn && engine == builtInEngine) {
+                    return;
+                  }
+                  await onSelect(builtInEngine: engine);
+                },
+              ),
           ]
         else
           PlayerPopupOptionChip(
@@ -168,24 +168,22 @@ class _InstalledExternalPlayersState extends State<_InstalledExternalPlayers> {
         }
         return Column(
           children: [
-            for (var i = 0; i < players.length; i++) ...[
-              if (i != 0) const SizedBox(height: 6),
+            for (final player in players)
               PlayerPopupOptionChip(
-                label: players[i].displayName,
+                label: player.displayName,
                 selected:
                     !widget.usingBuiltIn &&
-                    widget.externalPlayerName == players[i].displayName,
+                    widget.externalPlayerName == player.displayName,
                 expanded: true,
                 onTap: () async {
                   widget.onDismiss?.call();
                   if (!widget.usingBuiltIn &&
-                      widget.externalPlayerName == players[i].displayName) {
+                      widget.externalPlayerName == player.displayName) {
                     return;
                   }
-                  await widget.onSelect(externalPlayer: players[i].displayName);
+                  await widget.onSelect(externalPlayer: player.displayName);
                 },
               ),
-            ],
           ],
         );
       },

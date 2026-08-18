@@ -1,12 +1,14 @@
 function extract(ctx) {
+  var cfg = ctx.config || {};
   var HEADERS = {
     'User-Agent':
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
     Connection: 'keep-alive',
   };
-  var API = 'https://enc-dec.app/api';
-  var DB = 'https://enc-dec.app/db/flix';
-  var AJAX = 'https://1moviesz.to/ajax';
+  var API = cfg.enc;
+  var DB = cfg.db;
+  var AJAX = cfg.ajax;
+  if (!API || !DB || !AJAX) return Promise.resolve([]);
   var isMovie = ctx.type === 'movie';
   var mediaType = isMovie ? 'movie' : 'tv';
 

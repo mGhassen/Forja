@@ -1,17 +1,20 @@
 function extract(ctx) {
-  var TMDB_KEY = '68e094699525b18a70bab2f86b1fa706';
-  var ENC = 'https://enc-dec.app/api';
-  var API = 'https://vidlink.pro/api/b';
+  var cfg = ctx.config || {};
+  var TMDB_KEY = cfg.tmdbKey;
+  var ENC = cfg.enc;
+  var API = cfg.api;
+  var origin = cfg.origin;
+  if (!API || !ENC || !origin || !TMDB_KEY) return Promise.resolve([]);
   var headers = {
     'User-Agent':
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
-    Referer: 'https://vidlink.pro/',
-    Origin: 'https://vidlink.pro',
+    Referer: origin + '/',
+    Origin: origin,
   };
   var isTv = ctx.type === 'tv';
   var tmdbId = String(ctx.tmdbId);
-  // Same mwVault proxy as vidlink.pro (module 5196 / mooncase mp prefix).
-  var MWVAULT_PROXY = 'https://noon.mooncase.online/';
+  var MWVAULT_PROXY = cfg.proxy;
+  if (!MWVAULT_PROXY) return Promise.resolve([]);
   var MWVAULT_KEEP_QUERY = {
     auth: 1,
     expires: 1,

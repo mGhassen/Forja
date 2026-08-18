@@ -62,11 +62,8 @@ class PlayerQualityMenu {
       anchorContext: anchorContext,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          // While Auto/ABR is active, hide Auto and highlight the variant
-          // currently playing. Auto reappears once a fixed quality is locked.
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: qualities
               .where((q) => !q.isAuto || !qualityAuto)
               .map((q) {
@@ -79,6 +76,7 @@ class PlayerQualityMenu {
             return PlayerPopupOptionChip(
               label: q.isAuto ? 'Auto' : q.label,
               selected: selected,
+              expanded: true,
               onTap: () async {
                 PlayerPopupPanel.dismiss();
                 if (q.isAuto) {

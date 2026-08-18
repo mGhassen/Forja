@@ -263,80 +263,6 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     );
   }
 
-  Widget _headerChip({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-    IconData? icon,
-    FocusNode? focusNode,
-    VoidCallback? onRightEdge,
-  }) {
-    final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final face = Container(
-      height: 28,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: selected ? PlayerPopupTokens.accent : Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        border: Border.all(
-          color: selected
-              ? PlayerPopupTokens.accent
-              : PlayerPopupTokens.border,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(
-              icon,
-              size: 14,
-              color: selected
-                  ? PlayerPopupTokens.accentFg
-                  : PlayerPopupTokens.muted,
-            ),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              color: selected
-                  ? PlayerPopupTokens.accentFg
-                  : PlayerPopupTokens.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-    if (!tvFocus) {
-      return Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
-          hoverColor: selected
-              ? Colors.black.withValues(alpha: 0.06)
-              : ForjaShellColors.inkHover,
-          child: face,
-        ),
-      );
-    }
-    return FocusableControl(
-      focusNode: focusNode,
-      onTap: onTap,
-      borderRadius: PlayerPopupTokens.chipRadius,
-      scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      onRightEdge: onRightEdge,
-      child: face,
-    );
-  }
-
   /// Tune control — [ForjaPlainIcon] traps D-pad (no spatial arrows).
   Widget _settingsChip() {
     final onSettings = widget.onSubtitleSettings;
@@ -524,7 +450,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _headerChip(
+              PlayerPopupHeaderChip(
                 label: 'Off',
                 selected: _textOff,
                 onTap: () {
@@ -537,7 +463,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
               ),
               if (!_hideLoadFile) ...[
                 const SizedBox(width: 6),
-                _headerChip(
+                PlayerPopupHeaderChip(
                   label: 'File',
                   icon: Icons.upload_file_rounded,
                   selected: false,

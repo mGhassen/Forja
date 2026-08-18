@@ -45,6 +45,27 @@ void main() {
       );
     });
 
+    test('merge overlays engine plugin config at runtime', () {
+      final remote = ProviderRuntimeSnapshot.tryParse({
+        'schema': 1,
+        'engine': {
+          'videasy': {
+            'api': 'https://overlay.example',
+            'mirrors': [
+              {'endpoint': 'vsrc', 'name': 'Overlay'},
+            ],
+          },
+        },
+      });
+      expect(remote, isNotNull);
+      final merged = ProviderRuntimeSnapshot.builtins().merged(remote!);
+      final videasy = merged.engine['videasy']!;
+      expect(videasy['api'], 'https://overlay.example');
+      expect(videasy['mirrors'], [
+        {'endpoint': 'vsrc', 'name': 'Overlay'},
+      ]);
+    });
+
     test('incomplete remote CDN rules keep builtin mewstream/nekostream', () {
       final remote = ProviderRuntimeSnapshot.tryParse({
         'schema': 1,
