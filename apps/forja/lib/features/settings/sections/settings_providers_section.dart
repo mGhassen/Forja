@@ -481,6 +481,11 @@ class _SettingsProvidersSectionState
             const _MiniLabel('Forja plugins'),
             const SizedBox(height: 4),
             ...packs.map((pack) {
+              final panelPlugins = [
+                for (final p in pack.plugins)
+                  if (p.isHttp) p,
+              ];
+              if (panelPlugins.isEmpty) return const SizedBox.shrink();
               final builtIn = EngineService.isBundled(pack.sourceUrl);
               return Theme(
                 data: Theme.of(
@@ -502,7 +507,7 @@ class _SettingsProvidersSectionState
                     ),
                   ),
                   subtitle: Text(
-                    '${pack.plugins.length} plugin${pack.plugins.length == 1 ? '' : 's'} · v${pack.version}',
+                    '${panelPlugins.length} plugin${panelPlugins.length == 1 ? '' : 's'} · v${pack.version}',
                     style: const TextStyle(
                       fontSize: 11,
                       color: ForjaShellColors.textSecondary,
@@ -513,7 +518,7 @@ class _SettingsProvidersSectionState
                       : _AddonRemoveActions(
                           onRemove: () => _removeEnginePack(pack.sourceUrl),
                         ),
-                  children: pack.plugins.map((p) {
+                  children: panelPlugins.map((p) {
                     final subtitle = [
                       if (p.description != null && p.description!.isNotEmpty)
                         p.description!,

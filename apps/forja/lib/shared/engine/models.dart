@@ -25,7 +25,7 @@ class EnginePlugin {
 
   bool get isHttp => kind == 'http';
   bool get isHost => kind == 'host';
-  bool get isExtractable => isHttp || isHost;
+  bool get isExtractable => isHttp;
 
   String get hostProviderId {
     final h = hostId?.trim();
@@ -177,24 +177,18 @@ class EngineExtractResult {
 Set<String> enabledEnginePluginIds(List<EnginePack> packs) => {
   for (final pack in packs)
     for (final p in pack.plugins)
-      if (p.enabled && p.isExtractable) p.id,
+      if (p.enabled && p.isHttp) p.id,
 };
 
-/// Walk order for the Forja tab: all HTTP/JS plugins first, then host sniff.
+/// Walk order for the Forja tab: HTTP/JS plugins only (no sniff hosts).
 List<String> orderedEnginePluginIds(List<EnginePack> packs) {
-  final httpIds = <String>[];
-  final hostIds = <String>[];
+  final ids = <String>[];
   for (final pack in packs) {
     for (final p in pack.plugins) {
-      if (!p.enabled || !p.isExtractable) continue;
-      if (p.isHttp) {
-        httpIds.add(p.id);
-      } else if (p.isHost) {
-        hostIds.add(p.id);
-      }
+      if (p.enabled && p.isHttp) ids.add(p.id);
     }
   }
-  return [...httpIds, ...hostIds];
+  return ids;
 }
 
 Set<String> nextEngineSelectedAfterAllTap({

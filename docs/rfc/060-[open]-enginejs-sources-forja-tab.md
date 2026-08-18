@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **20 / 20** acceptance |
-| **Current slice** | Plugin `ctx` platform shipped — config, crypto/html, `ctx.host` |
+| **Progress** | **5 / 5** components · **20 / 21** acceptance |
+| **Current slice** | Forja panel HTTP-only — sniff servers stay on green Play |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -51,6 +51,7 @@
 | 18 | R60-A18 | Bundled Videasy / Vidlink / Vixsrc / DooFlix / YFlix hosts live in plugin `config`, not JS literals | ✅ |
 | 19 | R60-A19 | `ctx.html` (cheerio) + `ctx.crypto` (CryptoJS façade + `streamDecrypt`) on EngineRuntime — not NuvioRuntime | ✅ |
 | 20 | R60-A20 | `ctx.host(id)` resolves a built-in sniff/API extractor and returns stream rows to JS | ✅ |
+| 21 | R60-A21 | Sources → Forja and Settings → Forja plugins list HTTP/JS plugins only — no `kind: host` sniff chips | ✅ |
 
 ---
 
@@ -62,7 +63,7 @@ Parallel plugin stack next to Nuvio and green Play. The engine host is `lib/shar
 
 `engine.json` is a pack (one or more plugins) or a single plugin at the root. JS entry exports `extract(ctx)` (or `globalThis.extract`). Host injects `tmdbId`, `imdbId`, `type`, `season`, `episode`, `title`, `year`, opaque `config` (`engine.json` ∪ remote `provider_runtime_config.engine[id]`), `fetch`, `crypto` / `html` / `host`. `streamcrypto.decrypt` remains an alias of `crypto.streamDecrypt`.
 
-Kind `http` runs `extract(ctx)` in QuickJS. Kind `host` delegates to built-in Dart/Rust sniff extractors (same as green Play). Play ids: `engine:<pluginId>`.
+Kind `http` runs `extract(ctx)` in QuickJS. Kind `host` still exists for `ctx.host(id)` (JS calling a built-in sniff/API extractor). **Sources → Forja** and **Settings → Forja plugins** list HTTP plugins only — bundled `engine.json` has no host chips. Sniff servers stay on green Play. Play ids: `engine:<pluginId>`.
 
 Stream rows (HTTP + host) map through `mapEngineStream`: card `title` is `Show S1E1 - (2026)`, `quality` / `language` / `audio` (only when the plugin actually has them) become `description` for Sources badges. Videasy expands HLS masters into per-rendition rows when the API label is not a resolution.
 

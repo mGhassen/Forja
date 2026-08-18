@@ -90,7 +90,7 @@ void main() {
       );
     });
 
-    test('orders HTTP plugins before host sniff plugins', () {
+    test('panel walk skips host sniff plugins', () {
       final pack = EnginePack.fromJson({
         'plugins': [
           {'id': 'videasy', 'entry': 'a.js', 'kind': 'http'},
@@ -99,12 +99,8 @@ void main() {
           {'id': 'vidnest', 'kind': 'host', 'hostId': 'vidnest'},
         ],
       }, sourceUrl: 'asset:x');
-      expect(orderedEnginePluginIds([pack]), [
-        'videasy',
-        'vidlink',
-        'vidsrc',
-        'vidnest',
-      ]);
+      expect(orderedEnginePluginIds([pack]), ['videasy', 'vidlink']);
+      expect(enabledEnginePluginIds([pack]), {'videasy', 'vidlink'});
     });
 
     test('walks the next unfetched selected plugin', () {
@@ -257,36 +253,17 @@ void main() {
   });
 
   group('bundled Forja pack', () {
-    test('engine.json lists HTTP + host sniff plugins', () async {
+    test('engine.json lists HTTP plugins only', () async {
       final jsonStr = await rootBundle.loadString(
         'assets/providers/engine.json',
       );
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
       final plugins = map['plugins'] as List;
       final ids = [for (final p in plugins) (p as Map)['id'] as String];
-      expect(
-        ids,
-        containsAll([
-          'videasy',
-          'vidlink',
-          'vixsrc',
-          'vidsrc',
-          'vidsrcwin',
-          'vidnest',
-          'vidrock',
-          'vidsrcsbs',
-          'service111477',
-          'webstreamr',
-        ]),
-      );
-      final kinds = {
-        for (final p in plugins)
-          (p as Map)['id'] as String: p['kind'] as String,
-      };
-      expect(kinds['videasy'], 'http');
-      expect(kinds['vidsrc'], 'host');
-      expect(kinds['webstreamr'], 'host');
-      expect(kinds['dooflix'], 'http');
+      expect(ids, ['videasy', 'vidlink', 'vixsrc', 'dooflix', 'yflix']);
+      for (final p in plugins) {
+        expect((p as Map)['kind'], 'http');
+      }
       expect(
         (plugins.firstWhere((p) => (p as Map)['id'] == 'dooflix')
             as Map)['enabled'],
@@ -301,7 +278,7 @@ void main() {
         'kind': 'host',
       });
       expect(plugin.isHost, isTrue);
-      expect(plugin.isExtractable, isTrue);
+      expect(plugin.isExtractable, isFalse);
       expect(plugin.hostProviderId, 'vidsrc');
     });
 

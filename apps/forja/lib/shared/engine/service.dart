@@ -60,7 +60,8 @@ class EngineService {
     final packs = await listPacks();
     return [
       for (final p in packs)
-        if (p.plugins.any((pl) => pl.enabled && pl.isExtractable)) p,
+        if (p.plugins.any((pl) => pl.enabled && pl.isHttp))
+          p.copyWithPlugins([for (final pl in p.plugins) if (pl.isHttp) pl]),
     ];
   }
 

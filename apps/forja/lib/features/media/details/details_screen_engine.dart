@@ -5,7 +5,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
 
   Future<void> _checkAndFetchEngine() async {
     try {
-      final packs = await EngineService.instance.listPacks();
+      final packs = await EngineService.instance.listSourcesPanelPacks();
       final enabledIds = enabledEnginePluginIds(packs);
       final saved = _s._engineSelectionHydrated
           ? null
