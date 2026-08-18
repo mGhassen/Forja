@@ -58,11 +58,11 @@ class ProfileEngineWarm {
       }
 
       if (needs.engine) {
-        debugPrint('[Init] engineJS defer hydrate to first Sources/Settings use');
+        debugPrint('[Init] engine defer hydrate to first Sources/Settings use');
       } else if (!needs.playSourceEngine) {
-        debugPrint('[Init] engineJS skip (play source off)');
+        debugPrint('[Init] engine skip (play source off)');
       } else {
-        debugPrint('[Init] engineJS skip (no VOD tab)');
+        debugPrint('[Init] engine skip (no VOD tab)');
       }
     }
 

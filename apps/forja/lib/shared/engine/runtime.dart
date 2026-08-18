@@ -6,7 +6,7 @@ import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/extractors/core/stream_crypto.dart';
 import 'package:http/http.dart' as http;
 
-class EngineJsMutex {
+class EngineMutex {
   Future<void> _tail = Future<void>.value();
 
   Future<T> run<T>(Future<T> Function() action) {
@@ -25,16 +25,16 @@ class EngineJsMutex {
 }
 
 /// Own QuickJS/JSC heap. Does not call NuvioRuntime.
-class EngineJsRuntime {
-  EngineJsRuntime._();
-  static final EngineJsRuntime instance = EngineJsRuntime._();
+class EngineRuntime {
+  EngineRuntime._();
+  static final EngineRuntime instance = EngineRuntime._();
 
   JavascriptRuntime? _runtime;
   bool _ready = false;
   Completer<void>? _initCompleter;
   final Set<String> _loadedIds = {};
   final Map<String, String> _pluginCode = {};
-  final EngineJsMutex _jsLock = EngineJsMutex();
+  final EngineMutex _jsLock = EngineMutex();
 
   int _callSeq = 0;
   final Map<int, Completer<String>> _pendingResults = {};
@@ -89,7 +89,7 @@ class EngineJsRuntime {
     br('Console', (args) {
       try {
         final m = _bridgeMap(args);
-        debugPrint('[engineJS:${m['level'] ?? 'log'}] ${m['msg'] ?? ''}');
+        debugPrint('[engine:${m['level'] ?? 'log'}] ${m['msg'] ?? ''}');
       } catch (_) {}
       return null;
     });
@@ -103,7 +103,7 @@ class EngineJsRuntime {
           (m['tmdbId'] ?? '').toString(),
         );
       } catch (e) {
-        return 'ENGINEJS_DECRYPT_ERROR:${e.toString()}';
+        return 'ENGINE_DECRYPT_ERROR:${e.toString()}';
       }
     });
 
@@ -183,15 +183,15 @@ class EngineJsRuntime {
     try {
       rt.evaluate(
         'try { globalThis.__engineTimerFire($id); } catch (e) {}',
-        sourceUrl: 'enginejs://timer/$id',
+        sourceUrl: 'engine://timer/$id',
       );
     } catch (_) {}
   }
 
   void _installHost(JavascriptRuntime rt) {
-    final res = rt.evaluate(_hostJs, sourceUrl: 'enginejs://host');
+    final res = rt.evaluate(_hostJs, sourceUrl: 'engine://host');
     if (res.isError) {
-      throw StateError('engineJS host failed: ${res.stringResult}');
+      throw StateError('engine host failed: ${res.stringResult}');
     }
   }
 
@@ -219,16 +219,16 @@ class EngineJsRuntime {
       if (typeof globalThis.extract !== 'function') globalThis.extract = extract;
     }
   } catch (e) {
-    sendMessage('Console', JSON.stringify({level:'error',msg:'[engineJS load $pluginId] ' + (e && e.message ? e.message : e)}));
+    sendMessage('Console', JSON.stringify({level:'error',msg:'[engine load $pluginId] ' + (e && e.message ? e.message : e)}));
     throw e;
   }
   var fn = (module.exports && module.exports.extract) || globalThis.extract;
   globalThis.__engineRegistry[${jsonEncode(pluginId)}] = { extract: fn };
 })();
 ''';
-    final res = rt.evaluate(wrapped, sourceUrl: 'enginejs://$pluginId');
+    final res = rt.evaluate(wrapped, sourceUrl: 'engine://$pluginId');
     if (res.isError) {
-      throw Exception('engineJS load failed ($pluginId): ${res.stringResult}');
+      throw Exception('engine load failed ($pluginId): ${res.stringResult}');
     }
     _loadedIds.add(pluginId);
   }
@@ -250,7 +250,7 @@ class EngineJsRuntime {
       if (!_loadedIds.contains(pluginId)) {
         final code = _pluginCode[pluginId];
         if (code == null) {
-          throw StateError('engineJS plugin $pluginId not loaded');
+          throw StateError('engine plugin $pluginId not loaded');
         }
         _loadPluginUnlocked(pluginId, code);
       }
@@ -319,8 +319,8 @@ class EngineJsRuntime {
           seed: String(seed == null ? '' : seed),
           tmdbId: String(tmdbId == null ? '' : tmdbId)
         }));
-        if (typeof out === 'string' && out.indexOf('ENGINEJS_DECRYPT_ERROR:') === 0) {
-          throw new Error(out.substring('ENGINEJS_DECRYPT_ERROR:'.length));
+        if (typeof out === 'string' && out.indexOf('ENGINE_DECRYPT_ERROR:') === 0) {
+          throw new Error(out.substring('ENGINE_DECRYPT_ERROR:'.length));
         }
         return out;
       }
@@ -334,7 +334,7 @@ class EngineJsRuntime {
     })
     .catch(function(e){
       var msg = (e && e.message) ? e.message : (e ? String(e) : 'unknown');
-      sendMessage('Console', JSON.stringify({level:'error',msg:'[engineJS extract $pluginId] '+msg}));
+      sendMessage('Console', JSON.stringify({level:'error',msg:'[engine extract $pluginId] '+msg}));
       sendMessage('CaptureResult', JSON.stringify({id:$callId, body:'[]'}));
     });
 })();
@@ -342,7 +342,7 @@ class EngineJsRuntime {
       final r = rt.evaluate(invoker);
       if (r.isError) {
         _pendingResults.remove(callId);
-        debugPrint('[engineJS] invoker error: ${r.stringResult}');
+        debugPrint('[engine] invoker error: ${r.stringResult}');
         return [];
       }
 
@@ -362,7 +362,7 @@ class EngineJsRuntime {
       if (!completer.isCompleted) {
         _pendingResults.remove(callId);
         if (!completer.isCompleted) completer.complete('[]');
-        debugPrint('[engineJS] $pluginId timed out after ${timeout.inSeconds}s');
+        debugPrint('[engine] $pluginId timed out after ${timeout.inSeconds}s');
         return [];
       }
 
@@ -377,7 +377,7 @@ class EngineJsRuntime {
             .map((e) => e.cast<String, dynamic>())
             .toList();
       } catch (e) {
-        debugPrint('[engineJS] result parse failed ($pluginId): $e');
+        debugPrint('[engine] result parse failed ($pluginId): $e');
         return [];
       }
     } finally {
@@ -498,7 +498,7 @@ class EngineJsRuntime {
     try {
       rt.evaluate(
         'try { globalThis.__engineFetchResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
-        sourceUrl: 'enginejs://fetch/$id',
+        sourceUrl: 'engine://fetch/$id',
       );
     } catch (_) {}
   }

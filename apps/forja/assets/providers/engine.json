@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "Forja",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "plugins": [
     {
       "id": "videasy",
@@ -12,31 +12,138 @@
     },
     {
       "id": "vidlink",
-      "name": "Vidlink",
+      "name": "VidLink",
       "entry": "vidlink.js",
       "types": ["movie", "tv"],
       "kind": "http"
     },
     {
+      "id": "vidsrc",
+      "name": "VSEmbed",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "vidsrc"
+    },
+    {
+      "id": "vidsrcwin",
+      "name": "VidSrc",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "vidsrcwin"
+    },
+    {
       "id": "vixsrc",
-      "name": "Vixsrc",
+      "name": "VixSrc",
       "entry": "vixsrc.js",
       "types": ["movie", "tv"],
       "kind": "http"
+    },
+    {
+      "id": "vidnest",
+      "name": "Vidnest",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "vidnest"
+    },
+    {
+      "id": "vidzee",
+      "name": "Vidzee",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "vidzee"
+    },
+    {
+      "id": "vidrock",
+      "name": "VidRock",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "vidrock"
+    },
+    {
+      "id": "vidfast",
+      "name": "VidFast",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "vidfast"
+    },
+    {
+      "id": "2embed",
+      "name": "2Embed",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "2embed"
+    },
+    {
+      "id": "autoembed",
+      "name": "AutoEmbed",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "autoembed"
+    },
+    {
+      "id": "vidlove",
+      "name": "VidLove",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "vidlove"
+    },
+    {
+      "id": "vidsrcsbs",
+      "name": "VidSrc.sbs",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "vidsrcsbs"
+    },
+    {
+      "id": "111movies",
+      "name": "111Movies",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "111movies"
+    },
+    {
+      "id": "moviesapi",
+      "name": "MoviesAPI",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "moviesapi"
+    },
+    {
+      "id": "vidapi",
+      "name": "VidAPI",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "vidapi"
+    },
+    {
+      "id": "service111477",
+      "name": "111477",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "service111477"
+    },
+    {
+      "id": "webstreamr",
+      "name": "WebStreamr",
+      "types": ["movie", "tv"],
+      "kind": "host",
+      "hostId": "webstreamr"
     },
     {
       "id": "dooflix",
       "name": "DooFlix",
       "entry": "dooflix.js",
       "types": ["movie", "tv"],
-      "kind": "http"
+      "kind": "http",
+      "enabled": false
     },
     {
       "id": "yflix",
       "name": "YFlix",
       "entry": "yflix.js",
       "types": ["movie", "tv"],
-      "kind": "http"
+      "kind": "http",
+      "enabled": false
     }
   ]
 }

@@ -19,7 +19,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 - Set **connection limit** for the torrent engine — same D-pad nudge on **TV**
 - Install **Stremio** / **Nuvio** addons, **Forja** `engine.json` packs, and configure Jackett / Prowlarr when those play sources are on (**Settings → Sources** is never on Android TV — use phone/desktop or cloud sync)
 - Toggle **Select All by default** under **Nuvio addons** — on opens Sources → Nuvio with every enabled scraper selected; off starts with none selected
-- Toggle **Select All by default** under **Forja plugins** — on opens Sources → Forja with every enabled HTTP plugin selected; off starts with none selected. Paste an `engine.json` URL to install extra packs. Bundled **Videasy** probes every [player.videasy.to](https://player.videasy.to) server (Yoru, Cypher, Breach, Neon, Vyse, Killjoy, Fade, Omen, Raze) and lists each hit as its own row
+- Toggle **Select All by default** under **Forja plugins** — on opens Sources → Forja with every enabled HTTP plugin selected; off starts with none selected. Paste an `engine.json` URL to install extra packs. Bundled **Videasy** probes every [player.videasy.to](https://player.videasy.to) server (Yoru, Cypher, Breach, Neon, Vyse, Killjoy, Fade, Omen, Raze) and lists each hit as its own row. When a mirror only returns an HLS master, Forja expands it into 1080p / 720p / 480p rows (same card as Nuvio: title + episode + year, quality badges when the playlist has them).
 
 ## Tips
 

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/engine_js/engine_js.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/extractors/core/stream_crypto.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/player/utils.dart';
@@ -59,16 +59,19 @@ void main() {
     });
   });
 
-  group('engineJS chips', () {
-    test('kind is engine, All chip is all_engine, plugin chips use engine:', () {
-      expect(EngineJsIds.kind, 'engine');
-      expect(EngineJsIds.kind, isNot('forja'));
-      expect(EngineJsIds.allChip, 'all_engine');
-      expect(EngineJsIds.pluginChip('videasy'), 'engine:videasy');
-      expect(EngineJsIds.pluginIdFromChip('engine:videasy'), 'videasy');
-      expect(EngineJsIds.isAllChip('all_engine'), isTrue);
-      expect(EngineJsIds.isAllChip('forja'), isFalse);
-    });
+  group('engine chips', () {
+    test(
+      'kind is engine, All chip is all_engine, plugin chips use engine:',
+      () {
+        expect(EngineIds.kind, 'engine');
+        expect(EngineIds.kind, isNot('forja'));
+        expect(EngineIds.allChip, 'all_engine');
+        expect(EngineIds.pluginChip('videasy'), 'engine:videasy');
+        expect(EngineIds.pluginIdFromChip('engine:videasy'), 'videasy');
+        expect(EngineIds.isAllChip('all_engine'), isTrue);
+        expect(EngineIds.isAllChip('forja'), isFalse);
+      },
+    );
 
     test('All tap selects every enabled plugin, then clears', () {
       expect(
@@ -85,6 +88,23 @@ void main() {
         ),
         isEmpty,
       );
+    });
+
+    test('orders HTTP plugins before host sniff plugins', () {
+      final pack = EnginePack.fromJson({
+        'plugins': [
+          {'id': 'videasy', 'entry': 'a.js', 'kind': 'http'},
+          {'id': 'vidsrc', 'kind': 'host', 'hostId': 'vidsrc'},
+          {'id': 'vidlink', 'entry': 'b.js', 'kind': 'http'},
+          {'id': 'vidnest', 'kind': 'host', 'hostId': 'vidnest'},
+        ],
+      }, sourceUrl: 'asset:x');
+      expect(orderedEnginePluginIds([pack]), [
+        'videasy',
+        'vidlink',
+        'vidsrc',
+        'vidnest',
+      ]);
     });
 
     test('walks the next unfetched selected plugin', () {
@@ -118,7 +138,10 @@ void main() {
   group('Torrents All alias', () {
     test('legacy forja chip id still means All', () {
       expect(TorrentSearchProviders.isAllChip('forja'), isTrue);
-      expect(TorrentSearchProviders.isAllChip(TorrentSearchProviders.allId), isTrue);
+      expect(
+        TorrentSearchProviders.isAllChip(TorrentSearchProviders.allId),
+        isTrue,
+      );
       expect(TorrentSearchProviders.isAllChip('all_engine'), isFalse);
     });
   });
@@ -156,7 +179,10 @@ void main() {
         ),
       );
 
-      final labels = tester.widgetList<Text>(find.byType(Text)).map((w) => w.data).toList();
+      final labels = tester
+          .widgetList<Text>(find.byType(Text))
+          .map((w) => w.data)
+          .toList();
       expect(labels.indexOf('Forja'), lessThan(labels.indexOf('Torrents')));
       expect(labels.indexOf('Torrents'), lessThan(labels.indexOf('Stremio')));
       expect(labels.indexOf('Stremio'), lessThan(labels.indexOf('Nuvio')));
@@ -204,7 +230,9 @@ void main() {
           .widgetList<Text>(find.byType(Text))
           .map((w) => w.data)
           .whereType<String>()
-          .where((s) => const {'Forja', 'Torrents', 'Stremio', 'Nuvio'}.contains(s))
+          .where(
+            (s) => const {'Forja', 'Torrents', 'Stremio', 'Nuvio'}.contains(s),
+          )
           .toList();
       expect(labels.indexOf('Forja'), lessThan(labels.indexOf('Torrents')));
     });
@@ -229,15 +257,52 @@ void main() {
   });
 
   group('bundled Forja pack', () {
-    test('engine.json lists HTTP movie/tv plugins', () async {
-      final jsonStr = await rootBundle.loadString('assets/providers/engine.json');
+    test('engine.json lists HTTP + host sniff plugins', () async {
+      final jsonStr = await rootBundle.loadString(
+        'assets/providers/engine.json',
+      );
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
       final plugins = map['plugins'] as List;
       final ids = [for (final p in plugins) (p as Map)['id'] as String];
-      expect(ids, containsAll(['videasy', 'vidlink', 'vixsrc', 'dooflix', 'yflix']));
-      for (final p in plugins) {
-        expect((p as Map)['kind'], 'http');
-      }
+      expect(
+        ids,
+        containsAll([
+          'videasy',
+          'vidlink',
+          'vixsrc',
+          'vidsrc',
+          'vidsrcwin',
+          'vidnest',
+          'vidrock',
+          'vidsrcsbs',
+          'service111477',
+          'webstreamr',
+        ]),
+      );
+      final kinds = {
+        for (final p in plugins)
+          (p as Map)['id'] as String: p['kind'] as String,
+      };
+      expect(kinds['videasy'], 'http');
+      expect(kinds['vidsrc'], 'host');
+      expect(kinds['webstreamr'], 'host');
+      expect(kinds['dooflix'], 'http');
+      expect(
+        (plugins.firstWhere((p) => (p as Map)['id'] == 'dooflix')
+            as Map)['enabled'],
+        isFalse,
+      );
+    });
+
+    test('EnginePlugin host kind resolves hostProviderId', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'vidsrc',
+        'name': 'VSEmbed',
+        'kind': 'host',
+      });
+      expect(plugin.isHost, isTrue);
+      expect(plugin.isExtractable, isTrue);
+      expect(plugin.hostProviderId, 'vidsrc');
     });
 
     test('fans out every player.videasy.to Servers-tab mirror', () async {
@@ -253,51 +318,87 @@ void main() {
       expect(src, contains("name: 'Yoru'"));
       expect(src, contains("name: 'Raze'"));
       expect(src, contains('Promise.all'));
+      expect(src, contains('parseM3u8'));
+      expect(src, contains('quality:'));
+      expect(src, contains('language:'));
       expect(src, isNot(contains("/cdn/sources-with-title?' + q")));
     });
 
-    test('vidlink marks MovieBox requiresProxy and strips Referer in JS', () async {
-      final src = await rootBundle.loadString('assets/providers/vidlink.js');
-      expect(src, contains('requiresProxy'));
-      expect(src, contains('hakunaymatata.com'));
-    });
-    test('vixsrc uses API, embed parse, m3u8 variants, and wyzie subs', () async {
-      final src = await rootBundle.loadString('assets/providers/vixsrc.js');
-      expect(src, contains('/api/tv/'));
-      expect(src, contains('/api/movie/'));
-      expect(src, contains('parseM3u8Variants'));
-      expect(src, contains('sub.wyzie.ru'));
-      expect(src, contains('resolveLegacyPage'));
-      expect(src, contains('1080p'));
-    });
+    test(
+      'vidlink requests dash-hevc and keeps MovieBox playlist cookies',
+      () async {
+        final src = await rootBundle.loadString('assets/providers/vidlink.js');
+        expect(src, contains('X-Playback-Environment'));
+        expect(src, contains('dash-hevc'));
+        expect(src, contains('playlistHeaders'));
+        expect(src, contains('deliveryType === \'dash\''));
+        expect(src, contains('hakunaymatata.com'));
+        expect(src, contains("name: 'Vidlink'"));
+      },
+    );
+    test(
+      'vixsrc uses API, embed parse, m3u8 variants, and wyzie subs',
+      () async {
+        final src = await rootBundle.loadString('assets/providers/vixsrc.js');
+        expect(src, contains('/api/tv/'));
+        expect(src, contains('/api/movie/'));
+        expect(src, contains('parseM3u8Variants'));
+        expect(src, contains('sub.wyzie.ru'));
+        expect(src, contains('resolveLegacyPage'));
+        expect(src, contains('1080p'));
+        expect(src, contains("name: 'Vixsrc'"));
+        expect(src, contains('CODECS='));
+      },
+    );
   });
 
   group('catalog Vidlink proxy', () {
-    test('catalogStreamRequiresSeekProxy for MovieBox engine rows', () {
-      const url =
-          'https://bcdn.hakunaymatata.com/resource/h265/x.mp4?sign=a&t=1';
-      expect(
-        catalogStreamRequiresSeekProxy({
-          'url': url,
-          '_enginePluginId': 'vidlink',
-          'requires_proxy': true,
-        }),
-        isTrue,
-      );
-      expect(
-        catalogStreamRequiresSeekProxy({
-          'url': url,
-          '_enginePluginId': 'videasy',
-        }),
-        isFalse,
-      );
-    });
+    test(
+      'catalogStreamRequiresSeekProxy only for explicit flag and 111477',
+      () {
+        const url =
+            'https://bcdn.hakunaymatata.com/resource/h265/x.mp4?sign=a&t=1';
+        expect(
+          catalogStreamRequiresSeekProxy({
+            'url': url,
+            '_enginePluginId': 'vidlink',
+            'requires_proxy': true,
+          }),
+          isTrue,
+        );
+        expect(
+          catalogStreamRequiresSeekProxy({
+            'url': url,
+            '_enginePluginId': 'vidlink',
+          }),
+          isFalse,
+        );
+        expect(
+          catalogStreamRequiresSeekProxy({
+            'url': 'https://111477.example/file.mp4',
+            '_enginePluginId': 'service111477',
+          }),
+          isTrue,
+        );
+        expect(
+          catalogStreamRequiresSeekProxy({
+            'url': url,
+            '_enginePluginId': 'videasy',
+          }),
+          isFalse,
+        );
+      },
+    );
 
     test('catalogStreamExternalSubtitles maps engine rows', () {
       expect(
         catalogStreamExternalSubtitles({
           'subtitles': [
-            {'url': 'https://sub.example/en.vtt', 'language': 'en', 'name': 'English'},
+            {
+              'url': 'https://sub.example/en.vtt',
+              'language': 'en',
+              'name': 'English',
+            },
           ],
         }),
         [
@@ -311,16 +412,89 @@ void main() {
     });
   });
 
-  group('EngineJsRuntime host', () {
+  group('mapEngineStream', () {
+    final plugin = EnginePlugin.fromJson({
+      'id': 'videasy',
+      'name': 'Videasy',
+      'entry': 'videasy.js',
+      'kind': 'http',
+    });
+
+    test(
+      'card title is media SxE year; quality/language/audio go to description',
+      () {
+        final mapped = mapEngineStream(
+          raw: {
+            'url': 'https://cdn.example/a.m3u8',
+            'name': 'Yoru',
+            'quality': '720p',
+            'language': 'English',
+            'audio': 'AAC',
+            'headers': {'Referer': 'https://player.videasy.to/'},
+          },
+          plugin: plugin,
+          mediaTitle: 'Sterling Point',
+          year: '2026',
+          type: 'tv',
+          season: 1,
+          episode: 1,
+        )!;
+        expect(mapped['title'], 'Sterling Point S1E1 - (2026)');
+        expect(mapped['description'], '720p AAC English');
+        expect(mapped['quality'], '720p');
+        expect(mapped['language'], 'English');
+        expect(mapped['_addonName'], 'Videasy · Yoru');
+        expect(mapped['_enginePluginId'], 'videasy');
+        expect(
+          (mapped['headers'] as Map)['Referer'],
+          'https://player.videasy.to/',
+        );
+      },
+    );
+
+    test('drops auto/English as quality and maps English to language', () {
+      final mapped = mapEngineStream(
+        raw: {
+          'url': 'https://cdn.example/a.m3u8',
+          'name': 'Vyse',
+          'quality': 'English',
+        },
+        plugin: plugin,
+        mediaTitle: 'Show',
+        type: 'movie',
+        year: '2024',
+      )!;
+      expect(mapped['title'], 'Show - (2024)');
+      expect(mapped['quality'], isNull);
+      expect(mapped['language'], 'English');
+      expect(mapped['description'], 'English');
+    });
+
+    test('reads 1080p from a Vidlink-style title when quality is missing', () {
+      final mapped = mapEngineStream(
+        raw: {'url': 'https://cdn.example/a.m3u8', 'title': 'Vidlink · 1080p'},
+        plugin: plugin,
+        mediaTitle: 'Movie',
+        type: 'movie',
+        year: '2020',
+      )!;
+      expect(mapped['quality'], '1080p');
+      expect(mapped['description'], '1080p');
+      expect(mapped['_addonName'], 'Videasy · Vidlink');
+    });
+  });
+
+  group('EngineRuntime host', () {
     test('extract(ctx) decrypts via ctx.streamcrypto', () async {
       const seed = 'test-seed';
       const mediaId = '550';
       const json = '{"ok":true}';
       final payload = StreamCrypto.encryptForTest(json, seed, mediaId);
-      final rt = EngineJsRuntime.instance;
+      final rt = EngineRuntime.instance;
       await rt.loadPlugin(
         pluginId: 'crypto-test',
-        code: '''
+        code:
+            '''
 function extract(ctx) {
   var body = ctx.streamcrypto.decrypt(${jsonEncode(payload)}, ${jsonEncode(seed)}, ctx.tmdbId);
   return Promise.resolve([{ url: 'https://cdn.example/a.m3u8', title: body }]);

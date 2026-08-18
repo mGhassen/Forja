@@ -112,6 +112,23 @@ void main() {
       expect(h.containsKey('Origin'), isFalse);
     });
 
+    test('keeps CloudFront Cookie on hakunaymatata DASH', () {
+      const url =
+          'https://sacdn.hakunaymatata.com/dash/x/index_web.mpd';
+      final h = resolvePlaybackHttpHeaders({
+        'Cookie': 'CloudFront-Policy=abc;CloudFront-Key-Pair-Id=KMHN1LQ1HEUPL',
+        'Referer': 'https://vidlink.pro/',
+        'User-Agent': 'CustomUA',
+      }, streamUrl: url);
+      expect(h['User-Agent'], 'CustomUA');
+      expect(
+        h['Cookie'],
+        'CloudFront-Policy=abc;CloudFront-Key-Pair-Id=KMHN1LQ1HEUPL',
+      );
+      expect(h.containsKey('Referer'), isFalse);
+      expect(h.containsKey('Origin'), isFalse);
+    });
+
     test('strips Referer/Origin for VidNest MovieBox hakunaymatata CDN', () {
       const url =
           'https://bcdn.hakunaymatata.com/resource/h265/abc.mp4?sign=x&t=1';
@@ -131,6 +148,21 @@ void main() {
       expect(h['User-Agent'], contains('Mozilla/5.0'));
       expect(h.containsKey('Referer'), isFalse);
       expect(h.containsKey('Origin'), isFalse);
+    });
+
+    test('strips Referer/Origin for Vidlink mwVault mooncase proxy URLs', () {
+      const url =
+          'https://noon.mooncase.online/mp/resource/h265/x.mp4?sign=a&t=1'
+          '&headers=%7B%22User-Agent%22%3A%22Custom%22%7D'
+          '&host=https%3A%2F%2Fbcdn.hakunaymatata.com';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://vidlink.pro/', 'Origin': 'https://vidlink.pro'},
+        streamUrl: url,
+      );
+      expect(h['User-Agent'], contains('Mozilla/5.0'));
+      expect(h.containsKey('Referer'), isFalse);
+      expect(h.containsKey('Origin'), isFalse);
+      expect(isMwVaultProxyPlayUrl(url), isTrue);
     });
 
     test('providerId vidnest does not force vidnest.fun Referer on CDN', () {

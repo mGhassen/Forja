@@ -6,7 +6,6 @@ function extract(ctx) {
   var tmdbId = String(ctx.tmdbId);
   var season = ctx.season || 1;
   var episode = ctx.episode || 1;
-  var labelPrefix = ctx.title ? ctx.title + ' · ' : '';
 
   function playHeaders(referer) {
     return {
@@ -132,15 +131,21 @@ function extract(ctx) {
       if (line.indexOf('#EXT-X-STREAM-INF:') === 0) {
         info = {};
         var res = line.match(/RESOLUTION=(\d+x\d+)/i);
+        var codecs = line.match(/CODECS="([^"]+)"/i);
         if (res) info.resolution = res[1];
+        if (codecs) info.codecs = codecs[1];
       } else if (info && line && line.charAt(0) !== '#') {
         var url = resolveRelative(line, masterUrl);
         var q = qualityFromRes(info.resolution) || qualityFromUrl(url);
-        out.push({
+        var row = {
           url: url,
-          title: labelPrefix + 'Vixsrc · ' + q,
+          name: 'Vixsrc',
+          quality: q && q !== 'Auto' ? q : '',
           headers: playHeaders(referer),
-        });
+        };
+        var c = String(info.codecs || '').toLowerCase();
+        if (c.indexOf('mp4a') >= 0 || c.indexOf('aac') >= 0) row.audio = 'AAC';
+        out.push(row);
         info = null;
       }
     }
@@ -173,7 +178,9 @@ function extract(ctx) {
     return rows.map(function (row) {
       return {
         url: row.url,
-        title: row.title,
+        name: row.name || 'Vixsrc',
+        quality: row.quality,
+        audio: row.audio,
         headers: row.headers,
         subtitles: [{ url: subUrl, language: 'en', name: 'English' }],
       };
@@ -188,7 +195,7 @@ function extract(ctx) {
       return [
         {
           url: masterUrl,
-          title: labelPrefix + 'Vixsrc · Auto',
+          name: 'Vixsrc',
           headers: playHeaders(referer),
         },
       ];

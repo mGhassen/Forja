@@ -135,12 +135,8 @@ function extract(ctx) {
                   return (items || []).map(function (s) {
                     return {
                       url: s.url,
-                      title:
-                        'YFlix ' +
-                        serverType +
-                        ' · ' +
-                        (s.quality || 'Auto') +
-                        (year ? ' (' + year + ')' : ''),
+                      name: 'YFlix ' + serverType,
+                      quality: s.quality || '',
                       headers: HEADERS,
                     };
                   });

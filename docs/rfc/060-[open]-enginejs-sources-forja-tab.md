@@ -2,14 +2,14 @@
 
 **Status:** open  
 **Depends on:** [RFC-039](fixed/039-[fixed]-remote-provider-runtime-config.md) (Videasy HTTP hosts stay in-app)  
-**Area:** `apps/forja/lib/shared/engine_js/`, `apps/forja/assets/providers/`, Sources portal, Settings Playback
+**Area:** `apps/forja/lib/shared/engine/`, `apps/forja/assets/providers/`, Sources portal, Settings Playback
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **11 / 12** acceptance |
-| **Current slice** | Bundled HTTP pack (Videasy + Vidlink + Vixsrc + DooFlix + YFlix) — manual smoke pending |
+| **Progress** | **4 / 4** components · **14 / 15** acceptance |
+| **Current slice** | Stream card metadata + Videasy HLS expand — manual smoke pending |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -42,18 +42,23 @@
 | 10 | R60-A10 | Bundled Videasy `Promise.all`s every player.videasy.to Servers mirror (Yoru…Raze), not `cdn` only | ✅ |
 | 11 | R60-A11 | Forja Videasy HTTP open stamps `player.videasy.to` Referer (`headers` + `engine:videasy` policy) | ✅ |
 | 12 | R60-A12 | Bundled pack ships Vidlink, Vixsrc, DooFlix, YFlix HTTP plugins (`extract(ctx)`) | ✅ |
+| 13 | R60-A13 | Forja `kind: host` plugins delegate to built-in sniff/API extractors (VSEmbed…WebStreamr) | ✅ |
+| 14 | R60-A14 | Engine mapper keeps quality/language/size; card title is media `Title SxE - (year)` | ✅ |
+| 15 | R60-A15 | Videasy expands HLS masters into per-rendition rows when API quality is not a resolution | ✅ |
 
 ---
 
 ## Summary
 
-Parallel plugin stack next to Nuvio and green Play. engineJS is the host (`extract(ctx)` + `engine.json`). The Sources portal gets a fourth kind tab labeled **Forja**. Builtin Dart extractors and green Play stay as they are.
+Parallel plugin stack next to Nuvio and green Play. The engine host is `lib/shared/engine/` (`extract(ctx)` + `engine.json`; `EngineRuntime` / `EngineService`). The Sources portal gets a fourth kind tab labeled **Forja**. Builtin Dart extractors and green Play stay as they are.
 
 ## Contract
 
 `engine.json` is a pack (one or more plugins) or a single plugin at the root. JS entry exports `extract(ctx)` (or `globalThis.extract`). Host injects `tmdbId`, `type`, `season`, `episode`, `title`, `year`, `fetch`, `streamcrypto.decrypt`.
 
-Kind `http` only in this slice. Play ids: `engine:<pluginId>`.
+Kind `http` runs `extract(ctx)` in QuickJS. Kind `host` delegates to built-in Dart/Rust sniff extractors (same as green Play). Play ids: `engine:<pluginId>`.
+
+Stream rows (HTTP + host) map through `mapEngineStream`: card `title` is `Show S1E1 - (2026)`, `quality` / `language` / `audio` (only when the plugin actually has them) become `description` for Sources badges. Videasy expands HLS masters into per-rendition rows when the API label is not a resolution.
 
 ## Related
 

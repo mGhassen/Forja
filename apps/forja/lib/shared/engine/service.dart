@@ -2,15 +2,17 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:forja/shared/engine_js/engine_js_models.dart';
-import 'package:forja/shared/engine_js/engine_js_runtime.dart';
+import 'package:forja/shared/engine/host_resolver.dart';
+import 'package:forja/shared/engine/models.dart';
+import 'package:forja/shared/engine/runtime.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:http/http.dart' as http;
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class EngineJsService {
-  EngineJsService._();
-  static final EngineJsService instance = EngineJsService._();
+class EngineService {
+  EngineService._();
+  static final EngineService instance = EngineService._();
 
   static const bundledSourceUrl = 'asset:providers/engine.json';
   static const _legacyBundledSourceUrl = 'asset:engine_js/engine.json';
@@ -33,7 +35,7 @@ class EngineJsService {
 
   void cancelPending() {
     _extractGeneration++;
-    EngineJsRuntime.instance.abortPendingWork();
+    EngineRuntime.instance.abortPendingWork();
   }
 
   Future<List<EnginePack>> listPacks() async {
@@ -57,7 +59,7 @@ class EngineJsService {
     final packs = await listPacks();
     return [
       for (final p in packs)
-        if (p.plugins.any((pl) => pl.enabled && pl.isHttp)) p,
+        if (p.plugins.any((pl) => pl.enabled && pl.isExtractable)) p,
     ];
   }
 
@@ -77,7 +79,7 @@ class EngineJsService {
         await _installBundled();
         _bundledReady = true;
       } catch (e) {
-        debugPrint('[engineJS] bundled ensure failed: $e');
+        debugPrint('[engine] bundled ensure failed: $e');
       } finally {
         _bundledEnsureFuture = null;
       }
@@ -111,6 +113,7 @@ class EngineJsService {
     );
     final prefs = await _prefs;
     for (final plugin in pack.plugins) {
+      if (!plugin.isHttp || plugin.entry.isEmpty) continue;
       final code = await rootBundle.loadString('$_assetRoot/${plugin.entry}');
       await prefs.setString(_scriptPrefix + plugin.id, code);
     }
@@ -173,7 +176,7 @@ class EngineJsService {
           await prefs.setString(_scriptPrefix + plugin.id, sr.body);
         }
       } catch (e) {
-        debugPrint('[engineJS] script fetch failed (${plugin.id}): $e');
+        debugPrint('[engine] script fetch failed (${plugin.id}): $e');
       }
     }
     final all = await _listPacksRaw();
@@ -238,10 +241,7 @@ class EngineJsService {
       final selectAll = await isSourcesSelectAllDefault();
       return selectAll ? Set<String>.from(enabledIds) : {};
     }
-    return filterEngineSelectedPluginIds(
-      savedIds: raw,
-      enabledIds: enabledIds,
-    );
+    return filterEngineSelectedPluginIds(savedIds: raw, enabledIds: enabledIds);
   }
 
   Future<void> saveSourcesSelectedPluginIds(Set<String> ids) async {
@@ -269,6 +269,7 @@ class EngineJsService {
     int? episode,
     String? title,
     String? year,
+    Movie? movie,
   }) async {
     final gen = _extractGeneration;
     final packs = await listPacks();
@@ -283,7 +284,7 @@ class EngineJsService {
       }
       if (plugin != null) break;
     }
-    if (plugin == null || !plugin.enabled || !plugin.isHttp) return null;
+    if (plugin == null || !plugin.enabled || !plugin.isExtractable) return null;
     final mediaType = type == 'tv' || type == 'series' ? 'tv' : 'movie';
     if (plugin.types.isNotEmpty &&
         !plugin.types.contains(mediaType) &&
@@ -294,9 +295,38 @@ class EngineJsService {
         streams: const [],
       );
     }
+
+    if (plugin.isHost) {
+      final resolvedMovie =
+          movie ??
+          Movie(
+            id: int.tryParse(tmdbId) ?? 0,
+            imdbId: null,
+            title: title ?? '',
+            posterPath: '',
+            backdropPath: '',
+            voteAverage: 0,
+            releaseDate: year != null ? '$year-01-01' : '',
+            mediaType: mediaType,
+          );
+      final hostStreams = await EngineHostResolver.resolve(
+        plugin: plugin,
+        movie: resolvedMovie,
+        season: season ?? 1,
+        episode: episode ?? 1,
+        isCancelled: () => gen != _extractGeneration,
+      );
+      if (gen != _extractGeneration) return null;
+      return EngineExtractResult(
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        streams: hostStreams,
+      );
+    }
+
     final code = await _loadScript(plugin);
     if (gen != _extractGeneration || code == null) return null;
-    final rt = EngineJsRuntime.instance;
+    final rt = EngineRuntime.instance;
     if (!rt.isLoaded(plugin.id)) {
       await rt.loadPlugin(pluginId: plugin.id, code: code);
     }
@@ -316,34 +346,16 @@ class EngineJsService {
     for (final s in raw) {
       final url = (s['url'] ?? '').toString().trim();
       if (url.isEmpty || isTorrentStreamUrl(url)) continue;
-      final titleOut = (s['title'] ?? s['name'] ?? plugin.name).toString();
-      final headers = <String, String>{};
-      final hRaw = s['headers'];
-      if (hRaw is Map) {
-        hRaw.forEach((k, v) {
-          if (v == null) return;
-          final ks = k.toString().trim();
-          final vs = v.toString().trim();
-          if (ks.isNotEmpty && vs.isNotEmpty) headers[ks] = vs;
-        });
-      }
-      streams.add({
-        'url': url,
-        'title': titleOut,
-        'name': titleOut,
-        if (headers.isNotEmpty) 'headers': headers,
-        if (headers.isNotEmpty)
-          'behaviorHints': {
-            'notWebReady': true,
-            'proxyHeaders': {'request': headers},
-          },
-        if (s['requiresProxy'] == true) 'requires_proxy': true,
-        if (s['subtitles'] is List && (s['subtitles'] as List).isNotEmpty)
-          'subtitles': s['subtitles'],
-        '_addonBaseUrl': 'engine:${plugin.id}',
-        '_addonName': plugin.name,
-        '_enginePluginId': plugin.id,
-      });
+      final mapped = mapEngineStream(
+        raw: s,
+        plugin: plugin,
+        mediaTitle: title,
+        year: year,
+        type: mediaType,
+        season: season,
+        episode: episode,
+      );
+      if (mapped != null) streams.add(mapped);
     }
     return EngineExtractResult(
       pluginId: plugin.id,

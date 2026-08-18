@@ -43,7 +43,7 @@ class BootNeeds {
   /// Effective: Nuvio on **and** a VOD tab visible.
   final bool nuvio;
 
-  /// Effective: engineJS (Forja tab) on **and** a VOD tab visible.
+  /// Effective: Forja engine on **and** a VOD tab visible.
   final bool engine;
 
   /// Effective: Webstreaming on **and** a VOD tab visible.

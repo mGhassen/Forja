@@ -10,7 +10,7 @@ import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/shared/engine_js/engine_js.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -70,7 +70,7 @@ class _SettingsProvidersSectionState
   }
 
   Future<void> _hydrateEngineSelectAllDefault() async {
-    final v = await EngineJsService.instance.isSourcesSelectAllDefault();
+    final v = await EngineService.instance.isSourcesSelectAllDefault();
     if (!mounted) return;
     setState(() => _engineSelectAllDefault = v);
   }
@@ -164,7 +164,7 @@ class _SettingsProvidersSectionState
                 _engineSelectAllDefault,
                 (val) async {
                   setState(() => _engineSelectAllDefault = val);
-                  await EngineJsService.instance.setSourcesSelectAllDefault(val);
+                  await EngineService.instance.setSourcesSelectAllDefault(val);
                 },
               ),
               _buildEnginePackSection(enginePacks),
@@ -481,7 +481,7 @@ class _SettingsProvidersSectionState
             const _MiniLabel('Forja plugins'),
             const SizedBox(height: 4),
             ...packs.map((pack) {
-              final builtIn = EngineJsService.isBundled(pack.sourceUrl);
+              final builtIn = EngineService.isBundled(pack.sourceUrl);
               return Theme(
                 data: Theme.of(
                   context,
@@ -525,7 +525,7 @@ class _SettingsProvidersSectionState
                       subtitle: subtitle,
                       value: p.enabled,
                       onChanged: (val) async {
-                        await EngineJsService.instance.setPluginEnabled(
+                        await EngineService.instance.setPluginEnabled(
                           sourceUrl: pack.sourceUrl,
                           pluginId: p.id,
                           enabled: val,
@@ -547,7 +547,7 @@ class _SettingsProvidersSectionState
     if (url.isEmpty) return;
     setState(() => _engineInstalling = true);
     try {
-      final pack = await EngineJsService.instance.install(url);
+      final pack = await EngineService.instance.install(url);
       if (!mounted) return;
       _engineController.clear();
       ForjaToast.success(
@@ -562,13 +562,13 @@ class _SettingsProvidersSectionState
   }
 
   Future<void> _removeEnginePack(String sourceUrl) async {
-    if (EngineJsService.isBundled(sourceUrl)) {
+    if (EngineService.isBundled(sourceUrl)) {
       if (!mounted) return;
       ForjaToast.error('Built-in Forja pack cannot be removed');
       return;
     }
     try {
-      await EngineJsService.instance.removePack(sourceUrl);
+      await EngineService.instance.removePack(sourceUrl);
       if (!mounted) return;
       ForjaToast.success('Forja pack removed');
     } catch (e) {

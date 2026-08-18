@@ -31,7 +31,7 @@ class PlaybackProfile {
   /// Whether Settings / Sources may expose Nuvio.
   final bool playSourceNuvio;
 
-  /// Whether Settings / Sources may expose engineJS (Forja tab).
+  /// Whether Settings / Sources may expose the Forja engine tab.
   final bool playSourceEngine;
 
   const PlaybackProfile({

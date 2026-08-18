@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/shared/engine_js/engine_js.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
@@ -236,7 +236,7 @@ class _SettingsPlaybackSectionState
               settingsFocusableToggle(
                 context,
                 'Forja',
-                'Play from engineJS plugins in Sources → Forja.',
+                'Play from plugins in Sources → Forja.',
                 snap.playSourceEngine,
                 (val) async {
                   await _settings.setPlaySourceEngineEnabled(val);
@@ -246,7 +246,7 @@ class _SettingsPlaybackSectionState
                   schedulePreferencesSyncPush();
                   if (val) {
                     unawaited(
-                      EngineJsService.instance.ensureBundledInstalled(),
+                      EngineService.instance.ensureBundledInstalled(),
                     );
                   }
                 },

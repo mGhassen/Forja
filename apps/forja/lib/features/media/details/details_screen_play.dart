@@ -49,7 +49,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
     if (_s._isNuvioSource || _s._selectedSourceId == 'all_nuvio') {
       return _s._nuvioStreams.where(_s._nuvioStreamSelected).toList();
     }
-    if (_s._isEngineSource || _s._selectedSourceId == EngineJsIds.allChip) {
+    if (_s._isEngineSource || _s._selectedSourceId == EngineIds.allChip) {
       return _s._engineStreams.where(_s._engineStreamSelected).toList();
     }
     if (_s._selectedSourceId == 'all_stremio' || _s._isTorrentSource) {

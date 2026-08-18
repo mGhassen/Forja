@@ -37,11 +37,7 @@ abstract final class PlayableSourceBridge {
       return playable[index].requiresProxy;
     }
     if (providerId == 'service111477') return true;
-    if (streamUrl != null &&
-        isMovieBoxCdnStreamUrl(streamUrl) &&
-        providerId == 'engine:vidlink') {
-      return true;
-    }
+    if (providerId == 'engine:service111477') return true;
     return false;
   }
 }

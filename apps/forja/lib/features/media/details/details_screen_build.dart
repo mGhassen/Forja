@@ -415,7 +415,7 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
               (_s._panelKindFilter == 'torrents' && _s._isSearching) ||
               (_s._panelKindFilter == 'stremio' && _s._isStremioFetching) ||
               (_s._panelKindFilter == 'nuvio' && _s._isNuvioFetching) ||
-              (_s._panelKindFilter == EngineJsIds.kind &&
+              (_s._panelKindFilter == EngineIds.kind &&
                   _s._isEngineFetching),
           onCancelFetch: _s._cancelActiveSourceFetch,
           providerOptions: _s._providerOptions(),

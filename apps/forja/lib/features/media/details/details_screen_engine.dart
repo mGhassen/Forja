@@ -5,11 +5,11 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
 
   Future<void> _checkAndFetchEngine() async {
     try {
-      final packs = await EngineJsService.instance.listPacks();
+      final packs = await EngineService.instance.listPacks();
       final enabledIds = enabledEnginePluginIds(packs);
       final saved = _s._engineSelectionHydrated
           ? null
-          : await EngineJsService.instance.loadSourcesSelectedPluginIds(
+          : await EngineService.instance.loadSourcesSelectedPluginIds(
               enabledIds: enabledIds,
             );
       if (!mounted) return;
@@ -29,11 +29,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     } catch (_) {}
   }
 
-  List<String> get _orderedEnginePluginIds => [
-        for (final pack in _s._enginePacks)
-          for (final p in pack.plugins)
-            if (p.enabled && p.isHttp) p.id,
-      ];
+  List<String> get _orderedEnginePluginIds =>
+      orderedEnginePluginIds(_s._enginePacks);
 
   List<String> get _pendingEnginePluginIds => [
         for (final id in _orderedEnginePluginIds)
@@ -49,13 +46,14 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     if (!_s._hasEnginePacks || _s._movie.id <= 0) return;
     if (_s._isEngineFetching && !reset) {
       if (onlyId == null || onlyId == _s._engineInFlightPluginId) return;
-      EngineJsService.instance.cancelPending();
+      EngineService.instance.cancelPending();
+      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _s._engineFetchGen++;
       _s._isEngineFetching = false;
       _s._engineInFlightPluginId = null;
     }
     if (reset) {
-      EngineJsService.instance.cancelPending();
+      EngineService.instance.cancelPending();
     }
     final fetchedIds = reset
         ? <String>{}
@@ -80,7 +78,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         _s._engineStreams = [];
         _s._engineFetchedPluginIds = {};
       }
-      if (_s._selectedSourceId == EngineJsIds.allChip) {
+      if (_s._selectedSourceId == EngineIds.allChip) {
         _s._errorMessage = null;
       }
     });
@@ -90,7 +88,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         : null;
     EngineExtractResult? batch;
     try {
-      batch = await EngineJsService.instance.runPlugin(
+      batch = await EngineService.instance.runPlugin(
         pluginId: batchId,
         tmdbId: _s._movie.id.toString(),
         type: type,
@@ -98,9 +96,10 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         episode: _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
         title: _s._movie.title,
         year: year,
+        movie: _s._movie,
       );
     } catch (e) {
-      debugPrint('[engineJS] plugin $batchId failed: $e');
+      debugPrint('[engine] plugin $batchId failed: $e');
     }
     if (!mounted || gen != _s._engineFetchGen) return;
     setState(() {
@@ -128,7 +127,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       _s._isEngineFetching = continueWalk;
       if (!continueWalk) _s._engineInFlightPluginId = null;
       if (!continueWalk &&
-          _s._selectedSourceId == EngineJsIds.allChip &&
+          _s._selectedSourceId == EngineIds.allChip &&
           _s._engineStreams.isEmpty &&
           pendingAfter == null) {
         _s._errorMessage = 'No streams found from selected Forja plugins';

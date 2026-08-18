@@ -144,7 +144,7 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
         _s._maybeAutoPlay();
         // Torrent search + Stremio / Forja streams load only when Sources
         // opens on that kind. Nuvio addon listing is cheap and needed for
-        // the Nuvio chip; engineJS packs wait until the Forja tab opens.
+        // the Nuvio chip; engine packs wait until the Forja tab opens.
         if (_s._playSourceNuvio) {
           _s._checkAndFetchNuvio();
         }

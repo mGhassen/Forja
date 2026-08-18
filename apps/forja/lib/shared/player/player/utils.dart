@@ -218,6 +218,15 @@ Map<String, String> resolvePlaybackHttpHeaders(
     out.remove('origin');
   }
 
+  // Vidlink mwVault proxy URLs carry upstream headers in query — extra Referer
+  // (e.g. derived from noon.mooncase.online) breaks the proxy open in mpv.
+  if (streamUrl != null && isMwVaultProxyPlayUrl(streamUrl)) {
+    out.remove('Referer');
+    out.remove('referer');
+    out.remove('Origin');
+    out.remove('origin');
+  }
+
   // Legacy CDN host rules - only when provider identity is unknown (RFC-044).
   if (policy == null && catalogForMatch != null) {
     for (final rule in cfg.cdnRefererRules) {
@@ -300,6 +309,23 @@ bool isMovieBoxCdnStreamUrl(String url) {
 }
 
 bool _isVidnestMovieBoxCdn(String url) => isMovieBoxCdnStreamUrl(url);
+
+/// Vidlink mwVault play URLs (mooncase mp / suubmon sacdn) embed upstream
+/// headers in query params — mpv must not add Referer/Origin on top.
+bool isMwVaultProxyPlayUrl(String url) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null || uri.host.isEmpty) return false;
+  final host = uri.host.toLowerCase();
+  final path = uri.path.toLowerCase();
+  if (host.contains('mooncase.online') && path.startsWith('/mp/')) {
+    return uri.queryParameters.containsKey('headers') &&
+        uri.queryParameters.containsKey('host');
+  }
+  if (host.contains('suubmon.store') && path.startsWith('/sacdn/')) {
+    return uri.queryParameters.containsKey('host');
+  }
+  return false;
+}
 
 /// Set mpv `user-agent` / `referrer` before `open`. Full header list goes on
 /// [Media.httpHeaders] - never via comma-joined `http-header-fields`.
@@ -441,6 +467,7 @@ Future<String> openPlayerStream(
       'Cannot open magnet/torrent URL directly - resolve to a stream first',
     );
   }
+  final mwVaultProxy = isMwVaultProxyPlayUrl(openUrl);
   final hdrs = resolvePlaybackHttpHeaders(
     headers,
     streamUrl: openUrl,
@@ -456,7 +483,10 @@ Future<String> openPlayerStream(
       (openUrl.startsWith('http://') || openUrl.startsWith('https://')) &&
       !isLocalTorrentStreamUrl(openUrl) &&
       !isLocalLoopbackPlayUrl(openUrl);
-  await player.open(Media(openUrl, httpHeaders: isRemoteHttp ? hdrs : null));
+  // mwVault proxy auth lives in the URL query — do not duplicate via httpHeaders.
+  await player.open(
+    Media(openUrl, httpHeaders: isRemoteHttp && !mwVaultProxy ? hdrs : null),
+  );
   return openUrl;
 }
 
@@ -599,16 +629,15 @@ List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
   return out.isEmpty ? null : out;
 }
 
-/// Vidlink mwVault / MovieBox file rows need the local seek proxy (HTTP 428 direct).
+/// 111477 catalog rows and explicit `requires_proxy` need the local seek proxy.
 bool catalogStreamRequiresSeekProxy(Map<String, dynamic> stream) {
   if (stream['requires_proxy'] == true) return true;
-  final url = stream['url']?.toString() ?? '';
-  if (url.isEmpty) return false;
-  return isMovieBoxCdnStreamUrl(url) &&
-      catalogHttpPlayProviderId(stream) == 'engine:vidlink';
+  final pid = catalogHttpPlayProviderId(stream);
+  if (pid == 'engine:service111477') return true;
+  return false;
 }
 
-/// Rewrites catalog HTTP streams that cannot be opened directly (Vidlink MovieBox).
+/// Rewrites catalog HTTP streams that cannot be opened directly (111477).
 Future<({String url, Map<String, String> headers})> proxyCatalogHttpStreamIfNeeded({
   required String streamUrl,
   required Map<String, String> headers,

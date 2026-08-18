@@ -10,7 +10,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/shared/engine_js/engine_js.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/playback_service.dart';
@@ -612,7 +612,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _panelShowEngine;
 
   String _defaultPanelKindFilter() {
-    if (_panelShowEngine) return EngineJsIds.kind;
+    if (_panelShowEngine) return EngineIds.kind;
     if (_panelShowTorrent) return 'torrents';
     if (_panelShowStremio) return 'stremio';
     if (_panelShowNuvio) return 'nuvio';
@@ -624,7 +624,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       if (_panelShowTorrent) 'torrents',
       if (_panelShowStremio) 'stremio',
       if (_panelShowNuvio) 'nuvio',
-      if (_panelShowEngine) EngineJsIds.kind,
+      if (_panelShowEngine) EngineIds.kind,
     };
     if (!allowed.contains(_panelKindFilter)) {
       _panelKindFilter = _defaultPanelKindFilter();
@@ -641,8 +641,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   String _defaultSourceId() {
     switch (_panelKindFilter) {
-      case EngineJsIds.kind:
-        if (_panelShowEngine) return EngineJsIds.allChip;
+      case EngineIds.kind:
+        if (_panelShowEngine) return EngineIds.allChip;
       case 'torrents':
         if (_panelShowTorrent) {
           return TorrentSearchProviders.defaultChipId(_enabledTorrentProviders);
@@ -654,7 +654,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
           return _streamAddons.first['baseUrl'] as String;
         }
     }
-    if (_panelShowEngine) return EngineJsIds.allChip;
+    if (_panelShowEngine) return EngineIds.allChip;
     if (_panelShowTorrent) {
       return TorrentSearchProviders.defaultChipId(_enabledTorrentProviders);
     }
@@ -717,7 +717,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     }
     if (_isEngineFetching) {
       _engineFetchGen++;
-      EngineJsService.instance.cancelPending();
+      EngineService.instance.cancelPending();
     }
     _isSearching = false;
     _isStremioFetching = false;
@@ -755,7 +755,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (_panelShowNuvio && _panelKindFilter == 'nuvio') {
       unawaited(_ensureNuvioPanelLoaded(force: force));
     }
-    if (_panelShowEngine && _panelKindFilter == EngineJsIds.kind) {
+    if (_panelShowEngine && _panelKindFilter == EngineIds.kind) {
       unawaited(_ensureEnginePanelLoaded(force: force));
     }
   }
@@ -885,12 +885,12 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   Future<void> _ensureEnginePanelLoaded({bool force = false}) async {
     await _checkAndFetchEngine();
     if (!mounted || !_panelShowEngine) return;
-    if (_panelKindFilter != EngineJsIds.kind) return;
+    if (_panelKindFilter != EngineIds.kind) return;
     if (_engineSelectedPluginIds.isEmpty) return;
     if (force) {
       CatalogSourcesSessionCache.invalidate(
         _catalogCacheKey,
-        kind: EngineJsIds.kind,
+        kind: EngineIds.kind,
       );
       await _fetchNextEnginePlugin(reset: true);
       return;
@@ -951,11 +951,11 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _nuvioStreams = [];
       _nuvioFetchedScraperIds = {};
     }
-    if (keepKind != EngineJsIds.kind && _isEngineFetching) {
+    if (keepKind != EngineIds.kind && _isEngineFetching) {
       _engineFetchGen++;
       _isEngineFetching = false;
       _engineInFlightPluginId = null;
-      EngineJsService.instance.cancelPending();
+      EngineService.instance.cancelPending();
       _engineStreams = [];
       _engineFetchedPluginIds = {};
     }
@@ -979,7 +979,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
         case 'nuvio':
           _selectedSourceId = 'all_nuvio';
         case 'engine':
-          _selectedSourceId = EngineJsIds.allChip;
+          _selectedSourceId = EngineIds.allChip;
         default:
           _selectedSourceId = TorrentSearchProviders.allId;
       }

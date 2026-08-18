@@ -10,6 +10,17 @@ function extract(ctx) {
   };
   var isTv = ctx.type === 'tv';
   var tmdbId = String(ctx.tmdbId);
+  // Same mwVault proxy as vidlink.pro (module 5196 / mooncase mp prefix).
+  var MWVAULT_PROXY = 'https://noon.mooncase.online/';
+  var MWVAULT_KEEP_QUERY = {
+    auth: 1,
+    expires: 1,
+    hash: 1,
+    key: 1,
+    sign: 1,
+    t: 1,
+    token: 1,
+  };
 
   function req(url, opts) {
     opts = opts || {};
@@ -58,21 +69,113 @@ function extract(ctx) {
         info = {};
         var bw = line.match(/BANDWIDTH=(\d+)/);
         var res = line.match(/RESOLUTION=(\d+x\d+)/);
+        var codecs = line.match(/CODECS="([^"]+)"/i);
         if (bw) info.bandwidth = parseInt(bw[1], 10);
         if (res) info.resolution = res[1];
+        if (codecs) info.codecs = codecs[1];
       } else if (info && line.charAt(0) !== '#') {
         var url = resolveRelative(line, baseUrl);
-        out.push({ url: url, quality: qualityFromRes(info.resolution) });
+        var row = { url: url, quality: qualityFromRes(info.resolution) };
+        var c = String(info.codecs || '').toLowerCase();
+        if (c.indexOf('mp4a') >= 0 || c.indexOf('aac') >= 0) row.audio = 'AAC';
+        out.push(row);
         info = null;
       }
     }
     return out;
   }
 
+  function decodeQueryKey(pair) {
+    var k = pair.split('=')[0];
+    try {
+      return decodeURIComponent(String(k).replace(/\+/g, ' ')).toLowerCase();
+    } catch (e) {
+      return String(k).toLowerCase();
+    }
+  }
+
+  function normalizeHeaderMap(raw) {
+    if (!raw || typeof raw !== 'object') return {};
+    var out = {};
+    for (var k in raw) {
+      if (!Object.prototype.hasOwnProperty.call(raw, k)) continue;
+      var v = raw[k];
+      if (typeof v !== 'string' || /[\0\r\n]/.test(k + v)) return null;
+      out[k] = v;
+    }
+    return out;
+  }
+
+  function headersParam(raw) {
+    var map = normalizeHeaderMap(raw);
+    if (map === null) return null;
+    var keys = Object.keys(map).sort();
+    var sorted = {};
+    for (var i = 0; i < keys.length; i++) {
+      sorted[keys[i]] = map[keys[i]];
+    }
+    // vidlink.pro mwVault mp proxy expects URL-encoded JSON, not base64url.
+    return encodeURIComponent(JSON.stringify(sorted));
+  }
+
+  function parseHttpUrl(url) {
+    var m = String(url || '').match(/^(https?):\/\/([^/?#]+)([^?#]*)(\?([^#]*))?/);
+    if (!m) return null;
+    return {
+      origin: m[1] + '://' + m[2],
+      pathname: m[3] || '/',
+      search: m[5] || '',
+    };
+  }
+
+  function queryHasProxyParams(search) {
+    return String(search || '')
+      .split('&')
+      .filter(Boolean)
+      .some(function (pair) {
+        var k = decodeQueryKey(pair);
+        return k === 'headers' || k === 'host';
+      });
+  }
+
+  function keepMwVaultQuery(search) {
+    return String(search || '')
+      .split('&')
+      .filter(Boolean)
+      .filter(function (pair) {
+        return MWVAULT_KEEP_QUERY[decodeQueryKey(pair)];
+      })
+      .join('&');
+  }
+
+  function buildMwVaultMpProxy(url, hdrs) {
+    var parsed = parseHttpUrl(url);
+    var headersEnc = headersParam(hdrs);
+    if (!parsed || headersEnc === null || queryHasProxyParams(parsed.search)) {
+      return null;
+    }
+    var parts = [];
+    var kept = keepMwVaultQuery(parsed.search);
+    if (kept) parts.push(kept);
+    parts.push('headers=' + headersEnc); // already encodeURIComponent(JSON)
+    parts.push('host=' + encodeURIComponent(parsed.origin));
+    var base = MWVAULT_PROXY.replace(/\/?$/, '/');
+    return base + 'mp' + parsed.pathname + '?' + parts.join('&');
+  }
+
   function headersForUrl(url, upstream) {
     var host = String(url || '').toLowerCase();
     if (host.indexOf('hakunaymatata.com') >= 0) {
-      return { 'User-Agent': headers['User-Agent'] };
+      var hakuna = { 'User-Agent': headers['User-Agent'] };
+      if (upstream) {
+        for (var hk in upstream) {
+          if (!Object.prototype.hasOwnProperty.call(upstream, hk)) continue;
+          var lk = String(hk).toLowerCase();
+          if (lk === 'referer' || lk === 'origin') continue;
+          if (typeof upstream[hk] === 'string' && upstream[hk]) hakuna[hk] = upstream[hk];
+        }
+      }
+      return hakuna;
     }
     var out = {
       'User-Agent': headers['User-Agent'],
@@ -92,24 +195,49 @@ function extract(ctx) {
     var playlists = [];
     function push(url, quality, upstream, needsProxy) {
       if (!url) return;
+      var hdrs = headersForUrl(url, upstream);
+      var playUrl = url;
+      var useSeekProxy = false;
+      if (needsProxy) {
+        var proxied = buildMwVaultMpProxy(url, hdrs);
+        if (proxied) {
+          playUrl = proxied;
+          hdrs = {};
+        } else {
+          useSeekProxy = true;
+        }
+      }
+      var q = quality && quality !== 'Auto' ? quality : '';
       var row = {
-        url: url,
-        title: 'Vidlink · ' + (quality || 'Auto'),
-        headers: headersForUrl(url, upstream),
+        url: playUrl,
+        name: 'Vidlink',
+        quality: q,
+        headers: hdrs,
       };
-      if (needsProxy) row.requiresProxy = true;
+      if (useSeekProxy) row.requiresProxy = true;
       out.push(row);
     }
-    if (data.stream && data.stream.qualities) {
-      var quals = data.stream.qualities;
+    var stream = data.stream;
+    var playlistUrl = stream && stream.playlist;
+    var isDash =
+      (stream && stream.deliveryType === 'dash') ||
+      (playlistUrl && String(playlistUrl).indexOf('.mpd') >= 0);
+    if (isDash && playlistUrl) {
+      // Native player sends CloudFront cookies; mooncase /mp is a browser CORS
+      // shim and 428s these MovieBox progressive URLs.
+      push(playlistUrl, 'Auto', stream.playlistHeaders || {}, false);
+      return Promise.resolve(out);
+    }
+    if (stream && stream.qualities) {
+      var quals = stream.qualities;
       for (var k in quals) {
         if (!Object.prototype.hasOwnProperty.call(quals, k)) continue;
         var q = quals[k];
         if (q && q.url) push(q.url, k, q.headers, q.requiresProxy === true);
       }
-      if (data.stream.playlist) playlists.push(data.stream.playlist);
-    } else if (data.stream && data.stream.playlist) {
-      playlists.push(data.stream.playlist);
+      if (playlistUrl) playlists.push(playlistUrl);
+    } else if (playlistUrl) {
+      playlists.push(playlistUrl);
     } else if (data.url) {
       push(data.url, 'Auto', null, false);
     }
@@ -131,7 +259,9 @@ function extract(ctx) {
       for (var g = 0; g < groups.length; g++) {
         var items = groups[g] || [];
         for (var j = 0; j < items.length; j++) {
-          push(items[j].url, items[j].quality, null, false);
+          var item = items[j];
+          push(item.url, item.quality, null, false);
+          if (item.audio && out.length) out[out.length - 1].audio = item.audio;
         }
       }
       if (!out.length && playlists.length) push(playlists[0], 'Auto', null, false);
@@ -167,9 +297,11 @@ function extract(ctx) {
       if (!id) return [];
       var url =
         isTv && ctx.season && ctx.episode
-          ? API + '/tv/' + id + '/' + ctx.season + '/' + ctx.episode
+          ? API + '/tv/' + id + '/' + ctx.season + '/' + ctx.episode + '?multiLang=0'
           : API + '/movie/' + id;
-      return req(url).then(function (r) {
+      return req(url, {
+        headers: { 'X-Playback-Environment': 'dash-hevc' },
+      }).then(function (r) {
         return r.json();
       });
     })

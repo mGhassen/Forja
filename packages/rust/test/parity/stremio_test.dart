@@ -96,7 +96,7 @@ void main() {
   group('classifyStremioStream magnet url', () {
     const desktop = PlaybackProfile.desktop;
 
-    test('HTTP url copies top-level headers (engineJS / Nuvio)', () {
+    test('HTTP url copies top-level headers (engine / Nuvio)', () {
       final out = classifyStremioStream(
         {
           'url': 'https://moon.peakstorm.top/r2/x/index.m3u8',

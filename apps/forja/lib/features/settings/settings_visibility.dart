@@ -62,7 +62,7 @@ class SettingsVisibility {
   /// Nuvio scrapers (own play source). Settings Sources hub stays hidden on ATV.
   bool get showNuvio => vodTab && playSourceNuvio;
 
-  /// engineJS plugins (Sources → Forja).
+  /// Forja plugins (Sources → Forja).
   bool get showEngine => vodTab && playSourceEngine;
 
   /// Stremio addons — VOD Sources and/or Live Matches sport servers.

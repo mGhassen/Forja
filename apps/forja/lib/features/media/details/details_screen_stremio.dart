@@ -64,7 +64,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     DomainStreamProviderResolver.cancelAllPending(
       cancelEngineJobs: cancelEngineJobs,
     );
-    EngineJsService.instance.cancelPending();
+    EngineService.instance.cancelPending();
     _s._isSearching = false;
     _s._isStremioFetching = false;
     _s._isNuvioFetching = false;

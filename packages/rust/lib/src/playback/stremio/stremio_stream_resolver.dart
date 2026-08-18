@@ -114,9 +114,9 @@ List<Map<String, dynamic>> filterStremioStreamsForProfile(
       .toList();
 }
 
-/// HTTP request headers on a Stremio / Nuvio / engineJS stream map.
+/// HTTP request headers on a Stremio / Nuvio / Forja engine stream map.
 ///
-/// Stremio addons use `behaviorHints.proxyHeaders.request`. Nuvio and engineJS
+/// Stremio addons use `behaviorHints.proxyHeaders.request`. Nuvio and Forja
 /// put the same map on `headers`. Both are merged; hints win on key clash.
 Map<String, String> stremioStreamRequestHeaders(Map<String, dynamic> stream) {
   final out = <String, String>{};

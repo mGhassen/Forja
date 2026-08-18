@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/media/details/providers/details_providers.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/shared/engine_js/engine_js.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:rust/rust.dart';
@@ -103,8 +103,8 @@ class DetailsPlaySession {
   bool webstreamingOnlyExtractionCancelled = false;
   int webstreamingPlayGen = 0;
 
-  String selectedSourceId = EngineJsIds.allChip;
-  String panelKindFilter = EngineJsIds.kind;
+  String selectedSourceId = EngineIds.allChip;
+  String panelKindFilter = EngineIds.kind;
 
   DetailsResolveStatus get resolveStatus {
     if (isSearching ||

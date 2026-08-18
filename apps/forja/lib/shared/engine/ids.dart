@@ -1,6 +1,6 @@
-/// Sources kind + chip ids for engineJS. Kind id is `engine`, not `forja`
+/// Sources kind + chip ids. Kind id is `engine`, not `forja`
 /// (`forja` is the legacy Torrents All-chip alias).
-abstract final class EngineJsIds {
+abstract final class EngineIds {
   static const kind = 'engine';
   static const allChip = 'all_engine';
   static const prefix = 'engine:';

@@ -43,7 +43,7 @@ function extract(ctx) {
               if (!finalUrl || finalUrl === url) return null;
               return {
                 url: finalUrl,
-                title: 'DooFlix · ' + (linkObj.host || 'Server'),
+                name: linkObj.host || 'Server',
                 headers: playHeaders,
               };
             })

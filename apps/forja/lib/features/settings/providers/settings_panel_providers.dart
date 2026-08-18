@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/shared/engine_js/engine_js.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -561,17 +561,17 @@ final enginePacksProvider =
 class EnginePacksNotifier extends AsyncNotifier<List<EnginePack>> {
   @override
   Future<List<EnginePack>> build() async {
-    final n = EngineJsService.changeNotifier;
+    final n = EngineService.changeNotifier;
     void listener() => ref.invalidateSelf();
     n.addListener(listener);
     ref.onDispose(() => n.removeListener(listener));
-    return EngineJsService.instance.listPacks();
+    return EngineService.instance.listPacks();
   }
 
   Future<void> reload() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(
-      () => EngineJsService.instance.listPacks(),
+      () => EngineService.instance.listPacks(),
     );
   }
 }

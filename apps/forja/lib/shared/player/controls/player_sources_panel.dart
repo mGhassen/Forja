@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/shared/engine_js/engine_js.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
@@ -142,7 +142,9 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
       isOpen: _open,
       onClose: widget.onClose,
       enableBlur: false,
-      contentPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      // Details uses SafeArea headroom + 16 left. Player overlay has no
+      // title-bar inset, and chrome translates the count badge -20px.
+      contentPadding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
       child: SourcesPanelTv.wrapBody(
         context: context,
         onClose: widget.onClose,
@@ -612,9 +614,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     Set<String> engineSelected = {};
     if (engineOn && kind == 'engine') {
       try {
-        enginePacks = await EngineJsService.instance.listSourcesPanelPacks();
+        enginePacks = await EngineService.instance.listSourcesPanelPacks();
         engineSelected =
-            await EngineJsService.instance.loadSourcesSelectedPluginIds(
+            await EngineService.instance.loadSourcesSelectedPluginIds(
           enabledIds: enabledEnginePluginIds(enginePacks),
         );
       } catch (_) {}
@@ -683,9 +685,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   Future<void> _ensureEngineMetadata() async {
     if (!_showEngine) return;
     try {
-      final packs = await EngineJsService.instance.listSourcesPanelPacks();
+      final packs = await EngineService.instance.listSourcesPanelPacks();
       final enabledIds = enabledEnginePluginIds(packs);
-      final saved = await EngineJsService.instance.loadSourcesSelectedPluginIds(
+      final saved = await EngineService.instance.loadSourcesSelectedPluginIds(
         enabledIds: enabledIds,
       );
       if (!mounted) return;
@@ -880,7 +882,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _engineFetchGen++;
       _engineFetching = false;
       _engineInFlightPluginId = null;
-      EngineJsService.instance.cancelPending();
+      EngineService.instance.cancelPending();
       _engineStreams = [];
       _engineFetchedPluginIds = {};
     }
@@ -1217,7 +1219,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         const SourcesPanelProviderOption(id: 'all_engine', label: 'All'),
         for (final a in _enginePacks)
           for (final s in a.plugins)
-            if (s.enabled && s.isHttp)
+            if (s.enabled && s.isExtractable)
               SourcesPanelProviderOption(id: 'engine:${s.id}', label: s.name),
       ];
     }
@@ -1765,11 +1767,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
   }
 
-  List<String> get _orderedEnginePluginIds => [
-    for (final pack in _enginePacks)
-      for (final p in pack.plugins)
-        if (p.enabled && p.isHttp) p.id,
-  ];
+  List<String> get _orderedEnginePluginIds =>
+      orderedEnginePluginIds(_enginePacks);
 
   Future<void> _fetchNextEnginePlugin({
     bool reset = false,
@@ -1801,7 +1800,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
     EngineExtractResult? batch;
     try {
-      batch = await EngineJsService.instance.runPlugin(
+      batch = await EngineService.instance.runPlugin(
         pluginId: batchId,
         tmdbId: widget.movie.id.toString(),
         type: type,
@@ -1809,9 +1808,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         episode: widget.movie.mediaType == 'tv' ? widget.episode : null,
         title: widget.movie.title,
         year: _year,
+        movie: widget.movie,
       );
     } catch (e) {
-      debugPrint('[engineJS] plugin $batchId failed: $e');
+      debugPrint('[engine] plugin $batchId failed: $e');
     }
     if (!mounted || gen != _engineFetchGen) return;
     setState(() {
@@ -2116,11 +2116,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           _engineFetchGen++;
           _engineFetching = false;
           _engineInFlightPluginId = null;
-          EngineJsService.instance.cancelPending();
+          EngineService.instance.cancelPending();
+          DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
         }
       });
       unawaited(
-        EngineJsService.instance.saveSourcesSelectedPluginIds(next),
+        EngineService.instance.saveSourcesSelectedPluginIds(next),
       );
       if (!clearing) {
         unawaited(_fetchNextEnginePlugin());
@@ -2153,7 +2154,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             _engineFetchGen++;
             _engineFetching = false;
             _engineInFlightPluginId = null;
-            EngineJsService.instance.cancelPending();
+            EngineService.instance.cancelPending();
+          DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
           }
         } else {
           _engineSelectedPluginIds = {..._engineSelectedPluginIds, pluginId};
@@ -2165,7 +2167,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         fetchedPluginIds: _engineFetchedPluginIds,
       );
       unawaited(
-        EngineJsService.instance.saveSourcesSelectedPluginIds(
+        EngineService.instance.saveSourcesSelectedPluginIds(
           _engineSelectedPluginIds,
         ),
       );
@@ -2289,7 +2291,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             _nuvioFetchGen++;
             _engineFetchGen++;
             DomainStreamProviderResolver.cancelAllPending();
-            EngineJsService.instance.cancelPending();
+            EngineService.instance.cancelPending();
+          DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
             setState(() {
               _searching = false;
               _stremioFetching = false;

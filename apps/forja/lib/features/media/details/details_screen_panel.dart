@@ -29,7 +29,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
 
   bool get _panelShowsNuvio => _s._panelKindFilter == 'nuvio';
 
-  bool get _panelShowsEngine => _s._panelKindFilter == EngineJsIds.kind;
+  bool get _panelShowsEngine => _s._panelKindFilter == EngineIds.kind;
 
   List<Map<String, dynamic>> get _filteredPanelStremioStreams {
     final streams = _s._selectedSourceId == 'all_stremio'
@@ -200,8 +200,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       _s._selectedSourceId.startsWith('nuvio://');
 
   bool get _isEngineSource =>
-      _s._selectedSourceId == EngineJsIds.allChip ||
-      _s._selectedSourceId.startsWith(EngineJsIds.prefix);
+      _s._selectedSourceId == EngineIds.allChip ||
+      _s._selectedSourceId.startsWith(EngineIds.prefix);
 
   List<Map<String, dynamic>> get _selectedEngineStreams => _s._engineStreams
       .whereType<Map<String, dynamic>>()
@@ -215,9 +215,9 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     final id = s['_enginePluginId'] as String?;
     if (id != null) return _s._engineSelectedPluginIds.contains(id);
     final base = s['_addonBaseUrl'] as String?;
-    if (base != null && base.startsWith(EngineJsIds.prefix)) {
+    if (base != null && base.startsWith(EngineIds.prefix)) {
       return _s._engineSelectedPluginIds.contains(
-        base.substring(EngineJsIds.prefix.length),
+        base.substring(EngineIds.prefix.length),
       );
     }
     return false;
@@ -245,19 +245,19 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           );
         }
       }
-    } else if (_s._panelKindFilter == EngineJsIds.kind) {
+    } else if (_s._panelKindFilter == EngineIds.kind) {
       options.add(
         const SourcesPanelProviderOption(
-          id: EngineJsIds.allChip,
+          id: EngineIds.allChip,
           label: 'All',
         ),
       );
       for (final a in _s._enginePacks) {
         for (final s in a.plugins) {
-          if (!s.enabled || !s.isHttp) continue;
+          if (!s.enabled || !s.isExtractable) continue;
           options.add(
             SourcesPanelProviderOption(
-              id: EngineJsIds.pluginChip(s.id),
+              id: EngineIds.pluginChip(s.id),
               label: s.name,
             ),
           );
@@ -370,7 +370,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       }
       return;
     }
-    if (id == EngineJsIds.allChip) {
+    if (id == EngineIds.allChip) {
       final enabled = enabledEnginePluginIds(_s._enginePacks);
       if (enabled.isEmpty) return;
       final next = nextEngineSelectedAfterAllTap(
@@ -379,26 +379,26 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       );
       final clearing = next.isEmpty;
       setState(() {
-        _s._selectedSourceId = EngineJsIds.allChip;
+        _s._selectedSourceId = EngineIds.allChip;
         _s._errorMessage = null;
         _s._engineSelectedPluginIds = next;
         if (clearing) {
           _s._engineFetchGen++;
           _s._isEngineFetching = false;
           _s._engineInFlightPluginId = null;
-          EngineJsService.instance.cancelPending();
+          EngineService.instance.cancelPending();
         }
       });
       unawaited(
-        EngineJsService.instance.saveSourcesSelectedPluginIds(next),
+        EngineService.instance.saveSourcesSelectedPluginIds(next),
       );
       if (!clearing) {
         unawaited(_s._fetchNextEnginePlugin());
       }
       return;
     }
-    if (id.startsWith(EngineJsIds.prefix)) {
-      final pluginId = id.substring(EngineJsIds.prefix.length);
+    if (id.startsWith(EngineIds.prefix)) {
+      final pluginId = id.substring(EngineIds.prefix.length);
       final wasSelected = _s._engineSelectedPluginIds.contains(pluginId);
       final fetched = _s._engineFetchedPluginIds.contains(pluginId);
       final cancelInFlight = wasSelected &&
@@ -409,7 +409,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         return;
       }
       setState(() {
-        _s._selectedSourceId = EngineJsIds.allChip;
+        _s._selectedSourceId = EngineIds.allChip;
         _s._errorMessage = null;
         if (wasSelected) {
           _s._engineSelectedPluginIds = Set<String>.from(
@@ -426,7 +426,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
             _s._engineFetchGen++;
             _s._isEngineFetching = false;
             _s._engineInFlightPluginId = null;
-            EngineJsService.instance.cancelPending();
+            EngineService.instance.cancelPending();
           }
         } else {
           _s._engineSelectedPluginIds = {
@@ -441,7 +441,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         fetchedPluginIds: _s._engineFetchedPluginIds,
       );
       unawaited(
-        EngineJsService.instance.saveSourcesSelectedPluginIds(
+        EngineService.instance.saveSourcesSelectedPluginIds(
           _s._engineSelectedPluginIds,
         ),
       );
