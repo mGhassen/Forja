@@ -81,6 +81,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   late final FocusNode _expandFocus;
   late final FocusNode _submitFocus;
   late final FocusNode _cancelFocus;
+  late final FocusNode _labelSuffixFocus;
+  late final FocusNode _passSuffixFocus;
   late final List<FocusNode> _platformTabFocus;
   FocusOnKeyEventCallback? _pasteKeyHandler;
   bool _obscurePassword = true;
@@ -154,6 +156,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _expandFocus = FocusNode(debugLabel: 'iptv-portal-expand');
     _submitFocus = FocusNode(debugLabel: 'iptv-portal-submit');
     _cancelFocus = FocusNode(debugLabel: 'iptv-portal-cancel');
+    _labelSuffixFocus = FocusNode(debugLabel: 'iptv-portal-label-random');
+    _passSuffixFocus = FocusNode(debugLabel: 'iptv-portal-pass-eye');
     _platformTabFocus = [
       FocusNode(debugLabel: 'iptv-portal-tab-xtream'),
       FocusNode(debugLabel: 'iptv-portal-tab-m3u'),
@@ -315,6 +319,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     _expandFocus.dispose();
     _submitFocus.dispose();
     _cancelFocus.dispose();
+    _labelSuffixFocus.dispose();
+    _passSuffixFocus.dispose();
     for (final node in _platformTabFocus) {
       node.dispose();
     }
@@ -943,11 +949,13 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                                 : 'My provider',
                                             focusNode: _labelFocus,
                                             dialogIndex: labelIndex,
-                                            suffix: ForjaPlainIcon(
+                                            suffixFocus: _labelSuffixFocus,
+                                            suffix: _portalFieldSuffix(
                                               icon: Icons.casino_outlined,
                                               tooltip: 'Random name',
-                                              color: IptvShellStyle.iconMuted,
-                                              size: 20,
+                                              fieldFocus: _labelFocus,
+                                              suffixFocus: _labelSuffixFocus,
+                                              dialogIndex: labelIndex,
                                               onTap: () => setState(
                                                 () => _labelCtrl.text =
                                                     IptvPortalName.generate(),
@@ -1037,9 +1045,15 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                                   _obscurePassword,
                                               focusNode: _passFocus,
                                               dialogIndex: passIndex,
+                                              suffixFocus:
+                                                  _platform ==
+                                                          IptvPortalPlatform
+                                                              .xtream
+                                                      ? _passSuffixFocus
+                                                      : null,
                                               suffix: _platform ==
                                                       IptvPortalPlatform.xtream
-                                                  ? ForjaPlainIcon(
+                                                  ? _portalFieldSuffix(
                                                       icon: _obscurePassword
                                                           ? Icons
                                                               .visibility_outlined
@@ -1048,9 +1062,10 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                                                       tooltip: _obscurePassword
                                                           ? 'Show password'
                                                           : 'Hide password',
-                                                      color: IptvShellStyle
-                                                          .iconMuted,
-                                                      size: 20,
+                                                      fieldFocus: _passFocus,
+                                                      suffixFocus:
+                                                          _passSuffixFocus,
+                                                      dialogIndex: passIndex,
                                                       onTap: () => setState(
                                                         () =>
                                                             _obscurePassword =
@@ -1479,6 +1494,64 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     );
   }
 
+  Widget _portalFieldSuffix({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+    required FocusNode fieldFocus,
+    required FocusNode suffixFocus,
+    required int dialogIndex,
+  }) {
+    final tv = iptvUseTvFocus(context);
+    if (!tv) {
+      return ForjaPlainIcon(
+        icon: icon,
+        tooltip: tooltip,
+        color: IptvShellStyle.iconMuted,
+        size: 20,
+        onTap: onTap,
+      );
+    }
+    final focused = suffixFocus.hasFocus;
+    return iptvTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 8,
+      scaleOnFocus: 1,
+      suppressInkHover: true,
+      focusNode: suffixFocus,
+      onFocusChange: (_) => setState(() {}),
+      onLeftEdge: () => fieldFocus.requestFocus(),
+      onRightEdge: () {},
+      onUpEdge: () {
+        if (identical(fieldFocus, _labelFocus) &&
+            (_editing || _showManualForm) &&
+            !_namingImported) {
+          _focusSelectedPlatformTab();
+          return;
+        }
+        _focusDialogItem(dialogIndex - 1);
+      },
+      onDownEdge: () => _focusDialogItem(dialogIndex + 1),
+      child: Tooltip(
+        message: tooltip,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.all(4),
+          decoration: iptvFocusButtonDecoration(
+            active: false,
+            tvFocused: focused,
+            borderRadius: 8,
+            idleBg: Colors.transparent,
+            idleBorder: Colors.transparent,
+            subtle: true,
+          ),
+          child: Icon(icon, color: IptvShellStyle.iconMuted, size: 20),
+        ),
+      ),
+    );
+  }
+
   Widget _portalField(
     TextEditingController c,
     String label, {
@@ -1486,6 +1559,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     bool obscure = false,
     Widget? suffix,
     FocusNode? focusNode,
+    FocusNode? suffixFocus,
     int dialogIndex = -1,
   }) {
     final tv = iptvUseTvFocus(context);
@@ -1514,7 +1588,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
             obscureText: obscure,
             hintText: hint,
             hintStyle: hintStyle,
-            suffixIcon: suffix == null ? null : ExcludeFocus(child: suffix),
+            suffixIcon: suffix == null
+                ? null
+                : (suffixFocus == null ? ExcludeFocus(child: suffix) : suffix),
             style: GoogleFonts.plusJakartaSans(
               color: IptvShellStyle.textPrimary,
               fontSize: _tv ? 13 : 14,
@@ -1529,6 +1605,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
               _focusDialogItem(dialogIndex - 1);
             },
             onArrowDown: () => _focusDialogItem(dialogIndex + 1),
+            onArrowRight: suffixFocus == null
+                ? null
+                : () => suffixFocus.requestFocus(),
             onSubmit: _trySubmitFromEnter,
           )
         else

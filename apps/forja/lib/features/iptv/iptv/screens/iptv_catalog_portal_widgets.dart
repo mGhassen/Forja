@@ -6,6 +6,7 @@ class _IptvPortalDialogField extends StatefulWidget {
     required this.focusNode,
     required this.onArrowUp,
     required this.onArrowDown,
+    this.onArrowRight,
     this.onSubmit,
     this.obscureText = false,
     this.style,
@@ -18,6 +19,7 @@ class _IptvPortalDialogField extends StatefulWidget {
   final FocusNode focusNode;
   final VoidCallback onArrowUp;
   final VoidCallback onArrowDown;
+  final VoidCallback? onArrowRight;
   final VoidCallback? onSubmit;
   final bool obscureText;
   final TextStyle? style;
@@ -96,6 +98,11 @@ class _IptvPortalDialogFieldState extends State<_IptvPortalDialogField> {
       }
       if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
         widget.onArrowUp();
+        return KeyEventResult.handled;
+      }
+      if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+          widget.onArrowRight != null) {
+        widget.onArrowRight!();
         return KeyEventResult.handled;
       }
     }

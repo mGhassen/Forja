@@ -244,7 +244,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
         children: [
           Expanded(child: kind),
           Transform.translate(
-            offset: const Offset(0, -20),
+            offset: Offset(0, _tv ? 0 : -20),
             child: _SourcesChromeMeta(
               episodeLabel: widget.episodeLabel,
               resultCount: widget.resultCount,
@@ -252,12 +252,11 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
           ),
         ],
       );
-    } else {
-      kind = Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: kind,
-      );
     }
+    kind = Padding(
+      padding: EdgeInsets.only(top: _tv ? 16 : (hasMeta ? 0 : 8)),
+      child: kind,
+    );
 
     if (_tv && _kindCount > 0) {
       kind = TvCatalogRow(
@@ -589,7 +588,12 @@ class _KindTabState extends State<_KindTab> {
     final face = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
+      padding: EdgeInsets.fromLTRB(
+        14,
+        SourcesPanelTv.isTv(context) ? 8 : 0,
+        14,
+        0,
+      ),
       transform: Matrix4.translationValues(
         0,
         (_hovered || _focused) && !selected ? -0.5 : 0,

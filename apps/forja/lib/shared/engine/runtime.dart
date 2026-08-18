@@ -500,7 +500,9 @@ class EngineRuntime {
         'try { globalThis.__engineFetchResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
         sourceUrl: 'engine://fetch/$id',
       );
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[engine:fetch] resolve failed id=$id $url: $e');
+    }
   }
 
   static const _hostJs = r'''
@@ -571,6 +573,22 @@ class EngineRuntime {
   if (typeof globalThis.queueMicrotask !== 'function') {
     globalThis.queueMicrotask = function(cb){ Promise.resolve().then(cb); };
   }
+  function _engineLog(level, args){
+    var parts = [];
+    for (var i = 0; i < args.length; i++) {
+      var a = args[i];
+      if (a == null || typeof a === 'string') parts.push(String(a));
+      else try { parts.push(JSON.stringify(a)); } catch (e) { parts.push(String(a)); }
+    }
+    sendMessage('Console', JSON.stringify({level: level, msg: parts.join(' ')}));
+  }
+  globalThis.console = {
+    log: function(){ _engineLog('log', arguments); },
+    info: function(){ _engineLog('info', arguments); },
+    warn: function(){ _engineLog('warn', arguments); },
+    error: function(){ _engineLog('error', arguments); },
+    debug: function(){ _engineLog('log', arguments); },
+  };
 })();
 ''';
 }

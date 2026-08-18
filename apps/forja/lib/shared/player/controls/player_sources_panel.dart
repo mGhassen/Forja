@@ -144,7 +144,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
       enableBlur: false,
       // Details uses SafeArea headroom + 16 left. Player overlay has no
       // title-bar inset, and chrome translates the count badge -20px.
-      contentPadding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+      contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: SourcesPanelTv.wrapBody(
         context: context,
         onClose: widget.onClose,

@@ -269,6 +269,38 @@ function extract(ctx) {
     });
   }
 
+  function log(msg) {
+    try {
+      console.log('[vidlink] ' + msg);
+    } catch (e) { }
+  }
+
+  function peekJson(r, label) {
+    return r.text().then(function (text) {
+      log(
+        label +
+        ' status=' +
+        r.status +
+        ' ok=' +
+        r.ok +
+        ' len=' +
+        (text ? String(text).length : 0),
+      );
+      try {
+        return text ? JSON.parse(text) : null;
+      } catch (e) {
+        log(
+          label +
+          ' parse fail ' +
+          (e && e.message ? e.message : e) +
+          ' body=' +
+          String(text || '').substring(0, 160),
+        );
+        return null;
+      }
+    });
+  }
+
   function tmdbMeta() {
     if (ctx.title) {
       return Promise.resolve({ title: ctx.title, year: ctx.year || '' });
@@ -276,7 +308,7 @@ function extract(ctx) {
     var ep = isTv ? 'tv' : 'movie';
     return req('https://api.themoviedb.org/3/' + ep + '/' + tmdbId + '?api_key=' + TMDB_KEY)
       .then(function (r) {
-        return r.json();
+        return peekJson(r, 'tmdb');
       })
       .then(function (d) {
         return {
@@ -286,15 +318,27 @@ function extract(ctx) {
       });
   }
 
+  log(
+    'extract tmdb=' +
+    tmdbId +
+    ' type=' +
+    ctx.type +
+    ' title=' +
+    (ctx.title ? 'yes' : 'no'),
+  );
+
   return tmdbMeta()
     .then(function () {
       return req(ENC + '/enc-vidlink?text=' + encodeURIComponent(tmdbId)).then(function (r) {
-        return r.json();
+        return peekJson(r, 'enc');
       });
     })
     .then(function (enc) {
       var id = enc && enc.result;
-      if (!id) return [];
+      if (!id) {
+        log('no enc result keys=' + (enc ? Object.keys(enc).join(',') : 'null'));
+        return [];
+      }
       var url =
         isTv && ctx.season && ctx.episode
           ? API + '/tv/' + id + '/' + ctx.season + '/' + ctx.episode + '?multiLang=0'
@@ -302,14 +346,33 @@ function extract(ctx) {
       return req(url, {
         headers: { 'X-Playback-Environment': 'dash-hevc' },
       }).then(function (r) {
-        return r.json();
+        return peekJson(r, 'api');
       });
     })
     .then(function (data) {
-      if (!data) return [];
+      if (!data) {
+        log('api json null');
+        return [];
+      }
+      var stream = data.stream || {};
+      log(
+        'api shape source=' +
+        (data.sourceId || '') +
+        ' delivery=' +
+        (stream.deliveryType || '') +
+        ' playlist=' +
+        (stream.playlist ? 'yes' : 'no') +
+        ' qualities=' +
+        (stream.qualities ? 'yes' : 'no'),
+      );
       return rowsFromData(data, ctx.title || 'Vidlink');
     })
-    .catch(function () {
+    .then(function (rows) {
+      log('rows=' + ((rows && rows.length) || 0));
+      return rows;
+    })
+    .catch(function (e) {
+      log('fail ' + (e && e.message ? e.message : String(e)));
       return [];
     });
 }
