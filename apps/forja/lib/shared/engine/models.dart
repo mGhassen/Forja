@@ -7,6 +7,7 @@ class EnginePlugin {
     this.types = const ['movie', 'tv'],
     this.kind = 'http',
     this.hostId,
+    this.hosts = const [],
     this.enabled = true,
     this.config = const {},
   });
@@ -20,12 +21,31 @@ class EnginePlugin {
 
   /// When [kind] is `host`, which built-in provider to resolve (`vidsrc`, …).
   final String? hostId;
+
+  /// Hostnames this plugin handles. Used by `kind: hop` (`ctx.hop(url)`).
+  final List<String> hosts;
   final bool enabled;
   final Map<String, dynamic> config;
 
   bool get isHttp => kind == 'http';
   bool get isHost => kind == 'host';
+  bool get isHop => kind == 'hop';
+
+  /// Sources chips: HTTP catalog plugins only. Hops are internal; host sniff
+  /// stays on green Play (`ctx.host` fallback), not as Forja chips.
   bool get isExtractable => isHttp;
+
+  List<String> get hopHosts {
+    final out = <String>[...hosts];
+    final cfg = config['hosts'];
+    if (cfg is List) {
+      for (final e in cfg) {
+        final s = e.toString().trim();
+        if (s.isNotEmpty) out.add(s);
+      }
+    }
+    return out;
+  }
 
   String get hostProviderId {
     final h = hostId?.trim();
@@ -58,6 +78,7 @@ class EnginePlugin {
           ? (j['kind'] as String).trim()
           : 'http',
       hostId: (j['hostId'] as String?)?.trim(),
+      hosts: _stringList(j['hosts']),
       enabled: (j['enabled'] as bool?) ?? true,
       config: engineConfigMap(j['config']),
     );
@@ -71,6 +92,7 @@ class EnginePlugin {
     'types': types,
     'kind': kind,
     if (hostId != null) 'hostId': hostId,
+    if (hosts.isNotEmpty) 'hosts': hosts,
     'enabled': enabled,
     if (config.isNotEmpty) 'config': config,
   };
@@ -83,9 +105,33 @@ class EnginePlugin {
     types: types,
     kind: kind,
     hostId: hostId,
+    hosts: hosts,
     enabled: enabled ?? this.enabled,
     config: config,
   );
+}
+
+List<String> _stringList(dynamic raw) {
+  if (raw is! List) return const [];
+  return [
+    for (final e in raw)
+      if (e.toString().trim().isNotEmpty) e.toString().trim(),
+  ];
+}
+
+/// First hop plugin whose [EnginePlugin.hopHosts] suffix-matches [url].
+String? hopPluginIdForUrl(String url, Iterable<EnginePlugin> plugins) {
+  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return null;
+  for (final p in plugins) {
+    if (!p.isHop) continue;
+    for (final h in p.hopHosts) {
+      final n = h.toLowerCase().trim();
+      if (n.isEmpty) continue;
+      if (host == n || host.endsWith('.$n')) return p.id;
+    }
+  }
+  return null;
 }
 
 class EnginePack {

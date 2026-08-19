@@ -60,8 +60,11 @@ class EngineService {
     final packs = await listPacks();
     return [
       for (final p in packs)
-        if (p.plugins.any((pl) => pl.enabled && pl.isHttp))
-          p.copyWithPlugins([for (final pl in p.plugins) if (pl.isHttp) pl]),
+        if (p.plugins.any((pl) => pl.enabled && pl.isExtractable))
+          p.copyWithPlugins([
+            for (final pl in p.plugins)
+              if (pl.isExtractable) pl,
+          ]),
     ];
   }
 
@@ -115,7 +118,8 @@ class EngineService {
     );
     final prefs = await _prefs;
     for (final plugin in pack.plugins) {
-      if (!plugin.isHttp || plugin.entry.isEmpty) continue;
+      if (plugin.entry.isEmpty) continue;
+      if (!plugin.isHttp && !plugin.isHop) continue;
       final code = await rootBundle.loadString('$_assetRoot/${plugin.entry}');
       await prefs.setString(_scriptPrefix + plugin.id, code);
     }
@@ -144,13 +148,35 @@ class EngineService {
                 prev.plugins[i].id == pack.plugins[i].id &&
                 prev.plugins[i].entry == pack.plugins[i].entry &&
                 jsonEncode(prev.plugins[i].config) ==
-                    jsonEncode(pack.plugins[i].config),
+                    jsonEncode(pack.plugins[i].config) &&
+                prev.plugins[i].kind == pack.plugins[i].kind &&
+                jsonEncode(prev.plugins[i].hosts) ==
+                    jsonEncode(pack.plugins[i].hosts),
           ).every((ok) => ok);
-      if (same) return;
+      if (same) {
+        await _syncHops([pack]);
+        return;
+      }
     }
     all.removeWhere((a) => isBundled(a.sourceUrl));
     all.insert(0, pack);
     await _savePacks(all);
+    await _syncHops([pack]);
+  }
+
+  Future<void> _syncHops(List<EnginePack> packs) async {
+    final hops = <EnginePlugin>[
+      for (final pack in packs)
+        for (final p in pack.plugins)
+          if (p.isHop) p,
+    ];
+    EngineRuntime.instance.registerHops(hops);
+    for (final p in hops) {
+      final code = await _loadScript(p);
+      if (code != null && code.isNotEmpty) {
+        EngineRuntime.instance.stashPluginCode(p.id, code);
+      }
+    }
   }
 
   String _resolveScriptUrl(String manifestUrl, String filename) {
@@ -188,6 +214,7 @@ class EngineService {
     all.removeWhere((a) => a.sourceUrl == manifestUrl);
     all.add(pack);
     await _savePacks(all);
+    await _syncHops(all);
     return pack;
   }
 
@@ -289,6 +316,7 @@ class EngineService {
       }
       if (plugin != null) break;
     }
+    await _syncHops(packs);
     if (plugin == null || !plugin.enabled || !plugin.isExtractable) return null;
     final mediaType = type == 'tv' || type == 'series' ? 'tv' : 'movie';
     if (plugin.types.isNotEmpty &&

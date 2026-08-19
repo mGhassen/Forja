@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **20 / 21** acceptance |
-| **Current slice** | Forja panel HTTP-only — sniff servers stay on green Play |
+| **Progress** | **6 / 6** components · **30 / 32** acceptance |
+| **Current slice** | Real HTTP ports (VidRock AES, EncDec hexa/vidcore/flixcloud, HiAnime, KAA, 2DHive, MultiEmbed, MoviesAPI) — remaining HTML catalogs still `catalog.js` |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -24,6 +24,7 @@
 | 3 | R60-C03 | Sources kind `engine` labeled **Forja** (details + in-player) | ✅ |
 | 4 | R60-C04 | Play source `play_source_engine_enabled` + Settings Forja plugins | ✅ |
 | 5 | R60-C05 | Plugin `ctx` — opaque `config`, `imdbId`, cheerio/`crypto`, `ctx.host` | ✅ |
+| 6 | R60-C06 | `kind: hop` + `ctx.hop(url)` host dispatch (not Sources chips) | ✅ |
 
 ---
 
@@ -52,6 +53,17 @@
 | 19 | R60-A19 | `ctx.html` (cheerio) + `ctx.crypto` (CryptoJS façade + `streamDecrypt`) on EngineRuntime — not NuvioRuntime | ✅ |
 | 20 | R60-A20 | `ctx.host(id)` resolves a built-in sniff/API extractor and returns stream rows to JS | ✅ |
 | 21 | R60-A21 | Sources → Forja and Settings → Forja plugins list HTTP/JS plugins only — no `kind: host` sniff chips | ✅ |
+| 22 | R60-A22 | `kind: hop` is not a Sources chip (`isExtractable` = HTTP only) | ✅ |
+| 23 | R60-A23 | `ctx.hop(url)` dispatches by hostname to hop JS (`extract(ctx)` with `ctx.url`) | ✅ |
+| 24 | R60-A24 | AniWorld-sized hops: doodstream, voe, filemoon, streamtape, vidmoly, vidoza, luluvdo, loadx, megakino | ✅ |
+| 25 | R60-A25 | Remaining Forja 18 movie/TV plugins are `kind: http` `extract(ctx)`; `ctx.host` only on miss | ✅ |
+| 26 | R60-A26 | EncDec samples, Yoruix remainder, Flyx VOD, Anivexa-API bundled as HTTP plugins (`mycima` `enabled: false`) | ✅ |
+| 27 | R60-A27 | Cloudstream hops for MixDrop / StreamWish / Uqload / Mp4Upload / StreamSB | ✅ |
+| 28 | R60-A28 | KissKh EncDec-compatible `kkey` in Dart + `kisskh.js` engine plugin | ✅ |
+| 29 | R60-A29 | Manual: Forja tab HTTP pack + hop-resolved dood/voe rows play | ⬜ |
+| 30 | R60-A30 | VidRock `extract(ctx)` encrypts item id with local passphrase AES — no `aesdec.nuvioapp.space` | ✅ |
+| 31 | R60-A31 | EncDec hexa / vidcore / flixcloud / animekai are dedicated plugins (not generic `encdec.js`) | ✅ |
+| 32 | R60-A32 | HiAnime MegaPlay, KickAssAnime `kaa.lt`, 2DHive, Flyx MultiEmbed, MoviesAPI vidora are dedicated `extract(ctx)` files | ✅ |
 
 ---
 
@@ -61,9 +73,9 @@ Parallel plugin stack next to Nuvio and green Play. The engine host is `lib/shar
 
 ## Contract
 
-`engine.json` is a pack (one or more plugins) or a single plugin at the root. JS entry exports `extract(ctx)` (or `globalThis.extract`). Host injects `tmdbId`, `imdbId`, `type`, `season`, `episode`, `title`, `year`, opaque `config` (`engine.json` ∪ remote `provider_runtime_config.engine[id]`), `fetch`, `crypto` / `html` / `host`. `streamcrypto.decrypt` remains an alias of `crypto.streamDecrypt`.
+`engine.json` is a pack (one or more plugins) or a single plugin at the root. JS entry exports `extract(ctx)` (or `globalThis.extract`). Host injects `tmdbId`, `imdbId`, `type`, `season`, `episode`, `title`, `year`, `url` (hops), opaque `config` (`engine.json` ∪ remote `provider_runtime_config.engine[id]`), `fetch`, `crypto` / `html` / `host` / `hop`. `streamcrypto.decrypt` remains an alias of `crypto.streamDecrypt`.
 
-Kind `http` runs `extract(ctx)` in QuickJS. Kind `host` still exists for `ctx.host(id)` (JS calling a built-in sniff/API extractor). **Sources → Forja** and **Settings → Forja plugins** list HTTP plugins only — bundled `engine.json` has no host chips. Sniff servers stay on green Play. Play ids: `engine:<pluginId>`.
+Kind `http` runs `extract(ctx)` in QuickJS. Kind `host` still exists for `ctx.host(id)` (JS calling a built-in sniff/API extractor). Kind `hop` is internal file-host JS (`doodstream`, `voe`, …): not a Sources chip; HTTP plugins call `ctx.hop(url)` when they land on an embed host. **Sources → Forja** and **Settings → Forja plugins** list HTTP plugins only. Sniff servers stay on green Play. Play ids: `engine:<pluginId>`.
 
 Stream rows (HTTP + host) map through `mapEngineStream`: card `title` is `Show S1E1 - (2026)`, `quality` / `language` / `audio` (only when the plugin actually has them) become `description` for Sources badges. Videasy expands HLS masters into per-rendition rows when the API label is not a resolution.
 

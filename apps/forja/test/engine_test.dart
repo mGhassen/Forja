@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/extractors/core/stream_crypto.dart';
+import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
@@ -97,10 +98,20 @@ void main() {
           {'id': 'vidsrc', 'kind': 'host', 'hostId': 'vidsrc'},
           {'id': 'vidlink', 'entry': 'b.js', 'kind': 'http'},
           {'id': 'vidnest', 'kind': 'host', 'hostId': 'vidnest'},
+          {
+            'id': 'hop-doodstream',
+            'entry': 'hops/doodstream.js',
+            'kind': 'hop',
+            'hosts': ['dood.li'],
+          },
         ],
       }, sourceUrl: 'asset:x');
       expect(orderedEnginePluginIds([pack]), ['videasy', 'vidlink']);
       expect(enabledEnginePluginIds([pack]), {'videasy', 'vidlink'});
+      expect(
+        hopPluginIdForUrl('https://dood.li/e/abc', pack.plugins),
+        'hop-doodstream',
+      );
     });
 
     test('walks the next unfetched selected plugin', () {
@@ -253,22 +264,118 @@ void main() {
   });
 
   group('bundled Forja pack', () {
-    test('engine.json lists HTTP plugins only', () async {
+    test('engine.json lists HTTP chips and hop plugins', () async {
       final jsonStr = await rootBundle.loadString(
         'assets/providers/engine.json',
       );
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
       final plugins = map['plugins'] as List;
-      final ids = [for (final p in plugins) (p as Map)['id'] as String];
-      expect(ids, ['videasy', 'vidlink', 'vixsrc', 'dooflix', 'yflix']);
-      for (final p in plugins) {
-        expect((p as Map)['kind'], 'http');
-      }
+      final parsed = [
+        for (final p in plugins)
+          EnginePlugin.fromJson(Map<String, dynamic>.from(p as Map)),
+      ];
+      final ids = [for (final p in parsed) p.id];
       expect(
-        (plugins.firstWhere((p) => (p as Map)['id'] == 'dooflix')
-            as Map)['enabled'],
+        ids,
+        containsAll([
+          'videasy',
+          'vidlink',
+          'vixsrc',
+          'dooflix',
+          'yflix',
+          'vidnest',
+          'vidrock',
+          'vidfast',
+          'vidsrcsbs',
+          'cinesrc',
+          'vidsrc',
+          'webstreamr',
+          'kisskh',
+          'moviebox',
+          'hianime',
+          'multiembed',
+          'kickassanime',
+          'hop-doodstream',
+          'hop-voe',
+          'hop-mixdrop',
+        ]),
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'videasy').isHttp,
+        isTrue,
+      );
+      expect(parsed.firstWhere((p) => p.id == 'hop-doodstream').isHop, isTrue);
+      expect(
+        parsed.firstWhere((p) => p.id == 'hop-doodstream').isExtractable,
         isFalse,
       );
+      expect(parsed.firstWhere((p) => p.id == 'mycima').enabled, isFalse);
+      expect(parsed.firstWhere((p) => p.id == 'hop-flixcloud').isHop, isTrue);
+      expect(
+        parsed.firstWhere((p) => p.id == 'hop-flixcloud').isExtractable,
+        isFalse,
+      );
+      expect(parsed.firstWhere((p) => p.id == 'vidrock').entry, 'vidrock.js');
+      expect(parsed.firstWhere((p) => p.id == 'hexa').entry, 'hexa.js');
+      expect(parsed.firstWhere((p) => p.id == 'hianime').entry, 'hianime.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'kickassanime').entry,
+        'kickassanime.js',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'multiembed').entry, 'multiembed.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'vidrock').config['origin'],
+        'https://vidrock.net',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'dooflix').enabled, isTrue);
+      expect(
+        enabledEnginePluginIds([
+          EnginePack(
+            sourceUrl: 'asset:x',
+            name: 'Forja',
+            version: '1',
+            plugins: parsed,
+          ),
+        ]),
+        isNot(contains('hop-doodstream')),
+      );
+    });
+
+    test('dedicated extractors are real ports, not wrapper scrapes', () async {
+      final vidrock = await rootBundle.loadString(
+        'assets/providers/vidrock.js',
+      );
+      expect(vidrock.contains('aesdec.nuvioapp.space'), isFalse);
+      expect(vidrock.contains('AES.encrypt'), isTrue);
+      expect(vidrock.contains('/api/'), isTrue);
+
+      final hexa = await rootBundle.loadString('assets/providers/hexa.js');
+      expect(hexa.contains('enc-hexa'), isTrue);
+      expect(hexa.contains('X-Api-Key'), isTrue);
+      expect(hexa.contains('X-Cap-Token'), isTrue);
+
+      final vidcore = await rootBundle.loadString(
+        'assets/providers/vidcore.js',
+      );
+      expect(vidcore.contains('enc-vidcore'), isTrue);
+      expect(vidcore.contains('dec-vidcore'), isTrue);
+
+      final moviesapi = await rootBundle.loadString(
+        'assets/providers/moviesapi.js',
+      );
+      expect(moviesapi.contains('/api/vidora/v1/'), isTrue);
+
+      final hianime = await rootBundle.loadString(
+        'assets/providers/hianime.js',
+      );
+      expect(hianime.contains('megaplay'), isTrue);
+      expect(hianime.contains('getSources'), isTrue);
+
+      final kaa = await rootBundle.loadString(
+        'assets/providers/kickassanime.js',
+      );
+      expect(kaa.contains('/api/fsearch'), isTrue);
+      expect(kaa.contains('krussdomi.com'), isTrue);
     });
 
     test('EnginePlugin host kind resolves hostProviderId', () {
@@ -319,6 +426,28 @@ void main() {
       expect(plugin('vidlink')['config']['api'], isNotEmpty);
       expect(plugin('vixsrc')['config']['base'], isNotEmpty);
       expect(plugin('vixsrc')['config']['subs'], isNotEmpty);
+    });
+
+    test('vidnest.js uses the Forja custom-alphabet cipher', () async {
+      final src = await rootBundle.loadString('assets/providers/vidnest.js');
+      expect(src, contains('RB0fpH8ZEyVLkv7c2i6MAJ5u3IKFDxlS1NTsnGaqmXYdUrtzjwObCgQP94hoeW+/='));
+      expect(src, contains('decryptCipher'));
+      expect(src, contains('ctx.host(\'vidnest\')'));
+    });
+
+    test('hop scripts export extract(ctx) and use ctx.url', () async {
+      for (final name in [
+        'doodstream',
+        'voe',
+        'filemoon',
+        'streamtape',
+        'vidmoly',
+        'mixdrop',
+      ]) {
+        final src = await rootBundle.loadString('assets/providers/hops/$name.js');
+        expect(src, contains('function extract(ctx)'));
+        expect(src, contains('ctx.url'));
+      }
     });
 
     test('EnginePlugin.config parses and persists', () {
@@ -638,6 +767,57 @@ function extract(ctx) {
         type: 'movie',
       );
       expect(streams.single['title'], '900150983cd24fb0d6963f7d28e17f72');
+    });
+
+    test('ctx.hop dispatches to a hop plugin by hostname', () async {
+      final rt = EngineRuntime.instance;
+      rt.registerHops([
+        EnginePlugin(
+          id: 'hop-test',
+          name: 'HopTest',
+          entry: 'x.js',
+          kind: 'hop',
+          hosts: const ['hop.test'],
+        ),
+      ]);
+      await rt.loadPlugin(
+        pluginId: 'hop-test',
+        code: '''
+function extract(ctx) {
+  return Promise.resolve([{ url: ctx.url + '/direct.mp4', name: 'hopped' }]);
+}
+''',
+      );
+      await rt.loadPlugin(
+        pluginId: 'http-hop',
+        code: '''
+function extract(ctx) {
+  return ctx.hop('https://hop.test/e/abc');
+}
+''',
+      );
+      final streams = await rt.extract(
+        pluginId: 'http-hop',
+        tmdbId: '1',
+        type: 'movie',
+      );
+      expect(streams.single['url'], 'https://hop.test/e/abc/direct.mp4');
+    });
+  });
+
+  group('KissKhKkey', () {
+    test('matches rust golden episode 171699 video', () {
+      expect(
+        KissKhKkey.generate(171699),
+        '56697480CCBF13FF11E371C19696FBA7601E1C569630FF4001DBEBAB511F65357C5D712E4AD39F6E859770F5A0763B06E95ECB5142C0FE2DF561F722DB89E5F38D05E72CAA2FB6700380C17689688661D2D0631EDF1D579DF3127B9D313427CBD092C9B4D546EB6F69E2CA9760E02535750C1496D08C7C8937ACC42EE4B5334A',
+      );
+    });
+
+    test('matches rust golden episode 1 video', () {
+      expect(
+        KissKhKkey.generate(1),
+        '23DC3EEF3D9B5DF88849AF476B008D4A58F9F3ACAB38A549C34AB3E473B7B3328BF080D795B810DF74E2DD76B6998B74CFA8BA86F6D6475708E88A44B762E3C576A1990EFFE4FF40291730B851812E47A89F38E89D57750449910D068F584D8C62EF5E91C838C93469EC3C4CF54D6C12A694E331B7A27040C722FA017BB6FCEC',
+      );
     });
   });
 }

@@ -1,8 +1,8 @@
 // kisskh.co stream extractor.
 //
-// Primary path: Rust generates the Episode/Sub `kkey` (consumet-compatible
-// cipher) and GETs the JSON APIs over HTTP — same as a browser, ~1s, no
-// WebView. Headless WebView remains a fallback if the cipher ever drifts.
+// Primary path: Dart generates the Episode/Sub `kkey` (consumet-compatible
+// cipher) and GETs the JSON APIs over HTTP. Rust `kisskhCatalog` remains a
+// fallback if the Dart cipher misses. Headless WebView is last-resort.
 
 import 'dart:async';
 import 'dart:collection';
@@ -12,9 +12,11 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
+import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 
 class KissKhStream {
@@ -135,7 +137,12 @@ class KissKhExtractor {
   }) async {
     onProgress?.call('init', 'Signing stream key…');
     try {
-      final decoded = await kisskhCatalog({
+      Map<String, dynamic>? decoded = await _resolveDartKkey(
+        episodeId: episodeId,
+        baseUrl: baseUrl,
+        cancelled: cancelled,
+      );
+      decoded ??= await kisskhCatalog({
         'action': 'resolve_stream',
         'episode_id': episodeId,
         'base_url': baseUrl,
@@ -238,6 +245,77 @@ class KissKhExtractor {
       onProgress?.call('retry', 'Falling back to page extract…');
       return null;
     }
+  }
+
+  Future<Map<String, dynamic>?> _resolveDartKkey({
+    required int episodeId,
+    required String baseUrl,
+    required bool Function() cancelled,
+  }) async {
+    if (episodeId <= 0) return null;
+    final base = baseUrl.trim().replaceFirst(RegExp(r'/$'), '');
+    if (base.isEmpty) return null;
+    final vidKey = KissKhKkey.generate(episodeId);
+    final epUri = Uri.parse(
+      '$base/api/DramaList/Episode/$episodeId.png?err=false&ts=&time=&kkey=$vidKey',
+    );
+    final epRes = await http
+        .get(
+          epUri,
+          headers: {
+            'User-Agent': _userAgent,
+            'Accept': 'application/json',
+            'Referer': '$base/',
+          },
+        )
+        .timeout(const Duration(seconds: 12));
+    if (cancelled() || epRes.statusCode < 200 || epRes.statusCode >= 300) {
+      return null;
+    }
+    final epRaw = jsonDecode(epRes.body);
+    if (epRaw is! Map) return null;
+    final subs = <Map<String, dynamic>>[];
+    try {
+      final subKey = KissKhKkey.generate(episodeId, subtitle: true);
+      final subUri = Uri.parse('$base/api/Sub/$episodeId?kkey=$subKey');
+      final subRes = await http
+          .get(
+            subUri,
+            headers: {
+              'User-Agent': _userAgent,
+              'Accept': 'application/json',
+              'Referer': '$base/',
+            },
+          )
+          .timeout(const Duration(seconds: 8));
+      if (!cancelled() && subRes.statusCode >= 200 && subRes.statusCode < 300) {
+        final parsed = jsonDecode(subRes.body);
+        if (parsed is List) {
+          for (final item in parsed) {
+            if (item is! Map) continue;
+            final src = (item['src'] ?? item['url'] ?? '').toString().trim();
+            if (src.isEmpty) continue;
+            final label =
+                (item['label'] ?? item['language'] ?? item['land'] ?? 'Unknown')
+                    .toString();
+            subs.add({
+              'id': src,
+              'url': src,
+              'language': label,
+              'display': '$label - kisskh',
+              'sourceName': 'kisskh',
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[KissKhExtractor] dart sub kkey: $e');
+    }
+    return {
+      'episode': Map<String, dynamic>.from(epRaw),
+      'subtitles': subs,
+      'base_url': base,
+    };
   }
 
   Future<void> _purgeKissKhSiteData(String baseUrl) async {

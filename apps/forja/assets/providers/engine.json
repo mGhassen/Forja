@@ -1,27 +1,60 @@
 {
   "schema": 1,
   "name": "Forja",
-  "version": "1.3.1",
+  "version": "1.4.1",
   "plugins": [
     {
       "id": "videasy",
       "name": "Videasy",
       "entry": "videasy.js",
-      "types": ["movie", "tv"],
+      "types": [
+        "movie",
+        "tv"
+      ],
       "kind": "http",
       "config": {
         "api": "https://api.speedracelight.com",
         "origin": "https://player.videasy.to",
         "mirrors": [
-          { "endpoint": "cdn", "name": "Yoru" },
-          { "endpoint": "downloader2", "name": "Cypher" },
-          { "endpoint": "m4uhd", "name": "Breach" },
-          { "endpoint": "vsrc", "name": "Neon" },
-          { "endpoint": "hdmovie", "name": "Vyse", "qualityFilter": "English" },
-          { "endpoint": "meine", "name": "Killjoy", "language": "german" },
-          { "endpoint": "hdmovie", "name": "Fade", "qualityFilter": "Hindi" },
-          { "endpoint": "lamovie", "name": "Omen" },
-          { "endpoint": "superflix", "name": "Raze" }
+          {
+            "endpoint": "cdn",
+            "name": "Yoru"
+          },
+          {
+            "endpoint": "downloader2",
+            "name": "Cypher"
+          },
+          {
+            "endpoint": "m4uhd",
+            "name": "Breach"
+          },
+          {
+            "endpoint": "vsrc",
+            "name": "Neon"
+          },
+          {
+            "endpoint": "hdmovie",
+            "name": "Vyse",
+            "qualityFilter": "English"
+          },
+          {
+            "endpoint": "meine",
+            "name": "Killjoy",
+            "language": "german"
+          },
+          {
+            "endpoint": "hdmovie",
+            "name": "Fade",
+            "qualityFilter": "Hindi"
+          },
+          {
+            "endpoint": "lamovie",
+            "name": "Omen"
+          },
+          {
+            "endpoint": "superflix",
+            "name": "Raze"
+          }
         ]
       }
     },
@@ -29,7 +62,10 @@
       "id": "vidlink",
       "name": "VidLink",
       "entry": "vidlink.js",
-      "types": ["movie", "tv"],
+      "types": [
+        "movie",
+        "tv"
+      ],
       "kind": "http",
       "config": {
         "api": "https://vidlink.pro/api/b",
@@ -43,7 +79,10 @@
       "id": "vixsrc",
       "name": "VixSrc",
       "entry": "vixsrc.js",
-      "types": ["movie", "tv"],
+      "types": [
+        "movie",
+        "tv"
+      ],
       "kind": "http",
       "config": {
         "base": "https://vixsrc.to",
@@ -54,9 +93,11 @@
       "id": "dooflix",
       "name": "DooFlix",
       "entry": "dooflix.js",
-      "types": ["movie", "tv"],
+      "types": [
+        "movie",
+        "tv"
+      ],
       "kind": "http",
-      "enabled": false,
       "config": {
         "api": "https://panel.watchkaroabhi.com",
         "key": "qNhKLJiZVyoKdi9NCQGz8CIGrpUijujE",
@@ -67,14 +108,1375 @@
       "id": "yflix",
       "name": "YFlix",
       "entry": "yflix.js",
-      "types": ["movie", "tv"],
+      "types": [
+        "movie",
+        "tv"
+      ],
       "kind": "http",
-      "enabled": false,
       "config": {
         "enc": "https://enc-dec.app/api",
         "db": "https://enc-dec.app/db/flix",
         "ajax": "https://1moviesz.to/ajax"
       }
+    },
+    {
+      "id": "vidnest",
+      "name": "VidNest",
+      "entry": "vidnest.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "api": "https://new.vidnest.fun",
+        "origin": "https://vidnest.fun",
+        "alphabet": "RB0fpH8ZEyVLkv7c2i6MAJ5u3IKFDxlS1NTsnGaqmXYdUrtzjwObCgQP94hoeW+/="
+      }
+    },
+    {
+      "id": "vidrock",
+      "name": "VidRock",
+      "entry": "vidrock.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://vidrock.net",
+        "passphrase": "x7k9mPqT2rWvY8zA5bC3nF6hJ2lK4mN9"
+      }
+    },
+    {
+      "id": "vidfast",
+      "name": "VidFast",
+      "entry": "vidfast.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://vidfast.vc",
+        "enc": "https://enc-dec.app/api"
+      }
+    },
+    {
+      "id": "vidsrcsbs",
+      "name": "VidSrc.sbs",
+      "entry": "vidsrcsbs.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://vidsrc.sbs"
+      }
+    },
+    {
+      "id": "cinesrc",
+      "name": "Cinesrc",
+      "entry": "cinesrc.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://cinesrc.st",
+        "enc": "https://enc-dec.app/api"
+      }
+    },
+    {
+      "id": "vidsrc",
+      "name": "VSEmbed",
+      "entry": "vidsrc.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://vidsrc.xyz",
+        "hostId": "vidsrc"
+      }
+    },
+    {
+      "id": "vidsrcwin",
+      "name": "VidSrc",
+      "entry": "embed.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://video.moviepire.co",
+        "moviePath": "/embed/movie/{id}",
+        "tvPath": "/embed/tv/{id}/{s}/{e}",
+        "hostId": "vidsrcwin",
+        "name": "VidSrc"
+      }
+    },
+    {
+      "id": "vidzee",
+      "name": "Vidzee",
+      "entry": "embed.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://player.vidzee.wtf",
+        "moviePath": "/embed/movie/{id}",
+        "tvPath": "/embed/tv/{id}/{s}/{e}",
+        "hostId": "vidzee",
+        "name": "Vidzee"
+      }
+    },
+    {
+      "id": "2embed",
+      "name": "2Embed",
+      "entry": "embed.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://2embed.stream",
+        "moviePath": "/embed/movie/{id}",
+        "tvPath": "/embed/tv/{id}/{s}/{e}",
+        "hostId": "2embed",
+        "name": "2Embed"
+      }
+    },
+    {
+      "id": "autoembed",
+      "name": "AutoEmbed",
+      "entry": "embed.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://player.autoembed.co",
+        "moviePath": "/embed/movie/{id}",
+        "tvPath": "/embed/tv/{id}/{s}/{e}",
+        "hostId": "autoembed",
+        "name": "AutoEmbed"
+      }
+    },
+    {
+      "id": "vidlove",
+      "name": "VidLove",
+      "entry": "embed.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://player.vidlove.cc",
+        "moviePath": "/embed/movie/{id}",
+        "tvPath": "/embed/tv/{id}/{s}/{e}",
+        "hostId": "vidlove",
+        "name": "VidLove"
+      }
+    },
+    {
+      "id": "111movies",
+      "name": "111Movies",
+      "entry": "embed.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://player.vidlove.cc",
+        "moviePath": "/embed/movie/{id}",
+        "tvPath": "/embed/tv/{id}/{s}/{e}",
+        "hostId": "111movies",
+        "name": "111Movies"
+      }
+    },
+    {
+      "id": "moviesapi",
+      "name": "MoviesAPI",
+      "entry": "moviesapi.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://moviesapi.to",
+        "player": "https://player.moviesapi.vip",
+        "hostId": "moviesapi",
+        "name": "MoviesAPI"
+      }
+    },
+    {
+      "id": "vidapi",
+      "name": "VidAPI",
+      "entry": "embed.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://vidapi.xyz",
+        "moviePath": "/embed/movie/{id}",
+        "tvPath": "/embed/tv/{id}/{s}/{e}",
+        "hostId": "vidapi",
+        "name": "VidAPI"
+      }
+    },
+    {
+      "id": "service111477",
+      "name": "111477",
+      "entry": "host_wrap.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "hostId": "service111477"
+      }
+    },
+    {
+      "id": "webstreamr",
+      "name": "WebStreamr",
+      "entry": "host_wrap.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "hostId": "webstreamr"
+      }
+    },
+    {
+      "id": "kisskh",
+      "name": "KissKh",
+      "entry": "kisskh.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://kisskh.do"
+      }
+    },
+    {
+      "id": "hexa",
+      "name": "Hexa",
+      "entry": "hexa.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://hexa.su",
+        "api": "https://theemoviedb.hexa.su",
+        "enc": "https://enc-dec.app/api",
+        "fingerprint": "e9136c41504646444"
+      }
+    },
+    {
+      "id": "flixcloud",
+      "name": "FlixCloud",
+      "entry": "flixcloud.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://flixcloud.cc",
+        "enc": "https://enc-dec.app/api",
+        "name": "FlixCloud"
+      }
+    },
+    {
+      "id": "vidcore",
+      "name": "VidCore",
+      "entry": "vidcore.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://vidcore.net",
+        "enc": "https://enc-dec.app/api"
+      }
+    },
+    {
+      "id": "animekai",
+      "name": "AnimeKai",
+      "entry": "animekai.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://animekai.to",
+        "enc": "https://enc-dec.app/api",
+        "db": "https://enc-dec.app/db/kai",
+        "ajax": "https://animekai.to/ajax"
+      }
+    },
+    {
+      "id": "cinejoy",
+      "name": "CineJoy",
+      "entry": "encdec.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://cinejoy.is",
+        "slug": "cinejoy",
+        "enc": "https://enc-dec.app/api",
+        "name": "CineJoy"
+      }
+    },
+    {
+      "id": "abyss",
+      "name": "Abyss",
+      "entry": "encdec.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://abysscdn.com",
+        "slug": "abyss",
+        "enc": "https://enc-dec.app/api",
+        "name": "Abyss"
+      }
+    },
+    {
+      "id": "megaup",
+      "name": "MegaUp",
+      "entry": "encdec.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://megaup.live",
+        "slug": "megaup",
+        "enc": "https://enc-dec.app/api",
+        "name": "MegaUp"
+      }
+    },
+    {
+      "id": "meowtv",
+      "name": "MeowTV",
+      "entry": "encdec.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://meowtv.xyz",
+        "slug": "meowtv",
+        "enc": "https://enc-dec.app/api",
+        "name": "MeowTV"
+      }
+    },
+    {
+      "id": "onetouchtv",
+      "name": "OneTouchTV",
+      "entry": "encdec.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://onetouch.tv",
+        "slug": "onetouchtv",
+        "enc": "https://enc-dec.app/api",
+        "name": "OneTouchTV"
+      }
+    },
+    {
+      "id": "peachify",
+      "name": "Peachify",
+      "entry": "encdec.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://peachify.xyz",
+        "slug": "peachify",
+        "enc": "https://enc-dec.app/api",
+        "name": "Peachify"
+      }
+    },
+    {
+      "id": "rapidshare",
+      "name": "Rapidshare",
+      "entry": "encdec.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://rapidshare.cc",
+        "slug": "rapidshare",
+        "enc": "https://enc-dec.app/api",
+        "name": "Rapidshare"
+      }
+    },
+    {
+      "id": "vidsync",
+      "name": "VidSync",
+      "entry": "encdec.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://vidsync.to",
+        "slug": "vidsync",
+        "enc": "https://enc-dec.app/api",
+        "name": "VidSync"
+      }
+    },
+    {
+      "id": "vidup",
+      "name": "VidUp",
+      "entry": "encdec.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://vidup.io",
+        "slug": "vidup",
+        "enc": "https://enc-dec.app/api",
+        "name": "VidUp"
+      }
+    },
+    {
+      "id": "moviebox",
+      "name": "MovieBox",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://moviebox.ph",
+        "name": "MovieBox",
+        "search": "https://moviebox.ph/search?q={q}"
+      }
+    },
+    {
+      "id": "showbox",
+      "name": "ShowBox",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://www.showbox.media",
+        "name": "ShowBox",
+        "search": "https://www.showbox.media/search?q={q}"
+      }
+    },
+    {
+      "id": "hianime",
+      "name": "HiAnime",
+      "entry": "hianime.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "megaplay": "https://megaplay.buzz",
+        "vidwish": "https://vidwish.live",
+        "megacloud": "https://megacloud.bloggy.click",
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "jikan": "https://api.jikan.moe/v4/anime",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
+      }
+    },
+    {
+      "id": "animepahe",
+      "name": "AnimePahe",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://animepahe.ru",
+        "name": "AnimePahe",
+        "search": "https://animepahe.ru/search?q={q}"
+      }
+    },
+    {
+      "id": "anizone",
+      "name": "Anizone",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://anizone.to",
+        "name": "Anizone",
+        "search": "https://anizone.to/search?q={q}"
+      }
+    },
+    {
+      "id": "4khdhub",
+      "name": "4KHDHub",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://4khdhub.fans",
+        "name": "4KHDHub",
+        "search": "https://4khdhub.fans/search?q={q}"
+      }
+    },
+    {
+      "id": "hdhub4u",
+      "name": "HDHub4u",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://hdhub4u.cologne",
+        "name": "HDHub4u",
+        "search": "https://hdhub4u.cologne/search?q={q}"
+      }
+    },
+    {
+      "id": "moviesmod",
+      "name": "MoviesMod",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://moviesmod.cash",
+        "name": "MoviesMod",
+        "search": "https://moviesmod.cash/search?q={q}"
+      }
+    },
+    {
+      "id": "uhdmovies",
+      "name": "UHDMovies",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://uhdmovies.rip",
+        "name": "UHDMovies",
+        "search": "https://uhdmovies.rip/search?q={q}"
+      }
+    },
+    {
+      "id": "streamflix",
+      "name": "StreamFlix",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://watch.streamflix.one",
+        "name": "StreamFlix",
+        "search": "https://watch.streamflix.one/search?q={q}"
+      }
+    },
+    {
+      "id": "netmirror",
+      "name": "NetMirror",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://netmirror.app",
+        "name": "NetMirror",
+        "search": "https://netmirror.app/search?q={q}"
+      }
+    },
+    {
+      "id": "castle",
+      "name": "Castle",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://castle.stream",
+        "name": "Castle",
+        "search": "https://castle.stream/search?q={q}"
+      }
+    },
+    {
+      "id": "xprime",
+      "name": "XPrime",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://xprime.tv",
+        "name": "XPrime",
+        "search": "https://xprime.tv/search?q={q}"
+      }
+    },
+    {
+      "id": "vidnest-anime",
+      "name": "VidNest Anime",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://vidnest.fun",
+        "name": "VidNest Anime",
+        "search": "https://vidnest.fun/search?q={q}"
+      }
+    },
+    {
+      "id": "allmovieland",
+      "name": "AllMovieLand",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://allmovieland.fun",
+        "name": "AllMovieLand",
+        "search": "https://allmovieland.fun/search?q={q}"
+      }
+    },
+    {
+      "id": "cinemacity",
+      "name": "CinemaCity",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://cinemacity.bar",
+        "name": "CinemaCity",
+        "search": "https://cinemacity.bar/search?q={q}"
+      }
+    },
+    {
+      "id": "cinevibe",
+      "name": "CineVibe",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://cinevibe.xyz",
+        "name": "CineVibe",
+        "search": "https://cinevibe.xyz/search?q={q}"
+      }
+    },
+    {
+      "id": "dahmermovies",
+      "name": "DahmerMovies",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://dahmermovies.com",
+        "name": "DahmerMovies",
+        "search": "https://dahmermovies.com/search?q={q}"
+      }
+    },
+    {
+      "id": "dvdplay",
+      "name": "DVDPlay",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://dvdplay.xyz",
+        "name": "DVDPlay",
+        "search": "https://dvdplay.xyz/search?q={q}"
+      }
+    },
+    {
+      "id": "kurage",
+      "name": "Kurage",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://kurage.to",
+        "name": "Kurage",
+        "search": "https://kurage.to/search?q={q}"
+      }
+    },
+    {
+      "id": "mallumv",
+      "name": "MalluMV",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://mallumv.xyz",
+        "name": "MalluMV",
+        "search": "https://mallumv.xyz/search?q={q}"
+      }
+    },
+    {
+      "id": "movieblast",
+      "name": "MovieBlast",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://movieblast.xyz",
+        "name": "MovieBlast",
+        "search": "https://movieblast.xyz/search?q={q}"
+      }
+    },
+    {
+      "id": "moviesdrive",
+      "name": "MoviesDrive",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://moviesdrive.online",
+        "name": "MoviesDrive",
+        "search": "https://moviesdrive.online/search?q={q}"
+      }
+    },
+    {
+      "id": "myflixer",
+      "name": "MyFlixer",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://myflixer.to",
+        "name": "MyFlixer",
+        "search": "https://myflixer.to/search?q={q}"
+      }
+    },
+    {
+      "id": "reanime",
+      "name": "ReAnime",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://reanime.org",
+        "name": "ReAnime",
+        "search": "https://reanime.org/search?q={q}"
+      }
+    },
+    {
+      "id": "mycima",
+      "name": "MyCima",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://mycima.wecima.watch",
+        "name": "MyCima",
+        "search": "https://mycima.wecima.watch/search/{q}"
+      },
+      "enabled": false
+    },
+    {
+      "id": "multiembed",
+      "name": "MultiEmbed",
+      "entry": "multiembed.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "api": "https://api.2embed.cc",
+        "embed": "https://www.2embed.cc"
+      }
+    },
+    {
+      "id": "bingebox",
+      "name": "BingeBox",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://bingebox.to",
+        "name": "BingeBox",
+        "search": "https://bingebox.to/embed/movie/{tmdb}"
+      }
+    },
+    {
+      "id": "primesrc",
+      "name": "PrimeSrc",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://primesrc.me",
+        "name": "PrimeSrc",
+        "search": "https://primesrc.me/embed/movie/{tmdb}"
+      }
+    },
+    {
+      "id": "uflix",
+      "name": "UFlix",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://uflix.to",
+        "name": "UFlix",
+        "search": "https://uflix.to/movie/{tmdb}"
+      }
+    },
+    {
+      "id": "animex",
+      "name": "AnimeX",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://animex.fun",
+        "name": "AnimeX",
+        "search": "https://animex.fun/watch/{q}"
+      }
+    },
+    {
+      "id": "2dhive",
+      "name": "2DHive",
+      "entry": "2dhive.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://2dhive.com",
+        "jikan": "https://api.jikan.moe/v4/anime"
+      }
+    },
+    {
+      "id": "anibd",
+      "name": "AniBD",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://anibd.co",
+        "name": "AniBD",
+        "search": "https://anibd.co/search?q={q}"
+      }
+    },
+    {
+      "id": "anidbapp",
+      "name": "AniDbApp",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://anidbapp.com",
+        "name": "AniDbApp",
+        "search": "https://anidbapp.com/search?q={q}"
+      }
+    },
+    {
+      "id": "anikoto",
+      "name": "Anikoto",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://anikoto.to",
+        "name": "Anikoto",
+        "search": "https://anikoto.to/search?q={q}"
+      }
+    },
+    {
+      "id": "animedunya",
+      "name": "AnimeDunya",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://animedunya.com",
+        "name": "AnimeDunya",
+        "search": "https://animedunya.com/search?q={q}"
+      }
+    },
+    {
+      "id": "animegg",
+      "name": "AnimeGG",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://www.animegg.org",
+        "name": "AnimeGG",
+        "search": "https://www.animegg.org/search?q={q}"
+      }
+    },
+    {
+      "id": "animenosub",
+      "name": "AnimeNoSub",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://animenosub.com",
+        "name": "AnimeNoSub",
+        "search": "https://animenosub.com/search?q={q}"
+      }
+    },
+    {
+      "id": "anineko",
+      "name": "AniNeko",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://anineko.com",
+        "name": "AniNeko",
+        "search": "https://anineko.com/search?q={q}"
+      }
+    },
+    {
+      "id": "kickassanime",
+      "name": "KickAssAnime",
+      "entry": "kickassanime.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://kaa.lt",
+        "hls": "https://hls.krussdomi.com/manifest"
+      }
+    },
+    {
+      "id": "mkissa",
+      "name": "MKissa",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://mkissanime.com",
+        "name": "MKissa",
+        "search": "https://mkissanime.com/search?q={q}"
+      }
+    },
+    {
+      "id": "senshi",
+      "name": "Senshi",
+      "entry": "catalog.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://senshi.to",
+        "name": "Senshi",
+        "search": "https://senshi.to/search?q={q}"
+      }
+    },
+    {
+      "id": "hop-flixcloud",
+      "name": "FlixCloud",
+      "entry": "flixcloud.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "flixcloud.cc",
+        "flixcloud.tv"
+      ]
+    },
+    {
+      "id": "hop-doodstream",
+      "name": "Doodstream",
+      "entry": "hops/doodstream.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "dood.li",
+        "dood.ws",
+        "doodstream.com",
+        "ds2play.com",
+        "dood.watch",
+        "dood.yt",
+        "dood.re",
+        "dood.la",
+        "dood.to",
+        "dood.pm",
+        "dood.work",
+        "dood.one",
+        "dood.so"
+      ]
+    },
+    {
+      "id": "hop-voe",
+      "name": "VOE",
+      "entry": "hops/voe.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "voe.sx",
+        "voe.st",
+        "voeun-block.net",
+        "jilliandescribecompany.com",
+        "voe.bar",
+        "reputationsheriffkennethsand.com",
+        "fittingcentermondaysunday.com"
+      ]
+    },
+    {
+      "id": "hop-filemoon",
+      "name": "Filemoon",
+      "entry": "hops/filemoon.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "filemoon.sx",
+        "filemoon.to",
+        "filemoon.nl",
+        "filemoon.in",
+        "moonmov.pro",
+        "1azayf9w.xyz",
+        "kerapoxy.cc",
+        "furher.in"
+      ]
+    },
+    {
+      "id": "hop-streamtape",
+      "name": "Streamtape",
+      "entry": "hops/streamtape.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "streamtape.com",
+        "streamtape.net",
+        "streamtape.to",
+        "streamta.pe",
+        "strcloud.link"
+      ]
+    },
+    {
+      "id": "hop-vidmoly",
+      "name": "Vidmoly",
+      "entry": "hops/vidmoly.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "vidmoly.to",
+        "vidmoly.me",
+        "vidmoly.net"
+      ]
+    },
+    {
+      "id": "hop-vidoza",
+      "name": "Vidoza",
+      "entry": "hops/vidoza.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "vidoza.net",
+        "vidoza.org",
+        "vidoza.co"
+      ]
+    },
+    {
+      "id": "hop-luluvdo",
+      "name": "Lulu",
+      "entry": "hops/luluvdo.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "luluvdo.com",
+        "lulustream.com",
+        "luluvid.com",
+        "luluvdoo.com"
+      ]
+    },
+    {
+      "id": "hop-loadx",
+      "name": "LoadX",
+      "entry": "hops/loadx.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "loadx.ws",
+        "loadx.co",
+        "loadx.net"
+      ]
+    },
+    {
+      "id": "hop-megakino",
+      "name": "MegaKino",
+      "entry": "hops/megakino.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "megakino.co",
+        "megakino.live",
+        "megakino.si"
+      ]
+    },
+    {
+      "id": "hop-mixdrop",
+      "name": "MixDrop",
+      "entry": "hops/mixdrop.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "mixdrop.co",
+        "mixdrop.ag",
+        "mixdrop.sx",
+        "mixdrop.to",
+        "mdy48tn97.com"
+      ]
+    },
+    {
+      "id": "hop-streamwish",
+      "name": "StreamWish",
+      "entry": "hops/streamwish.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "streamwish.to",
+        "streamwish.com",
+        "ajmidyad.sbs",
+        "wishfast.top",
+        "embedwish.com"
+      ]
+    },
+    {
+      "id": "hop-uqload",
+      "name": "Uqload",
+      "entry": "hops/uqload.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "uqload.com",
+        "uqload.co",
+        "uqload.io",
+        "uqload.to"
+      ]
+    },
+    {
+      "id": "hop-mp4upload",
+      "name": "Mp4Upload",
+      "entry": "hops/mp4upload.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "mp4upload.com",
+        "mp4upload.org"
+      ]
+    },
+    {
+      "id": "hop-streamsb",
+      "name": "StreamSB",
+      "entry": "hops/streamsb.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "streamsb.net",
+        "sbembed.com",
+        "watchsb.com",
+        "sblongvu.com"
+      ]
+    },
+    {
+      "id": "hop-hanime",
+      "name": "hanime",
+      "entry": "hops/hanime.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "hanime.tv",
+        "hanime.me"
+      ]
     }
   ]
 }

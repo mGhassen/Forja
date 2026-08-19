@@ -9,6 +9,7 @@ import 'package:forja/shared/engine/engine_polyfills.dart';
 import 'package:forja/shared/engine/host_resolver.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/extractors/core/stream_crypto.dart';
+import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
@@ -64,6 +65,9 @@ class EngineRuntime {
   int _extractEpisode = 1;
   String _extractTitle = '';
   String _extractYear = '';
+  String _extractUrl = '';
+  int _hopDepth = 0;
+  List<EnginePlugin> _hopPlugins = const [];
 
   Future<void> _ensureInit() async {
     if (_ready) return;
@@ -204,6 +208,33 @@ class EngineRuntime {
       return null;
     });
 
+    br('HopStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final url = (m['url'] ?? '').toString().trim();
+        final gen = _fetchGeneration;
+        unawaited(_dispatchHop(id: id, url: url, gen: gen));
+      } catch (_) {}
+      return null;
+    });
+
+    br('KissKhKkey', (args) {
+      try {
+        final m = _bridgeMap(args);
+        final episodeId =
+            int.tryParse((m['episodeId'] ?? m['id'] ?? '').toString()) ?? 0;
+        final kind = (m['kind'] ?? 'video').toString();
+        return KissKhKkey.generate(
+          episodeId,
+          subtitle: kind == 'sub' || kind == 'subtitle',
+        );
+      } catch (_) {
+        return '';
+      }
+    });
+
     br('FetchStart', (args) {
       try {
         if (!_acceptingFetches || _activeExtract <= 0) return null;
@@ -337,6 +368,15 @@ class EngineRuntime {
 
   bool isLoaded(String pluginId) => _loadedIds.contains(pluginId);
 
+  void stashPluginCode(String pluginId, String code) {
+    if (pluginId.isEmpty || code.isEmpty) return;
+    _pluginCode[pluginId] = code;
+  }
+
+  void registerHops(List<EnginePlugin> hops) {
+    _hopPlugins = List<EnginePlugin>.from(hops);
+  }
+
   void _loadPluginUnlocked(String pluginId, String code) {
     final rt = _runtime!;
     final wrapped = '''
@@ -376,6 +416,7 @@ class EngineRuntime {
     String? year,
     Map<String, dynamic> config = const {},
     Movie? movie,
+    String? url,
     Duration timeout = const Duration(seconds: 30),
     bool Function()? isCancelled,
   }) {
@@ -400,6 +441,7 @@ class EngineRuntime {
         year: year,
         config: config,
         movie: movie,
+        url: url,
         timeout: timeout,
         isCancelled: isCancelled,
       );
@@ -417,6 +459,7 @@ class EngineRuntime {
     String? year,
     Map<String, dynamic> config = const {},
     Movie? movie,
+    String? url,
     required Duration timeout,
     bool Function()? isCancelled,
   }) async {
@@ -429,6 +472,7 @@ class EngineRuntime {
     _extractEpisode = episode ?? 1;
     _extractTitle = title ?? '';
     _extractYear = year ?? '';
+    if (url != null) _extractUrl = url;
     final callId = ++_callSeq;
     final completer = Completer<String>();
     _pendingResults[callId] = completer;
@@ -444,6 +488,7 @@ class EngineRuntime {
         'episode': _extractEpisode,
         'title': _extractTitle,
         'year': _extractYear,
+        'url': _extractUrl,
         'config': config,
       });
       final invoker = '''
@@ -474,11 +519,20 @@ class EngineRuntime {
     episode: meta.episode,
     title: meta.title,
     year: meta.year,
+    url: meta.url || '',
     config: meta.config || {},
     fetch: globalThis.fetch,
     html: globalThis.__engineHtml,
     host: globalThis.__engineHost,
-    crypto: Object.assign({}, globalThis.CryptoJS || {}, { streamDecrypt: streamDecrypt }),
+    hop: globalThis.__engineHop,
+    crypto: Object.assign({}, globalThis.CryptoJS || {}, {
+      streamDecrypt: streamDecrypt,
+      kisskhKkey: function(episodeId, kind) {
+        return sendMessage('KissKhKkey', JSON.stringify({
+          episodeId: episodeId, kind: kind || 'video'
+        })) || '';
+      }
+    }),
     streamcrypto: { decrypt: streamDecrypt }
   };
   Promise.resolve()
@@ -704,6 +758,98 @@ class EngineRuntime {
     _resolveHost(id: id, gen: gen, streams: streams);
   }
 
+  Future<void> _dispatchHop({
+    required int id,
+    required String url,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    if (url.isEmpty || _hopDepth >= 3) {
+      _resolveHop(id: id, gen: gen, streams: const []);
+      return;
+    }
+    final hopId = hopPluginIdForUrl(url, _hopPlugins);
+    if (hopId == null) {
+      _resolveHop(id: id, gen: gen, streams: const []);
+      return;
+    }
+    if (!_loadedIds.contains(hopId)) {
+      final code = _pluginCode[hopId];
+      if (code == null || code.isEmpty) {
+        _resolveHop(id: id, gen: gen, streams: const []);
+        return;
+      }
+      try {
+        _loadPluginUnlocked(hopId, code);
+      } catch (e) {
+        debugPrint('[engine:hop] load failed id=$hopId: $e');
+        _resolveHop(id: id, gen: gen, streams: const []);
+        return;
+      }
+    }
+
+    final savedMovie = _extractMovie;
+    final savedImdb = _extractImdbId;
+    final savedTmdb = _extractTmdbId;
+    final savedType = _extractType;
+    final savedSeason = _extractSeason;
+    final savedEpisode = _extractEpisode;
+    final savedTitle = _extractTitle;
+    final savedYear = _extractYear;
+    final savedUrl = _extractUrl;
+    _hopDepth++;
+    List<Map<String, dynamic>> streams = const [];
+    try {
+      streams = await _extractUnlocked(
+        pluginId: hopId,
+        tmdbId: savedTmdb,
+        imdbId: savedImdb,
+        type: savedType,
+        season: savedSeason,
+        episode: savedEpisode,
+        title: savedTitle,
+        year: savedYear,
+        url: url,
+        movie: savedMovie,
+        timeout: const Duration(seconds: 20),
+        isCancelled: () => gen != _fetchGeneration,
+      );
+    } catch (e) {
+      debugPrint('[engine:hop] extract failed id=$hopId: $e');
+    } finally {
+      _hopDepth = (_hopDepth - 1).clamp(0, 8);
+      _extractMovie = savedMovie;
+      _extractImdbId = savedImdb;
+      _extractTmdbId = savedTmdb;
+      _extractType = savedType;
+      _extractSeason = savedSeason;
+      _extractEpisode = savedEpisode;
+      _extractTitle = savedTitle;
+      _extractYear = savedYear;
+      _extractUrl = savedUrl;
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveHop(id: id, gen: gen, streams: streams);
+  }
+
+  void _resolveHop({
+    required int id,
+    required int gen,
+    required List<Map<String, dynamic>> streams,
+  }) {
+    if (gen != _fetchGeneration) return;
+    final rt = _runtime;
+    if (rt == null) return;
+    try {
+      rt.evaluate(
+        'try { globalThis.__engineHopResolve($id, ${jsonEncode({'streams': streams})}); } catch (e) {}',
+        sourceUrl: 'engine://hop/$id',
+      );
+    } catch (e) {
+      debugPrint('[engine:hop] resolve callback failed id=$id: $e');
+    }
+  }
+
   void _resolveHost({
     required int id,
     required int gen,
@@ -860,10 +1006,43 @@ class EngineRuntime {
       sendMessage('HostStart', JSON.stringify({id: id, hostId: String(hostId)}));
     });
   };
+  globalThis.__engineHopPending = globalThis.__engineHopPending || {};
+  globalThis.__engineHopSeq = globalThis.__engineHopSeq || 0;
+  globalThis.__engineHopResolve = function(id, envelope){
+    var p = globalThis.__engineHopPending[id];
+    if (p) { delete globalThis.__engineHopPending[id]; p(envelope); }
+  };
+  globalThis.__engineHop = function(url){
+    return new Promise(function(resolve){
+      var id = ++globalThis.__engineHopSeq;
+      globalThis.__engineHopPending[id] = function(env){
+        resolve(env && env.streams ? env.streams : []);
+      };
+      sendMessage('HopStart', JSON.stringify({id: id, url: String(url || '')}));
+    });
+  };
   globalThis.__engineHtml = function(html){
     var c = globalThis.__engineCheerio;
     if (!c || typeof c.load !== 'function') return null;
     return c.load(String(html == null ? '' : html));
+  };
+  globalThis.__engineUnpack = function(source){
+    var s = String(source == null ? '' : source);
+    var m = s.match(/eval\(function\(p,a,c,k,e,d\)\{[\s\S]*?\}\('((?:\\.|[^'])*)',(\d+),(\d+),'((?:\\.|[^'])*)'\.split\('\|'\)/);
+    if (!m) m = s.match(/eval\(function\(p,a,c,k,e,r\)\{[\s\S]*?\}\('((?:\\.|[^'])*)',(\d+),(\d+),'((?:\\.|[^'])*)'\.split\('\|'\)/);
+    if (!m) return s;
+    var p = m[1].replace(/\\'/g, "'");
+    var a = parseInt(m[2], 10);
+    var c = parseInt(m[3], 10);
+    var k = m[4].split('|');
+    var d = function(n){
+      var alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      return n.toString(a);
+    };
+    while (c--) {
+      if (k[c]) p = p.replace(new RegExp('\\b' + d(c) + '\\b', 'g'), k[c]);
+    }
+    return p;
   };
   if (typeof globalThis.queueMicrotask !== 'function') {
     globalThis.queueMicrotask = function(cb){ Promise.resolve().then(cb); };
