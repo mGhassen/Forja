@@ -715,7 +715,7 @@
     {
       "id": "anizone",
       "name": "Anizone",
-      "entry": "catalog.js",
+      "entry": "anizone.js",
       "types": [
         "movie",
         "tv"
@@ -723,14 +723,15 @@
       "kind": "http",
       "config": {
         "base": "https://anizone.to",
-        "name": "Anizone",
-        "search": "https://anizone.to/search?q={q}"
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "jikan": "https://api.jikan.moe/v4/anime",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "4khdhub",
       "name": "4KHDHub",
-      "entry": "catalog.js",
+      "entry": "4khdhub.js",
       "types": [
         "movie",
         "tv"
@@ -739,7 +740,8 @@
       "config": {
         "base": "https://4khdhub.fans",
         "name": "4KHDHub",
-        "search": "https://4khdhub.fans/search?q={q}"
+        "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
@@ -803,46 +805,64 @@
     {
       "id": "netmirror",
       "name": "NetMirror",
-      "entry": "catalog.js",
+      "entry": "netmirror.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://netmirror.app",
-        "name": "NetMirror",
-        "search": "https://netmirror.app/search?q={q}"
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49",
+        "platforms": [
+          "netflix",
+          "primevideo",
+          "hotstar",
+          "disney"
+        ],
+        "domains": [
+          "aHR0cHM6Ly9tb2JpbGVkZXRlY3RzLmNvbQ==",
+          "aHR0cHM6Ly9tb2JpbGVkZXRlY3QuYXBw",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0LmNsaWNr",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0LnNpdGU="
+        ]
       }
     },
     {
       "id": "castle",
       "name": "Castle",
-      "entry": "catalog.js",
+      "entry": "castle.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://castle.stream",
-        "name": "Castle",
-        "search": "https://castle.stream/search?q={q}"
+        "api": "https://api.hlowb.com",
+        "packageName": "com.external.castle",
+        "channel": "IndiaA",
+        "clientType": "1",
+        "lang": "en-US",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
       "id": "xprime",
       "name": "XPrime",
-      "entry": "catalog.js",
+      "entry": "xprime.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://xprime.tv",
-        "name": "XPrime",
-        "search": "https://xprime.tv/search?q={q}"
+        "origin": "https://xprime.tv",
+        "backend": "https://backend.xprime.tv",
+        "enc": "https://enc-dec.app/api",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c",
+        "servers": [
+          "primebox",
+          "rage"
+        ]
       }
     },
     {
@@ -923,7 +943,7 @@
     {
       "id": "dvdplay",
       "name": "DVDPlay",
-      "entry": "catalog.js",
+      "entry": "dvdplay.js",
       "types": [
         "movie",
         "tv"
@@ -932,7 +952,7 @@
       "config": {
         "base": "https://dvdplay.xyz",
         "name": "DVDPlay",
-        "search": "https://dvdplay.xyz/search?q={q}"
+        "searchBase": "https://dvdplay.xyz/search.php?q="
       }
     },
     {

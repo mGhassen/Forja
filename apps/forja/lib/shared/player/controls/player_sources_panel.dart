@@ -224,7 +224,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   Set<String> _engineFetchedPluginIds = {};
   bool _engineFetching = false;
   int _engineFetchGen = 0;
-  String? _engineInFlightPluginId;
+  Set<String> _engineInFlightPluginIds = {};
 
   bool _searching = false;
   bool _stremioFetching = false;
@@ -233,12 +233,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   String? _error;
   bool _pendingScrollToCurrent = true;
   int _scrollToCurrentAttempts = 0;
+
   /// Once the user taps Torrents / Stremio / Nuvio, never auto-steal the kind
   /// back to the playing source (e.g. Torrents magnet → Nuvio click).
   bool _userPickedKind = false;
+
   /// Once the user picks a Stremio addon chip, do not auto
   /// move off an empty/failed addon (Torrentio 403) onto one with results.
   bool _userPickedStremioProvider = false;
+
+  int get _engineBatchSize =>
+      ShellScope.profileOf(context) == ShellProfile.tv ? 5 : 10;
 
   bool _showTorrents = true;
   bool _showStremio = false;
@@ -397,8 +402,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _requestScrollToCurrent() {
-    if (_listScrollController.hasClients &&
-        _listScrollController.offset > 8) {
+    if (_listScrollController.hasClients && _listScrollController.offset > 8) {
       return;
     }
     _pendingScrollToCurrent = true;
@@ -407,9 +411,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   /// Playing Stremio addon baseUrl when known (caller + matched stream).
-  String? _preferredStremioAddonBaseUrl([
-    List<Map<String, dynamic>>? addons,
-  ]) {
+  String? _preferredStremioAddonBaseUrl([List<Map<String, dynamic>>? addons]) {
     final list = addons ?? _streamAddons;
     final base = widget.currentAddonBaseUrl;
     if (base != null &&
@@ -527,15 +529,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
       if (!_listScrollController.hasClients) return;
 
-      final torrents =
-          _showsTorrents ? _filteredTorrents : const <TorrentResult>[];
+      final torrents = _showsTorrents
+          ? _filteredTorrents
+          : const <TorrentResult>[];
       final stremio = _showsStremio
           ? _visibleStremioStreams
           : const <Map<String, dynamic>>[];
-      final nuvio =
-          _showsNuvio ? _filteredNuvio : const <Map<String, dynamic>>[];
-      final engine =
-          _showsEngine ? _filteredEngine : const <Map<String, dynamic>>[];
+      final nuvio = _showsNuvio
+          ? _filteredNuvio
+          : const <Map<String, dynamic>>[];
+      final engine = _showsEngine
+          ? _filteredEngine
+          : const <Map<String, dynamic>>[];
       final index = _currentItemIndex(
         torrents,
         stremio,
@@ -585,9 +590,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (nuvioOn) {
       try {
         nuvioAddons = await NuvioService.instance.listSourcesPanelAddons();
-        nuvioSelected = await NuvioService.instance.loadSourcesSelectedScraperIds(
-          enabledIds: enabledNuvioScraperIds(nuvioAddons),
-        );
+        nuvioSelected = await NuvioService.instance
+            .loadSourcesSelectedScraperIds(
+              enabledIds: enabledNuvioScraperIds(nuvioAddons),
+            );
       } catch (_) {}
     }
     if (!mounted) return;
@@ -616,10 +622,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (engineOn && kind == 'engine') {
       try {
         enginePacks = await EngineService.instance.listSourcesPanelPacks();
-        engineSelected =
-            await EngineService.instance.loadSourcesSelectedPluginIds(
-          enabledIds: enabledEnginePluginIds(enginePacks),
-        );
+        engineSelected = await EngineService.instance
+            .loadSourcesSelectedPluginIds(
+              enabledIds: enabledEnginePluginIds(enginePacks),
+            );
       } catch (_) {}
     }
     if (!mounted) return;
@@ -747,38 +753,47 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _ensureStremioLoaded({bool force = false}) {
-    unawaited(_refreshStreamAddons().then((_) {
-      if (!mounted || !_showsStremio) return;
-      if (force) {
-        CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
-        unawaited(_fetchStremioStreams(reset: true));
-        return;
-      }
-      if (_stremioFetching) return;
-      final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
-      if (cached != null && cached.isNotEmpty) {
-        setState(() {
-          _stremioStreams = cached;
-          _loadedAddonBaseUrls
-            ..clear()
-            ..addAll({
-              for (final s in cached)
-                if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
-            });
-          _completedAddonBaseUrls
-            ..clear()
-            ..addAll(_loadedAddonBaseUrls);
-          _error = null;
-          _userPickedStremioProvider = false;
-          _syncStremioProviderSelection();
-        });
-        _focusPlayingSourceIfNeeded();
-        _requestScrollToCurrent();
-      } else if (cached != null && cached.isEmpty) {
-        CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'stremio');
-      }
-      unawaited(_fetchStremioStreams());
-    }));
+    unawaited(
+      _refreshStreamAddons().then((_) {
+        if (!mounted || !_showsStremio) return;
+        if (force) {
+          CatalogSourcesSessionCache.invalidate(
+            _catalogCacheKey,
+            kind: 'stremio',
+          );
+          unawaited(_fetchStremioStreams(reset: true));
+          return;
+        }
+        if (_stremioFetching) return;
+        final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
+        if (cached != null && cached.isNotEmpty) {
+          setState(() {
+            _stremioStreams = cached;
+            _loadedAddonBaseUrls
+              ..clear()
+              ..addAll({
+                for (final s in cached)
+                  if (s['_addonBaseUrl'] is String)
+                    s['_addonBaseUrl'] as String,
+              });
+            _completedAddonBaseUrls
+              ..clear()
+              ..addAll(_loadedAddonBaseUrls);
+            _error = null;
+            _userPickedStremioProvider = false;
+            _syncStremioProviderSelection();
+          });
+          _focusPlayingSourceIfNeeded();
+          _requestScrollToCurrent();
+        } else if (cached != null && cached.isEmpty) {
+          CatalogSourcesSessionCache.invalidate(
+            _catalogCacheKey,
+            kind: 'stremio',
+          );
+        }
+        unawaited(_fetchStremioStreams());
+      }),
+    );
   }
 
   Future<void> _ensureNuvioLoaded({bool force = false}) async {
@@ -883,7 +898,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (keepKind != 'engine' && _engineFetching) {
       _engineFetchGen++;
       _engineFetching = false;
-      _engineInFlightPluginId = null;
+      _engineInFlightPluginIds.clear();
       EngineService.instance.cancelPending();
       _engineStreams = [];
       _engineFetchedPluginIds = {};
@@ -978,7 +993,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _selectedSourceId = _sourceIdForKind(kind, _streamAddons);
       }
       _selectPlayingProviderIfNeeded();
-      final providerChanged = beforeAddon != _selectedSourceId ||
+      final providerChanged =
+          beforeAddon != _selectedSourceId ||
           beforeNuvio.length != _nuvioSelectedScraperIds.length ||
           !beforeNuvio.containsAll(_nuvioSelectedScraperIds);
       if (needsKind || providerChanged) {
@@ -1071,20 +1087,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   List<TorrentResult> get _filteredTorrents {
-    final list = filterTorrentResults(
-      _results,
-      searchQuery: _searchQuery,
-      qualityFilters: _qualityFilters,
-      languageFilters: _languageFilters,
-      techFilters: _techFilters,
-      audioFilters: _audioFilters,
-      sizeFilters: _sizeFilters,
-    ).where(
-      (r) => TorrentSearchProviders.matchesResultSource(
-        _selectedSourceId,
-        r.source,
-      ),
-    );
+    final list =
+        filterTorrentResults(
+          _results,
+          searchQuery: _searchQuery,
+          qualityFilters: _qualityFilters,
+          languageFilters: _languageFilters,
+          techFilters: _techFilters,
+          audioFilters: _audioFilters,
+          sizeFilters: _sizeFilters,
+        ).where(
+          (r) => TorrentSearchProviders.matchesResultSource(
+            _selectedSourceId,
+            r.source,
+          ),
+        );
     return List<TorrentResult>.from(list)..sort(_compare);
   }
 
@@ -1131,7 +1148,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (id != null) return _engineSelectedPluginIds.contains(id);
     final base = s['_addonBaseUrl']?.toString();
     if (base != null && base.startsWith('engine:')) {
-      return _engineSelectedPluginIds.contains(base.substring('engine:'.length));
+      return _engineSelectedPluginIds.contains(
+        base.substring('engine:'.length),
+      );
     }
     return false;
   }
@@ -1240,13 +1259,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       case 'torrents':
         return _torrentInFlightProviderIds;
       case 'nuvio':
-        return {
-          for (final id in _nuvioInFlightScraperIds) 'nuvio:$id',
-        };
+        return {for (final id in _nuvioInFlightScraperIds) 'nuvio:$id'};
       case 'engine':
-        final id = _engineInFlightPluginId;
-        if (id == null || id.isEmpty) return const {};
-        return {EngineIds.pluginChip(id)};
+        return {
+          for (final id in _engineInFlightPluginIds) EngineIds.pluginChip(id),
+        };
       case 'stremio':
         if (!_stremioFetching) return const {};
         return {_selectedSourceId};
@@ -1798,9 +1815,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     setState(() {
       _nuvioFetching = continueWalk;
       if (!continueWalk) _nuvioInFlightScraperIds.clear();
-      if (!continueWalk &&
-          _nuvioStreams.isEmpty &&
-          pendingAfter == null) {
+      if (!continueWalk && _nuvioStreams.isEmpty && pendingAfter == null) {
         _error = 'No streams found from selected Nuvio providers';
       }
     });
@@ -1812,38 +1827,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<String> get _orderedEnginePluginIds =>
       orderedEnginePluginIds(_enginePacks);
 
-  Future<void> _fetchNextEnginePlugin({
-    bool reset = false,
-    String? onlyId,
+  Future<void> _runAndApplyEnginePlugin({
+    required String pluginId,
+    required String type,
+    required int gen,
   }) async {
-    final fetchedIds = reset ? <String>{} : _engineFetchedPluginIds;
-    final batchId = onlyId ??
-        nextEnginePluginId(
-          orderedIds: _orderedEnginePluginIds,
-          selectedIds: _engineSelectedPluginIds,
-          fetchedIds: fetchedIds,
-        );
-    if (batchId == null) return;
-    if (onlyId != null &&
-        (!_engineSelectedPluginIds.contains(onlyId) ||
-            (!reset && fetchedIds.contains(onlyId)))) {
-      return;
-    }
-    final gen = ++_engineFetchGen;
-    setState(() {
-      _engineFetching = true;
-      _engineInFlightPluginId = batchId;
-      if (reset) {
-        _engineStreams = [];
-        _engineFetchedPluginIds = {};
-      }
-      _error = null;
-    });
-    final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
     EngineExtractResult? batch;
     try {
-      batch = await EngineService.instance.runPlugin(
-        pluginId: batchId,
+      batch = await EngineService.instance.runPluginIsolated(
+        pluginId: pluginId,
         tmdbId: widget.movie.id.toString(),
         type: type,
         season: widget.movie.mediaType == 'tv' ? widget.season : null,
@@ -1851,13 +1843,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         title: widget.movie.title,
         year: _year,
         movie: widget.movie,
+        allowHostFallback: false,
       );
     } catch (e) {
-      debugPrint('[engine] plugin $batchId failed: $e');
+      debugPrint('[engine] plugin $pluginId failed: $e');
     }
     if (!mounted || gen != _engineFetchGen) return;
     setState(() {
-      _engineFetchedPluginIds.add(batchId);
+      _engineFetchedPluginIds.add(pluginId);
+      _engineInFlightPluginIds.remove(pluginId);
       if (batch != null && batch.streams.isNotEmpty) {
         _engineStreams.addAll(batch.streams);
       }
@@ -1869,6 +1863,42 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
     _focusPlayingSourceIfNeeded();
     _requestScrollToCurrent();
+  }
+
+  Future<void> _fetchNextEnginePlugin({
+    bool reset = false,
+    String? onlyId,
+  }) async {
+    final fetchedIds = reset ? <String>{} : _engineFetchedPluginIds;
+    final batchIds = onlyId != null
+        ? <String>[onlyId]
+        : nextEnginePluginBatch(
+            orderedIds: _orderedEnginePluginIds,
+            selectedIds: _engineSelectedPluginIds,
+            fetchedIds: fetchedIds,
+            limit: _engineBatchSize,
+          );
+    if (batchIds.isEmpty) return;
+    if (onlyId != null &&
+        (!_engineSelectedPluginIds.contains(onlyId) ||
+            (!reset && fetchedIds.contains(onlyId)))) {
+      return;
+    }
+    final gen = ++_engineFetchGen;
+    setState(() {
+      _engineFetching = true;
+      _engineInFlightPluginIds = {...batchIds};
+      if (reset) {
+        _engineStreams = [];
+        _engineFetchedPluginIds = {};
+      }
+      _error = null;
+    });
+    final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
+    await Future.wait([
+      for (final id in batchIds)
+        _runAndApplyEnginePlugin(pluginId: id, type: type, gen: gen),
+    ]);
     if (!mounted || gen != _engineFetchGen) return;
     final pendingAfter = nextEnginePluginId(
       orderedIds: _orderedEnginePluginIds,
@@ -1878,10 +1908,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final continueWalk = onlyId == null && pendingAfter != null;
     setState(() {
       _engineFetching = continueWalk;
-      if (!continueWalk) _engineInFlightPluginId = null;
-      if (!continueWalk &&
-          _engineStreams.isEmpty &&
-          pendingAfter == null) {
+      if (!continueWalk) _engineInFlightPluginIds.clear();
+      if (!continueWalk && _engineStreams.isEmpty && pendingAfter == null) {
         _error = 'No streams found from selected Forja plugins';
       }
     });
@@ -2084,9 +2112,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           );
         }
       });
-      unawaited(
-        NuvioService.instance.saveSourcesSelectedScraperIds(next),
-      );
+      unawaited(NuvioService.instance.saveSourcesSelectedScraperIds(next));
       if (!clearing) {
         unawaited(_fetchNextNuvioScraper());
       }
@@ -2096,7 +2122,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final scraperId = id.substring('nuvio:'.length);
       final wasSelected = _nuvioSelectedScraperIds.contains(scraperId);
       final fetched = _nuvioFetchedScraperIds.contains(scraperId);
-      final cancelInFlight = wasSelected &&
+      final cancelInFlight =
+          wasSelected &&
           _nuvioFetching &&
           _nuvioInFlightScraperIds.contains(scraperId);
       if (wasSelected && !fetched && !cancelInFlight) {
@@ -2157,14 +2184,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         if (clearing) {
           _engineFetchGen++;
           _engineFetching = false;
-          _engineInFlightPluginId = null;
+          _engineInFlightPluginIds.clear();
           EngineService.instance.cancelPending();
-          DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+          DomainStreamProviderResolver.cancelAllPending(
+            cancelEngineJobs: false,
+          );
         }
       });
-      unawaited(
-        EngineService.instance.saveSourcesSelectedPluginIds(next),
-      );
+      unawaited(EngineService.instance.saveSourcesSelectedPluginIds(next));
       if (!clearing) {
         unawaited(_fetchNextEnginePlugin());
       }
@@ -2174,9 +2201,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final pluginId = id.substring('engine:'.length);
       final wasSelected = _engineSelectedPluginIds.contains(pluginId);
       final fetched = _engineFetchedPluginIds.contains(pluginId);
-      final cancelInFlight = wasSelected &&
+      final cancelInFlight =
+          wasSelected &&
           _engineFetching &&
-          _engineInFlightPluginId == pluginId;
+          _engineInFlightPluginIds.contains(pluginId);
       if (wasSelected && !fetched && !cancelInFlight) {
         unawaited(_fetchNextEnginePlugin(onlyId: pluginId));
         return;
@@ -2195,9 +2223,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           if (cancelInFlight) {
             _engineFetchGen++;
             _engineFetching = false;
-            _engineInFlightPluginId = null;
+            _engineInFlightPluginIds.clear();
             EngineService.instance.cancelPending();
-          DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+            DomainStreamProviderResolver.cancelAllPending(
+              cancelEngineJobs: false,
+            );
           }
         } else {
           _engineSelectedPluginIds = {..._engineSelectedPluginIds, pluginId};
@@ -2334,7 +2364,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             _engineFetchGen++;
             DomainStreamProviderResolver.cancelAllPending();
             EngineService.instance.cancelPending();
-          DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+            DomainStreamProviderResolver.cancelAllPending(
+              cancelEngineJobs: false,
+            );
             setState(() {
               _searching = false;
               _torrentInFlightProviderIds.clear();
@@ -2342,7 +2374,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               _nuvioFetching = false;
               _nuvioInFlightScraperIds.clear();
               _engineFetching = false;
-              _engineInFlightPluginId = null;
+              _engineInFlightPluginIds.clear();
             });
           },
           providerOptions: _providerOptions,
@@ -2385,7 +2417,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           onReloadKind: _reloadKind,
           sourcesPanelOpen: true,
           onFocusList: () {
-            final cur = _currentItemIndex(
+            final cur =
+                _currentItemIndex(
                   torrents,
                   stremio,
                   nuvio: nuvio,

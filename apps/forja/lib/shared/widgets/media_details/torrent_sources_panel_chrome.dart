@@ -246,7 +246,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
         children: [
           Expanded(child: kind),
           Transform.translate(
-            offset: Offset(0, _tv ? 0 : -20),
+            offset: Offset(0, _tv ? 0 : -8),
             child: _SourcesChromeMeta(
               episodeLabel: widget.episodeLabel,
               resultCount: widget.resultCount,

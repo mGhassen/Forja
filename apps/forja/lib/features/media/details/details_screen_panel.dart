@@ -6,22 +6,23 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
   // ─── audio filter helpers ────────────────────────────────────────────────
 
   /// Torrent results after applying panel filters.
-  List<TorrentResult> get _filteredTorrentResults => filterTorrentResults(
-    _s._allTorrentResults,
-    searchQuery: _s._sourceSearchQuery,
-    qualityFilters: _s._activeQualityFilters,
-    languageFilters: _s._activeLanguageFilters,
-    techFilters: _s._activeTechFilters,
-    audioFilters: _s._activeAudioFilters,
-    sizeFilters: _s._activeSizeFilters,
-  )
-      .where(
-        (r) => TorrentSearchProviders.matchesResultSource(
-          _s._selectedSourceId,
-          r.source,
-        ),
-      )
-      .toList();
+  List<TorrentResult> get _filteredTorrentResults =>
+      filterTorrentResults(
+            _s._allTorrentResults,
+            searchQuery: _s._sourceSearchQuery,
+            qualityFilters: _s._activeQualityFilters,
+            languageFilters: _s._activeLanguageFilters,
+            techFilters: _s._activeTechFilters,
+            audioFilters: _s._activeAudioFilters,
+            sizeFilters: _s._activeSizeFilters,
+          )
+          .where(
+            (r) => TorrentSearchProviders.matchesResultSource(
+              _s._selectedSourceId,
+              r.source,
+            ),
+          )
+          .toList();
 
   bool get _panelShowsTorrents => _s._panelKindFilter == 'torrents';
 
@@ -247,10 +248,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       }
     } else if (_s._panelKindFilter == EngineIds.kind) {
       options.add(
-        const SourcesPanelProviderOption(
-          id: EngineIds.allChip,
-          label: 'All',
-        ),
+        const SourcesPanelProviderOption(id: EngineIds.allChip, label: 'All'),
       );
       for (final a in _s._enginePacks) {
         for (final s in a.plugins) {
@@ -283,13 +281,12 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       case 'torrents':
         return _s._torrentInFlightProviderIds;
       case 'nuvio':
-        return {
-          for (final id in _s._nuvioInFlightScraperIds) 'nuvio:$id',
-        };
+        return {for (final id in _s._nuvioInFlightScraperIds) 'nuvio:$id'};
       case EngineIds.kind:
-        final id = _s._engineInFlightPluginId;
-        if (id == null || id.isEmpty) return const {};
-        return {EngineIds.pluginChip(id)};
+        return {
+          for (final id in _s._engineInFlightPluginIds)
+            EngineIds.pluginChip(id),
+        };
       case 'stremio':
         if (!_s._isStremioFetching) return const {};
         return {_s._selectedSourceId};
@@ -327,9 +324,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           );
         }
       });
-      unawaited(
-        NuvioService.instance.saveSourcesSelectedScraperIds(next),
-      );
+      unawaited(NuvioService.instance.saveSourcesSelectedScraperIds(next));
       if (!clearing) {
         unawaited(_s._fetchNextNuvioScraper());
       }
@@ -339,7 +334,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       final scraperId = id.substring('nuvio:'.length);
       final wasSelected = _s._nuvioSelectedScraperIds.contains(scraperId);
       final fetched = _s._nuvioFetchedScraperIds.contains(scraperId);
-      final cancelInFlight = wasSelected &&
+      final cancelInFlight =
+          wasSelected &&
           _s._isNuvioFetching &&
           _s._nuvioInFlightScraperIds.contains(scraperId);
       if (wasSelected && !fetched && !cancelInFlight) {
@@ -405,13 +401,11 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         if (clearing) {
           _s._engineFetchGen++;
           _s._isEngineFetching = false;
-          _s._engineInFlightPluginId = null;
+          _s._engineInFlightPluginIds.clear();
           EngineService.instance.cancelPending();
         }
       });
-      unawaited(
-        EngineService.instance.saveSourcesSelectedPluginIds(next),
-      );
+      unawaited(EngineService.instance.saveSourcesSelectedPluginIds(next));
       if (!clearing) {
         unawaited(_s._fetchNextEnginePlugin());
       }
@@ -421,9 +415,10 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       final pluginId = id.substring(EngineIds.prefix.length);
       final wasSelected = _s._engineSelectedPluginIds.contains(pluginId);
       final fetched = _s._engineFetchedPluginIds.contains(pluginId);
-      final cancelInFlight = wasSelected &&
+      final cancelInFlight =
+          wasSelected &&
           _s._isEngineFetching &&
-          _s._engineInFlightPluginId == pluginId;
+          _s._engineInFlightPluginIds.contains(pluginId);
       if (wasSelected && !fetched && !cancelInFlight) {
         unawaited(_s._fetchNextEnginePlugin(onlyId: pluginId));
         return;
@@ -445,7 +440,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           if (cancelInFlight) {
             _s._engineFetchGen++;
             _s._isEngineFetching = false;
-            _s._engineInFlightPluginId = null;
+            _s._engineInFlightPluginIds.clear();
             EngineService.instance.cancelPending();
           }
         } else {
@@ -506,8 +501,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         _s._applyStremioFilter();
         // Keep the tapped chip even when empty — auto-promote only runs
         // while selection is still automatic (see promoteStremioProviderId).
-        _s._errorMessage =
-            _s._stremioStreams.isEmpty && !_s._isStremioFetching
+        _s._errorMessage = _s._stremioStreams.isEmpty && !_s._isStremioFetching
             ? 'No streams found in ${chip.label}'
             : null;
       });
@@ -650,7 +644,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
             ? _s._loadedAddonBaseUrls
             : {
                 for (final s in _s._allCombinedStremioStreams)
-                  if (s['_addonBaseUrl'] is String) s['_addonBaseUrl'] as String,
+                  if (s['_addonBaseUrl'] is String)
+                    s['_addonBaseUrl'] as String,
               },
         completedIds: _s._completedAddonBaseUrls,
         fetching: _s._isStremioFetching,
@@ -665,8 +660,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           if (_s._userPickedStremioProvider) return;
-          if (_s._selectedSourceId == fallbackId &&
-              _s._errorMessage == null) {
+          if (_s._selectedSourceId == fallbackId && _s._errorMessage == null) {
             return;
           }
           setState(() {
@@ -678,7 +672,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       }
     }
 
-    final count = torrents.length + stremio.length + nuvio.length + engine.length;
+    final count =
+        torrents.length + stremio.length + nuvio.length + engine.length;
     final rawCount =
         (_panelShowsTorrents ? _s._allTorrentResults.length : 0) +
         (_panelShowsStremio ? _s._allCombinedStremioStreams.length : 0) +
@@ -763,10 +758,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       itemBuilder: (_, i) {
         final tvIndex = inPanel && SourcesPanelTv.isTv(context) ? i : null;
         if (i < torrents.length) {
-          return _torrentTileFor(
-            torrents[i],
-            tvItemIndex: tvIndex,
-          );
+          return _torrentTileFor(torrents[i], tvItemIndex: tvIndex);
         }
         final j = i - torrents.length;
         if (j < stremio.length) {

@@ -89,7 +89,7 @@ class DetailsPlaySession {
   bool hasEnginePacks = false;
   Set<String> engineFetchedPluginIds = {};
   int engineFetchGen = 0;
-  String? engineInFlightPluginId;
+  Set<String> engineInFlightPluginIds = {};
   List<EnginePack> enginePacks = [];
   Set<String> engineSelectedPluginIds = {};
   bool engineSelectionHydrated = false;

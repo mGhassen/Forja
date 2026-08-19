@@ -133,6 +133,27 @@ void main() {
         isNull,
       );
     });
+
+    test('batches the next unfetched selected plugins', () {
+      expect(
+        nextEnginePluginBatch(
+          orderedIds: const ['a', 'b', 'c', 'd', 'e'],
+          selectedIds: const {'a', 'c', 'd', 'e'},
+          fetchedIds: const {'a'},
+          limit: 2,
+        ),
+        ['c', 'd'],
+      );
+      expect(
+        nextEnginePluginBatch(
+          orderedIds: const ['a', 'b', 'c'],
+          selectedIds: const {'a', 'c'},
+          fetchedIds: const {'a', 'c'},
+          limit: 10,
+        ),
+        isEmpty,
+      );
+    });
   });
 
   group('Forja tab magnet filter', () {
@@ -293,6 +314,7 @@ void main() {
           'webstreamr',
           'kisskh',
           'moviebox',
+          '4khdhub',
           'hianime',
           'multiembed',
           'kickassanime',
@@ -305,6 +327,11 @@ void main() {
           'movieblast',
           'streamflix',
           'animex',
+          'anizone',
+          'netmirror',
+          'castle',
+          'xprime',
+          'dvdplay',
           'hop-doodstream',
           'hop-voe',
           'hop-mixdrop',
@@ -313,10 +340,7 @@ void main() {
           'hop-rapidshare',
         ]),
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'videasy').isHttp,
-        isTrue,
-      );
+      expect(parsed.firstWhere((p) => p.id == 'videasy').isHttp, isTrue);
       expect(parsed.firstWhere((p) => p.id == 'hop-doodstream').isHop, isTrue);
       expect(
         parsed.firstWhere((p) => p.id == 'hop-doodstream').isExtractable,
@@ -335,7 +359,10 @@ void main() {
         parsed.firstWhere((p) => p.id == 'kickassanime').entry,
         'kickassanime.js',
       );
-      expect(parsed.firstWhere((p) => p.id == 'multiembed').entry, 'multiembed.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'multiembed').entry,
+        'multiembed.js',
+      );
       expect(parsed.firstWhere((p) => p.id == 'cineby').entry, 'videasy.js');
       expect(
         parsed.firstWhere((p) => p.id == 'cineby').config['origin'],
@@ -355,9 +382,36 @@ void main() {
         parsed.firstWhere((p) => p.id == 'moviebox').config['api'],
         'https://h5-api.aoneroom.com',
       );
-      expect(parsed.firstWhere((p) => p.id == 'movieblast').entry, 'movieblast.js');
-      expect(parsed.firstWhere((p) => p.id == 'streamflix').entry, 'streamflix.js');
+      expect(parsed.firstWhere((p) => p.id == '4khdhub').entry, '4khdhub.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'movieblast').entry,
+        'movieblast.js',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'streamflix').entry,
+        'streamflix.js',
+      );
       expect(parsed.firstWhere((p) => p.id == 'animex').entry, 'animex.js');
+      expect(parsed.firstWhere((p) => p.id == 'anizone').entry, 'anizone.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'netmirror').entry,
+        'netmirror.js',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'castle').entry, 'castle.js');
+      expect(parsed.firstWhere((p) => p.id == 'xprime').entry, 'xprime.js');
+      expect(parsed.firstWhere((p) => p.id == 'dvdplay').entry, 'dvdplay.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'xprime').config['backend'],
+        'https://backend.xprime.tv',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'dvdplay').config['searchBase'],
+        'https://dvdplay.xyz/search.php?q=',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == '4khdhub').config['domainsUrl'],
+        'https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json',
+      );
       expect(parsed.firstWhere((p) => p.id == 'hop-abyss').isHop, isTrue);
       expect(parsed.firstWhere((p) => p.id == 'hop-megaup').isHop, isTrue);
       expect(parsed.firstWhere((p) => p.id == 'cinejoy').entry, 'encdec.js');
@@ -422,11 +476,16 @@ void main() {
       expect(kaa.contains('/api/fsearch'), isTrue);
       expect(kaa.contains('krussdomi.com'), isTrue);
 
-      final cinebyCfg = ((jsonDecode(
-                await rootBundle.loadString('assets/providers/engine.json'),
-              ) as Map)['plugins'] as List)
-          .cast<Map>()
-          .firstWhere((p) => p['id'] == 'cineby');
+      final cinebyCfg =
+          ((jsonDecode(
+                        await rootBundle.loadString(
+                          'assets/providers/engine.json',
+                        ),
+                      )
+                      as Map)['plugins']
+                  as List)
+              .cast<Map>()
+              .firstWhere((p) => p['id'] == 'cineby');
       expect(cinebyCfg['entry'], 'videasy.js');
       expect(cinebyCfg['config']['origin'], 'https://www.cineby.at');
 
@@ -461,6 +520,13 @@ void main() {
       expect(moviebox.contains('wefeed-h5api-bff/subject/search'), isTrue);
       expect(moviebox.contains('wefeed-h5api-bff/subject/download'), isTrue);
 
+      final fourkhdhub = await rootBundle.loadString(
+        'assets/providers/4khdhub.js',
+      );
+      expect(fourkhdhub.contains('HubCloud 10Gbps'), isTrue);
+      expect(fourkhdhub.contains("j['4khdhub']"), isTrue);
+      expect(fourkhdhub.contains('.movie-card'), isTrue);
+
       final movieblast = await rootBundle.loadString(
         'assets/providers/movieblast.js',
       );
@@ -477,6 +543,35 @@ void main() {
       expect(animex.contains('cfg.gql'), isTrue);
       expect(animex.contains('searchAnime'), isTrue);
       expect(animex.contains('/sources'), isTrue);
+
+      final anizone = await rootBundle.loadString(
+        'assets/providers/anizone.js',
+      );
+      expect(anizone.contains('id-mapping-api-malid'), isTrue);
+      expect(anizone.contains("media-player"), isTrue);
+
+      final netmirror = await rootBundle.loadString(
+        'assets/providers/netmirror.js',
+      );
+      expect(netmirror.contains('checknewtv.php'), isTrue);
+      expect(netmirror.contains('/newtv/player.php'), isTrue);
+
+      final castle = await rootBundle.loadString('assets/providers/castle.js');
+      expect(castle.contains('getSecurityKey'), isTrue);
+      expect(castle.contains('film-api/v2.0.1/movie/getVideo2'), isTrue);
+
+      final xprime = await rootBundle.loadString('assets/providers/xprime.js');
+      expect(xprime.contains('enc-xprime'), isTrue);
+      expect(xprime.contains('dec-xprime'), isTrue);
+      expect(xprime.contains('backend.xprime.tv'), isTrue);
+      expect(xprime.contains("/rage?id="), isTrue);
+
+      final dvdplay = await rootBundle.loadString(
+        'assets/providers/dvdplay.js',
+      );
+      expect(dvdplay.contains('/search.php?q='), isTrue);
+      expect(dvdplay.contains('resolveHubCloud'), isTrue);
+      expect(dvdplay.contains('pixeldrain.net/api/file'), isTrue);
     });
 
     test('EnginePlugin host kind resolves hostProviderId', () {
@@ -504,10 +599,11 @@ void main() {
       final jsonStr = await rootBundle.loadString(
         'assets/providers/engine.json',
       );
-      final mirrors = ((jsonDecode(jsonStr) as Map)['plugins'] as List)
-          .cast<Map>()
-          .firstWhere((p) => p['id'] == 'videasy')['config']['mirrors']
-          as List;
+      final mirrors =
+          ((jsonDecode(jsonStr) as Map)['plugins'] as List)
+                  .cast<Map>()
+                  .firstWhere((p) => p['id'] == 'videasy')['config']['mirrors']
+              as List;
       expect(mirrors.map((m) => m['endpoint']), contains('cdn'));
       expect(mirrors.map((m) => m['name']), contains('Yoru'));
       expect(mirrors.map((m) => m['name']), contains('Raze'));
@@ -520,8 +616,8 @@ void main() {
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
       final plugins = map['plugins'] as List;
       Map<String, dynamic> plugin(String id) => Map<String, dynamic>.from(
-            plugins.firstWhere((p) => (p as Map)['id'] == id) as Map,
-          );
+        plugins.firstWhere((p) => (p as Map)['id'] == id) as Map,
+      );
       expect(plugin('videasy')['config'], isNotNull);
       expect(plugin('videasy')['config']['mirrors'], isA<List>());
       expect(plugin('vidlink')['config']['api'], isNotEmpty);
@@ -531,7 +627,12 @@ void main() {
 
     test('vidnest.js uses the Forja custom-alphabet cipher', () async {
       final src = await rootBundle.loadString('assets/providers/vidnest.js');
-      expect(src, contains('RB0fpH8ZEyVLkv7c2i6MAJ5u3IKFDxlS1NTsnGaqmXYdUrtzjwObCgQP94hoeW+/='));
+      expect(
+        src,
+        contains(
+          'RB0fpH8ZEyVLkv7c2i6MAJ5u3IKFDxlS1NTsnGaqmXYdUrtzjwObCgQP94hoeW+/=',
+        ),
+      );
       expect(src, contains('decryptCipher'));
       expect(src, contains('ctx.host(\'vidnest\')'));
     });
@@ -545,7 +646,9 @@ void main() {
         'vidmoly',
         'mixdrop',
       ]) {
-        final src = await rootBundle.loadString('assets/providers/hops/$name.js');
+        final src = await rootBundle.loadString(
+          'assets/providers/hops/$name.js',
+        );
         expect(src, contains('function extract(ctx)'));
         expect(src, contains('ctx.url'));
       }
@@ -868,6 +971,30 @@ function extract(ctx) {
         type: 'movie',
       );
       expect(streams.single['title'], '900150983cd24fb0d6963f7d28e17f72');
+    });
+
+    test('extract(ctx) can disable ctx.host fallback', () async {
+      final rt = EngineRuntime.instance;
+      await rt.loadPlugin(
+        pluginId: 'host-disabled-test',
+        code: '''
+function extract(ctx) {
+  return ctx.host('vidfast').then(function(rows) {
+    return [{
+      url: 'https://cdn.example/nohost.m3u8',
+      title: String(rows.length)
+    }];
+  });
+}
+''',
+      );
+      final streams = await rt.extract(
+        pluginId: 'host-disabled-test',
+        tmdbId: '1',
+        type: 'movie',
+        allowHostFallback: false,
+      );
+      expect(streams.single['title'], '0');
     });
 
     test('extract(ctx) AES-GCM decrypts vidrock-style iv||ct', () async {

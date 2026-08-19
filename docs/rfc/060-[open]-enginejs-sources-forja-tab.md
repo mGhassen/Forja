@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **34 / 36** acceptance |
-| **Current slice** | VidRock live `/api/{tmdb}` AES-GCM — remaining HTML catalogs still `catalog.js`; Flyx BingeBox/PrimeSrc/UFlix are upstream stubs; CineJoy still generic (`scrypt` PoW) |
+| **Progress** | **7 / 7** components · **39 / 41** acceptance |
+| **Current slice** | Castle AES-CBC app API, NetMirror NewTV OTT API, AniZone anime page/player, XPrime turnstile+decrypt backend, DVDPlay search+HubCloud direct extraction, 4KHDHub TMDB/domain+HubCloud flow, and batched Forja All fan-out (10 desktop / 5 TV) — remaining HTML catalogs still `catalog.js`; Flyx BingeBox/PrimeSrc/UFlix are upstream stubs; CineJoy still generic (`scrypt` PoW) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -25,6 +25,7 @@
 | 4 | R60-C04 | Play source `play_source_engine_enabled` + Settings Forja plugins | ✅ |
 | 5 | R60-C05 | Plugin `ctx` — opaque `config`, `imdbId`, cheerio/`crypto`, `ctx.host` | ✅ |
 | 6 | R60-C06 | `kind: hop` + `ctx.hop(url)` host dispatch (not Sources chips) | ✅ |
+| 7 | R60-C07 | Forja All batches selected plugins in isolated runtimes instead of a single sequential walk | ✅ |
 
 ---
 
@@ -68,6 +69,11 @@
 | 34 | R60-A34 | EncDec meowtv / peachify / vidsync / vidup are dedicated HTTP plugins; abyss / megaup / rapidshare / onetouchtv are hops | ✅ |
 | 35 | R60-A35 | MovieBox h5 `aoneroom` search/download, MovieBlast HMAC play URLs, StreamFlix `data.json` catalog, AnimeX GraphQL+REST are dedicated `extract(ctx)` | ✅ |
 | 36 | R60-A36 | VidRock GET `/api/movie/{tmdb}` and `/api/tv/{tmdb}/s/e` + AES-GCM URL decrypt (`vidrock.ru`) — not passphrase `/api/{encrypted}` | ✅ |
+| 37 | R60-A37 | Castle app AES-CBC, NetMirror NewTV OTT, and AniZone anime player are dedicated `extract(ctx)` files | ✅ |
+| 38 | R60-A38 | XPrime uses `enc-xprime` turnstile, `dec-xprime` decrypt, and `backend.xprime.tv` (`primebox` / `rage`) as a dedicated `extract(ctx)` plugin | ✅ |
+| 39 | R60-A39 | DVDPlay searches `search.php`, matches title pages, and resolves HubCloud / PixelDrain / direct download links in dedicated `extract(ctx)` JS | ✅ |
+| 40 | R60-A40 | Sources → Forja **All** runs selected plugins in batches of 10 on desktop and 5 on Android TV, and loading chips reflect the active batch only | ✅ |
+| 41 | R60-A41 | 4KHDHub uses TMDB title/year, live domain discovery, `.movie-card` matching, and HubCloud page extraction in dedicated `extract(ctx)` JS | ✅ |
 
 ---
 

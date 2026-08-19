@@ -419,6 +419,7 @@ mixin _DesktopPlayerPlayback
       _s._resetEofSessionGuards();
     }
     _s._markPlaybackConfirmed(false);
+    _s._statusController.clear();
 
     try {
       setState(() {

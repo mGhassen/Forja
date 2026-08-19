@@ -265,6 +265,20 @@ String? nextEnginePluginId({
   return null;
 }
 
+List<String> nextEnginePluginBatch({
+  required Iterable<String> orderedIds,
+  required Set<String> selectedIds,
+  required Set<String> fetchedIds,
+  required int limit,
+}) {
+  final out = <String>[];
+  for (final id in orderedIds) {
+    if (out.length >= limit) break;
+    if (selectedIds.contains(id) && !fetchedIds.contains(id)) out.add(id);
+  }
+  return out;
+}
+
 Map<String, dynamic> engineConfigMap(dynamic raw) {
   if (raw is! Map) return const {};
   return Map<String, dynamic>.from(raw);

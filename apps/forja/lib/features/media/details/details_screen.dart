@@ -238,8 +238,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   int get _engineFetchGen => _play.engineFetchGen;
   set _engineFetchGen(int v) => _play.engineFetchGen = v;
 
-  String? get _engineInFlightPluginId => _play.engineInFlightPluginId;
-  set _engineInFlightPluginId(String? v) => _play.engineInFlightPluginId = v;
+  Set<String> get _engineInFlightPluginIds => _play.engineInFlightPluginIds;
+  set _engineInFlightPluginIds(Set<String> v) =>
+      _play.engineInFlightPluginIds = v;
 
   List<EnginePack> get _enginePacks => _play.enginePacks;
   set _enginePacks(List<EnginePack> v) => _play.enginePacks = v;
@@ -959,7 +960,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (keepKind != EngineIds.kind && _isEngineFetching) {
       _engineFetchGen++;
       _isEngineFetching = false;
-      _engineInFlightPluginId = null;
+      _engineInFlightPluginIds.clear();
       EngineService.instance.cancelPending();
       _engineStreams = [];
       _engineFetchedPluginIds = {};

@@ -37,6 +37,8 @@ class EngineRuntime {
   EngineRuntime._();
   static final EngineRuntime instance = EngineRuntime._();
 
+  factory EngineRuntime.fork() => EngineRuntime._();
+
   JavascriptRuntime? _runtime;
   bool _ready = false;
   Completer<void>? _initCompleter;
@@ -257,14 +259,16 @@ class EngineRuntime {
         final body = (m['body'] ?? '').toString();
         final gen = _fetchGeneration;
         _fetchGens[id] = gen;
-        unawaited(_dispatchFetch(
-          id: id,
-          url: url,
-          method: method,
-          headers: headers,
-          body: body,
-          gen: gen,
-        ));
+        unawaited(
+          _dispatchFetch(
+            id: id,
+            url: url,
+            method: method,
+            headers: headers,
+            body: body,
+            gen: gen,
+          ),
+        );
       } catch (_) {}
       return null;
     });
@@ -331,7 +335,10 @@ class EngineRuntime {
   }
 
   void _installPolyfills(JavascriptRuntime rt) {
-    final res = rt.evaluate(kEnginePolyfillsJs, sourceUrl: 'engine://polyfills');
+    final res = rt.evaluate(
+      kEnginePolyfillsJs,
+      sourceUrl: 'engine://polyfills',
+    );
     if (res.isError) {
       throw StateError('engine polyfills failed: ${res.stringResult}');
     }
@@ -339,9 +346,11 @@ class EngineRuntime {
 
   Future<void> _loadCheerio(JavascriptRuntime rt) async {
     try {
-      final code =
-          await rootBundle.loadString('assets/nuvio/cheerio.bundle.js');
-      final wrapped = '''
+      final code = await rootBundle.loadString(
+        'assets/nuvio/cheerio.bundle.js',
+      );
+      final wrapped =
+          '''
 (function(){
   var module = { exports: {} };
   var exports = module.exports;
@@ -386,7 +395,8 @@ class EngineRuntime {
 
   void _loadPluginUnlocked(String pluginId, String code) {
     final rt = _runtime!;
-    final wrapped = '''
+    final wrapped =
+        '''
 (function(){
   var module = { exports: {} };
   var exports = module.exports;
@@ -425,6 +435,7 @@ class EngineRuntime {
     Movie? movie,
     String? url,
     Duration timeout = const Duration(seconds: 30),
+    bool allowHostFallback = true,
     bool Function()? isCancelled,
   }) {
     return _jsLock.run(() async {
@@ -450,6 +461,7 @@ class EngineRuntime {
         movie: movie,
         url: url,
         timeout: timeout,
+        allowHostFallback: allowHostFallback,
         isCancelled: isCancelled,
       );
     });
@@ -468,6 +480,7 @@ class EngineRuntime {
     Movie? movie,
     String? url,
     required Duration timeout,
+    required bool allowHostFallback,
     bool Function()? isCancelled,
   }) async {
     final rt = _runtime!;
@@ -498,7 +511,8 @@ class EngineRuntime {
         'url': _extractUrl,
         'config': config,
       });
-      final invoker = '''
+      final invoker =
+          '''
 (function(){
   var entry = globalThis.__engineRegistry[${jsonEncode(pluginId)}];
   var fn = entry && entry.extract;
@@ -530,7 +544,7 @@ class EngineRuntime {
     config: meta.config || {},
     fetch: globalThis.fetch,
     html: globalThis.__engineHtml,
-    host: globalThis.__engineHost,
+    host: ${allowHostFallback ? 'globalThis.__engineHost' : 'function(){ return Promise.resolve([]); }'},
     hop: globalThis.__engineHop,
     crypto: Object.assign({}, globalThis.CryptoJS || {}, {
       streamDecrypt: streamDecrypt,
@@ -613,7 +627,8 @@ class EngineRuntime {
   }
 
   void abortPendingWork() {
-    final hadWork = _acceptingFetches ||
+    final hadWork =
+        _acceptingFetches ||
         _activeExtract > 0 ||
         _activeTimers.isNotEmpty ||
         _pendingResults.isNotEmpty;
@@ -635,6 +650,11 @@ class EngineRuntime {
     } catch (_) {}
     _http = http.Client();
     if (hadWork) _dropRuntime();
+  }
+
+  void dispose() {
+    abortPendingWork();
+    _dropRuntime();
   }
 
   void _dropRuntime() {
@@ -678,8 +698,9 @@ class EngineRuntime {
           method != 'OPTIONS') {
         req.body = body;
       }
-      final streamed =
-          await _http.send(req).timeout(const Duration(seconds: 25));
+      final streamed = await _http
+          .send(req)
+          .timeout(const Duration(seconds: 25));
       if (gen != _fetchGeneration) {
         _fetchGens.remove(id);
         return;
@@ -740,7 +761,8 @@ class EngineRuntime {
       _resolveHost(id: id, gen: gen, streams: const []);
       return;
     }
-    final movie = _extractMovie ??
+    final movie =
+        _extractMovie ??
         Movie(
           id: int.tryParse(_extractTmdbId) ?? 0,
           imdbId: _extractImdbId,
@@ -828,6 +850,7 @@ class EngineRuntime {
         url: url,
         movie: savedMovie,
         timeout: const Duration(seconds: 20),
+        allowHostFallback: true,
         isCancelled: () => gen != _fetchGeneration,
       );
     } catch (e) {
@@ -953,14 +976,14 @@ class EngineRuntime {
   }
 
   Map<String, dynamic> _emptyUrlParts() => {
-        'protocol': '',
-        'host': '',
-        'hostname': '',
-        'port': '',
-        'pathname': '/',
-        'search': '',
-        'hash': '',
-      };
+    'protocol': '',
+    'host': '',
+    'hostname': '',
+    'port': '',
+    'pathname': '/',
+    'search': '',
+    'hash': '',
+  };
 
   static const _hostJs = r'''
 (function(){

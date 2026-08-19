@@ -71,7 +71,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     _s._nuvioInFlightScraperIds.clear();
     _s._torrentInFlightProviderIds.clear();
     _s._isEngineFetching = false;
-    _s._engineInFlightPluginId = null;
+    _s._engineInFlightPluginIds.clear();
     if (changed && rebuild && mounted) setState(() {});
   }
 
@@ -99,8 +99,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     if (!reset && _s._completedAddonBaseUrls.contains(baseUrl)) {
       setState(() {
         _applyStremioFilter();
-        _s._errorMessage =
-            _s._stremioStreams.isEmpty
+        _s._errorMessage = _s._stremioStreams.isEmpty
             ? 'No streams found in $addonName'
             : null;
       });

@@ -40,6 +40,24 @@ class EngineService {
     EngineRuntime.instance.abortPendingWork();
   }
 
+  Future<void> _syncHopsForRuntime(
+    EngineRuntime runtime,
+    List<EnginePack> packs,
+  ) async {
+    final hops = <EnginePlugin>[
+      for (final pack in packs)
+        for (final p in pack.plugins)
+          if (p.isHop) p,
+    ];
+    runtime.registerHops(hops);
+    for (final p in hops) {
+      final code = await _loadScript(p);
+      if (code != null && code.isNotEmpty) {
+        runtime.stashPluginCode(p.id, code);
+      }
+    }
+  }
+
   Future<List<EnginePack>> listPacks() async {
     await ensureBundledInstalled();
     final prefs = await _prefs;
@@ -166,18 +184,7 @@ class EngineService {
   }
 
   Future<void> _syncHops(List<EnginePack> packs) async {
-    final hops = <EnginePlugin>[
-      for (final pack in packs)
-        for (final p in pack.plugins)
-          if (p.isHop) p,
-    ];
-    EngineRuntime.instance.registerHops(hops);
-    for (final p in hops) {
-      final code = await _loadScript(p);
-      if (code != null && code.isNotEmpty) {
-        EngineRuntime.instance.stashPluginCode(p.id, code);
-      }
-    }
+    await _syncHopsForRuntime(EngineRuntime.instance, packs);
   }
 
   String _resolveScriptUrl(String manifestUrl, String filename) {
@@ -303,6 +310,8 @@ class EngineService {
     String? title,
     String? year,
     Movie? movie,
+    bool allowHostFallback = true,
+    EngineRuntime? runtime,
   }) async {
     final gen = _extractGeneration;
     final packs = await listPacks();
@@ -317,7 +326,12 @@ class EngineService {
       }
       if (plugin != null) break;
     }
-    await _syncHops(packs);
+    final rt = runtime ?? EngineRuntime.instance;
+    if (runtime == null) {
+      await _syncHops(packs);
+    } else {
+      await _syncHopsForRuntime(rt, packs);
+    }
     if (plugin == null || !plugin.enabled || !plugin.isExtractable) return null;
     final mediaType = type == 'tv' || type == 'series' ? 'tv' : 'movie';
     if (plugin.types.isNotEmpty &&
@@ -357,11 +371,11 @@ class EngineService {
       );
     }
 
-    final overlay = ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+    final overlay =
+        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
     final config = mergeEngineConfig(plugin.config, overlay);
     final code = await _loadScript(plugin);
     if (gen != _extractGeneration || code == null) return null;
-    final rt = EngineRuntime.instance;
     if (!rt.isLoaded(plugin.id)) {
       await rt.loadPlugin(pluginId: plugin.id, code: code);
     }
@@ -382,6 +396,7 @@ class EngineService {
       timeout:
           EmbedExtractProfiles.resolve(plugin.id).timeout +
           const Duration(seconds: 30),
+      allowHostFallback: allowHostFallback,
       isCancelled: () => gen != _extractGeneration,
     );
     if (gen != _extractGeneration) return null;
@@ -405,5 +420,35 @@ class EngineService {
       pluginName: plugin.name,
       streams: streams,
     );
+  }
+
+  Future<EngineExtractResult?> runPluginIsolated({
+    required String pluginId,
+    required String tmdbId,
+    required String type,
+    int? season,
+    int? episode,
+    String? title,
+    String? year,
+    Movie? movie,
+    bool allowHostFallback = true,
+  }) async {
+    final runtime = EngineRuntime.fork();
+    try {
+      return await runPlugin(
+        pluginId: pluginId,
+        tmdbId: tmdbId,
+        type: type,
+        season: season,
+        episode: episode,
+        title: title,
+        year: year,
+        movie: movie,
+        allowHostFallback: allowHostFallback,
+        runtime: runtime,
+      );
+    } finally {
+      runtime.dispose();
+    }
   }
 }

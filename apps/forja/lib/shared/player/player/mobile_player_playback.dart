@@ -432,6 +432,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       _s._resetEofSessionGuards();
     }
     _s._markPlaybackConfirmed(false);
+    _s._statusController.clear();
 
     try {
       setState(() {
