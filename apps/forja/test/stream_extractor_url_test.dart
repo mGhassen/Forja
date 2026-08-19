@@ -74,6 +74,21 @@ void main() {
       // Not playable by suffix alone — needs confirmed playlist body.
       expect(StreamExtractor.isPlayableStreamUrl(url), isFalse);
     });
+
+    test('rejects HLS fMP4 init/segments', () {
+      expect(
+        StreamExtractor.isPlayableStreamUrl(
+          'https://echogate.top/vd/x/init-s1080p-v1-a1.mp4',
+        ),
+        isFalse,
+      );
+      expect(
+        StreamExtractor.isPlayableStreamUrl(
+          'https://echogate.top/vd/x/seg-1-s1080p-v1-a1.m4s',
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('StreamExtractor.isStrongStreamUrl', () {

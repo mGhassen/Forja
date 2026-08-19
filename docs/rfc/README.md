@@ -74,13 +74,13 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [051-[open]-…](051-[open]-iptv-multi-protocol-portals.md) | IPTV multi-protocol portals (Xtream / M3U / Stalker) | v1.0.8 | open | 5/5 · 11/12 | [1.0.8](../backlog/1.0.8-[draft].md) |
 | [052-[canceled]-…](canceled/052-[canceled]-iptv-progress-aware-recovery.md) | Progress-aware IPTV playback recovery — abandoned; restored v1.3.114 | v1.0.1 | canceled | Canceled · hist 13/14 · 1/10 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [053-[partial]-…](053-[partial]-asian-drama-tmdb-details.md) | Asian Drama TMDB details enrichment | v1.0.1 | partial | 4/4 · 5/6 · 3/4 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S199 · B101-S210 · smoke R53-A06/A10 ⬜ |
-| [054-[partial]-…](054-[partial]-torrent-search-providers.md) | Torrent search providers | v1.0.1 | partial | 5/5 · 6/7 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S201 · B101-S269 · smoke R54-A06 ⬜ |
+| [054-[partial]-…](054-[partial]-torrent-search-providers.md) | Torrent search providers | v1.0.1 | partial | 6/6 · 7/8 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S201 · B101-S269 · smoke R54-A06 ⬜ |
 | [055-[open]-…](055-[open]-native-youtube-trailer-player.md) | Native YouTube trailer player (resolve + media_kit) | v1.0.1 | open | 3/3 · 6/9 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S202 · B101-S211 · smoke R55-A06/A08/A09 ⬜ |
 | [056-[open]-…](056-[open]-installer-download-stats.md) | Installer download stats (admin) | v1.0.1 | open | 3/3 · 4/5 | [1.0.1](../backlog/1.0.1-[open].md) — B101-S214 · env R56-A03 ⬜ |
 | [057-[partial]-…](057-[partial]-home-watch-provider-filter.md) | Home watch-provider filter | v1.4 | partial | 4/4 · 8/9 | [1.4.0](../backlog/1.4.0-[draft].md) |
 | [058-[partial]-…](058-[partial]-structured-search.md) | Structured Search (person / genre / year) | v1.4 | partial | 2/2 · 5/6 | [1.4.0](../backlog/1.4.0-[draft].md) |
 | [059-[fixed]-…](fixed/059-[fixed]-hub-list-follow.md) | Anime & Asian Drama list follow | v1.4 | fixed | Complete · 4/4 · 8/8 | [1.4.0](../backlog/1.4.0-[draft].md) |
-| [060-[open]-…](060-[open]-enginejs-sources-forja-tab.md) | engineJS + Sources Forja tab | v1.3 | open | 6/6 · 30/32 | — |
+| [060-[open]-…](060-[open]-enginejs-sources-forja-tab.md) | engineJS + Sources Forja tab | v1.3 | open | 6/6 · 34/36 | — |
 
 ## Related
 

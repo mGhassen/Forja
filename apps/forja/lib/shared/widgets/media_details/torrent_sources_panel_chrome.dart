@@ -40,6 +40,7 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
     this.selectedSourceId,
     this.nuvioSelectedScraperIds = const {},
     this.engineSelectedPluginIds = const {},
+    this.loadingChipIds = const {},
     this.onProviderTap,
     this.showAudioFilters = false,
     this.activeAudioFilters = const {},
@@ -83,6 +84,7 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
   final String? selectedSourceId;
   final Set<String> nuvioSelectedScraperIds;
   final Set<String> engineSelectedPluginIds;
+  final Set<String> loadingChipIds;
   final ValueChanged<String>? onProviderTap;
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
@@ -276,6 +278,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
         selectedSourceId: widget.selectedSourceId ?? '',
         nuvioSelectedScraperIds: widget.nuvioSelectedScraperIds,
         engineSelectedPluginIds: widget.engineSelectedPluginIds,
+        loadingChipIds: widget.loadingChipIds,
         onChipTap: widget.onProviderTap!,
         tvTabId: _tv ? SourcesPanelTv.tabId : null,
         tvRowId: _tv ? SourcesPanelTv.providersRowId : null,
@@ -768,69 +771,11 @@ class _KindTabBusyGlyph extends StatelessWidget {
             child: Center(
               child: showCancel
                   ? Icon(Icons.close_rounded, size: 14, color: color)
-                  : _KindTabLoadingDots(color: color),
+                  : ForjaLoadingDots(color: color),
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _KindTabLoadingDots extends StatefulWidget {
-  const _KindTabLoadingDots({required this.color});
-
-  final Color color;
-
-  @override
-  State<_KindTabLoadingDots> createState() => _KindTabLoadingDotsState();
-}
-
-class _KindTabLoadingDotsState extends State<_KindTabLoadingDots>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (context, _) {
-        final lit = (_c.value * 3).floor() % 3;
-        return Text.rich(
-          TextSpan(
-            children: [
-              for (var i = 0; i < 3; i++)
-                TextSpan(
-                  text: '.',
-                  style: TextStyle(
-                    color: widget.color.withValues(alpha: i <= lit ? 1 : 0.25),
-                  ),
-                ),
-            ],
-          ),
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            height: 1.1,
-            letterSpacing: 0.4,
-          ),
-        );
-      },
     );
   }
 }

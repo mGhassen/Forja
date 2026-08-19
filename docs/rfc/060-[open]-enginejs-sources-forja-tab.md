@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **30 / 32** acceptance |
-| **Current slice** | Real HTTP ports (VidRock AES, EncDec hexa/vidcore/flixcloud, HiAnime, KAA, 2DHive, MultiEmbed, MoviesAPI) — remaining HTML catalogs still `catalog.js` |
+| **Progress** | **6 / 6** components · **34 / 36** acceptance |
+| **Current slice** | VidRock live `/api/{tmdb}` AES-GCM — remaining HTML catalogs still `catalog.js`; Flyx BingeBox/PrimeSrc/UFlix are upstream stubs; CineJoy still generic (`scrypt` PoW) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -64,6 +64,10 @@
 | 30 | R60-A30 | VidRock `extract(ctx)` encrypts item id with local passphrase AES — no `aesdec.nuvioapp.space` | ✅ |
 | 31 | R60-A31 | EncDec hexa / vidcore / flixcloud / animekai are dedicated plugins (not generic `encdec.js`) | ✅ |
 | 32 | R60-A32 | HiAnime MegaPlay, KickAssAnime `kaa.lt`, 2DHive, Flyx MultiEmbed, MoviesAPI vidora are dedicated `extract(ctx)` files | ✅ |
+| 33 | R60-A33 | Cineby reuses Videasy STREAMCRYPTO (`videasy.js` + `cineby.at` origin); Goated is `reallyfast` SHA-256 PoW + `/api/resolve` | ✅ |
+| 34 | R60-A34 | EncDec meowtv / peachify / vidsync / vidup are dedicated HTTP plugins; abyss / megaup / rapidshare / onetouchtv are hops | ✅ |
+| 35 | R60-A35 | MovieBox h5 `aoneroom` search/download, MovieBlast HMAC play URLs, StreamFlix `data.json` catalog, AnimeX GraphQL+REST are dedicated `extract(ctx)` | ✅ |
+| 36 | R60-A36 | VidRock GET `/api/movie/{tmdb}` and `/api/tv/{tmdb}/s/e` + AES-GCM URL decrypt (`vidrock.ru`) — not passphrase `/api/{encrypted}` | ✅ |
 
 ---
 

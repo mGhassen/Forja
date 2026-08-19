@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "Forja",
-  "version": "1.4.1",
+  "version": "1.4.4",
   "plugins": [
     {
       "id": "videasy",
@@ -56,6 +56,75 @@
             "name": "Raze"
           }
         ]
+      }
+    },
+    {
+      "id": "cineby",
+      "name": "Cineby",
+      "entry": "videasy.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "api": "https://api.speedracelight.com",
+        "origin": "https://www.cineby.at",
+        "mirrors": [
+          {
+            "endpoint": "cdn",
+            "name": "Yoru"
+          },
+          {
+            "endpoint": "downloader2",
+            "name": "Cypher"
+          },
+          {
+            "endpoint": "m4uhd",
+            "name": "Breach"
+          },
+          {
+            "endpoint": "vsrc",
+            "name": "Neon"
+          },
+          {
+            "endpoint": "hdmovie",
+            "name": "Vyse",
+            "qualityFilter": "English"
+          },
+          {
+            "endpoint": "meine",
+            "name": "Killjoy",
+            "language": "german"
+          },
+          {
+            "endpoint": "hdmovie",
+            "name": "Fade",
+            "qualityFilter": "Hindi"
+          },
+          {
+            "endpoint": "lamovie",
+            "name": "Omen"
+          },
+          {
+            "endpoint": "superflix",
+            "name": "Raze"
+          }
+        ]
+      }
+    },
+    {
+      "id": "goated",
+      "name": "Goated",
+      "entry": "goated.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "api": "https://api.reallyfast.xyz",
+        "origin": "https://goated.cx"
       }
     },
     {
@@ -144,8 +213,8 @@
       ],
       "kind": "http",
       "config": {
-        "origin": "https://vidrock.net",
-        "passphrase": "x7k9mPqT2rWvY8zA5bC3nF6hJ2lK4mN9"
+        "origin": "https://vidrock.ru",
+        "aesKey": "7f3e9c2a8b5d1f4e6a9c3b7d2e5f8a1c4b6d9e2f5a8c1b4d7e9f2a5c8b1d4e7f"
       }
     },
     {
@@ -455,146 +524,144 @@
       }
     },
     {
-      "id": "abyss",
-      "name": "Abyss",
-      "entry": "encdec.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://abysscdn.com",
-        "slug": "abyss",
-        "enc": "https://enc-dec.app/api",
-        "name": "Abyss"
-      }
-    },
-    {
-      "id": "megaup",
-      "name": "MegaUp",
-      "entry": "encdec.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://megaup.live",
-        "slug": "megaup",
-        "enc": "https://enc-dec.app/api",
-        "name": "MegaUp"
-      }
-    },
-    {
       "id": "meowtv",
       "name": "MeowTV",
-      "entry": "encdec.js",
+      "entry": "meowtv.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "origin": "https://meowtv.xyz",
-        "slug": "meowtv",
+        "origin": "https://meowtv.ru",
+        "api": "https://api.meowtv.ru",
         "enc": "https://enc-dec.app/api",
-        "name": "MeowTV"
-      }
-    },
-    {
-      "id": "onetouchtv",
-      "name": "OneTouchTV",
-      "entry": "encdec.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://onetouch.tv",
-        "slug": "onetouchtv",
-        "enc": "https://enc-dec.app/api",
-        "name": "OneTouchTV"
+        "servers": [
+          {
+            "id": "pseudo",
+            "label": "Psuedo"
+          },
+          {
+            "id": "lynx",
+            "label": "Lynx"
+          },
+          {
+            "id": "tik",
+            "label": "TCloud"
+          },
+          {
+            "id": "ipcloud",
+            "label": "IPcloud"
+          },
+          {
+            "id": "v4:English",
+            "label": "English"
+          },
+          {
+            "id": "turkce",
+            "label": "Türkçe"
+          },
+          {
+            "id": "v5:Hindi",
+            "label": "Hindi"
+          },
+          {
+            "id": "v4:Hindi",
+            "label": "Hindi v2"
+          }
+        ]
       }
     },
     {
       "id": "peachify",
       "name": "Peachify",
-      "entry": "encdec.js",
+      "entry": "peachify.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "origin": "https://peachify.xyz",
-        "slug": "peachify",
+        "origin": "https://peachify.top",
         "enc": "https://enc-dec.app/api",
-        "name": "Peachify"
-      }
-    },
-    {
-      "id": "rapidshare",
-      "name": "Rapidshare",
-      "entry": "encdec.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://rapidshare.cc",
-        "slug": "rapidshare",
-        "enc": "https://enc-dec.app/api",
-        "name": "Rapidshare"
+        "servers": [
+          {
+            "label": "Wolf",
+            "path": "air",
+            "api": "https://usa.eat-peach.sbs"
+          },
+          {
+            "label": "Spider",
+            "path": "holly",
+            "api": "https://usa.eat-peach.sbs"
+          },
+          {
+            "label": "Iron",
+            "path": "moviebox",
+            "api": "https://uwu.eat-peach.sbs"
+          },
+          {
+            "label": "Multi",
+            "path": "multi",
+            "api": "https://usa.eat-peach.sbs"
+          },
+          {
+            "label": "Dark",
+            "path": "net",
+            "api": "https://uwu.eat-peach.sbs"
+          }
+        ]
       }
     },
     {
       "id": "vidsync",
       "name": "VidSync",
-      "entry": "encdec.js",
+      "entry": "vidsync.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "origin": "https://vidsync.to",
-        "slug": "vidsync",
+        "origin": "https://vidsync.xyz",
         "enc": "https://enc-dec.app/api",
-        "name": "VidSync"
+        "servers": [
+          "cinevault",
+          "cinedub",
+          "cinebox",
+          "cineflix",
+          "cinevip",
+          "cinecloud",
+          "cine4k"
+        ]
       }
     },
     {
       "id": "vidup",
       "name": "VidUp",
-      "entry": "encdec.js",
+      "entry": "vidup.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "origin": "https://vidup.io",
-        "slug": "vidup",
-        "enc": "https://enc-dec.app/api",
-        "name": "VidUp"
+        "origin": "https://vidup.to",
+        "enc": "https://enc-dec.app/api"
       }
     },
     {
       "id": "moviebox",
       "name": "MovieBox",
-      "entry": "catalog.js",
+      "entry": "moviebox.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://moviebox.ph",
-        "name": "MovieBox",
-        "search": "https://moviebox.ph/search?q={q}"
+        "api": "https://h5-api.aoneroom.com",
+        "referer": "https://videodownloader.site/"
       }
     },
     {
@@ -723,16 +790,14 @@
     {
       "id": "streamflix",
       "name": "StreamFlix",
-      "entry": "catalog.js",
+      "entry": "streamflix.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://watch.streamflix.one",
-        "name": "StreamFlix",
-        "search": "https://watch.streamflix.one/search?q={q}"
+        "api": "https://api.streamflix.app"
       }
     },
     {
@@ -903,16 +968,18 @@
     {
       "id": "movieblast",
       "name": "MovieBlast",
-      "entry": "catalog.js",
+      "entry": "movieblast.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://movieblast.xyz",
-        "name": "MovieBlast",
-        "search": "https://movieblast.xyz/search?q={q}"
+        "api": "https://app.cloud-mb.xyz",
+        "token": "jdvhhjv255vghhghdhvfch2565656jhdcghfdf",
+        "appId": "com.movieblast",
+        "signSecret": "GJ8reydarI7Jqat9rvbAJKNQ9gY4DoEQF2H5nfuI1gi",
+        "hash256": "86dc03244adddb3cbedbf0ae36074a736ee293a64774b18e82a6244eafd0df30"
       }
     },
     {
@@ -1038,16 +1105,17 @@
     {
       "id": "animex",
       "name": "AnimeX",
-      "entry": "catalog.js",
+      "entry": "animex.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://animex.fun",
-        "name": "AnimeX",
-        "search": "https://animex.fun/watch/{q}"
+        "gql": "https://graphql.animex.one/graphql",
+        "rest": "https://pp.animex.one/rest/api",
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "jikan": "https://api.jikan.moe/v4/anime"
       }
     },
     {
@@ -1226,6 +1294,81 @@
         "flixcloud.cc",
         "flixcloud.tv"
       ]
+    },
+    {
+      "id": "hop-abyss",
+      "name": "Abyss",
+      "entry": "hops/abyss.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "playhydrax.com",
+        "hydrax.net",
+        "abysscdn.com"
+      ],
+      "config": {
+        "origin": "https://playhydrax.com",
+        "enc": "https://enc-dec.app/api"
+      }
+    },
+    {
+      "id": "hop-megaup",
+      "name": "MegaUp",
+      "entry": "hops/megaup.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "megaup.cc",
+        "megaup.live",
+        "megaup.net"
+      ],
+      "config": {
+        "dec": "dec-mega",
+        "name": "MegaUp",
+        "enc": "https://enc-dec.app/api"
+      }
+    },
+    {
+      "id": "hop-rapidshare",
+      "name": "Rapidshare",
+      "entry": "hops/megaup.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "rapidshare.cc",
+        "rapid-cloud.co"
+      ],
+      "config": {
+        "dec": "dec-rapid",
+        "name": "Rapidshare",
+        "enc": "https://enc-dec.app/api"
+      }
+    },
+    {
+      "id": "hop-onetouchtv",
+      "name": "OneTouchTV",
+      "entry": "hops/onetouchtv.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "api3.devcorp.me",
+        "onetouch.tv"
+      ],
+      "config": {
+        "enc": "https://enc-dec.app/api"
+      }
     },
     {
       "id": "hop-doodstream",

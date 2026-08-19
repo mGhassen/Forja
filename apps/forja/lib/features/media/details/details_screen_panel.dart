@@ -278,6 +278,26 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     return options;
   }
 
+  Set<String> _loadingChipIds() {
+    switch (_s._panelKindFilter) {
+      case 'torrents':
+        return _s._torrentInFlightProviderIds;
+      case 'nuvio':
+        return {
+          for (final id in _s._nuvioInFlightScraperIds) 'nuvio:$id',
+        };
+      case EngineIds.kind:
+        final id = _s._engineInFlightPluginId;
+        if (id == null || id.isEmpty) return const {};
+        return {EngineIds.pluginChip(id)};
+      case 'stremio':
+        if (!_s._isStremioFetching) return const {};
+        return {_s._selectedSourceId};
+      default:
+        return const {};
+    }
+  }
+
   bool _nuvioStreamFromScraper(Map<String, dynamic> s, String scraperId) {
     final id = s['_nuvioScraperId'] as String?;
     if (id != null) return id == scraperId;
@@ -301,7 +321,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         if (clearing) {
           _s._nuvioFetchGen++;
           _s._isNuvioFetching = false;
-          _s._nuvioInFlightScraperId = null;
+          _s._nuvioInFlightScraperIds.clear();
           DomainStreamProviderResolver.cancelAllPending(
             cancelEngineJobs: false,
           );
@@ -321,7 +341,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       final fetched = _s._nuvioFetchedScraperIds.contains(scraperId);
       final cancelInFlight = wasSelected &&
           _s._isNuvioFetching &&
-          _s._nuvioInFlightScraperId == scraperId;
+          _s._nuvioInFlightScraperIds.contains(scraperId);
       if (wasSelected && !fetched && !cancelInFlight) {
         unawaited(_s._fetchNextNuvioScraper(onlyId: scraperId));
         return;
@@ -343,7 +363,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           if (cancelInFlight) {
             _s._nuvioFetchGen++;
             _s._isNuvioFetching = false;
-            _s._nuvioInFlightScraperId = null;
+            _s._nuvioInFlightScraperIds.clear();
             DomainStreamProviderResolver.cancelAllPending(
               cancelEngineJobs: false,
             );

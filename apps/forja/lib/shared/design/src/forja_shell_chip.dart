@@ -140,6 +140,7 @@ class ForjaShellChip extends StatefulWidget {
     this.onLeftEdge,
     this.onRightEdge,
     this.accentHover = false,
+    this.loading = false,
   });
 
   final String label;
@@ -161,6 +162,9 @@ class ForjaShellChip extends StatefulWidget {
 
   /// Desktop hover: tinted brand-green chrome instead of solid white ink.
   final bool accentHover;
+
+  /// Same cycling `...` as Sources kind tabs while this chip is checking.
+  final bool loading;
 
   @override
   State<ForjaShellChip> createState() => _ForjaShellChipState();
@@ -207,7 +211,10 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
               fontWeight: selected || accent ? FontWeight.w600 : FontWeight.w500,
             ),
           ),
-          if (widget.trailing != null) ...[
+          if (widget.loading) ...[
+            const SizedBox(width: 4),
+            ForjaLoadingDots(color: fg),
+          ] else if (widget.trailing != null) ...[
             const SizedBox(width: 4),
             widget.trailing!,
           ],

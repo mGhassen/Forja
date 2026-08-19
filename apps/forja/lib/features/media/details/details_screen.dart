@@ -153,6 +153,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   Set<String> get _torrentFetchedProviderIds => _play.torrentFetchedProviderIds;
 
+  Set<String> get _torrentInFlightProviderIds =>
+      _play.torrentInFlightProviderIds;
+
   int get _stremioFetchGen => _play.stremioFetchGen;
   set _stremioFetchGen(int v) => _play.stremioFetchGen = v;
 
@@ -207,8 +210,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   int get _nuvioFetchGen => _play.nuvioFetchGen;
   set _nuvioFetchGen(int v) => _play.nuvioFetchGen = v;
 
-  String? get _nuvioInFlightScraperId => _play.nuvioInFlightScraperId;
-  set _nuvioInFlightScraperId(String? v) => _play.nuvioInFlightScraperId = v;
+  Set<String> get _nuvioInFlightScraperIds => _play.nuvioInFlightScraperIds;
 
   List<NuvioAddon> get _nuvioAddons => _play.nuvioAddons;
   set _nuvioAddons(List<NuvioAddon> v) => _play.nuvioAddons = v;
@@ -725,6 +727,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _isEngineFetching = false;
     _allTorrentResults = [];
     _torrentFetchedProviderIds.clear();
+    _torrentInFlightProviderIds.clear();
     _stremioStreams = [];
     _allCombinedStremioStreams = [];
     _loadedAddonBaseUrls.clear();
@@ -732,6 +735,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _userPickedStremioProvider = false;
     _nuvioStreams = [];
     _nuvioFetchedScraperIds = {};
+    _nuvioInFlightScraperIds.clear();
     _engineStreams = [];
     _engineFetchedPluginIds = {};
     // Keep scraper chip selection - persisted preference, not per-title.
@@ -934,6 +938,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _isSearching = false;
       _allTorrentResults = [];
       _torrentFetchedProviderIds.clear();
+      _torrentInFlightProviderIds.clear();
     }
     if (keepKind != 'stremio' && _isStremioFetching) {
       _stremioFetchGen++;
@@ -946,7 +951,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (keepKind != 'nuvio' && _isNuvioFetching) {
       _nuvioFetchGen++;
       _isNuvioFetching = false;
-      _nuvioInFlightScraperId = null;
+      _nuvioInFlightScraperIds.clear();
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _nuvioStreams = [];
       _nuvioFetchedScraperIds = {};

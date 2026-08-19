@@ -96,8 +96,22 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
     if (!_s._isSearching) return;
     setState(() {
       _s._torrentSearchGen++;
-      _s._isSearching = false;
+      _markTorrentSearchIdle();
     });
+  }
+
+  void _markTorrentSearchIdle() {
+    _s._isSearching = false;
+    _s._torrentInFlightProviderIds.clear();
+  }
+
+  void _markTorrentSearchStarted(Iterable<String> inFlight, {required bool replace}) {
+    _s._isSearching = true;
+    _s._torrentInFlightProviderIds
+      ..clear()
+      ..addAll(inFlight);
+    if (replace) _s._allTorrentResults = [];
+    _s._errorMessage = null;
   }
 
   void Function(String id) _onTorrentProviderDone(
@@ -109,7 +123,10 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       if (!mounted || gen != _s._torrentSearchGen) return;
       hits[id] = (hits[id] ?? 0) + 1;
       if (hits[id]! >= hitsNeeded) {
-        _s._torrentFetchedProviderIds.add(id);
+        setState(() {
+          _s._torrentFetchedProviderIds.add(id);
+          _s._torrentInFlightProviderIds.remove(id);
+        });
       }
     };
   }
@@ -125,9 +142,10 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
         .read(detailsResolveStatusProvider(_s._metaKey).notifier)
         .setLoading();
     setState(() {
-      _s._isSearching = true;
-      if (replace) _s._allTorrentResults = [];
-      _s._errorMessage = null;
+      _markTorrentSearchStarted(
+        enabledProviders ?? _s._enabledTorrentProviders,
+        replace: replace,
+      );
     });
     var closed = false;
     var paintSeq = 0;
@@ -227,7 +245,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
         } else {
           _s._mergeTorrentResults(combined.values.toList());
         }
-        _s._isSearching = false;
+        _markTorrentSearchIdle();
       });
       _s.ref
           .read(detailsResolveStatusProvider(_s._metaKey).notifier)
@@ -238,7 +256,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       if (mounted && gen == _s._torrentSearchGen) {
         setState(() {
           _s._errorMessage = e.toString();
-          _s._isSearching = false;
+          _markTorrentSearchIdle();
         });
         _s.ref
             .read(detailsResolveStatusProvider(_s._metaKey).notifier)
@@ -258,9 +276,10 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
         .read(detailsResolveStatusProvider(_s._metaKey).notifier)
         .setLoading();
     setState(() {
-      _s._isSearching = true;
-      if (replace) _s._allTorrentResults = [];
-      _s._errorMessage = null;
+      _markTorrentSearchStarted(
+        enabledProviders ?? _s._enabledTorrentProviders,
+        replace: replace,
+      );
     });
     var closed = false;
     var paintSeq = 0;
@@ -309,7 +328,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
         } else {
           _s._mergeTorrentResults(filtered);
         }
-        _s._isSearching = false;
+        _markTorrentSearchIdle();
       });
       _s.ref
           .read(detailsResolveStatusProvider(_s._metaKey).notifier)
@@ -320,7 +339,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       if (mounted && gen == _s._torrentSearchGen) {
         setState(() {
           _s._errorMessage = e.toString();
-          _s._isSearching = false;
+          _markTorrentSearchIdle();
         });
         _s.ref
             .read(detailsResolveStatusProvider(_s._metaKey).notifier)
@@ -346,9 +365,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
 
     final gen = ++_s._torrentSearchGen;
     setState(() {
-      _s._isSearching = true;
-      _s._allTorrentResults = [];
-      _s._errorMessage = null;
+      _markTorrentSearchStarted(const ['jackett'], replace: true);
     });
 
     try {
@@ -391,13 +408,13 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
           setState(() {
             _s._errorMessage =
                 'No results found for "S${s}E$e". Try checking your configured indexers in Jackett.';
-            _s._isSearching = false;
+            _markTorrentSearchIdle();
           });
           _s._maybeAutoPlay();
         } else {
           setState(() {
             _s._allTorrentResults = combined.values.toList();
-            _s._isSearching = false;
+            _markTorrentSearchIdle();
           });
           _sortResults();
         }
@@ -417,13 +434,13 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
           setState(() {
             _s._errorMessage =
                 'No results found for "$query". Try checking your configured indexers in Jackett.';
-            _s._isSearching = false;
+            _markTorrentSearchIdle();
           });
           _s._maybeAutoPlay();
         } else {
           setState(() {
             _s._allTorrentResults = filtered;
-            _s._isSearching = false;
+            _markTorrentSearchIdle();
           });
           _sortResults();
         }
@@ -432,7 +449,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       if (mounted && gen == _s._torrentSearchGen) {
         setState(() {
           _s._errorMessage = e.toString();
-          _s._isSearching = false;
+          _markTorrentSearchIdle();
         });
         _s._maybeAutoPlay();
       }
@@ -455,9 +472,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
 
     final gen = ++_s._torrentSearchGen;
     setState(() {
-      _s._isSearching = true;
-      _s._allTorrentResults = [];
-      _s._errorMessage = null;
+      _markTorrentSearchStarted(const ['prowlarr'], replace: true);
     });
 
     try {
@@ -523,13 +538,13 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
           setState(() {
             _s._errorMessage =
                 'No results found for "S${s}E$e". Try checking your configured indexers in Prowlarr.';
-            _s._isSearching = false;
+            _markTorrentSearchIdle();
           });
           _s._maybeAutoPlay();
         } else {
           setState(() {
             _s._allTorrentResults = combined.values.toList();
-            _s._isSearching = false;
+            _markTorrentSearchIdle();
           });
           _sortResults();
         }
@@ -554,13 +569,13 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
           setState(() {
             _s._errorMessage =
                 'No results found for "$query". Try checking your configured indexers in Prowlarr.';
-            _s._isSearching = false;
+            _markTorrentSearchIdle();
           });
           _s._maybeAutoPlay();
         } else {
           setState(() {
             _s._allTorrentResults = filtered;
-            _s._isSearching = false;
+            _markTorrentSearchIdle();
           });
           _sortResults();
         }
@@ -569,7 +584,7 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       if (mounted && gen == _s._torrentSearchGen) {
         setState(() {
           _s._errorMessage = e.toString();
-          _s._isSearching = false;
+          _markTorrentSearchIdle();
         });
         _s._maybeAutoPlay();
       }

@@ -467,6 +467,7 @@ class TorrentSourceChips extends StatefulWidget {
     required this.selectedSourceId,
     required this.nuvioSelectedScraperIds,
     this.engineSelectedPluginIds = const {},
+    this.loadingChipIds = const {},
     required this.onChipTap,
     this.tvTabId,
     this.tvRowId,
@@ -476,6 +477,7 @@ class TorrentSourceChips extends StatefulWidget {
   final String selectedSourceId;
   final Set<String> nuvioSelectedScraperIds;
   final Set<String> engineSelectedPluginIds;
+  final Set<String> loadingChipIds;
   final ValueChanged<String> onChipTap;
   final String? tvTabId;
   final String? tvRowId;
@@ -568,6 +570,9 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                         child: ForjaShellChip(
                           label: widget.options[i].label,
                           selected: _chipSelected(widget.options[i]),
+                          loading: widget.loadingChipIds.contains(
+                            widget.options[i].id,
+                          ),
                           onTap: () => widget.onChipTap(widget.options[i].id),
                           accentHover: true,
                           radius: 999,

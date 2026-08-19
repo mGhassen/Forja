@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/extractors/core/stream_crypto.dart';
+import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/player/utils.dart';
@@ -295,9 +296,21 @@ void main() {
           'hianime',
           'multiembed',
           'kickassanime',
+          'cineby',
+          'goated',
+          'meowtv',
+          'peachify',
+          'vidsync',
+          'vidup',
+          'movieblast',
+          'streamflix',
+          'animex',
           'hop-doodstream',
           'hop-voe',
           'hop-mixdrop',
+          'hop-abyss',
+          'hop-megaup',
+          'hop-rapidshare',
         ]),
       );
       expect(
@@ -323,9 +336,38 @@ void main() {
         'kickassanime.js',
       );
       expect(parsed.firstWhere((p) => p.id == 'multiembed').entry, 'multiembed.js');
+      expect(parsed.firstWhere((p) => p.id == 'cineby').entry, 'videasy.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'cineby').config['origin'],
+        'https://www.cineby.at',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'goated').entry, 'goated.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'goated').config['api'],
+        'https://api.reallyfast.xyz',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'meowtv').entry, 'meowtv.js');
+      expect(parsed.firstWhere((p) => p.id == 'peachify').entry, 'peachify.js');
+      expect(parsed.firstWhere((p) => p.id == 'vidsync').entry, 'vidsync.js');
+      expect(parsed.firstWhere((p) => p.id == 'vidup').entry, 'vidup.js');
+      expect(parsed.firstWhere((p) => p.id == 'moviebox').entry, 'moviebox.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'moviebox').config['api'],
+        'https://h5-api.aoneroom.com',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'movieblast').entry, 'movieblast.js');
+      expect(parsed.firstWhere((p) => p.id == 'streamflix').entry, 'streamflix.js');
+      expect(parsed.firstWhere((p) => p.id == 'animex').entry, 'animex.js');
+      expect(parsed.firstWhere((p) => p.id == 'hop-abyss').isHop, isTrue);
+      expect(parsed.firstWhere((p) => p.id == 'hop-megaup').isHop, isTrue);
+      expect(parsed.firstWhere((p) => p.id == 'cinejoy').entry, 'encdec.js');
       expect(
         parsed.firstWhere((p) => p.id == 'vidrock').config['origin'],
-        'https://vidrock.net',
+        'https://vidrock.ru',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'vidrock').config['aesKey'],
+        isNotEmpty,
       );
       expect(parsed.firstWhere((p) => p.id == 'dooflix').enabled, isTrue);
       expect(
@@ -346,8 +388,11 @@ void main() {
         'assets/providers/vidrock.js',
       );
       expect(vidrock.contains('aesdec.nuvioapp.space'), isFalse);
-      expect(vidrock.contains('AES.encrypt'), isTrue);
+      expect(vidrock.contains('AES.encrypt'), isFalse);
+      expect(vidrock.contains('AES.decrypt'), isTrue);
+      expect(vidrock.contains('mode.GCM'), isTrue);
       expect(vidrock.contains('/api/'), isTrue);
+      expect(vidrock.contains('tv/'), isTrue);
 
       final hexa = await rootBundle.loadString('assets/providers/hexa.js');
       expect(hexa.contains('enc-hexa'), isTrue);
@@ -376,6 +421,62 @@ void main() {
       );
       expect(kaa.contains('/api/fsearch'), isTrue);
       expect(kaa.contains('krussdomi.com'), isTrue);
+
+      final cinebyCfg = ((jsonDecode(
+                await rootBundle.loadString('assets/providers/engine.json'),
+              ) as Map)['plugins'] as List)
+          .cast<Map>()
+          .firstWhere((p) => p['id'] == 'cineby');
+      expect(cinebyCfg['entry'], 'videasy.js');
+      expect(cinebyCfg['config']['origin'], 'https://www.cineby.at');
+
+      final goated = await rootBundle.loadString('assets/providers/goated.js');
+      expect(goated.contains('aesdec.nuvioapp.space'), isFalse);
+      expect(goated.contains('/api/resolve'), isTrue);
+      expect(goated.contains('/api/challenge'), isTrue);
+      expect(goated.contains('solvePow'), isTrue);
+
+      final meowtv = await rootBundle.loadString('assets/providers/meowtv.js');
+      expect(meowtv.contains('/streams/'), isTrue);
+      expect(meowtv.contains('dec-meowtv'), isTrue);
+
+      final peachify = await rootBundle.loadString(
+        'assets/providers/peachify.js',
+      );
+      expect(peachify.contains('dec-peachify'), isTrue);
+
+      final vidsync = await rootBundle.loadString(
+        'assets/providers/vidsync.js',
+      );
+      expect(vidsync.contains('enc-vidsync'), isTrue);
+      expect(vidsync.contains('dec-vidsync'), isTrue);
+
+      final vidup = await rootBundle.loadString('assets/providers/vidup.js');
+      expect(vidup.contains('enc-vidup'), isTrue);
+      expect(vidup.contains('dec-vidup'), isTrue);
+
+      final moviebox = await rootBundle.loadString(
+        'assets/providers/moviebox.js',
+      );
+      expect(moviebox.contains('wefeed-h5api-bff/subject/search'), isTrue);
+      expect(moviebox.contains('wefeed-h5api-bff/subject/download'), isTrue);
+
+      final movieblast = await rootBundle.loadString(
+        'assets/providers/movieblast.js',
+      );
+      expect(movieblast.contains('HmacSHA256'), isTrue);
+      expect(movieblast.contains('/api/search/'), isTrue);
+
+      final streamflix = await rootBundle.loadString(
+        'assets/providers/streamflix.js',
+      );
+      expect(streamflix.contains('/data.json'), isTrue);
+      expect(streamflix.contains('config-streamflixapp.json'), isTrue);
+
+      final animex = await rootBundle.loadString('assets/providers/animex.js');
+      expect(animex.contains('cfg.gql'), isTrue);
+      expect(animex.contains('searchAnime'), isTrue);
+      expect(animex.contains('/sources'), isTrue);
     });
 
     test('EnginePlugin host kind resolves hostProviderId', () {
@@ -767,6 +868,47 @@ function extract(ctx) {
         type: 'movie',
       );
       expect(streams.single['title'], '900150983cd24fb0d6963f7d28e17f72');
+    });
+
+    test('extract(ctx) AES-GCM decrypts vidrock-style iv||ct', () async {
+      const keyHex =
+          '7f3e9c2a8b5d1f4e6a9c3b7d2e5f8a1c4b6d9e2f5a8c1b4d7e9f2a5c8b1d4e7f';
+      const ivHex = '0102030405060708090a0b0c';
+      const plain = 'https://cdn.example/master.m3u8';
+      final ctHex = aesHex(
+        mode: 'AES-GCM',
+        keyHex: keyHex,
+        ivHex: ivHex,
+        dataHex: hexFromBytes(utf8.encode(plain)),
+        encrypt: true,
+      );
+      final enc = base64UrlEncode(
+        bytesFromHex(ivHex + ctHex),
+      ).replaceAll('=', '');
+      final rt = EngineRuntime.instance;
+      await rt.loadPlugin(
+        pluginId: 'gcm-test',
+        code:
+            '''
+function extract(ctx) {
+  var key = CryptoJS.enc.Hex.parse(${jsonEncode(keyHex)});
+  var packed = CryptoJS.enc.Base64.parse(${jsonEncode(enc)});
+  var hex = CryptoJS.enc.Hex.stringify(packed);
+  var iv = CryptoJS.enc.Hex.parse(hex.substring(0, 24));
+  var ct = CryptoJS.enc.Hex.parse(hex.substring(24));
+  var pt = CryptoJS.AES.decrypt({ ciphertext: ct }, key, {
+    iv: iv, mode: CryptoJS.mode.GCM
+  });
+  return [{ url: CryptoJS.enc.Utf8.stringify(pt), name: 'ok' }];
+}
+''',
+      );
+      final streams = await rt.extract(
+        pluginId: 'gcm-test',
+        tmdbId: '1',
+        type: 'movie',
+      );
+      expect(streams.single['url'], plain);
     });
 
     test('ctx.hop dispatches to a hop plugin by hostname', () async {

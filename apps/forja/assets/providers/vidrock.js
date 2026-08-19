@@ -1,7 +1,7 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
-  var origin = cfg.origin || 'https://vidrock.net';
-  var passphrase = cfg.passphrase || '';
+  var origin = cfg.origin || 'https://vidrock.ru';
+  var aesKey = cfg.aesKey || '';
   var ua =
     'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36';
   var headers = {
@@ -16,17 +16,10 @@ function extract(ctx) {
     Origin: origin,
   };
   var tmdbId = String(ctx.tmdbId);
-  var mediaType = ctx.type === 'movie' ? 'movie' : 'tv';
-  var itemId =
-    mediaType === 'tv'
-      ? tmdbId + '_' + (ctx.season || 1) + '_' + (ctx.episode || 1)
-      : tmdbId;
-
-  function encryptId(text) {
-    var CryptoJS = ctx.crypto;
-    if (!passphrase || !CryptoJS || !CryptoJS.AES) return '';
-    return CryptoJS.AES.encrypt(String(text), String(passphrase)).toString();
-  }
+  var path =
+    ctx.type === 'movie'
+      ? 'movie/' + tmdbId
+      : 'tv/' + tmdbId + '/' + (ctx.season || 1) + '/' + (ctx.episode || 1);
 
   function qualityOf(url) {
     var m = String(url || '').match(/(\d{3,4})p/i);
@@ -46,6 +39,28 @@ function extract(ctx) {
     var out = { url: url, name: label, quality: qualityOf(url) };
     if (hdrs) out.headers = hdrs;
     return out;
+  }
+
+  function decryptUrl(enc) {
+    if (!enc) return '';
+    if (/^https?:\/\//i.test(enc)) return enc;
+    var CryptoJS = ctx.crypto;
+    if (!CryptoJS || !aesKey) return '';
+    try {
+      var packed = CryptoJS.enc.Base64.parse(enc);
+      var hex = CryptoJS.enc.Hex.stringify(packed);
+      if (hex.length < 56) return '';
+      var iv = CryptoJS.enc.Hex.parse(hex.substring(0, 24));
+      var ct = CryptoJS.enc.Hex.parse(hex.substring(24));
+      var pt = CryptoJS.AES.decrypt(
+        { ciphertext: ct },
+        CryptoJS.enc.Hex.parse(aesKey),
+        { iv: iv, mode: CryptoJS.mode.GCM },
+      );
+      return CryptoJS.enc.Utf8.stringify(pt) || '';
+    } catch (e) {
+      return '';
+    }
   }
 
   function parseAstra(playlistUrl, name) {
@@ -79,7 +94,7 @@ function extract(ctx) {
     var tasks = [];
     Object.keys(data).forEach(function (serverName) {
       var source = data[serverName];
-      var url = source && source.url;
+      var url = decryptUrl(source && source.url);
       if (!url) return;
       if (serverName === 'Astra' && /cdn\.vidrock\.store\/playlist\//i.test(url)) {
         tasks.push(parseAstra(url, serverName));
@@ -92,13 +107,10 @@ function extract(ctx) {
     });
   }
 
-  var encrypted = encryptId(itemId);
-  if (!encrypted) return ctx.host('vidrock');
+  if (!aesKey) return ctx.host('vidrock');
 
   return ctx
-    .fetch(origin + '/api/' + mediaType + '/' + encodeURIComponent(encrypted), {
-      headers: headers,
-    })
+    .fetch(origin.replace(/\/$/, '') + '/api/' + path, { headers: headers })
     .then(function (r) {
       return r.text();
     })

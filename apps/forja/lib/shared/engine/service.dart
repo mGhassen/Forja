@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:forja/shared/engine/host_resolver.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/runtime.dart';
+import 'package:forja/shared/extractors/embed_extract_profiles.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:http/http.dart' as http;
@@ -376,6 +377,11 @@ class EngineService {
       year: year,
       config: config,
       movie: movie,
+      // HTTP miss → ctx.host sniff (90s VidFast/VidRock). Default 30s
+      // returned [] while HLS was already on the wire.
+      timeout:
+          EmbedExtractProfiles.resolve(plugin.id).timeout +
+          const Duration(seconds: 30),
       isCancelled: () => gen != _extractGeneration,
     );
     if (gen != _extractGeneration) return null;

@@ -68,7 +68,8 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     _s._isSearching = false;
     _s._isStremioFetching = false;
     _s._isNuvioFetching = false;
-    _s._nuvioInFlightScraperId = null;
+    _s._nuvioInFlightScraperIds.clear();
+    _s._torrentInFlightProviderIds.clear();
     _s._isEngineFetching = false;
     _s._engineInFlightPluginId = null;
     if (changed && rebuild && mounted) setState(() {});
@@ -217,6 +218,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     if (!mounted || gen != _s._nuvioFetchGen) return;
     setState(() {
       _s._nuvioFetchedScraperIds.add(scraperId);
+      _s._nuvioInFlightScraperIds.remove(scraperId);
       if (batch != null && batch.streams.isNotEmpty) {
         final result = batch;
         _s._nuvioStreams.addAll(
@@ -248,11 +250,13 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
   }) async {
     if (!_s._hasNuvioAddons || _s._movie.id <= 0) return;
     if (_s._isNuvioFetching && !reset && !chain) {
-      if (onlyId == null || onlyId == _s._nuvioInFlightScraperId) return;
+      if (onlyId == null || _s._nuvioInFlightScraperIds.contains(onlyId)) {
+        return;
+      }
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _s._nuvioFetchGen++;
       _s._isNuvioFetching = false;
-      _s._nuvioInFlightScraperId = null;
+      _s._nuvioInFlightScraperIds.clear();
     }
     if (reset) {
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
@@ -276,7 +280,9 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     final gen = ++_s._nuvioFetchGen;
     setState(() {
       _s._isNuvioFetching = true;
-      _s._nuvioInFlightScraperId = batchIds.first;
+      _s._nuvioInFlightScraperIds
+        ..clear()
+        ..addAll(batchIds);
       if (reset) {
         _s._nuvioStreams = [];
         _s._nuvioFetchedScraperIds = {};
@@ -300,7 +306,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     );
     setState(() {
       _s._isNuvioFetching = continueWalk;
-      if (!continueWalk) _s._nuvioInFlightScraperId = null;
+      if (!continueWalk) _s._nuvioInFlightScraperIds.clear();
       if (!continueWalk &&
           _s._selectedSourceId == 'all_nuvio' &&
           _s._nuvioStreams.isEmpty &&

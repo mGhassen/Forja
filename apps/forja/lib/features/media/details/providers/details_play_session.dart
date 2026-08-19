@@ -62,6 +62,7 @@ class DetailsPlaySession {
   bool isSearching = false;
   int torrentSearchGen = 0;
   final Set<String> torrentFetchedProviderIds = {};
+  final Set<String> torrentInFlightProviderIds = {};
   String? errorMessage;
 
   List<Map<String, dynamic>> streamAddons = [];
@@ -78,7 +79,7 @@ class DetailsPlaySession {
   bool hasNuvioAddons = false;
   Set<String> nuvioFetchedScraperIds = {};
   int nuvioFetchGen = 0;
-  String? nuvioInFlightScraperId;
+  Set<String> nuvioInFlightScraperIds = {};
   List<NuvioAddon> nuvioAddons = [];
   Set<String> nuvioSelectedScraperIds = {};
   bool nuvioSelectionHydrated = false;

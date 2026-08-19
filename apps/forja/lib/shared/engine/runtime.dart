@@ -142,6 +142,13 @@ class EngineRuntime {
         return '';
       }
     });
+    br('SolvePow', (args) {
+      try {
+        return _solvePow(_bridgeMap(args));
+      } catch (_) {
+        return '';
+      }
+    });
     br('CryptoHmac', (args) {
       try {
         final m = _bridgeMap(args);
@@ -531,6 +538,15 @@ class EngineRuntime {
         return sendMessage('KissKhKkey', JSON.stringify({
           episodeId: episodeId, kind: kind || 'video'
         })) || '';
+      },
+      solvePow: function(challenge, difficulty, max) {
+        var raw = sendMessage('SolvePow', JSON.stringify({
+          challenge: String(challenge == null ? '' : challenge),
+          difficulty: difficulty,
+          max: max
+        })) || '';
+        if (!raw) return null;
+        try { return JSON.parse(raw); } catch (e) { return null; }
       }
     }),
     streamcrypto: { decrypt: streamDecrypt }
@@ -872,6 +888,26 @@ class EngineRuntime {
     final bytes = utf8.encode(utf8Str);
     final hash = _hashFor(algo).convert(bytes);
     return hash.toString();
+  }
+
+  /// SHA-256 leading-hex-zero PoW (Goated `/api/challenge`). Loop stays in Dart
+  /// so QuickJS does not round-trip millions of `CryptoDigest` calls.
+  String _solvePow(Map<String, dynamic> m) {
+    final challenge = (m['challenge'] ?? '').toString();
+    if (challenge.isEmpty) return '';
+    final difficulty = int.tryParse('${m['difficulty']}') ?? 0;
+    if (difficulty < 0 || difficulty > 8) return '';
+    final max = int.tryParse('${m['max']}') ?? 5000000;
+    final cap = max.clamp(1, 5000000);
+    final prefix = '0' * difficulty;
+    final hash = dart_crypto.sha256;
+    for (var n = 0; n < cap; n++) {
+      final h = hash.convert(utf8.encode('$challenge$n')).toString();
+      if (h.startsWith(prefix)) {
+        return jsonEncode({'challenge': challenge, 'nonce': '$n'});
+      }
+    }
+    return '';
   }
 
   String _hmacHex(String algo, String key, String data) {

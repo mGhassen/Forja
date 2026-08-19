@@ -422,6 +422,7 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
           selectedSourceId: _s._selectedSourceId,
           nuvioSelectedScraperIds: _s._nuvioSelectedScraperIds,
           engineSelectedPluginIds: _s._engineSelectedPluginIds,
+          loadingChipIds: _s._loadingChipIds(),
           onProviderTap: _s._onSourceChipTap,
           searchQuery: _s._sourceSearchQuery,
           onSearchChanged: (q) => setState(() => _s._sourceSearchQuery = q),

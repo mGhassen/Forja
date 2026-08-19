@@ -13,6 +13,7 @@ class StreamExtractor {
   ForjaHeadlessInAppWebView? _headlessWebView;
   Completer<ExtractedMedia?>? _completer;
   Timer? _timeoutTimer;
+  Timer? _rotateSettleTimer;
   bool _cancelled = false;
   bool _completing = false;
   Future<void>? _cancelInFlight;
@@ -770,9 +771,13 @@ class StreamExtractor {
           (_profile.acceptProxyPlaylistBodies &&
               _isEmbedProxyPlaylistUrl(_capturedVideo!));
       if (!strong) return;
-      // Chip-rotate hosts: keep sniffing every server chip until timeout so
-      // all detected playlists land in `sources` - no first-hit early complete.
-      if (_profile.rotateServerChips) return;
+      // Chip-rotate hosts: keep sniffing while chips actually switch.
+      // If no chip is clicked (VidFast default server already playing),
+      // settle so Forja ctx.host is not empty until the 90s wall.
+      if (_profile.rotateServerChips) {
+        _armRotateSettleIfIdle(playbackReferer);
+        return;
+      }
       // Legacy hold: wait for at least one chip switch before completing.
       if (_profile.rotateBeforeComplete && _serverSwitchCount == 0) {
         _log(
@@ -838,6 +843,9 @@ class StreamExtractor {
     if (lower.contains('manifest.json') && !lower.contains('.m3u8')) {
       return false;
     }
+    // fMP4 HLS pieces — not openable as a stream row.
+    if (lower.contains('.m4s')) return false;
+    if (lower.contains('/init-s') && lower.contains('.mp4')) return false;
 
     if (lower.contains('.m3u8')) return true;
     // Cinesrc / ice.* proxies: `?m3u8=<token>` (no `.m3u8` in the path).
@@ -972,6 +980,19 @@ class StreamExtractor {
     if (dash.isNotEmpty) return dash.first;
 
     return playable.first;
+  }
+
+  void _armRotateSettleIfIdle(String referer) {
+    if (_rotateSettleTimer != null) return;
+    _rotateSettleTimer = Timer(const Duration(seconds: 8), () {
+      if (_completer == null || _completer!.isCompleted) return;
+      if (_serverSwitchCount > 0) return;
+      final best = _bestPlayableCaptured();
+      if (best == null) return;
+      _log('Rotate idle — completing with $best');
+      _capturedVideo = best;
+      _completeWithCaptured(referer);
+    });
   }
 
   void _completeWithCaptured(String referer) {
@@ -1488,6 +1509,7 @@ class StreamExtractor {
                   view: window, bubbles: true, cancelable: true
                 }));
               } catch (e) {}
+              lastServerClickAt = Date.now();
               console.log('PT_EXTRACT: [SERVER_PANEL] open | FRAME: ' +
                 window.location.href);
               break;
@@ -1660,41 +1682,45 @@ class StreamExtractor {
 
       const interact = () => {
         bootVsembedLanding();
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        for (let i = 0; i < 3; i++) {
-          const el = document.elementFromPoint(centerX, centerY);
-          if (el) {
-            el.click();
-            el.dispatchEvent(new MouseEvent('click', {
-              view: window, bubbles: true, cancelable: true,
-              clientX: centerX, clientY: centerY
-            }));
-          }
-        }
-        const selectors = [
-          '#bigPlay', 'button.jw-bigplay', '.jw-bigplay',
-          '.play-icon-main', '.jw-icon-display', '.jw-display-icon-container', '.jw-icon-playback',
-          '.jw-button-color', '#play-button', '.play-button', '.v-play-button',
-          '.vjs-big-play-button', '[class*="play"]', '[id*="play"]',
-          '.play-icon', '.play_icon', '.play-btn', '.play_btn',
-          '.click_to_play', '.overlay', '#player_overlay'
-        ];
-        selectors.forEach((selector) => {
-          let nodes;
-          try { nodes = document.querySelectorAll(selector); } catch (e) { return; }
-          nodes.forEach((btn) => {
-            const text = (btn.innerText || btn.textContent || '').toLowerCase();
-            const id = (btn.id || '').toLowerCase();
-            const cls = (btn.className || '').toString().toLowerCase();
-            const aria = (btn.getAttribute('aria-label') || '').toLowerCase();
-            if (text.includes('play') || id.includes('play') ||
-                cls.includes('play') || cls.includes('overlay') ||
-                aria.includes('play')) {
-              try { btn.click(); } catch (e) {}
+        // VidRock: outside clicks (center / play overlay) toggle Server List
+        // closed — panel only mounts while open (`data-server-list`).
+        if (!IS_VIDROCK) {
+          const centerX = window.innerWidth / 2;
+          const centerY = window.innerHeight / 2;
+          for (let i = 0; i < 3; i++) {
+            const el = document.elementFromPoint(centerX, centerY);
+            if (el) {
+              el.click();
+              el.dispatchEvent(new MouseEvent('click', {
+                view: window, bubbles: true, cancelable: true,
+                clientX: centerX, clientY: centerY
+              }));
             }
+          }
+          const selectors = [
+            '#bigPlay', 'button.jw-bigplay', '.jw-bigplay',
+            '.play-icon-main', '.jw-icon-display', '.jw-display-icon-container', '.jw-icon-playback',
+            '.jw-button-color', '#play-button', '.play-button', '.v-play-button',
+            '.vjs-big-play-button', '[class*="play"]', '[id*="play"]',
+            '.play-icon', '.play_icon', '.play-btn', '.play_btn',
+            '.click_to_play', '.overlay', '#player_overlay'
+          ];
+          selectors.forEach((selector) => {
+            let nodes;
+            try { nodes = document.querySelectorAll(selector); } catch (e) { return; }
+            nodes.forEach((btn) => {
+              const text = (btn.innerText || btn.textContent || '').toLowerCase();
+              const id = (btn.id || '').toLowerCase();
+              const cls = (btn.className || '').toString().toLowerCase();
+              const aria = (btn.getAttribute('aria-label') || '').toLowerCase();
+              if (text.includes('play') || id.includes('play') ||
+                  cls.includes('play') || cls.includes('overlay') ||
+                  aria.includes('play')) {
+                try { btn.click(); } catch (e) {}
+              }
+            });
           });
-        });
+        }
         clickServerChips();
         muteAllMedia();
         document.querySelectorAll('video').forEach((v) => {
@@ -1715,6 +1741,8 @@ class StreamExtractor {
   Future<void> _cleanup() async {
     _timeoutTimer?.cancel();
     _timeoutTimer = null;
+    _rotateSettleTimer?.cancel();
+    _rotateSettleTimer = null;
 
     if (_headlessWebView != null) {
       _log('Disposing headless WebView...');

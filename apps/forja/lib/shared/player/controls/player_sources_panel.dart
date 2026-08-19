@@ -204,6 +204,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   List<TorrentResult> _results = [];
   final Set<String> _torrentFetchedProviderIds = {};
+  final Set<String> _torrentInFlightProviderIds = {};
   List<Map<String, dynamic>> _stremioStreams = [];
   List<Map<String, dynamic>> _streamAddons = [];
   final Set<String> _loadedAddonBaseUrls = {};
@@ -215,7 +216,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   Set<String> _nuvioFetchedScraperIds = {};
   bool _nuvioFetching = false;
   int _nuvioFetchGen = 0;
-  String? _nuvioInFlightScraperId;
+  Set<String> _nuvioInFlightScraperIds = {};
 
   List<Map<String, dynamic>> _engineStreams = [];
   List<EnginePack> _enginePacks = [];
@@ -862,6 +863,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _searching = false;
       _results = [];
       _torrentFetchedProviderIds.clear();
+      _torrentInFlightProviderIds.clear();
     }
     if (keepKind != 'stremio' && _stremioFetching) {
       _stremioGen++;
@@ -873,7 +875,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (keepKind != 'nuvio' && _nuvioFetching) {
       _nuvioFetchGen++;
       _nuvioFetching = false;
-      _nuvioInFlightScraperId = null;
+      _nuvioInFlightScraperIds.clear();
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _nuvioStreams = [];
       _nuvioFetchedScraperIds = {};
@@ -1233,6 +1235,26 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return const [];
   }
 
+  Set<String> get _loadingChipIds {
+    switch (_kindFilter) {
+      case 'torrents':
+        return _torrentInFlightProviderIds;
+      case 'nuvio':
+        return {
+          for (final id in _nuvioInFlightScraperIds) 'nuvio:$id',
+        };
+      case 'engine':
+        final id = _engineInFlightPluginId;
+        if (id == null || id.isEmpty) return const {};
+        return {EngineIds.pluginChip(id)};
+      case 'stremio':
+        if (!_stremioFetching) return const {};
+        return {_selectedSourceId};
+      default:
+        return const {};
+    }
+  }
+
   bool get _isFetching =>
       (_showsTorrents && _searching) ||
       (_showsStremio && _stremioFetching) ||
@@ -1244,6 +1266,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     setState(() {
       _searchGen++;
       _searching = false;
+      _torrentInFlightProviderIds.clear();
     });
   }
 
@@ -1256,7 +1279,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       if (!mounted || gen != _searchGen) return;
       hits[id] = (hits[id] ?? 0) + 1;
       if (hits[id]! >= hitsNeeded) {
-        _torrentFetchedProviderIds.add(id);
+        setState(() {
+          _torrentFetchedProviderIds.add(id);
+          _torrentInFlightProviderIds.remove(id);
+        });
       }
     };
   }
@@ -1264,7 +1290,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   Future<void> _runTorrentSearch({bool force = false}) async {
     if (TorrentSearchProviders.isNoneChip(_selectedSourceId)) {
       _searchGen++;
-      setState(() => _searching = false);
+      setState(() {
+        _searching = false;
+        _torrentInFlightProviderIds.clear();
+      });
       return;
     }
     final gen = ++_searchGen;
@@ -1278,6 +1307,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _searching = true;
         _error = null;
         _results = [];
+        _torrentInFlightProviderIds
+          ..clear()
+          ..add(_selectedSourceId);
       });
       try {
         if (_selectedSourceId == 'jackett') {
@@ -1295,6 +1327,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         if (!mounted || gen != _searchGen) return;
         setState(() {
           _searching = false;
+          _torrentInFlightProviderIds.clear();
           _error = e.toString().replaceFirst('Exception: ', '');
         });
       }
@@ -1312,7 +1345,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             fetchedProviderIds: _torrentFetchedProviderIds,
           );
     if (enabled.isEmpty) {
-      setState(() => _searching = false);
+      setState(() {
+        _searching = false;
+        _torrentInFlightProviderIds.clear();
+      });
       return;
     }
     final replace = force || _results.isEmpty;
@@ -1320,6 +1356,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _searching = true;
       _error = null;
       if (replace) _results = [];
+      _torrentInFlightProviderIds
+        ..clear()
+        ..addAll(enabled);
     });
 
     try {
@@ -1344,6 +1383,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       if (!mounted || gen != _searchGen) return;
       setState(() {
         _searching = false;
+        _torrentInFlightProviderIds.clear();
         _error = e.toString().replaceFirst('Exception: ', '');
       });
     }
@@ -1355,6 +1395,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     setState(() {
       _results = found;
       _searching = false;
+      _torrentInFlightProviderIds.clear();
       if (found.isEmpty && !_showsStremio && !_showsNuvio) {
         _error = 'No torrents found';
       }
@@ -1673,6 +1714,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (!mounted || gen != _nuvioFetchGen) return;
     setState(() {
       _nuvioFetchedScraperIds.add(scraperId);
+      _nuvioInFlightScraperIds.remove(scraperId);
       if (batch != null && batch.streams.isNotEmpty) {
         final result = batch;
         _nuvioStreams.addAll(
@@ -1703,11 +1745,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }) async {
     if (_nuvioAddons.isEmpty || widget.movie.id <= 0) return;
     if (_nuvioFetching && !reset && !chain) {
-      if (onlyId == null || onlyId == _nuvioInFlightScraperId) return;
+      if (onlyId == null || _nuvioInFlightScraperIds.contains(onlyId)) return;
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _nuvioFetchGen++;
       _nuvioFetching = false;
-      _nuvioInFlightScraperId = null;
+      _nuvioInFlightScraperIds.clear();
     }
     if (reset) {
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
@@ -1731,7 +1773,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final gen = ++_nuvioFetchGen;
     setState(() {
       _nuvioFetching = true;
-      _nuvioInFlightScraperId = batchIds.first;
+      _nuvioInFlightScraperIds = {...batchIds};
       if (reset) {
         _nuvioStreams = [];
         _nuvioFetchedScraperIds = {};
@@ -1755,7 +1797,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
     setState(() {
       _nuvioFetching = continueWalk;
-      if (!continueWalk) _nuvioInFlightScraperId = null;
+      if (!continueWalk) _nuvioInFlightScraperIds.clear();
       if (!continueWalk &&
           _nuvioStreams.isEmpty &&
           pendingAfter == null) {
@@ -2036,7 +2078,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         if (clearing) {
           _nuvioFetchGen++;
           _nuvioFetching = false;
-          _nuvioInFlightScraperId = null;
+          _nuvioInFlightScraperIds.clear();
           DomainStreamProviderResolver.cancelAllPending(
             cancelEngineJobs: false,
           );
@@ -2056,7 +2098,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final fetched = _nuvioFetchedScraperIds.contains(scraperId);
       final cancelInFlight = wasSelected &&
           _nuvioFetching &&
-          _nuvioInFlightScraperId == scraperId;
+          _nuvioInFlightScraperIds.contains(scraperId);
       if (wasSelected && !fetched && !cancelInFlight) {
         unawaited(_fetchNextNuvioScraper(onlyId: scraperId));
         return;
@@ -2076,7 +2118,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           if (cancelInFlight) {
             _nuvioFetchGen++;
             _nuvioFetching = false;
-            _nuvioInFlightScraperId = null;
+            _nuvioInFlightScraperIds.clear();
             DomainStreamProviderResolver.cancelAllPending(
               cancelEngineJobs: false,
             );
@@ -2295,9 +2337,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
             setState(() {
               _searching = false;
+              _torrentInFlightProviderIds.clear();
               _stremioFetching = false;
               _nuvioFetching = false;
-              _nuvioInFlightScraperId = null;
+              _nuvioInFlightScraperIds.clear();
               _engineFetching = false;
               _engineInFlightPluginId = null;
             });
@@ -2306,6 +2349,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           selectedSourceId: _selectedSourceId,
           nuvioSelectedScraperIds: _nuvioSelectedScraperIds,
           engineSelectedPluginIds: _engineSelectedPluginIds,
+          loadingChipIds: _loadingChipIds,
           onProviderTap: _onChipTap,
           searchQuery: _searchQuery,
           onSearchChanged: (q) => setState(() => _searchQuery = q),

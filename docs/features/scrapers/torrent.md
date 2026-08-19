@@ -12,7 +12,7 @@ Automatic on [Media details](../movies-tv/media-details.md) when you view torren
 
 ## What you can do
 
-- Open **Sources → Torrents** and pick a provider chip (only that indexer is searched) or **All** (every enabled provider). Tap **All** again to deselect every provider. Switching chips mid-search **stops** the previous indexer; tap it again to continue that search.
+- Open **Sources → Torrents** and pick a provider chip (only that indexer is searched) or **All** (every enabled provider). Tap **All** again to deselect every provider. Switching chips mid-search **stops** the previous indexer; tap it again to continue that search. While an indexer is still searching, that chip shows the same animated **…** as the Torrents tab.
 - See combined results from enabled providers
 - Toggle which providers appear/run in [Torrent settings](../settings/torrent-settings.md)
 - Sort by seeders, size, or other options
