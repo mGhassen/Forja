@@ -1010,7 +1010,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                       style: overviewStyle,
                       maxLines: layout.overviewMaxLines,
                       shrinkWrap: false,
-                      onReadMore: () => widget.onOpenDetails(heroMovie),
                     ),
                   ),
                 ),

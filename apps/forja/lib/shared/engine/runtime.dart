@@ -12,6 +12,7 @@ import 'package:forja/shared/extractors/core/stream_crypto.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:http/http.dart' as http;
+import 'package:pointycastle/export.dart';
 import 'package:rust/rust.dart';
 
 class EngineMutex {
@@ -147,6 +148,13 @@ class EngineRuntime {
     br('SolvePow', (args) {
       try {
         return _solvePow(_bridgeMap(args));
+      } catch (_) {
+        return '';
+      }
+    });
+    br('SolveScryptPow', (args) {
+      try {
+        return _solveScryptPow(_bridgeMap(args));
       } catch (_) {
         return '';
       }
@@ -426,6 +434,9 @@ class EngineRuntime {
     required String pluginId,
     required String tmdbId,
     String? imdbId,
+    int? malId,
+    int? anilistId,
+    int? mappedEpisode,
     required String type,
     int? season,
     int? episode,
@@ -452,6 +463,9 @@ class EngineRuntime {
         pluginId: pluginId,
         tmdbId: tmdbId,
         imdbId: imdbId,
+        malId: malId,
+        anilistId: anilistId,
+        mappedEpisode: mappedEpisode,
         type: type,
         season: season,
         episode: episode,
@@ -471,6 +485,9 @@ class EngineRuntime {
     required String pluginId,
     required String tmdbId,
     String? imdbId,
+    int? malId,
+    int? anilistId,
+    int? mappedEpisode,
     required String type,
     int? season,
     int? episode,
@@ -503,6 +520,9 @@ class EngineRuntime {
       final ctx = jsonEncode({
         'tmdbId': tmdbId,
         'imdbId': imdbId ?? '',
+        'malId': malId ?? '',
+        'anilistId': anilistId ?? '',
+        'mappedEpisode': mappedEpisode ?? _extractEpisode,
         'type': _extractType,
         'season': _extractSeason,
         'episode': _extractEpisode,
@@ -535,6 +555,9 @@ class EngineRuntime {
   var ctx = {
     tmdbId: meta.tmdbId,
     imdbId: meta.imdbId,
+    malId: meta.malId,
+    anilistId: meta.anilistId,
+    mappedEpisode: meta.mappedEpisode,
     type: meta.type,
     season: meta.season,
     episode: meta.episode,
@@ -561,6 +584,9 @@ class EngineRuntime {
         })) || '';
         if (!raw) return null;
         try { return JSON.parse(raw); } catch (e) { return null; }
+      },
+      solveScryptPow: function(challenge) {
+        return sendMessage('SolveScryptPow', JSON.stringify(challenge || {})) || null;
       }
     }),
     streamcrypto: { decrypt: streamDecrypt }
@@ -931,6 +957,53 @@ class EngineRuntime {
       }
     }
     return '';
+  }
+
+  /// scrypt leading-zero-bit PoW (CineJoy / api.shegu.st). Loop stays in Dart.
+  String _solveScryptPow(Map<String, dynamic> m) {
+    final s = (m['s'] ?? '').toString();
+    final b = (m['b'] ?? '').toString();
+    final n = int.tryParse('${m['n']}') ?? 0;
+    final r = int.tryParse('${m['r']}') ?? 0;
+    final p = int.tryParse('${m['p']}') ?? 0;
+    final d = int.tryParse('${m['d']}') ?? 0;
+    if (s.isEmpty || b.isEmpty || n <= 0 || r <= 0 || p <= 0 || d <= 0) {
+      return '';
+    }
+    final max = int.tryParse('${m['max']}') ?? 500000;
+    final cap = max.clamp(1, 500000);
+    final salt = Uint8List.fromList(
+      dart_crypto.sha256.convert(utf8.encode('pow2-salt|$s|$b')).bytes,
+    );
+    final scrypt = Scrypt();
+    for (var counter = 0; counter < cap; counter++) {
+      scrypt.init(ScryptParameters(n, r, p, 32, salt));
+      final result = scrypt.process(utf8.encode('pow2|$b|$s|$counter'));
+      if (_leadingZeroBits(result) >= d) {
+        final payload = Map<String, dynamic>.from(m)..['c'] = counter;
+        return base64Encode(utf8.encode(jsonEncode(payload)));
+      }
+    }
+    return '';
+  }
+
+  int _leadingZeroBits(List<int> data) {
+    var count = 0;
+    for (final value in data) {
+      if (value == 0) {
+        count += 8;
+        continue;
+      }
+      var bits = 0;
+      var v = value;
+      while (v > 0) {
+        bits++;
+        v >>= 1;
+      }
+      count += 8 - bits;
+      break;
+    }
+    return count;
   }
 
   String _hmacHex(String algo, String key, String data) {

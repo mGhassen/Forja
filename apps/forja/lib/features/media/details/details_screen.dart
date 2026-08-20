@@ -907,6 +907,13 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
         setState(() {
           _engineStreams = cached.streams;
           _engineFetchedPluginIds = cached.fetchedPluginIds;
+          _engineFetchedPluginIds.removeAll(
+            engineStaleFetchedPluginIds(
+              fetchedIds: _engineFetchedPluginIds,
+              selectedIds: _engineSelectedPluginIds,
+              streams: _engineStreams,
+            ),
+          );
           _errorMessage = null;
         });
       }

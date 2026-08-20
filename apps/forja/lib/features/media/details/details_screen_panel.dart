@@ -389,15 +389,29 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     if (id == EngineIds.allChip) {
       final enabled = enabledEnginePluginIds(_s._enginePacks);
       if (enabled.isEmpty) return;
+      final prev = _s._engineSelectedPluginIds;
       final next = nextEngineSelectedAfterAllTap(
-        selectedIds: _s._engineSelectedPluginIds,
+        selectedIds: prev,
         enabledIds: enabled,
       );
       final clearing = next.isEmpty;
+      final refetch = clearing
+          ? const <String>{}
+          : enginePluginIdsToRefetchOnAllExpand(
+              previousSelectedIds: prev,
+              nextSelectedIds: next,
+              fetchedIds: _s._engineFetchedPluginIds,
+              streams: _s._engineStreams,
+            );
       setState(() {
         _s._selectedSourceId = EngineIds.allChip;
         _s._errorMessage = null;
         _s._engineSelectedPluginIds = next;
+        if (refetch.isNotEmpty) {
+          _s._engineFetchedPluginIds = Set<String>.from(
+            _s._engineFetchedPluginIds,
+          )..removeAll(refetch);
+        }
         if (clearing) {
           _s._engineFetchGen++;
           _s._isEngineFetching = false;

@@ -1,6 +1,6 @@
 # RFC-060: engineJS + Sources Forja tab
 
-**Status:** open  
+**Status:** fixed  
 **Depends on:** [RFC-039](fixed/039-[fixed]-remote-provider-runtime-config.md) (Videasy HTTP hosts stay in-app)  
 **Area:** `apps/forja/lib/shared/engine/`, `apps/forja/assets/providers/`, Sources portal, Settings Playback
 
@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **39 / 41** acceptance |
-| **Current slice** | Castle AES-CBC app API, NetMirror NewTV OTT API, AniZone anime page/player, XPrime turnstile+decrypt backend, DVDPlay search+HubCloud direct extraction, 4KHDHub TMDB/domain+HubCloud flow, and batched Forja All fan-out (10 desktop / 5 TV) — remaining HTML catalogs still `catalog.js`; Flyx BingeBox/PrimeSrc/UFlix are upstream stubs; CineJoy still generic (`scrypt` PoW) |
+| **Progress** | **Complete · 66 / 68** acceptance · **2 ⏭️** manual play QA |
+| **Current slice** | Provider migration shipped (`engine.json` 1.5.2) — only disabled MyCima on `catalog.js`; manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -41,7 +41,7 @@
 | 6 | R60-A06 | `nuvio_runtime.dart` and Dart `VideasyExtractor` not used by engineJS | ✅ |
 | 7 | R60-A07 | Unit tests: pack parse, chip ids, kind filter Forja, Torrents `forja` All alias | ✅ |
 | 8 | R60-A08 | Feature docs + changelog | ✅ |
-| 9 | R60-A09 | Manual: open Sources → Forja, Videasy rows play HTTP | ⬜ |
+| 9 | R60-A09 | Manual: open Sources → Forja, Videasy rows play HTTP | ⏭️ |
 | 10 | R60-A10 | Bundled Videasy `Promise.all`s every player.videasy.to Servers mirror (Yoru…Raze), not `cdn` only | ✅ |
 | 11 | R60-A11 | Forja Videasy HTTP open stamps `player.videasy.to` Referer (`headers` + `engine:videasy` policy) | ✅ |
 | 12 | R60-A12 | Bundled pack ships Vidlink, Vixsrc, DooFlix, YFlix HTTP plugins (`extract(ctx)`) | ✅ |
@@ -61,7 +61,7 @@
 | 26 | R60-A26 | EncDec samples, Yoruix remainder, Flyx VOD, Anivexa-API bundled as HTTP plugins (`mycima` `enabled: false`) | ✅ |
 | 27 | R60-A27 | Cloudstream hops for MixDrop / StreamWish / Uqload / Mp4Upload / StreamSB | ✅ |
 | 28 | R60-A28 | KissKh EncDec-compatible `kkey` in Dart + `kisskh.js` engine plugin | ✅ |
-| 29 | R60-A29 | Manual: Forja tab HTTP pack + hop-resolved dood/voe rows play | ⬜ |
+| 29 | R60-A29 | Manual: Forja tab HTTP pack + hop-resolved dood/voe rows play | ⏭️ |
 | 30 | R60-A30 | VidRock `extract(ctx)` encrypts item id with local passphrase AES — no `aesdec.nuvioapp.space` | ✅ |
 | 31 | R60-A31 | EncDec hexa / vidcore / flixcloud / animekai are dedicated plugins (not generic `encdec.js`) | ✅ |
 | 32 | R60-A32 | HiAnime MegaPlay, KickAssAnime `kaa.lt`, 2DHive, Flyx MultiEmbed, MoviesAPI vidora are dedicated `extract(ctx)` files | ✅ |
@@ -72,8 +72,35 @@
 | 37 | R60-A37 | Castle app AES-CBC, NetMirror NewTV OTT, and AniZone anime player are dedicated `extract(ctx)` files | ✅ |
 | 38 | R60-A38 | XPrime uses `enc-xprime` turnstile, `dec-xprime` decrypt, and `backend.xprime.tv` (`primebox` / `rage`) as a dedicated `extract(ctx)` plugin | ✅ |
 | 39 | R60-A39 | DVDPlay searches `search.php`, matches title pages, and resolves HubCloud / PixelDrain / direct download links in dedicated `extract(ctx)` JS | ✅ |
-| 40 | R60-A40 | Sources → Forja **All** runs selected plugins in batches of 10 on desktop and 5 on Android TV, and loading chips reflect the active batch only | ✅ |
+| 40 | R60-A40 | Sources → Forja **All** walks plugins sequentially on the warm singleton runtime; rows appear as each plugin finishes; the in-flight chip shows **…** for only the current plugin | ✅ |
 | 41 | R60-A41 | 4KHDHub uses TMDB title/year, live domain discovery, `.movie-card` matching, and HubCloud page extraction in dedicated `extract(ctx)` JS | ✅ |
+| 42 | R60-A42 | HDHub4u uses Typesense search API, live domain discovery via TVVVV domains.json, HubCloud/Pixeldrain extraction, episode filtering in dedicated `extract(ctx)` JS | ✅ |
+| 43 | R60-A43 | MoviesMod uses dynamic domain from TVVVV, TMDB+IMDB title search, Driveseed extraction through hrefli bypass in dedicated `extract(ctx)` JS | ✅ |
+| 44 | R60-A44 | UHDMovies uses dynamic domain from TVVVV, WordPress search, Driveseed/VideoSeed extraction in dedicated `extract(ctx)` JS | ✅ |
+| 45 | R60-A45 | AllMovieLand uses TMDB title search, `AwsIndStreamDomain` player, CSRF-token playlist POST for HLS streams in dedicated `extract(ctx)` JS | ✅ |
+| 46 | R60-A46 | MoviesDrive uses IMDB ID search via Typesense, live domain discovery, HubCloud extraction for movies and per-episode TV in dedicated `extract(ctx)` JS | ✅ |
+| 47 | R60-A47 | CinemaCity uses DLE search, atob player script decode, season/episode folder pick, subtitle parse in dedicated `extract(ctx)` JS | ✅ |
+| 48 | R60-A48 | DahmerMovies uses `a.111477.xyz` directory listing, quality filter, redirect resolve in dedicated `extract(ctx)` JS | ✅ |
+| 49 | R60-A49 | Kurage resolves AniList ID via Cinemeta+TMDB sync, TRPC batch source fetch in dedicated `extract(ctx)` JS | ✅ |
+| 50 | R60-A50 | ShowBox uses HF proxy + FebBox share/quality list; optional encrypted uiToken decrypt via `ctx.crypto.TripleDES` in dedicated `extract(ctx)` JS | ✅ |
+| 51 | R60-A51 | CineVibe uses FNV token + `/api/stream/fetch` movie streams (movies only) in dedicated `extract(ctx)` JS | ✅ |
+| 52 | R60-A52 | MalluMV uses `search.php`, confirm/internal HubCloud extraction chain in dedicated `extract(ctx)` JS | ✅ |
+| 53 | R60-A53 | AnimePahe uses proxy API, MAL ID mapping, Kwik unpack + Pahe decrypt in dedicated `extract(ctx)` JS | ✅ |
+| 54 | R60-A54 | ReAnime resolves AniList via Cinemeta sync, fetches FlixCloud embeds, resolves via `ctx.hop` in dedicated `extract(ctx)` JS | ✅ |
+| 55 | R60-A55 | AniBD uses `epeng.animeapps.top` api2/apilink player chain with ARM AniList lookup in dedicated `extract(ctx)` JS | ✅ |
+| 56 | R60-A56 | Senshi uses `senshi.live` MAL episode-embeds API with sub/dub pick in dedicated `extract(ctx)` JS | ✅ |
+| 57 | R60-A57 | AnimeDunya uses `anime-dunya.com` play-page stream JSON extraction in dedicated `extract(ctx)` JS | ✅ |
+| 58 | R60-A58 | AniNeko browser search + nv-server-grid HLS/embed resolve in dedicated `extract(ctx)` JS | ✅ |
+| 59 | R60-A59 | AnimeGG series search + videoSources embed scrape in dedicated `extract(ctx)` JS | ✅ |
+| 60 | R60-A60 | AniDbApp uses `anidb.app` frontend API + embed HLS in dedicated `extract(ctx)` JS | ✅ |
+| 61 | R60-A61 | Anikoto uses `anikototv.to` ajax episode/server list + mapper.nekostream in dedicated `extract(ctx)` JS | ✅ |
+| 62 | R60-A62 | AnimeNoSub uses WP ajax search, Vidmoly/Nova decrypt + hop for Byse in dedicated `extract(ctx)` JS | ✅ |
+| 63 | R60-A63 | MKissa `api.mkissa.net` GraphQL with SvelteKit client-crypto bootstrap + `aaReq` AES-GCM in dedicated `extract(ctx)` JS (`mkissa.to`; captcha retries without in-app Turnstile UI) | ✅ |
+| 64 | R60-A64 | BingeBox, PrimeSrc, UFlix use TMDB embed scrape via shared `embed.js` (not generic catalog search) | ✅ |
+| 65 | R60-A65 | VidNest Anime reuses VidNest cipher API with anime server paths (`hianime`, `animepahe`, …) | ✅ |
+| 66 | R60-A66 | MyFlixer uses TMDB title search + watch-page iframe/m3u8 scrape in dedicated `extract(ctx)` JS | ✅ |
+| 67 | R60-A67 | CineJoy uses `api.shegu.st` scrypt PoW (`x-at`), enc-dec token path, and `dec-cinejoy` in dedicated `extract(ctx)` JS (`cinejoy.to`) | ✅ |
+| 68 | R60-A68 | Sources → Forja **All** runs selected plugins in isolated runtimes, 10 in parallel (5 on TV); rows appear as each finishes; free slots start the next plugins until the selected set is exhausted; a plugin chip tap stays one-shot | ✅ |
 
 ---
 
@@ -93,3 +120,4 @@ Stream rows (HTTP + host) map through `mapEngineStream`: card `title` is `Show S
 
 - Green Play: [RFC-004](004-[partial]-provider-registry.md) — untouched
 - Nuvio Sources tab: stays — this RFC does not share that VM
+- Manual play QA (R60-A09, R60-A29): [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md)

@@ -54,6 +54,10 @@ function extract(ctx) {
   }
 
   function resolveMal() {
+    var fromHost = globalThis.__engineCtxMal && globalThis.__engineCtxMal(ctx);
+    if (fromHost) {
+      return Promise.resolve({ mal: fromHost.mal, ep: fromHost.ep });
+    }
     var imdb = String(ctx.imdbId || '');
     function fromJikan() {
       if (!title) return Promise.resolve(null);

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:forja/shared/engine/anime_ids.dart';
 import 'package:forja/shared/engine/host_resolver.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/runtime.dart';
@@ -380,10 +381,26 @@ class EngineService {
       await rt.loadPlugin(pluginId: plugin.id, code: code);
     }
     if (gen != _extractGeneration) return null;
+    EngineAnimeIdBundle? animeIds;
+    if (EngineAnimeIds.pluginNeedsResolve(plugin)) {
+      animeIds = await EngineAnimeIds.resolve(
+        tmdbId: tmdbId,
+        mediaType: mediaType,
+        season: season ?? 1,
+        episode: episode ?? 1,
+        title: title,
+        imdbId: movie?.imdbId,
+        kinds: EngineAnimeIds.requiredKinds(plugin),
+      );
+      if (gen != _extractGeneration) return null;
+    }
     final raw = await rt.extract(
       pluginId: plugin.id,
       tmdbId: tmdbId,
-      imdbId: movie?.imdbId,
+      imdbId: animeIds?.imdbId ?? movie?.imdbId,
+      malId: animeIds?.malId,
+      anilistId: animeIds?.anilistId,
+      mappedEpisode: animeIds?.mappedEpisode,
       type: mediaType,
       season: season,
       episode: episode,

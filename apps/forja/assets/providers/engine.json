@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "Forja",
-  "version": "1.4.4",
+  "version": "1.5.2",
   "plugins": [
     {
       "id": "videasy",
@@ -510,17 +510,17 @@
     {
       "id": "cinejoy",
       "name": "CineJoy",
-      "entry": "encdec.js",
+      "entry": "cinejoy.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "origin": "https://cinejoy.is",
-        "slug": "cinejoy",
+        "origin": "https://cinejoy.to",
+        "api": "https://api.shegu.st",
         "enc": "https://enc-dec.app/api",
-        "name": "CineJoy"
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
@@ -667,22 +667,23 @@
     {
       "id": "showbox",
       "name": "ShowBox",
-      "entry": "catalog.js",
+      "entry": "showbox.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://www.showbox.media",
-        "name": "ShowBox",
-        "search": "https://www.showbox.media/search?q={q}"
+        "apiBase": "https://id-mapping-api-showbox-proxy.hf.space/api/media",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c",
+        "uiToken": ""
       }
     },
     {
       "id": "hianime",
       "name": "HiAnime",
       "entry": "hianime.js",
+      "ids": ["title", "tmdb", "imdb", "mal"],
       "types": [
         "movie",
         "tv"
@@ -700,22 +701,24 @@
     {
       "id": "animepahe",
       "name": "AnimePahe",
-      "entry": "catalog.js",
+      "entry": "animepahe.js",
+      "ids": ["title", "tmdb", "imdb", "mal"],
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://animepahe.ru",
-        "name": "AnimePahe",
-        "search": "https://animepahe.ru/search?q={q}"
+        "base": "https://animepahe.com",
+        "proxy": "https://animepaheproxy.phisheranimepahe.workers.dev/?url=",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "anizone",
       "name": "Anizone",
       "entry": "anizone.js",
+      "ids": ["title", "tmdb", "imdb", "mal"],
       "types": [
         "movie",
         "tv"
@@ -747,46 +750,47 @@
     {
       "id": "hdhub4u",
       "name": "HDHub4u",
-      "entry": "catalog.js",
+      "entry": "hdhub4u.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://hdhub4u.cologne",
-        "name": "HDHub4u",
-        "search": "https://hdhub4u.cologne/search?q={q}"
+        "base": "https://new6.hdhub4u.fo",
+        "searchApi": "https://search.hdhub4u.glass/collections/post/documents/search",
+        "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
       "id": "moviesmod",
       "name": "MoviesMod",
-      "entry": "catalog.js",
+      "entry": "moviesmod.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://moviesmod.cash",
-        "name": "MoviesMod",
-        "search": "https://moviesmod.cash/search?q={q}"
+        "base": "https://moviesmod.cc",
+        "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "uhdmovies",
       "name": "UHDMovies",
-      "entry": "catalog.js",
+      "entry": "uhdmovies.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://uhdmovies.rip",
-        "name": "UHDMovies",
-        "search": "https://uhdmovies.rip/search?q={q}"
+        "base": "https://uhdmovies.pink",
+        "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
@@ -868,76 +872,78 @@
     {
       "id": "vidnest-anime",
       "name": "VidNest Anime",
-      "entry": "catalog.js",
+      "entry": "vidnest.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://vidnest.fun",
-        "name": "VidNest Anime",
-        "search": "https://vidnest.fun/search?q={q}"
+        "api": "https://new.vidnest.fun",
+        "origin": "https://vidnest.fun",
+        "alphabet": "RB0fpH8ZEyVLkv7c2i6MAJ5u3IKFDxlS1NTsnGaqmXYdUrtzjwObCgQP94hoeW+/=",
+        "servers": [
+          { "id": "hianime", "name": "HiAnime", "movie": "hianime/movie", "tv": "hianime/tv" },
+          { "id": "animepahe", "name": "AnimePahe", "movie": "animepahe/movie", "tv": "animepahe/tv" },
+          { "id": "kickass", "name": "KickAssAnime", "movie": "kickassanime/movie", "tv": "kickassanime/tv" },
+          { "id": "9anime", "name": "9Anime", "movie": "9anime/movie", "tv": "9anime/tv" }
+        ]
       }
     },
     {
       "id": "allmovieland",
       "name": "AllMovieLand",
-      "entry": "catalog.js",
+      "entry": "allmovieland.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://allmovieland.fun",
-        "name": "AllMovieLand",
-        "search": "https://allmovieland.fun/search?q={q}"
+        "base": "https://allmovieland.one",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
       "id": "cinemacity",
       "name": "CinemaCity",
-      "entry": "catalog.js",
+      "entry": "cinemacity.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://cinemacity.bar",
-        "name": "CinemaCity",
-        "search": "https://cinemacity.bar/search?q={q}"
+        "base": "https://cinemacity.cc",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "cinevibe",
       "name": "CineVibe",
-      "entry": "catalog.js",
+      "entry": "cinevibe.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://cinevibe.xyz",
-        "name": "CineVibe",
-        "search": "https://cinevibe.xyz/search?q={q}"
+        "base": "https://cinevibe.asia",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
       "id": "dahmermovies",
       "name": "DahmerMovies",
-      "entry": "catalog.js",
+      "entry": "dahmermovies.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://dahmermovies.com",
-        "name": "DahmerMovies",
-        "search": "https://dahmermovies.com/search?q={q}"
+        "api": "https://a.111477.xyz",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
@@ -958,31 +964,29 @@
     {
       "id": "kurage",
       "name": "Kurage",
-      "entry": "catalog.js",
+      "entry": "kurage.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://kurage.to",
-        "name": "Kurage",
-        "search": "https://kurage.to/search?q={q}"
+        "base": "https://kurage.live",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
       "id": "mallumv",
       "name": "MalluMV",
-      "entry": "catalog.js",
+      "entry": "mallumv.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://mallumv.xyz",
-        "name": "MalluMV",
-        "search": "https://mallumv.xyz/search?q={q}"
+        "base": "https://mallumv.gay",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
@@ -1005,22 +1009,22 @@
     {
       "id": "moviesdrive",
       "name": "MoviesDrive",
-      "entry": "catalog.js",
+      "entry": "moviesdrive.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://moviesdrive.online",
-        "name": "MoviesDrive",
-        "search": "https://moviesdrive.online/search?q={q}"
+        "base": "https://new3.moviesdrives.my",
+        "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "myflixer",
       "name": "MyFlixer",
-      "entry": "catalog.js",
+      "entry": "myflixer.js",
       "types": [
         "movie",
         "tv"
@@ -1028,23 +1032,22 @@
       "kind": "http",
       "config": {
         "base": "https://myflixer.to",
-        "name": "MyFlixer",
-        "search": "https://myflixer.to/search?q={q}"
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "reanime",
       "name": "ReAnime",
-      "entry": "catalog.js",
+      "entry": "reanime.js",
+      "ids": ["title", "tmdb", "imdb", "anilist"],
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://reanime.org",
-        "name": "ReAnime",
-        "search": "https://reanime.org/search?q={q}"
+        "base": "https://reanime.to",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
@@ -1080,52 +1083,59 @@
     {
       "id": "bingebox",
       "name": "BingeBox",
-      "entry": "catalog.js",
+      "entry": "embed.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://bingebox.to",
-        "name": "BingeBox",
-        "search": "https://bingebox.to/embed/movie/{tmdb}"
+        "origin": "https://bingebox.ac",
+        "moviePath": "/embed/movie/{id}",
+        "tvPath": "/embed/tv/{id}/{s}/{e}",
+        "hostId": "bingebox",
+        "name": "BingeBox"
       }
     },
     {
       "id": "primesrc",
       "name": "PrimeSrc",
-      "entry": "catalog.js",
+      "entry": "embed.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://primesrc.me",
-        "name": "PrimeSrc",
-        "search": "https://primesrc.me/embed/movie/{tmdb}"
+        "origin": "https://primesrc.me",
+        "moviePath": "/embed/movie/{id}",
+        "tvPath": "/embed/tv/{id}/{s}/{e}",
+        "hostId": "primesrc",
+        "name": "PrimeSrc"
       }
     },
     {
       "id": "uflix",
       "name": "UFlix",
-      "entry": "catalog.js",
+      "entry": "embed.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://uflix.to",
-        "name": "UFlix",
-        "search": "https://uflix.to/movie/{tmdb}"
+        "origin": "https://uflix.to",
+        "moviePath": "/movie/{id}",
+        "tvPath": "/tv/{id}/{s}/{e}",
+        "hostId": "uflix",
+        "name": "UFlix"
       }
     },
     {
       "id": "animex",
       "name": "AnimeX",
       "entry": "animex.js",
+      "ids": ["title", "tmdb", "imdb", "mal", "anilist"],
       "types": [
         "movie",
         "tv"
@@ -1142,6 +1152,7 @@
       "id": "2dhive",
       "name": "2DHive",
       "entry": "2dhive.js",
+      "ids": ["title", "mal"],
       "types": [
         "movie",
         "tv"
@@ -1155,67 +1166,73 @@
     {
       "id": "anibd",
       "name": "AniBD",
-      "entry": "catalog.js",
+      "entry": "anibd.js",
+      "ids": ["title", "tmdb", "imdb", "mal", "anilist"],
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://anibd.co",
-        "name": "AniBD",
-        "search": "https://anibd.co/search?q={q}"
+        "api": "https://epeng.animeapps.top",
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "anidbapp",
       "name": "AniDbApp",
-      "entry": "catalog.js",
+      "entry": "anidbapp.js",
+      "ids": ["title", "tmdb", "imdb", "mal"],
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://anidbapp.com",
-        "name": "AniDbApp",
-        "search": "https://anidbapp.com/search?q={q}"
+        "base": "https://anidb.app",
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "anikoto",
       "name": "Anikoto",
-      "entry": "catalog.js",
+      "entry": "anikoto.js",
+      "ids": ["title", "tmdb", "imdb", "mal"],
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://anikoto.to",
-        "name": "Anikoto",
-        "search": "https://anikoto.to/search?q={q}"
+        "base": "https://anikototv.to",
+        "mapper": "https://mapper.nekostream.site/api/mal",
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "animedunya",
       "name": "AnimeDunya",
-      "entry": "catalog.js",
+      "entry": "animedunya.js",
+      "ids": ["title", "tmdb", "imdb", "mal"],
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://animedunya.com",
-        "name": "AnimeDunya",
-        "search": "https://animedunya.com/search?q={q}"
+        "base": "https://anime-dunya.com",
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "animegg",
       "name": "AnimeGG",
-      "entry": "catalog.js",
+      "entry": "animegg.js",
+      "ids": ["title", "tmdb", "imdb", "mal"],
       "types": [
         "movie",
         "tv"
@@ -1223,44 +1240,47 @@
       "kind": "http",
       "config": {
         "base": "https://www.animegg.org",
-        "name": "AnimeGG",
-        "search": "https://www.animegg.org/search?q={q}"
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "animenosub",
       "name": "AnimeNoSub",
-      "entry": "catalog.js",
+      "entry": "animenosub.js",
+      "ids": ["title", "tmdb", "imdb", "mal"],
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://animenosub.com",
-        "name": "AnimeNoSub",
-        "search": "https://animenosub.com/search?q={q}"
+        "base": "https://animenosub.to",
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "anineko",
       "name": "AniNeko",
-      "entry": "catalog.js",
+      "entry": "anineko.js",
+      "ids": ["title", "tmdb", "imdb", "mal"],
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://anineko.com",
-        "name": "AniNeko",
-        "search": "https://anineko.com/search?q={q}"
+        "base": "https://anineko.to",
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "kickassanime",
       "name": "KickAssAnime",
       "entry": "kickassanime.js",
+      "ids": ["title", "tmdb"],
       "types": [
         "movie",
         "tv"
@@ -1274,31 +1294,36 @@
     {
       "id": "mkissa",
       "name": "MKissa",
-      "entry": "catalog.js",
+      "entry": "mkissa.js",
+      "ids": ["title", "tmdb"],
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://mkissanime.com",
-        "name": "MKissa",
-        "search": "https://mkissanime.com/search?q={q}"
+        "referer": "https://mkissa.to",
+        "api": "https://api.mkissa.net",
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "armBase": "https://arm.haglund.dev/api/v2",
+        "jikan": "https://api.jikan.moe/v4/anime",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {
       "id": "senshi",
       "name": "Senshi",
-      "entry": "catalog.js",
+      "entry": "senshi.js",
+      "ids": ["title", "tmdb", "imdb", "mal"],
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "base": "https://senshi.to",
-        "name": "Senshi",
-        "search": "https://senshi.to/search?q={q}"
+        "base": "https://senshi.live",
+        "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
     {

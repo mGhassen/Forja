@@ -418,5 +418,25 @@ const String kEnginePolyfillsJs = r'''
     throw new Error("Module '" + name + "' is not available in EngineRuntime");
   };
 
+  globalThis.__engineCtxMal = function(ctx) {
+    var id = ctx.malId;
+    if (id == null || id === '' || Number(id) <= 0) return null;
+    var ep = ctx.mappedEpisode != null && ctx.mappedEpisode !== ''
+      ? Number(ctx.mappedEpisode)
+      : (ctx.episode || 1);
+    return {
+      malId: Number(id),
+      mal: Number(id),
+      mappedEp: ep,
+      ep: ep,
+      title: String(ctx.title || '')
+    };
+  };
+  globalThis.__engineCtxAnilist = function(ctx) {
+    var id = ctx.anilistId;
+    if (id == null || id === '' || Number(id) <= 0) return null;
+    return Number(id);
+  };
+
 })();
 ''';

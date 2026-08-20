@@ -22,6 +22,8 @@ function extract(ctx) {
   }
 
   function malId() {
+    var fromHost = globalThis.__engineCtxMal && globalThis.__engineCtxMal(ctx);
+    if (fromHost) return Promise.resolve(fromHost.malId);
     if (!title) return Promise.resolve(null);
     var type = ctx.type === 'movie' ? 'movie' : 'tv';
     return getJson(jikan + '?q=' + encodeURIComponent(title) + '&type=' + type + '&limit=1')

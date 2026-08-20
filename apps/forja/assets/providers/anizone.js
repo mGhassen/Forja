@@ -26,6 +26,24 @@ function extract(ctx) {
   }
 
   function titleAndMapping() {
+    var fromHost = globalThis.__engineCtxMal && globalThis.__engineCtxMal(ctx);
+    if (fromHost) {
+      return getJson(jikan + '/' + fromHost.malId)
+        .then(function (j) {
+          return {
+            title: (j && j.data && j.data.title) || fromHost.title || ctx.title || '',
+            mappedEp: fromHost.mappedEp,
+            mapping: { mal_id: fromHost.malId, mal_episode: fromHost.mappedEp },
+          };
+        })
+        .catch(function () {
+          return {
+            title: fromHost.title || ctx.title || '',
+            mappedEp: fromHost.mappedEp,
+            mapping: { mal_id: fromHost.malId, mal_episode: fromHost.mappedEp },
+          };
+        });
+    }
     if (!isTv) {
       return getJson(
         'https://api.themoviedb.org/3/movie/' +

@@ -1,3 +1,5 @@
+import 'ids.dart';
+
 class EnginePlugin {
   EnginePlugin({
     required this.id,
@@ -5,6 +7,7 @@ class EnginePlugin {
     required this.entry,
     this.description,
     this.types = const ['movie', 'tv'],
+    this.ids = const [],
     this.kind = 'http',
     this.hostId,
     this.hosts = const [],
@@ -17,6 +20,10 @@ class EnginePlugin {
   final String entry;
   final String? description;
   final List<String> types;
+
+  /// Catalog keys this plugin reads from `extract(ctx)`:
+  /// `title`, `tmdb`, `imdb`, `mal`, `anilist`.
+  final List<String> ids;
   final String kind;
 
   /// When [kind] is `host`, which built-in provider to resolve (`vidsrc`, …).
@@ -74,6 +81,7 @@ class EnginePlugin {
                   const ['movie', 'tv'])
               .map((e) => e.toString())
               .toList(),
+      ids: _stringList(j['ids']),
       kind: (j['kind'] as String?)?.trim().isNotEmpty == true
           ? (j['kind'] as String).trim()
           : 'http',
@@ -90,6 +98,7 @@ class EnginePlugin {
     'entry': entry,
     if (description != null) 'description': description,
     'types': types,
+    if (ids.isNotEmpty) 'ids': ids,
     'kind': kind,
     if (hostId != null) 'hostId': hostId,
     if (hosts.isNotEmpty) 'hosts': hosts,
@@ -103,6 +112,7 @@ class EnginePlugin {
     entry: entry,
     description: description,
     types: types,
+    ids: ids,
     kind: kind,
     hostId: hostId,
     hosts: hosts,
@@ -246,6 +256,45 @@ Set<String> nextEngineSelectedAfterAllTap({
   return allOn ? <String>{} : Set<String>.from(enabledIds);
 }
 
+bool engineStreamBelongsToPlugin(Map<String, dynamic> stream, String pluginId) {
+  final id = stream['_enginePluginId'] as String?;
+  if (id == pluginId) return true;
+  return stream['_addonBaseUrl']?.toString() == EngineIds.pluginChip(pluginId);
+}
+
+bool enginePluginHasStreams(
+  String pluginId,
+  Iterable<Map<String, dynamic>> streams,
+) => streams.any((s) => engineStreamBelongsToPlugin(s, pluginId));
+
+/// Fetched markers with no rows — stale session cache or empty run while another
+/// chip was selected.
+Set<String> engineStaleFetchedPluginIds({
+  required Set<String> fetchedIds,
+  required Set<String> selectedIds,
+  required Iterable<Map<String, dynamic>> streams,
+}) => {
+  for (final id in fetchedIds)
+    if (selectedIds.contains(id) && !enginePluginHasStreams(id, streams)) id,
+};
+
+Set<String> enginePluginIdsToRefetchOnAllExpand({
+  required Set<String> previousSelectedIds,
+  required Set<String> nextSelectedIds,
+  required Set<String> fetchedIds,
+  required Iterable<Map<String, dynamic>> streams,
+}) {
+  final out = nextSelectedIds.difference(previousSelectedIds);
+  out.addAll(
+    engineStaleFetchedPluginIds(
+      fetchedIds: fetchedIds,
+      selectedIds: nextSelectedIds,
+      streams: streams,
+    ),
+  );
+  return out;
+}
+
 Set<String> filterEngineSelectedPluginIds({
   required Iterable<String> savedIds,
   required Set<String> enabledIds,
@@ -264,6 +313,12 @@ String? nextEnginePluginId({
   }
   return null;
 }
+
+const kEngineSourcesBatchDesktop = 10;
+const kEngineSourcesBatchTv = 5;
+
+int engineSourcesBatchLimit({required bool tv}) =>
+    tv ? kEngineSourcesBatchTv : kEngineSourcesBatchDesktop;
 
 List<String> nextEnginePluginBatch({
   required Iterable<String> orderedIds,

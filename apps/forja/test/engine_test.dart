@@ -92,6 +92,33 @@ void main() {
       );
     });
 
+    test('All expand refetches newly selected and stale empty fetched', () {
+      final streams = [
+        {
+          '_enginePluginId': 'videasy',
+          '_addonBaseUrl': 'engine:videasy',
+          'url': 'https://a.test/v',
+        },
+      ];
+      expect(
+        enginePluginIdsToRefetchOnAllExpand(
+          previousSelectedIds: const {'videasy'},
+          nextSelectedIds: const {'videasy', 'cineby', 'goated'},
+          fetchedIds: const {'videasy', 'cineby', 'goated'},
+          streams: streams,
+        ),
+        {'cineby', 'goated'},
+      );
+      expect(
+        engineStaleFetchedPluginIds(
+          fetchedIds: const {'videasy', 'cineby'},
+          selectedIds: const {'videasy', 'cineby'},
+          streams: streams,
+        ),
+        {'cineby'},
+      );
+    });
+
     test('panel walk skips host sniff plugins', () {
       final pack = EnginePack.fromJson({
         'plugins': [
@@ -152,6 +179,29 @@ void main() {
           limit: 10,
         ),
         isEmpty,
+      );
+    });
+
+    test('All pool is 10 desktop and 5 TV', () {
+      expect(engineSourcesBatchLimit(tv: false), 10);
+      expect(engineSourcesBatchLimit(tv: true), 5);
+      expect(
+        nextEnginePluginBatch(
+          orderedIds: List<String>.generate(12, (i) => '$i'),
+          selectedIds: {for (var i = 0; i < 12; i++) '$i'},
+          fetchedIds: const {},
+          limit: engineSourcesBatchLimit(tv: false),
+        ),
+        hasLength(10),
+      );
+      expect(
+        nextEnginePluginBatch(
+          orderedIds: List<String>.generate(12, (i) => '$i'),
+          selectedIds: {for (var i = 0; i < 12; i++) '$i'},
+          fetchedIds: const {},
+          limit: engineSourcesBatchLimit(tv: true),
+        ),
+        hasLength(5),
       );
     });
   });
@@ -332,6 +382,33 @@ void main() {
           'castle',
           'xprime',
           'dvdplay',
+          'hdhub4u',
+          'moviesmod',
+          'uhdmovies',
+          'allmovieland',
+          'moviesdrive',
+          'cinemacity',
+          'dahmermovies',
+          'kurage',
+          'showbox',
+          'cinevibe',
+          'mallumv',
+          'animepahe',
+          'reanime',
+          'anibd',
+          'senshi',
+          'animedunya',
+          'anineko',
+          'animegg',
+          'anidbapp',
+          'anikoto',
+          'animenosub',
+          'myflixer',
+          'mkissa',
+          'bingebox',
+          'primesrc',
+          'uflix',
+          'vidnest-anime',
           'hop-doodstream',
           'hop-voe',
           'hop-mixdrop',
@@ -412,9 +489,155 @@ void main() {
         parsed.firstWhere((p) => p.id == '4khdhub').config['domainsUrl'],
         'https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json',
       );
+      expect(parsed.firstWhere((p) => p.id == 'hdhub4u').entry, 'hdhub4u.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'hdhub4u').config['searchApi'],
+        'https://search.hdhub4u.glass/collections/post/documents/search',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'moviesmod').entry, 'moviesmod.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'moviesmod').config['base'],
+        'https://moviesmod.cc',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'uhdmovies').entry, 'uhdmovies.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'uhdmovies').config['base'],
+        'https://uhdmovies.pink',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'allmovieland').entry,
+        'allmovieland.js',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'allmovieland').config['base'],
+        'https://allmovieland.one',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'moviesdrive').entry,
+        'moviesdrive.js',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'moviesdrive').config['base'],
+        'https://new3.moviesdrives.my',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'cinemacity').entry, 'cinemacity.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'cinemacity').config['base'],
+        'https://cinemacity.cc',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'dahmermovies').entry, 'dahmermovies.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'dahmermovies').config['api'],
+        'https://a.111477.xyz',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'kurage').entry, 'kurage.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'kurage').config['base'],
+        'https://kurage.live',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'showbox').entry, 'showbox.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'showbox').config['apiBase'],
+        'https://id-mapping-api-showbox-proxy.hf.space/api/media',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'cinevibe').entry, 'cinevibe.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'cinevibe').config['base'],
+        'https://cinevibe.asia',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'mallumv').entry, 'mallumv.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'mallumv').config['base'],
+        'https://mallumv.gay',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'animepahe').entry, 'animepahe.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'animepahe').config['proxy'],
+        'https://animepaheproxy.phisheranimepahe.workers.dev/?url=',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'reanime').entry, 'reanime.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'reanime').config['base'],
+        'https://reanime.to',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'anibd').entry, 'anibd.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'anibd').config['api'],
+        'https://epeng.animeapps.top',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'senshi').entry, 'senshi.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'senshi').config['base'],
+        'https://senshi.live',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'animedunya').entry, 'animedunya.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'animedunya').config['base'],
+        'https://anime-dunya.com',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'anineko').entry, 'anineko.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'anineko').config['base'],
+        'https://anineko.to',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'animegg').entry, 'animegg.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'animegg').config['base'],
+        'https://www.animegg.org',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'anidbapp').entry, 'anidbapp.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'anidbapp').config['base'],
+        'https://anidb.app',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'anikoto').entry, 'anikoto.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'anikoto').config['base'],
+        'https://anikototv.to',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'animenosub').entry, 'animenosub.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'animenosub').config['base'],
+        'https://animenosub.to',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'myflixer').entry, 'myflixer.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'myflixer').config['base'],
+        'https://myflixer.to',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'vidnest-anime').entry, 'vidnest.js');
+      expect(
+        (parsed.firstWhere((p) => p.id == 'vidnest-anime').config['servers'] as List).length,
+        greaterThan(0),
+      );
+      expect(parsed.firstWhere((p) => p.id == 'bingebox').entry, 'embed.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'bingebox').config['origin'],
+        'https://bingebox.ac',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'primesrc').entry, 'embed.js');
+      expect(parsed.firstWhere((p) => p.id == 'uflix').entry, 'embed.js');
+      expect(parsed.firstWhere((p) => p.id == 'mycima').entry, 'catalog.js');
+      expect(parsed.firstWhere((p) => p.id == 'mkissa').entry, 'mkissa.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'mkissa').config['api'],
+        'https://api.mkissa.net',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'mkissa').config['referer'],
+        'https://mkissa.to',
+      );
       expect(parsed.firstWhere((p) => p.id == 'hop-abyss').isHop, isTrue);
       expect(parsed.firstWhere((p) => p.id == 'hop-megaup').isHop, isTrue);
-      expect(parsed.firstWhere((p) => p.id == 'cinejoy').entry, 'encdec.js');
+      expect(parsed.firstWhere((p) => p.id == 'cinejoy').entry, 'cinejoy.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'cinejoy').config['origin'],
+        'https://cinejoy.to',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'cinejoy').config['api'],
+        'https://api.shegu.st',
+      );
       expect(
         parsed.firstWhere((p) => p.id == 'vidrock').config['origin'],
         'https://vidrock.ru',
@@ -495,6 +718,12 @@ void main() {
       expect(goated.contains('/api/challenge'), isTrue);
       expect(goated.contains('solvePow'), isTrue);
 
+      final cinejoy = await rootBundle.loadString('assets/providers/cinejoy.js');
+      expect(cinejoy.contains('api.shegu.st'), isTrue);
+      expect(cinejoy.contains('enc-cinejoy'), isTrue);
+      expect(cinejoy.contains('dec-cinejoy'), isTrue);
+      expect(cinejoy.contains('solveScryptPow'), isTrue);
+
       final meowtv = await rootBundle.loadString('assets/providers/meowtv.js');
       expect(meowtv.contains('/streams/'), isTrue);
       expect(meowtv.contains('dec-meowtv'), isTrue);
@@ -572,6 +801,117 @@ void main() {
       expect(dvdplay.contains('/search.php?q='), isTrue);
       expect(dvdplay.contains('resolveHubCloud'), isTrue);
       expect(dvdplay.contains('pixeldrain.net/api/file'), isTrue);
+
+      final hdhub4u = await rootBundle.loadString('assets/providers/hdhub4u.js');
+      expect(hdhub4u.contains('search.hdhub4u.glass'), isTrue);
+      expect(hdhub4u.contains('HDHUB4u'), isTrue);
+      expect(hdhub4u.contains('hubCloudExtractor'), isTrue);
+      expect(hdhub4u.contains('pixeldrain.net/api/file'), isTrue);
+
+      final moviesmod =
+          await rootBundle.loadString('assets/providers/moviesmod.js');
+      expect(moviesmod.contains('moviesmod'), isTrue);
+      expect(moviesmod.contains('driveseed'), isTrue);
+      expect(moviesmod.contains('bypassHrefli'), isTrue);
+
+      final uhdmovies =
+          await rootBundle.loadString('assets/providers/uhdmovies.js');
+      expect(uhdmovies.contains('UHDMovies'), isTrue);
+      expect(uhdmovies.contains('extractDriveseed'), isTrue);
+      expect(uhdmovies.contains('extractVideoSeed'), isTrue);
+
+      final allmovieland =
+          await rootBundle.loadString('assets/providers/allmovieland.js');
+      expect(allmovieland.contains('allmovieland'), isTrue);
+      expect(allmovieland.contains('AwsIndStreamDomain'), isTrue);
+      expect(allmovieland.contains('X-CSRF-TOKEN'), isTrue);
+
+      final moviesdrive =
+          await rootBundle.loadString('assets/providers/moviesdrive.js');
+      expect(moviesdrive.contains('moviesdrive'), isTrue);
+      expect(moviesdrive.contains('hubCloudExtract'), isTrue);
+      expect(moviesdrive.contains('/search.php?q='), isTrue);
+
+      final cinemacity =
+          await rootBundle.loadString('assets/providers/cinemacity.js');
+      expect(cinemacity.contains('dar-short_item'), isTrue);
+      expect(cinemacity.contains('atob'), isTrue);
+
+      final dahmermovies =
+          await rootBundle.loadString('assets/providers/dahmermovies.js');
+      expect(dahmermovies.contains('a.111477.xyz'), isTrue);
+      expect(dahmermovies.contains('resolveFinalUrl'), isTrue);
+
+      final kurage = await rootBundle.loadString('assets/providers/kurage.js');
+      expect(kurage.contains('graphql.anilist.co'), isTrue);
+      expect(kurage.contains('/api/trpc/'), isTrue);
+
+      final showbox = await rootBundle.loadString('assets/providers/showbox.js');
+      expect(showbox.contains('febbox.com'), isTrue);
+      expect(showbox.contains('TripleDES'), isTrue);
+
+      final cinevibe = await rootBundle.loadString('assets/providers/cinevibe.js');
+      expect(cinevibe.contains('/api/stream/fetch'), isTrue);
+      expect(cinevibe.contains('X-CV-Fingerprint'), isTrue);
+
+      final mallumv = await rootBundle.loadString('assets/providers/mallumv.js');
+      expect(mallumv.contains('search.php?q='), isTrue);
+      expect(mallumv.contains('extractHubCloudLinks'), isTrue);
+      expect(mallumv.contains('function extract(ctx)'), isTrue);
+
+      final animepahe = await rootBundle.loadString('assets/providers/animepahe.js');
+      expect(animepahe.contains('animepaheproxy'), isTrue);
+      expect(animepahe.contains('extractKwik'), isTrue);
+      expect(animepahe.contains('id-mapping-api-malid'), isTrue);
+
+      final reanime = await rootBundle.loadString('assets/providers/reanime.js');
+      expect(reanime.contains('reanime.to'), isTrue);
+      expect(reanime.contains('flixcloud.cc'), isTrue);
+      expect(reanime.contains('ctx.hop'), isTrue);
+
+      final anibd = await rootBundle.loadString('assets/providers/anibd.js');
+      expect(anibd.contains('api2.php?epid='), isTrue);
+      expect(anibd.contains('apilink.php'), isTrue);
+      expect(anibd.contains('videoUrl'), isTrue);
+
+      final senshi = await rootBundle.loadString('assets/providers/senshi.js');
+      expect(senshi.contains('senshi.live'), isTrue);
+      expect(senshi.contains('episode-embeds'), isTrue);
+
+      final animedunya = await rootBundle.loadString('assets/providers/animedunya.js');
+      expect(animedunya.contains('anime-dunya.com'), isTrue);
+      expect(animedunya.contains('/en/play/'), isTrue);
+
+      final anineko = await rootBundle.loadString('assets/providers/anineko.js');
+      expect(anineko.contains('nv-server-grid'), isTrue);
+      expect(anineko.contains('browser?keyword='), isTrue);
+
+      final animegg = await rootBundle.loadString('assets/providers/animegg.js');
+      expect(animegg.contains('videoSources'), isTrue);
+      expect(animegg.contains('/search/?q='), isTrue);
+
+      final anidbapp = await rootBundle.loadString('assets/providers/anidbapp.js');
+      expect(anidbapp.contains('/api/frontend/anime/'), isTrue);
+      expect(anidbapp.contains('/api/frontend/episode/'), isTrue);
+
+      final anikoto = await rootBundle.loadString('assets/providers/anikoto.js');
+      expect(anikoto.contains('anikototv.to'), isTrue);
+      expect(anikoto.contains('/ajax/episode/list/'), isTrue);
+      expect(anikoto.contains('getSources'), isTrue);
+
+      final animenosub = await rootBundle.loadString('assets/providers/animenosub.js');
+      expect(animenosub.contains('admin-ajax.php'), isTrue);
+      expect(animenosub.contains('animenosub.to'), isTrue);
+
+      final myflixer = await rootBundle.loadString('assets/providers/myflixer.js');
+      expect(myflixer.contains('/search/'), isTrue);
+      expect(myflixer.contains('ctx.hop'), isTrue);
+
+      final mkissa = await rootBundle.loadString('assets/providers/mkissa.js');
+      expect(mkissa.contains('api.mkissa.net'), isTrue);
+      expect(mkissa.contains('client-crypto/v1/bootstrap'), isTrue);
+      expect(mkissa.contains('aaReq'), isTrue);
+      expect(mkissa.contains('handleWatch'), isTrue);
     });
 
     test('EnginePlugin host kind resolves hostProviderId', () {
@@ -931,6 +1271,43 @@ function extract(ctx) {
         config: const {'api': 'https://cfg.example'},
       );
       expect(streams.single['title'], 'tt123|https://cfg.example');
+    });
+
+    test('extract(ctx) receives resolved anime ids', () async {
+      final rt = EngineRuntime.instance;
+      await rt.loadPlugin(
+        pluginId: 'ctx-anime-ids',
+        code: '''
+function extract(ctx) {
+  return Promise.resolve([{
+    url: 'https://cdn.example/anime.m3u8',
+    title: ctx.malId + ':' + ctx.anilistId + ':' + ctx.mappedEpisode
+  }]);
+}
+''',
+      );
+      final streams = await rt.extract(
+        pluginId: 'ctx-anime-ids',
+        tmdbId: '99',
+        malId: 5114,
+        anilistId: 21,
+        mappedEpisode: 3,
+        type: 'tv',
+        season: 1,
+        episode: 3,
+      );
+      expect(streams.single['title'], '5114:21:3');
+    });
+
+    test('EnginePlugin parses ids manifest field', () {
+      final p = EnginePlugin.fromJson({
+        'id': 'animepahe',
+        'name': 'AnimePahe',
+        'entry': 'animepahe.js',
+        'ids': ['title', 'mal'],
+      });
+      expect(p.ids, ['title', 'mal']);
+      expect(EngineAnimeIds.pluginNeedsResolve(p), isTrue);
     });
 
     test('extract(ctx) html loads cheerio', () async {
