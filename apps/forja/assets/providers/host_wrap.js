@@ -1,6 +1,10 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
   var hostId = cfg.hostId;
-  if (!hostId) return Promise.resolve([]);
-  return ctx.host(hostId);
+  ctx.log(
+    'host_wrap has no HTTP extract — hostId=' +
+      (hostId || '') +
+      ' (Forja JS-only; green Play still has Dart/Rust)',
+  );
+  return Promise.resolve([]);
 }

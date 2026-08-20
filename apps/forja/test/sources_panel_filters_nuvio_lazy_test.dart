@@ -130,32 +130,69 @@ void main() {
       );
     });
 
-    test('batches the next 5 unfetched selected scrapers', () {
-      expect(
-        nextNuvioScraperBatch(
-          orderedIds: const ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
-          selectedIds: const {'a', 'b', 'c', 'd', 'e', 'f', 'g'},
-          fetchedIds: const {},
-        ),
-        ['a', 'b', 'c', 'd', 'e'],
-      );
-      expect(
-        nextNuvioScraperBatch(
-          orderedIds: const ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
-          selectedIds: const {'a', 'b', 'c', 'd', 'e', 'f', 'g'},
-          fetchedIds: const {'a', 'b', 'c', 'd', 'e'},
-        ),
-        ['f', 'g'],
-      );
-      expect(
-        nextNuvioScraperBatch(
-          orderedIds: const ['a', 'b', 'c', 'd', 'e', 'f'],
-          selectedIds: const {'b', 'd', 'f'},
-          fetchedIds: const {'b'},
-        ),
-        ['d', 'f'],
-      );
-    });
+    test(
+      'batches the next unfetched selected scrapers (10 desktop default)',
+      () {
+        expect(nuvioSourcesBatchLimit(tv: false), 10);
+        expect(nuvioSourcesBatchLimit(tv: true), 5);
+        expect(
+          nextNuvioScraperBatch(
+            orderedIds: const ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+            selectedIds: const {'a', 'b', 'c', 'd', 'e', 'f', 'g'},
+            fetchedIds: const {},
+          ),
+          ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+        );
+        expect(
+          nextNuvioScraperBatch(
+            orderedIds: const [
+              'a',
+              'b',
+              'c',
+              'd',
+              'e',
+              'f',
+              'g',
+              'h',
+              'i',
+              'j',
+              'k',
+            ],
+            selectedIds: {
+              'a',
+              'b',
+              'c',
+              'd',
+              'e',
+              'f',
+              'g',
+              'h',
+              'i',
+              'j',
+              'k',
+            },
+            fetchedIds: const {},
+          ),
+          ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
+        );
+        expect(
+          nextNuvioScraperBatch(
+            orderedIds: const ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+            selectedIds: const {'a', 'b', 'c', 'd', 'e', 'f', 'g'},
+            fetchedIds: const {'a', 'b', 'c', 'd', 'e'},
+          ),
+          ['f', 'g'],
+        );
+        expect(
+          nextNuvioScraperBatch(
+            orderedIds: const ['a', 'b', 'c', 'd', 'e', 'f'],
+            selectedIds: const {'b', 'd', 'f'},
+            fetchedIds: const {'b'},
+          ),
+          ['d', 'f'],
+        );
+      },
+    );
 
     test('missing chip selection defaults to all enabled', () {
       expect(

@@ -3,6 +3,9 @@ part of 'details_screen.dart';
 mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
   _DetailsScreenState get _s => this as _DetailsScreenState;
 
+  final Set<Future<void>> _enginePoolTasks = {};
+  int _enginePoolLimit = kEngineSourcesBatchDesktop;
+
   Future<void> _checkAndFetchEngine() async {
     try {
       final packs = await EngineService.instance.listSourcesPanelPacks();
@@ -39,8 +42,15 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         id,
   ];
 
-  int get _engineBatchLimit =>
-      engineSourcesBatchLimit(tv: SourcesPanelTv.isTv(context));
+  bool get _engineWorkActive =>
+      _s._isEngineFetching ||
+      _s._engineInFlightPluginIds.isNotEmpty ||
+      _enginePoolTasks.isNotEmpty;
+
+  bool get _engineFullAllSelected => engineFullAllSelected(
+    enabledIds: enabledEnginePluginIds(_s._enginePacks),
+    selectedIds: _s._engineSelectedPluginIds,
+  );
 
   Future<void> _runAndApplyEnginePlugin({
     required String pluginId,
@@ -67,8 +77,12 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       debugPrint('[engine] plugin $pluginId failed: $e');
     }
     if (!mounted || gen != _s._engineFetchGen) return;
+    if (!_s._engineSelectedPluginIds.contains(pluginId)) return;
     setState(() {
       _s._engineFetchedPluginIds.add(pluginId);
+      _s._engineStreams.removeWhere(
+        (s) => engineStreamBelongsToPlugin(s, pluginId),
+      );
       if (batch != null && batch.streams.isNotEmpty) {
         _s._engineStreams.addAll(batch.streams);
       }
@@ -83,130 +97,120 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     }
   }
 
-  Future<void> _fetchNextEnginePlugin({
-    bool reset = false,
-    String? onlyId,
-    bool chain = false,
-  }) async {
-    if (!_s._hasEnginePacks || _s._movie.id <= 0) return;
-    if (_s._isEngineFetching && !reset && !chain) {
-      if (onlyId != null && _s._engineInFlightPluginIds.contains(onlyId)) {
-        return;
-      }
-      if (onlyId == null && _s._engineInFlightPluginIds.isNotEmpty) {
-        return;
-      }
-      if (onlyId != null) {
-        EngineService.instance.cancelPending();
-        DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
-        _s._engineFetchGen++;
-        _s._isEngineFetching = false;
-        _s._engineInFlightPluginIds.clear();
-      }
+  void _engineFillPool({required int gen, required String type}) {
+    if (!mounted || gen != _s._engineFetchGen) return;
+    final slots = _enginePoolLimit - _s._engineInFlightPluginIds.length;
+    if (slots <= 0) return;
+    final next = nextEnginePluginBatch(
+      orderedIds: _orderedEnginePluginIds,
+      selectedIds: _s._engineSelectedPluginIds,
+      fetchedIds: {
+        ..._s._engineFetchedPluginIds,
+        ..._s._engineInFlightPluginIds,
+      },
+      limit: slots,
+    );
+    for (final id in next) {
+      _engineStartPlugin(pluginId: id, type: type, gen: gen);
     }
-    if (reset) {
-      EngineService.instance.cancelPending();
-    }
-    final fetchedIds = reset
-        ? <String>{}
-        : Set<String>.from(_s._engineFetchedPluginIds);
-    final limit = onlyId != null ? 1 : _engineBatchLimit;
-    final skip = {...fetchedIds, ..._s._engineInFlightPluginIds};
-    final batchIds = onlyId != null
-        ? <String>[onlyId]
-        : nextEnginePluginBatch(
-            orderedIds: _orderedEnginePluginIds,
-            selectedIds: _s._engineSelectedPluginIds,
-            fetchedIds: skip,
-            limit: limit,
-          );
-    if (batchIds.isEmpty) return;
-    if (onlyId != null &&
-        (!_s._engineSelectedPluginIds.contains(onlyId) ||
-            (!reset && fetchedIds.contains(onlyId)))) {
+  }
+
+  void _engineStartPlugin({
+    required String pluginId,
+    required String type,
+    required int gen,
+  }) {
+    if (!mounted || gen != _s._engineFetchGen) return;
+    if (_s._engineInFlightPluginIds.contains(pluginId) ||
+        _s._engineFetchedPluginIds.contains(pluginId)) {
       return;
     }
-    final gen = chain ? _s._engineFetchGen : ++_s._engineFetchGen;
+    setState(() => _s._engineInFlightPluginIds.add(pluginId));
+    late final Future<void> task;
+    task = () async {
+      try {
+        await _runAndApplyEnginePlugin(
+          pluginId: pluginId,
+          type: type,
+          gen: gen,
+        );
+      } finally {
+        _enginePoolTasks.remove(task);
+        if (!mounted || gen != _s._engineFetchGen) return;
+        setState(() => _s._engineInFlightPluginIds.remove(pluginId));
+        _engineFillPool(gen: gen, type: type);
+      }
+    }();
+    _enginePoolTasks.add(task);
+  }
+
+  Future<void> _engineDrainPool({required int gen, required String type}) async {
+    while (mounted && gen == _s._engineFetchGen) {
+      while (_enginePoolTasks.isNotEmpty &&
+          mounted &&
+          gen == _s._engineFetchGen) {
+        await Future.wait(List<Future<void>>.of(_enginePoolTasks));
+      }
+      if (!mounted || gen != _s._engineFetchGen) return;
+      if (_pendingEnginePluginIds.isEmpty) break;
+      _engineFillPool(gen: gen, type: type);
+      if (_enginePoolTasks.isEmpty) break;
+    }
+  }
+
+  Future<void> _fetchNextEnginePlugin({
+    bool reset = false,
+    bool refresh = false,
+  }) async {
+    if (!_s._hasEnginePacks || _s._movie.id <= 0) return;
+    final type = _s._movie.mediaType == 'tv' ? 'tv' : 'movie';
+    if (_s._isEngineFetching && !reset && !refresh) {
+      _engineFillPool(gen: _s._engineFetchGen, type: type);
+      return;
+    }
+    if (reset || refresh) {
+      EngineService.instance.cancelPending();
+      _enginePoolTasks.clear();
+    }
+    final startingAllWalk =
+        !reset && !refresh && _engineFullAllSelected && !_s._isEngineFetching;
+    final gen = ++_s._engineFetchGen;
+    _enginePoolLimit = engineSourcesBatchLimit(
+      tv: SourcesPanelTv.isTv(context),
+    );
     setState(() {
       _s._isEngineFetching = true;
       if (reset) {
         _s._engineStreams = [];
         _s._engineFetchedPluginIds = {};
+        _s._engineInFlightPluginIds.clear();
+      } else if (refresh) {
+        _s._engineFetchedPluginIds.removeAll(_s._engineSelectedPluginIds);
+        _s._engineInFlightPluginIds.clear();
+      } else if (startingAllWalk) {
+        engineClearSelectedWalkState(
+          selectedIds: _s._engineSelectedPluginIds,
+          streams: _s._engineStreams,
+          fetchedIds: _s._engineFetchedPluginIds,
+        );
+        _s._engineInFlightPluginIds.clear();
       }
       if (_s._selectedSourceId == EngineIds.allChip) {
         _s._errorMessage = null;
       }
     });
-    final type = _s._movie.mediaType == 'tv' ? 'tv' : 'movie';
-    final running = <Future<void>>{};
-
-    void launch(String pluginId) {
-      if (!mounted || gen != _s._engineFetchGen) return;
-      if (_s._engineInFlightPluginIds.contains(pluginId) ||
-          _s._engineFetchedPluginIds.contains(pluginId)) {
-        return;
-      }
-      setState(() => _s._engineInFlightPluginIds.add(pluginId));
-      late final Future<void> task;
-      task = () async {
-        try {
-          await _runAndApplyEnginePlugin(
-            pluginId: pluginId,
-            type: type,
-            gen: gen,
-          );
-        } finally {
-          running.remove(task);
-          if (!mounted || gen != _s._engineFetchGen) return;
-          setState(() => _s._engineInFlightPluginIds.remove(pluginId));
-          if (onlyId != null) return;
-          final slots = limit - _s._engineInFlightPluginIds.length;
-          if (slots <= 0) return;
-          final next = nextEnginePluginBatch(
-            orderedIds: _orderedEnginePluginIds,
-            selectedIds: _s._engineSelectedPluginIds,
-            fetchedIds: {
-              ..._s._engineFetchedPluginIds,
-              ..._s._engineInFlightPluginIds,
-            },
-            limit: slots,
-          );
-          for (final id in next) {
-            launch(id);
-          }
-        }
-      }();
-      running.add(task);
-    }
-
-    for (final id in batchIds) {
-      launch(id);
-    }
-    while (running.isNotEmpty) {
-      await Future.wait(List<Future<void>>.of(running));
-    }
+    _engineFillPool(gen: gen, type: type);
+    await _engineDrainPool(gen: gen, type: type);
     if (!mounted || gen != _s._engineFetchGen) return;
-    final pendingAfter = nextEnginePluginId(
-      orderedIds: _orderedEnginePluginIds,
-      selectedIds: _s._engineSelectedPluginIds,
-      fetchedIds: _s._engineFetchedPluginIds,
-    );
-    final continueWalk = shouldContinueNuvioScraperWalk(
-      explicitScraper: onlyId != null,
-      hasPendingSelected: pendingAfter != null,
-    );
+    final stillPending = _pendingEnginePluginIds.isNotEmpty;
     setState(() {
-      _s._isEngineFetching = continueWalk;
-      if (!continueWalk) _s._engineInFlightPluginIds.clear();
-      if (!continueWalk &&
+      _s._isEngineFetching = stillPending;
+      if (!stillPending) _s._engineInFlightPluginIds.clear();
+      if (!stillPending &&
           _s._selectedSourceId == EngineIds.allChip &&
-          _s._engineStreams.isEmpty &&
-          pendingAfter == null) {
+          _s._engineStreams.isEmpty) {
         _s._errorMessage = 'No streams found from selected Forja plugins';
       }
     });
-    if (continueWalk) {
-      await _fetchNextEnginePlugin(chain: true);
-    }
   }
 }

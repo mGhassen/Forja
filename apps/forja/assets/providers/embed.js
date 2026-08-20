@@ -1,7 +1,10 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
   var origin = cfg.origin;
-  if (!origin) return ctx.host(cfg.hostId || ctx.pluginId || '');
+  if (!origin) {
+    ctx.log('embed.js missing origin');
+    return Promise.resolve([]);
+  }
   var tmdbId = String(ctx.tmdbId);
   var path =
     ctx.type === 'movie'
@@ -18,7 +21,8 @@ function extract(ctx) {
     Referer: origin + '/',
     Accept: 'text/html,application/xhtml+xml',
   };
-  var hostId = cfg.hostId;
+
+  ctx.log('start ' + embed);
 
   function scrape(html) {
     var urls = [];
@@ -46,6 +50,7 @@ function extract(ctx) {
         { url: u, name: cfg.name || '', headers: { 'User-Agent': ua, Referer: origin + '/' } },
       ]);
     }
+    ctx.log('hop ' + u);
     return ctx.hop(u).then(function (rows) {
       return rows && rows.length ? rows : [];
     });
@@ -54,20 +59,24 @@ function extract(ctx) {
   return ctx
     .fetch(embed, { headers: headers })
     .then(function (r) {
+      ctx.log('embed http ' + r.status);
       return r.text();
     })
     .then(function (html) {
-      if (/just a moment|cf-challenge|challenge-platform/i.test(html) && hostId) {
-        return ctx.host(hostId);
+      if (/just a moment|cf-challenge|challenge-platform/i.test(html)) {
+        ctx.log('cloudflare challenge — no HTTP stream');
+        return [];
       }
       var urls = scrape(html);
+      ctx.log('scraped urls=' + urls.length);
       return Promise.all(urls.slice(0, 8).map(resolveOne)).then(function (groups) {
         var out = [].concat.apply([], groups);
-        if (out.length) return out;
-        return hostId ? ctx.host(hostId) : [];
+        ctx.log('streams=' + out.length);
+        return out;
       });
     })
-    .catch(function () {
-      return hostId ? ctx.host(hostId) : [];
+    .catch(function (e) {
+      ctx.error(e && e.message ? e.message : e);
+      return [];
     });
 }

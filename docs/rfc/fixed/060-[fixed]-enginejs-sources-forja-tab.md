@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 66 / 68** acceptance · **2 ⏭️** manual play QA |
-| **Current slice** | Provider migration shipped (`engine.json` 1.5.2) — only disabled MyCima on `catalog.js`; manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
+| **Progress** | **Complete · 69 / 71** acceptance · **2 ⏭️** manual play QA |
+| **Current slice** | Vidzee plaintext streams API + 2Embed/111477 HTTP scrapers (`engine.json` 1.5.4); manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -101,6 +101,9 @@
 | 66 | R60-A66 | MyFlixer uses TMDB title search + watch-page iframe/m3u8 scrape in dedicated `extract(ctx)` JS | ✅ |
 | 67 | R60-A67 | CineJoy uses `api.shegu.st` scrypt PoW (`x-at`), enc-dec token path, and `dec-cinejoy` in dedicated `extract(ctx)` JS (`cinejoy.to`) | ✅ |
 | 68 | R60-A68 | Sources → Forja **All** runs selected plugins in isolated runtimes, 10 in parallel (5 on TV); rows appear as each finishes; free slots start the next plugins until the selected set is exhausted; a plugin chip tap stays one-shot | ✅ |
+| 69 | R60-A69 | Selecting more Forja plugin chips mid-search joins the 10/5 pool — it does not cancel in-flight plugins | ✅ |
+| 70 | R60-A70 | Vidzee Forja plugin uses `core.vidzee.wtf/streams` plaintext `e=0` (not dead `/api/server`) | ✅ |
+| 71 | R60-A71 | Forja chips **2Embed** / **111477** use `multiembed.js` / `dahmermovies.js` HTTP extract (not empty `embed.js` / `host_wrap`) | ✅ |
 
 ---
 

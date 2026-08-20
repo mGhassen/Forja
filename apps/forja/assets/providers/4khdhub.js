@@ -1,6 +1,6 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
-  var domain = cfg.base || 'https://4khdhub.fans';
+  var domain = cfg.base || 'https://4khdhub.link';
   var domainsUrl =
     cfg.domainsUrl ||
     'https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json';
@@ -130,23 +130,48 @@ function extract(ctx) {
 
   function fetchPageUrl(name, year) {
     return latestDomain().then(function (baseUrl) {
-      return fetchText(baseUrl + '/?s=' + encodeURIComponent(name + ' ' + year)).then(function (html) {
-        var $ = ctx.html(html);
-        var targetType = isTv ? 'Series' : 'Movies';
-        var matches = [];
-        $('.movie-card').each(function () {
-          var card = $(this);
-          if (!card.find('.movie-card-format:contains("' + targetType + '")').length) return;
-          var metaYear = parseInt(card.find('.movie-card-meta').text(), 10);
-          if (!metaYear || Math.abs(metaYear - year) > 1) return;
-          var cardTitle = card.find('.movie-card-title').text().trim();
-          if (levenshtein(normalizeTitle(cardTitle), normalizeTitle(name)) >= 5) return;
-          var href = card.attr('href') || card.find('a').attr('href') || '';
-          if (href) matches.push(/^https?:/i.test(href) ? href : baseUrl + (href.charAt(0) === '/' ? '' : '/') + href);
-        });
-        return matches[0] || null;
+      return fetchText(baseUrl + '/?s=' + encodeURIComponent(name)).then(function (html) {
+        var articleMatch = findArticleMatch(html, baseUrl, name);
+        if (articleMatch) return articleMatch;
+        return findMovieCardMatch(html, baseUrl, name, year);
       });
     });
+  }
+
+  function findMovieCardMatch(html, baseUrl, name, year) {
+    var $ = ctx.html(html);
+    var targetType = isTv ? 'Series' : 'Movies';
+    var matches = [];
+    $('.movie-card').each(function () {
+      var card = $(this);
+      if (!card.find('.movie-card-format:contains("' + targetType + '")').length) return;
+      var metaYear = parseInt(card.find('.movie-card-meta').text(), 10);
+      if (!metaYear || Math.abs(metaYear - year) > 1) return;
+      var cardTitle = card.find('.movie-card-title').text().trim();
+      if (levenshtein(normalizeTitle(cardTitle), normalizeTitle(name)) >= 4) return;
+      var href = card.attr('href') || card.find('a').attr('href') || '';
+      if (href) matches.push(/^https?:/i.test(href) ? href : baseUrl + (href.charAt(0) === '/' ? '' : '/') + href);
+    });
+    return matches[0] || null;
+  }
+
+  function findArticleMatch(html, baseUrl, name) {
+    var $ = ctx.html(html);
+    var best = null;
+    var bestDist = 999;
+    $('article h2 a').each(function () {
+      var title = $(this).text().trim();
+      var dist = levenshtein(normalizeTitle(title), normalizeTitle(name));
+      if (dist >= 4) return;
+      if (dist < bestDist) {
+        bestDist = dist;
+        var href = $(this).attr('href') || '';
+        if (href) {
+          best = /^https?:/i.test(href) ? href : baseUrl + (href.charAt(0) === '/' ? '' : '/') + href;
+        }
+      }
+    });
+    return best;
   }
 
   function extractSourceResult($, el) {
@@ -199,12 +224,43 @@ function extract(ctx) {
     });
   }
 
+  function isHubCloudDrivePage(url) {
+    try {
+      return new URL(url).pathname.toLowerCase().indexOf('/drive/') >= 0;
+    } catch (e) {
+      return /\/drive\//i.test(String(url || ''));
+    }
+  }
+
+  function appendDownloadQuery(apiUrl) {
+    try {
+      var u = new URL(apiUrl);
+      u.searchParams.set('download', '');
+      return u.href;
+    } catch (e) {
+      return apiUrl + (apiUrl.indexOf('?') >= 0 ? '&' : '?') + 'download=';
+    }
+  }
+
   function extractHubCloud(hubCloudUrl, baseMeta) {
+    if (isHubCloudDrivePage(hubCloudUrl)) return Promise.resolve([]);
     return fetchText(hubCloudUrl, { Referer: hubCloudUrl })
       .then(function (redirectHtml) {
+        var $r = ctx.html(redirectHtml);
+        var linksUrl = '';
         var redirectUrlMatch = String(redirectHtml || '').match(/var url ?= ?'(.*?)'/);
-        if (!redirectUrlMatch) return [];
-        return fetchText(redirectUrlMatch[1], { Referer: hubCloudUrl }).then(function (linksHtml) {
+        if (redirectUrlMatch) linksUrl = redirectUrlMatch[1];
+        if (!linksUrl) {
+          linksUrl = $r('#download').attr('href') || '';
+          if (linksUrl && !/^https?:/i.test(linksUrl)) {
+            try {
+              var base = new URL(hubCloudUrl);
+              linksUrl = base.protocol + '//' + base.hostname + '/' + linksUrl.replace(/^\//, '');
+            } catch (e) {}
+          }
+        }
+        if (!linksUrl || isHubCloudDrivePage(linksUrl)) return [];
+        return fetchText(linksUrl, { Referer: hubCloudUrl }).then(function (linksHtml) {
           var $ = ctx.html(linksHtml);
           var sizeText = $('#size').text();
           var titleText = $('title').text().trim();
@@ -214,19 +270,29 @@ function extract(ctx) {
             title: titleText || baseMeta.title,
           };
           var results = [];
-          $('a').each(function () {
+          $('a.btn, a').each(function () {
             var a = $(this);
             var text = a.text().trim();
             var href = a.attr('href') || '';
-            if (!href) return;
-            if (/10Gbps|PixelServer/i.test(text) || /hubcloud\.cx/i.test(href)) {
-              results.push({ source: 'HubCloud 10Gbps', url: href, meta: meta });
+            if (!href || isHubCloudDrivePage(href)) return;
+            if (/PixelServer/i.test(text)) {
+              var userUrl = href.replace('/api/file/', '/u/');
+              var apiUrl = userUrl.replace('/u/', '/api/file/');
+              results.push({
+                source: 'HubCloud (PixelServer)',
+                url: appendDownloadQuery(apiUrl),
+                meta: meta,
+              });
+            } else if (/FSLv2/i.test(text)) {
+              results.push({ source: 'FSLv2', url: href, meta: meta });
+            } else if (/FSL/i.test(text)) {
+              results.push({ source: 'FSL', url: href, meta: meta });
             } else if (/Download File/i.test(text) || /r2\.dev/i.test(href)) {
               results.push({ source: 'Direct R2', url: href, meta: meta });
             } else if (/ZipDisk/i.test(text) || /workers\.dev/i.test(href)) {
               results.push({ source: 'ZipDisk Server', url: href, meta: meta });
-            } else if (/FSL/i.test(text)) {
-              results.push({ source: 'FSL', url: href, meta: meta });
+            } else if (/10Gbps/i.test(text) && /workers\.dev|r2\.dev|\/api\/file\//i.test(href)) {
+              results.push({ source: 'HubCloud 10Gbps', url: href, meta: meta });
             }
           });
           return results;
@@ -239,9 +305,17 @@ function extract(ctx) {
 
   return getTmdbDetails()
     .then(function (media) {
-      if (!media || !media.title) return [];
+      if (!media || !media.title) {
+        ctx.error('no tmdb title');
+        return [];
+      }
+      ctx.log(media.title + ' ' + media.year);
       return fetchPageUrl(media.title, media.year).then(function (pageUrl) {
-        if (!pageUrl) return [];
+        if (!pageUrl) {
+          ctx.error('no page url');
+          return [];
+        }
+        ctx.log('page=' + pageUrl);
         return fetchText(pageUrl).then(function (html) {
           var $ = ctx.html(html);
           var items = [];
@@ -260,6 +334,7 @@ function extract(ctx) {
               items.push(this);
             });
           }
+          ctx.log('items=' + items.length + (isTv ? ' ' + seasonStr + ' ' + episodeStr : ''));
           return Promise.all(
             items.map(function (item) {
               return extractSourceResult($, item).then(function (result) {
@@ -286,7 +361,8 @@ function extract(ctx) {
         });
       });
     })
-    .catch(function () {
+    .catch(function (e) {
+      ctx.error(e && e.message ? e.message : e);
       return [];
     });
 }

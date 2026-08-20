@@ -23,6 +23,8 @@ function extract(ctx) {
     'User-Agent': ua,
   };
 
+  ctx.log('start ' + url);
+
   function validate(j) {
     return j && j.status === 200 ? j.result : null;
   }
@@ -30,7 +32,10 @@ function extract(ctx) {
   function walk(o, urls) {
     if (!o) return;
     if (typeof o === 'string' && /^https?:/i.test(o)) urls.push(o);
-    else if (Array.isArray(o)) o.forEach(function (e) { walk(e, urls); });
+    else if (Array.isArray(o))
+      o.forEach(function (e) {
+        walk(e, urls);
+      });
     else if (typeof o === 'object') {
       ['url', 'file', 'src', 'stream'].forEach(function (k) {
         if (o[k]) walk(o[k], urls);
@@ -45,15 +50,22 @@ function extract(ctx) {
       body: JSON.stringify({ url: url, agent: ua }),
     })
     .then(function (r) {
+      ctx.log('enc-cinesrc http ' + r.status);
       return r.json();
     })
     .then(function (j) {
       var data = validate(j);
-      if (!data) return [];
+      if (!data) {
+        ctx.log('enc-cinesrc miss');
+        return [];
+      }
       var getStream = (data.headers && data.headers.getStream) || data.getStream;
       var token = data.token;
       var key = data.key;
-      if (!getStream || !token) return [];
+      if (!getStream || !token) {
+        ctx.log('missing getStream/token');
+        return [];
+      }
       var payload = [
         tmdbId,
         ctx.type === 'tv' ? 'show' : 'movie',
@@ -72,7 +84,7 @@ function extract(ctx) {
           return r.text();
         })
         .then(function (text) {
-          var line = (text.split('\n')[1] || text);
+          var line = text.split('\n')[1] || text;
           var encrypted = (line.split(',')[1] || line).split(':')[0];
           return ctx.fetch(enc + '/dec-cinesrc', {
             method: 'POST',
@@ -87,12 +99,14 @@ function extract(ctx) {
           var decrypted = validate(dj);
           var urls = [];
           walk(decrypted, urls);
+          ctx.log('streams=' + urls.length);
           return urls.map(function (u) {
             return { url: u, name: 'Cinesrc', headers: { 'User-Agent': ua, Referer: origin + '/' } };
           });
         });
     })
-    .catch(function () {
+    .catch(function (e) {
+      ctx.error(e && e.message ? e.message : e);
       return [];
     });
 }

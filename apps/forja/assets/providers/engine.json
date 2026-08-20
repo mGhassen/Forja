@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "Forja",
-  "version": "1.5.2",
+  "version": "1.5.4",
   "plugins": [
     {
       "id": "videasy",
@@ -268,8 +268,7 @@
       ],
       "kind": "http",
       "config": {
-        "origin": "https://vidsrc.xyz",
-        "hostId": "vidsrc"
+        "origin": "https://vsembed.su"
       }
     },
     {
@@ -285,42 +284,41 @@
         "origin": "https://video.moviepire.co",
         "moviePath": "/embed/movie/{id}",
         "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "hostId": "vidsrcwin",
         "name": "VidSrc"
       }
     },
     {
       "id": "vidzee",
       "name": "Vidzee",
-      "entry": "embed.js",
+      "entry": "vidzee.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
+        "api": "https://core.vidzee.wtf",
         "origin": "https://player.vidzee.wtf",
-        "moviePath": "/embed/movie/{id}",
-        "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "hostId": "vidzee",
-        "name": "Vidzee"
+        "servers": [
+          "dcloud",
+          "tik",
+          "ipcloud",
+          "v6:Hindi"
+        ]
       }
     },
     {
       "id": "2embed",
       "name": "2Embed",
-      "entry": "embed.js",
+      "entry": "multiembed.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "origin": "https://2embed.stream",
-        "moviePath": "/embed/movie/{id}",
-        "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "hostId": "2embed",
-        "name": "2Embed"
+        "api": "https://api.2embed.cc",
+        "embed": "https://www.2embed.cc"
       }
     },
     {
@@ -336,7 +334,6 @@
         "origin": "https://player.autoembed.co",
         "moviePath": "/embed/movie/{id}",
         "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "hostId": "autoembed",
         "name": "AutoEmbed"
       }
     },
@@ -353,7 +350,6 @@
         "origin": "https://player.vidlove.cc",
         "moviePath": "/embed/movie/{id}",
         "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "hostId": "vidlove",
         "name": "VidLove"
       }
     },
@@ -370,7 +366,6 @@
         "origin": "https://player.vidlove.cc",
         "moviePath": "/embed/movie/{id}",
         "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "hostId": "111movies",
         "name": "111Movies"
       }
     },
@@ -386,7 +381,6 @@
       "config": {
         "origin": "https://moviesapi.to",
         "player": "https://player.moviesapi.vip",
-        "hostId": "moviesapi",
         "name": "MoviesAPI"
       }
     },
@@ -403,21 +397,21 @@
         "origin": "https://vidapi.xyz",
         "moviePath": "/embed/movie/{id}",
         "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "hostId": "vidapi",
         "name": "VidAPI"
       }
     },
     {
       "id": "service111477",
       "name": "111477",
-      "entry": "host_wrap.js",
+      "entry": "dahmermovies.js",
       "types": [
         "movie",
         "tv"
       ],
       "kind": "http",
       "config": {
-        "hostId": "service111477"
+        "api": "https://a.111477.xyz",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
@@ -443,7 +437,7 @@
       ],
       "kind": "http",
       "config": {
-        "origin": "https://kisskh.do"
+        "origin": "https://kisskh.co"
       }
     },
     {
@@ -693,6 +687,7 @@
         "megaplay": "https://megaplay.buzz",
         "vidwish": "https://vidwish.live",
         "megacloud": "https://megacloud.bloggy.click",
+        "vidtube": "https://vidtube.site",
         "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
         "jikan": "https://api.jikan.moe/v4/anime",
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
@@ -709,7 +704,8 @@
       ],
       "kind": "http",
       "config": {
-        "base": "https://animepahe.com",
+        "base": "https://animepahe.pw",
+        "mirrors": ["https://animepahe.pw", "https://animepahe.ru", "https://animepahe.com"],
         "proxy": "https://animepaheproxy.phisheranimepahe.workers.dev/?url=",
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
@@ -741,7 +737,7 @@
       ],
       "kind": "http",
       "config": {
-        "base": "https://4khdhub.fans",
+        "base": "https://4khdhub.link",
         "name": "4KHDHub",
         "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
         "tmdbKey": "439c478a771f35c05022f9feabcca01c"
@@ -757,7 +753,7 @@
       ],
       "kind": "http",
       "config": {
-        "base": "https://new6.hdhub4u.fo",
+        "base": "https://new1.hdhub4u.limo",
         "searchApi": "https://search.hdhub4u.glass/collections/post/documents/search",
         "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
         "tmdbKey": "439c478a771f35c05022f9feabcca01c"
@@ -1208,6 +1204,10 @@
       "config": {
         "base": "https://anikototv.to",
         "mapper": "https://mapper.nekostream.site/api/mal",
+        "mappers": [
+          "https://mapper.nekostream.site/api/mal",
+          "https://mapper.mewcdn.online/api/mal"
+        ],
         "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
@@ -1324,6 +1324,69 @@
         "base": "https://senshi.live",
         "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
+      }
+    },
+    {
+      "id": "animeheaven",
+      "name": "AnimeHeaven",
+      "entry": "animeheaven.js",
+      "ids": ["title", "tmdb"],
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://animeheaven.me",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
+      }
+    },
+    {
+      "id": "anidao",
+      "name": "AniDao",
+      "entry": "anidao.js",
+      "ids": ["title", "tmdb"],
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://anidao.to",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
+      }
+    },
+    {
+      "id": "aniwaves",
+      "name": "AniWaves",
+      "entry": "aniwaves.js",
+      "ids": ["title", "tmdb"],
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "base": "https://aniwaves.ru",
+        "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
+      }
+    },
+    {
+      "id": "miruro",
+      "name": "Miruro",
+      "entry": "miruro.js",
+      "ids": ["title", "tmdb", "mal", "anilist"],
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "bases": [
+          "https://www.miruro.tv",
+          "https://www.miruro.to",
+          "https://www.miruro.bz"
+        ]
       }
     },
     {

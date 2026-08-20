@@ -295,6 +295,22 @@ Set<String> enginePluginIdsToRefetchOnAllExpand({
   return out;
 }
 
+bool engineFullAllSelected({
+  required Set<String> enabledIds,
+  required Set<String> selectedIds,
+}) => enabledIds.isNotEmpty && enabledIds.every(selectedIds.contains);
+
+void engineClearSelectedWalkState({
+  required Set<String> selectedIds,
+  required List<Map<String, dynamic>> streams,
+  required Set<String> fetchedIds,
+}) {
+  streams.removeWhere(
+    (s) => selectedIds.any((id) => engineStreamBelongsToPlugin(s, id)),
+  );
+  fetchedIds.removeAll(selectedIds);
+}
+
 Set<String> filterEngineSelectedPluginIds({
   required Iterable<String> savedIds,
   required Set<String> enabledIds,

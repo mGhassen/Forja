@@ -120,13 +120,18 @@ String? nextNuvioScraperId({
   return null;
 }
 
-const kNuvioScraperBatchSize = 5;
+const kNuvioScraperBatchDesktop = 10;
+const kNuvioScraperBatchTv = 5;
+const kNuvioScraperBatchSize = kNuvioScraperBatchDesktop;
+
+int nuvioSourcesBatchLimit({required bool tv}) =>
+    tv ? kNuvioScraperBatchTv : kNuvioScraperBatchDesktop;
 
 List<String> nextNuvioScraperBatch({
   required Iterable<String> orderedIds,
   required Set<String> selectedIds,
   required Set<String> fetchedIds,
-  int limit = kNuvioScraperBatchSize,
+  int limit = kNuvioScraperBatchDesktop,
 }) {
   final out = <String>[];
   for (final id in orderedIds) {
@@ -134,6 +139,13 @@ List<String> nextNuvioScraperBatch({
     if (selectedIds.contains(id) && !fetchedIds.contains(id)) out.add(id);
   }
   return out;
+}
+
+bool nuvioStreamBelongsToScraper(Map<String, dynamic> stream, String scraperId) {
+  final id = stream['_nuvioScraperId'] as String?;
+  if (id != null) return id == scraperId;
+  final base = stream['_addonBaseUrl'] as String?;
+  return base == 'nuvio:$scraperId';
 }
 
 /// Sequential All / open walk: keep going until every selected scraper has
@@ -163,12 +175,30 @@ Set<String> enabledNuvioScraperIds(Iterable<NuvioAddon> addons) => {
       if (scraper.enabled) scraper.id,
 };
 
+bool nuvioFullAllSelected({
+  required Set<String> enabledIds,
+  required Set<String> selectedIds,
+}) => enabledIds.isNotEmpty && enabledIds.every(selectedIds.contains);
+
+void nuvioClearSelectedWalkState({
+  required Set<String> selectedIds,
+  required List<Map<String, dynamic>> streams,
+  required Set<String> fetchedIds,
+}) {
+  streams.removeWhere(
+    (s) => selectedIds.any((id) => nuvioStreamBelongsToScraper(s, id)),
+  );
+  fetchedIds.removeAll(selectedIds);
+}
+
 /// Drop stale saved ids that are no longer enabled / installed.
 Set<String> filterNuvioSelectedScraperIds({
   required Iterable<String> savedIds,
   required Set<String> enabledIds,
-}) =>
-    {for (final id in savedIds) if (enabledIds.contains(id)) id};
+}) => {
+  for (final id in savedIds)
+    if (enabledIds.contains(id)) id,
+};
 
 /// Missing chip selection → [selectAllDefault] ? all enabled : none.
 /// Empty saved list is explicit none.
@@ -246,8 +276,10 @@ class NuvioService {
   static const String _prefsKey = 'nuvio_addons_v1';
   static const String _scriptCachePrefix = 'nuvio_script_';
   static const String _kvMigratedKey = 'nuvio_addons_kv_v1';
+
   /// Sources → Nuvio chip selection (device KV, same store as addons).
-  static const String _sourcesSelectedKey = 'nuvio_sources_selected_scrapers_v1';
+  static const String _sourcesSelectedKey =
+      'nuvio_sources_selected_scrapers_v1';
   static const String _selectAllDefaultKey =
       'nuvio_sources_select_all_default_v1';
 
@@ -351,12 +383,14 @@ class NuvioService {
       if (leanName != null &&
           addon.scrapers.isEmpty &&
           addon.name != leanName) {
-        next.add(NuvioAddon(
-          manifestUrl: addon.manifestUrl,
-          name: leanName,
-          version: addon.version,
-          scrapers: addon.scrapers,
-        ));
+        next.add(
+          NuvioAddon(
+            manifestUrl: addon.manifestUrl,
+            name: leanName,
+            version: addon.version,
+            scrapers: addon.scrapers,
+          ),
+        );
         changed = true;
       } else {
         next.add(addon);
@@ -366,12 +400,14 @@ class NuvioService {
     final present = next.map((a) => a.manifestUrl).toSet();
     for (final entry in remote.entries) {
       if (present.contains(entry.key)) continue;
-      next.add(NuvioAddon(
-        manifestUrl: entry.key,
-        name: entry.value ?? 'Nuvio Addon',
-        version: '0.0.0',
-        scrapers: const [],
-      ));
+      next.add(
+        NuvioAddon(
+          manifestUrl: entry.key,
+          name: entry.value ?? 'Nuvio Addon',
+          version: '0.0.0',
+          scrapers: const [],
+        ),
+      );
       changed = true;
     }
 
@@ -381,9 +417,11 @@ class NuvioService {
   /// Fetch manifests for lean stubs (`scrapers` empty). Idempotent; no-op when
   /// every listed addon already has scrapers.
   Future<void> hydrateLeanInstalled() {
-    return _hydrateLeanInFlight ??= _hydrateLeanInstalledImpl().whenComplete(() {
-      _hydrateLeanInFlight = null;
-    });
+    return _hydrateLeanInFlight ??= _hydrateLeanInstalledImpl().whenComplete(
+      () {
+        _hydrateLeanInFlight = null;
+      },
+    );
   }
 
   Future<void> _hydrateLeanInstalledImpl() async {

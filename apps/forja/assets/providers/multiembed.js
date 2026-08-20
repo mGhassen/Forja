@@ -10,6 +10,8 @@ function extract(ctx) {
   var season = ctx.season || 1;
   var episode = ctx.episode || 1;
 
+  ctx.log('start tmdb=' + tmdbId + ' type=' + mediaType);
+
   function getText(url, extra) {
     return ctx.fetch(url, { headers: Object.assign({}, headers, extra || {}) }).then(function (r) {
       return r.text();

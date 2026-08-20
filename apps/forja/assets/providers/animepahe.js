@@ -1,16 +1,34 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
-  var base = (cfg.base || 'https://animepahe.com').replace(/\/$/, '');
+  var mirrors = Array.isArray(cfg.mirrors) && cfg.mirrors.length
+    ? cfg.mirrors.map(function (m) { return String(m).replace(/\/$/, ''); })
+    : ['https://animepahe.pw', 'https://animepahe.ru', 'https://animepahe.com'];
+  var base = (cfg.base || mirrors[0] || 'https://animepahe.pw').replace(/\/$/, '');
   var proxy = cfg.proxy || 'https://animepaheproxy.phisheranimepahe.workers.dev/?url=';
   var tmdbKey = cfg.tmdbKey || '1865f43a0549ca50d341dd9ab8b29f49';
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
   var hdrs = { 'User-Agent': ua, Cookie: '__ddg2_=1234567890', Referer: base + '/' };
   var isTv = ctx.type === 'tv';
+  var kwikOrigin = 'https://kwik.si';
 
   function fetchText(url, useProxy) {
     var finalUrl = /^https?:/i.test(url) ? url : base + url;
-    var target = useProxy !== false ? proxy + encodeURIComponent(finalUrl) : finalUrl;
-    return ctx.fetch(target, { headers: hdrs }).then(function (r) { return r.text(); });
+    if (useProxy === true) {
+      return ctx.fetch(proxy + encodeURIComponent(finalUrl), { headers: hdrs }).then(function (r) {
+        return r.text();
+      });
+    }
+    // Prefer direct (Anivault). Fall back to CF worker proxy when blocked.
+    return ctx.fetch(finalUrl, { headers: hdrs }).then(function (r) {
+      if (r.ok) return r.text();
+      return ctx.fetch(proxy + encodeURIComponent(finalUrl), { headers: hdrs }).then(function (r2) {
+        return r2.text();
+      });
+    }).catch(function () {
+      return ctx.fetch(proxy + encodeURIComponent(finalUrl), { headers: hdrs }).then(function (r) {
+        return r.text();
+      });
+    });
   }
 
   function fetchJson(url) {
@@ -51,8 +69,8 @@ function extract(ctx) {
     return result;
   }
 
-  function extractKwik(url) {
-    return ctx.fetch(url, { headers: Object.assign({}, hdrs, { Referer: base + '/' }) })
+  function extractKwik(kwikUrl) {
+    return ctx.fetch(kwikUrl, { headers: Object.assign({}, hdrs, { Referer: base + '/' }) })
       .then(function (r) { return r.text(); })
       .then(function (html) {
         var scripts = html.match(/<script.*?>([\s\S]*?)<\/script>/g) || [];
@@ -75,10 +93,11 @@ function extract(ctx) {
               var fileName = title.endsWith('.mp4') ? title : title + '.mp4';
               var parts = m3u8Url.replace('/stream/', '/mp4/').split('/');
               parts.pop();
+              var origin = (kwikUrl.match(/^https?:\/\/[^/]+/) || [kwikOrigin])[0];
               return {
                 m3u8: m3u8Url,
                 mp4: parts.join('/') + '?file=' + encodeURIComponent(fileName),
-                headers: { Referer: 'https://kwik.cx/', Origin: 'https://kwik.cx', 'User-Agent': ua },
+                headers: { Referer: origin + '/', Origin: origin, 'User-Agent': ua },
               };
             }
             pos = closeParen + 2;
@@ -97,7 +116,7 @@ function extract(ctx) {
       var loc = r.headers.get('location') || r.headers.get('Location');
       if (!loc) return null;
       var kwikUrl = /^https?:/i.test(loc) ? loc : 'https://' + loc.replace(/^\/+/, '');
-      return ctx.fetch(kwikUrl, { headers: Object.assign({}, hdrs, { Referer: 'https://kwik.cx/' }) })
+      return ctx.fetch(kwikUrl, { headers: Object.assign({}, hdrs, { Referer: kwikOrigin + '/' }) })
         .then(function (r2) {
           return r2.text().then(function (html) {
             var cookie = (r2.headers.get('set-cookie') || r2.headers.get('Set-Cookie') || '').split(';')[0];
@@ -107,6 +126,7 @@ function extract(ctx) {
             var actionM = decrypted.match(/action="([^"]+)"/);
             var tokenM = decrypted.match(/value="([^"]+)"/);
             if (!actionM || !tokenM) return null;
+            var origin = (kwikUrl.match(/^https?:\/\/[^/]+/) || [kwikOrigin])[0];
             return ctx.fetch(actionM[1], {
               method: 'POST',
               redirect: 'manual',
@@ -117,7 +137,7 @@ function extract(ctx) {
             }).then(function (r3) {
               var location = r3.headers.get('location') || r3.headers.get('Location');
               if (!location) return null;
-              return { url: location, headers: { Referer: 'https://kwik.cx/', 'User-Agent': ua } };
+              return { url: location, headers: { Referer: origin + '/', Origin: origin, 'User-Agent': ua } };
             });
           });
         });
@@ -191,11 +211,25 @@ function extract(ctx) {
         var kwikUrl = btn.attr('data-src') || '';
         var q = qualityFromText(btn.text());
         var type = /eng/i.test(btn.text()) ? 'Dub' : 'Sub';
-        if (kwikUrl.indexOf('kwik') >= 0) {
+        if (/kwik\.(si|cx|to)|kwik/i.test(kwikUrl)) {
           tasks.push(extractKwik(kwikUrl).then(function (res) {
             if (!res) return;
             if (res.m3u8) streams.push({ name: 'AnimePahe [HLS] (' + q + ' ' + type + ')', url: res.m3u8, quality: q, headers: res.headers });
             if (res.mp4) streams.push({ name: 'AnimePahe [MP4] (' + q + ' ' + type + ')', url: res.mp4, quality: q, headers: Object.assign({}, res.headers, { Referer: kwikUrl }) });
+          }));
+        }
+      });
+      // Miru / Anivault also read data-kwa buttons.
+      $('button[data-kwa], [data-kwa]').each(function () {
+        var btn = $(this);
+        var kwa = btn.attr('data-kwa') || btn.attr('data-src') || '';
+        var q = qualityFromText(btn.text() || btn.attr('data-resolution'));
+        var type = /eng|dub/i.test(btn.attr('data-audio') || btn.text()) ? 'Dub' : 'Sub';
+        if (/kwik/i.test(kwa)) {
+          tasks.push(extractKwik(kwa).then(function (res) {
+            if (!res) return;
+            if (res.m3u8) streams.push({ name: 'AnimePahe [HLS] (' + q + ' ' + type + ')', url: res.m3u8, quality: q, headers: res.headers });
+            if (res.mp4) streams.push({ name: 'AnimePahe [MP4] (' + q + ' ' + type + ')', url: res.mp4, quality: q, headers: res.headers });
           }));
         }
       });

@@ -106,6 +106,9 @@ class NuvioRuntime {
   /// scrapers from restarting requests after cancel/timeout.
   bool _acceptingFetches = false;
   int _activeGetStreams = 0;
+  /// VM drop requested by [abortPendingWork] while [_activeGetStreams] > 0.
+  /// Disposal runs in [_getStreamsUnlocked]'s `finally` after the pump exits.
+  bool _deferredDrop = false;
 
   // --- per-timer coordination --------------------------------------------
   int _timerSeq = 0;
@@ -511,6 +514,11 @@ class NuvioRuntime {
           debugPrint('[NuvioRuntime] $scraperId cancelled');
           return [];
         }
+        if (!identical(_runtime, rt)) {
+          if (!completer.isCompleted) completer.complete('[]');
+          debugPrint('[NuvioRuntime] $scraperId aborted (VM dropped)');
+          return [];
+        }
         try {
           rt.executePendingJob();
         } catch (_) {}
@@ -526,6 +534,7 @@ class NuvioRuntime {
 
       final body = (await completer.future).trim();
       if (isCancelled?.call() == true) return [];
+      if (!identical(_runtime, rt) || _deferredDrop) return [];
       if (body.isEmpty || body == 'null' || body == 'undefined') return [];
       try {
         final decoded = jsonDecode(body);
@@ -544,6 +553,10 @@ class NuvioRuntime {
       _activeGetStreams = (_activeGetStreams - 1).clamp(0, 1 << 30);
       if (_activeGetStreams <= 0) {
         _acceptingFetches = false;
+        if (_deferredDrop) {
+          _dropRuntime();
+          debugPrint('[NuvioRuntime] deferred VM drop complete');
+        }
       }
     }
   }
@@ -577,8 +590,13 @@ class NuvioRuntime {
     } catch (_) {}
     _http = http.Client();
     if (hadWork) {
-      _dropRuntime();
-      debugPrint('[NuvioRuntime] abortPendingWork');
+      if (_activeGetStreams > 0) {
+        _deferredDrop = true;
+        debugPrint('[NuvioRuntime] abortPendingWork (deferred VM drop)');
+      } else {
+        _dropRuntime();
+        debugPrint('[NuvioRuntime] abortPendingWork');
+      }
     }
   }
 
@@ -590,7 +608,7 @@ class NuvioRuntime {
     _ready = false;
     _loadedScraperIds.clear();
     _initCompleter = null;
-    _activeGetStreams = 0;
+    _deferredDrop = false;
   }
 
   void dispose() {
@@ -688,12 +706,13 @@ class NuvioRuntime {
 
   void _resolveFetch(int id, Map<String, dynamic> envelope) {
     final rt = _runtime;
-    if (rt == null) return;
+    if (rt == null || !_acceptingFetches) return;
     // Embed the envelope as a JS object literal - jsonEncode produces
     // a valid JS expression for any JSON-encodable value.
     final js =
         'try { globalThis.__nuvioFetchResolve($id, ${jsonEncode(envelope)}); } catch (e) {}';
     try {
+      if (!identical(_runtime, rt)) return;
       rt.evaluate(js, sourceUrl: 'nuvio://fetch-resolve/$id');
     } catch (_) {}
   }

@@ -231,10 +231,12 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
   void _autoSearch({bool force = false}) {
     _s._checkHistory();
     if (TorrentSearchProviders.isNoneChip(_s._selectedSourceId)) return;
-    if (force) _s._torrentFetchedProviderIds.clear();
     final enabled = _s._torrentEnabledForSearch(force: force);
     if (enabled.isEmpty) return;
-    final replace = force || _s._allTorrentResults.isEmpty;
+    if (force) {
+      _s._torrentFetchedProviderIds.removeAll(enabled);
+    }
+    final replace = _s._allTorrentResults.isEmpty;
     final year = _s._movie.releaseDate.take(4);
     if (_s._movie.mediaType == 'tv') {
       final s = _s._selectedSeason.toString().padLeft(2, '0');

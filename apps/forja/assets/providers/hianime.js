@@ -51,6 +51,24 @@ function extract(ctx) {
       .then(function (json) {
         var file = json && json.sources && json.sources.file;
         if (!file) return [];
+        if (file.indexOf('mewstream.buzz') >= 0) {
+          var tracks = json.tracks || [];
+          var replacementHost = '1oe.lostproject.club';
+          for (var i = 0; i < tracks.length; i++) {
+            var tUrl = tracks[i] && tracks[i].file;
+            if (tUrl && tUrl.indexOf('mewstream.buzz') < 0) {
+              try {
+                replacementHost = new URL(tUrl).host;
+                break;
+              } catch (e) {}
+            }
+          }
+          try {
+            var parsed = new URL(file);
+            parsed.host = replacementHost;
+            file = parsed.toString();
+          } catch (e) {}
+        }
         return [
           {
             url: file,
@@ -106,6 +124,21 @@ function extract(ctx) {
                 mcPage,
                 megacloud,
                 'MegaCloud',
+                kind,
+              );
+            }),
+          );
+          var vidtube = (cfg.vidtube || 'https://vidtube.site').replace(/\/$/, '');
+          var vtPage = vidtube + '/stream/s-2/' + ids.real + '/' + kind;
+          tasks.push(
+            getText(vtPage, { Referer: megaUrl }).then(function (vtHtml) {
+              var v = playerId(vtHtml);
+              if (!v.id) return [];
+              return extractSources(
+                vidtube + '/stream/getSources?id=' + v.id + '&id=' + v.id,
+                vtPage,
+                vidtube,
+                'VidTube',
                 kind,
               );
             }),

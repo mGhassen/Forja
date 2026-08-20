@@ -119,6 +119,36 @@ void main() {
       );
     });
 
+    test('full All walk clears stale session rows before refetch', () {
+      expect(
+        engineFullAllSelected(
+          enabledIds: const {'videasy', 'cineby', 'goated'},
+          selectedIds: const {'videasy', 'cineby', 'goated'},
+        ),
+        isTrue,
+      );
+      final streams = [
+        {
+          '_enginePluginId': 'meowtv',
+          '_addonBaseUrl': 'engine:meowtv',
+          'url': 'https://a.test/v',
+        },
+        {
+          '_enginePluginId': 'videasy',
+          '_addonBaseUrl': 'engine:videasy',
+          'url': 'https://b.test/v',
+        },
+      ];
+      final fetched = {'meowtv', 'videasy'};
+      engineClearSelectedWalkState(
+        selectedIds: const {'videasy', 'cineby', 'goated', 'meowtv'},
+        streams: streams,
+        fetchedIds: fetched,
+      );
+      expect(streams, isEmpty);
+      expect(fetched, isEmpty);
+    });
+
     test('panel walk skips host sniff plugins', () {
       final pack = EnginePack.fromJson({
         'plugins': [
@@ -397,6 +427,10 @@ void main() {
           'reanime',
           'anibd',
           'senshi',
+          'animeheaven',
+          'anidao',
+          'aniwaves',
+          'miruro',
           'animedunya',
           'anineko',
           'animegg',
@@ -430,6 +464,9 @@ void main() {
         isFalse,
       );
       expect(parsed.firstWhere((p) => p.id == 'vidrock').entry, 'vidrock.js');
+      expect(parsed.firstWhere((p) => p.id == 'vidzee').entry, 'vidzee.js');
+      expect(parsed.firstWhere((p) => p.id == '2embed').entry, 'multiembed.js');
+      expect(parsed.firstWhere((p) => p.id == 'service111477').entry, 'dahmermovies.js');
       expect(parsed.firstWhere((p) => p.id == 'hexa').entry, 'hexa.js');
       expect(parsed.firstWhere((p) => p.id == 'hianime').entry, 'hianime.js');
       expect(
@@ -570,6 +607,23 @@ void main() {
         parsed.firstWhere((p) => p.id == 'senshi').config['base'],
         'https://senshi.live',
       );
+      expect(parsed.firstWhere((p) => p.id == 'kisskh').entry, 'kisskh.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'kisskh').config['origin'],
+        'https://kisskh.co',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == 'animepahe').config['base'],
+        'https://animepahe.pw',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'animeheaven').entry, 'animeheaven.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'animeheaven').config['base'],
+        'https://animeheaven.me',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'anidao').entry, 'anidao.js');
+      expect(parsed.firstWhere((p) => p.id == 'aniwaves').entry, 'aniwaves.js');
+      expect(parsed.firstWhere((p) => p.id == 'miruro').entry, 'miruro.js');
       expect(parsed.firstWhere((p) => p.id == 'animedunya').entry, 'animedunya.js');
       expect(
         parsed.firstWhere((p) => p.id == 'animedunya').config['base'],
@@ -692,6 +746,8 @@ void main() {
       );
       expect(hianime.contains('megaplay'), isTrue);
       expect(hianime.contains('getSources'), isTrue);
+      expect(hianime.contains('vidtube.site'), isTrue);
+      expect(hianime.contains('mewstream.buzz'), isTrue);
 
       final kaa = await rootBundle.loadString(
         'assets/providers/kickassanime.js',
@@ -754,6 +810,7 @@ void main() {
       );
       expect(fourkhdhub.contains('HubCloud 10Gbps'), isTrue);
       expect(fourkhdhub.contains("j['4khdhub']"), isTrue);
+      expect(fourkhdhub.contains('article h2 a'), isTrue);
       expect(fourkhdhub.contains('.movie-card'), isTrue);
 
       final movieblast = await rootBundle.loadString(
@@ -803,6 +860,9 @@ void main() {
       expect(dvdplay.contains('pixeldrain.net/api/file'), isTrue);
 
       final hdhub4u = await rootBundle.loadString('assets/providers/hdhub4u.js');
+      expect(hdhub4u.contains('searchByImdb'), isTrue);
+      expect(hdhub4u.contains('gadgetsweb'), isTrue);
+      expect(hdhub4u.contains('hubdrive'), isTrue);
       expect(hdhub4u.contains('search.hdhub4u.glass'), isTrue);
       expect(hdhub4u.contains('HDHUB4u'), isTrue);
       expect(hdhub4u.contains('hubCloudExtractor'), isTrue);
@@ -862,6 +922,7 @@ void main() {
       final animepahe = await rootBundle.loadString('assets/providers/animepahe.js');
       expect(animepahe.contains('animepaheproxy'), isTrue);
       expect(animepahe.contains('extractKwik'), isTrue);
+      expect(animepahe.contains('kwik.si'), isTrue);
       expect(animepahe.contains('id-mapping-api-malid'), isTrue);
 
       final reanime = await rootBundle.loadString('assets/providers/reanime.js');
@@ -877,6 +938,11 @@ void main() {
       final senshi = await rootBundle.loadString('assets/providers/senshi.js');
       expect(senshi.contains('senshi.live'), isTrue);
       expect(senshi.contains('episode-embeds'), isTrue);
+      expect(senshi.contains('embedType'), isTrue);
+
+      final kisskh = await rootBundle.loadString('assets/providers/kisskh.js');
+      expect(kisskh.contains('kisskh.co'), isTrue);
+      expect(kisskh.contains('tryOnce'), isTrue);
 
       final animedunya = await rootBundle.loadString('assets/providers/animedunya.js');
       expect(animedunya.contains('anime-dunya.com'), isTrue);
@@ -898,6 +964,24 @@ void main() {
       expect(anikoto.contains('anikototv.to'), isTrue);
       expect(anikoto.contains('/ajax/episode/list/'), isTrue);
       expect(anikoto.contains('getSources'), isTrue);
+      expect(anikoto.contains('mewstream.buzz'), isTrue);
+      expect(anikoto.contains('mapper.mewcdn.online'), isTrue);
+
+      final animeheaven = await rootBundle.loadString('assets/providers/animeheaven.js');
+      expect(animeheaven.contains('gate.php'), isTrue);
+      expect(animeheaven.contains('fastsearch.php'), isTrue);
+
+      final anidao = await rootBundle.loadString('assets/providers/anidao.js');
+      expect(anidao.contains('anidao.to'), isTrue);
+      expect(anidao.contains('data-an-video'), isTrue);
+
+      final aniwaves = await rootBundle.loadString('assets/providers/aniwaves.js');
+      expect(aniwaves.contains('aniwaves.ru'), isTrue);
+      expect(aniwaves.contains('/ajax/sources'), isTrue);
+
+      final miruro = await rootBundle.loadString('assets/providers/miruro.js');
+      expect(miruro.contains('api/secure/pipe'), isTrue);
+      expect(miruro.contains('decodePipe'), isTrue);
 
       final animenosub = await rootBundle.loadString('assets/providers/animenosub.js');
       expect(animenosub.contains('admin-ajax.php'), isTrue);
@@ -1297,6 +1381,32 @@ function extract(ctx) {
         episode: 3,
       );
       expect(streams.single['title'], '5114:21:3');
+    });
+
+    test('ctx.crypto encodePipe / decodePipe round-trip JSON', () async {
+      final rt = EngineRuntime.instance;
+      await rt.loadPlugin(
+        pluginId: 'pipe-codec',
+        code: '''
+function extract(ctx) {
+  var enc = ctx.crypto.encodePipe({ path: 'episodes', query: { anilistId: 21 } });
+  var raw = '{"streams":[{"url":"https://cdn.example/a.m3u8","type":"hls"}]}';
+  var dec = ctx.crypto.decodePipe(raw, '');
+  return Promise.resolve([{
+    url: dec.streams[0].url,
+    title: enc.indexOf('=') >= 0 ? 'padded' : 'b64url'
+  }]);
+}
+''',
+      );
+      final streams = await rt.extract(
+        pluginId: 'pipe-codec',
+        tmdbId: '1',
+        type: 'tv',
+        episode: 1,
+      );
+      expect(streams.single['url'], 'https://cdn.example/a.m3u8');
+      expect(streams.single['title'], 'b64url');
     });
 
     test('EnginePlugin parses ids manifest field', () {

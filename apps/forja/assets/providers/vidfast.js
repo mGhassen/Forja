@@ -7,13 +7,15 @@ function extract(ctx) {
   var tmdbId = String(ctx.tmdbId);
   var page =
     ctx.type === 'movie'
-      ? origin + '/movie/' + tmdbId + '/'
-      : origin + '/tv/' + tmdbId + '/' + (ctx.season || 1) + '/' + (ctx.episode || 1) + '/';
+      ? origin + '/movie/' + tmdbId
+      : origin + '/tv/' + tmdbId + '/' + (ctx.season || 1) + '/' + (ctx.episode || 1);
   var headers = {
     'User-Agent': ua,
     Referer: origin + '/',
     'X-Requested-With': 'XMLHttpRequest',
   };
+
+  ctx.log('start ' + page);
 
   function validate(j) {
     if (!j || j.status !== 200) return null;
@@ -23,13 +25,18 @@ function extract(ctx) {
   return ctx
     .fetch(page, { headers: headers })
     .then(function (r) {
+      ctx.log('page http ' + r.status);
       return r.text();
     })
     .then(function (html) {
       var text = (html.match(/\\"(?:en|token)\\":\\"([^\\"]+)\\"/) ||
         html.match(/"(?:en|token)":"([^"]+)"/) ||
         [])[1];
-      if (!text) return ctx.host('vidfast');
+      if (!text) {
+        ctx.log('no en/token in page (Next SPA — EncDec path dead)');
+        return [];
+      }
+      ctx.log('enc-vidfast text len=' + text.length);
       return ctx
         .fetch(enc + '/enc-vidfast?text=' + encodeURIComponent(text), { headers: headers })
         .then(function (r) {
@@ -37,7 +44,10 @@ function extract(ctx) {
         })
         .then(function (j) {
           var parts = validate(j);
-          if (!parts) return ctx.host('vidfast');
+          if (!parts) {
+            ctx.log('enc-vidfast miss');
+            return [];
+          }
           var hdrs = Object.assign({}, headers, { 'X-CSRF-Token': parts.token || '' });
           return ctx
             .fetch(parts.servers, { method: 'POST', headers: hdrs })
@@ -56,6 +66,7 @@ function extract(ctx) {
                 })
                 .then(function (dj) {
                   var servers = validate(dj) || [];
+                  ctx.log('servers=' + (Array.isArray(servers) ? servers.length : 0));
                   var tasks = (Array.isArray(servers) ? servers : []).slice(0, 6).map(function (server) {
                     var data = server && server.data;
                     if (!data) return Promise.resolve([]);
@@ -96,19 +107,22 @@ function extract(ctx) {
                           };
                         });
                       })
-                      .catch(function () {
+                      .catch(function (e) {
+                        ctx.error('server: ' + (e && e.message ? e.message : e));
                         return [];
                       });
                   });
                   return Promise.all(tasks).then(function (groups) {
                     var out = [].concat.apply([], groups);
-                    return out.length ? out : ctx.host('vidfast');
+                    ctx.log('streams=' + out.length);
+                    return out;
                   });
                 });
             });
         });
     })
-    .catch(function () {
-      return ctx.host('vidfast');
+    .catch(function (e) {
+      ctx.error(e && e.message ? e.message : e);
+      return [];
     });
 }

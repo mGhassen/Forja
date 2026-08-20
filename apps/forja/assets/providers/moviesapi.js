@@ -11,10 +11,15 @@ function extract(ctx) {
       : 'tv/' + tmdbId + '/' + (ctx.season || 1) + '/' + (ctx.episode || 1);
   var headers = { 'User-Agent': ua, Referer: origin + '/', Accept: 'application/json, text/html' };
 
+  ctx.log('start ' + rest);
+
   function walk(o, urls) {
     if (!o) return;
     if (typeof o === 'string' && /^https?:/i.test(o)) urls.push(o);
-    else if (Array.isArray(o)) o.forEach(function (e) { walk(e, urls); });
+    else if (Array.isArray(o))
+      o.forEach(function (e) {
+        walk(e, urls);
+      });
     else if (typeof o === 'object') {
       ['url', 'file', 'src', 'stream', 'link', 'playlist'].forEach(function (k) {
         if (o[k]) walk(o[k], urls);
@@ -30,17 +35,22 @@ function extract(ctx) {
             { url: u, name: 'MoviesAPI', headers: { 'User-Agent': ua, Referer: origin + '/' } },
           ]);
         }
-        return ctx.hop(u);
+        ctx.log('hop ' + u);
+        return ctx.hop(u).then(function (rows) {
+          return rows && rows.length ? rows : [];
+        });
       }),
     ).then(function (groups) {
       var out = [].concat.apply([], groups);
-      return out.length ? out : ctx.host('moviesapi');
+      ctx.log('streams=' + out.length);
+      return out;
     });
   }
 
   return ctx
     .fetch(origin + '/api/vidora/v1/' + rest, { headers: headers })
     .then(function (r) {
+      ctx.log('api http ' + r.status);
       return r.text();
     })
     .then(function (body) {
@@ -51,21 +61,28 @@ function extract(ctx) {
       var urls = [];
       if (json) walk(json, urls);
       if (urls.length) return resolveUrls(urls);
-      return ctx.fetch(player + '/' + rest, { headers: headers }).then(function (r) {
-        return r.text();
-      }).then(function (html) {
-        String(html).replace(/https?:\/\/[^"'\s<>]+(?:\.m3u8|\.mp4)[^"'\s<>]*/gi, function (u) {
-          urls.push(u);
-          return u;
+      if (json && json.error) ctx.log('api error ' + json.error);
+      ctx.log('fallback player ' + player + '/' + rest);
+      return ctx
+        .fetch(player + '/' + rest, { headers: headers })
+        .then(function (r) {
+          return r.text();
+        })
+        .then(function (html) {
+          String(html).replace(/https?:\/\/[^"'\s<>]+(?:\.m3u8|\.mp4)[^"'\s<>]*/gi, function (u) {
+            urls.push(u);
+            return u;
+          });
+          String(html).replace(/<iframe[^>]*src=["']([^"']+)["']/gi, function (_, s) {
+            urls.push(s);
+            return _;
+          });
+          ctx.log('player scraped=' + urls.length);
+          return urls.length ? resolveUrls(urls) : [];
         });
-        String(html).replace(/<iframe[^>]*src=["']([^"']+)["']/gi, function (_, s) {
-          urls.push(s);
-          return _;
-        });
-        return urls.length ? resolveUrls(urls) : ctx.host('moviesapi');
-      });
     })
-    .catch(function () {
-      return ctx.host('moviesapi');
+    .catch(function (e) {
+      ctx.error(e && e.message ? e.message : e);
+      return [];
     });
 }

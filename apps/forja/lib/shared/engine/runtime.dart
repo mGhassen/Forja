@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart' as dart_crypto;
 import 'package:flutter/foundation.dart';
@@ -14,6 +16,17 @@ import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:http/http.dart' as http;
 import 'package:pointycastle/export.dart';
 import 'package:rust/rust.dart';
+
+String _forjaJsLevel(Object? raw) {
+  final level = (raw ?? 'log').toString();
+  return level == 'error' ? 'err' : level;
+}
+
+void _forjaJsConsole(Map<String, dynamic> m) {
+  debugPrint('[Forja:${_forjaJsLevel(m['level'])}] ${m['msg'] ?? ''}');
+}
+
+void _forjaRuntimeLog(String msg) => debugPrint('[ForjaRuntime] $msg');
 
 class EngineMutex {
   Future<void> _tail = Future<void>.value();
@@ -113,8 +126,7 @@ class EngineRuntime {
 
     br('Console', (args) {
       try {
-        final m = _bridgeMap(args);
-        debugPrint('[engine:${m['level'] ?? 'log'}] ${m['msg'] ?? ''}');
+        _forjaJsConsole(_bridgeMap(args));
       } catch (_) {}
       return null;
     });
@@ -251,6 +263,25 @@ class EngineRuntime {
         return '';
       }
     });
+    br('EncodePipe', (args) {
+      try {
+        final m = _bridgeMap(args);
+        return _encodePipe((m['json'] ?? m['body'] ?? '').toString());
+      } catch (_) {
+        return '';
+      }
+    });
+    br('DecodePipe', (args) {
+      try {
+        final m = _bridgeMap(args);
+        return _decodePipe(
+          (m['body'] ?? '').toString(),
+          (m['xObf'] ?? m['xobf'] ?? '').toString(),
+        );
+      } catch (_) {
+        return '';
+      }
+    });
 
     br('FetchStart', (args) {
       try {
@@ -369,16 +400,16 @@ class EngineRuntime {
       : (typeof cheerio !== 'undefined' ? cheerio : null);
     if (c) globalThis.__engineCheerio = c;
   } catch (e) {
-    sendMessage('Console', JSON.stringify({level:'error',msg:'[engine cheerio] ' + (e && e.message ? e.message : e)}));
+    sendMessage('Console', JSON.stringify({level:'err',msg:'[ForjaRuntime] cheerio load failed: ' + (e && e.message ? e.message : e)}));
   }
 })();
 ''';
       final res = rt.evaluate(wrapped, sourceUrl: 'engine://cheerio');
       if (res.isError) {
-        debugPrint('[engine] cheerio bundle error: ${res.stringResult}');
+        _forjaRuntimeLog('cheerio bundle error: ${res.stringResult}');
       }
     } catch (e) {
-      debugPrint('[engine] cheerio load failed: $e');
+      _forjaRuntimeLog('cheerio load failed: $e');
     }
   }
 
@@ -416,7 +447,7 @@ class EngineRuntime {
       if (typeof globalThis.extract !== 'function') globalThis.extract = extract;
     }
   } catch (e) {
-    sendMessage('Console', JSON.stringify({level:'error',msg:'[engine load $pluginId] ' + (e && e.message ? e.message : e)}));
+    sendMessage('Console', JSON.stringify({level:'err',msg:'[ForjaLoader:'+${jsonEncode(pluginId)}+'] ' + (e && e.message ? e.message : e)}));
     throw e;
   }
   var fn = (module.exports && module.exports.extract) || globalThis.extract;
@@ -432,6 +463,7 @@ class EngineRuntime {
 
   Future<List<Map<String, dynamic>>> extract({
     required String pluginId,
+    String? pluginName,
     required String tmdbId,
     String? imdbId,
     int? malId,
@@ -461,6 +493,7 @@ class EngineRuntime {
       }
       return _extractUnlocked(
         pluginId: pluginId,
+        pluginName: pluginName,
         tmdbId: tmdbId,
         imdbId: imdbId,
         malId: malId,
@@ -483,6 +516,7 @@ class EngineRuntime {
 
   Future<List<Map<String, dynamic>>> _extractUnlocked({
     required String pluginId,
+    String? pluginName,
     required String tmdbId,
     String? imdbId,
     int? malId,
@@ -531,6 +565,9 @@ class EngineRuntime {
         'url': _extractUrl,
         'config': config,
       });
+      final pluginLabel = (pluginName != null && pluginName.trim().isNotEmpty)
+          ? pluginName.trim()
+          : pluginId;
       final invoker =
           '''
 (function(){
@@ -541,6 +578,7 @@ class EngineRuntime {
     return;
   }
   var meta = $ctx;
+  var pluginLabel = ${jsonEncode(pluginLabel)};
   var streamDecrypt = function(body, seed, tmdbId) {
     var out = sendMessage('StreamCryptoDecrypt', JSON.stringify({
       body: String(body == null ? '' : body),
@@ -565,6 +603,12 @@ class EngineRuntime {
     year: meta.year,
     url: meta.url || '',
     config: meta.config || {},
+    log: function(msg) {
+      console.log('[' + pluginLabel + '] ' + String(msg == null ? '' : msg));
+    },
+    error: function(msg) {
+      console.error('[' + pluginLabel + '] Error: ' + String(msg == null ? '' : msg));
+    },
     fetch: globalThis.fetch,
     html: globalThis.__engineHtml,
     host: ${allowHostFallback ? 'globalThis.__engineHost' : 'function(){ return Promise.resolve([]); }'},
@@ -575,6 +619,18 @@ class EngineRuntime {
         return sendMessage('KissKhKkey', JSON.stringify({
           episodeId: episodeId, kind: kind || 'video'
         })) || '';
+      },
+      encodePipe: function(payload) {
+        var raw = typeof payload === 'string' ? payload : JSON.stringify(payload == null ? {} : payload);
+        return sendMessage('EncodePipe', JSON.stringify({ json: raw })) || '';
+      },
+      decodePipe: function(body, xObf) {
+        var raw = sendMessage('DecodePipe', JSON.stringify({
+          body: String(body == null ? '' : body),
+          xObf: String(xObf == null ? '' : xObf)
+        })) || '';
+        if (!raw) return null;
+        try { return JSON.parse(raw); } catch (e) { return null; }
       },
       solvePow: function(challenge, difficulty, max) {
         var raw = sendMessage('SolvePow', JSON.stringify({
@@ -594,12 +650,14 @@ class EngineRuntime {
   Promise.resolve()
     .then(function(){ return fn(ctx); })
     .then(function(r){
+      var n = Array.isArray(r) ? r.length : (r == null ? 0 : 1);
+      sendMessage('Console', JSON.stringify({level:'log',msg:'['+pluginLabel+'] streams='+n}));
       try { sendMessage('CaptureResult', JSON.stringify({id:$callId, body: JSON.stringify(r == null ? [] : r)})); }
       catch (e) { sendMessage('CaptureResult', JSON.stringify({id:$callId, body:'[]'})); }
     })
     .catch(function(e){
       var msg = (e && e.message) ? e.message : (e ? String(e) : 'unknown');
-      sendMessage('Console', JSON.stringify({level:'error',msg:'[engine extract $pluginId] '+msg}));
+      sendMessage('Console', JSON.stringify({level:'err',msg:'[ForjaInvoker:'+${jsonEncode(pluginId)}+'] '+msg}));
       sendMessage('CaptureResult', JSON.stringify({id:$callId, body:'[]'}));
     });
 })();
@@ -607,7 +665,7 @@ class EngineRuntime {
       final r = rt.evaluate(invoker);
       if (r.isError) {
         _pendingResults.remove(callId);
-        debugPrint('[engine] invoker error: ${r.stringResult}');
+        _forjaRuntimeLog('invoker error: ${r.stringResult}');
         return [];
       }
 
@@ -627,7 +685,7 @@ class EngineRuntime {
       if (!completer.isCompleted) {
         _pendingResults.remove(callId);
         if (!completer.isCompleted) completer.complete('[]');
-        debugPrint('[engine] $pluginId timed out after ${timeout.inSeconds}s');
+        _forjaRuntimeLog('$pluginId timed out after ${timeout.inSeconds}s');
         return [];
       }
 
@@ -642,7 +700,7 @@ class EngineRuntime {
             .map((e) => e.cast<String, dynamic>())
             .toList();
       } catch (e) {
-        debugPrint('[engine] result parse failed ($pluginId): $e');
+        _forjaRuntimeLog('result parse failed ($pluginId): $e');
         return [];
       }
     } finally {
@@ -773,7 +831,7 @@ class EngineRuntime {
         sourceUrl: 'engine://fetch/$id',
       );
     } catch (e) {
-      debugPrint('[engine:fetch] resolve failed id=$id $url: $e');
+      _forjaRuntimeLog('fetch resolve failed id=$id $url: $e');
     }
   }
 
@@ -816,7 +874,7 @@ class EngineRuntime {
         isCancelled: () => gen != _fetchGeneration,
       );
     } catch (e) {
-      debugPrint('[engine:host] resolve failed id=$hostId: $e');
+      _forjaRuntimeLog('host resolve failed id=$hostId: $e');
     }
     if (gen != _fetchGeneration) return;
     _resolveHost(id: id, gen: gen, streams: streams);
@@ -846,7 +904,7 @@ class EngineRuntime {
       try {
         _loadPluginUnlocked(hopId, code);
       } catch (e) {
-        debugPrint('[engine:hop] load failed id=$hopId: $e');
+        _forjaRuntimeLog('hop load failed id=$hopId: $e');
         _resolveHop(id: id, gen: gen, streams: const []);
         return;
       }
@@ -880,7 +938,7 @@ class EngineRuntime {
         isCancelled: () => gen != _fetchGeneration,
       );
     } catch (e) {
-      debugPrint('[engine:hop] extract failed id=$hopId: $e');
+      _forjaRuntimeLog('hop extract failed id=$hopId: $e');
     } finally {
       _hopDepth = (_hopDepth - 1).clamp(0, 8);
       _extractMovie = savedMovie;
@@ -911,7 +969,7 @@ class EngineRuntime {
         sourceUrl: 'engine://hop/$id',
       );
     } catch (e) {
-      debugPrint('[engine:hop] resolve callback failed id=$id: $e');
+      _forjaRuntimeLog('hop resolve callback failed id=$id: $e');
     }
   }
 
@@ -929,7 +987,7 @@ class EngineRuntime {
         sourceUrl: 'engine://host/$id',
       );
     } catch (e) {
-      debugPrint('[engine:host] resolve callback failed id=$id: $e');
+      _forjaRuntimeLog('host resolve callback failed id=$id: $e');
     }
   }
 
@@ -937,6 +995,72 @@ class EngineRuntime {
     final bytes = utf8.encode(utf8Str);
     final hash = _hashFor(algo).convert(bytes);
     return hash.toString();
+  }
+
+  // Same key as crates/anime/src/extractors/miruro.rs PIPE_OBF_KEY.
+  static const _pipeObfKey = <int>[
+    0x71, 0x95, 0x10, 0x34, 0xf8, 0xfb, 0xcf, 0x53,
+    0xd8, 0x9d, 0xb5, 0x2c, 0xeb, 0x3d, 0xc2, 0x2c,
+  ];
+
+  String _encodePipe(String json) {
+    if (json.isEmpty) return '';
+    return base64Url.encode(utf8.encode(json)).replaceAll('=', '');
+  }
+
+  String _decodePipe(String body, String xObf) {
+    if (body.isEmpty) return '';
+    final level = xObf.trim();
+    if (level.isEmpty) {
+      try {
+        jsonDecode(body);
+        return body;
+      } catch (_) {
+        return _inflatePipeBody(body, xor: false);
+      }
+    }
+    return _inflatePipeBody(body, xor: level == '2');
+  }
+
+  String _inflatePipeBody(String body, {required bool xor}) {
+    var b64 = body.replaceAll('-', '+').replaceAll('_', '/');
+    final pad = b64.length % 4;
+    if (pad != 0) b64 += '=' * (4 - pad);
+    late List<int> data;
+    try {
+      data = base64.decode(b64);
+    } catch (_) {
+      return '';
+    }
+    if (xor) {
+      final key = _pipeObfKey;
+      data = List<int>.generate(
+        data.length,
+        (i) => data[i] ^ key[i % key.length],
+      );
+    }
+    final plain = utf8.decode(_inflateBytes(data), allowMalformed: true);
+    try {
+      jsonDecode(plain);
+      return plain;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  List<int> _inflateBytes(List<int> data) {
+    if (data.length >= 2 && data[0] == 0x1f && data[1] == 0x8b) {
+      try {
+        return gzip.decode(data);
+      } catch (_) {}
+    }
+    try {
+      return zlib.decode(data);
+    } catch (_) {}
+    try {
+      return zlib.decode(<int>[0x78, 0x01, ...data]);
+    } catch (_) {}
+    return data;
   }
 
   /// SHA-256 leading-hex-zero PoW (Goated `/api/challenge`). Loop stays in Dart
@@ -1192,7 +1316,7 @@ class EngineRuntime {
     log: function(){ _engineLog('log', arguments); },
     info: function(){ _engineLog('info', arguments); },
     warn: function(){ _engineLog('warn', arguments); },
-    error: function(){ _engineLog('error', arguments); },
+    error: function(){ _engineLog('err', arguments); },
     debug: function(){ _engineLog('log', arguments); },
   };
 })();

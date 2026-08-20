@@ -768,7 +768,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   void _ensureTorrentsPanelLoaded({bool force = false}) {
     if (_panelKindFilter != 'torrents') return;
     if (force) {
-      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'torrents');
       _autoSearch(force: true);
       return;
     }
@@ -821,11 +820,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _refreshStreamAddons().then((_) {
         if (!mounted || _panelKindFilter != 'stremio') return;
         if (force) {
-          CatalogSourcesSessionCache.invalidate(
-            _catalogCacheKey,
-            kind: 'stremio',
-          );
-          _fetchStremioStreams(reset: true);
+          _fetchStremioStreams(refresh: true);
           return;
         }
         if (_isStremioFetching) return;
@@ -867,12 +862,15 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (_panelKindFilter != 'nuvio') return;
     if (_nuvioSelectedScraperIds.isEmpty) return;
     if (force) {
-      CatalogSourcesSessionCache.invalidate(_catalogCacheKey, kind: 'nuvio');
-      await _fetchNextNuvioScraper(reset: true);
+      await _fetchNextNuvioScraper(refresh: true);
       return;
     }
     if (_isNuvioFetching) return;
-    if (_nuvioStreams.isEmpty) {
+    final nuvioAll = nuvioFullAllSelected(
+      enabledIds: enabledNuvioScraperIds(_nuvioAddons),
+      selectedIds: _nuvioSelectedScraperIds,
+    );
+    if (_nuvioStreams.isEmpty && !nuvioAll) {
       final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
       if (cached != null) {
         setState(() {
@@ -893,15 +891,15 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (_panelKindFilter != EngineIds.kind) return;
     if (_engineSelectedPluginIds.isEmpty) return;
     if (force) {
-      CatalogSourcesSessionCache.invalidate(
-        _catalogCacheKey,
-        kind: EngineIds.kind,
-      );
-      await _fetchNextEnginePlugin(reset: true);
+      await _fetchNextEnginePlugin(refresh: true);
       return;
     }
     if (_isEngineFetching) return;
-    if (_engineStreams.isEmpty) {
+    final engineAll = engineFullAllSelected(
+      enabledIds: enabledEnginePluginIds(_enginePacks),
+      selectedIds: _engineSelectedPluginIds,
+    );
+    if (_engineStreams.isEmpty && !engineAll) {
       final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
       if (cached != null) {
         setState(() {

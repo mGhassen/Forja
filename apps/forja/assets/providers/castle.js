@@ -109,7 +109,10 @@ function extract(ctx) {
   function fetchDecrypted(url, body) {
     var req = body ? postJson(url, body) : ctx.fetch(url, { headers: apiHeaders() }).then(function (r) { return r.text(); });
     return Promise.all([getSecurityKey(), req]).then(function (pair) {
-      return decrypt(normCipherBody(pair[1]), pair[0]);
+      if (typeof ctx.log === 'function') ctx.log('Starting local AES-CBC decryption...');
+      var out = decrypt(normCipherBody(pair[1]), pair[0]);
+      if (typeof ctx.log === 'function') ctx.log('Local decryption successful');
+      return out;
     });
   }
 
@@ -157,7 +160,11 @@ function extract(ctx) {
         var t = String(item.title || item.name || '').toLowerCase();
         return t.indexOf(want) >= 0 || want.indexOf(t) >= 0;
       })[0] || rows[0];
-      return String(match.id || match.redirectId || match.redirectIdStr || '');
+      var movieId = String(match.id || match.redirectId || match.redirectIdStr || '');
+      if (movieId && typeof ctx.log === 'function') {
+        ctx.log('Found match: ' + (match.title || match.name || info.title) + ' (id: ' + movieId + ')');
+      }
+      return movieId;
     });
   }
 
@@ -251,8 +258,19 @@ function extract(ctx) {
 
   return tmdbInfo()
     .then(function (info) {
+      if (typeof ctx.log === 'function') {
+        ctx.log(
+          'Starting extraction for TMDB ID: ' +
+            ctx.tmdbId +
+            ', Type: ' +
+            ctx.type +
+            (isTv ? ', S:' + (ctx.season || 1) + 'E:' + (ctx.episode || 1) : ''),
+        );
+        ctx.log('TMDB Info: "' + info.title + '" (' + info.year + ')');
+      }
       return searchMovieId(info).then(function (movieId) {
         if (!movieId) return [];
+        if (typeof ctx.log === 'function') ctx.log('Fetching details for movieId: ' + movieId);
         return details(movieId).then(function (rawDetails) {
           var currentMovieId = movieId;
           var detailsData = unwrapData(rawDetails);
@@ -279,7 +297,10 @@ function extract(ctx) {
       var episodeHit = isTv
         ? episodes.filter(function (e) { return e.number === episodeNum; })[0]
         : episodes[0];
-      if (!episodeHit || !episodeHit.id) return [];
+      if (!episodeHit || !episodeHit.id) {
+        if (typeof ctx.error === 'function') ctx.error('Could not find episode ID');
+        return [];
+      }
       var resolution = 2;
       var tracks = (episodeHit && episodeHit.tracks) || [];
       var tasks = tracks

@@ -1,6 +1,6 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
-  var domain = cfg.base || 'https://new6.hdhub4u.fo';
+  var domain = cfg.base || 'https://new1.hdhub4u.limo';
   var searchApi = cfg.searchApi || 'https://search.hdhub4u.glass/collections/post/documents/search';
   var domainsUrl = cfg.domainsUrl || 'https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json';
   var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
@@ -21,7 +21,9 @@ function extract(ctx) {
 
   function latestDomain() {
     return fetchJson(domainsUrl, { 'User-Agent': ua })
-      .then(function (j) { return (j && j.HDHUB4u) || domain; })
+      .then(function (j) {
+        return (j && (j.HDHUB4u || j.HDHub4u || j.hdhub4u)) || domain;
+      })
       .catch(function () { return domain; });
   }
 
@@ -35,7 +37,7 @@ function extract(ctx) {
       var title = isTv ? d.name : d.title;
       var date = (isTv ? d.first_air_date : d.release_date) || '';
       var year = parseInt(date.split('-')[0], 10) || null;
-      var imdbId = d.external_ids && d.external_ids.imdb_id;
+      var imdbId = (d.external_ids && d.external_ids.imdb_id) || ctx.imdbId || null;
       return { title: title, year: year, imdbId: imdbId || null };
     });
   }
@@ -158,6 +160,23 @@ function extract(ctx) {
       });
     }
     if (/hubcloud/i.test(hostname)) return hubCloudExtractor(url, referer);
+    if (/hubdrive/i.test(hostname)) {
+      return fetchText(url, { Referer: referer || url }).then(function (html) {
+        var $ = ctx.html(html);
+        var tasks = [];
+        $('a[href*="hubcloud"]').each(function () {
+          var href = $(this).attr('href') || '';
+          if (href) tasks.push(hubCloudExtractor(href, url));
+        });
+        if (!tasks.length) {
+          var m = String(html || '').match(/href=["']([^"']*hubcloud[^"']*)["']/i);
+          if (m && m[1]) tasks.push(hubCloudExtractor(m[1], url));
+        }
+        return Promise.all(tasks).then(function (groups) {
+          return [].concat.apply([], groups);
+        });
+      }).catch(function () { return []; });
+    }
     if (/pixeldrain/i.test(hostname)) {
       var pid = url.match(/(?:file|u)\/([A-Za-z0-9]+)/);
       var purl = pid ? 'https://pixeldrain.net/api/file/' + pid[1] : url;
@@ -171,18 +190,80 @@ function extract(ctx) {
     var url = searchApi + '?q=' + encodeURIComponent(query) +
       '&query_by=post_title,category&query_by_weights=4,2&sort_by=sort_by_date:desc' +
       '&limit=15&highlight_fields=none&use_cache=true&page=1&analytics_tag=' + today;
+    return typesenseHits(url, currentDomain);
+  }
+
+  function searchByImdb(imdbId, season, currentDomain) {
+    var url = searchApi + '?q=' + encodeURIComponent(imdbId) +
+      '&query_by=imdb_id&limit=15&highlight_fields=none&use_cache=true';
+    return typesenseHits(url, currentDomain).then(function (hits) {
+      return hits.filter(function (h) {
+        if (h.imdbId && h.imdbId !== imdbId) return false;
+        if (!isTv || !season) return true;
+        var s = String(season);
+        var sp = s.padStart(2, '0');
+        var tl = String(h.title || '').toLowerCase();
+        return tl.indexOf('season ' + s) >= 0 ||
+          tl.indexOf('s' + s) >= 0 ||
+          tl.indexOf('s' + sp) >= 0;
+      });
+    });
+  }
+
+  function typesenseHits(url, currentDomain) {
     return ctx.fetch(url, { headers: hdrs() }).then(function (r) { return r.json(); })
       .then(function (d) {
         if (!d || !d.hits) return [];
         return d.hits.map(function (h) {
-          var doc = h.document;
+          var doc = h.document || {};
           var ym = (doc.post_title || '').match(/\((\d{4})\)|\b(\d{4})\b/);
           var url2 = doc.permalink || '';
           if (url2.startsWith('/')) url2 = currentDomain + url2;
-          return { title: doc.post_title || '', url: url2, year: ym ? parseInt(ym[1] || ym[2], 10) : null };
+          return {
+            title: doc.post_title || '',
+            url: url2,
+            year: ym ? parseInt(ym[1] || ym[2], 10) : null,
+            imdbId: doc.imdb_id || null,
+          };
         });
       })
       .catch(function () { return []; });
+  }
+
+  function collectHubLinks(html, normalized) {
+    var $ = ctx.html(html);
+    var linkHrefs = [];
+    $('a[href*="hubdrive"]').each(function () {
+      var text = $(this).text() || '';
+      if (text.indexOf('⚡') >= 0) return;
+      var href = $(this).attr('href') || '';
+      if (href) linkHrefs.push({ url: href, episode: null });
+    });
+    var gadgets = [];
+    $('a[href*="gadgetsweb"]').each(function () {
+      var href = $(this).attr('href') || '';
+      if (href) gadgets.push(href);
+    });
+    if (!gadgets.length) return Promise.resolve(linkHrefs);
+    return Promise.all(gadgets.map(function (href) {
+      return getRedirectLink(href).then(function (redir) {
+        if (!redir) return [];
+        return fetchText(redir, { Referer: normalized }).then(function (hubHtml) {
+          var $h = ctx.html(hubHtml);
+          var out = [];
+          $h('a[href*="hubdrive"]').each(function () {
+            var t = $h(this).text() || '';
+            if (t.indexOf('⚡') >= 0) return;
+            var h = $h(this).attr('href') || '';
+            if (h) out.push({ url: h, episode: null });
+          });
+          return out;
+        }).catch(function () { return []; });
+      }).catch(function () { return []; });
+    })).then(function (groups) {
+      groups.forEach(function (g) { linkHrefs.push.apply(linkHrefs, g); });
+      return linkHrefs;
+    });
   }
 
   function getDownloadLinks(mediaUrl, currentDomain) {
@@ -194,10 +275,11 @@ function extract(ctx) {
       normalized = mu.toString();
     } catch (e) {}
     return fetchText(normalized, { Referer: currentDomain + '/' }).then(function (html) {
+      return collectHubLinks(html, normalized).then(function (hubLinks) {
       var $ = ctx.html(html);
       var typeRaw = $('h1.page-title span').text().toLowerCase();
       var isMovie = typeRaw.indexOf('movie') >= 0 || !isTv;
-      var linkHrefs = [];
+      var linkHrefs = hubLinks.slice();
       if (isMovie) {
         $('h3 a, h4 a').filter(function () {
           return /480|720|1080|2160|4K/i.test($(this).text());
@@ -245,22 +327,40 @@ function extract(ctx) {
           return true;
         });
       });
+      });
     });
   }
 
   return Promise.all([getTmdb(), latestDomain()]).then(function (pair) {
     var info = pair[0];
     var currentDomain = pair[1];
-    if (!info || !info.title) return [];
+    if (!info || !info.title) {
+      ctx.error('no tmdb title');
+      return [];
+    }
+    ctx.log('imdb=' + (info.imdbId || '') + ' domain=' + currentDomain + ' q=' + (isTv && ctx.season ? info.title + ' Season ' + ctx.season : info.title));
     var q = isTv && ctx.season ? info.title + ' Season ' + ctx.season : info.title;
-    return searchHits(q, currentDomain).then(function (hits) {
-      if (!hits.length) return [];
-      var match = bestMatch(info, hits) || hits[0];
+    var searchPromise = info.imdbId
+      ? searchByImdb(info.imdbId, ctx.season, currentDomain).then(function (imdbHits) {
+          if (imdbHits.length) return imdbHits;
+          return searchHits(q, currentDomain);
+        })
+      : searchHits(q, currentDomain);
+    return searchPromise.then(function (hits) {
+      if (!hits.length) {
+        ctx.error('no search hits');
+        return [];
+      }
+      ctx.log('hits=' + hits.length + ' first=' + (hits[0].title || hits[0].url));
+      var match = info.imdbId && hits[0].imdbId === info.imdbId
+        ? hits[0]
+        : (bestMatch(info, hits) || hits[0]);
       return getDownloadLinks(match.url, currentDomain).then(function (links) {
         var episode = ctx.episode ? parseInt(ctx.episode, 10) : null;
         if (isTv && episode !== null) {
           links = links.filter(function (l) { return l.episode === episode; });
         }
+        ctx.log('links=' + links.length + (episode != null ? ' ep=' + episode : ''));
         return links.map(function (l) {
           var name = 'HDHub4u';
           if (l.name) name += ' ' + l.name.replace(/^HubCloud\s*-?\s*/i, '');
@@ -277,5 +377,8 @@ function extract(ctx) {
         });
       });
     });
-  }).catch(function () { return []; });
+  }).catch(function (e) {
+    ctx.error(e && e.message ? e.message : e);
+    return [];
+  });
 }

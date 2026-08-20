@@ -1,7 +1,12 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
   var base = (cfg.base || 'https://anikototv.to').replace(/\/$/, '');
-  var mapper = cfg.mapper || 'https://mapper.nekostream.site/api/mal';
+  var mapperBases = Array.isArray(cfg.mappers) && cfg.mappers.length
+    ? cfg.mappers
+    : [
+        cfg.mapper || 'https://mapper.nekostream.site/api/mal',
+        'https://mapper.mewcdn.online/api/mal',
+      ];
   var anilistUrl = cfg.anilistUrl || 'https://graphql.anilist.co';
   var armBase = (cfg.armBase || 'https://arm.haglund.dev/api/v2').replace(/\/$/, '');
   var mapApi = cfg.mapApi || 'https://id-mapping-api-malid.hf.space/api/resolve';
@@ -10,7 +15,7 @@ function extract(ctx) {
   var spoofRef = cfg.spoofRef || 'https://hianimes.re/';
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-  var hdrs = { 'User-Agent': ua, Accept: 'text/html,*/*' };
+  var hdrs = { 'User-Agent': ua, Accept: 'text/html,*/*', 'Accept-Language': 'en-US,en;q=0.9' };
   var isTv = ctx.type === 'tv';
   var epNum = isTv ? ctx.episode || 1 : 1;
 
@@ -184,23 +189,69 @@ function extract(ctx) {
     });
   }
 
+  function rewriteMewstream(m3u8, tracks) {
+    if (!m3u8 || m3u8.indexOf('mewstream.buzz') < 0) return m3u8;
+    var replacementHost = '1oe.lostproject.club';
+    if (Array.isArray(tracks)) {
+      for (var i = 0; i < tracks.length; i++) {
+        var tUrl = tracks[i] && tracks[i].file;
+        if (tUrl && tUrl.indexOf('mewstream.buzz') < 0) {
+          try {
+            replacementHost = new URL(tUrl).host;
+            break;
+          } catch (e) {}
+        }
+      }
+    }
+    try {
+      var parsed = new URL(m3u8);
+      parsed.host = replacementHost;
+      return parsed.toString();
+    } catch (e) {
+      return m3u8;
+    }
+  }
+
+  function normalizeMegaplayUrl(embedUrl) {
+    return String(embedUrl || '')
+      .replace('vidwish.live', 'megaplay.buzz')
+      .replace('megacloud.bloggy.click', 'megaplay.buzz');
+  }
+
   function extractEmbedSource(embedUrl) {
-    return fetchText(embedUrl, { Referer: spoofRef, 'Accept-Language': 'en-US,en;q=0.9' })
+    var normalized = normalizeMegaplayUrl(embedUrl);
+    return fetchText(normalized, { Referer: spoofRef, 'Accept-Language': 'en-US,en;q=0.9' })
       .then(function (pageHtml) {
-        var m = pageHtml.match(/data-id="([^"]*)"/);
+        var m = pageHtml.match(/data-id="([^"]*)"/) || pageHtml.match(/ File ([0-9]+)/);
         if (!m || !m[1]) return null;
         var fileId = m[1];
-        var origin = embedUrl.match(/^https?:\/\/[^/]+/)[0];
-        return fetchJson(origin + '/stream/getSources?id=' + fileId + '&id=' + fileId, {
+        var origin = (normalized.match(/^https?:\/\/[^/]+/) || [''])[0];
+        return fetchJson(origin + '/stream/getSources?id=' + fileId + (fileId.indexOf('&') >= 0 ? '' : '&id=' + fileId), {
           Referer: origin + '/',
           'X-Requested-With': 'XMLHttpRequest',
         }).then(function (data) {
+          if (data && data.sources && data.sources.file) {
+            data.sources.file = rewriteMewstream(data.sources.file, data.tracks);
+          }
           return { fileId: fileId, data: data, origin: origin };
         });
       })
       .catch(function () {
         return null;
       });
+  }
+
+  function fetchKiwiMapper(mal, slug, timestamp) {
+    var chain = Promise.resolve(null);
+    mapperBases.forEach(function (mapperBase) {
+      chain = chain.then(function (found) {
+        if (found) return found;
+        return fetchJson(mapperBase + '/' + mal + '/' + slug + '/' + timestamp, { Referer: base + '/' }).catch(function () {
+          return null;
+        });
+      });
+    });
+    return chain;
   }
 
   function parseEpisodeTarget(html, episode) {
@@ -232,11 +283,7 @@ function extract(ctx) {
       .then(function (serverData) {
         var mapperP =
           targetEp.mal && targetEp.slug && targetEp.timestamp
-            ? fetchJson(mapper + '/' + targetEp.mal + '/' + targetEp.slug + '/' + targetEp.timestamp, { Referer: base + '/' }).catch(
-                function () {
-                  return null;
-                },
-              )
+            ? fetchKiwiMapper(targetEp.mal, targetEp.slug, targetEp.timestamp)
             : Promise.resolve(null);
         return mapperP.then(function (mapperData) {
           var serverHtml = (serverData && serverData.result) || '';

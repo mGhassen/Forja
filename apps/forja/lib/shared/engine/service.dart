@@ -394,8 +394,14 @@ class EngineService {
       );
       if (gen != _extractGeneration) return null;
     }
+    debugPrint(
+      '[engine] ${plugin.id} start tmdb=$tmdbId type=$mediaType '
+      's=$season e=$episode title=$title',
+    );
+    final sw = Stopwatch()..start();
     final raw = await rt.extract(
       pluginId: plugin.id,
+      pluginName: plugin.name,
       tmdbId: tmdbId,
       imdbId: animeIds?.imdbId ?? movie?.imdbId,
       malId: animeIds?.malId,
@@ -416,7 +422,10 @@ class EngineService {
       allowHostFallback: allowHostFallback,
       isCancelled: () => gen != _extractGeneration,
     );
-    if (gen != _extractGeneration) return null;
+    if (gen != _extractGeneration) {
+      debugPrint('[engine] ${plugin.id} cancelled after ${sw.elapsedMilliseconds}ms');
+      return null;
+    }
     final streams = <Map<String, dynamic>>[];
     for (final s in raw) {
       final url = (s['url'] ?? '').toString().trim();
@@ -432,6 +441,10 @@ class EngineService {
       );
       if (mapped != null) streams.add(mapped);
     }
+    debugPrint(
+      '[engine] ${plugin.id} done raw=${raw.length} streams=${streams.length} '
+      '${sw.elapsedMilliseconds}ms',
+    );
     return EngineExtractResult(
       pluginId: plugin.id,
       pluginName: plugin.name,

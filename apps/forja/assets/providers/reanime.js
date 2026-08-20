@@ -173,10 +173,19 @@ function extract(ctx) {
       var re = /https?:\/\/flixcloud\.cc\/e\/[A-Za-z0-9_-]+[^"'\\\s<]*/g;
       var m;
       while ((m = re.exec(html)) !== null) embeds.push(m[0]);
+      // Anivault-style dataLink / data-an-video attributes on watch pages.
+      var attrRe = /data-(?:an-video|link|src)=["'](https?:\/\/[^"']+)["']/gi;
+      while ((m = attrRe.exec(html)) !== null) embeds.push(m[1]);
+      var dataLinkRe = /"dataLink"\s*:\s*"(https?:\\\/\\\/[^"]+|https?:\/\/[^"]+)"/g;
+      while ((m = dataLinkRe.exec(html)) !== null) {
+        embeds.push(m[1].replace(/\\\//g, '/'));
+      }
       if (!embeds.length && alId) {
         return fetchJson(base + '/api/flix/' + alId + '/' + episode).then(function (json) {
           var text = JSON.stringify(json);
           while ((m = re.exec(text)) !== null) embeds.push(m[0]);
+          var dl = json && (json.dataLink || (json.sub && json.sub[0] && json.sub[0].dataLink));
+          if (dl) embeds.push(dl);
           return embeds;
         }).catch(function () { return embeds; });
       }

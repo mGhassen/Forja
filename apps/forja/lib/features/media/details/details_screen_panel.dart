@@ -281,11 +281,18 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       case 'torrents':
         return _s._torrentInFlightProviderIds;
       case 'nuvio':
-        return {for (final id in _s._nuvioInFlightScraperIds) 'nuvio:$id'};
-      case EngineIds.kind:
+        if (!_s._nuvioWorkActive) return const {};
         return {
-          for (final id in _s._engineInFlightPluginIds)
-            EngineIds.pluginChip(id),
+          for (final id in _s._nuvioSelectedScraperIds)
+            if (!_s._nuvioFetchedScraperIds.contains(id))
+              'nuvio:$id',
+        };
+      case EngineIds.kind:
+        if (!_s._engineWorkActive) return const {};
+        return {
+          for (final id in _s._engineSelectedPluginIds)
+            if (!_s._engineFetchedPluginIds.contains(id))
+              EngineIds.pluginChip(id),
         };
       case 'stremio':
         if (!_s._isStremioFetching) return const {};
@@ -319,6 +326,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._nuvioFetchGen++;
           _s._isNuvioFetching = false;
           _s._nuvioInFlightScraperIds.clear();
+          _s._nuvioFetchedScraperIds.clear();
           DomainStreamProviderResolver.cancelAllPending(
             cancelEngineJobs: false,
           );
@@ -334,12 +342,10 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       final scraperId = id.substring('nuvio:'.length);
       final wasSelected = _s._nuvioSelectedScraperIds.contains(scraperId);
       final fetched = _s._nuvioFetchedScraperIds.contains(scraperId);
-      final cancelInFlight =
-          wasSelected &&
-          _s._isNuvioFetching &&
-          _s._nuvioInFlightScraperIds.contains(scraperId);
-      if (wasSelected && !fetched && !cancelInFlight) {
-        unawaited(_s._fetchNextNuvioScraper(onlyId: scraperId));
+      if (wasSelected &&
+          !fetched &&
+          !_s._nuvioInFlightScraperIds.contains(scraperId)) {
+        unawaited(_s._fetchNextNuvioScraper());
         return;
       }
       setState(() {
@@ -356,19 +362,14 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._nuvioFetchedScraperIds = Set<String>.from(
             _s._nuvioFetchedScraperIds,
           )..remove(scraperId);
-          if (cancelInFlight) {
-            _s._nuvioFetchGen++;
-            _s._isNuvioFetching = false;
-            _s._nuvioInFlightScraperIds.clear();
-            DomainStreamProviderResolver.cancelAllPending(
-              cancelEngineJobs: false,
-            );
-          }
         } else {
           _s._nuvioSelectedScraperIds = {
             ..._s._nuvioSelectedScraperIds,
             scraperId,
           };
+          _s._nuvioFetchedScraperIds = Set<String>.from(
+            _s._nuvioFetchedScraperIds,
+          )..remove(scraperId);
         }
       });
       CatalogSourcesSessionCache.writeNuvio(
@@ -382,7 +383,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         ),
       );
       if (!wasSelected) {
-        unawaited(_s._fetchNextNuvioScraper(onlyId: scraperId));
+        unawaited(_s._fetchNextNuvioScraper());
       }
       return;
     }
@@ -416,6 +417,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._engineFetchGen++;
           _s._isEngineFetching = false;
           _s._engineInFlightPluginIds.clear();
+          _s._engineFetchedPluginIds.clear();
           EngineService.instance.cancelPending();
         }
       });
@@ -429,12 +431,10 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       final pluginId = id.substring(EngineIds.prefix.length);
       final wasSelected = _s._engineSelectedPluginIds.contains(pluginId);
       final fetched = _s._engineFetchedPluginIds.contains(pluginId);
-      final cancelInFlight =
-          wasSelected &&
-          _s._isEngineFetching &&
-          _s._engineInFlightPluginIds.contains(pluginId);
-      if (wasSelected && !fetched && !cancelInFlight) {
-        unawaited(_s._fetchNextEnginePlugin(onlyId: pluginId));
+      if (wasSelected &&
+          !fetched &&
+          !_s._engineInFlightPluginIds.contains(pluginId)) {
+        unawaited(_s._fetchNextEnginePlugin());
         return;
       }
       setState(() {
@@ -451,17 +451,14 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._engineFetchedPluginIds = Set<String>.from(
             _s._engineFetchedPluginIds,
           )..remove(pluginId);
-          if (cancelInFlight) {
-            _s._engineFetchGen++;
-            _s._isEngineFetching = false;
-            _s._engineInFlightPluginIds.clear();
-            EngineService.instance.cancelPending();
-          }
         } else {
           _s._engineSelectedPluginIds = {
             ..._s._engineSelectedPluginIds,
             pluginId,
           };
+          _s._engineFetchedPluginIds = Set<String>.from(
+            _s._engineFetchedPluginIds,
+          )..remove(pluginId);
         }
       });
       CatalogSourcesSessionCache.writeEngine(
@@ -475,7 +472,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         ),
       );
       if (!wasSelected) {
-        unawaited(_s._fetchNextEnginePlugin(onlyId: pluginId));
+        unawaited(_s._fetchNextEnginePlugin());
       }
       return;
     }

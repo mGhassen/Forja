@@ -5,7 +5,8 @@ function extract(ctx) {
   var jikan = cfg.jikan || 'https://api.jikan.moe/v4/anime';
   var tmdbKey = cfg.tmdbKey || '1865f43a0549ca50d341dd9ab8b29f49';
   var ua = 'Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0';
-  var hdrs = { 'User-Agent': ua, Referer: base + '/', Accept: 'application/json' };
+  // ninstream and similar CDNs whitelist senshi.live — keep Referer fixed.
+  var hdrs = { 'User-Agent': ua, Referer: base + '/', Origin: base, Accept: 'application/json,*/*' };
   var isTv = ctx.type === 'tv';
   var epNum = isTv ? ctx.episode || 1 : 1;
 
@@ -70,8 +71,13 @@ function extract(ctx) {
     });
   }
 
-  function isDub(status) {
-    return String(status || '').toLowerCase() === 'dub';
+  function embedType(embed) {
+    var status = String(
+      (embed && (embed.status || embed.type || embed.lang || embed.audio)) || '',
+    ).toLowerCase();
+    if (status.indexOf('dub') >= 0 || status === 'en' || status.indexOf('english') >= 0) return 'dub';
+    if (status.indexOf('raw') >= 0) return 'raw';
+    return 'sub';
   }
 
   function fetchEmbeds(malId, episode) {
@@ -80,33 +86,70 @@ function extract(ctx) {
     });
   }
 
-  function pickSource(embeds, wantDub) {
+  function pickSources(embeds, want) {
+    var out = [];
     for (var i = 0; i < embeds.length; i++) {
-      if (wantDub ? isDub(embeds[i].status) : !isDub(embeds[i].status)) return embeds[i];
+      if (embedType(embeds[i]) === want) out.push(embeds[i]);
     }
-    return embeds[0] || null;
+    return out.length ? out : embeds.slice();
   }
 
   function rowsFromSource(source, audio) {
-    if (!source) return [];
-    var rows = [];
-    if (source.url) {
-      rows.push({
-        url: source.url,
-        name: 'Senshi',
-        headers: hdrs,
-        language: audio === 'dub' ? 'Dub' : 'Sub',
-      });
+    if (!source) return Promise.resolve([]);
+    var lang = audio === 'dub' ? 'Dub' : audio === 'raw' ? 'Raw' : 'Sub';
+    var tasks = [];
+    function pushDirect(u, label) {
+      if (!u || !/^https?:/i.test(String(u))) return;
+      var url = String(u);
+      if (/\.m3u8|\.mp4/i.test(url) || url.indexOf('/hls') >= 0) {
+        tasks.push(
+          Promise.resolve([
+            {
+              url: url,
+              name: label || 'Senshi',
+              headers: { 'User-Agent': ua, Referer: base + '/', Origin: base },
+              language: lang,
+            },
+          ]),
+        );
+      } else {
+        tasks.push(
+          ctx.hop(url).then(function (rows) {
+            return (rows || []).map(function (r) {
+              return Object.assign({}, r, {
+                name: r.name || label || 'Senshi embed',
+                language: lang,
+                headers: Object.assign({}, r.headers || {}, { Referer: base + '/', Origin: base }),
+              });
+            });
+          }),
+        );
+      }
     }
-    var embedTasks = [];
-    if (source.server2) embedTasks.push(ctx.hop(source.server2));
-    if (source.serverFM) embedTasks.push(ctx.hop(source.serverFM));
-    return Promise.all(embedTasks).then(function (groups) {
-      var hopped = [].concat.apply([], groups || []);
-      hopped.forEach(function (r) {
-        rows.push(Object.assign({}, r, { name: r.name || 'Senshi embed', language: audio === 'dub' ? 'Dub' : 'Sub' }));
+    pushDirect(source.url, 'Senshi');
+    pushDirect(source.server2, 'Senshi server2');
+    pushDirect(source.serverFM, 'Senshi FM');
+    if (!tasks.length) return Promise.resolve([]);
+    return Promise.all(tasks).then(function (groups) {
+      return [].concat.apply([], groups || []);
+    });
+  }
+
+  function rowsFromEmbeds(embeds, audio) {
+    var picked = pickSources(embeds, audio);
+    return Promise.all(
+      picked.slice(0, 4).map(function (src) {
+        return rowsFromSource(src, audio);
+      }),
+    ).then(function (groups) {
+      var seen = {};
+      var out = [];
+      ;[].concat.apply([], groups).forEach(function (r) {
+        if (!r || !r.url || seen[r.url]) return;
+        seen[r.url] = true;
+        out.push(r);
       });
-      return rows;
+      return out;
     });
   }
 
@@ -115,9 +158,12 @@ function extract(ctx) {
       if (!mal) return ctx.host('senshi');
       return fetchEmbeds(mal, epNum).then(function (embeds) {
         if (!embeds.length) return ctx.host('senshi');
-        return rowsFromSource(pickSource(embeds, false), 'sub').then(function (sub) {
+        return rowsFromEmbeds(embeds, 'sub').then(function (sub) {
           if (sub.length) return sub;
-          return rowsFromSource(pickSource(embeds, true), 'dub');
+          return rowsFromEmbeds(embeds, 'dub').then(function (dub) {
+            if (dub.length) return dub;
+            return rowsFromEmbeds(embeds, 'raw');
+          });
         });
       });
     })
