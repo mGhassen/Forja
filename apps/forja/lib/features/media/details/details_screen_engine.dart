@@ -58,15 +58,12 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
   }
 
   void _engineDbg(String msg) {
+    final run = _s._engineInFlightPluginIds.join(',');
+    final dots = _engineLoadingPluginIds.join(',');
     debugPrint(
-      '[engine-pool] $msg | gen=${_s._engineFetchGen} '
-      'fetching=${_s._isEngineFetching} '
-      'tasks=${_enginePoolTasks.length} '
-      'inFlight=${_s._engineInFlightPluginIds.toList()} '
-      'pending=${_pendingEnginePluginIds} '
-      'fetched=${_s._engineFetchedPluginIds.toList()} '
-      'selected=${_s._engineSelectedPluginIds.toList()} '
-      'loading=${_engineLoadingPluginIds.toList()}',
+      '[ep] $msg'
+      '${run.isEmpty ? '' : '  run=$run'}'
+      '${dots.isEmpty ? '' : '  ...=$dots'}',
     );
   }
 
@@ -80,7 +77,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     required String type,
     required int gen,
   }) async {
-    _engineDbg('apply-start $pluginId');
+    _engineDbg('+$pluginId');
     final year = _s._movie.releaseDate.length >= 4
         ? _s._movie.releaseDate.substring(0, 4)
         : null;
@@ -101,11 +98,11 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       debugPrint('[engine] plugin $pluginId failed: $e');
     }
     if (!mounted || gen != _s._engineFetchGen) {
-      _engineDbg('apply-drop $pluginId stale/unmounted');
+      _engineDbg('drop $pluginId');
       return;
     }
     if (!_s._engineSelectedPluginIds.contains(pluginId)) {
-      _engineDbg('apply-drop $pluginId deselected');
+      _engineDbg('drop $pluginId');
       return;
     }
     final n = batch?.streams.length ?? 0;
@@ -118,7 +115,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         _s._engineStreams.addAll(batch.streams);
       }
     });
-    _engineDbg('apply-done $pluginId streams=$n');
+    _engineDbg('done $pluginId n=$n');
     CatalogSourcesSessionCache.writeEngine(
       _s._catalogCacheKey,
       List<Map<String, dynamic>>.from(_s._engineStreams),
@@ -130,15 +127,9 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
   }
 
   void _engineFillPool({required int gen, required String type}) {
-    if (!mounted || gen != _s._engineFetchGen) {
-      _engineDbg('fill skip gen mismatch want=$gen');
-      return;
-    }
+    if (!mounted || gen != _s._engineFetchGen) return;
     final slots = _enginePoolLimit - _s._engineInFlightPluginIds.length;
-    if (slots <= 0) {
-      _engineDbg('fill skip full limit=$_enginePoolLimit');
-      return;
-    }
+    if (slots <= 0) return;
     final next = nextEnginePluginBatch(
       orderedIds: _orderedEnginePluginIds,
       selectedIds: _s._engineSelectedPluginIds,
@@ -148,9 +139,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       },
       limit: slots,
     );
-    _engineDbg('fill slots=$slots next=$next');
     if (next.isEmpty) return;
-    // One setState so all loading chips flip together; only launch newly claimed ids.
+    _engineDbg('fill ${next.join(',')}');
     final started = <String>[];
     setState(() {
       for (final id in next) {
@@ -182,17 +172,12 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         );
       } finally {
         _enginePoolTasks.remove(task);
-        if (!mounted || gen != _s._engineFetchGen) {
-          _engineDbg('finish-drop $pluginId');
-          return;
-        }
+        if (!mounted || gen != _s._engineFetchGen) return;
         setState(() => _s._engineInFlightPluginIds.remove(pluginId));
-        _engineDbg('finish $pluginId');
         _engineFillPool(gen: gen, type: type);
       }
     }();
     _enginePoolTasks.add(task);
-    _engineDbg('launch $pluginId');
   }
 
   Future<void> _engineDrainPool({required int gen, required String type}) async {
@@ -204,10 +189,9 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       }
       if (!mounted || gen != _s._engineFetchGen) return;
       if (_pendingEnginePluginIds.isEmpty) break;
-      _engineDbg('drain refill pending=${_pendingEnginePluginIds}');
       _engineFillPool(gen: gen, type: type);
       if (_enginePoolTasks.isEmpty) {
-        _engineDbg('drain stuck pending but no tasks');
+        _engineDbg('stuck ${_pendingEnginePluginIds.join(',')}');
         break;
       }
     }
@@ -230,17 +214,12 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     }
     final startingAllWalk =
         !reset && !refresh && _engineFullAllSelected && !_s._isEngineFetching;
-    // Claim walk before any await so concurrent chip taps join instead of
-    // bumping gen and killing the pool.
     _s._isEngineFetching = true;
     final gen = ++_s._engineFetchGen;
     _enginePoolLimit = engineSourcesBatchLimit(
       tv: SourcesPanelTv.isTv(context),
     );
-    _engineDbg(
-      'start reset=$reset refresh=$refresh allWalk=$startingAllWalk '
-      'limit=$_enginePoolLimit',
-    );
+    _engineDbg(refresh ? 'refresh' : (reset ? 'reset' : 'start'));
     setState(() {
       if (reset) {
         _s._engineStreams = [];
@@ -263,10 +242,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     });
     _engineFillPool(gen: gen, type: type);
     await _engineDrainPool(gen: gen, type: type);
-    if (!mounted || gen != _s._engineFetchGen) {
-      _engineDbg('end stale');
-      return;
-    }
+    if (!mounted || gen != _s._engineFetchGen) return;
     final stillPending = _pendingEnginePluginIds.isNotEmpty;
     setState(() {
       _s._isEngineFetching = stillPending;
@@ -277,6 +253,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         _s._errorMessage = 'No streams found from selected Forja plugins';
       }
     });
-    _engineDbg('end stillPending=$stillPending');
+    _engineDbg(stillPending ? 'end pending' : 'end');
   }
 }

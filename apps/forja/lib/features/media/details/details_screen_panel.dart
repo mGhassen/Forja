@@ -319,8 +319,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           }(),
       ];
       debugPrint(
-        '[engine-pool] chips-loading ...=${labels.isEmpty ? '(none)' : labels} '
-        'ids=${ids.isEmpty ? '(none)' : ids.toList()}',
+        '[ep] ...=${labels.isEmpty ? '-' : labels.join(',')}',
       );
     }
     return ids;
@@ -496,10 +495,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         ),
       );
       if (!wasSelected) {
-        debugPrint(
-          '[engine-pool] chip-add $pluginId selected=${_s._engineSelectedPluginIds.toList()} '
-          'fetched=${_s._engineFetchedPluginIds.toList()}',
-        );
+        debugPrint('[ep] +$pluginId');
         unawaited(_s._fetchNextEnginePlugin());
       }
       return;

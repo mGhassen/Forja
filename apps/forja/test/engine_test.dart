@@ -449,6 +449,7 @@ void main() {
           'hop-abyss',
           'hop-megaup',
           'hop-rapidshare',
+          'hop-cloudfabric',
         ]),
       );
       expect(parsed.firstWhere((p) => p.id == 'videasy').isHttp, isTrue);
@@ -470,6 +471,11 @@ void main() {
       expect(
         parsed.firstWhere((p) => p.id == 'vidsrcsbs').config['nxshaOrigin'],
         'https://web.nxsha.app',
+      );
+      expect(parsed.firstWhere((p) => p.id == 'autoembed').entry, 'autoembed.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'hop-cloudfabric').isHop,
+        isTrue,
       );
       expect(parsed.firstWhere((p) => p.id == 'hexa').entry, 'hexa.js');
       expect(parsed.firstWhere((p) => p.id == 'hianime').entry, 'hianime.js');

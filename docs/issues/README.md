@@ -187,7 +187,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [164-[open]-…](164-[open]-vsembed-new-player-chain.md) | VSEmbed new JS player (rcp/prorcp dead) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [165-[open]-…](165-[open]-vidnest-cdn-forced-referer.md) | VidNest movie/TV CDN forced vidnest.fun Referer | P1 | High | open | 2/2 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [166-[open]-…](166-[open]-vidlove-opaque-media-proxy.md) | VidLove opaque `/api?d=` media not accepted | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [167-[open]-…](167-[open]-autoembed-cloudflare-turnstile.md) | AutoEmbed Cloudflare Turnstile blocks sniff | P1 | High | open | 0/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [167-[open]-…](167-[open]-autoembed-cloudflare-turnstile.md) | AutoEmbed Cloudflare Turnstile blocks sniff | P1 | High | open | 1/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [168-[open]-…](168-[open]-vidrock-multi-server-chip-rotate.md) | VidRock multi-server chip-rotate collect-all | P1 | Medium | open | 4/4 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [169-[open]-…](169-[open]-vidfast-w-path-bundled-hls.md) | VidFast `/w/` + bundled HLS sniff | P1 | High | open | 4/4 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [170-[open]-…](170-[open]-vidzee-cloudflare-sniff.md) | Vidzee Cloudflare sniff wait | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |

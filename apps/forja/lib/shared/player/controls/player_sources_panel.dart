@@ -1305,8 +1305,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           }(),
       ];
       debugPrint(
-        '[engine-pool] chips-loading ...=${labels.isEmpty ? '(none)' : labels} '
-        'ids=${ids.isEmpty ? '(none)' : ids.toList()}',
+        '[ep] ...=${labels.isEmpty ? '-' : labels.join(',')}',
       );
     }
     return ids;
@@ -1960,15 +1959,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _engineDbg(String msg) {
+    final run = _engineInFlightPluginIds.join(',');
+    final dots = _engineLoadingPluginIds.join(',');
     debugPrint(
-      '[engine-pool] $msg | gen=$_engineFetchGen '
-      'fetching=$_engineFetching '
-      'tasks=${_enginePoolTasks.length} '
-      'inFlight=${_engineInFlightPluginIds.toList()} '
-      'pending=$_pendingEnginePluginIds '
-      'fetched=${_engineFetchedPluginIds.toList()} '
-      'selected=${_engineSelectedPluginIds.toList()} '
-      'loading=${_engineLoadingPluginIds.toList()}',
+      '[ep] $msg'
+      '${run.isEmpty ? '' : '  run=$run'}'
+      '${dots.isEmpty ? '' : '  ...=$dots'}',
     );
   }
 
@@ -1977,7 +1973,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required String type,
     required int gen,
   }) async {
-    _engineDbg('apply-start $pluginId');
+    _engineDbg('+$pluginId');
     EngineExtractResult? batch;
     try {
       batch = await EngineService.instance.runPluginIsolated(
@@ -1995,11 +1991,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       debugPrint('[engine] plugin $pluginId failed: $e');
     }
     if (!mounted || gen != _engineFetchGen) {
-      _engineDbg('apply-drop $pluginId stale/unmounted');
+      _engineDbg('drop $pluginId');
       return;
     }
     if (!_engineSelectedPluginIds.contains(pluginId)) {
-      _engineDbg('apply-drop $pluginId deselected');
+      _engineDbg('drop $pluginId');
       return;
     }
     final n = batch?.streams.length ?? 0;
@@ -2012,7 +2008,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _engineStreams.addAll(batch.streams);
       }
     });
-    _engineDbg('apply-done $pluginId streams=$n');
+    _engineDbg('done $pluginId n=$n');
     CatalogSourcesSessionCache.writeEngine(
       _catalogCacheKey,
       _engineStreams,
@@ -2023,23 +2019,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _engineFillPool({required int gen, required String type}) {
-    if (!mounted || gen != _engineFetchGen) {
-      _engineDbg('fill skip gen mismatch want=$gen');
-      return;
-    }
+    if (!mounted || gen != _engineFetchGen) return;
     final slots = _enginePoolLimit - _engineInFlightPluginIds.length;
-    if (slots <= 0) {
-      _engineDbg('fill skip full limit=$_enginePoolLimit');
-      return;
-    }
+    if (slots <= 0) return;
     final next = nextEnginePluginBatch(
       orderedIds: _orderedEnginePluginIds,
       selectedIds: _engineSelectedPluginIds,
       fetchedIds: {..._engineFetchedPluginIds, ..._engineInFlightPluginIds},
       limit: slots,
     );
-    _engineDbg('fill slots=$slots next=$next');
     if (next.isEmpty) return;
+    _engineDbg('fill ${next.join(',')}');
     final started = <String>[];
     setState(() {
       for (final id in next) {
@@ -2071,17 +2061,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         );
       } finally {
         _enginePoolTasks.remove(task);
-        if (!mounted || gen != _engineFetchGen) {
-          _engineDbg('finish-drop $pluginId');
-          return;
-        }
+        if (!mounted || gen != _engineFetchGen) return;
         setState(() => _engineInFlightPluginIds.remove(pluginId));
-        _engineDbg('finish $pluginId');
         _engineFillPool(gen: gen, type: type);
       }
     }();
     _enginePoolTasks.add(task);
-    _engineDbg('launch $pluginId');
   }
 
   Future<void> _engineDrainPool({required int gen, required String type}) async {
@@ -2091,10 +2076,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
       if (!mounted || gen != _engineFetchGen) return;
       if (_pendingEnginePluginIds.isEmpty) break;
-      _engineDbg('drain refill pending=$_pendingEnginePluginIds');
       _engineFillPool(gen: gen, type: type);
       if (_enginePoolTasks.isEmpty) {
-        _engineDbg('drain stuck pending but no tasks');
+        _engineDbg('stuck ${_pendingEnginePluginIds.join(',')}');
         break;
       }
     }
@@ -2127,10 +2111,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _enginePoolLimit = engineSourcesBatchLimit(
       tv: SourcesPanelTv.isTv(context),
     );
-    _engineDbg(
-      'start reset=$reset refresh=$refresh allWalk=$startingAllWalk '
-      'limit=$_enginePoolLimit',
-    );
+    _engineDbg(refresh ? 'refresh' : (reset ? 'reset' : 'start'));
     setState(() {
       if (reset) {
         _engineStreams = [];
@@ -2151,10 +2132,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     });
     _engineFillPool(gen: gen, type: type);
     await _engineDrainPool(gen: gen, type: type);
-    if (!mounted || gen != _engineFetchGen) {
-      _engineDbg('end stale');
-      return;
-    }
+    if (!mounted || gen != _engineFetchGen) return;
     final stillPending = _pendingEnginePluginIds.isNotEmpty;
     setState(() {
       _engineFetching = stillPending;
@@ -2163,7 +2141,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _error = 'No streams found from selected Forja plugins';
       }
     });
-    _engineDbg('end stillPending=$stillPending');
+    _engineDbg(stillPending ? 'end pending' : 'end');
   }
 
   void _onKindChanged(String kind) {

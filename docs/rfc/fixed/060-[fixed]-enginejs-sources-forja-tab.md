@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 70 / 72** acceptance · **2 ⏭️** manual play QA |
-| **Current slice** | VidSrc.sbs balanced `CFG.servers` + nxsha AES API (`engine.json` 1.5.5); manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
+| **Progress** | **Complete · 71 / 73** acceptance · **2 ⏭️** manual play QA |
+| **Current slice** | AutoEmbed cloudfabric hop + 111477 index URLs (`engine.json` 1.5.6); manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -105,6 +105,7 @@
 | 70 | R60-A70 | Vidzee Forja plugin uses `core.vidzee.wtf/streams` plaintext `e=0` (not dead `/api/server`) | ✅ |
 | 71 | R60-A71 | Forja chips **2Embed** / **111477** use `multiembed.js` / `dahmermovies.js` HTTP extract (not empty `embed.js` / `host_wrap`) | ✅ |
 | 72 | R60-A72 | VidSrc.sbs Forja plugin uses balanced-bracket `CFG.servers` parse + nxsha AES `/api/servers`+`/api/sources` (Decryptor) with Videasy nest STREAMCRYPTO | ✅ |
+| 73 | R60-A73 | AutoEmbed uses `autoembed.js` + `hop-cloudfabric` for `nextgencloudfabric.com`; 111477 returns `a.111477.xyz` file URLs (no redirect filter that emptied results) | ✅ |
 
 ---
 

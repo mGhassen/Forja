@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "Forja",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "plugins": [
     {
       "id": "videasy",
@@ -328,7 +328,7 @@
     {
       "id": "autoembed",
       "name": "AutoEmbed",
-      "entry": "embed.js",
+      "entry": "autoembed.js",
       "types": [
         "movie",
         "tv"
@@ -1731,6 +1731,20 @@
       "hosts": [
         "hanime.tv",
         "hanime.me"
+      ]
+    },
+    {
+      "id": "hop-cloudfabric",
+      "name": "CloudFabric",
+      "entry": "hops/cloudfabric.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "hop",
+      "hosts": [
+        "nextgencloudfabric.com",
+        "cloudfabric.com"
       ]
     }
   ]
