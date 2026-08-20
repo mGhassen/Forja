@@ -1,5 +1,6 @@
 import 'package:forja/features/asian_drama/catalog/kisskh_tmdb_match.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
+import 'package:forja/features/my_list/providers/my_list_providers.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker_sync.dart';
@@ -92,6 +93,15 @@ class HubListFollow {
   }) async {
     var t = await _withDramaTmdb(raw);
     if (to.isEmpty) {
+      final keys = <String>{t.uniqueId};
+      if (t.anilistId != null) keys.add('anilist_${t.anilistId}');
+      if (t.kisskhId != null) keys.add('kisskh_${t.kisskhId}');
+      if (t.tmdbId != null) {
+        keys.add(
+          MyListService.movieId(t.tmdbId!, t.tmdbMediaType ?? 'tv'),
+        );
+      }
+      container?.read(myListHiddenKeysProvider.notifier).addAll(keys);
       await MyListService().remove(t.uniqueId);
       var ok = true;
       if (await SimklService().isLoggedIn()) {

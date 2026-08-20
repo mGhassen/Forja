@@ -86,6 +86,10 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   }
 
   Future<void> _openStreamedMatch(_StreamedMatch match) async {
+    if (match.isIptvSports) {
+      await _openIptvSportsMatch(match);
+      return;
+    }
     if (match.isStremio) {
       await _openStremioSportMatch(match);
       return;
@@ -169,6 +173,43 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     if (!ok) return;
     if (sources.isEmpty) {
       ForjaToast.info('No playable streams for this event');
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => IptvPtPlayerScreen(
+          sources: sources,
+          title: match.title,
+          subtitle: match.categoryLabel,
+          engineContext: BuiltInPlayerContext.live,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openIptvSportsMatch(_StreamedMatch match) async {
+    if (!mounted) return;
+    final game = match.sportMatchGame;
+    if (game == null) {
+      ForjaToast.info('Missing game data');
+      return;
+    }
+    final sources = <IptvPlaySource>[];
+    final ok = await _runWithCancellableLoading(
+      'Matching IPTV channels…',
+      () async {
+        try {
+          sources.addAll(await _resolveIptvSportsStreams(match));
+        } catch (e) {
+          debugPrint('[LiveMatches] IPTV sports resolve error: $e');
+        }
+      },
+    );
+    if (!ok) return;
+    if (sources.isEmpty) {
+      ForjaToast.info('No matching IPTV channels for this event');
       return;
     }
     if (!mounted) return;

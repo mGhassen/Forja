@@ -276,30 +276,54 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     return options;
   }
 
+  Set<String>? _lastLoggedLoadingChipIds;
+
   Set<String> _loadingChipIds() {
+    late final Set<String> ids;
     switch (_s._panelKindFilter) {
       case 'torrents':
-        return _s._torrentInFlightProviderIds;
+        ids = _s._torrentInFlightProviderIds;
       case 'nuvio':
-        if (!_s._nuvioWorkActive) return const {};
-        return {
-          for (final id in _s._nuvioSelectedScraperIds)
-            if (!_s._nuvioFetchedScraperIds.contains(id))
-              'nuvio:$id',
-        };
+        ids = !_s._nuvioWorkActive
+            ? const <String>{}
+            : {
+                for (final id in _s._nuvioSelectedScraperIds)
+                  if (!_s._nuvioFetchedScraperIds.contains(id))
+                    'nuvio:$id',
+              };
       case EngineIds.kind:
-        if (!_s._engineWorkActive) return const {};
-        return {
-          for (final id in _s._engineSelectedPluginIds)
-            if (!_s._engineFetchedPluginIds.contains(id))
-              EngineIds.pluginChip(id),
+        ids = {
+          for (final id in _s._engineLoadingPluginIds)
+            EngineIds.pluginChip(id),
         };
       case 'stremio':
-        if (!_s._isStremioFetching) return const {};
-        return {_s._selectedSourceId};
+        ids = !_s._isStremioFetching
+            ? const <String>{}
+            : {_s._selectedSourceId};
       default:
-        return const {};
+        ids = const <String>{};
     }
+    final prev = _lastLoggedLoadingChipIds;
+    if (prev == null ||
+        prev.length != ids.length ||
+        !prev.containsAll(ids)) {
+      _lastLoggedLoadingChipIds = Set<String>.from(ids);
+      final options = _providerOptions();
+      final labels = [
+        for (final id in ids)
+          () {
+            for (final o in options) {
+              if (o.id == id) return o.label;
+            }
+            return id;
+          }(),
+      ];
+      debugPrint(
+        '[engine-pool] chips-loading ...=${labels.isEmpty ? '(none)' : labels} '
+        'ids=${ids.isEmpty ? '(none)' : ids.toList()}',
+      );
+    }
+    return ids;
   }
 
   bool _nuvioStreamFromScraper(Map<String, dynamic> s, String scraperId) {
@@ -472,6 +496,10 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         ),
       );
       if (!wasSelected) {
+        debugPrint(
+          '[engine-pool] chip-add $pluginId selected=${_s._engineSelectedPluginIds.toList()} '
+          'fetched=${_s._engineFetchedPluginIds.toList()}',
+        );
         unawaited(_s._fetchNextEnginePlugin());
       }
       return;

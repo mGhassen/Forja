@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
+import 'package:forja/features/my_list/providers/my_list_providers.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -186,10 +187,14 @@ class MyListButton extends StatelessWidget {
     Movie movie,
     String to,
   ) async {
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(context, listen: false);
+    } catch (_) {}
     if (to.isEmpty) {
-      await MyListService().remove(
-        MyListService.movieId(movie.id, movie.mediaType),
-      );
+      final uid = MyListService.movieId(movie.id, movie.mediaType);
+      container?.read(myListHiddenKeysProvider.notifier).addAll({uid});
+      await MyListService().remove(uid);
       var ok = true;
       if (await SimklService().isLoggedIn()) {
         ok = await SimklService().removeFromWatchlist(
@@ -198,14 +203,7 @@ class MyListButton extends StatelessWidget {
           mediaType: movie.mediaType,
         );
       }
-      if (context.mounted) {
-        try {
-          ProviderScope.containerOf(
-            context,
-            listen: false,
-          ).invalidate(simklWatchlistProvider);
-        } catch (_) {}
-      }
+      container?.invalidate(simklWatchlistProvider);
       return ok;
     }
     await MyListService().upsertMovie(
@@ -226,14 +224,7 @@ class MyListButton extends StatelessWidget {
         mediaType: movie.mediaType,
         to: to,
       );
-      if (context.mounted) {
-        try {
-          ProviderScope.containerOf(
-            context,
-            listen: false,
-          ).invalidate(simklWatchlistProvider);
-        } catch (_) {}
-      }
+      container?.invalidate(simklWatchlistProvider);
     }
     return ok;
   }
@@ -938,10 +929,14 @@ class MyListHeroStatusPill extends StatelessWidget {
   final ValueChanged<bool>? onMenuOpenChanged;
 
   Future<bool> _setStatus(BuildContext context, String to) async {
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(context, listen: false);
+    } catch (_) {}
     if (to.isEmpty) {
-      await MyListService().remove(
-        MyListService.movieId(movie.id, movie.mediaType),
-      );
+      final uid = MyListService.movieId(movie.id, movie.mediaType);
+      container?.read(myListHiddenKeysProvider.notifier).addAll({uid});
+      await MyListService().remove(uid);
       var ok = true;
       if (await SimklService().isLoggedIn()) {
         ok = await SimklService().removeFromWatchlist(
@@ -950,14 +945,7 @@ class MyListHeroStatusPill extends StatelessWidget {
           mediaType: movie.mediaType,
         );
       }
-      if (context.mounted) {
-        try {
-          ProviderScope.containerOf(
-            context,
-            listen: false,
-          ).invalidate(simklWatchlistProvider);
-        } catch (_) {}
-      }
+      container?.invalidate(simklWatchlistProvider);
       return ok;
     }
     await MyListService().upsertMovie(
@@ -978,14 +966,7 @@ class MyListHeroStatusPill extends StatelessWidget {
         mediaType: movie.mediaType,
         to: to,
       );
-      if (context.mounted) {
-        try {
-          ProviderScope.containerOf(
-            context,
-            listen: false,
-          ).invalidate(simklWatchlistProvider);
-        } catch (_) {}
-      }
+      container?.invalidate(simklWatchlistProvider);
     }
     return ok;
   }

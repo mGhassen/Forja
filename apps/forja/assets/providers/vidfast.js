@@ -22,6 +22,18 @@ function extract(ctx) {
     return j.result;
   }
 
+  // Player session token (EncDec sample ~120 chars). Skip short RSC / Next.js junk.
+  function pickToken(html) {
+    var candidates = [];
+    var re = /\\?"(?:en|token)\\?"\s*:\s*\\?"([A-Za-z0-9_\-]{80,})\\?"/g;
+    var m;
+    while ((m = re.exec(html))) candidates.push(m[1]);
+    candidates.sort(function (a, b) {
+      return b.length - a.length;
+    });
+    return candidates[0] || '';
+  }
+
   return ctx
     .fetch(page, { headers: headers })
     .then(function (r) {
@@ -29,11 +41,11 @@ function extract(ctx) {
       return r.text();
     })
     .then(function (html) {
-      var text = (html.match(/\\"(?:en|token)\\":\\"([^\\"]+)\\"/) ||
-        html.match(/"(?:en|token)":"([^"]+)"/) ||
-        [])[1];
+      var text = pickToken(html);
       if (!text) {
-        ctx.log('no en/token in page (Next SPA — EncDec path dead)');
+        ctx.log(
+          'no player token in HTML (SPA session — EncDec-only path needs sharoon7171/vidfast-pro-stream-resolver VM)',
+        );
         return [];
       }
       ctx.log('enc-vidfast text len=' + text.length);
@@ -44,7 +56,7 @@ function extract(ctx) {
         })
         .then(function (j) {
           var parts = validate(j);
-          if (!parts) {
+          if (!parts || !parts.servers) {
             ctx.log('enc-vidfast miss');
             return [];
           }
@@ -52,14 +64,23 @@ function extract(ctx) {
           return ctx
             .fetch(parts.servers, { method: 'POST', headers: hdrs })
             .then(function (r) {
-              return r.text();
+              ctx.log('servers POST http ' + r.status);
+              return r.text().then(function (encServers) {
+                return { status: r.status, body: encServers };
+              });
             })
-            .then(function (encServers) {
+            .then(function (posted) {
+              if (posted.status < 200 || posted.status >= 300 || !posted.body) {
+                ctx.log(
+                  'servers POST failed — token is not a live player session (needs VM probe, not bare EncDec)',
+                );
+                return [];
+              }
               return ctx
                 .fetch(enc + '/dec-vidfast', {
                   method: 'POST',
                   headers: Object.assign({}, hdrs, { 'Content-Type': 'application/json' }),
-                  body: JSON.stringify({ text: encServers }),
+                  body: JSON.stringify({ text: posted.body }),
                 })
                 .then(function (r) {
                   return r.json();

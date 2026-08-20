@@ -251,11 +251,21 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
   @override
   Widget build(BuildContext context) {
     final localItems = ref.watch(myListItemsProvider);
+    final hiddenKeys = ref.watch(myListHiddenKeysProvider);
     final gate = ref.watch(externalListsGateProvider).valueOrNull;
     final simklLoggedIn = gate?.simklLoggedIn ?? false;
     final simklAsync = simklLoggedIn
         ? ref.watch(simklWatchlistProvider(_status))
         : null;
+    ref.listen(simklWatchlistProvider(_status), (prev, next) {
+      if (!simklLoggedIn) return;
+      if (!next.isLoading && next.hasValue) {
+        final cards = [
+          for (final raw in next.requireValue) _simklCardItem(raw),
+        ].whereType<Map<String, dynamic>>();
+        ref.read(myListHiddenKeysProvider.notifier).retainOnlyPresentIn(cards);
+      }
+    });
     final simklLoading =
         simklLoggedIn &&
         simklAsync != null &&
@@ -270,7 +280,10 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
         .where((e) => (e['listStatus']?.toString() ?? 'plantowatch') == _status)
         .toList();
     final items = simklLoggedIn
-        ? _mergeLocalHubs(simklItems, localForStatus)
+        ? _mergeLocalHubs(
+            _filterSimklByLocal(simklItems, localItems, _status, hiddenKeys),
+            localForStatus,
+          )
         : localForStatus;
     final filtered = _kind == null
         ? items
@@ -1074,6 +1087,58 @@ String _itemKind(Map<String, dynamic> item) {
   return 'movie';
 }
 
+/// Drop Simkl rows that local My List already places elsewhere, or that the
+/// user just removed (optimistic hide until Simkl refetch).
+List<Map<String, dynamic>> _filterSimklByLocal(
+  List<Map<String, dynamic>> simklItems,
+  List<Map<String, dynamic>> allLocal,
+  String status,
+  Set<String> hiddenKeys,
+) {
+  final out = <Map<String, dynamic>>[];
+  for (final s in simklItems) {
+    if (_simklHidden(s, hiddenKeys)) continue;
+    final local = _localMatch(allLocal, s);
+    if (local != null) {
+      final localStatus =
+          local['listStatus']?.toString() ?? 'plantowatch';
+      if (localStatus != status) continue;
+    }
+    out.add(s);
+  }
+  return out;
+}
+
+bool _simklHidden(Map<String, dynamic> item, Set<String> hiddenKeys) {
+  if (hiddenKeys.isEmpty) return false;
+  return myListItemHideKeys(item).any(hiddenKeys.contains);
+}
+
+Map<String, dynamic>? _localMatch(
+  List<Map<String, dynamic>> allLocal,
+  Map<String, dynamic> item,
+) {
+  final anilist = item['anilistId'] as int?;
+  final kisskh = item['kisskhId'] as int?;
+  final tmdb = item['tmdbId'] as int?;
+  final mt = item['mediaType']?.toString();
+  for (final local in allLocal) {
+    if (anilist != null && local['anilistId'] == anilist) return local;
+    if (kisskh != null && local['kisskhId'] == kisskh) return local;
+    if (tmdb != null && local['tmdbId'] == tmdb) {
+      final lmt = local['mediaType']?.toString();
+      if (lmt == 'asian_drama') return local;
+      if (mt == null || lmt == null || lmt == mt) return local;
+      final localNorm = (lmt == 'tv' || lmt == 'series') ? 'tv' : lmt;
+      final itemNorm = (mt == 'tv' || mt == 'series' || mt == 'shows')
+          ? 'tv'
+          : mt;
+      if (localNorm == itemNorm) return local;
+    }
+  }
+  return null;
+}
+
 List<Map<String, dynamic>> _mergeLocalHubs(
   List<Map<String, dynamic>> simklItems,
   List<Map<String, dynamic>> localForStatus,
@@ -1087,16 +1152,31 @@ List<Map<String, dynamic>> _mergeLocalHubs(
     for (final e in simklItems)
       if (e['tmdbId'] is int) e['tmdbId'] as int,
   };
+  final seenKisskh = <int>{
+    for (final e in simklItems)
+      if (e['kisskhId'] is int) e['kisskhId'] as int,
+  };
   for (final local in localForStatus) {
     final mt = local['mediaType']?.toString();
     if (mt == 'anime') {
       final id = local['anilistId'] as int?;
       if (id != null && seenAnilist.contains(id)) continue;
       out.add(local);
+      if (id != null) seenAnilist.add(id);
     } else if (mt == 'asian_drama') {
+      final kisskh = local['kisskhId'] as int?;
+      final tmdb = local['tmdbId'] as int?;
+      if (kisskh != null && seenKisskh.contains(kisskh)) continue;
+      if (tmdb != null && seenTmdb.contains(tmdb)) continue;
+      out.add(local);
+      if (kisskh != null) seenKisskh.add(kisskh);
+      if (tmdb != null) seenTmdb.add(tmdb);
+    } else {
+      // Movies / TV — local wins when Simkl is slow or status just moved.
       final tmdb = local['tmdbId'] as int?;
       if (tmdb != null && seenTmdb.contains(tmdb)) continue;
       out.add(local);
+      if (tmdb != null) seenTmdb.add(tmdb);
     }
   }
   return out;

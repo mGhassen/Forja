@@ -467,6 +467,10 @@ void main() {
       expect(parsed.firstWhere((p) => p.id == 'vidzee').entry, 'vidzee.js');
       expect(parsed.firstWhere((p) => p.id == '2embed').entry, 'multiembed.js');
       expect(parsed.firstWhere((p) => p.id == 'service111477').entry, 'dahmermovies.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'vidsrcsbs').config['nxshaOrigin'],
+        'https://web.nxsha.app',
+      );
       expect(parsed.firstWhere((p) => p.id == 'hexa').entry, 'hexa.js');
       expect(parsed.firstWhere((p) => p.id == 'hianime').entry, 'hianime.js');
       expect(

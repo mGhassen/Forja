@@ -1,6 +1,10 @@
+mod espn;
 mod fetch;
+mod sport_match;
+mod xtream_sport;
 
 use serde::Deserialize;
+use serde_json::Value;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct LiveMatchesRequest {
@@ -9,6 +13,21 @@ pub struct LiveMatchesRequest {
     pub source: Option<String>,
     #[serde(default)]
     pub id: Option<String>,
+    /// ESPN leagues for `sport_match_games` (e.g. NBA, NFL).
+    #[serde(default)]
+    pub leagues: Option<Vec<String>>,
+    /// Local calendar day YYYYMMDD for ESPN `dates=` filter.
+    #[serde(default)]
+    pub date: Option<String>,
+    /// Game object for `sport_match_streams`.
+    #[serde(default)]
+    pub game: Option<Value>,
+    /// Xtream portal `{ url, username, password }`.
+    #[serde(default)]
+    pub xtream: Option<Value>,
+    /// Live category ids to search (plus caller may include GLOBAL).
+    #[serde(default)]
+    pub category_ids: Option<Vec<String>>,
 }
 
 pub fn fetch_json(request_json: &str) -> String {
@@ -34,6 +53,26 @@ pub fn fetch_json(request_json: &str) -> String {
         "cdn_channels" => fetch::cdn_channels(),
         "cdn_sports" => fetch::cdn_sports(),
         "mut_matches" => fetch::mut_matches(),
+        "sport_match_games" => {
+            let leagues = req.leagues.unwrap_or_default();
+            espn::sport_match_games(&leagues, req.date.as_deref())
+        }
+        "sport_match_streams" => {
+            let game = match req.game {
+                Some(g) => g,
+                None => {
+                    return serde_json::json!({ "error": "game required" }).to_string();
+                }
+            };
+            let xtream = match req.xtream {
+                Some(x) => x,
+                None => {
+                    return serde_json::json!({ "error": "xtream required" }).to_string();
+                }
+            };
+            let cats = req.category_ids.unwrap_or_default();
+            xtream_sport::sport_match_streams(&game, &xtream, &cats)
+        }
         other => serde_json::json!({ "error": format!("unknown action: {other}") }).to_string(),
     }
 }
@@ -52,5 +91,11 @@ mod tests {
     fn streamed_streams_requires_params() {
         let raw = fetch_json(r#"{"action":"streamed_streams"}"#);
         assert!(raw.contains("source and id required"));
+    }
+
+    #[test]
+    fn sport_match_streams_requires_game() {
+        let raw = fetch_json(r#"{"action":"sport_match_streams","xtream":{"url":"http://x"}}"#);
+        assert!(raw.contains("game required"));
     }
 }

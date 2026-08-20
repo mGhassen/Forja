@@ -81,6 +81,7 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
       case _LiveMatchesServer.streamed:
       case _LiveMatchesServer.mutStreams:
       case _LiveMatchesServer.stremio:
+      case _LiveMatchesServer.iptvSports:
         entries.addAll(_s._filteredStreamed.map(_LiveMatchGridEntry.streamed));
       case _LiveMatchesServer.cdnLive:
         entries.addAll(_s._filteredCdnSports.map(_LiveMatchGridEntry.cdnSport));

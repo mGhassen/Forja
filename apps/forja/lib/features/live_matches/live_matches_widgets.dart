@@ -3403,9 +3403,13 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
   Widget build(BuildContext context) {
     final m = widget.match;
     final hasSources =
-        m.sources.isNotEmpty || m.inlineStreams.isNotEmpty || m.isStremio;
+        m.sources.isNotEmpty ||
+        m.inlineStreams.isNotEmpty ||
+        m.isStremio ||
+        m.isIptvSports;
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
-    final canPlay = hasSources && m.isLive;
+    // My IPTV: match channels anytime today (pregame feeds exist).
+    final canPlay = hasSources && (m.isLive || m.isIptvSports);
     final policy = ShellScope.inputPolicyOf(context);
     final tv = ShellScope.metricsOf(context).usesTvDensity;
     final active =

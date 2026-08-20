@@ -17,13 +17,10 @@ import 'package:http/http.dart' as http;
 import 'package:pointycastle/export.dart';
 import 'package:rust/rust.dart';
 
-String _forjaJsLevel(Object? raw) {
-  final level = (raw ?? 'log').toString();
-  return level == 'error' ? 'err' : level;
-}
-
 void _forjaJsConsole(Map<String, dynamic> m) {
-  debugPrint('[Forja:${_forjaJsLevel(m['level'])}] ${m['msg'] ?? ''}');
+  final msg = (m['msg'] ?? '').toString();
+  if (msg.isEmpty) return;
+  debugPrint(msg);
 }
 
 void _forjaRuntimeLog(String msg) => debugPrint('[ForjaRuntime] $msg');
@@ -51,7 +48,23 @@ class EngineRuntime {
   EngineRuntime._();
   static final EngineRuntime instance = EngineRuntime._();
 
-  factory EngineRuntime.fork() => EngineRuntime._();
+  /// Isolated plugin heaps (Sources Forja pool). Cancel must abort these too —
+  /// [instance.abortPendingWork] alone leaves fork VMs live until `dispose`.
+  static final Set<EngineRuntime> _liveForks = <EngineRuntime>{};
+
+  factory EngineRuntime.fork() {
+    final rt = EngineRuntime._();
+    _liveForks.add(rt);
+    return rt;
+  }
+
+  /// Stop shared + every live fork (panel close / Cancel / tab switch).
+  static void abortAll() {
+    instance.abortPendingWork();
+    for (final fork in List<EngineRuntime>.of(_liveForks)) {
+      fork.abortPendingWork();
+    }
+  }
 
   JavascriptRuntime? _runtime;
   bool _ready = false;
@@ -67,6 +80,10 @@ class EngineRuntime {
   final Map<int, int> _fetchGens = {};
   bool _acceptingFetches = false;
   int _activeExtract = 0;
+  /// Abort asked to drop the VM while [_activeExtract] > 0. Dispose runs in
+  /// [_extractUnlocked]'s `finally` after the pump exits — never mid-evaluate
+  /// (macOS JSC SIGSEGV in JSValueToStringCopy / JSLockHolder).
+  bool _deferredDrop = false;
 
   int _timerSeq = 0;
   final Map<int, Timer> _activeTimers = {};
@@ -356,13 +373,18 @@ class EngineRuntime {
 
   void _fireTimer(int id, {required bool repeat}) {
     final rt = _runtime;
-    if (rt == null) return;
+    if (rt == null || _deferredDrop || !_acceptingFetches) return;
     if (!repeat) _activeTimers.remove(id);
+    _evalOn(rt, 'try { globalThis.__engineTimerFire($id); } catch (e) {}',
+        sourceUrl: 'engine://timer/$id');
+  }
+
+  /// Evaluate only if [rt] is still the live heap. Never call evaluate on a
+  /// disposed / replaced JavascriptRuntime (JSC use-after-dispose).
+  void _evalOn(JavascriptRuntime rt, String code, {String? sourceUrl}) {
+    if (_deferredDrop || !identical(_runtime, rt)) return;
     try {
-      rt.evaluate(
-        'try { globalThis.__engineTimerFire($id); } catch (e) {}',
-        sourceUrl: 'engine://timer/$id',
-      );
+      rt.evaluate(code, sourceUrl: sourceUrl);
     } catch (_) {}
   }
 
@@ -677,6 +699,11 @@ class EngineRuntime {
           if (!completer.isCompleted) completer.complete('[]');
           return [];
         }
+        if (!identical(_runtime, rt) || _deferredDrop) {
+          if (!completer.isCompleted) completer.complete('[]');
+          _forjaRuntimeLog('$pluginId aborted (VM dropped)');
+          return [];
+        }
         try {
           rt.executePendingJob();
         } catch (_) {}
@@ -691,6 +718,7 @@ class EngineRuntime {
 
       final body = (await completer.future).trim();
       if (isCancelled?.call() == true) return [];
+      if (!identical(_runtime, rt) || _deferredDrop) return [];
       if (body.isEmpty || body == 'null' || body == 'undefined') return [];
       try {
         final decoded = jsonDecode(body);
@@ -706,7 +734,13 @@ class EngineRuntime {
     } finally {
       _pendingResults.remove(callId);
       _activeExtract = (_activeExtract - 1).clamp(0, 1 << 30);
-      if (_activeExtract <= 0) _acceptingFetches = false;
+      if (_activeExtract <= 0) {
+        _acceptingFetches = false;
+        if (_deferredDrop) {
+          _dropRuntime();
+          _forjaRuntimeLog('deferred VM drop complete');
+        }
+      }
     }
   }
 
@@ -733,12 +767,27 @@ class EngineRuntime {
       _http.close();
     } catch (_) {}
     _http = http.Client();
-    if (hadWork) _dropRuntime();
+    if (hadWork) {
+      if (_activeExtract > 0) {
+        _deferredDrop = true;
+        _forjaRuntimeLog('abortPendingWork (deferred VM drop)');
+      } else {
+        _dropRuntime();
+        _forjaRuntimeLog('abortPendingWork');
+      }
+    }
   }
 
   void dispose() {
     abortPendingWork();
-    _dropRuntime();
+    try {
+      _http.close();
+    } catch (_) {}
+    if (_activeExtract > 0) {
+      _deferredDrop = true;
+    } else {
+      _dropRuntime();
+    }
   }
 
   void _dropRuntime() {
@@ -750,6 +799,8 @@ class EngineRuntime {
     _loadedIds.clear();
     _initCompleter = null;
     _activeExtract = 0;
+    _deferredDrop = false;
+    _liveForks.remove(this);
   }
 
   Future<void> _dispatchFetch({
@@ -824,15 +875,12 @@ class EngineRuntime {
     _fetchGens.remove(id);
     if (gen != _fetchGeneration) return;
     final rt = _runtime;
-    if (rt == null) return;
-    try {
-      rt.evaluate(
-        'try { globalThis.__engineFetchResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
-        sourceUrl: 'engine://fetch/$id',
-      );
-    } catch (e) {
-      _forjaRuntimeLog('fetch resolve failed id=$id $url: $e');
-    }
+    if (rt == null || !_acceptingFetches) return;
+    _evalOn(
+      rt,
+      'try { globalThis.__engineFetchResolve($id, ${jsonEncode(envelope)}); } catch (e) {}',
+      sourceUrl: 'engine://fetch/$id',
+    );
   }
 
   Future<void> _dispatchHost({
@@ -962,15 +1010,12 @@ class EngineRuntime {
   }) {
     if (gen != _fetchGeneration) return;
     final rt = _runtime;
-    if (rt == null) return;
-    try {
-      rt.evaluate(
-        'try { globalThis.__engineHopResolve($id, ${jsonEncode({'streams': streams})}); } catch (e) {}',
-        sourceUrl: 'engine://hop/$id',
-      );
-    } catch (e) {
-      _forjaRuntimeLog('hop resolve callback failed id=$id: $e');
-    }
+    if (rt == null || !_acceptingFetches) return;
+    _evalOn(
+      rt,
+      'try { globalThis.__engineHopResolve($id, ${jsonEncode({'streams': streams})}); } catch (e) {}',
+      sourceUrl: 'engine://hop/$id',
+    );
   }
 
   void _resolveHost({
@@ -980,15 +1025,12 @@ class EngineRuntime {
   }) {
     if (gen != _fetchGeneration) return;
     final rt = _runtime;
-    if (rt == null) return;
-    try {
-      rt.evaluate(
-        'try { globalThis.__engineHostResolve($id, ${jsonEncode({'streams': streams})}); } catch (e) {}',
-        sourceUrl: 'engine://host/$id',
-      );
-    } catch (e) {
-      _forjaRuntimeLog('host resolve callback failed id=$id: $e');
-    }
+    if (rt == null || !_acceptingFetches) return;
+    _evalOn(
+      rt,
+      'try { globalThis.__engineHostResolve($id, ${jsonEncode({'streams': streams})}); } catch (e) {}',
+      sourceUrl: 'engine://host/$id',
+    );
   }
 
   String _digestHex(String algo, String utf8Str) {

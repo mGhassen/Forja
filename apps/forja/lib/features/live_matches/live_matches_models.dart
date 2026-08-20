@@ -271,6 +271,9 @@ class _StreamedMatch {
   final String stremioBaseUrl;
   final String stremioType;
 
+  /// ESPN game payload for My IPTV stream matching (RFC-062).
+  final Map<String, dynamic>? sportMatchGame;
+
   const _StreamedMatch({
     required this.id,
     required this.title,
@@ -288,11 +291,14 @@ class _StreamedMatch {
     this.catalog = '',
     this.stremioBaseUrl = '',
     this.stremioType = 'sport',
+    this.sportMatchGame,
   });
 
   bool get isMut => catalog == 'mut' || inlineStreams.isNotEmpty;
 
   bool get isStremio => stremioBaseUrl.isNotEmpty;
+
+  bool get isIptvSports => catalog == 'iptv_sports';
 
   factory _StreamedMatch.fromJson(Map<String, dynamic> j) {
     final teams = j['teams'] as Map<String, dynamic>?;
@@ -2068,6 +2074,149 @@ Future<List<_StreamedMatch>> _fetchStremioSportMatches() async {
   return _sortStreamedLiveFirst(out);
 }
 
+String _localDateYyyymmdd() {
+  final n = DateTime.now();
+  final y = n.year.toString().padLeft(4, '0');
+  final m = n.month.toString().padLeft(2, '0');
+  final d = n.day.toString().padLeft(2, '0');
+  return '$y$m$d';
+}
+
+_StreamedMatch? _streamedMatchFromIptvSportsGame(Map<String, dynamic> j) {
+  final id = (j['id'] ?? '').toString().trim();
+  if (id.isEmpty) return null;
+  final title = (j['title'] ?? j['name'] ?? '').toString().trim();
+  if (title.isEmpty) return null;
+  final sport = (j['sport'] ?? '').toString().trim().toUpperCase();
+  final category = (j['category'] ?? 'other').toString().trim().toLowerCase();
+  final dateMs = (j['dateMs'] as num?)?.toInt() ??
+      (() {
+        final date = (j['date'] ?? '').toString();
+        if (date.isEmpty) return 0;
+        final dt = DateTime.tryParse(date);
+        return dt?.toUtc().millisecondsSinceEpoch ?? 0;
+      })();
+  final live = j['live'] == true;
+  final home = (j['homeTeam'] ?? '').toString();
+  final away = (j['awayTeam'] ?? '').toString();
+  final homeLogo = (j['homeLogo'] ?? '').toString();
+  final awayLogo = (j['awayLogo'] ?? '').toString();
+  final poster = (j['poster'] ?? homeLogo).toString();
+  return _StreamedMatch(
+    id: 'iptv:$sport:$id',
+    title: title,
+    category: category.isEmpty ? 'other' : category,
+    dateMs: dateMs,
+    poster: poster,
+    popular: false,
+    airing: live,
+    homeTeam: home.isEmpty ? null : home,
+    homeBadge: homeLogo.isEmpty ? null : homeLogo,
+    awayTeam: away.isEmpty ? null : away,
+    awayBadge: awayLogo.isEmpty ? null : awayLogo,
+    sources: const [],
+    catalog: 'iptv_sports',
+    sportMatchGame: Map<String, dynamic>.from(j),
+  );
+}
+
+Future<List<_StreamedMatch>> _fetchIptvSportsMatches() async {
+  final config = await LiveMatchesIptvSportsConfig.load();
+  if (!config.isReady) return [];
+  try {
+    final raw = await runLiveMatchesFetchJson(
+      jsonEncode({
+        'action': 'sport_match_games',
+        'leagues': config.leagues,
+        'date': _localDateYyyymmdd(),
+      }),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) {
+      debugPrint('[LiveMatches] IPTV sports games error: ${parsed['error']}');
+      return [];
+    }
+    final list = parsed['items'] as List? ?? [];
+    return list
+        .map((e) {
+          try {
+            return _streamedMatchFromIptvSportsGame(
+              Map<String, dynamic>.from(e as Map),
+            );
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<_StreamedMatch>()
+        .toList()
+      ..sort((a, b) {
+        if (a.isLive != b.isLive) return a.isLive ? -1 : 1;
+        return a.dateMs.compareTo(b.dateMs);
+      });
+  } catch (e) {
+    debugPrint('[LiveMatches] IPTV sports fetch error: $e');
+    return [];
+  }
+}
+
+Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
+  _StreamedMatch match,
+) async {
+  final game = match.sportMatchGame;
+  if (game == null) return [];
+  final config = await LiveMatchesIptvSportsConfig.load();
+  if (!config.isReady) return [];
+  final portals = await IptvStore.load();
+  VerifiedPortal? portal;
+  for (final p in portals) {
+    if (p.key == config.portalKey) {
+      portal = p;
+      break;
+    }
+  }
+  if (portal == null ||
+      portal.portal.platform != IptvPortalPlatform.xtream) {
+    return [];
+  }
+  final sport = (game['sport'] ?? '').toString();
+  final categoryIds = config.categoryIdsForGame(sport);
+  if (categoryIds.isEmpty) {
+    debugPrint('[LiveMatches] IPTV sports: no categories for $sport');
+  }
+  final raw = await runLiveMatchesFetchJson(
+    jsonEncode({
+      'action': 'sport_match_streams',
+      'game': game,
+      'xtream': {
+        'url': portal.portal.url,
+        'username': portal.portal.username,
+        'password': portal.portal.password,
+      },
+      'category_ids': categoryIds,
+    }),
+  );
+  final parsed = jsonDecode(raw) as Map<String, dynamic>;
+  if (parsed.containsKey('error')) {
+    debugPrint('[LiveMatches] IPTV sports streams error: ${parsed['error']}');
+    return [];
+  }
+  final list = parsed['items'] as List? ?? [];
+  final out = <IptvPlaySource>[];
+  for (final s in list) {
+    if (s is! Map) continue;
+    final url = s['url']?.toString().trim() ?? '';
+    if (url.isEmpty) continue;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) continue;
+    final name = (s['name'] ?? s['title'] ?? 'Stream').toString().trim();
+    final tier = s['tier'];
+    final label = name.isEmpty
+        ? 'Stream'
+        : (tier is num ? 'T$tier · $name' : name);
+    out.add(IptvPlaySource(url: url, label: label));
+  }
+  return out;
+}
+
 Future<List<_StreamedStream>> _fetchStreamedStreams(
   _StreamedSourceRef sourceRef,
 ) async {
@@ -2160,7 +2309,15 @@ Future<List<_CdnSportEvent>> _fetchCdnSports() async {
   }
 }
 
-enum _LiveMatchesServer { all, ppv, streamed, mutStreams, cdnLive, stremio }
+enum _LiveMatchesServer {
+  all,
+  ppv,
+  streamed,
+  mutStreams,
+  cdnLive,
+  stremio,
+  iptvSports,
+}
 
 String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
   _LiveMatchesServer.all => 'All',
@@ -2169,6 +2326,7 @@ String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
   _LiveMatchesServer.mutStreams => 'MutStreams',
   _LiveMatchesServer.cdnLive => 'CDN Live',
   _LiveMatchesServer.stremio => 'Stremio',
+  _LiveMatchesServer.iptvSports => 'My IPTV',
 };
 
 String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
@@ -2179,6 +2337,7 @@ String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
       _LiveMatchesServer.mutStreams => 'mut.st',
       _LiveMatchesServer.cdnLive => 'cdn-live.tv',
       _LiveMatchesServer.stremio => 'Installed live addons',
+      _LiveMatchesServer.iptvSports => 'ESPN + your Xtream',
     };
 
 sealed class _LiveMatchGridEntry {

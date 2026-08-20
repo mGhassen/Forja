@@ -124,7 +124,7 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       const SettingsCategoryMeta(
         id: SettingsCategoryId.data,
         title: 'Data & backup',
-        subtitle: 'Clear cache, export, import',
+        subtitle: 'Clear cache, export, My IPTV sports',
         icon: Icons.folder_outlined,
       ),
     const SettingsCategoryMeta(

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "Forja",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "plugins": [
     {
       "id": "videasy",
@@ -241,7 +241,11 @@
       ],
       "kind": "http",
       "config": {
-        "origin": "https://vidsrc.sbs"
+        "origin": "https://vidsrc.sbs",
+        "nxshaOrigin": "https://web.nxsha.app",
+        "nxshaKey": "S8x!Jk4ZP1uG8$my",
+        "videasyApi": "https://api.speedracelight.com",
+        "videasyOrigin": "https://player.videasy.to"
       }
     },
     {

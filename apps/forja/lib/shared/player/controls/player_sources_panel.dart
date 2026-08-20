@@ -1263,30 +1263,53 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return const [];
   }
 
+  Set<String>? _lastLoggedLoadingChipIds;
+
   Set<String> get _loadingChipIds {
+    late final Set<String> ids;
     switch (_kindFilter) {
       case 'torrents':
-        return _torrentInFlightProviderIds;
+        ids = _torrentInFlightProviderIds;
       case 'nuvio':
-        if (!_nuvioWorkActive) return const {};
-        return {
-          for (final id in _nuvioSelectedScraperIds)
-            if (!_nuvioFetchedScraperIds.contains(id))
-              'nuvio:$id',
-        };
+        ids = !_nuvioWorkActive
+            ? const <String>{}
+            : {
+                for (final id in _nuvioSelectedScraperIds)
+                  if (!_nuvioFetchedScraperIds.contains(id))
+                    'nuvio:$id',
+              };
       case 'engine':
-        if (!_engineWorkActive) return const {};
-        return {
-          for (final id in _engineSelectedPluginIds)
-            if (!_engineFetchedPluginIds.contains(id))
-              EngineIds.pluginChip(id),
+        ids = {
+          for (final id in _engineLoadingPluginIds) EngineIds.pluginChip(id),
         };
       case 'stremio':
-        if (!_stremioFetching) return const {};
-        return {_selectedSourceId};
+        ids = !_stremioFetching
+            ? const <String>{}
+            : {_selectedSourceId};
       default:
-        return const {};
+        ids = const <String>{};
     }
+    final prev = _lastLoggedLoadingChipIds;
+    if (prev == null ||
+        prev.length != ids.length ||
+        !prev.containsAll(ids)) {
+      _lastLoggedLoadingChipIds = Set<String>.from(ids);
+      final options = _providerOptions;
+      final labels = [
+        for (final id in ids)
+          () {
+            for (final o in options) {
+              if (o.id == id) return o.label;
+            }
+            return id;
+          }(),
+      ];
+      debugPrint(
+        '[engine-pool] chips-loading ...=${labels.isEmpty ? '(none)' : labels} '
+        'ids=${ids.isEmpty ? '(none)' : ids.toList()}',
+      );
+    }
+    return ids;
   }
 
   bool get _isFetching =>
@@ -1927,11 +1950,34 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _engineInFlightPluginIds.isNotEmpty ||
       _enginePoolTasks.isNotEmpty;
 
+  Set<String> get _engineLoadingPluginIds {
+    if (!_engineWorkActive) return const {};
+    return {
+      ..._engineInFlightPluginIds,
+      for (final id in _engineSelectedPluginIds)
+        if (!_engineFetchedPluginIds.contains(id)) id,
+    };
+  }
+
+  void _engineDbg(String msg) {
+    debugPrint(
+      '[engine-pool] $msg | gen=$_engineFetchGen '
+      'fetching=$_engineFetching '
+      'tasks=${_enginePoolTasks.length} '
+      'inFlight=${_engineInFlightPluginIds.toList()} '
+      'pending=$_pendingEnginePluginIds '
+      'fetched=${_engineFetchedPluginIds.toList()} '
+      'selected=${_engineSelectedPluginIds.toList()} '
+      'loading=${_engineLoadingPluginIds.toList()}',
+    );
+  }
+
   Future<void> _runAndApplyEnginePlugin({
     required String pluginId,
     required String type,
     required int gen,
   }) async {
+    _engineDbg('apply-start $pluginId');
     EngineExtractResult? batch;
     try {
       batch = await EngineService.instance.runPluginIsolated(
@@ -1948,8 +1994,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     } catch (e) {
       debugPrint('[engine] plugin $pluginId failed: $e');
     }
-    if (!mounted || gen != _engineFetchGen) return;
-    if (!_engineSelectedPluginIds.contains(pluginId)) return;
+    if (!mounted || gen != _engineFetchGen) {
+      _engineDbg('apply-drop $pluginId stale/unmounted');
+      return;
+    }
+    if (!_engineSelectedPluginIds.contains(pluginId)) {
+      _engineDbg('apply-drop $pluginId deselected');
+      return;
+    }
+    final n = batch?.streams.length ?? 0;
     setState(() {
       _engineFetchedPluginIds.add(pluginId);
       _engineStreams.removeWhere(
@@ -1959,6 +2012,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _engineStreams.addAll(batch.streams);
       }
     });
+    _engineDbg('apply-done $pluginId streams=$n');
     CatalogSourcesSessionCache.writeEngine(
       _catalogCacheKey,
       _engineStreams,
@@ -1969,31 +2023,44 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _engineFillPool({required int gen, required String type}) {
-    if (!mounted || gen != _engineFetchGen) return;
+    if (!mounted || gen != _engineFetchGen) {
+      _engineDbg('fill skip gen mismatch want=$gen');
+      return;
+    }
     final slots = _enginePoolLimit - _engineInFlightPluginIds.length;
-    if (slots <= 0) return;
+    if (slots <= 0) {
+      _engineDbg('fill skip full limit=$_enginePoolLimit');
+      return;
+    }
     final next = nextEnginePluginBatch(
       orderedIds: _orderedEnginePluginIds,
       selectedIds: _engineSelectedPluginIds,
       fetchedIds: {..._engineFetchedPluginIds, ..._engineInFlightPluginIds},
       limit: slots,
     );
-    for (final id in next) {
-      _engineStartPlugin(pluginId: id, type: type, gen: gen);
+    _engineDbg('fill slots=$slots next=$next');
+    if (next.isEmpty) return;
+    final started = <String>[];
+    setState(() {
+      for (final id in next) {
+        if (_engineInFlightPluginIds.contains(id) ||
+            _engineFetchedPluginIds.contains(id)) {
+          continue;
+        }
+        _engineInFlightPluginIds.add(id);
+        started.add(id);
+      }
+    });
+    for (final id in started) {
+      _engineLaunchPlugin(pluginId: id, type: type, gen: gen);
     }
   }
 
-  void _engineStartPlugin({
+  void _engineLaunchPlugin({
     required String pluginId,
     required String type,
     required int gen,
   }) {
-    if (!mounted || gen != _engineFetchGen) return;
-    if (_engineInFlightPluginIds.contains(pluginId) ||
-        _engineFetchedPluginIds.contains(pluginId)) {
-      return;
-    }
-    setState(() => _engineInFlightPluginIds.add(pluginId));
     late final Future<void> task;
     task = () async {
       try {
@@ -2004,12 +2071,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         );
       } finally {
         _enginePoolTasks.remove(task);
-        if (!mounted || gen != _engineFetchGen) return;
+        if (!mounted || gen != _engineFetchGen) {
+          _engineDbg('finish-drop $pluginId');
+          return;
+        }
         setState(() => _engineInFlightPluginIds.remove(pluginId));
+        _engineDbg('finish $pluginId');
         _engineFillPool(gen: gen, type: type);
       }
     }();
     _enginePoolTasks.add(task);
+    _engineDbg('launch $pluginId');
   }
 
   Future<void> _engineDrainPool({required int gen, required String type}) async {
@@ -2019,8 +2091,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
       if (!mounted || gen != _engineFetchGen) return;
       if (_pendingEnginePluginIds.isEmpty) break;
+      _engineDbg('drain refill pending=$_pendingEnginePluginIds');
       _engineFillPool(gen: gen, type: type);
-      if (_enginePoolTasks.isEmpty) break;
+      if (_enginePoolTasks.isEmpty) {
+        _engineDbg('drain stuck pending but no tasks');
+        break;
+      }
     }
   }
 
@@ -2031,6 +2107,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (_enginePacks.isEmpty || widget.movie.id <= 0) return;
     final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
     if (_engineFetching && !reset && !refresh) {
+      _engineDbg('join');
       _engineFillPool(gen: _engineFetchGen, type: type);
       return;
     }
@@ -2045,12 +2122,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           selectedIds: _engineSelectedPluginIds,
         ) &&
         !_engineFetching;
+    _engineFetching = true;
     final gen = ++_engineFetchGen;
     _enginePoolLimit = engineSourcesBatchLimit(
       tv: SourcesPanelTv.isTv(context),
     );
+    _engineDbg(
+      'start reset=$reset refresh=$refresh allWalk=$startingAllWalk '
+      'limit=$_enginePoolLimit',
+    );
     setState(() {
-      _engineFetching = true;
       if (reset) {
         _engineStreams = [];
         _engineFetchedPluginIds = {};
@@ -2070,7 +2151,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     });
     _engineFillPool(gen: gen, type: type);
     await _engineDrainPool(gen: gen, type: type);
-    if (!mounted || gen != _engineFetchGen) return;
+    if (!mounted || gen != _engineFetchGen) {
+      _engineDbg('end stale');
+      return;
+    }
     final stillPending = _pendingEnginePluginIds.isNotEmpty;
     setState(() {
       _engineFetching = stillPending;
@@ -2079,6 +2163,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _error = 'No streams found from selected Forja plugins';
       }
     });
+    _engineDbg('end stillPending=$stillPending');
   }
 
   void _onKindChanged(String kind) {

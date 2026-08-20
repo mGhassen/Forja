@@ -15,6 +15,7 @@ import 'package:forja/features/settings/sections/settings_cache_data_section.dar
 import 'package:forja/features/settings/sections/settings_debrid_section.dart';
 import 'package:forja/features/settings/sections/settings_forja_account_panel.dart';
 import 'package:forja/features/settings/sections/settings_iptv_portals_section.dart';
+import 'package:forja/features/settings/sections/settings_iptv_sports_section.dart';
 import 'package:forja/features/settings/sections/lan_settings_section.dart';
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
 import 'package:forja/features/settings/sections/settings_playback_section.dart';
@@ -314,8 +315,10 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
             ),
           ],
         ),
-        if (widget.visibility.showIptvSettings)
+        if (widget.visibility.showIptvSettings) ...[
           const SettingsIptvPortalsSection(),
+          const SettingsIptvSportsSection(),
+        ],
         SettingsCacheDataSection(
           showIptvPortalCache: widget.visibility.showIptvSettings,
         ),

@@ -80,8 +80,9 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [057-[partial]-…](057-[partial]-home-watch-provider-filter.md) | Home watch-provider filter | v1.4 | partial | 4/4 · 8/9 | [1.4.0](../backlog/1.4.0-[draft].md) |
 | [058-[partial]-…](058-[partial]-structured-search.md) | Structured Search (person / genre / year) | v1.4 | partial | 2/2 · 5/6 | [1.4.0](../backlog/1.4.0-[draft].md) |
 | [059-[fixed]-…](fixed/059-[fixed]-hub-list-follow.md) | Anime & Asian Drama list follow | v1.4 | fixed | Complete · 4/4 · 8/8 | [1.4.0](../backlog/1.4.0-[draft].md) |
-| [060-[fixed]-…](fixed/060-[fixed]-enginejs-sources-forja-tab.md) | engineJS + Sources Forja tab | v1.3 | fixed | Complete · 69/71 · 2 ⏭️ | — |
+| [060-[fixed]-…](fixed/060-[fixed]-enginejs-sources-forja-tab.md) | engineJS + Sources Forja tab | v1.3 | fixed | Complete · 70/72 · 2 ⏭️ | — |
 | [061-[fixed]-…](fixed/061-[fixed]-engine-scraper-upstream-parity.md) | Engine scraper upstream parity | v1.3 | fixed | Complete · 4/4 · 10/12 · 2 ⏭️ | — |
+| [062-[open]-…](062-[open]-native-iptv-sports-matching.md) | Native IPTV sports matching in Live Matches | v1.3 | open | 5/5 · 8/8 Xtream · 0/3 M3U ⏭️ | — |
 
 ## Related
 

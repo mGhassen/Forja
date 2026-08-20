@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 69 / 71** acceptance · **2 ⏭️** manual play QA |
-| **Current slice** | Vidzee plaintext streams API + 2Embed/111477 HTTP scrapers (`engine.json` 1.5.4); manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
+| **Progress** | **Complete · 70 / 72** acceptance · **2 ⏭️** manual play QA |
+| **Current slice** | VidSrc.sbs balanced `CFG.servers` + nxsha AES API (`engine.json` 1.5.5); manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -104,6 +104,7 @@
 | 69 | R60-A69 | Selecting more Forja plugin chips mid-search joins the 10/5 pool — it does not cancel in-flight plugins | ✅ |
 | 70 | R60-A70 | Vidzee Forja plugin uses `core.vidzee.wtf/streams` plaintext `e=0` (not dead `/api/server`) | ✅ |
 | 71 | R60-A71 | Forja chips **2Embed** / **111477** use `multiembed.js` / `dahmermovies.js` HTTP extract (not empty `embed.js` / `host_wrap`) | ✅ |
+| 72 | R60-A72 | VidSrc.sbs Forja plugin uses balanced-bracket `CFG.servers` parse + nxsha AES `/api/servers`+`/api/sources` (Decryptor) with Videasy nest STREAMCRYPTO | ✅ |
 
 ---
 

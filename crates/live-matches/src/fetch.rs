@@ -61,28 +61,50 @@ fn streamed_headers() -> HashMap<String, String> {
     ])
 }
 
-fn ok_items(items: Vec<Value>) -> String {
+pub(crate) fn ok_items(items: Vec<Value>) -> String {
     json!({ "items": items }).to_string()
 }
 
-fn http_get(url: &str, headers: &HashMap<String, String>, timeout_secs: u64) -> Option<String> {
-    RUNTIME
-        .block_on(async {
-            utils::engine_cancel::with_cancel(async {
-                let timeout = Duration::from_secs(timeout_secs.max(1));
-                let mut req = CLIENT.get(url).timeout(timeout);
-                for (k, v) in headers {
-                    req = req.header(k.as_str(), v.as_str());
-                }
-                let resp = req.send().await.map_err(|e| e.to_string())?;
-                if !resp.status().is_success() {
-                    return Err(format!("http {}", resp.status()));
-                }
-                resp.text().await.map_err(|e| e.to_string())
-            })
-            .await
-        })
-        .ok()
+pub(crate) fn block_on<F: std::future::Future>(fut: F) -> F::Output {
+    RUNTIME.block_on(fut)
+}
+
+pub(crate) async fn http_get_async(
+    url: &str,
+    headers: &HashMap<String, String>,
+    timeout_secs: u64,
+) -> Option<String> {
+    utils::engine_cancel::with_cancel(async {
+        let timeout = Duration::from_secs(timeout_secs.max(1));
+        let mut req = CLIENT.get(url).timeout(timeout);
+        for (k, v) in headers {
+            req = req.header(k.as_str(), v.as_str());
+        }
+        let resp = req.send().await.map_err(|e| e.to_string())?;
+        if !resp.status().is_success() {
+            return Err(format!("http {}", resp.status()));
+        }
+        resp.text().await.map_err(|e| e.to_string())
+    })
+    .await
+    .ok()
+}
+
+pub(crate) fn http_get(
+    url: &str,
+    headers: &HashMap<String, String>,
+    timeout_secs: u64,
+) -> Option<String> {
+    RUNTIME.block_on(http_get_async(url, headers, timeout_secs))
+}
+
+/// Alias for callers that want a clearer name (JSON body as text).
+pub(crate) fn http_get_json(
+    url: &str,
+    headers: &HashMap<String, String>,
+    timeout_secs: u64,
+) -> Option<String> {
+    http_get(url, headers, timeout_secs)
 }
 
 pub fn streamed_sports() -> String {

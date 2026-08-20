@@ -38,7 +38,7 @@ class EngineService {
 
   void cancelPending() {
     _extractGeneration++;
-    EngineRuntime.instance.abortPendingWork();
+    EngineRuntime.abortAll();
   }
 
   Future<void> _syncHopsForRuntime(

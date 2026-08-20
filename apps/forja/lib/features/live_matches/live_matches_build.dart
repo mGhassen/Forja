@@ -539,7 +539,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     if (_s._server == _LiveMatchesServer.ppv) return _buildDamiTvBody();
     if (_s._server == _LiveMatchesServer.streamed ||
         _s._server == _LiveMatchesServer.mutStreams ||
-        _s._server == _LiveMatchesServer.stremio) {
+        _s._server == _LiveMatchesServer.stremio ||
+        _s._server == _LiveMatchesServer.iptvSports) {
       return _buildStreamedBody();
     }
     if (_s._server == _LiveMatchesServer.cdnLive) return _buildCdnBody();
@@ -686,7 +687,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     if (matches.isEmpty) {
       final emptyMsg = _s._server == _LiveMatchesServer.stremio
           ? 'No live Stremio addons — install one in Settings → Sources and enable Live Matches'
-          : 'No streams available';
+          : _s._server == _LiveMatchesServer.iptvSports
+              ? 'Configure My IPTV in Settings → Data & backup, or no games today'
+              : 'No streams available';
       return ShellErrorRetryPanel(
         message: emptyMsg,
         onRetry: _s._load,
