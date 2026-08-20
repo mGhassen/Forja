@@ -712,6 +712,9 @@ class EngineRuntime {
       if (!completer.isCompleted) {
         _pendingResults.remove(callId);
         if (!completer.isCompleted) completer.complete('[]');
+        // Drop in-flight HTTP so a hung body read cannot pin the fork.
+        _fetchGeneration++;
+        _fetchGens.clear();
         _forjaRuntimeLog('$pluginId timed out after ${timeout.inSeconds}s');
         return [];
       }
@@ -835,12 +838,16 @@ class EngineRuntime {
       }
       final streamed = await _http
           .send(req)
-          .timeout(const Duration(seconds: 25));
+          .timeout(const Duration(seconds: 20));
       if (gen != _fetchGeneration) {
         _fetchGens.remove(id);
         return;
       }
-      final bytes = await streamed.stream.toBytes();
+      // Body read must time out too — send() alone returns while a stalled
+      // stream hangs the whole extract (Videasy/VidLink 90–105s empties).
+      final bytes = await streamed.stream.toBytes().timeout(
+        const Duration(seconds: 20),
+      );
       if (gen != _fetchGeneration) {
         _fetchGens.remove(id);
         return;

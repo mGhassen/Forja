@@ -20,6 +20,7 @@ class DetailsPlaySources {
     required this.stremio,
     required this.nuvio,
     required this.engine,
+    required this.engineAutoStart,
     required this.webstreaming,
   });
 
@@ -28,12 +29,14 @@ class DetailsPlaySources {
         stremio = true,
         nuvio = true,
         engine = true,
+        engineAutoStart = false,
         webstreaming = true;
 
   final bool torrent;
   final bool stremio;
   final bool nuvio;
   final bool engine;
+  final bool engineAutoStart;
   final bool webstreaming;
 
   DetailsPlaySources copyWith({
@@ -41,6 +44,7 @@ class DetailsPlaySources {
     bool? stremio,
     bool? nuvio,
     bool? engine,
+    bool? engineAutoStart,
     bool? webstreaming,
   }) {
     return DetailsPlaySources(
@@ -48,6 +52,7 @@ class DetailsPlaySources {
       stremio: stremio ?? this.stremio,
       nuvio: nuvio ?? this.nuvio,
       engine: engine ?? this.engine,
+      engineAutoStart: engineAutoStart ?? this.engineAutoStart,
       webstreaming: webstreaming ?? this.webstreaming,
     );
   }
@@ -104,6 +109,10 @@ class DetailsPlaySession {
   bool webstreamingOnlyExtractionCancelled = false;
   int webstreamingPlayGen = 0;
 
+  bool isEngineAutoExtracting = false;
+  bool engineAutoExtractionCancelled = false;
+  int engineAutoPlayGen = 0;
+
   String selectedSourceId = EngineIds.allChip;
   String panelKindFilter = EngineIds.kind;
 
@@ -112,7 +121,8 @@ class DetailsPlaySession {
         isStremioFetching ||
         isNuvioFetching ||
         isEngineFetching ||
-        isWebstreamingOnlyExtracting) {
+        isWebstreamingOnlyExtracting ||
+        isEngineAutoExtracting) {
       return DetailsResolveStatus.loading;
     }
     if (errorMessage != null &&
@@ -165,6 +175,7 @@ class DetailsPlaySessionNotifier
       stremio: await PlaySourceEffective.stremio(settings, lanReady),
       nuvio: await PlaySourceEffective.nuvio(settings, lanReady),
       engine: await PlaySourceEffective.engine(settings, lanReady),
+      engineAutoStart: await settings.isPlaySourceEngineAutoStartEnabled(),
       webstreaming: await settings.isPlaySourceWebstreamingEnabled(),
     );
     session.playSources = next;

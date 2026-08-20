@@ -43,7 +43,7 @@ abstract final class DetailsTokens {
   /// Sources sliding panel on media details (player overlays use
   /// [ShellTokens.playerSidePanelPadding]).
   static const EdgeInsets sourcesPanelPadding =
-      EdgeInsets.fromLTRB(16, 0, 12, 12);
+      EdgeInsets.fromLTRB(16, 8, 12, 12);
 
   static const double contentPaddingDesktop =
       ShellTokens.homeSectionHorizontalPadding;

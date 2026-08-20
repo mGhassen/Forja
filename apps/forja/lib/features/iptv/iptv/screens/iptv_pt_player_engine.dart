@@ -1311,11 +1311,29 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     try {
       if (_s._disposed) return;
 
+      // Multi-source: dead TCP/open → next source immediately. Burning 8
+      // retries on skybeyondplus timeouts leaves the user on Buffering forever.
+      if (!userInitiated &&
+          _s._sources.length > 1 &&
+          _s._sourceIdx < _s._sources.length - 1 &&
+          iptvIsDeadEndpointFail(reason)) {
+        _s._sourceIdx++;
+        _s._retryAttempt = 0;
+        _s._syncTitleToActiveSource();
+        if (mounted) {
+          setState(() => _s._statusBanner =
+              'Switching to ${_s._sources[_s._sourceIdx].chromeTitle}…');
+        }
+        await _openCurrent(hardRecreate: _atvHardReseatStreams);
+        return;
+      }
+
       if (_s._retryAttempt >= _IptvPtPlayerScreenState._maxRetries) {
         // Rotate to the next source if we have one.
         if (_s._sourceIdx < _s._sources.length - 1) {
           _s._sourceIdx++;
           _s._retryAttempt = 0;
+          _s._syncTitleToActiveSource();
           if (mounted) {
             setState(() =>
                 _s._statusBanner = 'Switching to ${_s._sources[_s._sourceIdx].label}…');
@@ -1615,6 +1633,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     setState(() {
       _s._sourceIdx = idx;
       _s._retryAttempt = 0;
+      _s._syncTitleToActiveSource();
     });
     await _openCurrent(hardRecreate: _atvHardReseatStreams);
   }

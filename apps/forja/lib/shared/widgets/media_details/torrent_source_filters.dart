@@ -561,7 +561,6 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
               child: SingleChildScrollView(
                 controller: _scroll,
                 scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
                 child: Row(
                   children: [
                     for (var i = 0; i < widget.options.length; i++)

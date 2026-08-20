@@ -1,6 +1,8 @@
 part of 'live_matches_screen.dart';
 
 mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
+  _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
+
   /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
   Future<bool> _runWithCancellableLoading(
     String message,
@@ -42,6 +44,10 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     _DamiTvStream ppv,
     _StreamedMatch streamed,
   ) async {
+    if (_s._server == _LiveMatchesServer.iptvSports) {
+      await _openIptvSportsMatch(streamed);
+      return;
+    }
     if (!mounted) return;
     final streams = <_StreamedStream>[];
     final ok = await _runWithCancellableLoading(
@@ -86,7 +92,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   }
 
   Future<void> _openStreamedMatch(_StreamedMatch match) async {
-    if (match.isIptvSports) {
+    if (_s._server == _LiveMatchesServer.iptvSports || match.isIptvSports) {
       await _openIptvSportsMatch(match);
       return;
     }
@@ -191,11 +197,6 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
 
   Future<void> _openIptvSportsMatch(_StreamedMatch match) async {
     if (!mounted) return;
-    final game = match.sportMatchGame;
-    if (game == null) {
-      ForjaToast.info('Missing game data');
-      return;
-    }
     final sources = <IptvPlaySource>[];
     final ok = await _runWithCancellableLoading(
       'Matching IPTV channels…',
@@ -213,17 +214,86 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       return;
     }
     if (!mounted) return;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF141414),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _IptvSportsChannelSheet(
+        match: match,
+        sources: sources,
+        onChannelSelected: (picked) {
+          Navigator.pop(context);
+          unawaited(_playIptvSportsSources(match, sources, picked));
+        },
+      ),
+    );
+  }
+
+  Future<void> _playIptvSportsSources(
+    _StreamedMatch match,
+    List<IptvPlaySource> sources,
+    IptvPlaySource picked,
+  ) async {
+    if (!mounted) return;
+    final ordered = <IptvPlaySource>[
+      picked,
+      for (final s in sources)
+        if (!identical(s, picked) && s.url != picked.url) s,
+    ];
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => IptvPtPlayerScreen(
-          sources: sources,
-          title: match.title,
-          subtitle: match.categoryLabel,
+          sources: ordered,
+          title: picked.chromeTitle,
+          subtitle: '${match.title} · ${match.categoryLabel}',
+          titleTracksSource: true,
           engineContext: BuiltInPlayerContext.live,
         ),
       ),
     );
+  }
+
+  Future<void> _openIptvSportsFromPpv(_DamiTvStream s) async {
+    final match = _StreamedMatch(
+      id: 'ppv:${s.id}',
+      title: s.name,
+      category: s.categoryName,
+      dateMs: s.startsAt > 0 ? s.startsAt * 1000 : 0,
+      poster: s.poster,
+      popular: false,
+      airing: s.isLive,
+      homeTeam: s.homeTeam,
+      awayTeam: s.awayTeam,
+      homeBadge: s.homeBadge,
+      awayBadge: s.awayBadge,
+      sources: const [],
+    );
+    await _openIptvSportsMatch(match);
+  }
+
+  Future<void> _openIptvSportsFromCdn(_CdnSportEvent event) async {
+    final title = '${event.homeTeam} vs ${event.awayTeam}'.trim();
+    final startMs = int.tryParse(event.start) ?? 0;
+    final match = _StreamedMatch(
+      id: 'cdn:${event.gameID}',
+      title: title.isEmpty ? event.tournament : title,
+      category: event.sport,
+      dateMs: startMs > 1e12 ? startMs : (startMs > 0 ? startMs * 1000 : 0),
+      poster: event.homeTeamIMG.isNotEmpty
+          ? event.homeTeamIMG
+          : event.awayTeamIMG,
+      popular: false,
+      airing: event.isLive,
+      homeTeam: event.homeTeam,
+      awayTeam: event.awayTeam,
+      homeBadge: event.homeTeamIMG,
+      awayBadge: event.awayTeamIMG,
+      sources: const [],
+    );
+    await _openIptvSportsMatch(match);
   }
 
   Future<void> _openStreamedEmbed(
@@ -253,6 +323,10 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   }
 
   Future<void> _openDamiTvStream(_DamiTvStream s) async {
+    if (_s._server == _LiveMatchesServer.iptvSports) {
+      await _openIptvSportsFromPpv(s);
+      return;
+    }
     if (s.iframe.isEmpty) {
       ForjaToast.info('Stream not yet available for this event');
       return;
@@ -333,6 +407,10 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   }
 
   void _openCdnSportEvent(_CdnSportEvent event) {
+    if (_s._server == _LiveMatchesServer.iptvSports) {
+      unawaited(_openIptvSportsFromCdn(event));
+      return;
+    }
     if (event.channels.isEmpty) {
       ForjaToast.info('No channels available for this event');
       return;

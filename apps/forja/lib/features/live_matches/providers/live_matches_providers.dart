@@ -189,14 +189,6 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStremio() async {
 }
 
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesIptvSports() async {
-  final matches = await _fetchIptvSportsMatches();
-  final seen = <String>{};
-  final cats = <_Sport>[];
-  for (final m in matches) {
-    if (m.category.isNotEmpty && seen.add(m.category)) {
-      cats.add(_Sport(id: m.category, name: m.categoryLabel));
-    }
-  }
-  cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-  return LiveMatchesPrimaryLoad(sports: cats, streamedMatches: matches);
+  // Same schedule catalog as All — Xtream matching runs on play.
+  return _fetchLiveMatchesAll();
 }

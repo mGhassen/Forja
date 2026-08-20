@@ -33,10 +33,15 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/features/live_matches/live_embed_nav.dart';
 import 'package:forja/features/live_matches/live_matches_sport_filter.dart';
+import 'package:forja/features/live_matches/live_matches_team_parse.dart';
 import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.dart';
 import 'package:forja/features/live_matches/live_embed_webview_proxy.dart';
+import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
+import 'package:forja/features/iptv/iptv/providers/iptv_controller_provider.dart';
+import 'package:forja/features/iptv/iptv/screens/iptv_catalog_workspace.dart';
+import 'package:forja/features/iptv/iptv/screens/iptv_portals_top_bar_button.dart';
 import 'package:rust/rust.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -111,10 +116,23 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   List<_CdnChannel> _cdnChannels = [];
   List<_CdnSportEvent> _cdnSports = [];
   bool _cdnShowChannels = true; // true = channels, false = sports
+  String? _lastSyncedIptvPortalKey;
 
   static const _topBarServersIndex = 0;
-  static const _topBarRefreshIndex = 1;
-  static const _topBarViewIndex = 2;
+  /// Used when My IPTV portal chip is hidden (Servers → Refresh → View).
+  static const _topBarRefreshIndexBase = 1;
+  static const _topBarViewIndexBase = 2;
+
+  bool get _showIptvPortalTopBar =>
+      _server == _LiveMatchesServer.iptvSports;
+
+  /// Portals sits top-right (after Refresh), like IPTV.
+  int get _topBarRefreshIndex => _topBarRefreshIndexBase;
+
+  int get _topBarPortalIndex => 2;
+
+  int get _topBarViewIndex =>
+      _showIptvPortalTopBar ? 3 : _topBarViewIndexBase;
 
   final FocusNode _refreshFocusNode = FocusNode(
     debugLabel: 'live-matches-refresh',

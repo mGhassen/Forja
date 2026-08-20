@@ -239,3 +239,70 @@ class PlayerSidePanelHeader extends StatelessWidget {
     );
   }
 }
+
+/// Bottom strip for Sources panels (details + player): episode + result count.
+class SourcesPanelMetaFooter extends StatelessWidget {
+  const SourcesPanelMetaFooter({
+    super.key,
+    this.episodeLabel,
+    this.resultCount,
+  });
+
+  final String? episodeLabel;
+  final int? resultCount;
+
+  @override
+  Widget build(BuildContext context) {
+    if (episodeLabel == null && resultCount == null) {
+      return const SizedBox.shrink();
+    }
+    final cinematic = ForjaShellColors.cinematic;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Divider(height: 1, color: cinematic.borderSubtle),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 10, 4, 2),
+            child: Row(
+              children: [
+                if (episodeLabel != null)
+                  Text(
+                    episodeLabel!,
+                    style: TextStyle(
+                      color: cinematic.textSecondary.withValues(alpha: 0.85),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                const Spacer(),
+                if (resultCount != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      '$resultCount',
+                      style: TextStyle(
+                        color: cinematic.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

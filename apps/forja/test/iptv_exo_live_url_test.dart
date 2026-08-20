@@ -65,4 +65,25 @@ void main() {
       );
     });
   });
+
+  group('iptvIsDeadEndpointFail', () {
+    test('TCP timeout rotates', () {
+      expect(
+        iptvIsDeadEndpointFail(
+          'tcp: Connection to tcp://skybeyondplus.mine.nu:25461 failed: Operation timed out',
+        ),
+        isTrue,
+      );
+      expect(
+        iptvIsDeadEndpointFail(
+          'Failed to open http://skybeyondplus.mine.nu:25461/live/u/p/1.m3u8.',
+        ),
+        isTrue,
+      );
+    });
+
+    test('benign seek is not dead endpoint', () {
+      expect(iptvIsDeadEndpointFail('Cannot seek'), isFalse);
+    });
+  });
 }

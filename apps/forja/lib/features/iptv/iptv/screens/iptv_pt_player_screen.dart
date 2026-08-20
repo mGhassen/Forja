@@ -88,18 +88,43 @@ bool iptvIsHardOpenFail(String msg) {
       lower.contains('source error');
 }
 
+/// Open/connect death where retrying the same URL is useless (multi-source
+/// should rotate immediately). Broader than [iptvIsHardOpenFail] — includes
+/// TCP timeouts that never become "Failed to open".
+@visibleForTesting
+bool iptvIsDeadEndpointFail(String msg) {
+  final lower = msg.toLowerCase();
+  if (iptvIsHardOpenFail(msg)) return true;
+  return lower.contains('timed out') ||
+      lower.contains('timeout') ||
+      lower.contains('connection refused') ||
+      lower.contains('could not connect') ||
+      lower.contains('network is unreachable') ||
+      lower.contains('no route to host') ||
+      (lower.contains('tcp:') && lower.contains('failed'));
+}
+
 /// Single source for the IPTV player.
 class IptvPlaySource {
   final String url;
   final String label;
+  /// Source-picker subtitle (e.g. category). Host is appended in the UI.
+  final String? detail;
   /// Optional HTTP headers (Cookie / Referer / Origin) for Exo / MediaKit.
   /// Live Matches Streamed handoff uses these instead of `/hls-proxy`.
   final Map<String, String> headers;
   const IptvPlaySource({
     required this.url,
     required this.label,
+    this.detail,
     this.headers = const {},
   });
+
+  /// Channel name for chrome — strips leading `T3 · ` rank prefix.
+  String get chromeTitle {
+    final t = label.replaceFirst(RegExp(r'^T\d+\s*·\s*'), '').trim();
+    return t.isEmpty ? label : t;
+  }
 }
 
 /// Dedicated IPTV / Live native player. Android remembers Exo / MediaKit per
@@ -137,6 +162,9 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   final IptvPortal? seriesPortal;
   /// Show name for chrome / episode switch titles.
   final String? seriesShowTitle;
+  /// When true, top chrome title follows the active [IptvPlaySource]
+  /// (My IPTV sports — each source is a different channel).
+  final bool titleTracksSource;
 
   const IptvPtPlayerScreen({
     super.key,
@@ -157,6 +185,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     this.seriesEpisodes,
     this.seriesPortal,
     this.seriesShowTitle,
+    this.titleTracksSource = false,
   });
 
   /// Convenience: build for a single Xtream stream.
@@ -555,8 +584,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       return true;
     });
     _sources = List<IptvPlaySource>.from(widget.sources);
-    _title = widget.title;
-    _subtitle = widget.subtitle;
+    if (widget.titleTracksSource && widget.sources.isNotEmpty) {
+      _title = widget.sources.first.chromeTitle;
+      _subtitle = widget.subtitle ?? widget.title;
+    } else {
+      _title = widget.title;
+      _subtitle = widget.subtitle;
+    }
     _logoUrl = widget.logoUrl;
     _playingSeason = widget.subtitleSeason;
     _playingEpisode = widget.subtitleEpisode;
@@ -910,6 +944,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     } else {
       _coverDeadSurface = false;
     }
+  }
+
+  /// My IPTV sports: chrome title = active channel (not the match card title).
+  void _syncTitleToActiveSource() {
+    if (!widget.titleTracksSource || _sources.isEmpty) return;
+    final i = _sourceIdx.clamp(0, _sources.length - 1);
+    _title = _sources[i].chromeTitle;
   }
 
   @override

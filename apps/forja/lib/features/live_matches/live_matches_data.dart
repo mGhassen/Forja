@@ -5,15 +5,16 @@ mixin _LiveMatchesData
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   void _focusTopBarItem(int index) {
-    if (index == _LiveMatchesScreenState._topBarServersIndex) {
+    if (index == _LiveMatchesScreenState._topBarServersIndex ||
+        (_s._showIptvPortalTopBar && index == _s._topBarPortalIndex)) {
       ShellTvFocusCoordinator.focusRowItem(
         _LiveMatchesScreenState._tabId,
         _LiveMatchesScreenState._topBarRowId,
-        _LiveMatchesScreenState._topBarServersIndex,
+        index,
       );
       return;
     }
-    final node = index == _LiveMatchesScreenState._topBarViewIndex
+    final node = index == _s._topBarViewIndex
         ? _s._viewFocusNode
         : _s._refreshFocusNode;
     if (!node.canRequestFocus) return;
@@ -26,8 +27,41 @@ mixin _LiveMatchesData
 
   Future<void> _selectServer(_LiveMatchesServer server) async {
     if (server == _s._server) return;
+    final leavingIptv = _s._server == _LiveMatchesServer.iptvSports &&
+        server != _LiveMatchesServer.iptvSports;
     setState(() => _s._server = server);
+    if (leavingIptv) {
+      ref.read(iptvControllerProvider).closePortalPanel();
+    }
+    if (server == _LiveMatchesServer.iptvSports) {
+      final ctrl = ref.read(iptvControllerProvider);
+      await ctrl.preparePortalPanel();
+      await _syncMyIptvFromActivePortal(ctrl, reload: false);
+    }
     await _load();
+  }
+
+  Future<void> _syncMyIptvFromActivePortal(
+    IptvController ctrl, {
+    bool reload = false,
+  }) async {
+    final p = ctrl.activePortal;
+    if (p == null) return;
+    if (p.portal.platform != IptvPortalPlatform.xtream) {
+      ForjaToast.info('My IPTV needs an Xtream portal');
+      return;
+    }
+    final before = await LiveMatchesIptvSportsConfig.load();
+    final next = await LiveMatchesIptvSportsConfig.ensureArmed(
+      portalKey: p.key,
+    );
+    _s._lastSyncedIptvPortalKey = p.key;
+    final changed = before.portalKey != next.portalKey ||
+        !before.enabled ||
+        before.leagues.isEmpty;
+    if (reload || changed) {
+      await _load();
+    }
   }
 
   void _openServerPicker() {
@@ -48,6 +82,13 @@ mixin _LiveMatchesData
     );
   }
 
+  Future<void> _toggleIptvPortalPanel() async {
+    final ctrl = ref.read(iptvControllerProvider);
+    await ctrl.preparePortalPanel();
+    if (!mounted) return;
+    ctrl.togglePortalPanel();
+  }
+
   Widget _serversTopBarButton() {
     return _LiveMatchesServersTopBarButton(
       onTap: _openServerPicker,
@@ -55,8 +96,20 @@ mixin _LiveMatchesData
         context,
         listIndex: _LiveMatchesScreenState._topBarServersIndex,
       ),
-      onRightEdge: () =>
-          _focusTopBarItem(_LiveMatchesScreenState._topBarRefreshIndex),
+      onRightEdge: () => _focusTopBarItem(_s._topBarRefreshIndex),
+      onDownEdge: _topBarDownEdge,
+    );
+  }
+
+  Widget _iptvPortalTopBarButton(IptvController ctrl) {
+    return IptvPortalsTopBarButton(
+      ctrl: ctrl,
+      onTogglePanel: () => unawaited(_toggleIptvPortalPanel()),
+      tvTabId: _LiveMatchesScreenState._tabId,
+      tvRowId: _LiveMatchesScreenState._topBarRowId,
+      tvItemIndex: _s._topBarPortalIndex,
+      onLeftEdge: () => _focusTopBarItem(_s._topBarRefreshIndex),
+      onRightEdge: () {},
       onDownEdge: _topBarDownEdge,
     );
   }

@@ -2074,102 +2074,26 @@ Future<List<_StreamedMatch>> _fetchStremioSportMatches() async {
   return _sortStreamedLiveFirst(out);
 }
 
-String _localDateYyyymmdd() {
-  final n = DateTime.now();
-  final y = n.year.toString().padLeft(4, '0');
-  final m = n.month.toString().padLeft(2, '0');
-  final d = n.day.toString().padLeft(2, '0');
-  return '$y$m$d';
-}
-
-_StreamedMatch? _streamedMatchFromIptvSportsGame(Map<String, dynamic> j) {
-  final id = (j['id'] ?? '').toString().trim();
-  if (id.isEmpty) return null;
-  final title = (j['title'] ?? j['name'] ?? '').toString().trim();
-  if (title.isEmpty) return null;
-  final sport = (j['sport'] ?? '').toString().trim().toUpperCase();
-  final category = (j['category'] ?? 'other').toString().trim().toLowerCase();
-  final dateMs = (j['dateMs'] as num?)?.toInt() ??
-      (() {
-        final date = (j['date'] ?? '').toString();
-        if (date.isEmpty) return 0;
-        final dt = DateTime.tryParse(date);
-        return dt?.toUtc().millisecondsSinceEpoch ?? 0;
-      })();
-  final live = j['live'] == true;
-  final home = (j['homeTeam'] ?? '').toString();
-  final away = (j['awayTeam'] ?? '').toString();
-  final homeLogo = (j['homeLogo'] ?? '').toString();
-  final awayLogo = (j['awayLogo'] ?? '').toString();
-  final poster = (j['poster'] ?? homeLogo).toString();
-  return _StreamedMatch(
-    id: 'iptv:$sport:$id',
-    title: title,
-    category: category.isEmpty ? 'other' : category,
-    dateMs: dateMs,
-    poster: poster,
-    popular: false,
-    airing: live,
-    homeTeam: home.isEmpty ? null : home,
-    homeBadge: homeLogo.isEmpty ? null : homeLogo,
-    awayTeam: away.isEmpty ? null : away,
-    awayBadge: awayLogo.isEmpty ? null : awayLogo,
-    sources: const [],
-    catalog: 'iptv_sports',
-    sportMatchGame: Map<String, dynamic>.from(j),
-  );
-}
-
-Future<List<_StreamedMatch>> _fetchIptvSportsMatches() async {
-  final config = await LiveMatchesIptvSportsConfig.load();
-  if (!config.isReady) return [];
-  try {
-    final raw = await runLiveMatchesFetchJson(
-      jsonEncode({
-        'action': 'sport_match_games',
-        'leagues': config.leagues,
-        'date': _localDateYyyymmdd(),
-      }),
-    );
-    final parsed = jsonDecode(raw) as Map<String, dynamic>;
-    if (parsed.containsKey('error')) {
-      debugPrint('[LiveMatches] IPTV sports games error: ${parsed['error']}');
-      return [];
-    }
-    final list = parsed['items'] as List? ?? [];
-    return list
-        .map((e) {
-          try {
-            return _streamedMatchFromIptvSportsGame(
-              Map<String, dynamic>.from(e as Map),
-            );
-          } catch (_) {
-            return null;
-          }
-        })
-        .whereType<_StreamedMatch>()
-        .toList()
-      ..sort((a, b) {
-        if (a.isLive != b.isLive) return a.isLive ? -1 : 1;
-        return a.dateMs.compareTo(b.dateMs);
-      });
-  } catch (e) {
-    debugPrint('[LiveMatches] IPTV sports fetch error: $e');
-    return [];
-  }
-}
+// My IPTV catalog = All (PPV/Streamed/CDN). ESPN scoreboard path removed.
 
 Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   _StreamedMatch match,
 ) async {
-  final game = match.sportMatchGame;
-  if (game == null) return [];
+  final game = match.sportMatchGame ?? _sportMatchGamePayloadFromMatch(match);
+  final home = (game['homeTeam'] ?? '').toString().trim();
+  final away = (game['awayTeam'] ?? '').toString().trim();
+  if (home.isEmpty && away.isEmpty) {
+    debugPrint('[LiveMatches] IPTV sports: no teams parsed from "${match.title}"');
+    return [];
+  }
   final config = await LiveMatchesIptvSportsConfig.load();
-  if (!config.isReady) return [];
+  final armed = await config.resolveForFetch();
+  if (armed == null) return [];
+  final portalKey = armed.portalKey;
   final portals = await IptvStore.load();
   VerifiedPortal? portal;
   for (final p in portals) {
-    if (p.key == config.portalKey) {
+    if (p.key == portalKey) {
       portal = p;
       break;
     }
@@ -2178,11 +2102,8 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
       portal.portal.platform != IptvPortalPlatform.xtream) {
     return [];
   }
-  final sport = (game['sport'] ?? '').toString();
+  final sport = (game['sport'] ?? match.category).toString();
   final categoryIds = config.categoryIdsForGame(sport);
-  if (categoryIds.isEmpty) {
-    debugPrint('[LiveMatches] IPTV sports: no categories for $sport');
-  }
   final raw = await runLiveMatchesFetchJson(
     jsonEncode({
       'action': 'sport_match_streams',
@@ -2207,14 +2128,51 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
     final url = s['url']?.toString().trim() ?? '';
     if (url.isEmpty) continue;
     if (!url.startsWith('http://') && !url.startsWith('https://')) continue;
-    final name = (s['name'] ?? s['title'] ?? 'Stream').toString().trim();
+    final channel = (s['name'] ?? 'Stream').toString().trim();
+    final category = (s['title'] ?? '').toString().trim();
     final tier = s['tier'];
-    final label = name.isEmpty
-        ? 'Stream'
-        : (tier is num ? 'T$tier · $name' : name);
-    out.add(IptvPlaySource(url: url, label: label));
+    final name = channel.isEmpty ? 'Stream' : channel;
+    final label = tier is num ? 'T$tier · $name' : name;
+    out.add(IptvPlaySource(
+      url: url,
+      label: label,
+      detail: category.isEmpty ? null : category,
+    ));
   }
   return out;
+}
+
+/// Build matcher payload from a Live Matches card (PPV / Streamed / CDN).
+Map<String, dynamic> _sportMatchGamePayloadFromMatch(_StreamedMatch match) {
+  var home = (match.homeTeam ?? '').trim();
+  var away = (match.awayTeam ?? '').trim();
+  if (home.isEmpty || away.isEmpty) {
+    final parsed = parseLiveMatchTeamsFromTitle(match.title);
+    if (home.isEmpty) home = parsed.$1;
+    if (away.isEmpty) away = parsed.$2;
+  }
+  String nick(String team) {
+    final bits = team.split(RegExp(r'\s+')).where((s) => s.isNotEmpty);
+    return bits.isEmpty ? '' : bits.last;
+  }
+
+  return {
+    'id': match.id,
+    'title': match.title,
+    'sport': match.category,
+    'category': match.category,
+    'homeTeam': home,
+    'awayTeam': away,
+    'homeNick': nick(home),
+    'awayNick': nick(away),
+    'homeAbbr': '',
+    'awayAbbr': '',
+    'dateMs': match.dateMs,
+    'date': match.dateMs > 0
+        ? DateTime.fromMillisecondsSinceEpoch(match.dateMs, isUtc: true)
+            .toIso8601String()
+        : '',
+  };
 }
 
 Future<List<_StreamedStream>> _fetchStreamedStreams(
@@ -2337,7 +2295,7 @@ String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
       _LiveMatchesServer.mutStreams => 'mut.st',
       _LiveMatchesServer.cdnLive => 'cdn-live.tv',
       _LiveMatchesServer.stremio => 'Installed live addons',
-      _LiveMatchesServer.iptvSports => 'ESPN + your Xtream',
+      _LiveMatchesServer.iptvSports => 'Existing schedule · your Xtream',
     };
 
 sealed class _LiveMatchGridEntry {

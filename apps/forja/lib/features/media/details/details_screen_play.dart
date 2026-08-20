@@ -33,6 +33,12 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
       unawaited(_s._startWebstreamingOnlyPlayback());
       return;
     }
+    if (!_s._hasPanelPlaySources &&
+        _s._playSourceEngine &&
+        _s._playSourceEngineAutoStart) {
+      unawaited(_s._startEngineAutoPlayback());
+      return;
+    }
     _s._openSourcesPanel();
   }
 
@@ -40,6 +46,12 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
     if (!mounted) return;
     if (!_s._hasPanelPlaySources && _s._playSourceWebstreaming) {
       unawaited(_s._startWebstreamingOnlyPlayback());
+      return;
+    }
+    if (!_s._hasPanelPlaySources &&
+        _s._playSourceEngine &&
+        _s._playSourceEngineAutoStart) {
+      unawaited(_s._startEngineAutoPlayback());
       return;
     }
     _s._openSourcesPanel();
@@ -81,11 +93,18 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         ? (progress?['method'] as String?)
         : null;
 
-    // Home hero Play → webstreaming. Continue Watching keeps the saved method.
-    if (fromRoute && _s._playSourceWebstreaming && !isContinueWatchingResume) {
-      _consumeAutoPlayFlags(fromRoute: true, fromEpisode: fromEpisode);
-      unawaited(_s._startWebstreamingOnlyPlayback());
-      return;
+    // Home hero Play → webstreaming, else Forja auto when enabled.
+    if (fromRoute && !isContinueWatchingResume) {
+      if (_s._playSourceWebstreaming) {
+        _consumeAutoPlayFlags(fromRoute: true, fromEpisode: fromEpisode);
+        unawaited(_s._startWebstreamingOnlyPlayback());
+        return;
+      }
+      if (_s._playSourceEngine && _s._playSourceEngineAutoStart) {
+        _consumeAutoPlayFlags(fromRoute: true, fromEpisode: fromEpisode);
+        unawaited(_s._startEngineAutoPlayback());
+        return;
+      }
     }
 
     if (savedMethod == 'stream') {

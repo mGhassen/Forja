@@ -41,14 +41,16 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
       final portals = all
           .where((p) => p.portal.platform == IptvPortalPlatform.xtream)
           .toList();
+      final portalKey =
+          await LiveMatchesIptvSportsConfig.resolvePortalKey(config);
       if (!mounted) return;
       setState(() {
         _config = config;
         _portals = portals;
         _loading = false;
       });
-      if (config.portalKey.isNotEmpty) {
-        await _loadCategoriesFor(config.portalKey);
+      if (portalKey.isNotEmpty) {
+        await _loadCategoriesFor(portalKey);
       }
     } catch (e) {
       if (!mounted) return;
@@ -116,50 +118,6 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     }
   }
 
-  Future<void> _pickPortal() async {
-    if (_portals.isEmpty) {
-      ForjaToast.info('Add an Xtream portal in IPTV first');
-      return;
-    }
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: ForjaShellColors.surfaceElevated,
-      builder: (ctx) {
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              for (final p in _portals)
-                ListTile(
-                  title: Text(
-                    p.displayLabel,
-                    style: const TextStyle(color: ForjaShellColors.textPrimary),
-                  ),
-                  subtitle: Text(
-                    p.portal.url,
-                    style: const TextStyle(
-                      color: ForjaShellColors.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                  trailing: p.key == _config.portalKey
-                      ? const Icon(
-                          Icons.check_rounded,
-                          color: ForjaShellColors.brandGreen,
-                        )
-                      : null,
-                  onTap: () => Navigator.pop(ctx, p.key),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-    if (selected == null || !mounted) return;
-    await _persist(_config.copyWith(portalKey: selected));
-    await _loadCategoriesFor(selected);
-  }
-
   Future<void> _toggleLeague(String league) async {
     final next = List<String>.from(_config.leagues);
     if (next.contains(league)) {
@@ -201,14 +159,6 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     await _persist(_config.copyWith(sportCategories: map));
   }
 
-  String _portalSubtitle() {
-    for (final p in _portals) {
-      if (p.key == _config.portalKey) return p.displayLabel;
-    }
-    if (_config.portalKey.isNotEmpty) return 'Portal missing — pick again';
-    return 'Choose a saved portal';
-  }
-
   String _categorySubtitle(String key) {
     final ids = _config.sportCategories[key] ?? const [];
     if (ids.isEmpty) return 'All live channels (default)';
@@ -247,8 +197,8 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
         Padding(
           padding: const EdgeInsets.fromLTRB(2, 12, 2, 4),
           child: Text(
-            'Match today’s ESPN schedule to live channels on one Xtream portal. '
-            'Then Live Matches → Servers → My IPTV.',
+            'Pick the portal in Live Matches → My IPTV (top-right Portals). '
+            'Here: leagues and optional folder narrowing.',
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
               fontSize: 13,
@@ -280,13 +230,19 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
                 leagues: List<String>.from(LiveMatchesIptvSportsConfig.allLeagues),
               );
             }
+            // Seed portal from IPTV’s last Xtream selection (no Settings picker).
+            if (v && next.portalKey.isEmpty) {
+              final fromIptv =
+                  await LiveMatchesIptvSportsConfig.resolvePortalKey(next);
+              if (fromIptv.isNotEmpty) {
+                next = next.copyWith(portalKey: fromIptv);
+              }
+            }
             await _persist(next);
+            if (v && next.portalKey.isNotEmpty) {
+              await _loadCategoriesFor(next.portalKey);
+            }
           },
-        ),
-        SettingsActionRow(
-          title: 'Xtream portal',
-          subtitle: _portalSubtitle(),
-          onTap: _pickPortal,
         ),
         if (_loadingCats)
           const Padding(

@@ -7,20 +7,30 @@ function extract(ctx) {
   };
   var API = cfg.enc;
   var DB = cfg.db;
-  var AJAX = cfg.ajax;
-  if (!API || !DB || !AJAX) return Promise.resolve([]);
+  var ajaxList = [];
+  function pushAjax(raw) {
+    var v = String(raw || '').replace(/\/$/, '');
+    if (!v || ajaxList.indexOf(v) >= 0) return;
+    ajaxList.push(v);
+  }
+  pushAjax(cfg.ajax);
+  (Array.isArray(cfg.ajaxMirrors) ? cfg.ajaxMirrors : []).forEach(pushAjax);
+  if (!API || !DB || !ajaxList.length) return Promise.resolve([]);
+  var AJAX = ajaxList[0];
   var isMovie = ctx.type === 'movie';
   var mediaType = isMovie ? 'movie' : 'tv';
 
-  function getJson(url) {
-    return ctx.fetch(url, { headers: HEADERS }).then(function (r) {
-      return r.json();
+  function ajaxHeaders() {
+    var origin = AJAX.replace(/\/ajax$/, '/');
+    return Object.assign({}, HEADERS, {
+      Referer: origin,
+      Accept: 'application/json',
     });
   }
 
-  function getText(url) {
-    return ctx.fetch(url, { headers: HEADERS }).then(function (r) {
-      return r.text();
+  function getJson(url) {
+    return ctx.fetch(url, { headers: ajaxHeaders() }).then(function (r) {
+      return r.json();
     });
   }
 
@@ -101,12 +111,14 @@ function extract(ctx) {
     return eps[keys[0]].eid;
   }
 
-  function fetchStreams(eid, title, year) {
+  function fetchStreamsOn(ajaxBase, eid) {
+    AJAX = ajaxBase;
     return encrypt(eid)
       .then(function (encEid) {
         return getJson(AJAX + '/links/list?eid=' + eid + '&_=' + encEid);
       })
       .then(function (serversResp) {
+        if (!serversResp || !serversResp.result) throw new Error('empty servers');
         return parseHtml(serversResp.result);
       })
       .then(function (servers) {
@@ -127,7 +139,8 @@ function extract(ctx) {
                   if (
                     !decrypted ||
                     !decrypted.url ||
-                    decrypted.url.indexOf('rapidshare.cc') < 0
+                    (decrypted.url.indexOf('rapidshare.cc') < 0 &&
+                      decrypted.url.indexOf('rapidshare.work') < 0)
                   ) {
                     return [];
                   }
@@ -139,7 +152,7 @@ function extract(ctx) {
                       url: s.url,
                       name: 'YFlix ' + serverType,
                       quality: s.quality || '',
-                      headers: HEADERS,
+                      headers: ajaxHeaders(),
                     };
                   });
                 })
@@ -166,14 +179,26 @@ function extract(ctx) {
       });
   }
 
+  function fetchStreams(eid) {
+    function tryAt(i) {
+      if (i >= ajaxList.length) return Promise.resolve([]);
+      return fetchStreamsOn(ajaxList[i], eid).then(function (rows) {
+        if (rows && rows.length) return rows;
+        return tryAt(i + 1);
+      }).catch(function () {
+        return tryAt(i + 1);
+      });
+    }
+    return tryAt(0);
+  }
+
   return getJson(DB + '/find?tmdb_id=' + ctx.tmdbId + '&type=' + mediaType)
     .then(function (results) {
       if (!results || !results.length) return [];
       var db = results[0];
       var eid = findEid(db);
       if (!eid) return [];
-      var info = db.info || {};
-      return fetchStreams(eid, info.title_en || ctx.title || 'YFlix', info.year || ctx.year || '');
+      return fetchStreams(eid);
     })
     .catch(function () {
       return [];

@@ -362,34 +362,114 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       );
     });
     ref.watch(liveMatchesPrimaryLoadProvider(_s._server));
+    final iptvCtrl = _s._showIptvPortalTopBar
+        ? ref.watch(iptvControllerProvider)
+        : null;
+    if (iptvCtrl != null) {
+      ref.listen(iptvControllerProvider, (prev, next) {
+        if (!_s._showIptvPortalTopBar || !mounted) return;
+        final key = next.activePortal?.key;
+        if (key == null) return;
+        if (key == _s._lastSyncedIptvPortalKey &&
+            prev?.portalPanelOpen == next.portalPanelOpen) {
+          return;
+        }
+        unawaited(
+          (this as _LiveMatchesData)._syncMyIptvFromActivePortal(
+            next,
+            reload: true,
+          ),
+        );
+      });
+    }
+
+    final body = _buildBody();
+    final stackedBody = iptvCtrl == null
+        ? body
+        : _buildIptvPortalStack(context, iptvCtrl, body);
+
     return TvFocusGraph(
       tabId: _LiveMatchesScreenState._tabId,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
+          _buildHeader(iptvCtrl),
           if (_s._tabController != null && _s._sports.isNotEmpty)
             _buildSportTabs(),
           const SizedBox(height: 2),
-          Expanded(child: _buildBody()),
+          Expanded(child: stackedBody),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildIptvPortalStack(
+    BuildContext context,
+    IptvController ctrl,
+    Widget body,
+  ) {
+    const panelWidth = 380.0;
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final useSidePanel = wide || ShellTokens.isAndroidTvDevice;
+    return Stack(
+      children: [
+        body,
+        if (ctrl.portalPanelOpen && useSidePanel)
+          Positioned(
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: panelWidth,
+            child: IptvPortalPanel(
+              ctrl: ctrl,
+              width: panelWidth,
+              onClose: ctrl.closePortalPanel,
+            ),
+          ),
+        if (ctrl.portalPanelOpen && !useSidePanel)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: ctrl.closePortalPanel,
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.45),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: () {},
+                    child: IptvPortalPanel(
+                      ctrl: ctrl,
+                      width: MediaQuery.sizeOf(context).width * 0.92,
+                      onClose: ctrl.closePortalPanel,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildHeader([IptvController? iptvCtrl]) {
     final tvFocus = _tvFocus(context);
     final topBarItemCount = tvFocus
-        ? _LiveMatchesScreenState._topBarRefreshIndex + 1
-        : _LiveMatchesScreenState._topBarViewIndex + 1;
+        ? (_s._showIptvPortalTopBar
+            ? _s._topBarPortalIndex + 1
+            : _s._topBarRefreshIndex + 1)
+        : _s._topBarViewIndex + 1;
 
     final refresh = tvFocus
         ? _LiveMatchesRefreshTopBarButton(
             focusNode: _s._refreshFocusNode,
+            tvItemIndex: _s._topBarRefreshIndex,
             onTap: _s._load,
             onDownEdge: _s._topBarDownEdge,
-            onLeftEdge: () => _s
-                ._focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex),
+            onLeftEdge: () => _s._focusTopBarItem(
+              _LiveMatchesScreenState._topBarServersIndex,
+            ),
+            onRightEdge: _s._showIptvPortalTopBar
+                ? () => _s._focusTopBarItem(_s._topBarPortalIndex)
+                : () {},
           )
         : IconButton(
             tooltip: 'Refresh',
@@ -412,6 +492,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
           if (!tvFocus) ...[
             const SizedBox(width: 4),
             _buildViewToggle(tvFocus),
+          ],
+          if (_s._showIptvPortalTopBar && iptvCtrl != null) ...[
+            const SizedBox(width: 8),
+            _s._iptvPortalTopBarButton(iptvCtrl),
           ],
         ],
       ),
@@ -535,12 +619,14 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     if (!_tvFocus(context) && _s._view == _LiveMatchesView.timeline) {
       return _s._buildTimelineBody();
     }
-    if (_s._server == _LiveMatchesServer.all) return _buildAllBody();
+    if (_s._server == _LiveMatchesServer.all ||
+        _s._server == _LiveMatchesServer.iptvSports) {
+      return _buildAllBody();
+    }
     if (_s._server == _LiveMatchesServer.ppv) return _buildDamiTvBody();
     if (_s._server == _LiveMatchesServer.streamed ||
         _s._server == _LiveMatchesServer.mutStreams ||
-        _s._server == _LiveMatchesServer.stremio ||
-        _s._server == _LiveMatchesServer.iptvSports) {
+        _s._server == _LiveMatchesServer.stremio) {
       return _buildStreamedBody();
     }
     if (_s._server == _LiveMatchesServer.cdnLive) return _buildCdnBody();
@@ -688,7 +774,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       final emptyMsg = _s._server == _LiveMatchesServer.stremio
           ? 'No live Stremio addons — install one in Settings → Sources and enable Live Matches'
           : _s._server == _LiveMatchesServer.iptvSports
-              ? 'Configure My IPTV in Settings → My IPTV sports, or no games today'
+              ? 'No ESPN games today for your leagues — try Refresh or change leagues in Settings → My IPTV sports'
               : 'No streams available';
       return ShellErrorRetryPanel(
         message: emptyMsg,

@@ -159,36 +159,6 @@
       }
     },
     {
-      "id": "dooflix",
-      "name": "DooFlix",
-      "entry": "dooflix.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "api": "https://panel.watchkaroabhi.com",
-        "key": "qNhKLJiZVyoKdi9NCQGz8CIGrpUijujE",
-        "origin": "https://molop.art/"
-      }
-    },
-    {
-      "id": "yflix",
-      "name": "YFlix",
-      "entry": "yflix.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "enc": "https://enc-dec.app/api",
-        "db": "https://enc-dec.app/db/flix",
-        "ajax": "https://1moviesz.to/ajax"
-      }
-    },
-    {
       "id": "vidnest",
       "name": "VidNest",
       "entry": "vidnest.js",
@@ -459,6 +429,41 @@
             "path": "net",
             "api": "https://uwu.eat-peach.sbs"
           }
+        ]
+      }
+    },
+    {
+      "id": "dooflix",
+      "name": "DooFlix",
+      "entry": "dooflix.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "api": "https://panel.watchkaroabhi.com",
+        "key": "qNhKLJiZVyoKdi9NCQGz8CIGrpUijujE",
+        "origin": "https://molop.art/"
+      }
+    },
+    {
+      "id": "yflix",
+      "name": "YFlix",
+      "entry": "yflix.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "enc": "https://enc-dec.app/api",
+        "db": "https://enc-dec.app/db/flix",
+        "ajax": "https://solarmovie.fi/ajax",
+        "ajaxMirrors": [
+          "https://solarmovie.fi/ajax",
+          "https://1movies.bz/ajax",
+          "https://yflix.to/ajax"
         ]
       }
     },

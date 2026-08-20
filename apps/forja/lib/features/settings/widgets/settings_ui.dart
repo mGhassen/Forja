@@ -628,6 +628,9 @@ class SettingsToggleRow extends StatelessWidget {
     required this.onChanged,
     this.enabled = true,
     this.adminOnly = false,
+    this.leadingCheckValue,
+    this.onLeadingCheckChanged,
+    this.leadingCheckLabel = 'Auto',
   });
 
   final String title;
@@ -637,11 +640,19 @@ class SettingsToggleRow extends StatelessWidget {
   final bool enabled;
   final bool adminOnly;
 
+  /// Optional checkbox before the switch (e.g. Forja Auto).
+  final bool? leadingCheckValue;
+  final ValueChanged<bool>? onLeadingCheckChanged;
+  final String leadingCheckLabel;
+
   @override
   Widget build(BuildContext context) {
     final titleColor = enabled
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
+    final checkEnabled =
+        enabled && value && onLeadingCheckChanged != null;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final content = Opacity(
       opacity: enabled ? 1 : 0.55,
       child: Padding(
@@ -676,11 +687,70 @@ class SettingsToggleRow extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             ExcludeFocus(
-              excluding: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
-              child: ForjaSwitch(
-                value: value,
-                onChanged: enabled ? onChanged : null,
-                scale: ForjaSwitch.settingsScale,
+              excluding: tv,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (leadingCheckValue != null) ...[
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: checkEnabled
+                          ? () => onLeadingCheckChanged!(
+                                !leadingCheckValue!,
+                              )
+                          : null,
+                      child: Opacity(
+                        opacity: checkEnabled ? 1 : 0.45,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: Checkbox(
+                                value: leadingCheckValue,
+                                onChanged: checkEnabled
+                                    ? (v) {
+                                        if (v != null) {
+                                          onLeadingCheckChanged!(v);
+                                        }
+                                      }
+                                    : null,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
+                                side: BorderSide(
+                                  color: checkEnabled
+                                      ? ForjaShellColors.textSecondary
+                                      : ForjaShellColors.borderSubtle,
+                                ),
+                                activeColor: ForjaShellColors.brandGreen,
+                                checkColor: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              leadingCheckLabel,
+                              style: TextStyle(
+                                color: checkEnabled
+                                    ? ForjaShellColors.textPrimary
+                                    : ForjaShellColors.textSecondary,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  ForjaSwitch(
+                    value: value,
+                    onChanged: enabled ? onChanged : null,
+                    scale: ForjaSwitch.settingsScale,
+                  ),
+                ],
               ),
             ),
           ],

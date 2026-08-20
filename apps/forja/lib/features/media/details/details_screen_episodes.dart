@@ -70,6 +70,11 @@ mixin _DetailsScreenEpisodes on ConsumerState<DetailsScreen> {
       return;
     }
 
+    if (_s._playSourceEngine && _s._playSourceEngineAutoStart) {
+      unawaited(_s._startEngineAutoPlayback());
+      return;
+    }
+
     if (_s._hasPanelPlaySources) {
       _s._openSourcesPanel();
     }

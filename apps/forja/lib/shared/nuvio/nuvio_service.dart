@@ -180,17 +180,6 @@ bool nuvioFullAllSelected({
   required Set<String> selectedIds,
 }) => enabledIds.isNotEmpty && enabledIds.every(selectedIds.contains);
 
-void nuvioClearSelectedWalkState({
-  required Set<String> selectedIds,
-  required List<Map<String, dynamic>> streams,
-  required Set<String> fetchedIds,
-}) {
-  streams.removeWhere(
-    (s) => selectedIds.any((id) => nuvioStreamBelongsToScraper(s, id)),
-  );
-  fetchedIds.removeAll(selectedIds);
-}
-
 /// Drop stale saved ids that are no longer enabled / installed.
 Set<String> filterNuvioSelectedScraperIds({
   required Iterable<String> savedIds,

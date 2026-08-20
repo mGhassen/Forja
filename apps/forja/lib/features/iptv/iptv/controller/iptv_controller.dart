@@ -919,6 +919,23 @@ class IptvController extends ChangeNotifier
     }
   }
 
+  /// Load portal list + active portal pointer for the side panel without
+  /// hydrating a full Live/Movies catalog (used by Live Matches → My IPTV).
+  Future<void> preparePortalPanel() async {
+    await _softReloadPortalsFromStore();
+    if (_disposed) return;
+    if (activePortal != null) return;
+    final lastKey = await IptvStore.loadLastPortalKey();
+    if (_disposed || lastKey == null) return;
+    for (final v in verified) {
+      if (v.key == lastKey) {
+        activePortal = v;
+        notifyListeners();
+        return;
+      }
+    }
+  }
+
   Future<void> requestSection(IptvSection section) async {
     if (activePortal == null) {
       openPortalPanel();

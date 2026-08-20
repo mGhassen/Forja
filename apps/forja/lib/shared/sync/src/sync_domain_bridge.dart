@@ -92,6 +92,7 @@ class SyncDomainBridge {
       'play_source_stremio_enabled': defaults.playSourceStremio,
       'play_source_nuvio_enabled': defaults.playSourceNuvio,
       'play_source_webstreaming_enabled': defaults.playSourceWebstreaming,
+      'play_source_engine_auto_start': false,
       'preferred_audio_lang': 'None',
       'preferred_subtitle_lang': 'English',
       'avoid_unsupported_audio': true,
@@ -698,6 +699,8 @@ class SyncDomainBridge {
       'play_source_nuvio_enabled': await _settings.isPlaySourceNuvioStored(),
       'play_source_webstreaming_enabled': await _settings
           .isPlaySourceWebstreamingEnabled(),
+      'play_source_engine_auto_start': await _settings
+          .isPlaySourceEngineAutoStartEnabled(),
       'simple_streaming_resolve_enabled': await _settings
           .isSimpleStreamingResolveEnabled(),
       'streamcrypto_decrypt': await _settings.getStreamCryptoDecrypt(),
@@ -734,6 +737,11 @@ class SyncDomainBridge {
     if (payload.containsKey('play_source_webstreaming_enabled')) {
       await _settings.setPlaySourceWebstreamingEnabled(
         payload['play_source_webstreaming_enabled'] as bool,
+      );
+    }
+    if (payload.containsKey('play_source_engine_auto_start')) {
+      await _settings.setPlaySourceEngineAutoStartEnabled(
+        payload['play_source_engine_auto_start'] as bool,
       );
     }
     if (payload.containsKey('simple_streaming_resolve_enabled')) {

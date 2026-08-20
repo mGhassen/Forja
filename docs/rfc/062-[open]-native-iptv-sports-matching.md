@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **8 / 8** acceptance (Xtream) · **0 / 3** acceptance (M3U deferred) |
-| **Current slice** | Xtream MVP shipped — M3U/XMLTV deferred |
+| **Progress** | **5 / 5** components · **11 / 11** acceptance (Xtream incl. portal chip + All catalog + channel sheet) · **0 / 3** acceptance (M3U deferred) |
+| **Current slice** | My IPTV = existing Live Matches catalog + Xtream match on play — M3U/XMLTV deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -39,6 +39,9 @@
 | 6 | R62-A06 | Kickoff from ESPN `date`; grid/timeline chronological | ✅ |
 | 7 | R62-A07 | Not merged into **All** (own server only) | ✅ |
 | 8 | R62-A08 | Feature doc + changelog | ✅ |
+| 9 | R62-A12 | Live Matches **My IPTV** top-bar Portals picker (same config as Settings) | ✅ |
+| 10 | R62-A13 | My IPTV uses All catalog (PPV/Streamed/CDN); play matches Xtream channels | ✅ |
+| 11 | R62-A14 | Play match → sheet lists matched IPTV channels; pick one then native player | ✅ |
 
 ---
 

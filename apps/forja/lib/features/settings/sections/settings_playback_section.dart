@@ -236,7 +236,7 @@ class _SettingsPlaybackSectionState
               settingsFocusableToggle(
                 context,
                 'Forja',
-                'Play from plugins in Sources → Forja.',
+                'Play from plugins in Sources → Forja. Auto = green Play races them.',
                 snap.playSourceEngine,
                 (val) async {
                   await _settings.setPlaySourceEngineEnabled(val);
@@ -251,6 +251,14 @@ class _SettingsPlaybackSectionState
                   }
                 },
                 enabled: widget.visibility.lanPlaySourcesEditable,
+                leadingCheckValue: snap.playSourceEngineAutoStart,
+                onLeadingCheckChanged: (val) async {
+                  await _settings.setPlaySourceEngineAutoStartEnabled(val);
+                  await _playback.patch(
+                    (s) => s.copyWith(playSourceEngineAutoStart: val),
+                  );
+                  schedulePreferencesSyncPush();
+                },
               ),
               settingsFocusableToggle(
                 context,

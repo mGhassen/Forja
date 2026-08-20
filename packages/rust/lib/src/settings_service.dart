@@ -41,6 +41,9 @@ class SettingsService {
   static const String _playSourceStremioKey = 'play_source_stremio_enabled';
   static const String _playSourceNuvioKey = 'play_source_nuvio_enabled';
   static const String _playSourceEngineKey = 'play_source_engine_enabled';
+  /// Green Play races enabled Forja plugins when Webstreaming is off.
+  static const String _playSourceEngineAutoStartKey =
+      'play_source_engine_auto_start';
   static const String _playSourceWebstreamingKey =
       'play_source_webstreaming_enabled';
   /// Device-local: first-time P2P disclaimer (torrent / Stremio / Nuvio).
@@ -614,6 +617,18 @@ class SettingsService {
 
   Future<void> setPlaySourceEngineEnabled(bool enabled) async {
     await kvSetBool(_playSourceEngineKey, enabled);
+    playSourceChangeNotifier.value++;
+  }
+
+  /// When Forja is on and Webstreaming is off: green Play races all enabled
+  /// Forja HTTP plugins and opens the first stream. Default off (Sources only).
+  Future<bool> isPlaySourceEngineAutoStartEnabled() async => kvGetBool(
+    _playSourceEngineAutoStartKey,
+    fallback: false,
+  );
+
+  Future<void> setPlaySourceEngineAutoStartEnabled(bool enabled) async {
+    await kvSetBool(_playSourceEngineAutoStartKey, enabled);
     playSourceChangeNotifier.value++;
   }
 
@@ -1657,6 +1672,8 @@ class SettingsService {
     prefsMap[_playSourceStremioKey] = await isPlaySourceStremioStored();
     prefsMap[_playSourceNuvioKey] = await isPlaySourceNuvioStored();
     prefsMap[_playSourceEngineKey] = await isPlaySourceEngineStored();
+    prefsMap[_playSourceEngineAutoStartKey] =
+        await isPlaySourceEngineAutoStartEnabled();
     prefsMap[_playSourceWebstreamingKey] =
         await isPlaySourceWebstreamingEnabled();
     prefsMap[_p2pStreamingAcknowledgedKey] =
@@ -1762,6 +1779,7 @@ class SettingsService {
       _playSourceStremioKey,
       _playSourceNuvioKey,
       _playSourceEngineKey,
+      _playSourceEngineAutoStartKey,
       _playSourceWebstreamingKey,
       _p2pStreamingAcknowledgedKey,
     ]) {

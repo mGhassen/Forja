@@ -21,6 +21,7 @@ import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel_chrome.dart';
+import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:rust/rust.dart';
 
 /// Right-side Sources panel in the player - same shell/chrome/tiles as
@@ -800,11 +801,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
     if (_nuvioFetching) return;
-    final nuvioAll = nuvioFullAllSelected(
-      enabledIds: enabledNuvioScraperIds(_nuvioAddons),
-      selectedIds: _nuvioSelectedScraperIds,
-    );
-    if (_nuvioStreams.isEmpty && !nuvioAll) {
+    if (_nuvioStreams.isEmpty) {
       final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
       if (cached != null) {
         if (!mounted) return;
@@ -832,11 +829,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
     if (_engineFetching) return;
-    final engineAll = engineFullAllSelected(
-      enabledIds: enabledEnginePluginIds(_enginePacks),
-      selectedIds: _engineSelectedPluginIds,
-    );
-    if (_engineStreams.isEmpty && !engineAll) {
+    if (_engineStreams.isEmpty) {
       final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
       if (cached != null) {
         if (!mounted) return;
@@ -897,20 +890,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _completedAddonBaseUrls.clear();
     }
     if (keepKind != 'nuvio' && _nuvioFetching) {
-      _nuvioFetchGen++;
-      _nuvioFetching = false;
-      _nuvioInFlightScraperIds.clear();
-      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+      _nuvioAbortWork(clearFetched: true);
       _nuvioStreams = [];
-      _nuvioFetchedScraperIds = {};
     }
     if (keepKind != 'engine' && _engineFetching) {
-      _engineFetchGen++;
-      _engineFetching = false;
-      _engineInFlightPluginIds.clear();
-      EngineService.instance.cancelPending();
+      _engineAbortWork(clearFetched: true);
       _engineStreams = [];
-      _engineFetchedPluginIds = {};
     }
   }
 
@@ -1776,6 +1761,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _nuvioInFlightScraperIds.isNotEmpty ||
       _nuvioPoolTasks.isNotEmpty;
 
+  void _nuvioAbortWork({bool clearFetched = false}) {
+    _nuvioFetchGen++;
+    _nuvioFetching = false;
+    _nuvioInFlightScraperIds.clear();
+    _nuvioPoolTasks.clear();
+    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+    if (clearFetched) _nuvioFetchedScraperIds.clear();
+  }
+
   Future<void> _runAndApplyNuvioScraper({
     required String scraperId,
     required String type,
@@ -1886,20 +1880,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (_nuvioAddons.isEmpty || widget.movie.id <= 0) return;
     final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
     if (_nuvioFetching && !reset && !refresh) {
-      _nuvioFillPool(gen: _nuvioFetchGen, type: type);
-      return;
+      if (_nuvioPoolTasks.isNotEmpty || _pendingNuvioScraperIds.isEmpty) {
+        _nuvioFillPool(gen: _nuvioFetchGen, type: type);
+        return;
+      }
+      refresh = true;
     }
     if (reset || refresh) {
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _nuvioPoolTasks.clear();
     }
-    final startingAllWalk = !reset &&
-        !refresh &&
-        nuvioFullAllSelected(
-          enabledIds: enabledNuvioScraperIds(_nuvioAddons),
-          selectedIds: _nuvioSelectedScraperIds,
-        ) &&
-        !_nuvioFetching;
     final gen = ++_nuvioFetchGen;
     _nuvioPoolLimit = nuvioSourcesBatchLimit(tv: SourcesPanelTv.isTv(context));
     setState(() {
@@ -1910,13 +1900,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _nuvioInFlightScraperIds.clear();
       } else if (refresh) {
         _nuvioFetchedScraperIds.removeAll(_nuvioSelectedScraperIds);
-        _nuvioInFlightScraperIds.clear();
-      } else if (startingAllWalk) {
-        nuvioClearSelectedWalkState(
-          selectedIds: _nuvioSelectedScraperIds,
-          streams: _nuvioStreams,
-          fetchedIds: _nuvioFetchedScraperIds,
-        );
         _nuvioInFlightScraperIds.clear();
       }
       _error = null;
@@ -1965,6 +1948,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       '${run.isEmpty ? '' : '  run=$run'}'
       '${dots.isEmpty ? '' : '  ...=$dots'}',
     );
+  }
+
+  void _engineAbortWork({bool clearFetched = false}) {
+    _engineFetchGen++;
+    _engineFetching = false;
+    _engineInFlightPluginIds.clear();
+    _enginePoolTasks.clear();
+    EngineService.instance.cancelPending();
+    if (clearFetched) _engineFetchedPluginIds.clear();
   }
 
   Future<void> _runAndApplyEnginePlugin({
@@ -2097,21 +2089,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (_enginePacks.isEmpty || widget.movie.id <= 0) return;
     final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
     if (_engineFetching && !reset && !refresh) {
-      _engineDbg('join');
-      _engineFillPool(gen: _engineFetchGen, type: type);
-      return;
+      if (_enginePoolTasks.isNotEmpty || _pendingEnginePluginIds.isEmpty) {
+        _engineDbg('join');
+        _engineFillPool(gen: _engineFetchGen, type: type);
+        return;
+      }
+      _engineDbg('revive');
+      refresh = true;
     }
     if (reset || refresh) {
       EngineService.instance.cancelPending();
       _enginePoolTasks.clear();
     }
-    final startingAllWalk = !reset &&
-        !refresh &&
-        engineFullAllSelected(
-          enabledIds: enabledEnginePluginIds(_enginePacks),
-          selectedIds: _engineSelectedPluginIds,
-        ) &&
-        !_engineFetching;
     _engineFetching = true;
     final gen = ++_engineFetchGen;
     _enginePoolLimit = engineSourcesBatchLimit(
@@ -2125,13 +2114,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _engineInFlightPluginIds.clear();
       } else if (refresh) {
         _engineFetchedPluginIds.removeAll(_engineSelectedPluginIds);
-        _engineInFlightPluginIds.clear();
-      } else if (startingAllWalk) {
-        engineClearSelectedWalkState(
-          selectedIds: _engineSelectedPluginIds,
-          streams: _engineStreams,
-          fetchedIds: _engineFetchedPluginIds,
-        );
         _engineInFlightPluginIds.clear();
       }
       _error = null;
@@ -2336,13 +2318,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _error = null;
         _nuvioSelectedScraperIds = next;
         if (clearing) {
-          _nuvioFetchGen++;
-          _nuvioFetching = false;
-          _nuvioInFlightScraperIds.clear();
-          _nuvioFetchedScraperIds.clear();
-          DomainStreamProviderResolver.cancelAllPending(
-            cancelEngineJobs: false,
-          );
+          _nuvioAbortWork(clearFetched: true);
         }
       });
       unawaited(NuvioService.instance.saveSourcesSelectedScraperIds(next));
@@ -2373,6 +2349,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               .toList();
           _nuvioFetchedScraperIds = Set<String>.from(_nuvioFetchedScraperIds)
             ..remove(scraperId);
+          _nuvioInFlightScraperIds.remove(scraperId);
+          if (_nuvioSelectedScraperIds.isEmpty) {
+            _nuvioAbortWork(clearFetched: true);
+          }
         } else {
           _nuvioSelectedScraperIds = {..._nuvioSelectedScraperIds, scraperId};
           _nuvioFetchedScraperIds = Set<String>.from(_nuvioFetchedScraperIds)
@@ -2420,11 +2400,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             ..removeAll(refetch);
         }
         if (clearing) {
-          _engineFetchGen++;
-          _engineFetching = false;
-          _engineInFlightPluginIds.clear();
-          _engineFetchedPluginIds.clear();
-          EngineService.instance.cancelPending();
+          _engineAbortWork(clearFetched: true);
           DomainStreamProviderResolver.cancelAllPending(
             cancelEngineJobs: false,
           );
@@ -2440,10 +2416,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final pluginId = id.substring('engine:'.length);
       final wasSelected = _engineSelectedPluginIds.contains(pluginId);
       final fetched = _engineFetchedPluginIds.contains(pluginId);
-      final cancelInFlight =
-          wasSelected &&
-          _engineFetching &&
-          _engineInFlightPluginIds.contains(pluginId);
       if (wasSelected &&
           !fetched &&
           !_engineInFlightPluginIds.contains(pluginId)) {
@@ -2461,6 +2433,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               .toList();
           _engineFetchedPluginIds = Set<String>.from(_engineFetchedPluginIds)
             ..remove(pluginId);
+          _engineInFlightPluginIds.remove(pluginId);
+          if (_engineSelectedPluginIds.isEmpty) {
+            _engineAbortWork(clearFetched: true);
+          }
         } else {
           _engineSelectedPluginIds = {..._engineSelectedPluginIds, pluginId};
           _engineFetchedPluginIds = Set<String>.from(_engineFetchedPluginIds)
@@ -2589,7 +2565,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           showEngine: _showEngine,
           onKindChanged: _onKindChanged,
           resultCount: totalCount,
-          episodeLabel: _episodeLabel,
           isFetching: _isFetching,
           onCancelFetch: () {
             _searchGen++;
@@ -2607,8 +2582,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               _stremioFetching = false;
               _nuvioFetching = false;
               _nuvioInFlightScraperIds.clear();
+              _nuvioPoolTasks.clear();
               _engineFetching = false;
               _engineInFlightPluginIds.clear();
+              _enginePoolTasks.clear();
             });
           },
           providerOptions: _providerOptions,
@@ -2672,6 +2649,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             engine,
             totalCount: totalCount,
           ),
+        ),
+        SourcesPanelMetaFooter(
+          episodeLabel: _episodeLabel,
+          resultCount: totalCount,
         ),
       ],
     );

@@ -200,13 +200,9 @@ pub fn match_streams(
             if s.stream_url.is_empty() || !seen_urls.insert(s.stream_url.clone()) {
                 continue;
             }
-            let label = if s.category_label.is_empty() {
-                s.name.clone()
-            } else {
-                format!("{} · {}", s.name, s.category_label)
-            };
+            // Channel name alone — category stays in `title` for UI chrome.
             out.push(json!({
-                "name": label,
+                "name": s.name,
                 "title": s.category_label,
                 "url": s.stream_url,
                 "tier": tier_idx + 1,

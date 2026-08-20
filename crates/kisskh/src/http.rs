@@ -391,10 +391,10 @@ mod tests {
 
     #[test]
     fn resolve_stream_live_episode() {
-        let _ = activate_base_url("https://kisskh.nl");
+        let _ = activate_base_url("https://kisskh.co");
         let (base, episode, subs) =
-            resolve_episode_stream(171699, Some("https://kisskh.nl")).expect("resolve");
-        assert_eq!(base, "https://kisskh.nl");
+            resolve_episode_stream(171699, Some("https://kisskh.co")).expect("resolve");
+        assert_eq!(base, "https://kisskh.co");
         let video = episode
             .get("Video")
             .and_then(|v| v.as_str())

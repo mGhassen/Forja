@@ -2263,6 +2263,14 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     return host.isEmpty ? url : host;
   }
 
+  String _sourceSubtitle(IptvPlaySource src) {
+    final host = _sourceHost(src.url);
+    final detail = (src.detail ?? '').trim();
+    if (detail.isEmpty) return host;
+    if (host.isEmpty) return detail;
+    return '$detail · $host';
+  }
+
   /// Floating panel (not a bottom sheet) so TV gets D-pad focus + autofocus on
   /// the active source, same chrome as the Player / Stats menus.
   void _showSourcePicker({BuildContext? anchorContext}) {
@@ -2283,8 +2291,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             for (var i = 0; i < _s._sources.length; i++)
               PlayerPopupListTile(
                 label: _s._sources[i].label,
-                // Host only — full URLs wrap the tile to several lines.
-                subtitle: _sourceHost(_s._sources[i].url),
+                // Category + host — full URLs wrap the tile to several lines.
+                subtitle: _sourceSubtitle(_s._sources[i]),
                 selected: i == _s._sourceIdx,
                 onTap: () {
                   PlayerPopupPanel.dismiss();

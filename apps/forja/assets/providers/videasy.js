@@ -185,11 +185,16 @@ function extract(ctx) {
   return ctx
     .fetch(api + '/seed?mediaId=' + encodeURIComponent(tmdbId), { headers: headers })
     .then(function (r) {
+      ctx.log('seed status=' + r.status + ' ok=' + r.ok);
       return r.json();
     })
     .then(function (seedJson) {
       var seed = seedJson && seedJson.seed;
-      if (!seed) return [];
+      if (!seed) {
+        ctx.error('no seed');
+        return [];
+      }
+      ctx.log('mirrors=' + mirrors.length);
       return Promise.all(
         mirrors.map(function (mirror) {
           return probe(mirror, seed);
@@ -200,6 +205,7 @@ function extract(ctx) {
           var part = chunks[i] || [];
           for (var j = 0; j < part.length; j++) rows.push(part[j]);
         }
+        ctx.log('rawRows=' + rows.length);
         return Promise.all(rows.map(expandRow)).then(function (groups) {
           var out = [];
           for (var g = 0; g < groups.length; g++) {
@@ -209,5 +215,9 @@ function extract(ctx) {
           return out;
         });
       });
+    })
+    .catch(function (e) {
+      ctx.error(e && e.message ? e.message : e);
+      return [];
     });
 }

@@ -165,8 +165,13 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   bool get _playSourceTorrent => _play.playSources.torrent;
   bool get _playSourceNuvio => _play.playSources.nuvio;
   bool get _playSourceEngine => _play.playSources.engine;
+  bool get _playSourceEngineAutoStart => _play.playSources.engineAutoStart;
   bool get _playSourceStremio => _play.playSources.stremio;
   bool get _playSourceWebstreaming => _play.playSources.webstreaming;
+
+  bool get _showGreenPlay =>
+      _playSourceWebstreaming ||
+      (_playSourceEngine && _playSourceEngineAutoStart);
 
   String get _panelKindFilter => _play.panelKindFilter;
   set _panelKindFilter(String v) => _play.panelKindFilter = v;
@@ -280,6 +285,17 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   int get _webstreamingPlayGen => _play.webstreamingPlayGen;
   set _webstreamingPlayGen(int v) => _play.webstreamingPlayGen = v;
+
+  bool get _isEngineAutoExtracting => _play.isEngineAutoExtracting;
+  set _isEngineAutoExtracting(bool v) => _play.isEngineAutoExtracting = v;
+
+  bool get _engineAutoExtractionCancelled =>
+      _play.engineAutoExtractionCancelled;
+  set _engineAutoExtractionCancelled(bool v) =>
+      _play.engineAutoExtractionCancelled = v;
+
+  int get _engineAutoPlayGen => _play.engineAutoPlayGen;
+  set _engineAutoPlayGen(int v) => _play.engineAutoPlayGen = v;
 
   Map<String, dynamic>? _lastProgress;
   StreamSubscription<List<Map<String, dynamic>>>? _watchHistorySub;
@@ -470,6 +486,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     // Flags first so Auto host loops halt even if cancel races mid-sniff.
     // rebuild: false — Element is already defunct here; setState would assert.
     _webstreamingOnlyExtractionCancelled = true;
+    _engineAutoExtractionCancelled = true;
     _streamCancelled = true;
     _cancelActiveSourceFetch(rebuild: false);
     _sourcesPanelReturnFocus = null;
@@ -737,8 +754,11 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _nuvioStreams = [];
     _nuvioFetchedScraperIds = {};
     _nuvioInFlightScraperIds.clear();
+    _nuvioPoolTasks.clear();
     _engineStreams = [];
     _engineFetchedPluginIds = {};
+    _engineInFlightPluginIds.clear();
+    _enginePoolTasks.clear();
     // Keep scraper chip selection - persisted preference, not per-title.
     _errorMessage = null;
   }
@@ -866,11 +886,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       return;
     }
     if (_isNuvioFetching) return;
-    final nuvioAll = nuvioFullAllSelected(
-      enabledIds: enabledNuvioScraperIds(_nuvioAddons),
-      selectedIds: _nuvioSelectedScraperIds,
-    );
-    if (_nuvioStreams.isEmpty && !nuvioAll) {
+    if (_nuvioStreams.isEmpty) {
       final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
       if (cached != null) {
         setState(() {
@@ -895,11 +911,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       return;
     }
     if (_isEngineFetching) return;
-    final engineAll = engineFullAllSelected(
-      enabledIds: enabledEnginePluginIds(_enginePacks),
-      selectedIds: _engineSelectedPluginIds,
-    );
-    if (_engineStreams.isEmpty && !engineAll) {
+    if (_engineStreams.isEmpty) {
       final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
       if (cached != null) {
         setState(() {
@@ -955,20 +967,12 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _completedAddonBaseUrls.clear();
     }
     if (keepKind != 'nuvio' && _isNuvioFetching) {
-      _nuvioFetchGen++;
-      _isNuvioFetching = false;
-      _nuvioInFlightScraperIds.clear();
-      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+      _nuvioAbortWork(clearFetched: true);
       _nuvioStreams = [];
-      _nuvioFetchedScraperIds = {};
     }
     if (keepKind != EngineIds.kind && _isEngineFetching) {
-      _engineFetchGen++;
-      _isEngineFetching = false;
-      _engineInFlightPluginIds.clear();
-      EngineService.instance.cancelPending();
+      _engineAbortWork(clearFetched: true);
       _engineStreams = [];
-      _engineFetchedPluginIds = {};
     }
   }
 

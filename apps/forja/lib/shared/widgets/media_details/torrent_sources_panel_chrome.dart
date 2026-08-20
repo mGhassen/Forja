@@ -11,7 +11,8 @@ import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Compact top chrome for the Sources panel:
-/// kind tabs + count · provider chips · search/filters.
+/// kind tabs · provider chips · search/filters.
+/// Episode/count live in [SourcesPanelMetaFooter], not here.
 class TorrentSourcesPanelChrome extends StatefulWidget {
   const TorrentSourcesPanelChrome({
     super.key,
@@ -35,7 +36,6 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
     required this.onQualityFiltersChanged,
     required this.onLanguageFiltersChanged,
     required this.onTechFiltersChanged,
-    this.episodeLabel,
     this.providerOptions = const [],
     this.selectedSourceId,
     this.nuvioSelectedScraperIds = const {},
@@ -79,7 +79,6 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
   final bool isFetching;
   final VoidCallback onCancelFetch;
   final ValueChanged<String>? onReloadKind;
-  final String? episodeLabel;
   final List<SourcesPanelProviderOption> providerOptions;
   final String? selectedSourceId;
   final Set<String> nuvioSelectedScraperIds;
@@ -239,24 +238,8 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
       onCancelFetch: widget.isFetching ? widget.onCancelFetch : null,
     );
 
-    final hasMeta = widget.episodeLabel != null || widget.resultCount != null;
-    if (hasMeta) {
-      kind = Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: kind),
-          Transform.translate(
-            offset: Offset(0, _tv ? 0 : -8),
-            child: _SourcesChromeMeta(
-              episodeLabel: widget.episodeLabel,
-              resultCount: widget.resultCount,
-            ),
-          ),
-        ],
-      );
-    }
     kind = Padding(
-      padding: EdgeInsets.only(top: _tv ? 16 : (hasMeta ? 0 : 8)),
+      padding: EdgeInsets.only(top: _tv ? 16 : 0),
       child: kind,
     );
 
@@ -452,36 +435,6 @@ class _KindTabs extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _SourcesChromeMeta extends StatelessWidget {
-  const _SourcesChromeMeta({this.episodeLabel, this.resultCount});
-
-  final String? episodeLabel;
-  final int? resultCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final cinematic = ForjaShellColors.cinematic;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (episodeLabel != null) ...[
-          Text(
-            episodeLabel!,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: cinematic.textSecondary.withValues(alpha: 0.75),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          if (resultCount != null) const SizedBox(width: 8),
-        ],
-        if (resultCount != null) _CountBadge(count: resultCount!),
-      ],
     );
   }
 }
@@ -708,32 +661,6 @@ class _KindTabState extends State<_KindTab> {
           if (!focused) _cancelOkHold();
         },
         child: face,
-      ),
-    );
-  }
-}
-
-class _CountBadge extends StatelessWidget {
-  const _CountBadge({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final cinematic = ForjaShellColors.cinematic;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        '$count',
-        style: TextStyle(
-          color: cinematic.textSecondary,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }

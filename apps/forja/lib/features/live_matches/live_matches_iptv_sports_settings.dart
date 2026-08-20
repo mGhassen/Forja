@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:forja/features/iptv/iptv/data/models.dart';
+import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persisted config for Live Matches → My IPTV (RFC-062).
@@ -14,6 +16,7 @@ class LiveMatchesIptvSportsConfig {
 
   final bool enabled;
   /// [VerifiedPortal.key] of the chosen Xtream portal.
+  /// Empty → fall back to IPTV’s last-selected portal ([resolvePortalKey]).
   final String portalKey;
   /// IANA timezone; empty → device local date for ESPN.
   final String timezone;
@@ -109,6 +112,71 @@ class LiveMatchesIptvSportsConfig {
 
   bool get isReady =>
       enabled && portalKey.isNotEmpty && leagues.isNotEmpty;
+
+  /// Portal resolved (config or IPTV last) and leagues to query (empty → all).
+  Future<({String portalKey, List<String> leagues})?> resolveForFetch() async {
+    final portal = await resolvePortalKey(this);
+    if (portal.isEmpty) return null;
+    final leagues = this.leagues.isEmpty
+        ? List<String>.from(allLeagues)
+        : List<String>.from(this.leagues);
+    return (portalKey: portal, leagues: leagues);
+  }
+
+  /// True when a portal is available (Settings Enable is not required).
+  Future<bool> isEffectivelyReady() async {
+    return (await resolveForFetch()) != null;
+  }
+
+  /// Persist Enable + portal + default leagues so Settings matches the top bar.
+  static Future<LiveMatchesIptvSportsConfig> ensureArmed({
+    String? portalKey,
+  }) async {
+    final config = await load();
+    final resolved = portalKey?.isNotEmpty == true
+        ? portalKey!
+        : await resolvePortalKey(config);
+    var next = config.copyWith(enabled: true);
+    if (resolved.isNotEmpty) {
+      next = next.copyWith(portalKey: resolved);
+    }
+    if (next.leagues.isEmpty) {
+      next = next.copyWith(leagues: List<String>.from(allLeagues));
+    }
+    if (next.enabled == config.enabled &&
+        next.portalKey == config.portalKey &&
+        _sameLeagues(next.leagues, config.leagues)) {
+      return next;
+    }
+    await save(next);
+    return next;
+  }
+
+  static bool _sameLeagues(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  /// Configured override, else IPTV’s last-selected **Xtream** portal.
+  static Future<String> resolvePortalKey([
+    LiveMatchesIptvSportsConfig? config,
+  ]) async {
+    final c = config ?? await load();
+    if (c.portalKey.isNotEmpty) return c.portalKey;
+    final last = await IptvStore.loadLastPortalKey();
+    if (last == null || last.isEmpty) return '';
+    final portals = await IptvStore.load();
+    for (final p in portals) {
+      if (p.key == last &&
+          p.portal.platform == IptvPortalPlatform.xtream) {
+        return last;
+      }
+    }
+    return '';
+  }
 
   /// Category ids to search for an ESPN league code (e.g. `NBA`).
   List<String> categoryIdsForGame(String leagueOrSport) {

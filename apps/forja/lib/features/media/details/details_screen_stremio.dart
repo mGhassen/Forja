@@ -62,6 +62,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     _s._engineFetchGen++;
     if (cancelEngineJobs) {
       _s._webstreamingOnlyExtractionCancelled = true;
+      _s._engineAutoExtractionCancelled = true;
       _s._streamCancelled = true;
     }
     DomainStreamProviderResolver.cancelAllPending(
@@ -72,9 +73,11 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     _s._isStremioFetching = false;
     _s._isNuvioFetching = false;
     _s._nuvioInFlightScraperIds.clear();
+    _nuvioPoolTasks.clear();
     _s._torrentInFlightProviderIds.clear();
     _s._isEngineFetching = false;
     _s._engineInFlightPluginIds.clear();
+    _s._enginePoolTasks.clear();
     if (changed && rebuild && mounted) setState(() {});
   }
 
@@ -211,10 +214,14 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
       _s._nuvioInFlightScraperIds.isNotEmpty ||
       _nuvioPoolTasks.isNotEmpty;
 
-  bool get _nuvioFullAllSelected => nuvioFullAllSelected(
-    enabledIds: enabledNuvioScraperIds(_s._nuvioAddons),
-    selectedIds: _s._nuvioSelectedScraperIds,
-  );
+  void _nuvioAbortWork({bool clearFetched = false}) {
+    _s._nuvioFetchGen++;
+    _s._isNuvioFetching = false;
+    _s._nuvioInFlightScraperIds.clear();
+    _nuvioPoolTasks.clear();
+    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+    if (clearFetched) _s._nuvioFetchedScraperIds.clear();
+  }
 
   Future<void> _runAndApplyNuvioScraper({
     required String scraperId,
@@ -332,15 +339,16 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     if (!_s._hasNuvioAddons || _s._movie.id <= 0) return;
     final type = _s._movie.mediaType == 'tv' ? 'tv' : 'movie';
     if (_s._isNuvioFetching && !reset && !refresh) {
-      _nuvioFillPool(gen: _s._nuvioFetchGen, type: type);
-      return;
+      if (_nuvioPoolTasks.isNotEmpty || _pendingNuvioScraperIds.isEmpty) {
+        _nuvioFillPool(gen: _s._nuvioFetchGen, type: type);
+        return;
+      }
+      refresh = true;
     }
     if (reset || refresh) {
       DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _nuvioPoolTasks.clear();
     }
-    final startingAllWalk =
-        !reset && !refresh && _nuvioFullAllSelected && !_s._isNuvioFetching;
     final gen = ++_s._nuvioFetchGen;
     _nuvioPoolLimit = nuvioSourcesBatchLimit(tv: SourcesPanelTv.isTv(context));
     setState(() {
@@ -351,13 +359,6 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
         _s._nuvioInFlightScraperIds.clear();
       } else if (refresh) {
         _s._nuvioFetchedScraperIds.removeAll(_s._nuvioSelectedScraperIds);
-        _s._nuvioInFlightScraperIds.clear();
-      } else if (startingAllWalk) {
-        nuvioClearSelectedWalkState(
-          selectedIds: _s._nuvioSelectedScraperIds,
-          streams: _s._nuvioStreams,
-          fetchedIds: _s._nuvioFetchedScraperIds,
-        );
         _s._nuvioInFlightScraperIds.clear();
       }
       if (_s._selectedSourceId == 'all_nuvio') _s._errorMessage = null;

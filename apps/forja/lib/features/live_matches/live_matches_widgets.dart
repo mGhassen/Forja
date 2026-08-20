@@ -104,14 +104,18 @@ class _LiveMatchesServersTopBarButtonState
 class _LiveMatchesRefreshTopBarButton extends StatefulWidget {
   const _LiveMatchesRefreshTopBarButton({
     required this.focusNode,
+    required this.tvItemIndex,
     required this.onTap,
     this.onLeftEdge,
+    this.onRightEdge,
     this.onDownEdge,
   });
 
   final FocusNode focusNode;
+  final int tvItemIndex;
   final VoidCallback onTap;
   final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
   final VoidCallback? onDownEdge;
 
   @override
@@ -142,12 +146,11 @@ class _LiveMatchesRefreshTopBarButtonState
       focusNode: widget.focusNode,
       tvTabId: _LiveMatchesScreenState._tabId,
       tvRowId: _LiveMatchesScreenState._topBarRowId,
-      tvItemIndex: _LiveMatchesScreenState._topBarRefreshIndex,
+      tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.topBar,
       onDownEdge: widget.onDownEdge,
       onLeftEdge: widget.onLeftEdge,
-      // TV has no view toggle - trap right at Refresh.
-      onRightEdge: () {},
+      onRightEdge: widget.onRightEdge ?? () {},
       onFocusChange: (focused) {
         setState(() => _focused = focused);
         if (focused) {
@@ -1025,6 +1028,191 @@ class _CdnSportCardState extends State<_CdnSportCard> {
         widget.onHoverChanged?.call(hovered);
       },
       child: card,
+    );
+  }
+}
+
+// ─── My IPTV matched channels sheet ───────────────────────────────────────────
+
+class _IptvSportsChannelSheet extends StatefulWidget {
+  final _StreamedMatch match;
+  final List<IptvPlaySource> sources;
+  final void Function(IptvPlaySource) onChannelSelected;
+
+  const _IptvSportsChannelSheet({
+    required this.match,
+    required this.sources,
+    required this.onChannelSelected,
+  });
+
+  @override
+  State<_IptvSportsChannelSheet> createState() =>
+      _IptvSportsChannelSheetState();
+}
+
+class _IptvSportsChannelSheetState extends State<_IptvSportsChannelSheet> {
+  static const _rowId = 'live-iptv-sports-channel-sheet';
+  final FocusNode _firstFocus = FocusNode(
+    debugLabel: 'live-iptv-sports-channel-sheet-first',
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _firstFocus.dispose();
+    super.dispose();
+  }
+
+  String _host(String url) {
+    final h = Uri.tryParse(url)?.host ?? '';
+    return h.isEmpty ? url : h;
+  }
+
+  String _subtitle(IptvPlaySource src) {
+    final detail = (src.detail ?? '').trim();
+    final host = _host(src.url);
+    if (detail.isEmpty) return host;
+    if (host.isEmpty) return detail;
+    return '$detail · $host';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sources = widget.sources;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final body = Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                widget.match.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${sources.length} matching '
+                '${sources.length == 1 ? 'channel' : 'channels'} — choose one:',
+                style: const TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              for (var i = 0; i < sources.length; i++)
+                _IptvSportsChannelSheetRow(
+                  label: sources[i].chromeTitle,
+                  subtitle: _subtitle(sources[i]),
+                  onTap: () => widget.onChannelSelected(sources[i]),
+                  tvItemIndex: i,
+                  tvRowId: _rowId,
+                  focusNode: i == 0 ? _firstFocus : null,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!tv) return body;
+    return TvCatalogRow(
+      tabId: 'live_matches',
+      rowId: _rowId,
+      sortOrder: 0,
+      itemCount: sources.length,
+      orientation: ShellTvRowOrientation.vertical,
+      child: body,
+    );
+  }
+}
+
+class _IptvSportsChannelSheetRow extends StatefulWidget {
+  const _IptvSportsChannelSheetRow({
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+    this.tvItemIndex,
+    this.tvRowId,
+    this.focusNode,
+  });
+
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+  final int? tvItemIndex;
+  final String? tvRowId;
+  final FocusNode? focusNode;
+
+  @override
+  State<_IptvSportsChannelSheetRow> createState() =>
+      _IptvSportsChannelSheetRowState();
+}
+
+class _IptvSportsChannelSheetRowState
+    extends State<_IptvSportsChannelSheetRow> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 12,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
+      navLeftAlways: true,
+      focusNode: widget.focusNode,
+      listIndex: widget.tvItemIndex,
+      tvTabId: 'live_matches',
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
+      tvZone: ShellTvZone.row,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: ListTile(
+        leading: Icon(
+          Icons.tv_rounded,
+          color: ForjaShellColors.sectionAccent,
+        ),
+        title: Text(
+          widget.label,
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: _focused ? FontWeight.bold : FontWeight.w600,
+          ),
+        ),
+        subtitle: widget.subtitle.isEmpty
+            ? null
+            : Text(
+                widget.subtitle,
+                style: const TextStyle(color: Colors.white38, fontSize: 11),
+              ),
+        trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+      ),
     );
   }
 }

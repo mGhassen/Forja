@@ -346,13 +346,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         _s._errorMessage = null;
         _s._nuvioSelectedScraperIds = next;
         if (clearing) {
-          _s._nuvioFetchGen++;
-          _s._isNuvioFetching = false;
-          _s._nuvioInFlightScraperIds.clear();
-          _s._nuvioFetchedScraperIds.clear();
-          DomainStreamProviderResolver.cancelAllPending(
-            cancelEngineJobs: false,
-          );
+          _s._nuvioAbortWork(clearFetched: true);
         }
       });
       unawaited(NuvioService.instance.saveSourcesSelectedScraperIds(next));
@@ -385,6 +379,10 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._nuvioFetchedScraperIds = Set<String>.from(
             _s._nuvioFetchedScraperIds,
           )..remove(scraperId);
+          _s._nuvioInFlightScraperIds.remove(scraperId);
+          if (_s._nuvioSelectedScraperIds.isEmpty) {
+            _s._nuvioAbortWork(clearFetched: true);
+          }
         } else {
           _s._nuvioSelectedScraperIds = {
             ..._s._nuvioSelectedScraperIds,
@@ -437,11 +435,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           )..removeAll(refetch);
         }
         if (clearing) {
-          _s._engineFetchGen++;
-          _s._isEngineFetching = false;
-          _s._engineInFlightPluginIds.clear();
-          _s._engineFetchedPluginIds.clear();
-          EngineService.instance.cancelPending();
+          _s._engineAbortWork(clearFetched: true);
         }
       });
       unawaited(EngineService.instance.saveSourcesSelectedPluginIds(next));
@@ -474,6 +468,10 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._engineFetchedPluginIds = Set<String>.from(
             _s._engineFetchedPluginIds,
           )..remove(pluginId);
+          _s._engineInFlightPluginIds.remove(pluginId);
+          if (_s._engineSelectedPluginIds.isEmpty) {
+            _s._engineAbortWork(clearFetched: true);
+          }
         } else {
           _s._engineSelectedPluginIds = {
             ..._s._engineSelectedPluginIds,

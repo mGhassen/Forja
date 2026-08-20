@@ -1,7 +1,7 @@
 //! KissKH `kkey` for `/api/DramaList/Episode/{id}.png` and `/api/Sub/{id}`.
 //!
 //! Port of consumet `extractors/kisskh/kkey.js` (AES-like block cipher over a
-//! fixed site key schedule). Verified against live `kisskh.nl` Episode API.
+//! fixed site key schedule). Verified against live `kisskh.co` Episode API.
 
 #[path = "kkey_tables.rs"]
 mod kkey_tables;

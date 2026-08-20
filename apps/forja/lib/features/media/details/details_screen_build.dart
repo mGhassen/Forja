@@ -113,8 +113,9 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
       movie: _s._movie,
       hasResume: hasResume,
       showPlay: showPlay,
-      showPlayStreaming: _s._playSourceWebstreaming,
-      isStreamingExtracting: _s._isWebstreamingOnlyExtracting,
+      showPlayStreaming: _s._showGreenPlay,
+      isStreamingExtracting:
+          _s._isWebstreamingOnlyExtracting || _s._isEngineAutoExtracting,
       onOpenSources: _s._openSourcesPanel,
       onClearProgress: hasClearableProgress ? _clearProgress : null,
       onPlayStreaming: _s._onPlayStreamingPressed,
@@ -408,9 +409,6 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
           showEngine: _s._panelShowEngine,
           onKindChanged: _s._onPanelKindFilterChanged,
           resultCount: _s._panelVisibleCount,
-          episodeLabel: _s._movie.mediaType == 'tv'
-              ? 'S${_s._selectedSeason.toString().padLeft(2, '0')}E${_s._selectedEpisode.toString().padLeft(2, '0')}'
-              : null,
           isFetching:
               (_s._panelKindFilter == 'torrents' && _s._isSearching) ||
               (_s._panelKindFilter == 'stremio' && _s._isStremioFetching) ||
@@ -466,6 +464,12 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
         ),
         const SizedBox(height: 8),
         Expanded(child: _s._buildStreamList(inPanel: true)),
+        SourcesPanelMetaFooter(
+          episodeLabel: _s._movie.mediaType == 'tv'
+              ? 'S${_s._selectedSeason.toString().padLeft(2, '0')}E${_s._selectedEpisode.toString().padLeft(2, '0')}'
+              : null,
+          resultCount: _s._panelVisibleCount,
+        ),
       ],
     );
   }

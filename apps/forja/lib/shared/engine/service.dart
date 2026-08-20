@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/host_resolver.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/runtime.dart';
 import 'package:forja/shared/extractors/embed_extract_profiles.dart';
+import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:http/http.dart' as http;
@@ -426,8 +427,51 @@ class EngineService {
       debugPrint('[engine] ${plugin.id} cancelled after ${sw.elapsedMilliseconds}ms');
       return null;
     }
+    var rawList = raw;
+    // JS path under parallel All-walk often hangs on stalled HTTP bodies.
+    // Dart VideasyExtractor has hard per-fetch timeouts — use it when JS is empty.
+    if (rawList.isEmpty &&
+        plugin.id == 'videasy' &&
+        movie != null &&
+        gen == _extractGeneration) {
+      debugPrint('[engine] videasy JS empty — dart API fallback');
+      try {
+        final extracted = await VideasyExtractor(onLog: debugPrint).extract(
+          tmdbId: tmdbId,
+          isMovie: mediaType != 'tv',
+          title: title ?? movie.title,
+          year: VideasyExtractor.yearFromReleaseDate(
+            year != null ? '$year-01-01' : movie.releaseDate,
+          ),
+          imdbId: animeIds?.imdbId ?? movie.imdbId,
+          season: mediaType == 'tv' ? season : null,
+          episode: mediaType == 'tv' ? episode : null,
+          totalSeasons: mediaType == 'tv' ? movie.numberOfSeasons : null,
+          isCancelled: () => gen != _extractGeneration,
+        );
+        if (extracted != null && extracted.sources != null) {
+          rawList = [
+            for (final s in extracted.sources!)
+              if (s.url.trim().isNotEmpty)
+                {
+                  'url': s.url,
+                  'name': s.title.isNotEmpty ? s.title : 'Videasy',
+                  'quality': s.title,
+                  if (s.headers != null && s.headers!.isNotEmpty)
+                    'headers': s.headers,
+                },
+          ];
+        }
+      } catch (e) {
+        debugPrint('[engine] videasy dart fallback failed: $e');
+      }
+    }
+    if (gen != _extractGeneration) {
+      debugPrint('[engine] ${plugin.id} cancelled after ${sw.elapsedMilliseconds}ms');
+      return null;
+    }
     final streams = <Map<String, dynamic>>[];
-    for (final s in raw) {
+    for (final s in rawList) {
       final url = (s['url'] ?? '').toString().trim();
       if (url.isEmpty || isTorrentStreamUrl(url)) continue;
       final mapped = mapEngineStream(
@@ -442,7 +486,7 @@ class EngineService {
       if (mapped != null) streams.add(mapped);
     }
     debugPrint(
-      '[engine] ${plugin.id} done raw=${raw.length} streams=${streams.length} '
+      '[engine] ${plugin.id} done raw=${rawList.length} streams=${streams.length} '
       '${sw.elapsedMilliseconds}ms',
     );
     return EngineExtractResult(
