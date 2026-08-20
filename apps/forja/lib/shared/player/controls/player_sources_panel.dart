@@ -1952,7 +1952,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   Set<String> get _engineLoadingPluginIds {
     if (!_engineWorkActive) return const {};
     return {
-      ..._engineInFlightPluginIds,
       for (final id in _engineSelectedPluginIds)
         if (!_engineFetchedPluginIds.contains(id)) id,
     };
@@ -1991,16 +1990,23 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       debugPrint('[engine] plugin $pluginId failed: $e');
     }
     if (!mounted || gen != _engineFetchGen) {
+      if (mounted) {
+        setState(() => _engineInFlightPluginIds.remove(pluginId));
+      } else {
+        _engineInFlightPluginIds.remove(pluginId);
+      }
       _engineDbg('drop $pluginId');
       return;
     }
     if (!_engineSelectedPluginIds.contains(pluginId)) {
+      setState(() => _engineInFlightPluginIds.remove(pluginId));
       _engineDbg('drop $pluginId');
       return;
     }
     final n = batch?.streams.length ?? 0;
     setState(() {
       _engineFetchedPluginIds.add(pluginId);
+      _engineInFlightPluginIds.remove(pluginId);
       _engineStreams.removeWhere(
         (s) => engineStreamBelongsToPlugin(s, pluginId),
       );

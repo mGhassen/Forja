@@ -126,6 +126,9 @@ class SettingsVisibility {
   /// IPTV EPG, portals CSV, portal cache clear.
   bool get showIptvSettings => iptvNav;
 
+  /// Settings → My IPTV sports (Live Matches Xtream matcher).
+  bool get showIptvSportsSettings => liveMatchesNav && iptvNav;
+
   static Future<SettingsVisibility> resolve([SettingsService? settings]) async {
     final s = settings ?? SettingsService();
     var nav = await s.getNavbarConfig();

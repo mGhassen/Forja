@@ -33,6 +33,7 @@ class _ParentalGuideOverlayState extends State<ParentalGuideOverlay>
   late List<double> _itemAlphas;
   bool _animating = false;
   int _run = 0;
+  AnimationController? _active;
 
   @override
   void initState() {
@@ -63,6 +64,8 @@ class _ParentalGuideOverlayState extends State<ParentalGuideOverlay>
   @override
   void dispose() {
     _run++;
+    _active?.dispose();
+    _active = null;
     super.dispose();
   }
 
@@ -142,6 +145,8 @@ class _ParentalGuideOverlayState extends State<ParentalGuideOverlay>
 
   void _snapOut() {
     _run++;
+    _active?.dispose();
+    _active = null;
     _animating = false;
     _containerAlpha = 0;
     _lineHeightFraction = 0;
@@ -160,7 +165,9 @@ class _ParentalGuideOverlayState extends State<ParentalGuideOverlay>
     Duration duration,
   ) async {
     if (!_alive(run)) return;
+    _active?.dispose();
     final controller = AnimationController(vsync: this, duration: duration);
+    _active = controller;
     final anim = Tween<double>(begin: begin, end: end).animate(
       CurvedAnimation(parent: controller, curve: Curves.fastOutSlowIn),
     );
@@ -177,7 +184,10 @@ class _ParentalGuideOverlayState extends State<ParentalGuideOverlay>
       await controller.forward();
     } finally {
       anim.removeListener(tick);
-      controller.dispose();
+      if (identical(_active, controller)) {
+        _active = null;
+        controller.dispose();
+      }
     }
     if (!_alive(run)) return;
     apply(end);

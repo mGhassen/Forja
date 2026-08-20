@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "Forja",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "plugins": [
     {
       "id": "videasy",
@@ -218,20 +218,6 @@
       }
     },
     {
-      "id": "vidfast",
-      "name": "VidFast",
-      "entry": "vidfast.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://vidfast.vc",
-        "enc": "https://enc-dec.app/api"
-      }
-    },
-    {
       "id": "vidsrcsbs",
       "name": "VidSrc.sbs",
       "entry": "vidsrcsbs.js",
@@ -246,49 +232,6 @@
         "nxshaKey": "S8x!Jk4ZP1uG8$my",
         "videasyApi": "https://api.speedracelight.com",
         "videasyOrigin": "https://player.videasy.to"
-      }
-    },
-    {
-      "id": "cinesrc",
-      "name": "Cinesrc",
-      "entry": "cinesrc.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://cinesrc.st",
-        "enc": "https://enc-dec.app/api"
-      }
-    },
-    {
-      "id": "vidsrc",
-      "name": "VSEmbed",
-      "entry": "vidsrc.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://vsembed.su"
-      }
-    },
-    {
-      "id": "vidsrcwin",
-      "name": "VidSrc",
-      "entry": "embed.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://video.moviepire.co",
-        "moviePath": "/embed/movie/{id}",
-        "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "name": "VidSrc"
       }
     },
     {
@@ -326,85 +269,6 @@
       }
     },
     {
-      "id": "autoembed",
-      "name": "AutoEmbed",
-      "entry": "autoembed.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://player.autoembed.co",
-        "moviePath": "/embed/movie/{id}",
-        "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "name": "AutoEmbed"
-      }
-    },
-    {
-      "id": "vidlove",
-      "name": "VidLove",
-      "entry": "embed.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://player.vidlove.cc",
-        "moviePath": "/embed/movie/{id}",
-        "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "name": "VidLove"
-      }
-    },
-    {
-      "id": "111movies",
-      "name": "111Movies",
-      "entry": "embed.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://player.vidlove.cc",
-        "moviePath": "/embed/movie/{id}",
-        "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "name": "111Movies"
-      }
-    },
-    {
-      "id": "moviesapi",
-      "name": "MoviesAPI",
-      "entry": "moviesapi.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://moviesapi.to",
-        "player": "https://player.moviesapi.vip",
-        "name": "MoviesAPI"
-      }
-    },
-    {
-      "id": "vidapi",
-      "name": "VidAPI",
-      "entry": "embed.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://vidapi.xyz",
-        "moviePath": "/embed/movie/{id}",
-        "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "name": "VidAPI"
-      }
-    },
-    {
       "id": "service111477",
       "name": "111477",
       "entry": "dahmermovies.js",
@@ -416,19 +280,6 @@
       "config": {
         "api": "https://a.111477.xyz",
         "tmdbKey": "439c478a771f35c05022f9feabcca01c"
-      }
-    },
-    {
-      "id": "webstreamr",
-      "name": "WebStreamr",
-      "entry": "host_wrap.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "hostId": "webstreamr"
       }
     },
     {
@@ -557,7 +408,7 @@
           },
           {
             "id": "turkce",
-            "label": "Türkçe"
+            "label": "T\u00fcrk\u00e7e"
           },
           {
             "id": "v5:Hindi",
@@ -681,7 +532,12 @@
       "id": "hianime",
       "name": "HiAnime",
       "entry": "hianime.js",
-      "ids": ["title", "tmdb", "imdb", "mal"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal"
+      ],
       "types": [
         "movie",
         "tv"
@@ -701,7 +557,12 @@
       "id": "animepahe",
       "name": "AnimePahe",
       "entry": "animepahe.js",
-      "ids": ["title", "tmdb", "imdb", "mal"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal"
+      ],
       "types": [
         "movie",
         "tv"
@@ -709,7 +570,11 @@
       "kind": "http",
       "config": {
         "base": "https://animepahe.pw",
-        "mirrors": ["https://animepahe.pw", "https://animepahe.ru", "https://animepahe.com"],
+        "mirrors": [
+          "https://animepahe.pw",
+          "https://animepahe.ru",
+          "https://animepahe.com"
+        ],
         "proxy": "https://animepaheproxy.phisheranimepahe.workers.dev/?url=",
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
@@ -718,7 +583,12 @@
       "id": "anizone",
       "name": "Anizone",
       "entry": "anizone.js",
-      "ids": ["title", "tmdb", "imdb", "mal"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal"
+      ],
       "types": [
         "movie",
         "tv"
@@ -883,10 +753,30 @@
         "origin": "https://vidnest.fun",
         "alphabet": "RB0fpH8ZEyVLkv7c2i6MAJ5u3IKFDxlS1NTsnGaqmXYdUrtzjwObCgQP94hoeW+/=",
         "servers": [
-          { "id": "hianime", "name": "HiAnime", "movie": "hianime/movie", "tv": "hianime/tv" },
-          { "id": "animepahe", "name": "AnimePahe", "movie": "animepahe/movie", "tv": "animepahe/tv" },
-          { "id": "kickass", "name": "KickAssAnime", "movie": "kickassanime/movie", "tv": "kickassanime/tv" },
-          { "id": "9anime", "name": "9Anime", "movie": "9anime/movie", "tv": "9anime/tv" }
+          {
+            "id": "hianime",
+            "name": "HiAnime",
+            "movie": "hianime/movie",
+            "tv": "hianime/tv"
+          },
+          {
+            "id": "animepahe",
+            "name": "AnimePahe",
+            "movie": "animepahe/movie",
+            "tv": "animepahe/tv"
+          },
+          {
+            "id": "kickass",
+            "name": "KickAssAnime",
+            "movie": "kickassanime/movie",
+            "tv": "kickassanime/tv"
+          },
+          {
+            "id": "9anime",
+            "name": "9Anime",
+            "movie": "9anime/movie",
+            "tv": "9anime/tv"
+          }
         ]
       }
     },
@@ -1039,7 +929,12 @@
       "id": "reanime",
       "name": "ReAnime",
       "entry": "reanime.js",
-      "ids": ["title", "tmdb", "imdb", "anilist"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "anilist"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1135,7 +1030,13 @@
       "id": "animex",
       "name": "AnimeX",
       "entry": "animex.js",
-      "ids": ["title", "tmdb", "imdb", "mal", "anilist"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal",
+        "anilist"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1152,7 +1053,10 @@
       "id": "2dhive",
       "name": "2DHive",
       "entry": "2dhive.js",
-      "ids": ["title", "mal"],
+      "ids": [
+        "title",
+        "mal"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1167,7 +1071,13 @@
       "id": "anibd",
       "name": "AniBD",
       "entry": "anibd.js",
-      "ids": ["title", "tmdb", "imdb", "mal", "anilist"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal",
+        "anilist"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1183,7 +1093,12 @@
       "id": "anidbapp",
       "name": "AniDbApp",
       "entry": "anidbapp.js",
-      "ids": ["title", "tmdb", "imdb", "mal"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1199,7 +1114,12 @@
       "id": "anikoto",
       "name": "Anikoto",
       "entry": "anikoto.js",
-      "ids": ["title", "tmdb", "imdb", "mal"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1220,7 +1140,12 @@
       "id": "animedunya",
       "name": "AnimeDunya",
       "entry": "animedunya.js",
-      "ids": ["title", "tmdb", "imdb", "mal"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1236,7 +1161,12 @@
       "id": "animegg",
       "name": "AnimeGG",
       "entry": "animegg.js",
-      "ids": ["title", "tmdb", "imdb", "mal"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1252,7 +1182,12 @@
       "id": "animenosub",
       "name": "AnimeNoSub",
       "entry": "animenosub.js",
-      "ids": ["title", "tmdb", "imdb", "mal"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1268,7 +1203,12 @@
       "id": "anineko",
       "name": "AniNeko",
       "entry": "anineko.js",
-      "ids": ["title", "tmdb", "imdb", "mal"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1284,7 +1224,10 @@
       "id": "kickassanime",
       "name": "KickAssAnime",
       "entry": "kickassanime.js",
-      "ids": ["title", "tmdb"],
+      "ids": [
+        "title",
+        "tmdb"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1299,7 +1242,10 @@
       "id": "mkissa",
       "name": "MKissa",
       "entry": "mkissa.js",
-      "ids": ["title", "tmdb"],
+      "ids": [
+        "title",
+        "tmdb"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1318,7 +1264,12 @@
       "id": "senshi",
       "name": "Senshi",
       "entry": "senshi.js",
-      "ids": ["title", "tmdb", "imdb", "mal"],
+      "ids": [
+        "title",
+        "tmdb",
+        "imdb",
+        "mal"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1334,7 +1285,10 @@
       "id": "animeheaven",
       "name": "AnimeHeaven",
       "entry": "animeheaven.js",
-      "ids": ["title", "tmdb"],
+      "ids": [
+        "title",
+        "tmdb"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1349,7 +1303,10 @@
       "id": "anidao",
       "name": "AniDao",
       "entry": "anidao.js",
-      "ids": ["title", "tmdb"],
+      "ids": [
+        "title",
+        "tmdb"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1364,7 +1321,10 @@
       "id": "aniwaves",
       "name": "AniWaves",
       "entry": "aniwaves.js",
-      "ids": ["title", "tmdb"],
+      "ids": [
+        "title",
+        "tmdb"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1379,7 +1339,12 @@
       "id": "miruro",
       "name": "Miruro",
       "entry": "miruro.js",
-      "ids": ["title", "tmdb", "mal", "anilist"],
+      "ids": [
+        "title",
+        "tmdb",
+        "mal",
+        "anilist"
+      ],
       "types": [
         "movie",
         "tv"
@@ -1731,20 +1696,6 @@
       "hosts": [
         "hanime.tv",
         "hanime.me"
-      ]
-    },
-    {
-      "id": "hop-cloudfabric",
-      "name": "CloudFabric",
-      "entry": "hops/cloudfabric.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "hop",
-      "hosts": [
-        "nextgencloudfabric.com",
-        "cloudfabric.com"
       ]
     }
   ]

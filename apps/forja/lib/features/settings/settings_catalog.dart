@@ -11,6 +11,7 @@ abstract final class SettingsCategoryId {
   static const accounts = 'accounts';
   static const lists = 'lists';
   static const data = 'data';
+  static const iptvSports = 'iptv_sports';
   static const lan = 'lan';
   static const navigation = 'navigation';
   static const about = 'about';
@@ -24,6 +25,7 @@ abstract final class SettingsCategoryId {
     accounts,
     lists,
     data,
+    iptvSports,
     lan,
     navigation,
     about,
@@ -124,8 +126,15 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       const SettingsCategoryMeta(
         id: SettingsCategoryId.data,
         title: 'Data & backup',
-        subtitle: 'Clear cache, export, My IPTV sports',
+        subtitle: 'Clear cache, export, import',
         icon: Icons.folder_outlined,
+      ),
+    if (visibility.showIptvSportsSettings)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.iptvSports,
+        title: 'My IPTV sports',
+        subtitle: 'Portal, leagues, Live Matches matching',
+        icon: Icons.sports_rounded,
       ),
     const SettingsCategoryMeta(
       id: SettingsCategoryId.lan,

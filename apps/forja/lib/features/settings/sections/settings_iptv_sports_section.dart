@@ -7,7 +7,7 @@ import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.da
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 
-/// Settings → Data & backup — My IPTV sports matcher (RFC-062).
+/// Settings → My IPTV sports — Live Matches Xtream matcher (RFC-062).
 class SettingsIptvSportsSection extends StatefulWidget {
   const SettingsIptvSportsSection({super.key});
 
@@ -170,13 +170,13 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     await _persist(_config.copyWith(leagues: next));
   }
 
-  Future<void> _editCategories(String leagueKey) async {
+  Future<void> _editCategories(String familyKey) async {
     if (_liveCategories.isEmpty) {
       ForjaToast.info('Load live categories from the portal first');
       return;
     }
     final selected = Set<String>.from(
-      _config.sportCategories[leagueKey] ?? const [],
+      _config.sportCategories[familyKey] ?? const [],
     );
     final result = await showModalBottomSheet<Set<String>>(
       context: context,
@@ -184,9 +184,8 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
       backgroundColor: ForjaShellColors.surfaceElevated,
       builder: (ctx) {
         return _CategoryMultiPickSheet(
-          title: leagueKey == 'GLOBAL'
-              ? 'Global categories (all leagues)'
-              : '${LiveMatchesIptvSportsConfig.leagueLabels[leagueKey] ?? leagueKey} categories',
+          title: LiveMatchesIptvSportsConfig.sportFamilyLabels[familyKey] ??
+              familyKey,
           categories: _liveCategories,
           initiallySelected: selected,
         );
@@ -195,9 +194,9 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     if (result == null || !mounted) return;
     final map = Map<String, List<String>>.from(_config.sportCategories);
     if (result.isEmpty) {
-      map.remove(leagueKey);
+      map.remove(familyKey);
     } else {
-      map[leagueKey] = result.toList()..sort();
+      map[familyKey] = result.toList()..sort();
     }
     await _persist(_config.copyWith(sportCategories: map));
   }
@@ -212,7 +211,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
 
   String _categorySubtitle(String key) {
     final ids = _config.sportCategories[key] ?? const [];
-    if (ids.isEmpty) return 'None selected';
+    if (ids.isEmpty) return 'All live channels (default)';
     final names = <String>[];
     for (final id in ids) {
       String? name;
@@ -243,13 +242,13 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     }
 
     return SettingsGroup(
-      label: 'My IPTV sports',
+      label: 'Setup',
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(2, 12, 2, 4),
           child: Text(
-            'Match today’s ESPN schedule to channels on your Xtream portal. '
-            'Then open Live Matches → Servers → My IPTV.',
+            'Match today’s ESPN schedule to live channels on one Xtream portal. '
+            'Then Live Matches → Servers → My IPTV.',
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
               fontSize: 13,
@@ -273,7 +272,16 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
           title: 'Enable My IPTV',
           subtitle: 'Show the My IPTV server in Live Matches',
           value: _config.enabled,
-          onChanged: (v) => _persist(_config.copyWith(enabled: v)),
+          onChanged: (v) async {
+            var next = _config.copyWith(enabled: v);
+            // First enable with no leagues → select all (don't force chip spam).
+            if (v && next.leagues.isEmpty) {
+              next = next.copyWith(
+                leagues: List<String>.from(LiveMatchesIptvSportsConfig.allLeagues),
+              );
+            }
+            await _persist(next);
+          },
         ),
         SettingsActionRow(
           title: 'Xtream portal',
@@ -287,13 +295,33 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(2, 12, 2, 8),
-          child: Text(
-            'Leagues',
-            style: TextStyle(
-              color: ForjaShellColors.textPrimary.withValues(alpha: 0.9),
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Leagues',
+                  style: TextStyle(
+                    color: ForjaShellColors.textPrimary.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => _persist(
+                  _config.copyWith(
+                    leagues: List<String>.from(
+                      LiveMatchesIptvSportsConfig.allLeagues,
+                    ),
+                  ),
+                ),
+                child: const Text('All'),
+              ),
+              TextButton(
+                onPressed: () => _persist(_config.copyWith(leagues: const [])),
+                child: const Text('None'),
+              ),
+            ],
           ),
         ),
         Padding(
@@ -329,7 +357,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
         Padding(
           padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
           child: Text(
-            'Category mapping',
+            'IPTV folders',
             style: TextStyle(
               color: ForjaShellColors.textPrimary.withValues(alpha: 0.9),
               fontWeight: FontWeight.w600,
@@ -340,8 +368,8 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
         Padding(
           padding: const EdgeInsets.fromLTRB(2, 0, 2, 4),
           child: Text(
-            'Pick which IPTV live folders to search per league. '
-            'Global folders are searched for every league.',
+            'Optional. Leave as All live (default) — no need to tick folders. '
+            'Open a sport only to narrow. Global is searched for every game.',
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
               fontSize: 12,
@@ -350,15 +378,16 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
           ),
         ),
         SettingsActionRow(
-          title: 'Global folders',
+          title: LiveMatchesIptvSportsConfig.sportFamilyLabels['GLOBAL']!,
           subtitle: _categorySubtitle('GLOBAL'),
           onTap: () => _editCategories('GLOBAL'),
         ),
-        for (final league in _config.leagues)
+        for (final family in _config.activeSportFamilies)
           SettingsActionRow(
-            title: LiveMatchesIptvSportsConfig.leagueLabels[league] ?? league,
-            subtitle: _categorySubtitle(league),
-            onTap: () => _editCategories(league),
+            title: LiveMatchesIptvSportsConfig.sportFamilyLabels[family] ??
+                family,
+            subtitle: _categorySubtitle(family),
+            onTap: () => _editCategories(family),
           ),
       ],
     );
@@ -383,16 +412,43 @@ class _CategoryMultiPickSheet extends StatefulWidget {
 
 class _CategoryMultiPickSheetState extends State<_CategoryMultiPickSheet> {
   late Set<String> _selected;
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
-    _selected = Set<String>.from(widget.initiallySelected);
+    // Empty config = all live. Show every folder checked so users don't
+    // think they must tick thousands by hand.
+    if (widget.initiallySelected.isEmpty) {
+      _selected = widget.categories.map((c) => c.id).toSet();
+    } else {
+      _selected = Set<String>.from(widget.initiallySelected);
+    }
+  }
+
+  /// All checked (or none) → empty set → engine searches all live.
+  Set<String> _resultForDone() {
+    if (_selected.isEmpty ||
+        _selected.length >= widget.categories.length) {
+      return <String>{};
+    }
+    return Set<String>.from(_selected);
+  }
+
+  List<IptvCategory> get _filtered {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return widget.categories;
+    return widget.categories
+        .where((c) => c.name.toLowerCase().contains(q))
+        .toList(growable: false);
   }
 
   @override
   Widget build(BuildContext context) {
     final height = MediaQuery.sizeOf(context).height * 0.7;
+    final filtered = _filtered;
+    final allOn = widget.categories.isNotEmpty &&
+        _selected.length >= widget.categories.length;
     return SizedBox(
       height: height,
       child: Column(
@@ -412,17 +468,76 @@ class _CategoryMultiPickSheetState extends State<_CategoryMultiPickSheet> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.pop(context, _selected),
+                  onPressed: () => Navigator.pop(context, _resultForDone()),
                   child: const Text('Done'),
                 ),
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              allOn || _selected.isEmpty
+                  ? 'All live channels selected — Done saves that (no per-folder list).'
+                  : '${_selected.length} of ${widget.categories.length} folders — uncheck to exclude.',
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
+                fontSize: 12,
+                height: 1.3,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+              children: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _selected = widget.categories.map((c) => c.id).toSet();
+                    });
+                  },
+                  child: const Text('All'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() => _selected.clear());
+                  },
+                  child: const Text('None'),
+                ),
+                const Spacer(),
+                Text(
+                  '${filtered.length} shown',
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary.withValues(alpha: 0.7),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Filter folders…',
+                hintStyle: TextStyle(
+                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.6),
+                ),
+                isDense: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              style: const TextStyle(color: ForjaShellColors.textPrimary),
+              onChanged: (v) => setState(() => _query = v),
+            ),
+          ),
           Expanded(
             child: ListView.builder(
-              itemCount: widget.categories.length,
+              itemCount: filtered.length,
               itemBuilder: (ctx, i) {
-                final c = widget.categories[i];
+                final c = filtered[i];
                 final on = _selected.contains(c.id);
                 return CheckboxListTile(
                   value: on,

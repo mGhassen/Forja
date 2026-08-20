@@ -61,6 +61,8 @@ Widget buildSettingsCategoryBody(
       return const ListsScreen(embedded: true);
     case SettingsCategoryId.data:
       return SettingsDataPageBody(visibility: visibility);
+    case SettingsCategoryId.iptvSports:
+      return const SettingsIptvSportsSection();
     case SettingsCategoryId.lan:
       return const LanSettingsSection();
     case SettingsCategoryId.navigation:
@@ -315,10 +317,8 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
             ),
           ],
         ),
-        if (widget.visibility.showIptvSettings) ...[
+        if (widget.visibility.showIptvSettings)
           const SettingsIptvPortalsSection(),
-          const SettingsIptvSportsSection(),
-        ],
         SettingsCacheDataSection(
           showIptvPortalCache: widget.visibility.showIptvSettings,
         ),

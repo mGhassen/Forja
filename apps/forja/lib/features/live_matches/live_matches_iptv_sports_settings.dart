@@ -18,7 +18,8 @@ class LiveMatchesIptvSportsConfig {
   /// IANA timezone; empty → device local date for ESPN.
   final String timezone;
   final List<String> leagues;
-  /// League → Xtream live category ids (include `GLOBAL` for all-league search).
+  /// Sport-family / GLOBAL → Xtream live category ids.
+  /// Keys: [sportFamilies] + `GLOBAL` (not per-league).
   final Map<String, List<String>> sportCategories;
 
   static const prefsKey = 'live_matches_iptv_sports_v1';
@@ -55,11 +56,66 @@ class LiveMatchesIptvSportsConfig {
     'UFC': 'UFC',
   };
 
+  /// Folder-mapping buckets that match typical IPTV layouts (Soccer, NFL…).
+  static const sportFamilies = <String>[
+    'SOCCER',
+    'BASKETBALL',
+    'FOOTBALL',
+    'BASEBALL',
+    'HOCKEY',
+    'MMA',
+  ];
+
+  static const sportFamilyLabels = <String, String>{
+    'SOCCER': 'Soccer',
+    'BASKETBALL': 'Basketball',
+    'FOOTBALL': 'American football',
+    'BASEBALL': 'Baseball',
+    'HOCKEY': 'Hockey',
+    'MMA': 'MMA / UFC',
+    'GLOBAL': 'All sports (global)',
+  };
+
+  static const _leagueToFamily = <String, String>{
+    'NBA': 'BASKETBALL',
+    'WNBA': 'BASKETBALL',
+    'NCAAMB': 'BASKETBALL',
+    'NCAAWB': 'BASKETBALL',
+    'NFL': 'FOOTBALL',
+    'NCAAFB': 'FOOTBALL',
+    'MLB': 'BASEBALL',
+    'NHL': 'HOCKEY',
+    'EPL': 'SOCCER',
+    'MLS': 'SOCCER',
+    'LALIGA': 'SOCCER',
+    'WORLDCUP': 'SOCCER',
+    'UFC': 'MMA',
+  };
+
+  static String familyForLeague(String league) =>
+      _leagueToFamily[league.toUpperCase()] ?? 'GLOBAL';
+
+  /// Families needed for the currently enabled leagues (stable order).
+  List<String> get activeSportFamilies {
+    final want = <String>{};
+    for (final league in leagues) {
+      want.add(familyForLeague(league));
+    }
+    return [
+      for (final f in sportFamilies)
+        if (want.contains(f)) f,
+    ];
+  }
+
   bool get isReady =>
       enabled && portalKey.isNotEmpty && leagues.isNotEmpty;
 
-  List<String> categoryIdsForGame(String sport) {
-    final sportIds = sportCategories[sport.toUpperCase()] ?? const [];
+  /// Category ids to search for an ESPN league code (e.g. `NBA`).
+  List<String> categoryIdsForGame(String leagueOrSport) {
+    final key = leagueOrSport.trim().toUpperCase();
+    final family = _leagueToFamily[key] ??
+        (sportFamilies.contains(key) ? key : familyForLeague(key));
+    final sportIds = sportCategories[family] ?? const [];
     final global = sportCategories['GLOBAL'] ?? const [];
     return {...sportIds, ...global}.toList();
   }
@@ -89,6 +145,30 @@ class LiveMatchesIptvSportsConfig {
           for (final e in sportCategories.entries) e.key: e.value,
         },
       };
+
+  /// Collapse legacy per-league keys (NBA, EPL, …) into sport families.
+  static Map<String, List<String>> _normalizeCategoryMap(
+    Map<String, List<String>> raw,
+  ) {
+    final out = <String, List<String>>{};
+    void add(String key, Iterable<String> ids) {
+      final bucket = out.putIfAbsent(key, () => <String>[]);
+      for (final id in ids) {
+        if (id.isNotEmpty && !bucket.contains(id)) bucket.add(id);
+      }
+    }
+
+    for (final e in raw.entries) {
+      final key = e.key.toUpperCase();
+      if (key == 'GLOBAL' || sportFamilies.contains(key)) {
+        add(key, e.value);
+        continue;
+      }
+      // Old per-league storage → family.
+      add(familyForLeague(key), e.value);
+    }
+    return out;
+  }
 
   factory LiveMatchesIptvSportsConfig.fromJson(Map<String, dynamic>? j) {
     if (j == null) return const LiveMatchesIptvSportsConfig();
@@ -121,7 +201,7 @@ class LiveMatchesIptvSportsConfig {
       portalKey: (j['portalKey'] ?? '').toString(),
       timezone: (j['timezone'] ?? '').toString(),
       leagues: leagues,
-      sportCategories: cats,
+      sportCategories: _normalizeCategoryMap(cats),
     );
   }
 

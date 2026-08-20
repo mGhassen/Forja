@@ -34,7 +34,6 @@ Every action asks for confirmation and shows a toast when done. On **TV**, Cance
 
 - Prefer **Stream cache** when Play opens a dead or stale URL.
 - Prefer **IPTV portal cache** when Live “alive” marks, channel scan hits, or the channel list look stale after a provider change (or use shelf **Reload** for one section).
-- **My IPTV sports** (same Data & backup page) configures Live Matches → **My IPTV** — ESPN schedule matched to your Xtream live folders. Does not clear caches.
 - Prefer **Provider scores** when Auto keeps favoring a flaky extractor after you fixed network / region.
 - Tokens, Stremio/Nuvio addons, My List, and Backup keys are never cleared here — settings also auto-persist locally (see [Backup & restore](backup-restore.md)); use that for device-to-device copy.
 

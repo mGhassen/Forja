@@ -47,11 +47,10 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       _s._engineInFlightPluginIds.isNotEmpty ||
       _enginePoolTasks.isNotEmpty;
 
-  /// Selected chips that should spin: in-flight + queued (selected, not fetched).
+  /// Selected chips that should spin: selected + not yet fetched, while work runs.
   Set<String> get _engineLoadingPluginIds {
     if (!_engineWorkActive) return const {};
     return {
-      ..._s._engineInFlightPluginIds,
       for (final id in _s._engineSelectedPluginIds)
         if (!_s._engineFetchedPluginIds.contains(id)) id,
     };
@@ -98,16 +97,24 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       debugPrint('[engine] plugin $pluginId failed: $e');
     }
     if (!mounted || gen != _s._engineFetchGen) {
+      if (mounted) {
+        setState(() => _s._engineInFlightPluginIds.remove(pluginId));
+      } else {
+        _s._engineInFlightPluginIds.remove(pluginId);
+      }
       _engineDbg('drop $pluginId');
       return;
     }
     if (!_s._engineSelectedPluginIds.contains(pluginId)) {
+      setState(() => _s._engineInFlightPluginIds.remove(pluginId));
       _engineDbg('drop $pluginId');
       return;
     }
     final n = batch?.streams.length ?? 0;
+    // Clear inFlight in the same setState as fetched so ...=/run= match immediately.
     setState(() {
       _s._engineFetchedPluginIds.add(pluginId);
+      _s._engineInFlightPluginIds.remove(pluginId);
       _s._engineStreams.removeWhere(
         (s) => engineStreamBelongsToPlugin(s, pluginId),
       );

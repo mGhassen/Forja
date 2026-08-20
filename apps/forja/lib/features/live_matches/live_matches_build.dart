@@ -688,7 +688,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       final emptyMsg = _s._server == _LiveMatchesServer.stremio
           ? 'No live Stremio addons — install one in Settings → Sources and enable Live Matches'
           : _s._server == _LiveMatchesServer.iptvSports
-              ? 'Configure My IPTV in Settings → Data & backup, or no games today'
+              ? 'Configure My IPTV in Settings → My IPTV sports, or no games today'
               : 'No streams available';
       return ShellErrorRetryPanel(
         message: emptyMsg,

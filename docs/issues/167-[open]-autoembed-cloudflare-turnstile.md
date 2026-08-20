@@ -37,9 +37,7 @@
 
 `player.autoembed.co` → `nextgencloudfabric.com/embed/…` now gates with Cloudflare Turnstile. Headless sniff logs `[Cloudflare Turnstile] Error: 600010`, rejects turnstile blobs, times out → `no streams`. Issue [056](fixed/056-[fixed]-autoembed-player-sandbox-playback-blocked.md) fixed iframe sandbox nesting; this is a new CF bot gate — chip-rotate will not help until the challenge is cleared or bypassed.
 
-**Forja HTTP (1.5.6):** `autoembed.js` + `hop-cloudfabric` follow the iframe and scrape m3u8 when the player HTML is unlocked. Against live Turnstile pages the hop logs `cloudfabric Turnstile gate` and returns `[]` — documented hard CF gate (I167-T01). Still no FlareSolverr / attest API bypass (I167-T02).
-
-**Not fixed for playback** — needs API reverse-engineer or FlareSolverr/ops path; do not hide AutoEmbed from the server list.
+**Forja pack:** AutoEmbed HTTP chip removed (`engine.json` 1.5.7+) — no working non-Turnstile extract. Green Play sniff may still hit the host. Remaining work is FlareSolverr / attest API (I167-T02), not another empty Forja stub.
 
 ## Related
 

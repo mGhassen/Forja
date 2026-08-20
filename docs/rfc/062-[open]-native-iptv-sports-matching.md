@@ -83,3 +83,5 @@ Sportio does not provide streams — it bridges ESPN's public scoreboard with th
 | `sport_match_streams` | game fields + `xtream` + `category_ids[]` | `{ items: [stream…] }` ranked by tier |
 
 **Settings key:** `live_matches_iptv_sports_v1` — `{ enabled, portalKey, timezone, leagues, sportCategories }`.
+
+**Settings hub:** own category **My IPTV sports** (not under Data & backup).
