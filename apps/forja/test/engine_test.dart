@@ -103,34 +103,34 @@ void main() {
       expect(
         enginePluginIdsToRefetchOnAllExpand(
           previousSelectedIds: const {'videasy'},
-          nextSelectedIds: const {'videasy', 'cineby', 'goated'},
-          fetchedIds: const {'videasy', 'cineby', 'goated'},
+          nextSelectedIds: const {'videasy', 'vidlink', 'goated'},
+          fetchedIds: const {'videasy', 'vidlink', 'goated'},
           streams: streams,
         ),
-        {'cineby', 'goated'},
+        {'vidlink', 'goated'},
       );
       expect(
         engineStaleFetchedPluginIds(
-          fetchedIds: const {'videasy', 'cineby'},
-          selectedIds: const {'videasy', 'cineby'},
+          fetchedIds: const {'videasy', 'vidlink'},
+          selectedIds: const {'videasy', 'vidlink'},
           streams: streams,
         ),
-        {'cineby'},
+        {'vidlink'},
       );
     });
 
     test('full All selection is detected without clearing existing rows', () {
       expect(
         engineFullAllSelected(
-          enabledIds: const {'videasy', 'cineby', 'goated'},
-          selectedIds: const {'videasy', 'cineby', 'goated'},
+          enabledIds: const {'videasy', 'vidlink', 'goated'},
+          selectedIds: const {'videasy', 'vidlink', 'goated'},
         ),
         isTrue,
       );
       expect(
         enginePluginIdsToRefetchOnAllExpand(
           previousSelectedIds: const {'videasy'},
-          nextSelectedIds: const {'videasy', 'cineby', 'goated'},
+          nextSelectedIds: const {'videasy', 'vidlink', 'goated'},
           fetchedIds: const {'videasy'},
           streams: [
             {
@@ -140,7 +140,7 @@ void main() {
             },
           ],
         ),
-        {'cineby', 'goated'},
+        {'vidlink', 'goated'},
       );
     });
 
@@ -389,7 +389,6 @@ void main() {
           'hianime',
           'multiembed',
           'kickassanime',
-          'cineby',
           'goated',
           'meowtv',
           'peachify',
@@ -475,11 +474,6 @@ void main() {
       expect(
         parsed.firstWhere((p) => p.id == 'multiembed').entry,
         'multiembed.js',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'cineby').entry, 'videasy.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'cineby').config['origin'],
-        'https://www.cineby.at',
       );
       expect(parsed.firstWhere((p) => p.id == 'goated').entry, 'goated.js');
       expect(
@@ -782,19 +776,6 @@ void main() {
       );
       expect(kaa.contains('/api/fsearch'), isTrue);
       expect(kaa.contains('krussdomi.com'), isTrue);
-
-      final cinebyCfg =
-          ((jsonDecode(
-                        await rootBundle.loadString(
-                          'assets/providers/engine.json',
-                        ),
-                      )
-                      as Map)['plugins']
-                  as List)
-              .cast<Map>()
-              .firstWhere((p) => p['id'] == 'cineby');
-      expect(cinebyCfg['entry'], 'videasy.js');
-      expect(cinebyCfg['config']['origin'], 'https://www.cineby.at');
 
       final goated = await rootBundle.loadString('assets/providers/goated.js');
       expect(goated.contains('aesdec.nuvioapp.space'), isFalse);

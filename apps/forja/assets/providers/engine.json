@@ -59,61 +59,6 @@
       }
     },
     {
-      "id": "cineby",
-      "name": "Cineby",
-      "entry": "videasy.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "api": "https://api.speedracelight.com",
-        "origin": "https://www.cineby.at",
-        "mirrors": [
-          {
-            "endpoint": "cdn",
-            "name": "Yoru"
-          },
-          {
-            "endpoint": "downloader2",
-            "name": "Cypher"
-          },
-          {
-            "endpoint": "m4uhd",
-            "name": "Breach"
-          },
-          {
-            "endpoint": "vsrc",
-            "name": "Neon"
-          },
-          {
-            "endpoint": "hdmovie",
-            "name": "Vyse",
-            "qualityFilter": "English"
-          },
-          {
-            "endpoint": "meine",
-            "name": "Killjoy",
-            "language": "german"
-          },
-          {
-            "endpoint": "hdmovie",
-            "name": "Fade",
-            "qualityFilter": "Hindi"
-          },
-          {
-            "endpoint": "lamovie",
-            "name": "Omen"
-          },
-          {
-            "endpoint": "superflix",
-            "name": "Raze"
-          }
-        ]
-      }
-    },
-    {
       "id": "goated",
       "name": "Goated",
       "entry": "goated.js",
