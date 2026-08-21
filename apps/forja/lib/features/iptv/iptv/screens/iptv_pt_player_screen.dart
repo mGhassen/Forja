@@ -508,9 +508,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// Have at least this much cache ⇒ stream is healthy, never auto-recover.
   static const double _minHealthyCacheSecs = 2.0;
 
-  /// Continuous Buffering with a frozen playhead this long ⇒ dead, even if
-  /// Stable still reports cache/feed. Same as detector 1 mid-stream grace.
+  /// Continuous Buffering + frozen playhead + **empty** cache this long ⇒ dead.
+  /// Healthy demuxer cushion (pause-to-refill) must not trip this — that was
+  /// reconnecting with cache≈28s after live `cache-pause=yes`.
   static const Duration _bufferingHardWallDuration = Duration(seconds: 12);
+
+  /// Ignore one-shot VideoToolbox / hw fails after socket blip or live-edge snap.
+  static const Duration _transientHwDecodeIgnore = Duration(seconds: 8);
 
   /// Tunables ask for ~30 s readahead. Anything far above that is almost
   /// always a live PTS discontinuity (mpv reports multi-hour "cache"), not

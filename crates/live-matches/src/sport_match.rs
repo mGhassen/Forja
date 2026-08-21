@@ -104,6 +104,73 @@ fn has_4k(text_lower: &str) -> bool {
     text_has_keyword(text_lower, "4k")
 }
 
+fn game_name_keywords(game: &MatchGame) -> Vec<String> {
+    let mut kw = keywords_from_name(&game.home_team);
+    kw.extend(keywords_from_name(&game.away_team));
+    kw.extend(keywords_from_name(&game.home_nick));
+    kw.extend(keywords_from_name(&game.away_nick));
+    let home_abbr = game.home_abbr.to_lowercase();
+    let away_abbr = game.away_abbr.to_lowercase();
+    if home_abbr.len() > 2 {
+        kw.push(home_abbr);
+    }
+    if away_abbr.len() > 2 {
+        kw.push(away_abbr);
+    }
+    kw.sort();
+    kw.dedup();
+    kw
+}
+
+/// Channel name looks related to this game (cheap prefilter before short-EPG HTTP).
+fn name_relevant_to_game(game: &MatchGame, channel_name: &str) -> bool {
+    let name = channel_name.to_lowercase();
+    matches_any(&name, &game_name_keywords(game))
+}
+
+fn looks_sports_label(text: &str) -> bool {
+    let t = text.to_lowercase();
+    const NEEDLES: &[&str] = &[
+        "sport", "nba", "nfl", "mlb", "nhl", "ncaa", "soccer", "football",
+        "basket", "hockey", "tennis", "golf", "ufc", "boxing", "racing",
+        "f1", "moto", "cricket", "rugby", "espn", "bein", "sky sport",
+        "dazn", "premier", "liga", "serie a", "bundesliga", "wnba",
+    ];
+    NEEDLES.iter().any(|n| t.contains(n))
+}
+
+/// Pick at most `max` candidate indices to fetch short EPG for.
+/// Prefers name hits for this game, then sports-looking labels; never unbounded.
+pub fn indices_for_epg(game: &MatchGame, candidates: &[Candidate], max: usize) -> Vec<usize> {
+    if max == 0 || candidates.is_empty() {
+        return vec![];
+    }
+    if candidates.len() <= max {
+        return (0..candidates.len()).collect();
+    }
+
+    let mut scored: Vec<(usize, i32)> = Vec::with_capacity(candidates.len());
+    for (i, c) in candidates.iter().enumerate() {
+        let mut score = 0i32;
+        if name_relevant_to_game(game, &c.name) {
+            score += 10;
+        }
+        if looks_sports_label(&c.name) || looks_sports_label(&c.category_label) {
+            score += 1;
+        }
+        if score > 0 {
+            scored.push((i, score));
+        }
+    }
+    scored.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    if scored.is_empty() {
+        // No name/sports hint — still cap (do not EPG the whole bouquet).
+        return (0..max).collect();
+    }
+    scored.truncate(max);
+    scored.into_iter().map(|(i, _)| i).collect()
+}
+
 /// Rank candidates into Sportio tiers 1–4; returns JSON stream items.
 pub fn match_streams(
     game: &MatchGame,
@@ -319,5 +386,46 @@ mod tests {
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].get("tier").and_then(|v| v.as_u64()), Some(3));
+    }
+
+    #[test]
+    fn epg_indices_prefer_name_hits_and_cap() {
+        let g = game();
+        let mut cands = Vec::new();
+        for i in 0..200 {
+            cands.push(Candidate {
+                name: format!("News {i}"),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: format!("https://x/{i}.m3u8"),
+                category_label: "News".into(),
+                logo: String::new(),
+                stream_id: format!("{i}"),
+            });
+        }
+        cands[50].name = "Red Sox vs Blue Jays".into();
+        cands[50].category_label = "MLB".into();
+        cands[90].name = "ESPN 8".into();
+        cands[90].category_label = "Sports".into();
+
+        let idxs = indices_for_epg(&g, &cands, 10);
+        assert_eq!(idxs.len(), 2, "only name/sports-scored channels — no pad to max");
+        assert_eq!(idxs[0], 50, "exact game name must rank first");
+        assert!(idxs.contains(&90), "sports-looking label stays in cap");
+    }
+
+    #[test]
+    fn epg_indices_small_set_returns_all() {
+        let g = game();
+        let cands = vec![Candidate {
+            name: "A".into(),
+            description: String::new(),
+            start_timestamp: None,
+            stream_url: "https://x/1.m3u8".into(),
+            category_label: "".into(),
+            logo: String::new(),
+            stream_id: "1".into(),
+        }];
+        assert_eq!(indices_for_epg(&g, &cands, 120), vec![0]);
     }
 }

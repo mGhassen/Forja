@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **14 / 14** fix · **0 / 12** acceptance |
-| **Current slice** | 12s hard wall + `core-idle` debounce so reconnect 1/8 can actually fire; device smoke outstanding |
+| **Progress** | **16 / 16** fix · **0 / 14** acceptance |
+| **Current slice** | Hard wall only on empty cache + ignore transient VT after socket/pause-refill; device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -35,6 +35,8 @@
 | 12 | I148-T12 | **Stall UX** — Settings dropdown is Stable/Classic only; **Reopen on buffer stall** is a checkbox under Stable (still stores `stall` / `buffered` / `classic`) | ✅ |
 | 13 | I148-T13 | 12s Buffering + frozen playhead forces reconnect on Stable (hard wall; ignores cache/feed hold) | ✅ |
 | 14 | I148-T14 | Debounce `core-idle` flicker on `_bufferingSince` for **all** modes (not stall-only) — Stable was zeroing the 12s clock so spinner never became Reconnecting 1/8 | ✅ |
+| 15 | I148-T15 | Hard wall requires **weak** cache (`<_minHealthyCacheSecs`) and not feeding — pause-to-refill with a full cushion must not reconnect | ✅ |
+| 16 | I148-T16 | Arm 8s transient hw-decode ignore on socket blip, mid-stream Buffering, and live-edge snap — stop VT one-shot → hard software recreate during refill | ✅ |
 
 ---
 
@@ -52,14 +54,18 @@
 | 8 | I148-A08 | Settings dropdown switches Stable/Classic; stall checkbox under Stable; next player open logs `live recovery mode=buffered|stall|classic` | ⬜ |
 | 9 | I148-A09 | **Classic** mode: frozen-position detector reopens within ~8s without requiring empty cache | ⬜ |
 | 10 | I148-A10 | Stream stats: Cache stays in the seconds–tens range on healthy live; a PTS spike shows `— (invalid PTS)` not thousands of minutes; no multi-hour Buffered ahead | ⬜ |
-| 11 | I148-A11 | MediaKit + **Stable** + **Reopen on buffer stall**: sustained Buffering with frozen playhead reconnects within ~12s even when demuxer still reports cache/feed (`skip recovery` must not hold) | ⬜ |
-| 12 | I148-A12 | **Stable**: Buffering with frozen playhead for 12s reconnects even when cache/feed look healthy | ⬜ |
+| 11 | I148-A11 | MediaKit + **Stable** + **Reopen on buffer stall**: sustained Buffering with frozen playhead and **empty** cache reconnects within ~12s | ⬜ |
+| 12 | I148-A12 | **Stable** + pause-to-refill: Buffering with frozen playhead and **healthy** cache (≥2s) does **not** reconnect; picture stays frozen until refill resumes | ⬜ |
+| 13 | I148-A13 | Socket `ends prematurely` + VT one-shot: log shows ignore transient hw fail — no hard software recreate while cache/feed recover | ⬜ |
+| 14 | I148-A14 | Genuinely empty cache + Buffering ≥12s still reconnects (hard wall still works when cushion is gone) | ⬜ |
 
 ---
 
 ## Summary
 
 **Symptom (1.3.135+):** A live IPTV channel plays normally, then after ~1–2 minutes the picture stalls, the buffering spinner shows `Reconnecting… (attempt 1/8)`, and playback may resume on its own. The upstream feed is often still alive.
+
+> **Status update (I148-T15 / T16).** Live `cache-pause=yes` made T13's hard wall reconnect while demuxer still held ~28s (pause-to-refill). Hard wall now requires weak cache and not feeding. Socket blips / mid-stream Buffering arm an 8s VT ignore so one-shot `hardware accelerator failed` does not hard-recreate mid-refill.
 
 > **Status update (I148-T14).** T13 never painted **Reconnecting… (1/8)** on default Stable: media_kit `core-idle` flickers `buffering=false` and the listener zeroed `_bufferingSince`. Spinner stayed up until MediaCodec ANR. Debounce (`_bufferingClearHold` 1.5s) now applies to Stable/Classic too, not only the stall checkbox.
 

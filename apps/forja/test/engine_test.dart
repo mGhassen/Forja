@@ -974,6 +974,8 @@ void main() {
       final kisskh = await rootBundle.loadString('assets/providers/kisskh.js');
       expect(kisskh.contains('kisskh.co'), isTrue);
       expect(kisskh.contains('tryOnce'), isTrue);
+      expect(kisskh.contains('dramaId'), isTrue);
+      expect(kisskh.contains('if (episodeId)'), isTrue);
 
       final animedunya = await rootBundle.loadString(
         'assets/providers/animedunya.js',

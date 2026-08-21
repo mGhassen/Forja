@@ -239,7 +239,10 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       }
     }
 
-    await Future.wait([addForja(), addStremio()]);
+    // Serial on TV: parallel Forja Sports (Xtream + EPG) + Stremio OOMs leanback.
+    await addForja();
+    if (panel.isDisposed) return;
+    await addStremio();
     if (!panel.isDisposed) panel.finishSearching();
   }
 

@@ -40,6 +40,8 @@ Future<void> openHubCatalogSources({
   int? episode,
   int? anilistId,
   int? malId,
+  int? kisskhId,
+  int? kisskhEpisodeId,
 
   /// Forja chip category for this hub: `anime` | `drama` (see EngineCategories).
   String? engineCategory,
@@ -51,6 +53,8 @@ Future<void> openHubCatalogSources({
     episode: episode,
     anilistId: anilistId,
     malId: malId,
+    kisskhId: kisskhId,
+    kisskhEpisodeId: kisskhEpisodeId,
     engineCategory: engineCategory,
     onTorrentSelected: (result) => _playTorrent(
       context: context,

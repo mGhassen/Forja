@@ -168,7 +168,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [145-[open]-…](145-[open]-macos-live-embed-webkit-fullscreen-crash.md) | macOS Live embed WK fullscreen SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [146-[open]-…](146-[open]-macos-pip-settitlebarstyle-sigtrap.md) | Desktop PiP setTitleBarStyle SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [147-[open]-…](147-[open]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | open | 5/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / Classic + stall checkbox | P1 | High | open | 14/14 · A 0/12 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / Classic + stall checkbox | P1 | High | open | 16/16 · A 0/14 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [149-[open]-…](149-[open]-iptv-player-source-picker-dpad.md) | IPTV/Live player source picker has no D-pad; duplicate source control | P2 | Medium | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (display mode match shipped) | P2 | Medium | open | 2/5 · 1⏭️ · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [151-[open]-…](151-[open]-android-tv-exo-vod-stutter-no-cache.md) | ATV movie player (Exo VOD): 24fps judder + no back buffer / disk cache | P2 | Medium | open | 6/6 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -209,10 +209,11 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [187-[open]-…](187-[open]-android-tv-mediakit-vod-cache-empty.md) | ATV movies MediaKit cache never fills | P1 | High | open | 2/2 · A 0/2 | — |
 | [188-[draft]-…](188-[draft]-forja-engine-play-manual-qa.md) | Forja engine tab manual play QA | P2 | Medium | draft | 0/2 | — |
 | [189-[fixed]-…](fixed/189-[fixed]-engine-jsc-use-after-dispose-on-cancel.md) | Engine Forja tab JSC SIGSEGV on cancel | P1 | High | fixed | Complete · 4/4 · A 1/2 | — |
-| [190-[open]-…](190-[open]-forja-engine-parallel-jsc-crash.md) | Forja Engine parallel JSC crash / UI starvation | P1 | High | open | 5/6 · A 0/4 | [RFC-064](../rfc/064-[open]-rust-quickjs-engine-runtime.md) |
+| [190-[open]-…](190-[open]-forja-engine-parallel-jsc-crash.md) | Forja Engine parallel JSC crash / UI starvation | P1 | High | open | 6/7 · A 0/4 | [RFC-064](../rfc/064-[open]-rust-quickjs-engine-runtime.md) |
 | [191-[fixed]-…](fixed/191-[fixed]-hub-sources-panel-stuck-after-nav.md) | Hub Sources panel stuck after nav tab switch | P1 | High | fixed | Complete · 2/2 · A 1/2 | — |
 | [192-[fixed]-…](fixed/192-[fixed]-android-tv-player-back-exits-with-chrome.md) | ATV player Back exits while chrome showing | P1 | High | fixed | Complete · 2/2 · A 1/2 | — |
 | [193-[fixed]-…](fixed/193-[fixed]-nuvio-jsc-use-after-dispose-on-play.md) | Nuvio JSC SIGSEGV on play (deferred drop) | P1 | High | fixed | Complete · 4/4 · A 1/2 | — |
+| [194-[fixed]-…](fixed/194-[fixed]-android-tv-forja-sports-source-load-oom.md) | ATV Forja Sports source load OOM / process kill | P1 | High | fixed | Complete · 3/3 · A 1/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

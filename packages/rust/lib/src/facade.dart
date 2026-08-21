@@ -98,6 +98,12 @@ abstract final class Engine {
     RustLib.instance.engineCancelPending();
   }
 
+  /// Abort in-flight Forja QuickJS extracts only — magnet / torrent resolve stay.
+  static void cancelEngineJsExtracts() {
+    if (!isReady) return;
+    RustLib.instance.engineCancelJobsOfKind(EngineAsyncJob.engineJsExtract);
+  }
+
   /// Tear down worker isolates and async job polling before process exit.
   static Future<void> shutdown() async {
     EngineJobs.shutdown();

@@ -1,6 +1,7 @@
 namespace forja {
     string version();
     void engine_cancel_pending();
+    void engine_cancel_jobs_of_kind(u32 kind);
     void engine_prepare_shutdown();
     void engine_clear_shutdown();
     i64 add(i64 a, i64 b);

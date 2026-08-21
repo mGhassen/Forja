@@ -64,6 +64,8 @@ class PlayerSourcesPanel {
     String? currentAddonBaseUrl,
     int? anilistId,
     int? malId,
+    int? kisskhId,
+    int? kisskhEpisodeId,
 
     /// Soft Forja category for this panel: movie | tv | anime | drama.
     String? engineCategory,
@@ -93,6 +95,8 @@ class PlayerSourcesPanel {
           currentAddonBaseUrl: currentAddonBaseUrl,
           anilistId: anilistId,
           malId: malId,
+          kisskhId: kisskhId,
+          kisskhEpisodeId: kisskhEpisodeId,
           engineCategory: engineCategory,
           onTorrentSelected: onTorrentSelected,
           onStremioSelected: onStremioSelected,
@@ -120,6 +124,8 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.currentAddonBaseUrl,
     this.anilistId,
     this.malId,
+    this.kisskhId,
+    this.kisskhEpisodeId,
     this.engineCategory,
   });
 
@@ -132,6 +138,8 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final String? currentAddonBaseUrl;
   final int? anilistId;
   final int? malId;
+  final int? kisskhId;
+  final int? kisskhEpisodeId;
   final String? engineCategory;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
@@ -174,6 +182,8 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           currentAddonBaseUrl: widget.currentAddonBaseUrl,
           anilistId: widget.anilistId,
           malId: widget.malId,
+          kisskhId: widget.kisskhId,
+          kisskhEpisodeId: widget.kisskhEpisodeId,
           engineCategory: widget.engineCategory,
           onTorrentSelected: widget.onTorrentSelected,
           onStremioSelected: widget.onStremioSelected,
@@ -198,6 +208,8 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.currentAddonBaseUrl,
     this.anilistId,
     this.malId,
+    this.kisskhId,
+    this.kisskhEpisodeId,
     this.engineCategory,
   });
 
@@ -210,6 +222,8 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final String? currentAddonBaseUrl;
   final int? anilistId;
   final int? malId;
+  final int? kisskhId;
+  final int? kisskhEpisodeId;
   final String? engineCategory;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
@@ -2119,6 +2133,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         movie: widget.movie,
         malId: widget.malId,
         anilistId: widget.anilistId,
+        kisskhId: widget.kisskhId,
+        kisskhEpisodeId: widget.kisskhEpisodeId,
         allowHostFallback: false,
       );
     } catch (e) {

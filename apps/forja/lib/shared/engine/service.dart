@@ -44,6 +44,8 @@ class EngineService {
   void cancelPending() {
     _extractGeneration++;
     EngineRuntime.abortAll();
+    // Kind-scoped: do not call Engine.cancelPendingResolve (kills magnet).
+    Engine.cancelEngineJsExtracts();
   }
 
   Future<void> _syncHopsForRuntime(
@@ -644,6 +646,8 @@ class EngineService {
     Movie? movie,
     int? malId,
     int? anilistId,
+    int? kisskhId,
+    int? kisskhEpisodeId,
     bool allowHostFallback = true,
   }) async {
     final gen = _extractGeneration;
@@ -664,7 +668,12 @@ class EngineService {
     final mediaType = _normalizeEngineMediaType(type);
     final overlay =
         ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
-    final config = mergeEngineConfig(plugin.config, overlay);
+    final config = engineConfigWithKissKhIds(
+      mergeEngineConfig(plugin.config, overlay),
+      pluginId: plugin.id,
+      kisskhId: kisskhId,
+      kisskhEpisodeId: kisskhEpisodeId,
+    );
     final code = await _loadScript(plugin);
     if (gen != _extractGeneration || code == null) return null;
 

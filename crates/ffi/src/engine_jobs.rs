@@ -18,10 +18,18 @@ enum JobOutcome {
 struct JobStore {
     outcomes: HashMap<u64, JobOutcome>,
     tokens: HashMap<u64, CancellationToken>,
+    /// Job kind at submit — used by [cancel_kind] so Play can abort Forja
+    /// extracts without [cancel_all] / global [request] killing magnet resolve.
+    kinds: HashMap<u64, u32>,
 }
 
-static JOBS: LazyLock<Mutex<JobStore>> =
-    LazyLock::new(|| Mutex::new(JobStore { outcomes: HashMap::new(), tokens: HashMap::new() }));
+static JOBS: LazyLock<Mutex<JobStore>> = LazyLock::new(|| {
+    Mutex::new(JobStore {
+        outcomes: HashMap::new(),
+        tokens: HashMap::new(),
+        kinds: HashMap::new(),
+    })
+});
 
 #[repr(u32)]
 #[derive(Clone, Copy, Debug)]
@@ -51,6 +59,7 @@ pub fn submit(kind: u32, payload_json: String) -> u64 {
         let mut store = JOBS.lock().unwrap();
         store.outcomes.insert(job_id, JobOutcome::Pending);
         store.tokens.insert(job_id, token.clone());
+        store.kinds.insert(job_id, kind);
     }
 
     // Per-job task-local token (Nuvio shape). Do not attach/clear a process-global
@@ -63,6 +72,7 @@ pub fn submit(kind: u32, payload_json: String) -> u64 {
 
         let mut store = JOBS.lock().unwrap();
         store.tokens.remove(&job_id);
+        store.kinds.remove(&job_id);
         if matches!(store.outcomes.get(&job_id), Some(JobOutcome::Pending)) {
             store.outcomes.insert(job_id, JobOutcome::Done(json));
         }
@@ -90,6 +100,7 @@ pub fn cancel_all() {
     for (_, token) in store.tokens.drain() {
         token.cancel();
     }
+    store.kinds.clear();
     for outcome in store.outcomes.values_mut() {
         if matches!(outcome, JobOutcome::Pending) {
             *outcome = JobOutcome::Done(cancelled.clone());
@@ -97,6 +108,31 @@ pub fn cancel_all() {
     }
     drop(store);
     utils::engine_cancel::request();
+}
+
+/// Cancel only jobs of [kind] (e.g. [JobKind::EngineJsExtract]).
+/// Does **not** call [utils::engine_cancel::request] — that cancels ROOT and
+/// would abort sibling torrent / resolve job tokens (Play must keep magnet).
+pub fn cancel_kind(kind: u32) {
+    let cancelled =
+        serde_json::json!({ "error": utils::engine_cancel::cancelled_message() }).to_string();
+    let mut store = JOBS.lock().unwrap();
+    let ids: Vec<u64> = store
+        .kinds
+        .iter()
+        .filter_map(|(&id, &k)| if k == kind { Some(id) } else { None })
+        .collect();
+    for id in ids {
+        store.kinds.remove(&id);
+        if let Some(token) = store.tokens.remove(&id) {
+            token.cancel();
+        }
+        if let Some(outcome) = store.outcomes.get_mut(&id) {
+            if matches!(outcome, JobOutcome::Pending) {
+                *outcome = JobOutcome::Done(cancelled.clone());
+            }
+        }
+    }
 }
 
 async fn run_job_async(kind: u32, payload_json: &str) -> String {

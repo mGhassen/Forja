@@ -675,6 +675,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (b) {
         _s._bufferingClearAt = null;
         _s._bufferingSince ??= DateTime.now();
+        // Pause-to-refill / underrun: VT often one-shots while demuxer refills.
+        if (_playbackStarted && _livePlaybackProfile) {
+          _armTransientHwDecodeIgnore();
+        }
       } else {
         // media_kit `core-idle` flickers. Zeroing [_bufferingSince] here
         // never let the 12s wall (or reconnect 1/8) fire — spinner forever,
@@ -724,7 +728,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final until = _s._ignoreHwDecodeFailUntil;
         if (until != null && DateTime.now().isBefore(until)) {
           debugPrint(
-            '[IPTV Player] ignoring transient hw fail after live-edge snap',
+            '[IPTV Player] ignoring transient hw fail '
+            '(socket blip / live-edge / pause-refill)',
           );
           return;
         }
@@ -752,6 +757,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
   /// Socket blip: recover only if cache/feed says the stream is dead.
   void _noteSocketTrouble(String what) {
+    // VT often logs a one-shot fail while ffmpeg reconnects / cache-pause holds.
+    _armTransientHwDecodeIgnore();
     if (!_bufferedRecovery) {
       _triggerRecovery(reason: 'connection dropped: $what', forceHard: true);
       return;
@@ -995,8 +1002,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         debugPrint('[IPTV Player] live-edge snap (force=$allowForce)');
         // Drop any data that piled up while paused / mid-recovery, then
         // jump to the live edge of the DVR window.
-        _s._ignoreHwDecodeFailUntil =
-            DateTime.now().add(const Duration(seconds: 3));
+        _armTransientHwDecodeIgnore();
         await p.command(['drop-buffers']);
         if (_s._streamSeekable) {
           await p.command(['seek', '99999', 'absolute']);
@@ -1105,13 +1111,26 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       _s._playing &&
       DateTime.now().difference(_s._lastPosChange) < const Duration(seconds: 2);
 
-  /// 12s Buffering, no playhead — ignore Stable cache/feed hold.
+  /// 12s Buffering + frozen playhead + weak cache ⇒ treat as dead for Stable.
+  /// Do **not** trip while demuxer still has a healthy ahead cushion — that is
+  /// normal `cache-pause` refill (freeze frame + Buffering), not a dead feed.
   bool get _bufferingHardWall {
     final since = _s._bufferingSince;
     if (since == null) return false;
     if (_playheadRecentlyMoved) return false;
+    if (_s._cacheAheadSecs >=
+        _IptvPtPlayerScreenState._minHealthyCacheSecs) {
+      return false;
+    }
+    if (_networkStillFeeding) return false;
     return DateTime.now().difference(since) >=
         _IptvPtPlayerScreenState._bufferingHardWallDuration;
+  }
+
+  void _armTransientHwDecodeIgnore() {
+    _s._ignoreHwDecodeFailUntil = DateTime.now().add(
+      _IptvPtPlayerScreenState._transientHwDecodeIgnore,
+    );
   }
 
   /// Sustained underrun / freeze without playhead — treat as dead for stall mode.

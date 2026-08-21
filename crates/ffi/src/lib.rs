@@ -44,6 +44,11 @@ fn engine_cancel_pending() {
     engine_jobs::cancel_all();
 }
 
+/// Abort Forja `EngineJsExtract` jobs only — keeps magnet / torrent resolve alive.
+fn engine_cancel_jobs_of_kind(kind: u32) {
+    engine_jobs::cancel_kind(kind);
+}
+
 fn engine_prepare_shutdown() {
     utils::engine_cancel::request_shutdown();
     engine_jobs::cancel_all();

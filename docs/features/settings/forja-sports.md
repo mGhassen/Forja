@@ -28,7 +28,7 @@ On-device Sports matcher (Sportio-style): the **same** Live Matches schedule as 
 
 - Catalog = All (PPV · Streamed · CDN) **plus ESPN** for configured leagues — ESPN supplies team names for Xtream match; All still drives the grid
 - Portal is only in Live Matches / IPTV Portals (not Settings)
-- Matching searches all live channels on that portal
+- Matching prefers channels whose names look like the game (or sports labels), then fetches a capped set of short EPGs — it does not hammer every live channel on the portal at once
 - Channel match results are remembered for 30 minutes per match and portal (app restart clears them)
 - No channels on deck means the portal had no channel name/EPG hit for that game
 

@@ -71,6 +71,11 @@ class RustLib {
 
   void engineCancelPending() => _native.ffi_engine_cancel_pending();
 
+  /// Cancel EngineJobs of one kind only (e.g. [EngineAsyncJob.engineJsExtract]).
+  /// Does not run full [engineCancelPending] — magnet / torrent resolve stay live.
+  void engineCancelJobsOfKind(int kind) =>
+      _native.ffi_engine_cancel_jobs_of_kind(kind);
+
   /// Abort playback + catalog HTTP so worker isolates can unwind on app exit.
   void enginePrepareShutdown() => _native.ffi_engine_prepare_shutdown();
 
@@ -782,6 +787,11 @@ final class _FfiNative {
               'ffi_engine_cancel_pending',
             )
             .asFunction(),
+        ffi_engine_cancel_jobs_of_kind = lib
+            .lookup<ffi.NativeFunction<_EngineCancelKindNative>>(
+              'ffi_engine_cancel_jobs_of_kind',
+            )
+            .asFunction(),
         ffi_engine_prepare_shutdown = lib
             .lookup<ffi.NativeFunction<_TorrentStopNative>>(
               'ffi_engine_prepare_shutdown',
@@ -1349,6 +1359,7 @@ final class _FfiNative {
   final void Function(ffi.Pointer<ffi.Char>) ffi_free_string;
   final ffi.Pointer<ffi.Char> Function() ffi_version;
   final void Function() ffi_engine_cancel_pending;
+  final void Function(int) ffi_engine_cancel_jobs_of_kind;
   final void Function() ffi_engine_prepare_shutdown;
   final void Function() ffi_engine_clear_shutdown;
   final int Function(int, ffi.Pointer<ffi.Char>) ffi_engine_submit_job;
@@ -1692,6 +1703,7 @@ typedef _KinogerUrlsNative = ffi.Pointer<ffi.Char> Function(
 typedef _StringBoolNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStartNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStopNative = ffi.Void Function();
+typedef _EngineCancelKindNative = ffi.Void Function(ffi.Uint32);
 typedef _EngineSubmitJobNative = ffi.Uint64 Function(
   ffi.Uint32,
   ffi.Pointer<ffi.Char>,

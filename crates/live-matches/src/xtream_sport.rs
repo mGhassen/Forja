@@ -1,9 +1,11 @@
 //! Xtream live streams + short EPG → matcher candidates.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use base64::Engine;
 use serde_json::{json, Value};
+use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
 use crate::espn;
@@ -11,6 +13,11 @@ use crate::fetch::{self, http_get_async, http_get_json, ok_items};
 use crate::sport_match::{self, Candidate, MatchGame};
 
 const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
+
+/// Concurrent `get_short_epg` calls — unbounded JoinSet OOMs Android TV.
+const EPG_CONCURRENCY: usize = 12;
+/// Hard cap on short-EPG fetches per match (name-prefiltered when over).
+const MAX_EPG_FETCHES: usize = 120;
 
 fn xtream_headers() -> HashMap<String, String> {
     HashMap::from([
@@ -223,55 +230,79 @@ fn category_label_for(stream: &Value, cats: &HashMap<String, String>) -> String 
     String::new()
 }
 
-async fn build_candidates_async(
+fn skeleton_candidate(
     base: &str,
     user: &str,
     pass: &str,
-    filtered: Vec<Value>,
-    cats: HashMap<String, String>,
-) -> Vec<Candidate> {
+    s: &Value,
+    cats: &HashMap<String, String>,
+) -> Option<Candidate> {
+    let stream_id = field_str(s, &["stream_id"]);
+    if stream_id.is_empty() {
+        return None;
+    }
+    let name = field_str(s, &["name"]);
+    let logo = absolutize_logo(
+        base,
+        &field_str(s, &["stream_icon", "streamIcon", "logo", "cover"]),
+    );
+    let ext = field_str(s, &["container_extension"]);
+    let ext = if ext.is_empty() {
+        "m3u8".into()
+    } else {
+        ext
+    };
+    let label = category_label_for(s, cats);
+    Some(Candidate {
+        name,
+        description: String::new(),
+        start_timestamp: None,
+        stream_url: live_url(base, user, pass, &stream_id, &ext),
+        category_label: label,
+        logo,
+        stream_id,
+    })
+}
+
+/// Fill short EPG on a capped index set with bounded concurrency.
+async fn fill_epg_async(
+    base: &str,
+    user: &str,
+    pass: &str,
+    candidates: &mut [Candidate],
+    indices: &[usize],
+) {
+    if indices.is_empty() {
+        return;
+    }
+    let sem = Arc::new(Semaphore::new(EPG_CONCURRENCY));
     let mut set = JoinSet::new();
-    for s in filtered {
+    for &idx in indices {
+        let Some(c) = candidates.get(idx) else {
+            continue;
+        };
+        let stream_id = c.stream_id.clone();
+        if stream_id.is_empty() {
+            continue;
+        }
         let base = base.to_string();
         let user = user.to_string();
         let pass = pass.to_string();
-        let cats = cats.clone();
+        let sem = Arc::clone(&sem);
         set.spawn(async move {
-            let stream_id = field_str(&s, &["stream_id"]);
-            if stream_id.is_empty() {
-                return None;
-            }
-            let name = field_str(&s, &["name"]);
-            let logo = absolutize_logo(
-                &base,
-                &field_str(&s, &["stream_icon", "streamIcon", "logo", "cover"]),
-            );
-            let ext = field_str(&s, &["container_extension"]);
-            let ext = if ext.is_empty() {
-                "m3u8".into()
-            } else {
-                ext
-            };
-            let label = category_label_for(&s, &cats);
+            let _permit = sem.acquire_owned().await.ok();
             let epg = fetch_short_epg_async(&base, &user, &pass, &stream_id).await;
-            Some(Candidate {
-                name,
-                description: epg.text,
-                start_timestamp: epg.start_timestamp,
-                stream_url: live_url(&base, &user, &pass, &stream_id, &ext),
-                category_label: label,
-                logo,
-                stream_id,
-            })
+            (idx, epg)
         });
     }
-    let mut out = Vec::new();
     while let Some(res) = set.join_next().await {
-        if let Ok(Some(c)) = res {
-            out.push(c);
+        if let Ok((idx, epg)) = res {
+            if let Some(c) = candidates.get_mut(idx) {
+                c.description = epg.text;
+                c.start_timestamp = epg.start_timestamp;
+            }
         }
     }
-    out
 }
 
 /// Build candidates + run matcher.
@@ -293,8 +324,14 @@ pub fn sport_match_streams(game: &Value, xtream: &Value, category_ids: &[String]
         .collect();
     let cats = fetch_live_categories(&base, &user, &pass);
 
-    let candidates = fetch::block_on(build_candidates_async(
-        &base, &user, &pass, filtered, cats,
+    let mut candidates: Vec<Candidate> = filtered
+        .iter()
+        .filter_map(|s| skeleton_candidate(&base, &user, &pass, s, &cats))
+        .collect();
+
+    let epg_idxs = sport_match::indices_for_epg(&match_game, &candidates, MAX_EPG_FETCHES);
+    fetch::block_on(fill_epg_async(
+        &base, &user, &pass, &mut candidates, &epg_idxs,
     ));
 
     let team_names = espn::fetch_all_team_names(&sport);

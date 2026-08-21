@@ -223,6 +223,8 @@ class _AsianDramaDetailsScreenState
 
   void _openCatalogSources(Movie movie) {
     final isTv = movie.mediaType == 'tv';
+    final det = _details;
+    final ep = det != null ? _episodeLookup(det)[_selectedEpisode] : null;
     unawaited(
       openHubCatalogSources(
         context: context,
@@ -230,6 +232,8 @@ class _AsianDramaDetailsScreenState
         season: isTv ? 1 : null,
         episode: isTv ? _selectedEpisode : null,
         engineCategory: 'drama',
+        kisskhId: det?.id ?? widget.drama.id,
+        kisskhEpisodeId: ep?.id,
       ),
     );
   }
