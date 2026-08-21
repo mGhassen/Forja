@@ -244,7 +244,7 @@ async fn build_candidates_async(
             let name = field_str(&s, &["name"]);
             let logo = absolutize_logo(
                 &base,
-                &field_str(&s, &["stream_icon", "streamIcon", "logo"]),
+                &field_str(&s, &["stream_icon", "streamIcon", "logo", "cover"]),
             );
             let ext = field_str(&s, &["container_extension"]);
             let ext = if ext.is_empty() {

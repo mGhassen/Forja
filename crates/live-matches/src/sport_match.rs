@@ -205,20 +205,14 @@ pub fn match_streams(
                 continue;
             }
             // Channel name alone — category stays in `title` for UI chrome.
-            let mut item = json!({
+            out.push(json!({
                 "name": s.name,
                 "title": s.category_label,
                 "url": s.stream_url,
                 "tier": tier_idx + 1,
                 "stream_id": s.stream_id,
-            });
-            if !s.logo.is_empty() {
-                item
-                    .as_object_mut()
-                    .expect("item object")
-                    .insert("logo".into(), json!(s.logo));
-            }
-            out.push(item);
+                "logo": s.logo,
+            }));
         }
     }
     out

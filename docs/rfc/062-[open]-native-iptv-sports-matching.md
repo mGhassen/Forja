@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **12 / 12** acceptance (Xtream incl. ESPN∪All merge) · **0 / 3** acceptance (M3U deferred) |
-| **Current slice** | My IPTV = All catalog ∪ ESPN scoreboard + Xtream match on play — M3U/XMLTV deferred |
+| **Progress** | **5 / 5** components · **13 / 13** acceptance (Xtream incl. ESPN∪All merge + 30m match cache) · **0 / 3** acceptance (M3U deferred) |
+| **Current slice** | My IPTV = All catalog ∪ ESPN scoreboard + Xtream match on play (30m channel cache) — M3U/XMLTV deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -43,6 +43,7 @@
 | 10 | R62-A13 | My IPTV uses All catalog (PPV/Streamed/CDN); play matches Xtream channels | ✅ |
 | 11 | R62-A14 | Play match → sheet lists matched IPTV channels; pick one then native player | ✅ |
 | 12 | R62-A15 | My IPTV catalog = All ∪ ESPN; enrich teams from ESPN; ESPN-only cards playable | ✅ |
+| 13 | R62-A16 | Matched IPTV channels cached 30 min per match+portal (no re-search on re-open) | ✅ |
 
 ---
 

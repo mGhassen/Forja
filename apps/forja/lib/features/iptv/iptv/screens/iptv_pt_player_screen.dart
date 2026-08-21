@@ -112,6 +112,8 @@ class IptvPlaySource {
   final String? detail;
   /// Optional channel logo (Xtream `stream_icon`).
   final String? logoUrl;
+  /// Xtream `stream_id` — used to pull logos from the IPTV catalog cache.
+  final String? streamId;
   /// Optional HTTP headers (Cookie / Referer / Origin) for Exo / MediaKit.
   /// Live Matches Streamed handoff uses these instead of `/hls-proxy`.
   final Map<String, String> headers;
@@ -120,6 +122,7 @@ class IptvPlaySource {
     required this.label,
     this.detail,
     this.logoUrl,
+    this.streamId,
     this.headers = const {},
   });
 
@@ -147,68 +150,14 @@ class IptvPlaySource {
     };
   }
 
-  /// Channel callsign / short name for Source rows + chrome.
-  ///
-  /// Xtream sports names are often EPG dumps like
-  /// `Raiders vs. Texans @ Aug 20 20:00 :TSN+ 55` — take the part after the
-  /// last ` :`. Never split on time colons (`20:00`).
-  String get pickerTitle {
-    final raw = chromeTitle;
-    if (raw.isEmpty) return label;
+  /// Channel name for Source rows / chrome — portal name as-is (only strips `Tn ·`).
+  String get pickerTitle => chromeTitle;
 
-    final spaceColon = raw.lastIndexOf(' :');
-    if (spaceColon >= 0 && spaceColon + 2 < raw.length) {
-      var channel = raw.substring(spaceColon + 2).trim();
-      final mid = channel.indexOf(' · ');
-      if (mid > 0) channel = channel.substring(0, mid).trim();
-      if (channel.isNotEmpty) return channel;
-    }
-
-    // "NFL Teams: FOX Raiders…" — colon not part of HH:MM.
-    final colon = raw.indexOf(':');
-    if (colon > 0 && colon + 1 < raw.length) {
-      final before = raw.codeUnitAt(colon - 1);
-      final after = raw.codeUnitAt(colon + 1);
-      final isTime = before >= 0x30 &&
-          before <= 0x39 &&
-          after >= 0x30 &&
-          after <= 0x39;
-      if (!isTime) {
-        var body = raw.substring(colon + 1).trim();
-        final pipe = body.indexOf('|');
-        if (pipe > 0) body = body.substring(0, pipe).trim();
-        if (body.isNotEmpty) return body;
-      }
-    }
-
-    return raw;
-  }
-
-  /// Source-picker secondary line — category / group only (no host, no tier).
+  /// Source-picker secondary line — category only.
   String? get pickerSubtitle {
     final cat = (detail ?? '').trim();
-    if (cat.isNotEmpty) return _normalizePipes(cat);
-
-    final raw = chromeTitle;
-    final spaceColon = raw.lastIndexOf(' :');
-    if (spaceColon > 0) {
-      // Leftover EPG dump before the callsign — too noisy; skip.
-      return null;
-    }
-    final colon = raw.indexOf(':');
-    if (colon > 0) {
-      final before = raw.codeUnitAt(colon - 1);
-      final after = colon + 1 < raw.length ? raw.codeUnitAt(colon + 1) : 0;
-      final isTime = before >= 0x30 &&
-          before <= 0x39 &&
-          after >= 0x30 &&
-          after <= 0x39;
-      if (!isTime) {
-        final group = _normalizePipes(raw.substring(0, colon).trim());
-        if (group.isNotEmpty) return group;
-      }
-    }
-    return null;
+    if (cat.isEmpty) return null;
+    return _normalizePipes(cat);
   }
 
   static String _normalizePipes(String s) =>

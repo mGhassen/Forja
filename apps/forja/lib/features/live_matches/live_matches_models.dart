@@ -2193,6 +2193,54 @@ Map<String, dynamic>? _findEspnGameForMatch(
   return null;
 }
 
+/// Matched My IPTV channels for a match — reused for [_iptvSportsStreamsCacheTtl].
+const _iptvSportsStreamsCacheTtl = Duration(minutes: 30);
+
+class _IptvSportsStreamsCacheEntry {
+  final DateTime expiresAt;
+  final List<IptvPlaySource> sources;
+  const _IptvSportsStreamsCacheEntry({
+    required this.expiresAt,
+    required this.sources,
+  });
+}
+
+final Map<String, _IptvSportsStreamsCacheEntry> _iptvSportsStreamsCache = {};
+final Map<String, Future<List<IptvPlaySource>>> _iptvSportsStreamsInFlight = {};
+
+String _iptvSportsStreamsCacheKey({
+  required String portalKey,
+  required List<String> categoryIds,
+  required Map<String, dynamic> game,
+  required String matchId,
+}) {
+  final cats = List<String>.from(categoryIds)..sort();
+  final home = (game['homeTeam'] ?? '').toString().trim().toLowerCase();
+  final away = (game['awayTeam'] ?? '').toString().trim().toLowerCase();
+  final dateMs = '${game['dateMs'] ?? ''}';
+  final id = matchId.trim().isNotEmpty
+      ? matchId.trim()
+      : (game['id'] ?? '').toString().trim();
+  return '$portalKey|${cats.join(',')}|$id|$home|$away|$dateMs';
+}
+
+List<IptvPlaySource>? _iptvSportsStreamsCacheGet(String key) {
+  final hit = _iptvSportsStreamsCache[key];
+  if (hit == null) return null;
+  if (DateTime.now().isAfter(hit.expiresAt)) {
+    _iptvSportsStreamsCache.remove(key);
+    return null;
+  }
+  return List<IptvPlaySource>.from(hit.sources);
+}
+
+void _iptvSportsStreamsCachePut(String key, List<IptvPlaySource> sources) {
+  _iptvSportsStreamsCache[key] = _IptvSportsStreamsCacheEntry(
+    expiresAt: DateTime.now().add(_iptvSportsStreamsCacheTtl),
+    sources: List<IptvPlaySource>.from(sources),
+  );
+}
+
 Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   _StreamedMatch match,
 ) async {
@@ -2221,62 +2269,163 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   }
   final sport = (game['sport'] ?? match.category).toString();
   final categoryIds = config.categoryIdsForGame(sport);
-  final raw = await runLiveMatchesFetchJson(
-    jsonEncode({
-      'action': 'sport_match_streams',
-      'game': game,
-      'xtream': {
-        'url': portal.portal.url,
-        'username': portal.portal.username,
-        'password': portal.portal.password,
-      },
-      'category_ids': categoryIds,
-    }),
+  final cacheKey = _iptvSportsStreamsCacheKey(
+    portalKey: portalKey,
+    categoryIds: categoryIds,
+    game: game,
+    matchId: match.id,
   );
-  final parsed = jsonDecode(raw) as Map<String, dynamic>;
-  if (parsed.containsKey('error')) {
-    debugPrint('[LiveMatches] IPTV sports streams error: ${parsed['error']}');
-    return [];
+  final cached = _iptvSportsStreamsCacheGet(cacheKey);
+  if (cached != null) {
+    debugPrint(
+      '[LiveMatches] IPTV sports: cache hit (${cached.length} channels) '
+      'ttl=${_iptvSportsStreamsCacheTtl.inMinutes}m',
+    );
+    return _ensureIptvSportsLogos(cached, portalKey);
   }
-  final list = parsed['items'] as List? ?? [];
-  final catalogIcons = <String, String>{};
+  final inflight = _iptvSportsStreamsInFlight[cacheKey];
+  if (inflight != null) return inflight;
+
+  final xtream = portal;
+  final future = () async {
+    try {
+      final raw = await runLiveMatchesFetchJson(
+        jsonEncode({
+          'action': 'sport_match_streams',
+          'game': game,
+          'xtream': {
+            'url': xtream.portal.url,
+            'username': xtream.portal.username,
+            'password': xtream.portal.password,
+          },
+          'category_ids': categoryIds,
+        }),
+      );
+      final parsed = jsonDecode(raw) as Map<String, dynamic>;
+      if (parsed.containsKey('error')) {
+        debugPrint(
+          '[LiveMatches] IPTV sports streams error: ${parsed['error']}',
+        );
+        return <IptvPlaySource>[];
+      }
+      final list = parsed['items'] as List? ?? [];
+      final out = <IptvPlaySource>[];
+      for (final s in list) {
+        if (s is! Map) continue;
+        final url = s['url']?.toString().trim() ?? '';
+        if (url.isEmpty) continue;
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+          continue;
+        }
+        final channel = (s['name'] ?? 'Stream').toString().trim();
+        final category = (s['title'] ?? '').toString().trim();
+        final streamId =
+            (s['stream_id'] ?? s['streamId'] ?? '').toString().trim();
+        final logo = (s['logo'] ?? s['stream_icon'] ?? s['cover'] ?? '')
+            .toString()
+            .trim();
+        final tier = s['tier'];
+        final name = channel.isEmpty ? 'Stream' : channel;
+        final label = tier is num ? 'T$tier · $name' : name;
+        out.add(IptvPlaySource(
+          url: url,
+          label: label,
+          detail: category.isEmpty ? null : category,
+          logoUrl: logo.isEmpty ? null : logo,
+          streamId: streamId.isEmpty ? null : streamId,
+        ));
+      }
+      final enriched = await _ensureIptvSportsLogos(out, portalKey);
+      _iptvSportsStreamsCachePut(cacheKey, enriched);
+      return enriched;
+    } finally {
+      _iptvSportsStreamsInFlight.remove(cacheKey);
+    }
+  }();
+
+  _iptvSportsStreamsInFlight[cacheKey] = future;
+  return future;
+}
+
+/// Fill missing logos from the IPTV live catalog (same icons as the portal grid).
+Future<List<IptvPlaySource>> _ensureIptvSportsLogos(
+  List<IptvPlaySource> sources,
+  String portalKey,
+) async {
+  if (sources.isEmpty) return sources;
+  final need = sources.any((s) => (s.logoUrl ?? '').trim().isEmpty);
+  if (!need) return sources;
+
+  final byId = <String, String>{};
+  final byName = <String, String>{};
   try {
     final shelf = await IptvCatalogDiskStore.load(portalKey, IptvSection.live);
     if (shelf != null) {
       for (final s in shelf.streams) {
-        final id = s.streamId.trim();
         final icon = s.icon.trim();
-        if (id.isNotEmpty && icon.isNotEmpty) {
-          catalogIcons[id] = icon;
-        }
+        if (icon.isEmpty) continue;
+        final id = s.streamId.trim();
+        if (id.isNotEmpty) byId[id] = icon;
+        final n = s.name.trim().toLowerCase();
+        if (n.isNotEmpty) byName.putIfAbsent(n, () => icon);
       }
     }
   } catch (e) {
     debugPrint('[LiveMatches] IPTV catalog logo lookup failed: $e');
   }
-  final out = <IptvPlaySource>[];
-  for (final s in list) {
-    if (s is! Map) continue;
-    final url = s['url']?.toString().trim() ?? '';
-    if (url.isEmpty) continue;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) continue;
-    final channel = (s['name'] ?? 'Stream').toString().trim();
-    final category = (s['title'] ?? '').toString().trim();
-    final streamId = (s['stream_id'] ?? s['streamId'] ?? '').toString().trim();
-    var logo = (s['logo'] ?? s['stream_icon'] ?? '').toString().trim();
-    if (logo.isEmpty && streamId.isNotEmpty) {
-      logo = catalogIcons[streamId] ?? '';
-    }
-    final tier = s['tier'];
-    final name = channel.isEmpty ? 'Stream' : channel;
-    final label = tier is num ? 'T$tier · $name' : name;
-    out.add(IptvPlaySource(
-      url: url,
-      label: label,
-      detail: category.isEmpty ? null : category,
-      logoUrl: logo.isEmpty ? null : logo,
-    ));
+  if (byId.isEmpty && byName.isEmpty) {
+    debugPrint(
+      '[LiveMatches] IPTV sports logos: catalog empty — open IPTV once '
+      'to cache channel icons',
+    );
+    return sources;
   }
+
+  String? lookup(String channelName) {
+    final key = channelName.trim().toLowerCase();
+    if (key.isEmpty) return null;
+    final exact = byName[key];
+    if (exact != null && exact.isNotEmpty) return exact;
+    final stem = key.replaceFirst(RegExp(r'\s+\d+$'), '').trim();
+    if (stem.isNotEmpty && stem != key) {
+      final byStem = byName[stem];
+      if (byStem != null && byStem.isNotEmpty) return byStem;
+    }
+    for (final e in byName.entries) {
+      if (e.key.isEmpty) continue;
+      if (key.startsWith('${e.key} ') || e.key.startsWith('$key ')) {
+        return e.value;
+      }
+    }
+    return null;
+  }
+
+  // Prefer stream_id (exact catalog row), then name / stem ("WNBA 01" → "WNBA").
+  var filled = 0;
+  final out = <IptvPlaySource>[
+    for (final s in sources)
+      () {
+        if ((s.logoUrl ?? '').trim().isNotEmpty) return s;
+        String? logo;
+        final id = (s.streamId ?? '').trim();
+        if (id.isNotEmpty) logo = byId[id];
+        logo ??= lookup(s.chromeTitle);
+        if (logo == null || logo.isEmpty) return s;
+        filled++;
+        return IptvPlaySource(
+          url: s.url,
+          label: s.label,
+          detail: s.detail,
+          logoUrl: logo,
+          streamId: s.streamId,
+          headers: s.headers,
+        );
+      }(),
+  ];
+  debugPrint(
+    '[LiveMatches] IPTV sports logos: filled $filled/${sources.length} '
+    'from catalog (ids=${byId.length} names=${byName.length})',
+  );
   return out;
 }
 
