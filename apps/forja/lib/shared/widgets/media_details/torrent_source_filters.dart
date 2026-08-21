@@ -471,6 +471,8 @@ class TorrentSourceChips extends StatefulWidget {
     this.engineSelectedPluginIds = const {},
     this.loadingChipIds = const {},
     required this.onChipTap,
+    this.onChipCancel,
+    this.onChipReload,
     this.tvTabId,
     this.tvRowId,
   });
@@ -481,6 +483,12 @@ class TorrentSourceChips extends StatefulWidget {
   final Set<String> engineSelectedPluginIds;
   final Set<String> loadingChipIds;
   final ValueChanged<String> onChipTap;
+
+  /// Loading `...` → ✕ on that chip (Forja / Nuvio / torrent provider).
+  final ValueChanged<String>? onChipCancel;
+
+  /// Idle selected chip refresh — re-run that chip only.
+  final ValueChanged<String>? onChipReload;
   final String? tvTabId;
   final String? tvRowId;
 
@@ -575,6 +583,25 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                             widget.options[i].id,
                           ),
                           onTap: () => widget.onChipTap(widget.options[i].id),
+                          onCancel:
+                              widget.onChipCancel == null ||
+                                  !widget.loadingChipIds.contains(
+                                    widget.options[i].id,
+                                  )
+                              ? null
+                              : () => widget.onChipCancel!(
+                                  widget.options[i].id,
+                                ),
+                          onReload:
+                              widget.onChipReload == null ||
+                                  widget.loadingChipIds.contains(
+                                    widget.options[i].id,
+                                  ) ||
+                                  !_chipSelected(widget.options[i])
+                              ? null
+                              : () => widget.onChipReload!(
+                                  widget.options[i].id,
+                                ),
                           accentHover: true,
                           radius: 999,
                           padding: const EdgeInsets.symmetric(

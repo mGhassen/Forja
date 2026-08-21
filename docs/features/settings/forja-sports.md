@@ -15,7 +15,7 @@ On-device Sports matcher (Sportio-style): the **same** Live Matches schedule as 
 
 - Browse the same sports catalog as All, **merged with ESPN** for the same day (clean home/away for matching; ESPN-only games still appear)
 - Pick the Xtream portal from top-right **Portals** (same IPTV panel)
-- Open a match → sheet of ranked matching IPTV channels (logo, short name, category, tier badge) → pick one to play (failover keeps the rest in the player Source menu with the same layout). Re-opening the same match within **30 minutes** reuses the last match result (no second portal search)
+- Open a match → right-side panel opens immediately while Forja sniffs your portal; ranked channels appear as they land (logo, short name, category, tier badge) → pick one to play (failover keeps the rest in the player Source menu with the same layout). Re-opening the same match within **30 minutes** reuses the last match result (no second portal search)
 - Choose which leagues to match in Settings
 
 ## Setup
@@ -30,7 +30,7 @@ On-device Sports matcher (Sportio-style): the **same** Live Matches schedule as 
 - Portal is only in Live Matches / IPTV Portals (not Settings)
 - Matching searches all live channels on that portal
 - Channel match results are remembered for 30 minutes per match and portal (app restart clears them)
-- No match toast means the portal had no channel name/EPG hit for that game
+- No channels on deck means the portal had no channel name/EPG hit for that game
 
 ## Related
 

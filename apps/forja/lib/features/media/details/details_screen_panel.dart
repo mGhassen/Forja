@@ -340,6 +340,135 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     return base == 'nuvio:$scraperId';
   }
 
+  void _onSourceChipCancel(String id) {
+    if (id == EngineIds.allChip || id.startsWith(EngineIds.prefix)) {
+      final ids = id == EngineIds.allChip
+          ? Set<String>.from(_s._engineLoadingPluginIds)
+          : {id.substring(EngineIds.prefix.length)};
+      if (ids.isEmpty) return;
+      setState(() {
+        for (final pluginId in ids) {
+          _s._engineDiscardPluginIds.add(pluginId);
+          _s._engineInFlightPluginIds.remove(pluginId);
+          _s._engineFetchedPluginIds.add(pluginId);
+        }
+        if (_s._pendingEnginePluginIds.isEmpty &&
+            _s._engineInFlightPluginIds.isEmpty) {
+          _s._isEngineFetching = false;
+        }
+      });
+      CatalogSourcesSessionCache.writeEngine(
+        _s._catalogCacheKey,
+        List<Map<String, dynamic>>.from(_s._engineStreams),
+        fetchedPluginIds: _s._engineFetchedPluginIds,
+      );
+      if (_s._pendingEnginePluginIds.isNotEmpty) {
+        unawaited(_s._fetchNextEnginePlugin());
+      }
+      return;
+    }
+    if (id == 'all_nuvio' || id.startsWith('nuvio:')) {
+      final ids = id == 'all_nuvio'
+          ? {
+              for (final s in _s._nuvioSelectedScraperIds)
+                if (!_s._nuvioFetchedScraperIds.contains(s)) s,
+            }
+          : {id.substring('nuvio:'.length)};
+      if (ids.isEmpty) return;
+      setState(() {
+        for (final scraperId in ids) {
+          _s._nuvioDiscardScraperIds.add(scraperId);
+          _s._nuvioInFlightScraperIds.remove(scraperId);
+          _s._nuvioFetchedScraperIds.add(scraperId);
+        }
+        if (_s._pendingNuvioScraperIds.isEmpty &&
+            _s._nuvioInFlightScraperIds.isEmpty) {
+          _s._isNuvioFetching = false;
+        }
+      });
+      CatalogSourcesSessionCache.writeNuvio(
+        _s._catalogCacheKey,
+        List<Map<String, dynamic>>.from(_s._nuvioStreams),
+        fetchedScraperIds: _s._nuvioFetchedScraperIds,
+      );
+      if (_s._pendingNuvioScraperIds.isNotEmpty) {
+        unawaited(_s._fetchNextNuvioScraper());
+      }
+      return;
+    }
+    if (_s._panelKindFilter == 'stremio') {
+      _s._stremioFetchGen++;
+      setState(() => _s._isStremioFetching = false);
+      return;
+    }
+    if (_s._panelKindFilter == 'torrents') {
+      setState(() {
+        _s._torrentInFlightProviderIds.remove(id);
+        _s._torrentFetchedProviderIds.add(id);
+        if (_s._torrentInFlightProviderIds.isEmpty) _s._isSearching = false;
+      });
+    }
+  }
+
+  void _onSourceChipReload(String id) {
+    if (id == EngineIds.allChip) {
+      unawaited(_s._ensureEnginePanelLoaded(force: true));
+      return;
+    }
+    if (id.startsWith(EngineIds.prefix)) {
+      final pluginId = id.substring(EngineIds.prefix.length);
+      setState(() {
+        _s._engineDiscardPluginIds.remove(pluginId);
+        _s._engineFetchedPluginIds.remove(pluginId);
+        _s._engineStreams = _s._engineStreams
+            .whereType<Map<String, dynamic>>()
+            .where((s) => !engineStreamBelongsToPlugin(s, pluginId))
+            .toList();
+        _s._errorMessage = null;
+      });
+      CatalogSourcesSessionCache.writeEngine(
+        _s._catalogCacheKey,
+        List<Map<String, dynamic>>.from(_s._engineStreams),
+        fetchedPluginIds: _s._engineFetchedPluginIds,
+      );
+      unawaited(_s._fetchNextEnginePlugin());
+      return;
+    }
+    if (id == 'all_nuvio') {
+      unawaited(_s._ensureNuvioPanelLoaded(force: true));
+      return;
+    }
+    if (id.startsWith('nuvio:')) {
+      final scraperId = id.substring('nuvio:'.length);
+      setState(() {
+        _s._nuvioDiscardScraperIds.remove(scraperId);
+        _s._nuvioFetchedScraperIds.remove(scraperId);
+        _s._nuvioStreams = _s._nuvioStreams
+            .whereType<Map<String, dynamic>>()
+            .where((s) => !_nuvioStreamFromScraper(s, scraperId))
+            .toList();
+        _s._errorMessage = null;
+      });
+      CatalogSourcesSessionCache.writeNuvio(
+        _s._catalogCacheKey,
+        List<Map<String, dynamic>>.from(_s._nuvioStreams),
+        fetchedScraperIds: _s._nuvioFetchedScraperIds,
+      );
+      unawaited(_s._fetchNextNuvioScraper());
+      return;
+    }
+    if (_s._panelKindFilter == 'stremio') {
+      _s._fetchStremioStreams(refresh: true);
+      return;
+    }
+    if (_s._panelKindFilter == 'torrents') {
+      setState(() {
+        _s._torrentFetchedProviderIds.remove(id);
+      });
+      _s._autoSearch(force: true);
+    }
+  }
+
   void _onSourceChipTap(String id) {
     if (id == 'all_nuvio') {
       final enabled = enabledNuvioScraperIds(_s._nuvioAddons);

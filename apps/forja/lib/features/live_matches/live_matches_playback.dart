@@ -190,62 +190,57 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
                 : match.awayTeam,
           );
 
-    final forja = <IptvPlaySource>[];
-    final stremio = <IptvPlaySource>[];
-    final ok = await _runWithCancellableLoading('Loading sources…', () async {
-      try {
-        final results = await Future.wait([
-          _resolveIptvSportsStreams(enriched),
-          _resolveStremioStreamsMatching(enriched),
-        ]);
-        forja.addAll(results[0]);
-        stremio.addAll(results[1]);
-      } catch (e) {
-        debugPrint('[LiveMatches] TV native sources error: $e');
-      }
-    });
-    if (!ok) return;
-
-    final sources = <IptvPlaySource>[
-      for (final s in forja)
-        IptvPlaySource(
-          url: s.url,
-          label: s.label,
-          detail: _tvNativeSourceDetail('Forja Sports', s.detail),
-          logoUrl: s.logoUrl,
-          streamId: s.streamId,
-          headers: s.headers,
-        ),
-      for (final s in stremio)
-        IptvPlaySource(
-          url: s.url,
-          label: s.label,
-          detail: _tvNativeSourceDetail('Stremio', s.detail),
-          logoUrl: s.logoUrl,
-          streamId: s.streamId,
-          headers: s.headers,
-        ),
-    ];
-    if (sources.isEmpty) {
-      ForjaToast.info('No Stremio or Forja Sports sources for this event');
-      return;
-    }
-    if (!mounted) return;
-    showModalBottomSheet<void>(
+    final panel = _IptvSportsChannelsPanel.show(
       context: context,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _IptvSportsChannelSheet(
-        match: enriched,
-        sources: sources,
-        onChannelSelected: (picked) {
-          Navigator.pop(context);
-          unawaited(_playIptvSportsSources(enriched, sources, picked));
-        },
-      ),
+      match: enriched,
+      panelTitle: 'Sources',
+      onChannelSelected: (picked, all) {
+        unawaited(_playIptvSportsSources(enriched, all, picked));
+      },
     );
+
+    Future<void> addForja() async {
+      try {
+        final forja = await _resolveIptvSportsStreams(enriched);
+        if (panel.isDisposed) return;
+        panel.appendSources([
+          for (final s in forja)
+            IptvPlaySource(
+              url: s.url,
+              label: s.label,
+              detail: _tvNativeSourceDetail('Forja Sports', s.detail),
+              logoUrl: s.logoUrl,
+              streamId: s.streamId,
+              headers: s.headers,
+            ),
+        ]);
+      } catch (e) {
+        debugPrint('[LiveMatches] TV Forja Sports resolve error: $e');
+      }
+    }
+
+    Future<void> addStremio() async {
+      try {
+        final stremio = await _resolveStremioStreamsMatching(enriched);
+        if (panel.isDisposed) return;
+        panel.appendSources([
+          for (final s in stremio)
+            IptvPlaySource(
+              url: s.url,
+              label: s.label,
+              detail: _tvNativeSourceDetail('Stremio', s.detail),
+              logoUrl: s.logoUrl,
+              streamId: s.streamId,
+              headers: s.headers,
+            ),
+        ]);
+      } catch (e) {
+        debugPrint('[LiveMatches] TV Stremio resolve error: $e');
+      }
+    }
+
+    await Future.wait([addForja(), addStremio()]);
+    if (!panel.isDisposed) panel.finishSearching();
   }
 
   String _tvNativeSourceDetail(String server, String? detail) {
@@ -344,38 +339,24 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
                 ? espnPayload['awayTeam'] as String
                 : match.awayTeam,
           );
-    final sources = <IptvPlaySource>[];
-    final ok = await _runWithCancellableLoading(
-      'Matching IPTV channels…',
-      () async {
-        try {
-          sources.addAll(await _resolveIptvSportsStreams(enriched));
-        } catch (e) {
-          debugPrint('[LiveMatches] IPTV sports resolve error: $e');
-        }
+
+    final panel = _IptvSportsChannelsPanel.show(
+      context: context,
+      match: enriched,
+      onChannelSelected: (picked, all) {
+        unawaited(_playIptvSportsSources(enriched, all, picked));
       },
     );
-    if (!ok) return;
-    if (sources.isEmpty) {
-      ForjaToast.info('No matching IPTV channels for this event');
-      return;
+
+    try {
+      final sources = await _resolveIptvSportsStreams(enriched);
+      if (panel.isDisposed) return;
+      panel.appendSources(sources);
+    } catch (e) {
+      debugPrint('[LiveMatches] IPTV sports resolve error: $e');
+    } finally {
+      if (!panel.isDisposed) panel.finishSearching();
     }
-    if (!mounted) return;
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _IptvSportsChannelSheet(
-        match: enriched,
-        sources: sources,
-        onChannelSelected: (picked) {
-          Navigator.pop(context);
-          unawaited(_playIptvSportsSources(enriched, sources, picked));
-        },
-      ),
-    );
   }
 
   Future<void> _playIptvSportsSources(

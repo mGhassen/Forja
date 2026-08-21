@@ -342,6 +342,7 @@ class EngineRuntime {
 
     br('TimerSchedule', (args) {
       try {
+        if (!_acceptingFetches || _deferredDrop) return 0;
         final m = _bridgeMap(args);
         final ms = ((m['ms'] as num?) ?? 0).toInt().clamp(0, 600000);
         final repeat = m['repeat'] == true;

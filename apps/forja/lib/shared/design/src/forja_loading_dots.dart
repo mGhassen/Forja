@@ -59,3 +59,47 @@ class _ForjaLoadingDotsState extends State<ForjaLoadingDots>
     );
   }
 }
+
+/// Loading `...` that turns into ✕ on hover when [onCancel] is set (kind tabs
+/// + provider chips).
+class ForjaBusyCancelGlyph extends StatelessWidget {
+  const ForjaBusyCancelGlyph({
+    super.key,
+    required this.color,
+    required this.hovered,
+    required this.onHover,
+    this.onCancel,
+  });
+
+  final Color color;
+  final bool hovered;
+  final ValueChanged<bool> onHover;
+  final VoidCallback? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final showCancel = hovered && onCancel != null;
+    return ExcludeFocus(
+      child: MouseRegion(
+        cursor: onCancel == null
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
+        onEnter: (_) => onHover(true),
+        onExit: (_) => onHover(false),
+        child: GestureDetector(
+          onTap: onCancel,
+          behavior: HitTestBehavior.opaque,
+          child: SizedBox(
+            width: 18,
+            height: 16,
+            child: Center(
+              child: showCancel
+                  ? Icon(Icons.close_rounded, size: 14, color: color)
+                  : ForjaLoadingDots(color: color),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

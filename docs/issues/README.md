@@ -212,6 +212,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [190-[open]-…](190-[open]-forja-engine-parallel-jsc-crash.md) | Forja Engine parallel JSC crash / UI starvation | P1 | High | open | 3/4 · A 0/3 | [RFC-064](../rfc/064-[open]-rust-quickjs-engine-runtime.md) |
 | [191-[fixed]-…](fixed/191-[fixed]-hub-sources-panel-stuck-after-nav.md) | Hub Sources panel stuck after nav tab switch | P1 | High | fixed | Complete · 2/2 · A 1/2 | — |
 | [192-[fixed]-…](fixed/192-[fixed]-android-tv-player-back-exits-with-chrome.md) | ATV player Back exits while chrome showing | P1 | High | fixed | Complete · 2/2 · A 1/2 | — |
+| [193-[fixed]-…](fixed/193-[fixed]-nuvio-jsc-use-after-dispose-on-play.md) | Nuvio JSC SIGSEGV on play (deferred drop) | P1 | High | fixed | Complete · 4/4 · A 1/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

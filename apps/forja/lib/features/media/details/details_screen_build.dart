@@ -422,6 +422,8 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
           engineSelectedPluginIds: _s._engineSelectedPluginIds,
           loadingChipIds: _s._loadingChipIds(),
           onProviderTap: _s._onSourceChipTap,
+          onProviderCancel: _s._onSourceChipCancel,
+          onProviderReload: _s._onSourceChipReload,
           searchQuery: _s._sourceSearchQuery,
           onSearchChanged: (q) => setState(() => _s._sourceSearchQuery = q),
           availableQualities: _s._panelAvailableQualities,

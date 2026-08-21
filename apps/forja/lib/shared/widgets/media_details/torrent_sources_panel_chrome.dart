@@ -42,6 +42,8 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
     this.engineSelectedPluginIds = const {},
     this.loadingChipIds = const {},
     this.onProviderTap,
+    this.onProviderCancel,
+    this.onProviderReload,
     this.showAudioFilters = false,
     this.activeAudioFilters = const {},
     this.onAudioFiltersChanged,
@@ -91,6 +93,8 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
   final Set<String> engineSelectedPluginIds;
   final Set<String> loadingChipIds;
   final ValueChanged<String>? onProviderTap;
+  final ValueChanged<String>? onProviderCancel;
+  final ValueChanged<String>? onProviderReload;
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
   final Set<String> availableQualities;
@@ -273,6 +277,8 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
         engineSelectedPluginIds: widget.engineSelectedPluginIds,
         loadingChipIds: widget.loadingChipIds,
         onChipTap: widget.onProviderTap!,
+        onChipCancel: widget.onProviderCancel,
+        onChipReload: widget.onProviderReload,
         tvTabId: _tv ? SourcesPanelTv.tabId : null,
         tvRowId: _tv ? SourcesPanelTv.providersRowId : null,
       );
@@ -617,7 +623,7 @@ class _KindTabState extends State<_KindTab> {
               Text(widget.label),
               if (widget.loading) ...[
                 const SizedBox(width: 4),
-                _KindTabBusyGlyph(
+                ForjaBusyCancelGlyph(
                   color: color,
                   hovered: _busyHovered,
                   onHover: (v) => setState(() => _busyHovered = v),
@@ -682,47 +688,6 @@ class _KindTabState extends State<_KindTab> {
           if (!focused) _cancelOkHold();
         },
         child: face,
-      ),
-    );
-  }
-}
-
-class _KindTabBusyGlyph extends StatelessWidget {
-  const _KindTabBusyGlyph({
-    required this.color,
-    required this.hovered,
-    required this.onHover,
-    this.onCancel,
-  });
-
-  final Color color;
-  final bool hovered;
-  final ValueChanged<bool> onHover;
-  final VoidCallback? onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    final showCancel = hovered && onCancel != null;
-    return ExcludeFocus(
-      child: MouseRegion(
-        cursor: onCancel == null
-            ? SystemMouseCursors.basic
-            : SystemMouseCursors.click,
-        onEnter: (_) => onHover(true),
-        onExit: (_) => onHover(false),
-        child: GestureDetector(
-          onTap: onCancel,
-          behavior: HitTestBehavior.opaque,
-          child: SizedBox(
-            width: 18,
-            height: 16,
-            child: Center(
-              child: showCancel
-                  ? Icon(Icons.close_rounded, size: 14, color: color)
-                  : ForjaLoadingDots(color: color),
-            ),
-          ),
-        ),
       ),
     );
   }

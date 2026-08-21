@@ -95,6 +95,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     _s._isEngineFetching = false;
     _s._engineInFlightPluginIds.clear();
     _enginePoolTasks.clear();
+    _s._engineDiscardPluginIds.clear();
     EngineService.instance.cancelPending();
     if (clearFetched) _s._engineFetchedPluginIds.clear();
   }
@@ -131,6 +132,13 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         _s._engineInFlightPluginIds.remove(pluginId);
       }
       _engineDbg('drop $pluginId');
+      return;
+    }
+    if (_s._engineDiscardPluginIds.remove(pluginId)) {
+      if (mounted) {
+        setState(() => _s._engineInFlightPluginIds.remove(pluginId));
+      }
+      _engineDbg('cancel-drop $pluginId');
       return;
     }
     if (!_s._engineSelectedPluginIds.contains(pluginId)) {

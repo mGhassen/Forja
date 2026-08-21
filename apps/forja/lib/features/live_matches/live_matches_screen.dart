@@ -29,6 +29,8 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
+import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
+import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/features/live_matches/live_embed_nav.dart';
@@ -156,6 +158,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   @override
   void onShellTabHidden() {
     super.onShellTabHidden();
+    _IptvSportsChannelsPanel.dismiss();
     _loadGen++;
     _timelineLiveTick?.cancel();
     _timelineLiveTick = null;
@@ -205,6 +208,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   @override
   void dispose() {
+    _IptvSportsChannelsPanel.dismiss();
     _timelineLiveTick?.cancel();
     _refreshFocusNode.dispose();
     _viewFocusNode.dispose();

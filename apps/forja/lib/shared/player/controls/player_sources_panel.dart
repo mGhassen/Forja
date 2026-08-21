@@ -238,6 +238,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<NuvioAddon> _nuvioAddons = [];
   Set<String> _nuvioSelectedScraperIds = {};
   Set<String> _nuvioFetchedScraperIds = {};
+  /// Soft-cancelled while in-flight — discard late results.
+  final Set<String> _nuvioDiscardScraperIds = {};
   bool _nuvioFetching = false;
   int _nuvioFetchGen = 0;
   Set<String> _nuvioInFlightScraperIds = {};
@@ -248,6 +250,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<EnginePack> _enginePacks = [];
   Set<String> _engineSelectedPluginIds = {};
   Set<String> _engineFetchedPluginIds = {};
+  /// Soft-cancelled while in-flight — discard late results without abortAll.
+  final Set<String> _engineDiscardPluginIds = {};
   Set<String>? _engineVisibleCategories;
   bool _engineFetching = false;
   int _engineFetchGen = 0;
@@ -255,11 +259,48 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   final Set<Future<void>> _enginePoolTasks = {};
   int _enginePoolLimit = kEngineSourcesBatchDesktop;
 
-  String get _enginePanelCategory => EngineCategories.panelCategoryFor(
-    mediaType: widget.movie.mediaType,
-    panelCategory: widget.engineCategory,
-    hasAnimeIds: (widget.anilistId ?? 0) > 0 || (widget.malId ?? 0) > 0,
-  );
+  /// Soft Forja panel bucket. Prefer explicit hub category; else infer anime /
+  /// drama from the playing `engine:` plugin so player Sources reuse the same
+  /// chip prefs + session cache as details/hub.
+  String get _enginePanelCategory {
+    final explicit = widget.engineCategory?.trim();
+    if (explicit != null && explicit.isNotEmpty) {
+      return EngineCategories.panelCategoryFor(
+        mediaType: widget.movie.mediaType,
+        panelCategory: explicit,
+        hasAnimeIds: (widget.anilistId ?? 0) > 0 || (widget.malId ?? 0) > 0,
+      );
+    }
+    final inferred = _panelCategoryFromPlayingEnginePlugin();
+    if (inferred != null) return inferred;
+    return EngineCategories.panelCategoryFor(
+      mediaType: widget.movie.mediaType,
+      hasAnimeIds: (widget.anilistId ?? 0) > 0 || (widget.malId ?? 0) > 0,
+    );
+  }
+
+  /// Anime/drama-only plugins → that bucket. Movie/TV dual plugins fall through
+  /// to [mediaType] so TMDB details keep movie vs tv prefs.
+  String? _panelCategoryFromPlayingEnginePlugin() {
+    final base = widget.currentAddonBaseUrl;
+    if (base == null || !base.startsWith('engine:')) return null;
+    final pluginId = base.substring('engine:'.length);
+    if (pluginId.isEmpty) return null;
+    for (final pack in _enginePacks) {
+      for (final p in pack.plugins) {
+        if (p.id != pluginId) continue;
+        final types = p.types.map((t) => t.toLowerCase()).toSet();
+        if (types.contains(EngineCategories.anime)) {
+          return EngineCategories.anime;
+        }
+        if (types.contains(EngineCategories.drama)) {
+          return EngineCategories.drama;
+        }
+        return null;
+      }
+    }
+    return null;
+  }
 
   /// Engine extract type — keep `anime` / `drama` (do not coerce to movie).
   String get _engineResolveType {
@@ -676,6 +717,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (engineOn && kind == 'engine') {
       try {
         enginePacks = await EngineService.instance.listSourcesPanelPacks();
+        // Assign before reading [_enginePanelCategory] so anime/drama can be
+        // inferred from the playing engine plugin.
+        _enginePacks = enginePacks;
         final enabledIds = enabledEnginePluginIds(enginePacks);
         final panelCategory = _enginePanelCategory;
         final scope = EngineCategories.matchingPluginIds(
@@ -758,6 +802,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (!_showEngine) return;
     try {
       final packs = await EngineService.instance.listSourcesPanelPacks();
+      if (!mounted) return;
+      // Packs first so [_enginePanelCategory] can infer anime/drama from the
+      // playing engine plugin before loading chip selection prefs.
+      _enginePacks = packs;
       final enabledIds = enabledEnginePluginIds(packs);
       final panelCategory = _enginePanelCategory;
       final scope = EngineCategories.matchingPluginIds(
@@ -907,16 +955,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
       if (cached != null) {
         if (!mounted) return;
+        // Trust TTL cache: keep empty-plugin fetched markers so reopen does
+        // not re-extract. Force refresh / All-expand still use stale helpers.
         setState(() {
           _engineStreams = cached.streams;
           _engineFetchedPluginIds = cached.fetchedPluginIds;
-          _engineFetchedPluginIds.removeAll(
-            engineStaleFetchedPluginIds(
-              fetchedIds: _engineFetchedPluginIds,
-              selectedIds: _engineSelectedPluginIds,
-              streams: _engineStreams,
-            ),
-          );
           _error = null;
         });
         _focusPlayingSourceIfNeeded();
@@ -1845,6 +1888,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _nuvioFetching = false;
     _nuvioInFlightScraperIds.clear();
     _nuvioPoolTasks.clear();
+    _nuvioDiscardScraperIds.clear();
     DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     if (clearFetched) _nuvioFetchedScraperIds.clear();
   }
@@ -1867,6 +1911,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       debugPrint('[Nuvio] scraper $scraperId failed: $e');
     }
     if (!mounted || gen != _nuvioFetchGen) return;
+    if (_nuvioDiscardScraperIds.remove(scraperId)) {
+      if (mounted) {
+        setState(() => _nuvioInFlightScraperIds.remove(scraperId));
+      }
+      return;
+    }
     if (!_nuvioSelectedScraperIds.contains(scraperId)) return;
     setState(() {
       _nuvioFetchedScraperIds.add(scraperId);
@@ -2034,6 +2084,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _engineFetching = false;
     _engineInFlightPluginIds.clear();
     _enginePoolTasks.clear();
+    _engineDiscardPluginIds.clear();
     EngineService.instance.cancelPending();
     if (clearFetched) _engineFetchedPluginIds.clear();
   }
@@ -2069,6 +2120,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _engineInFlightPluginIds.remove(pluginId);
       }
       _engineDbg('drop $pluginId');
+      return;
+    }
+    if (_engineDiscardPluginIds.remove(pluginId)) {
+      if (mounted) {
+        setState(() => _engineInFlightPluginIds.remove(pluginId));
+      }
+      _engineDbg('cancel-drop $pluginId');
       return;
     }
     if (!_engineSelectedPluginIds.contains(pluginId)) {
@@ -2385,6 +2443,141 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return base == 'nuvio:$scraperId';
   }
 
+  /// Chip loading ✕ — soft-cancel that provider without killing sibling jobs.
+  void _onChipCancel(String id) {
+    if (id == 'all_engine' || id.startsWith('engine:')) {
+      final ids = id == 'all_engine'
+          ? Set<String>.from(_engineLoadingPluginIds)
+          : {id.substring('engine:'.length)};
+      if (ids.isEmpty) return;
+      setState(() {
+        for (final pluginId in ids) {
+          _engineDiscardPluginIds.add(pluginId);
+          _engineInFlightPluginIds.remove(pluginId);
+          _engineFetchedPluginIds.add(pluginId);
+        }
+        if (_pendingEnginePluginIds.isEmpty &&
+            _engineInFlightPluginIds.isEmpty) {
+          _engineFetching = false;
+        }
+      });
+      CatalogSourcesSessionCache.writeEngine(
+        _catalogCacheKey,
+        _engineStreams,
+        fetchedPluginIds: _engineFetchedPluginIds,
+      );
+      if (_pendingEnginePluginIds.isNotEmpty) {
+        unawaited(_fetchNextEnginePlugin());
+      }
+      return;
+    }
+    if (id == 'all_nuvio' || id.startsWith('nuvio:')) {
+      final ids = id == 'all_nuvio'
+          ? {
+              for (final s in _nuvioSelectedScraperIds)
+                if (!_nuvioFetchedScraperIds.contains(s)) s,
+            }
+          : {id.substring('nuvio:'.length)};
+      if (ids.isEmpty) return;
+      setState(() {
+        for (final scraperId in ids) {
+          _nuvioDiscardScraperIds.add(scraperId);
+          _nuvioInFlightScraperIds.remove(scraperId);
+          _nuvioFetchedScraperIds.add(scraperId);
+        }
+        if (_pendingNuvioScraperIds.isEmpty &&
+            _nuvioInFlightScraperIds.isEmpty) {
+          _nuvioFetching = false;
+        }
+      });
+      CatalogSourcesSessionCache.writeNuvio(
+        _catalogCacheKey,
+        _nuvioStreams,
+        fetchedScraperIds: _nuvioFetchedScraperIds,
+      );
+      if (_pendingNuvioScraperIds.isNotEmpty) {
+        unawaited(_fetchNextNuvioScraper());
+      }
+      return;
+    }
+    if (_kindFilter == 'stremio') {
+      _stremioGen++;
+      setState(() => _stremioFetching = false);
+      return;
+    }
+    if (_kindFilter == 'torrents') {
+      setState(() {
+        _torrentInFlightProviderIds.remove(id);
+        _torrentFetchedProviderIds.add(id);
+        if (_torrentInFlightProviderIds.isEmpty) _searching = false;
+      });
+    }
+  }
+
+  /// Chip refresh — re-run that provider only (kind-tab parity).
+  void _onChipReload(String id) {
+    if (id == 'all_engine') {
+      unawaited(_ensureEngineLoaded(force: true));
+      return;
+    }
+    if (id.startsWith('engine:')) {
+      final pluginId = id.substring('engine:'.length);
+      setState(() {
+        _engineDiscardPluginIds.remove(pluginId);
+        _engineFetchedPluginIds.remove(pluginId);
+        _engineStreams = _engineStreams
+            .where((s) => !engineStreamBelongsToPlugin(s, pluginId))
+            .toList();
+        _error = null;
+      });
+      CatalogSourcesSessionCache.writeEngine(
+        _catalogCacheKey,
+        _engineStreams,
+        fetchedPluginIds: _engineFetchedPluginIds,
+      );
+      unawaited(_fetchNextEnginePlugin());
+      return;
+    }
+    if (id == 'all_nuvio') {
+      unawaited(_ensureNuvioLoaded(force: true));
+      return;
+    }
+    if (id.startsWith('nuvio:')) {
+      final scraperId = id.substring('nuvio:'.length);
+      setState(() {
+        _nuvioDiscardScraperIds.remove(scraperId);
+        _nuvioFetchedScraperIds.remove(scraperId);
+        _nuvioStreams = _nuvioStreams
+            .where((s) => !_nuvioStreamFromScraper(s, scraperId))
+            .toList();
+        _error = null;
+      });
+      CatalogSourcesSessionCache.writeNuvio(
+        _catalogCacheKey,
+        _nuvioStreams,
+        fetchedScraperIds: _nuvioFetchedScraperIds,
+      );
+      unawaited(_fetchNextNuvioScraper());
+      return;
+    }
+    if (_kindFilter == 'stremio') {
+      unawaited(_fetchStremioStreams(refresh: true));
+      return;
+    }
+    if (_kindFilter == 'torrents') {
+      setState(() {
+        _torrentFetchedProviderIds.remove(id);
+        if (TorrentSearchProviders.isAllChip(_selectedSourceId) ||
+            _selectedSourceId == id) {
+          // keep selection
+        } else {
+          _selectedSourceId = id;
+        }
+      });
+      unawaited(_runTorrentSearch(force: true));
+    }
+  }
+
   void _onChipTap(String id) {
     if (id == 'all_nuvio') {
       final enabled = enabledNuvioScraperIds(_nuvioAddons);
@@ -2691,6 +2884,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           engineSelectedPluginIds: _engineSelectedPluginIds,
           loadingChipIds: _loadingChipIds,
           onProviderTap: _onChipTap,
+          onProviderCancel: _onChipCancel,
+          onProviderReload: _onChipReload,
           searchQuery: _searchQuery,
           onSearchChanged: (q) => setState(() => _searchQuery = q),
           availableQualities: _availableQualities,

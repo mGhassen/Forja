@@ -263,6 +263,10 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   set _engineSelectedPluginIds(Set<String> v) =>
       _play.engineSelectedPluginIds = v;
 
+  /// Soft-cancel while in-flight — discard late plugin/scraper results.
+  final Set<String> _engineDiscardPluginIds = {};
+  final Set<String> _nuvioDiscardScraperIds = {};
+
   bool get _engineSelectionHydrated => _play.engineSelectionHydrated;
   set _engineSelectionHydrated(bool v) => _play.engineSelectionHydrated = v;
 
@@ -768,6 +772,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _engineFetchedPluginIds = {};
     _engineInFlightPluginIds.clear();
     _enginePoolTasks.clear();
+    _engineDiscardPluginIds.clear();
+    _nuvioDiscardScraperIds.clear();
     // Keep scraper chip selection - persisted preference, not per-title.
     _errorMessage = null;
   }
@@ -923,16 +929,11 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (_engineStreams.isEmpty) {
       final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
       if (cached != null) {
+        // Trust TTL cache: keep empty-plugin fetched markers so reopen /
+        // player Sources do not re-extract. Force refresh still clears them.
         setState(() {
           _engineStreams = cached.streams;
           _engineFetchedPluginIds = cached.fetchedPluginIds;
-          _engineFetchedPluginIds.removeAll(
-            engineStaleFetchedPluginIds(
-              fetchedIds: _engineFetchedPluginIds,
-              selectedIds: _engineSelectedPluginIds,
-              streams: _engineStreams,
-            ),
-          );
           _errorMessage = null;
         });
       }

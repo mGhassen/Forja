@@ -267,8 +267,9 @@ bool enginePluginHasStreams(
   Iterable<Map<String, dynamic>> streams,
 ) => streams.any((s) => engineStreamBelongsToPlugin(s, pluginId));
 
-/// Fetched markers with no rows — stale session cache or empty run while another
-/// chip was selected.
+/// Fetched markers with no rows — used when expanding All / forcing refetch of
+/// empty chips. Do **not** apply on soft session-cache hydrate (that made
+/// player Sources re-extract every empty Forja plugin after details).
 Set<String> engineStaleFetchedPluginIds({
   required Set<String> fetchedIds,
   required Set<String> selectedIds,

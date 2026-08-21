@@ -286,6 +286,7 @@ class NuvioRuntime {
     // setTimeout / setInterval - backed by real Dart Timer.
     br('TimerSchedule', (args) {
       try {
+        if (!_acceptingFetches || _deferredDrop) return 0;
         final m = args is Map ? args : <String, dynamic>{};
         final ms = ((m['ms'] as num?) ?? 0).toInt().clamp(0, 600000);
         final repeat = m['repeat'] == true;
@@ -315,14 +316,20 @@ class NuvioRuntime {
     });
   }
 
+  /// Evaluate only while [rt] is still the live VM and drop is not deferred.
+  void _evalOn(JavascriptRuntime rt, String code, {String? sourceUrl}) {
+    if (_deferredDrop || !identical(_runtime, rt)) return;
+    try {
+      rt.evaluate(code, sourceUrl: sourceUrl);
+    } catch (_) {}
+  }
+
   void _fireTimer(int id, {required bool repeat}) {
     final rt = _runtime;
-    if (rt == null) return;
+    if (rt == null || _deferredDrop) return;
     if (!repeat) _activeTimers.remove(id);
-    try {
-      rt.evaluate('try { globalThis.__nuvioTimerFire($id); } catch (e) {}',
-          sourceUrl: 'nuvio://timer/$id');
-    } catch (_) {}
+    _evalOn(rt, 'try { globalThis.__nuvioTimerFire($id); } catch (e) {}',
+        sourceUrl: 'nuvio://timer/$id');
   }
 
   // ─── JS-side polyfills ────────────────────────────────────────────────
@@ -514,7 +521,7 @@ class NuvioRuntime {
           debugPrint('[NuvioRuntime] $scraperId cancelled');
           return [];
         }
-        if (!identical(_runtime, rt)) {
+        if (!identical(_runtime, rt) || _deferredDrop) {
           if (!completer.isCompleted) completer.complete('[]');
           debugPrint('[NuvioRuntime] $scraperId aborted (VM dropped)');
           return [];
@@ -616,7 +623,12 @@ class NuvioRuntime {
     try {
       _http.close();
     } catch (_) {}
-    _dropRuntime();
+    // Don't drop while getStreams is still pumping — same as abortPendingWork.
+    if (_activeGetStreams > 0) {
+      _deferredDrop = true;
+    } else {
+      _dropRuntime();
+    }
     _scraperCode.clear();
   }
 
@@ -706,15 +718,10 @@ class NuvioRuntime {
 
   void _resolveFetch(int id, Map<String, dynamic> envelope) {
     final rt = _runtime;
-    if (rt == null || !_acceptingFetches) return;
-    // Embed the envelope as a JS object literal - jsonEncode produces
-    // a valid JS expression for any JSON-encodable value.
+    if (rt == null || !_acceptingFetches || _deferredDrop) return;
     final js =
         'try { globalThis.__nuvioFetchResolve($id, ${jsonEncode(envelope)}); } catch (e) {}';
-    try {
-      if (!identical(_runtime, rt)) return;
-      rt.evaluate(js, sourceUrl: 'nuvio://fetch-resolve/$id');
-    } catch (_) {}
+    _evalOn(rt, js, sourceUrl: 'nuvio://fetch-resolve/$id');
   }
 
   // ─── crypto helpers (Dart side) ────────────────────────────────────────

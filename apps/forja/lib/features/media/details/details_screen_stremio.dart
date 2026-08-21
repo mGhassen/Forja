@@ -219,6 +219,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     _s._isNuvioFetching = false;
     _s._nuvioInFlightScraperIds.clear();
     _nuvioPoolTasks.clear();
+    _s._nuvioDiscardScraperIds.clear();
     DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     if (clearFetched) _s._nuvioFetchedScraperIds.clear();
   }
@@ -241,6 +242,12 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
       debugPrint('[Nuvio] scraper $scraperId failed: $e');
     }
     if (!mounted || gen != _s._nuvioFetchGen) return;
+    if (_s._nuvioDiscardScraperIds.remove(scraperId)) {
+      if (mounted) {
+        setState(() => _s._nuvioInFlightScraperIds.remove(scraperId));
+      }
+      return;
+    }
     if (!_s._nuvioSelectedScraperIds.contains(scraperId)) return;
     setState(() {
       _s._nuvioFetchedScraperIds.add(scraperId);

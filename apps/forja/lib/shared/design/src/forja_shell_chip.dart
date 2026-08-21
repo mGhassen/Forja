@@ -50,7 +50,7 @@ Widget shellRoundedInkHost({
   final borderRadius = BorderRadius.circular(radius);
   Widget body = child;
   if (padding != null) {
-    body = Padding(padding: padding, child: child);
+    body = Padding(padding: padding, child: body);
   }
 
   if (onTap == null && decoration == null && backgroundColor == null) {
@@ -141,6 +141,8 @@ class ForjaShellChip extends StatefulWidget {
     this.onRightEdge,
     this.accentHover = false,
     this.loading = false,
+    this.onCancel,
+    this.onReload,
   });
 
   final String label;
@@ -166,6 +168,12 @@ class ForjaShellChip extends StatefulWidget {
   /// Same cycling `...` as Sources kind tabs while this chip is checking.
   final bool loading;
 
+  /// Hover loading → ✕; tap cancels this chip's fetch (kind-tab parity).
+  final VoidCallback? onCancel;
+
+  /// Idle selected chip: refresh icon re-runs this chip only.
+  final VoidCallback? onReload;
+
   @override
   State<ForjaShellChip> createState() => _ForjaShellChipState();
 }
@@ -173,6 +181,8 @@ class ForjaShellChip extends StatefulWidget {
 class _ForjaShellChipState extends State<ForjaShellChip> {
   bool _hovered = false;
   bool _focused = false;
+  bool _busyHovered = false;
+  bool _reloadHovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -213,7 +223,39 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
           ),
           if (widget.loading) ...[
             const SizedBox(width: 4),
-            ForjaLoadingDots(color: fg),
+            ForjaBusyCancelGlyph(
+              color: fg,
+              hovered: _busyHovered,
+              onHover: (v) => setState(() => _busyHovered = v),
+              onCancel: widget.onCancel,
+            ),
+          ] else if (widget.onReload != null) ...[
+            const SizedBox(width: 6),
+            ExcludeFocus(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                onEnter: (_) => setState(() => _reloadHovered = true),
+                onExit: (_) => setState(() => _reloadHovered = false),
+                child: GestureDetector(
+                  onTap: widget.onReload,
+                  behavior: HitTestBehavior.opaque,
+                  child: AnimatedOpacity(
+                    opacity: _hovered || selected || _focused ? 1 : 0.7,
+                    duration: const Duration(milliseconds: 160),
+                    child: AnimatedRotation(
+                      turns: _reloadHovered ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                      child: Icon(
+                        Icons.refresh_rounded,
+                        size: 14,
+                        color: fg,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ] else if (widget.trailing != null) ...[
             const SizedBox(width: 4),
             widget.trailing!,
@@ -263,7 +305,11 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
     if (!widget.accentHover || tv) return body;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onExit: (_) => setState(() {
+        _hovered = false;
+        _busyHovered = false;
+        _reloadHovered = false;
+      }),
       child: body,
     );
   }

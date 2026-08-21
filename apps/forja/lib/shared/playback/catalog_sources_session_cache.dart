@@ -1,9 +1,11 @@
 import 'package:rust/rust.dart';
 
-/// In-memory TTL cache for catalog Sources (Torrents / Stremio / Nuvio).
+/// In-memory TTL cache for catalog Sources (Torrents / Stremio / Nuvio / Engine).
 ///
 /// Shared by media-details and the in-player Sources panel so reopening the
-/// panel within [ttl] reuses the last fetch instead of hammering scrapers.
+/// panel within [ttl] reuses the last fetch. Soft hydrate must keep Engine
+/// `fetchedPluginIds` (including empty chips) — stripping "stale" empties on
+/// read caused player Sources to re-run every empty Forja extractor.
 class CatalogSourcesSessionCache {
   CatalogSourcesSessionCache._();
 

@@ -567,107 +567,269 @@ class _LiveMatchCornerBadge extends StatelessWidget {
   }
 }
 
-// ─── My IPTV matched channels sheet ───────────────────────────────────────────
+// ─── Forja Sports channel panel (right side, progressive) ────────────────────
 
-class _IptvSportsChannelSheet extends StatefulWidget {
-  final _StreamedMatch match;
-  final List<IptvPlaySource> sources;
-  final void Function(IptvPlaySource) onChannelSelected;
+/// Funny status copy for Forja Sports channel sniffing.
+abstract final class _IptvSportsPanelCopy {
+  static const sniffing = 'Forja is sniffing the remote…';
+  static const empty = 'Forja came up empty — nothing on deck';
 
-  const _IptvSportsChannelSheet({
+  static String onDeck(int n) {
+    if (n <= 0) return empty;
+    return n == 1 ? '1 channel on deck' : '$n channels on deck';
+  }
+}
+
+class _IptvSportsChannelsPanelController extends ChangeNotifier {
+  _IptvSportsChannelsPanelController({
     required this.match,
-    required this.sources,
+    this.panelTitle = 'Forja Sports',
+  });
+
+  final _StreamedMatch match;
+  final String panelTitle;
+  final List<IptvPlaySource> sources = [];
+  bool searching = true;
+  bool _disposed = false;
+
+  bool get isDisposed => _disposed;
+
+  void appendSources(Iterable<IptvPlaySource> next) {
+    if (_disposed) return;
+    final seen = {for (final s in sources) s.url};
+    var added = false;
+    for (final s in next) {
+      if (s.url.trim().isEmpty || !seen.add(s.url)) continue;
+      sources.add(s);
+      added = true;
+    }
+    if (added) notifyListeners();
+  }
+
+  void finishSearching() {
+    if (_disposed) return;
+    if (!searching) return;
+    searching = false;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}
+
+/// Right-side overlay — same shell as movie Sources; fills as matches land.
+class _IptvSportsChannelsPanel {
+  static OverlayEntry? _entry;
+  static _IptvSportsChannelsPanelController? _controller;
+
+  static _IptvSportsChannelsPanelController show({
+    required BuildContext context,
+    required _StreamedMatch match,
+    String panelTitle = 'Forja Sports',
+    required void Function(IptvPlaySource picked, List<IptvPlaySource> all)
+        onChannelSelected,
+  }) {
+    dismiss();
+    final controller = _IptvSportsChannelsPanelController(
+      match: match,
+      panelTitle: panelTitle,
+    );
+    _controller = controller;
+    final overlay = Overlay.of(context);
+    _entry = OverlayEntry(
+      builder: (_) => _IptvSportsChannelsOverlay(
+        controller: controller,
+        onClose: dismiss,
+        onChannelSelected: (picked) {
+          final all = List<IptvPlaySource>.from(controller.sources);
+          dismiss();
+          onChannelSelected(picked, all);
+        },
+      ),
+    );
+    overlay.insert(_entry!);
+    return controller;
+  }
+
+  static void dismiss() {
+    final wasShowing = _entry != null;
+    final ctrl = _controller;
+    _entry?.remove();
+    _entry = null;
+    _controller = null;
+    // Overlay State drops its listener on unmount; dispose after that frame.
+    if (ctrl != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!ctrl.isDisposed) ctrl.dispose();
+      });
+    }
+    if (wasShowing) {
+      ShellTvFocusCoordinator.setSourcesPanelDismiss(null);
+    }
+  }
+}
+
+class _IptvSportsChannelsOverlay extends StatefulWidget {
+  const _IptvSportsChannelsOverlay({
+    required this.controller,
+    required this.onClose,
     required this.onChannelSelected,
   });
 
+  final _IptvSportsChannelsPanelController controller;
+  final VoidCallback onClose;
+  final void Function(IptvPlaySource) onChannelSelected;
+
   @override
-  State<_IptvSportsChannelSheet> createState() =>
-      _IptvSportsChannelSheetState();
+  State<_IptvSportsChannelsOverlay> createState() =>
+      _IptvSportsChannelsOverlayState();
 }
 
-class _IptvSportsChannelSheetState extends State<_IptvSportsChannelSheet> {
-  static const _rowId = 'live-iptv-sports-channel-sheet';
-  final FocusNode _firstFocus = FocusNode(
-    debugLabel: 'live-iptv-sports-channel-sheet-first',
-  );
+class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> {
+  bool _open = false;
+  int _lastSourceCount = 0;
 
   @override
   void initState() {
     super.initState();
+    widget.controller.addListener(_onController);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
-      if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
+      setState(() => _open = true);
     });
   }
 
   @override
   void dispose() {
-    _firstFocus.dispose();
+    widget.controller.removeListener(_onController);
     super.dispose();
+  }
+
+  void _onController() {
+    if (!mounted) return;
+    final n = widget.controller.sources.length;
+    final firstBatch = _lastSourceCount == 0 && n > 0;
+    _lastSourceCount = n;
+    setState(() {});
+    if (firstBatch && SourcesPanelTv.isTv(context)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        SourcesPanelTv.focusListItem(index: 0);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final sources = widget.sources;
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final body = Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxHeight),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                widget.match.title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${sources.length} matching '
-                '${sources.length == 1 ? 'channel' : 'channels'} — choose one:',
-                style: const TextStyle(color: Colors.white54, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              for (var i = 0; i < sources.length; i++)
-                _IptvSportsChannelSheetRow(
-                  source: sources[i],
-                  onTap: () => widget.onChannelSelected(sources[i]),
-                  tvItemIndex: i,
-                  tvRowId: _rowId,
-                  focusNode: i == 0 ? _firstFocus : null,
-                ),
-            ],
+    final ctrl = widget.controller;
+    final sources = ctrl.sources;
+    final status = ctrl.searching
+        ? (sources.isEmpty
+            ? _IptvSportsPanelCopy.sniffing
+            : '${_IptvSportsPanelCopy.onDeck(sources.length)} · still sniffing…')
+        : _IptvSportsPanelCopy.onDeck(sources.length);
+
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TorrentSourcesPanelHeader(
+          title: ctrl.panelTitle,
+          onClose: widget.onClose,
+        ),
+        const SizedBox(height: 10),
+        Text(
+          ctrl.match.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: ForjaShellColors.cinematic.textPrimary,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
         ),
-      ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            if (ctrl.searching) ...[
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.6,
+                  color: ForjaShellColors.sectionAccent,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                status,
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: sources.isEmpty
+              ? Align(
+                  alignment: Alignment.topLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 24),
+                    child: Text(
+                      ctrl.searching
+                          ? _IptvSportsPanelCopy.sniffing
+                          : _IptvSportsPanelCopy.empty,
+                      style: TextStyle(
+                        color: ForjaShellColors.cinematic.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                )
+              : Builder(
+                  builder: (context) {
+                    final list = ListView.builder(
+                      itemCount: sources.length,
+                      itemBuilder: (context, i) {
+                        return _IptvSportsChannelSheetRow(
+                          source: sources[i],
+                          onTap: () => widget.onChannelSelected(sources[i]),
+                          tvItemIndex: i,
+                          tvRowId: SourcesPanelTv.listRowId,
+                          tvTabId: SourcesPanelTv.tabId,
+                        );
+                      },
+                    );
+                    if (!SourcesPanelTv.isTv(context)) return list;
+                    return TvCatalogRow(
+                      tabId: SourcesPanelTv.tabId,
+                      rowId: SourcesPanelTv.listRowId,
+                      sortOrder: SourcesPanelTv.listSort,
+                      itemCount: sources.length,
+                      orientation: ShellTvRowOrientation.vertical,
+                      child: list,
+                    );
+                  },
+                ),
+        ),
+      ],
     );
-    if (!tv) return body;
-    return TvCatalogRow(
-      tabId: 'live_matches',
-      rowId: _rowId,
-      sortOrder: 0,
-      itemCount: sources.length,
-      orientation: ShellTvRowOrientation.vertical,
-      child: body,
+
+    return TorrentSourcesPanel(
+      isOpen: _open,
+      onClose: widget.onClose,
+      enableBlur: true,
+      child: SourcesPanelTv.wrapBody(
+        context: context,
+        onClose: widget.onClose,
+        child: body,
+      ),
     );
   }
 }
@@ -678,14 +840,14 @@ class _IptvSportsChannelSheetRow extends StatefulWidget {
     required this.onTap,
     this.tvItemIndex,
     this.tvRowId,
-    this.focusNode,
+    this.tvTabId = 'live_matches',
   });
 
   final IptvPlaySource source;
   final VoidCallback onTap;
   final int? tvItemIndex;
   final String? tvRowId;
-  final FocusNode? focusNode;
+  final String tvTabId;
 
   @override
   State<_IptvSportsChannelSheetRow> createState() =>
@@ -751,9 +913,8 @@ class _IptvSportsChannelSheetRowState
       scaleOnFocus: 1.0,
       showFocusBorder: true,
       navLeftAlways: true,
-      focusNode: widget.focusNode,
       listIndex: widget.tvItemIndex,
-      tvTabId: 'live_matches',
+      tvTabId: widget.tvTabId,
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
