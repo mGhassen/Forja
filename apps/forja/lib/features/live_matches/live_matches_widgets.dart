@@ -765,6 +765,7 @@ class _CdnSportCard extends StatefulWidget {
   final VoidCallback? onUpEdge;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final bool? playableOverride;
   final bool forceActive;
   final ValueChanged<bool>? onHoverChanged;
   final String tvRowId;
@@ -777,6 +778,7 @@ class _CdnSportCard extends StatefulWidget {
     this.onUpEdge,
     this.onLeftEdge,
     this.onRightEdge,
+    this.playableOverride,
     this.forceActive = false,
     this.onHoverChanged,
     this.tvRowId = 'grid',
@@ -794,7 +796,7 @@ class _CdnSportCardState extends State<_CdnSportCard> {
   @override
   Widget build(BuildContext context) {
     final e = widget.event;
-    final canPlay = e.isLive;
+    final canPlay = widget.playableOverride ?? e.isLive;
     final policy = ShellScope.inputPolicyOf(context);
     final tv = ShellScope.metricsOf(context).usesTvDensity;
     final active =
@@ -3560,6 +3562,7 @@ class _StreamedMatchCard extends StatefulWidget {
   final VoidCallback? onUpEdge;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
+  final bool? playableOverride;
   final bool forceActive;
   final ValueChanged<bool>? onHoverChanged;
   final String tvRowId;
@@ -3573,6 +3576,7 @@ class _StreamedMatchCard extends StatefulWidget {
     this.onUpEdge,
     this.onLeftEdge,
     this.onRightEdge,
+    this.playableOverride,
     this.forceActive = false,
     this.onHoverChanged,
     this.tvRowId = 'grid',
@@ -3594,10 +3598,12 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
         m.sources.isNotEmpty ||
         m.inlineStreams.isNotEmpty ||
         m.isStremio ||
-        m.isIptvSports;
+        m.isIptvSports ||
+        m.sportMatchGame != null;
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
     // My IPTV: match channels anytime today (pregame feeds exist).
-    final canPlay = hasSources && (m.isLive || m.isIptvSports);
+    final canPlay = widget.playableOverride ??
+        (hasSources && (m.isLive || m.isIptvSports || m.sportMatchGame != null));
     final policy = ShellScope.inputPolicyOf(context);
     final tv = ShellScope.metricsOf(context).usesTvDensity;
     final active =

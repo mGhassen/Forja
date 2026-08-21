@@ -357,36 +357,12 @@
         "enc": "https://enc-dec.app/api",
         "servers": [
           {
-            "id": "pseudo",
-            "label": "Psuedo"
-          },
-          {
-            "id": "lynx",
-            "label": "Lynx"
-          },
-          {
-            "id": "tik",
-            "label": "TCloud"
+            "id": "dcloud",
+            "label": "DCloud"
           },
           {
             "id": "ipcloud",
             "label": "IPcloud"
-          },
-          {
-            "id": "v4:English",
-            "label": "English"
-          },
-          {
-            "id": "turkce",
-            "label": "T\u00fcrk\u00e7e"
-          },
-          {
-            "id": "v5:Hindi",
-            "label": "Hindi"
-          },
-          {
-            "id": "v4:Hindi",
-            "label": "Hindi v2"
           }
         ]
       }

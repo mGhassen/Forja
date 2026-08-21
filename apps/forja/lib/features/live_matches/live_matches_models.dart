@@ -2074,7 +2074,232 @@ Future<List<_StreamedMatch>> _fetchStremioSportMatches() async {
   return _sortStreamedLiveFirst(out);
 }
 
-// My IPTV catalog = All (PPV/Streamed/CDN). ESPN scoreboard path removed.
+// My IPTV catalog = All (PPV/Streamed/CDN) merged with ESPN (Sportio schedule).
+
+Future<List<Map<String, dynamic>>> _fetchEspnSportMatchGames() async {
+  try {
+    final config = await LiveMatchesIptvSportsConfig.load();
+    final leagues = config.leagues.isEmpty
+        ? LiveMatchesIptvSportsConfig.allLeagues
+        : config.leagues;
+    final now = DateTime.now();
+    final date =
+        '${now.year.toString().padLeft(4, '0')}'
+        '${now.month.toString().padLeft(2, '0')}'
+        '${now.day.toString().padLeft(2, '0')}';
+    final raw = await runLiveMatchesFetchJson(
+      jsonEncode({
+        'action': 'sport_match_games',
+        'leagues': leagues,
+        'date': date,
+      }),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    if (parsed.containsKey('error')) {
+      debugPrint('[LiveMatches] ESPN games error: ${parsed['error']}');
+      return [];
+    }
+    final list = parsed['items'] as List? ?? [];
+    return [
+      for (final item in list)
+        if (item is Map)
+          Map<String, dynamic>.from(item),
+    ];
+  } catch (e) {
+    debugPrint('[LiveMatches] ESPN games fetch failed: $e');
+    return [];
+  }
+}
+
+Map<String, dynamic> _espnGamePayload(Map<String, dynamic> g) {
+  return {
+    'id': (g['id'] ?? '').toString(),
+    'title': (g['title'] ?? g['name'] ?? '').toString(),
+    'sport': (g['sport'] ?? '').toString(),
+    'category': (g['category'] ?? g['sport'] ?? '').toString(),
+    'homeTeam': (g['homeTeam'] ?? '').toString(),
+    'awayTeam': (g['awayTeam'] ?? '').toString(),
+    'homeNick': (g['homeNick'] ?? '').toString(),
+    'awayNick': (g['awayNick'] ?? '').toString(),
+    'homeAbbr': (g['homeAbbr'] ?? '').toString(),
+    'awayAbbr': (g['awayAbbr'] ?? '').toString(),
+    'dateMs': (g['dateMs'] as num?)?.toInt() ?? 0,
+    'date': (g['date'] ?? '').toString(),
+  };
+}
+
+_StreamedMatch _espnGameToStreamedMatch(Map<String, dynamic> g) {
+  final home = (g['homeTeam'] ?? '').toString().trim();
+  final away = (g['awayTeam'] ?? '').toString().trim();
+  final title = (g['title'] ?? g['name'] ?? '').toString().trim();
+  final live = g['live'] == true;
+  return _StreamedMatch(
+    id: 'espn:${(g['id'] ?? '').toString()}',
+    title: title.isNotEmpty
+        ? title
+        : (home.isNotEmpty && away.isNotEmpty ? '$away vs $home' : 'ESPN'),
+    category: (g['category'] ?? g['sport'] ?? 'other').toString(),
+    dateMs: (g['dateMs'] as num?)?.toInt() ?? 0,
+    poster: (g['poster'] ?? g['homeLogo'] ?? g['awayLogo'] ?? '').toString(),
+    popular: false,
+    airing: live,
+    homeTeam: home.isEmpty ? null : home,
+    awayTeam: away.isEmpty ? null : away,
+    homeBadge: (g['homeLogo'] ?? '').toString(),
+    awayBadge: (g['awayLogo'] ?? '').toString(),
+    sources: const [],
+    catalog: 'iptv_sports',
+    sportMatchGame: _espnGamePayload(g),
+  );
+}
+
+_StreamedMatch _copyStreamedMatch(
+  _StreamedMatch m, {
+  Map<String, dynamic>? sportMatchGame,
+  String? homeTeam,
+  String? awayTeam,
+  String? homeBadge,
+  String? awayBadge,
+  bool? airing,
+}) {
+  return _StreamedMatch(
+    id: m.id,
+    title: m.title,
+    category: m.category,
+    dateMs: m.dateMs,
+    poster: m.poster,
+    popular: m.popular,
+    airing: airing ?? m.airing,
+    homeTeam: homeTeam ?? m.homeTeam,
+    homeBadge: homeBadge ?? m.homeBadge,
+    awayTeam: awayTeam ?? m.awayTeam,
+    awayBadge: awayBadge ?? m.awayBadge,
+    sources: m.sources,
+    inlineStreams: m.inlineStreams,
+    catalog: m.catalog,
+    stremioBaseUrl: m.stremioBaseUrl,
+    stremioType: m.stremioType,
+    sportMatchGame: sportMatchGame ?? m.sportMatchGame,
+  );
+}
+
+bool _kickoffClose(int aMs, int bMs) {
+  if (aMs <= 0 || bMs <= 0) return true;
+  return (aMs - bMs).abs() <= const Duration(minutes: 45).inMilliseconds;
+}
+
+bool _teamPairsMatch(String? home, String? away, Map<String, dynamic> espn) {
+  final epair = _teamPairKey(
+    (espn['homeTeam'] ?? '').toString(),
+    (espn['awayTeam'] ?? '').toString(),
+  );
+  final pair = _teamPairKey(home, away);
+  if (pair != null && epair != null && pair == epair) return true;
+
+  final nickPair = _teamPairKey(
+    (espn['homeNick'] ?? '').toString(),
+    (espn['awayNick'] ?? '').toString(),
+  );
+  if (pair != null && nickPair != null && pair == nickPair) return true;
+
+  // Catalog title parse vs ESPN full / nick.
+  return false;
+}
+
+bool _sameCatalogEventAsEspn({
+  required String title,
+  required String? homeTeam,
+  required String? awayTeam,
+  required int dateMs,
+  required Map<String, dynamic> espn,
+}) {
+  final espnMs = (espn['dateMs'] as num?)?.toInt() ?? 0;
+  if (!_kickoffClose(dateMs, espnMs)) return false;
+
+  var home = (homeTeam ?? '').trim();
+  var away = (awayTeam ?? '').trim();
+  if (home.isEmpty || away.isEmpty) {
+    final parsed = parseLiveMatchTeamsFromTitle(title);
+    if (home.isEmpty) home = parsed.$1;
+    if (away.isEmpty) away = parsed.$2;
+  }
+  if (_teamPairsMatch(home, away, espn)) return true;
+
+  final espnTitle = _matchTextKey((espn['title'] ?? espn['name'] ?? '').toString());
+  final catalogTitle = _matchTextKey(title);
+  return espnTitle.isNotEmpty &&
+      catalogTitle.isNotEmpty &&
+      espnTitle == catalogTitle;
+}
+
+/// Enrich All streamed rows with ESPN teams; append ESPN-only games.
+({List<_StreamedMatch> streamed, List<Map<String, dynamic>> espnGames})
+    _mergeStreamedWithEspn(
+  List<_StreamedMatch> streamed,
+  List<Map<String, dynamic>> espnGames,
+) {
+  final remaining = [...espnGames];
+  final out = <_StreamedMatch>[];
+  for (final m in streamed) {
+    final idx = remaining.indexWhere(
+      (g) => _sameCatalogEventAsEspn(
+        title: m.title,
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+        dateMs: m.dateMs,
+        espn: g,
+      ),
+    );
+    if (idx < 0) {
+      out.add(m);
+      continue;
+    }
+    final g = remaining.removeAt(idx);
+    final payload = _espnGamePayload(g);
+    out.add(
+      _copyStreamedMatch(
+        m,
+        sportMatchGame: payload,
+        homeTeam: (payload['homeTeam'] as String?)?.trim().isNotEmpty == true
+            ? payload['homeTeam'] as String
+            : m.homeTeam,
+        awayTeam: (payload['awayTeam'] as String?)?.trim().isNotEmpty == true
+            ? payload['awayTeam'] as String
+            : m.awayTeam,
+        homeBadge: () {
+          final logo = (g['homeLogo'] ?? '').toString();
+          return logo.isNotEmpty ? logo : m.homeBadge;
+        }(),
+        awayBadge: () {
+          final logo = (g['awayLogo'] ?? '').toString();
+          return logo.isNotEmpty ? logo : m.awayBadge;
+        }(),
+        airing: g['live'] == true ? true : m.airing,
+      ),
+    );
+  }
+  out.addAll(remaining.map(_espnGameToStreamedMatch));
+  return (streamed: out, espnGames: espnGames);
+}
+
+Map<String, dynamic>? _findEspnGameForMatch(
+  _StreamedMatch match,
+  List<Map<String, dynamic>> espnGames,
+) {
+  if (match.sportMatchGame != null) return match.sportMatchGame;
+  for (final g in espnGames) {
+    if (_sameCatalogEventAsEspn(
+      title: match.title,
+      homeTeam: match.homeTeam,
+      awayTeam: match.awayTeam,
+      dateMs: match.dateMs,
+      espn: g,
+    )) {
+      return _espnGamePayload(g);
+    }
+  }
+  return null;
+}
 
 Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   _StreamedMatch match,

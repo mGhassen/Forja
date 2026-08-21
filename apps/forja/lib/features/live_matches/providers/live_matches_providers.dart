@@ -28,6 +28,7 @@ class LiveMatchesPrimaryLoad {
     this.streamedMatches = const [],
     this.cdnChannels = const [],
     this.cdnSports = const [],
+    this.espnGames = const [],
   });
 
   final List<_Sport> sports;
@@ -35,6 +36,8 @@ class LiveMatchesPrimaryLoad {
   final List<_StreamedMatch> streamedMatches;
   final List<_CdnChannel> cdnChannels;
   final List<_CdnSportEvent> cdnSports;
+  /// Raw ESPN scoreboard rows for My IPTV play-time enrichment (PPV/CDN).
+  final List<Map<String, dynamic>> espnGames;
 }
 
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
@@ -189,6 +192,47 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStremio() async {
 }
 
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesIptvSports() async {
-  // Same schedule catalog as All — Xtream matching runs on play.
-  return _fetchLiveMatchesAll();
+  final results = await Future.wait([
+    _fetchLiveMatchesAll(),
+    _fetchEspnSportMatchGames(),
+  ]);
+  final all = results[0] as LiveMatchesPrimaryLoad;
+  final espn = results[1] as List<Map<String, dynamic>>;
+  final merged = _mergeStreamedWithEspn(all.streamedMatches, espn);
+
+  final seenCats = <String>{};
+  final cats = <_Sport>[];
+  void addCat(String raw) {
+    final id = _normalizeSportId(raw);
+    if (id.isEmpty || !seenCats.add(id)) return;
+    cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
+  }
+
+  for (final s in all.damiTvStreams) {
+    if (_is247Item(category: s.categoryName, isAlwaysOn: s.isAlwaysOn)) {
+      addCat('24/7');
+    } else {
+      addCat(s.categoryName);
+    }
+  }
+  for (final m in merged.streamed) {
+    if (_is247Item(category: m.category, isAlwaysOn: m.isAlwaysOn)) {
+      addCat('24/7');
+    } else {
+      addCat(m.category);
+    }
+  }
+  for (final e in all.cdnSports) {
+    if (e.sport.isNotEmpty) addCat(e.sport);
+  }
+  cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+  return LiveMatchesPrimaryLoad(
+    sports: cats,
+    damiTvStreams: all.damiTvStreams,
+    streamedMatches: merged.streamed,
+    cdnChannels: all.cdnChannels,
+    cdnSports: all.cdnSports,
+    espnGames: espn,
+  );
 }

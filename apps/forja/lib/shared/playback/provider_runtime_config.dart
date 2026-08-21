@@ -75,6 +75,16 @@ class ProviderRuntimeConfig {
       if (plugin == 'dooflix') {
         return _httpsOrigin('molop.art', fallback: 'molop.art');
       }
+      // Sources HTTP scrapers — not the green-Play embed template host.
+      // 2embed multiembed → xpass playlists (tik/vip.1x2.space); template
+      // 2embed.stream is dead and overwriting xpass Referer 403s the CDN.
+      if (plugin == '2embed' || plugin == 'multiembed') {
+        return _httpsOrigin('play.xpass.top', fallback: 'play.xpass.top');
+      }
+      // MeowTV → 1shows CDN; missing headers must not invent CDN self-Referer.
+      if (plugin == 'meowtv') {
+        return _httpsOrigin('meowtv.ru', fallback: 'meowtv.ru');
+      }
       final enginePolicy = _policyFromEmbedHost(plugin);
       if (enginePolicy != null) return enginePolicy;
     }

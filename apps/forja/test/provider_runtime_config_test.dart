@@ -270,6 +270,16 @@ void main() {
         'https://player.vidzee.wtf/',
       );
       expect(
+        ProviderRuntimeConfig.instance.playbackPolicyFor('engine:2embed')
+            ?.referer,
+        'https://play.xpass.top/',
+      );
+      expect(
+        ProviderRuntimeConfig.instance.playbackPolicyFor('engine:meowtv')
+            ?.referer,
+        'https://meowtv.ru/',
+      );
+      expect(
         ProviderRuntimeConfig.instance.playbackPolicyFor('miruro:kiwi')?.referer,
         'https://www.miruro.tv/',
       );

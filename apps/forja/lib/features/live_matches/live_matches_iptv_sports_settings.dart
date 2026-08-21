@@ -69,16 +69,6 @@ class LiveMatchesIptvSportsConfig {
     'MMA',
   ];
 
-  static const sportFamilyLabels = <String, String>{
-    'SOCCER': 'Soccer',
-    'BASKETBALL': 'Basketball',
-    'FOOTBALL': 'American football',
-    'BASEBALL': 'Baseball',
-    'HOCKEY': 'Hockey',
-    'MMA': 'MMA / UFC',
-    'GLOBAL': 'All sports (global)',
-  };
-
   static const _leagueToFamily = <String, String>{
     'NBA': 'BASKETBALL',
     'WNBA': 'BASKETBALL',
@@ -97,18 +87,6 @@ class LiveMatchesIptvSportsConfig {
 
   static String familyForLeague(String league) =>
       _leagueToFamily[league.toUpperCase()] ?? 'GLOBAL';
-
-  /// Families needed for the currently enabled leagues (stable order).
-  List<String> get activeSportFamilies {
-    final want = <String>{};
-    for (final league in leagues) {
-      want.add(familyForLeague(league));
-    }
-    return [
-      for (final f in sportFamilies)
-        if (want.contains(f)) f,
-    ];
-  }
 
   bool get isReady =>
       enabled && portalKey.isNotEmpty && leagues.isNotEmpty;

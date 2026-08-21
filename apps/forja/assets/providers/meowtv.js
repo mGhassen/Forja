@@ -30,9 +30,23 @@ function extract(ctx) {
     }
   }
 
+  function playHeaders(extra) {
+    var h = { 'User-Agent': ua, Referer: origin + '/', Origin: origin };
+    if (extra && typeof extra === 'object') {
+      Object.keys(extra).forEach(function (k) {
+        if (extra[k] != null && String(extra[k]).trim()) h[k] = String(extra[k]);
+      });
+    }
+    return h;
+  }
+
   function toRows(payload, name) {
     var urls = [];
     walk(payload, urls);
+    var fromPayload =
+      payload && typeof payload === 'object' && payload.headers && typeof payload.headers === 'object'
+        ? payload.headers
+        : null;
     return Promise.all(
       urls.map(function (u) {
         if (/\.m3u8|\.mp4/i.test(u)) {
@@ -40,7 +54,7 @@ function extract(ctx) {
             {
               url: u,
               name: name || 'MeowTV',
-              headers: { 'User-Agent': ua, Referer: origin + '/' },
+              headers: playHeaders(fromPayload),
             },
           ]);
         }
@@ -50,6 +64,8 @@ function extract(ctx) {
       return [].concat.apply([], groups);
     });
   }
+
+  ctx.log('start tmdb=' + tmdbId + ' type=' + (isMovie ? 'movie' : 'tv') + ' servers=' + servers.length);
 
   var tasks = servers.slice(0, 8).map(function (server) {
     var sid = server && (server.id || server);
@@ -61,11 +77,14 @@ function extract(ctx) {
     return ctx
       .fetch(url, { headers: headers })
       .then(function (r) {
-        if (!r.ok) return [];
+        if (!r.ok) {
+          ctx.log('server ' + sid + ' http ' + r.status);
+          return [];
+        }
         return r.json();
       })
       .then(function (data) {
-        if (!data || Array.isArray(data) && !data.length) return [];
+        if (!data || (Array.isArray(data) && !data.length)) return [];
         return ctx
           .fetch(enc + '/dec-meowtv', {
             method: 'POST',
@@ -76,15 +95,18 @@ function extract(ctx) {
             return r.json();
           })
           .then(function (j) {
-            return toRows(validate(j), server.label || sid);
+            return toRows(validate(j), (server && server.label) || sid);
           });
       })
-      .catch(function () {
+      .catch(function (e) {
+        ctx.log('server ' + sid + ' err ' + (e && e.message ? e.message : e));
         return [];
       });
   });
 
   return Promise.all(tasks).then(function (groups) {
-    return [].concat.apply([], groups);
+    var out = [].concat.apply([], groups);
+    ctx.log('streams=' + out.length);
+    return out;
   });
 }

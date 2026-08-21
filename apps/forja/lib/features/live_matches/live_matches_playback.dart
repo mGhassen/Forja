@@ -197,12 +197,27 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
 
   Future<void> _openIptvSportsMatch(_StreamedMatch match) async {
     if (!mounted) return;
+    final espnPayload = _findEspnGameForMatch(match, _s._espnGames);
+    final enriched = espnPayload == null
+        ? match
+        : _copyStreamedMatch(
+            match,
+            sportMatchGame: espnPayload,
+            homeTeam: (espnPayload['homeTeam'] as String?)?.trim().isNotEmpty ==
+                    true
+                ? espnPayload['homeTeam'] as String
+                : match.homeTeam,
+            awayTeam: (espnPayload['awayTeam'] as String?)?.trim().isNotEmpty ==
+                    true
+                ? espnPayload['awayTeam'] as String
+                : match.awayTeam,
+          );
     final sources = <IptvPlaySource>[];
     final ok = await _runWithCancellableLoading(
       'Matching IPTV channels…',
       () async {
         try {
-          sources.addAll(await _resolveIptvSportsStreams(match));
+          sources.addAll(await _resolveIptvSportsStreams(enriched));
         } catch (e) {
           debugPrint('[LiveMatches] IPTV sports resolve error: $e');
         }
@@ -221,11 +236,11 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => _IptvSportsChannelSheet(
-        match: match,
+        match: enriched,
         sources: sources,
         onChannelSelected: (picked) {
           Navigator.pop(context);
-          unawaited(_playIptvSportsSources(match, sources, picked));
+          unawaited(_playIptvSportsSources(enriched, sources, picked));
         },
       ),
     );

@@ -241,6 +241,7 @@ mixin _LiveMatchesData
       _s._streamedMatches = load.streamedMatches;
       _s._cdnChannels = load.cdnChannels;
       _s._cdnSports = load.cdnSports;
+      _s._espnGames = load.espnGames;
       _s._sports = load.sports;
       _s._loading = false;
       _s._error = null;

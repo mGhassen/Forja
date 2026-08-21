@@ -115,6 +115,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   List<_StreamedMatch> _streamedMatches = [];
   List<_CdnChannel> _cdnChannels = [];
   List<_CdnSportEvent> _cdnSports = [];
+  /// ESPN scoreboard payloads for My IPTV (enrich PPV/CDN on play).
+  List<Map<String, dynamic>> _espnGames = [];
   bool _cdnShowChannels = true; // true = channels, false = sports
   String? _lastSyncedIptvPortalKey;
 

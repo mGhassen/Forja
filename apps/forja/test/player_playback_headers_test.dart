@@ -366,6 +366,43 @@ void main() {
       expect(h['Origin'], 'https://allmanga.to');
     });
 
+    test('RFC-044: engine:2embed keeps play.xpass.top (not template 2embed.stream)',
+        () {
+      const url =
+          'https://tik.1x2.space/playlist/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://play.xpass.top/'},
+        streamUrl: url,
+        providerId: 'engine:2embed',
+      );
+      expect(h['Referer'], 'https://play.xpass.top/');
+      expect(h['Origin'], 'https://play.xpass.top');
+    });
+
+    test('RFC-044: engine:2embed recovers xpass Referer when headers missing',
+        () {
+      const url =
+          'https://tik.1x2.space/playlist/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: url,
+        providerId: 'engine:2embed',
+      );
+      expect(h['Referer'], 'https://play.xpass.top/');
+      expect(h['Origin'], 'https://play.xpass.top');
+    });
+
+    test('RFC-044: engine:meowtv forces meowtv.ru on 1shows CDN', () {
+      const url = 'https://cdn1.1shows.app/e/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://cdn1.1shows.app/'},
+        streamUrl: url,
+        providerId: 'engine:meowtv',
+      );
+      expect(h['Referer'], 'https://meowtv.ru/');
+      expect(h['Origin'], 'https://meowtv.ru');
+    });
+
     test('RFC-044: providerId vidzee forces player.vidzee.wtf Referer', () {
       const url = 'https://cdn1.1shows.app/e/abc/master.m3u8';
       final h = resolvePlaybackHttpHeaders(
