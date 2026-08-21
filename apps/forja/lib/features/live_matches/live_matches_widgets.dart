@@ -691,6 +691,10 @@ class _IptvSportsChannelsOverlay extends StatefulWidget {
 class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> {
   bool _open = false;
   int _lastSourceCount = 0;
+  bool _didInitialFocus = false;
+  final FocusNode _closeFocus = FocusNode(
+    debugLabel: 'iptv-sports-channels-close',
+  );
 
   @override
   void initState() {
@@ -699,13 +703,30 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       setState(() => _open = true);
+      _claimInitialFocus();
     });
   }
 
   @override
   void dispose() {
     widget.controller.removeListener(_onController);
+    _closeFocus.dispose();
     super.dispose();
+  }
+
+  void _focusClose() {
+    if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
+  }
+
+  void _claimInitialFocus() {
+    if (_didInitialFocus || !SourcesPanelTv.isTv(context)) return;
+    _didInitialFocus = true;
+    final n = widget.controller.sources.length;
+    if (n > 0) {
+      SourcesPanelTv.claimFocus(listIndex: 0, close: _closeFocus);
+    } else {
+      SourcesPanelTv.claimFocus(close: _closeFocus);
+    }
   }
 
   void _onController() {
@@ -714,9 +735,18 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
     final firstBatch = _lastSourceCount == 0 && n > 0;
     _lastSourceCount = n;
     setState(() {});
-    if (firstBatch && SourcesPanelTv.isTv(context)) {
+    if (!SourcesPanelTv.isTv(context)) return;
+    if (firstBatch) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         SourcesPanelTv.focusListItem(index: 0);
+      });
+      return;
+    }
+    if (!_didInitialFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _claimInitialFocus();
       });
     }
   }
@@ -725,6 +755,7 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
   Widget build(BuildContext context) {
     final ctrl = widget.controller;
     final sources = ctrl.sources;
+    final tv = SourcesPanelTv.isTv(context);
     final status = ctrl.searching
         ? (sources.isEmpty
             ? _IptvSportsPanelCopy.sniffing
@@ -734,9 +765,22 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TorrentSourcesPanelHeader(
+        PlayerSidePanelHeader(
           title: ctrl.panelTitle,
           onClose: widget.onClose,
+          closeFocusNode: tv ? _closeFocus : null,
+          closeOnKeyEvent: tv
+              ? (node, event) {
+                  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                  if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                    if (sources.isNotEmpty) {
+                      SourcesPanelTv.focusListItem(index: 0);
+                    }
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                }
+              : null,
         ),
         const SizedBox(height: 10),
         Text(
@@ -803,16 +847,18 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
                           tvItemIndex: i,
                           tvRowId: SourcesPanelTv.listRowId,
                           tvTabId: SourcesPanelTv.tabId,
+                          onUpEdge: i == 0 ? _focusClose : null,
                         );
                       },
                     );
-                    if (!SourcesPanelTv.isTv(context)) return list;
+                    if (!tv) return list;
                     return TvCatalogRow(
                       tabId: SourcesPanelTv.tabId,
                       rowId: SourcesPanelTv.listRowId,
                       sortOrder: SourcesPanelTv.listSort,
                       itemCount: sources.length,
                       orientation: ShellTvRowOrientation.vertical,
+                      onFocusUp: _focusClose,
                       child: list,
                     );
                   },
@@ -841,6 +887,7 @@ class _IptvSportsChannelSheetRow extends StatefulWidget {
     this.tvItemIndex,
     this.tvRowId,
     this.tvTabId = 'live_matches',
+    this.onUpEdge,
   });
 
   final IptvPlaySource source;
@@ -848,6 +895,7 @@ class _IptvSportsChannelSheetRow extends StatefulWidget {
   final int? tvItemIndex;
   final String? tvRowId;
   final String tvTabId;
+  final VoidCallback? onUpEdge;
 
   @override
   State<_IptvSportsChannelSheetRow> createState() =>
@@ -912,12 +960,12 @@ class _IptvSportsChannelSheetRowState
       borderRadius: 12,
       scaleOnFocus: 1.0,
       showFocusBorder: true,
-      navLeftAlways: true,
       listIndex: widget.tvItemIndex,
       tvTabId: widget.tvTabId,
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
+      onUpEdge: widget.onUpEdge,
       onFocusChange: (focused) => setState(() => _focused = focused),
       child: ListTile(
         leading: _logo(),

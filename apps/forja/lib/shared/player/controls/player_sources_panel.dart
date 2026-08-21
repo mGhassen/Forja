@@ -1370,15 +1370,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return const [];
   }
 
-  Set<String>? _lastLoggedLoadingChipIds;
-
   Set<String> get _loadingChipIds {
-    late final Set<String> ids;
     switch (_kindFilter) {
       case 'torrents':
-        ids = _torrentInFlightProviderIds;
+        return _torrentInFlightProviderIds;
       case 'nuvio':
-        ids = !_nuvioWorkActive
+        return !_nuvioWorkActive
             ? const <String>{}
             : {
                 for (final id in _nuvioSelectedScraperIds)
@@ -1386,36 +1383,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                     'nuvio:$id',
               };
       case 'engine':
-        ids = {
+        return {
           for (final id in _engineLoadingPluginIds) EngineIds.pluginChip(id),
         };
       case 'stremio':
-        ids = !_stremioFetching
+        return !_stremioFetching
             ? const <String>{}
             : {_selectedSourceId};
       default:
-        ids = const <String>{};
+        return const <String>{};
     }
-    final prev = _lastLoggedLoadingChipIds;
-    if (prev == null ||
-        prev.length != ids.length ||
-        !prev.containsAll(ids)) {
-      _lastLoggedLoadingChipIds = Set<String>.from(ids);
-      final options = _providerOptions;
-      final labels = [
-        for (final id in ids)
-          () {
-            for (final o in options) {
-              if (o.id == id) return o.label;
-            }
-            return id;
-          }(),
-      ];
-      debugPrint(
-        '[ep] ...=${labels.isEmpty ? '-' : labels.join(',')}',
-      );
-    }
-    return ids;
   }
 
   bool get _isFetching =>
@@ -2069,16 +2046,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     };
   }
 
-  void _engineDbg(String msg) {
-    final run = _engineInFlightPluginIds.join(',');
-    final dots = _engineLoadingPluginIds.join(',');
-    debugPrint(
-      '[ep] $msg'
-      '${run.isEmpty ? '' : '  run=$run'}'
-      '${dots.isEmpty ? '' : '  ...=$dots'}',
-    );
-  }
-
   void _engineAbortWork({bool clearFetched = false}) {
     _engineFetchGen++;
     _engineFetching = false;
@@ -2094,7 +2061,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required String type,
     required int gen,
   }) async {
-    _engineDbg('+$pluginId');
     EngineExtractResult? batch;
     try {
       batch = await EngineService.instance.runPluginIsolated(
@@ -2119,22 +2085,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       } else {
         _engineInFlightPluginIds.remove(pluginId);
       }
-      _engineDbg('drop $pluginId');
       return;
     }
     if (_engineDiscardPluginIds.remove(pluginId)) {
       if (mounted) {
         setState(() => _engineInFlightPluginIds.remove(pluginId));
       }
-      _engineDbg('cancel-drop $pluginId');
       return;
     }
     if (!_engineSelectedPluginIds.contains(pluginId)) {
       setState(() => _engineInFlightPluginIds.remove(pluginId));
-      _engineDbg('drop $pluginId');
       return;
     }
-    final n = batch?.streams.length ?? 0;
     setState(() {
       _engineFetchedPluginIds.add(pluginId);
       _engineInFlightPluginIds.remove(pluginId);
@@ -2145,7 +2107,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _engineStreams.addAll(batch.streams);
       }
     });
-    _engineDbg('done $pluginId n=$n');
     CatalogSourcesSessionCache.writeEngine(
       _catalogCacheKey,
       _engineStreams,
@@ -2166,7 +2127,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       limit: slots,
     );
     if (next.isEmpty) return;
-    _engineDbg('fill ${next.join(',')}');
     final started = <String>[];
     setState(() {
       for (final id in next) {
@@ -2215,7 +2175,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       if (_pendingEnginePluginIds.isEmpty) break;
       _engineFillPool(gen: gen, type: type);
       if (_enginePoolTasks.isEmpty) {
-        _engineDbg('stuck ${_pendingEnginePluginIds.join(',')}');
         break;
       }
     }
@@ -2229,11 +2188,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final type = _engineResolveType;
     if (_engineFetching && !reset && !refresh) {
       if (_enginePoolTasks.isNotEmpty || _pendingEnginePluginIds.isEmpty) {
-        _engineDbg('join');
         _engineFillPool(gen: _engineFetchGen, type: type);
         return;
       }
-      _engineDbg('revive');
       refresh = true;
     }
     if (reset || refresh) {
@@ -2245,7 +2202,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _enginePoolLimit = engineSourcesBatchLimit(
       tv: SourcesPanelTv.isTv(context),
     );
-    _engineDbg(refresh ? 'refresh' : (reset ? 'reset' : 'start'));
     setState(() {
       if (reset) {
         _engineStreams = [];
@@ -2268,7 +2224,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _error = 'No streams found from selected Forja plugins';
       }
     });
-    _engineDbg(stillPending ? 'end pending' : 'end');
   }
 
   void _onKindChanged(String kind) {

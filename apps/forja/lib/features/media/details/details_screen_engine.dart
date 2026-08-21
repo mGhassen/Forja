@@ -79,16 +79,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     };
   }
 
-  void _engineDbg(String msg) {
-    final run = _s._engineInFlightPluginIds.join(',');
-    final dots = _engineLoadingPluginIds.join(',');
-    debugPrint(
-      '[ep] $msg'
-      '${run.isEmpty ? '' : '  run=$run'}'
-      '${dots.isEmpty ? '' : '  ...=$dots'}',
-    );
-  }
-
   /// Stop Forja pool work (empty chip selection, kind leave, hard cancel).
   void _engineAbortWork({bool clearFetched = false}) {
     _s._engineFetchGen++;
@@ -105,7 +95,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     required String type,
     required int gen,
   }) async {
-    _engineDbg('+$pluginId');
     final year = _s._movie.releaseDate.length >= 4
         ? _s._movie.releaseDate.substring(0, 4)
         : null;
@@ -131,23 +120,19 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       } else {
         _s._engineInFlightPluginIds.remove(pluginId);
       }
-      _engineDbg('drop $pluginId');
       return;
     }
     if (_s._engineDiscardPluginIds.remove(pluginId)) {
       if (mounted) {
         setState(() => _s._engineInFlightPluginIds.remove(pluginId));
       }
-      _engineDbg('cancel-drop $pluginId');
       return;
     }
     if (!_s._engineSelectedPluginIds.contains(pluginId)) {
       setState(() => _s._engineInFlightPluginIds.remove(pluginId));
-      _engineDbg('drop $pluginId');
       return;
     }
-    final n = batch?.streams.length ?? 0;
-    // Clear inFlight in the same setState as fetched so ...=/run= match immediately.
+    // Clear inFlight in the same setState as fetched so loading chips match.
     setState(() {
       _s._engineFetchedPluginIds.add(pluginId);
       _s._engineInFlightPluginIds.remove(pluginId);
@@ -158,7 +143,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         _s._engineStreams.addAll(batch.streams);
       }
     });
-    _engineDbg('done $pluginId n=$n');
     CatalogSourcesSessionCache.writeEngine(
       _s._catalogCacheKey,
       List<Map<String, dynamic>>.from(_s._engineStreams),
@@ -183,7 +167,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       limit: slots,
     );
     if (next.isEmpty) return;
-    _engineDbg('fill ${next.join(',')}');
     final started = <String>[];
     setState(() {
       for (final id in next) {
@@ -234,7 +217,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       if (_pendingEnginePluginIds.isEmpty) break;
       _engineFillPool(gen: gen, type: type);
       if (_enginePoolTasks.isEmpty) {
-        _engineDbg('stuck ${_pendingEnginePluginIds.join(',')}');
         break;
       }
     }
@@ -249,11 +231,9 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     if (_s._isEngineFetching && !reset && !refresh) {
       // Pool still live → join. Flag stuck with empty pool → revive.
       if (_enginePoolTasks.isNotEmpty || _pendingEnginePluginIds.isEmpty) {
-        _engineDbg('join');
         _engineFillPool(gen: _s._engineFetchGen, type: type);
         return;
       }
-      _engineDbg('revive');
       refresh = true;
     }
     if (reset || refresh) {
@@ -265,7 +245,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     _enginePoolLimit = engineSourcesBatchLimit(
       tv: SourcesPanelTv.isTv(context),
     );
-    _engineDbg(refresh ? 'refresh' : (reset ? 'reset' : 'start'));
     setState(() {
       if (reset) {
         _s._engineStreams = [];
@@ -292,7 +271,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         _s._errorMessage = 'No streams found from selected Forja plugins';
       }
     });
-    _engineDbg(stillPending ? 'end pending' : 'end');
   }
 
   String _enginePluginLabel(String pluginId) {

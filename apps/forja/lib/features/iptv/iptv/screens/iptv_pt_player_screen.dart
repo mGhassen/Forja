@@ -168,7 +168,7 @@ class IptvPlaySource {
 /// [engineContext] (IPTV ≠ VOD ≠ Live); other platforms use libmpv. Includes:
 ///   • Watchdog (3 detectors): long buffering, frozen position, ready-but-not-playing
 ///   • Tiered recovery: reopen + live-edge → stop+open → recreate
-///   • Mid-stream underrun → drop stale buffers / jump live (no silent 15s replay)
+///   • Mid-stream underrun → cache-pause (freeze + Buffering refill; no back-buffer replay)
 ///   • Multi-source rotation
 ///   • Backoff retries with healthy-streak reset
 ///   • Pretty responsive overlay UI

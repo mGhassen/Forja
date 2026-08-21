@@ -482,15 +482,22 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         await p.setProperty('demuxer-max-bytes', '33554432');
         await p.setProperty('demuxer-max-back-bytes', '8388608');
         await p.setProperty('audio-buffer', '0.4');
+        // VOD: do not pause-on-empty — progressive + MediaCodec pools (issue 163).
+        await p.setProperty('cache-pause', 'no');
+        await p.setProperty('cache-pause-initial', 'no');
       } else {
+        // Live: pause-to-refill when ahead cache drains — freeze last frame +
+        // Buffering instead of chewing demuxer-max-back-bytes (silent replay).
+        debugPrint('[IPTV Player] MediaKit cache profile=live (pause-on-empty)');
         await p.setProperty('cache-secs', '30');
         await p.setProperty('demuxer-readahead-secs', '20');
         await p.setProperty('demuxer-max-bytes', '150000000');
         await p.setProperty('demuxer-max-back-bytes', '25000000');
         await p.setProperty('audio-buffer', '1.0');
+        await p.setProperty('cache-pause', 'yes');
+        await p.setProperty('cache-pause-wait', '3');
+        await p.setProperty('cache-pause-initial', 'yes');
       }
-      await p.setProperty('cache-pause', 'no');
-      await p.setProperty('cache-pause-initial', 'no');
 
       await p.setProperty('sub-auto', 'all');
       await p.setProperty('sub-visibility', 'no');

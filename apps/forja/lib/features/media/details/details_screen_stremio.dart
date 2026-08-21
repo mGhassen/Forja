@@ -38,11 +38,13 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
   /// generations still bump so late UI updates are ignored, but Engine resolve
   /// jobs stay alive for the magnet / stream that starts next - and Play /
   /// webstreaming cancel flags stay clear so the new resolve is not aborted.
+  /// [EngineService.cancelPending] is also skipped so in-flight Rust QuickJS
+  /// extracts are not gen-bumped into a flutter_js fallback stampede.
   ///
   /// When [cancelEngineJobs] is true (Cancel, leave title, dispose), also flip
-  /// those flags. `cancelAllPending` alone only kills the *current* host sniff;
-  /// without the flag the Auto loop keeps walking the next server after tab
-  /// switch (the Cancel button always set both).
+  /// those flags and abort Engine extracts. `cancelAllPending` alone only kills
+  /// the *current* host sniff; without the flag the Auto loop keeps walking the
+  /// next server after tab switch (the Cancel button always set both).
   ///
   /// Pass [rebuild]: false from [State.dispose] — by then the [Element] is
   /// already defunct, so [State.setState] asserts even though [State.mounted]
@@ -68,7 +70,12 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     DomainStreamProviderResolver.cancelAllPending(
       cancelEngineJobs: cancelEngineJobs,
     );
-    EngineService.instance.cancelPending();
+    // Play path passes cancelEngineJobs: false — keep Rust QuickJS extracts
+    // alive. cancelPending() bumps _extractGeneration and used to force every
+    // in-flight plugin onto flutter_js forks mid-playback (JSC SIGSEGV).
+    if (cancelEngineJobs) {
+      EngineService.instance.cancelPending();
+    }
     _s._isSearching = false;
     _s._isStremioFetching = false;
     _s._isNuvioFetching = false;

@@ -568,7 +568,10 @@ class EngineService {
     int? anilistId,
     bool allowHostFallback = true,
   }) async {
-    // RFC-064: Rust QuickJS on tokio (true parallel). Null → flutter_js fork.
+    // RFC-064: Rust QuickJS on tokio (true parallel). Null → flutter_js fork
+    // only when Rust is unsupported — never after cancelPending gen bump
+    // (that stampeded UI-isolate JSC forks mid-play → macOS SIGSEGV).
+    final genAtStart = _extractGeneration;
     final viaRust = await _runHttpPluginRustJs(
       pluginId: pluginId,
       tmdbId: tmdbId,
@@ -583,6 +586,16 @@ class EngineService {
       allowHostFallback: allowHostFallback,
     );
     if (viaRust != null) return viaRust;
+    if (genAtStart != _extractGeneration) {
+      debugPrint(
+        '[engine] $pluginId cancelled — skip flutter_js fallback',
+      );
+      return EngineExtractResult(
+        pluginId: pluginId,
+        pluginName: pluginId,
+        streams: const [],
+      );
+    }
 
     final runtime = EngineRuntime.fork();
     try {
