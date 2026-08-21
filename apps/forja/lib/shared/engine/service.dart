@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
 import 'package:forja/shared/engine/anime_ids.dart';
 import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/engine/host_resolver.dart';
@@ -372,7 +373,7 @@ class EngineService {
     }
     if (plugin == null || !plugin.enabled || !plugin.isExtractable) return null;
     // Soft categories only — Sources filter hides chips; selected plugins always run.
-    final mediaType = type == 'tv' || type == 'series' ? 'tv' : 'movie';
+    final mediaType = _normalizeEngineMediaType(type);
 
     if (plugin.isHost) {
       final resolvedMovie =
@@ -427,7 +428,7 @@ class EngineService {
       } else {
         animeIds = await EngineAnimeIds.resolve(
           tmdbId: tmdbId,
-          mediaType: mediaType,
+          mediaType: _tmdbResolveMediaType(mediaType),
           season: season ?? 1,
           episode: episode ?? 1,
           title: title,
@@ -516,6 +517,14 @@ class EngineService {
         debugPrint('[engine] videasy dart fallback failed: $e');
       }
     }
+    if (rawList.isEmpty && gen == _extractGeneration) {
+      rawList = await _animeEngineFallbacks(
+        pluginId: plugin.id,
+        anilistId: resolvedAnilist,
+        episode: animeIds?.mappedEpisode ?? episode ?? 1,
+        isCancelled: () => gen != _extractGeneration,
+      );
+    }
     if (gen != _extractGeneration) {
       debugPrint('[engine] ${plugin.id} cancelled after ${sw.elapsedMilliseconds}ms');
       return null;
@@ -559,6 +568,22 @@ class EngineService {
     int? anilistId,
     bool allowHostFallback = true,
   }) async {
+    // RFC-064: Rust QuickJS on tokio (true parallel). Null → flutter_js fork.
+    final viaRust = await _runHttpPluginRustJs(
+      pluginId: pluginId,
+      tmdbId: tmdbId,
+      type: type,
+      season: season,
+      episode: episode,
+      title: title,
+      year: year,
+      movie: movie,
+      malId: malId,
+      anilistId: anilistId,
+      allowHostFallback: allowHostFallback,
+    );
+    if (viaRust != null) return viaRust;
+
     final runtime = EngineRuntime.fork();
     try {
       return await runPlugin(
@@ -578,5 +603,324 @@ class EngineService {
     } finally {
       runtime.dispose();
     }
+  }
+
+  /// Off-UI extract. Returns `null` when Rust JS is unsupported / failed setup
+  /// so [runPluginIsolated] can fall back to flutter_js.
+  Future<EngineExtractResult?> _runHttpPluginRustJs({
+    required String pluginId,
+    required String tmdbId,
+    required String type,
+    int? season,
+    int? episode,
+    String? title,
+    String? year,
+    Movie? movie,
+    int? malId,
+    int? anilistId,
+    bool allowHostFallback = true,
+  }) async {
+    final gen = _extractGeneration;
+    final packs = await listPacks();
+    if (gen != _extractGeneration) return null;
+    EnginePlugin? plugin;
+    for (final pack in packs) {
+      for (final p in pack.plugins) {
+        if (p.id == pluginId) {
+          plugin = p;
+          break;
+        }
+      }
+      if (plugin != null) break;
+    }
+    if (plugin == null || !plugin.enabled || !plugin.isHttp) return null;
+
+    final mediaType = _normalizeEngineMediaType(type);
+    final overlay =
+        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+    final config = mergeEngineConfig(plugin.config, overlay);
+    final code = await _loadScript(plugin);
+    if (gen != _extractGeneration || code == null) return null;
+
+    EngineAnimeIdBundle? animeIds;
+    if (EngineAnimeIds.pluginNeedsResolve(plugin)) {
+      final kinds = EngineAnimeIds.requiredKinds(plugin);
+      final haveMal =
+          !kinds.contains('mal') || (malId != null && malId > 0);
+      final haveAnilist =
+          !kinds.contains('anilist') || (anilistId != null && anilistId > 0);
+      if (haveMal && haveAnilist) {
+        animeIds = EngineAnimeIdBundle(
+          imdbId: movie?.imdbId,
+          malId: malId,
+          anilistId: anilistId,
+          mappedEpisode: episode ?? 1,
+        );
+      } else {
+        animeIds = await EngineAnimeIds.resolve(
+          tmdbId: tmdbId,
+          mediaType: _tmdbResolveMediaType(mediaType),
+          season: season ?? 1,
+          episode: episode ?? 1,
+          title: title,
+          imdbId: movie?.imdbId,
+          knownMalId: malId,
+          knownAnilistId: anilistId,
+          kinds: kinds,
+        );
+      }
+      if (gen != _extractGeneration) return null;
+    }
+
+    final timeout =
+        EmbedExtractProfiles.resolve(plugin.id).timeout +
+        const Duration(seconds: 30);
+    final ctx = <String, Object?>{
+      'tmdbId': tmdbId,
+      'imdbId': animeIds?.imdbId ?? movie?.imdbId ?? '',
+      'malId': animeIds?.malId ?? malId ?? '',
+      'anilistId': animeIds?.anilistId ?? anilistId ?? '',
+      'mappedEpisode': animeIds?.mappedEpisode ?? episode ?? 1,
+      'type': mediaType,
+      'season': season ?? 1,
+      'episode': episode ?? 1,
+      'title': title ?? '',
+      'year': year ?? '',
+      'url': '',
+      'config': config,
+    };
+
+    debugPrint(
+      '[engine] ${plugin.id} start (rust-js) tmdb=$tmdbId type=$mediaType '
+      's=$season e=$episode title=$title',
+    );
+    final sw = Stopwatch()..start();
+    late final String rawJson;
+    try {
+      rawJson = await EngineJobs.run(EngineAsyncJob.engineJsExtract, {
+        'plugin_id': plugin.id,
+        'code': code,
+        'ctx': ctx,
+        'timeout_ms': timeout.inMilliseconds,
+        'allow_host_fallback': allowHostFallback,
+      });
+    } catch (e) {
+      debugPrint('[engine] ${plugin.id} rust-js submit failed: $e');
+      return null;
+    }
+    if (gen != _extractGeneration) return null;
+
+    Map<String, dynamic> decoded;
+    try {
+      final v = jsonDecode(rawJson);
+      if (v is! Map) return null;
+      decoded = Map<String, dynamic>.from(v);
+    } catch (_) {
+      return null;
+    }
+    if (decoded['error'] != null && decoded['streams'] == null) {
+      debugPrint('[engine] ${plugin.id} rust-js job error: ${decoded['error']}');
+      return null;
+    }
+    if (decoded['unsupported'] == true) {
+      debugPrint(
+        '[engine] ${plugin.id} rust-js unsupported — flutter_js fallback',
+      );
+      return null;
+    }
+    if (decoded['error'] != null) {
+      debugPrint('[engine] ${plugin.id} rust-js error: ${decoded['error']}');
+      // Soft failure with empty streams still counts as a completed extract
+      // when unsupported is not set (e.g. timeout) — avoid double-running.
+    }
+
+    final rawList = <Map<String, dynamic>>[];
+    final streamsRaw = decoded['streams'];
+    if (streamsRaw is List) {
+      for (final s in streamsRaw) {
+        if (s is Map) rawList.add(Map<String, dynamic>.from(s));
+      }
+    }
+
+    var effectiveRaw = rawList;
+    if (effectiveRaw.isEmpty &&
+        plugin.id == 'videasy' &&
+        movie != null &&
+        gen == _extractGeneration) {
+      debugPrint('[engine] videasy rust-js empty — dart API fallback');
+      try {
+        final extracted = await VideasyExtractor(onLog: debugPrint).extract(
+          tmdbId: tmdbId,
+          isMovie: mediaType != 'tv',
+          title: title ?? movie.title,
+          year: VideasyExtractor.yearFromReleaseDate(
+            year != null ? '$year-01-01' : movie.releaseDate,
+          ),
+          imdbId: animeIds?.imdbId ?? movie.imdbId,
+          season: mediaType == 'tv' ? season : null,
+          episode: mediaType == 'tv' ? episode : null,
+          totalSeasons: mediaType == 'tv' ? movie.numberOfSeasons : null,
+          isCancelled: () => gen != _extractGeneration,
+        );
+        if (extracted?.sources != null) {
+          effectiveRaw = [
+            for (final s in extracted!.sources!)
+              if (s.url.trim().isNotEmpty)
+                {
+                  'url': s.url,
+                  'name': s.title.isNotEmpty ? s.title : 'Videasy',
+                  'quality': s.title,
+                  if (s.headers != null && s.headers!.isNotEmpty)
+                    'headers': s.headers,
+                },
+          ];
+        }
+      } catch (e) {
+        debugPrint('[engine] videasy dart fallback failed: $e');
+      }
+    }
+    if (effectiveRaw.isEmpty && gen == _extractGeneration) {
+      effectiveRaw = await _animeEngineFallbacks(
+        pluginId: plugin.id,
+        anilistId: animeIds?.anilistId ?? anilistId,
+        episode: animeIds?.mappedEpisode ?? episode ?? 1,
+        isCancelled: () => gen != _extractGeneration,
+      );
+    }
+    if (gen != _extractGeneration) return null;
+
+    final streams = <Map<String, dynamic>>[];
+    for (final s in effectiveRaw) {
+      final url = (s['url'] ?? '').toString().trim();
+      if (url.isEmpty || isTorrentStreamUrl(url)) continue;
+      final mapped = mapEngineStream(
+        raw: s,
+        plugin: plugin,
+        mediaTitle: title,
+        year: year,
+        type: mediaType,
+        season: season,
+        episode: episode,
+      );
+      if (mapped != null) streams.add(mapped);
+    }
+    debugPrint(
+      '[engine] ${plugin.id} done (rust-js) raw=${effectiveRaw.length} '
+      'streams=${streams.length} ${sw.elapsedMilliseconds}ms',
+    );
+    return EngineExtractResult(
+      pluginId: plugin.id,
+      pluginName: plugin.name,
+      streams: streams,
+    );
+  }
+
+  static String _normalizeEngineMediaType(String type) {
+    final t = type.toLowerCase().trim();
+    if (t == 'tv' || t == 'series') return 'tv';
+    if (t == 'anime') return 'anime';
+    if (t == 'drama') return 'drama';
+    return 'movie';
+  }
+
+  /// TMDB id-mapping APIs only understand movie/tv.
+  static String _tmdbResolveMediaType(String mediaType) {
+    if (mediaType == 'anime' || mediaType == 'drama') return 'tv';
+    return mediaType;
+  }
+
+  /// When JS HTTP is empty (CF / wrong paths), reuse Rust+WebView anime extractors.
+  Future<List<Map<String, dynamic>>> _animeEngineFallbacks({
+    required String pluginId,
+    required int? anilistId,
+    required int episode,
+    required bool Function() isCancelled,
+  }) async {
+    final al = anilistId ?? 0;
+    if (al <= 0 || isCancelled()) return const [];
+
+    if (pluginId == 'miruro') {
+      debugPrint('[engine] miruro JS empty — dart CF pipe fallback');
+      const providers = ['bee', 'kiwi', 'zoro', 'bonk', 'ally', 'moo', 'hop', 'bun'];
+      final tasks = <Future<List<Map<String, dynamic>>>>[];
+      for (final cat in ['sub', 'dub']) {
+        for (final prov in providers) {
+          tasks.add(() async {
+            if (isCancelled()) return const <Map<String, dynamic>>[];
+            try {
+              final resolved = await miruroResolveWithCfFallback(
+                anilistId: al,
+                episodeNumber: episode,
+                category: cat,
+                provider: prov,
+                fetchPipeViaWebView: MiruroPipeSession.instance.get,
+              );
+              final label = miruroUpstreamSources[prov] ?? prov;
+              return [
+                for (final s in resolved.streams)
+                  if (s.url.trim().isNotEmpty)
+                    {
+                      'url': s.url,
+                      'name': 'Miruro $label ${cat.toUpperCase()}',
+                      'language': cat == 'dub' ? 'Dub' : 'Sub',
+                      'headers': {
+                        if (s.referer.isNotEmpty) 'Referer': s.referer,
+                        if (s.origin.isNotEmpty) 'Origin': s.origin,
+                      },
+                    },
+              ];
+            } catch (e) {
+              debugPrint('[engine] miruro dart fallback $prov/$cat: $e');
+              return const <Map<String, dynamic>>[];
+            }
+          }());
+        }
+      }
+      final groups = await Future.wait(tasks);
+      final seen = <String>{};
+      final out = <Map<String, dynamic>>[];
+      for (final rows in groups) {
+        for (final r in rows) {
+          final u = (r['url'] ?? '').toString();
+          if (u.isEmpty || !seen.add(u)) continue;
+          out.add(r);
+        }
+      }
+      return out;
+    }
+
+    if (pluginId == 'vidnest-anime') {
+      debugPrint('[engine] vidnest-anime JS empty — dart API fallback');
+      final out = <Map<String, dynamic>>[];
+      for (final prov in vidnestKnownProviders) {
+        for (final cat in ['sub', 'dub']) {
+          if (isCancelled()) return out;
+          try {
+            final res = await vidnestExtractWithProvider(
+              anilistId: al,
+              episodeNumber: episode,
+              category: cat,
+              provider: prov,
+            );
+            if (res == null || res.url.trim().isEmpty) continue;
+            out.add({
+              'url': res.url,
+              'name':
+                  '${vidnestUpstreamLabels[prov] ?? prov} (${cat.toUpperCase()})',
+              'language': cat == 'dub' ? 'Dub' : 'Sub',
+              'headers': {
+                if (res.referer.isNotEmpty) 'Referer': res.referer,
+                if (res.origin.isNotEmpty) 'Origin': res.origin,
+              },
+            });
+          } catch (e) {
+            debugPrint('[engine] vidnest-anime dart fallback $prov/$cat: $e');
+          }
+        }
+      }
+      return out;
+    }
+
+    return const [];
   }
 }

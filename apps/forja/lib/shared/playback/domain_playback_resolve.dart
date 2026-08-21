@@ -7,6 +7,7 @@ import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/extractors/embed_extract_profiles.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
+import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/webview/atv_webview_guard.dart';
@@ -304,10 +305,12 @@ class DomainStreamProviderResolver {
   }
 
   /// Same host sniff path as movie/TV VidLink (`EmbedExtractProfiles.vidlink`).
+  /// Honors Playback → Webstreaming (movie parity: no sniff when off).
   Future<StreamProviderResolveResult?> _resolveVidlinkAnime(
     AnimeEmbed embed,
     bool Function() cancelled,
   ) async {
+    if (!await PlaySourceEffective.webstreaming()) return null;
     if (isAndroidTvHeadlessWebViewBlocked) return null;
     final embedUrl = embed.url.trim();
     if (embedUrl.isEmpty) return null;
@@ -374,6 +377,7 @@ class DomainStreamProviderResolver {
         forcedBaseUrl: baseUrl,
         timeout: const Duration(seconds: 45),
         isCancelled: () => cancelled(),
+        allowWebStreamSniff: await PlaySourceEffective.webstreaming(),
       );
       if (cancelled() || stream == null) return null;
       final label = KissKhService.mirrorLabel(

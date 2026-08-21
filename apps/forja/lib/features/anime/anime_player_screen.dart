@@ -10,6 +10,8 @@ import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
 import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
 import 'package:forja/shared/playback/anime_playback_bridge.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
+import 'package:forja/shared/playback/play_source_effective.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
@@ -431,6 +433,8 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   List<String> _providerOrder = List<String>.from(
     AnimeStreamProviders.defaultOrder,
   );
+  /// Playback → Webstreaming: VidLink host sniff only when on (movie parity).
+  bool _webstreamingEnabled = false;
   AnikotoSeries? _series;
   late String _category;
   String? _preferredSourceKey;
@@ -685,6 +689,13 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     _preferredSourceTitle = title;
   }
 
+  List<AnimeEmbed> _applyPlaySourceGates(List<AnimeEmbed> embeds) {
+    if (_webstreamingEnabled) return embeds;
+    return embeds
+        .where((e) => !isAnimeWebStreamSniffProvider(e.server))
+        .toList(growable: false);
+  }
+
   Future<void> _ensureEmbedsReady() async {
     if (_allEmbeds.isNotEmpty) return;
     if (AnimeService.savedSourceNeedsAnikoto(_preferredSourceKey)) {
@@ -693,13 +704,15 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     if (!mounted || _cancelled) return;
     final malId = await _service.resolveMalId(widget.anime.id);
     if (!mounted || _cancelled) return;
-    _allEmbeds = _service.buildAllEmbeds(
-      anilistId: widget.anime.id,
-      episode: widget.episodeNumber,
-      series: _series,
-      animeTitles: widget.anime.resolveTitleCandidates(),
-      isAdult: widget.anime.isAdult,
-      malId: malId,
+    _allEmbeds = _applyPlaySourceGates(
+      _service.buildAllEmbeds(
+        anilistId: widget.anime.id,
+        episode: widget.episodeNumber,
+        series: _series,
+        animeTitles: widget.anime.resolveTitleCandidates(),
+        isAdult: widget.anime.isAdult,
+        malId: malId,
+      ),
     );
   }
 
@@ -740,6 +753,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
   }
 
   Future<void> _bootstrap() async {
+    _webstreamingEnabled = await PlaySourceEffective.webstreaming(_settings);
     final prefFuture = _service.preferredSource(
       animeId: widget.anime.id,
       category: _category,
@@ -761,11 +775,25 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       );
       cached = _hitsFromJson(disk);
     }
+    if (cached != null && !_webstreamingEnabled) {
+      final kept = cached
+          .where((h) => !isAnimeWebStreamSniffProvider(h.embed.server))
+          .toList();
+      cached = kept.isEmpty ? null : kept;
+    }
 
     final pref = await prefFuture;
     _providerOrder = await orderFuture;
-    _preferredSourceKey = pref?.sourceKey;
-    _preferredSourceTitle = pref?.sourceTitle;
+    final prefKey = pref?.sourceKey;
+    if (!_webstreamingEnabled &&
+        prefKey != null &&
+        isAnimeWebStreamSniffProvider(prefKey)) {
+      _preferredSourceKey = null;
+      _preferredSourceTitle = null;
+    } else {
+      _preferredSourceKey = prefKey;
+      _preferredSourceTitle = pref?.sourceTitle;
+    }
 
     if (cached != null) {
       if (!mounted || _cancelled) return;
@@ -844,17 +872,20 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       );
     }
 
-    _allEmbeds = _service.buildAllEmbeds(
-      anilistId: widget.anime.id,
-      episode: widget.episodeNumber,
-      series: _series,
-      animeTitles: widget.anime.resolveTitleCandidates(),
-      isAdult: widget.anime.isAdult,
-      malId: malId,
+    _allEmbeds = _applyPlaySourceGates(
+      _service.buildAllEmbeds(
+        anilistId: widget.anime.id,
+        episode: widget.episodeNumber,
+        series: _series,
+        animeTitles: widget.anime.resolveTitleCandidates(),
+        isAdult: widget.anime.isAdult,
+        malId: malId,
+      ),
     );
     if (kDebugMode && pref != null) {
       debugPrint(
-        '[AnimePlayer] loaded pref key=${pref.sourceKey} title=${pref.sourceTitle}',
+        '[AnimePlayer] loaded pref key=${pref.sourceKey} title=${pref.sourceTitle}'
+        '${_webstreamingEnabled ? '' : ' · webstreaming off (no VidLink sniff)'}',
       );
     }
     if (!mounted || _cancelled) return;

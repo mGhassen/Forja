@@ -21,6 +21,7 @@ abstract final class EngineAsyncJob {
   static const liveMatchesFetch = 12;
   static const iptvRedditCatalog = 13;
   static const iptvXtream = 14;
+  static const engineJsExtract = 15;
 }
 
 class _AwaitJobCmd {

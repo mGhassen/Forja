@@ -1,8 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/shared/player/controls/player_sources_panel.dart';
+import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
@@ -87,6 +90,10 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
     if (hasPage != _overlayHasPage) {
       setState(() => _overlayHasPage = hasPage);
       if (!hasPage) {
+        // Hub catalog Sources inserts OverlayEntry into this navigator's
+        // Overlay. After pop-to-root, IgnorePointer blocks hits so the panel
+        // stays painted and uncancellable — tear it down with the route.
+        dismissShellOverlaySourcePanels();
         final tabId = ShellTvFocus.currentNavTabId;
         if (tabId != null && tabId.isNotEmpty) {
           unawaited(ProductAnalytics.screenTab(tabId));
@@ -103,6 +110,7 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
       if (settled == _overlayHasPage) return;
       setState(() => _overlayHasPage = settled);
       if (!settled) {
+        dismissShellOverlaySourcePanels();
         final tabId = ShellTvFocus.currentNavTabId;
         if (tabId != null && tabId.isNotEmpty) {
           unawaited(ProductAnalytics.screenTab(tabId));
@@ -185,5 +193,21 @@ void maybePopShellOverlay<T extends Object?>([T? result]) {
 void popShellOverlayUntilRoot() {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay == null || !overlay.canPop()) return;
+  // Dismiss before pop: IgnorePointer arms as soon as canPop is false, so a
+  // leftover Sources OverlayEntry would paint and ignore all close taps.
+  dismissShellOverlaySourcePanels();
   overlay.popUntil((route) => route.isFirst);
+}
+
+/// Hub details (Asian Drama / Anime) open catalog Sources via
+/// [PlayerSourcesPanel] OverlayEntry on this navigator. Nav / back to root
+/// must remove it — the entry is not owned by the details route.
+void dismissShellOverlaySourcePanels() {
+  SourcesPanelTv.dismissFiltersIfOpen();
+  if (PlayerSourcesPanel.isShowing) {
+    PlayerSourcesPanel.dismiss();
+  }
+  if (PlayerTorrentFilePanel.isShowing) {
+    PlayerTorrentFilePanel.dismiss();
+  }
 }

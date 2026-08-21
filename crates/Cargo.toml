@@ -27,6 +27,7 @@ members = [
     "live-matches",
     "resolver-engine",
     "catalog",
+    "engine-js",
 ]
 
 [workspace.package]

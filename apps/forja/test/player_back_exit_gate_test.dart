@@ -129,13 +129,18 @@ void main() {
     expect(chrome, isFalse);
     expect(armed, isTrue);
 
-    // HW + didPopRoute twin on the same press must not exit.
+    // HW + didPopRoute twin can land well after 80ms under ATV load — must
+    // not treat hide+arm as confirm-exit on the same physical press.
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 150)),
+    );
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
+    expect(chrome, isFalse);
 
     await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      () => Future<void>.delayed(const Duration(milliseconds: 450)),
     );
 
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
@@ -157,10 +162,12 @@ void main() {
     expect(PlayerBackExitGate.tryFocusBackStay(), isTrue);
     expect(PlayerBackExitGate.exitReady, isFalse);
     expect(focused, isTrue);
-    // Same-press popRoute twin must not exit.
+    // Same-press popRoute twin must not exit (including late twins).
+    expect(PlayerBackExitGate.tryFocusBackStay(), isTrue);
+    await Future<void>.delayed(const Duration(milliseconds: 150));
     expect(PlayerBackExitGate.tryFocusBackStay(), isTrue);
 
-    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     expect(PlayerBackExitGate.tryFocusBackStay(), isFalse);
   });
 

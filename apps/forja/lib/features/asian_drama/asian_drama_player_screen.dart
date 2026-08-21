@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
+import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
@@ -415,6 +416,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
         forcedBaseUrl: KissKhService.baseUrlForHost(activeHost),
         timeout: const Duration(seconds: 60),
         isCancelled: () => _cancelled,
+        allowWebStreamSniff: await PlaySourceEffective.webstreaming(),
         onProgress: (phase, detail) {
           if (!mounted) return;
           if (phase == 'rate_limit') sawRateLimit = true;

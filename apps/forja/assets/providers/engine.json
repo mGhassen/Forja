@@ -532,6 +532,28 @@
       }
     },
     {
+      "id": "megaplay",
+      "name": "Megaplay",
+      "entry": "megaplay.js",
+      "ids": [
+        "title",
+        "tmdb",
+        "mal",
+        "anilist"
+      ],
+      "types": [
+        "anime"
+      ],
+      "kind": "http",
+      "config": {
+        "megaplay": "https://megaplay.buzz",
+        "vidwish": "https://vidwish.live",
+        "megacloud": "https://megacloud.bloggy.click",
+        "vidtube": "https://vidtube.site",
+        "scrapeReferer": "https://www.enma.lol/"
+      }
+    },
+    {
       "id": "animepahe",
       "name": "AnimePahe",
       "entry": "animepahe.js",
@@ -719,6 +741,9 @@
       "id": "vidnest-anime",
       "name": "VidNest Anime",
       "entry": "vidnest.js",
+      "ids": [
+        "anilist"
+      ],
       "types": [
         "anime"
       ],
@@ -731,26 +756,22 @@
           {
             "id": "hianime",
             "name": "HiAnime",
-            "movie": "hianime/movie",
-            "tv": "hianime/tv"
+            "anime": "hianime"
           },
           {
             "id": "animepahe",
             "name": "AnimePahe",
-            "movie": "animepahe/movie",
-            "tv": "animepahe/tv"
+            "anime": "animepahe"
           },
           {
             "id": "kickass",
             "name": "KickAssAnime",
-            "movie": "kickassanime/movie",
-            "tv": "kickassanime/tv"
+            "anime": "kickassanime"
           },
           {
             "id": "9anime",
             "name": "9Anime",
-            "movie": "9anime/movie",
-            "tv": "9anime/tv"
+            "anime": "9anime"
           }
         ]
       }

@@ -330,11 +330,19 @@ abstract final class ShellTvFocusCoordinator {
     if (consumeOverlayBack()) return true;
 
     // Confirming exit / pop must not be swallowed by debounce.
-    // Same-press twins (HardwareKeyboard + didPopRoute) still land inside
-    // [_backTwinWindow] even when a stay step set [_backStepPending].
+    // Same-press twins (HardwareKeyboard + didPopRoute) often land a few ms
+    // apart — but under load they can exceed [_backTwinWindow]. After a stay
+    // (hide chrome / arm), swallow within [_backDebounceWindow] without
+    // re-running the exit ladder: hide+arm then a late twin would otherwise
+    // treat chrome-already-down + armed as confirm-exit on the same press.
+    final now = DateTime.now();
     final lastBack = _lastBackHandledAt;
-    if (lastBack != null &&
-        DateTime.now().difference(lastBack) < _backTwinWindow) {
+    if (lastBack != null && now.difference(lastBack) < _backTwinWindow) {
+      return true;
+    }
+    if (_backStepPending &&
+        lastBack != null &&
+        now.difference(lastBack) < _backDebounceWindow) {
       return true;
     }
     if (!_backStepPending &&

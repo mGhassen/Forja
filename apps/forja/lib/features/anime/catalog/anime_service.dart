@@ -981,6 +981,7 @@ class AnimeService {
       }
     }
     // VidLink - MAL embed (same host sniff as movie/TV VidLink).
+    // Anime player drops these when Playback → Webstreaming is off.
     if (mal > 0) {
       for (final cat in const ['sub', 'dub']) {
         all.add(AnimeEmbed(

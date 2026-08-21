@@ -23,6 +23,16 @@ bool isWebStreamProviderId(String sourceId) {
   return StreamProviderDisplay.hasProfile(id);
 }
 
+/// Anime hub embed that uses the movie/TV Webstreaming host sniff
+/// ([StreamExtractor] / VidLink MAL embed). Gate on
+/// [PlaySourceEffective.webstreaming] — same contract as Forja Auto
+/// (`allowHostFallback: false` when Webstreaming is off).
+bool isAnimeWebStreamSniffProvider(String sourceKeyOrServer) {
+  if (sourceKeyOrServer.isEmpty) return false;
+  return StreamProviderDisplay.canonicalId(sourceKeyOrServer).toLowerCase() ==
+      'vidlink';
+}
+
 /// True for playback modes that use the torrent/Stremio **Sources** right panel
 /// (not the layers webstreaming server picker).
 bool isCatalogSourcesMode(String? providerId) {

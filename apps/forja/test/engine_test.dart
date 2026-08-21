@@ -422,6 +422,7 @@ void main() {
           'anidao',
           'aniwaves',
           'miruro',
+          'megaplay',
           'animedunya',
           'anineko',
           'animegg',
@@ -690,6 +691,11 @@ void main() {
                 as List)
             .length,
         greaterThan(0),
+      );
+      expect(parsed.firstWhere((p) => p.id == 'megaplay').entry, 'megaplay.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'megaplay').ids,
+        containsAll(['anilist', 'mal']),
       );
       expect(parsed.firstWhere((p) => p.id == 'bingebox').entry, 'embed.js');
       expect(
@@ -964,6 +970,8 @@ void main() {
       expect(animepahe.contains('extractKwik'), isTrue);
       expect(animepahe.contains('kwik.si'), isTrue);
       expect(animepahe.contains('id-mapping-api-malid'), isTrue);
+      expect(animepahe.contains("ctx.type === 'anime'"), isTrue);
+      expect(animepahe.contains('resolveMal'), isTrue);
 
       final reanime = await rootBundle.loadString(
         'assets/providers/reanime.js',
@@ -1038,6 +1046,19 @@ void main() {
       final miruro = await rootBundle.loadString('assets/providers/miruro.js');
       expect(miruro.contains('api/secure/pipe'), isTrue);
       expect(miruro.contains('decodePipe'), isTrue);
+      expect(miruro.contains('x-obfuscated'), isTrue);
+      expect(miruro.contains('episodeId: String(ep.id)'), isTrue);
+      expect(miruro.contains('encodeReq(String(ep.id))'), isFalse);
+
+      final megaplay = await rootBundle.loadString(
+        'assets/providers/megaplay.js',
+      );
+      expect(megaplay.contains('/stream/ani/'), isTrue);
+      expect(megaplay.contains('getSources'), isTrue);
+
+      final vidnest = await rootBundle.loadString('assets/providers/vidnest.js');
+      expect(vidnest.contains('/anime/'), isTrue);
+      expect(vidnest.contains("ctx.type === 'anime'"), isTrue);
 
       final animenosub = await rootBundle.loadString(
         'assets/providers/animenosub.js',

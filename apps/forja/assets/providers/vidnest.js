@@ -13,8 +13,9 @@ function extract(ctx) {
     Origin: origin,
     Referer: origin + '/',
   };
-  var tmdbId = String(ctx.tmdbId);
+  var tmdbId = String(ctx.tmdbId || '');
   var isMovie = ctx.type === 'movie';
+  var isAnime = ctx.type === 'anime';
   var servers = cfg.servers || [
     { id: 'gama', name: 'Gama', movie: 'moviebox/movie', tv: 'moviebox/tv' },
     { id: 'hexa', name: 'Hexa', movie: 'vidlink/movie', tv: 'vidlink/tv' },
@@ -104,6 +105,17 @@ function extract(ctx) {
         row.headers,
       );
     });
+    (json.sources || []).forEach(function (row) {
+      var u = row && (row.file || row.url);
+      if (!u) return;
+      push(
+        u,
+        server.name,
+        String(row.quality || row.type || ''),
+        String(row.language || row.lang || ''),
+        row.headers || json.headers,
+      );
+    });
     return rows;
   }
 
@@ -117,6 +129,77 @@ function extract(ctx) {
       }),
     ).then(function (groups) {
       return [].concat.apply([], groups);
+    });
+  }
+
+  function anilistId() {
+    if (ctx.anilistId) return Number(ctx.anilistId) || 0;
+    var fromHost = globalThis.__engineCtxAnilist && globalThis.__engineCtxAnilist(ctx);
+    return fromHost ? Number(fromHost) || 0 : 0;
+  }
+
+  function animeExtract() {
+    var al = anilistId();
+    if (!al) return Promise.resolve([]);
+    var ep = Number(ctx.mappedEpisode || ctx.episode || 1) || 1;
+    var animeServers = (cfg.servers || []).filter(function (s) {
+      return s && (s.anime || s.id === 'hianime' || s.id === 'animepahe' || s.id === 'kickass' || s.id === '9anime');
+    });
+    if (!animeServers.length) {
+      animeServers = [
+        { id: 'hianime', name: 'HiAnime' },
+        { id: 'animepahe', name: 'AnimePahe' },
+      ];
+    }
+    var cats = ['sub', 'dub'];
+    var tasks = [];
+    animeServers.forEach(function (server) {
+      var key = String(server.id || server.anime || '').toLowerCase();
+      if (!key) return;
+      cats.forEach(function (cat) {
+        var uri = api + '/' + key + '/anime/' + al + '/' + ep + '/' + cat;
+        tasks.push(
+          ctx
+            .fetch(uri, { headers: headers })
+            .then(function (r) {
+              if (!r.ok) return [];
+              return r.text();
+            })
+            .then(function (body) {
+              var json = decodeBody(body);
+              if (!json) return [];
+              var rows = emit(json, {
+                name: (server.name || key) + ' (' + cat.toUpperCase() + ')',
+              });
+              rows.forEach(function (row) {
+                row.language = cat === 'dub' ? 'Dub' : 'Sub';
+              });
+              return resolveRows(rows);
+            })
+            .catch(function () {
+              return [];
+            }),
+        );
+      });
+    });
+    return Promise.all(tasks).then(function (groups) {
+      var out = [];
+      var seen = {};
+      groups.forEach(function (rows) {
+        (rows || []).forEach(function (r) {
+          if (!r || !r.url || seen[r.url]) return;
+          seen[r.url] = true;
+          out.push(r);
+        });
+      });
+      return out;
+    });
+  }
+
+  if (isAnime) {
+    return animeExtract().then(function (out) {
+      if (out.length) return out;
+      return ctx.host('vidnest');
     });
   }
 

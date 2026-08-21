@@ -264,7 +264,8 @@ class _SettingsPlaybackSectionState
                 settingsFocusableToggle(
                   context,
                   'Webstreaming',
-                  'Play from web stream extractors (Videasy, WebStreamr, …).',
+                  'Play from web stream extractors (Videasy, WebStreamr, …). '
+                  'Also gates Anime VidLink sniff and Asian Drama third-party embeds on green Play.',
                   snap.playSourceWebstreaming,
                   (val) async {
                     await _settings.setPlaySourceWebstreamingEnabled(val);

@@ -84,6 +84,9 @@ class KissKhExtractor {
     bool Function()? isCancelled,
     /// When set, only this mirror is tried (player Sources / sequential probe).
     String? forcedBaseUrl,
+    /// Third-party embed [StreamExtractor] sniff — Playback → Webstreaming only
+    /// (movie parity). KissKh native HTTP + page kkey stay available either way.
+    bool allowWebStreamSniff = true,
   }) async {
     // Serialize resolves on this instance - overlapping WebViews cancel each
     // other and leave the UI stuck on "Waiting for stream key…".
@@ -103,6 +106,7 @@ class KissKhExtractor {
         timeout: timeout,
         isCancelled: isCancelled,
         forcedBaseUrl: forcedBaseUrl,
+        allowWebStreamSniff: allowWebStreamSniff,
       );
     } finally {
       if (identical(_activeForCancel, this)) {
@@ -134,6 +138,7 @@ class KissKhExtractor {
     required String baseUrl,
     required bool Function() cancelled,
     void Function(String phase, String detail)? onProgress,
+    required bool allowWebStreamSniff,
   }) async {
     onProgress?.call('init', 'Signing stream key…');
     try {
@@ -184,17 +189,24 @@ class KissKhExtractor {
           return null;
         }
         if (embed != null) {
-          onProgress?.call('embed', 'Extracting third-party stream…');
-          final extracted = await StreamExtractor().extract(
-            embed,
-            referer: referer,
-            timeout: const Duration(seconds: 30),
-            isCancelled: cancelled,
-          );
-          if (cancelled()) return null;
-          if (extracted != null && extracted.url.isNotEmpty) {
-            streamUrl = extracted.url;
-            streamType = _streamTypeFor(streamUrl);
+          if (!allowWebStreamSniff) {
+            debugPrint(
+              '[KissKhExtractor] native: third-party embed skipped '
+              '(Webstreaming off)',
+            );
+          } else {
+            onProgress?.call('embed', 'Extracting third-party stream…');
+            final extracted = await StreamExtractor().extract(
+              embed,
+              referer: referer,
+              timeout: const Duration(seconds: 30),
+              isCancelled: cancelled,
+            );
+            if (cancelled()) return null;
+            if (extracted != null && extracted.url.isNotEmpty) {
+              streamUrl = extracted.url;
+              streamType = _streamTypeFor(streamUrl);
+            }
           }
         }
       }
@@ -352,6 +364,7 @@ class KissKhExtractor {
     required Duration timeout,
     bool Function()? isCancelled,
     String? forcedBaseUrl,
+    required bool allowWebStreamSniff,
   }) async {
     final gen = ++_resolveGen;
     _cancelled = false;
@@ -468,6 +481,7 @@ class KissKhExtractor {
         baseUrl: baseUrl,
         cancelled: cancelled,
         onProgress: onProgress,
+        allowWebStreamSniff: allowWebStreamSniff,
       );
       if (native != null || cancelled()) return native;
 
@@ -785,18 +799,25 @@ class KissKhExtractor {
           );
         }
         if (embed != null) {
-          onProgress?.call('embed', 'Extracting third-party stream…');
-          await _cleanup();
-          final extracted = await StreamExtractor().extract(
-            embed,
-            referer: referer,
-            timeout: const Duration(seconds: 30),
-            isCancelled: () => cancelled(),
-          );
-          if (cancelled()) return null;
-          if (extracted != null && extracted.url.isNotEmpty) {
-            streamUrl = extracted.url;
-            streamType = _streamTypeFor(streamUrl);
+          if (!allowWebStreamSniff) {
+            debugPrint(
+              '[KissKhExtractor] page: third-party embed skipped '
+              '(Webstreaming off)',
+            );
+          } else {
+            onProgress?.call('embed', 'Extracting third-party stream…');
+            await _cleanup();
+            final extracted = await StreamExtractor().extract(
+              embed,
+              referer: referer,
+              timeout: const Duration(seconds: 30),
+              isCancelled: () => cancelled(),
+            );
+            if (cancelled()) return null;
+            if (extracted != null && extracted.url.isNotEmpty) {
+              streamUrl = extracted.url;
+              streamType = _streamTypeFor(streamUrl);
+            }
           }
         }
       }

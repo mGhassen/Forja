@@ -261,6 +261,24 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     hasAnimeIds: (widget.anilistId ?? 0) > 0 || (widget.malId ?? 0) > 0,
   );
 
+  /// Engine extract type — keep `anime` / `drama` (do not coerce to movie).
+  String get _engineResolveType {
+    final t = widget.movie.mediaType.toLowerCase();
+    if (t == 'tv' || t == 'series') return 'tv';
+    if (t == 'anime' || _enginePanelCategory == EngineCategories.anime) {
+      return 'anime';
+    }
+    if (t == 'drama' || _enginePanelCategory == EngineCategories.drama) {
+      return 'drama';
+    }
+    return 'movie';
+  }
+
+  bool get _engineNeedsEpisode {
+    final t = _engineResolveType;
+    return t == 'tv' || t == 'anime' || t == 'drama';
+  }
+
   Set<String> get _effectiveEngineCategories =>
       _engineVisibleCategories ??
       EngineCategories.defaultsForPanelCategory(_enginePanelCategory);
@@ -2032,8 +2050,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         pluginId: pluginId,
         tmdbId: widget.movie.id.toString(),
         type: type,
-        season: widget.movie.mediaType == 'tv' ? widget.season : null,
-        episode: widget.movie.mediaType == 'tv' ? widget.episode : null,
+        season: _engineNeedsEpisode ? widget.season : null,
+        episode: _engineNeedsEpisode ? widget.episode : null,
         title: widget.movie.title,
         year: _year,
         movie: widget.movie,
@@ -2150,7 +2168,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     bool refresh = false,
   }) async {
     if (_enginePacks.isEmpty || widget.movie.id <= 0) return;
-    final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
+    final type = _engineResolveType;
     if (_engineFetching && !reset && !refresh) {
       if (_enginePoolTasks.isNotEmpty || _pendingEnginePluginIds.isEmpty) {
         _engineDbg('join');

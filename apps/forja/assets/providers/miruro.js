@@ -5,9 +5,12 @@ function extract(ctx) {
     : ['https://www.miruro.tv', 'https://www.miruro.to', 'https://www.miruro.bz'];
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
-  var isTv = ctx.type === 'tv';
-  var epNum = isTv ? ctx.episode || 1 : 1;
-  var providers = cfg.providers || ['bonk', 'kiwi', 'bee', 'bun', 'ally', 'moo', 'hop'];
+  var isEpisodic =
+    ctx.type === 'tv' || ctx.type === 'anime' || ctx.type === 'drama' || ctx.type === 'series';
+  var epNum = isEpisodic
+    ? Number(ctx.mappedEpisode || ctx.episode || 1) || 1
+    : 1;
+  var providers = cfg.providers || ['bonk', 'kiwi', 'bee', 'bun', 'ally', 'moo', 'hop', 'zoro'];
 
   function encodeReq(payload) {
     if (ctx.crypto && ctx.crypto.encodePipe) return ctx.crypto.encodePipe(payload);
@@ -15,7 +18,18 @@ function extract(ctx) {
   }
 
   function decodeBody(text, xObf) {
-    if (ctx.crypto && ctx.crypto.decodePipe) return ctx.crypto.decodePipe(text, xObf);
+    if (ctx.crypto && ctx.crypto.decodePipe) {
+      var first = ctx.crypto.decodePipe(text, xObf);
+      if (first) return first;
+      // WKWebView / CORS often omit x-obfuscated — try known levels.
+      if (!xObf) {
+        var l2 = ctx.crypto.decodePipe(text, '2');
+        if (l2) return l2;
+        var l1 = ctx.crypto.decodePipe(text, '1');
+        if (l1) return l1;
+      }
+      return null;
+    }
     try {
       return JSON.parse(text);
     } catch (e) {
@@ -39,7 +53,13 @@ function extract(ctx) {
       .then(function (r) {
         if (!r.ok) return null;
         return r.text().then(function (text) {
-          var xObf = (r.headers.get('x-obf') || r.headers.get('X-Obf') || '').trim();
+          var xObf = (
+            r.headers.get('x-obfuscated') ||
+            r.headers.get('X-Obfuscated') ||
+            r.headers.get('x-obf') ||
+            r.headers.get('X-Obf') ||
+            ''
+          ).trim();
           return decodeBody(text, xObf);
         });
       })
@@ -74,14 +94,20 @@ function extract(ctx) {
     var hls = list.filter(function (s) {
       var t = String((s && s.type) || '').toLowerCase();
       if (t === 'iframe' || t === 'embed' || t === 'html' || t === 'player') return false;
-      var u = String((s && s.url) || '');
+      var u = String((s && (s.url || s.file)) || '');
       if (!/^https?:/i.test(u)) return false;
       if (t === 'hls' || t === 'file' || t === 'mp4' || t === 'dash') return true;
       return /\.m3u8|\.mp4|\/hls|master\.m3u8/i.test(u);
     });
-    var candidates = hls.length ? hls : list.filter(function (s) {
-      return s && /^https?:/i.test(String(s.url || '')) && String(s.type || '').toLowerCase() !== 'embed';
-    });
+    var candidates = hls.length
+      ? hls
+      : list.filter(function (s) {
+          return (
+            s &&
+            /^https?:/i.test(String(s.url || s.file || '')) &&
+            String(s.type || '').toLowerCase() !== 'embed'
+          );
+        });
     candidates.sort(function (a, b) {
       if (a.default && !b.default) return -1;
       if (!a.default && b.default) return 1;
@@ -92,12 +118,13 @@ function extract(ctx) {
     var best = candidates[0];
     if (!best) return null;
     var referer =
-      (best.referer || best.Referer ||
+      (best.referer ||
+        best.Referer ||
         (headers && (headers.Referer || headers.referer || headers.Origin || headers.origin)) ||
         '') + '';
     if (!referer) referer = base + '/';
     return {
-      url: best.url,
+      url: best.url || best.file,
       name: 'Miruro ' + (best.server || best.label || best.name || 'HLS'),
       headers: { 'User-Agent': ua, Referer: referer },
     };
@@ -116,7 +143,7 @@ function extract(ctx) {
       return pipeAny({
         path: 'episodes',
         method: 'GET',
-        query: { anilistId: al },
+        query: { anilistId: String(al) },
         body: null,
         version: '0.2.0',
       }).then(function (data) {
@@ -137,17 +164,23 @@ function extract(ctx) {
               return Number(e.number || e.num) === Number(epNum);
             });
             if (!ep || !ep.id) return;
-            var encId = encodeReq(String(ep.id));
+            // episodeId is the raw pipe id — do NOT base64 it again (whole payload is encoded).
             tasks.push(
               pipeGet(data._base || bases[0], {
                 path: 'sources',
                 method: 'GET',
-                query: { episodeId: encId, provider: name, category: cat, anilistId: al },
+                query: {
+                  episodeId: String(ep.id),
+                  provider: name,
+                  category: cat,
+                  anilistId: String(al),
+                },
                 body: null,
                 version: '0.2.0',
               }).then(function (src) {
                 if (!src) return [];
-                var row = pickHls(src.streams, src.headers, data._base || bases[0]);
+                var streams = src.streams || src.sources;
+                var row = pickHls(streams, src.headers, data._base || bases[0]);
                 if (!row) return [];
                 row.name = 'Miruro ' + name + ' ' + cat.toUpperCase();
                 row.language = cat === 'dub' ? 'Dub' : 'Sub';

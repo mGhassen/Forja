@@ -40,6 +40,7 @@ pub enum JobKind {
     LiveMatchesFetch = 12,
     IptvRedditCatalog = 13,
     IptvXtream = 14,
+    EngineJsExtract = 15,
 }
 
 pub fn submit(kind: u32, payload_json: String) -> u64 {
@@ -281,6 +282,12 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
                 Ok(iptv::portal_client::request_json_async(&request_json).await)
             })
             .await
+        }
+        k if k == JobKind::EngineJsExtract as u32 => {
+            let req: engine_js::ExtractRequest =
+                serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
+            let result = engine_js::extract(req).await;
+            serde_json::to_string(&result).map_err(|e| e.to_string())
         }
         _ => Err(format!("unknown job kind {kind}")),
     }

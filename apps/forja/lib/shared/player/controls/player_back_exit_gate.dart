@@ -12,7 +12,10 @@ abstract final class PlayerBackExitGate {
   static bool _listening = false;
   static DateTime? _lastStayAt;
   static bool _exitCommitted = false;
-  static const _stayTwinWindow = Duration(milliseconds: 80);
+  /// Match shell [_backDebounceWindow] — ATV HW + didPopRoute twins often
+  /// exceed 80ms under MediaKit load; a short window lets hide+arm then exit
+  /// on the same physical Back.
+  static const _stayTwinWindow = Duration(milliseconds: 400);
 
   /// True after a Back that is ready to exit the player — next Back may skip
   /// the shell debounce window. Stay steps (hide chrome) must leave this false
@@ -104,7 +107,8 @@ abstract final class PlayerBackExitGate {
     _exitCommitted = false;
   }
 
-  /// Chrome up → hide. Chrome down + armed → allow exit. Else arm.
+  /// Chrome up → hide and arm (next intentional Back exits). Chrome down +
+  /// armed → allow exit. Chrome down + not armed → arm only.
   ///
   /// Return `true` to keep the player open.
   static bool consumeChromeOrArmExit({

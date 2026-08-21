@@ -27,6 +27,17 @@ void main() {
     });
   });
 
+  group('isAnimeWebStreamSniffProvider', () {
+    test('matches VidLink only', () {
+      expect(isAnimeWebStreamSniffProvider('vidlink'), isTrue);
+      expect(isAnimeWebStreamSniffProvider('VidLink'), isTrue);
+      expect(isAnimeWebStreamSniffProvider('megaplay'), isFalse);
+      expect(isAnimeWebStreamSniffProvider('miruro:bee'), isFalse);
+      expect(isAnimeWebStreamSniffProvider('videasy'), isFalse);
+      expect(isAnimeWebStreamSniffProvider(''), isFalse);
+    });
+  });
+
   group('isCatalogSourcesMode', () {
     test('matches Stremio Direct, torrent, Amri, and Nuvio scrapers', () {
       expect(isCatalogSourcesMode('stremio_direct'), isTrue);

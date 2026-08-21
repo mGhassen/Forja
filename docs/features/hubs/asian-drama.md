@@ -30,7 +30,7 @@ Tap **Asian Drama** in the navigation bar.
 - Many KissKH posters are hosted on TMDB’s image CDN (`media.themoviedb.org` / `image.tmdb.org`). On **Android 7.0**, Forja embeds Let's Encrypt roots so those covers load (same path as Home posters)
 - Watch history is stored per drama in this hub
 - Forja defaults to `kisskh.co`. Turn on another mirror in Settings if that host works better for you. Aliases share the same IP rate limit, so Forja does not auto-failover across them
-- Stream resolve signs KissKH’s stream key in the app engine and fetches the episode URL directly (same path a normal browser uses — usually about a second). A hidden browser page is only used if that path fails. If KissKH rate-limits your IP (“Too many request”), Forja cools down and asks you to wait — it does **not** hop to another mirror (aliases share the same ban)
+- Stream resolve signs KissKH’s stream key in the app engine and fetches the episode URL directly (same path a normal browser uses — usually about a second). A hidden browser page is only used if that path fails. Third-party embed sniffing (same Webstreaming extractors as movies) only runs when **Settings → Playback → Webstreaming** is on. If KissKH rate-limits your IP (“Too many request”), Forja cools down and asks you to wait — it does **not** hop to another mirror (aliases share the same ban)
 - Playback and subtitle requests send the KissKh mirror `Referer`/`Origin` by provider identity (not the CDN hostname), including cached URLs on `streamingcdn` / `cdnvideo` hosts
 - **Escape** / **Cancel** during resolve or before video starts returns to details — not a stuck loading screen. Leaving the title or switching shell tabs mid-check also stops the extract (same stop as **Cancel**).
 

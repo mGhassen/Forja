@@ -84,6 +84,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [061-[fixed]-…](fixed/061-[fixed]-engine-scraper-upstream-parity.md) | Engine scraper upstream parity | v1.3 | fixed | Complete · 4/4 · 10/12 · 2 ⏭️ | — |
 | [062-[open]-…](062-[open]-native-iptv-sports-matching.md) | Native IPTV sports matching in Live Matches | v1.3 | open | 5/5 · 13/13 Xtream · 0/3 M3U ⏭️ | — |
 | [063-[fixed]-…](fixed/063-[fixed]-forja-auto-start-green-play.md) | Forja auto start (green Play) | v1.3 | fixed | Complete · 3/3 · 7/7 | — |
+| [064-[open]-…](064-[open]-rust-quickjs-engine-runtime.md) | Rust QuickJS Engine runtime (Forja Sources) | v1.3 | open | 3/5 · 2/8 | — |
 
 ## Related
 

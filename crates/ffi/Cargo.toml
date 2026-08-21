@@ -45,6 +45,7 @@ books = { path = "../books" }
 catalog = { path = "../catalog" }
 live-matches = { path = "../live-matches" }
 resolver-engine = { path = "../resolver-engine" }
+engine-js = { path = "../engine-js" }
 uniffi = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
