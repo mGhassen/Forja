@@ -2263,12 +2263,59 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     return host.isEmpty ? url : host;
   }
 
-  String _sourceSubtitle(IptvPlaySource src) {
-    final host = _sourceHost(src.url);
+  /// Category / group only for sports-style sources; host alone otherwise.
+  String? _sourceSubtitle(IptvPlaySource src) {
+    final structured = src.pickerSubtitle;
+    if (structured != null && structured.isNotEmpty) return structured;
     final detail = (src.detail ?? '').trim();
-    if (detail.isEmpty) return host;
-    if (host.isEmpty) return detail;
-    return '$detail · $host';
+    if (detail.isNotEmpty) return detail;
+    final host = _sourceHost(src.url);
+    return host.isEmpty ? null : host;
+  }
+
+  Widget _sourceLogo(IptvPlaySource src) {
+    const size = 36.0;
+    final url = (src.logoUrl ?? '').trim();
+    if (url.isEmpty) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: Icon(
+          Icons.live_tv_rounded,
+          color: Colors.white38,
+          size: size * 0.55,
+        ),
+      );
+    }
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheW = (size * dpr).round().clamp(1, 512);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Image.network(
+        url,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        alignment: Alignment.center,
+        cacheWidth: cacheW,
+        filterQuality: FilterQuality.medium,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => Icon(
+          Icons.live_tv_rounded,
+          color: Colors.white38,
+          size: size * 0.55,
+        ),
+        loadingBuilder: (ctx, child, prog) {
+          if (prog == null) return child;
+          return Icon(
+            Icons.live_tv_rounded,
+            color: Colors.white24,
+            size: size * 0.55,
+          );
+        },
+      ),
+    );
   }
 
   /// Floating panel (not a bottom sheet) so TV gets D-pad focus + autofocus on
@@ -2290,8 +2337,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           children: [
             for (var i = 0; i < _s._sources.length; i++)
               PlayerPopupListTile(
-                label: _s._sources[i].label,
-                // Category + host — full URLs wrap the tile to several lines.
+                leading: _sourceLogo(_s._sources[i]),
+                label: _s._sources[i].pickerTitle,
+                badge: _s._sources[i].tierBadge,
                 subtitle: _sourceSubtitle(_s._sources[i]),
                 selected: i == _s._sourceIdx,
                 onTap: () {

@@ -15,7 +15,7 @@ On-device Sports matcher (Sportio-style): the **same** Live Matches schedule as 
 
 - Browse the same sports catalog as All, **merged with ESPN** for the same day (clean home/away for matching; ESPN-only games still appear)
 - Pick the Xtream portal from top-right **Portals** (same IPTV panel)
-- Open a match → sheet of ranked matching IPTV channels → pick one to play (failover keeps the rest in the player Source menu)
+- Open a match → sheet of ranked matching IPTV channels (logo, short name, category, tier badge) → pick one to play (failover keeps the rest in the player Source menu with the same layout)
 - Choose which leagues to match in Settings
 
 ## Setup

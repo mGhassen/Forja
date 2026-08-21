@@ -10,6 +10,8 @@ pub struct Candidate {
     pub start_timestamp: Option<f64>,
     pub stream_url: String,
     pub category_label: String,
+    /// Xtream `stream_icon` (channel logo URL).
+    pub logo: String,
 }
 
 /// Game fields used for matching.
@@ -201,12 +203,19 @@ pub fn match_streams(
                 continue;
             }
             // Channel name alone — category stays in `title` for UI chrome.
-            out.push(json!({
+            let mut item = json!({
                 "name": s.name,
                 "title": s.category_label,
                 "url": s.stream_url,
                 "tier": tier_idx + 1,
-            }));
+            });
+            if !s.logo.is_empty() {
+                item
+                    .as_object_mut()
+                    .expect("item object")
+                    .insert("logo".into(), json!(s.logo));
+            }
+            out.push(item);
         }
     }
     out
@@ -243,6 +252,7 @@ mod tests {
             start_timestamp: None,
             stream_url: "https://x/1.m3u8".into(),
             category_label: "MLB".into(),
+            logo: String::new(),
         }];
         let hits = match_streams(&g, &cands, &league);
         assert!(hits.is_empty(), "Reds channel must not match Red Sox game");
@@ -263,10 +273,15 @@ mod tests {
             start_timestamp: Some(1_700_000_000.0),
             stream_url: "https://x/4k.m3u8".into(),
             category_label: "MLB".into(),
+            logo: "https://x/logo.png".into(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].get("tier").and_then(|v| v.as_u64()), Some(1));
+        assert_eq!(
+            hits[0].get("logo").and_then(|v| v.as_str()),
+            Some("https://x/logo.png")
+        );
     }
 
     #[test]
@@ -283,6 +298,7 @@ mod tests {
             start_timestamp: None,
             stream_url: "https://x/nick.m3u8".into(),
             category_label: "MLB".into(),
+            logo: String::new(),
         }];
         let hits = match_streams(&g, &cands, &league);
         assert!(hits.is_empty());
@@ -297,6 +313,7 @@ mod tests {
             start_timestamp: None,
             stream_url: "https://x/t3.m3u8".into(),
             category_label: "".into(),
+            logo: String::new(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);

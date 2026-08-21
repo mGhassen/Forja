@@ -1074,19 +1074,6 @@ class _IptvSportsChannelSheetState extends State<_IptvSportsChannelSheet> {
     super.dispose();
   }
 
-  String _host(String url) {
-    final h = Uri.tryParse(url)?.host ?? '';
-    return h.isEmpty ? url : h;
-  }
-
-  String _subtitle(IptvPlaySource src) {
-    final detail = (src.detail ?? '').trim();
-    final host = _host(src.url);
-    if (detail.isEmpty) return host;
-    if (host.isEmpty) return detail;
-    return '$detail · $host';
-  }
-
   @override
   Widget build(BuildContext context) {
     final sources = widget.sources;
@@ -1129,8 +1116,7 @@ class _IptvSportsChannelSheetState extends State<_IptvSportsChannelSheet> {
               const SizedBox(height: 16),
               for (var i = 0; i < sources.length; i++)
                 _IptvSportsChannelSheetRow(
-                  label: sources[i].chromeTitle,
-                  subtitle: _subtitle(sources[i]),
+                  source: sources[i],
                   onTap: () => widget.onChannelSelected(sources[i]),
                   tvItemIndex: i,
                   tvRowId: _rowId,
@@ -1155,16 +1141,14 @@ class _IptvSportsChannelSheetState extends State<_IptvSportsChannelSheet> {
 
 class _IptvSportsChannelSheetRow extends StatefulWidget {
   const _IptvSportsChannelSheetRow({
-    required this.label,
-    required this.subtitle,
+    required this.source,
     required this.onTap,
     this.tvItemIndex,
     this.tvRowId,
     this.focusNode,
   });
 
-  final String label;
-  final String subtitle;
+  final IptvPlaySource source;
   final VoidCallback onTap;
   final int? tvItemIndex;
   final String? tvRowId;
@@ -1179,8 +1163,54 @@ class _IptvSportsChannelSheetRowState
     extends State<_IptvSportsChannelSheetRow> {
   bool _focused = false;
 
+  Widget _logo() {
+    const size = 40.0;
+    final url = (widget.source.logoUrl ?? '').trim();
+    if (url.isEmpty) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: Icon(
+          Icons.tv_rounded,
+          color: ForjaShellColors.sectionAccent,
+          size: size * 0.55,
+        ),
+      );
+    }
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheW = (size * dpr).round().clamp(1, 512);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Image.network(
+        url,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        cacheWidth: cacheW,
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => Icon(
+          Icons.tv_rounded,
+          color: ForjaShellColors.sectionAccent,
+          size: size * 0.55,
+        ),
+        loadingBuilder: (ctx, child, prog) {
+          if (prog == null) return child;
+          return Icon(
+            Icons.tv_rounded,
+            color: Colors.white24,
+            size: size * 0.55,
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final src = widget.source;
+    final subtitle = src.pickerSubtitle;
+    final badge = src.tierBadge;
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
@@ -1196,24 +1226,51 @@ class _IptvSportsChannelSheetRowState
       tvZone: ShellTvZone.row,
       onFocusChange: (focused) => setState(() => _focused = focused),
       child: ListTile(
-        leading: Icon(
-          Icons.tv_rounded,
-          color: ForjaShellColors.sectionAccent,
-        ),
+        leading: _logo(),
         title: Text(
-          widget.label,
+          src.pickerTitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.white,
             fontWeight: _focused ? FontWeight.bold : FontWeight.w600,
           ),
         ),
-        subtitle: widget.subtitle.isEmpty
+        subtitle: subtitle == null || subtitle.isEmpty
             ? null
             : Text(
-                widget.subtitle,
+                subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.white38, fontSize: 11),
               ),
-        trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (badge != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: ForjaShellColors.sectionAccent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(5),
+                  border: Border.all(
+                    color: ForjaShellColors.sectionAccent.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Text(
+                  badge,
+                  style: TextStyle(
+                    color: ForjaShellColors.sectionAccent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            const Icon(Icons.chevron_right, color: Colors.white38),
+          ],
+        ),
       ),
     );
   }

@@ -227,6 +227,7 @@ async fn build_candidates_async(
                 return None;
             }
             let name = field_str(&s, &["name"]);
+            let logo = field_str(&s, &["stream_icon", "streamIcon", "logo"]);
             let ext = field_str(&s, &["container_extension"]);
             let ext = if ext.is_empty() {
                 "m3u8".into()
@@ -241,6 +242,7 @@ async fn build_candidates_async(
                 start_timestamp: epg.start_timestamp,
                 stream_url: live_url(&base, &user, &pass, &stream_id, &ext),
                 category_label: label,
+                logo,
             })
         });
     }

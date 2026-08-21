@@ -1322,7 +1322,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _s._syncTitleToActiveSource();
         if (mounted) {
           setState(() => _s._statusBanner =
-              'Switching to ${_s._sources[_s._sourceIdx].chromeTitle}…');
+              'Switching to ${_s._sources[_s._sourceIdx].pickerTitle}…');
         }
         await _openCurrent(hardRecreate: _atvHardReseatStreams);
         return;
@@ -1634,6 +1634,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       _s._sourceIdx = idx;
       _s._retryAttempt = 0;
       _s._syncTitleToActiveSource();
+      final logo = _s._sources[idx].logoUrl?.trim();
+      if (logo != null && logo.isNotEmpty) {
+        _s._logoUrl = logo;
+      }
     });
     await _openCurrent(hardRecreate: _atvHardReseatStreams);
   }

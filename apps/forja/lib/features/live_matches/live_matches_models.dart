@@ -2355,6 +2355,7 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
     if (!url.startsWith('http://') && !url.startsWith('https://')) continue;
     final channel = (s['name'] ?? 'Stream').toString().trim();
     final category = (s['title'] ?? '').toString().trim();
+    final logo = (s['logo'] ?? s['stream_icon'] ?? '').toString().trim();
     final tier = s['tier'];
     final name = channel.isEmpty ? 'Stream' : channel;
     final label = tier is num ? 'T$tier · $name' : name;
@@ -2362,6 +2363,7 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
       url: url,
       label: label,
       detail: category.isEmpty ? null : category,
+      logoUrl: logo.isEmpty ? null : logo,
     ));
   }
   return out;

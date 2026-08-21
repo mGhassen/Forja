@@ -108,8 +108,10 @@ bool iptvIsDeadEndpointFail(String msg) {
 class IptvPlaySource {
   final String url;
   final String label;
-  /// Source-picker subtitle (e.g. category). Host is appended in the UI.
+  /// Source-picker subtitle (e.g. category / group).
   final String? detail;
+  /// Optional channel logo (Xtream `stream_icon`).
+  final String? logoUrl;
   /// Optional HTTP headers (Cookie / Referer / Origin) for Exo / MediaKit.
   /// Live Matches Streamed handoff uses these instead of `/hls-proxy`.
   final Map<String, String> headers;
@@ -117,6 +119,7 @@ class IptvPlaySource {
     required this.url,
     required this.label,
     this.detail,
+    this.logoUrl,
     this.headers = const {},
   });
 
@@ -125,6 +128,46 @@ class IptvPlaySource {
     final t = label.replaceFirst(RegExp(r'^T\d+\s*·\s*'), '').trim();
     return t.isEmpty ? label : t;
   }
+
+  /// Match-rank badge (`T1`…`T4`) when the label carries a Sportio tier prefix.
+  String? get tierBadge {
+    final m = RegExp(r'^T(\d+)\s*·\s*').firstMatch(label);
+    if (m == null) return null;
+    return 'T${m.group(1)}';
+  }
+
+  /// Source-picker primary line — short channel / event name, not the raw dump.
+  String get pickerTitle {
+    final raw = chromeTitle;
+    if (raw.isEmpty) return label;
+    var body = raw;
+    final colon = body.indexOf(':');
+    if (colon > 0 && colon < body.length - 1) {
+      body = body.substring(colon + 1).trim();
+    }
+    final pipe = body.indexOf('|');
+    if (pipe > 0) {
+      body = body.substring(0, pipe).trim();
+    }
+    return body.isEmpty ? chromeTitle : body;
+  }
+
+  /// Source-picker secondary line — category / group only (no host, no tier).
+  String? get pickerSubtitle {
+    final cat = (detail ?? '').trim();
+    if (cat.isNotEmpty) return _normalizePipes(cat);
+
+    final raw = chromeTitle;
+    final colon = raw.indexOf(':');
+    if (colon > 0) {
+      final group = _normalizePipes(raw.substring(0, colon).trim());
+      if (group.isNotEmpty) return group;
+    }
+    return null;
+  }
+
+  static String _normalizePipes(String s) =>
+      s.replaceAll(RegExp(r'\s*\|\s*'), ' · ');
 }
 
 /// Dedicated IPTV / Live native player. Android remembers Exo / MediaKit per
@@ -585,7 +628,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     });
     _sources = List<IptvPlaySource>.from(widget.sources);
     if (widget.titleTracksSource && widget.sources.isNotEmpty) {
-      _title = widget.sources.first.chromeTitle;
+      _title = widget.sources.first.pickerTitle;
       _subtitle = widget.subtitle ?? widget.title;
     } else {
       _title = widget.title;
@@ -950,7 +993,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   void _syncTitleToActiveSource() {
     if (!widget.titleTracksSource || _sources.isEmpty) return;
     final i = _sourceIdx.clamp(0, _sources.length - 1);
-    _title = _sources[i].chromeTitle;
+    _title = _sources[i].pickerTitle;
   }
 
   @override

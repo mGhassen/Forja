@@ -1060,6 +1060,7 @@ class PlayerPopupListTile extends StatefulWidget {
   const PlayerPopupListTile({
     super.key,
     required this.label,
+    this.leading,
     this.badge,
     this.badgeColor,
     this.subtitle,
@@ -1075,6 +1076,8 @@ class PlayerPopupListTile extends StatefulWidget {
   });
 
   final String label;
+  /// Optional leading mark (e.g. channel logo).
+  final Widget? leading;
   final String? badge;
   final Color? badgeColor;
   final String? subtitle;
@@ -1192,6 +1195,10 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
           child: Row(
             children: [
+              if (widget.leading != null) ...[
+                widget.leading!,
+                const SizedBox(width: 10),
+              ],
               if (widget.badge != null) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -1232,7 +1239,7 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
                   children: [
                     Text(
                       widget.label,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: fg,
@@ -1247,6 +1254,8 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
                     if (widget.subtitle != null)
                       Text(
                         widget.subtitle!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: subFg, fontSize: 11),
                       ),
                     if (widget.status != null &&
