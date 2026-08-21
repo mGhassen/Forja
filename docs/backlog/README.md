@@ -14,7 +14,7 @@ One file **per release version**. Specs live in [RFCs](../rfc/README.md); each f
 
 **Codename applies to the minor only** (`1.2.0` → **Dabaghin**; `1.2.3` inherits it). Patch backlog files (`1.0.1`, `1.0.2`) are ship checklists under **1.0.x** — still **Bab Souika**, no new codename.
 
-[`kReleaseCodename`](../../apps/forja/lib/shared/services/app_version.dart) tracks **app semver minor** (today **1.3 → Elblat**), not the patch backlog filename.
+[`kReleaseCodename`](../../apps/forja/lib/shared/services/app_version.dart) tracks **app semver minor** (today **1.4 → Atarin**), not the patch backlog filename.
 
 Filename = `{semver}-[{status}].md`. Tag matches `**Status:**` in the body.
 
@@ -52,8 +52,8 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | **1.0** ✅ | **Bab Souika** | 
 | **1.1** 🔄 | **Mrabet** | 
 | **1.2** ✅ | **Dabaghin** | 
-| **1.3** 🔄 | **Elblat** | 
-| **1.4** ⬜ | **Atarin** | 
+| **1.3** ✅ | **Elblat** | 
+| **1.4** 🔄 | **Atarin** | 
 | **1.5** ⬜ | **Berka** | 
 
 ### v2 — Diwan
