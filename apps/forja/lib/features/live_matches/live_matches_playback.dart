@@ -262,14 +262,50 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       MaterialPageRoute(
         builder: (_) => IptvPtPlayerScreen(
           sources: ordered,
-          title: picked.pickerTitle,
-          subtitle: match.title,
+          title: _iptvSportsMatchChromeTitle(match),
+          subtitle: picked.pickerTitle,
           logoUrl: picked.logoUrl,
           titleTracksSource: true,
           engineContext: BuiltInPlayerContext.live,
         ),
       ),
     );
+  }
+
+  /// Match first, kickoff time when known — channel sits in the subtitle.
+  String _iptvSportsMatchChromeTitle(_StreamedMatch match) {
+    final name = match.title.trim();
+    final kickoff = _iptvSportsKickoffLabel(match.dateMs);
+    if (name.isEmpty) return kickoff.isEmpty ? 'Live' : kickoff;
+    if (kickoff.isEmpty) return name;
+    return '$name · $kickoff';
+  }
+
+  String _iptvSportsKickoffLabel(int dateMs) {
+    if (dateMs <= 0) return '';
+    final dt = DateTime.fromMillisecondsSinceEpoch(dateMs);
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    final time = '$hh:$mm';
+    final now = DateTime.now();
+    final sameDay =
+        dt.year == now.year && dt.month == now.month && dt.day == now.day;
+    if (sameDay) return time;
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[dt.month - 1]} ${dt.day} $time';
   }
 
   Future<void> _openIptvSportsFromPpv(_DamiTvStream s) async {

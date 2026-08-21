@@ -239,8 +239,8 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   final IptvPortal? seriesPortal;
   /// Show name for chrome / episode switch titles.
   final String? seriesShowTitle;
-  /// When true, top chrome title follows the active [IptvPlaySource]
-  /// (My IPTV sports — each source is a different channel).
+  /// When true, top chrome **subtitle** follows the active [IptvPlaySource]
+  /// (My IPTV sports — title stays the match; each source is a different channel).
   final bool titleTracksSource;
 
   const IptvPtPlayerScreen({
@@ -662,8 +662,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     });
     _sources = List<IptvPlaySource>.from(widget.sources);
     if (widget.titleTracksSource && widget.sources.isNotEmpty) {
-      _title = widget.sources.first.pickerTitle;
-      _subtitle = widget.subtitle ?? widget.title;
+      _title = widget.title;
+      _subtitle = widget.sources.first.pickerTitle;
     } else {
       _title = widget.title;
       _subtitle = widget.subtitle;
@@ -1023,11 +1023,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     }
   }
 
-  /// My IPTV sports: chrome title = active channel (not the match card title).
+  /// My IPTV sports: chrome subtitle = active channel; title stays the match.
   void _syncTitleToActiveSource() {
     if (!widget.titleTracksSource || _sources.isEmpty) return;
     final i = _sourceIdx.clamp(0, _sources.length - 1);
-    _title = _sources[i].pickerTitle;
+    _subtitle = _sources[i].pickerTitle;
   }
 
   @override
