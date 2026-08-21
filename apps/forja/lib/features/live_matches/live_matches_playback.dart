@@ -290,28 +290,6 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     await _openIptvSportsMatch(match);
   }
 
-  Future<void> _openIptvSportsFromCdn(_CdnSportEvent event) async {
-    final title = '${event.homeTeam} vs ${event.awayTeam}'.trim();
-    final startMs = int.tryParse(event.start) ?? 0;
-    final match = _StreamedMatch(
-      id: 'cdn:${event.gameID}',
-      title: title.isEmpty ? event.tournament : title,
-      category: event.sport,
-      dateMs: startMs > 1e12 ? startMs : (startMs > 0 ? startMs * 1000 : 0),
-      poster: event.homeTeamIMG.isNotEmpty
-          ? event.homeTeamIMG
-          : event.awayTeamIMG,
-      popular: false,
-      airing: event.isLive,
-      homeTeam: event.homeTeam,
-      awayTeam: event.awayTeam,
-      homeBadge: event.homeTeamIMG,
-      awayBadge: event.awayTeamIMG,
-      sources: const [],
-    );
-    await _openIptvSportsMatch(match);
-  }
-
   Future<void> _openStreamedEmbed(
     _StreamedMatch match,
     _StreamedStream stream,
@@ -409,47 +387,4 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     );
   }
 
-  void _openCdnChannel(_CdnChannel channel) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _LiveMatchesEmbedPlayerScreen(
-          embedUrl: channel.url,
-          title: channel.name,
-          badgeLabel: 'CDN Live',
-        ),
-      ),
-    );
-  }
-
-  void _openCdnSportEvent(_CdnSportEvent event) {
-    if (_s._server == _LiveMatchesServer.iptvSports) {
-      unawaited(_openIptvSportsFromCdn(event));
-      return;
-    }
-    if (event.channels.isEmpty) {
-      ForjaToast.info('No channels available for this event');
-      return;
-    }
-    if (event.channels.length == 1) {
-      _openCdnChannel(event.channels.first);
-      return;
-    }
-    // Show channel selection
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _CdnChannelSheet(
-        event: event,
-        onChannelSelected: (ch) {
-          Navigator.pop(context);
-          _openCdnChannel(ch);
-        },
-      ),
-    );
-  }
 }

@@ -50,8 +50,6 @@ pub fn fetch_json(request_json: &str) -> String {
             fetch::streamed_streams(&source, &id)
         }
         "damitv_streams" => fetch::damitv_streams(),
-        "cdn_channels" => fetch::cdn_channels(),
-        "cdn_sports" => fetch::cdn_sports(),
         "mut_matches" => fetch::mut_matches(),
         "sport_match_games" => {
             let leagues = req.leagues.unwrap_or_default();

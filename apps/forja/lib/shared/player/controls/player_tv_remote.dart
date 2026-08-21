@@ -58,10 +58,16 @@ class PlayerTvRemoteKeyHandler {
       return true;
     }
 
-    if (key == LogicalKeyboardKey.select ||
-        key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.space ||
+    // Space / media play-pause: toggle only — never reveal chrome.
+    if (key == LogicalKeyboardKey.space ||
         key == LogicalKeyboardKey.mediaPlayPause) {
+      onPlayPause();
+      return true;
+    }
+
+    // OK / Enter: show chrome when hidden, else play/pause (focus owns buttons).
+    if (key == LogicalKeyboardKey.select ||
+        key == LogicalKeyboardKey.enter) {
       if (!showControls) {
         onShowControls();
       } else {

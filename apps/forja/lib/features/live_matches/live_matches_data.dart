@@ -133,26 +133,13 @@ mixin _LiveMatchesData
     _restoreLiveMatchesTvFocus();
   }
 
-  /// First grid row ↑ → CDN mode chips (if present) → sport chips → Servers.
+  /// First grid row ↑ → sport chips → Servers.
   VoidCallback? _gridUpEdge(BuildContext context, int index, int crossCount) {
     if (!_s._tvFocus(context) || index ~/ crossCount != 0) return null;
     return _gridFocusUp;
   }
 
   void _gridFocusUp() {
-    final cdn = ShellTvFocusCoordinator.rowHandle(
-      _LiveMatchesScreenState._tabId,
-      _LiveMatchesScreenState._cdnModeRowId,
-    );
-    if (cdn != null && cdn.itemCount > 0) {
-      final idx = cdn.lastFocusedIndex.clamp(0, cdn.itemCount - 1);
-      ShellTvFocusCoordinator.focusRowItem(
-        _LiveMatchesScreenState._tabId,
-        _LiveMatchesScreenState._cdnModeRowId,
-        idx,
-      );
-      return;
-    }
     if (_s._hasSportChips) {
       ShellTvFocusCoordinator.focusFromResultsRowUp(
         tabId: _LiveMatchesScreenState._tabId,
@@ -239,8 +226,6 @@ mixin _LiveMatchesData
       _s._tabController = null;
       _s._damiTvStreams = load.damiTvStreams;
       _s._streamedMatches = load.streamedMatches;
-      _s._cdnChannels = load.cdnChannels;
-      _s._cdnSports = load.cdnSports;
       _s._espnGames = load.espnGames;
       _s._sports = load.sports;
       _s._loading = false;
@@ -297,21 +282,4 @@ mixin _LiveMatchesData
         .toList(),
   );
 
-  List<_CdnSportEvent> get _filteredCdnSports => _sortCdnSportsLiveFirst(
-    _s._cdnSports.where((s) {
-      // All-servers uses sport buckets; CDN-only still filters by tournament.
-      if (_s._server == _LiveMatchesServer.all) {
-        return _includeInSportFilter(
-          category: s.sport,
-          isAlwaysOn: false,
-          sportFilter: _s._sportFilter,
-        );
-      }
-      if (_s._sportFilter == 'all') {
-        // CDN-only: tournaments are not the 24/7 sport chip - keep all.
-        return true;
-      }
-      return s.tournament == _s._sportFilter;
-    }).toList(),
-  );
 }

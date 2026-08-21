@@ -780,8 +780,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     } else {
       unawaited(ExoPlayerBridge.play(_viewId));
     }
-    setState(() => _showControls = true);
-    _startHideTimer();
+    // Do not force chrome — Space / media keys pause with chrome hidden.
+    if (_showControls) _startHideTimer();
   }
 
   void _toggleControls() {

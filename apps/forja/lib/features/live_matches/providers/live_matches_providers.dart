@@ -12,8 +12,6 @@ final liveMatchesPrimaryLoadProvider = FutureProvider.autoDispose
           return _fetchLiveMatchesStreamed();
         case _LiveMatchesServer.mutStreams:
           return _fetchLiveMatchesMut();
-        case _LiveMatchesServer.cdnLive:
-          return _fetchLiveMatchesCdn();
         case _LiveMatchesServer.stremio:
           return _fetchLiveMatchesStremio();
         case _LiveMatchesServer.iptvSports:
@@ -26,17 +24,13 @@ class LiveMatchesPrimaryLoad {
     required this.sports,
     this.damiTvStreams = const [],
     this.streamedMatches = const [],
-    this.cdnChannels = const [],
-    this.cdnSports = const [],
     this.espnGames = const [],
   });
 
   final List<_Sport> sports;
   final List<_DamiTvStream> damiTvStreams;
   final List<_StreamedMatch> streamedMatches;
-  final List<_CdnChannel> cdnChannels;
-  final List<_CdnSportEvent> cdnSports;
-  /// Raw ESPN scoreboard rows for My IPTV play-time enrichment (PPV/CDN).
+  /// Raw ESPN scoreboard rows for My IPTV play-time enrichment.
   final List<Map<String, dynamic>> espnGames;
 }
 
@@ -44,13 +38,9 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
   final results = await Future.wait([
     _fetchDamiTvStreams().catchError((_) => <_DamiTvStream>[]),
     _fetchStreamedMatches().catchError((_) => <_StreamedMatch>[]),
-    _fetchCdnChannels().catchError((_) => <_CdnChannel>[]),
-    _fetchCdnSports().catchError((_) => <_CdnSportEvent>[]),
   ]);
   final ppvStreams = results[0] as List<_DamiTvStream>;
   final streamedMatches = results[1] as List<_StreamedMatch>;
-  final cdnChannels = results[2] as List<_CdnChannel>;
-  final cdnSports = results[3] as List<_CdnSportEvent>;
 
   final seenCats = <String>{};
   final cats = <_Sport>[];
@@ -74,17 +64,12 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
   for (final m in streamedMatches) {
     addMatchCat(m.category, isAlwaysOn: m.isAlwaysOn);
   }
-  for (final e in cdnSports) {
-    if (e.sport.isNotEmpty) addCat(e.sport);
-  }
   cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
   return LiveMatchesPrimaryLoad(
     sports: cats,
     damiTvStreams: ppvStreams,
     streamedMatches: streamedMatches,
-    cdnChannels: cdnChannels,
-    cdnSports: cdnSports,
   );
 }
 
@@ -153,26 +138,6 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesMut() async {
   return LiveMatchesPrimaryLoad(sports: cats, streamedMatches: matches);
 }
 
-Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesCdn() async {
-  final results = await Future.wait([_fetchCdnChannels(), _fetchCdnSports()]);
-  final channels = results[0] as List<_CdnChannel>;
-  final sports = results[1] as List<_CdnSportEvent>;
-
-  final seenCats = <String>{};
-  final cats = <_Sport>[];
-  for (final s in sports) {
-    if (s.tournament.isNotEmpty && seenCats.add(s.tournament)) {
-      cats.add(_Sport(id: s.tournament, name: s.tournament));
-    }
-  }
-
-  return LiveMatchesPrimaryLoad(
-    sports: cats,
-    cdnChannels: channels,
-    cdnSports: sports,
-  );
-}
-
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStremio() async {
   final matches = await _fetchStremioSportMatches();
   final seen = <String>{};
@@ -222,17 +187,12 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesIptvSports() async {
       addCat(m.category);
     }
   }
-  for (final e in all.cdnSports) {
-    if (e.sport.isNotEmpty) addCat(e.sport);
-  }
   cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
   return LiveMatchesPrimaryLoad(
     sports: cats,
     damiTvStreams: all.damiTvStreams,
     streamedMatches: merged.streamed,
-    cdnChannels: all.cdnChannels,
-    cdnSports: all.cdnSports,
     espnGames: espn,
   );
 }

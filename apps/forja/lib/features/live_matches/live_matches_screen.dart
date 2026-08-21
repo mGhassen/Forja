@@ -77,8 +77,6 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   static const _chipRowId = 'sport-chips';
   static const _gridRowId = 'grid';
   static const _granularityRowId = 'timeline-granularity';
-  static const _cdnModeRowId = 'cdn-mode';
-
   // tabs: All + each sport
   List<_Sport> _sports = [];
   bool _loading = true;
@@ -114,11 +112,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   _LiveMatchesServer _server = _LiveMatchesServer.all;
   List<_DamiTvStream> _damiTvStreams = [];
   List<_StreamedMatch> _streamedMatches = [];
-  List<_CdnChannel> _cdnChannels = [];
-  List<_CdnSportEvent> _cdnSports = [];
-  /// ESPN scoreboard payloads for My IPTV (enrich PPV/CDN on play).
+  /// ESPN scoreboard payloads for My IPTV (enrich on play).
   List<Map<String, dynamic>> _espnGames = [];
-  bool _cdnShowChannels = true; // true = channels, false = sports
   String? _lastSyncedIptvPortalKey;
 
   static const _topBarServersIndex = 0;

@@ -1479,7 +1479,8 @@ mixin _DesktopPlayerPlayback
           );
         }
       } else {
-        if (mounted) setState(() => _s._showControls = true);
+        // Do not force chrome on pause — Space / media keys keep chrome hidden;
+        // paused hero still shows via _isPlayingNotifier.
         unawaited(_s._saveWatchHistory(isBgPause: true));
         if (widget.movie != null) {
           final pos = _s._positionNotifier.value.inMilliseconds;

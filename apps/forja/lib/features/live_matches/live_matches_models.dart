@@ -28,94 +28,10 @@ class _Sport {
   const _Sport({required this.id, required this.name});
 }
 
-class _CdnChannel {
-  final String name;
-  final String code;
-  final String url;
-  final String image;
-  final String status;
-  final int viewers;
-
-  const _CdnChannel({
-    required this.name,
-    required this.code,
-    required this.url,
-    required this.image,
-    required this.status,
-    required this.viewers,
-  });
-
-  factory _CdnChannel.fromJson(Map<String, dynamic> j) => _CdnChannel(
-    name: (j['name'] ?? '').toString(),
-    code: (j['code'] ?? '').toString(),
-    url: (j['url'] ?? '').toString(),
-    image: (j['image'] ?? '').toString(),
-    status: (j['status'] ?? 'offline').toString(),
-    viewers: (j['viewers'] as num?)?.toInt() ?? 0,
-  );
-}
-
-class _CdnSportEvent {
-  final String gameID;
-  final String homeTeam;
-  final String awayTeam;
-  final String homeTeamIMG;
-  final String awayTeamIMG;
-  final String time;
-  final String tournament;
-
-  /// Parent CDN bucket (Soccer / NFL / NBA / NHL), injected by Rust flatten.
-  final String sport;
-  final String country;
-  final String countryIMG;
-  final String status;
-  final String start;
-  final String end;
-  final List<_CdnChannel> channels;
-
-  const _CdnSportEvent({
-    required this.gameID,
-    required this.homeTeam,
-    required this.awayTeam,
-    required this.homeTeamIMG,
-    required this.awayTeamIMG,
-    required this.time,
-    required this.tournament,
-    required this.sport,
-    required this.country,
-    required this.countryIMG,
-    required this.status,
-    required this.start,
-    required this.end,
-    required this.channels,
-  });
-
-  factory _CdnSportEvent.fromJson(Map<String, dynamic> j) => _CdnSportEvent(
-    gameID: (j['gameID'] ?? '').toString(),
-    homeTeam: (j['homeTeam'] ?? '').toString(),
-    awayTeam: (j['awayTeam'] ?? '').toString(),
-    homeTeamIMG: (j['homeTeamIMG'] ?? '').toString(),
-    awayTeamIMG: (j['awayTeamIMG'] ?? '').toString(),
-    time: (j['time'] ?? '').toString(),
-    tournament: (j['tournament'] ?? '').toString(),
-    sport: (j['sport'] ?? '').toString(),
-    country: (j['country'] ?? '').toString(),
-    countryIMG: (j['countryIMG'] ?? '').toString(),
-    status: (j['status'] ?? '').toString(),
-    start: (j['start'] ?? '').toString(),
-    end: (j['end'] ?? '').toString(),
-    channels: (j['channels'] as List? ?? [])
-        .map((c) => _CdnChannel.fromJson(c as Map<String, dynamic>))
-        .toList(),
-  );
-
-  bool get isLive => status.toLowerCase() == 'live';
-}
-
-/// Canonical sport chip id across PPV / Streamed / CDN label variants.
+/// Canonical sport chip id across PPV / Streamed label variants.
 ///
 /// PPV uses Title Case (`American Football`); Streamed uses kebab slugs
-/// (`american-football`); CDN uses bucket names (`Soccer`, `NFL`).
+/// (`american-football`).
 String _normalizeSportId(String raw) => normalizeLiveSportId(raw);
 
 String _sportDisplayName(String raw, String normalizedId) =>
@@ -458,45 +374,23 @@ List<_StreamedMatch> _sortStreamedLiveFirst(List<_StreamedMatch> items) {
   return sorted;
 }
 
-int _cdnSportStartKey(_CdnSportEvent event) =>
-    int.tryParse(event.start) ?? int.tryParse(event.time) ?? 0;
-
-List<_CdnSportEvent> _sortCdnSportsLiveFirst(List<_CdnSportEvent> items) {
-  final sorted = List<_CdnSportEvent>.from(items);
-  sorted.sort(
-    (a, b) => _liveFirstCompare(
-      aLive: a.isLive,
-      bLive: b.isLive,
-      aStart: _cdnSportStartKey(a),
-      bStart: _cdnSportStartKey(b),
-    ),
-  );
-  return sorted;
-}
-
 bool _gridEntryIsLive(_LiveMatchGridEntry entry) => switch (entry) {
   _LiveMatchGridEntryPpv(:final stream) => stream.isLive,
   _LiveMatchGridEntryStreamed(:final match) => match.isLive,
   _LiveMatchGridEntryMerged(:final ppv, :final streamed) =>
     ppv.isLive || streamed.isLive,
-  _LiveMatchGridEntryCdnSport(:final event) => event.isLive,
 };
 
 int _gridEntryStartKey(_LiveMatchGridEntry entry) => switch (entry) {
   _LiveMatchGridEntryPpv(:final stream) => stream.startsAt,
   _LiveMatchGridEntryStreamed(:final match) => match.dateMs,
   _LiveMatchGridEntryMerged(:final streamed) => streamed.dateMs,
-  _LiveMatchGridEntryCdnSport(:final event) => _cdnSportStartKey(event),
 };
 
 int _gridEntryViewers(_LiveMatchGridEntry entry) => switch (entry) {
   _LiveMatchGridEntryPpv(:final stream) => stream.viewers,
   _LiveMatchGridEntryStreamed() => 0,
   _LiveMatchGridEntryMerged(:final ppv) => ppv.viewers,
-  _LiveMatchGridEntryCdnSport(:final event) => event.channels.fold<int>(
-    0,
-    (sum, ch) => sum + ch.viewers,
-  ),
 };
 
 String _matchTextKey(String raw) {
@@ -560,7 +454,6 @@ bool _samePpvStreamedMatch(_DamiTvStream ppv, _StreamedMatch streamed) {
 List<_LiveMatchGridEntry> _mergePpvAndStreamedEntries({
   required List<_DamiTvStream> ppv,
   required List<_StreamedMatch> streamed,
-  required List<_CdnSportEvent> cdn,
 }) {
   final remainingStreamed = [...streamed];
   final entries = <_LiveMatchGridEntry>[];
@@ -580,7 +473,6 @@ List<_LiveMatchGridEntry> _mergePpvAndStreamedEntries({
     );
   }
   entries.addAll(remainingStreamed.map(_LiveMatchGridEntry.streamed));
-  entries.addAll(cdn.map(_LiveMatchGridEntry.cdnSport));
   return _sortGridEntriesLiveFirst(entries);
 }
 
@@ -2474,51 +2366,11 @@ Future<List<_DamiTvStream>> _fetchDamiTvStreams() async {
   }
 }
 
-Future<List<_CdnChannel>> _fetchCdnChannels() async {
-  try {
-    final raw = await runLiveMatchesFetchJson(
-      jsonEncode({'action': 'cdn_channels'}),
-    );
-    final parsed = jsonDecode(raw) as Map<String, dynamic>;
-    if (parsed.containsKey('error')) return [];
-    final list = parsed['items'] as List? ?? [];
-    return list
-        .map((c) => _CdnChannel.fromJson(c as Map<String, dynamic>))
-        .toList();
-  } catch (_) {
-    return [];
-  }
-}
-
-Future<List<_CdnSportEvent>> _fetchCdnSports() async {
-  try {
-    final raw = await runLiveMatchesFetchJson(
-      jsonEncode({'action': 'cdn_sports'}),
-    );
-    final parsed = jsonDecode(raw) as Map<String, dynamic>;
-    if (parsed.containsKey('error')) return [];
-    final list = parsed['items'] as List? ?? [];
-    return list
-        .map((e) {
-          try {
-            return _CdnSportEvent.fromJson(e as Map<String, dynamic>);
-          } catch (_) {
-            return null;
-          }
-        })
-        .whereType<_CdnSportEvent>()
-        .toList();
-  } catch (_) {
-    return [];
-  }
-}
-
 enum _LiveMatchesServer {
   all,
   ppv,
   streamed,
   mutStreams,
-  cdnLive,
   stremio,
   iptvSports,
 }
@@ -2528,18 +2380,16 @@ String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
   _LiveMatchesServer.ppv => 'PPV',
   _LiveMatchesServer.streamed => 'Streamed',
   _LiveMatchesServer.mutStreams => 'MutStreams',
-  _LiveMatchesServer.cdnLive => 'CDN Live',
   _LiveMatchesServer.stremio => 'Stremio',
   _LiveMatchesServer.iptvSports => 'My IPTV',
 };
 
 String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
     switch (server) {
-      _LiveMatchesServer.all => 'PPV · Streamed · CDN Live',
+      _LiveMatchesServer.all => 'PPV · Streamed',
       _LiveMatchesServer.ppv => 'ppv.is',
       _LiveMatchesServer.streamed => 'streamed.pk',
       _LiveMatchesServer.mutStreams => 'mut.st',
-      _LiveMatchesServer.cdnLive => 'cdn-live.tv',
       _LiveMatchesServer.stremio => 'Installed live addons',
       _LiveMatchesServer.iptvSports => 'Existing schedule · your Xtream',
     };
@@ -2557,9 +2407,6 @@ sealed class _LiveMatchGridEntry {
     _DamiTvStream ppv,
     _StreamedMatch streamed,
   ) = _LiveMatchGridEntryMerged;
-
-  factory _LiveMatchGridEntry.cdnSport(_CdnSportEvent event) =
-      _LiveMatchGridEntryCdnSport;
 }
 
 final class _LiveMatchGridEntryPpv extends _LiveMatchGridEntry {
@@ -2578,7 +2425,3 @@ final class _LiveMatchGridEntryMerged extends _LiveMatchGridEntry {
   final _StreamedMatch streamed;
 }
 
-final class _LiveMatchGridEntryCdnSport extends _LiveMatchGridEntry {
-  const _LiveMatchGridEntryCdnSport(this.event);
-  final _CdnSportEvent event;
-}

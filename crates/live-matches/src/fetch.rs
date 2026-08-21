@@ -11,12 +11,6 @@ const PPV_STREAM_APIS: &[&str] = &[
     "https://api.ppv.st/api/streams",
     "https://api.ppv.cx/api/streams",
 ];
-const CDN_CHANNELS_URL: &str =
-    "https://api.cdn-live.tv/api/v1/channels/?user=cdnlivetv&plan=free";
-const CDN_SPORTS_URL: &str =
-    "https://api.cdn-live.tv/api/v1/events/sports/?user=cdnlivetv&plan=free";
-const CDN_SPORT_KEYS: &[&str] = &["Soccer", "NFL", "NBA", "NHL"];
-
 /// Official MutStreams mirrors ([mutgo.link](https://mutgo.link/)). Only hosts
 /// that return JSON for `/api/streams` — `mutstreams.art` / `.su` currently
 /// serve HTML and are omitted.
@@ -233,52 +227,6 @@ pub fn damitv_streams() -> String {
     ok_items(vec![])
 }
 
-pub fn cdn_channels() -> String {
-    let body = match http_get(CDN_CHANNELS_URL, &ppv_headers(), 12) {
-        Some(b) => b,
-        None => return ok_items(vec![]),
-    };
-    let parsed: Value = match serde_json::from_str(&body) {
-        Ok(v) => v,
-        Err(_) => return ok_items(vec![]),
-    };
-    let items = parsed
-        .get("channels")
-        .and_then(|v| v.as_array())
-        .cloned()
-        .unwrap_or_default();
-    ok_items(items)
-}
-
-pub fn cdn_sports() -> String {
-    let body = match http_get(CDN_SPORTS_URL, &ppv_headers(), 12) {
-        Some(b) => b,
-        None => return ok_items(vec![]),
-    };
-    let parsed: Value = match serde_json::from_str(&body) {
-        Ok(v) => v,
-        Err(_) => return ok_items(vec![]),
-    };
-    let cdn_data = match parsed.get("cdn-live-tv") {
-        Some(v) => v,
-        None => return ok_items(vec![]),
-    };
-    let mut result = Vec::new();
-    for key in CDN_SPORT_KEYS {
-        if let Some(events) = cdn_data.get(*key).and_then(|v| v.as_array()) {
-            for e in events {
-                let mut event = e.clone();
-                // Preserve the parent sport bucket (Soccer / NFL / …) so the
-                // host can merge CDN into unified All-servers sport chips.
-                if let Some(obj) = event.as_object_mut() {
-                    obj.insert("sport".into(), Value::String((*key).to_string()));
-                }
-                result.push(event);
-            }
-        }
-    }
-    ok_items(result)
-}
 
 fn mut_headers(base: &str) -> HashMap<String, String> {
     let origin = base.trim_end_matches('/');
@@ -572,29 +520,6 @@ mod tests {
         assert_eq!(items.len(), 1);
     }
 
-    #[test]
-    fn cdn_sports_injects_sport_bucket() {
-        let cdn_data = json!({
-            "Soccer": [{"gameID": "1", "tournament": "EPL"}],
-            "NBA": [{"gameID": "2", "tournament": "NBA"}]
-        });
-        let keys = ["Soccer", "NFL", "NBA", "NHL"];
-        let mut result = Vec::new();
-        for key in keys {
-            if let Some(events) = cdn_data.get(key).and_then(|v| v.as_array()) {
-                for e in events {
-                    let mut event = e.clone();
-                    if let Some(obj) = event.as_object_mut() {
-                        obj.insert("sport".into(), Value::String(key.to_string()));
-                    }
-                    result.push(event);
-                }
-            }
-        }
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0]["sport"], "Soccer");
-        assert_eq!(result[1]["sport"], "NBA");
-    }
 
     #[test]
     fn parse_mut_time_pst_date() {

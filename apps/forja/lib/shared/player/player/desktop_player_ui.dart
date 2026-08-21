@@ -134,13 +134,18 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       return false;
     }
 
-    _onMouseMove();
-
     final key = event.logicalKey;
 
+    // Space toggles playback only — do not reveal chrome (mouse / other keys do).
     if (key == LogicalKeyboardKey.space) {
       _s._player.playOrPause();
-    } else if (key == LogicalKeyboardKey.arrowLeft) {
+      if (_s._showControls) _startHideTimer();
+      return true;
+    }
+
+    _onMouseMove();
+
+    if (key == LogicalKeyboardKey.arrowLeft) {
       final delta = HardwareKeyboard.instance.isShiftPressed
           ? const Duration(seconds: -30)
           : const Duration(seconds: -10);

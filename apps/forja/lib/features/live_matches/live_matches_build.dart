@@ -8,17 +8,11 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
 
   bool get _hasSportChips => _s._tabController != null && _s._sports.isNotEmpty;
 
-  bool get _hasCdnModeChips => _s._server == _LiveMatchesServer.cdnLive;
-
   int get _chipSortOrder => 1;
-
-  /// CDN Channels/Sports sit between sport chips and the card grid on TV.
-  int get _cdnModeSortOrder => _hasSportChips ? 2 : 1;
 
   int get _gridSortOrder {
     var order = 1;
     if (_hasSportChips) order++;
-    if (_hasCdnModeChips) order++;
     return order;
   }
 
@@ -47,21 +41,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     final height =
         shellContinueWatchingCardHeight(context) * _matchCardHeightScale;
     return height.clamp(190.0, 230.0);
-  }
-
-  double _channelCardWidth(BuildContext context) {
-    if (ShellScope.metricsOf(context).usesTvDensity) {
-      return shellContinueWatchingCardWidth(context);
-    }
-    return (_matchCardWidth(context) * 0.9).clamp(210.0, 260.0);
-  }
-
-  double _channelCardHeight(BuildContext context) {
-    if (ShellScope.metricsOf(context).usesTvDensity) {
-      return shellContinueWatchingCardHeight(context) +
-          _tvMatchCaptionBand(context);
-    }
-    return (_matchCardHeight(context) * 0.88).clamp(130.0, 150.0);
   }
 
   double _gridGap(BuildContext context) =>
@@ -105,86 +84,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     );
   }
 
-  VoidCallback _cdnModeUpEdge(BuildContext context) {
-    if (_hasSportChips) {
-      return tvResultsUpToChips(
-        context,
-        chipRowId: _LiveMatchesScreenState._chipRowId,
-      );
-    }
-    return () =>
-        _s._focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex);
-  }
-
-  Widget _cdnModeChips(BuildContext context) {
-    final up = _cdnModeUpEdge(context);
-    if (!_tvFocus(context)) {
-      return Row(
-        children: [
-          ForjaShellChip(
-            label: '📺 Channels',
-            selected: _s._cdnShowChannels,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            fontSize: 11.5,
-            onTap: () => setState(() => _s._cdnShowChannels = true),
-          ),
-          const SizedBox(width: 6),
-          ForjaShellChip(
-            label: '⚽ Sports',
-            selected: !_s._cdnShowChannels,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            fontSize: 11.5,
-            onTap: () => setState(() => _s._cdnShowChannels = false),
-          ),
-        ],
-      );
-    }
-
-    return TvChipStrip(
-      tabId: _LiveMatchesScreenState._tabId,
-      rowId: _LiveMatchesScreenState._cdnModeRowId,
-      sortOrder: _cdnModeSortOrder,
-      itemCount: 2,
-      resultsRowId: _LiveMatchesScreenState._gridRowId,
-      builder: (context, edgesFor) {
-        final left = edgesFor(0);
-        final right = edgesFor(1);
-        return Row(
-          children: [
-            ForjaShellChip(
-              label: '📺 Channels',
-              selected: _s._cdnShowChannels,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              fontSize: 11.5,
-              listIndex: 0,
-              tvTabId: _LiveMatchesScreenState._tabId,
-              tvRowId: _LiveMatchesScreenState._cdnModeRowId,
-              onTap: () => setState(() => _s._cdnShowChannels = true),
-              onLeftEdge: left.onLeft,
-              onRightEdge: left.onRight,
-              onUpEdge: up,
-              onDownEdge: left.onDown,
-            ),
-            const SizedBox(width: 6),
-            ForjaShellChip(
-              label: '⚽ Sports',
-              selected: !_s._cdnShowChannels,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              fontSize: 11.5,
-              listIndex: 1,
-              tvTabId: _LiveMatchesScreenState._tabId,
-              tvRowId: _LiveMatchesScreenState._cdnModeRowId,
-              onTap: () => setState(() => _s._cdnShowChannels = false),
-              onLeftEdge: right.onLeft,
-              onRightEdge: right.onRight,
-              onUpEdge: up,
-              onDownEdge: right.onDown,
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   ({IconData icon, Color accent}) _sportCircleMeta(String label) {
     final key = label.toLowerCase();
@@ -341,7 +240,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       _mergePpvAndStreamedEntries(
         ppv: _s._filteredDamiTv,
         streamed: _s._filteredStreamed,
-        cdn: _s._filteredCdnSports,
       );
 
   @override
@@ -535,9 +433,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
 
     final itemCount = _s._sports.length + 1;
     final tvFocus = _tvFocus(context);
-    final resultsRowId = _hasCdnModeChips
-        ? _LiveMatchesScreenState._cdnModeRowId
-        : _LiveMatchesScreenState._gridRowId;
+    final resultsRowId = _LiveMatchesScreenState._gridRowId;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -629,7 +525,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         _s._server == _LiveMatchesServer.stremio) {
       return _buildStreamedBody();
     }
-    if (_s._server == _LiveMatchesServer.cdnLive) return _buildCdnBody();
 
     return const SizedBox.shrink();
   }
@@ -756,20 +651,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
                   (ppv.isLive || streamed.isLive)),
           onTap: () => _s._openMergedMatch(ppv, streamed),
         ),
-      _LiveMatchGridEntryCdnSport(:final event) => _CdnSportCard(
-        event: event,
-        gridIndex: i,
-        gridColumns: crossCount,
-        onUpEdge: upEdge,
-        onLeftEdge: onLeftEdge,
-        onRightEdge: onRightEdge,
-        forceActive: forceActive,
-        onHoverChanged: onHoverChanged,
-        tvRowId: tvRowId,
-        tvZone: tvZone,
-        playableOverride: iptv ? true : null,
-        onTap: () => _s._openCdnSportEvent(event),
-      ),
     };
   }
 
@@ -900,165 +781,4 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     );
   }
 
-  Widget _buildCdnBody() {
-    final chips = Padding(
-      padding: EdgeInsets.fromLTRB(
-        shellHomeSectionHorizontalPadding(context),
-        4,
-        ShellTokens.bodyHorizontalPadding,
-        6,
-      ),
-      child: _cdnModeChips(context),
-    );
-
-    if (_s._cdnShowChannels) {
-      final channels =
-          _s._cdnChannels.where((c) => c.status == 'online').toList();
-      if (channels.isEmpty) {
-        return Column(
-          children: [
-            chips,
-            Expanded(
-              child: ShellErrorRetryPanel(
-                message: 'No channels available',
-                onRetry: _s._load,
-                label: 'Refresh',
-                statusIcon: Icons.tv_rounded,
-                buttonIcon: Icons.refresh,
-              ),
-            ),
-          ],
-        );
-      }
-      return Column(
-        children: [
-          chips,
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final cardWidth = _channelCardWidth(context);
-                final cardHeight = _channelCardHeight(context);
-                final gap = _gridGap(context);
-                final crossCount =
-                    _gridColumns(context, constraints, cardWidth);
-                final tvFocus = _tvFocus(context);
-                if (tvFocus) {
-                  _s._clearTimelineTvRows();
-                }
-                final grid = GridView.builder(
-                  padding: _gridPadding(context),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossCount,
-                    mainAxisExtent: cardHeight,
-                    crossAxisSpacing: gap,
-                    mainAxisSpacing: gap,
-                  ),
-                  itemCount: channels.length,
-                  itemBuilder: (context, i) {
-                    final edges = _gridRowEdgeCallbacks(
-                      index: i,
-                      crossCount: crossCount,
-                      itemCount: channels.length,
-                    );
-                    return _CdnChannelCard(
-                      channel: channels[i],
-                      gridIndex: i,
-                      gridColumns: crossCount,
-                      onUpEdge: _s._gridUpEdge(context, i, crossCount),
-                      onLeftEdge: edges.onLeftEdge,
-                      onRightEdge: edges.onRightEdge,
-                      onTap: () => _s._openCdnChannel(channels[i]),
-                    );
-                  },
-                );
-                if (!tvFocus) return grid;
-                return TvGrid(
-                  tabId: _LiveMatchesScreenState._tabId,
-                  rowId: _LiveMatchesScreenState._gridRowId,
-                  sortOrder: _gridSortOrder,
-                  itemCount: channels.length,
-                  columns: crossCount,
-                  onFocusUp: _s._gridFocusUp,
-                  child: grid,
-                );
-              },
-            ),
-          ),
-        ],
-      );
-    }
-
-    final sports = _s._filteredCdnSports;
-    if (sports.isEmpty) {
-      return Column(
-        children: [
-          chips,
-          Expanded(
-            child: ShellErrorRetryPanel(
-              message: 'No sports events available',
-              onRetry: _s._load,
-              label: 'Refresh',
-              statusIcon: Icons.sports_rounded,
-              buttonIcon: Icons.refresh,
-            ),
-          ),
-        ],
-      );
-    }
-    return Column(
-      children: [
-        chips,
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final cardWidth = _matchCardWidth(context);
-              final cardHeight = _matchCardHeight(context);
-              final gap = _gridGap(context);
-              final crossCount = _gridColumns(context, constraints, cardWidth);
-              final tvFocus = _tvFocus(context);
-              if (tvFocus) {
-                _s._clearTimelineTvRows();
-              }
-              final grid = GridView.builder(
-                padding: _gridPadding(context),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossCount,
-                  mainAxisExtent: cardHeight,
-                  crossAxisSpacing: gap,
-                  mainAxisSpacing: gap,
-                ),
-                itemCount: sports.length,
-                itemBuilder: (context, i) {
-                  final edges = _gridRowEdgeCallbacks(
-                    index: i,
-                    crossCount: crossCount,
-                    itemCount: sports.length,
-                  );
-                  return _CdnSportCard(
-                    event: sports[i],
-                    gridIndex: i,
-                    gridColumns: crossCount,
-                    onUpEdge: _s._gridUpEdge(context, i, crossCount),
-                    onLeftEdge: edges.onLeftEdge,
-                    onRightEdge: edges.onRightEdge,
-                    onTap: () => _s._openCdnSportEvent(sports[i]),
-                  );
-                },
-              );
-              if (!tvFocus) return grid;
-              return TvGrid(
-                tabId: _LiveMatchesScreenState._tabId,
-                rowId: _LiveMatchesScreenState._gridRowId,
-                sortOrder: _gridSortOrder,
-                itemCount: sports.length,
-                columns: crossCount,
-                onFocusUp: _s._gridFocusUp,
-                child: grid,
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
 }

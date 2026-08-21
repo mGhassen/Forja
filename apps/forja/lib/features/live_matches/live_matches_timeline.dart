@@ -49,7 +49,6 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
         ppv.categoryName,
         streamed.category,
       ],
-      _LiveMatchGridEntryCdnSport(:final event) => [event.sport],
     };
     return cats.any((c) => normalizeLiveSportId(c) == 'other');
   }
@@ -64,8 +63,6 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
         match.isAlwaysOn ? null : _epochToDate(match.dateMs),
       _LiveMatchGridEntryMerged(:final streamed) =>
         streamed.isAlwaysOn ? null : _epochToDate(streamed.dateMs),
-      _LiveMatchGridEntryCdnSport(:final event) =>
-        _epochToDate(_cdnSportStartKey(event)),
     };
     return t?.millisecondsSinceEpoch ?? nowMs;
   }
@@ -83,8 +80,6 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
       case _LiveMatchesServer.mutStreams:
       case _LiveMatchesServer.stremio:
         entries.addAll(_s._filteredStreamed.map(_LiveMatchGridEntry.streamed));
-      case _LiveMatchesServer.cdnLive:
-        entries.addAll(_s._filteredCdnSports.map(_LiveMatchGridEntry.cdnSport));
     }
 
     final byBucket = <int, List<_LiveMatchGridEntry>>{};
