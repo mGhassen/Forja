@@ -49,7 +49,7 @@ mixin _LiveMatchesData
     final p = ctrl.activePortal;
     if (p == null) return;
     if (p.portal.platform != IptvPortalPlatform.xtream) {
-      ForjaToast.info('My IPTV needs an Xtream portal');
+      ForjaToast.info('Forja Sports needs an Xtream portal');
       return;
     }
     final before = await LiveMatchesIptvSportsConfig.load();

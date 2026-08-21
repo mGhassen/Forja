@@ -2524,13 +2524,40 @@ enum _LiveMatchesServer {
   iptvSports,
 }
 
+/// Android TV / leanback: hide embed-only servers (PPV / Streamed / Mut).
+List<_LiveMatchesServer> _liveMatchesServersForSurface({required bool tv}) {
+  if (tv) {
+    return const [
+      _LiveMatchesServer.all,
+      _LiveMatchesServer.stremio,
+      _LiveMatchesServer.iptvSports,
+    ];
+  }
+  return [
+    _LiveMatchesServer.all,
+    ..._LiveMatchesServer.values.where(
+      (server) => server != _LiveMatchesServer.all,
+    ),
+  ];
+}
+
+_LiveMatchesServer _liveMatchesClampServerForSurface(
+  _LiveMatchesServer server, {
+  required bool tv,
+}) {
+  if (!tv) return server;
+  final allowed = _liveMatchesServersForSurface(tv: true);
+  if (allowed.contains(server)) return server;
+  return _LiveMatchesServer.all;
+}
+
 String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
   _LiveMatchesServer.all => 'All',
   _LiveMatchesServer.ppv => 'PPV',
   _LiveMatchesServer.streamed => 'Streamed',
   _LiveMatchesServer.mutStreams => 'MutStreams',
   _LiveMatchesServer.stremio => 'Stremio',
-  _LiveMatchesServer.iptvSports => 'My IPTV',
+  _LiveMatchesServer.iptvSports => 'Forja Sports',
 };
 
 String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>

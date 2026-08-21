@@ -1,4 +1,4 @@
-# My IPTV sports
+# Forja Sports
 
 > Play Live Matches cards using channels on your Xtream portal.
 
@@ -8,8 +8,8 @@ On-device Sports matcher (Sportio-style): the **same** Live Matches schedule as 
 
 ## How to open it
 
-- **Live Matches → Servers → My IPTV** (portal via top-right **Portals**)
-- **Settings → My IPTV sports** for Enable / leagues
+- **Live Matches → Servers → Forja Sports** (portal via top-right **Portals**)
+- **Settings → Forja Sports** for Enable / leagues
 
 ## What you can do
 
@@ -21,8 +21,8 @@ On-device Sports matcher (Sportio-style): the **same** Live Matches schedule as 
 ## Setup
 
 1. Add an Xtream portal under IPTV (if you don’t have one)
-2. Live Matches → Servers → **My IPTV** → top-right **Portals** if needed
-3. Optional: Settings → My IPTV sports to enable and pick leagues
+2. Live Matches → Servers → **Forja Sports** → top-right **Portals** if needed
+3. Optional: Settings → Forja Sports to enable and pick leagues
 
 ## Tips
 

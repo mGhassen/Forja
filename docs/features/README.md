@@ -133,7 +133,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 - [Playback settings](settings/playback-settings.md)
 - [LAN](settings/lan.md) — desktop server, pairing, torrent relay to phone/TV
 - [Cache & data](settings/cache-data.md)
-- [My IPTV sports](settings/my-iptv-sports.md) — ESPN ↔ Xtream for Live Matches
+- [Forja Sports](settings/forja-sports.md) — ESPN ↔ Xtream for Live Matches
 - [Torrent settings](settings/torrent-settings.md)
 - [Backup & restore](settings/backup-restore.md)
 - [Features](settings/navigation-bar.md)

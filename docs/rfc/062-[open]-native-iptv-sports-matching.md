@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **5 / 5** components · **13 / 13** acceptance (Xtream incl. ESPN∪All merge + 30m match cache) · **0 / 3** acceptance (M3U deferred) |
-| **Current slice** | My IPTV = All catalog ∪ ESPN scoreboard + Xtream match on play (30m channel cache) — M3U/XMLTV deferred |
+| **Current slice** | Forja Sports = All catalog ∪ ESPN scoreboard + Xtream match on play (30m channel cache) — M3U/XMLTV deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -61,7 +61,7 @@
 
 Port [Sportio Live](https://github.com/Sportio-Live/sportio-live)'s ESPN ↔ IPTV channel matcher **on-device** into Forja. No Docker, no Stremio addon URL, no Forja-hosted Sportio.
 
-Sportio does not provide streams — it bridges ESPN's public scoreboard with the user's own Xtream/M3U live channels via a 4-tier name/EPG matcher. Forja already stores IPTV portals and plays HLS natively; this RFC wires that into Live Matches as **My IPTV**.
+Sportio does not provide streams — it bridges ESPN's public scoreboard with the user's own Xtream/M3U live channels via a 4-tier name/EPG matcher. Forja already stores IPTV portals and plays HLS natively; this RFC wires that into Live Matches as **Forja Sports** (shipped UI name; earlier docs said My IPTV).
 
 ### Goals
 
@@ -89,4 +89,4 @@ Sportio does not provide streams — it bridges ESPN's public scoreboard with th
 
 **Settings key:** `live_matches_iptv_sports_v1` — `{ enabled, portalKey, timezone, leagues, sportCategories }`.
 
-**Settings hub:** own category **My IPTV sports** (not under Data & backup).
+**Settings hub:** own category **Forja Sports** (not under Data & backup).

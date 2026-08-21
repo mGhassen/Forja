@@ -132,7 +132,7 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
     if (visibility.showIptvSportsSettings)
       const SettingsCategoryMeta(
         id: SettingsCategoryId.iptvSports,
-        title: 'My IPTV sports',
+        title: 'Forja Sports',
         subtitle: 'Portal, leagues, Live Matches matching',
         icon: Icons.sports_rounded,
       ),

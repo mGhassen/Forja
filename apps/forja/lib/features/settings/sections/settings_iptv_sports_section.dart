@@ -3,7 +3,7 @@ import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.da
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 
-/// Settings → My IPTV sports — Live Matches Xtream matcher (RFC-062).
+/// Settings → Forja Sports — Live Matches Xtream matcher (RFC-062).
 class SettingsIptvSportsSection extends StatefulWidget {
   const SettingsIptvSportsSection({super.key});
 
@@ -63,7 +63,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const SettingsGroup(
-        label: 'My IPTV sports',
+        label: 'Forja Sports',
         children: [
           Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
@@ -79,7 +79,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
         Padding(
           padding: const EdgeInsets.fromLTRB(2, 12, 2, 4),
           child: Text(
-            'Pick the portal in Live Matches → My IPTV (top-right Portals). '
+            'Pick the portal in Live Matches → Forja Sports (top-right Portals). '
             'Here: enable and which leagues to match.',
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
@@ -101,8 +101,8 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
             ),
           ),
         SettingsToggleRow(
-          title: 'Enable My IPTV',
-          subtitle: 'Show the My IPTV server in Live Matches',
+          title: 'Enable Forja Sports',
+          subtitle: 'Show the Forja Sports server in Live Matches',
           value: _config.enabled,
           onChanged: (v) async {
             var next = _config.copyWith(enabled: v);

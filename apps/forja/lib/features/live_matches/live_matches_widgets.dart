@@ -197,12 +197,9 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
     debugLabel: 'live-server-sheet-first',
   );
 
-  List<_LiveMatchesServer> get _servers => [
-    _LiveMatchesServer.all,
-    ..._LiveMatchesServer.values.where(
-      (server) => server != _LiveMatchesServer.all,
-    ),
-  ];
+  List<_LiveMatchesServer> get _servers => _liveMatchesServersForSurface(
+        tv: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+      );
 
   @override
   void initState() {

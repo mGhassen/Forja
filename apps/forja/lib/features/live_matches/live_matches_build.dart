@@ -660,7 +660,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       final emptyMsg = _s._server == _LiveMatchesServer.stremio
           ? 'No live Stremio addons — install one in Settings → Sources and enable Live Matches'
           : _s._server == _LiveMatchesServer.iptvSports
-              ? 'No ESPN games today for your leagues — try Refresh or change leagues in Settings → My IPTV sports'
+              ? 'No ESPN games today for your leagues — try Refresh or change leagues in Settings → Forja Sports'
               : 'No streams available';
       return ShellErrorRetryPanel(
         message: emptyMsg,

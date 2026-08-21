@@ -4,7 +4,7 @@ import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Persisted config for Live Matches → My IPTV (RFC-062).
+/// Persisted config for Live Matches → Forja Sports (RFC-062).
 class LiveMatchesIptvSportsConfig {
   const LiveMatchesIptvSportsConfig({
     this.enabled = false,

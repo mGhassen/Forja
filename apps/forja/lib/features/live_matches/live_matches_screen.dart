@@ -276,18 +276,27 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   Future<void> _restoreServerPreference() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final raw = prefs.getString(_serverPreferenceKey);
-    if (raw == null) return;
     _LiveMatchesServer? saved;
-    for (final server in _LiveMatchesServer.values) {
-      if (server.name == raw) {
-        saved = server;
-        break;
+    if (raw != null) {
+      for (final server in _LiveMatchesServer.values) {
+        if (server.name == raw) {
+          saved = server;
+          break;
+        }
       }
     }
-    final next = saved;
-    if (next == null || next == _server) return;
+    final next = _liveMatchesClampServerForSurface(
+      saved ?? _server,
+      tv: tv,
+    );
+    if (next == _server) return;
     setState(() => _server = next);
+    // TV may clamp PPV/Streamed/Mut → All; persist so next launch stays valid.
+    if (tv && saved != next) {
+      unawaited(_persistServerPreference(next));
+    }
   }
 
   Future<void> _persistServerPreference(_LiveMatchesServer server) async {
