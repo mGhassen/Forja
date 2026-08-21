@@ -53,10 +53,13 @@ pub fn submit(kind: u32, payload_json: String) -> u64 {
         store.tokens.insert(job_id, token.clone());
     }
 
+    // Per-job task-local token (Nuvio shape). Do not attach/clear a process-global
+    // slot — parallel EngineJsExtract peers would overwrite each other mid-fetch.
     RUNTIME.spawn(async move {
-        utils::engine_cancel::attach_job_token(token.clone());
-        let json = run_job_async(kind, &payload_json).await;
-        utils::engine_cancel::clear_job_token();
+        let json = utils::engine_cancel::scope_job_token(token, async {
+            run_job_async(kind, &payload_json).await
+        })
+        .await;
 
         let mut store = JOBS.lock().unwrap();
         store.tokens.remove(&job_id);

@@ -175,6 +175,14 @@ const HOST_JS: &str = r#"
 })();
 "#;
 
+fn fetch_cancelled_json(url: &str) -> String {
+    serde_json::json!({
+        "ok": false, "status": 0, "statusText": "cancelled",
+        "url": url, "body": "", "headers": {}
+    })
+    .to_string()
+}
+
 async fn native_fetch(
     url: String,
     method: String,
@@ -182,11 +190,7 @@ async fn native_fetch(
     body: String,
 ) -> rquickjs::Result<String> {
     if cancelled() {
-        return Ok(serde_json::json!({
-            "ok": false, "status": 0, "statusText": "cancelled",
-            "url": url, "body": "", "headers": {}
-        })
-        .to_string());
+        return Ok(fetch_cancelled_json(&url));
     }
     let headers: HashMap<String, String> =
         serde_json::from_str(&headers_json).unwrap_or_default();
@@ -217,15 +221,19 @@ async fn native_fetch(
     if !body.is_empty() && method.to_uppercase() != "GET" {
         req = req.body(body);
     }
-    let resp = match req.send().await {
-        Ok(r) => r,
-        Err(e) => {
-            return Ok(serde_json::json!({
-                "ok": false, "status": 0, "statusText": e.to_string(),
-                "url": url, "body": "", "headers": {}
-            })
-            .to_string());
-        }
+    let token = utils::engine_cancel::cancellation_token();
+    let resp = tokio::select! {
+        r = req.send() => match r {
+            Ok(r) => r,
+            Err(e) => {
+                return Ok(serde_json::json!({
+                    "ok": false, "status": 0, "statusText": e.to_string(),
+                    "url": url, "body": "", "headers": {}
+                })
+                .to_string());
+            }
+        },
+        _ = token.cancelled() => return Ok(fetch_cancelled_json(&url)),
     };
     let status = resp.status().as_u16();
     let final_url = resp.url().to_string();
@@ -235,7 +243,10 @@ async fn native_fetch(
             hdrs.insert(k.to_string(), Value::String(s.to_string()));
         }
     }
-    let text = resp.text().await.unwrap_or_default();
+    let text = tokio::select! {
+        t = resp.text() => t.unwrap_or_default(),
+        _ = token.cancelled() => return Ok(fetch_cancelled_json(&url)),
+    };
     Ok(serde_json::json!({
         "ok": status >= 200 && status < 300,
         "status": status,
@@ -275,11 +286,19 @@ fn solve_pow(challenge: String, difficulty: i32, max: i32) -> String {
 
 pub async fn extract(req: ExtractRequest) -> ExtractResult {
     let timeout = Duration::from_millis(req.timeout_ms.max(1_000));
-    match tokio::time::timeout(timeout, extract_inner(req)).await {
-        Ok(r) => r,
-        Err(_) => ExtractResult {
+    let token = utils::engine_cancel::cancellation_token();
+    tokio::select! {
+        r = tokio::time::timeout(timeout, extract_inner(req)) => match r {
+            Ok(r) => r,
+            Err(_) => ExtractResult {
+                streams: vec![],
+                error: Some("engine-js timed out".into()),
+                unsupported: None,
+            },
+        },
+        _ = token.cancelled() => ExtractResult {
             streams: vec![],
-            error: Some("engine-js timed out".into()),
+            error: Some("cancelled".into()),
             unsupported: None,
         },
     }

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 5** components · **2 / 8** acceptance |
-| **Current slice** | Rust QuickJS + EngineJobs wired; Sources cutover with flutter_js fallback |
+| **Progress** | **3 / 5** components · **3 / 9** acceptance |
+| **Current slice** | Per-job task-local cancel; Sources cutover with flutter_js fallback |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -21,7 +21,7 @@
 |--:|----|-------------|--------|
 | 1 | R64-C01 | `crates/engine-js` — rquickjs `AsyncRuntime` per extract on tokio | ✅ |
 | 2 | R64-C02 | Bridges: `fetch`, timers, `streamDecrypt`, `encodePipe` / `decodePipe`, `solvePow` / scrypt PoW | 🔄 |
-| 3 | R64-C03 | `EngineAsyncJob.engineJsExtract` + cancel token | ✅ |
+| 3 | R64-C03 | `EngineAsyncJob.engineJsExtract` + per-job task-local cancel token | ✅ |
 | 4 | R64-C04 | Dart `runPluginIsolated` prefers Rust JS; flutter_js fallback | ✅ |
 | 5 | R64-C05 | cheerio / `ctx.hop` / `ctx.host` parity (later) | ⏭️ |
 
@@ -35,10 +35,11 @@
 | 2 | R64-A02 | Unit: two concurrent `extract` jobs each get own QuickJS runtime | ✅ |
 | 3 | R64-A03 | `videasy` HotD S1E1 via Rust JS returns streams (or empty) without UI-isolate flutter_js | ⬜ |
 | 4 | R64-A04 | Sources → Forja All with ≥3 chips: no process death while videasy + peer run | ⬜ |
-| 5 | R64-A05 | Cancel / leave details aborts in-flight Rust JS jobs | ⬜ |
+| 5 | R64-A05 | Cancel / leave details aborts in-flight Rust JS jobs (per-job token; peers unaffected) | ⬜ |
 | 6 | R64-A06 | Plugins needing cheerio/hop keep working via flutter_js fallback until C05 | ⬜ |
 | 7 | R64-A07 | ENGINE_BOUNDARY: Nuvio stays host `flutter_js` (D3); only Forja Engine HTTP moves | ✅ |
 | 8 | R64-A08 | Manual macOS: select videasy+vidlink+goated — no `Lost connection` | ⬜ |
+| 9 | R64-A09 | Unit: parallel `scope_job_token` — sibling finish/cancel does not clear peer token | ✅ |
 
 ---
 
@@ -65,7 +66,7 @@ Sources → Forja runs up to 10 `EngineRuntime.fork()` heaps on the **Flutter UI
 
 - Job payload: `{ plugin_id, code, ctx, timeout_ms, allow_host_fallback, hop_scripts? }`
 - Result: `{ streams: [...] }` or `{ error, unsupported?: true }` for fallback
-- Cancel: existing `engine_cancel` job token
+- Cancel: per-job `CancellationToken` via `engine_cancel::scope_job_token` (task-local). Host cancel drains `EngineJobs` tokens + `request()` on ROOT — peers must not share one global attach slot.
 
 ### Related
 

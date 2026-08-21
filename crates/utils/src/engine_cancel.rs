@@ -13,11 +13,14 @@ static CANCEL_GENERATION: AtomicU64 = AtomicU64::new(0);
 static SHUTDOWN: AtomicBool = AtomicBool::new(false);
 static SHUTDOWN_NOTIFY: LazyLock<Notify> = LazyLock::new(Notify::new);
 
-/// Shared token for the current job (rayon / multi-thread resolve).
-static JOB_TOKEN_GLOBAL: LazyLock<Mutex<Option<CancellationToken>>> =
-    LazyLock::new(|| Mutex::new(None));
+// Per tokio task — parallel EngineJobs each keep their own token (Nuvio Job shape).
+// Never share one process-global slot across concurrent extracts.
+tokio::task_local! {
+    static TASK_JOB_TOKEN: CancellationToken;
+}
 
 thread_local! {
+    /// Blocking / sync FFI worker thread (spawn_blocking, enter_job).
     static JOB_TOKEN: RefCell<Option<CancellationToken>> = const { RefCell::new(None) };
 }
 
@@ -27,23 +30,27 @@ pub fn enter_job() {
     attach_job_token(token);
 }
 
-/// Attach a cancellation token for the current in-flight job.
+/// Attach a cancellation token for the current **blocking** thread.
+/// Async EngineJobs must use [scope_job_token] instead — do not overwrite siblings.
 pub fn attach_job_token(token: CancellationToken) {
-    *JOB_TOKEN_GLOBAL.lock().unwrap() = Some(token.clone());
     JOB_TOKEN.with(|t| *t.borrow_mut() = Some(token));
 }
 
 pub fn clear_job_token() {
-    *JOB_TOKEN_GLOBAL.lock().unwrap() = None;
     JOB_TOKEN.with(|t| *t.borrow_mut() = None);
+}
+
+/// Bind [token] for the duration of [fut] on this tokio task.
+pub async fn scope_job_token<F, T>(token: CancellationToken, fut: F) -> T
+where
+    F: std::future::Future<Output = T>,
+{
+    TASK_JOB_TOKEN.scope(token, fut).await
 }
 
 /// Host Cancel — aborts in-flight playback HTTP and resets for new jobs.
 /// Does **not** abort catalog paths that use [with_shutdown_cancel] only.
 pub fn request() {
-    if let Some(token) = JOB_TOKEN_GLOBAL.lock().unwrap().take() {
-        token.cancel();
-    }
     let mut root = ROOT.lock().unwrap();
     root.cancel();
     *root = CancellationToken::new();
@@ -68,7 +75,7 @@ pub fn clear_shutdown() {
 }
 
 pub fn cancellation_token() -> CancellationToken {
-    if let Some(t) = JOB_TOKEN_GLOBAL.lock().unwrap().clone() {
+    if let Ok(t) = TASK_JOB_TOKEN.try_with(|t| t.clone()) {
         return t;
     }
     JOB_TOKEN.with(|t| {
@@ -172,5 +179,56 @@ mod tests {
         assert_eq!(err, cancelled_message());
         clear_shutdown();
         clear_job_token();
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn parallel_task_tokens_do_not_overwrite() {
+        let _guard = lock_tests();
+        clear_shutdown();
+        request();
+        clear_job_token();
+
+        let a = new_job_token();
+        let b = new_job_token();
+        let (a_saw_cancel, b_still_live) = tokio::join!(
+            scope_job_token(a.clone(), async {
+                tokio::task::yield_now().await;
+                let mine = cancellation_token();
+                a.cancel();
+                mine.is_cancelled()
+            }),
+            scope_job_token(b.clone(), async {
+                tokio::task::yield_now().await;
+                tokio::task::yield_now().await;
+                !cancellation_token().is_cancelled() && !b.is_cancelled()
+            }),
+        );
+        assert!(a_saw_cancel);
+        assert!(b_still_live);
+        assert!(!b.is_cancelled());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn finishing_sibling_does_not_clear_peer_token() {
+        let _guard = lock_tests();
+        clear_shutdown();
+        request();
+        clear_job_token();
+
+        let long = new_job_token();
+        let short = new_job_token();
+        let long_seen = tokio::spawn(scope_job_token(long.clone(), async {
+            for _ in 0..32 {
+                tokio::task::yield_now().await;
+            }
+            !cancellation_token().is_cancelled()
+        }));
+        let short_done = tokio::spawn(scope_job_token(short.clone(), async {
+            tokio::task::yield_now().await;
+            true
+        }));
+        assert!(short_done.await.unwrap());
+        assert!(long_seen.await.unwrap());
+        assert!(!long.is_cancelled());
     }
 }
