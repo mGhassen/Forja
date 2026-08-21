@@ -334,6 +334,13 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
                 }
               : null,
           onSearchDownEdge: _tv ? _focusList : null,
+          onSearchRightEdge: _tv
+              ? () {
+                  if (_filtersFocus.canRequestFocus) {
+                    _filtersFocus.requestFocus();
+                  }
+                }
+              : null,
           onFiltersUpEdge: _tv
               ? () {
                   if (_searchFocus.canRequestFocus) {

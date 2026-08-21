@@ -181,7 +181,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [158-[open]-…](158-[open]-android-tv-nav-right-loses-page-focus.md) | ATV nav RIGHT loses last page focus | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [159-[open]-…](159-[open]-android-tv-live-background-audio.md) | ATV live/IPTV audio continues after Home | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [160-[open]-…](160-[open]-android-tv-paired-playback-sources.md) | ATV paired Playback torrent/Stremio/Nuvio missing | P1 | High | open | 8/8 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 10/10 · A 0/7 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [161-[open]-…](161-[open]-android-tv-sources-panel-dpad.md) | ATV Sources / torrent panel D-pad | P1 | High | open | 11/11 · A 0/8 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [162-[open]-…](162-[open]-iptv-more-like-this-catalog-only.md) | IPTV More like this = portal catalog only | P2 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [163-[open]-…](163-[open]-android-tv-iptv-vod-live-profile.md) | ATV IPTV Movies/Series VOD vs live profile | P1 | High | open | 26/26 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [164-[open]-…](164-[open]-vsembed-new-player-chain.md) | VSEmbed new JS player (rcp/prorcp dead) | P1 | High | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |

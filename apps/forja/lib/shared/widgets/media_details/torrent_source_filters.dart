@@ -4,6 +4,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
@@ -1028,6 +1029,7 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
     this.filtersFocusNode,
     this.onSearchUpEdge,
     this.onSearchDownEdge,
+    this.onSearchRightEdge,
     this.onFiltersUpEdge,
     this.onFiltersDownEdge,
     this.onFiltersRightEdge,
@@ -1063,6 +1065,7 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
   final FocusNode? filtersFocusNode;
   final VoidCallback? onSearchUpEdge;
   final VoidCallback? onSearchDownEdge;
+  final VoidCallback? onSearchRightEdge;
   final VoidCallback? onFiltersUpEdge;
   final VoidCallback? onFiltersDownEdge;
   final VoidCallback? onFiltersRightEdge;
@@ -1106,7 +1109,7 @@ class _TorrentSourceSearchToolbarState
   void didUpdateWidget(covariant TorrentSourceSearchToolbar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.sourcesPanelOpen && _wasPanelOpen) {
-      _closeFiltersOverlay();
+      _closeFiltersOverlay(restoreFiltersButton: false);
     }
     _wasPanelOpen = widget.sourcesPanelOpen;
     if (_filtersOpen) {
@@ -1142,30 +1145,50 @@ class _TorrentSourceSearchToolbarState
     entry.remove();
   }
 
-  void _closeFiltersOverlay() {
+  void _restoreFiltersButtonFocus() {
+    final node = widget.filtersFocusNode;
+    if (node == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        if (!node.canRequestFocus) return;
+      } catch (_) {
+        return;
+      }
+      final ctx = node.context;
+      if (ctx == null || !ctx.mounted) return;
+      FocusScope.of(ctx).requestFocus(node);
+    });
+  }
+
+  void _closeFiltersOverlay({bool restoreFiltersButton = true}) {
     if (_filtersEntry == null) return;
     _removeFiltersOverlay();
     if (mounted) setState(() {});
+    if (restoreFiltersButton) _restoreFiltersButtonFocus();
   }
 
   void _openFiltersSidePanel() {
     if (_filtersEntry != null) return;
     final overlay = Overlay.of(context, rootOverlay: true);
+    final tv = SourcesPanelTv.isTv(context);
     late OverlayEntry entry;
 
-    void close() {
+    void close({bool restoreFiltersButton = true}) {
       SourcesPanelTv.setFiltersDismiss(null);
       if (_filtersEntry == entry) {
         _filtersEntry = null;
       }
       entry.remove();
       if (mounted) setState(() {});
+      if (restoreFiltersButton) _restoreFiltersButtonFocus();
     }
 
     entry = OverlayEntry(
       builder: (ctx) => _TorrentFiltersSidePanel(
         enableBlur: widget.enableBlur,
-        onClose: close,
+        onClose: () => close(),
+        claimTvFocus: tv,
         child: _TorrentSourceFilterSheet(
           availableQualities: widget.availableQualities,
           availableLanguages: widget.availableLanguages,
@@ -1203,7 +1226,7 @@ class _TorrentSourceSearchToolbarState
               );
             }
           },
-          onRequestClose: close,
+          onRequestClose: () => close(),
         ),
       ),
     );
@@ -1228,6 +1251,13 @@ class _TorrentSourceSearchToolbarState
             focusNode: widget.searchFocusNode,
             onUpEdge: widget.onSearchUpEdge,
             onDownEdge: widget.onSearchDownEdge,
+            onRightEdge: widget.onSearchRightEdge ??
+                (widget.filtersFocusNode == null
+                    ? null
+                    : () {
+                        final node = widget.filtersFocusNode!;
+                        if (node.canRequestFocus) node.requestFocus();
+                      }),
           ),
         ),
         if (_canFilter) ...[
@@ -1293,6 +1323,7 @@ class _SearchField extends StatefulWidget {
     this.focusNode,
     this.onUpEdge,
     this.onDownEdge,
+    this.onRightEdge,
   });
 
   final String query;
@@ -1300,6 +1331,7 @@ class _SearchField extends StatefulWidget {
   final FocusNode? focusNode;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   State<_SearchField> createState() => _SearchFieldState();
@@ -1326,6 +1358,12 @@ class _SearchFieldState extends State<_SearchField> {
     super.dispose();
   }
 
+  bool get _caretAtEnd {
+    final sel = _controller.selection;
+    if (!sel.isValid) return true;
+    return sel.isCollapsed && sel.baseOffset >= _controller.text.length;
+  }
+
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
@@ -1337,6 +1375,14 @@ class _SearchFieldState extends State<_SearchField> {
     if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
       widget.onUpEdge?.call();
       return widget.onUpEdge != null
+          ? KeyEventResult.handled
+          : KeyEventResult.ignored;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+      // Keep ←/→ for the caret while editing mid-string.
+      if (!_caretAtEnd) return KeyEventResult.ignored;
+      widget.onRightEdge?.call();
+      return widget.onRightEdge != null
           ? KeyEventResult.handled
           : KeyEventResult.ignored;
     }
@@ -1536,7 +1582,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
                   ),
                 ),
                 const Spacer(),
-                TextButton(
+                _FilterClearButton(
                   onPressed: () {
                     widget.onClearAll();
                     final close = widget.onRequestClose;
@@ -1546,10 +1592,6 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
                       Navigator.pop(context);
                     }
                   },
-                  child: Text(
-                    'Clear',
-                    style: TextStyle(color: cinematic.textSecondary),
-                  ),
                 ),
                 if (widget.onRequestClose != null) ...[
                   const SizedBox(width: 4),
@@ -1716,17 +1758,47 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
   }
 }
 
+class _FilterClearButton extends StatelessWidget {
+  const _FilterClearButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = Text(
+      'Clear',
+      style: TextStyle(color: ForjaShellColors.cinematic.textSecondary),
+    );
+    if (!SourcesPanelTv.isTv(context)) {
+      return TextButton(onPressed: onPressed, child: label);
+    }
+    return shellFocusableTap(
+      context: context,
+      onTap: onPressed,
+      borderRadius: 8,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: label,
+      ),
+    );
+  }
+}
+
 /// Full-height Filters panel docked to the left of Sources.
 class _TorrentFiltersSidePanel extends StatefulWidget {
   const _TorrentFiltersSidePanel({
     required this.child,
     required this.onClose,
     this.enableBlur = true,
+    this.claimTvFocus = false,
   });
 
   final Widget child;
   final VoidCallback onClose;
   final bool enableBlur;
+  final bool claimTvFocus;
 
   @override
   State<_TorrentFiltersSidePanel> createState() =>
@@ -1749,6 +1821,33 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
     final sourcesW = TorrentSourcesPanel.panelWidthOf(context);
     final filterW = TorrentSourcesPanel.filterPanelWidthOf(context);
     const padding = EdgeInsets.fromLTRB(20, 8, 12, 16);
+
+    Widget panel = ForjaFrostedPanel(
+      // Details: BackdropFilter. Player: translucent shell (no frame).
+      enableBlur: widget.enableBlur,
+      // Only a left border - the right edge butts flush against the
+      // Sources panel (which draws its own left border) so the two
+      // read as one continuous surface, not two floating cards.
+      border: Border(
+        left: BorderSide(
+          color: ForjaShellColors.cinematic.borderSubtle,
+        ),
+      ),
+      child: SafeArea(
+        left: false,
+        right: false,
+        child: Padding(padding: padding, child: widget.child),
+      ),
+    );
+    // Keep Positioned as OverlayEntry root — wrap only the panel body.
+    if (widget.claimTvFocus) {
+      panel = TvOverlayScope(
+        onDismiss: widget.onClose,
+        autofocusFirst: true,
+        debugLabel: 'sources-filters-tv',
+        child: panel,
+      );
+    }
 
     // Occupy only the region LEFT of Sources. A full-screen Stack overlay
     // (even with an "empty" Sources strip) can still win the gesture arena on
@@ -1782,23 +1881,7 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOutCubic,
                 offset: _open ? Offset.zero : const Offset(1, 0),
-                child: ForjaFrostedPanel(
-                  // Details: BackdropFilter. Player: translucent shell (no frame).
-                  enableBlur: widget.enableBlur,
-                  // Only a left border - the right edge butts flush against the
-                  // Sources panel (which draws its own left border) so the two
-                  // read as one continuous surface, not two floating cards.
-                  border: Border(
-                    left: BorderSide(
-                      color: ForjaShellColors.cinematic.borderSubtle,
-                    ),
-                  ),
-                  child: SafeArea(
-                    left: false,
-                    right: false,
-                    child: Padding(padding: padding, child: widget.child),
-                  ),
-                ),
+                child: panel,
               ),
             ),
           ),

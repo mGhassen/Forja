@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** fix · **0 / 7** acceptance |
+| **Progress** | **11 / 11** fix · **0 / 8** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,6 +29,7 @@
 | 8 | I161-T08 | Player PopScope / pair `showDialog`: Back dismisses dialog/overlay only — HW twin must not `_exit` the player | ✅ |
 | 9 | I161-T09 | Details: Back closing Sources restores D-pad to the Play control that opened it | ✅ |
 | 10 | I161-T10 | Reopen after player: ↓/↑ still move in the list when `sources-list` row handle was unregistered | ✅ |
+| 11 | I161-T11 | Search → right → Filters button; OK opens Filters with D-pad claim; Back restores Filters button then Sources → Play | ✅ |
 
 ---
 
@@ -43,6 +44,7 @@
 | 5 | I161-A05 | Android TV: Back on Sources closes the panel (Filters first if open) — stays on details / in the player | ⬜ |
 | 6 | I161-A06 | Android TV details: Back on Sources → D-pad on Play (not empty / Back chevron) | ⬜ |
 | 7 | I161-A07 | Android TV details: leave player → reopen Sources → ↓/↑ move between torrent rows (not stuck on first) | ⬜ |
+| 8 | I161-A08 | Android TV Sources: → from search to Filters; OK opens Filters panel focus; Back → Filters button; Back → Play | ⬜ |
 
 ---
 
@@ -59,6 +61,8 @@ On **Android TV**, opening the torrent **Sources** panel left D-pad on the page 
 **I161-T09:** closing Sources left D-pad on an empty overlay scope (panel nodes unmounted, details still `ExcludeFocus` for a frame). Back now restores the Play control that opened the panel (retries after ExcludeFocus lifts). Playback-start close does not steal Play under the player.
 
 **I161-T10:** after leaving the player, the in-player Sources / torrent-file `TvCatalogRow` `dispose` unregisters the shared `sources-panel` / `sources-list` handle. Reopening details Sources still focused list-0, but ↓ was `handled` without moving (`moveVerticalInTab` failed, spatial never ran). Arrow resolvers now return ignored on a failed move so spatial can walk the list; `_request` uses the overlay `FocusScope` like claim does.
+
+**I161-T11:** search had ↑/↓ only — → never reached the Filters tune control. Opening Filters also left D-pad on the Sources chrome. Search → now focuses Filters; Filters overlay uses `TvOverlayScope` + autofocus; dismiss restores the Filters button (Sources Back still restores Play).
 
 ---
 
