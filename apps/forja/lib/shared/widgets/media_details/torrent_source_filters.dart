@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
@@ -1016,6 +1017,13 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
 
     /// When Sources closes, dismiss Filters if they were open.
     this.sourcesPanelOpen = false,
+
+    /// Forja tab soft categories (Movie / TV / Anime / Drama).
+    this.showEngineCategories = false,
+    this.engineVisibleCategories = const {},
+    this.engineCategoryMediaType,
+    this.onEngineCategoriesChanged,
+
     this.searchFocusNode,
     this.filtersFocusNode,
     this.onSearchUpEdge,
@@ -1047,6 +1055,10 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
   final ValueChanged<String>? onSortChanged;
   final bool enableBlur;
   final bool sourcesPanelOpen;
+  final bool showEngineCategories;
+  final Set<String> engineVisibleCategories;
+  final String? engineCategoryMediaType;
+  final ValueChanged<Set<String>>? onEngineCategoriesChanged;
   final FocusNode? searchFocusNode;
   final FocusNode? filtersFocusNode;
   final VoidCallback? onSearchUpEdge;
@@ -1074,7 +1086,13 @@ class _TorrentSourceSearchToolbarState
       widget.activeLanguageFilters.length +
       widget.activeTechFilters.length +
       widget.activeAudioFilters.length +
-      widget.activeSizeFilters.length;
+      widget.activeSizeFilters.length +
+      (widget.showEngineCategories
+          ? EngineCategories.extraCategoryFilterCount(
+              visibleCategories: widget.engineVisibleCategories,
+              mediaType: widget.engineCategoryMediaType,
+            )
+          : 0);
 
   bool get _filtersOpen => _filtersEntry != null;
 
@@ -1166,12 +1184,24 @@ class _TorrentSourceSearchToolbarState
           onAudioFiltersChanged: widget.onAudioFiltersChanged,
           onSizeFiltersChanged: widget.onSizeFiltersChanged,
           onSortChanged: widget.onSortChanged,
+          showEngineCategories: widget.showEngineCategories,
+          engineVisibleCategories: widget.engineVisibleCategories,
+          engineCategoryMediaType: widget.engineCategoryMediaType,
+          onEngineCategoriesChanged: widget.onEngineCategoriesChanged,
           onClearAll: () {
             widget.onQualityFiltersChanged({});
             widget.onLanguageFiltersChanged({});
             widget.onTechFiltersChanged({});
             widget.onAudioFiltersChanged?.call({});
             widget.onSizeFiltersChanged?.call({});
+            if (widget.showEngineCategories &&
+                widget.onEngineCategoriesChanged != null) {
+              widget.onEngineCategoriesChanged!(
+                EngineCategories.defaultsForMediaType(
+                  widget.engineCategoryMediaType,
+                ),
+              );
+            }
           },
           onRequestClose: close,
         ),
@@ -1392,6 +1422,10 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
     this.onSortChanged,
     this.onAudioFiltersChanged,
     this.onSizeFiltersChanged,
+    this.showEngineCategories = false,
+    this.engineVisibleCategories = const {},
+    this.engineCategoryMediaType,
+    this.onEngineCategoriesChanged,
     this.onRequestClose,
   });
 
@@ -1412,6 +1446,10 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
   final ValueChanged<Set<String>>? onAudioFiltersChanged;
   final ValueChanged<Set<String>>? onSizeFiltersChanged;
   final ValueChanged<String>? onSortChanged;
+  final bool showEngineCategories;
+  final Set<String> engineVisibleCategories;
+  final String? engineCategoryMediaType;
+  final ValueChanged<Set<String>>? onEngineCategoriesChanged;
   final VoidCallback onClearAll;
   final VoidCallback? onRequestClose;
 
@@ -1426,6 +1464,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
   late Set<String> _tech;
   late Set<String> _audio;
   late Set<String> _size;
+  late Set<String> _engineCats;
   late String? _sort;
 
   @override
@@ -1436,7 +1475,16 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     _tech = Set<String>.from(widget.activeTechFilters);
     _audio = Set<String>.from(widget.activeAudioFilters);
     _size = Set<String>.from(widget.activeSizeFilters);
+    _engineCats = Set<String>.from(widget.engineVisibleCategories);
     _sort = widget.sortPreference;
+  }
+
+  @override
+  void didUpdateWidget(covariant _TorrentSourceFilterSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.engineVisibleCategories != widget.engineVisibleCategories) {
+      _engineCats = Set<String>.from(widget.engineVisibleCategories);
+    }
   }
 
   void _toggle(Set<String> set, String value, void Function(Set<String>) emit) {
@@ -1447,6 +1495,21 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
         set.add(value);
       }
       emit(Set<String>.from(set));
+    });
+  }
+
+  void _toggleEngineCategory(String id) {
+    final onChanged = widget.onEngineCategoriesChanged;
+    if (onChanged == null) return;
+    setState(() {
+      if (_engineCats.contains(id)) {
+        // Keep at least one category so chips never vanish entirely.
+        if (_engineCats.length <= 1) return;
+        _engineCats.remove(id);
+      } else {
+        _engineCats.add(id);
+      }
+      onChanged(Set<String>.from(_engineCats));
     });
   }
 
@@ -1498,6 +1561,18 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
               ],
             ),
             const SizedBox(height: 8),
+            if (widget.showEngineCategories &&
+                widget.onEngineCategoriesChanged != null)
+              _sheetSection(
+                'Category',
+                EngineCategories.all.map(
+                  (id) => _sheetChip(
+                    label: EngineCategories.label(id),
+                    selected: _engineCats.contains(id),
+                    onTap: () => _toggleEngineCategory(id),
+                  ),
+                ),
+              ),
             if (widget.sortPreference != null && widget.onSortChanged != null)
               _sheetSection(
                 'Sort',

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 72 / 74** acceptance · **2 ⏭️** manual play QA |
-| **Current slice** | Pruned dead Forja HTTP chips (`engine.json` 1.5.7); manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
+| **Progress** | **Complete · 75 / 77** acceptance · **2 ⏭️** manual play QA |
+| **Current slice** | Soft Movie/TV/Anime/Drama chip categories; manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -107,6 +107,9 @@
 | 72 | R60-A72 | VidSrc.sbs Forja plugin uses balanced-bracket `CFG.servers` parse + nxsha AES `/api/servers`+`/api/sources` (Decryptor) with Videasy nest STREAMCRYPTO | ✅ |
 | 73 | R60-A73 | AutoEmbed uses `autoembed.js` + `hop-cloudfabric` for `nextgencloudfabric.com`; 111477 returns `a.111477.xyz` file URLs (no redirect filter that emptied results) | ✅ |
 | 74 | R60-A74 | Bundled pack drops dead Forja HTTP chips (VidFast, Cinesrc, VSEmbed, VidSrc, AutoEmbed, VidLove, 111Movies, MoviesAPI, VidAPI, WebStreamr) | ✅ |
+| 75 | R60-A75 | Bundled HTTP plugins tag `types` as movie/tv, anime, or drama (`engine.json` 1.5.8+) | ✅ |
+| 76 | R60-A76 | Sources → Forja soft-hides off-category chips; Filters → Category can add Movie / TV / Anime / Drama without hard-blocking extract | ✅ |
+| 77 | R60-A77 | Settings → Forja plugins groups toggles by Movie & TV / Anime / Drama | ✅ |
 
 ---
 

@@ -139,7 +139,16 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   Set<String> _activeLanguageFilters = {};
   Set<String> _activeTechFilters = {};
   Set<String> _activeSizeFilters = {};
+  /// Soft Forja chip categories (Filters → Category). Null = media default.
+  Set<String>? _engineVisibleCategories;
   String _sourceSearchQuery = '';
+
+  Set<String> get _effectiveEngineCategories =>
+      _engineVisibleCategories ??
+      EngineCategories.defaultsForPanelCategory(_enginePanelCategory);
+
+  String get _enginePanelCategory =>
+      EngineCategories.panelCategoryFor(mediaType: _movie.mediaType);
 
   // ── play / resolve (owned by [detailsPlaySessionProvider]) ───────────────
   List<TorrentResult> get _allTorrentResults => _play.torrents;

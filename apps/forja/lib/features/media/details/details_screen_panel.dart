@@ -250,9 +250,17 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       options.add(
         const SourcesPanelProviderOption(id: EngineIds.allChip, label: 'All'),
       );
+      final cats = _s._effectiveEngineCategories;
+      final selected = _s._engineSelectedPluginIds;
       for (final a in _s._enginePacks) {
         for (final s in a.plugins) {
-          if (!s.enabled || !s.isExtractable) continue;
+          if (!EngineCategories.pluginChipVisible(
+            plugin: s,
+            visibleCategories: cats,
+            selectedPluginIds: selected,
+          )) {
+            continue;
+          }
           options.add(
             SourcesPanelProviderOption(
               id: EngineIds.pluginChip(s.id),
@@ -409,12 +417,23 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       return;
     }
     if (id == EngineIds.allChip) {
-      final enabled = enabledEnginePluginIds(_s._enginePacks);
-      if (enabled.isEmpty) return;
-      final prev = _s._engineSelectedPluginIds;
+      final cats = _s._effectiveEngineCategories;
+      final selected = _s._engineSelectedPluginIds;
+      final visible = <String>{
+        for (final a in _s._enginePacks)
+          for (final s in a.plugins)
+            if (EngineCategories.pluginChipVisible(
+              plugin: s,
+              visibleCategories: cats,
+              selectedPluginIds: selected,
+            ))
+              s.id,
+      };
+      if (visible.isEmpty) return;
+      final prev = selected;
       final next = nextEngineSelectedAfterAllTap(
         selectedIds: prev,
-        enabledIds: enabled,
+        enabledIds: visible,
       );
       final clearing = next.isEmpty;
       final refetch = clearing
@@ -438,7 +457,12 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._engineAbortWork(clearFetched: true);
         }
       });
-      unawaited(EngineService.instance.saveSourcesSelectedPluginIds(next));
+      unawaited(
+        EngineService.instance.saveSourcesSelectedPluginIds(
+          next,
+          panelCategory: _s._enginePanelCategory,
+        ),
+      );
       if (!clearing) {
         unawaited(_s._fetchNextEnginePlugin());
       }
@@ -490,6 +514,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       unawaited(
         EngineService.instance.saveSourcesSelectedPluginIds(
           _s._engineSelectedPluginIds,
+          panelCategory: _s._enginePanelCategory,
         ),
       );
       if (!wasSelected) {

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:forja/shared/engine/anime_ids.dart';
+import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/engine/host_resolver.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/runtime.dart';
@@ -23,7 +24,9 @@ class EngineService {
   static const _assetRoot = 'assets/providers';
   static const _packsKey = 'engine_js_packs_v1';
   static const _scriptPrefix = 'engine_js_script_';
-  static const _selectedKey = 'engine_js_sources_selected_ids';
+  /// Legacy unscoped selection (migrated into `…_movie` once).
+  static const _legacySelectedKey = 'engine_js_sources_selected_ids';
+  static const _selectedKeyPrefix = 'engine_js_sources_selected_ids_';
   static const _selectAllDefaultKey = 'engine_js_sources_select_all_default';
 
   static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
@@ -274,21 +277,52 @@ class EngineService {
     await prefs.setBool(_selectAllDefaultKey, value);
   }
 
+  static String _selectedPrefsKey(String panelCategory) =>
+      '$_selectedKeyPrefix$panelCategory';
+
   Future<Set<String>> loadSourcesSelectedPluginIds({
     required Set<String> enabledIds,
+
+    /// movie | tv | anime | drama — separate chip memory per Sources panel.
+    required String panelCategory,
+
+    /// When prefs have no saved selection and Select All by default is on,
+    /// select this subset instead of every enabled plugin (soft categories).
+    Set<String>? selectAllScopeIds,
   }) async {
     final prefs = await _prefs;
-    final raw = prefs.getStringList(_selectedKey);
+    final key = _selectedPrefsKey(panelCategory);
+    var raw = prefs.getStringList(key);
+    // One-shot: old global list → movie bucket only.
+    if (raw == null && panelCategory == EngineCategories.movie) {
+      final legacy = prefs.getStringList(_legacySelectedKey);
+      if (legacy != null) {
+        await prefs.setStringList(key, legacy);
+        await prefs.remove(_legacySelectedKey);
+        raw = legacy;
+      }
+    }
     if (raw == null) {
       final selectAll = await isSourcesSelectAllDefault();
-      return selectAll ? Set<String>.from(enabledIds) : {};
+      if (!selectAll) return {};
+      final scope = selectAllScopeIds ?? enabledIds;
+      return {
+        for (final id in scope)
+          if (enabledIds.contains(id)) id,
+      };
     }
     return filterEngineSelectedPluginIds(savedIds: raw, enabledIds: enabledIds);
   }
 
-  Future<void> saveSourcesSelectedPluginIds(Set<String> ids) async {
+  Future<void> saveSourcesSelectedPluginIds(
+    Set<String> ids, {
+    required String panelCategory,
+  }) async {
     final prefs = await _prefs;
-    await prefs.setStringList(_selectedKey, ids.toList());
+    await prefs.setStringList(
+      _selectedPrefsKey(panelCategory),
+      ids.toList(),
+    );
   }
 
   Future<String?> _loadScript(EnginePlugin plugin) async {
@@ -337,16 +371,8 @@ class EngineService {
       await _syncHopsForRuntime(rt, packs);
     }
     if (plugin == null || !plugin.enabled || !plugin.isExtractable) return null;
+    // Soft categories only — Sources filter hides chips; selected plugins always run.
     final mediaType = type == 'tv' || type == 'series' ? 'tv' : 'movie';
-    if (plugin.types.isNotEmpty &&
-        !plugin.types.contains(mediaType) &&
-        !(mediaType == 'tv' && plugin.types.contains('series'))) {
-      return EngineExtractResult(
-        pluginId: plugin.id,
-        pluginName: plugin.name,
-        streams: const [],
-      );
-    }
 
     if (plugin.isHost) {
       final resolvedMovie =

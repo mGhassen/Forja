@@ -378,6 +378,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         episode: isTv ? _selectedEpisode : null,
         anilistId: _activeId,
         malId: malId,
+        engineCategory: 'anime',
       );
     }());
   }

@@ -440,6 +440,11 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
               setState(() => _s._activeTechFilters = v),
           onSizeFiltersChanged: (v) =>
               setState(() => _s._activeSizeFilters = v),
+          showEngineCategories: _s._panelKindFilter == EngineIds.kind,
+          engineVisibleCategories: _s._effectiveEngineCategories,
+          engineCategoryMediaType: _s._enginePanelCategory,
+          onEngineCategoriesChanged: (v) =>
+              setState(() => _s._engineVisibleCategories = v),
           showAudioFilters: showAudio,
           activeAudioFilters: _s._activeAudioFilters,
           onAudioFiltersChanged: (v) =>

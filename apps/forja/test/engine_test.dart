@@ -1109,6 +1109,52 @@ void main() {
       expect(plugin('vixsrc')['config']['subs'], isNotEmpty);
     });
 
+    test('engine.json tags movie/tv, anime, and drama categories', () async {
+      final jsonStr = await rootBundle.loadString(
+        'assets/providers/engine.json',
+      );
+      final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+      final plugins = [
+        for (final p in map['plugins'] as List)
+          EnginePlugin.fromJson(Map<String, dynamic>.from(p as Map)),
+      ];
+      EnginePlugin byId(String id) => plugins.firstWhere((p) => p.id == id);
+      expect(byId('videasy').types, ['movie', 'tv']);
+      expect(byId('hianime').types, ['anime']);
+      expect(byId('kisskh').types, ['drama']);
+      expect(
+        EngineCategories.defaultsForMediaType('movie'),
+        {EngineCategories.movie},
+      );
+      expect(
+        EngineCategories.panelCategoryFor(
+          mediaType: 'tv',
+          panelCategory: 'anime',
+        ),
+        EngineCategories.anime,
+      );
+      expect(
+        EngineCategories.panelCategoryFor(mediaType: 'movie'),
+        EngineCategories.movie,
+      );
+      expect(
+        EngineCategories.pluginChipVisible(
+          plugin: byId('hianime'),
+          visibleCategories: {EngineCategories.movie},
+          selectedPluginIds: const {},
+        ),
+        isFalse,
+      );
+      expect(
+        EngineCategories.pluginChipVisible(
+          plugin: byId('hianime'),
+          visibleCategories: {EngineCategories.movie},
+          selectedPluginIds: {'hianime'},
+        ),
+        isTrue,
+      );
+    });
+
     test('vidnest.js uses the Forja custom-alphabet cipher', () async {
       final src = await rootBundle.loadString('assets/providers/vidnest.js');
       expect(

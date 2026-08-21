@@ -3,6 +3,10 @@ part of 'live_matches_screen.dart';
 mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
+  /// Android TV: never offer PPV / Streamed / Mut embed rows — only native.
+  bool get _tvNativeLiveOnly =>
+      ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
   /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
   Future<bool> _runWithCancellableLoading(
     String message,
@@ -46,6 +50,10 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   ) async {
     if (_s._server == _LiveMatchesServer.iptvSports) {
       await _openIptvSportsMatch(streamed);
+      return;
+    }
+    if (_tvNativeLiveOnly) {
+      await _openTvNativeSourcesOnly(streamed);
       return;
     }
     if (!mounted) return;
@@ -100,6 +108,10 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       await _openStremioSportMatch(match);
       return;
     }
+    if (_tvNativeLiveOnly) {
+      await _openTvNativeSourcesOnly(match);
+      return;
+    }
     if (match.sources.isEmpty && match.inlineStreams.isEmpty) {
       ForjaToast.info('Stream not yet available for this event');
       return;
@@ -149,32 +161,152 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     );
   }
 
+  /// TV All (and any PPV/Streamed card path): picker = Forja Sports ∪ Stremio only.
+  Future<void> _openTvNativeSourcesOnly(_StreamedMatch match) async {
+    if (!mounted) return;
+    final ctrl = ref.read(iptvControllerProvider);
+    final portal = ctrl.activePortal;
+    if (portal != null &&
+        portal.portal.platform == IptvPortalPlatform.xtream) {
+      await LiveMatchesIptvSportsConfig.ensureArmed(portalKey: portal.key);
+    } else {
+      await LiveMatchesIptvSportsConfig.ensureArmed();
+    }
+    if (!mounted) return;
+
+    final espnPayload = _findEspnGameForMatch(match, _s._espnGames);
+    final enriched = espnPayload == null
+        ? match
+        : _copyStreamedMatch(
+            match,
+            sportMatchGame: espnPayload,
+            homeTeam: (espnPayload['homeTeam'] as String?)?.trim().isNotEmpty ==
+                    true
+                ? espnPayload['homeTeam'] as String
+                : match.homeTeam,
+            awayTeam: (espnPayload['awayTeam'] as String?)?.trim().isNotEmpty ==
+                    true
+                ? espnPayload['awayTeam'] as String
+                : match.awayTeam,
+          );
+
+    final forja = <IptvPlaySource>[];
+    final stremio = <IptvPlaySource>[];
+    final ok = await _runWithCancellableLoading('Loading sources…', () async {
+      try {
+        final results = await Future.wait([
+          _resolveIptvSportsStreams(enriched),
+          _resolveStremioStreamsMatching(enriched),
+        ]);
+        forja.addAll(results[0]);
+        stremio.addAll(results[1]);
+      } catch (e) {
+        debugPrint('[LiveMatches] TV native sources error: $e');
+      }
+    });
+    if (!ok) return;
+
+    final sources = <IptvPlaySource>[
+      for (final s in forja)
+        IptvPlaySource(
+          url: s.url,
+          label: s.label,
+          detail: _tvNativeSourceDetail('Forja Sports', s.detail),
+          logoUrl: s.logoUrl,
+          streamId: s.streamId,
+          headers: s.headers,
+        ),
+      for (final s in stremio)
+        IptvPlaySource(
+          url: s.url,
+          label: s.label,
+          detail: _tvNativeSourceDetail('Stremio', s.detail),
+          logoUrl: s.logoUrl,
+          streamId: s.streamId,
+          headers: s.headers,
+        ),
+    ];
+    if (sources.isEmpty) {
+      ForjaToast.info('No Stremio or Forja Sports sources for this event');
+      return;
+    }
+    if (!mounted) return;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF141414),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _IptvSportsChannelSheet(
+        match: enriched,
+        sources: sources,
+        onChannelSelected: (picked) {
+          Navigator.pop(context);
+          unawaited(_playIptvSportsSources(enriched, sources, picked));
+        },
+      ),
+    );
+  }
+
+  String _tvNativeSourceDetail(String server, String? detail) {
+    final d = (detail ?? '').trim();
+    return d.isEmpty ? server : '$server · $d';
+  }
+
+  Future<List<IptvPlaySource>> _resolveStremioStreamsMatching(
+    _StreamedMatch match,
+  ) async {
+    if (match.isStremio) {
+      return _stremioPlaySourcesFor(match);
+    }
+    final catalog = await _fetchStremioSportMatches();
+    final hits = catalog.where((m) => _sameStreamedEvent(match, m)).toList();
+    if (hits.isEmpty) return const [];
+    final out = <IptvPlaySource>[];
+    final seenUrls = <String>{};
+    for (final hit in hits.take(3)) {
+      for (final s in await _stremioPlaySourcesFor(hit)) {
+        if (!seenUrls.add(s.url)) continue;
+        out.add(s);
+      }
+    }
+    return out;
+  }
+
+  Future<List<IptvPlaySource>> _stremioPlaySourcesFor(
+    _StreamedMatch match,
+  ) async {
+    final out = <IptvPlaySource>[];
+    try {
+      final raw = await StremioService().getStreams(
+        baseUrl: match.stremioBaseUrl,
+        type: match.stremioType,
+        id: match.id,
+      );
+      for (final s in raw) {
+        if (s is! Map) continue;
+        final url = s['url']?.toString();
+        if (!StremioService.isPlayableLiveUrl(url)) continue;
+        final name = (s['name'] ?? s['title'] ?? 'Stream').toString().trim();
+        out.add(
+          IptvPlaySource(
+            url: url!,
+            label: name.isEmpty ? 'Stream' : name,
+            headers: StremioService.liveStreamRequestHeaders(s),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[LiveMatches] Stremio stream error: $e');
+    }
+    return out;
+  }
+
   Future<void> _openStremioSportMatch(_StreamedMatch match) async {
     if (!mounted) return;
     final sources = <IptvPlaySource>[];
     final ok = await _runWithCancellableLoading('Loading streams…', () async {
-      try {
-        final raw = await StremioService().getStreams(
-          baseUrl: match.stremioBaseUrl,
-          type: match.stremioType,
-          id: match.id,
-        );
-        for (final s in raw) {
-          if (s is! Map) continue;
-          final url = s['url']?.toString();
-          if (!StremioService.isPlayableLiveUrl(url)) continue;
-          final name = (s['name'] ?? s['title'] ?? 'Stream').toString().trim();
-          sources.add(
-            IptvPlaySource(
-              url: url!,
-              label: name.isEmpty ? 'Stream' : name,
-              headers: StremioService.liveStreamRequestHeaders(s),
-            ),
-          );
-        }
-      } catch (e) {
-        debugPrint('[LiveMatches] Stremio stream error: $e');
-      }
+      sources.addAll(await _stremioPlaySourcesFor(match));
     });
     if (!ok) return;
     if (sources.isEmpty) {
@@ -309,22 +441,23 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   }
 
   Future<void> _openIptvSportsFromPpv(_DamiTvStream s) async {
-    final match = _StreamedMatch(
-      id: 'ppv:${s.id}',
-      title: s.name,
-      category: s.categoryName,
-      dateMs: s.startsAt > 0 ? s.startsAt * 1000 : 0,
-      poster: s.poster,
-      popular: false,
-      airing: s.isLive,
-      homeTeam: s.homeTeam,
-      awayTeam: s.awayTeam,
-      homeBadge: s.homeBadge,
-      awayBadge: s.awayBadge,
-      sources: const [],
-    );
-    await _openIptvSportsMatch(match);
+    await _openIptvSportsMatch(_streamedMatchFromPpv(s));
   }
+
+  _StreamedMatch _streamedMatchFromPpv(_DamiTvStream s) => _StreamedMatch(
+        id: 'ppv:${s.id}',
+        title: s.name,
+        category: s.categoryName,
+        dateMs: s.startsAt > 0 ? s.startsAt * 1000 : 0,
+        poster: s.poster,
+        popular: false,
+        airing: s.isLive,
+        homeTeam: s.homeTeam,
+        awayTeam: s.awayTeam,
+        homeBadge: s.homeBadge,
+        awayBadge: s.awayBadge,
+        sources: const [],
+      );
 
   Future<void> _openStreamedEmbed(
     _StreamedMatch match,
@@ -355,6 +488,10 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   Future<void> _openDamiTvStream(_DamiTvStream s) async {
     if (_s._server == _LiveMatchesServer.iptvSports) {
       await _openIptvSportsFromPpv(s);
+      return;
+    }
+    if (_tvNativeLiveOnly) {
+      await _openTvNativeSourcesOnly(_streamedMatchFromPpv(s));
       return;
     }
     if (s.iframe.isEmpty) {

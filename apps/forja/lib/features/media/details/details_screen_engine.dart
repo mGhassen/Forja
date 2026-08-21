@@ -22,17 +22,28 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     try {
       final packs = await EngineService.instance.listSourcesPanelPacks();
       final enabledIds = enabledEnginePluginIds(packs);
+      final panelCategory = _s._enginePanelCategory;
+      final scope = EngineCategories.matchingPluginIds(
+        packs: packs,
+        categories: EngineCategories.defaultsForPanelCategory(panelCategory),
+      );
       final saved = _s._engineSelectionHydrated
           ? null
           : await EngineService.instance.loadSourcesSelectedPluginIds(
               enabledIds: enabledIds,
+              panelCategory: panelCategory,
+              selectAllScopeIds: scope,
             );
       if (!mounted) return;
       setState(() {
         _s._hasEnginePacks = enabledIds.isNotEmpty;
         _s._enginePacks = packs;
         if (!_s._engineSelectionHydrated) {
-          _s._engineSelectedPluginIds = saved ?? {};
+          _s._engineSelectedPluginIds = EngineCategories.scopeSelectionIfFullAll(
+            selected: saved ?? {},
+            enabledIds: enabledIds,
+            scope: scope,
+          );
           _s._engineSelectionHydrated = true;
         } else {
           _s._engineSelectedPluginIds = filterEngineSelectedPluginIds(

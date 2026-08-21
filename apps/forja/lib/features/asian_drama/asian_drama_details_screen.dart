@@ -229,6 +229,7 @@ class _AsianDramaDetailsScreenState
         movie: movie,
         season: isTv ? 1 : null,
         episode: isTv ? _selectedEpisode : null,
+        engineCategory: 'drama',
       ),
     );
   }

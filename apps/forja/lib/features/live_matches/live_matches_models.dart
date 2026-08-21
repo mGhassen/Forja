@@ -451,6 +451,22 @@ bool _samePpvStreamedMatch(_DamiTvStream ppv, _StreamedMatch streamed) {
       ppvTitle == streamedTitle;
 }
 
+/// Cross-catalog match for TV native picker (All card → Stremio addon event).
+bool _sameStreamedEvent(_StreamedMatch a, _StreamedMatch b) {
+  if (a.isAlwaysOn || b.isAlwaysOn) return false;
+  final teamsA = _teamPairKey(a.homeTeam, a.awayTeam);
+  final teamsB = _teamPairKey(b.homeTeam, b.awayTeam);
+  if (teamsA != null && teamsB != null) return teamsA == teamsB;
+  final titleA = _matchTextKey(a.title);
+  final titleB = _matchTextKey(b.title);
+  if (titleA.isEmpty || titleB.isEmpty || titleA != titleB) return false;
+  if (a.dateMs > 0 && b.dateMs > 0) {
+    final deltaMs = (a.dateMs - b.dateMs).abs();
+    if (deltaMs > const Duration(hours: 6).inMilliseconds) return false;
+  }
+  return true;
+}
+
 List<_LiveMatchGridEntry> _mergePpvAndStreamedEntries({
   required List<_DamiTvStream> ppv,
   required List<_StreamedMatch> streamed,

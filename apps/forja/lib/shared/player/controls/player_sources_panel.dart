@@ -64,6 +64,9 @@ class PlayerSourcesPanel {
     String? currentAddonBaseUrl,
     int? anilistId,
     int? malId,
+
+    /// Soft Forja category for this panel: movie | tv | anime | drama.
+    String? engineCategory,
     required Future<void> Function(TorrentResult result) onTorrentSelected,
     required Future<void> Function(Map<String, dynamic> stream)
     onStremioSelected,
@@ -90,6 +93,7 @@ class PlayerSourcesPanel {
           currentAddonBaseUrl: currentAddonBaseUrl,
           anilistId: anilistId,
           malId: malId,
+          engineCategory: engineCategory,
           onTorrentSelected: onTorrentSelected,
           onStremioSelected: onStremioSelected,
           onClose: dismiss,
@@ -116,6 +120,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.currentAddonBaseUrl,
     this.anilistId,
     this.malId,
+    this.engineCategory,
   });
 
   final Movie movie;
@@ -127,6 +132,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final String? currentAddonBaseUrl;
   final int? anilistId;
   final int? malId;
+  final String? engineCategory;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -168,6 +174,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           currentAddonBaseUrl: widget.currentAddonBaseUrl,
           anilistId: widget.anilistId,
           malId: widget.malId,
+          engineCategory: widget.engineCategory,
           onTorrentSelected: widget.onTorrentSelected,
           onStremioSelected: widget.onStremioSelected,
           onClose: widget.onClose,
@@ -191,6 +198,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.currentAddonBaseUrl,
     this.anilistId,
     this.malId,
+    this.engineCategory,
   });
 
   final Movie movie;
@@ -202,6 +210,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final String? currentAddonBaseUrl;
   final int? anilistId;
   final int? malId;
+  final String? engineCategory;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -239,11 +248,22 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<EnginePack> _enginePacks = [];
   Set<String> _engineSelectedPluginIds = {};
   Set<String> _engineFetchedPluginIds = {};
+  Set<String>? _engineVisibleCategories;
   bool _engineFetching = false;
   int _engineFetchGen = 0;
   Set<String> _engineInFlightPluginIds = {};
   final Set<Future<void>> _enginePoolTasks = {};
   int _enginePoolLimit = kEngineSourcesBatchDesktop;
+
+  String get _enginePanelCategory => EngineCategories.panelCategoryFor(
+    mediaType: widget.movie.mediaType,
+    panelCategory: widget.engineCategory,
+    hasAnimeIds: (widget.anilistId ?? 0) > 0 || (widget.malId ?? 0) > 0,
+  );
+
+  Set<String> get _effectiveEngineCategories =>
+      _engineVisibleCategories ??
+      EngineCategories.defaultsForPanelCategory(_enginePanelCategory);
 
   bool _searching = false;
   bool _stremioFetching = false;
@@ -638,10 +658,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (engineOn && kind == 'engine') {
       try {
         enginePacks = await EngineService.instance.listSourcesPanelPacks();
-        engineSelected = await EngineService.instance
-            .loadSourcesSelectedPluginIds(
-              enabledIds: enabledEnginePluginIds(enginePacks),
-            );
+        final enabledIds = enabledEnginePluginIds(enginePacks);
+        final panelCategory = _enginePanelCategory;
+        final scope = EngineCategories.matchingPluginIds(
+          packs: enginePacks,
+          categories: EngineCategories.defaultsForPanelCategory(panelCategory),
+        );
+        engineSelected = EngineCategories.scopeSelectionIfFullAll(
+          selected: await EngineService.instance.loadSourcesSelectedPluginIds(
+            enabledIds: enabledIds,
+            panelCategory: panelCategory,
+            selectAllScopeIds: scope,
+          ),
+          enabledIds: enabledIds,
+          scope: scope,
+        );
       } catch (_) {}
     }
     if (!mounted) return;
@@ -710,8 +741,19 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     try {
       final packs = await EngineService.instance.listSourcesPanelPacks();
       final enabledIds = enabledEnginePluginIds(packs);
-      final saved = await EngineService.instance.loadSourcesSelectedPluginIds(
+      final panelCategory = _enginePanelCategory;
+      final scope = EngineCategories.matchingPluginIds(
+        packs: packs,
+        categories: EngineCategories.defaultsForPanelCategory(panelCategory),
+      );
+      final saved = EngineCategories.scopeSelectionIfFullAll(
+        selected: await EngineService.instance.loadSourcesSelectedPluginIds(
+          enabledIds: enabledIds,
+          panelCategory: panelCategory,
+          selectAllScopeIds: scope,
+        ),
         enabledIds: enabledIds,
+        scope: scope,
       );
       if (!mounted) return;
       setState(() {
@@ -1244,11 +1286,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       ];
     }
     if (_kindFilter == 'engine') {
+      final cats = _effectiveEngineCategories;
       return [
         const SourcesPanelProviderOption(id: 'all_engine', label: 'All'),
         for (final a in _enginePacks)
           for (final s in a.plugins)
-            if (s.enabled && s.isExtractable)
+            if (EngineCategories.pluginChipVisible(
+              plugin: s,
+              visibleCategories: cats,
+              selectedPluginIds: _engineSelectedPluginIds,
+            ))
               SourcesPanelProviderOption(id: 'engine:${s.id}', label: s.name),
       ];
     }
@@ -2391,12 +2438,22 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
     if (id == 'all_engine') {
-      final enabled = enabledEnginePluginIds(_enginePacks);
-      if (enabled.isEmpty) return;
+      final cats = _effectiveEngineCategories;
+      final visible = <String>{
+        for (final a in _enginePacks)
+          for (final s in a.plugins)
+            if (EngineCategories.pluginChipVisible(
+              plugin: s,
+              visibleCategories: cats,
+              selectedPluginIds: _engineSelectedPluginIds,
+            ))
+              s.id,
+      };
+      if (visible.isEmpty) return;
       final prev = _engineSelectedPluginIds;
       final next = nextEngineSelectedAfterAllTap(
         selectedIds: prev,
-        enabledIds: enabled,
+        enabledIds: visible,
       );
       final clearing = next.isEmpty;
       final refetch = clearing
@@ -2422,7 +2479,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           );
         }
       });
-      unawaited(EngineService.instance.saveSourcesSelectedPluginIds(next));
+      unawaited(
+        EngineService.instance.saveSourcesSelectedPluginIds(
+          next,
+          panelCategory: _enginePanelCategory,
+        ),
+      );
       if (!clearing) {
         unawaited(_fetchNextEnginePlugin());
       }
@@ -2467,6 +2529,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       unawaited(
         EngineService.instance.saveSourcesSelectedPluginIds(
           _engineSelectedPluginIds,
+          panelCategory: _enginePanelCategory,
         ),
       );
       if (!wasSelected) {
@@ -2624,6 +2687,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           onLanguageFiltersChanged: (v) => setState(() => _languageFilters = v),
           onTechFiltersChanged: (v) => setState(() => _techFilters = v),
           onSizeFiltersChanged: (v) => setState(() => _sizeFilters = v),
+          showEngineCategories: _kindFilter == 'engine',
+          engineVisibleCategories: _effectiveEngineCategories,
+          engineCategoryMediaType: _enginePanelCategory,
+          onEngineCategoriesChanged: (v) =>
+              setState(() => _engineVisibleCategories = v),
           showAudioFilters: _showsTorrents,
           activeAudioFilters: _audioFilters,
           onAudioFiltersChanged: (v) => setState(() => _audioFilters = v),

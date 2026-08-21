@@ -487,6 +487,18 @@ class _SettingsProvidersSectionState
               ];
               if (panelPlugins.isEmpty) return const SizedBox.shrink();
               final builtIn = EngineService.isBundled(pack.sourceUrl);
+              final byGroup = <String, List<EnginePlugin>>{};
+              for (final p in panelPlugins) {
+                byGroup
+                    .putIfAbsent(EngineCategories.groupKey(p), () => [])
+                    .add(p);
+              }
+              final orderedGroups = [
+                for (final key in EngineCategories.groupOrder)
+                  if (byGroup.containsKey(key)) key,
+                for (final key in byGroup.keys)
+                  if (!EngineCategories.groupOrder.contains(key)) key,
+              ];
               return Theme(
                 data: Theme.of(
                   context,
@@ -518,26 +530,41 @@ class _SettingsProvidersSectionState
                       : _AddonRemoveActions(
                           onRemove: () => _removeEnginePack(pack.sourceUrl),
                         ),
-                  children: panelPlugins.map((p) {
-                    final subtitle = [
-                      if (p.description != null && p.description!.isNotEmpty)
-                        p.description!,
-                      if (p.types.isNotEmpty) p.types.join(', '),
-                      p.kind,
-                    ].join(' · ');
-                    return SettingsToggleRow(
-                      title: p.name,
-                      subtitle: subtitle,
-                      value: p.enabled,
-                      onChanged: (val) async {
-                        await EngineService.instance.setPluginEnabled(
-                          sourceUrl: pack.sourceUrl,
-                          pluginId: p.id,
-                          enabled: val,
-                        );
-                      },
-                    );
-                  }).toList(),
+                  children: [
+                    for (final group in orderedGroups) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 10, 4, 4),
+                        child: Text(
+                          EngineCategories.groupLabel(group),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: ForjaShellColors.textSecondary,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      for (final p in byGroup[group]!)
+                        SettingsToggleRow(
+                          title: p.name,
+                          subtitle: [
+                            if (p.description != null &&
+                                p.description!.isNotEmpty)
+                              p.description!,
+                            if (p.types.isNotEmpty) p.types.join(', '),
+                            p.kind,
+                          ].join(' · '),
+                          value: p.enabled,
+                          onChanged: (val) async {
+                            await EngineService.instance.setPluginEnabled(
+                              sourceUrl: pack.sourceUrl,
+                              pluginId: p.id,
+                              enabled: val,
+                            );
+                          },
+                        ),
+                    ],
+                  ],
                 ),
               );
             }),
