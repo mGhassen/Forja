@@ -9,6 +9,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/hero/desktop_selectable_title.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
+import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -699,6 +700,10 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   }
 
   Widget _buildTitle(HubHeroSlide slide, {bool compact = false}) {
+    final maxLines = compact ? 2 : 3;
+    final preferred = shellScaled(context, compact ? 28 : 40)
+        .clamp(compact ? 18.0 : 24.0, compact ? 28.0 : 40.0)
+        .toDouble();
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 600),
       switchInCurve: Curves.easeOutCubic,
@@ -725,21 +730,43 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
       ),
       child: KeyedSubtree(
         key: ValueKey(slide.id),
-        child: wrapDesktopSelectableTitle(
-          context,
-          Text(
-            slide.title,
-            maxLines: compact ? 2 : 3,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: shellScaled(context, compact ? 28 : 40)
-                  .clamp(compact ? 18.0 : 24.0, compact ? 28.0 : 40.0),
-              fontWeight: FontWeight.w900,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxW = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : MediaQuery.sizeOf(context).width;
+            final maxH = constraints.maxHeight.isFinite
+                ? constraints.maxHeight
+                : (compact
+                    ? ShellTokens.heroTitleSlotHeightCompact
+                    : ShellTokens.heroTitleSlotHeightDesktop);
+            final fontSize = fitHeroTitleFontSize(
+              title: slide.title,
+              maxWidth: maxW,
+              maxHeight: maxH,
+              maxLines: maxLines,
+              preferredSize: preferred,
+              minSize: compact ? 16 : 20,
               height: 1.05,
               letterSpacing: -0.5,
-            ),
-          ),
+              pad: EdgeInsets.zero,
+            );
+            return wrapDesktopSelectableTitle(
+              context,
+              Text(
+                slide.title,
+                maxLines: maxLines,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w900,
+                  height: 1.05,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

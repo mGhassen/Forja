@@ -821,6 +821,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                         isLandscape: false,
                         desktop: true,
                         compact: true,
+                        slotHeight: titleHeight,
                       ),
                     ),
                   ),
@@ -988,6 +989,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                     heroMovie,
                     isLandscape: false,
                     desktop: true,
+                    slotHeight: layout.titleHeight,
                   ),
                 ),
               ),
@@ -1062,6 +1064,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     required bool isLandscape,
     bool desktop = false,
     bool compact = false,
+    double? slotHeight,
   }) {
     return HeroTitle(
       key: ValueKey(heroMovie.id),
@@ -1071,6 +1074,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       isLandscape: isLandscape,
       desktop: desktop,
       compact: compact,
+      slotHeight: slotHeight,
     );
   }
 

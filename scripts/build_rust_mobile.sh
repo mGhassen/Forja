@@ -127,13 +127,21 @@ build_android() {
   fi
 
   export ANDROID_NDK_HOME="$ndk"
-  export AR="$prebuilt/bin/llvm-ar"
+  # Never export bare CC/CXX/AR — cargo host builds (e.g. rquickjs-sys) must use the
+  # macOS/Linux toolchain. Target-scoped vars only.
+  unset CC CXX AR CFLAGS CXXFLAGS || true
+
+  local sysroot="$prebuilt/sysroot"
+  local ar="$prebuilt/bin/llvm-ar"
 
   echo "==> Android arm64-v8a (NDK: $ndk)"
   rustup target add aarch64-linux-android >/dev/null 2>&1 || true
-  export CC="$prebuilt/bin/aarch64-linux-android21-clang"
-  export CXX="$prebuilt/bin/aarch64-linux-android21-clang++"
-  export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
+  export CC_aarch64_linux_android="$prebuilt/bin/aarch64-linux-android21-clang"
+  export CXX_aarch64_linux_android="$prebuilt/bin/aarch64-linux-android21-clang++"
+  export AR_aarch64_linux_android="$ar"
+  export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC_aarch64_linux_android"
+  export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="$ar"
+  export BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--sysroot=$sysroot"
   cargo build -p ffi --target aarch64-linux-android "--$PROFILE" "${MOBILE_FLAGS[@]}"
   local out64="$ROOT/crates/target/aarch64-linux-android/$PROFILE/libffi.so"
   local dest64="$ROOT/apps/forja/android/app/src/main/jniLibs/arm64-v8a"
@@ -143,9 +151,12 @@ build_android() {
 
   echo "==> Android armeabi-v7a (NDK: $ndk)"
   rustup target add armv7-linux-androideabi >/dev/null 2>&1 || true
-  export CC="$prebuilt/bin/armv7a-linux-androideabi21-clang"
-  export CXX="$prebuilt/bin/armv7a-linux-androideabi21-clang++"
-  export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$CC"
+  export CC_armv7_linux_androideabi="$prebuilt/bin/armv7a-linux-androideabi21-clang"
+  export CXX_armv7_linux_androideabi="$prebuilt/bin/armv7a-linux-androideabi21-clang++"
+  export AR_armv7_linux_androideabi="$ar"
+  export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$CC_armv7_linux_androideabi"
+  export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_AR="$ar"
+  export BINDGEN_EXTRA_CLANG_ARGS_armv7_linux_androideabi="--sysroot=$sysroot"
   cargo build -p ffi --target armv7-linux-androideabi "--$PROFILE" "${MOBILE_FLAGS[@]}"
   local out32="$ROOT/crates/target/armv7-linux-androideabi/$PROFILE/libffi.so"
   local dest32="$ROOT/apps/forja/android/app/src/main/jniLibs/armeabi-v7a"

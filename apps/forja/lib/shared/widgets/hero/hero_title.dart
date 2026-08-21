@@ -9,6 +9,78 @@ enum HeroTitleStyle { details, home }
 /// Line height for details fallback titles. `1.0` smashes wrapped lines.
 const double kHeroTitleLineHeight = 1.12;
 
+/// Keeps neg letterSpacing / chromatic offsets + descenders out of the parent
+/// clip and off the meta row.
+const EdgeInsets kHeroTitlePad = EdgeInsets.fromLTRB(4, 2, 4, 8);
+
+/// Largest font size ≤ [preferredSize] that fits [title] in [maxWidth]×[maxHeight]
+/// with at most [maxLines] (then ellipsis). Shared by hub / home / details heroes.
+double fitHeroTitleFontSize({
+  required String title,
+  required double maxWidth,
+  required double maxHeight,
+  required int maxLines,
+  double preferredSize = 48,
+  double minSize = 20,
+  double height = kHeroTitleLineHeight,
+  double letterSpacing = -1.2,
+  FontWeight fontWeight = FontWeight.w900,
+  EdgeInsets pad = kHeroTitlePad,
+}) {
+  final availW = maxWidth - pad.horizontal;
+  final availH = maxHeight - pad.vertical;
+  if (availW <= 0 || availH <= 0 || title.isEmpty) {
+    return minSize.clamp(minSize, preferredSize);
+  }
+
+  double measure(double size) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: title,
+        style: TextStyle(
+          fontSize: size,
+          fontWeight: fontWeight,
+          height: height,
+          letterSpacing: letterSpacing,
+        ),
+      ),
+      maxLines: maxLines,
+      ellipsis: '…',
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: availW);
+    return painter.height;
+  }
+
+  var lo = minSize;
+  var hi = preferredSize;
+  if (measure(hi) <= availH) return hi;
+  if (measure(lo) > availH) return lo;
+
+  // Binary search largest size that fits.
+  for (var i = 0; i < 12; i++) {
+    final mid = (lo + hi) / 2;
+    if (measure(mid) <= availH) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}
+
+int heroTitleMaxLinesForSlot(double maxHeight) {
+  if (maxHeight < 48) return 1;
+  if (maxHeight < 78) return 2;
+  return 3;
+}
+
+double heroTitlePreferredFontSize(double maxHeight) {
+  if (maxHeight <= 56) return 32;
+  if (maxHeight <= 72) return 40;
+  if (maxHeight <= 100) return 44;
+  return 48;
+}
+
 /// Cyan/amber offset layers under white — desktop/mobile details look.
 /// On TV, a single plain [Text]: stacked translucent offsets read as a
 /// double image with soft antialiasing on Android TV GLES.
@@ -17,16 +89,14 @@ class ChromaticHeroTitleText extends StatelessWidget {
     super.key,
     required this.title,
     required this.style,
-    this.maxLines = 2,
+    this.maxLines = 3,
   });
 
   final String title;
   final TextStyle style;
   final int maxLines;
 
-  /// Keeps neg letterSpacing / chromatic offsets + descenders / line-2 out of
-  /// the parent clip and off the genre row.
-  static const _pad = EdgeInsets.fromLTRB(4, 2, 4, 8);
+  static const _pad = kHeroTitlePad;
 
   Text _titleText(String value, TextStyle textStyle) => Text(
         value,
@@ -200,18 +270,32 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
   }
 
   Widget _fallbackTitle(Movie movie, double maxHeight) {
-    final fontSize = maxHeight <= 56 ? 32.0 : maxHeight <= 72 ? 40.0 : 48.0;
-    final maxLines = maxHeight <= 56 ? 1 : 2;
-    return ChromaticHeroTitleText(
-      title: movie.title,
-      maxLines: maxLines,
-      style: TextStyle(
-        fontSize: fontSize,
-        fontWeight: FontWeight.w900,
-        color: Colors.white,
-        height: kHeroTitleLineHeight,
-        letterSpacing: -1.2,
-      ),
+    final maxLines = heroTitleMaxLinesForSlot(maxHeight);
+    final preferred = heroTitlePreferredFontSize(maxHeight);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxW = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final fontSize = fitHeroTitleFontSize(
+          title: movie.title,
+          maxWidth: maxW,
+          maxHeight: maxHeight,
+          maxLines: maxLines,
+          preferredSize: preferred,
+        );
+        return ChromaticHeroTitleText(
+          title: movie.title,
+          maxLines: maxLines,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            height: kHeroTitleLineHeight,
+            letterSpacing: -1.2,
+          ),
+        );
+      },
     );
   }
 }
@@ -255,29 +339,34 @@ class _HomeHeroTitleSlot extends StatelessWidget {
             : desktop
                 ? ShellTokens.heroTitleSlotHeightDesktop
                 : logoMaxHeight + 14);
+    final hasLogo = logoUrl != null && logoUrl!.isNotEmpty;
+    // Text titles use the full slot; logo placeholders fit the logo box.
+    final textMaxHeight = hasLogo ? logoMaxHeight : resolvedSlotHeight;
     final title = _plainTitleText(
       context,
       movie,
       isLandscape,
       desktop: desktop,
       compact: compact,
+      maxWidth: resolvedMaxWidth,
+      maxHeight: textMaxHeight,
     );
-    final hasLogo = logoUrl != null && logoUrl!.isNotEmpty;
 
     return SizedBox(
-      height: compact ? null : resolvedSlotHeight,
+      // Compact home may rely on the parent slot; when [slotHeight] is set, honor it.
+      height: compact && slotHeight == null ? null : resolvedSlotHeight,
       width: resolvedMaxWidth,
       child: Align(
         alignment: Alignment.bottomLeft,
         child: Padding(
           padding: EdgeInsets.only(bottom: desktop || compact ? 0 : 14),
-          child: SizedBox(
-            height: logoMaxHeight,
-            width: resolvedMaxWidth,
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: hasLogo
-                  ? CachedNetworkImage(
+          child: hasLogo
+              ? SizedBox(
+                  height: logoMaxHeight,
+                  width: resolvedMaxWidth,
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: CachedNetworkImage(
                       imageUrl: logoUrl!,
                       height: logoMaxHeight,
                       width: resolvedMaxWidth,
@@ -287,10 +376,10 @@ class _HomeHeroTitleSlot extends StatelessWidget {
                       errorWidget: (_, _, _) => title,
                       fadeInDuration: const Duration(milliseconds: 550),
                       fadeOutDuration: const Duration(milliseconds: 450),
-                    )
-                  : title,
-            ),
-          ),
+                    ),
+                  ),
+                )
+              : title,
         ),
       ),
     );
@@ -302,33 +391,59 @@ class _HomeHeroTitleSlot extends StatelessWidget {
     bool isLandscape, {
     bool desktop = false,
     bool compact = false,
+    required double maxWidth,
+    required double maxHeight,
   }) {
-    final fontSize = compact
+    final maxLines = compact ? 2 : 3;
+    final preferred = compact
         ? 22.0
         : desktop
             ? 32.0
             : (isLandscape ? 48.0 : 36.0);
-    return wrapDesktopSelectableTitle(
-      context,
-      Text(
-        movie.title,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.w900,
-          color: Colors.white,
-          height: 1.0,
-          letterSpacing: -1.0,
-          shadows: [
-            const Shadow(color: Colors.black, blurRadius: 40),
-            Shadow(
-              color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 80,
+    const height = 1.05;
+    const letterSpacing = -1.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : maxWidth;
+        final h = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : maxHeight;
+        final fontSize = fitHeroTitleFontSize(
+          title: movie.title,
+          maxWidth: w,
+          maxHeight: h,
+          maxLines: maxLines,
+          preferredSize: preferred,
+          minSize: compact ? 16 : 20,
+          height: height,
+          letterSpacing: letterSpacing,
+          pad: EdgeInsets.zero,
+        );
+        return wrapDesktopSelectableTitle(
+          context,
+          Text(
+            movie.title,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              height: height,
+              letterSpacing: letterSpacing,
+              shadows: [
+                const Shadow(color: Colors.black, blurRadius: 40),
+                Shadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 80,
+                ),
+              ],
             ),
-          ],
-        ),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+      },
     );
   }
 }

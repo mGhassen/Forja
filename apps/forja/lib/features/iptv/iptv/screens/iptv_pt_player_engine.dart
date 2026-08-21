@@ -656,10 +656,18 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       if (p) {
         _s._clearDeadSurfaceCover();
         _s._readyNotPlayingSince = null;
+        _s._pauseRefillGraceUntil = null;
       } else if (_s._userPlayWhenReady) {
         // Soft poke only — live mid-stream never auto-reopens.
         _s._readyNotPlayingSince = DateTime.now();
         if (_s._buffering) return;
+        // Live Stable + cache-pause: mpv pauses for refill with playing=false.
+        // Do not fight paused-for-cache with play() — that races into
+        // detector 3 hard recreate. Grace lets ffmpeg reconnect + cushion.
+        if (_livePlaybackProfile && _bufferedRecovery) {
+          _armPauseRefillGrace();
+          return;
+        }
         Future.microtask(() async {
           if (!mounted || !_s._userPlayWhenReady || _s._playing) return;
           if (_s._buffering) return;
@@ -677,7 +685,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _s._bufferingSince ??= DateTime.now();
         // Pause-to-refill / underrun: VT often one-shots while demuxer refills.
         if (_playbackStarted && _livePlaybackProfile) {
-          _armTransientHwDecodeIgnore();
+          _armPauseRefillGrace();
         }
       } else {
         // media_kit `core-idle` flickers. Zeroing [_bufferingSince] here
@@ -733,6 +741,15 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           );
           return;
         }
+        // Live Stable: CDN chunk close → corrupt TS → VT one-shot is normal.
+        // Never hard-fallback to software / recreate — that emptied the cache
+        // and triggered silent-self-pause loops. Empty-cache detectors still
+        // recover if the feed is truly dead.
+        if (_livePlaybackProfile && _bufferedRecovery) {
+          _armPauseRefillGrace();
+          _logHealthyHold('hw decode fail (live hold)');
+          return;
+        }
         if (_streamWorking) {
           _logHealthyHold('hw decode fail');
           return;
@@ -757,8 +774,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
   /// Socket blip: recover only if cache/feed says the stream is dead.
   void _noteSocketTrouble(String what) {
-    // VT often logs a one-shot fail while ffmpeg reconnects / cache-pause holds.
-    _armTransientHwDecodeIgnore();
+    // VT + silent-self-pause often fire while ffmpeg reconnects / cache-pause holds.
+    _armPauseRefillGrace();
     if (!_bufferedRecovery) {
       _triggerRecovery(reason: 'connection dropped: $what', forceHard: true);
       return;
@@ -1133,6 +1150,18 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     );
   }
 
+  void _armPauseRefillGrace() {
+    _s._pauseRefillGraceUntil = DateTime.now().add(
+      _IptvPtPlayerScreenState._pauseRefillGrace,
+    );
+    _armTransientHwDecodeIgnore();
+  }
+
+  bool get _inPauseRefillGrace {
+    final until = _s._pauseRefillGraceUntil;
+    return until != null && DateTime.now().isBefore(until);
+  }
+
   /// Sustained underrun / freeze without playhead — treat as dead for stall mode.
   bool get _stallWithoutPlayhead {
     if (!_stallReopenRecovery) return false;
@@ -1254,19 +1283,45 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         return;
       }
       // Detector 3: silent self-pause — only if not working.
+      // Live Stable + cache-pause: playing=false with buffering=false is the
+      // normal pause-to-refill state after a CDN close. Hard recreate here is
+      // what looped recovery (#1) every ~chunk in the reporter logs.
       if (_s._userPlayWhenReady &&
           !_s._playing &&
           !_s._buffering &&
-          _s._readyNotPlayingSince != null &&
-          now.difference(_s._readyNotPlayingSince!) >
-              const Duration(milliseconds: 3000)) {
-        if (_streamWorking) {
-          _logHealthyHold('self-pause');
+          _s._readyNotPlayingSince != null) {
+        final pausedFor = now.difference(_s._readyNotPlayingSince!);
+        if (_livePlaybackProfile && _bufferedRecovery) {
+          if (_inPauseRefillGrace ||
+              _streamWorking ||
+              _networkStillFeeding ||
+              _s._cacheAheadSecs >=
+                  _IptvPtPlayerScreenState._minHealthyCacheSecs ||
+              pausedFor < _IptvPtPlayerScreenState._pauseRefillGrace) {
+            if (_streamWorking ||
+                _inPauseRefillGrace ||
+                _networkStillFeeding ||
+                _s._cacheAheadSecs >=
+                    _IptvPtPlayerScreenState._minHealthyCacheSecs) {
+              _logHealthyHold('self-pause');
+            }
+            return;
+          }
+          // Past grace, still paused, empty cache — soft reopen only.
+          _triggerRecovery(
+            reason: 'silent self-pause after refill grace',
+          );
           return;
         }
-        _triggerRecovery(
-            reason: 'silent self-pause, cache empty', forceHard: true);
-        return;
+        if (pausedFor > const Duration(milliseconds: 3000)) {
+          if (_streamWorking) {
+            _logHealthyHold('self-pause');
+            return;
+          }
+          _triggerRecovery(
+              reason: 'silent self-pause, cache empty', forceHard: true);
+          return;
+        }
       }
       // Detector 4: cold open hang.
       if (_s._userPlayWhenReady &&

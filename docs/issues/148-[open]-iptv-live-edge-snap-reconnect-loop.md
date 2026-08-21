@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **16 / 16** fix · **0 / 14** acceptance |
-| **Current slice** | Hard wall only on empty cache + ignore transient VT after socket/pause-refill; device smoke outstanding |
+| **Progress** | **18 / 18** fix · **0 / 15** acceptance |
+| **Current slice** | Pause-refill grace + live VT hold (no silent-self-pause hard loop); device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -37,6 +37,8 @@
 | 14 | I148-T14 | Debounce `core-idle` flicker on `_bufferingSince` for **all** modes (not stall-only) — Stable was zeroing the 12s clock so spinner never became Reconnecting 1/8 | ✅ |
 | 15 | I148-T15 | Hard wall requires **weak** cache (`<_minHealthyCacheSecs`) and not feeding — pause-to-refill with a full cushion must not reconnect | ✅ |
 | 16 | I148-T16 | Arm 8s transient hw-decode ignore on socket blip, mid-stream Buffering, and live-edge snap — stop VT one-shot → hard software recreate during refill | ✅ |
+| 17 | I148-T17 | Live Stable: 15s pause-refill grace; detector 3 never `forceHard` on cache-pause self-pause; no mid-stream `play()` fight with paused-for-cache | ✅ |
+| 18 | I148-T18 | Live Stable: hold VT / hw decode fails (no software recreate) — CDN chunk close → corrupt TS is expected; empty-cache detectors still recover dead feeds | ✅ |
 
 ---
 
@@ -58,12 +60,15 @@
 | 12 | I148-A12 | **Stable** + pause-to-refill: Buffering with frozen playhead and **healthy** cache (≥2s) does **not** reconnect; picture stays frozen until refill resumes | ⬜ |
 | 13 | I148-A13 | Socket `ends prematurely` + VT one-shot: log shows ignore transient hw fail — no hard software recreate while cache/feed recover | ⬜ |
 | 14 | I148-A14 | Genuinely empty cache + Buffering ≥12s still reconnects (hard wall still works when cushion is gone) | ⬜ |
+| 15 | I148-A15 | After repeated CDN `ends prematurely`: no `silent self-pause` hard recovery loop; log shows `self-pause` hold / live VT hold; picture resumes without recreate thrash | ⬜ |
 
 ---
 
 ## Summary
 
 **Symptom (1.3.135+):** A live IPTV channel plays normally, then after ~1–2 minutes the picture stalls, the buffering spinner shows `Reconnecting… (attempt 1/8)`, and playback may resume on its own. The upstream feed is often still alive.
+
+> **Status update (I148-T17 / T18).** After T15/T16 the reporter still looped on `silent self-pause, cache empty` hard recreate: CDN closes the HTTP chunk → VT one-shot → `cache-pause` sets `playing=false` with `buffering=false` → detector 3 at 3s. Live Stable now holds 15s pause-refill grace, never forceHard on that path, and does not software-recreate on VT during Stable.
 
 > **Status update (I148-T15 / T16).** Live `cache-pause=yes` made T13's hard wall reconnect while demuxer still held ~28s (pause-to-refill). Hard wall now requires weak cache and not feeding. Socket blips / mid-stream Buffering arm an 8s VT ignore so one-shot `hardware accelerator failed` does not hard-recreate mid-refill.
 

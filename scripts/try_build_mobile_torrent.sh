@@ -50,8 +50,13 @@ build_android() {
   export ANDROID_NDK_HOME="$ndk"
   local prebuilt
   prebuilt="$(ls -d "$ndk/toolchains/llvm/prebuilt/"* 2>/dev/null | head -1)"
-  export CC="$prebuilt/bin/aarch64-linux-android21-clang"
-  export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
+  unset CC CXX AR CFLAGS CXXFLAGS || true
+  export CC_aarch64_linux_android="$prebuilt/bin/aarch64-linux-android21-clang"
+  export CXX_aarch64_linux_android="$prebuilt/bin/aarch64-linux-android21-clang++"
+  export AR_aarch64_linux_android="$prebuilt/bin/llvm-ar"
+  export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC_aarch64_linux_android"
+  export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="$AR_aarch64_linux_android"
+  export BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--sysroot=$prebuilt/sysroot"
   rustup target add aarch64-linux-android >/dev/null 2>&1 || true
   cargo build -p ffi --target aarch64-linux-android "--$PROFILE" --features "$FEATURES"
 }

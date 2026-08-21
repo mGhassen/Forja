@@ -26,6 +26,28 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
     }
     return '';
   }
+  /// Applies hydrated Stremio stream addons off the details critical path.
+  /// Dead/slow manifests must not gate `_isLoading` / TMDB paint.
+  void _applyStreamAddons(List<Map<String, dynamic>> streamAddons) {
+    if (!mounted) return;
+    setState(() {
+      _s._streamAddons = streamAddons;
+      if (_s._isCustomStremioItem) {
+        final addonBaseUrl =
+            widget.stremioItem?['_addonBaseUrl']?.toString() ?? '';
+        if (addonBaseUrl.isNotEmpty) {
+          _s._selectedSourceId = addonBaseUrl;
+        } else if (streamAddons.isNotEmpty) {
+          _s._selectedSourceId = streamAddons.first['baseUrl'];
+        }
+      } else if (!_s._playbackProfile.builtinTorrentSearch &&
+          streamAddons.isNotEmpty) {
+        _s._selectedSourceId = streamAddons.first['baseUrl'] as String;
+      }
+      _s._syncSelectedSourceToPlaySources();
+    });
+  }
+
   Future<void> _fetchDetails() async {
     await _s._playN.loadPlaySources();
     _s._syncPanelKindFilterToPlaySources();
@@ -35,11 +57,10 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
     final bool isCustomId = _s._isCustomStremioItem;
 
     try {
-      final streamAddonsFuture = _s._stremio.getAddonsForResource('stream');
-      unawaited(streamAddonsFuture.then((streamAddons) {
-        if (!mounted) return;
-        setState(() => _s._streamAddons = streamAddons);
-      }, onError: (_) {}));
+      // Kick hydrate in background — never await before clearing loading.
+      unawaited(
+        _s._stremio.getAddonsForResource('stream').then(_applyStreamAddons, onError: (_) {}),
+      );
 
       // If this is a custom-ID Stremio item, skip TMDB fetch - we already
       // have all the info we need from the search result.
@@ -74,19 +95,15 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
           );
         }
 
-        final streamAddons = await streamAddonsFuture;
+        final addonBaseUrl = stremioItem['_addonBaseUrl']?.toString() ?? '';
         if (mounted) {
           setState(() {
-            _s._streamAddons = streamAddons;
             _s._isLoading = false;
-            // Auto-select the addon that owns this item
-            final addonBaseUrl = stremioItem['_addonBaseUrl']?.toString() ?? '';
             if (addonBaseUrl.isNotEmpty) {
               _s._selectedSourceId = addonBaseUrl;
-            } else if (streamAddons.isNotEmpty) {
-              _s._selectedSourceId = streamAddons.first['baseUrl'];
             }
           });
+          // Streams use this item's baseUrl — do not wait on full hydrate.
           _s._fetchStremioStreamsForCustomId(stremioItem);
         }
         return;
@@ -109,7 +126,6 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
         rich = await ref.read(detailsMetaProvider(_s._metaKey).future);
       }
       final similar = await similarFuture;
-      final streamAddons = await streamAddonsFuture;
       if (mounted) {
         setState(() {
           _s._movie = rich.movie;
@@ -130,14 +146,8 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
           _s._watchProviders = rich.watchProviders;
           _s._castMembers = rich.extras.cast;
           _s._trailers = rich.extras.trailers;
-          _s._streamAddons = streamAddons;
           _s._similarMovies = similar;
           _s._isLoading = false;
-          if (!_s._playbackProfile.builtinTorrentSearch &&
-              streamAddons.isNotEmpty) {
-            _s._selectedSourceId =
-                streamAddons.first['baseUrl'] as String;
-          }
           _s._syncSelectedSourceToPlaySources();
         });
         await _s._hydrateWebstreamingFromCache();
