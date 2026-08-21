@@ -187,8 +187,12 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final policy = ShellScope.inputPolicyOf(context);
+    final tv = policy.useFocusableMoodChips;
     final accent = widget.accentHover && (_hovered || _focused);
+    // Desktop: reload only on chip hover. Touch/TV: always (no hover).
+    final showReload = widget.onReload != null &&
+        (!policy.scaleOnHover || _hovered || _focused);
     final cinematic = ForjaShellColors.cinematic;
     final fg = accent
         ? ForjaShellColors.brandGreen
@@ -229,7 +233,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
               onHover: (v) => setState(() => _busyHovered = v),
               onCancel: widget.onCancel,
             ),
-          ] else if (widget.onReload != null) ...[
+          ] else if (showReload) ...[
             const SizedBox(width: 6),
             ExcludeFocus(
               child: MouseRegion(
@@ -239,18 +243,14 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
                 child: GestureDetector(
                   onTap: widget.onReload,
                   behavior: HitTestBehavior.opaque,
-                  child: AnimatedOpacity(
-                    opacity: _hovered || selected || _focused ? 1 : 0.7,
-                    duration: const Duration(milliseconds: 160),
-                    child: AnimatedRotation(
-                      turns: _reloadHovered ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 320),
-                      curve: Curves.easeOutCubic,
-                      child: Icon(
-                        Icons.refresh_rounded,
-                        size: 14,
-                        color: fg,
-                      ),
+                  child: AnimatedRotation(
+                    turns: _reloadHovered ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOutCubic,
+                    child: Icon(
+                      Icons.refresh_rounded,
+                      size: 14,
+                      color: fg,
                     ),
                   ),
                 ),
@@ -283,7 +283,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         onUpEdge: widget.onUpEdge,
         onLeftEdge: widget.onLeftEdge,
         onRightEdge: widget.onRightEdge,
-        onFocusChange: widget.accentHover
+        onFocusChange: widget.accentHover || widget.onReload != null
             ? (focused) => setState(() => _focused = focused)
             : null,
         child: Material(
@@ -302,7 +302,9 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
       );
     }
 
-    if (!widget.accentHover || tv) return body;
+    final trackHover =
+        !tv && (widget.accentHover || widget.onReload != null);
+    if (!trackHover) return body;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() {

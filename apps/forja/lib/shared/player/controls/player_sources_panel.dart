@@ -1216,19 +1216,51 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return List<TorrentResult>.from(list)..sort(_compare);
   }
 
+  double _streamSizeBytes(Map<String, dynamic> s) {
+    final label = TorrentReleaseMetadata.resolveStreamSizeLabel(s);
+    if (label != null) {
+      final bytes = TorrentReleaseMetadata.parseSizeBytes(label);
+      if (bytes > 0) return bytes;
+    }
+    final hints = s['behaviorHints'];
+    if (hints is Map) {
+      final videoSize = hints['videoSize'] ?? hints['video_size'];
+      if (videoSize is num && videoSize > 0) return videoSize.toDouble();
+      final parsed = double.tryParse(videoSize?.toString() ?? '');
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    final blob =
+        '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''} ${s['size'] ?? ''}';
+    return TorrentReleaseMetadata.parseSizeBytes(blob);
+  }
+
+  /// Quality / language / tech / size / search — same contract as details Sources.
+  bool _matchesStreamFilters(Map<String, dynamic> s) {
+    final name = '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
+    if (!TorrentReleaseMetadata.parse(name).matchesFiltersForName(
+      name,
+      searchQuery: _searchQuery,
+      qualityFilters: _qualityFilters,
+      languageFilters: _languageFilters,
+      techFilters: _techFilters,
+      audioFilters: _audioFilters,
+    )) {
+      return false;
+    }
+    return TorrentReleaseMetadata.matchesSizeFilters(
+      _streamSizeBytes(s),
+      _sizeFilters,
+    );
+  }
+
   List<Map<String, dynamic>> get _filteredStremio {
-    final q = _searchQuery.trim().toLowerCase();
     return _stremioStreams.where((s) {
       if (_selectedSourceId.isNotEmpty &&
           _selectedSourceId != 'all_stremio' &&
           s['_addonBaseUrl'] != _selectedSourceId) {
         return false;
       }
-      if (q.isEmpty) return true;
-      final blob =
-          '${s['title'] ?? ''} ${s['name'] ?? ''} ${s['description'] ?? ''}'
-              .toLowerCase();
-      return blob.contains(q);
+      return _matchesStreamFilters(s);
     }).toList();
   }
 
@@ -1243,15 +1275,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   List<Map<String, dynamic>> get _filteredNuvio {
-    final q = _searchQuery.trim().toLowerCase();
-    return _nuvioStreams.where((s) {
-      if (!_nuvioStreamSelected(s)) return false;
-      if (q.isEmpty) return true;
-      final blob =
-          '${s['title'] ?? ''} ${s['name'] ?? ''} ${s['description'] ?? ''}'
-              .toLowerCase();
-      return blob.contains(q);
-    }).toList();
+    return _nuvioStreams
+        .where((s) => _nuvioStreamSelected(s) && _matchesStreamFilters(s))
+        .toList();
   }
 
   bool _engineStreamSelected(Map<String, dynamic> s) {
@@ -1267,15 +1293,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   List<Map<String, dynamic>> get _filteredEngine {
-    final q = _searchQuery.trim().toLowerCase();
-    return _engineStreams.where((s) {
-      if (!_engineStreamSelected(s)) return false;
-      if (q.isEmpty) return true;
-      final blob =
-          '${s['title'] ?? ''} ${s['name'] ?? ''} ${s['description'] ?? ''}'
-              .toLowerCase();
-      return blob.contains(q);
-    }).toList();
+    return _engineStreams
+        .where((s) => _engineStreamSelected(s) && _matchesStreamFilters(s))
+        .toList();
   }
 
   int _compare(TorrentResult a, TorrentResult b) {
@@ -1318,13 +1338,38 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   Set<String> get _availableQualities => collectQualities(_filterNames);
   Set<String> get _availableLanguages => collectLanguages(_filterNames);
   Set<String> get _availableTech => collectTechTags(_filterNames);
-  Set<String> get _availableSizes => collectSizeRanges(
-    _results.map(
-      (r) => r.sizeInBytes > 0
-          ? r.sizeInBytes
-          : TorrentReleaseMetadata.parseSizeBytes(r.size),
-    ),
-  );
+  Set<String> get _availableSizes {
+    final sizes = <double>[];
+    if (_showsTorrents) {
+      for (final r in _results) {
+        final bytes = r.sizeInBytes > 0
+            ? r.sizeInBytes
+            : TorrentReleaseMetadata.parseSizeBytes(r.size);
+        if (bytes > 0) sizes.add(bytes);
+      }
+    }
+    if (_showsStremio) {
+      for (final s in _stremioStreams) {
+        final bytes = _streamSizeBytes(s);
+        if (bytes > 0) sizes.add(bytes);
+      }
+    }
+    if (_showsNuvio) {
+      for (final s in _nuvioStreams) {
+        if (!_nuvioStreamSelected(s)) continue;
+        final bytes = _streamSizeBytes(s);
+        if (bytes > 0) sizes.add(bytes);
+      }
+    }
+    if (_showsEngine) {
+      for (final s in _engineStreams) {
+        if (!_engineStreamSelected(s)) continue;
+        final bytes = _streamSizeBytes(s);
+        if (bytes > 0) sizes.add(bytes);
+      }
+    }
+    return collectSizeRanges(sizes);
+  }
 
   List<SourcesPanelProviderOption> get _providerOptions {
     if (_kindFilter == 'stremio') {
