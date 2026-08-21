@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/asian_drama/providers/asian_drama_providers.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hero/hero_utils.dart';
@@ -11,6 +14,7 @@ import 'package:forja/shared/widgets/hero/tmdb_paint_gate.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/hub_list_status_hero.dart';
@@ -215,6 +219,18 @@ class _AsianDramaDetailsScreenState
         isMounted: () => mounted,
       );
     });
+  }
+
+  void _openCatalogSources(Movie movie) {
+    final isTv = movie.mediaType == 'tv';
+    unawaited(
+      openHubCatalogSources(
+        context: context,
+        movie: movie,
+        season: isTv ? 1 : null,
+        episode: isTv ? _selectedEpisode : null,
+      ),
+    );
   }
 
   void _playSelected() {
@@ -578,8 +594,14 @@ class _AsianDramaDetailsScreenState
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _focusDetailsBack : null;
     final listExtra = HubListStatusHero.extraFocusSlots(_listMenuOpen);
+    final playbackSnap = ref.watch(settingsPlaybackProvider).valueOrNull;
+    final catalogMovie = tmdb?.movie;
+    final showCatalogSources = catalogMovie != null &&
+        catalogMovie.id > 0 &&
+        hubHasCatalogPanelSources(playbackSnap);
     var tvIndex = 0;
     final playIndex = tvIndex++;
+    final sourcesIndex = showCatalogSources ? tvIndex++ : null;
     final clearIndex = _progress != null ? tvIndex++ : null;
     final listIndex = tvIndex++;
     tvIndex += listExtra;
@@ -722,10 +744,14 @@ class _AsianDramaDetailsScreenState
                     : 'Play Ep $_selectedEpisode',
                 enabled: det.episodes.isNotEmpty,
                 onPlay: _playSelected,
+                onOpenSources: showCatalogSources
+                    ? () => _openCatalogSources(catalogMovie)
+                    : null,
                 focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
                 onUpEdge: heroPopUp,
                 tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                 tvItemIndex: playIndex,
+                tvSourcesItemIndex: sourcesIndex,
               ),
               if (_progress != null) ...[
                 const SizedBox(width: 10),

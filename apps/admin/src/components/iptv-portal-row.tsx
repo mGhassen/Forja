@@ -218,61 +218,35 @@ export function IptvPortalActionRow({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const pinRail = confirmDelete || sharing || !!shareCode || checking
   const rowId = 'id' in portal && typeof portal.id === 'string' ? portal.id : null
-  const selectable = !!onToggleSelect
+  const selectable = typeof onToggleSelect === 'function'
+  const canToggle =
+    selectable && !confirmDelete && !sharing && !shareCode
 
   return (
     <li
       id={rowId ? `pool-portal-${rowId}` : undefined}
       className={cn(
-        'group flex min-h-22 items-stretch border-b border-forja-border/70 last:border-b-0',
+        'group relative flex min-h-22 items-stretch border-b border-forja-border/70 last:border-b-0',
         'hover:bg-white/[0.03] focus-within:bg-white/[0.03]',
         pinRail && 'bg-white/[0.03]',
-        selected && 'bg-forja-green/[0.1] ring-1 ring-inset ring-forja-green/40',
+        selected && 'bg-forja-green/[0.12] ring-1 ring-inset ring-forja-green/50',
         !selected &&
           highlighted &&
           'bg-forja-green/[0.08] ring-1 ring-inset ring-forja-green/35',
+        canToggle && 'cursor-pointer',
       )}
+      aria-selected={selectable ? !!selected : undefined}
+      onClick={
+        canToggle
+          ? (e) => {
+              if ((e.target as HTMLElement).closest('[data-portal-actions], a, button'))
+                return
+              onToggleSelect()
+            }
+          : undefined
+      }
     >
-      <div
-        className={cn(
-          'flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2.5',
-          selectable && !confirmDelete && !sharing && !shareCode && 'cursor-pointer',
-        )}
-        onClick={
-          selectable && !confirmDelete && !sharing && !shareCode
-            ? (e) => {
-                if ((e.target as HTMLElement).closest('a, button')) return
-                onToggleSelect()
-              }
-            : undefined
-        }
-        onKeyDown={
-          selectable && !confirmDelete && !sharing && !shareCode
-            ? (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onToggleSelect?.()
-                }
-              }
-            : undefined
-        }
-        role={selectable ? 'checkbox' : undefined}
-        aria-checked={selectable ? !!selected : undefined}
-        tabIndex={selectable ? 0 : undefined}
-      >
-        {selectable ? (
-          <span
-            className={cn(
-              'flex size-4 shrink-0 items-center justify-center rounded border',
-              selected
-                ? 'border-forja-green bg-forja-green text-black'
-                : 'border-white/25 bg-transparent',
-            )}
-            aria-hidden
-          >
-            {selected ? <Check className="size-3" strokeWidth={3} /> : null}
-          </span>
-        ) : null}
+      <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
         {confirmDelete ? (
           <p className="text-[13px] font-semibold text-red-400">
             {deleteConfirmLabel}
@@ -302,6 +276,7 @@ export function IptvPortalActionRow({
       </div>
 
       <div
+        data-portal-actions
         className={cn(
           'flex shrink-0 items-center justify-end overflow-hidden transition-[width] duration-180 ease-out',
           pinRail

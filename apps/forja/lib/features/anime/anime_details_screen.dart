@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,6 +18,8 @@ import 'package:forja/shared/widgets/hero/tmdb_paint_gate.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
+import 'package:forja/features/settings/providers/settings_panel_providers.dart';
+import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/hub_list_status_hero.dart';
@@ -362,6 +366,18 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     });
   }
 
+  void _openCatalogSources(Movie movie) {
+    final isTv = movie.mediaType == 'tv';
+    unawaited(
+      openHubCatalogSources(
+        context: context,
+        movie: movie,
+        season: isTv ? 1 : null,
+        episode: isTv ? _selectedEpisode : null,
+      ),
+    );
+  }
+
   void _playSelected() {
     final match = _episodes.where((e) => e.number == _selectedEpisode);
     if (match.isEmpty || !match.first.aired) return;
@@ -661,8 +677,14 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _focusDetailsBack : null;
     final listExtra = HubListStatusHero.extraFocusSlots(_listMenuOpen);
+    final playbackSnap = ref.watch(settingsPlaybackProvider).valueOrNull;
+    final catalogMovie = tmdb?.movie;
+    final showCatalogSources = catalogMovie != null &&
+        catalogMovie.id > 0 &&
+        hubHasCatalogPanelSources(playbackSnap);
     var tvIndex = 0;
     final playIndex = tvIndex++;
+    final sourcesIndex = showCatalogSources ? tvIndex++ : null;
     final clearIndex = _progress != null ? tvIndex++ : null;
     final listIndex = tvIndex++;
     tvIndex += listExtra;
@@ -804,10 +826,14 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
                         : 'Play Ep $_selectedEpisode',
                     enabled: _episodes.isNotEmpty,
                     onPlay: _playSelected,
+                    onOpenSources: showCatalogSources
+                        ? () => _openCatalogSources(catalogMovie)
+                        : null,
                     focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
                     onUpEdge: heroPopUp,
                     tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                     tvItemIndex: playIndex,
+                    tvSourcesItemIndex: sourcesIndex,
                   ),
                   if (_progress != null) ...[
                     const SizedBox(width: 10),

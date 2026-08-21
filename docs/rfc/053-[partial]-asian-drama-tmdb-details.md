@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **5 / 6** acceptance (details enrich) · **3 / 4** acceptance (hero images / stills) |
-| **Current slice** | Random TMDB hero backdrops + episode stills (no Images row) |
+| **Progress** | **4 / 4** components · **5 / 6** acceptance (details enrich) · **3 / 4** acceptance (hero images / stills) · **1 / 1** acceptance (catalog Sources) |
+| **Current slice** | Catalog Sources link Play shipped — enrich/images smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -47,6 +47,14 @@
 | 2 | R53-A08 | Confident TV match paints TMDB episode stills (and name/overview when present) on the KissKH episode rail | ✅ |
 | 3 | R53-A09 | Confident match rotates TMDB backdrops in the details hero (no separate Images row) | ✅ |
 | 4 | R53-A10 | Device smoke: matched title shows rotating hero art and/or episode thumbnails | ⬜ |
+
+---
+
+## Acceptance (catalog Sources slice)
+
+| # | ID | Description | Status |
+|--:|----|----|-----|
+| 1 | R53-A11 | When TMDB matches and a panel play source is on, white link Play opens Torrents/Stremio/Nuvio/Forja Sources for that title + selected episode | ✅ |
 
 ---
 

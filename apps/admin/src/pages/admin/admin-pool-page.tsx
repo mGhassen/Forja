@@ -4,10 +4,13 @@ import { Link, useSearch } from '@tanstack/react-router'
 import {
   ArrowDown,
   ArrowUp,
+  Copy,
+  Pencil,
   Plus,
   Radio,
   Search,
   Trash2,
+  UserPlus,
   X,
 } from 'lucide-react'
 import { IptvPortalPeopleDialog } from '@/components/iptv-assign-dialog'
@@ -242,8 +245,8 @@ export function AdminPoolPage() {
     id: string
     label: string
   } | null>(null)
-  /** id → in catalog pool */
-  const [selected, setSelected] = useState<Map<string, boolean>>(() => new Map())
+  /** id → portal snapshot at select time */
+  const [selected, setSelected] = useState<Map<string, PoolCand>>(() => new Map())
   const [bulkBusy, setBulkBusy] = useState(false)
   const [confirmBulkRemove, setConfirmBulkRemove] = useState(false)
 
@@ -280,13 +283,14 @@ export function AdminPoolPage() {
   }, [selected.size])
 
   const selectedIds = useMemo(() => new Set(selected.keys()), [selected])
+  const selectedList = useMemo(() => [...selected.values()], [selected])
   const selectedCount = selected.size
-  const selectedInPool = useMemo(() => {
-    let n = 0
-    for (const inPool of selected.values()) if (inPool) n++
-    return n
-  }, [selected])
+  const selectedInPool = useMemo(
+    () => selectedList.filter((c) => c.catalog_pool).length,
+    [selectedList],
+  )
   const selectedOutOfPool = selectedCount - selectedInPool
+  const soleSelected = selectedCount === 1 ? selectedList[0]! : null
 
   const hostsQuery = useQuery({
     queryKey: [
@@ -453,7 +457,7 @@ export function AdminPoolPage() {
     setSelected((prev) => {
       const next = new Map(prev)
       if (next.has(c.id)) next.delete(c.id)
-      else next.set(c.id, c.catalog_pool === true)
+      else next.set(c.id, c)
       return next
     })
   }
@@ -464,9 +468,9 @@ export function AdminPoolPage() {
   }
 
   async function bulkSetPool(inPool: boolean) {
-    const ids = [...selected.entries()]
-      .filter(([, wasInPool]) => wasInPool !== inPool)
-      .map(([id]) => id)
+    const ids = selectedList
+      .filter((c) => c.catalog_pool !== inPool)
+      .map((c) => c.id)
     if (ids.length === 0) return
     setBulkBusy(true)
     setActionError(null)
@@ -523,6 +527,61 @@ export function AdminPoolPage() {
       setActionError(errMessage(e, 'Bulk status check failed'))
     } finally {
       setCheckingId(null)
+      setBulkBusy(false)
+    }
+  }
+
+  async function bulkShare() {
+    const portals = selectedList
+    if (portals.length === 0) return
+    setBulkBusy(true)
+    setActionError(null)
+    setActionInfo(null)
+    setConfirmBulkRemove(false)
+    const codes: string[] = []
+    let failed = 0
+    try {
+      for (const c of portals) {
+        setSharingId(c.id)
+        try {
+          const password = await decryptPortalPassword(c.id)
+          const code = await createPortalShare({
+            url: c.url,
+            username: c.username,
+            password,
+          })
+          const formatted = formatShareCode(code)
+          codes.push(`${c.username}\t${formatted}`)
+          setShareFlash((prev) => ({ ...prev, [c.id]: formatted }))
+        } catch {
+          failed++
+        }
+      }
+      if (codes.length > 0) {
+        try {
+          await navigator.clipboard.writeText(codes.join('\n'))
+        } catch {
+          // still report below
+        }
+      }
+      setActionInfo(
+        codes.length
+          ? `Copied ${codes.length} share code${codes.length === 1 ? '' : 's'}${
+              failed ? ` · ${failed} failed` : ''
+            }`
+          : `Share failed for all ${portals.length}`,
+      )
+      window.setTimeout(() => {
+        setShareFlash((prev) => {
+          const next = { ...prev }
+          for (const c of portals) delete next[c.id]
+          return next
+        })
+      }, 8000)
+    } catch (e) {
+      setActionError(errMessage(e, 'Bulk share failed'))
+    } finally {
+      setSharingId(null)
       setBulkBusy(false)
     }
   }
@@ -806,6 +865,27 @@ export function AdminPoolPage() {
               type="button"
               variant="ghost"
               size="sm"
+              disabled={bulkBusy || !soleSelected}
+              title={
+                soleSelected
+                  ? 'Assigned accounts'
+                  : 'Select a single portal for accounts'
+              }
+              onClick={() => {
+                if (!soleSelected) return
+                setPeopleFor({
+                  id: soleSelected.id,
+                  label: `${soleSelected.username} · ${soleSelected.url}`,
+                })
+              }}
+            >
+              <UserPlus className="size-4" />
+              Accounts
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               disabled={bulkBusy || checkingHost != null}
               onClick={() => void bulkCheck()}
             >
@@ -816,6 +896,37 @@ export function AdminPoolPage() {
                 )}
               />
               Check status
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={bulkBusy || sharingId != null}
+              onClick={() => void bulkShare()}
+            >
+              <Copy
+                className={cn(
+                  'size-4',
+                  bulkBusy && sharingId != null && 'animate-pulse',
+                )}
+              />
+              Share codes
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={bulkBusy || !soleSelected}
+              title={
+                soleSelected ? 'Edit portal' : 'Select a single portal to edit'
+              }
+              onClick={() => {
+                if (!soleSelected) return
+                void beginEdit(soleSelected)
+              }}
+            >
+              <Pencil className="size-4" />
+              Edit
             </Button>
             {selectedOutOfPool > 0 ? (
               <Button
