@@ -308,6 +308,7 @@ class _AsianDramaDetailsScreenState
       kissKhType: (det != null && det.type.isNotEmpty)
           ? det.type
           : widget.drama.type,
+      tmdbId: det?.tmdbId ?? widget.drama.tmdbId,
     );
   }
 

@@ -17,6 +17,9 @@ pub struct KdramaCard {
     pub year: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub r#type: Option<String>,
+    /// KissKH `tmdbID` when the API embeds it (authoritative for Sources / enrich).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tmdb_id: Option<i32>,
     /// Synopsis from `/Drama/{id}` — list endpoints omit this.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub description: String,
@@ -43,6 +46,9 @@ pub struct KdramaDetails {
     pub episodes_count: i32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
+    /// KissKH `tmdbID` when present on `/Drama/{id}`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tmdb_id: Option<i32>,
     #[serde(default)]
     pub episodes: Vec<KdramaEpisode>,
 }
@@ -86,6 +92,27 @@ pub fn year_from_release(release_date: &str) -> Option<String> {
         let y = &release_date[..4];
         if y.chars().all(|c| c.is_ascii_digit()) {
             return Some(y.to_string());
+        }
+    }
+    None
+}
+
+/// KissKH may send `tmdbID` / `tmdbId` as int or string.
+fn parse_tmdb_id(obj: &serde_json::Map<String, Value>) -> Option<i32> {
+    for key in ["tmdbID", "tmdbId", "tmdb_id"] {
+        if let Some(v) = obj.get(key) {
+            if let Some(n) = v.as_i64() {
+                if n > 0 {
+                    return Some(n as i32);
+                }
+            }
+            if let Some(s) = v.as_str() {
+                if let Ok(n) = s.trim().parse::<i32>() {
+                    if n > 0 {
+                        return Some(n);
+                    }
+                }
+            }
         }
     }
     None
@@ -169,6 +196,7 @@ pub fn parse_card_list(body: &str) -> Vec<KdramaCard> {
             } else {
                 Some(type_raw)
             },
+            tmdb_id: parse_tmdb_id(obj),
             description: String::new(),
         });
     }
@@ -417,6 +445,7 @@ pub fn get_details(id: i32) -> Result<KdramaDetails, String> {
             .and_then(|v| v.as_i64())
             .unwrap_or(eps.len() as i64) as i32,
         label,
+        tmdb_id: parse_tmdb_id(obj),
         episodes: eps,
     })
 }
@@ -446,6 +475,7 @@ fn merge_card_details(card: &KdramaCard, det: &KdramaDetails) -> KdramaCard {
         } else {
             Some(det.r#type.clone())
         }),
+        tmdb_id: card.tmdb_id.or(det.tmdb_id),
         description,
     }
 }
@@ -597,7 +627,7 @@ mod tests {
     #[test]
     fn parse_card_list_skips_invalid_rows() {
         let raw = r#"[
-            {"id":1,"title":"A","thumbnail":"c","releaseDate":"2020","type":"TVSeries"},
+            {"id":1,"title":"A","thumbnail":"c","releaseDate":"2020","type":"TVSeries","tmdbID":215720},
             {"id":null,"title":"B"},
             {"title":"C"}
         ]"#;
@@ -606,6 +636,14 @@ mod tests {
         assert_eq!(cards[0].id, 1);
         assert_eq!(cards[0].year.as_deref(), Some("2020"));
         assert_eq!(cards[0].r#type.as_deref(), Some("TVSeries"));
+        assert_eq!(cards[0].tmdb_id, Some(215720));
+    }
+
+    #[test]
+    fn parse_tmdb_id_accepts_string() {
+        let raw = r#"[{"id":1,"title":"A","thumbnail":"c","tmdbId":"1396"}]"#;
+        let cards = parse_card_list(raw);
+        assert_eq!(cards[0].tmdb_id, Some(1396));
     }
 
     #[test]

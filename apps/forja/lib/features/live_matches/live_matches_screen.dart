@@ -88,6 +88,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   // Body layout: card grid or vertical timeline.
   static const _viewPreferenceKey = 'live_matches_timeline_view';
+  static const _serverPreferenceKey = 'live_matches_server_v1';
   _LiveMatchesView _view = _LiveMatchesView.timeline;
   bool _viewWasToggled = false;
   _TimelineGranularity _timelineGranularity = _TimelineGranularity.h3;
@@ -189,7 +190,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     // ref.invalidate needs ProviderScope — never call from initState.
     if (!_didInitialLoad) {
       _didInitialLoad = true;
-      unawaited(_load());
+      unawaited(_restoreServerThenLoad());
     }
     // Android TV / leanback: cards only - no timeline canvas (mirrors IPTV).
     if (ShellScope.inputPolicyOf(context).useFocusableMoodChips &&
@@ -258,6 +259,40 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
       });
       _syncTimelineLiveTick();
     }
+  }
+
+  Future<void> _restoreServerThenLoad() async {
+    await _restoreServerPreference();
+    if (!mounted) return;
+    if (_server == _LiveMatchesServer.iptvSports) {
+      final ctrl = ref.read(iptvControllerProvider);
+      await ctrl.preparePortalPanel();
+      await _syncMyIptvFromActivePortal(ctrl, reload: false);
+      if (!mounted) return;
+    }
+    await _load();
+  }
+
+  Future<void> _restoreServerPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final raw = prefs.getString(_serverPreferenceKey);
+    if (raw == null) return;
+    _LiveMatchesServer? saved;
+    for (final server in _LiveMatchesServer.values) {
+      if (server.name == raw) {
+        saved = server;
+        break;
+      }
+    }
+    final next = saved;
+    if (next == null || next == _server) return;
+    setState(() => _server = next);
+  }
+
+  Future<void> _persistServerPreference(_LiveMatchesServer server) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_serverPreferenceKey, server.name);
   }
 
   void _toggleView() {

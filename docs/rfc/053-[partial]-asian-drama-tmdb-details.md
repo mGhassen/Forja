@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **5 / 6** acceptance (details enrich) · **3 / 4** acceptance (hero images / stills) · **1 / 1** acceptance (catalog Sources) |
+| **Progress** | **4 / 4** components · **5 / 6** acceptance (details enrich) · **3 / 4** acceptance (hero images / stills) · **2 / 2** acceptance (catalog Sources) |
 | **Current slice** | Catalog Sources link Play shipped — enrich/images smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -55,6 +55,7 @@
 | # | ID | Description | Status |
 |--:|----|----|-----|
 | 1 | R53-A11 | When TMDB matches and a panel play source is on, white link Play opens Torrents/Stremio/Nuvio/Forja Sources for that title + selected episode | ✅ |
+| 2 | R53-A12 | KissKH `tmdbID` is parsed on cards/details and preferred over title search for enrich / Sources | ✅ |
 
 ---
 

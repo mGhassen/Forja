@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
 
 type Mode =
   | { kind: 'toAccount'; accountId: string; accountEmail: string | null }
-  | { kind: 'toPortal'; portalId: string; portalLabel: string }
+  | { kind: 'toPortal'; portalIds: string[]; portalLabel: string }
 
 export function IptvAssignDialog({
   mode,
@@ -37,14 +37,13 @@ export function IptvAssignDialog({
   onClose: () => void
   onDone: () => void
 }) {
+  const portalIds = mode.kind === 'toPortal' ? mode.portalIds : []
   const [profileId, setProfileId] = useState('')
   const [accountId, setAccountId] = useState(
     mode.kind === 'toAccount' ? mode.accountId : '',
   )
   const [accountQ, setAccountQ] = useState('')
-  const [portalId, setPortalId] = useState(
-    mode.kind === 'toPortal' ? mode.portalId : '',
-  )
+  const [portalId, setPortalId] = useState('')
   const [portalQ, setPortalQ] = useState('')
   const [burnCredit, setBurnCredit] = useState(false)
   const [bumpDealt, setBumpDealt] = useState(true)
@@ -82,13 +81,40 @@ export function IptvAssignDialog({
   })
 
   const save = useMutation({
-    mutationFn: () =>
-      assignPortal({
-        profileId,
-        portalId,
-        burnCredit,
-        bumpDealt,
-      }),
+    mutationFn: async () => {
+      const ids =
+        mode.kind === 'toPortal'
+          ? portalIds
+          : portalId
+            ? [portalId]
+            : []
+      if (!profileId || ids.length === 0) {
+        throw new Error('Pick a profile and at least one portal')
+      }
+      let ok = 0
+      const errors: string[] = []
+      for (const id of ids) {
+        try {
+          await assignPortal({
+            profileId,
+            portalId: id,
+            burnCredit,
+            bumpDealt,
+          })
+          ok++
+        } catch (e) {
+          errors.push(e instanceof Error ? e.message : 'Assign failed')
+        }
+      }
+      if (ok === 0) {
+        throw new Error(errors[0] ?? 'Assign failed')
+      }
+      if (errors.length > 0) {
+        throw new Error(
+          `Assigned ${ok}/${ids.length} — last error: ${errors[errors.length - 1]}`,
+        )
+      }
+    },
     onSuccess: () => {
       setError(null)
       onDone()
@@ -97,18 +123,28 @@ export function IptvAssignDialog({
     onError: (e: Error) => setError(e.message),
   })
 
-  const canSave = !!profileId && !!portalId && !save.isPending
+  const targetPortalCount =
+    mode.kind === 'toPortal' ? portalIds.length : portalId ? 1 : 0
+  const canSave =
+    !!profileId &&
+    targetPortalCount > 0 &&
+    !save.isPending &&
+    (mode.kind === 'toPortal' || !!portalId)
 
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4">
       <Panel className="w-full max-w-lg space-y-4" tone="elevated">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <PanelLabel>Assign portal</PanelLabel>
+            <PanelLabel>
+              {mode.kind === 'toPortal' && portalIds.length > 1
+                ? `Assign ${portalIds.length} portals`
+                : 'Assign portal'}
+            </PanelLabel>
             <p className="mt-1 text-sm text-forja-muted">
               {mode.kind === 'toAccount'
                 ? `To ${mode.accountEmail ?? 'account'}`
-                : `Portal ${mode.portalLabel}`}
+                : mode.portalLabel}
             </p>
           </div>
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
@@ -266,7 +302,9 @@ export function IptvAssignDialog({
               onChange={(e) => setBurnCredit(e.target.checked)}
               className="accent-forja-green"
             />
-            Burn 1 credit
+            {targetPortalCount > 1
+              ? `Burn 1 credit each (${targetPortalCount})`
+              : 'Burn 1 credit'}
           </label>
         </div>
 
@@ -282,7 +320,11 @@ export function IptvAssignDialog({
             disabled={!canSave}
             onClick={() => save.mutate()}
           >
-            {save.isPending ? 'Assigning…' : 'Assign'}
+            {save.isPending
+              ? 'Assigning…'
+              : targetPortalCount > 1
+                ? `Assign ${targetPortalCount}`
+                : 'Assign'}
           </Button>
         </div>
       </Panel>
@@ -399,7 +441,7 @@ export function IptvPortalPeopleDialog({
 
       {assignOpen ? (
         <IptvAssignDialog
-          mode={{ kind: 'toPortal', portalId, portalLabel }}
+          mode={{ kind: 'toPortal', portalIds: [portalId], portalLabel }}
           onClose={() => setAssignOpen(false)}
           onDone={() => {
             void qc.invalidateQueries({

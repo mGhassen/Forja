@@ -591,6 +591,9 @@ class KdramaCard {
   /// Raw kisskh type: `TVSeries`, `Movie`, `Anime`, `Hollywood`.
   final String? type;
 
+  /// KissKH `tmdbID` when the API embeds it.
+  final int? tmdbId;
+
   /// Synopsis from details enrich - list endpoints omit this.
   final String description;
 
@@ -602,12 +605,22 @@ class KdramaCard {
     this.episodesCount = 0,
     this.year,
     this.type,
+    this.tmdbId,
     this.description = '',
   });
 
   factory KdramaCard.fromEngineJson(Map<String, dynamic> json) {
     final typeRaw = (json['type'] as String?)?.trim();
     final labelRaw = (json['label'] as String?)?.trim();
+    final tmdbRaw = json['tmdb_id'] ?? json['tmdbID'] ?? json['tmdbId'];
+    int? tmdbId;
+    if (tmdbRaw is num) {
+      final n = tmdbRaw.toInt();
+      if (n > 0) tmdbId = n;
+    } else if (tmdbRaw is String) {
+      final n = int.tryParse(tmdbRaw.trim());
+      if (n != null && n > 0) tmdbId = n;
+    }
     return KdramaCard(
       id: (json['id'] as num).toInt(),
       title: (json['title'] as String? ?? '').trim(),
@@ -616,6 +629,7 @@ class KdramaCard {
       episodesCount: (json['episodes_count'] as num?)?.toInt() ?? 0,
       year: json['year'] as String?,
       type: typeRaw == null || typeRaw.isEmpty ? null : typeRaw,
+      tmdbId: tmdbId,
       description: (json['description'] as String? ?? '').trim(),
     );
   }
@@ -628,6 +642,7 @@ class KdramaCard {
     'episodes_count': episodesCount,
     if (year != null) 'year': year,
     if (type != null) 'type': type,
+    if (tmdbId != null) 'tmdb_id': tmdbId,
     if (description.isNotEmpty) 'description': description,
   };
 
@@ -639,6 +654,7 @@ class KdramaCard {
     int? episodesCount,
     String? year,
     String? type,
+    int? tmdbId,
     String? description,
   }) {
     return KdramaCard(
@@ -649,6 +665,7 @@ class KdramaCard {
       episodesCount: episodesCount ?? this.episodesCount,
       year: year ?? this.year,
       type: type ?? this.type,
+      tmdbId: tmdbId ?? this.tmdbId,
       description: description ?? this.description,
     );
   }
@@ -762,6 +779,7 @@ class KdramaDetails {
   final String type;
   final int episodesCount;
   final String? label;
+  final int? tmdbId;
   final List<KdramaEpisode> episodes;
 
   const KdramaDetails({
@@ -775,6 +793,7 @@ class KdramaDetails {
     required this.type,
     required this.episodesCount,
     this.label,
+    this.tmdbId,
     this.episodes = const [],
   });
 
@@ -783,6 +802,15 @@ class KdramaDetails {
         .map((e) => KdramaEpisode.fromEngineJson(e as Map<String, dynamic>))
         .toList();
     final labelRaw = (json['label'] as String?)?.trim();
+    final tmdbRaw = json['tmdb_id'] ?? json['tmdbID'] ?? json['tmdbId'];
+    int? tmdbId;
+    if (tmdbRaw is num) {
+      final n = tmdbRaw.toInt();
+      if (n > 0) tmdbId = n;
+    } else if (tmdbRaw is String) {
+      final n = int.tryParse(tmdbRaw.trim());
+      if (n != null && n > 0) tmdbId = n;
+    }
     return KdramaDetails(
       id: (json['id'] as num).toInt(),
       title: (json['title'] as String? ?? '').trim(),
@@ -794,6 +822,7 @@ class KdramaDetails {
       type: json['type'] as String? ?? '',
       episodesCount: (json['episodes_count'] as num?)?.toInt() ?? eps.length,
       label: labelRaw == null || labelRaw.isEmpty ? null : labelRaw,
+      tmdbId: tmdbId,
       episodes: eps,
     );
   }
@@ -808,6 +837,7 @@ class KdramaDetails {
     episodesCount: episodesCount,
     year: year,
     type: type.isEmpty ? null : type,
+    tmdbId: tmdbId,
     description: description,
   );
 

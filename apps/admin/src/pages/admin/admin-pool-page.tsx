@@ -13,7 +13,7 @@ import {
   UserPlus,
   X,
 } from 'lucide-react'
-import { IptvPortalPeopleDialog } from '@/components/iptv-assign-dialog'
+import { IptvAssignDialog, IptvPortalPeopleDialog } from '@/components/iptv-assign-dialog'
 import {
   IptvPortalActionRow,
   IptvPortalEditDialog,
@@ -243,6 +243,10 @@ export function AdminPoolPage() {
   const [pageSize, setPageSize] = useState(50)
   const [peopleFor, setPeopleFor] = useState<{
     id: string
+    label: string
+  } | null>(null)
+  const [bulkAssign, setBulkAssign] = useState<{
+    portalIds: string[]
     label: string
   } | null>(null)
   /** id → portal snapshot at select time */
@@ -735,6 +739,24 @@ export function AdminPoolPage() {
         />
       ) : null}
 
+      {bulkAssign ? (
+        <IptvAssignDialog
+          mode={{
+            kind: 'toPortal',
+            portalIds: bulkAssign.portalIds,
+            portalLabel: bulkAssign.label,
+          }}
+          onClose={() => setBulkAssign(null)}
+          onDone={() => {
+            clearSelection()
+            void invalidatePool()
+            void qc.invalidateQueries({
+              queryKey: ['admin', 'account_portal_counts'],
+            })
+          }}
+        />
+      ) : null}
+
       <div className="flex flex-wrap items-end gap-3">
         <div className="relative min-w-[16rem] flex-1 space-y-1.5">
           <Label
@@ -865,22 +887,20 @@ export function AdminPoolPage() {
               type="button"
               variant="ghost"
               size="sm"
-              disabled={bulkBusy || !soleSelected}
-              title={
-                soleSelected
-                  ? 'Assigned accounts'
-                  : 'Select a single portal for accounts'
-              }
-              onClick={() => {
-                if (!soleSelected) return
-                setPeopleFor({
-                  id: soleSelected.id,
-                  label: `${soleSelected.username} · ${soleSelected.url}`,
+              disabled={bulkBusy}
+              title="Assign selected portals to an account"
+              onClick={() =>
+                setBulkAssign({
+                  portalIds: selectedList.map((c) => c.id),
+                  label:
+                    selectedCount === 1
+                      ? `${selectedList[0]!.username} · ${selectedList[0]!.url}`
+                      : `${selectedCount} portals`,
                 })
-              }}
+              }
             >
               <UserPlus className="size-4" />
-              Accounts
+              Assign to account
             </Button>
             <Button
               type="button"
@@ -912,22 +932,19 @@ export function AdminPoolPage() {
               />
               Share codes
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={bulkBusy || !soleSelected}
-              title={
-                soleSelected ? 'Edit portal' : 'Select a single portal to edit'
-              }
-              onClick={() => {
-                if (!soleSelected) return
-                void beginEdit(soleSelected)
-              }}
-            >
-              <Pencil className="size-4" />
-              Edit
-            </Button>
+            {soleSelected ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={bulkBusy}
+                title="Edit portal"
+                onClick={() => void beginEdit(soleSelected)}
+              >
+                <Pencil className="size-4" />
+                Edit
+              </Button>
+            ) : null}
             {selectedOutOfPool > 0 ? (
               <Button
                 type="button"

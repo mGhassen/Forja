@@ -23,6 +23,7 @@ import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
@@ -236,6 +237,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
             card.title,
             year: card.year,
             kissKhType: card.type,
+            tmdbId: card.tmdbId,
           );
           if (overview == null || overview.isEmpty) return card;
           return card.copyWith(description: overview);
@@ -255,7 +257,20 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
     String title, {
     String? year,
     String? kissKhType,
+    int? tmdbId,
   }) async {
+    if (tmdbId != null && tmdbId > 0) {
+      final preferMovie = KissKhTmdbMatch.preferMovie(kissKhType);
+      final primary = preferMovie ? 'movie' : 'tv';
+      final secondary = preferMovie ? 'tv' : 'movie';
+      for (final mediaType in [primary, secondary]) {
+        try {
+          final rich = await TmdbApi().getRichDetails(tmdbId, mediaType);
+          final overview = rich.movie.overview.trim();
+          if (overview.isNotEmpty) return overview;
+        } catch (_) {}
+      }
+    }
     final match = await KissKhTmdbMatch.resolve(
       title: title,
       year: year,

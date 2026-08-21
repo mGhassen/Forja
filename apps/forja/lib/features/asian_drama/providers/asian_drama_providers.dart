@@ -45,6 +45,7 @@ typedef AsianDramaTmdbQuery = ({
   String title,
   String? year,
   String? kissKhType,
+  int? tmdbId,
 });
 
 /// TMDB metadata for Asian Drama details (null when no confident match).
@@ -70,6 +71,23 @@ class AsianDramaTmdbEnrichment {
 final asianDramaTmdbEnrichmentProvider = FutureProvider.autoDispose
     .family<AsianDramaTmdbEnrichment?, AsianDramaTmdbQuery>((ref, query) async {
   final tmdb = ref.watch(tmdbApiProvider);
+  final kissKhTmdbId = query.tmdbId;
+  if (kissKhTmdbId != null && kissKhTmdbId > 0) {
+    final preferMovie = KissKhTmdbMatch.preferMovie(query.kissKhType);
+    final primary = preferMovie ? 'movie' : 'tv';
+    final secondary = preferMovie ? 'tv' : 'movie';
+    final direct = await _enrichByTmdbId(tmdb, kissKhTmdbId, primary) ??
+        await _enrichByTmdbId(tmdb, kissKhTmdbId, secondary);
+    if (direct != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[AsianDrama] TMDB from KissKH tmdbID=$kissKhTmdbId '
+          'type=${direct.rich.movie.mediaType}',
+        );
+      }
+      return direct;
+    }
+  }
   final match = await KissKhTmdbMatch.resolve(
     title: query.title,
     year: query.year,
@@ -83,12 +101,20 @@ final asianDramaTmdbEnrichmentProvider = FutureProvider.autoDispose
           : KissKhTmdbMatch.preferMovie(query.kissKhType)
               ? 'movie'
               : 'tv';
+  return _enrichByTmdbId(tmdb, match.id, mediaType);
+});
+
+Future<AsianDramaTmdbEnrichment?> _enrichByTmdbId(
+  TmdbApi tmdb,
+  int id,
+  String mediaType,
+) async {
   try {
-    final rich = await tmdb.getRichDetails(match.id, mediaType);
+    final rich = await tmdb.getRichDetails(id, mediaType);
     if (mediaType != 'tv') {
       return AsianDramaTmdbEnrichment(rich: rich);
     }
-    final season = await _loadSeasonExtras(tmdb, match.id);
+    final season = await _loadSeasonExtras(tmdb, id);
     return AsianDramaTmdbEnrichment(
       rich: rich,
       episodeStills: season.stills,
@@ -97,13 +123,12 @@ final asianDramaTmdbEnrichmentProvider = FutureProvider.autoDispose
   } catch (e) {
     if (kDebugMode) {
       debugPrint(
-        '[AsianDrama] TMDB rich details failed '
-        'id=${match.id} $mediaType: $e',
+        '[AsianDrama] TMDB rich details failed id=$id $mediaType: $e',
       );
     }
     return null;
   }
-});
+}
 
 typedef _SeasonExtras = ({
   Map<int, String> stills,

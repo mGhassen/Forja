@@ -234,6 +234,7 @@ mod tests {
             episodes_count: 0,
             year: None,
             r#type: None,
+            tmdb_id: None,
             description: String::new(),
         }];
         let req = json!({

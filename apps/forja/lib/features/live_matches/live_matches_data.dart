@@ -30,6 +30,7 @@ mixin _LiveMatchesData
     final leavingIptv = _s._server == _LiveMatchesServer.iptvSports &&
         server != _LiveMatchesServer.iptvSports;
     setState(() => _s._server = server);
+    unawaited(_s._persistServerPreference(server));
     if (leavingIptv) {
       ref.read(iptvControllerProvider).closePortalPanel();
     }
