@@ -7,6 +7,7 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 
 /// Async play / resolve ownership for media details (RFC-047 deep slice).
@@ -24,13 +25,14 @@ class DetailsPlaySources {
     required this.webstreaming,
   });
 
-  const DetailsPlaySources.allOn()
-      : torrent = true,
-        stremio = true,
-        nuvio = true,
+  /// First paint before prefs hydrate — matches platform defaults (Forja only).
+  const DetailsPlaySources.pending()
+      : torrent = false,
+        stremio = false,
+        nuvio = false,
         engine = true,
         engineAutoStart = false,
-        webstreaming = true;
+        webstreaming = false;
 
   final bool torrent;
   final bool stremio;
@@ -61,7 +63,7 @@ class DetailsPlaySources {
 /// Mutable session bag — Notifier bumps [DetailsPlaySessionNotifier] revision
 /// so [ref.watch] rebuilds; callers mutate fields then [bump].
 class DetailsPlaySession {
-  DetailsPlaySources playSources = const DetailsPlaySources.allOn();
+  DetailsPlaySources playSources = const DetailsPlaySources.pending();
 
   List<TorrentResult> torrents = [];
   bool isSearching = false;
@@ -155,6 +157,9 @@ class DetailsPlaySessionNotifier
     ref.listen(playSourceRevisionProvider, (_, _) {
       unawaited(loadPlaySources());
     });
+    ref.listen(accountFeaturesRevisionProvider, (_, _) {
+      unawaited(loadPlaySources());
+    });
     unawaited(loadPlaySources());
     return 0;
   }
@@ -176,7 +181,7 @@ class DetailsPlaySessionNotifier
       nuvio: await PlaySourceEffective.nuvio(settings, lanReady),
       engine: await PlaySourceEffective.engine(settings, lanReady),
       engineAutoStart: await settings.isPlaySourceEngineAutoStartEnabled(),
-      webstreaming: await settings.isPlaySourceWebstreamingEnabled(),
+      webstreaming: await PlaySourceEffective.webstreaming(settings),
     );
     session.playSources = next;
     bump();

@@ -49,10 +49,11 @@ void main() {
     expect(await service.getSubSize(), 52);
     expect(await service.getSubBottomPadding(), 48);
     expect(await service.getTorrentDiskCacheGb(), 1);
-      expect(await service.isPlaySourceWebstreamingEnabled(), isTrue);
-      expect(await service.isPlaySourceTorrentEnabled(), isTrue);
-      expect(await service.isPlaySourceStremioEnabled(), isTrue);
-      expect(await service.isPlaySourceNuvioEnabled(), isTrue);
+      expect(await service.isPlaySourceWebstreamingEnabled(), isFalse);
+      expect(await service.isPlaySourceTorrentEnabled(), isFalse);
+      expect(await service.isPlaySourceStremioEnabled(), isFalse);
+      expect(await service.isPlaySourceNuvioEnabled(), isFalse);
+      expect(await service.isPlaySourceEngineEnabled(), isTrue);
   });
 
   test(
@@ -213,7 +214,7 @@ void main() {
   });
 
   test(
-    'ATV catalog play sources migration turns torrent/Stremio/Nuvio on',
+    'ATV catalog play sources migration enables Forja only',
     () async {
       addTearDown(() {
         SettingsService.configurePlatformProfile(PlatformProfile.phone);
@@ -221,15 +222,17 @@ void main() {
       await kvSetBool('play_source_torrent_enabled', false);
       await kvSetBool('play_source_stremio_enabled', false);
       await kvSetBool('play_source_nuvio_enabled', false);
+      await kvSetBool('play_source_engine_enabled', false);
       await kvSetString('platform_defaults_seeded_v1', 'androidTv');
       SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
 
       final service = SettingsService();
       await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
 
-      expect(await service.isPlaySourceTorrentEnabled(), isTrue);
-      expect(await service.isPlaySourceStremioEnabled(), isTrue);
-      expect(await service.isPlaySourceNuvioEnabled(), isTrue);
+      expect(await service.isPlaySourceTorrentEnabled(), isFalse);
+      expect(await service.isPlaySourceStremioEnabled(), isFalse);
+      expect(await service.isPlaySourceNuvioEnabled(), isFalse);
+      expect(await service.isPlaySourceEngineEnabled(), isTrue);
     },
   );
 

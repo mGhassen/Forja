@@ -7,6 +7,7 @@ import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
+import 'package:forja/shared/sync/providers/account_features_provider.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:rust/rust.dart';
 
@@ -175,6 +176,7 @@ class SettingsPlaybackNotifier
   @override
   Future<SettingsPlaybackSnapshot> build() async {
     ref.watch(playSourceRevisionProvider);
+    ref.watch(accountFeaturesRevisionProvider);
     return _load();
   }
 
@@ -192,7 +194,7 @@ class SettingsPlaybackNotifier
       playSourceEngine: await PlaySourceEffective.engine(s, lanReady),
       playSourceEngineAutoStart:
           await s.isPlaySourceEngineAutoStartEnabled(),
-      playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
+      playSourceWebstreaming: await PlaySourceEffective.webstreaming(s),
       p2pAcknowledged: await s.isP2pStreamingAcknowledged(),
       simpleStreamingResolve: await s.isSimpleStreamingResolveEnabled(),
       streamCryptoDecryptLabel: SettingsService.streamCryptoDecryptLabel(

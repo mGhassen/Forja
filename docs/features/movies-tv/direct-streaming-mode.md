@@ -4,13 +4,13 @@
 
 ## What it is
 
-**Webstreaming** is a **play source** on the unified [media details](media-details.md) screen — not a tab in **Sources**. When enabled in **Settings → Playback**, the hero shows the default green **Play** / **Resume** pill with a play icon. It auto-searches extractors in your **Provider order** (VidLink, VixSrc, WebStreamr, Videasy, …) and starts playback when one works (loading roulette overlay).
+**Webstreaming** is a **play source** on the unified [media details](media-details.md) screen — not a tab in **Sources**. It is available to **admin** accounts only. When enabled in **Settings → Playback**, the hero shows the default green **Play** / **Resume** pill with a play icon. It auto-searches extractors in your **Provider order** (VidLink, VixSrc, WebStreamr, Videasy, …) and starts playback when one works (loading roulette overlay).
 
 The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent providers, **Nuvio**, **Forja**, Stremio). The **Sources** panel is not used for webstreaming.
 
 ## How to open it
 
-1. Enable **Webstreaming** under **Play sources** in **Settings → Playback**
+1. Enable **Webstreaming** under **Play sources** in **Settings → Playback** (admin accounts only)
 2. Open any movie or series from Home, Discover, or Search
 3. Tap the green **Play** / **Resume** on the hero
 

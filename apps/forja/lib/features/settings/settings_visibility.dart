@@ -100,9 +100,12 @@ class SettingsVisibility {
       AccountFeatures.instance.isAdmin;
 
   /// Server reliability / provider order (webstreaming extractors).
-  /// Lives under Sources — hidden with that category on Android TV.
+  /// Lives under Sources — admin + Webstreaming; hidden on Android TV.
   bool get showProviderScoring =>
-      !_isAndroidTv && vodTab && playSourceWebstreaming;
+      !_isAndroidTv &&
+      vodTab &&
+      playSourceWebstreaming &&
+      AccountFeatures.instance.isAdmin;
 
   /// Trakt / Simkl / MDBlist.
   bool get showAccounts => vodTab;
@@ -141,7 +144,7 @@ class SettingsVisibility {
       playSourceStremio: await PlaySourceEffective.stremio(s, lanReady),
       playSourceNuvio: await PlaySourceEffective.nuvio(s, lanReady),
       playSourceEngine: await PlaySourceEffective.engine(s, lanReady),
-      playSourceWebstreaming: await s.isPlaySourceWebstreamingEnabled(),
+      playSourceWebstreaming: await PlaySourceEffective.webstreaming(s),
       showPlaySourceTorrentToggle: await PlaySourceEffective.showTorrentToggle(),
       showPlaySourceStremioToggle: await PlaySourceEffective.showStremioToggle(),
       showPlaySourceNuvioToggle: await PlaySourceEffective.showNuvioToggle(),

@@ -1,5 +1,6 @@
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
+import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:rust/rust.dart';
 
 /// Effective Direct torrent / Stremio / Nuvio for UI, boot, and details.
@@ -67,5 +68,12 @@ abstract final class PlaySourceEffective {
   ]) async {
     final s = settings ?? SettingsService();
     return s.isPlaySourceEngineEnabled();
+  }
+
+  /// Sniffing extractors (Videasy, WebStreamr, …) — admin accounts only.
+  static Future<bool> webstreaming([SettingsService? settings]) async {
+    if (!AccountFeatures.instance.isAdmin) return false;
+    final s = settings ?? SettingsService();
+    return s.isPlaySourceWebstreamingEnabled();
   }
 }

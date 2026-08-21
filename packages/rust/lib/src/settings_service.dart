@@ -1412,14 +1412,11 @@ class SettingsService {
     await kvSetString(_playInBackgroundDeviceLocalKey, '1');
   }
 
-  /// Older ATV seeds stored Direct torrent / Stremio / Nuvio off. Catalog
-  /// Sources now work unpaired (HTTP local; P2P via desktop at play time).
+  /// Older ATV seeds may lack Forja. Ensure engine is on; other play sources
+  /// stay at stored / platform defaults (Forja-only first run).
   Future<void> _migrateAtvCatalogPlaySources() async {
     if (await kvHasKey(_atvCatalogPlaySourcesKey)) return;
     if (platformProfile == PlatformProfile.androidTv) {
-      await kvSetBool(_playSourceTorrentKey, true);
-      await kvSetBool(_playSourceStremioKey, true);
-      await kvSetBool(_playSourceNuvioKey, true);
       await kvSetBool(_playSourceEngineKey, true);
       playSourceChangeNotifier.value++;
     }

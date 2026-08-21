@@ -160,6 +160,34 @@ class _SettingsPlaybackSectionState
           SettingsGroup(
             label: 'Play sources',
             children: [
+              if (widget.visibility.showPlaySourceEngineToggle)
+                settingsFocusableToggle(
+                  context,
+                  'Forja',
+                  'Play from plugins in Sources → Forja. Auto = green Play races them.',
+                  snap.playSourceEngine,
+                  (val) async {
+                    await _settings.setPlaySourceEngineEnabled(val);
+                    await _playback.patch(
+                      (s) => s.copyWith(playSourceEngine: val),
+                    );
+                    schedulePreferencesSyncPush();
+                    if (val) {
+                      unawaited(
+                        EngineService.instance.ensureBundledInstalled(),
+                      );
+                    }
+                  },
+                  enabled: widget.visibility.lanPlaySourcesEditable,
+                  leadingCheckValue: snap.playSourceEngineAutoStart,
+                  onLeadingCheckChanged: (val) async {
+                    await _settings.setPlaySourceEngineAutoStartEnabled(val);
+                    await _playback.patch(
+                      (s) => s.copyWith(playSourceEngineAutoStart: val),
+                    );
+                    schedulePreferencesSyncPush();
+                  },
+                ),
               if (widget.visibility.showPlaySourceTorrentToggle)
                 settingsFocusableToggle(
                   context,
@@ -224,61 +252,35 @@ class _SettingsPlaybackSectionState
                       (s) => s.copyWith(playSourceNuvio: val),
                     );
                     schedulePreferencesSyncPush();
-                  if (val &&
-                      PlatformPlayback.capabilities.playSourceNuvio) {
-                    debugPrint('[Init] Nuvio refresh (settings toggle)');
-                    unawaited(NuvioService.instance.refreshAllInstalled());
-                  }
-                },
-                enabled: widget.visibility.lanPlaySourcesEditable,
-              ),
-            if (widget.visibility.showPlaySourceEngineToggle)
-              settingsFocusableToggle(
-                context,
-                'Forja',
-                'Play from plugins in Sources → Forja. Auto = green Play races them.',
-                snap.playSourceEngine,
-                (val) async {
-                  await _settings.setPlaySourceEngineEnabled(val);
-                  await _playback.patch(
-                    (s) => s.copyWith(playSourceEngine: val),
-                  );
-                  schedulePreferencesSyncPush();
-                  if (val) {
-                    unawaited(
-                      EngineService.instance.ensureBundledInstalled(),
+                    if (val &&
+                        PlatformPlayback.capabilities.playSourceNuvio) {
+                      debugPrint('[Init] Nuvio refresh (settings toggle)');
+                      unawaited(NuvioService.instance.refreshAllInstalled());
+                    }
+                  },
+                  enabled: widget.visibility.lanPlaySourcesEditable,
+                ),
+              if (AccountFeatures.instance.isAdmin)
+                settingsFocusableToggle(
+                  context,
+                  'Webstreaming',
+                  'Play from web stream extractors (Videasy, WebStreamr, …).',
+                  snap.playSourceWebstreaming,
+                  (val) async {
+                    await _settings.setPlaySourceWebstreamingEnabled(val);
+                    await _playback.patch(
+                      (s) => s.copyWith(playSourceWebstreaming: val),
                     );
-                  }
-                },
-                enabled: widget.visibility.lanPlaySourcesEditable,
-                leadingCheckValue: snap.playSourceEngineAutoStart,
-                onLeadingCheckChanged: (val) async {
-                  await _settings.setPlaySourceEngineAutoStartEnabled(val);
-                  await _playback.patch(
-                    (s) => s.copyWith(playSourceEngineAutoStart: val),
-                  );
-                  schedulePreferencesSyncPush();
-                },
-              ),
-              settingsFocusableToggle(
-                context,
-                'Webstreaming',
-                'Play from web stream extractors (Videasy, WebStreamr, …).',
-                snap.playSourceWebstreaming,
-                (val) async {
-                  await _settings.setPlaySourceWebstreamingEnabled(val);
-                  await _playback.patch(
-                    (s) => s.copyWith(playSourceWebstreaming: val),
-                  );
-                  schedulePreferencesSyncPush();
-                  if (val) {
-                    debugPrint('[Init] LocalServer start (settings toggle)');
-                    await LocalServerService().start();
-                    debugPrint('[Init] WebStreamr start (settings toggle)');
-                    await WebStreamrService.init();
-                  }
-                },
-              ),
+                    schedulePreferencesSyncPush();
+                    if (val) {
+                      debugPrint('[Init] LocalServer start (settings toggle)');
+                      await LocalServerService().start();
+                      debugPrint('[Init] WebStreamr start (settings toggle)');
+                      await WebStreamrService.init();
+                    }
+                  },
+                  adminOnly: true,
+                ),
               if (snap.playSourceWebstreaming &&
                   AccountFeatures.instance.isAdmin) ...[
                 settingsFocusableToggle(

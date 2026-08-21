@@ -80,7 +80,7 @@ class BootNeeds {
     final playSourceStremio = await PlaySourceEffective.stremio(s, lanReady);
     final playSourceNuvio = await PlaySourceEffective.nuvio(s, lanReady);
     final playSourceEngine = await PlaySourceEffective.engine(s, lanReady);
-    final playSourceWebstreaming = await s.isPlaySourceWebstreamingEnabled();
+    final playSourceWebstreaming = await PlaySourceEffective.webstreaming(s);
     final homeTab = nav.contains('home');
     final tmdb = nav.any(_tmdbNavIds.contains);
     final vodTab = nav.any(vodNavIds.contains);
