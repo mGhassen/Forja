@@ -760,7 +760,7 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
         ? (sources.isEmpty
             ? _IptvSportsPanelCopy.sniffing
             : '${_IptvSportsPanelCopy.onDeck(sources.length)} · still sniffing…')
-        : _IptvSportsPanelCopy.onDeck(sources.length);
+        : (sources.isEmpty ? null : _IptvSportsPanelCopy.onDeck(sources.length));
 
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -793,49 +793,51 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            if (ctrl.searching) ...[
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.6,
-                  color: ForjaShellColors.sectionAccent,
+        if (status != null) ...[
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              if (ctrl.searching) ...[
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.6,
+                    color: ForjaShellColors.sectionAccent,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  status,
+                  style: TextStyle(
+                    color: ForjaShellColors.cinematic.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
             ],
-            Expanded(
-              child: Text(
-                status,
-                style: TextStyle(
-                  color: ForjaShellColors.cinematic.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
         const SizedBox(height: 12),
         Expanded(
           child: sources.isEmpty
-              ? Align(
-                  alignment: Alignment.topLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 24),
-                    child: Text(
-                      ctrl.searching
-                          ? _IptvSportsPanelCopy.sniffing
-                          : _IptvSportsPanelCopy.empty,
-                      style: TextStyle(
-                        color: ForjaShellColors.cinematic.textSecondary,
-                        fontSize: 13,
+              ? (ctrl.searching
+                  ? const SizedBox.shrink()
+                  : Align(
+                      alignment: Alignment.topLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 24),
+                        child: Text(
+                          _IptvSportsPanelCopy.empty,
+                          style: TextStyle(
+                            color: ForjaShellColors.cinematic.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                )
+                    ))
               : Builder(
                   builder: (context) {
                     final list = ListView.builder(
