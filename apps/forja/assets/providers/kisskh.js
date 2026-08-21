@@ -6,7 +6,9 @@ function extract(ctx) {
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
   var headers = { 'User-Agent': ua, Accept: 'application/json', Referer: origin + '/' };
+  // Hub Sources injects KissKh drama/episode ids — Search never returns tmdbID.
   var episodeId = cfg.episodeId || ctx.config.episodeId;
+  var dramaId = cfg.dramaId || ctx.config.dramaId;
 
   function rowsFromEpisode(api) {
     if (!api || typeof api !== 'object') return Promise.resolve([]);
@@ -22,7 +24,11 @@ function extract(ctx) {
       urls.map(function (u) {
         if (/\.m3u8|\.mp4/i.test(u)) {
           return Promise.resolve([
-            { url: u, name: 'KissKh', headers: { 'User-Agent': ua, Referer: origin + '/', Origin: origin } },
+            {
+              url: u,
+              name: 'KissKh',
+              headers: { 'User-Agent': ua, Referer: origin + '/', Origin: origin },
+            },
           ]);
         }
         return ctx.hop(u);
@@ -67,7 +73,28 @@ function extract(ctx) {
     });
   }
 
+  function episodeFromDrama(drama) {
+    var eps = drama.episodes || drama.Episodes || [];
+    var want = Number(ctx.episode || 1);
+    var ep =
+      eps.find(function (e) {
+        return Number(e.number || e.Number) === want;
+      }) || eps[0];
+    if (!ep) return [];
+    return fetchEpisode(ep.id || ep.Id);
+  }
+
+  function fetchDrama(id) {
+    return ctx
+      .fetch(origin + '/api/DramaList/Drama/' + id + '?isq=false', { headers: headers })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(episodeFromDrama);
+  }
+
   if (episodeId) return fetchEpisode(episodeId).catch(function () { return []; });
+  if (dramaId) return fetchDrama(dramaId).catch(function () { return []; });
 
   var q = encodeURIComponent(title);
   if (!q) return Promise.resolve([]);
@@ -83,22 +110,7 @@ function extract(ctx) {
         }) ||
         (Array.isArray(list) ? list[0] : null);
       if (!hit) return [];
-      var dramaId = hit.id;
-      return ctx
-        .fetch(origin + '/api/DramaList/Drama/' + dramaId + '?isq=false', { headers: headers })
-        .then(function (r) {
-          return r.json();
-        })
-        .then(function (drama) {
-          var eps = drama.episodes || drama.Episodes || [];
-          var want = Number(ctx.episode || 1);
-          var ep =
-            eps.find(function (e) {
-              return Number(e.number || e.Number) === want;
-            }) || eps[0];
-          if (!ep) return [];
-          return fetchEpisode(ep.id || ep.Id);
-        });
+      return fetchDrama(hit.id);
     })
     .catch(function () {
       return [];

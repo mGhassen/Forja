@@ -349,6 +349,8 @@ class EngineService {
     Movie? movie,
     int? malId,
     int? anilistId,
+    int? kisskhId,
+    int? kisskhEpisodeId,
     bool allowHostFallback = true,
     EngineRuntime? runtime,
   }) async {
@@ -404,7 +406,12 @@ class EngineService {
 
     final overlay =
         ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
-    final config = mergeEngineConfig(plugin.config, overlay);
+    final config = engineConfigWithKissKhIds(
+      mergeEngineConfig(plugin.config, overlay),
+      pluginId: plugin.id,
+      kisskhId: kisskhId,
+      kisskhEpisodeId: kisskhEpisodeId,
+    );
     final code = await _loadScript(plugin);
     if (gen != _extractGeneration || code == null) return null;
     if (!rt.isLoaded(plugin.id)) {
@@ -566,6 +573,8 @@ class EngineService {
     Movie? movie,
     int? malId,
     int? anilistId,
+    int? kisskhId,
+    int? kisskhEpisodeId,
     bool allowHostFallback = true,
   }) async {
     // RFC-064: Rust QuickJS on tokio (true parallel). Null → flutter_js fork
@@ -583,6 +592,8 @@ class EngineService {
       movie: movie,
       malId: malId,
       anilistId: anilistId,
+      kisskhId: kisskhId,
+      kisskhEpisodeId: kisskhEpisodeId,
       allowHostFallback: allowHostFallback,
     );
     if (viaRust != null) return viaRust;
@@ -610,6 +621,8 @@ class EngineService {
         movie: movie,
         malId: malId,
         anilistId: anilistId,
+        kisskhId: kisskhId,
+        kisskhEpisodeId: kisskhEpisodeId,
         allowHostFallback: allowHostFallback,
         runtime: runtime,
       );

@@ -367,6 +367,25 @@ Map<String, dynamic> mergeEngineConfig(
   return out;
 }
 
+/// Asian Drama Sources already knows KissKh drama/episode ids. Inject them
+/// into kisskh plugin config so extract skips title search (Search has no
+/// `tmdbID`, so TMDB match always misses).
+Map<String, dynamic> engineConfigWithKissKhIds(
+  Map<String, dynamic> config, {
+  required String pluginId,
+  int? kisskhId,
+  int? kisskhEpisodeId,
+}) {
+  if (pluginId != 'kisskh') return config;
+  final drama = kisskhId ?? 0;
+  final ep = kisskhEpisodeId ?? 0;
+  if (drama <= 0 && ep <= 0) return config;
+  final out = Map<String, dynamic>.from(config);
+  if (ep > 0) out['episodeId'] = ep;
+  if (drama > 0) out['dramaId'] = drama;
+  return out;
+}
+
 /// Card title matching Nuvio plugin rows: `Show S1E1 - (2026)`.
 String engineMediaDisplayTitle({
   String? title,
