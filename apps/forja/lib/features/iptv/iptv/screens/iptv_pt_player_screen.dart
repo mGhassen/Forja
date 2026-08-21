@@ -136,20 +136,41 @@ class IptvPlaySource {
     return 'T${m.group(1)}';
   }
 
-  /// Source-picker primary line — short channel / event name, not the raw dump.
+  /// Channel callsign / short name for Source rows + chrome.
+  ///
+  /// Xtream sports names are often EPG dumps like
+  /// `Raiders vs. Texans @ Aug 20 20:00 :TSN+ 55` — take the part after the
+  /// last ` :`. Never split on time colons (`20:00`).
   String get pickerTitle {
     final raw = chromeTitle;
     if (raw.isEmpty) return label;
-    var body = raw;
-    final colon = body.indexOf(':');
-    if (colon > 0 && colon < body.length - 1) {
-      body = body.substring(colon + 1).trim();
+
+    final spaceColon = raw.lastIndexOf(' :');
+    if (spaceColon >= 0 && spaceColon + 2 < raw.length) {
+      var channel = raw.substring(spaceColon + 2).trim();
+      final mid = channel.indexOf(' · ');
+      if (mid > 0) channel = channel.substring(0, mid).trim();
+      if (channel.isNotEmpty) return channel;
     }
-    final pipe = body.indexOf('|');
-    if (pipe > 0) {
-      body = body.substring(0, pipe).trim();
+
+    // "NFL Teams: FOX Raiders…" — colon not part of HH:MM.
+    final colon = raw.indexOf(':');
+    if (colon > 0 && colon + 1 < raw.length) {
+      final before = raw.codeUnitAt(colon - 1);
+      final after = raw.codeUnitAt(colon + 1);
+      final isTime = before >= 0x30 &&
+          before <= 0x39 &&
+          after >= 0x30 &&
+          after <= 0x39;
+      if (!isTime) {
+        var body = raw.substring(colon + 1).trim();
+        final pipe = body.indexOf('|');
+        if (pipe > 0) body = body.substring(0, pipe).trim();
+        if (body.isNotEmpty) return body;
+      }
     }
-    return body.isEmpty ? chromeTitle : body;
+
+    return raw;
   }
 
   /// Source-picker secondary line — category / group only (no host, no tier).
@@ -158,10 +179,23 @@ class IptvPlaySource {
     if (cat.isNotEmpty) return _normalizePipes(cat);
 
     final raw = chromeTitle;
+    final spaceColon = raw.lastIndexOf(' :');
+    if (spaceColon > 0) {
+      // Leftover EPG dump before the callsign — too noisy; skip.
+      return null;
+    }
     final colon = raw.indexOf(':');
     if (colon > 0) {
-      final group = _normalizePipes(raw.substring(0, colon).trim());
-      if (group.isNotEmpty) return group;
+      final before = raw.codeUnitAt(colon - 1);
+      final after = colon + 1 < raw.length ? raw.codeUnitAt(colon + 1) : 0;
+      final isTime = before >= 0x30 &&
+          before <= 0x39 &&
+          after >= 0x30 &&
+          after <= 0x39;
+      if (!isTime) {
+        final group = _normalizePipes(raw.substring(0, colon).trim());
+        if (group.isNotEmpty) return group;
+      }
     }
     return null;
   }

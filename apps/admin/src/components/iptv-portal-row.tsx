@@ -186,6 +186,8 @@ export function IptvPortalActionRow({
   deleting,
   checking,
   highlighted,
+  selected,
+  onToggleSelect,
   deleteConfirmLabel,
   deleteDisabled,
   deleteTitle,
@@ -202,6 +204,8 @@ export function IptvPortalActionRow({
   deleting: boolean
   checking: boolean
   highlighted?: boolean
+  selected?: boolean
+  onToggleSelect?: () => void
   deleteConfirmLabel: string
   deleteDisabled?: boolean
   deleteTitle?: string
@@ -214,6 +218,7 @@ export function IptvPortalActionRow({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const pinRail = confirmDelete || sharing || !!shareCode || checking
   const rowId = 'id' in portal && typeof portal.id === 'string' ? portal.id : null
+  const selectable = !!onToggleSelect
 
   return (
     <li
@@ -222,11 +227,52 @@ export function IptvPortalActionRow({
         'group flex min-h-22 items-stretch border-b border-forja-border/70 last:border-b-0',
         'hover:bg-white/[0.03] focus-within:bg-white/[0.03]',
         pinRail && 'bg-white/[0.03]',
-        highlighted &&
+        selected && 'bg-forja-green/[0.1] ring-1 ring-inset ring-forja-green/40',
+        !selected &&
+          highlighted &&
           'bg-forja-green/[0.08] ring-1 ring-inset ring-forja-green/35',
       )}
     >
-      <div className="flex min-w-0 flex-1 items-center px-3 py-2.5">
+      <div
+        className={cn(
+          'flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2.5',
+          selectable && !confirmDelete && !sharing && !shareCode && 'cursor-pointer',
+        )}
+        onClick={
+          selectable && !confirmDelete && !sharing && !shareCode
+            ? (e) => {
+                if ((e.target as HTMLElement).closest('a, button')) return
+                onToggleSelect()
+              }
+            : undefined
+        }
+        onKeyDown={
+          selectable && !confirmDelete && !sharing && !shareCode
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onToggleSelect?.()
+                }
+              }
+            : undefined
+        }
+        role={selectable ? 'checkbox' : undefined}
+        aria-checked={selectable ? !!selected : undefined}
+        tabIndex={selectable ? 0 : undefined}
+      >
+        {selectable ? (
+          <span
+            className={cn(
+              'flex size-4 shrink-0 items-center justify-center rounded border',
+              selected
+                ? 'border-forja-green bg-forja-green text-black'
+                : 'border-white/25 bg-transparent',
+            )}
+            aria-hidden
+          >
+            {selected ? <Check className="size-3" strokeWidth={3} /> : null}
+          </span>
+        ) : null}
         {confirmDelete ? (
           <p className="text-[13px] font-semibold text-red-400">
             {deleteConfirmLabel}
@@ -262,6 +308,7 @@ export function IptvPortalActionRow({
             ? 'w-[180px]'
             : 'w-0 group-hover:w-[180px] group-focus-within:w-[180px]',
         )}
+        onClick={(e) => e.stopPropagation()}
       >
         <div
           className="flex h-full shrink-0 items-center justify-end pr-1"

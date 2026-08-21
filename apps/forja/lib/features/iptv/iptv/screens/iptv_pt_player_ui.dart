@@ -1360,6 +1360,19 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               ),
             ),
             const SizedBox(width: 8),
+            if ((_s._logoUrl ?? '').trim().isNotEmpty) ...[
+              SizedBox(
+                width: 36,
+                height: 36,
+                child: Image.network(
+                  _s._logoUrl!.trim(),
+                  fit: BoxFit.contain,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -2274,7 +2287,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   }
 
   Widget _sourceLogo(IptvPlaySource src) {
-    const size = 36.0;
+    const size = 40.0;
     final url = (src.logoUrl ?? '').trim();
     if (url.isEmpty) {
       return SizedBox(
@@ -2329,6 +2342,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       anchorContext: anchorContext,
       alignment: Alignment.bottomRight,
       margin: const EdgeInsets.only(right: 16, bottom: 96),
+      width: 460,
+      maxHeight: 440,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
         child: Column(

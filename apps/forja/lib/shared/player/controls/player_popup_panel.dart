@@ -1172,6 +1172,39 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
         ? PlayerPopupTokens.accent.withValues(alpha: 0.85)
         : PlayerPopupTokens.muted;
 
+    final badgeOnRight = widget.leading != null;
+    Widget? badgeChip;
+    if (widget.badge != null) {
+      badgeChip = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: highlight || selected || active
+              ? PlayerPopupTokens.accent.withValues(alpha: 0.12)
+              : (widget.badgeColor ?? PlayerPopupTokens.cardBg),
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(
+            color: highlight || selected || active
+                ? PlayerPopupTokens.accentBorder
+                : PlayerPopupTokens.border,
+          ),
+        ),
+        child: Text(
+          widget.badge!,
+          style: TextStyle(
+            color: highlight || selected || active
+                ? PlayerPopupTokens.accent
+                : widget.badgeColor != null &&
+                      widget.badgeColor != const Color(0xFF2A2A2A)
+                ? Colors.white.withValues(alpha: 0.92)
+                : PlayerPopupTokens.muted,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
+        ),
+      );
+    }
+
     final tile = Material(
       color: rowColor,
       borderRadius: BorderRadius.circular(PlayerPopupTokens.chipRadius),
@@ -1199,38 +1232,8 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
                 widget.leading!,
                 const SizedBox(width: 10),
               ],
-              if (widget.badge != null) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: highlight || selected || active
-                        ? PlayerPopupTokens.accent.withValues(alpha: 0.12)
-                        : (widget.badgeColor ?? PlayerPopupTokens.cardBg),
-                    borderRadius: BorderRadius.circular(5),
-                    border: Border.all(
-                      color: highlight || selected || active
-                          ? PlayerPopupTokens.accentBorder
-                          : PlayerPopupTokens.border,
-                    ),
-                  ),
-                  child: Text(
-                    widget.badge!,
-                    style: TextStyle(
-                      color: highlight || selected || active
-                          ? PlayerPopupTokens.accent
-                          : widget.badgeColor != null &&
-                                widget.badgeColor != const Color(0xFF2A2A2A)
-                          ? Colors.white.withValues(alpha: 0.92)
-                          : PlayerPopupTokens.muted,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
+              if (!badgeOnRight && badgeChip != null) ...[
+                badgeChip,
                 const SizedBox(width: 8),
               ],
               Expanded(
@@ -1283,7 +1286,12 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
                   ],
                 ),
               ),
-              if (selected)
+              if (badgeOnRight && badgeChip != null) ...[
+                const SizedBox(width: 8),
+                badgeChip,
+              ],
+              if (selected) ...[
+                const SizedBox(width: 6),
                 const SizedBox(
                   width: _statusSlot,
                   height: _statusSlot,
@@ -1292,11 +1300,14 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
                     color: PlayerPopupTokens.accent,
                     size: 18,
                   ),
-                )
-              else if (statusGlyph != null)
-                statusGlyph
-              else if (widget.trailing != null)
+                ),
+              ] else if (statusGlyph != null) ...[
+                const SizedBox(width: 6),
+                statusGlyph,
+              ] else if (widget.trailing != null) ...[
+                const SizedBox(width: 6),
                 widget.trailing!,
+              ],
             ],
           ),
         ),

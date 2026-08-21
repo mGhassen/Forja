@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearch } from '@tanstack/react-router'
-import { ArrowDown, ArrowUp, Radio, Search } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  Plus,
+  Radio,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { IptvPortalPeopleDialog } from '@/components/iptv-assign-dialog'
 import {
   IptvPortalActionRow,
@@ -68,11 +76,13 @@ function HostPortals({
   host,
   filters,
   highlightedId,
+  selectedIds,
   sharingId,
   shareFlash,
   checkingId,
   checkingHost,
   removePending,
+  onToggleSelect,
   onShare,
   onEdit,
   onDelete,
@@ -88,11 +98,13 @@ function HostPortals({
     region: string
   }
   highlightedId: string | null
+  selectedIds: Set<string>
   sharingId: string | null
   shareFlash: Record<string, string>
   checkingId: string | null
   checkingHost: string | null
   removePending: boolean
+  onToggleSelect: (c: PoolCand) => void
   onShare: (c: PoolCand) => void
   onEdit: (c: PoolCand) => void
   onDelete: (id: string) => void
@@ -156,6 +168,8 @@ function HostPortals({
             key={c.id}
             portal={c}
             highlighted={highlightedId === c.id}
+            selected={selectedIds.has(c.id)}
+            onToggleSelect={() => onToggleSelect(c)}
             sharing={sharingId === c.id}
             shareCode={shareFlash[c.id] ?? null}
             deleting={removePending}
@@ -228,6 +242,10 @@ export function AdminPoolPage() {
     id: string
     label: string
   } | null>(null)
+  /** id → in catalog pool */
+  const [selected, setSelected] = useState<Map<string, boolean>>(() => new Map())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [confirmBulkRemove, setConfirmBulkRemove] = useState(false)
 
   const filters = useMemo(
     () => ({
@@ -243,6 +261,32 @@ export function AdminPoolPage() {
   useEffect(() => {
     setPage(0)
   }, [filters, sortKey, sortDir, pageSize])
+
+  useEffect(() => {
+    setSelected(new Map())
+    setConfirmBulkRemove(false)
+  }, [filters])
+
+  useEffect(() => {
+    if (selected.size === 0) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelected(new Map())
+        setConfirmBulkRemove(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selected.size])
+
+  const selectedIds = useMemo(() => new Set(selected.keys()), [selected])
+  const selectedCount = selected.size
+  const selectedInPool = useMemo(() => {
+    let n = 0
+    for (const inPool of selected.values()) if (inPool) n++
+    return n
+  }, [selected])
+  const selectedOutOfPool = selectedCount - selectedInPool
 
   const hostsQuery = useQuery({
     queryKey: [
@@ -391,12 +435,97 @@ export function AdminPoolPage() {
     onSuccess: async (_void, id) => {
       setActionError(null)
       if (editingId === id) setEditingId(null)
+      setSelected((prev) => {
+        if (!prev.has(id)) return prev
+        const next = new Map(prev)
+        next.delete(id)
+        return next
+      })
       await invalidatePool()
     },
     onError: (e) => {
       setActionError(e instanceof Error ? e.message : 'Delete failed')
     },
   })
+
+  function toggleSelect(c: PoolCand) {
+    setConfirmBulkRemove(false)
+    setSelected((prev) => {
+      const next = new Map(prev)
+      if (next.has(c.id)) next.delete(c.id)
+      else next.set(c.id, c.catalog_pool === true)
+      return next
+    })
+  }
+
+  function clearSelection() {
+    setSelected(new Map())
+    setConfirmBulkRemove(false)
+  }
+
+  async function bulkSetPool(inPool: boolean) {
+    const ids = [...selected.entries()]
+      .filter(([, wasInPool]) => wasInPool !== inPool)
+      .map(([id]) => id)
+    if (ids.length === 0) return
+    setBulkBusy(true)
+    setActionError(null)
+    setActionInfo(null)
+    setConfirmBulkRemove(false)
+    try {
+      const { error } = await adminDb
+        .from('iptv_portals')
+        .update({ catalog_pool: inPool })
+        .in('id', ids)
+      if (error) throw error
+      setActionInfo(
+        inPool
+          ? `Added ${ids.length} portal${ids.length === 1 ? '' : 's'} to deal pool`
+          : `Removed ${ids.length} portal${ids.length === 1 ? '' : 's'} from deal pool`,
+      )
+      clearSelection()
+      await invalidatePool()
+    } catch (e) {
+      setActionError(errMessage(e, 'Bulk pool update failed'))
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
+  async function bulkCheck() {
+    const ids = [...selected.keys()]
+    if (ids.length === 0) return
+    setBulkBusy(true)
+    setActionError(null)
+    setActionInfo(null)
+    setConfirmBulkRemove(false)
+    let alive = 0
+    let dead = 0
+    let failed = 0
+    try {
+      for (const id of ids) {
+        setCheckingId(id)
+        try {
+          const res = await catalogVerify({ candidateId: id })
+          alive += res.alive
+          dead += res.dead
+        } catch {
+          failed++
+        }
+      }
+      setActionInfo(
+        `Checked ${ids.length}: ${alive} alive · ${dead} dead${
+          failed ? ` · ${failed} failed` : ''
+        }`,
+      )
+      await invalidatePool()
+    } catch (e) {
+      setActionError(errMessage(e, 'Bulk status check failed'))
+    } finally {
+      setCheckingId(null)
+      setBulkBusy(false)
+    }
+  }
 
   function toggle(host: string) {
     const key = poolHostKey(host)
@@ -668,6 +797,88 @@ export function AdminPoolPage() {
       </div>
 
       <div className="overflow-hidden rounded-xl border border-forja-border">
+        {selectedCount > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 border-b border-forja-border bg-forja-elevated/80 px-3 py-2">
+            <p className="mr-1 text-sm font-medium text-forja-text">
+              {selectedCount} selected
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={bulkBusy || checkingHost != null}
+              onClick={() => void bulkCheck()}
+            >
+              <Radio
+                className={cn(
+                  'size-4',
+                  bulkBusy && checkingId != null && 'animate-pulse text-amber-400',
+                )}
+              />
+              Check status
+            </Button>
+            {selectedOutOfPool > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={bulkBusy}
+                onClick={() => void bulkSetPool(true)}
+              >
+                <Plus className="size-4" />
+                Add to pool ({selectedOutOfPool})
+              </Button>
+            ) : null}
+            {selectedInPool > 0 ? (
+              confirmBulkRemove ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-400 hover:text-red-300"
+                    disabled={bulkBusy}
+                    onClick={() => void bulkSetPool(false)}
+                  >
+                    Confirm remove ({selectedInPool})
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={bulkBusy}
+                    onClick={() => setConfirmBulkRemove(false)}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-400 hover:text-red-300"
+                  disabled={bulkBusy}
+                  onClick={() => setConfirmBulkRemove(true)}
+                >
+                  <Trash2 className="size-4" />
+                  Remove from pool ({selectedInPool})
+                </Button>
+              )
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="ml-auto"
+              disabled={bulkBusy}
+              onClick={clearSelection}
+            >
+              <X className="size-4" />
+              Clear
+            </Button>
+          </div>
+        ) : null}
         {hostsQuery.isLoading ? (
           <p className="px-4 py-4 text-sm text-forja-muted">Loading…</p>
         ) : hostCount === 0 ? (
@@ -778,11 +989,13 @@ export function AdminPoolPage() {
                       host={g.host}
                       filters={filters}
                       highlightedId={resolvedFocusId}
+                      selectedIds={selectedIds}
                       sharingId={sharingId}
                       shareFlash={shareFlash}
                       checkingId={checkingId}
                       checkingHost={checkingHost}
                       removePending={remove.isPending}
+                      onToggleSelect={toggleSelect}
                       onShare={(c) => void copyShare(c)}
                       onEdit={(c) => void beginEdit(c)}
                       onDelete={(id) => remove.mutate(id)}

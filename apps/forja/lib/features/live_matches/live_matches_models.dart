@@ -2347,6 +2347,21 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
     return [];
   }
   final list = parsed['items'] as List? ?? [];
+  final catalogIcons = <String, String>{};
+  try {
+    final shelf = await IptvCatalogDiskStore.load(portalKey, IptvSection.live);
+    if (shelf != null) {
+      for (final s in shelf.streams) {
+        final id = s.streamId.trim();
+        final icon = s.icon.trim();
+        if (id.isNotEmpty && icon.isNotEmpty) {
+          catalogIcons[id] = icon;
+        }
+      }
+    }
+  } catch (e) {
+    debugPrint('[LiveMatches] IPTV catalog logo lookup failed: $e');
+  }
   final out = <IptvPlaySource>[];
   for (final s in list) {
     if (s is! Map) continue;
@@ -2355,7 +2370,11 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
     if (!url.startsWith('http://') && !url.startsWith('https://')) continue;
     final channel = (s['name'] ?? 'Stream').toString().trim();
     final category = (s['title'] ?? '').toString().trim();
-    final logo = (s['logo'] ?? s['stream_icon'] ?? '').toString().trim();
+    final streamId = (s['stream_id'] ?? s['streamId'] ?? '').toString().trim();
+    var logo = (s['logo'] ?? s['stream_icon'] ?? '').toString().trim();
+    if (logo.isEmpty && streamId.isNotEmpty) {
+      logo = catalogIcons[streamId] ?? '';
+    }
     final tier = s['tier'];
     final name = channel.isEmpty ? 'Stream' : channel;
     final label = tier is num ? 'T$tier · $name' : name;

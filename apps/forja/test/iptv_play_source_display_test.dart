@@ -2,7 +2,28 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
 
 void main() {
-  test('splits Xtream dump into title, subtitle, tier badge', () {
+  test('EPG dump uses callsign after last space-colon', () {
+    const src = IptvPlaySource(
+      url: 'http://portal.example/live/u/p/1.m3u8',
+      label: 'T3 · Raiders vs. Texans @ Aug 20 20:00 :TSN+ 55',
+      detail: 'Canada · Fubo Sports',
+      logoUrl: 'http://portal.example/logo.png',
+    );
+    expect(src.tierBadge, 'T3');
+    expect(src.pickerTitle, 'TSN+ 55');
+    expect(src.pickerSubtitle, 'Canada · Fubo Sports');
+  });
+
+  test('does not split on HH:MM time colons', () {
+    const src = IptvPlaySource(
+      url: 'http://x/1.m3u8',
+      label: 'T4 · Game @ Aug 20 12:00 PM :Fubo Canada',
+      detail: 'Canada · Fubo Sports',
+    );
+    expect(src.pickerTitle, 'Fubo Canada');
+  });
+
+  test('Group: Channel style still works', () {
     const src = IptvPlaySource(
       url: 'http://portal.example/live/u/p/1.m3u8',
       label: 'T4 · NFL Teams: FOX Raiders (KVVU) Las Vegas NV',
@@ -12,18 +33,6 @@ void main() {
     expect(src.tierBadge, 'T4');
     expect(src.pickerTitle, 'FOX Raiders (KVVU) Las Vegas NV');
     expect(src.pickerSubtitle, 'USA · NFL Teams');
-    expect(src.logoUrl, 'http://portal.example/logo.png');
-  });
-
-  test('uses text after colon as title when pipes wrap the dump', () {
-    const src = IptvPlaySource(
-      url: 'http://x/1.m3u8',
-      label: 'T3 · AU | NRL 03(x): Sharks v Raiders | Sat 15th Aug 6:00AM UK',
-      detail: 'Australia | AFL NRL',
-    );
-    expect(src.tierBadge, 'T3');
-    expect(src.pickerTitle, 'Sharks v Raiders');
-    expect(src.pickerSubtitle, 'Australia · AFL NRL');
   });
 
   test('plain labels stay intact', () {

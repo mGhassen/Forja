@@ -105,6 +105,21 @@ fn live_url(base: &str, user: &str, pass: &str, stream_id: &str, ext: &str) -> S
     )
 }
 
+/// Make relative Xtream `stream_icon` paths absolute against the portal base.
+fn absolutize_logo(base: &str, logo: &str) -> String {
+    let logo = logo.trim();
+    if logo.is_empty() {
+        return String::new();
+    }
+    if logo.starts_with("http://") || logo.starts_with("https://") {
+        return logo.to_string();
+    }
+    if logo.starts_with("//") {
+        return format!("https:{logo}");
+    }
+    format!("{}/{}", trim_base(base), logo.trim_start_matches('/'))
+}
+
 fn fetch_live_streams(base: &str, user: &str, pass: &str) -> Vec<Value> {
     let url = format!(
         "{}/player_api.php?username={}&password={}&action=get_live_streams",
@@ -227,7 +242,10 @@ async fn build_candidates_async(
                 return None;
             }
             let name = field_str(&s, &["name"]);
-            let logo = field_str(&s, &["stream_icon", "streamIcon", "logo"]);
+            let logo = absolutize_logo(
+                &base,
+                &field_str(&s, &["stream_icon", "streamIcon", "logo"]),
+            );
             let ext = field_str(&s, &["container_extension"]);
             let ext = if ext.is_empty() {
                 "m3u8".into()
@@ -243,6 +261,7 @@ async fn build_candidates_async(
                 stream_url: live_url(&base, &user, &pass, &stream_id, &ext),
                 category_label: label,
                 logo,
+                stream_id,
             })
         });
     }

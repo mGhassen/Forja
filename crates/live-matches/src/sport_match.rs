@@ -12,6 +12,8 @@ pub struct Candidate {
     pub category_label: String,
     /// Xtream `stream_icon` (channel logo URL).
     pub logo: String,
+    /// Xtream `stream_id` — for catalog logo lookup on the host.
+    pub stream_id: String,
 }
 
 /// Game fields used for matching.
@@ -208,6 +210,7 @@ pub fn match_streams(
                 "title": s.category_label,
                 "url": s.stream_url,
                 "tier": tier_idx + 1,
+                "stream_id": s.stream_id,
             });
             if !s.logo.is_empty() {
                 item
@@ -253,6 +256,7 @@ mod tests {
             stream_url: "https://x/1.m3u8".into(),
             category_label: "MLB".into(),
             logo: String::new(),
+            stream_id: "1".into(),
         }];
         let hits = match_streams(&g, &cands, &league);
         assert!(hits.is_empty(), "Reds channel must not match Red Sox game");
@@ -274,6 +278,7 @@ mod tests {
             stream_url: "https://x/4k.m3u8".into(),
             category_label: "MLB".into(),
             logo: "https://x/logo.png".into(),
+            stream_id: "42".into(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);
@@ -299,6 +304,7 @@ mod tests {
             stream_url: "https://x/nick.m3u8".into(),
             category_label: "MLB".into(),
             logo: String::new(),
+            stream_id: "1".into(),
         }];
         let hits = match_streams(&g, &cands, &league);
         assert!(hits.is_empty());
@@ -314,6 +320,7 @@ mod tests {
             stream_url: "https://x/t3.m3u8".into(),
             category_label: "".into(),
             logo: String::new(),
+            stream_id: "1".into(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);

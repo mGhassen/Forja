@@ -263,7 +263,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
         builder: (_) => IptvPtPlayerScreen(
           sources: ordered,
           title: picked.pickerTitle,
-          subtitle: '${match.title} · ${match.categoryLabel}',
+          subtitle: match.title,
           logoUrl: picked.logoUrl,
           titleTracksSource: true,
           engineContext: BuiltInPlayerContext.live,
