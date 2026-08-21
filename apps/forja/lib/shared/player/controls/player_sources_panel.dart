@@ -62,6 +62,8 @@ class PlayerSourcesPanel {
     /// `torrents` | `stremio` | `nuvio` - opens on the playing source kind.
     String? preferredKind,
     String? currentAddonBaseUrl,
+    int? anilistId,
+    int? malId,
     required Future<void> Function(TorrentResult result) onTorrentSelected,
     required Future<void> Function(Map<String, dynamic> stream)
     onStremioSelected,
@@ -86,6 +88,8 @@ class PlayerSourcesPanel {
           currentStreamUrl: currentStreamUrl,
           preferredKind: preferredKind,
           currentAddonBaseUrl: currentAddonBaseUrl,
+          anilistId: anilistId,
+          malId: malId,
           onTorrentSelected: onTorrentSelected,
           onStremioSelected: onStremioSelected,
           onClose: dismiss,
@@ -110,6 +114,8 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.currentStreamUrl,
     this.preferredKind,
     this.currentAddonBaseUrl,
+    this.anilistId,
+    this.malId,
   });
 
   final Movie movie;
@@ -119,6 +125,8 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final String? currentStreamUrl;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
+  final int? anilistId;
+  final int? malId;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -158,6 +166,8 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           currentStreamUrl: widget.currentStreamUrl,
           preferredKind: widget.preferredKind,
           currentAddonBaseUrl: widget.currentAddonBaseUrl,
+          anilistId: widget.anilistId,
+          malId: widget.malId,
           onTorrentSelected: widget.onTorrentSelected,
           onStremioSelected: widget.onStremioSelected,
           onClose: widget.onClose,
@@ -179,6 +189,8 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.currentStreamUrl,
     this.preferredKind,
     this.currentAddonBaseUrl,
+    this.anilistId,
+    this.malId,
   });
 
   final Movie movie;
@@ -188,6 +200,8 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final String? currentStreamUrl;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
+  final int? anilistId;
+  final int? malId;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -1976,6 +1990,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         title: widget.movie.title,
         year: _year,
         movie: widget.movie,
+        malId: widget.malId,
+        anilistId: widget.anilistId,
         allowHostFallback: false,
       );
     } catch (e) {

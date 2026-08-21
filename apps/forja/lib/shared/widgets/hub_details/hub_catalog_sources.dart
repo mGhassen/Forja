@@ -38,12 +38,16 @@ Future<void> openHubCatalogSources({
   required Movie movie,
   int? season,
   int? episode,
+  int? anilistId,
+  int? malId,
 }) {
   return PlayerSourcesPanel.show(
     context: context,
     movie: movie,
     season: season,
     episode: episode,
+    anilistId: anilistId,
+    malId: malId,
     onTorrentSelected: (result) => _playTorrent(
       context: context,
       movie: movie,

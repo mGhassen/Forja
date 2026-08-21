@@ -312,6 +312,8 @@ class EngineService {
     String? title,
     String? year,
     Movie? movie,
+    int? malId,
+    int? anilistId,
     bool allowHostFallback = true,
     EngineRuntime? runtime,
   }) async {
@@ -384,29 +386,51 @@ class EngineService {
     if (gen != _extractGeneration) return null;
     EngineAnimeIdBundle? animeIds;
     if (EngineAnimeIds.pluginNeedsResolve(plugin)) {
-      animeIds = await EngineAnimeIds.resolve(
-        tmdbId: tmdbId,
-        mediaType: mediaType,
-        season: season ?? 1,
-        episode: episode ?? 1,
-        title: title,
-        imdbId: movie?.imdbId,
-        kinds: EngineAnimeIds.requiredKinds(plugin),
-      );
+      final kinds = EngineAnimeIds.requiredKinds(plugin);
+      final haveMal =
+          !kinds.contains('mal') || (malId != null && malId > 0);
+      final haveAnilist =
+          !kinds.contains('anilist') || (anilistId != null && anilistId > 0);
+      if (haveMal && haveAnilist) {
+        animeIds = EngineAnimeIdBundle(
+          imdbId: movie?.imdbId,
+          malId: malId,
+          anilistId: anilistId,
+          mappedEpisode: episode ?? 1,
+        );
+      } else {
+        animeIds = await EngineAnimeIds.resolve(
+          tmdbId: tmdbId,
+          mediaType: mediaType,
+          season: season ?? 1,
+          episode: episode ?? 1,
+          title: title,
+          imdbId: movie?.imdbId,
+          knownMalId: malId,
+          knownAnilistId: anilistId,
+          kinds: kinds,
+        );
+      }
       if (gen != _extractGeneration) return null;
     }
+    final resolvedMal = animeIds?.malId ?? malId;
+    final resolvedAnilist = animeIds?.anilistId ?? anilistId;
+    final resolvedImdb = animeIds?.imdbId ?? movie?.imdbId;
     debugPrint(
       '[engine] ${plugin.id} start tmdb=$tmdbId type=$mediaType '
-      's=$season e=$episode title=$title',
+      's=$season e=$episode title=$title'
+      '${resolvedMal != null ? ' mal=$resolvedMal' : ''}'
+      '${resolvedAnilist != null ? ' anilist=$resolvedAnilist' : ''}'
+      '${resolvedImdb != null && resolvedImdb.isNotEmpty ? ' imdb=$resolvedImdb' : ''}',
     );
     final sw = Stopwatch()..start();
     final raw = await rt.extract(
       pluginId: plugin.id,
       pluginName: plugin.name,
       tmdbId: tmdbId,
-      imdbId: animeIds?.imdbId ?? movie?.imdbId,
-      malId: animeIds?.malId,
-      anilistId: animeIds?.anilistId,
+      imdbId: resolvedImdb,
+      malId: resolvedMal,
+      anilistId: resolvedAnilist,
       mappedEpisode: animeIds?.mappedEpisode,
       type: mediaType,
       season: season,
@@ -505,6 +529,8 @@ class EngineService {
     String? title,
     String? year,
     Movie? movie,
+    int? malId,
+    int? anilistId,
     bool allowHostFallback = true,
   }) async {
     final runtime = EngineRuntime.fork();
@@ -518,6 +544,8 @@ class EngineService {
         title: title,
         year: year,
         movie: movie,
+        malId: malId,
+        anilistId: anilistId,
         allowHostFallback: allowHostFallback,
         runtime: runtime,
       );

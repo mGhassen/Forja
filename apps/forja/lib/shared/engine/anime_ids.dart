@@ -75,23 +75,26 @@ abstract final class EngineAnimeIds {
     required int episode,
     String? title,
     String? imdbId,
+    int? knownMalId,
+    int? knownAnilistId,
     required Set<String> kinds,
   }) async {
     final isTv = mediaType == 'tv' || mediaType == 'series';
     var imdb = (imdbId ?? '').trim();
-    int? mal;
-    int? anilist;
+    int? mal = (knownMalId != null && knownMalId > 0) ? knownMalId : null;
+    int? anilist =
+        (knownAnilistId != null && knownAnilistId > 0) ? knownAnilistId : null;
     int? mappedEp;
 
     final needMal = kinds.contains('mal');
     final needAnilist = kinds.contains('anilist');
-    final needImdb = needMal || needAnilist;
+    final needImdb = (needMal && mal == null) || (needAnilist && anilist == null);
 
     if (needImdb && imdb.isEmpty && tmdbId.isNotEmpty) {
       imdb = await _imdbFromTmdb(tmdbId: tmdbId, isTv: isTv);
     }
 
-    if (needMal) {
+    if (needMal && mal == null) {
       if (isTv && imdb.isNotEmpty) {
         final mapped = await _malFromImdb(
           imdbId: imdb,
@@ -110,7 +113,7 @@ abstract final class EngineAnimeIds {
       }
     }
 
-    if (needAnilist) {
+    if (needAnilist && anilist == null) {
       if (mal != null && mal > 0) {
         anilist = await _anilistFromMal(mal);
       }

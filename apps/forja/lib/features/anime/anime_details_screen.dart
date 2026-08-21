@@ -368,14 +368,18 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
 
   void _openCatalogSources(Movie movie) {
     final isTv = movie.mediaType == 'tv';
-    unawaited(
-      openHubCatalogSources(
+    unawaited(() async {
+      final malId = await _service.resolveMalId(_activeId);
+      if (!mounted) return;
+      await openHubCatalogSources(
         context: context,
         movie: movie,
         season: isTv ? 1 : null,
         episode: isTv ? _selectedEpisode : null,
-      ),
-    );
+        anilistId: _activeId,
+        malId: malId,
+      );
+    }());
   }
 
   void _playSelected() {

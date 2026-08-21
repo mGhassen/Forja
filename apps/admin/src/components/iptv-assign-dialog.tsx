@@ -92,6 +92,7 @@ export function IptvAssignDialog({
         throw new Error('Pick a profile and at least one portal')
       }
       let ok = 0
+      let skipped = 0
       const errors: string[] = []
       for (const id of ids) {
         try {
@@ -103,17 +104,24 @@ export function IptvAssignDialog({
           })
           ok++
         } catch (e) {
-          errors.push(e instanceof Error ? e.message : 'Assign failed')
+          const msg = e instanceof Error ? e.message : 'Assign failed'
+          // Already on this profile — skip and keep going
+          if (/already assigned/i.test(msg)) {
+            skipped++
+            continue
+          }
+          errors.push(msg)
         }
       }
-      if (ok === 0) {
+      if (ok === 0 && skipped === 0) {
         throw new Error(errors[0] ?? 'Assign failed')
       }
       if (errors.length > 0) {
         throw new Error(
-          `Assigned ${ok}/${ids.length} — last error: ${errors[errors.length - 1]}`,
+          `Assigned ${ok}${skipped ? `, skipped ${skipped} already assigned` : ''} · ${errors.length} failed: ${errors[0]}`,
         )
       }
+      return { ok, skipped, total: ids.length }
     },
     onSuccess: () => {
       setError(null)
