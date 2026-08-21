@@ -1175,27 +1175,32 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
     final badgeOnRight = widget.leading != null;
     Widget? badgeChip;
     if (widget.badge != null) {
+      final solid = widget.badgeColor;
+      final useSolid = solid != null;
       badgeChip = Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
         decoration: BoxDecoration(
-          color: highlight || selected || active
+          color: useSolid
+              ? solid
+              : highlight || selected || active
               ? PlayerPopupTokens.accent.withValues(alpha: 0.12)
-              : (widget.badgeColor ?? PlayerPopupTokens.cardBg),
+              : PlayerPopupTokens.cardBg,
           borderRadius: BorderRadius.circular(5),
-          border: Border.all(
-            color: highlight || selected || active
-                ? PlayerPopupTokens.accentBorder
-                : PlayerPopupTokens.border,
-          ),
+          border: useSolid
+              ? null
+              : Border.all(
+                  color: highlight || selected || active
+                      ? PlayerPopupTokens.accentBorder
+                      : PlayerPopupTokens.border,
+                ),
         ),
         child: Text(
           widget.badge!,
           style: TextStyle(
-            color: highlight || selected || active
+            color: useSolid
+                ? Colors.white
+                : highlight || selected || active
                 ? PlayerPopupTokens.accent
-                : widget.badgeColor != null &&
-                      widget.badgeColor != const Color(0xFF2A2A2A)
-                ? Colors.white.withValues(alpha: 0.92)
                 : PlayerPopupTokens.muted,
             fontSize: 10,
             fontWeight: FontWeight.w700,
@@ -1286,10 +1291,6 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
                   ],
                 ),
               ),
-              if (badgeOnRight && badgeChip != null) ...[
-                const SizedBox(width: 8),
-                badgeChip,
-              ],
               if (selected) ...[
                 const SizedBox(width: 6),
                 const SizedBox(
@@ -1307,6 +1308,10 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
               ] else if (widget.trailing != null) ...[
                 const SizedBox(width: 6),
                 widget.trailing!,
+              ],
+              if (badgeOnRight && badgeChip != null) ...[
+                const SizedBox(width: 8),
+                badgeChip,
               ],
             ],
           ),

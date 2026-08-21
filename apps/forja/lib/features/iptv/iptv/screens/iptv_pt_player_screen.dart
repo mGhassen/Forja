@@ -136,6 +136,17 @@ class IptvPlaySource {
     return 'T${m.group(1)}';
   }
 
+  /// Solid fill for [tierBadge] — T1 strongest → T4 weakest.
+  Color? get tierBadgeColor {
+    return switch (tierBadge) {
+      'T1' => const Color(0xFF22C55E), // green
+      'T2' => const Color(0xFF84CC16), // lime
+      'T3' => const Color(0xFFEAB308), // amber
+      'T4' => const Color(0xFF64748B), // slate
+      _ => null,
+    };
+  }
+
   /// Channel callsign / short name for Source rows + chrome.
   ///
   /// Xtream sports names are often EPG dumps like
@@ -720,12 +731,48 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     });
   }
 
+  /// Space / remote play-pause. Clears [_userPlayWhenReady] so the live
+  /// watchdog does not microtask-resume after pause.
+  Future<void> _togglePlayPauseFromKey() async {
+    if (_playing) {
+      _userPlayWhenReady = false;
+      _pausedAt = DateTime.now();
+      await _enginePause();
+    } else {
+      _userPlayWhenReady = true;
+      final pausedAt = _pausedAt;
+      _pausedAt = null;
+      await _enginePlay();
+      if (pausedAt != null &&
+          _chrome == IptvPlayerChromeProfile.live &&
+          iptvExoUrlLooksLive(
+            _sources.isEmpty ? '' : _sources[_sourceIdx].url,
+          ) &&
+          DateTime.now().difference(pausedAt) >= const Duration(seconds: 2)) {
+        _scheduleJumpToLive(force: true);
+      }
+    }
+  }
+
   /// D-pad / remote keys while chrome is up count as activity. Row focus
   /// handlers often return [KeyEventResult.handled], so [PlayerTvKeyScope]
   /// alone never sees them - without this, controls hide mid-navigation.
+  ///
+  /// Desktop also handles Space here — [PlayerTvKeyScope] is TV-only.
   bool _onRemoteControlsActivity(KeyEvent event) {
-    if (!shellTvIsNavigationKey(event)) return false;
     if (_disposed || !mounted) return false;
+
+    // Desktop: Space toggles play/pause without revealing chrome.
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.space &&
+        !iptvUseTvFocus(context)) {
+      if (_guideVisible || _searchVisible || _isPipMode) return false;
+      if (playerChromeOverlayBlocksFocusClaim()) return false;
+      unawaited(_togglePlayPauseFromKey());
+      return true;
+    }
+
+    if (!shellTvIsNavigationKey(event)) return false;
     if (!_controlsVisible || _guideVisible || _searchVisible || _isPipMode) {
       return false;
     }

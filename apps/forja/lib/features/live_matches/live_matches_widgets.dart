@@ -787,16 +787,13 @@ class _IptvSportsChannelSheetRowState
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
-                  color: ForjaShellColors.sectionAccent.withValues(alpha: 0.12),
+                  color: src.tierBadgeColor ?? ForjaShellColors.sectionAccent,
                   borderRadius: BorderRadius.circular(5),
-                  border: Border.all(
-                    color: ForjaShellColors.sectionAccent.withValues(alpha: 0.35),
-                  ),
                 ),
                 child: Text(
                   badge,
-                  style: TextStyle(
-                    color: ForjaShellColors.sectionAccent,
+                  style: const TextStyle(
+                    color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),

@@ -836,12 +836,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             unawaited(_s._exitIptvPlayer());
           },
           onPlayPause: () {
-            if (_s._playing) {
-              unawaited(_s._enginePause());
-            } else {
-              unawaited(_s._enginePlay());
-            }
-            _scheduleHideControls();
+            unawaited(_s._togglePlayPauseFromKey());
           },
           onShowControls: () {
             setState(() => _s._controlsVisible = true);
@@ -1954,27 +1949,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 ? null
                 : () => claim(rightOfPlay()!),
             onTap: () async {
-              if (_s._playing) {
-                _s._userPlayWhenReady = false;
-                _s._pausedAt = DateTime.now();
-                await _s._enginePause();
-              } else {
-                _s._userPlayWhenReady = true;
-                final pausedAt = _s._pausedAt;
-                _s._pausedAt = null;
-                await _s._enginePlay();
-                // Live: after a real pause, rejoin the edge (don't resume
-                // from the frozen demuxer position seconds behind).
-                if (pausedAt != null &&
-                    _s._chrome == IptvPlayerChromeProfile.live &&
-                    iptvExoUrlLooksLive(
-                      _s._sources.isEmpty ? '' : _s._sources[_s._sourceIdx].url,
-                    ) &&
-                    DateTime.now().difference(pausedAt) >=
-                        const Duration(seconds: 2)) {
-                  _s._scheduleJumpToLive(force: true);
-                }
-              }
+              await _s._togglePlayPauseFromKey();
               _scheduleHideControls();
             },
           ),
@@ -2355,6 +2330,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 leading: _sourceLogo(_s._sources[i]),
                 label: _s._sources[i].pickerTitle,
                 badge: _s._sources[i].tierBadge,
+                badgeColor: _s._sources[i].tierBadgeColor,
                 subtitle: _sourceSubtitle(_s._sources[i]),
                 selected: i == _s._sourceIdx,
                 onTap: () {
