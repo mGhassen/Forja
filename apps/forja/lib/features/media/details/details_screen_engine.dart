@@ -435,23 +435,44 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         return;
       }
 
-      // Do not snap Sources chips / session cache to the auto winner — that
-      // made reopen show the last-played plugin instead of the user's chips.
+      // Prefer one working stream per plugin (next provider), then fill from
+      // batches so we still have up to 3 open attempts.
       openedPlayer = true;
       final candidates = <Map<String, dynamic>>[];
+      final seenUrls = <String>{};
+
+      String? streamUrlOf(Map<String, dynamic> row) {
+        final u = row['url']?.toString().trim();
+        if (u != null && u.isNotEmpty) return u;
+        final ext = row['externalUrl']?.toString().trim();
+        if (ext != null && ext.isNotEmpty) return ext;
+        return null;
+      }
+
+      bool take(Map<String, dynamic> row) {
+        if (candidates.length >= 3) return false;
+        final url = streamUrlOf(row);
+        if (url != null && !seenUrls.add(url)) return false;
+        candidates.add(row);
+        return true;
+      }
+
       for (final hit in hits) {
-        if (candidates.length >= 3) break;
-        final more = await _collectProbedEngineStreams(
-          hit.batch,
-          preferred: hit.stream,
-          max: 3 - candidates.length,
-          isAborted: playAborted,
-        );
-        if (playAborted()) return;
-        for (final row in more) {
+        take(hit.stream);
+      }
+      if (candidates.length < 3) {
+        for (final hit in hits) {
           if (candidates.length >= 3) break;
-          if (candidates.any((c) => identical(c, row))) continue;
-          candidates.add(row);
+          final more = await _collectProbedEngineStreams(
+            hit.batch,
+            preferred: hit.stream,
+            max: 3 - candidates.length,
+            isAborted: playAborted,
+          );
+          if (playAborted()) return;
+          for (final row in more) {
+            take(row);
+          }
         }
       }
       if (playAborted() || candidates.isEmpty) return;
@@ -560,14 +581,15 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
 
         statusById[pluginId] = StreamProviderProbeStatus.success;
         publishProbes();
-        if (!completer.isCompleted) {
-          completer.complete(
-            _EngineAutoHit(
-              pluginId: pluginId,
-              stream: pick,
-              batch: List<Map<String, dynamic>>.from(streams),
-            ),
-          );
+        hits.add(
+          _EngineAutoHit(
+            pluginId: pluginId,
+            stream: pick,
+            batch: List<Map<String, dynamic>>.from(streams),
+          ),
+        );
+        if (hits.length >= maxHits && !completer.isCompleted) {
+          completer.complete(List<_EngineAutoHit>.from(hits));
           EngineService.instance.cancelPending();
           _s._engineFetchGen++;
         }
@@ -582,21 +604,23 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       }
       if (completer.isCompleted) return;
       if (isAborted()) {
-        if (!completer.isCompleted) completer.complete(null);
+        if (!completer.isCompleted) {
+          completer.complete(List<_EngineAutoHit>.from(hits));
+        }
         return;
       }
       fill();
       if (nextIndex >= pluginIds.length &&
           inFlight == 0 &&
           !completer.isCompleted) {
-        completer.complete(null);
+        completer.complete(List<_EngineAutoHit>.from(hits));
       }
     };
 
     fill();
-    if (pluginIds.isEmpty) return null;
+    if (pluginIds.isEmpty) return const <_EngineAutoHit>[];
     final result = await completer.future;
-    if (isAborted()) return null;
+    if (isAborted()) return const <_EngineAutoHit>[];
     return result;
   }
 
