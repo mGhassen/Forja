@@ -13,6 +13,7 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr.
@@ -531,39 +532,11 @@ class _SettingsProvidersSectionState
                           onRemove: () => _removeEnginePack(pack.sourceUrl),
                         ),
                   children: [
-                    for (final group in orderedGroups) ...[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(4, 10, 4, 4),
-                        child: Text(
-                          EngineCategories.groupLabel(group),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: ForjaShellColors.textSecondary,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ),
-                      for (final p in byGroup[group]!)
-                        SettingsToggleRow(
-                          title: p.name,
-                          subtitle: [
-                            if (p.description != null &&
-                                p.description!.isNotEmpty)
-                              p.description!,
-                            if (p.types.isNotEmpty) p.types.join(', '),
-                            p.kind,
-                          ].join(' · '),
-                          value: p.enabled,
-                          onChanged: (val) async {
-                            await EngineService.instance.setPluginEnabled(
-                              sourceUrl: pack.sourceUrl,
-                              pluginId: p.id,
-                              enabled: val,
-                            );
-                          },
-                        ),
-                    ],
+                    _EnginePackGroupedPlugins(
+                      sourceUrl: pack.sourceUrl,
+                      byGroup: byGroup,
+                      orderedGroups: orderedGroups,
+                    ),
                   ],
                 ),
               );
@@ -904,6 +877,140 @@ class _SettingsProvidersSectionState
     } catch (_) {
       // Non-fatal - tags section simply not shown until explicit test
     }
+  }
+}
+
+/// Movie & TV / Anime / Drama as tabs inside a Forja pack ExpansionTile.
+class _EnginePackGroupedPlugins extends StatefulWidget {
+  const _EnginePackGroupedPlugins({
+    required this.sourceUrl,
+    required this.byGroup,
+    required this.orderedGroups,
+  });
+
+  final String sourceUrl;
+  final Map<String, List<EnginePlugin>> byGroup;
+  final List<String> orderedGroups;
+
+  @override
+  State<_EnginePackGroupedPlugins> createState() =>
+      _EnginePackGroupedPluginsState();
+}
+
+class _EnginePackGroupedPluginsState extends State<_EnginePackGroupedPlugins> {
+  late String _group;
+
+  @override
+  void initState() {
+    super.initState();
+    _group = widget.orderedGroups.first;
+  }
+
+  @override
+  void didUpdateWidget(covariant _EnginePackGroupedPlugins oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.orderedGroups.contains(_group)) {
+      _group = widget.orderedGroups.isEmpty
+          ? 'other'
+          : widget.orderedGroups.first;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final plugins = widget.byGroup[_group] ?? const <EnginePlugin>[];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+          child: _EngineCategoryTabStrip(
+            groups: widget.orderedGroups,
+            selected: _group,
+            onChanged: (g) => setState(() => _group = g),
+          ),
+        ),
+        for (final p in plugins)
+          SettingsToggleRow(
+            title: p.name,
+            subtitle: [
+              if (p.description != null && p.description!.isNotEmpty)
+                p.description!,
+              if (p.types.isNotEmpty) p.types.join(', '),
+              p.kind,
+            ].join(' · '),
+            value: p.enabled,
+            onChanged: (val) async {
+              await EngineService.instance.setPluginEnabled(
+                sourceUrl: widget.sourceUrl,
+                pluginId: p.id,
+                enabled: val,
+              );
+            },
+          ),
+      ],
+    );
+  }
+}
+
+class _EngineCategoryTabStrip extends StatelessWidget {
+  const _EngineCategoryTabStrip({
+    required this.groups,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final List<String> groups;
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (!tv) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (var i = 0; i < groups.length; i++)
+            ForjaShellChip(
+              label: EngineCategories.groupLabel(groups[i]),
+              selected: selected == groups[i],
+              listIndex: i,
+              onTap: () => onChanged(groups[i]),
+            ),
+        ],
+      );
+    }
+
+    return TvChipStrip(
+      tabId: 'settings',
+      rowId: 'engine-pack-tabs',
+      sortOrder: 0,
+      itemCount: groups.length,
+      resultsRowId: 'engine-pack-row',
+      builder: (context, edgesFor) {
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var i = 0; i < groups.length; i++)
+              ForjaShellChip(
+                label: EngineCategories.groupLabel(groups[i]),
+                selected: selected == groups[i],
+                listIndex: i,
+                tvTabId: 'settings',
+                tvRowId: 'engine-pack-tabs',
+                onTap: () => onChanged(groups[i]),
+                onLeftEdge: edgesFor(i).onLeft,
+                onRightEdge: edgesFor(i).onRight,
+                onDownEdge: edgesFor(i).onDown,
+                onUpEdge: edgesFor(i).onUp,
+              ),
+          ],
+        );
+      },
+    );
   }
 }
 

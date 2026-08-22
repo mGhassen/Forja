@@ -217,6 +217,21 @@
       }
     },
     {
+      "id": "onlykdrama",
+      "name": "OnlyKDrama",
+      "entry": "onlykdrama.js",
+      "types": [
+        "movie",
+        "tv",
+        "drama"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://onlykdrama.shop",
+        "filepress": "https://new5.filepress.wiki"
+      }
+    },
+    {
       "id": "hexa",
       "name": "Hexa",
       "entry": "hexa.js",
