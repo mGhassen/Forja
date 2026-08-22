@@ -697,7 +697,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   }
 
   void _onPlayerMouseMove() {
-    if (iptvUseTvFocus(context)) return;
+    // Desktop hybrid has D-pad focus chips + mouse — only leanback skips hover.
+    if (iptvLeanbackOnly(context)) return;
     if (_s._guideVisible || _s._searchVisible) return;
     if (!_s._controlsVisible) {
       setState(() => _s._controlsVisible = true);

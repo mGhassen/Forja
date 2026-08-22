@@ -210,6 +210,7 @@ mixin _LiveMatchesData
     if (!mounted || !shellTabVisible) return;
     _s._loadGen++;
     (this as _LiveMatchesForjaLive)._resetForjaLiveCatalogState();
+    _s._resetTimelineLazyState();
     setState(() {
       _s._loading = true;
       _s._error = null;

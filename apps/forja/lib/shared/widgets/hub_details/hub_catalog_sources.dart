@@ -45,6 +45,9 @@ Future<void> openHubCatalogSources({
 
   /// Forja chip category for this hub: `anime` | `drama` (see EngineCategories).
   String? engineCategory,
+
+  /// Anime hub SUB/DUB — filters Forja/Nuvio rows when set (`sub` | `dub`).
+  String? animeAudioCategory,
 }) {
   return PlayerSourcesPanel.show(
     context: context,
@@ -56,6 +59,7 @@ Future<void> openHubCatalogSources({
     kisskhId: kisskhId,
     kisskhEpisodeId: kisskhEpisodeId,
     engineCategory: engineCategory,
+    animeAudioCategory: animeAudioCategory,
     detailsHost: true,
     onTorrentSelected: (result) => _playTorrent(
       context: context,

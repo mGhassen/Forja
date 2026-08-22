@@ -104,6 +104,10 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   final ScrollController _timelineScrollController = ScrollController();
   bool _timelineAutoScrolled = false;
 
+  /// Timeline bucket rows show at most [_timelineBucketCardCap] cards until expanded.
+  static const int _timelineBucketCardCap = 20;
+  final Map<int, bool> _timelineBucketExpanded = {};
+
   /// Rebuilds the timeline each minute so airing Misc/Other cards stay on NOW.
   Timer? _timelineLiveTick;
 
@@ -233,6 +237,13 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     ShellTvFocusCoordinator.clearTab(_tabId);
     _tabController?.dispose();
     super.dispose();
+  }
+
+  void _resetTimelineLazyState() {
+    _timelineBucketExpanded.clear();
+    _timelineAutoScrolled = false;
+    _timelineHoveredBucketMs = null;
+    _timelineHoveredIndex = null;
   }
 
   void _syncTimelineLiveTick() {

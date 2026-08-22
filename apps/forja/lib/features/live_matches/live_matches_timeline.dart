@@ -67,40 +67,71 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
     return t?.millisecondsSinceEpoch ?? nowMs;
   }
 
-  /// Chronological 1-hour buckets. Same-hour streams share one row.
-  List<_TimelineBucket> get _timelineBuckets {
-    final entries = <_LiveMatchGridEntry>[];
+  /// Entries for the current server + sport filter.
+  List<_LiveMatchGridEntry> _timelineSourceEntries() {
     switch (_s._server) {
       case _LiveMatchesServer.all:
       case _LiveMatchesServer.iptvSports:
-        entries.addAll(_s._allGridEntries);
+        return _s._allGridEntries;
       case _LiveMatchesServer.ppv:
-        entries.addAll(_s._filteredDamiTv.map(_LiveMatchGridEntry.ppv));
+        return _s._filteredDamiTv.map(_LiveMatchGridEntry.ppv).toList();
       case _LiveMatchesServer.streamed:
       case _LiveMatchesServer.mutStreams:
       case _LiveMatchesServer.forjaLive:
       case _LiveMatchesServer.stremio:
-        entries.addAll(
-          _s._displayStreamedMatches.map(_LiveMatchGridEntry.streamed),
-        );
+        return _s._displayStreamedMatches
+            .map(_LiveMatchGridEntry.streamed)
+            .toList();
+    }
+  }
+
+  /// Live / airing / kickoff inside the current granularity window → timeline canvas.
+  /// Everything else stays in [deferred] for lazy [SliverList] load below.
+  ({List<_TimelineBucket> now, List<_LiveMatchGridEntry> deferred})
+      _timelineSplitEntries() {
+    final entries = _timelineSourceEntries();
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final spanMs = _timelineSpanHours(_s._timelineGranularity) * 3600000;
+    final windowStart = nowMs - spanMs ~/ 2;
+    final windowEnd = nowMs + spanMs;
+
+    final nowEntries = <_LiveMatchGridEntry>[];
+    final deferred = <_LiveMatchGridEntry>[];
+    for (final e in entries) {
+      if (_gridEntryIsLive(e) || _timelinePinAiringMiscToNow(e)) {
+        nowEntries.add(e);
+        continue;
+      }
+      final ms = _entryStartMs(e);
+      if (ms >= windowStart && ms <= windowEnd) {
+        nowEntries.add(e);
+      } else {
+        deferred.add(e);
+      }
     }
 
+    deferred.sort(
+      (a, b) => _entryStartMs(a).compareTo(_entryStartMs(b)),
+    );
+
     final byBucket = <int, List<_LiveMatchGridEntry>>{};
-    for (final e in entries) {
+    for (final e in nowEntries) {
       final bucket = _bucketFloorMs(_entryStartMs(e));
       (byBucket[bucket] ??= []).add(e);
     }
-
     final keys = byBucket.keys.toList()..sort();
-    return [
+    final buckets = [
       for (final k in keys)
         _TimelineBucket(bucketMs: k, entries: byBucket[k]!),
     ];
+    return (now: buckets, deferred: deferred);
   }
 
   Widget _buildTimelineBody() {
-    final buckets = _timelineBuckets;
-    if (buckets.isEmpty) {
+    final split = _timelineSplitEntries();
+    final buckets = split.now;
+    final deferred = split.deferred;
+    if (buckets.isEmpty && deferred.isEmpty) {
       _s._timelineTvRowIds.clear();
       return const Center(
         child: Column(
@@ -139,17 +170,24 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
               final cardHeight = _s._matchCardHeight(context);
               final gap = _s._gridGap(context);
               final spanHours = _timelineSpanHours(_s._timelineGranularity);
-              final pxPerMs = viewportH / (spanHours * 3600000.0);
+              final pxPerMs = buckets.isEmpty
+                  ? viewportH / (spanHours * 3600000.0)
+                  : viewportH / (spanHours * 3600000.0);
               final playheadY = viewportH * _timelinePlayheadFraction;
 
-              // Pad so the first/last bucket can sit on the playhead.
               final padTopMs = playheadY / pxPerMs;
               final padBottomMs =
                   (viewportH - playheadY + cardHeight) / pxPerMs;
-              final contentStartMs = buckets.first.bucketMs - padTopMs;
-              final contentEndMs = buckets.last.bucketMs + padBottomMs;
-              final contentHeight =
-                  (contentEndMs - contentStartMs) * pxPerMs;
+              final nowMs = DateTime.now().millisecondsSinceEpoch.toDouble();
+              final contentStartMs = buckets.isEmpty
+                  ? nowMs - padTopMs
+                  : buckets.first.bucketMs - padTopMs;
+              final contentEndMs = buckets.isEmpty
+                  ? nowMs + padBottomMs
+                  : buckets.last.bucketMs + padBottomMs;
+              final canvasHeight =
+                  ((contentEndMs - contentStartMs) * pxPerMs)
+                      .clamp(cardHeight, viewportH * 4);
 
               _maybeAutoScrollToTime(
                 contentStartMs: contentStartMs,
@@ -161,33 +199,101 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
                     contentStartMs: contentStartMs,
                     pxPerMs: pxPerMs,
                     playheadY: playheadY,
-                    focusMs:
-                        DateTime.now().millisecondsSinceEpoch.toDouble(),
+                    focusMs: nowMs,
                     animate: true,
                   );
 
               return Stack(
                 children: [
                   Positioned.fill(
-                    child: SingleChildScrollView(
+                    child: CustomScrollView(
                       controller: _s._timelineScrollController,
-                      child: SizedBox(
-                        height: contentHeight,
-                        child: _buildTimelineCanvas(
-                          buckets: buckets,
-                          contentStartMs: contentStartMs,
-                          pxPerMs: pxPerMs,
-                          cardWidth: cardWidth,
-                          cardHeight: cardHeight,
-                          gap: gap,
-                          hoverLift:
-                              ShellScope.inputPolicyOf(context).scaleOnHover,
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: canvasHeight,
+                            child: buckets.isEmpty
+                                ? const SizedBox.shrink()
+                                : AnimatedBuilder(
+                                    animation: _s._timelineScrollController,
+                                    builder: (context, _) {
+                                      final scrollOffset =
+                                          _s._timelineScrollController
+                                                  .hasClients
+                                              ? _s._timelineScrollController
+                                                  .offset
+                                              : 0.0;
+                                      return _buildTimelineCanvas(
+                                        buckets: buckets,
+                                        contentStartMs: contentStartMs,
+                                        pxPerMs: pxPerMs,
+                                        cardWidth: cardWidth,
+                                        cardHeight: cardHeight,
+                                        gap: gap,
+                                        hoverLift: ShellScope.inputPolicyOf(
+                                          context,
+                                        ).scaleOnHover,
+                                        viewportHeight: viewportH,
+                                        scrollOffset: scrollOffset,
+                                      );
+                                    },
+                                  ),
+                          ),
                         ),
-                      ),
+                        if (deferred.isNotEmpty) ...[
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                _timelineRulerWidth + 12,
+                                16,
+                                ShellTokens.bodyHorizontalPadding,
+                                8,
+                              ),
+                              child: Text(
+                                'More events (${deferred.length})',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.55),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, i) {
+                                final entry = deferred[i];
+                                final cardW = _s._matchCardWidth(context);
+                                final cardH = _s._matchCardHeight(context);
+                                return Padding(
+                                  padding: EdgeInsets.fromLTRB(
+                                    _timelineRulerWidth + 12,
+                                    0,
+                                    ShellTokens.bodyHorizontalPadding,
+                                    gap,
+                                  ),
+                                  child: SizedBox(
+                                    width: cardW,
+                                    height: cardH,
+                                    child: _s._gridEntryCard(
+                                      entry,
+                                      i,
+                                      1,
+                                      null,
+                                      tvRowId: 'tl-deferred',
+                                      tvZone: ShellTvZone.row,
+                                    ),
+                                  ),
+                                );
+                              },
+                              childCount: deferred.length,
+                            ),
+                          ),
+                          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                        ],
+                      ],
                     ),
                   ),
-                  // Ruler paint ignores pointers (scroll passes through); only
-                  // the playhead pill is tappable - jumps the clock to now.
                   Positioned(
                     left: 0,
                     top: 0,
@@ -203,8 +309,6 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
                       onJumpToNow: scrollToNow,
                     ),
                   ),
-                  // Green marker at the real current time, tracked across
-                  // scroll and ticking every minute.
                   Positioned.fill(
                     child: IgnorePointer(
                       child: _TimelineNowLine(
@@ -235,19 +339,28 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
     required double cardHeight,
     required double gap,
     required bool hoverLift,
+    required double viewportHeight,
+    required double scrollOffset,
   }) {
-    final children = <Widget>[
-      for (var b = 0; b < buckets.length; b++)
+    final children = <Widget>[];
+    final cullTop = scrollOffset - viewportHeight * 0.75;
+    final cullBottom = scrollOffset + viewportHeight * 1.75;
+
+    for (var b = 0; b < buckets.length; b++) {
+      final top = (buckets[b].bucketMs - contentStartMs) * pxPerMs;
+      if (top + cardHeight < cullTop || top > cullBottom) continue;
+      children.add(
         _buildTimedBucketRow(
           bucket: buckets[b],
           bucketIndex: b,
-          top: (buckets[b].bucketMs - contentStartMs) * pxPerMs,
+          top: top,
           cardWidth: cardWidth,
           cardHeight: cardHeight,
           gap: gap,
           hoverLift: hoverLift,
         ),
-    ];
+      );
+    }
 
     // Elevated copy of just the hovered card, painted above every row. It
     // follows the real card's position and ignores pointers, so hover stays on
@@ -311,15 +424,51 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
     required bool hoverLift,
   }) {
     final rowId = 'tl-${bucket.bucketMs}';
+    final expanded = _s._timelineBucketExpanded[bucket.bucketMs] == true;
+    final cap = _LiveMatchesScreenState._timelineBucketCardCap;
+    final visibleCount = expanded
+        ? bucket.entries.length
+        : bucket.entries.length.clamp(0, cap);
+    final hasMore = !expanded && bucket.entries.length > cap;
+    final itemCount = visibleCount + (hasMore ? 1 : 0);
+
     final scroller = HorizontalScroller(
       height: cardHeight,
       padding: EdgeInsets.only(
         right: ShellTokens.bodyHorizontalPadding,
       ),
-      // Horizontal scroll only - does not move the vertical time canvas.
-      itemCount: bucket.entries.length,
+      itemCount: itemCount,
       separatorBuilder: (_, _) => SizedBox(width: gap),
       itemBuilder: (context, i) {
+        if (hasMore && i == visibleCount) {
+          return SizedBox(
+            width: cardWidth * 0.55,
+            height: cardHeight,
+            child: shellFocusableTap(
+              context: context,
+              borderRadius: 14,
+              onTap: () => setState(
+                () => _s._timelineBucketExpanded[bucket.bucketMs] = true,
+              ),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _timelineCardBase,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Center(
+                  child: Text(
+                    '+${bucket.entries.length - cap}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
         final entry = bucket.entries[i];
         // Opaque base so overlapping rows never show through the card.
         Widget slot = SizedBox(
@@ -558,6 +707,7 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
       onDownEdge: () => _s._restoreLiveMatchesTvFocus(),
       onTap: () {
         _s._timelineAutoScrolled = false;
+        _s._resetTimelineLazyState();
         setState(() => _s._timelineGranularity = g);
       },
       child: tab,

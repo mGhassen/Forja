@@ -12,6 +12,8 @@ class RotatingHeroBackdrop extends StatefulWidget {
     this.showColorTint = false,
     this.minBeat = const Duration(seconds: 12),
     this.maxBeat = const Duration(seconds: 20),
+    this.fit = BoxFit.cover,
+    this.imageAlignment = Alignment.centerRight,
   });
 
   /// Absolute image URLs (already resolved to CDN).
@@ -19,6 +21,8 @@ class RotatingHeroBackdrop extends StatefulWidget {
   final bool showColorTint;
   final Duration minBeat;
   final Duration maxBeat;
+  final BoxFit fit;
+  final Alignment imageAlignment;
 
   /// Dedupe + drop empties; keep order (primary first).
   static List<String> normalizeUrls(Iterable<String> raw) {
@@ -115,6 +119,8 @@ class _RotatingHeroBackdropState extends State<RotatingHeroBackdrop> {
     return KenBurnsBackdrop(
       imageUrl: url,
       showColorTint: widget.showColorTint,
+      fit: widget.fit,
+      imageAlignment: widget.imageAlignment,
     );
   }
 }

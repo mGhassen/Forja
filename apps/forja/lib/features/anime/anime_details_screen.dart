@@ -189,11 +189,27 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
   }
 
   void _focusDetailsBack() {
-    if (!_backFocus.canRequestFocus) {
-      maybePopShellOverlay();
+    void focusBack() {
+      if (!mounted) return;
+      if (!_backFocus.canRequestFocus) {
+        maybePopShellOverlay();
+        return;
+      }
+      _backFocus.requestFocus();
+    }
+
+    _scrollDetailsHeroIntoView();
+    if (!_detailsScrollController.hasClients) {
+      focusBack();
       return;
     }
-    _backFocus.requestFocus();
+    _detailsScrollController
+        .animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(focusBack);
   }
 
   Future<void> _load() async {
@@ -433,6 +449,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         anilistId: _activeId,
         malId: malId,
         engineCategory: 'anime',
+        animeAudioCategory: _category,
       );
     }());
   }
@@ -716,13 +733,12 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     );
     final posMs = canResumeSelected ? rawPosMs : null;
     final durMs = canResumeSelected ? rawDurMs : null;
+    final isUpcoming = a.status == 'NOT_YET_RELEASED';
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
 
-    // Wait until Play is in the tree (ForjaInteractive mounts Focus when the
-    // explicit focusNode is set). Marking done on an unattached node left TV
-    // with no focus after episodes finished loading.
     if (policy.heroPlayAutoFocus &&
+        !isUpcoming &&
         !_detailsHeroInitialFocusDone &&
         _error == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -737,6 +753,8 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
 
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _focusDetailsBack : null;
+    final episodeFocusUp =
+        tvFocus && isUpcoming ? _focusDetailsBack : heroFocusUp;
     final listExtra = HubListStatusHero.extraFocusSlots(_listMenuOpen);
     final playbackSnap = ref.watch(settingsPlaybackProvider).valueOrNull;
     final catalogMovie = tmdb?.movie;
@@ -744,13 +762,15 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         catalogMovie.id > 0 &&
         hubHasCatalogPanelSources(playbackSnap);
     var tvIndex = 0;
-    final playIndex = tvIndex++;
-    final sourcesIndex = showCatalogSources ? tvIndex++ : null;
-    final clearIndex = _progress != null ? tvIndex++ : null;
+    final playIndex = isUpcoming ? null : tvIndex++;
+    final sourcesIndex =
+        !isUpcoming && showCatalogSources ? tvIndex++ : null;
+    final clearIndex = !isUpcoming && _progress != null ? tvIndex++ : null;
     final listIndex = tvIndex++;
     tvIndex += listExtra;
-    final subDubIndex = tvIndex;
-    final heroActionCount = tvIndex + 2;
+    final subDubIndex = isUpcoming ? null : tvIndex;
+    if (!isUpcoming) tvIndex += 2;
+    final heroActionCount = isUpcoming ? tvIndex : tvIndex + 2;
     final showEpisodeRail = _episodesLoading || _episodes.isNotEmpty;
     final related = _relatedFiltered;
     final tmdbCast = level.hasRows
@@ -792,7 +812,9 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     final trailersOrder = showTrailers ? rowOrder++ : null;
     final recsOrder = showRecs ? rowOrder : null;
 
-    final firstMetaFocusUp = showEpisodeRail ? null : heroFocusUp;
+    final firstMetaFocusUp = showEpisodeRail
+        ? null
+        : (isUpcoming ? (tvFocus ? _focusDetailsBack : null) : heroFocusUp);
 
     final episodePicker = showEpisodeRail
         ? MediaDetailsBody.padContent(
@@ -815,16 +837,18 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
               onEpisodeSelected: (ep) {
                 setState(() => _selectedEpisode = ep);
               },
-              onEpisodePlay: (ep) {
-                setState(() => _selectedEpisode = ep);
-                _playSelected();
-              },
+              onEpisodePlay: isUpcoming
+                  ? null
+                  : (ep) {
+                      setState(() => _selectedEpisode = ep);
+                      _playSelected();
+                    },
               onToggleWatched: _toggleEpisodeWatched,
               tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
               tvSeasonRowId: 'seasons',
               tvEpisodeRowId: 'episodes',
               tvRowOrderBase: 0,
-              tvFocusUp: heroFocusUp,
+              tvFocusUp: episodeFocusUp,
             ),
           )
         : MediaDetailsBody.padContent(
@@ -881,22 +905,28 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
               onFocusUp: heroPopUp,
               child: Row(
                 children: [
-                  HubDetailsPlayRow(
-                    label: canResumeSelected
-                        ? 'Resume Ep $_selectedEpisode'
-                        : 'Play Ep $_selectedEpisode',
-                    enabled: _episodes.isNotEmpty,
-                    onPlay: _playSelected,
-                    onOpenSources: showCatalogSources
-                        ? () => _openCatalogSources(catalogMovie)
-                        : null,
-                    focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
-                    onUpEdge: heroPopUp,
-                    tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                    tvItemIndex: playIndex,
-                    tvSourcesItemIndex: sourcesIndex,
-                  ),
-                  if (_progress != null) ...[
+                  if (isUpcoming)
+                    HubDetailsUpcomingNotice(
+                      releaseDateLabel: a.seasonYear?.toString(),
+                    )
+                  else
+                    HubDetailsPlayRow(
+                      label: canResumeSelected
+                          ? 'Resume Ep $_selectedEpisode'
+                          : 'Play Ep $_selectedEpisode',
+                      enabled: _episodes.isNotEmpty,
+                      onPlay: _playSelected,
+                      onOpenSources: showCatalogSources
+                          ? () => _openCatalogSources(catalogMovie)
+                          : null,
+                      focusNode:
+                          policy.heroPlayAutoFocus ? _heroPlayFocus : null,
+                      onUpEdge: heroPopUp,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvItemIndex: playIndex,
+                      tvSourcesItemIndex: sourcesIndex,
+                    ),
+                  if (!isUpcoming && _progress != null) ...[
                     const SizedBox(width: 10),
                     HeroPillIconGroup(
                       tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
@@ -922,27 +952,29 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
                       setState(() => _listMenuOpen = open);
                     },
                   ),
-                  const SizedBox(width: 10),
-                  HeroPillSegmentedChoice<String>(
-                    selected: _category,
-                    onSelected: (cat) => setState(() => _category = cat),
-                    tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                    tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-                    tvItemIndexStart: subDubIndex,
-                    onUpEdge: heroPopUp,
-                    segments: const [
-                      HeroPillSegment(
-                        value: 'sub',
-                        label: 'SUB',
-                        icon: Icons.subtitles_rounded,
-                      ),
-                      HeroPillSegment(
-                        value: 'dub',
-                        label: 'DUB',
-                        icon: Icons.mic_rounded,
-                      ),
-                    ],
-                  ),
+                  if (!isUpcoming) ...[
+                    const SizedBox(width: 10),
+                    HeroPillSegmentedChoice<String>(
+                      selected: _category,
+                      onSelected: (cat) => setState(() => _category = cat),
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                      tvItemIndexStart: subDubIndex,
+                      onUpEdge: heroPopUp,
+                      segments: const [
+                        HeroPillSegment(
+                          value: 'sub',
+                          label: 'SUB',
+                          icon: Icons.subtitles_rounded,
+                        ),
+                        HeroPillSegment(
+                          value: 'dub',
+                          label: 'DUB',
+                          icon: Icons.mic_rounded,
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

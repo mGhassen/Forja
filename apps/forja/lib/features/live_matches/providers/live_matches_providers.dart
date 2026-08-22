@@ -182,6 +182,7 @@ Future<List<_StreamedMatch>> _fetchForjaLiveMatches() async {
       .where(_forjaLiveCatalogRowVisible)
       .map(_forjaLiveRowToMatch)
       .where((m) => m.id.isNotEmpty && m.title.isNotEmpty)
+      .take(_kForjaLiveCatalogMaxPerPlugin)
       .toList();
 }
 

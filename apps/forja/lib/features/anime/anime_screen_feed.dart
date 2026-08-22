@@ -94,16 +94,6 @@ mixin _AnimeScreenFeed on ConsumerState<AnimeScreen>, ShellTabRefresh<AnimeScree
     });
   }
 
-  void _openSearch() {
-    pushShellRoute(
-      context,
-      AppRouter.slideShellRoute(
-        (_) => const AnimeSearchScreen(),
-        settings: const RouteSettings(name: 'anime_search'),
-      ),
-    );
-  }
-
   Future<void> _resumeWatch(Map<String, dynamic> entry) async {
     final animeId = entry['animeId'] as int?;
     if (animeId == null || _s._resumingAnimeId != null) return;

@@ -69,6 +69,9 @@ class PlayerSourcesPanel {
 
     /// Soft Forja category for this panel: movie | tv | anime | drama.
     String? engineCategory,
+
+    /// Anime hub SUB/DUB — filters Forja/Nuvio rows when set (`sub` | `dub`).
+    String? animeAudioCategory,
     required Future<void> Function(TorrentResult result) onTorrentSelected,
     required Future<void> Function(Map<String, dynamic> stream)
     onStremioSelected,
@@ -101,6 +104,7 @@ class PlayerSourcesPanel {
           kisskhId: kisskhId,
           kisskhEpisodeId: kisskhEpisodeId,
           engineCategory: engineCategory,
+          animeAudioCategory: animeAudioCategory,
           detailsHost: detailsHost,
           onTorrentSelected: onTorrentSelected,
           onStremioSelected: onStremioSelected,
@@ -131,6 +135,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.kisskhId,
     this.kisskhEpisodeId,
     this.engineCategory,
+    this.animeAudioCategory,
     this.detailsHost = false,
   });
 
@@ -146,6 +151,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final int? kisskhId;
   final int? kisskhEpisodeId;
   final String? engineCategory;
+  final String? animeAudioCategory;
   final bool detailsHost;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
@@ -193,6 +199,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           kisskhId: widget.kisskhId,
           kisskhEpisodeId: widget.kisskhEpisodeId,
           engineCategory: widget.engineCategory,
+          animeAudioCategory: widget.animeAudioCategory,
           onTorrentSelected: widget.onTorrentSelected,
           onStremioSelected: widget.onStremioSelected,
           onClose: widget.onClose,
@@ -219,6 +226,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.kisskhId,
     this.kisskhEpisodeId,
     this.engineCategory,
+    this.animeAudioCategory,
   });
 
   final Movie movie;
@@ -233,6 +241,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final int? kisskhId;
   final int? kisskhEpisodeId;
   final String? engineCategory;
+  final String? animeAudioCategory;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -1276,6 +1285,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   /// Quality / language / tech / size / search — same contract as details Sources.
   bool _matchesStreamFilters(Map<String, dynamic> s) {
+    final audioCat = widget.animeAudioCategory;
+    if (audioCat != null &&
+        audioCat.isNotEmpty &&
+        !engineStreamMatchesAudioCategory(s, audioCat)) {
+      return false;
+    }
     final name = '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''}';
     if (!TorrentReleaseMetadata.parse(name).matchesFiltersForName(
       name,

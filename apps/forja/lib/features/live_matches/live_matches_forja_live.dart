@@ -168,6 +168,7 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
             .where(_forjaLiveCatalogRowVisible)
             .map(_forjaLiveRowToMatch)
             .where((m) => m.id.isNotEmpty && m.title.isNotEmpty)
+            .take(_kForjaLiveCatalogMaxPerPlugin)
             .toList();
         if (!mounted || gen != _s._forjaLiveLoadGen) return;
         setState(() {

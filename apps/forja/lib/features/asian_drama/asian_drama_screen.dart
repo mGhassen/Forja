@@ -9,18 +9,15 @@ import 'package:forja/features/asian_drama/providers/asian_drama_providers.dart'
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_tmdb_match.dart';
 import 'package:forja/features/asian_drama/widgets/asian_drama_continue_watching_section.dart';
+import 'package:forja/shared/widgets/hero/cinematic_hero.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
-import 'package:forja/shared/widgets/hub/hub_cinematic_hero.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'asian_drama_details_screen.dart';
 import 'asian_drama_player_screen.dart';
-import 'asian_drama_search_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
-import 'package:forja/shell/app_router.dart';
-import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:rust/rust.dart';
@@ -297,16 +294,6 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
     openAsianDramaDetails(context, a).then((_) => _refreshHistory());
   }
 
-  void _openSearch() {
-    pushShellRoute(
-      context,
-      AppRouter.slideShellRoute(
-        (_) => const AsianDramaSearchScreen(),
-        settings: const RouteSettings(name: 'asian_drama_search'),
-      ),
-    );
-  }
-
   Future<void> _resumeWatch(Map<String, dynamic> entry) async {
     final id = (entry['id'] as num?)?.toInt();
     if (id == null || _resumingDramaId != null) return;
@@ -437,22 +424,48 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
   List<HubHeroSlide> _heroSlides(List<KdramaCard> spotlight) {
     return spotlight
         .map(
-          (a) => HubHeroSlide(
-            id: '${a.id}',
-            title: a.title,
-            imageUrl: a.cover,
-            overview: a.description.trim(),
-            year: a.year,
-            badge: a.heroMediaBadge,
-            onDetails: () => _openDetails(a),
-            listTarget: HubListFollowTarget.drama(
-              kisskhId: a.id,
+          (a) {
+            final label = a.label?.trim();
+            final labelLower = label?.toLowerCase() ?? '';
+            final isUpcoming = labelLower == 'upcoming';
+            String? statusChip;
+            String? upcomingReleaseLabel;
+            if (isUpcoming) {
+              statusChip = 'Upcoming';
+              if (a.year != null && a.year!.isNotEmpty) {
+                upcomingReleaseLabel = a.year;
+              }
+            } else if (label != null && label.isNotEmpty) {
+              if (label.length >= 10 && label.contains('-')) {
+                statusChip = 'Upcoming';
+                upcomingReleaseLabel =
+                    KissKhService.formatReleaseDateLabel(label);
+              } else {
+                statusChip = label;
+              }
+            }
+            return HubHeroSlide(
+              id: '${a.id}',
               title: a.title,
-              posterPath: a.cover,
-              releaseDate: a.year ?? '',
-              kissKhType: a.type,
-            ),
-          ),
+              imageUrl: a.cover,
+              overview: a.description.trim(),
+              year: a.year,
+              badge: a.heroMediaBadge,
+              statusChip: statusChip,
+              isUpcoming: isUpcoming ||
+                  statusChip == 'Upcoming' ||
+                  (upcomingReleaseLabel?.isNotEmpty ?? false),
+              upcomingReleaseLabel: upcomingReleaseLabel,
+              onDetails: () => _openDetails(a),
+              listTarget: HubListFollowTarget.drama(
+                kisskhId: a.id,
+                title: a.title,
+                posterPath: a.cover,
+                releaseDate: a.year ?? '',
+                kissKhType: a.type,
+              ),
+            );
+          },
         )
         .toList();
   }
@@ -553,11 +566,10 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                         )
                       else ...[
                         SliverToBoxAdapter(
-                          child: HubCinematicHero(
+                          child: HomeCinematicHero.hub(
                             slides: _heroSlides(_spotlight),
-                            onSearch: _openSearch,
                             tvTabId: 'asian_drama',
-                            firstRowHeight: latestSection == null
+                            firstCatalogRowHeight: latestSection == null
                                 ? null
                                 : HubCatalogSection.sectionHeight(
                                     context,

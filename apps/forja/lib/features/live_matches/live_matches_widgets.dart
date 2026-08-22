@@ -2588,10 +2588,13 @@ class _LiveMatchesEmbedPlayerScreenState
   }
 
   Widget _buildTrailingChrome() {
+    // Desktop hybrid: keep mute under the mouse. Leanback-only hides it here
+    // (mute lives on the bottom D-pad row instead).
+    final showPointerMute = iptvShowPointerChrome(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (!_tvFocus()) ...[
+        if (showPointerMute) ...[
           IptvRoundIcon(
             icon: _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
             onTap: () => unawaited(_toggleMute()),

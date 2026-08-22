@@ -495,11 +495,58 @@ String engineServerLabel({
   final t = (title ?? '').trim();
   final candidate = n.isNotEmpty && n != t ? n : (n.isNotEmpty ? n : t);
   if (candidate.isEmpty) return pluginName;
-  final cut = candidate.split(RegExp(r'\s*[·•|]\s*')).first.trim();
-  if (cut.isEmpty || cut == candidate && candidate.length > 48) {
+
+  // Anime embeds: "Megaplay [MegaPlay] (SUB)" → MegaPlay (not the full blob).
+  final bracket = RegExp(r'\[([^\]]+)\]').firstMatch(candidate);
+  if (bracket != null) {
+    final server = bracket.group(1)!.trim();
+    if (server.isNotEmpty) {
+      if (server.toLowerCase() == pluginName.toLowerCase()) {
+        return pluginName;
+      }
+      return server;
+    }
+  }
+
+  final stripped = candidate
+      .replaceFirst(
+        RegExp(r'\s*\((SUB|DUB)\)\s*$', caseSensitive: false),
+        '',
+      )
+      .trim();
+  if (stripped.toLowerCase() == pluginName.toLowerCase()) {
+    return pluginName;
+  }
+
+  final cut = stripped.split(RegExp(r'\s*[·•|]\s*')).first.trim();
+  if (cut.isEmpty || cut == stripped && stripped.length > 48) {
+    return pluginName;
+  }
+  if (cut.toLowerCase() == pluginName.toLowerCase()) {
     return pluginName;
   }
   return cut;
+}
+
+/// `sub`, `dub`, or null when the row has no audio hint.
+String? engineStreamAudioCategory(Map<String, dynamic> stream) {
+  final lang = (stream['language'] ?? '').toString().trim().toLowerCase();
+  if (lang == 'sub' || lang == 'dub') return lang;
+  final blob = '${stream['name'] ?? ''} ${stream['title'] ?? ''}';
+  if (RegExp(r'\(SUB\)', caseSensitive: false).hasMatch(blob)) return 'sub';
+  if (RegExp(r'\(DUB\)', caseSensitive: false).hasMatch(blob)) return 'dub';
+  return null;
+}
+
+bool engineStreamMatchesAudioCategory(
+  Map<String, dynamic> stream,
+  String category,
+) {
+  final want = category.trim().toLowerCase();
+  if (want != 'sub' && want != 'dub') return true;
+  final have = engineStreamAudioCategory(stream);
+  if (have == null) return true;
+  return have == want;
 }
 
 Map<String, String> engineHeadersFrom(dynamic raw) {

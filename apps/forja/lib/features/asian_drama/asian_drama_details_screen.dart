@@ -95,6 +95,15 @@ class _AsianDramaDetailsScreenState
     super.dispose();
   }
 
+  void _scrollDetailsHeroIntoView() {
+    if (!_detailsScrollController.hasClients) return;
+    _detailsScrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   void _revealedDetailsHeroPlayFocus() {
     void focusPlay() {
       if (!mounted) return;
@@ -103,6 +112,7 @@ class _AsianDramaDetailsScreenState
       }
     }
 
+    _scrollDetailsHeroIntoView();
     if (!_detailsScrollController.hasClients) {
       focusPlay();
       return;
@@ -117,11 +127,26 @@ class _AsianDramaDetailsScreenState
   }
 
   void _focusDetailsBack() {
-    if (!_backFocus.canRequestFocus) {
-      maybePopShellOverlay();
+    void focusBack() {
+      if (!mounted) return;
+      if (!_backFocus.canRequestFocus) {
+        maybePopShellOverlay();
+        return;
+      }
+      _backFocus.requestFocus();
+    }
+
+    if (!_detailsScrollController.hasClients) {
+      focusBack();
       return;
     }
-    _backFocus.requestFocus();
+    _detailsScrollController
+        .animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(focusBack);
   }
 
   void _onHistoryChanged() => _refreshProgress();
@@ -690,7 +715,9 @@ class _AsianDramaDetailsScreenState
     final crewOrder = showCrew ? rowOrder++ : null;
     final trailersOrder = showTrailers ? rowOrder++ : null;
     final recsOrder = showRecs ? rowOrder : null;
-    final firstMetaFocusUp = det.episodes.isNotEmpty ? null : heroFocusUp;
+    final firstMetaFocusUp = det.episodes.isNotEmpty
+        ? null
+        : (isUpcoming ? (tvFocus ? _focusDetailsBack : null) : heroFocusUp);
 
     final episodePicker = det.episodes.isNotEmpty
         ? MediaDetailsBody.padContent(

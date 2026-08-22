@@ -56,7 +56,10 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         body: MouseRegion(
-          onHover: tvFocus ? null : (_) => _s._onPointerActivity(),
+          // Desktop hybrid keeps D-pad + mouse — only leanback skips hover wake.
+          onHover: ShellScope.inputPolicyOf(context).scaleOnHover
+              ? (_) => _s._onPointerActivity()
+              : null,
           child: Stack(
             fit: StackFit.expand,
             children: [

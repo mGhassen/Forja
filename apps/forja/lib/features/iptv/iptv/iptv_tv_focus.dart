@@ -938,14 +938,21 @@ class IptvRoundIcon extends StatefulWidget {
 
 class _IptvRoundIconState extends State<IptvRoundIcon> {
   bool _focused = false;
+  bool _hovered = false;
 
-  bool get _tvFocused =>
-      iptvTvFocused(context, focused: _focused);
+  bool get _active =>
+      iptvFocusActive(context, hovered: _hovered, focused: _focused);
+
+  bool get _tvFocused => iptvTvFocused(context, focused: _focused);
 
   @override
   Widget build(BuildContext context) {
     final size = widget.big ? 56.0 : 44.0;
-    final fg = _tvFocused ? ForjaShellColors.brandGreen : Colors.white;
+    final fg = iptvFocusFg(
+      Colors.white,
+      active: _active,
+      tvFocused: _tvFocused,
+    );
     final shape = CircleBorder(
       side: _tvFocused
           ? const BorderSide(color: ForjaShellColors.brandGreen, width: 1.5)
@@ -958,9 +965,12 @@ class _IptvRoundIconState extends State<IptvRoundIcon> {
     );
     if (iptvUseTvFocus(context)) {
       return Material(
-        color: _tvFocused
-            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-            : Colors.white.withValues(alpha: 0.12),
+        color: iptvFocusSurfaceColor(
+          active: _active,
+          tvFocused: _tvFocused,
+          idleAlpha: 0.12,
+          hoverAlpha: 0.22,
+        ),
         shape: shape,
         child: iptvTap(
           context: context,
@@ -974,6 +984,7 @@ class _IptvRoundIconState extends State<IptvRoundIcon> {
           onLeftEdge: widget.onLeftEdge,
           onRightEdge: widget.onRightEdge,
           onFocusChange: (focused) => setState(() => _focused = focused),
+          onHoverChange: (hovered) => setState(() => _hovered = hovered),
           child: child,
         ),
       );

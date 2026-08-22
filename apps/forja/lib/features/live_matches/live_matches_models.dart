@@ -389,16 +389,18 @@ List<_DamiTvStream> _sortDamiTvLiveFirst(List<_DamiTvStream> items) {
   return sorted;
 }
 
+/// Max Forja Live catalog rows ingested per plugin (safety cap).
+const _kForjaLiveCatalogMaxPerPlugin = 100;
+
 /// Drop stale Forja Live catalog rows before they hit the timeline grid.
 bool _forjaLiveCatalogRowVisible(Map<String, dynamic> row) {
-  if (row['airing'] == true || row['popular'] == true) return true;
   final raw = (row['date'] as num?)?.toInt() ?? 0;
-  if (raw <= 0) return true;
+  final now = DateTime.now();
+  final start = now.subtract(const Duration(hours: 3));
+  final end = now.add(const Duration(hours: 24));
+  if (raw <= 0) return row['airing'] == true;
   final ms = raw >= 1000000000000 ? raw : raw * 1000;
   final dt = DateTime.fromMillisecondsSinceEpoch(ms);
-  final now = DateTime.now();
-  final start = now.subtract(const Duration(hours: 6));
-  final end = now.add(const Duration(hours: 48));
   return !dt.isBefore(start) && !dt.isAfter(end);
 }
 
@@ -2306,23 +2308,63 @@ bool _sameCatalogEventAsEspn({
   List<Map<String, dynamic>> espnGames, {
   bool appendUnmatched = true,
 }) {
-  final remaining = [...espnGames];
+  final remaining = <Map<String, dynamic>>[];
+  final byPair = <String, Map<String, dynamic>>{};
+  final byTitle = <String, Map<String, dynamic>>{};
+  for (final g in espnGames) {
+    remaining.add(g);
+    final home = (g['homeTeam'] ?? '').toString();
+    final away = (g['awayTeam'] ?? '').toString();
+    final pair = _teamPairKey(home, away);
+    if (pair != null) byPair.putIfAbsent(pair, () => g);
+    final nickPair = _teamPairKey(
+      (g['homeNick'] ?? '').toString(),
+      (g['awayNick'] ?? '').toString(),
+    );
+    if (nickPair != null) byPair.putIfAbsent(nickPair, () => g);
+    final titleKey = _matchTextKey((g['title'] ?? g['name'] ?? '').toString());
+    if (titleKey.isNotEmpty) byTitle.putIfAbsent(titleKey, () => g);
+  }
+
+  Map<String, dynamic>? matchEspnForRow(_StreamedMatch m) {
+    var home = (m.homeTeam ?? '').trim();
+    var away = (m.awayTeam ?? '').trim();
+    if (home.isEmpty || away.isEmpty) {
+      final parsed = parseLiveMatchTeamsFromTitle(m.title);
+      if (home.isEmpty) home = parsed.$1;
+      if (away.isEmpty) away = parsed.$2;
+    }
+    final pair = _teamPairKey(home, away);
+    Map<String, dynamic>? g;
+    if (pair != null) g = byPair.remove(pair);
+    if (g == null) {
+      final titleKey = _matchTextKey(m.title);
+      if (titleKey.isNotEmpty) g = byTitle.remove(titleKey);
+    }
+    if (g == null) {
+      final idx = remaining.indexWhere(
+        (eg) => _sameCatalogEventAsEspn(
+          title: m.title,
+          homeTeam: m.homeTeam,
+          awayTeam: m.awayTeam,
+          dateMs: m.dateMs,
+          espn: eg,
+        ),
+      );
+      if (idx >= 0) g = remaining.removeAt(idx);
+    } else {
+      remaining.remove(g);
+    }
+    return g;
+  }
+
   final out = <_StreamedMatch>[];
   for (final m in streamed) {
-    final idx = remaining.indexWhere(
-      (g) => _sameCatalogEventAsEspn(
-        title: m.title,
-        homeTeam: m.homeTeam,
-        awayTeam: m.awayTeam,
-        dateMs: m.dateMs,
-        espn: g,
-      ),
-    );
-    if (idx < 0) {
+    final g = matchEspnForRow(m);
+    if (g == null) {
       out.add(m);
       continue;
     }
-    final g = remaining.removeAt(idx);
     final payload = _espnGamePayload(g);
     out.add(
       _copyStreamedMatch(

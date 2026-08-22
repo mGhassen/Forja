@@ -25,6 +25,8 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
           (a) {
             final useTmdb = a.tmdbBackdropUrl != null;
             final useAniBanner = !useTmdb && a.bannerImage != null;
+            final status = a.status?.trim();
+            final isUpcoming = status == 'NOT_YET_RELEASED';
             return HubHeroSlide(
               id: '${a.id}',
               title: a.displayTitle,
@@ -33,10 +35,13 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
               rating: (a.averageScore ?? 0) > 0 ? (a.averageScore! / 10) : null,
               year: a.seasonYear?.toString(),
               badge: a.format,
+              statusChip: status != null && status.isNotEmpty
+                  ? hubAnimeStatusLabel(status)
+                  : null,
+              isUpcoming: isUpcoming,
+              upcomingReleaseLabel:
+                  isUpcoming && a.seasonYear != null ? '${a.seasonYear}' : null,
               genres: a.genres,
-              // TMDB backdrops are cinematic 16:9. AniList banners are
-              // ultrawide (~1900×400) - fit width so the tall page-bleed
-              // hero does not crop to a tight zoom.
               imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
               imageAlignment:
                   useAniBanner ? Alignment.center : Alignment.centerRight,
@@ -203,11 +208,10 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                                         pageBottomBleed: trendingOnHero,
                                       );
                                     }
-                                    return HubCinematicHero(
+                                    return HomeCinematicHero.hub(
                                       slides: _heroSlides(
                                         snap.data!.take(5).toList(),
                                       ),
-                                      onSearch: _s._openSearch,
                                       tvTabId: 'anime',
                                       pageBottomChild: trendingSection,
                                     );

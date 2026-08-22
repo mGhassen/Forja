@@ -1495,6 +1495,68 @@ void main() {
       expect(mapped['description'], '1080p');
       expect(mapped['_addonName'], 'Videasy · Vidlink');
     });
+
+    test('Megaplay bracket names avoid plugin duplication', () {
+      final megaplay = EnginePlugin.fromJson({
+        'id': 'megaplay',
+        'name': 'Megaplay',
+        'entry': 'megaplay.js',
+        'kind': 'http',
+      });
+      final sameServer = mapEngineStream(
+        raw: {
+          'url': 'https://cdn.example/a.m3u8',
+          'name': 'Megaplay [MegaPlay] (SUB)',
+          'language': 'Sub',
+        },
+        plugin: megaplay,
+        mediaTitle: 'Slime',
+        type: 'anime',
+        season: 1,
+        episode: 4,
+        year: '2018',
+      )!;
+      expect(sameServer['_addonName'], 'Megaplay');
+
+      final altServer = mapEngineStream(
+        raw: {
+          'url': 'https://cdn.example/b.m3u8',
+          'name': 'Megaplay [Vidwish] (SUB)',
+          'language': 'Sub',
+        },
+        plugin: megaplay,
+        mediaTitle: 'Slime',
+        type: 'anime',
+        season: 1,
+        episode: 4,
+        year: '2018',
+      )!;
+      expect(altServer['_addonName'], 'Megaplay · Vidwish');
+    });
+  });
+
+  group('engineStreamAudioCategory', () {
+    test('reads language field and (SUB)/(DUB) in name', () {
+      expect(
+        engineStreamAudioCategory({'language': 'Dub'}),
+        'dub',
+      );
+      expect(
+        engineStreamAudioCategory({'name': 'Megaplay [Vidwish] (SUB)'}),
+        'sub',
+      );
+      expect(engineStreamAudioCategory({'name': 'Stream'}), isNull);
+    });
+
+    test('engineStreamMatchesAudioCategory filters sub/dub rows', () {
+      final row = {'language': 'Sub', 'name': 'Megaplay [MegaPlay] (SUB)'};
+      expect(engineStreamMatchesAudioCategory(row, 'sub'), isTrue);
+      expect(engineStreamMatchesAudioCategory(row, 'dub'), isFalse);
+      expect(
+        engineStreamMatchesAudioCategory({'name': 'Plain'}, 'sub'),
+        isTrue,
+      );
+    });
   });
 
   group('EngineRuntime host', () {
