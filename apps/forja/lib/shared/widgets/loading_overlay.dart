@@ -311,9 +311,10 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   void _focusInitialAction() {
-    final tvFocus =
-        ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
-    if (!tvFocus) return;
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    // Leanback only — desktop keeps pointer-first; don't steal mouse focus.
+    if (!policy.useFocusableMoodChips || policy.scaleOnHover) return;
     if (_showProviderProbes && _providersButtonFocus.canRequestFocus) {
       _providersButtonFocus.requestFocus();
       return;
@@ -654,6 +655,21 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
               ),
             );
             if (!canTap) return row;
+            final mouseHover = ShellScope.maybeOf(context)
+                    ?.inputPolicy
+                    .scaleOnHover ??
+                true;
+            // Desktop: InkWell hover/click. Leanback: FocusableControl D-pad.
+            if (mouseHover) {
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => widget.onManualCheckProvider!(probe.id),
+                  hoverColor: Colors.white.withValues(alpha: 0.08),
+                  child: row,
+                ),
+              );
+            }
             return FocusableControl(
               focusNode: _providerRowFocus[index],
               borderRadius: 8,
@@ -710,10 +726,12 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
 
   Widget _cancelActionRow() {
     final showListToggle = _showProviderProbes;
-    final tvFocus =
-        ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    // Desktop hybrid shares TV D-pad flags but must keep Material hover/click.
+    final leanback = policy.useFocusableMoodChips && !policy.scaleOnHover;
 
-    final cancelButton = tvFocus
+    final cancelButton = leanback
         ? shellFocusableTap(
             context: context,
             focusNode: _cancelFocus,
@@ -759,7 +777,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
 
     if (!showListToggle) return cancelButton;
 
-    final listButton = tvFocus
+    final listButton = leanback
         ? shellFocusableTap(
             context: context,
             focusNode: _providersButtonFocus,
@@ -1182,6 +1200,10 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       child: _showingFailure
           ? overlay
           : TvOverlayScope(
+              // Leanback focus trap only — desktop Material cancel keeps pointer.
+              enabled: (ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ??
+                      false) &&
+                  !(ShellScope.maybeOf(context)?.inputPolicy.scaleOnHover ?? true),
               onDismiss: escapeAction,
               autofocusFirst: false,
               debugLabel: 'loading-overlay',

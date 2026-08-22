@@ -87,6 +87,7 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (ShellScope.inputPolicyOf(context).scaleOnHover) return;
       if (widget.failure.onPrimary == null) {
         if (widget.failure.onSecondary != null &&
             _secondaryFocus.canRequestFocus) {
@@ -112,6 +113,8 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
     final failure = widget.failure;
     final compact = widget.compact;
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final mouseHover = ShellScope.inputPolicyOf(context).scaleOnHover;
+    final leanback = tvFocus && !mouseHover;
     final accent = failure.tone == ResolveFailureTone.waiting
         ? Colors.amber.shade200
         : AppTheme.primaryColor;
@@ -162,7 +165,7 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
           ],
           SizedBox(height: compact ? 22 : 28),
           if (failure.onPrimary != null)
-            tvFocus
+            leanback
                 ? shellFocusableTap(
                     context: context,
                     onTap: failure.onPrimary,
@@ -202,7 +205,7 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
                   ),
           if (failure.onSecondary != null) ...[
             const SizedBox(height: 6),
-            tvFocus
+            leanback
                 ? shellFocusableTap(
                     context: context,
                     onTap: failure.onSecondary,
