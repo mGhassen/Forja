@@ -9,6 +9,16 @@ void main() {
     int? jump(String letter, ListLetterJumpMatcher matcher) {
       return matcher.nextIndex(
         letter: letter,
+        timeStamp: const Duration(milliseconds: 1),
+        itemCount: labels.length,
+        labelAt: (i) => labels[i],
+      );
+    }
+
+    int? jumpAt(String letter, ListLetterJumpMatcher matcher, int ms) {
+      return matcher.nextIndex(
+        letter: letter,
+        timeStamp: Duration(milliseconds: ms),
         itemCount: labels.length,
         labelAt: (i) => labels[i],
       );
@@ -28,9 +38,28 @@ void main() {
 
     test('multi-letter prefix within timeout', () {
       final m = ListLetterJumpMatcher();
-      expect(jump('u', m), 2);
-      expect(jump('s', m), 2);
-      expect(jump('a', m), 2);
+      expect(jumpAt('u', m, 0), 2);
+      expect(jumpAt('s', m, 50), 2);
+      expect(jumpAt('a', m, 100), 2);
+    });
+
+    test('extend prefix fi finds finland', () {
+      final m = ListLetterJumpMatcher();
+      expect(jumpAt('f', m, 0), 0);
+      expect(jumpAt('i', m, 40), 1);
+    });
+
+    test('batched letters in one event', () {
+      final m = ListLetterJumpMatcher();
+      expect(
+        m.nextIndices(
+          letters: 'fi',
+          timeStamp: const Duration(milliseconds: 1),
+          itemCount: labels.length,
+          labelAt: (i) => labels[i],
+        ),
+        1,
+      );
     });
 
     test('reset clears prefix', () {
@@ -47,7 +76,7 @@ void main() {
         character: null,
         timeStamp: Duration.zero,
       );
-      expect(ListLetterJumpMatcher.letterFromKeyDown(event), 'f');
+      expect(ListLetterJumpMatcher.lettersFromKeyDown(event), 'f');
     });
   });
 }

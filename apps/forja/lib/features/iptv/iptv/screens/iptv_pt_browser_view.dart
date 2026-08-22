@@ -423,15 +423,25 @@ class _BrowserViewState extends State<_BrowserView> {
   void _letterJumpCategory(int index) {
     final cats = _filteredCategories;
     if (index < 0 || index >= cats.length) return;
-    _scrollCategorySidebarToIndex(index, keepAbove: 2);
-    iptvFocusRowItem('browser-categories', index);
+    void go() {
+      if (!mounted) return;
+      _scrollCategorySidebarToIndex(index, keepAbove: 2);
+      iptvFocusRowItem('browser-categories', index);
+    }
+    go();
+    WidgetsBinding.instance.addPostFrameCallback((_) => go());
   }
 
   void _letterJumpStream(int index) {
     final list = _filteredStreams;
     if (index < 0 || index >= list.length) return;
-    _scrollStreamsToIndex(index);
-    iptvFocusBrowserStreamAt(index);
+    void go() {
+      if (!mounted) return;
+      _scrollStreamsToIndex(index);
+      iptvFocusBrowserStreamAt(index);
+    }
+    go();
+    WidgetsBinding.instance.addPostFrameCallback((_) => go());
   }
 
   void _scrollStreamsToIndex(int index) {

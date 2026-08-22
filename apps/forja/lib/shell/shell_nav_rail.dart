@@ -867,10 +867,12 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       return 1;
     }
     if (itemActive) return _pressed ? big * 0.92 : big;
-    // TV leanback: selected tab stays enlarged even without rail focus.
+    // TV: selected stays big, idle stays small — no rail-engage shrink cascade.
     if (policy.instantFocusChrome) {
       return widget.selected ? big : small;
     }
+    // Desktop: selected tab stays enlarged while browsing page content.
+    if (!widget.railEngaged) return widget.selected ? big : small;
     return small;
   }
 
@@ -881,10 +883,6 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   void _enterPageFromNav() {
     widget.onTap();
     final tabId = widget.destination.id;
-    // Desktop: tap must not leave the rail item focused (big icon + label).
-    if (_focusNode.hasFocus) {
-      _focusNode.unfocus();
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!ShellTvFocusCoordinator.focusTabEnterFromNav(tabId)) {
         ShellTvFocusCoordinator.restoreTabFocusAfterNav(tabId);
@@ -957,10 +955,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final useDestinationAccent =
         policy.isInteractiveActive && widget.icon == null;
     final iconColor = useDestinationAccent
-        ? (widget.selected
+        ? (widget.selected || active
               ? destinationAccent
-              : active
-              ? ForjaShellColors.iconHover
               : ForjaShellColors.iconMuted)
         : selectedFocused
         ? Colors.white
@@ -970,10 +966,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         ? ForjaShellColors.iconHover
         : ForjaShellColors.iconMuted;
     final labelColor = useDestinationAccent
-        ? (widget.selected
+        ? (widget.selected || active
               ? destinationAccent
-              : active
-              ? ForjaShellColors.iconHover
               : ForjaShellColors.iconMuted)
         : selectedFocused
         ? Colors.white
@@ -983,7 +977,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         ? ForjaShellColors.textSecondary
         : ForjaShellColors.iconMuted;
     final showLabel =
-        widget.alwaysShowLabel || (policy.scaleOnFocus && active);
+        widget.alwaysShowLabel || (policy.scaleOnFocus && _focused);
     final labelStyle = GoogleFonts.plusJakartaSans(
       color: labelColor,
       fontSize: labelFontSize,

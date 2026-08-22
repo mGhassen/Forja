@@ -276,6 +276,37 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         _s._closeSourcesPanel(cancelEngineJobs: false);
       }
       try {
+        final enginePluginId = stream['_enginePluginId']?.toString();
+        if (enginePluginId != null && enginePluginId.isNotEmpty) {
+          final sources = await _buildEnginePlaySources(
+            _s,
+            _engineSiblingRowsForPlay(_s._engineStreams, stream),
+            isAborted: () => !mounted,
+          );
+          if (!mounted || sources.isEmpty) return;
+          final primary = sources.first;
+          await AppRouter.openPlayer(
+            context,
+            streamUrl: primary.url,
+            title: _s._movie.title,
+            headers: primary.headers,
+            movie: _s._movie,
+            selectedSeason: isTv ? _s._selectedSeason : null,
+            selectedEpisode: isTv ? _s._selectedEpisode : null,
+            startPosition: startPosition,
+            activeProvider:
+                primary.providerId ?? catalogHttpPlayProviderId(stream),
+            sources: sources,
+            pinSource: false,
+            streamsPrevalidated: true,
+            externalSubtitles: catalogStreamExternalSubtitles(stream),
+            stremioId: stremioId,
+            stremioAddonBaseUrl: stremioAddonBaseUrl,
+          );
+          if (mounted) _s._claimTvHeroPlayAfterPlayer();
+          return;
+        }
+
         final proxied = await proxyCatalogHttpStreamIfNeeded(
           streamUrl: precheck.streamUrl,
           headers: precheck.headers,

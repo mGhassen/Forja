@@ -84,6 +84,7 @@ class _AsianDramaDetailsScreenState
   void initState() {
     super.initState();
     KissKhService.watchHistoryRevision.addListener(_onHistoryChanged);
+    unawaited(ref.read(settingsPlaybackProvider.future));
     _load();
     _loadWatchedEpisodes();
   }
@@ -692,10 +693,7 @@ class _AsianDramaDetailsScreenState
         tvFocus && isUpcoming ? _focusDetailsBack : heroFocusUp;
     final listExtra = HubListStatusHero.extraFocusSlots(_listMenuOpen);
     final playbackSnap = ref.watch(settingsPlaybackProvider).valueOrNull;
-    final hasCatalogSources = !isUpcoming &&
-        hubHasCatalogPanelSources(playbackSnap);
-    final sourcesMovie = _playMovieFor(det, tmdb);
-    final showCatalogSources = hasCatalogSources;
+    final showCatalogSources = hubHasCatalogPanelSources(playbackSnap);
     var tvIndex = 0;
     final playIndex = isUpcoming ? null : tvIndex++;
     final sourcesIndex = showCatalogSources ? tvIndex++ : null;
@@ -854,7 +852,7 @@ class _AsianDramaDetailsScreenState
                   enabled: det.episodes.isNotEmpty,
                   onPlay: _playSelected,
                   onOpenSources: showCatalogSources
-                      ? () => _openCatalogSources(sourcesMovie)
+                      ? () => _openCatalogSources(_playMovieFor(det, tmdb))
                       : null,
                   focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
                   onUpEdge: heroPopUp,

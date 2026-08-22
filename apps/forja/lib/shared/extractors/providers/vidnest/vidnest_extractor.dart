@@ -13,6 +13,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/extractors/core/bounded_parallel.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
@@ -42,7 +43,6 @@ class VidnestExtractor {
 
   /// Every listed API server - collect all responsive streams (no first-hit stop).
   static const _servers = <_VidnestServer>[
-    _VidnestServer('gama', 'Gama', 'moviebox/movie', 'moviebox/tv'),
     _VidnestServer('hexa', 'Hexa', 'vidlink/movie', 'vidlink/tv'),
     _VidnestServer('lamda', 'Lamda', 'allmovies/movie', 'allmovies/tv'),
     _VidnestServer('delta', 'Delta', 'allmovies/movie', 'allmovies/tv'),
@@ -52,6 +52,8 @@ class VidnestExtractor {
     _VidnestServer('alfa', 'Alfa', 'moviesapi/movie', 'moviesapi/tv'),
     _VidnestServer('catflix', 'Catflix', 'movies5f/movie', 'movies5f/tv'),
     _VidnestServer('ophim', 'Ophim', 'klikxxi/movie', 'klikxxi/tv'),
+    // Gama/MovieBox progressive CDN often 428/429 — collect last, prefer siblings.
+    _VidnestServer('gama', 'Gama', 'moviebox/movie', 'moviebox/tv'),
   ];
 
   /// Mirror labels used in stream titles (`Gama · …`) - ownership filter.
@@ -150,18 +152,20 @@ class VidnestExtractor {
     if (cancelled()) return null;
     final allSources = <StreamSource>[for (final batch in batches) ...batch];
     if (allSources.isEmpty) return null;
-    final playable = dedupeStreamSources(allSources)
-        .map(
-          (s) => StreamSource(
-            url: s.url,
-            title: s.title,
-            type: s.type,
-            headers: s.headers,
-            providerId: 'vidnest',
-            catalogUrl: s.catalogUrl ?? s.url,
-          ),
-        )
-        .toList();
+    final playable = _sortMovieBoxLast(
+      dedupeStreamSources(allSources)
+          .map(
+            (s) => StreamSource(
+              url: s.url,
+              title: s.title,
+              type: s.type,
+              headers: s.headers,
+              providerId: 'vidnest',
+              catalogUrl: s.catalogUrl ?? s.url,
+            ),
+          )
+          .toList(),
+    );
     _log('${batches.length} server(s) → ${playable.length} source(s)');
     return ExtractedMedia(
       url: playable.first.url,
@@ -362,6 +366,17 @@ class VidnestExtractor {
   }
 
   static Map<String, String> _uaOnlyHeaders() => {'User-Agent': userAgent};
+
+  static List<StreamSource> _sortMovieBoxLast(List<StreamSource> sources) {
+    final copy = List<StreamSource>.from(sources);
+    copy.sort((a, b) {
+      final aBox = isMovieBoxCdnStreamUrl(a.url);
+      final bBox = isMovieBoxCdnStreamUrl(b.url);
+      if (aBox != bBox) return aBox ? 1 : -1;
+      return 0;
+    });
+    return copy;
+  }
 
   /// MovieBox CDN rejects Referer; other CDNs may need upstream headers.
   static Map<String, String> _headersForUrl(

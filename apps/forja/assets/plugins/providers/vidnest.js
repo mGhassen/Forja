@@ -17,7 +17,6 @@ function extract(ctx) {
   var isMovie = ctx.type === 'movie';
   var isAnime = ctx.type === 'anime';
   var servers = cfg.servers || [
-    { id: 'gama', name: 'Gama', movie: 'moviebox/movie', tv: 'moviebox/tv' },
     { id: 'hexa', name: 'Hexa', movie: 'vidlink/movie', tv: 'vidlink/tv' },
     { id: 'lamda', name: 'Lamda', movie: 'allmovies/movie', tv: 'allmovies/tv' },
     { id: 'delta', name: 'Delta', movie: 'allmovies/movie', tv: 'allmovies/tv' },
@@ -27,6 +26,7 @@ function extract(ctx) {
     { id: 'alfa', name: 'Alfa', movie: 'moviesapi/movie', tv: 'moviesapi/tv' },
     { id: 'catflix', name: 'Catflix', movie: 'movies5f/movie', tv: 'movies5f/tv' },
     { id: 'ophim', name: 'Ophim', movie: 'klikxxi/movie', tv: 'klikxxi/tv' },
+    { id: 'gama', name: 'Gama', movie: 'moviebox/movie', tv: 'moviebox/tv' },
   ];
 
   function decryptCipher(data) {
@@ -235,7 +235,17 @@ function extract(ctx) {
         out.push(r);
       });
     });
-    if (out.length) return out;
+    if (out.length) {
+      out.sort(function (a, b) {
+        var ah = String((a && a.url) || '').toLowerCase();
+        var bh = String((b && b.url) || '').toLowerCase();
+        var aBox = ah.indexOf('hakunaymatata.com') >= 0;
+        var bBox = bh.indexOf('hakunaymatata.com') >= 0;
+        if (aBox !== bBox) return aBox ? 1 : -1;
+        return 0;
+      });
+      return out;
+    }
     return ctx.host('vidnest');
   });
 }

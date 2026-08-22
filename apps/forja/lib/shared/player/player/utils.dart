@@ -137,7 +137,9 @@ Map<String, String> resolvePlaybackHttpHeaders(
   // Movie/TV VidNest CDNs (lamda/delta/alfa/…) reject forced vidnest.fun
   // Referer; web uses no-referrer. Keep extractor/API headers only — do not
   // invent policy Referer. Anime `vidnest:*` still uses policy below.
-  final vidnestMovieTv = pid != null && pid.toLowerCase() == 'vidnest';
+  final pidLower = pid?.toLowerCase() ?? '';
+  final vidnestMovieTv =
+      pidLower == 'vidnest' || pidLower == 'engine:vidnest';
   final catalogForMatch = streamUrl != null && isLocalLoopbackPlayUrl(streamUrl)
       ? (hlsProxyTargetUrl(streamUrl) ?? streamUrl)
       : streamUrl;

@@ -12,6 +12,75 @@ class _EngineAutoHit {
   final List<Map<String, dynamic>> batch;
 }
 
+List<Map<String, dynamic>> _sortEngineStreamRows(
+  List<Map<String, dynamic>> rows,
+) {
+  final copy = List<Map<String, dynamic>>.from(rows);
+  copy.sort((a, b) {
+    final aUrl = a['url']?.toString() ?? '';
+    final bUrl = b['url']?.toString() ?? '';
+    final aBox = isMovieBoxCdnStreamUrl(aUrl);
+    final bBox = isMovieBoxCdnStreamUrl(bUrl);
+    if (aBox != bBox) return aBox ? 1 : -1;
+    return 0;
+  });
+  return copy;
+}
+
+List<Map<String, dynamic>> _engineSiblingRowsForPlay(
+  List<Map<String, dynamic>> engineStreams,
+  Map<String, dynamic> stream,
+) {
+  final pluginId = stream['_enginePluginId']?.toString();
+  if (pluginId == null || pluginId.isEmpty) return [stream];
+  final siblings = engineStreams
+      .where((r) => r['_enginePluginId']?.toString() == pluginId)
+      .toList();
+  if (siblings.isEmpty) return [stream];
+  final chosenUrl = stream['url']?.toString();
+  return [
+    stream,
+    ...siblings.where((r) => r['url']?.toString() != chosenUrl),
+  ];
+}
+
+Future<List<StreamSource>> _buildEnginePlaySources(
+  _DetailsScreenState s,
+  List<Map<String, dynamic>> rows, {
+  required bool Function() isAborted,
+}) async {
+  final useDebrid = await s._settings.useDebridForStreams();
+  final debridService = await s._settings.getDebridService();
+  final sources = <StreamSource>[];
+  for (final row in _sortEngineStreamRows(rows)) {
+    if (isAborted() || !s.mounted) break;
+    final check = classifyStremioStream(
+      row,
+      s._playbackProfile,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    );
+    if (check is! StremioPlayable) continue;
+    final proxied = await proxyCatalogHttpStreamIfNeeded(
+      streamUrl: check.streamUrl,
+      headers: check.headers,
+      stream: row,
+    );
+    if (isAborted() || !s.mounted) break;
+    final url = proxied.url;
+    sources.add(
+      StreamSource(
+        url: url,
+        title: (row['title'] ?? row['name'] ?? 'Forja').toString(),
+        type: url.contains('.m3u8') ? 'hls' : 'mp4',
+        headers: proxied.headers,
+        providerId: catalogHttpPlayProviderId(row),
+      ),
+    );
+  }
+  return sources;
+}
+
 mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
   _DetailsScreenState get _s => this as _DetailsScreenState;
 
@@ -754,33 +823,11 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     );
 
     if (precheck is StremioPlayable) {
-      final sources = <StreamSource>[];
-      for (final row in streams) {
-        if (isAborted() || !mounted) return;
-        final check = classifyStremioStream(
-          row,
-          _s._playbackProfile,
-          useDebrid: useDebrid,
-          debridService: debridService,
-        );
-        if (check is! StremioPlayable) continue;
-        final proxied = await proxyCatalogHttpStreamIfNeeded(
-          streamUrl: check.streamUrl,
-          headers: check.headers,
-          stream: row,
-        );
-        if (isAborted() || !mounted) return;
-        final url = proxied.url;
-        sources.add(
-          StreamSource(
-            url: url,
-            title: (row['title'] ?? row['name'] ?? 'Forja').toString(),
-            type: url.contains('.m3u8') ? 'hls' : 'mp4',
-            headers: proxied.headers,
-            providerId: catalogHttpPlayProviderId(row),
-          ),
-        );
-      }
+      final sources = await _buildEnginePlaySources(
+        _s,
+        _sortEngineStreamRows(streams),
+        isAborted: isAborted,
+      );
       if (sources.isEmpty) return;
       final primary = sources.first;
       final ctx = loadingDialogContext;

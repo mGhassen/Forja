@@ -1,35 +1,37 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Prefix matcher for type-to-scroll lists (Windows Explorer style).
 class ListLetterJumpMatcher {
   ListLetterJumpMatcher({
-    this.bufferTimeout = const Duration(milliseconds: 1000),
+    this.bufferTimeout = const Duration(milliseconds: 1500),
   });
 
   final Duration bufferTimeout;
 
   String _prefix = '';
   int _lastMatchIndex = -1;
-  DateTime? _lastKeyTime;
+  Duration? _lastKeyTimeStamp;
 
   void reset() {
     _prefix = '';
     _lastMatchIndex = -1;
-    _lastKeyTime = null;
+    _lastKeyTimeStamp = null;
   }
 
   /// Returns the next list index to jump to, or null when nothing matches.
   int? nextIndex({
     required String letter,
+    required Duration timeStamp,
     required int itemCount,
     required String Function(int index) labelAt,
   }) {
-    if (itemCount <= 0) return null;
+    if (itemCount <= 0 || letter.isEmpty) return null;
 
-    final now = DateTime.now();
-    final expired = _lastKeyTime == null ||
-        now.difference(_lastKeyTime!) > bufferTimeout;
+    final expired = _lastKeyTimeStamp == null ||
+        timeStamp - _lastKeyTimeStamp! > bufferTimeout;
 
     final cycleSameLetter = !expired &&
         _prefix.length == 1 &&
@@ -46,7 +48,7 @@ class ListLetterJumpMatcher {
       _lastMatchIndex = -1;
     }
 
-    _lastKeyTime = now;
+    _lastKeyTimeStamp = timeStamp;
 
     final startAfter = cycleSameLetter ? _lastMatchIndex : -1;
     final match = _findMatch(
@@ -58,6 +60,26 @@ class ListLetterJumpMatcher {
     if (match == null) return null;
     _lastMatchIndex = match;
     return match;
+  }
+
+  /// Apply a run of letters from one key event (fast multi-key bursts).
+  int? nextIndices({
+    required String letters,
+    required Duration timeStamp,
+    required int itemCount,
+    required String Function(int index) labelAt,
+  }) {
+    int? last;
+    for (var i = 0; i < letters.length; i++) {
+      final idx = nextIndex(
+        letter: letters[i],
+        timeStamp: timeStamp + Duration(microseconds: i),
+        itemCount: itemCount,
+        labelAt: labelAt,
+      );
+      if (idx != null) last = idx;
+    }
+    return last;
   }
 
   static int? _findMatch({
@@ -92,13 +114,11 @@ class ListLetterJumpMatcher {
   }
 
   /// [KeyEvent.character] is often null on desktop without a focused text field.
-  static String? letterFromKeyDown(KeyDownEvent event) {
+  static String? lettersFromKeyDown(KeyDownEvent event) {
     final char = event.character;
     if (char != null && char.isNotEmpty) {
-      for (final codeUnit in char.codeUnits) {
-        final ch = String.fromCharCode(codeUnit).toLowerCase();
-        if (ch.length == 1 && ch != ch.toUpperCase()) return ch;
-      }
+      final letters = char.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+      if (letters.isNotEmpty) return letters;
     }
     final label = event.logicalKey.keyLabel;
     if (label.length == 1) {
@@ -138,9 +158,11 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
   final _matcher = ListLetterJumpMatcher();
   bool _hovered = false;
   bool _handlerBound = false;
+  Timer? _hoverExitTimer;
 
   @override
   void dispose() {
+    _hoverExitTimer?.cancel();
     _unbindHandler();
     super.dispose();
   }
@@ -157,10 +179,6 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
     _handlerBound = false;
   }
 
-  /// [KeyEvent.character] is often null on desktop without a focused text field.
-  static String? _letterFromKeyDown(KeyDownEvent event) =>
-      ListLetterJumpMatcher.letterFromKeyDown(event);
-
   bool _onKey(KeyEvent event) {
     if (!widget.enabled || !_hovered) return false;
     if (event is! KeyDownEvent) return false;
@@ -172,11 +190,12 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
       return false;
     }
 
-    final letter = _letterFromKeyDown(event);
-    if (letter == null) return false;
+    final letters = ListLetterJumpMatcher.lettersFromKeyDown(event);
+    if (letters == null || letters.isEmpty) return false;
 
-    final index = _matcher.nextIndex(
-      letter: letter,
+    final index = _matcher.nextIndices(
+      letters: letters,
+      timeStamp: event.timeStamp,
       itemCount: widget.itemCount,
       labelAt: widget.labelAt,
     );
@@ -190,13 +209,19 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
     return MouseRegion(
       hitTestBehavior: HitTestBehavior.translucent,
       onEnter: (_) {
+        _hoverExitTimer?.cancel();
         _hovered = true;
         _bindHandler();
       },
       onExit: (_) {
-        _hovered = false;
-        _unbindHandler();
-        _matcher.reset();
+        // Scroll / focus nudges can flicker hover off between fast key presses.
+        _hoverExitTimer?.cancel();
+        _hoverExitTimer = Timer(const Duration(milliseconds: 250), () {
+          if (!mounted) return;
+          _hovered = false;
+          _unbindHandler();
+          _matcher.reset();
+        });
       },
       child: widget.child,
     );

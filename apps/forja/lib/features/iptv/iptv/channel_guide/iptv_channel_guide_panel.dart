@@ -1196,14 +1196,28 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final n = _visibleChannels.length;
     if (n == 0) return;
     final i = index.clamp(0, n - 1);
-    setState(() {
-      _focusedChannelIndex = i;
-      _focusColumn = _FocusColumn.channels;
-      _closeArmedOnEnter = false;
-    });
-    _cancelHoverEpg();
-    final scrolled = _scrollToFocused();
-    _bumpChannelLogoSettle(hide: scrolled);
+    void go() {
+      if (!mounted) return;
+      setState(() {
+        _focusedChannelIndex = i;
+        _focusColumn = _FocusColumn.channels;
+        _closeArmedOnEnter = false;
+      });
+      _cancelHoverEpg();
+      final scrolled = _scrollToFocused();
+      _bumpChannelLogoSettle(hide: scrolled);
+    }
+    go();
+    WidgetsBinding.instance.addPostFrameCallback((_) => go());
+  }
+
+  void _letterJumpGroup(int index) {
+    void go() {
+      if (!mounted) return;
+      _focusGroupAt(index, animateScroll: true);
+    }
+    go();
+    WidgetsBinding.instance.addPostFrameCallback((_) => go());
   }
 
   Widget _buildNarrowBody() {
@@ -1233,7 +1247,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       enabled: !iptvLeanbackOnly(context),
       itemCount: groups.length,
       labelAt: (i) => groups[i].name,
-      onJump: (i) => _focusGroupAt(i, animateScroll: true),
+      onJump: _letterJumpGroup,
       child: IptvTvScrollbar(
         controller: _groupScroll,
         child: ListView.builder(

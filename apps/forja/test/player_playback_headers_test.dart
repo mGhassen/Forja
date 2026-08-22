@@ -165,6 +165,18 @@ void main() {
       expect(isMwVaultProxyPlayUrl(url), isTrue);
     });
 
+    test('providerId engine:vidnest does not force vidnest.fun Referer on CDN', () {
+      const url = 'https://lamda.example-cdn.net/hls/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: url,
+        providerId: 'engine:vidnest',
+      );
+      expect(h['User-Agent'], contains('Mozilla/5.0'));
+      expect(h.containsKey('Referer'), isFalse);
+      expect(h.containsKey('Origin'), isFalse);
+    });
+
     test('providerId vidnest does not force vidnest.fun Referer on CDN', () {
       const url = 'https://lamda.example-cdn.net/hls/master.m3u8';
       final h = resolvePlaybackHttpHeaders(
