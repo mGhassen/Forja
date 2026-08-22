@@ -591,29 +591,6 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
                         )
                       else
                         Container(color: AppTheme.bgCard),
-                      if (a.label != null && a.label!.isNotEmpty)
-                        Positioned(
-                          left: 34,
-                          top: 6,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.65),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              a.label!,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
                       if (a.episodesCount > 0)
                         Positioned(
                           right: 6,

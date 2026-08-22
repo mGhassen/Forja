@@ -401,8 +401,6 @@ class _AsianDramaDetailsScreenState
       if (det.country.isNotEmpty) MapEntry('Country', det.country),
       if (typeBadge != null) MapEntry('Type', typeBadge),
       if (det.status.isNotEmpty) MapEntry('Status', det.status),
-      if (det.label != null && det.label!.isNotEmpty)
-        MapEntry('Label', det.label!),
       if (director != null && director.isNotEmpty)
         MapEntry('Director', director),
       if (creators.isNotEmpty) MapEntry('Created by', creators.take(3).join(', ')),

@@ -417,7 +417,6 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
       imageUrl: card.cover,
       title: card.title,
       subtitle: subtitle.isEmpty ? null : subtitle,
-      badge: card.label,
       rank: rank,
       listIndex: listIndex,
       tvTabId: 'asian_drama',

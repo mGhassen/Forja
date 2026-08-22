@@ -397,16 +397,17 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       ];
 
       final startPosition = _s._startPositionForAutoPlay(fromRoute: false);
-      final hit = await _raceEnginePluginsForAuto(
+      final hits = await _raceEnginePluginsForAuto(
         pluginIds: pluginIds,
         playGen: playGen,
         probeNotifier: probeNotifier,
         messageNotifier: messageNotifier,
         isAborted: playAborted,
+        maxHits: 3,
       );
       if (playAborted()) return;
 
-      if (hit == null) {
+      if (hits.isEmpty) {
         final action = Completer<bool>();
         failureNotifier.value = ResolveFailure(
           title: 'Couldn’t start playback',
@@ -437,12 +438,22 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       // Do not snap Sources chips / session cache to the auto winner — that
       // made reopen show the last-played plugin instead of the user's chips.
       openedPlayer = true;
-      final candidates = await _collectProbedEngineStreams(
-        hit.batch,
-        preferred: hit.stream,
-        max: 3,
-        isAborted: playAborted,
-      );
+      final candidates = <Map<String, dynamic>>[];
+      for (final hit in hits) {
+        if (candidates.length >= 3) break;
+        final more = await _collectProbedEngineStreams(
+          hit.batch,
+          preferred: hit.stream,
+          max: 3 - candidates.length,
+          isAborted: playAborted,
+        );
+        if (playAborted()) return;
+        for (final row in more) {
+          if (candidates.length >= 3) break;
+          if (candidates.any((c) => identical(c, row))) continue;
+          candidates.add(row);
+        }
+      }
       if (playAborted() || candidates.isEmpty) return;
       await _playEngineAutoWinner(
         candidates,
@@ -462,19 +473,21 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     }
   }
 
-  Future<_EngineAutoHit?> _raceEnginePluginsForAuto({
+  Future<List<_EngineAutoHit>> _raceEnginePluginsForAuto({
     required List<String> pluginIds,
     required int playGen,
     required ValueNotifier<List<StreamProviderProbe>> probeNotifier,
     required ValueNotifier<String> messageNotifier,
     required bool Function() isAborted,
+    int maxHits = 3,
   }) async {
     final type = _s._movie.mediaType == 'tv' ? 'tv' : 'movie';
     final year = _s._movie.releaseDate.length >= 4
         ? _s._movie.releaseDate.substring(0, 4)
         : null;
     final limit = engineSourcesBatchLimit(tv: SourcesPanelTv.isTv(context));
-    final completer = Completer<_EngineAutoHit?>();
+    final hits = <_EngineAutoHit>[];
+    final completer = Completer<List<_EngineAutoHit>>();
     var nextIndex = 0;
     var inFlight = 0;
     final statusById = <String, StreamProviderProbeStatus>{

@@ -44,7 +44,10 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     unawaited(_s._loadPlayerAutoSettings());
     final catalogSession = isCatalogSourcesMode(widget.activeProvider) ||
         (widget.magnetLink != null && widget.magnetLink!.isNotEmpty);
-    if (catalogSession) {
+    // Catalog mode normally skips the webstreaming sources list — but green
+    // Forja Play passes explicit failover URLs; keep those so open can hop.
+    if (catalogSession &&
+        (widget.sources == null || widget.sources!.isEmpty)) {
       _s._currentSources = null;
     } else {
       _s._currentSources = widget.sources == null
