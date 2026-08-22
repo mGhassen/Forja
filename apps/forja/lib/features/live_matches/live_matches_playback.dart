@@ -655,9 +655,12 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     Map<String, String> headers = const {},
     String label = 'Live',
   }) async {
-    final playUrl = url.trim();
+    final playUrl = await LiveMatchesEngine.proxyPlayUrl(
+      url: url,
+      headers: headers,
+    );
     if (!mounted) return;
-    if (playUrl.isEmpty) {
+    if (playUrl == null || playUrl.isEmpty) {
       LiveMatchesEngine.engineResolveFailed();
       return;
     }
@@ -668,7 +671,6 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
           IptvPlaySource(
             url: playUrl,
             label: label,
-            headers: headers,
             liveSourceKind: IptvLiveSourceKind.liveEngine,
           ),
         ],
@@ -725,10 +727,11 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     if (!ok) return true;
     if (result == null || !result!.playable) {
       debugPrint(
-        '[LiveMatches] Engine resolve missed — falling back to embed '
+        '[LiveMatches] Engine resolve missed — no embed fallback '
         '(${stream.source}/${stream.id})',
       );
-      return false;
+      LiveMatchesEngine.engineResolveFailed();
+      return true;
     }
     await _openEngineNativeStream(
       title: match.title,
@@ -758,10 +761,11 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     if (!ok) return true;
     if (result == null || !result!.playable) {
       debugPrint(
-        '[LiveMatches] Engine PPV resolve missed — falling back to embed '
+        '[LiveMatches] Engine PPV resolve missed — no embed fallback '
         '(${s.name})',
       );
-      return false;
+      LiveMatchesEngine.engineResolveFailed();
+      return true;
     }
     await _openEngineNativeStream(
       title: s.name,

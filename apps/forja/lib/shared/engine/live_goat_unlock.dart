@@ -38,7 +38,7 @@ class LiveGoatUnlock {
     final slotSource = (slot['source'] ?? '').toString();
     if (slotSource == 'golf') {
       debugPrint(
-        '[LiveGoatUnlock] golf embed has no native unlock — use Sniff embed',
+        '[LiveGoatUnlock] golf embed has no native unlock — use Sniff mode',
       );
       return null;
     }
