@@ -23,15 +23,18 @@ void main() {
   });
 
   test('input policies match profile expectations', () {
-    // Desktop: TV-like D-pad focus + Ken Burns; TV: same focus, no Ken Burns.
-    expect(ShellInputPolicy.desktop.scaleOnHover, isFalse);
+    // Desktop: hover + D-pad + Ken Burns. TV: D-pad, no hover / Ken Burns.
+    expect(ShellInputPolicy.desktop.scaleOnHover, isTrue);
     expect(ShellInputPolicy.desktop.scaleOnFocus, isTrue);
     expect(ShellInputPolicy.desktop.wrapAppFocusTraversal, isTrue);
     expect(ShellInputPolicy.desktop.useFocusableMoodChips, isTrue);
     expect(ShellInputPolicy.desktop.kenBurnsBackdrop, isTrue);
+    expect(ShellInputPolicy.desktop.instantFocusChrome, isFalse);
+    expect(ShellInputPolicy.tv.scaleOnHover, isFalse);
     expect(ShellInputPolicy.tv.scaleOnFocus, isTrue);
     expect(ShellInputPolicy.tv.wrapAppFocusTraversal, isTrue);
     expect(ShellInputPolicy.tv.kenBurnsBackdrop, isFalse);
+    expect(ShellInputPolicy.tv.instantFocusChrome, isTrue);
     expect(ShellInputPolicy.mobile.wrapAppFocusTraversal, isFalse);
 
     final desktopCfg = shellPlatformConfigFor(ShellProfile.desktop);

@@ -30,7 +30,7 @@ const shellPlatformConfigs = <ShellProfile, ShellPlatformConfig>{
   ),
   ShellProfile.desktop: ShellPlatformConfig(
     metrics: ShellMetrics.desktop,
-    // D-pad / arrow focus like TV; Ken Burns + desktop density/chrome stay desktop.
+    // Hover + Ken Burns + density/chrome; D-pad via ShellInputPolicy.desktop.
     inputPolicy: ShellInputPolicy.desktop,
     chromeKind: ShellChromeKind.navRail,
   ),
