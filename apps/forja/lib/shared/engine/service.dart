@@ -49,6 +49,8 @@ class EngineService {
   static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
 
   int _extractGeneration = 0;
+  int _liveCatalogGeneration = 0;
+  EngineRuntime? _liveCatalogRuntime;
   Future<void>? _bundledEnsureFuture;
   bool _bundledReady = false;
 
@@ -59,9 +61,24 @@ class EngineService {
 
   void cancelPending() {
     _extractGeneration++;
+    cancelLiveCatalog();
     EngineRuntime.abortAll();
     // Kind-scoped: do not call Engine.cancelPendingResolve (kills magnet).
     Engine.cancelEngineJsExtracts();
+  }
+
+  /// Abort in-flight Forja Live catalog scrapes (tab hide / server switch).
+  void cancelLiveCatalog() {
+    _liveCatalogGeneration++;
+    _abortLiveCatalogRuntime();
+  }
+
+  void _abortLiveCatalogRuntime() {
+    final rt = _liveCatalogRuntime;
+    _liveCatalogRuntime = null;
+    if (rt == null) return;
+    rt.abortPendingWork();
+    rt.dispose();
   }
 
   Future<void> _syncHopsForRuntime(
@@ -668,21 +685,38 @@ class EngineService {
     final config = mergeEngineConfig(plugin.config, overlay);
     final code = await _loadScript(plugin);
     if (gen != _extractGeneration || code == null) return [];
-    final rt = EngineRuntime.instance;
-    await _syncHops(packs);
-    if (gen != _extractGeneration) return [];
-    await rt.loadPlugin(pluginId: plugin.id, code: code);
-    final raw = await rt.extractLive(
-      pluginId: plugin.id,
-      pluginName: plugin.name,
+    final viaRust = await _runLiveEngineRustJs(
+      plugin: plugin,
+      config: config,
       action: action,
       params: params,
-      config: config,
       timeout: timeout,
-      isCancelled: () => gen != _extractGeneration,
+      gen: gen,
+      generation: () => _extractGeneration,
     );
+    if (viaRust != null) return _postProcessLivePluginRows(viaRust);
     if (gen != _extractGeneration) return [];
-    return _postProcessLivePluginRows(raw);
+
+    final runtime = EngineRuntime.fork();
+    try {
+      await _syncHopsForRuntime(runtime, packs);
+      if (gen != _extractGeneration) return [];
+      await runtime.loadPlugin(pluginId: plugin.id, code: code);
+      if (gen != _extractGeneration) return [];
+      final raw = await runtime.extractLive(
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        action: action,
+        params: params,
+        config: config,
+        timeout: timeout,
+        isCancelled: () => gen != _extractGeneration,
+      );
+      if (gen != _extractGeneration) return [];
+      return _postProcessLivePluginRows(raw);
+    } finally {
+      runtime.dispose();
+    }
   }
 
   /// Run one bundled live catalog plugin (`catalog/*.js`).
@@ -692,9 +726,9 @@ class EngineService {
     Duration timeout = const Duration(seconds: 30),
   }) async {
     if (!catalogPlugin.isLiveCatalog) return [];
-    final gen = _extractGeneration;
+    final gen = _liveCatalogGeneration;
     final packs = await listPacks();
-    if (gen != _extractGeneration) return [];
+    if (gen != _liveCatalogGeneration) return [];
 
     final overlay =
         ProviderRuntimeConfig.instance.engine[catalogPlugin.id] ?? const {};
@@ -717,23 +751,131 @@ class EngineService {
     }
 
     final code = await _loadScript(catalogPlugin);
-    if (gen != _extractGeneration || code == null) return [];
-    final rt = EngineRuntime.instance;
-    await _syncHops(packs);
-    if (!rt.isLoaded(catalogPlugin.id)) {
-      await rt.loadPlugin(pluginId: catalogPlugin.id, code: code);
-    }
-    if (gen != _extractGeneration) return [];
-    final raw = await rt.extractLive(
-      pluginId: catalogPlugin.id,
-      pluginName: catalogPlugin.name,
-      action: 'catalog',
+    if (gen != _liveCatalogGeneration || code == null) return [];
+
+    final viaRust = await _runLiveEngineRustJs(
+      plugin: catalogPlugin,
       config: config,
+      action: 'catalog',
       timeout: timeout,
-      isCancelled: () => gen != _extractGeneration,
+      gen: gen,
+      generation: () => _liveCatalogGeneration,
     );
-    if (gen != _extractGeneration) return [];
-    return _postProcessLivePluginRows(raw);
+    if (viaRust != null) return _postProcessLivePluginRows(viaRust);
+    if (gen != _liveCatalogGeneration) return [];
+
+    final runtime = EngineRuntime.fork();
+    _liveCatalogRuntime = runtime;
+    try {
+      await _syncHopsForRuntime(runtime, packs);
+      if (gen != _liveCatalogGeneration) return [];
+      if (!runtime.isLoaded(catalogPlugin.id)) {
+        await runtime.loadPlugin(pluginId: catalogPlugin.id, code: code);
+      }
+      if (gen != _liveCatalogGeneration) return [];
+      final raw = await runtime.extractLive(
+        pluginId: catalogPlugin.id,
+        pluginName: catalogPlugin.name,
+        action: 'catalog',
+        config: config,
+        timeout: timeout,
+        isCancelled: () => gen != _liveCatalogGeneration,
+      );
+      if (gen != _liveCatalogGeneration) return [];
+      return _postProcessLivePluginRows(raw);
+    } finally {
+      if (identical(_liveCatalogRuntime, runtime)) {
+        _liveCatalogRuntime = null;
+      }
+      runtime.dispose();
+    }
+  }
+
+  /// Rust QuickJS live plugin path — null → flutter_js fork fallback.
+  Future<List<Map<String, dynamic>>?> _runLiveEngineRustJs({
+    required EnginePlugin plugin,
+    required Map<String, dynamic> config,
+    required String action,
+    Map<String, dynamic> params = const {},
+    required Duration timeout,
+    required int gen,
+    required int Function() generation,
+  }) async {
+    if (gen != generation()) return null;
+    final code = await _loadScript(plugin);
+    if (gen != generation() || code == null) return null;
+
+    final ctx = <String, Object?>{
+      'tmdbId': '',
+      'imdbId': '',
+      'malId': '',
+      'anilistId': '',
+      'mappedEpisode': 1,
+      'type': 'live',
+      'season': 1,
+      'episode': 1,
+      'title': '',
+      'year': '',
+      'url': '',
+      'action': action,
+      'matchId': params['matchId'] ?? '',
+      'source': params['source'] ?? '',
+      'stream': params['stream'] ?? '',
+      'embedUrl': params['embedUrl'] ?? params['url'] ?? '',
+      'category': params['category'] ?? '',
+      'config': config,
+    };
+
+    debugPrint('[engine] ${plugin.id} start (rust-js live) action=$action');
+    final sw = Stopwatch()..start();
+    late final String rawJson;
+    try {
+      rawJson = await EngineJobs.run(EngineAsyncJob.engineJsExtract, {
+        'plugin_id': plugin.id,
+        'code': code,
+        'ctx': ctx,
+        'timeout_ms': timeout.inMilliseconds,
+        'allow_host_fallback': false,
+        'hops': <Map<String, Object?>>[],
+        'hop_depth': 0,
+      });
+    } catch (e) {
+      debugPrint('[engine] ${plugin.id} rust-js live submit failed: $e');
+      return null;
+    }
+    if (gen != generation()) return null;
+
+    Map<String, dynamic> decoded;
+    try {
+      final v = jsonDecode(rawJson);
+      if (v is! Map) return null;
+      decoded = Map<String, dynamic>.from(v);
+    } catch (_) {
+      return null;
+    }
+    if (decoded['unsupported'] == true) {
+      debugPrint(
+        '[engine] ${plugin.id} rust-js live unsupported — flutter_js fallback',
+      );
+      return null;
+    }
+    if (decoded['error'] != null && decoded['streams'] == null) {
+      debugPrint('[engine] ${plugin.id} rust-js live error: ${decoded['error']}');
+      return null;
+    }
+
+    final rawList = <Map<String, dynamic>>[];
+    final streamsRaw = decoded['streams'];
+    if (streamsRaw is List) {
+      for (final s in streamsRaw) {
+        if (s is Map) rawList.add(Map<String, dynamic>.from(s));
+      }
+    }
+    debugPrint(
+      '[engine] ${plugin.id} done (rust-js live) raw=${rawList.length} '
+      '${sw.elapsedMilliseconds}ms',
+    );
+    return rawList;
   }
 
   Future<List<Map<String, dynamic>>> _postProcessLivePluginRows(
@@ -761,25 +903,9 @@ class EngineService {
         continue;
       }
       if (row['sniffPending'] == true) {
-        final embedRaw = (row['embedUrl'] ?? row['url'] ?? '').toString();
-        final url = await LiveGoatUnlock.sniffEmbed(
-          embedUrl: embedRaw,
-          referer: (row['referer'] ?? '').toString(),
+        debugPrint(
+          '[EngineService] sniffPending ignored — use Sniff mode embed player',
         );
-        if (url == null || url.isEmpty) continue;
-        final headers = <String, dynamic>{};
-        final h = row['headers'];
-        if (h is Map) {
-          h.forEach((k, v) => headers[k.toString()] = v);
-        }
-        final embedUri = Uri.tryParse(embedRaw.trim());
-        if (embedUri != null && embedUri.host.isNotEmpty) {
-          headers['Referer'] = '${embedUri.origin}/';
-          headers['Origin'] = embedUri.origin;
-        } else if (row['referer'] != null) {
-          headers['Referer'] = row['referer'].toString();
-        }
-        out.add({'url': url, 'headers': headers});
         continue;
       }
       out.add(row);

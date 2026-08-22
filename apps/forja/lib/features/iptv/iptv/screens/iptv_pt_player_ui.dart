@@ -889,7 +889,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 if (pipMode ||
                     _s._guideVisible ||
                     _s._searchVisible ||
-                    iptvUseTvFocus(context)) {
+                    iptvLeanbackOnly(context)) {
                   return;
                 }
                 unawaited(_s._toggleFullscreen());
@@ -1271,8 +1271,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   }
 
   Widget _buildTopBar(bool compact) {
-    // PiP is phone/desktop chrome - hide on Android TV (matches VOD player).
-    final showPip = PipService.instance.isSupported && !iptvUseTvFocus(context);
+    // PiP is phone/desktop chrome - hide on leanback TV (matches VOD player).
+    final showPip =
+        PipService.instance.isSupported && iptvShowPointerChrome(context);
     final tv = iptvUseTvFocus(context);
 
     void downFromTop() {
@@ -1778,6 +1779,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   Widget _buildBottomBar(bool compact) {
     final tvFocus = iptvUseTvFocus(context);
+    final showPointerChrome = iptvShowPointerChrome(context);
 
     /// Left transport (Play / Replay) → seekbar when present, else Back.
     void upFromLeftControls() {
@@ -1967,7 +1969,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               _scheduleHideControls();
             },
           ),
-          if (!tvFocus) ...[
+          if (showPointerChrome) ...[
             const SizedBox(width: 14),
             MouseRegion(
               onEnter: (_) {
@@ -2134,7 +2136,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               ),
             ),
           if (hasSources) const SizedBox(width: 14),
-          if (!tvFocus)
+          if (showPointerChrome)
             IptvRoundIcon(
               icon: _s._isFullscreen
                   ? Icons.fullscreen_exit_rounded

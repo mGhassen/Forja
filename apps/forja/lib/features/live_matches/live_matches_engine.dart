@@ -55,6 +55,22 @@ class LiveMatchesEngine {
       }
     }
 
+    if (pluginId == 'live-ppv') {
+      final embed = (params['embedUrl'] ?? params['iframe'] ?? '')
+          .toString()
+          .trim();
+      if (embed.isNotEmpty) {
+        final native = await LiveGoatUnlock.resolveStreamed(embedUrl: embed);
+        if (native != null) {
+          return LiveEngineResolveResult.playable(
+            url: native.url,
+            headers: native.headers,
+            label: 'PPV',
+          );
+        }
+      }
+    }
+
     final raw = await EngineService.instance.runLivePlugin(
       pluginId: pluginId,
       action: 'resolve',

@@ -406,11 +406,20 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     return !_videoAdvancing;
   }
 
-  /// Playhead or Exo progress tick moved recently — picture is not frozen.
-  bool get _videoAdvancing =>
-      _playing &&
-      DateTime.now().difference(_lastPosChange) <
-          const Duration(milliseconds: 1500);
+  /// Playhead, feed, or Exo progress tick moved recently — picture not frozen.
+  bool get _videoAdvancing {
+    if (!_playing) return false;
+    // MediaKit live (IPTV / Forja Live / Stremio): demuxer position often idle.
+    if (!_exoBackend && !widget.vodPlayback) {
+      final feedAt = _feedAdvancedAt;
+      if (feedAt != null &&
+          DateTime.now().difference(feedAt) < _networkAliveWindow) {
+        return true;
+      }
+    }
+    return DateTime.now().difference(_lastPosChange) <
+        const Duration(milliseconds: 1500);
+  }
   bool _controlsVisible = true;
   Timer? _hideControlsTimer;
   final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');

@@ -399,9 +399,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
           ),
           const Spacer(),
           refresh,
-          if (!tvFocus) ...[
+          if (!_liveMatchesLeanbackOnly(context)) ...[
             const SizedBox(width: 4),
-            _buildViewToggle(tvFocus),
+            _buildViewToggle(),
           ],
           if (_s._showIptvPortalTopBar && iptvCtrl != null) ...[
             const SizedBox(width: 8),
@@ -421,10 +421,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     );
   }
 
-  Widget _buildViewToggle(bool tvFocus) {
-    // TV is cards-only - callers must not show this control.
-    if (tvFocus) return const SizedBox.shrink();
-
+  Widget _buildViewToggle() {
     final isTimeline = _s._view == _LiveMatchesView.timeline;
     final icon = isTimeline
         ? Icons.grid_view_rounded
@@ -539,8 +536,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         buttonIcon: Icons.refresh,
       );
     }
-    // TV is cards-only (timeline D-pad is not supported).
-    if (!_tvFocus(context) && _s._view == _LiveMatchesView.timeline) {
+    // Leanback TV is cards-only (timeline D-pad is not supported).
+    if (!_liveMatchesLeanbackOnly(context) &&
+        _s._view == _LiveMatchesView.timeline) {
       return _s._buildTimelineBody();
     }
     if (_s._server == _LiveMatchesServer.all ||

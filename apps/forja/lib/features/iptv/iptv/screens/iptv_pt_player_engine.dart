@@ -812,6 +812,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         // never let the 12s wall (or reconnect 1/8) fire — spinner forever,
         // then MediaCodec ANR. Watchdog finalizes after [_bufferingClearHold].
         _s._bufferingClearAt ??= DateTime.now();
+        if (_s._playing) {
+          _s._lastPosChange = DateTime.now();
+        }
         if (!_playbackStarted && _livePlaybackProfile) {
           _noteVideoFrame(reason: 'buffering done');
           return;
@@ -1217,6 +1220,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (_s._feedMarkMs != markMs) {
       _s._feedMarkMs = markMs;
       _s._feedAdvancedAt = DateTime.now();
+      if (_mediaKitLiveProfile && _s._playing) {
+        _s._lastPosChange = DateTime.now();
+      }
     }
     // Exo often reports absolute buffered end; ahead ≈ buffered - position.
     if (positionMs != null && markMs > positionMs) {
@@ -1251,9 +1257,17 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   bool get _stallReopenRecovery =>
       _s._liveRecoveryMode == SettingsService.iptvLiveRecoveryStall;
 
-  bool get _playheadRecentlyMoved =>
-      _s._playing &&
-      DateTime.now().difference(_s._lastPosChange) < const Duration(seconds: 2);
+  /// Live Matches / Forja Live on MediaKit — playhead often stuck at 0 while
+  /// HLS paints; do not treat idle position as a frozen feed.
+  bool get _mediaKitLiveProfile =>
+      _livePlaybackProfile && !_s._exoBackend;
+
+  bool get _playheadRecentlyMoved {
+    if (!_s._playing) return false;
+    if (_mediaKitLiveProfile && _networkStillFeeding) return true;
+    return DateTime.now().difference(_s._lastPosChange) <
+        const Duration(seconds: 2);
+  }
 
   /// 12s Buffering + frozen playhead + weak cache ⇒ treat as dead for Stable.
   /// Do **not** trip while demuxer still has a healthy ahead cushion — that is
@@ -1404,18 +1418,21 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
                 'cache empty');
         return;
       }
-      // Detector 2: position frozen — only if no cache and not feeding.
-      final frozenFor = now.difference(_s._lastPosChange);
-      if (_s._userPlayWhenReady &&
-          _s._lastPos > Duration.zero &&
-          frozenFor > const Duration(milliseconds: 8000)) {
-        if (_streamWorking) {
-          _logHealthyHold('frozen');
+      // Detector 2: position frozen — Exo/VOD only. MediaKit live playhead is
+      // often idle at 0 while HLS/TS paints (liveEngine false reopen loops).
+      if (!_mediaKitLiveProfile) {
+        final frozenFor = now.difference(_s._lastPosChange);
+        if (_s._userPlayWhenReady &&
+            _s._lastPos > Duration.zero &&
+            frozenFor > const Duration(milliseconds: 8000)) {
+          if (_streamWorking) {
+            _logHealthyHold('frozen');
+            return;
+          }
+          _triggerRecovery(
+              reason: 'position frozen ${frozenFor.inSeconds}s, cache empty');
           return;
         }
-        _triggerRecovery(
-            reason: 'position frozen ${frozenFor.inSeconds}s, cache empty');
-        return;
       }
       // Detector 3: silent self-pause.
       // Live Stable + cache-pause: playing=false is normal while refilling.

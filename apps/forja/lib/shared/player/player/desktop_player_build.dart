@@ -425,19 +425,30 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                         builder: (context, position, _) =>
                             ValueListenableBuilder<Duration>(
                               valueListenable: _s._bufferedNotifier,
-                              builder: (context, buffered, _) =>
-                                  SeekBarWithPreview(
-                                    duration: duration,
-                                    position: position,
-                                    bufferedPosition: buffered,
-                                    captureFrame: _s._captureSeekPreview,
-                                    onSeek: (t) {
-                                      unawaited(_s._seekTo(t));
-                                      _s._onMouseMove();
-                                    },
-                                    onDragStart: () => _s._hideTimer?.cancel(),
-                                    onDragEnd: _s._startHideTimer,
+                              builder: (context, buffered, _) => Row(
+                                children: [
+                                  Expanded(
+                                    child: SeekBarWithPreview(
+                                      duration: duration,
+                                      position: position,
+                                      bufferedPosition: buffered,
+                                      captureFrame: _s._captureSeekPreview,
+                                      onSeek: (t) {
+                                        unawaited(_s._seekTo(t));
+                                        _s._onMouseMove();
+                                      },
+                                      onDragStart: () =>
+                                          _s._hideTimer?.cancel(),
+                                      onDragEnd: _s._startHideTimer,
+                                    ),
                                   ),
+                                  const SizedBox(width: 12),
+                                  PlayerTimeRange(
+                                    position: position,
+                                    duration: duration,
+                                  ),
+                                ],
+                              ),
                             ),
                       ),
                 ),
@@ -457,8 +468,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                       child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Flexible(
-                      child: Row(
+                    Row(
                       children: [
                         ValueListenableBuilder<bool>(
                           valueListenable: _s._isPlayingNotifier,
@@ -488,23 +498,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                           const SizedBox(width: 2),
                           nextEp,
                         ],
-                        const SizedBox(width: 8),
-                        ValueListenableBuilder<Duration>(
-                          valueListenable: _s._positionNotifier,
-                          builder: (context, pos, _) =>
-                              ValueListenableBuilder<Duration>(
-                                valueListenable: _s._durationNotifier,
-                                builder: (context, dur, _) => PlayerTimeRange(
-                                  position: pos,
-                                  duration: dur,
-                                ),
-                              ),
-                        ),
-                      ],
-                    ),
-                    ),
-                    Row(
-                      children: [
+                        const SizedBox(width: 6),
                         ValueListenableBuilder<double>(
                           valueListenable: _s._volumeNotifier,
                           builder: (context, vol, _) => PlayerVolumeControl(
@@ -517,7 +511,10 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                             onDragEnd: _s._startHideTimer,
                           ),
                         ),
-                        const SizedBox(width: 2),
+                      ],
+                    ),
+                    Row(
+                      children: [
                         if (hasTorrentSources) ...[
                           PlayerFlatIconButton(
                             icon: Icons.link_rounded,

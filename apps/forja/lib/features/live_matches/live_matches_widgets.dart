@@ -116,9 +116,7 @@ class _LiveMatchesResolveModePill extends StatelessWidget {
     final bg = engine
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
         : Colors.white.withValues(alpha: 0.06);
-    final fg = engine
-        ? ForjaShellColors.brandGreen
-        : cinematic.textSecondary;
+    final fg = engine ? ForjaShellColors.brandGreen : cinematic.textSecondary;
     final border = engine
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
         : ForjaShellColors.borderSubtle.withValues(alpha: 0.55);
@@ -253,8 +251,8 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
   );
 
   List<_LiveMatchesServer> get _servers => _liveMatchesServersForSurface(
-        tv: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
-      );
+    tv: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+  );
 
   @override
   void initState() {
@@ -389,9 +387,7 @@ class _LiveMatchesServerSheetOptionState
         _liveMatchesServerLabel(widget.server),
         style: TextStyle(
           color: Colors.white,
-          fontWeight: highlight || selected
-              ? FontWeight.bold
-              : FontWeight.w600,
+          fontWeight: highlight || selected ? FontWeight.bold : FontWeight.w600,
         ),
       ),
       subtitle: Text(
@@ -440,7 +436,9 @@ class _LiveMatchesServerSheetOptionState
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange: mouseHover ? (hovered) => setState(() => _hovered = hovered) : null,
+      onHoverChange: mouseHover
+          ? (hovered) => setState(() => _hovered = hovered)
+          : null,
       child: row,
     );
   }
@@ -626,10 +624,7 @@ class _LiveMatchCornerBadge extends StatelessWidget {
     final padH = shellScaled(context, 8).clamp(6.0, 10.0);
     final padV = shellScaled(context, 3).clamp(2.0, 4.0);
     final radius = shellScaled(context, 6).clamp(4.0, 8.0);
-    final verticalInset = shellScaled(
-      context,
-      bottom ?? top,
-    ).clamp(6.0, 10.0);
+    final verticalInset = shellScaled(context, bottom ?? top).clamp(6.0, 10.0);
     final bg = color ?? (live ? Colors.red.shade700 : Colors.black54);
 
     return Positioned(
@@ -792,7 +787,7 @@ class _IptvSportsChannelsPanel {
     String panelTitle = 'Forja Sports',
     IptvController? iptvCtrl,
     required void Function(IptvPlaySource picked, List<IptvPlaySource> all)
-        onChannelSelected,
+    onChannelSelected,
   }) {
     dismiss();
     final controller = _IptvSportsChannelsPanelController(
@@ -851,7 +846,8 @@ class _IptvSportsChannelsOverlay extends StatefulWidget {
       _IptvSportsChannelsOverlayState();
 }
 
-class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> {
+class _IptvSportsChannelsOverlayState
+    extends State<_IptvSportsChannelsOverlay> {
   bool _open = false;
   int _lastSourceCount = 0;
   bool _didInitialFocus = false;
@@ -924,12 +920,15 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
     final status = !showInlineStatus
         ? null
         : ctrl.searching
-            ? _IptvSportsPanelCopy.partial(sources.length, ctrl.searchPhase)
-            : (sources.isEmpty ? null : _IptvSportsPanelCopy.ready(sources.length));
+        ? _IptvSportsPanelCopy.partial(sources.length, ctrl.searchPhase)
+        : (sources.isEmpty ? null : _IptvSportsPanelCopy.ready(sources.length));
 
     final matchMeta = [
       if (match.categoryLabel.trim().isNotEmpty) match.categoryLabel.trim(),
-      if (match.isLive) 'Live now' else if (match.timeLabel.isNotEmpty) match.timeLabel,
+      if (match.isLive)
+        'Live now'
+      else if (match.timeLabel.isNotEmpty)
+        match.timeLabel,
     ].join(' · ');
 
     final body = Column(
@@ -1006,69 +1005,73 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
         Expanded(
           child: sources.isEmpty
               ? (ctrl.searching
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 28,
-                              height: 28,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: ForjaShellColors.sectionAccent,
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: ForjaShellColors.sectionAccent,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _IptvSportsPanelCopy.searching(ctrl.searchPhase),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: ForjaShellColors.cinematic.textPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
+                              const SizedBox(height: 16),
+                              Text(
+                                _IptvSportsPanelCopy.searching(
+                                  ctrl.searchPhase,
+                                ),
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: ForjaShellColors.cinematic.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Matching channels from your portal',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: ForjaShellColors.cinematic.textSecondary,
-                                fontSize: 11,
+                              const SizedBox(height: 6),
+                              Text(
+                                'Matching channels from your portal',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color:
+                                      ForjaShellColors.cinematic.textSecondary,
+                                  fontSize: 11,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    )
-                  : Align(
-                      alignment: Alignment.topCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 32),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.search_off_rounded,
-                              size: 36,
-                              color: ForjaShellColors.cinematic.textSecondary
-                                  .withValues(alpha: 0.45),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              _IptvSportsPanelCopy.empty,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: ForjaShellColors.cinematic.textSecondary,
-                                fontSize: 13,
+                      )
+                    : Align(
+                        alignment: Alignment.topCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.search_off_rounded,
+                                size: 36,
+                                color: ForjaShellColors.cinematic.textSecondary
+                                    .withValues(alpha: 0.45),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 12),
+                              Text(
+                                _IptvSportsPanelCopy.empty,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color:
+                                      ForjaShellColors.cinematic.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ))
+                      ))
               : Builder(
                   builder: (context) {
                     final list = ListView.builder(
@@ -1317,17 +1320,24 @@ class _IptvSportsChannelSheetRowState
                       subtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                      ),
                     ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (badge != null) ...[
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
-                        color: src.tierBadgeColor ?? ForjaShellColors.sectionAccent,
+                        color:
+                            src.tierBadgeColor ??
+                            ForjaShellColors.sectionAccent,
                         borderRadius: BorderRadius.circular(5),
                       ),
                       child: Text(
@@ -1361,6 +1371,7 @@ class _LiveMatchesEmbedPlayerScreen extends StatefulWidget {
   final String badgeLabel;
   final String referer;
   final String origin;
+
   /// HLS proxy Referer/Origin — embed host when CDN token differs from [referer].
   final String? proxyReferer;
 
@@ -1394,9 +1405,11 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _exiting = false;
   bool _playing = false;
   bool _muted = false;
+
   /// Chrome stays visible (WebView would steal D-pad if hidden). First Back
   /// arms; second Back exits. Back icon still exits immediately.
   bool _tvBackExitArmed = false;
+
   /// True when we paused because the app left the foreground (not user pause).
   bool _pausedByLifecycle = false;
 
@@ -2214,7 +2227,9 @@ class _LiveMatchesEmbedPlayerScreenState
       return;
     }
 
-    debugPrint('[LiveMatches] streamed Android handoff (/hls-proxy) → $playUrl');
+    debugPrint(
+      '[LiveMatches] streamed Android handoff (/hls-proxy) → $playUrl',
+    );
     if (!mounted || _androidHandoffAbandoned) return;
     final title = widget.title;
     final subtitle = widget.subtitle;
@@ -2495,7 +2510,8 @@ class _LiveMatchesEmbedPlayerScreenState
   bool _handleEmbedKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
     final key = event.logicalKey;
-    final isBack = key == LogicalKeyboardKey.goBack ||
+    final isBack =
+        key == LogicalKeyboardKey.goBack ||
         key == LogicalKeyboardKey.browserBack;
     final isEscape = key == LogicalKeyboardKey.escape;
     if (!isBack && !isEscape) return false;
@@ -2635,11 +2651,7 @@ class _LiveMatchesEmbedPlayerScreenState
     final bar = Material(
       color: Colors.transparent,
       child: Row(
-        children: [
-          _buildBackControl(),
-          const Spacer(),
-          _buildTrailingChrome(),
-        ],
+        children: [_buildBackControl(), const Spacer(), _buildTrailingChrome()],
       ),
     );
     return Positioned(
@@ -2725,10 +2737,7 @@ class _LiveMatchesEmbedPlayerScreenState
               children: [
                 if (showLoadingChrome) ...[
                   SizedBox(height: chromeInset),
-                  ColoredBox(
-                    color: Colors.black,
-                    child: _buildLoadingTopBar(),
-                  ),
+                  ColoredBox(color: Colors.black, child: _buildLoadingTopBar()),
                 ],
                 Expanded(
                   child: Stack(
@@ -2858,8 +2867,7 @@ class _LiveMatchesEmbedPlayerScreenState
                               // User already tapped the card — unmute before
                               // autoplay so WebView2 does not stick muted.
                               await ctrl.evaluateJavascript(
-                                source:
-                                    'window.__forjaMediaMuted = false;',
+                                source: 'window.__forjaMediaMuted = false;',
                               );
                               await ctrl.evaluateJavascript(
                                 source: _autoplayJs,
@@ -2936,7 +2944,8 @@ class _LiveMatchesEmbedPlayerScreenState
                           if (liveEmbedAllowsMainFrameNavigation(
                             url: url,
                             embedUrl: embedUrl,
-                            allowEmbedHostAsMainFrame: _androidNativeHandoff &&
+                            allowEmbedHostAsMainFrame:
+                                _androidNativeHandoff &&
                                 _androidProfile.allowEmbedHostAsMainFrame,
                             wrapperReferer: widget.referer,
                           )) {
@@ -3043,10 +3052,7 @@ class _LiveMatchesEmbedPlayerScreenState
               body = TvFocusGraph(tabId: _tvTabId, child: body);
             }
             return Stack(
-              children: [
-                body,
-                DesktopWindowChrome.overlayDragStrip(),
-              ],
+              children: [body, DesktopWindowChrome.overlayDragStrip()],
             );
           },
         ),
@@ -3230,8 +3236,9 @@ class _MergedPpvStreamRowState extends State<_MergedPpvStreamRow> {
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange:
-          policy.scaleOnHover ? (hovered) => setState(() => _hovered = hovered) : null,
+      onHoverChange: policy.scaleOnHover
+          ? (hovered) => setState(() => _hovered = hovered)
+          : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
         child: Row(
@@ -3445,12 +3452,9 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
   Widget build(BuildContext context) {
     final title = widget.pendingResolve
         ? (widget.sourceLabel.isNotEmpty
-            ? widget.sourceLabel
-            : widget.serverLabel)
-        : _StreamedStreamSheet.streamTitle(
-            widget.stream,
-            widget.sourceLabel,
-          );
+              ? widget.sourceLabel
+              : widget.serverLabel)
+        : _StreamedStreamSheet.streamTitle(widget.stream, widget.sourceLabel);
     final policy = ShellScope.inputPolicyOf(context);
     final active = ShellInputPolicy.interactiveActive(
       policy,
@@ -3475,8 +3479,9 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange:
-          policy.scaleOnHover ? (hovered) => setState(() => _hovered = hovered) : null,
+      onHoverChange: policy.scaleOnHover
+          ? (hovered) => setState(() => _hovered = hovered)
+          : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
         child: Row(
@@ -3648,8 +3653,10 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
         m.sportMatchGame != null;
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
     // My IPTV: match channels anytime today (pregame feeds exist).
-    final canPlay = widget.playableOverride ??
-        (hasSources && (m.isLive || m.isIptvSports || m.sportMatchGame != null));
+    final canPlay =
+        widget.playableOverride ??
+        (hasSources &&
+            (m.isLive || m.isIptvSports || m.sportMatchGame != null));
     final policy = ShellScope.inputPolicyOf(context);
     final tv = ShellScope.metricsOf(context).usesTvDensity;
     final active =
@@ -3678,11 +3685,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
       if (m.isLive)
         _LiveMatchCornerBadge(label: '● LIVE', live: true, top: tv ? 6 : 8)
       else if (m.timeLabel.isNotEmpty)
-        _LiveMatchCornerBadge(
-          label: m.timeLabel,
-          live: false,
-          top: tv ? 6 : 8,
-        ),
+        _LiveMatchCornerBadge(label: m.timeLabel, live: false, top: tv ? 6 : 8),
       if (!hasSources)
         Positioned(
           bottom: 6,
@@ -3995,11 +3998,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       if (showLive)
         _LiveMatchCornerBadge(label: '● LIVE', live: true, top: tv ? 6 : 8)
       else if (s.timeLabel.isNotEmpty)
-        _LiveMatchCornerBadge(
-          label: s.timeLabel,
-          live: false,
-          top: tv ? 6 : 8,
-        ),
+        _LiveMatchCornerBadge(label: s.timeLabel, live: false, top: tv ? 6 : 8),
       if (!tv && s.viewers > 0)
         Positioned(
           right: 8,

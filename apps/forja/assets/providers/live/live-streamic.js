@@ -24,7 +24,7 @@ function resolveUrl(ctx, url) {
     return [{ url: url, headers: { Referer: ref, Origin: ref.replace(/\/$/, ''), 'User-Agent': ua() } }];
   }
   if (url) {
-    return [{ sniffPending: true, embedUrl: url, referer: ref }];
+    return [{ webviewOnly: true, embedUrl: url, referer: ref }];
   }
   return [];
 }

@@ -16,6 +16,19 @@ bool iptvUseTvFocus(BuildContext context) {
   return resolveShellProfile(context) == ShellProfile.tv;
 }
 
+/// Leanback TV (no mouse) — not desktop D-pad focus (which also uses mood chips).
+bool iptvLeanbackOnly(BuildContext context) {
+  final policy = ShellScope.maybeOf(context)?.inputPolicy;
+  if (policy != null) {
+    return policy.useFocusableMoodChips && !policy.scaleOnHover;
+  }
+  return resolveShellProfile(context) == ShellProfile.tv;
+}
+
+/// Volume, fullscreen, PiP — desktop + phone; hidden on leanback TV.
+bool iptvShowPointerChrome(BuildContext context) =>
+    !iptvLeanbackOnly(context);
+
 /// D-pad / hover active state for IPTV focusable controls.
 bool iptvFocusActive(
   BuildContext context, {

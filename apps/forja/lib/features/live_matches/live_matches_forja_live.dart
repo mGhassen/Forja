@@ -45,8 +45,10 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
     if (_forjaLiveAnyLoading) return false;
     return _streamedMatchesForEvent(match, _s._streamedMatches).any(
       (m) =>
-          m.isForjaLive &&
-          (m.sources.isNotEmpty || m.inlineStreams.isNotEmpty),
+          m.sources.isNotEmpty ||
+          m.inlineStreams.isNotEmpty ||
+          m.isStremio ||
+          m.sportMatchGame != null,
     );
   }
 
@@ -69,6 +71,7 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
   }
 
   void _resetForjaLiveCatalogState() {
+    EngineService.instance.cancelLiveCatalog();
     _s._forjaLiveLoadGen++;
     _s._forjaLivePluginFilter = 'all';
     _s._forjaLivePluginLoads = {};

@@ -120,10 +120,12 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   TabController? _tabController;
   _LiveMatchesServer _server = _LiveMatchesServer.all;
+
   /// False until [_restoreServerPreference] finishes — avoids fetching All/Stremio before saved server applies.
   bool _serverHydrated = false;
   List<_DamiTvStream> _damiTvStreams = [];
   List<_StreamedMatch> _streamedMatches = [];
+
   /// ESPN scoreboard payloads for My IPTV (enrich on play).
   List<Map<String, dynamic>> _espnGames = [];
   String? _lastSyncedIptvPortalKey;
@@ -133,20 +135,19 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
 
   static const _topBarServersIndex = 0;
+
   /// Used when My IPTV portal chip is hidden (Servers → Refresh → View).
   static const _topBarRefreshIndexBase = 1;
   static const _topBarViewIndexBase = 2;
 
-  bool get _showIptvPortalTopBar =>
-      _server == _LiveMatchesServer.iptvSports;
+  bool get _showIptvPortalTopBar => _server == _LiveMatchesServer.iptvSports;
 
   /// Portals sits top-right (after Refresh), like IPTV.
   int get _topBarRefreshIndex => _topBarRefreshIndexBase;
 
   int get _topBarPortalIndex => 2;
 
-  int get _topBarViewIndex =>
-      _showIptvPortalTopBar ? 3 : _topBarViewIndexBase;
+  int get _topBarViewIndex => _showIptvPortalTopBar ? 3 : _topBarViewIndexBase;
 
   final FocusNode _refreshFocusNode = FocusNode(
     debugLabel: 'live-matches-refresh',
@@ -171,6 +172,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   @override
   void onShellTabHidden() {
     super.onShellTabHidden();
+    EngineService.instance.cancelLiveCatalog();
     _IptvSportsChannelsPanel.dismiss();
     _loadGen++;
     _forjaLiveLoadGen++;
@@ -211,8 +213,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
       unawaited(_restoreServerThenLoad());
     }
     // Android TV / leanback: cards only - no timeline canvas (mirrors IPTV).
-    if (ShellScope.inputPolicyOf(context).useFocusableMoodChips &&
-        _view != _LiveMatchesView.grid) {
+    if (_liveMatchesLeanbackOnly(context) && _view != _LiveMatchesView.grid) {
       _view = _LiveMatchesView.grid;
       _timelineAutoScrolled = false;
       _timelineHoveredBucketMs = null;
@@ -254,8 +255,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   Future<void> _restoreViewPreference() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted || _viewWasToggled) return;
-    // TV never restores timeline - cards-only surface.
-    if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+    // Leanback TV never restores timeline - cards-only surface.
+    if (_liveMatchesLeanbackOnly(context)) {
       if (_view != _LiveMatchesView.grid) {
         setState(() => _view = _LiveMatchesView.grid);
         _syncTimelineLiveTick();
@@ -316,10 +317,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
         }
       }
     }
-    final next = _liveMatchesClampServerForSurface(
-      saved ?? _server,
-      tv: tv,
-    );
+    final next = _liveMatchesClampServerForSurface(saved ?? _server, tv: tv);
     if (next == _server) return;
     setState(() => _server = next);
     // TV may clamp PPV/Streamed/Mut → All; persist so next launch stays valid.
@@ -335,7 +333,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   void _toggleView() {
     if (!mounted) return;
-    if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+    if (_liveMatchesLeanbackOnly(context)) return;
     _viewWasToggled = true;
     setState(() {
       _view = _view == _LiveMatchesView.grid

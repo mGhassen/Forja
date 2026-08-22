@@ -2,6 +2,10 @@ part of 'live_matches_screen.dart';
 
 // ─── Models ──────────────────────────────────────────────────────────────────
 
+/// Leanback TV — not desktop D-pad (which also uses focusable mood chips).
+bool _liveMatchesLeanbackOnly(BuildContext context) =>
+    ShellScope.metricsOf(context).usesTvDensity;
+
 /// Grid (card catalog) vs vertical timeline layout for the body.
 enum _LiveMatchesView { grid, timeline }
 
@@ -1888,32 +1892,6 @@ Future<String?> _liveEmbedCollectCookieHeader({
     debugPrint('[LiveMatches] Cookie harvest failed: $e');
     return null;
   }
-}
-
-/// Sniff the direct HLS/MP4 URL from a PPV embed, proxied so Referer applies
-/// to every segment request.
-Future<String?> _resolvePpvPlayUrl(String embedUrl) async {
-  debugPrint('[LiveMatches] Extracting PPV embed: $embedUrl');
-  final extracted = await StreamExtractor().extract(
-    embedUrl,
-    referer: _ppvReferer,
-    iframeWrapperBaseUrl: _ppvReferer,
-    timeout: const Duration(seconds: 25),
-  );
-  if (extracted == null || extracted.url.isEmpty) {
-    debugPrint('[LiveMatches] PPV extract failed - WebView fallback');
-    return null;
-  }
-
-  debugPrint('[LiveMatches] PPV extracted: ${extracted.url}');
-  final headers = _ppvEmbedStreamHeaders(embedUrl);
-
-  final proxy = LocalServerService();
-  await proxy.start();
-  if (proxy.port > 0) {
-    return proxy.getHlsProxyUrl(extracted.url, headers);
-  }
-  return extracted.url;
 }
 
 Future<List<_Sport>> _fetchStreamedSports() async {

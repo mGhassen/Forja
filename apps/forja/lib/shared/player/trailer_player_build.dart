@@ -362,10 +362,21 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                           onTvFocusRight: () => _s._subsFocus.requestFocus(),
                         ),
                       )
-                    : CustomSeekbar(
-                        duration: _s._duration,
-                        position: _s._position,
-                        onSeek: _s._seek,
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: CustomSeekbar(
+                              duration: _s._duration,
+                              position: _s._position,
+                              onSeek: _s._seek,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          PlayerTimeRange(
+                            position: _s._position,
+                            duration: _s._duration,
+                          ),
+                        ],
                       ),
                 const SizedBox(height: 10),
                 if (tvFocus)
@@ -612,16 +623,12 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 unawaited(_s._skip(10));
               },
             ),
-            const SizedBox(width: 8),
-            PlayerTimeRange(
-              position: _s._position,
-              duration: _s._duration,
-            ),
+            const SizedBox(width: 6),
+            _buildVolumeControl(tvFocus: false),
           ],
         ),
         Row(
           children: [
-            _buildVolumeControl(tvFocus: false),
             const SizedBox(width: 2),
             PlayerFlatIconButton(
               icon: Icons.subtitles_outlined,

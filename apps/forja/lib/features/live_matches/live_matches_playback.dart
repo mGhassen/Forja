@@ -204,9 +204,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
                   _StreamedStreamChoice(catalogMatch: m, stream: stream),
             ];
           } catch (e) {
-            debugPrint(
-              '[LiveMatches] resolve ${ref.source}/${ref.id}: $e',
-            );
+            debugPrint('[LiveMatches] resolve ${ref.source}/${ref.id}: $e');
             return const <_StreamedStreamChoice>[];
           }
         }());
@@ -837,57 +835,6 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
 
     if (await _tryEnginePpvOpen(s)) return;
 
-    // embedindia feeds only play inside their embed page (ppv.is uses the same
-    // iframe). Native mpv cannot reuse the sniffed m3u8 token.
-    if (_ppvEmbedRequiresWebView(s.iframe)) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => _LiveMatchesEmbedPlayerScreen(
-            embedUrl: s.iframe,
-            title: s.name,
-            subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
-            badgeLabel: 'PPV',
-          ),
-        ),
-      );
-      return;
-    }
-
-    String? playUrl;
-    final ok = await _runWithCancellableLoading(
-      'Connecting to stream…',
-      () async {
-        try {
-          playUrl = await _resolvePpvPlayUrl(s.iframe);
-        } catch (e) {
-          debugPrint('[LiveMatches] PPV resolve error: $e');
-        }
-      },
-    );
-    if (!ok) return;
-
-    if (playUrl != null) {
-      await IptvPtPlayerScreen.open(
-        context,
-        IptvPtPlayerScreen(
-          sources: [
-            IptvPlaySource(
-              url: playUrl!,
-              label: 'PPV',
-              liveSourceKind: IptvLiveSourceKind.liveEngine,
-            ),
-          ],
-          title: s.name,
-          subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
-          engineContext: BuiltInPlayerContext.live,
-          liveSourceKind: IptvLiveSourceKind.liveEngine,
-        ),
-      );
-      return;
-    }
-
-    ForjaToast.info('Opening embed player…');
     if (!mounted) return;
     await Navigator.push(
       context,

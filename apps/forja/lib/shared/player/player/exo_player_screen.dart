@@ -1728,15 +1728,27 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                             },
                           ),
                         )
-                      : PlayerTouchSeekBar(
-                          duration: _duration,
-                          position: _position,
-                          bufferedPosition: _buffered,
-                          onSeek: (t) {
-                            unawaited(_seekTo(t));
-                          },
-                          onDragStart: () => _hideTimer?.cancel(),
-                          onDragEnd: _startHideTimer,
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: PlayerTouchSeekBar(
+                                duration: _duration,
+                                position: _position,
+                                bufferedPosition: _buffered,
+                                onSeek: (t) {
+                                  unawaited(_seekTo(t));
+                                },
+                                onDragStart: () => _hideTimer?.cancel(),
+                                onDragEnd: _startHideTimer,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            PlayerTimeRange(
+                              position: _position,
+                              duration: _duration,
+                              fontSize: 11,
+                            ),
+                          ],
                         ),
                   const SizedBox(height: 8),
                   if (tvFocus)
@@ -1785,12 +1797,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                               onInteraction: _startHideTimer,
                               onDragStart: () => _hideTimer?.cancel(),
                               onDragEnd: _startHideTimer,
-                            ),
-                            const SizedBox(width: 6),
-                            PlayerTimeRange(
-                              position: _position,
-                              duration: _duration,
-                              fontSize: 11,
                             ),
                           ],
                         ),

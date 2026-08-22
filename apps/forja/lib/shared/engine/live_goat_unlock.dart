@@ -37,12 +37,10 @@ class LiveGoatUnlock {
 
     final slotSource = (slot['source'] ?? '').toString();
     if (slotSource == 'golf') {
-      final url = await sniffEmbed(
-        embedUrl: embed,
-        referer: '${slot['origin']}/',
+      debugPrint(
+        '[LiveGoatUnlock] golf embed has no native unlock — use Sniff embed',
       );
-      if (url == null || url.isEmpty) return null;
-      return (url: url, headers: _embedHeaders(slot['origin']?.toString()));
+      return null;
     }
 
     final origin = (slot['origin'] ?? embedOrigin).toString().replaceAll(
@@ -189,16 +187,9 @@ class LiveGoatUnlock {
         debugPrint('[LiveGoatUnlock] node unlock failed: $e');
       }
     } else {
-      debugPrint('[LiveGoatUnlock] node not found — sniff fallback');
+      debugPrint('[LiveGoatUnlock] node not found');
     }
-
-    final origin = embedOrigin.endsWith('/')
-        ? embedOrigin.substring(0, embedOrigin.length - 1)
-        : embedOrigin;
-    return sniffEmbed(
-      embedUrl: '$origin/embed/$path',
-      referer: '$origin/',
-    );
+    return null;
   }
 
   static Future<String?> sniffEmbed({
