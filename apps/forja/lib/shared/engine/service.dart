@@ -151,7 +151,7 @@ class EngineService {
     return out;
   }
 
-  Future<EnginePlugin?> _pluginById(String id) async {
+  Future<EnginePlugin?> pluginById(String id) async {
     for (final pack in await listPacks()) {
       for (final p in pack.plugins) {
         if (p.id == id) return p;
@@ -167,9 +167,11 @@ class EngineService {
       for (final p in await listEnabledLivePlugins()) p.id,
     };
     final out = <EnginePlugin>[];
+    const serverTabCatalogIds = {'catalog-streamed', 'catalog-ppv'};
     for (final pack in await listPacks()) {
       for (final p in pack.plugins) {
         if (!p.isLiveCatalog || !p.isHttp || !p.enabled) continue;
+        if (serverTabCatalogIds.contains(p.id)) continue;
         final providerId = (p.config['providerId'] ?? '').toString().trim();
         if (providerId.startsWith('live-')) {
           if (enabledLiveSport.contains(providerId)) out.add(p);
@@ -667,6 +669,7 @@ class EngineService {
     Map<String, dynamic> params = const {},
     Duration timeout = const Duration(seconds: 45),
   }) async {
+    if (action != 'resolve') return [];
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return [];
@@ -740,7 +743,7 @@ class EngineService {
 
     final providerId = (catalogPlugin.config['providerId'] ?? '').toString();
     if (providerId.startsWith('live-')) {
-      final provider = await _pluginById(providerId);
+      final provider = await pluginById(providerId);
       if (provider != null) {
         final providerOverlay =
             ProviderRuntimeConfig.instance.engine[provider.id] ?? const {};

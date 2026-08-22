@@ -1257,6 +1257,8 @@ void main() {
         expect(p.isVodCatalog, isFalse);
       }
       const catalogIds = [
+        'catalog-streamed',
+        'catalog-ppv',
         'catalog-timstreams',
         'catalog-streamfree',
         'catalog-watchfooty',
@@ -1273,6 +1275,19 @@ void main() {
         await rootBundle.loadString('assets/plugins/catalog/timstreams.js'),
         contains('function extract(ctx)'),
       );
+      expect(
+        await rootBundle.loadString('assets/plugins/catalog/streamed.js'),
+        contains('/api/matches/all'),
+      );
+      expect(
+        await rootBundle.loadString('assets/plugins/catalog/ppv.js'),
+        contains('api.ppv.st'),
+      );
+      for (final id in ['live-streamed', 'live-ppv', 'live-timstreams']) {
+        final p = plugins.firstWhere((e) => e.id == id);
+        final src = await rootBundle.loadString('assets/plugins/${p.entry}');
+        expect(src, contains('action !== \'resolve\') return []'));
+      }
       expect(
         await rootBundle.loadString('assets/plugins/catalog/espn.js'),
         contains('LEAGUE_ENDPOINTS'),

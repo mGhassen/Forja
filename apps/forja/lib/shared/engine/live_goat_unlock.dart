@@ -83,7 +83,7 @@ class LiveGoatUnlock {
           .join();
       final m3u8 = await unlock(slot: slot, goat: goat, bodyHex: bodyHex);
       if (m3u8 == null || m3u8.isEmpty) return null;
-      return (url: m3u8, headers: _embedHeaders(origin));
+      return (url: m3u8, headers: playbackHeadersForSlot(slot));
     } catch (e) {
       debugPrint('[LiveGoatUnlock] native resolve failed: $e');
       return null;
@@ -93,6 +93,57 @@ class LiveGoatUnlock {
   static Map<String, String> _embedHeaders(String? origin) {
     final o = (origin ?? _embedOrigin).replaceAll(RegExp(r'/+$'), '');
     return {'Referer': '$o/', 'Origin': o, 'User-Agent': _ua};
+  }
+
+  /// CDN Referer/Origin for GOAT-unlocked `strmd.st` playback.
+  ///
+  /// Each streamed.pk [source] validates differently — admin (`rtmp/stream`
+  /// master playlists) must keep embed origin root; echo uses the catalog site;
+  /// delta media playlists use the embed page referer.
+  static Map<String, String> playbackHeadersForSlot(Map<String, dynamic> slot) {
+    final origin = (slot['origin'] ?? _embedOrigin).toString().replaceAll(
+      RegExp(r'/+$'),
+      '',
+    );
+    final source = (slot['source'] ?? '').toString().toLowerCase();
+    final path = (slot['path'] ?? '').toString();
+    switch (source) {
+      case 'admin':
+        return _embedHeaders(origin);
+      case 'echo':
+        return const {
+          'Referer': 'https://streamed.pk/',
+          'Origin': 'https://streamed.pk',
+          'User-Agent': _ua,
+        };
+      case 'delta':
+        if (path.isNotEmpty) {
+          return {
+            'Referer': '$origin/embed/$path',
+            'Origin': origin,
+            'User-Agent': _ua,
+          };
+        }
+        return _embedHeaders(origin);
+      default:
+        if (path.isNotEmpty) {
+          return {
+            'Referer': '$origin/embed/$path',
+            'Origin': origin,
+            'User-Agent': _ua,
+          };
+        }
+        return _embedHeaders(origin);
+    }
+  }
+
+  /// Media playlists (`/delta/stream/`, `/echo/stream/`) ship `/m/…` segments
+  /// with long signed query strings — open the catalog URL directly with
+  /// [httpHeaders] instead of `/hls-proxy` rewrite. Admin master (`/rtmp/stream/`)
+  /// stays on the proxy path.
+  static bool preferDirectEnginePlayback(String m3u8Url) {
+    final path = (Uri.tryParse(m3u8Url.trim())?.path ?? '').toLowerCase();
+    return path.contains('/delta/stream/') || path.contains('/echo/stream/');
   }
 
   static Map<String, dynamic>? _parseEmbedSlot(

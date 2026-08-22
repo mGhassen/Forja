@@ -43,26 +43,10 @@ async function resolveByEvent(ctx, cfg) {
 }
 
 async function extract(ctx) {
+  var action = String(ctx.action || 'resolve');
+  if (action !== 'resolve') return [];
   var cfg = ctx.config || {};
-  var action = String(ctx.action || 'catalog');
-  var pluginId = 'live-streamic';
-
-  if (action === 'resolve') {
-    var direct = String(ctx.url || ctx.embedUrl || '').trim();
-    if (direct) return resolveUrl(ctx, direct);
-    return resolveByEvent(ctx, cfg);
-  }
-
-  var list = await fetchList(ctx, cfg);
-  return list.map(function (m, i) {
-    return {
-      id: 'sic_' + String(m.id || i),
-      title: String(m.title || m.name || 'Streamic'),
-      category: String(m.sport || m.category || 'other').toLowerCase(),
-      date: Date.now(),
-      sources: [{ source: 'streamic', id: String(m.id || i) }],
-      catalog: 'forja_live',
-      pluginId: pluginId,
-    };
-  });
+  var direct = String(ctx.url || ctx.embedUrl || '').trim();
+  if (direct) return resolveUrl(ctx, direct);
+  return resolveByEvent(ctx, cfg);
 }

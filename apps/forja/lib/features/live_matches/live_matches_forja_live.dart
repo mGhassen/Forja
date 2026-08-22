@@ -28,7 +28,8 @@ class _ForjaLivePluginLoad {
   );
 }
 
-mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
+mixin _LiveMatchesForjaLive
+    on ConsumerState<LiveMatchesScreen>, _LiveMatchesData {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   bool get _usesForjaLiveLazyCatalog =>
@@ -134,40 +135,15 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
     _rebuildSportTabsFromCurrentMatches();
   }
 
-  Future<Map<String, dynamic>> _liveCatalogRustConfig(
+  Future<Map<String, dynamic>> _liveCatalogExtraConfig(
     EnginePlugin catalog,
   ) async {
-    final overlay =
-        ProviderRuntimeConfig.instance.engine[catalog.id] ?? const {};
-    var config = mergeEngineConfig(catalog.config, overlay);
-
-    final providerId = (catalog.config['providerId'] ?? '').toString();
-    if (providerId.startsWith('live-')) {
-      final provider = await EngineService.instance.listPacks().then((packs) async {
-        for (final pack in packs) {
-          for (final p in pack.plugins) {
-            if (p.id == providerId) return p;
-          }
-        }
-        return null;
-      });
-      if (provider != null) {
-        final providerOverlay =
-            ProviderRuntimeConfig.instance.engine[provider.id] ?? const {};
-        config = mergeEngineConfig(provider.config, config);
-        config = mergeEngineConfig(config, providerOverlay);
-        config['providerId'] = providerId;
-      }
-    }
-
-    if (catalog.id == 'catalog-espn') {
-      final sportsConfig = await LiveMatchesIptvSportsConfig.load();
-      final leagues = sportsConfig.leagues.isEmpty
-          ? LiveMatchesIptvSportsConfig.allLeagues
-          : sportsConfig.leagues;
-      config = {...config, 'leagues': leagues, 'providerId': 'catalog-espn'};
-    }
-    return config;
+    if (catalog.id != 'catalog-espn') return const {};
+    final sportsConfig = await LiveMatchesIptvSportsConfig.load();
+    final leagues = sportsConfig.leagues.isEmpty
+        ? LiveMatchesIptvSportsConfig.allLeagues
+        : sportsConfig.leagues;
+    return {'leagues': leagues, 'providerId': 'catalog-espn'};
   }
 
   Future<void> _loadForjaLiveCatalogLazy() async {
@@ -200,11 +176,11 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
       final filterId = EngineService.catalogFilterId(catalog);
       try {
-        final config = await _liveCatalogRustConfig(catalog);
+        final extraConfig = await _liveCatalogExtraConfig(catalog);
         if (!mounted || gen != _s._forjaLiveLoadGen) return;
-        final rows = await LiveMatchesEngine.fetchRustCatalog(
-          catalogId: catalog.id,
-          config: config,
+        final rows = await EngineService.instance.runLiveCatalog(
+          catalogPlugin: catalog,
+          extraConfig: extraConfig,
         );
         final matches = rows
             .where(_forjaLiveCatalogRowVisible)
@@ -249,19 +225,6 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
   void _deferTabControllerDispose(TabController? ctrl) {
     if (ctrl == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => ctrl.dispose());
-  }
-
-  void _releaseLiveMatchesItemFocusIfHeld() {
-    if (!ShellTvFocusCoordinator.tabHasAttachedFocus(
-      _LiveMatchesScreenState._tabId,
-    )) {
-      return;
-    }
-    final primary = FocusManager.instance.primaryFocus;
-    if (primary == null) return;
-    try {
-      primary.unfocus();
-    } catch (_) {}
   }
 
   bool _sportCategoryIdsEqual(List<_Sport> a, List<_Sport> b) {

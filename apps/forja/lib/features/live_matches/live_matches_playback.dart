@@ -1,6 +1,7 @@
 part of 'live_matches_screen.dart';
 
-mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
+mixin _LiveMatchesPlayback
+    on ConsumerState<LiveMatchesScreen>, _LiveMatchesData {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   /// Leanback TV: never offer PPV / Streamed / Mut embed rows — only native.
@@ -658,10 +659,10 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     Map<String, String> headers = const {},
     String label = 'Live',
   }) async {
-    final playUrl = await LiveMatchesEngine.proxyPlayUrl(
-      url: url,
-      headers: headers,
-    );
+    final direct = LiveGoatUnlock.preferDirectEnginePlayback(url);
+    final playUrl = direct
+        ? url
+        : await LiveMatchesEngine.proxyPlayUrl(url: url, headers: headers);
     if (!mounted) return;
     if (playUrl == null || playUrl.isEmpty) {
       LiveMatchesEngine.engineResolveFailed();
@@ -675,6 +676,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
           IptvPlaySource(
             url: playUrl,
             label: label,
+            headers: direct ? headers : const {},
             liveSourceKind: IptvLiveSourceKind.liveEngine,
           ),
         ],

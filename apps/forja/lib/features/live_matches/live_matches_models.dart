@@ -1934,16 +1934,11 @@ Future<List<_Sport>> _fetchStreamedSports() async {
 
 Future<List<_StreamedMatch>> _fetchStreamedMatches() async {
   try {
-    final raw = await runLiveMatchesFetchJson(
-      jsonEncode({'action': 'streamed_matches'}),
-    );
-    final parsed = jsonDecode(raw) as Map<String, dynamic>;
-    if (parsed.containsKey('error')) return [];
-    final list = parsed['items'] as List? ?? [];
+    final list = await LiveMatchesEngine.fetchServerCatalog('catalog-streamed');
     return list
         .map((m) {
           try {
-            return _StreamedMatch.fromJson(m as Map<String, dynamic>);
+            return _StreamedMatch.fromJson(m);
           } catch (_) {
             return null;
           }
@@ -2832,18 +2827,38 @@ Future<List<_StreamedStream>> _fetchStreamedStreams(
   }
 }
 
+_DamiTvStream _damiTvFromPpvCatalogRow(Map<String, dynamic> row) {
+  final sources = row['sources'] as List?;
+  final src = sources != null && sources.isNotEmpty
+      ? Map<String, dynamic>.from(sources.first as Map)
+      : const <String, dynamic>{};
+  final rawId = (src['id'] ?? row['id'] ?? '')
+      .toString()
+      .replaceFirst(RegExp(r'^ppv_'), '');
+  final categoryName = (row['category_name'] ?? row['category'] ?? '')
+      .toString();
+  return _DamiTvStream(
+    id: rawId,
+    name: (row['title'] ?? '').toString(),
+    poster: (row['poster'] ?? '').toString(),
+    startsAt: (row['starts_at'] as num?)?.toInt() ?? 0,
+    endsAt: (row['ends_at'] as num?)?.toInt() ?? 0,
+    categoryName: categoryName,
+    status: row['airing'] == true ? 'live' : '',
+    league: '',
+    viewers: (row['viewers'] as num?)?.toInt() ?? 0,
+    iframe: (row['iframe'] ?? src['iframe'] ?? '').toString(),
+    alwaysLive: row['always_live'] == true,
+  );
+}
+
 Future<List<_DamiTvStream>> _fetchDamiTvStreams() async {
   try {
-    final raw = await runLiveMatchesFetchJson(
-      jsonEncode({'action': 'damitv_streams'}),
-    );
-    final parsed = jsonDecode(raw) as Map<String, dynamic>;
-    if (parsed.containsKey('error')) return [];
-    final list = parsed['items'] as List? ?? [];
+    final list = await LiveMatchesEngine.fetchServerCatalog('catalog-ppv');
     return list
         .map((s) {
           try {
-            return _DamiTvStream.fromJson(s as Map<String, dynamic>);
+            return _damiTvFromPpvCatalogRow(s);
           } catch (_) {
             return null;
           }

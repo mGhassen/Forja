@@ -139,49 +139,6 @@ async function resolveEmbedSt(ctx, iframe, cfg) {
   }];
 }
 
-async function fetchStreams(ctx, cfg) {
-  var apis = cfg.apis || [
-    'https://api.ppv.st/api/streams',
-    'https://api.ppv.cx/api/streams',
-  ];
-  for (var i = 0; i < apis.length; i++) {
-    try {
-      var res = await ctx.fetch(apis[i], { headers: ppvHeaders(cfg) });
-      if (!res.ok) continue;
-      var data = await res.json();
-      if (!data || data.success !== true || !Array.isArray(data.streams)) continue;
-      var rows = [];
-      data.streams.forEach(function (cat) {
-        var category = String(cat.category || 'Other');
-        (cat.streams || []).forEach(function (s) {
-          if (s.id == null) return;
-          var starts = Number(s.starts_at || 0);
-          rows.push({
-            id: 'ppv_' + String(s.id),
-            title: String(s.name || ''),
-            category: category.toLowerCase().replace(/\s+/g, '-'),
-            date: starts > 0 ? starts * 1000 : 0,
-            poster: String(s.poster || ''),
-            popular: Number(s.viewers || 0) > 50,
-            airing: Number(s.viewers || 0) > 0,
-            sources: [{
-              source: 'ppv',
-              id: String(s.id),
-              iframe: String(s.iframe || ''),
-            }],
-            catalog: 'forja_live',
-            pluginId: 'live-ppv',
-          });
-        });
-      });
-      if (rows.length) return rows;
-    } catch (e) {
-      ctx.error(e);
-    }
-  }
-  return [];
-}
-
 function ppvPlayableUrl(data) {
   if (!data) return '';
   var fields = [data.m3u8, data.source, data.vip_mpegts];
@@ -226,8 +183,7 @@ async function resolvePpv(ctx, cfg) {
 }
 
 async function extract(ctx) {
-  var cfg = ctx.config || {};
-  var action = String(ctx.action || 'catalog');
-  if (action === 'resolve') return resolvePpv(ctx, cfg);
-  return fetchStreams(ctx, cfg);
+  var action = String(ctx.action || 'resolve');
+  if (action !== 'resolve') return [];
+  return resolvePpv(ctx, ctx.config || {});
 }

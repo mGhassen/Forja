@@ -1,9 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:rust/rust.dart';
 
 /// Live Matches engine plugin orchestration (RFC-065).
@@ -12,41 +9,6 @@ class LiveMatchesEngine {
 
   static Future<bool> isEngineResolveMode() async =>
       SettingsService().isLiveStreamResolveEngine();
-
-  /// One native Rust fetch per catalog plugin (`catalog-*`).
-  static Future<List<Map<String, dynamic>>> fetchRustCatalog({
-    required String catalogId,
-    Map<String, dynamic> config = const {},
-  }) async {
-    try {
-      final now = DateTime.now();
-      final date =
-          '${now.year.toString().padLeft(4, '0')}'
-          '${now.month.toString().padLeft(2, '0')}'
-          '${now.day.toString().padLeft(2, '0')}';
-      final raw = await runLiveMatchesFetchJson(
-        jsonEncode({
-          'action': 'forja_live_catalog',
-          'catalog_id': catalogId,
-          'config': {...config, 'date': date},
-        }),
-      );
-      final parsed = jsonDecode(raw) as Map<String, dynamic>;
-      if (parsed.containsKey('error')) {
-        debugPrint('[LiveMatches] $catalogId catalog error: ${parsed['error']}');
-        return [];
-      }
-      final list = parsed['items'] as List? ?? [];
-      return [
-        for (final item in list)
-          if (item is Map)
-            Map<String, dynamic>.from(item),
-      ];
-    } catch (e) {
-      debugPrint('[LiveMatches] $catalogId catalog fetch failed: $e');
-      return [];
-    }
-  }
 
   static Future<List<Map<String, dynamic>>> fetchCatalog() async {
     await EngineService.instance.ensureBundledInstalled();
@@ -57,12 +19,8 @@ class LiveMatchesEngine {
     final all = <Map<String, dynamic>>[];
     try {
       for (final catalog in catalogPlugins) {
-        final overlay =
-            ProviderRuntimeConfig.instance.engine[catalog.id] ?? const {};
-        final config = mergeEngineConfig(catalog.config, overlay);
-        final batch = await fetchRustCatalog(
-          catalogId: catalog.id,
-          config: config,
+        final batch = await EngineService.instance.runLiveCatalog(
+          catalogPlugin: catalog,
         );
         all.addAll(batch);
       }
@@ -71,6 +29,15 @@ class LiveMatchesEngine {
       debugPrint('[LiveMatchesEngine] catalog: $e');
       return all;
     }
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchServerCatalog(
+    String catalogId,
+  ) async {
+    await EngineService.instance.ensureBundledInstalled();
+    final plugin = await EngineService.instance.pluginById(catalogId);
+    if (plugin == null || !plugin.isLiveCatalog) return [];
+    return EngineService.instance.runLiveCatalog(catalogPlugin: plugin);
   }
 
   static Future<LiveEngineResolveResult?> resolve({

@@ -1648,8 +1648,8 @@
     {
       "id": "live-streamed",
       "name": "Streamed",
-      "description": "streamed.pk embed resolve (GOAT / golf)",
-      "entry": "live/live-streamed.js",
+      "description": "streamed.pk stream resolve (GOAT / golf)",
+      "entry": "live/streamed.js",
       "types": [
         "plugins"
       ],
@@ -1662,8 +1662,8 @@
     {
       "id": "live-ppv",
       "name": "PPV",
-      "description": "ppv.is / api.ppv.st schedule and source resolve",
-      "entry": "live/live-ppv.js",
+      "description": "ppv.is / api.ppv.st stream resolve",
+      "entry": "live/ppv.js",
       "types": [
         "plugins"
       ],
@@ -1679,8 +1679,8 @@
     {
       "id": "live-timstreams",
       "name": "TimStreams",
-      "description": "timstreams.st live schedule",
-      "entry": "live/live-timstreams.js",
+      "description": "timstreams.st stream resolve",
+      "entry": "live/timstreams.js",
       "types": [
         "live_sport"
       ],
@@ -1692,8 +1692,8 @@
     {
       "id": "live-streamfree",
       "name": "StreamFree",
-      "description": "streamfree.top live schedule",
-      "entry": "live/live-streamfree.js",
+      "description": "streamfree.top stream resolve",
+      "entry": "live/streamfree.js",
       "types": [
         "live_sport"
       ],
@@ -1705,8 +1705,8 @@
     {
       "id": "live-watchfooty",
       "name": "WatchFooty",
-      "description": "watchfooty.st live schedule",
-      "entry": "live/live-watchfooty.js",
+      "description": "watchfooty.st stream resolve",
+      "entry": "live/watchfooty.js",
       "types": [
         "live_sport"
       ],
@@ -1715,12 +1715,47 @@
     {
       "id": "live-streamic",
       "name": "Streamic",
-      "description": "streamic.live live schedule",
-      "entry": "live/live-streamic.js",
+      "description": "streamic.live stream resolve",
+      "entry": "live/streamic.js",
       "types": [
         "live_sport"
       ],
       "kind": "http"
+    },
+    {
+      "id": "catalog-streamed",
+      "name": "Streamed",
+      "description": "streamed.pk schedule catalog",
+      "entry": "catalog/streamed.js",
+      "types": [
+        "catalog"
+      ],
+      "kind": "http",
+      "enabled": true,
+      "config": {
+        "providerId": "live-streamed",
+        "origin": "https://streamed.pk",
+        "embedOrigin": "https://embed.st"
+      }
+    },
+    {
+      "id": "catalog-ppv",
+      "name": "PPV",
+      "description": "ppv.is schedule catalog",
+      "entry": "catalog/ppv.js",
+      "types": [
+        "catalog"
+      ],
+      "kind": "http",
+      "enabled": true,
+      "config": {
+        "providerId": "live-ppv",
+        "webOrigin": "https://ppv.is",
+        "apis": [
+          "https://api.ppv.st/api/streams",
+          "https://api.ppv.cx/api/streams"
+        ]
+      }
     },
     {
       "id": "catalog-timstreams",

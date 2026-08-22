@@ -201,6 +201,19 @@ mixin _LiveMatchesData
     return false;
   }
 
+  void _releaseLiveMatchesItemFocusIfHeld() {
+    if (!ShellTvFocusCoordinator.tabHasAttachedFocus(
+      _LiveMatchesScreenState._tabId,
+    )) {
+      return;
+    }
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary == null) return;
+    try {
+      primary.unfocus();
+    } catch (_) {}
+  }
+
   void _clearTimelineTvRows() {
     _s._timelineTvRowIds.clear();
   }
