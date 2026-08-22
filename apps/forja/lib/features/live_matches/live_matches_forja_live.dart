@@ -74,11 +74,41 @@ mixin _LiveMatchesForjaLive
   void _resetForjaLiveCatalogState() {
     EngineService.instance.cancelLiveCatalog();
     _s._forjaLiveLoadGen++;
-    _s._forjaLivePluginFilter = 'all';
     _s._forjaLivePluginLoads = {};
     _s._streamedMatches = _s._streamedMatches
         .where((m) => !m.isForjaLive)
         .toList();
+  }
+
+  Future<void> _restoreForjaLiveCatalogFilterPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(
+      _LiveMatchesScreenState._forjaLiveCatalogFilterPreferenceKey,
+    );
+    if (saved == null || saved.isEmpty) return;
+    if (!mounted) return;
+    setState(() => _s._forjaLivePluginFilter = saved);
+  }
+
+  Future<void> _persistForjaLiveCatalogFilterPreference(String filter) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _LiveMatchesScreenState._forjaLiveCatalogFilterPreferenceKey,
+      filter,
+    );
+  }
+
+  void _setForjaLivePluginFilter(String filter) {
+    if (_s._forjaLivePluginFilter == filter) return;
+    setState(() => _s._forjaLivePluginFilter = filter);
+    unawaited(_persistForjaLiveCatalogFilterPreference(filter));
+  }
+
+  void _ensureForjaLivePluginFilterValid() {
+    if (_s._forjaLivePluginFilter == 'all') return;
+    if (!_s._forjaLivePluginLoads.containsKey(_s._forjaLivePluginFilter)) {
+      _setForjaLivePluginFilter('all');
+    }
   }
 
   void _kickForjaLiveLazyCatalog() {
@@ -171,6 +201,7 @@ mixin _LiveMatchesForjaLive
           ),
       };
     });
+    _ensureForjaLivePluginFilterValid();
 
     for (final catalog in catalogPlugins) {
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
@@ -219,6 +250,7 @@ mixin _LiveMatchesForjaLive
     }
 
     if (!mounted || gen != _s._forjaLiveLoadGen) return;
+    _ensureForjaLivePluginFilterValid();
     await _applyEspnScheduleMerge();
   }
 

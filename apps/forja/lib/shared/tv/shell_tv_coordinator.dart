@@ -190,6 +190,14 @@ abstract final class ShellTvFocusCoordinator {
 
   static bool focusActiveNavTab() => ShellTvFocus.focusCurrentNavTab();
 
+  /// Drop rail focus so desktop nav chrome (scale + label) does not stick.
+  static void unfocusShellNav() {
+    if (!ShellTvFocus.anyNavFocused && !ShellTvFocus.primaryFocusIsNav) {
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
   /// TV remote Back: pop overlay/route first, else focus active nav tab.
   /// Back on the nav rail: first press arms exit, second within 2s quits.
   /// Remote Exit (Escape) is separate — [handleShellExitKey].
@@ -572,11 +580,9 @@ abstract final class ShellTvFocusCoordinator {
     if (!tvBackPolicyEnabled) return;
     if (tabId.isEmpty) return;
 
-    // Back from hub details often leaves Home nav focused (big icon + label)
-    // even though Anime / Asian Drama is still the selected shell tab.
-    if (ShellTvFocus.anyNavFocused || ShellTvFocus.primaryFocusIsNav) {
-      FocusManager.instance.primaryFocus?.unfocus();
-    }
+    // Back from hub details often leaves a rail item focused (big icon + label)
+    // even though the hub tab is still selected underneath.
+    unfocusShellNav();
 
     final memory = snapshot ?? _tabMemory[tabId];
 

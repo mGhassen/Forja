@@ -703,7 +703,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
             ForjaShellChip(
               label: 'All',
               selected: _s._forjaLivePluginFilter == 'all',
-              onTap: () => setState(() => _s._forjaLivePluginFilter = 'all'),
+              onTap: () =>
+                  (this as _LiveMatchesForjaLive)._setForjaLivePluginFilter('all'),
               accentHover: true,
               radius: 999,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -715,9 +716,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
                 label: load.label,
                 selected: _s._forjaLivePluginFilter == load.pluginId,
                 loading: load.loading,
-                onTap: () => setState(
-                  () => _s._forjaLivePluginFilter = load.pluginId,
-                ),
+                onTap: () => (this as _LiveMatchesForjaLive)
+                    ._setForjaLivePluginFilter(load.pluginId),
                 accentHover: true,
                 radius: 999,
                 padding: const EdgeInsets.symmetric(

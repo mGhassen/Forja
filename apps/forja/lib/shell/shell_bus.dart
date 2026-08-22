@@ -181,7 +181,7 @@ class ShellBus {
   static void clearOverlayShellTabId() => _overlayShellTabId = null;
 
   /// After the overlay stack returns to root, re-select the tab that opened it
-  /// and return focus to the hub (not the Home nav item).
+  /// and return focus to the hub page (never the nav rail).
   static void finishOverlayAndRestoreShellTab() {
     final origin = takeOverlayShellTabId();
     if (origin == null || origin.isEmpty) return;
@@ -189,6 +189,7 @@ class ShellBus {
       requestTab.value = origin;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ShellTvFocusCoordinator.unfocusShellNav();
       ShellTvFocusCoordinator.restoreTabFocusAfterOverlayPop(origin);
     });
   }

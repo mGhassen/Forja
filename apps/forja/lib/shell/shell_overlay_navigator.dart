@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -207,6 +208,7 @@ void maybePopShellOverlay<T extends Object?>([T? result]) {
     if (overlay.canPop()) {
       ShellTvFocus.discardOverlayReturnFocus();
     } else {
+      ShellTvFocusCoordinator.unfocusShellNav();
       ShellTvFocus.restoreOverlayReturnFocus();
     }
   }

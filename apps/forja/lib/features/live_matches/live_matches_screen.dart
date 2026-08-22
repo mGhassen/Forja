@@ -99,6 +99,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   // Body layout: card grid or vertical timeline.
   static const _viewPreferenceKey = 'live_matches_timeline_view';
   static const _serverPreferenceKey = 'live_matches_server_v1';
+  static const _forjaLiveCatalogFilterPreferenceKey =
+      'live_matches_forja_catalog_filter_v1';
   _LiveMatchesView _view = _LiveMatchesView.timeline;
   bool _viewWasToggled = false;
   _TimelineGranularity _timelineGranularity = _TimelineGranularity.h3;
@@ -305,6 +307,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   Future<void> _restoreServerThenLoad() async {
     await _refreshLiveResolveMode();
     await _restoreServerPreference();
+    await (this as _LiveMatchesForjaLive)
+        ._restoreForjaLiveCatalogFilterPreference();
     if (!mounted) return;
     setState(() => _serverHydrated = true);
     if (_server == _LiveMatchesServer.iptvSports) {
