@@ -545,17 +545,19 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   if (hasProvider)
-                                    Text(
-                                      widget.provider!,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.right,
-                                      style: TextStyle(
-                                        color: cinematic.textSecondary,
-                                        fontSize:
-                                            metrics.torrentPanelMetaFontSize,
-                                        fontWeight: FontWeight.w500,
-                                        height: 1.25,
+                                    ..._providerLines(widget.provider!).map(
+                                      (line) => Text(
+                                        line,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                          color: cinematic.textSecondary,
+                                          fontSize:
+                                              metrics.torrentPanelMetaFontSize,
+                                          fontWeight: FontWeight.w500,
+                                          height: 1.25,
+                                        ),
                                       ),
                                     ),
                                   if (hasSeeders) ...[
@@ -657,6 +659,19 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       child: face,
     );
   }
+}
+
+/// Split `Plugin · Stream` (engine/Nuvio `_addonName`) into server then stream.
+List<String> _providerLines(String provider) {
+  final raw = provider.trim();
+  if (raw.isEmpty) return const [];
+  final parts = raw
+      .split(RegExp(r'\s*[·•]\s*'))
+      .map((p) => p.trim())
+      .where((p) => p.isNotEmpty)
+      .toList();
+  if (parts.length < 2) return [raw];
+  return [parts.first, parts.sublist(1).join(' · ')];
 }
 
 class _SourceMetaBadge extends StatelessWidget {

@@ -1132,6 +1132,7 @@ void main() {
       expect(byId('2embed').types, ['movie', 'tv', 'drama']);
       expect(byId('multiembed').types, ['movie', 'tv', 'drama']);
       expect(byId('kisskh').types, ['drama']);
+      expect(byId('onlykdrama').types, ['movie', 'tv', 'drama']);
       expect(byId('hianime').types, ['anime']);
       expect(
         EngineCategories.defaultsForMediaType('movie'),

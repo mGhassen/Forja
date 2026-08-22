@@ -38,6 +38,7 @@ class HeroFactsPanel extends StatelessWidget {
   bool get _isTv => movie.mediaType == 'tv';
 
   bool get hasContent =>
+      _nameLabel.isNotEmpty ||
       _statusLabel.isNotEmpty ||
       _runtimeLabel.isNotEmpty ||
       _languageLabel.isNotEmpty ||
@@ -51,6 +52,12 @@ class HeroFactsPanel extends StatelessWidget {
       _creatorsLabel.isNotEmpty ||
       _formatMoney(budget).isNotEmpty ||
       _formatMoney(revenue).isNotEmpty;
+
+  String get _nameLabel {
+    final t = movie.title.trim();
+    if (t.isEmpty || t == 'Unknown') return '';
+    return t;
+  }
 
   String get _statusLabel => status?.trim() ?? '';
 
@@ -129,6 +136,7 @@ class HeroFactsPanel extends StatelessWidget {
     if (!hasContent) return const SizedBox.shrink();
 
     final rows = <({String label, String value})>[
+      if (_nameLabel.isNotEmpty) (label: 'Name', value: _nameLabel),
       if (_statusLabel.isNotEmpty) (label: 'Status', value: _statusLabel),
       if (_languageLabel.isNotEmpty) (label: 'Language', value: _languageLabel),
       if (_isTv) ...[

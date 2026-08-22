@@ -109,7 +109,8 @@ function extract(ctx) {
 
   function extractCandidateUrls(html) {
     var needle = isMovie ? '/movies/' : '/drama/';
-    var re = /href=["'](https?:\/\/onlykdrama\.shop\/[^"'#?]+)["']/gi;
+    var host = site.replace(/^https?:\/\//, '');
+    var re = new RegExp('href=["\'](https?:\\/\\/' + escapeRe(host) + '\\/[^"\'#?]+)["\']', 'gi');
     var out = [];
     var seen = {};
     var m;
@@ -239,7 +240,11 @@ function extract(ctx) {
   }
 
   function episodeAnchors(html) {
-    var re = /<a[^>]+href=["'](https:\/\/new5\.filepress\.wiki\/file\/([A-Za-z0-9]+))["'][^>]*>([\s\S]*?)<\/a>/gi;
+    var host = filepress.replace(/^https?:\/\//, '');
+    var re = new RegExp(
+      '<a[^>]+href=["\'](https?:\\/\\/' + escapeRe(host) + '\\/file\\/([A-Za-z0-9]+))["\'][^>]*>([\\s\\S]*?)<\\/a>',
+      'gi',
+    );
     var out = [];
     var seen = {};
     var m;

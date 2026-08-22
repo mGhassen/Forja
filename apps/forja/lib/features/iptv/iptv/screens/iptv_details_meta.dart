@@ -59,7 +59,9 @@ List<MapEntry<String, String>> iptvTmdbFacts(
   final creators = extras.creators.where((s) => s.trim().isNotEmpty).toList();
   final director = pickDirectorFromCrew(extras.crew);
 
+  final title = movie.title.trim();
   final rows = <MapEntry<String, String>>[
+    if (title.isNotEmpty && title != 'Unknown') MapEntry('Name', title),
     if (status.isNotEmpty) MapEntry('Status', status),
     if (language.isNotEmpty) MapEntry('Language', language),
     if (isTv) ...[
