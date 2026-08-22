@@ -190,26 +190,52 @@ class _AnimeScreenState extends ConsumerState<AnimeScreen>
     _container = ProviderScope.containerOf(context, listen: false);
   }
 
-  void _applyCatalogBundle(AnimeCatalogBundle bundle) {
+  /// Last applied load bag — skip identical re-apply from build bridge.
+  AnimeCatalogFutures? _appliedCatalog;
+
+  void _applyCatalogFutures(AnimeCatalogFutures load) {
+    if (identical(_appliedCatalog, load)) return;
+    _appliedCatalog = load;
     final gen = _loadGen;
-    final spotlight = Future.value(bundle.spotlight);
+    final spotlight = load.spotlight;
     setState(() {
-      _error = bundle.hasCatalog
-          ? null
-          : 'Failed to load anime - check your connection';
-      _catalogResolved = true;
+      _error = null;
+      _catalogResolved = false;
       _spotlightFuture = spotlight;
-      _trendingFuture = Future.value(bundle.trending);
-      _topAiringFuture = Future.value(bundle.topAiring);
-      _mostPopularFuture = Future.value(bundle.mostPopular);
-      _mostFavoriteFuture = Future.value(bundle.mostFavorite);
-      _topRatedFuture = Future.value(bundle.topRated);
-      _latestCompletedFuture = Future.value(bundle.latestCompleted);
-      _top10Future = Future.value(bundle.top10);
-      _recentEpisodesFuture = Future.value(bundle.recentEpisodes);
+      _trendingFuture = load.trending;
+      _topAiringFuture = load.topAiring;
+      _mostPopularFuture = load.mostPopular;
+      _mostFavoriteFuture = load.mostFavorite;
+      _topRatedFuture = load.topRated;
+      _latestCompletedFuture = load.latestCompleted;
+      _top10Future = load.top10;
+      _recentEpisodesFuture = load.recentEpisodes;
     });
-    if (bundle.hasCatalog) markShellTabFresh();
     unawaited(_enrichSpotlightTmdb(gen, spotlight));
+    unawaited(_settleCatalog(gen, load));
+  }
+
+  Future<void> _settleCatalog(int gen, AnimeCatalogFutures load) async {
+    try {
+      final sections = await load.allSections;
+      if (!mounted || gen != _loadGen || !identical(_appliedCatalog, load)) {
+        return;
+      }
+      final hasCatalog = sections.any((s) => s.isNotEmpty);
+      setState(() {
+        _catalogResolved = true;
+        _error = hasCatalog
+            ? null
+            : 'Failed to load anime - check your connection';
+      });
+      if (hasCatalog) markShellTabFresh();
+    } catch (e) {
+      if (!mounted || gen != _loadGen) return;
+      setState(() {
+        _catalogResolved = true;
+        _error = 'Failed to load anime - check your connection';
+      });
+    }
   }
 
   @override

@@ -69,8 +69,9 @@ mixin _AnimeScreenFeed on ConsumerState<AnimeScreen>, ShellTabRefresh<AnimeScree
           _s._error = null;
           _s._catalogResolved = false;
         });
-        container.invalidate(animeCatalogProvider);
+        container.invalidate(animeCatalogFuturesProvider);
         container.invalidate(animeMoodCatalogProvider(_s._selectedMood));
+        _s._appliedCatalog = null;
       } finally {
         if (!done.isCompleted) done.complete();
       }

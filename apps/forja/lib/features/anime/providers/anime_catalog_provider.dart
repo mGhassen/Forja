@@ -2,44 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 
-/// Loaded anime hub catalog rows (primary tab fetch).
-class AnimeCatalogBundle {
-  const AnimeCatalogBundle({
-    required this.spotlight,
-    required this.trending,
-    required this.topAiring,
-    required this.mostPopular,
-    required this.mostFavorite,
-    required this.topRated,
-    required this.latestCompleted,
-    required this.top10,
-    required this.recentEpisodes,
-  });
-
-  final List<AnimeCard> spotlight;
-  final List<AnimeCard> trending;
-  final List<AnimeCard> topAiring;
-  final List<AnimeCard> mostPopular;
-  final List<AnimeCard> mostFavorite;
-  final List<AnimeCard> topRated;
-  final List<AnimeCard> latestCompleted;
-  final List<AnimeCard> top10;
-  final List<AnimeCard> recentEpisodes;
-
-  bool get hasCatalog => [
-        spotlight,
-        trending,
-        topAiring,
-        mostPopular,
-        mostFavorite,
-        topRated,
-        latestCompleted,
-        top10,
-        recentEpisodes,
-      ].any((section) => section.isNotEmpty);
-}
-
-List<AnimeCard> _spotlightFromTrending(List<AnimeCard> trending) {
+List<AnimeCard> spotlightFromTrending(List<AnimeCard> trending) {
   final filtered = trending.where((a) {
     final s = (a.status ?? '').toUpperCase();
     return s.isEmpty || s == 'RELEASING' || s == 'FINISHED';
@@ -60,50 +23,85 @@ Future<List<AnimeCard>> _safeSection(
   }
 }
 
-Future<AnimeCatalogBundle> _loadAnimeCatalog(AnimeService service) async {
-  // Parallel AniList sections (worker pool ~3) — do not await TMDB here;
-  // hero paints AniList art first, screen swaps TMDB backdrops after apply.
-  final sections = await Future.wait([
-    _safeSection(service.getTrending(perPage: 20), 'trending'),
-    _safeSection(service.getTopAiring(), 'top airing'),
-    _safeSection(service.getMostPopular(), 'most popular'),
-    _safeSection(service.getMostFavorite(), 'most favorite'),
-    _safeSection(service.getTopRated(), 'top rated'),
-    _safeSection(service.getLatestCompleted(), 'latest completed'),
-    _safeSection(service.getRecentEpisodes(), 'recent episodes'),
-  ]);
-  final trending = sections[0];
-  final topAiring = sections[1];
-  final mostPopular = sections[2];
-  final mostFavorite = sections[3];
-  final topRated = sections[4];
-  final latestCompleted = sections[5];
-  final recentEpisodes = sections[6];
-  final spotlight = _spotlightFromTrending(trending);
-  final top10 = trending.take(10).toList();
+/// Live per-section futures — screen unlocks immediately; hero waits on
+/// [trending] only; remaining rails start after trending settles so the
+/// 3-worker AniList pool is not stolen from first paint.
+class AnimeCatalogFutures {
+  AnimeCatalogFutures._({
+    required this.trending,
+    required this.spotlight,
+    required this.top10,
+    required this.topAiring,
+    required this.mostPopular,
+    required this.mostFavorite,
+    required this.topRated,
+    required this.latestCompleted,
+    required this.recentEpisodes,
+  });
 
-  return AnimeCatalogBundle(
-    spotlight: spotlight,
-    trending: trending,
-    topAiring: topAiring,
-    mostPopular: mostPopular,
-    mostFavorite: mostFavorite,
-    topRated: topRated,
-    latestCompleted: latestCompleted,
-    top10: top10,
-    recentEpisodes: recentEpisodes,
-  );
+  factory AnimeCatalogFutures.start(AnimeService service) {
+    final trending =
+        _safeSection(service.getTrending(perPage: 20), 'trending');
+
+    // Kick remaining sections only after trending completes (success or empty).
+    final rest = () async {
+      await trending;
+      return Future.wait([
+        _safeSection(service.getTopAiring(), 'top airing'),
+        _safeSection(service.getMostPopular(), 'most popular'),
+        _safeSection(service.getMostFavorite(), 'most favorite'),
+        _safeSection(service.getTopRated(), 'top rated'),
+        _safeSection(service.getLatestCompleted(), 'latest completed'),
+        _safeSection(service.getRecentEpisodes(), 'recent episodes'),
+      ]);
+    }();
+
+    return AnimeCatalogFutures._(
+      trending: trending,
+      spotlight: trending.then(spotlightFromTrending),
+      top10: trending.then((t) => t.take(10).toList()),
+      topAiring: rest.then((r) => r[0]),
+      mostPopular: rest.then((r) => r[1]),
+      mostFavorite: rest.then((r) => r[2]),
+      topRated: rest.then((r) => r[3]),
+      latestCompleted: rest.then((r) => r[4]),
+      recentEpisodes: rest.then((r) => r[5]),
+    );
+  }
+
+  final Future<List<AnimeCard>> trending;
+  final Future<List<AnimeCard>> spotlight;
+  final Future<List<AnimeCard>> top10;
+  final Future<List<AnimeCard>> topAiring;
+  final Future<List<AnimeCard>> mostPopular;
+  final Future<List<AnimeCard>> mostFavorite;
+  final Future<List<AnimeCard>> topRated;
+  final Future<List<AnimeCard>> latestCompleted;
+  final Future<List<AnimeCard>> recentEpisodes;
+
+  /// All section lists (for settle / empty-catalog error).
+  Future<List<List<AnimeCard>>> get allSections => Future.wait([
+        trending,
+        topAiring,
+        mostPopular,
+        mostFavorite,
+        topRated,
+        latestCompleted,
+        recentEpisodes,
+      ]);
 }
 
 final animeServiceProvider = Provider<AnimeService>((ref) => AnimeService());
 
-final animeCatalogProvider =
-    FutureProvider.autoDispose<AnimeCatalogBundle>((ref) async {
+/// Sync provider: creates in-flight futures immediately (no await gate).
+final animeCatalogFuturesProvider =
+    Provider.autoDispose<AnimeCatalogFutures>((ref) {
   final service = ref.watch(animeServiceProvider);
-  return _loadAnimeCatalog(service);
+  return AnimeCatalogFutures.start(service);
 });
 
-/// Mood / genre row (screen-scoped family).
+/// Mood / genre row — waits for hub trending so it does not steal AniList
+/// workers from first paint.
 final animeMoodCatalogProvider = FutureProvider.autoDispose
     .family<List<AnimeCard>, String>((ref, moodId) async {
   const moods = <({String id, String? genre})>[
@@ -122,6 +120,8 @@ final animeMoodCatalogProvider = FutureProvider.autoDispose
     (m) => m.id == moodId,
     orElse: () => moods.first,
   );
+  final catalog = ref.watch(animeCatalogFuturesProvider);
+  await catalog.trending;
   final service = ref.watch(animeServiceProvider);
   try {
     return await service.browse(

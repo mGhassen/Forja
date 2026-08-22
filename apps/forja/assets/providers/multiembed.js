@@ -113,6 +113,24 @@ function extract(ctx) {
     return '';
   }
 
+  // xpass lists dead mirrors next to live 1x2 CDNs (NXDOMAIN / hang).
+  function isDeadCdn(url) {
+    return /pinecrestproductionworks\.shop|goldenmeadowproduction\.space/i.test(String(url));
+  }
+
+  function cdnRank(url) {
+    var u = String(url || '');
+    if (/1x2\.space\//i.test(u)) return 0;
+    if (/suprox\.xpass\.top/i.test(u)) return 2;
+    return 1;
+  }
+
+  function rankRows(rows) {
+    return (rows || []).slice().sort(function (a, b) {
+      return cdnRank(a && a.url) - cdnRank(b && b.url);
+    });
+  }
+
   function playlistRows(playlistUrl, baseUrl, referer) {
     var full = /^https?:/i.test(playlistUrl)
       ? playlistUrl
@@ -126,6 +144,7 @@ function extract(ctx) {
             if (!source || !source.file) return;
             if (/\/video\/error|\/error\b/i.test(source.file)) return;
             if (!/^https?:/i.test(source.file)) return;
+            if (isDeadCdn(source.file)) return;
             rows.push({
               url: source.file,
               name: '2embed ' + (source.label || source.id || ''),
@@ -134,7 +153,7 @@ function extract(ctx) {
             });
           });
         });
-        return rows;
+        return rankRows(rows);
       })
       .catch(function () {
         return [];
@@ -163,24 +182,40 @@ function extract(ctx) {
           backups = JSON.parse(bjson) || [];
         } catch (e2) {}
       }
+      // Prefer VIP / mdata paths (1x2) before flaky FIL/WIS mirrors.
+      backups = backups.slice().sort(function (a, b) {
+        function pathRank(u) {
+          u = String((u && u.url) || '');
+          if (/\/vip\//i.test(u)) return 0;
+          if (/\/mdata\//i.test(u)) return 1;
+          return 2;
+        }
+        return pathRank(a) - pathRank(b);
+      });
       var paths = [];
       if (primary) paths.push(primary);
-      backups.slice(0, 8).forEach(function (b) {
+      backups.slice(0, 12).forEach(function (b) {
         if (b && b.url) paths.push(b.url);
       });
       return Promise.all(paths.map(function (p) {
         return playlistRows(p, xpsBase, xpsUrl);
       })).then(function (groups) {
-        var out = [].concat.apply([], groups);
+        var out = rankRows([].concat.apply([], groups));
         if (out.length) return out;
         var m3u8 = html.match(/https?:\/\/[^"'\s]+\.m3u8[^"'\s]*/g) || [];
-        return m3u8.map(function (u) {
-          return {
-            url: u,
-            name: '2embed',
-            headers: { 'User-Agent': ua, Referer: 'https://play.xpass.top/' },
-          };
-        });
+        return rankRows(
+          m3u8
+            .filter(function (u) {
+              return !isDeadCdn(u);
+            })
+            .map(function (u) {
+              return {
+                url: u,
+                name: '2embed',
+                headers: { 'User-Agent': ua, Referer: 'https://play.xpass.top/' },
+              };
+            })
+        );
       });
     });
   }
@@ -246,8 +281,8 @@ function extract(ctx) {
       return chain.then(function (rows) {
         var seen = {};
         var out = [];
-        (rows || []).forEach(function (r) {
-          if (!r || !r.url || seen[r.url]) return;
+        rankRows(rows || []).forEach(function (r) {
+          if (!r || !r.url || seen[r.url] || isDeadCdn(r.url)) return;
           seen[r.url] = true;
           out.push(r);
         });

@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 5** fix · **0 / 4** acceptance |
-| **Current slice** | Symptom: parallel AniList sections + TMDB after first paint — root (batched query / progressive rows / disk cache) open |
+| **Progress** | **3 / 5** fix · **0 / 4** acceptance |
+| **Current slice** | Progressive: unlock after trending futures applied; remaining rails after trending — batched GraphQL / disk cache still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,7 +23,7 @@
 |--:|----|-------------|--------|
 | 1 | I195-T01 | Parallelize hub AniList section fetches (`Future.wait`) — stop serial RTT sum | ✅ |
 | 2 | I195-T02 | Return catalog bundle before TMDB; wire `_enrichSpotlightTmdb` after `_applyCatalogBundle` | ✅ |
-| 3 | I195-T03 | Progressive UI: unlock hero/rows after trending (or per-section) without gating on full bundle | ⬜ |
+| 3 | I195-T03 | Progressive UI: unlock hero/rows after trending (or per-section) without gating on full bundle | ✅ |
 | 4 | I195-T04 | Batched / multi-alias AniList GraphQL for hub sections (one HTTP round-trip) | ⬜ |
 | 5 | I195-T05 | Disk/memory catalog cache with TTL (survive tab eviction / cold process) | ⬜ |
 
@@ -46,10 +46,11 @@ Opening the Anime tab showed a long skeleton because first paint waited on `anim
 
 ## Symptom fix (shipped)
 
-- `Future.wait` all hub AniList sections in `_loadAnimeCatalog`
-- Provider returns AniList spotlight immediately; screen calls `_enrichSpotlightTmdb` after apply so hero swaps cinematic backdrops without blocking first paint
+- `Future.wait` remaining hub sections after trending (T01)
+- Provider returns AniList spotlight immediately; screen calls `_enrichSpotlightTmdb` after apply (T02)
+- **Progressive (T03):** `animeCatalogFuturesProvider` exposes live futures immediately — UI unlocks on apply (not after all HTTP). Trending runs first (hero + Trending / Top 10); other rails + mood wait until trending settles so the 3-worker pool is not stolen from first paint
 
-**Not a root fix** — still one full-bundle gate, still N AniList HTTP calls (worker pool ~3), no catalog disk cache.
+**Not a root fix** — still N AniList HTTP calls, no catalog disk cache, no batched GraphQL.
 
 ## Root fix (open)
 

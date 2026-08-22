@@ -214,7 +214,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [192-[fixed]-…](fixed/192-[fixed]-android-tv-player-back-exits-with-chrome.md) | ATV player Back exits while chrome showing | P1 | High | fixed | Complete · 2/2 · A 1/2 | — |
 | [193-[fixed]-…](fixed/193-[fixed]-nuvio-jsc-use-after-dispose-on-play.md) | Nuvio JSC SIGSEGV on play (deferred drop) | P1 | High | fixed | Complete · 4/4 · A 1/2 | — |
 | [194-[fixed]-…](fixed/194-[fixed]-android-tv-forja-sports-source-load-oom.md) | ATV Forja Sports source load OOM / process kill | P1 | High | fixed | Complete · 3/3 · A 1/2 | — |
-| [195-[open]-…](195-[open]-anime-hub-cold-catalog-load.md) | Anime hub cold catalog slow open | P2 | Medium | open | 2/5 · A 0/4 | — |
+| [195-[open]-…](195-[open]-anime-hub-cold-catalog-load.md) | Anime hub cold catalog slow open | P2 | Medium | open | 3/5 · A 0/4 | — |
 | [196-[fixed]-…](fixed/196-[fixed]-desktop-window-size-resets-after-player.md) | Desktop window size resets after player close | P1 | High | fixed | Complete · 3/3 · A 3/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).

@@ -107,21 +107,9 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    ref.listen(animeCatalogProvider, (_, next) {
+    ref.listen(animeCatalogFuturesProvider, (_, next) {
       if (!mounted || !_s.shellTabVisible) return;
-      next.when(
-        loading: () {
-          if (_s._catalogResolved) return;
-          setState(() => _s._catalogResolved = false);
-        },
-        error: (_, _) {
-          setState(() {
-            _s._catalogResolved = true;
-            _s._error = 'Failed to load anime - check your connection';
-          });
-        },
-        data: (bundle) => _s._applyCatalogBundle(bundle),
-      );
+      _s._applyCatalogFutures(next);
     });
     ref.listen(animeMoodCatalogProvider(_s._selectedMood), (_, next) {
       if (!mounted) return;
@@ -129,21 +117,28 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
         setState(() => _s._moodFuture = Future.value(cards));
       });
     });
-    final catalogAsync = ref.watch(animeCatalogProvider);
+    final catalogLoad = ref.watch(animeCatalogFuturesProvider);
     ref.watch(animeMoodCatalogProvider(_s._selectedMood));
-    // ref.listen does not fire for the current value — bridge AsyncData that
-    // arrived before the listener was attached (or while the tab was hidden).
-    final pendingBundle = catalogAsync.asData?.value;
-    if (pendingBundle != null &&
-        _s._trendingFuture == null &&
-        _s.shellTabVisible) {
+    // Bridge current value (listen skips it) without waiting a frame for apply.
+    if (!identical(_s._appliedCatalog, catalogLoad) && _s.shellTabVisible) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_s.shellTabVisible || _s._trendingFuture != null) {
-          return;
-        }
-        _s._applyCatalogBundle(pendingBundle);
+        if (!mounted || !_s.shellTabVisible) return;
+        _s._applyCatalogFutures(catalogLoad);
       });
     }
+    // Prefer applied state; fall back to live provider futures for this frame.
+    final spotlightFuture = _s._spotlightFuture ?? catalogLoad.spotlight;
+    final trendingFuture = _s._trendingFuture ?? catalogLoad.trending;
+    final topAiringFuture = _s._topAiringFuture ?? catalogLoad.topAiring;
+    final mostPopularFuture = _s._mostPopularFuture ?? catalogLoad.mostPopular;
+    final mostFavoriteFuture =
+        _s._mostFavoriteFuture ?? catalogLoad.mostFavorite;
+    final topRatedFuture = _s._topRatedFuture ?? catalogLoad.topRated;
+    final latestCompletedFuture =
+        _s._latestCompletedFuture ?? catalogLoad.latestCompleted;
+    final top10Future = _s._top10Future ?? catalogLoad.top10;
+    final recentEpisodesFuture =
+        _s._recentEpisodesFuture ?? catalogLoad.recentEpisodes;
     return TvFocusGraph(
       tabId: 'anime',
       child: ValueListenableBuilder<AppThemePreset>(
@@ -159,18 +154,15 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
         // Bleed Trending owns 0; otherwise Trending is the first catalog row.
         final trendingOrder = trendingOnHero ? 0 : catalogBase;
         final catalogStart = trendingOnHero ? catalogBase : catalogBase + 1;
-        // Riverpod no longer seeds futures in _load(); HubCatalogSection
-        // asserts future != null — gate until _applyCatalogBundle runs.
-        final catalogReady = _s._trendingFuture != null;
         void focusHeroPlay() {
           ShellTvFocusCoordinator.revealHeroForTab('anime');
           ShellTvFocus.focusHomeHeroPlay();
         }
 
-        final trendingSection = catalogReady && trendingOnHero
+        final trendingSection = trendingOnHero
             ? HubCatalogSection<AnimeCard>(
                 title: 'Trending Now',
-                future: _s._trendingFuture,
+                future: trendingFuture,
                 compactTop: true,
                 tvTabId: 'anime',
                 tvRowId: 'trending',
@@ -198,18 +190,9 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                               parent: AlwaysScrollableScrollPhysics(),
                             ),
                             slivers: [
-                              if (!catalogReady)
-                                ...homeHubLoadingSlivers(
-                                  context,
-                                  heroShimmer: homeCinematicHeroShimmer(
-                                    context,
-                                    pageBottomBleed: trendingOnHero,
-                                  ),
-                                )
-                              else ...[
                               SliverToBoxAdapter(
                                 child: FutureBuilder<List<AnimeCard>>(
-                                  future: _s._spotlightFuture,
+                                  future: spotlightFuture,
                                   builder: (context, snap) {
                                     if (snap.connectionState ==
                                             ConnectionState.waiting ||
@@ -259,7 +242,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                                 hubRowSliver(context,
                                   HubCatalogSection<AnimeCard>(
                                     title: 'Trending Now',
-                                    future: _s._trendingFuture,
+                                    future: trendingFuture,
                                     tvTabId: 'anime',
                                     tvRowId: 'trending',
                                     tvRowOrder: trendingOrder,
@@ -276,7 +259,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                               hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Top Airing',
-                                  future: _s._topAiringFuture,
+                                  future: topAiringFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'top-airing',
                                   tvRowOrder: catalogStart + 0,
@@ -292,7 +275,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                               hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Top 10 Today',
-                                  future: _s._top10Future,
+                                  future: top10Future,
                                   showRank: true,
                                   tvTabId: 'anime',
                                   tvRowId: 'top-10',
@@ -310,7 +293,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                               hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Most Popular',
-                                  future: _s._mostPopularFuture,
+                                  future: mostPopularFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'most-popular',
                                   tvRowOrder: catalogStart + 2,
@@ -326,7 +309,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                               hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Latest Episodes',
-                                  future: _s._recentEpisodesFuture,
+                                  future: recentEpisodesFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'latest-eps',
                                   tvRowOrder: catalogStart + 3,
@@ -342,7 +325,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                               hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Top Rated',
-                                  future: _s._topRatedFuture,
+                                  future: topRatedFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'top-rated',
                                   tvRowOrder: catalogStart + 4,
@@ -358,7 +341,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                               hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Most Favorited',
-                                  future: _s._mostFavoriteFuture,
+                                  future: mostFavoriteFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'most-favorited',
                                   tvRowOrder: catalogStart + 5,
@@ -374,7 +357,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                               hubRowSliver(context,
                                 HubCatalogSection<AnimeCard>(
                                   title: 'Recently Completed',
-                                  future: _s._latestCompletedFuture,
+                                  future: latestCompletedFuture,
                                   tvTabId: 'anime',
                                   tvRowId: 'recently-completed',
                                   tvRowOrder: catalogStart + 6,
@@ -387,7 +370,6 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              ],
                               SliverToBoxAdapter(
                                 child: SizedBox(
                                   height: shellTvCatalogScrollBottomGap(context),
