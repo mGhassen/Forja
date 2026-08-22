@@ -137,12 +137,6 @@ List<ParentalWarning> buildParentalWarnings(ParentalGuideResult guide) {
     'alcohol': 'Alcohol/Drugs',
     'frightening': 'Frightening',
   };
-  const severityLabels = {
-    'severe': 'Severe',
-    'moderate': 'Moderate',
-    'mild': 'Mild',
-  };
-
   final rows = <(String, String)>[
     if (guide.nudity != null) ('nudity', guide.nudity!),
     if (guide.violence != null) ('violence', guide.violence!),
@@ -158,7 +152,7 @@ List<ParentalWarning> buildParentalWarnings(ParentalGuideResult guide) {
       .map(
         (row) => ParentalWarning(
           label: labels[row.$1] ?? row.$1,
-          severity: severityLabels[row.$2] ?? row.$2,
+          severity: row.$2,
         ),
       )
       .toList();

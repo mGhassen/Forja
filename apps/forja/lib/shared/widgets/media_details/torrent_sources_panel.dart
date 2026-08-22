@@ -54,10 +54,15 @@ class TorrentSourcesPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
     final panelWidth = panelWidthOf(context);
     final padding = contentPadding ?? defaultContentPadding(playerOverlay: !enableBlur);
     final playerFrost = !enableBlur;
     final showScrim = isOpen || absorbHitsWhenClosed;
+    // Right-side desktop panel never sits under the notch / traffic lights
+    // (those are top-left). SafeArea.top only left a dead band above the tabs.
+    // Phone full-bleed (~92% width) still needs top inset.
+    final topSafe = screenWidth < 700;
 
     return Stack(
       fit: StackFit.expand,
@@ -94,6 +99,7 @@ class TorrentSourcesPanel extends StatelessWidget {
               ),
               child: SafeArea(
                 left: false,
+                top: topSafe,
                 child: Padding(
                   padding: padding,
                   child: child,

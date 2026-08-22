@@ -47,10 +47,10 @@ void main() {
       ),
     );
     expect(warnings.map((w) => '${w.label} ${w.severity}').toList(), [
-      'Nudity Severe',
-      'Frightening Severe',
-      'Profanity Moderate',
-      'Violence Mild',
+      'Nudity severe',
+      'Frightening severe',
+      'Profanity moderate',
+      'Violence mild',
     ]);
   });
 

@@ -239,37 +239,23 @@ class _ParentalGuideOverlayState extends State<ParentalGuideOverlay>
                           height: _kRowHeight,
                           child: Align(
                             alignment: Alignment.centerLeft,
-                            child: Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: widget.warnings[i].label,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xD9FFFFFF),
-                                      height: 1,
-                                    ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  widget.warnings[i].label,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xD9FFFFFF),
+                                    height: 1,
                                   ),
-                                  const TextSpan(
-                                    text: ' · ',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Color(0x66FFFFFF),
-                                      height: 1,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: widget.warnings[i].severity,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w400,
-                                      color: Color(0x80FFFFFF),
-                                      height: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(width: 8),
+                                _SeveritySquares(
+                                  severity: widget.warnings[i].severity,
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -281,6 +267,51 @@ class _ParentalGuideOverlayState extends State<ParentalGuideOverlay>
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Three intensity squares: mild=1 · moderate=2 · severe=3 (color by heaviness).
+class _SeveritySquares extends StatelessWidget {
+  const _SeveritySquares({required this.severity});
+
+  final String severity;
+
+  static const _empty = Color(0x33FFFFFF);
+  static const _mild = Color(0xFFE8C547);
+  static const _moderate = Color(0xFFF07A3A);
+  static const _severe = Color(0xFFE50914);
+
+  @override
+  Widget build(BuildContext context) {
+    final level = switch (severity.toLowerCase()) {
+      'severe' => 3,
+      'moderate' => 2,
+      _ => 1,
+    };
+    final fill = switch (level) {
+      3 => _severe,
+      2 => _moderate,
+      _ => _mild,
+    };
+    return Semantics(
+      label: severity,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < 3; i++) ...[
+            if (i > 0) const SizedBox(width: 3),
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: i < level ? fill : _empty,
+                borderRadius: BorderRadius.circular(1.5),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
