@@ -2,8 +2,6 @@
   <img src="apps/web/public/brand/logo-light.svg" alt="Forja" width="160" />
 </p>
 
-<h1 align="center">Forja</h1>
-
 <p align="center">
   <strong>A player built to stream.</strong><br />
   Playback. Guides. Live lists. Sources you connect.<br />
