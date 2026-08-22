@@ -16,19 +16,8 @@ function extract(ctx) {
   if (!title) return Promise.resolve([]);
 
   var STOP = {
-    a: 1,
-    an: 1,
-    and: 1,
-    at: 1,
-    by: 1,
-    for: 1,
-    from: 1,
-    in: 1,
-    of: 1,
-    on: 1,
-    the: 1,
-    to: 1,
-    tv: 1,
+    a: 1, an: 1, and: 1, at: 1, by: 1, for: 1, from: 1,
+    in: 1, of: 1, on: 1, the: 1, to: 1, tv: 1,
   };
 
   function decodeHtml(s) {
@@ -63,13 +52,11 @@ function extract(ctx) {
   function tokens(s) {
     var out = [];
     var seen = {};
-    normalize(s)
-      .split(' ')
-      .forEach(function (t) {
-        if (!t || t.length < 2 || STOP[t] || seen[t]) return;
-        seen[t] = 1;
-        out.push(t);
-      });
+    normalize(s).split(' ').forEach(function (t) {
+      if (!t || t.length < 2 || STOP[t] || seen[t]) return;
+      seen[t] = 1;
+      out.push(t);
+    });
     return out;
   }
 
@@ -83,33 +70,26 @@ function extract(ctx) {
   }
 
   function fetchText(url, extra) {
-    return ctx
-      .fetch(url, { headers: Object.assign({}, baseHeaders, extra || {}) })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
-        return r.text();
-      });
+    return ctx.fetch(url, { headers: Object.assign({}, baseHeaders, extra || {}) }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
+      return r.text();
+    });
   }
 
   function fetchJson(url, opts) {
     opts = opts || {};
-    return ctx
-      .fetch(url, {
-        method: opts.method || 'GET',
-        headers: Object.assign({}, baseHeaders, opts.headers || {}),
-        body: opts.body,
-      })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
-        return r.json();
-      });
+    return ctx.fetch(url, {
+      method: opts.method || 'GET',
+      headers: Object.assign({}, baseHeaders, opts.headers || {}),
+      body: opts.body,
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
+      return r.json();
+    });
   }
 
   function searchQueries() {
-    var cleaned = decodeHtml(title)
-      .replace(/[:\-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    var cleaned = decodeHtml(title).replace(/[:\-]/g, ' ').replace(/\s+/g, ' ').trim();
     var out = [];
     var seen = {};
     function add(q) {
@@ -169,11 +149,7 @@ function extract(ctx) {
         if (b.score !== a.score) return b.score - a.score;
         return a.index - b.index;
       });
-      return Promise.resolve(
-        ranked.slice(0, 8).map(function (r) {
-          return r.url;
-        }),
-      );
+      return Promise.resolve(ranked.slice(0, 8).map(function (r) { return r.url; }));
     }
     return fetchText(site + '/?s=' + encodeURIComponent(queries[i]))
       .then(function (html) {
@@ -196,13 +172,9 @@ function extract(ctx) {
     var want = tokens(title);
     var got = tokens(pageTit);
     var set = {};
-    got.forEach(function (t) {
-      set[t] = 1;
-    });
+    got.forEach(function (t) { set[t] = 1; });
     var hit = 0;
-    want.forEach(function (t) {
-      if (set[t]) hit += 1;
-    });
+    want.forEach(function (t) { if (set[t]) hit += 1; });
     var pageYear = String(pageTit || '').match(/\b((?:19|20)\d{2})\b/);
     if (year && pageYear && pageYear[1] !== String(year)) return false;
     if (want.length <= 2) return hit >= 1;
@@ -235,14 +207,10 @@ function extract(ctx) {
     }
     if (!pick) return Promise.resolve([]);
     var body =
-      'action=' +
-      encodeURIComponent('doo_player_ajax') +
-      '&post=' +
-      encodeURIComponent(pick.post) +
-      '&nume=' +
-      encodeURIComponent(pick.nume) +
-      '&type=' +
-      encodeURIComponent(pick.type || 'movie');
+      'action=' + encodeURIComponent('doo_player_ajax') +
+      '&post=' + encodeURIComponent(pick.post) +
+      '&nume=' + encodeURIComponent(pick.nume) +
+      '&type=' + encodeURIComponent(pick.type || 'movie');
     return fetchJson(site + '/wp-admin/admin-ajax.php', {
       method: 'POST',
       headers: {
@@ -261,20 +229,17 @@ function extract(ctx) {
         if (src) direct = src;
       } catch (e) {}
       if (!direct) return [];
-      return [
-        {
-          url: direct,
-          name: 'OnlyKDrama Fast Stream',
-          quality: qualityOf(direct),
-          headers: { 'User-Agent': ua, Referer: site + '/' },
-        },
-      ];
+      return [{
+        url: direct,
+        name: 'OnlyKDrama Fast Stream',
+        quality: qualityOf(direct),
+        headers: { 'User-Agent': ua, Referer: site + '/' },
+      }];
     });
   }
 
   function episodeAnchors(html) {
-    var re =
-      /<a[^>]+href=["'](https:\/\/new5\.filepress\.wiki\/file\/([A-Za-z0-9]+))["'][^>]*>([\s\S]*?)<\/a>/gi;
+    var re = /<a[^>]+href=["'](https:\/\/new5\.filepress\.wiki\/file\/([A-Za-z0-9]+))["'][^>]*>([\s\S]*?)<\/a>/gi;
     var out = [];
     var seen = {};
     var m;
@@ -289,9 +254,7 @@ function extract(ctx) {
   function episodeMatches(text, hasSeLabels) {
     var ep = escapeRe(String(episode));
     var se = escapeRe(String(season));
-    if (new RegExp('(?:^|[^A-Z0-9])S0*' + se + 'E0*' + ep + '(?:[^A-Z0-9]|$)', 'i').test(text)) {
-      return true;
-    }
+    if (new RegExp('(?:^|[^A-Z0-9])S0*' + se + 'E0*' + ep + '(?:[^A-Z0-9]|$)', 'i').test(text)) return true;
     if (hasSeLabels) return false;
     if (season > 1) return false;
     return (
@@ -301,9 +264,7 @@ function extract(ctx) {
   }
 
   function pickEpisode(anchors) {
-    var hasSe = anchors.some(function (a) {
-      return /S\d{1,2}E\d{1,2}/i.test(a.text);
-    });
+    var hasSe = anchors.some(function (a) { return /S\d{1,2}E\d{1,2}/i.test(a.text); });
     for (var i = 0; i < anchors.length; i++) {
       if (episodeMatches(anchors[i].text, hasSe)) return anchors[i];
     }
@@ -364,19 +325,15 @@ function extract(ctx) {
   function resolveEpisode(html) {
     var pick = pickEpisode(episodeAnchors(html));
     if (!pick) return Promise.resolve([]);
-    return resolveFilepress(pick.fileId, ['indexDownlaod', 'publicDownlaod', 'publicUserDownlaod'], 0).then(
-      function (url) {
-        if (!url) return [];
-        return [
-          {
-            url: url,
-            name: 'OnlyKDrama ' + (pick.text || 'Episode ' + episode),
-            quality: qualityOf(pick.text),
-            headers: { 'User-Agent': ua, Referer: filepress + '/' },
-          },
-        ];
-      },
-    );
+    return resolveFilepress(pick.fileId, ['indexDownlaod', 'publicDownlaod', 'publicUserDownlaod'], 0).then(function (url) {
+      if (!url) return [];
+      return [{
+        url: url,
+        name: 'OnlyKDrama ' + (pick.text || 'Episode ' + episode),
+        quality: qualityOf(pick.text),
+        headers: { 'User-Agent': ua, Referer: filepress + '/' },
+      }];
+    });
   }
 
   function tryPages(urls, i) {
@@ -395,10 +352,6 @@ function extract(ctx) {
   }
 
   return collectCandidates(searchQueries(), 0, [])
-    .then(function (urls) {
-      return tryPages(urls, 0);
-    })
-    .catch(function () {
-      return [];
-    });
+    .then(function (urls) { return tryPages(urls, 0); })
+    .catch(function () { return []; });
 }
