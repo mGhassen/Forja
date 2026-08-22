@@ -72,10 +72,17 @@ function varint(n) {
   return bytes;
 }
 
+function utf8BytesAscii(str) {
+  var out = [];
+  var s = String(str);
+  for (var i = 0; i < s.length; i++) out.push(s.charCodeAt(i) & 0xff);
+  return out;
+}
+
 function encodeBody(source, id, stream) {
   var out = [];
   function fieldStr(field, value) {
-    var body = new TextEncoder().encode(String(value));
+    var body = utf8BytesAscii(value);
     out.push((field << 3) | 2);
     out.push.apply(out, varint(body.length));
     for (var i = 0; i < body.length; i++) out.push(body[i]);
@@ -83,7 +90,13 @@ function encodeBody(source, id, stream) {
   fieldStr(1, source);
   fieldStr(2, id);
   fieldStr(3, stream);
-  return new Uint8Array(out);
+  return out;
+}
+
+function latin1FromBytes(bytes) {
+  var s = '';
+  for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i] & 0xff);
+  return s;
 }
 
 function bytesToHex(buf) {
@@ -96,8 +109,19 @@ function bytesToHex(buf) {
 }
 
 async function arrayBuffer(res) {
-  if (res.arrayBuffer) return res.arrayBuffer();
-  return new Uint8Array(await res.bytes()).buffer;
+  if (res && typeof res.arrayBuffer === 'function') return res.arrayBuffer();
+  if (res && res._bodyB64) {
+    var bin = atob(res._bodyB64);
+    var buf = new ArrayBuffer(bin.length);
+    var view = new Uint8Array(buf);
+    for (var i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+    return buf;
+  }
+  var text = await res.text();
+  var buf = new ArrayBuffer(text.length);
+  var view = new Uint8Array(buf);
+  for (var i = 0; i < text.length; i++) view[i] = text.charCodeAt(i) & 0xff;
+  return buf;
 }
 
 function parseEmbedUrl(raw, cfg) {
@@ -142,7 +166,7 @@ async function postFetch(ctx, slot, cfg) {
       Referer: referer,
       'User-Agent': ua(),
     },
-    body: body,
+    body: latin1FromBytes(body),
   });
   if (!res.ok) throw new Error('embed /fetch ' + res.status);
   var goat = res.headers && (res.headers.get ? res.headers.get('goat') : res.headers['goat']);

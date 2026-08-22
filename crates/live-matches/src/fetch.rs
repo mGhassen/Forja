@@ -6,6 +6,7 @@ use serde_json::{json, Value};
 use tokio::runtime::Runtime;
 
 const STREAMED_BASE: &str = "https://streamed.pk";
+const STREAMED_EMBED_ORIGIN: &str = "https://embed.st";
 const PPV_ORIGIN: &str = "https://ppv.is";
 const PPV_STREAM_APIS: &[&str] = &[
     "https://api.ppv.st/api/streams",
@@ -176,15 +177,10 @@ pub fn streamed_matches() -> String {
 
 pub fn streamed_streams(source: &str, id: &str) -> String {
     let url = format!("{STREAMED_BASE}/api/stream/{source}/{id}");
-    let body = match http_get(&url, &streamed_headers(), 12) {
-        Some(b) => b,
-        None => return ok_items(vec![]),
-    };
-    let list = match serde_json::from_str::<Vec<Value>>(&body) {
-        Ok(v) => v,
-        Err(_) => return ok_items(vec![]),
-    };
-    let items: Vec<Value> = list
+    let list = http_get(&url, &streamed_headers(), 12)
+        .and_then(|body| serde_json::from_str::<Vec<Value>>(&body).ok())
+        .unwrap_or_default();
+    let mut items: Vec<Value> = list
         .into_iter()
         .filter(|s| {
             s.get("embedUrl")
@@ -193,6 +189,17 @@ pub fn streamed_streams(source: &str, id: &str) -> String {
                 .is_some_and(|u| !u.is_empty())
         })
         .collect();
+    if items.is_empty() && !source.is_empty() && !id.is_empty() {
+        items.push(json!({
+            "id": id,
+            "streamNo": 1,
+            "language": "",
+            "hd": false,
+            "embedUrl": format!("{STREAMED_EMBED_ORIGIN}/embed/{source}/{id}/1"),
+            "source": source,
+            "viewers": 0
+        }));
+    }
     ok_items(items)
 }
 
@@ -518,6 +525,18 @@ mod tests {
             })
             .collect();
         assert_eq!(items.len(), 1);
+    }
+
+    #[test]
+    fn streamed_streams_embed_fallback_when_api_empty() {
+        let raw = streamed_streams("delta", "live-event_indycar-test");
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        let items = parsed["items"].as_array().unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(
+            items[0]["embedUrl"],
+            "https://embed.st/embed/delta/live-event_indycar-test/1"
+        );
     }
 
 

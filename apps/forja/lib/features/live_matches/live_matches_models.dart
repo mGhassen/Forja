@@ -328,7 +328,7 @@ class _StreamedStream {
     streamNo: (j['streamNo'] as num?)?.toInt() ?? 0,
     language: (j['language'] ?? '').toString(),
     hd: j['hd'] == true,
-    embedUrl: (j['embedUrl'] ?? '').toString(),
+    embedUrl: (j['embedUrl'] ?? j['embed_url'] ?? '').toString(),
     source: (j['source'] ?? '').toString(),
     viewers: (j['viewers'] as num?)?.toInt() ?? 0,
   );
@@ -1713,6 +1713,24 @@ const _liveEmbedSniffPollJs = r'''
 const _ppvReferer = 'https://ppv.is/';
 const _streamedBase = 'https://streamed.pk';
 const _streamedReferer = 'https://streamed.pk/';
+const _streamedEmbedOrigin = 'https://embed.st';
+
+List<_StreamedStream> _streamedEmbedFallbackStreams(_StreamedSourceRef sourceRef) {
+  final source = sourceRef.source.trim();
+  final id = sourceRef.id.trim();
+  if (source.isEmpty || id.isEmpty) return const [];
+  return [
+    _StreamedStream(
+      id: id,
+      streamNo: 1,
+      language: '',
+      hd: false,
+      embedUrl: '$_streamedEmbedOrigin/embed/$source/$id/1',
+      source: source,
+      viewers: 0,
+    ),
+  ];
+}
 const _mutBase = 'https://mut.st';
 const _mutReferer = 'https://mut.st/';
 
@@ -2717,9 +2735,11 @@ Future<List<_StreamedStream>> _fetchStreamedStreams(
       }),
     );
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
-    if (parsed.containsKey('error')) return [];
+    if (parsed.containsKey('error')) {
+      return _streamedEmbedFallbackStreams(sourceRef);
+    }
     final list = parsed['items'] as List? ?? [];
-    return list
+    final rows = list
         .map((s) {
           try {
             return _StreamedStream.fromJson(s as Map<String, dynamic>);
@@ -2730,8 +2750,10 @@ Future<List<_StreamedStream>> _fetchStreamedStreams(
         .whereType<_StreamedStream>()
         .where((s) => s.embedUrl.isNotEmpty)
         .toList();
+    if (rows.isNotEmpty) return rows;
+    return _streamedEmbedFallbackStreams(sourceRef);
   } catch (_) {
-    return [];
+    return _streamedEmbedFallbackStreams(sourceRef);
   }
 }
 

@@ -923,11 +923,17 @@ class EngineRuntime {
       req.followRedirects = true;
       req.maxRedirects = 8;
       req.headers.addAll(headers);
+      final contentType = (headers['Content-Type'] ?? headers['content-type'] ?? '')
+          .toLowerCase();
       if (body.isNotEmpty &&
           method != 'GET' &&
           method != 'HEAD' &&
           method != 'OPTIONS') {
-        req.body = body;
+        if (contentType.contains('application/octet-stream')) {
+          req.bodyBytes = body.codeUnits;
+        } else {
+          req.body = body;
+        }
       }
       final streamed = await _http
           .send(req)
@@ -950,12 +956,18 @@ class EngineRuntime {
       if (text.length > maxLen) text = text.substring(0, maxLen);
       final respHeaders = <String, dynamic>{};
       streamed.headers.forEach((k, v) => respHeaders[k.toLowerCase()] = v);
+      final respCt =
+          (streamed.headers['content-type'] ?? '').toLowerCase();
+      final respGoat = streamed.headers['goat'];
+      final binaryResp = respCt.contains('application/octet-stream') ||
+          (respGoat != null && respGoat.isNotEmpty);
       envelope = {
         'ok': streamed.statusCode >= 200 && streamed.statusCode < 300,
         'status': streamed.statusCode,
         'statusText': streamed.reasonPhrase ?? '',
         'url': streamed.request?.url.toString() ?? url,
-        'body': text,
+        'body': binaryResp ? '' : text,
+        if (binaryResp) 'bodyB64': base64Encode(bytes),
         'headers': respHeaders,
       };
     } catch (e) {
@@ -1326,6 +1338,44 @@ class EngineRuntime {
 
   static const _hostJs = r'''
 (function(){
+  if (typeof atob === 'undefined') {
+    globalThis.atob = function(input) {
+      var str = String(input).replace(/[\t\n\f\r ]+/g, '');
+      var map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+      var output = '', bc = 0, bs = 0, buffer, idx = 0;
+      for (; (buffer = str.charAt(idx++)); ~buffer && (bs = bc % 4 ? bs * 64 + buffer : buffer, bc++ % 4)
+        ? output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6))) : 0) {
+        buffer = map.indexOf(buffer);
+      }
+      return output;
+    };
+  }
+  if (typeof btoa === 'undefined') {
+    globalThis.btoa = function(input) {
+      var str = String(input), output = '', map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+      for (var block, charCode, idx = 0; str.charAt(idx | 0) || (map = '=', idx % 1);
+           output += map.charAt(63 & (block >> (8 - (idx % 1) * 8)))) {
+        charCode = str.charCodeAt(idx += 3 / 4);
+        if (charCode > 0xFF) throw new Error('InvalidCharacterError');
+        block = (block << 8) | charCode;
+      }
+      return output;
+    };
+  }
+  if (typeof TextEncoder === 'undefined') {
+    globalThis.TextEncoder = function TextEncoder() {};
+    TextEncoder.prototype.encode = function(str) {
+      str = String(str);
+      var out = [];
+      for (var i = 0; i < str.length; i++) {
+        var c = str.charCodeAt(i);
+        if (c < 0x80) out.push(c);
+        else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 0x3f));
+        else out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 0x3f), 0x80 | (c & 0x3f));
+      }
+      return new Uint8Array(out);
+    };
+  }
   globalThis.__engineRegistry = globalThis.__engineRegistry || {};
   globalThis.__engineFetchPending = {};
   globalThis.__engineFetchSeq = 0;
@@ -1347,16 +1397,29 @@ class EngineRuntime {
         var lowered = {};
         if (env.headers) for (var k in env.headers) if (Object.prototype.hasOwnProperty.call(env.headers, k)) lowered[String(k).toLowerCase()] = String(env.headers[k]);
         var body = env.body == null ? '' : String(env.body);
+        var bodyB64 = env.bodyB64 == null ? '' : String(env.bodyB64);
         resolve({
           ok: !!env.ok,
           status: env.status | 0,
           statusText: env.statusText || '',
           url: env.url || url,
+          _bodyB64: bodyB64,
           headers: { get: function(name){ return lowered[String(name).toLowerCase()] || null; } },
           text: function(){ return Promise.resolve(body); },
           json: function(){
             try { return Promise.resolve(body ? JSON.parse(body) : null); }
             catch (e) { return Promise.resolve(null); }
+          },
+          arrayBuffer: function(){
+            if (bodyB64) {
+              var bin = atob(bodyB64);
+              var buf = new ArrayBuffer(bin.length);
+              var view = new Uint8Array(buf);
+              for (var i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+              return Promise.resolve(buf);
+            }
+            var enc = new TextEncoder();
+            return Promise.resolve(enc.encode(body).buffer);
           }
         });
       };

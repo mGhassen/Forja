@@ -78,7 +78,7 @@ class LiveMatchesEngine {
   static void engineResolveFailed([String? detail]) {
     ForjaToast.error(
       detail == null || detail.isEmpty
-          ? 'Engine resolve failed — try Sniff in Settings → Forja Sports'
+          ? 'Engine resolve failed — try Sniff mode in Settings → Forja Sports'
           : detail,
     );
   }

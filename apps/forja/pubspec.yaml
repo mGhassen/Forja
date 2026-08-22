@@ -139,6 +139,7 @@ flutter:
     - assets/providers/
     - assets/providers/hops/
     - assets/providers/live/
+    - assets/providers/live/goat/
     - assets/providers/catalog/
     - assets/textures/
     - assets/watch_providers/

@@ -745,7 +745,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     }
     if (!result!.playable) {
       LiveMatchesEngine.engineResolveFailed(
-        'Engine could not resolve this stream — switch to Sniff in Settings → Forja Sports',
+        'Engine could not resolve this stream — try Sniff mode in Settings → Forja Sports',
       );
       return true;
     }
