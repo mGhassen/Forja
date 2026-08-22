@@ -45,6 +45,9 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
               imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
               imageAlignment:
                   useAniBanner ? Alignment.center : Alignment.centerRight,
+              tmdbId: a.tmdbId,
+              tmdbMediaType: a.tmdbMediaType ??
+                  ((a.format ?? '').toUpperCase() == 'MOVIE' ? 'movie' : 'tv'),
               onDetails: () => _s._openDetails(a),
               listTarget: HubListFollowTarget.anime(
                 anilistId: a.id,
@@ -191,8 +194,8 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                             color: AppTheme.bgDark,
                             child: CustomScrollView(
                             controller: _s._scroll,
-                            physics: const BouncingScrollPhysics(
-                              parent: AlwaysScrollableScrollPhysics(),
+                            physics: const AlwaysScrollableScrollPhysics(
+                              parent: BouncingScrollPhysics(),
                             ),
                             slivers: [
                               SliverToBoxAdapter(
@@ -213,6 +216,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                                         snap.data!.take(5).toList(),
                                       ),
                                       tvTabId: 'anime',
+                                      scrollController: _s._scroll,
                                       pageBottomChild: trendingSection,
                                     );
                                   },

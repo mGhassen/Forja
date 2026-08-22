@@ -1298,6 +1298,7 @@ class _TorrentSourceSearchToolbarState
             focusNode: widget.filtersFocusNode,
             borderRadius: 10,
             scaleOnFocus: 1.0,
+            suppressInkHover: true,
             showFocusBorder: ShellScope.inputPolicyOf(
               context,
             ).useFocusableMoodChips,
@@ -1311,33 +1312,29 @@ class _TorrentSourceSearchToolbarState
                       widget.searchFocusNode!.requestFocus();
                     }
                   },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: _torrentPanelControlDecoration(
-                active: _activeCount > 0 || _filtersOpen,
-                radius: 10,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    size: 18,
-                    color: ForjaShellColors.cinematic.textPrimary,
-                  ),
-                  if (_activeCount > 0) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      '$_activeCount',
-                      style: TextStyle(
-                        color: ForjaShellColors.cinematic.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ForjaPlainIcon(
+                  icon: Icons.tune_rounded,
+                  size: 18,
+                  hitSize: 32,
+                  color: (_activeCount > 0 || _filtersOpen)
+                      ? ForjaShellColors.chipSelectedIcon
+                      : ForjaShellColors.cinematic.textPrimary,
+                ),
+                if (_activeCount > 0) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    '$_activeCount',
+                    style: TextStyle(
+                      color: ForjaShellColors.cinematic.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ],

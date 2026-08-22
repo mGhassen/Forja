@@ -403,7 +403,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         probeNotifier: probeNotifier,
         messageNotifier: messageNotifier,
         isAborted: playAborted,
-        maxHits: 3,
+        maxHits: 1,
       );
       if (playAborted()) return;
 
@@ -530,7 +530,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     required ValueNotifier<List<StreamProviderProbe>> probeNotifier,
     required ValueNotifier<String> messageNotifier,
     required bool Function() isAborted,
-    int maxHits = 3,
+    int maxHits = 1,
   }) async {
     final type = _s._movie.mediaType == 'tv' ? 'tv' : 'movie';
     final year = _s._movie.releaseDate.length >= 4

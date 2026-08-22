@@ -61,6 +61,8 @@ class HubHeroSlide {
     this.genres = const [],
     this.imageFit = BoxFit.cover,
     this.imageAlignment = Alignment.centerRight,
+    this.tmdbId,
+    this.tmdbMediaType = 'tv',
     this.listTarget,
     required this.onDetails,
   });
@@ -80,6 +82,8 @@ class HubHeroSlide {
   final List<String> genres;
   final BoxFit imageFit;
   final Alignment imageAlignment;
+  final int? tmdbId;
+  final String tmdbMediaType;
   final HubListFollowTarget? listTarget;
   final VoidCallback onDetails;
 }
@@ -99,6 +103,8 @@ class _HeroItem {
     this.imageFit = BoxFit.cover,
     this.imageAlignment = Alignment.centerRight,
     this.genres = const [],
+    this.tmdbId,
+    this.tmdbMediaType = 'tv',
     required this.backdropUrls,
     required this.onDetails,
     this.movie,
@@ -118,6 +124,8 @@ class _HeroItem {
   final BoxFit imageFit;
   final Alignment imageAlignment;
   final List<String> genres;
+  final int? tmdbId;
+  final String tmdbMediaType;
   final List<String> backdropUrls;
   final VoidCallback onDetails;
   final Movie? movie;
@@ -154,6 +162,8 @@ class _HeroItem {
       imageFit: slide.imageFit,
       imageAlignment: slide.imageAlignment,
       genres: slide.genres,
+      tmdbId: slide.tmdbId,
+      tmdbMediaType: slide.tmdbMediaType,
       backdropUrls: imageUrl.isEmpty ? const [] : [imageUrl],
       onDetails: slide.onDetails,
       listTarget: slide.listTarget,
@@ -195,10 +205,10 @@ class HomeCinematicHero extends StatefulWidget {
     this.pageBottomChild,
     this.tvTabId = 'anime',
     this.firstCatalogRowHeight,
+    this.scrollController,
   })  : moviesFuture = null,
         compact = false,
         usesShellHomeLayout = true,
-        scrollController = null,
         controller = null,
         onOpenDetails = null;
 
@@ -263,11 +273,16 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   bool _heroHeightSyncScheduled = false;
   double? _heroPageViewportWidth;
 
+  void _syncSharedHeroFocusNodes() {
+    if (ShellTvFocus.currentNavTabId != widget.tvTabId) return;
+    ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
+    ShellTvFocus.homeHeroGallery = _tvHeroGalleryFocus;
+  }
+
   @override
   void initState() {
     super.initState();
-    ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
-    ShellTvFocus.homeHeroGallery = _tvHeroGalleryFocus;
+    _syncSharedHeroFocusNodes();
     if (!_isHub) {
       TvHeroActions.bind(
         widget.tvTabId,
@@ -312,10 +327,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   @override
   Widget build(BuildContext context) {
     // KeepAlive tabs all mount - only the active tab owns shared nodes.
-    if (ShellTvFocus.currentNavTabId == widget.tvTabId) {
-      ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
-      ShellTvFocus.homeHeroGallery = _tvHeroGalleryFocus;
-    }
+    _syncSharedHeroFocusNodes();
 
     if (!_isHub) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -333,6 +345,9 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         );
       }
       final items = slides.map(_HeroItem.fromSlide).toList();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _fetchHubHeroLogos(slides);
+      });
       return _buildCinematicHeroBlock(items, compact: _compact);
     }
 
@@ -598,6 +613,41 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     }
   }
 
+  Future<void> _fetchHubHeroLogos(List<HubHeroSlide> slides) async {
+    for (final slide in slides) {
+      final tmdbId = slide.tmdbId;
+      if (tmdbId == null || tmdbId <= 0) continue;
+      final id = slide.id;
+      if (_heroLogos.containsKey(id)) continue;
+      try {
+        final mediaType = slide.tmdbMediaType.trim().isEmpty
+            ? 'tv'
+            : slide.tmdbMediaType.trim();
+        final logoPath = await _api.getLogoPath(tmdbId, mediaType: mediaType);
+        if (!mounted) return;
+        setState(() {
+          _heroLogos[id] = logoPath.isNotEmpty
+              ? TmdbApi.getImageUrl(logoPath)
+              : '';
+        });
+      } catch (_) {}
+    }
+  }
+
+  Movie _heroItemAsMovie(_HeroItem item) {
+    return Movie(
+      id: int.tryParse(item.id) ?? 0,
+      title: item.title,
+      posterPath: '',
+      backdropPath: '',
+      voteAverage: item.voteAverage,
+      releaseDate: item.releaseDate,
+      overview: item.overview,
+      genres: item.genres,
+      mediaType: item.mediaType.isNotEmpty ? item.mediaType : item.tmdbMediaType,
+    );
+  }
+
   Future<void> _fetchHeroBackdrops(List<Movie> movies) async {
     for (final movie in movies) {
       final id = '${movie.id}';
@@ -643,7 +693,20 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     return _heroSlideUrls(movie);
   }
 
-  Widget _buildHeroBackdropCarousel(List<_HeroItem> items) {
+  Widget _buildHeroPagesCarousel({
+    required List<_HeroItem> items,
+    required bool compact,
+    required ShellMetrics metrics,
+    required double desktopTextWidth,
+    required double textLeft,
+    required double textTop,
+    required double textBottomInset,
+    required double textColumnWidth,
+    required double solidLeftWidth,
+    required Color shellBg,
+    required double imageStartFraction,
+    required bool pageBleed,
+  }) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final pageW = constraints.maxWidth.clamp(1.0, double.infinity);
@@ -664,7 +727,43 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           onPageChanged: (i) => _onHeroPageChanged(i, items),
           itemBuilder: (context, index) {
             final item = items[index % items.length];
-            return _buildHeroSlideBackdrop(item, index);
+            final slideIndex = index % items.length;
+            return Stack(
+              fit: StackFit.expand,
+              clipBehavior: Clip.none,
+              children: [
+                ColoredBox(color: shellBg),
+                Positioned(
+                  left: solidLeftWidth,
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _buildHeroSlideBackdrop(item, index),
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: _buildDesktopHeroImageGradients(
+                      shellBg,
+                      imageStartFraction: imageStartFraction,
+                      softBottomFade: pageBleed,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: textLeft,
+                  top: textTop,
+                  bottom: textBottomInset,
+                  width: textColumnWidth,
+                  child: _buildHeroTextSlide(
+                    item: item,
+                    isActive: slideIndex == _heroIndex,
+                    compact: compact,
+                    metrics: metrics,
+                    desktopTextWidth: desktopTextWidth,
+                  ),
+                ),
+              ],
+            );
           },
         );
       },
@@ -857,7 +956,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final textColumnWidth = compact
         ? MediaQuery.sizeOf(context).width - textLeft - textRight
         : desktopTextWidth;
-    final heroTextItem = items[_heroIndex];
 
     return SizedBox(
       height: imageHeight,
@@ -865,21 +963,20 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          ColoredBox(color: shellBg),
-          Positioned(
-            left: solidLeftWidth,
-            top: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildHeroBackdropCarousel(items),
-          ),
           Positioned.fill(
-            child: IgnorePointer(
-              child: _buildDesktopHeroImageGradients(
-                shellBg,
-                imageStartFraction: imageStartFraction,
-                softBottomFade: pageBleed,
-              ),
+            child: _buildHeroPagesCarousel(
+              items: items,
+              compact: compact,
+              metrics: metrics,
+              desktopTextWidth: desktopTextWidth,
+              textLeft: textLeft,
+              textTop: textTop,
+              textBottomInset: textBottomInset,
+              textColumnWidth: textColumnWidth,
+              solidLeftWidth: solidLeftWidth,
+              shellBg: shellBg,
+              imageStartFraction: imageStartFraction,
+              pageBleed: pageBleed,
             ),
           ),
           Positioned(
@@ -890,22 +987,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             child: IgnorePointer(
               child: AnimatedBuilder(
                 animation: _heroController,
-                builder: (context, _) =>
-                    _buildHeroSeamScrim(),
+                builder: (context, _) => _buildHeroSeamScrim(),
               ),
-            ),
-          ),
-          Positioned(
-            left: textLeft,
-            top: textTop,
-            bottom: textBottomInset,
-            width: textColumnWidth,
-            child: _buildHeroTextSlide(
-              item: heroTextItem,
-              isActive: true,
-              compact: compact,
-              metrics: metrics,
-              desktopTextWidth: desktopTextWidth,
             ),
           ),
           Positioned(
@@ -929,7 +1012,12 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               top: 0,
               right: 0,
               bottom: 0,
-              child: _buildTvHeroGalleryFocus(items),
+              // Desktop shares the TV focus graph but still needs mouse/trackpad
+              // swipes on the PageView — opaque gallery hit target blocks them.
+              child: IgnorePointer(
+                ignoring: policy.scaleOnHover,
+                child: _buildTvHeroGalleryFocus(items),
+              ),
             ),
           if (pageBleed)
             Positioned(
@@ -1302,10 +1390,11 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     double? slotHeight,
   }) {
     final movie = heroItem.movie;
-    if (movie != null) {
+    final tmdbId = heroItem.tmdbId;
+    if (movie != null || (tmdbId != null && tmdbId > 0)) {
       return HeroTitle(
         key: ValueKey(heroItem.id),
-        movie: movie,
+        movie: movie ?? _heroItemAsMovie(heroItem),
         logoUrl: _heroLogos[heroItem.id],
         style: HeroTitleStyle.home,
         isLandscape: isLandscape,

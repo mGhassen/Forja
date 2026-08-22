@@ -608,20 +608,44 @@ class _IptvFocusIconTapState extends State<_IptvFocusIconTap> {
 
   @override
   Widget build(BuildContext context) {
-    final icon = Icon(
-      widget.icon,
-      size: widget.size,
-      color: iptvFocusFg(
-        widget.idleColor,
-        active: _active,
-        tvFocused: _tvFocused,
-      ),
-    );
-    final child = SizedBox(
+    final policy = ShellScope.inputPolicyOf(context);
+    final pointerActive = _active && !_tvFocused;
+    final fg = _tvFocused
+        ? ForjaShellColors.brandGreen
+        : pointerActive
+        ? ForjaShellColors.iconHover
+        : widget.idleColor;
+    Widget body = SizedBox(
       width: widget.hitSize,
       height: widget.hitSize,
-      child: Center(child: icon),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: iptvFocusSurfaceColor(
+            active: _active,
+            tvFocused: _tvFocused,
+            idleAlpha: 0,
+            hoverAlpha: 0.14,
+          ),
+          border: _tvFocused
+              ? Border.all(color: ForjaShellColors.brandGreen, width: 1.5)
+              : null,
+        ),
+        child: Center(
+          child: Icon(widget.icon, size: widget.size, color: fg),
+        ),
+      ),
     );
+    if (policy.scaleOnHover && pointerActive) {
+      body = AnimatedScale(
+        scale: 1.15,
+        duration: policy.instantFocusChrome
+            ? Duration.zero
+            : const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        child: body,
+      );
+    }
     final tap = iptvTap(
       context: context,
       onTap: widget.onTap,
@@ -638,7 +662,7 @@ class _IptvFocusIconTapState extends State<_IptvFocusIconTap> {
         widget.onFocusChange?.call(focused);
       },
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
-      child: child,
+      child: body,
     );
     if (widget.tooltip == null) return tap;
     return Tooltip(message: widget.tooltip!, child: tap);

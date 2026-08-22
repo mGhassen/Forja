@@ -534,7 +534,7 @@ fn fetch_scoreboard(sport: &str, date_yyyymmdd: &str) -> Vec<Value> {
         ""
     };
     let url = format!("{endpoint}?dates={date_yyyymmdd}{ncaa_params}");
-    let body = match http_get_json(&url, &espn_headers(), 12) {
+    let body = match crate::fetch::http_get_catalog(&url, &espn_headers(), 12) {
         Some(b) => b,
         None => return vec![],
     };
@@ -588,6 +588,109 @@ pub fn sport_match_games(leagues: &[String], date_yyyymmdd: Option<&str>) -> Str
         da.cmp(&db)
     });
     ok_items(items)
+}
+
+fn game_to_catalog_row(game: &Value, plugin_id: &str) -> Option<Value> {
+    let id = game.get("id").and_then(|v| v.as_str())?.trim();
+    if id.is_empty() {
+        return None;
+    }
+    let title = game
+        .get("title")
+        .or_else(|| game.get("name"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("ESPN");
+    let category = game
+        .get("category")
+        .and_then(|v| v.as_str())
+        .unwrap_or("other");
+    let date_ms = game.get("dateMs").and_then(|v| v.as_i64()).unwrap_or(0);
+    let live = game.get("live").and_then(|v| v.as_bool()).unwrap_or(false);
+    let home_logo = game
+        .get("homeLogo")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let away_logo = game
+        .get("awayLogo")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let poster = if !home_logo.is_empty() {
+        home_logo
+    } else {
+        away_logo
+    };
+    let sport_match_game = json!({
+        "id": id,
+        "title": title,
+        "sport": game.get("sport").and_then(|v| v.as_str()).unwrap_or(""),
+        "category": category,
+        "sportFamily": game.get("sportFamily").and_then(|v| v.as_str()).unwrap_or(""),
+        "homeTeam": game.get("homeTeam").and_then(|v| v.as_str()).unwrap_or(""),
+        "awayTeam": game.get("awayTeam").and_then(|v| v.as_str()).unwrap_or(""),
+        "homeNick": game.get("homeNick").and_then(|v| v.as_str()).unwrap_or(""),
+        "awayNick": game.get("awayNick").and_then(|v| v.as_str()).unwrap_or(""),
+        "homeAbbr": game.get("homeAbbr").and_then(|v| v.as_str()).unwrap_or(""),
+        "awayAbbr": game.get("awayAbbr").and_then(|v| v.as_str()).unwrap_or(""),
+        "dateMs": date_ms,
+        "date": game.get("date").and_then(|v| v.as_str()).unwrap_or(""),
+    });
+    Some(json!({
+        "id": format!("espn:{id}"),
+        "title": title,
+        "category": category,
+        "date": date_ms,
+        "poster": poster,
+        "popular": false,
+        "airing": live,
+        "homeTeam": game.get("homeTeam").and_then(|v| v.as_str()).unwrap_or(""),
+        "awayTeam": game.get("awayTeam").and_then(|v| v.as_str()).unwrap_or(""),
+        "homeBadge": home_logo,
+        "awayBadge": away_logo,
+        "sources": [],
+        "catalog": "forja_live",
+        "pluginId": plugin_id,
+        "sportMatchGame": sport_match_game,
+    }))
+}
+
+/// Forja Live `catalog-espn` rows — mirrors `assets/plugins/catalog/espn.js`.
+pub fn forja_live_catalog_rows(
+    leagues: &[String],
+    date_yyyymmdd: Option<&str>,
+    plugin_id: &str,
+) -> Vec<Value> {
+    let date = date_yyyymmdd
+        .map(|s| s.trim().to_string())
+        .filter(|s| s.len() == 8 && s.chars().all(|c| c.is_ascii_digit()))
+        .unwrap_or_else(utc_date_yyyymmdd);
+
+    let leagues: Vec<String> = if leagues.is_empty() {
+        ESPN_ENDPOINTS
+            .iter()
+            .map(|(k, _)| (*k).to_string())
+            .collect()
+    } else {
+        leagues.to_vec()
+    };
+
+    let mut rows = Vec::new();
+    for league in leagues {
+        let sport = league.trim().to_uppercase();
+        if sport.is_empty() {
+            continue;
+        }
+        for game in fetch_scoreboard(&sport, &date) {
+            if let Some(row) = game_to_catalog_row(&game, plugin_id) {
+                rows.push(row);
+            }
+        }
+    }
+    rows.sort_by(|a, b| {
+        let da = a.get("date").and_then(|v| v.as_i64()).unwrap_or(0);
+        let db = b.get("date").and_then(|v| v.as_i64()).unwrap_or(0);
+        da.cmp(&db)
+    });
+    rows
 }
 
 struct TeamCacheEntry {

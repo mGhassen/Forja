@@ -106,6 +106,9 @@ class LiveMatchesIptvSportsConfig {
     'fight': 'COMBAT',
     'combat-sports': 'COMBAT',
     'boxing': 'COMBAT',
+    'wrestling': 'COMBAT',
+    'wwe': 'COMBAT',
+    'aew': 'COMBAT',
     'rugby': 'RUGBY',
     'cricket': 'CRICKET',
     'lacrosse': 'LACROSSE',
@@ -187,7 +190,7 @@ class LiveMatchesIptvSportsConfig {
     return (await resolveForFetch()) != null;
   }
 
-  /// Persist Enable + portal + default leagues so Settings matches the top bar.
+  /// Persist portal + default leagues for Xtream matching (does not toggle Enable).
   static Future<LiveMatchesIptvSportsConfig> ensureArmed({
     String? portalKey,
   }) async {
@@ -195,15 +198,14 @@ class LiveMatchesIptvSportsConfig {
     final resolved = portalKey?.isNotEmpty == true
         ? portalKey!
         : await resolvePortalKey(config);
-    var next = config.copyWith(enabled: true);
+    var next = config;
     if (resolved.isNotEmpty) {
       next = next.copyWith(portalKey: resolved);
     }
     if (next.leagues.isEmpty) {
       next = next.copyWith(leagues: List<String>.from(allLeagues));
     }
-    if (next.enabled == config.enabled &&
-        next.portalKey == config.portalKey &&
+    if (next.portalKey == config.portalKey &&
         _sameLeagues(next.leagues, config.leagues)) {
       return next;
     }

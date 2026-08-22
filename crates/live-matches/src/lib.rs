@@ -1,10 +1,11 @@
 mod espn;
 mod fetch;
+mod forja_catalog;
 mod sport_match;
 mod xtream_sport;
 
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct LiveMatchesRequest {
@@ -19,6 +20,12 @@ pub struct LiveMatchesRequest {
     /// Local calendar day YYYYMMDD for ESPN `dates=` filter.
     #[serde(default)]
     pub date: Option<String>,
+    /// Engine catalog plugin id (`catalog-espn`, `catalog-timstreams`, …).
+    #[serde(default)]
+    pub catalog_id: Option<String>,
+    /// Plugin config blob for [forja_live_catalog].
+    #[serde(default)]
+    pub config: Option<Value>,
     /// Game object for `sport_match_streams`.
     #[serde(default)]
     pub game: Option<Value>,
@@ -57,6 +64,11 @@ pub fn fetch_json(request_json: &str) -> String {
         "sport_match_games" => {
             let leagues = req.leagues.unwrap_or_default();
             espn::sport_match_games(&leagues, req.date.as_deref())
+        }
+        "forja_live_catalog" => {
+            let catalog_id = req.catalog_id.unwrap_or_default();
+            let config = req.config.unwrap_or(json!({}));
+            forja_catalog::fetch_catalog(&catalog_id, &config)
         }
         "sport_match_streams" => {
             let game = match req.game {
@@ -99,5 +111,14 @@ mod tests {
     fn sport_match_streams_requires_game() {
         let raw = fetch_json(r#"{"action":"sport_match_streams","xtream":{"url":"http://x"}}"#);
         assert!(raw.contains("game required"));
+    }
+
+    #[test]
+    fn forja_live_catalog_unknown_returns_empty() {
+        let raw = fetch_json(
+            r#"{"action":"forja_live_catalog","catalog_id":"catalog-nope","config":{}}"#,
+        );
+        let parsed: Value = serde_json::from_str(&raw).unwrap();
+        assert!(parsed.get("items").unwrap().as_array().unwrap().is_empty());
     }
 }

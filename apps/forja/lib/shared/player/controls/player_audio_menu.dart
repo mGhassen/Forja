@@ -75,11 +75,11 @@ class PlayerAudioMenu {
         bitrate: track.bitrate,
       ),
       selected: selected,
-      onTap: () {
+      onTap: () async {
         PlayerPopupPanel.dismiss();
         if (!selected) {
           onTrackSelected?.call();
-          player.setAudioTrack(track);
+          await selectPlayerAudioTrack(player, track);
         }
       },
     );

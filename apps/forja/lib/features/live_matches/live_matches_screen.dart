@@ -41,6 +41,7 @@ import 'package:forja/features/live_matches/live_matches_team_parse.dart';
 import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.dart';
 import 'package:forja/features/live_matches/live_matches_engine.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/features/live_matches/live_embed_webview_proxy.dart';
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_catalog_disk_store.dart';
@@ -176,6 +177,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   @override
   void onShellTabHidden() {
     super.onShellTabHidden();
+    _releaseLiveMatchesItemFocusIfHeld();
     EngineService.instance.cancelLiveCatalog();
     _IptvSportsChannelsPanel.dismiss();
     _loadGen++;
@@ -318,6 +320,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final iptvSportsEnabled =
+        (await LiveMatchesIptvSportsConfig.load()).enabled;
     final raw = prefs.getString(_serverPreferenceKey);
     _LiveMatchesServer? saved;
     if (raw != null) {
@@ -328,11 +332,15 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
         }
       }
     }
-    final next = _liveMatchesClampServerForSurface(saved ?? _server, tv: tv);
+    final next = _liveMatchesClampServerForSurface(
+      saved ?? _server,
+      tv: tv,
+      iptvSportsEnabled: iptvSportsEnabled,
+    );
     if (next == _server) return;
     setState(() => _server = next);
-    // TV may clamp PPV/Streamed/Mut → All; persist so next launch stays valid.
-    if (tv && saved != next) {
+    // Clamp invalid saved server (TV embed-only, disabled Forja Sports, …).
+    if (saved != next) {
       unawaited(_persistServerPreference(next));
     }
   }

@@ -249,20 +249,29 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
   final FocusNode _firstFocus = FocusNode(
     debugLabel: 'live-server-sheet-first',
   );
+  bool _iptvSportsEnabled = false;
 
   List<_LiveMatchesServer> get _servers => _liveMatchesServersForSurface(
     tv: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+    iptvSportsEnabled: _iptvSportsEnabled,
   );
 
   @override
   void initState() {
     super.initState();
+    unawaited(_loadIptvSportsEnabled());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       // Leanback only — desktop opens with mouse; stealing focus breaks hover.
       if (!ShellScope.metricsOf(context).usesTvDensity) return;
       if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
     });
+  }
+
+  Future<void> _loadIptvSportsEnabled() async {
+    final config = await LiveMatchesIptvSportsConfig.load();
+    if (!mounted) return;
+    setState(() => _iptvSportsEnabled = config.enabled);
   }
 
   @override

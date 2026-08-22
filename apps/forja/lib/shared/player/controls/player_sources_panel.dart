@@ -320,29 +320,24 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     for (final pack in _enginePacks) {
       for (final p in pack.plugins) {
         if (p.id != pluginId) continue;
-        final types = p.types.map((t) => t.toLowerCase()).toSet();
-        if (types.contains(EngineCategories.anime)) {
-          return EngineCategories.anime;
-        }
-        if (types.contains(EngineCategories.drama)) {
-          return EngineCategories.drama;
-        }
-        return null;
+        return EngineCategories.panelCategoryFromPlayingPlugin(p);
       }
     }
     return null;
   }
 
   /// Engine extract type — keep `anime` / `drama` (do not coerce to movie).
+  ///
+  /// Hub panels pass [engineCategory] / `asian_drama` even when TMDB match is
+  /// `tv` — panel bucket wins over TMDB mediaType.
   String get _engineResolveType {
+    final panel = _enginePanelCategory;
+    if (panel == EngineCategories.anime) return 'anime';
+    if (panel == EngineCategories.drama) return 'drama';
     final t = widget.movie.mediaType.toLowerCase();
-    if (t == 'tv' || t == 'series') return 'tv';
-    if (t == 'anime' || _enginePanelCategory == EngineCategories.anime) {
-      return 'anime';
-    }
-    if (t == 'drama' || _enginePanelCategory == EngineCategories.drama) {
-      return 'drama';
-    }
+    if (t == 'anime') return 'anime';
+    if (t == 'drama' || t == 'asian_drama') return 'drama';
+    if (t == 'tv' || t == 'series' || t == 'show') return 'tv';
     return 'movie';
   }
 
@@ -765,27 +760,32 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
     List<EnginePack> enginePacks = const [];
     Set<String> engineSelected = {};
-    if (engineOn && kind == 'engine') {
+    if (engineOn) {
       try {
         enginePacks = await EngineService.instance.listSourcesPanelPacks();
         // Assign before reading [_enginePanelCategory] so anime/drama can be
         // inferred from the playing engine plugin.
         _enginePacks = enginePacks;
-        final enabledIds = enabledEnginePluginIds(enginePacks);
-        final panelCategory = _enginePanelCategory;
-        final scope = EngineCategories.matchingPluginIds(
-          packs: enginePacks,
-          categories: EngineCategories.defaultsForPanelCategory(panelCategory),
-        );
-        engineSelected = EngineCategories.scopeSelectionIfFullAll(
-          selected: await EngineService.instance.loadSourcesSelectedPluginIds(
-            enabledIds: enabledIds,
-            panelCategory: panelCategory,
-            selectAllScopeIds: scope,
-          ),
-          enabledIds: enabledIds,
-          scope: scope,
-        );
+        if (kind == 'engine') {
+          final enabledIds = enabledEnginePluginIds(enginePacks);
+          final panelCategory = _enginePanelCategory;
+          final scope = EngineCategories.matchingPluginIds(
+            packs: enginePacks,
+            categories: EngineCategories.defaultsForPanelCategory(panelCategory),
+          );
+          engineSelected = filterEngineSelectedPluginIds(
+            savedIds: EngineCategories.scopeSelectionIfFullAll(
+              selected: await EngineService.instance.loadSourcesSelectedPluginIds(
+                enabledIds: enabledIds,
+                panelCategory: panelCategory,
+                selectAllScopeIds: scope,
+              ),
+              enabledIds: enabledIds,
+              scope: scope,
+            ),
+            enabledIds: scope,
+          );
+        }
       } catch (_) {}
     }
     if (!mounted) return;
@@ -877,7 +877,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _enginePacks = packs;
         _engineSelectedPluginIds = filterEngineSelectedPluginIds(
           savedIds: saved,
-          enabledIds: enabledIds,
+          enabledIds: scope,
         );
       });
     } catch (_) {}

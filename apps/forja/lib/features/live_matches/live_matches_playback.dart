@@ -733,11 +733,25 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       LiveMatchesEngine.engineResolveFailed();
       return true;
     }
+    // Engine resolve (GOAT unlock / live-streamed.js) returns CDN headers —
+    // strmd.st tokens validate against embed.st, not streamed.pk.
+    final headers = result!.headers.isNotEmpty
+        ? result!.headers
+        : _liveEmbedStreamHeaders(
+            result!.url,
+            catalogReferer: match.isForjaLive
+                ? (_forjaLiveCdnReferer(stream.embedUrl) ??
+                    _forjaLiveWrapperReferer(
+                      stream.embedUrl,
+                      pluginId: match.livePluginId,
+                    ))
+                : _streamedReferer,
+          );
     await _openEngineNativeStream(
       title: match.title,
       subtitle: _streamPlaySubtitle(match, stream),
       url: result!.url,
-      headers: result!.headers,
+      headers: headers,
       label: result!.label.isNotEmpty ? result!.label : 'Streamed',
     );
     return true;
@@ -767,11 +781,16 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       LiveMatchesEngine.engineResolveFailed();
       return true;
     }
+    final headers = result!.headers.isNotEmpty
+        ? result!.headers
+        : (s.iframe.trim().isNotEmpty
+              ? _ppvEmbedStreamHeaders(s.iframe)
+              : _liveEmbedStreamHeaders(result!.url, catalogReferer: _ppvReferer));
     await _openEngineNativeStream(
       title: s.name,
       subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
       url: result!.url,
-      headers: result!.headers,
+      headers: headers,
       label: 'PPV',
     );
     return true;

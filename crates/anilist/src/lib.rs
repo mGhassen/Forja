@@ -4,6 +4,20 @@ use stremio::fetch_post_with_headers_unchecked;
 
 const GQL_URL: &str = "https://graphql.anilist.co";
 
+const DEFAULT_UA: &str =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
+     (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+fn gql_headers() -> HashMap<String, String> {
+    HashMap::from([
+        ("Accept".into(), "application/json".into()),
+        ("Content-Type".into(), "application/json".into()),
+        ("User-Agent".into(), DEFAULT_UA.into()),
+        ("Origin".into(), "https://anilist.co".into()),
+        ("Referer".into(), "https://anilist.co/".into()),
+    ])
+}
+
 /// POST a GraphQL query to AniList. Returns the raw JSON response body on HTTP 200.
 pub fn query_json(query: &str, variables_json: &str) -> String {
     let variables: serde_json::Value =
@@ -14,9 +28,7 @@ pub fn query_json(query: &str, variables_json: &str) -> String {
     })
     .to_string();
 
-    let mut headers = HashMap::new();
-    headers.insert("Accept".into(), "application/json".into());
-    headers.insert("Content-Type".into(), "application/json".into());
+    let headers = gql_headers();
 
     match fetch_post_with_headers_unchecked(GQL_URL, 15, &headers, &body) {
         Ok(resp) if resp.status == 200 => resp.body,

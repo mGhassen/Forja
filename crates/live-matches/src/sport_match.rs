@@ -32,6 +32,8 @@ pub struct MatchGame {
     pub specific_tokens: Vec<String>,
     /// Sport-chip tokens (e.g. motor-sports → motor, sports).
     pub sport_tokens: Vec<String>,
+    /// Normalized title phrases for PPV-style channel names.
+    pub title_phrases: Vec<String>,
     pub date_ms: i64,
 }
 
@@ -67,6 +69,7 @@ impl MatchGame {
             }
         }
         let (specific_tokens, sport_tokens) = build_event_tokens(&title, &sport, &home_team, &away_team);
+        let title_phrases = build_title_phrases(&title, &home_team, &away_team);
         Self {
             home_team,
             away_team,
@@ -77,6 +80,7 @@ impl MatchGame {
             title,
             specific_tokens,
             sport_tokens,
+            title_phrases,
             date_ms,
         }
     }
@@ -108,6 +112,11 @@ const GENERIC_TEAM_TOKENS: &[&str] = &[
 
 fn is_generic_team_token(w: &str) -> bool {
     GENERIC_TEAM_TOKENS.contains(&w)
+}
+
+/// Years and bare numbers match almost every sports EPG — never use alone.
+fn is_weak_event_token(w: &str) -> bool {
+    w.chars().all(|c| c.is_ascii_digit())
 }
 
 fn is_token(w: &str) -> bool {
@@ -148,12 +157,50 @@ fn build_event_tokens(
             }
         }
     }
-    specific.retain(|t| !is_generic_team_token(t));
+    specific.retain(|t| !is_generic_team_token(t) && !is_weak_event_token(t));
     specific.sort();
     specific.dedup();
 
     let sport_tokens = tokenize_text(sport);
     (specific, sport_tokens)
+}
+
+/// Collapse punctuation so `"PPV: Dutch Grand Prix HD"` matches event title.
+fn normalize_phrase(text: &str) -> String {
+    text.to_lowercase()
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|w| !w.is_empty() && !TITLE_STOPWORDS.contains(w))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn build_title_phrases(title: &str, home: &str, away: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut push = |phrase: String| {
+        if phrase.len() >= 8 && !out.contains(&phrase) {
+            out.push(phrase);
+        }
+    };
+    push(normalize_phrase(title));
+    if let Some(stem) = title.split(" - ").next() {
+        push(normalize_phrase(stem));
+    }
+    if !home.trim().is_empty() && !away.trim().is_empty() {
+        push(normalize_phrase(&format!("{} vs {}", home.trim(), away.trim())));
+        push(normalize_phrase(&format!("{} v {}", home.trim(), away.trim())));
+    }
+    out
+}
+
+fn text_has_title_phrase(text: &str, phrases: &[String]) -> bool {
+    if phrases.is_empty() {
+        return false;
+    }
+    let norm = normalize_phrase(text);
+    if norm.len() < 8 {
+        return false;
+    }
+    phrases.iter().any(|p| norm.contains(p.as_str()))
 }
 
 fn parse_teams_from_title(title: &str) -> Option<(String, String)> {
@@ -271,6 +318,8 @@ fn has_4k(text_lower: &str) -> bool {
 }
 
 struct EventScore {
+    title_phrase_name: bool,
+    title_phrase_epg: bool,
     specific_name: usize,
     specific_cat: usize,
     specific_epg: usize,
@@ -284,6 +333,8 @@ impl EventScore {
         let cat = c.category_label.to_lowercase();
         let epg = c.description.to_lowercase();
         Self {
+            title_phrase_name: text_has_title_phrase(&name, &game.title_phrases),
+            title_phrase_epg: text_has_title_phrase(&epg, &game.title_phrases),
             specific_name: count_token_hits(&name, &game.specific_tokens),
             specific_cat: count_label_hits(&cat, &game.specific_tokens),
             specific_epg: count_token_hits(&epg, &game.specific_tokens),
@@ -297,21 +348,26 @@ impl EventScore {
     }
 
     fn pre_epg_rank(&self) -> i32 {
-        (self.specific_name as i32) * 10
-            + (self.specific_cat as i32) * 8
-            + (self.sport_name as i32) * 4
-            + (self.sport_cat as i32) * 6
+        let mut rank = 0i32;
+        if self.title_phrase_name {
+            rank += 50;
+        }
+        rank += (self.specific_name as i32) * 10;
+        rank += (self.specific_cat as i32) * 8;
+        rank += (self.sport_name as i32) * 4;
+        rank += (self.sport_cat as i32) * 6;
+        rank
     }
 
     fn tier(&self) -> Option<usize> {
+        if self.title_phrase_name || self.title_phrase_epg {
+            return Some(1);
+        }
         let spec = self.specific_total();
         if spec >= 2 && (self.specific_name > 0 || self.specific_epg > 0) {
             return Some(1);
         }
-        if self.specific_name >= 1 {
-            return Some(2);
-        }
-        if self.specific_epg >= 1 {
+        if self.specific_name >= 1 || self.specific_epg >= 1 {
             return Some(2);
         }
         if self.sport_cat >= 1 && (self.sport_name >= 1 || self.specific_epg >= 1) {
@@ -349,7 +405,7 @@ pub fn indices_for_epg(game: &MatchGame, candidates: &[Candidate], max: usize) -
     }
     scored.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     if scored.is_empty() {
-        return (0..max.min(candidates.len())).collect();
+        return vec![];
     }
     scored.truncate(max);
     scored.into_iter().map(|(i, _)| i).collect()
@@ -358,6 +414,9 @@ pub fn indices_for_epg(game: &MatchGame, candidates: &[Candidate], max: usize) -
 fn team_prefilter_rank(game: &MatchGame, c: &Candidate) -> i32 {
     let name = c.name.to_lowercase();
     let cat = c.category_label.to_lowercase();
+    if text_has_title_phrase(&name, &game.title_phrases) {
+        return 50;
+    }
     let home = team_match_tokens(&game.home_team);
     let away = team_match_tokens(&game.away_team);
     let mut rank = 0i32;
@@ -505,6 +564,15 @@ pub fn match_streams(
             tiers[0].push((idx, s.start_timestamp));
             continue;
         }
+        if text_has_title_phrase(&name, &game.title_phrases) {
+            tiers[1].push((idx, s.start_timestamp));
+            continue;
+        }
+        if text_has_title_phrase(&description, &game.title_phrases) {
+            tiers[2].push((idx, s.start_timestamp));
+            continue;
+        }
+
         if both_in_name_alone && both_in_desc_alone {
             tiers[1].push((idx, s.start_timestamp));
             continue;
@@ -542,6 +610,11 @@ mod tests {
             title: "Boston Red Sox at Toronto Blue Jays".into(),
             specific_tokens: vec![],
             sport_tokens: tokenize_text("MLB"),
+            title_phrases: build_title_phrases(
+                "Boston Red Sox at Toronto Blue Jays",
+                "Boston Red Sox",
+                "Toronto Blue Jays",
+            ),
             date_ms: 1_700_000_000_000,
         }
     }
@@ -737,6 +810,45 @@ mod tests {
     }
 
     #[test]
+    fn ppv_channel_name_with_full_event_title() {
+        let g = f1_game();
+        let cands = vec![Candidate {
+            name: "PPV | Dutch Grand Prix Sprint HD".into(),
+            description: String::new(),
+            start_timestamp: None,
+            stream_url: "https://x/ppv.m3u8".into(),
+            category_label: "PPV Sports".into(),
+            logo: String::new(),
+            stream_id: "1".into(),
+        }];
+        let hits = match_streams(&g, &cands, &[]);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].get("tier").and_then(|v| v.as_u64()), Some(1));
+    }
+
+    #[test]
+    fn ppv_team_match_in_channel_name() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "Hull City vs Manchester United",
+            "sport": "soccer",
+            "homeTeam": "Hull City",
+            "awayTeam": "Manchester United",
+            "dateMs": 1_755_861_000_000i64
+        }));
+        let cands = vec![Candidate {
+            name: "PPV: Hull City vs Manchester United".into(),
+            description: String::new(),
+            start_timestamp: None,
+            stream_url: "https://x/ppv.m3u8".into(),
+            category_label: "Football PPV".into(),
+            logo: String::new(),
+            stream_id: "1".into(),
+        }];
+        let hits = match_streams(&g, &cands, &[]);
+        assert_eq!(hits.len(), 1);
+    }
+
+    #[test]
     fn hull_man_utd_must_not_match_birmingham_bristol_epg() {
         let g = MatchGame {
             home_team: "Hull City".into(),
@@ -754,6 +866,11 @@ mod tests {
             )
             .0,
             sport_tokens: tokenize_text("soccer"),
+            title_phrases: build_title_phrases(
+                "Hull City vs Manchester United",
+                "Hull City",
+                "Manchester United",
+            ),
             date_ms: 1_755_861_000_000,
         };
         let cands = vec![Candidate {
@@ -790,5 +907,97 @@ mod tests {
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert!(hits.is_empty());
+    }
+
+    #[test]
+    fn wrestling_title_drops_year_token() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "TNA Lockdown 2026",
+            "sport": "Wrestling",
+            "dateMs": 1_700_000_000_000i64
+        }));
+        assert!(!g.specific_tokens.contains(&"2026".to_string()));
+        assert!(g.specific_tokens.contains(&"tna".to_string()));
+        assert!(g.specific_tokens.contains(&"lockdown".to_string()));
+    }
+
+    #[test]
+    fn wrestling_rejects_football_epg_year_only() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "TNA Lockdown 2026",
+            "sport": "Wrestling",
+            "dateMs": 1_700_000_000_000i64
+        }));
+        let mut cands = Vec::new();
+        for i in 0..200 {
+            cands.push(Candidate {
+                name: format!("Football Event {i}: Turkiye, 1. Lig"),
+                description: format!("Live fixture @ Aug 22 2026 — channel {i}"),
+                start_timestamp: None,
+                stream_url: format!("https://x/{i}.m3u8"),
+                category_label: "LIVE · Football".into(),
+                logo: String::new(),
+                stream_id: format!("{i}"),
+            });
+        }
+        let hits = match_streams(&g, &cands, &[]);
+        assert!(hits.is_empty(), "year-only EPG must not match wrestling: {:?}", hits);
+    }
+
+    #[test]
+    fn wrestling_matches_tna_channel_name() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "TNA Lockdown 2026",
+            "sport": "Wrestling",
+            "dateMs": 1_700_000_000_000i64
+        }));
+        let cands = vec![
+            Candidate {
+                name: "Football Event 59: Turkiye".into(),
+                description: "Some soccer @ 2026".into(),
+                start_timestamp: None,
+                stream_url: "https://x/soccer.m3u8".into(),
+                category_label: "LIVE · Football".into(),
+                logo: String::new(),
+                stream_id: "1".into(),
+            },
+            Candidate {
+                name: "TNA+ PPV HD".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/tna.m3u8".into(),
+                category_label: "Wrestling".into(),
+                logo: String::new(),
+                stream_id: "2".into(),
+            },
+        ];
+        let hits = match_streams(&g, &cands, &[]);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(
+            hits[0].get("name").and_then(|v| v.as_str()),
+            Some("TNA+ PPV HD")
+        );
+    }
+
+    #[test]
+    fn epg_indices_empty_when_no_prefilter_hits() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "TNA Lockdown 2026",
+            "sport": "Wrestling",
+            "dateMs": 1_700_000_000_000i64
+        }));
+        let cands: Vec<Candidate> = (0..200)
+            .map(|i| Candidate {
+                name: format!("Football Event {i}"),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: format!("https://x/{i}.m3u8"),
+                category_label: "LIVE · Football".into(),
+                logo: String::new(),
+                stream_id: format!("{i}"),
+            })
+            .collect();
+        let idxs = indices_for_epg(&g, &cands, 120);
+        assert!(idxs.is_empty(), "must not EPG-scan unrelated channels");
     }
 }

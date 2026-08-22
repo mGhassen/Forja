@@ -456,6 +456,8 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                   statusChip == 'Upcoming' ||
                   (upcomingReleaseLabel?.isNotEmpty ?? false),
               upcomingReleaseLabel: upcomingReleaseLabel,
+              tmdbId: a.tmdbId,
+              tmdbMediaType: KissKhTmdbMatch.preferMovie(a.type) ? 'movie' : 'tv',
               onDetails: () => _openDetails(a),
               listTarget: HubListFollowTarget.drama(
                 kisskhId: a.id,
@@ -543,8 +545,8 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                   color: AppTheme.bgDark,
                   child: CustomScrollView(
                     controller: _scroll,
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
                     ),
                     slivers: [
                       if (_loading)
@@ -569,6 +571,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                           child: HomeCinematicHero.hub(
                             slides: _heroSlides(_spotlight),
                             tvTabId: 'asian_drama',
+                            scrollController: _scroll,
                             firstCatalogRowHeight: latestSection == null
                                 ? null
                                 : HubCatalogSection.sectionHeight(

@@ -713,13 +713,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _postSeekStall.noteSeek(target);
   }
 
-  Future<void> _remountCurrentStreamAt(Duration target) async {
-    if (_disposed || !mounted || _opening) return;
-    if (_sources.isEmpty) return;
+  Future<bool> _remountCurrentStreamAt(Duration target) async {
+    if (_disposed || !mounted || _opening) return false;
+    if (_sources.isEmpty) return false;
     final source = _sources[_sourceIndex];
     if (isLocalTorrentStreamUrl(source.url) ||
         isLocalLoopbackPlayUrl(source.url)) {
-      return;
+      return false;
     }
     _opening = true;
     _exoReady = false;
@@ -758,7 +758,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       if (!_disposed && mounted) {
         _position = target;
         _statusController.complete();
+        return true;
       }
+      return false;
     } catch (e) {
       debugPrint('[ExoPlayer] Post-seek remount failed: $e');
       if (!_disposed && mounted) {
@@ -769,6 +771,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           dismissAfter: const Duration(milliseconds: 1500),
         );
       }
+      return false;
     } finally {
       _opening = false;
     }

@@ -4,16 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
+import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_guide.dart';
+import 'package:forja/features/iptv/iptv/channel_guide/iptv_guide_epg.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shared/widgets/list_letter_jump_scope.dart';
 
 enum _GuideStep { groups, channels }
-enum _FocusColumn { groups, channels }
+enum _FocusColumn { groups, channels, epg }
 
 class IptvChannelGuidePanel extends StatefulWidget {
   const IptvChannelGuidePanel({
@@ -24,6 +27,8 @@ class IptvChannelGuidePanel extends StatefulWidget {
     required this.onGroupSelected,
     required this.onChannelSelected,
     required this.onClose,
+    this.epgCache,
+    this.epgEnabled = true,
   });
 
   final IptvChannelGuide guide;
@@ -32,6 +37,8 @@ class IptvChannelGuidePanel extends StatefulWidget {
   final ValueChanged<String> onGroupSelected;
   final ValueChanged<IptvGuideChannel> onChannelSelected;
   final VoidCallback onClose;
+  final IptvGuideEpgCache? epgCache;
+  final bool epgEnabled;
 
   static const double wideBreakpoint = 700;
   /// Compact overlay — leaves video visible on the right (was 660).
@@ -52,6 +59,9 @@ class IptvChannelGuidePanel extends StatefulWidget {
   static const double groupListPaddingV = 10;
   /// Keep focused row fully inside the viewport (focus bar not clipped).
   static const double listFocusMargin = 8;
+  static const double epgPeekWidth = 320;
+  static const double epgPeekGap = 8;
+  static const Duration epgHoverDelay = Duration(seconds: 1);
 
   @override
   State<IptvChannelGuidePanel> createState() => _IptvChannelGuidePanelState();
@@ -83,6 +93,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   final Set<String> _revealedLogoIds = <String>{};
   static const _logoSettleDelay = Duration(milliseconds: 500);
 
+  /// Desktop hover / TV → peek: channel id for the side EPG card.
+  String? _epgPeekChannelId;
+  Timer? _epgHoverTimer;
+  /// TV: first OK tunes; second OK on the channel list closes the guide.
+  bool _closeArmedOnEnter = false;
+
   static const Color _groupsTint = Color(0xE00C0C12);
   static const Color _channelsTint = Color(0xE016161F);
   /// Brand green — matches catalog sidebar / TV focus chrome (not gray navUnderline).
@@ -100,6 +116,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     _health.addAll(widget.guide.streamHealth);
     _syncFocusIndices();
     _focusNode.addListener(_reclaimFocusIfLost);
+    _channelScroll.addListener(_onChannelScroll);
     _scheduleRevealPlaying();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -109,6 +126,11 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         setState(() => _allowNewLogos = true);
       }
     });
+  }
+
+  void _onChannelScroll() {
+    if (_epgPeekChannelId == null || !mounted) return;
+    setState(() {});
   }
 
   void _claimFocus() {
@@ -262,11 +284,13 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   @override
   void dispose() {
     _logoSettleTimer?.cancel();
+    _epgHoverTimer?.cancel();
     for (final t in _healthDebounce.values) {
       t.cancel();
     }
     _healthDebounce.clear();
     _focusNode.removeListener(_reclaimFocusIfLost);
+    _channelScroll.removeListener(_onChannelScroll);
     _focusNode.dispose();
     _groupScroll.dispose();
     _channelScroll.dispose();
@@ -372,6 +396,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     if (groupChanged) {
       _revealedLogoIds.clear();
       _allowNewLogos = false;
+      _clearEpgPeek();
     }
     setState(() {
       _focusedGroupIndex = nextFocus;
@@ -519,13 +544,106 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   List<IptvGuideChannel> get _visibleChannels =>
       widget.guide.channelsForGroup(_browseGroupId);
 
+  IptvGuideChannel? get _epgPeekChannel {
+    final id = _epgPeekChannelId;
+    if (id == null) return null;
+    for (final ch in _visibleChannels) {
+      if (ch.id == id) return ch;
+    }
+    return null;
+  }
+
+  int? get _epgPeekChannelIndex {
+    final id = _epgPeekChannelId;
+    if (id == null) return null;
+    final i = _visibleChannels.indexWhere((c) => c.id == id);
+    return i >= 0 ? i : null;
+  }
+
+  Future<List<EpgEntry>>? _epgFutureFor(IptvGuideChannel ch) {
+    if (!widget.epgEnabled || widget.epgCache == null) return null;
+    final stream = ch.xtreamStream;
+    if (stream == null) return null;
+    return widget.epgCache!.load(stream);
+  }
+
+  void _clearEpgPeek() {
+    _epgHoverTimer?.cancel();
+    if (_epgPeekChannelId == null) return;
+    setState(() => _epgPeekChannelId = null);
+  }
+
+  void _scheduleHoverEpg(IptvGuideChannel ch) {
+    if (!widget.epgEnabled || iptvUseTvFocus(context)) return;
+    _epgHoverTimer?.cancel();
+    if (_epgPeekChannelId == ch.id) return;
+    _epgHoverTimer = Timer(IptvChannelGuidePanel.epgHoverDelay, () {
+      if (!mounted) return;
+      setState(() => _epgPeekChannelId = ch.id);
+    });
+  }
+
+  void _cancelHoverEpg({String? channelId}) {
+    _epgHoverTimer?.cancel();
+    if (iptvUseTvFocus(context)) return;
+    if (channelId != null && _epgPeekChannelId != channelId) return;
+    _clearEpgPeek();
+  }
+
+  void _showEpgForFocusedChannel() {
+    if (!widget.epgEnabled) return;
+    final channels = _visibleChannels;
+    if (_focusedChannelIndex < 0 || _focusedChannelIndex >= channels.length) {
+      return;
+    }
+    setState(() => _epgPeekChannelId = channels[_focusedChannelIndex].id);
+  }
+
+  double _panelTopInset(BuildContext context) {
+    if (iptvUseTvFocus(context)) return 0;
+    return DesktopWindowChrome.topInset(context) +
+        IptvChannelGuidePanel.panelVerticalGap;
+  }
+
+  double _headerHeightEstimate() {
+    final playing = _currentChannel;
+    final showChannelMeta = _wide || _step == _GuideStep.channels;
+    return (playing != null && showChannelMeta) ? 92.0 : 48.0;
+  }
+
+  double _epgPeekTop(BuildContext context) {
+    final index = _epgPeekChannelIndex;
+    if (index == null) return _panelTopInset(context) + _headerHeightEstimate();
+    const pad = IptvChannelGuidePanel.channelListPaddingV;
+    const extent = IptvChannelGuidePanel.channelRowExtent;
+    final scroll =
+        _channelScroll.hasClients ? _channelScroll.offset : 0.0;
+    final rowCenter = pad + index * extent + extent / 2 - scroll;
+    const cardH = kIptvGuideEpgCardHeightWithNext + 24;
+    final panelTop = _panelTopInset(context);
+    final headerH = _headerHeightEstimate();
+    final screenH = MediaQuery.sizeOf(context).height;
+    final raw = panelTop + headerH + rowCenter - cardH / 2;
+    return raw.clamp(panelTop + headerH, screenH - cardH - 12);
+  }
+
+  double _epgPeekLeft() {
+    final panelWidth = _wide
+        ? IptvChannelGuidePanel.panelWidthWide
+        : IptvChannelGuidePanel.panelWidthNarrow;
+    return panelWidth + IptvChannelGuidePanel.epgPeekGap;
+  }
+
+  bool get _showEpgPeek =>
+      _epgPeekChannel != null && _epgFutureFor(_epgPeekChannel!) != null;
+
   bool get _wide =>
       MediaQuery.sizeOf(context).width >= IptvChannelGuidePanel.wideBreakpoint;
 
   /// Returns true when the channel list offset actually moved.
   bool _scrollToFocused({bool animate = true, bool groupsOnly = false}) {
     _scrollFocusedGroupIntoView(animate: animate);
-    if (groupsOnly || _focusColumn != _FocusColumn.channels) return false;
+    if (groupsOnly || _focusColumn == _FocusColumn.groups) return false;
     if (!_channelScroll.hasClients) return false;
     return _jumpListToIndex(
       _channelScroll,
@@ -553,6 +671,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final key = event.logicalKey;
     if (key == LogicalKeyboardKey.escape ||
         key == LogicalKeyboardKey.goBack) {
+      if (_focusColumn == _FocusColumn.epg) {
+        setState(() => _focusColumn = _FocusColumn.channels);
+        _clearEpgPeek();
+        WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
+        return KeyEventResult.handled;
+      }
       if (!_wide && _step == _GuideStep.channels) {
         setState(() => _step = _GuideStep.groups);
         WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
@@ -587,6 +711,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   void _moveFocus(int delta) {
+    _closeArmedOnEnter = false;
     if (_wide) {
       if (_focusColumn == _FocusColumn.groups) {
         final n = widget.guide.groups.length;
@@ -594,13 +719,19 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         // Focus chrome only — channel logos stay on last OK/→ group.
         _focusGroupAt(_focusedGroupIndex + delta);
         return;
-      } else {
+      } else if (_focusColumn == _FocusColumn.channels ||
+          _focusColumn == _FocusColumn.epg) {
         final n = _visibleChannels.length;
         if (n == 0) return;
         final next =
             (_focusedChannelIndex + delta).clamp(0, n - 1);
         if (next == _focusedChannelIndex) return;
         _focusedChannelIndex = next;
+        if (_focusColumn == _FocusColumn.epg) {
+          _showEpgForFocusedChannel();
+        } else {
+          _cancelHoverEpg();
+        }
         final scrolled = _scrollToFocused();
         _bumpChannelLogoSettle(hide: scrolled);
         setState(() {});
@@ -617,6 +748,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       final next = (_focusedChannelIndex + delta).clamp(0, n - 1);
       if (next == _focusedChannelIndex) return;
       _focusedChannelIndex = next;
+      _cancelHoverEpg();
       final scrolled = _scrollToFocused();
       _bumpChannelLogoSettle(hide: scrolled);
       setState(() {});
@@ -639,8 +771,14 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
   void _focusLeft() {
     if (_wide) {
+      if (_focusColumn == _FocusColumn.epg) {
+        setState(() => _focusColumn = _FocusColumn.channels);
+        _clearEpgPeek();
+        return;
+      }
       if (_focusColumn == _FocusColumn.channels) {
         setState(() => _focusColumn = _FocusColumn.groups);
+        _cancelHoverEpg();
         _scrollToFocused(groupsOnly: true);
       }
       return;
@@ -664,8 +802,14 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         _scrollToFocused();
         return;
       }
-      // Channels column - Right returns focus to the player.
-      _close();
+      if (_focusColumn == _FocusColumn.channels) {
+        if (iptvUseTvFocus(context)) {
+          _showEpgForFocusedChannel();
+          setState(() => _focusColumn = _FocusColumn.epg);
+          return;
+        }
+        return;
+      }
       return;
     }
     if (_step == _GuideStep.groups) {
@@ -692,7 +836,19 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       }
       final channels = _visibleChannels;
       if (_focusedChannelIndex < channels.length) {
-        widget.onChannelSelected(channels[_focusedChannelIndex]);
+        final ch = channels[_focusedChannelIndex];
+        if (iptvUseTvFocus(context) &&
+            (_focusColumn == _FocusColumn.channels ||
+                _focusColumn == _FocusColumn.epg)) {
+          if (_closeArmedOnEnter) {
+            _close();
+            return;
+          }
+          widget.onChannelSelected(ch);
+          _closeArmedOnEnter = true;
+          return;
+        }
+        widget.onChannelSelected(ch);
       }
       return;
     }
@@ -767,7 +923,40 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                   ),
                 ),
               ),
+            if (_showEpgPeek) _buildEpgPeekOverlay(context, wide: wide),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEpgPeekOverlay(BuildContext context, {required bool wide}) {
+    final ch = _epgPeekChannel!;
+    final future = _epgFutureFor(ch)!;
+    return Positioned(
+      left: _epgPeekLeft(),
+      top: _epgPeekTop(context),
+      width: IptvChannelGuidePanel.epgPeekWidth,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.45),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: IptvGuideEpgCard(
+              key: ValueKey(ch.id),
+              future: future,
+              floating: true,
+            ),
+          ),
         ),
       ),
     );
@@ -1003,6 +1192,20 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     );
   }
 
+  void _jumpToChannelByLetter(int index) {
+    final n = _visibleChannels.length;
+    if (n == 0) return;
+    final i = index.clamp(0, n - 1);
+    setState(() {
+      _focusedChannelIndex = i;
+      _focusColumn = _FocusColumn.channels;
+      _closeArmedOnEnter = false;
+    });
+    _cancelHoverEpg();
+    final scrolled = _scrollToFocused();
+    _bumpChannelLogoSettle(hide: scrolled);
+  }
+
   Widget _buildNarrowBody() {
     if (_step == _GuideStep.groups) {
       return _panelColumn(
@@ -1025,9 +1228,15 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       widget.guide.groupIdForChannel(widget.currentChannelId) == groupId;
 
   Widget _buildGroupList({ValueChanged<String>? onPick}) {
-    return IptvTvScrollbar(
-      controller: _groupScroll,
-      child: ListView.builder(
+    final groups = widget.guide.groups;
+    return ListLetterJumpScope(
+      enabled: !iptvUseTvFocus(context),
+      itemCount: groups.length,
+      labelAt: (i) => groups[i].name,
+      onJump: (i) => _focusGroupAt(i, animateScroll: true),
+      child: IptvTvScrollbar(
+        controller: _groupScroll,
+        child: ListView.builder(
         controller: _groupScroll,
         padding: const EdgeInsets.symmetric(
           vertical: IptvChannelGuidePanel.groupListPaddingV,
@@ -1044,6 +1253,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
           final hasPlaying = _groupHasPlayingChannel(g.id);
           return MouseRegion(
             onEnter: (_) {
+              _cancelHoverEpg();
               // Hover only highlights in place — never scrolls the list.
               // Click / OK / → opens the group.
               final colChanged =
@@ -1123,6 +1333,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
           );
         },
       ),
+    ),
     );
   }
 
@@ -1137,9 +1348,14 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       );
     }
 
-    return IptvTvScrollbar(
-      controller: _channelScroll,
-      child: ListView.builder(
+    return ListLetterJumpScope(
+      enabled: !iptvUseTvFocus(context),
+      itemCount: channels.length,
+      labelAt: (i) => channels[i].name,
+      onJump: _jumpToChannelByLetter,
+      child: IptvTvScrollbar(
+        controller: _channelScroll,
+        child: ListView.builder(
         controller: _channelScroll,
         padding: const EdgeInsets.symmetric(
           vertical: IptvChannelGuidePanel.channelListPaddingV,
@@ -1150,7 +1366,8 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         itemBuilder: (_, i) {
           final ch = channels[i];
           final active = ch.id == widget.currentChannelId;
-          final focused = _focusColumn == _FocusColumn.channels &&
+          final focused = (_focusColumn == _FocusColumn.channels ||
+                  _focusColumn == _FocusColumn.epg) &&
               i == _focusedChannelIndex &&
               (_wide || _step == _GuideStep.channels);
           return _GuideChannelTile(
@@ -1164,23 +1381,30 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
             onHover: () {
               if (_focusColumn == _FocusColumn.channels &&
                   _focusedChannelIndex == i) {
+                _scheduleHoverEpg(ch);
                 return;
               }
               setState(() {
                 _focusedChannelIndex = i;
                 _focusColumn = _FocusColumn.channels;
+                _closeArmedOnEnter = false;
               });
+              _scheduleHoverEpg(ch);
             },
+            onHoverExit: () => _cancelHoverEpg(channelId: ch.id),
             onTap: () {
               setState(() {
                 _focusedChannelIndex = i;
                 _focusColumn = _FocusColumn.channels;
+                _closeArmedOnEnter = false;
               });
+              _cancelHoverEpg();
               widget.onChannelSelected(ch);
             },
           );
         },
       ),
+    ),
     );
   }
 }
@@ -1192,6 +1416,7 @@ class _GuideChannelTile extends StatefulWidget {
     required this.focused,
     required this.onTap,
     required this.onHover,
+    required this.onHoverExit,
     required this.onProbe,
     required this.onCancelProbe,
     this.showLogo = true,
@@ -1205,6 +1430,7 @@ class _GuideChannelTile extends StatefulWidget {
   final bool? health;
   final VoidCallback onTap;
   final VoidCallback onHover;
+  final VoidCallback onHoverExit;
   final VoidCallback onProbe;
   final VoidCallback onCancelProbe;
 
@@ -1259,10 +1485,12 @@ class _GuideChannelTileState extends State<_GuideChannelTile> {
     return MouseRegion(
       onEnter: (_) {
         widget.onHover();
-        // Desktop: hover may no-op setState when already focused — still probe.
         widget.onProbe();
       },
-      onExit: (_) => widget.onCancelProbe(),
+      onExit: (_) {
+        widget.onHoverExit();
+        widget.onCancelProbe();
+      },
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,

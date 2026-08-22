@@ -97,17 +97,35 @@ pub fn cancel_all() {
     let cancelled =
         serde_json::json!({ "error": utils::engine_cancel::cancelled_message() }).to_string();
     let mut store = JOBS.lock().unwrap();
-    for (_, token) in store.tokens.drain() {
-        token.cancel();
-    }
-    store.kinds.clear();
-    for outcome in store.outcomes.values_mut() {
-        if matches!(outcome, JobOutcome::Pending) {
-            *outcome = JobOutcome::Done(cancelled.clone());
+    let ids: Vec<u64> = store
+        .kinds
+        .iter()
+        .filter_map(|(&id, &k)| {
+            if k == JobKind::LiveMatchesFetch as u32 {
+                None
+            } else {
+                Some(id)
+            }
+        })
+        .collect();
+    for id in ids {
+        store.kinds.remove(&id);
+        if let Some(token) = store.tokens.remove(&id) {
+            token.cancel();
+        }
+        if let Some(outcome) = store.outcomes.get_mut(&id) {
+            if matches!(outcome, JobOutcome::Pending) {
+                *outcome = JobOutcome::Done(cancelled.clone());
+            }
         }
     }
     drop(store);
     utils::engine_cancel::request();
+}
+
+/// Tab hide / catalog refresh — abort schedule fetches only.
+pub fn cancel_live_matches_fetch() {
+    cancel_kind(JobKind::LiveMatchesFetch as u32);
 }
 
 /// Cancel only jobs of [kind] (e.g. [JobKind::EngineJsExtract]).

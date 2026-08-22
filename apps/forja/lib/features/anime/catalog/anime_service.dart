@@ -90,16 +90,37 @@ class AnimeService {
   }
 
   Future<AnimeCard> attachTmdbBackdrop(AnimeCard card) async {
+    if (card.tmdbId != null &&
+        card.tmdbBackdropUrl != null &&
+        card.tmdbBackdropUrl!.isNotEmpty) {
+      return card;
+    }
     final cached = card.tmdbBackdropUrl ?? _tmdbBackdropByAnilistId[card.id];
-    if (cached != null && cached.isNotEmpty) {
+    if (cached != null && cached.isNotEmpty && card.tmdbId != null) {
       return card.tmdbBackdropUrl == cached
           ? card
           : card.copyWith(tmdbBackdropUrl: cached);
     }
-    final url = await resolveTmdbBackdrop(card);
-    if (url == null || url.isEmpty) return card;
-    _tmdbBackdropByAnilistId[card.id] = url;
-    return card.copyWith(tmdbBackdropUrl: url);
+    final isMovie = (card.format ?? '').toUpperCase() == 'MOVIE';
+    final best = await _searchTmdbMatch(
+      title: card.titleEnglish.trim().isNotEmpty
+          ? card.titleEnglish.trim()
+          : card.titleRomaji.trim(),
+      year: card.seasonYear,
+      isMovie: isMovie,
+    );
+    if (best == null) return card;
+    final mediaType = _tmdbMediaType(best, isMovie: isMovie);
+    final urls = await _tmdbHeroUrlsFromMatch(best, mediaType);
+    final url = urls.isEmpty ? null : urls.first;
+    if (url != null && url.isNotEmpty) {
+      _tmdbBackdropByAnilistId[card.id] = url;
+    }
+    return card.copyWith(
+      tmdbBackdropUrl: url ?? card.tmdbBackdropUrl,
+      tmdbId: best.id,
+      tmdbMediaType: mediaType,
+    );
   }
 
   Future<String?> resolveTmdbBackdrop(AnimeCard card) async {
@@ -109,6 +130,24 @@ class AnimeService {
 
   /// TMDB backdrop CDN URLs for details hero rotation (primary + extras).
   Future<List<String>> resolveTmdbHeroUrls(AnimeCard card) async {
+    if (card.tmdbId != null && card.tmdbId! > 0) {
+      final mediaType = card.tmdbMediaType ??
+          ((card.format ?? '').toUpperCase() == 'MOVIE' ? 'movie' : 'tv');
+      try {
+        final paths = <String>[];
+        if (card.tmdbBackdropUrl != null && card.tmdbBackdropUrl!.isNotEmpty) {
+          paths.add(card.tmdbBackdropUrl!);
+        }
+        final extras = await _tmdb.getBackdrops(card.tmdbId!, mediaType: mediaType);
+        for (final p in extras) {
+          final u = TmdbApi.getBackdropUrl(p);
+          if (u.isNotEmpty && !paths.contains(u)) paths.add(u);
+        }
+        return paths.take(12).toList();
+      } catch (e) {
+        debugPrint('[AnimeService] TMDB hero urls failed for ${card.id}: $e');
+      }
+    }
     final best = await _searchTmdbMatch(
       title: card.titleEnglish.trim().isNotEmpty
           ? card.titleEnglish.trim()
@@ -119,6 +158,10 @@ class AnimeService {
     if (best == null) return const [];
     final isMovie = (card.format ?? '').toUpperCase() == 'MOVIE';
     final mediaType = _tmdbMediaType(best, isMovie: isMovie);
+    return _tmdbHeroUrlsFromMatch(best, mediaType);
+  }
+
+  Future<List<String>> _tmdbHeroUrlsFromMatch(Movie best, String mediaType) async {
     try {
       final paths = <String>[];
       if (best.backdropPath.isNotEmpty) paths.add(best.backdropPath);
@@ -130,7 +173,7 @@ class AnimeService {
         for (final p in paths.take(12)) TmdbApi.getBackdropUrl(p),
       ];
     } catch (e) {
-      debugPrint('[AnimeService] TMDB hero urls failed for ${card.id}: $e');
+      debugPrint('[AnimeService] TMDB hero urls failed for ${best.id}: $e');
       return const [];
     }
   }
@@ -1730,6 +1773,8 @@ class AnimeCard {
   final String? bannerImage;
   /// TMDB w1280 backdrop when resolved; heroes prefer this over AniList art.
   final String? tmdbBackdropUrl;
+  final int? tmdbId;
+  final String? tmdbMediaType;
   final String? format;
   final String? status;
   final int? episodes;
@@ -1815,6 +1860,8 @@ class AnimeCard {
     this.coverColor,
     this.bannerImage,
     this.tmdbBackdropUrl,
+    this.tmdbId,
+    this.tmdbMediaType,
     this.format,
     this.status,
     this.episodes,
@@ -1844,6 +1891,8 @@ class AnimeCard {
     String? coverColor,
     String? bannerImage,
     String? tmdbBackdropUrl,
+    int? tmdbId,
+    String? tmdbMediaType,
     String? format,
     String? status,
     int? episodes,
@@ -1872,6 +1921,8 @@ class AnimeCard {
       coverColor: coverColor ?? this.coverColor,
       bannerImage: bannerImage ?? this.bannerImage,
       tmdbBackdropUrl: tmdbBackdropUrl ?? this.tmdbBackdropUrl,
+      tmdbId: tmdbId ?? this.tmdbId,
+      tmdbMediaType: tmdbMediaType ?? this.tmdbMediaType,
       format: format ?? this.format,
       status: status ?? this.status,
       episodes: episodes ?? this.episodes,
@@ -1933,6 +1984,8 @@ class AnimeCard {
       coverColor: cover['color'] as String?,
       bannerImage: json['bannerImage'] as String?,
       tmdbBackdropUrl: json['tmdbBackdropUrl'] as String?,
+      tmdbId: (json['tmdbId'] as num?)?.toInt(),
+      tmdbMediaType: json['tmdbMediaType'] as String?,
       format: json['format'] as String?,
       status: json['status'] as String?,
       episodes: json['episodes'] as int?,
@@ -1965,6 +2018,8 @@ class AnimeCard {
         'coverImage': {'large': coverLarge, 'extraLarge': coverExtraLarge, 'color': coverColor},
         'bannerImage': bannerImage,
         if (tmdbBackdropUrl != null) 'tmdbBackdropUrl': tmdbBackdropUrl,
+        if (tmdbId != null) 'tmdbId': tmdbId,
+        if (tmdbMediaType != null) 'tmdbMediaType': tmdbMediaType,
         'format': format,
         'status': status,
         'episodes': episodes,

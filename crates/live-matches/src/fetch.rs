@@ -64,6 +64,28 @@ pub(crate) fn block_on<F: std::future::Future>(fut: F) -> F::Output {
     RUNTIME.block_on(fut)
 }
 
+/// Schedule catalogs — survive playback [request]; abort only on app shutdown.
+pub(crate) async fn http_get_catalog_async(
+    url: &str,
+    headers: &HashMap<String, String>,
+    timeout_secs: u64,
+) -> Option<String> {
+    utils::engine_cancel::with_shutdown_cancel(async {
+        let timeout = Duration::from_secs(timeout_secs.max(1));
+        let mut req = CLIENT.get(url).timeout(timeout);
+        for (k, v) in headers {
+            req = req.header(k.as_str(), v.as_str());
+        }
+        let resp = req.send().await.map_err(|e| e.to_string())?;
+        if !resp.status().is_success() {
+            return Err(format!("http {}", resp.status()));
+        }
+        resp.text().await.map_err(|e| e.to_string())
+    })
+    .await
+    .ok()
+}
+
 pub(crate) async fn http_get_async(
     url: &str,
     headers: &HashMap<String, String>,
@@ -100,6 +122,14 @@ pub(crate) fn http_get_json(
     timeout_secs: u64,
 ) -> Option<String> {
     http_get(url, headers, timeout_secs)
+}
+
+pub(crate) fn http_get_catalog(
+    url: &str,
+    headers: &HashMap<String, String>,
+    timeout_secs: u64,
+) -> Option<String> {
+    RUNTIME.block_on(http_get_catalog_async(url, headers, timeout_secs))
 }
 
 pub fn streamed_sports() -> String {

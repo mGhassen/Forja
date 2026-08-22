@@ -51,6 +51,7 @@ fn engine_cancel_jobs_of_kind(kind: u32) {
 
 fn engine_prepare_shutdown() {
     utils::engine_cancel::request_shutdown();
+    engine_jobs::cancel_live_matches_fetch();
     engine_jobs::cancel_all();
 }
 

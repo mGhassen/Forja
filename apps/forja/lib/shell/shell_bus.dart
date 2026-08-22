@@ -156,6 +156,24 @@ class ShellBus {
     false,
   );
 
+  /// Shell tab that was active when the first overlay route was pushed (e.g.
+  /// `asian_drama` before details). Restored after pop-to-root so nav selection
+  /// stays aligned with the hub under the overlay.
+  static String? _overlayShellTabId;
+
+  static void noteOverlayPushOrigin(String? tabId) {
+    if (tabId == null || tabId.isEmpty) return;
+    _overlayShellTabId = tabId;
+  }
+
+  static String? takeOverlayShellTabId() {
+    final id = _overlayShellTabId;
+    _overlayShellTabId = null;
+    return id;
+  }
+
+  static void clearOverlayShellTabId() => _overlayShellTabId = null;
+
   /// True while any fullscreen video player surface is mounted.
   /// Drives tab purge, image-cache trim, and update-toast suppression — not
   /// nav hide. Overlay players (IPTV) set [hideGlobalNav] themselves.

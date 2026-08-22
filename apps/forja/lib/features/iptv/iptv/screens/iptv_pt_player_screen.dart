@@ -654,7 +654,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         });
         _tvBackExitArmed = false;
         _hideControlsTimer?.cancel();
-        _scheduleHideControls();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_disposed || !mounted) return;
+          _claimPlayFocus();
+        });
         return true;
       }
       final stay = PlayerBackExitGate.consumeChromeOrArmExit(

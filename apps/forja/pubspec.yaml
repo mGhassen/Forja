@@ -136,11 +136,13 @@ flutter:
     - assets/fonts/
     - assets/videasy/
     - assets/nuvio/
-    - assets/providers/
-    - assets/providers/hops/
-    - assets/providers/live/
-    - assets/providers/live/goat/
-    - assets/providers/catalog/
+    - assets/plugins/
+    - assets/plugins/providers/
+    - assets/plugins/providers/hops/
+    - assets/plugins/live/
+    - assets/plugins/live/goat/
+    - assets/plugins/live/goat/vendor/
+    - assets/plugins/catalog/
     - assets/textures/
     - assets/watch_providers/
 

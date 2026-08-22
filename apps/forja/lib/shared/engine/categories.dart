@@ -11,7 +11,7 @@ abstract final class EngineCategories {
 
   /// Live Matches plugin types (`engine.json`).
   static const liveCatalog = 'catalog';
-  static const liveProvider = 'providers';
+  static const livePlugin = 'plugins';
   static const liveSport = 'live_sport';
 
   static const all = [movie, tv, anime, drama];
@@ -50,16 +50,16 @@ abstract final class EngineCategories {
   /// Catalog plugins are listed separately under Settings → Catalog.
   static String liveSourceGroupKey(EnginePlugin plugin) {
     if (plugin.isLiveCatalog) return liveCatalog;
-    return liveProvider;
+    return livePlugin;
   }
 
   static String liveSourceGroupLabel(String key) => switch (key) {
-    liveProvider => 'Providers',
+    livePlugin => 'Plugins',
     liveCatalog => 'Catalog',
     _ => 'Other',
   };
 
-  static const liveSourceGroupOrder = [liveProvider];
+  static const liveSourceGroupOrder = [livePlugin];
 
   /// Default visible categories for the current details media type.
   static Set<String> defaultsForMediaType(String? mediaType) =>
@@ -89,6 +89,21 @@ abstract final class EngineCategories {
 
   static Set<String> defaultsForPanelCategory(String category) =>
       {panelCategoryFor(panelCategory: category)};
+
+  /// Infer anime/drama panel bucket from the playing `engine:` plugin.
+  ///
+  /// Dual movie/TV plugins that also list `drama` (Videasy, VidLink, …) must
+  /// fall through so TMDB movie/TV Sources keep the full chip row.
+  static String? panelCategoryFromPlayingPlugin(EnginePlugin plugin) {
+    final types = plugin.types.map((t) => t.toLowerCase()).toSet();
+    final hasMovieTv =
+        types.contains(movie) ||
+        types.contains(tv) ||
+        types.contains('series');
+    if (types.contains(anime) && !hasMovieTv) return anime;
+    if (types.contains(drama) && !hasMovieTv) return drama;
+    return null;
+  }
 
   static bool pluginMatchesCategories(
     EnginePlugin plugin,

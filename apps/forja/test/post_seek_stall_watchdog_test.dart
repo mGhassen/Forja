@@ -3,27 +3,52 @@ import 'package:forja/shared/player/player/post_seek_stall_watchdog.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 void main() {
-  test('remounts once after buffering stall, not again until new seek', () async {
+  test('does not remount during active buffering after seek', () async {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
       armWindow: const Duration(seconds: 5),
       onRemount: (t) async {
         remounts.add(t);
+        return true;
       },
     );
 
     w.noteSeek(const Duration(seconds: 100));
     w.onBuffering(true);
     await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(remounts, isEmpty);
+
+    w.onBuffering(false);
+    w.onPosition(const Duration(seconds: 100));
+    await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(remounts, [const Duration(seconds: 100)]);
 
-    w.onBuffering(true);
+    w.dispose();
+  });
+
+  test('remounts once after silent freeze, not again until new seek', () async {
+    final remounts = <Duration>[];
+    final w = PostSeekStallWatchdog(
+      stallAfter: const Duration(milliseconds: 40),
+      armWindow: const Duration(seconds: 5),
+      onRemount: (t) async {
+        remounts.add(t);
+        return true;
+      },
+    );
+
+    w.noteSeek(const Duration(seconds: 100));
+    w.onPosition(const Duration(seconds: 100));
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(remounts, [const Duration(seconds: 100)]);
+
+    w.onPosition(const Duration(seconds: 100));
     await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(remounts, hasLength(1));
 
     w.noteSeek(const Duration(seconds: 120));
-    w.onBuffering(true);
+    w.onPosition(const Duration(seconds: 120));
     await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(remounts, [
       const Duration(seconds: 100),
@@ -39,11 +64,11 @@ void main() {
       stallAfter: const Duration(milliseconds: 40),
       onRemount: (t) async {
         remounts.add(t);
+        return true;
       },
     );
 
     w.noteSeek(const Duration(seconds: 90));
-    // MediaKit: buffering never true; position stuck at seek target.
     w.onPosition(const Duration(seconds: 90));
     await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(remounts, [const Duration(seconds: 90)]);
@@ -56,6 +81,7 @@ void main() {
       stallAfter: const Duration(milliseconds: 60),
       onRemount: (t) async {
         remounts.add(t);
+        return true;
       },
     );
 
@@ -75,6 +101,7 @@ void main() {
       stallAfter: const Duration(milliseconds: 40),
       onRemount: (t) async {
         remounts.add(t);
+        return true;
       },
     );
 
@@ -82,6 +109,33 @@ void main() {
     w.onPlaying(false);
     await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(remounts, isEmpty);
+    w.dispose();
+  });
+
+  test('failed remount allows another attempt on new seek', () async {
+    final remounts = <Duration>[];
+    var attempt = 0;
+    final w = PostSeekStallWatchdog(
+      stallAfter: const Duration(milliseconds: 40),
+      onRemount: (t) async {
+        remounts.add(t);
+        attempt++;
+        return attempt > 1;
+      },
+    );
+
+    w.noteSeek(const Duration(seconds: 60));
+    w.onPosition(const Duration(seconds: 60));
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(remounts, [const Duration(seconds: 60)]);
+
+    w.noteSeek(const Duration(seconds: 70));
+    w.onPosition(const Duration(seconds: 70));
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(remounts, [
+      const Duration(seconds: 60),
+      const Duration(seconds: 70),
+    ]);
     w.dispose();
   });
 

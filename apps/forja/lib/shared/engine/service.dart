@@ -22,7 +22,7 @@ class EngineService {
   EngineService._();
   static final EngineService instance = EngineService._();
 
-  static const bundledSourceUrl = 'asset:providers/engine.json';
+  static const bundledSourceUrl = 'asset:plugins/engine.json';
 
   /// Internal `types: catalog` plugins — not shown in Settings toggles.
   static bool isInternalLiveCatalog(EnginePlugin plugin) => plugin.isLiveCatalog;
@@ -37,8 +37,9 @@ class EngineService {
     if (!liveSportId.startsWith('live-')) return liveSportId;
     return 'catalog-${liveSportId.substring('live-'.length)}';
   }
+  static const _legacyBundledSourceUrlProviders = 'asset:providers/engine.json';
   static const _legacyBundledSourceUrl = 'asset:engine_js/engine.json';
-  static const _assetRoot = 'assets/providers';
+  static const _assetRoot = 'assets/plugins';
   static const _packsKey = 'engine_js_packs_v1';
   static const _scriptPrefix = 'engine_js_script_';
   /// Legacy unscoped selection (migrated into `…_movie` once).
@@ -55,7 +56,9 @@ class EngineService {
   bool _bundledReady = false;
 
   static bool isBundled(String sourceUrl) =>
-      sourceUrl == bundledSourceUrl || sourceUrl == _legacyBundledSourceUrl;
+      sourceUrl == bundledSourceUrl ||
+      sourceUrl == _legacyBundledSourceUrlProviders ||
+      sourceUrl == _legacyBundledSourceUrl;
 
   Future<SharedPreferences> get _prefs async => SharedPreferences.getInstance();
 
@@ -71,6 +74,7 @@ class EngineService {
   void cancelLiveCatalog() {
     _liveCatalogGeneration++;
     _abortLiveCatalogRuntime();
+    Engine.cancelLiveMatchesFetch();
   }
 
   void _abortLiveCatalogRuntime() {
@@ -676,7 +680,7 @@ class EngineService {
       }
       if (plugin != null) break;
     }
-    if (plugin == null || !(plugin.isLiveProvider || plugin.isLiveSport)) {
+    if (plugin == null || !(plugin.isLivePlugin || plugin.isLiveSport)) {
       return [];
     }
     if (!plugin.enabled) return [];

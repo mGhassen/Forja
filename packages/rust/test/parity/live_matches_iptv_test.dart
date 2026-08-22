@@ -17,6 +17,19 @@ void main() {
     expect(parsed['error'], isNotNull);
   });
 
+  test('liveMatchesFetchJson forja_live_catalog unknown returns empty', () {
+    final raw = RustLib.instance.liveMatchesFetchJson(
+      jsonEncode({
+        'action': 'forja_live_catalog',
+        'catalog_id': 'catalog-nope',
+        'config': {},
+      }),
+    );
+    final parsed = jsonDecode(raw) as Map<String, dynamic>;
+    final items = parsed['items'] as List;
+    expect(items, isEmpty);
+  });
+
   test('liveMatchesFetchJson streamed_streams requires params', () {
     final raw = RustLib.instance.liveMatchesFetchJson(
       jsonEncode({'action': 'streamed_streams'}),

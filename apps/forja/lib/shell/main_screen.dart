@@ -227,6 +227,17 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellTvFocus.currentNavTabId = _currentTabId;
   }
 
+  void _onShellOverlayPageChanged() {
+    if (ShellBus.shellOverlayHasPage.value) return;
+    final origin = ShellBus.takeOverlayShellTabId();
+    if (origin == null) return;
+    final idx = _visibleIds.indexOf(origin);
+    if (idx < 0 || !mounted) return;
+    if (_currentTabId != origin) {
+      _selectTab(idx);
+    }
+  }
+
   void _selectTab(int index) {
     // Match nav-rail taps: dismiss details / hub overlays so the tab is visible
     // (e.g. Who's watching → Account settings via [ShellBus.requestTab]).
@@ -300,6 +311,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
     ShellBus.maskShellUnderPlayer.addListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.addListener(_onPlayerResourcePurge);
+    ShellBus.shellOverlayHasPage.addListener(_onShellOverlayPageChanged);
     MacOsShellChannel.listen(onFind: _onFindShortcut);
 
     _loadNavbarConfig();
@@ -489,6 +501,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
     ShellBus.maskShellUnderPlayer.removeListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
+    ShellBus.shellOverlayHasPage.removeListener(_onShellOverlayPageChanged);
+    ShellBus.clearOverlayShellTabId();
     ShellBus.clearHideGlobalNav();
     ShellBus.clearMaskShellUnderPlayer();
     MacOsShellChannel.dispose();

@@ -149,10 +149,18 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
   }
 }
 
+void _noteFirstOverlayPush() {
+  final overlay = shellOverlayNavigatorKey.currentState;
+  if (overlay == null || overlay.canPop()) return;
+  ShellBus.noteOverlayPushOrigin(ShellTvFocus.currentNavTabId);
+  ShellTvFocus.captureOverlayReturnFocus();
+}
+
 /// Push [route] on the shell overlay when available; otherwise fall back to [context].
 Future<T?> pushShellRoute<T>(BuildContext context, Route<T> route) {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay != null) {
+    _noteFirstOverlayPush();
     return overlay.push(route);
   }
   return Navigator.of(context).push(route);
@@ -165,6 +173,9 @@ Future<T?> pushReplacementShellRoute<T, TO>(
 }) {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay != null) {
+    if (!overlay.canPop()) {
+      _noteFirstOverlayPush();
+    }
     return overlay.pushReplacement(route, result: result);
   }
   return Navigator.of(context).pushReplacement(route, result: result);
@@ -180,7 +191,6 @@ bool shellOverlayCanPop() {
 void maybePopShellOverlay<T extends Object?>([T? result]) {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay?.canPop() ?? false) {
-    ShellTvFocus.captureOverlayReturnFocus();
     overlay!.pop(result);
     if (overlay.canPop()) {
       ShellTvFocus.discardOverlayReturnFocus();
@@ -193,6 +203,7 @@ void maybePopShellOverlay<T extends Object?>([T? result]) {
 void popShellOverlayUntilRoot() {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay == null || !overlay.canPop()) return;
+  ShellBus.clearOverlayShellTabId();
   // Dismiss before pop: IgnorePointer arms as soon as canPop is false, so a
   // leftover Sources OverlayEntry would paint and ignore all close taps.
   dismissShellOverlaySourcePanels();

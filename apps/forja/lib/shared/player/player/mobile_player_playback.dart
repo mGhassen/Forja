@@ -1061,14 +1061,14 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     await _initPlayback(sourceStartIndex: idx);
   }
 
-  /// Same URL reopen at [target] after post-seek BUFFERING stall (issue 184).
-  Future<void> _remountCurrentStreamAt(Duration target) async {
-    if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return;
+  /// Same URL reopen at [target] after post-seek silent freeze (issue 184).
+  Future<bool> _remountCurrentStreamAt(Duration target) async {
+    if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return false;
     final url = _s._currentQualityUrl ?? _s._currentUrl;
     if (url == null ||
         isLocalTorrentStreamUrl(url) ||
         isLocalLoopbackPlayUrl(url)) {
-      return;
+      return false;
     }
     final src = _s._currentSources != null &&
             _s._currentFallbackSourceIndex < _s._currentSources!.length
@@ -1082,6 +1082,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       'Reconnecting…',
       kind: StatusRouletteKind.loading,
     );
+    debugPrint('[Player] Post-seek remount open @${target.inSeconds}s: $url');
     try {
       final ok = await remountPlayerStreamAtPosition(
         _s._player,
@@ -1090,12 +1091,13 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
         providerId: pid,
         seekTarget: target,
       );
-      if (_s._disposed || !mounted) return;
+      if (_s._disposed || !mounted) return false;
       if (ok) {
         _s._currentUrl = url;
         _s._positionNotifier.value = target;
         _s._statusController.complete();
-        return;
+        debugPrint('[Player] Post-seek remount resumed @${target.inSeconds}s');
+        return true;
       }
       debugPrint('[Player] Post-seek remount failed to resume: $url');
     } catch (e) {
@@ -1103,9 +1105,10 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     } finally {
       if (!_s._disposed) _s._isInitPlaybackRunning = false;
     }
-    if (_s._disposed || !mounted) return;
-    // Same URL still dead — Auto hop / Retry (do not sit frozen).
+    if (_s._disposed || !mounted) return false;
+    _s._statusController.remove('post-seek-remount');
     unawaited(_showPlaybackFailureOnWatch(reason: 'post-seek remount stalled'));
+    return false;
   }
 
   void _ensurePostSeekStallWatchdog() {
@@ -1670,7 +1673,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
           if (current.id != best.id ||
               current.id == 'auto' ||
               current.id == 'no') {
-            await _s._player.setAudioTrack(best);
+            await selectPlayerAudioTrack(_s._player, best);
             if (_s._disposed || !mounted) return;
             debugPrint(
               '[Player] auto audio → ${best.title ?? best.language ?? best.id}',

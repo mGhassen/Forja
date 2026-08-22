@@ -6,7 +6,7 @@
     {
       "id": "videasy",
       "name": "Videasy",
-      "entry": "videasy.js",
+      "entry": "providers/videasy.js",
       "types": [
         "movie",
         "tv",
@@ -62,7 +62,7 @@
     {
       "id": "goated",
       "name": "Goated",
-      "entry": "goated.js",
+      "entry": "providers/goated.js",
       "types": [
         "movie",
         "tv"
@@ -76,7 +76,7 @@
     {
       "id": "vidlink",
       "name": "VidLink",
-      "entry": "vidlink.js",
+      "entry": "providers/vidlink.js",
       "types": [
         "movie",
         "tv",
@@ -94,7 +94,7 @@
     {
       "id": "vixsrc",
       "name": "VixSrc",
-      "entry": "vixsrc.js",
+      "entry": "providers/vixsrc.js",
       "types": [
         "movie",
         "tv",
@@ -109,7 +109,7 @@
     {
       "id": "vidnest",
       "name": "VidNest",
-      "entry": "vidnest.js",
+      "entry": "providers/vidnest.js",
       "types": [
         "movie",
         "tv",
@@ -125,7 +125,7 @@
     {
       "id": "vidrock",
       "name": "VidRock",
-      "entry": "vidrock.js",
+      "entry": "providers/vidrock.js",
       "types": [
         "movie",
         "tv",
@@ -140,7 +140,7 @@
     {
       "id": "vidsrcsbs",
       "name": "VidSrc.sbs",
-      "entry": "vidsrcsbs.js",
+      "entry": "providers/vidsrcsbs.js",
       "types": [
         "movie",
         "tv",
@@ -158,7 +158,7 @@
     {
       "id": "vidzee",
       "name": "Vidzee",
-      "entry": "vidzee.js",
+      "entry": "providers/vidzee.js",
       "types": [
         "movie",
         "tv"
@@ -178,7 +178,7 @@
     {
       "id": "2embed",
       "name": "2Embed",
-      "entry": "multiembed.js",
+      "entry": "providers/multiembed.js",
       "types": [
         "movie",
         "tv",
@@ -193,7 +193,7 @@
     {
       "id": "service111477",
       "name": "111477",
-      "entry": "dahmermovies.js",
+      "entry": "providers/dahmermovies.js",
       "types": [
         "movie",
         "tv"
@@ -207,7 +207,7 @@
     {
       "id": "kisskh",
       "name": "KissKh",
-      "entry": "kisskh.js",
+      "entry": "providers/kisskh.js",
       "types": [
         "drama"
       ],
@@ -219,7 +219,7 @@
     {
       "id": "hexa",
       "name": "Hexa",
-      "entry": "hexa.js",
+      "entry": "providers/hexa.js",
       "types": [
         "movie",
         "tv"
@@ -235,7 +235,7 @@
     {
       "id": "flixcloud",
       "name": "FlixCloud",
-      "entry": "flixcloud.js",
+      "entry": "providers/flixcloud.js",
       "types": [
         "movie",
         "tv"
@@ -250,7 +250,7 @@
     {
       "id": "vidcore",
       "name": "VidCore",
-      "entry": "vidcore.js",
+      "entry": "providers/vidcore.js",
       "types": [
         "movie",
         "tv"
@@ -264,7 +264,7 @@
     {
       "id": "animekai",
       "name": "AnimeKai",
-      "entry": "animekai.js",
+      "entry": "providers/animekai.js",
       "types": [
         "anime"
       ],
@@ -279,7 +279,7 @@
     {
       "id": "cinejoy",
       "name": "CineJoy",
-      "entry": "cinejoy.js",
+      "entry": "providers/cinejoy.js",
       "types": [
         "movie",
         "tv"
@@ -295,7 +295,7 @@
     {
       "id": "meowtv",
       "name": "MeowTV",
-      "entry": "meowtv.js",
+      "entry": "providers/meowtv.js",
       "types": [
         "movie",
         "tv"
@@ -320,7 +320,7 @@
     {
       "id": "peachify",
       "name": "Peachify",
-      "entry": "peachify.js",
+      "entry": "providers/peachify.js",
       "types": [
         "movie",
         "tv"
@@ -361,7 +361,7 @@
     {
       "id": "playimdb",
       "name": "PlayIMDb",
-      "entry": "playimdb.js",
+      "entry": "providers/playimdb.js",
       "types": [
         "movie",
         "tv",
@@ -376,7 +376,7 @@
     {
       "id": "dooflix",
       "name": "DooFlix",
-      "entry": "dooflix.js",
+      "entry": "providers/dooflix.js",
       "types": [
         "movie",
         "tv"
@@ -391,7 +391,7 @@
     {
       "id": "yflix",
       "name": "YFlix",
-      "entry": "yflix.js",
+      "entry": "providers/yflix.js",
       "types": [
         "movie",
         "tv"
@@ -411,7 +411,7 @@
     {
       "id": "vidsync",
       "name": "VidSync",
-      "entry": "vidsync.js",
+      "entry": "providers/vidsync.js",
       "types": [
         "movie",
         "tv"
@@ -434,7 +434,7 @@
     {
       "id": "vidup",
       "name": "VidUp",
-      "entry": "vidup.js",
+      "entry": "providers/vidup.js",
       "types": [
         "movie",
         "tv"
@@ -448,7 +448,7 @@
     {
       "id": "moviebox",
       "name": "MovieBox",
-      "entry": "moviebox.js",
+      "entry": "providers/moviebox.js",
       "types": [
         "movie",
         "tv"
@@ -462,7 +462,7 @@
     {
       "id": "showbox",
       "name": "ShowBox",
-      "entry": "showbox.js",
+      "entry": "providers/showbox.js",
       "types": [
         "movie",
         "tv"
@@ -477,7 +477,7 @@
     {
       "id": "hianime",
       "name": "HiAnime",
-      "entry": "hianime.js",
+      "entry": "providers/hianime.js",
       "ids": [
         "title",
         "tmdb",
@@ -501,7 +501,7 @@
     {
       "id": "megaplay",
       "name": "Megaplay",
-      "entry": "megaplay.js",
+      "entry": "providers/megaplay.js",
       "ids": [
         "title",
         "tmdb",
@@ -523,7 +523,7 @@
     {
       "id": "animepahe",
       "name": "AnimePahe",
-      "entry": "animepahe.js",
+      "entry": "providers/animepahe.js",
       "ids": [
         "title",
         "tmdb",
@@ -548,7 +548,7 @@
     {
       "id": "anizone",
       "name": "Anizone",
-      "entry": "anizone.js",
+      "entry": "providers/anizone.js",
       "ids": [
         "title",
         "tmdb",
@@ -569,7 +569,7 @@
     {
       "id": "4khdhub",
       "name": "4KHDHub",
-      "entry": "4khdhub.js",
+      "entry": "providers/4khdhub.js",
       "types": [
         "movie",
         "tv"
@@ -585,7 +585,7 @@
     {
       "id": "hdhub4u",
       "name": "HDHub4u",
-      "entry": "hdhub4u.js",
+      "entry": "providers/hdhub4u.js",
       "types": [
         "movie",
         "tv"
@@ -601,7 +601,7 @@
     {
       "id": "moviesmod",
       "name": "MoviesMod",
-      "entry": "moviesmod.js",
+      "entry": "providers/moviesmod.js",
       "types": [
         "movie",
         "tv"
@@ -616,7 +616,7 @@
     {
       "id": "uhdmovies",
       "name": "UHDMovies",
-      "entry": "uhdmovies.js",
+      "entry": "providers/uhdmovies.js",
       "types": [
         "movie",
         "tv"
@@ -631,7 +631,7 @@
     {
       "id": "streamflix",
       "name": "StreamFlix",
-      "entry": "streamflix.js",
+      "entry": "providers/streamflix.js",
       "types": [
         "movie",
         "tv"
@@ -644,7 +644,7 @@
     {
       "id": "netmirror",
       "name": "NetMirror",
-      "entry": "netmirror.js",
+      "entry": "providers/netmirror.js",
       "types": [
         "movie",
         "tv"
@@ -669,7 +669,7 @@
     {
       "id": "castle",
       "name": "Castle",
-      "entry": "castle.js",
+      "entry": "providers/castle.js",
       "types": [
         "movie",
         "tv"
@@ -687,7 +687,7 @@
     {
       "id": "xprime",
       "name": "XPrime",
-      "entry": "xprime.js",
+      "entry": "providers/xprime.js",
       "types": [
         "movie",
         "tv"
@@ -707,7 +707,7 @@
     {
       "id": "vidnest-anime",
       "name": "VidNest Anime",
-      "entry": "vidnest.js",
+      "entry": "providers/vidnest.js",
       "ids": [
         "anilist"
       ],
@@ -746,7 +746,7 @@
     {
       "id": "allmovieland",
       "name": "AllMovieLand",
-      "entry": "allmovieland.js",
+      "entry": "providers/allmovieland.js",
       "types": [
         "movie",
         "tv"
@@ -760,7 +760,7 @@
     {
       "id": "cinemacity",
       "name": "CinemaCity",
-      "entry": "cinemacity.js",
+      "entry": "providers/cinemacity.js",
       "types": [
         "movie",
         "tv"
@@ -774,7 +774,7 @@
     {
       "id": "cinevibe",
       "name": "CineVibe",
-      "entry": "cinevibe.js",
+      "entry": "providers/cinevibe.js",
       "types": [
         "movie",
         "tv"
@@ -788,7 +788,7 @@
     {
       "id": "dahmermovies",
       "name": "DahmerMovies",
-      "entry": "dahmermovies.js",
+      "entry": "providers/dahmermovies.js",
       "types": [
         "movie",
         "tv"
@@ -802,7 +802,7 @@
     {
       "id": "dvdplay",
       "name": "DVDPlay",
-      "entry": "dvdplay.js",
+      "entry": "providers/dvdplay.js",
       "types": [
         "movie",
         "tv"
@@ -817,7 +817,7 @@
     {
       "id": "kurage",
       "name": "Kurage",
-      "entry": "kurage.js",
+      "entry": "providers/kurage.js",
       "types": [
         "movie",
         "tv"
@@ -831,7 +831,7 @@
     {
       "id": "mallumv",
       "name": "MalluMV",
-      "entry": "mallumv.js",
+      "entry": "providers/mallumv.js",
       "types": [
         "movie",
         "tv"
@@ -845,7 +845,7 @@
     {
       "id": "movieblast",
       "name": "MovieBlast",
-      "entry": "movieblast.js",
+      "entry": "providers/movieblast.js",
       "types": [
         "movie",
         "tv"
@@ -862,7 +862,7 @@
     {
       "id": "moviesdrive",
       "name": "MoviesDrive",
-      "entry": "moviesdrive.js",
+      "entry": "providers/moviesdrive.js",
       "types": [
         "movie",
         "tv"
@@ -877,7 +877,7 @@
     {
       "id": "myflixer",
       "name": "MyFlixer",
-      "entry": "myflixer.js",
+      "entry": "providers/myflixer.js",
       "types": [
         "movie",
         "tv"
@@ -891,7 +891,7 @@
     {
       "id": "reanime",
       "name": "ReAnime",
-      "entry": "reanime.js",
+      "entry": "providers/reanime.js",
       "ids": [
         "title",
         "tmdb",
@@ -910,7 +910,7 @@
     {
       "id": "mycima",
       "name": "MyCima",
-      "entry": "catalog.js",
+      "entry": "providers/catalog.js",
       "types": [
         "movie",
         "tv"
@@ -926,7 +926,7 @@
     {
       "id": "multiembed",
       "name": "MultiEmbed",
-      "entry": "multiembed.js",
+      "entry": "providers/multiembed.js",
       "types": [
         "movie",
         "tv",
@@ -941,7 +941,7 @@
     {
       "id": "bingebox",
       "name": "BingeBox",
-      "entry": "embed.js",
+      "entry": "providers/embed.js",
       "types": [
         "movie",
         "tv"
@@ -958,7 +958,7 @@
     {
       "id": "primesrc",
       "name": "PrimeSrc",
-      "entry": "embed.js",
+      "entry": "providers/embed.js",
       "types": [
         "movie",
         "tv"
@@ -975,7 +975,7 @@
     {
       "id": "uflix",
       "name": "UFlix",
-      "entry": "embed.js",
+      "entry": "providers/embed.js",
       "types": [
         "movie",
         "tv"
@@ -992,7 +992,7 @@
     {
       "id": "animex",
       "name": "AnimeX",
-      "entry": "animex.js",
+      "entry": "providers/animex.js",
       "ids": [
         "title",
         "tmdb",
@@ -1014,7 +1014,7 @@
     {
       "id": "2dhive",
       "name": "2DHive",
-      "entry": "2dhive.js",
+      "entry": "providers/2dhive.js",
       "ids": [
         "title",
         "mal"
@@ -1031,7 +1031,7 @@
     {
       "id": "anibd",
       "name": "AniBD",
-      "entry": "anibd.js",
+      "entry": "providers/anibd.js",
       "ids": [
         "title",
         "tmdb",
@@ -1052,7 +1052,7 @@
     {
       "id": "anidbapp",
       "name": "AniDbApp",
-      "entry": "anidbapp.js",
+      "entry": "providers/anidbapp.js",
       "ids": [
         "title",
         "tmdb",
@@ -1072,7 +1072,7 @@
     {
       "id": "anikoto",
       "name": "Anikoto",
-      "entry": "anikoto.js",
+      "entry": "providers/anikoto.js",
       "ids": [
         "title",
         "tmdb",
@@ -1097,7 +1097,7 @@
     {
       "id": "animedunya",
       "name": "AnimeDunya",
-      "entry": "animedunya.js",
+      "entry": "providers/animedunya.js",
       "ids": [
         "title",
         "tmdb",
@@ -1117,7 +1117,7 @@
     {
       "id": "animegg",
       "name": "AnimeGG",
-      "entry": "animegg.js",
+      "entry": "providers/animegg.js",
       "ids": [
         "title",
         "tmdb",
@@ -1137,7 +1137,7 @@
     {
       "id": "animenosub",
       "name": "AnimeNoSub",
-      "entry": "animenosub.js",
+      "entry": "providers/animenosub.js",
       "ids": [
         "title",
         "tmdb",
@@ -1157,7 +1157,7 @@
     {
       "id": "anineko",
       "name": "AniNeko",
-      "entry": "anineko.js",
+      "entry": "providers/anineko.js",
       "ids": [
         "title",
         "tmdb",
@@ -1177,7 +1177,7 @@
     {
       "id": "kickassanime",
       "name": "KickAssAnime",
-      "entry": "kickassanime.js",
+      "entry": "providers/kickassanime.js",
       "ids": [
         "title",
         "tmdb"
@@ -1194,7 +1194,7 @@
     {
       "id": "mkissa",
       "name": "MKissa",
-      "entry": "mkissa.js",
+      "entry": "providers/mkissa.js",
       "ids": [
         "title",
         "tmdb"
@@ -1215,7 +1215,7 @@
     {
       "id": "senshi",
       "name": "Senshi",
-      "entry": "senshi.js",
+      "entry": "providers/senshi.js",
       "ids": [
         "title",
         "tmdb",
@@ -1235,7 +1235,7 @@
     {
       "id": "animeheaven",
       "name": "AnimeHeaven",
-      "entry": "animeheaven.js",
+      "entry": "providers/animeheaven.js",
       "ids": [
         "title",
         "tmdb"
@@ -1252,7 +1252,7 @@
     {
       "id": "anidao",
       "name": "AniDao",
-      "entry": "anidao.js",
+      "entry": "providers/anidao.js",
       "ids": [
         "title",
         "tmdb"
@@ -1269,7 +1269,7 @@
     {
       "id": "aniwaves",
       "name": "AniWaves",
-      "entry": "aniwaves.js",
+      "entry": "providers/aniwaves.js",
       "ids": [
         "title",
         "tmdb"
@@ -1286,7 +1286,7 @@
     {
       "id": "miruro",
       "name": "Miruro",
-      "entry": "miruro.js",
+      "entry": "providers/miruro.js",
       "ids": [
         "title",
         "tmdb",
@@ -1308,7 +1308,7 @@
     {
       "id": "hop-flixcloud",
       "name": "FlixCloud",
-      "entry": "flixcloud.js",
+      "entry": "providers/flixcloud.js",
       "types": [
         "movie",
         "tv"
@@ -1322,7 +1322,7 @@
     {
       "id": "hop-abyss",
       "name": "Abyss",
-      "entry": "hops/abyss.js",
+      "entry": "providers/hops/abyss.js",
       "types": [
         "movie",
         "tv"
@@ -1341,7 +1341,7 @@
     {
       "id": "hop-megaup",
       "name": "MegaUp",
-      "entry": "hops/megaup.js",
+      "entry": "providers/hops/megaup.js",
       "types": [
         "movie",
         "tv"
@@ -1361,7 +1361,7 @@
     {
       "id": "hop-rapidshare",
       "name": "Rapidshare",
-      "entry": "hops/megaup.js",
+      "entry": "providers/hops/megaup.js",
       "types": [
         "movie",
         "tv"
@@ -1380,7 +1380,7 @@
     {
       "id": "hop-onetouchtv",
       "name": "OneTouchTV",
-      "entry": "hops/onetouchtv.js",
+      "entry": "providers/hops/onetouchtv.js",
       "types": [
         "movie",
         "tv"
@@ -1397,7 +1397,7 @@
     {
       "id": "hop-doodstream",
       "name": "Doodstream",
-      "entry": "hops/doodstream.js",
+      "entry": "providers/hops/doodstream.js",
       "types": [
         "movie",
         "tv"
@@ -1422,7 +1422,7 @@
     {
       "id": "hop-voe",
       "name": "VOE",
-      "entry": "hops/voe.js",
+      "entry": "providers/hops/voe.js",
       "types": [
         "movie",
         "tv"
@@ -1441,7 +1441,7 @@
     {
       "id": "hop-filemoon",
       "name": "Filemoon",
-      "entry": "hops/filemoon.js",
+      "entry": "providers/hops/filemoon.js",
       "types": [
         "movie",
         "tv"
@@ -1461,7 +1461,7 @@
     {
       "id": "hop-streamtape",
       "name": "Streamtape",
-      "entry": "hops/streamtape.js",
+      "entry": "providers/hops/streamtape.js",
       "types": [
         "movie",
         "tv"
@@ -1478,7 +1478,7 @@
     {
       "id": "hop-vidmoly",
       "name": "Vidmoly",
-      "entry": "hops/vidmoly.js",
+      "entry": "providers/hops/vidmoly.js",
       "types": [
         "movie",
         "tv"
@@ -1493,7 +1493,7 @@
     {
       "id": "hop-vidoza",
       "name": "Vidoza",
-      "entry": "hops/vidoza.js",
+      "entry": "providers/hops/vidoza.js",
       "types": [
         "movie",
         "tv"
@@ -1508,7 +1508,7 @@
     {
       "id": "hop-luluvdo",
       "name": "Lulu",
-      "entry": "hops/luluvdo.js",
+      "entry": "providers/hops/luluvdo.js",
       "types": [
         "movie",
         "tv"
@@ -1524,7 +1524,7 @@
     {
       "id": "hop-loadx",
       "name": "LoadX",
-      "entry": "hops/loadx.js",
+      "entry": "providers/hops/loadx.js",
       "types": [
         "movie",
         "tv"
@@ -1539,7 +1539,7 @@
     {
       "id": "hop-megakino",
       "name": "MegaKino",
-      "entry": "hops/megakino.js",
+      "entry": "providers/hops/megakino.js",
       "types": [
         "movie",
         "tv"
@@ -1554,7 +1554,7 @@
     {
       "id": "hop-mixdrop",
       "name": "MixDrop",
-      "entry": "hops/mixdrop.js",
+      "entry": "providers/hops/mixdrop.js",
       "types": [
         "movie",
         "tv"
@@ -1571,7 +1571,7 @@
     {
       "id": "hop-streamwish",
       "name": "StreamWish",
-      "entry": "hops/streamwish.js",
+      "entry": "providers/hops/streamwish.js",
       "types": [
         "movie",
         "tv"
@@ -1588,7 +1588,7 @@
     {
       "id": "hop-uqload",
       "name": "Uqload",
-      "entry": "hops/uqload.js",
+      "entry": "providers/hops/uqload.js",
       "types": [
         "movie",
         "tv"
@@ -1604,7 +1604,7 @@
     {
       "id": "hop-mp4upload",
       "name": "Mp4Upload",
-      "entry": "hops/mp4upload.js",
+      "entry": "providers/hops/mp4upload.js",
       "types": [
         "movie",
         "tv"
@@ -1618,7 +1618,7 @@
     {
       "id": "hop-streamsb",
       "name": "StreamSB",
-      "entry": "hops/streamsb.js",
+      "entry": "providers/hops/streamsb.js",
       "types": [
         "movie",
         "tv"
@@ -1634,7 +1634,7 @@
     {
       "id": "hop-hanime",
       "name": "hanime",
-      "entry": "hops/hanime.js",
+      "entry": "providers/hops/hanime.js",
       "types": [
         "movie",
         "tv"
@@ -1650,7 +1650,9 @@
       "name": "Streamed",
       "description": "streamed.pk embed resolve (GOAT / golf)",
       "entry": "live/live-streamed.js",
-      "types": ["providers"],
+      "types": [
+        "plugins"
+      ],
       "kind": "http",
       "config": {
         "origin": "https://streamed.pk",
@@ -1662,7 +1664,9 @@
       "name": "PPV",
       "description": "ppv.is / api.ppv.st schedule and source resolve",
       "entry": "live/live-ppv.js",
-      "types": ["providers"],
+      "types": [
+        "plugins"
+      ],
       "kind": "http",
       "config": {
         "webOrigin": "https://ppv.is",
@@ -1677,7 +1681,9 @@
       "name": "TimStreams",
       "description": "timstreams.st live schedule",
       "entry": "live/live-timstreams.js",
-      "types": ["live_sport"],
+      "types": [
+        "live_sport"
+      ],
       "kind": "http",
       "config": {
         "api": "https://timstreams.st/api/live-upcoming"
@@ -1688,7 +1694,9 @@
       "name": "StreamFree",
       "description": "streamfree.top live schedule",
       "entry": "live/live-streamfree.js",
-      "types": ["live_sport"],
+      "types": [
+        "live_sport"
+      ],
       "kind": "http",
       "config": {
         "origin": "https://streamfree.top"
@@ -1699,7 +1707,9 @@
       "name": "WatchFooty",
       "description": "watchfooty.st live schedule",
       "entry": "live/live-watchfooty.js",
-      "types": ["live_sport"],
+      "types": [
+        "live_sport"
+      ],
       "kind": "http"
     },
     {
@@ -1707,7 +1717,9 @@
       "name": "Streamic",
       "description": "streamic.live live schedule",
       "entry": "live/live-streamic.js",
-      "types": ["live_sport"],
+      "types": [
+        "live_sport"
+      ],
       "kind": "http"
     },
     {
@@ -1715,7 +1727,9 @@
       "name": "TimStreams",
       "description": "timstreams.st schedule catalog",
       "entry": "catalog/timstreams.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "enabled": true,
       "config": {
@@ -1728,7 +1742,9 @@
       "name": "StreamFree",
       "description": "streamfree.top schedule catalog",
       "entry": "catalog/streamfree.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "enabled": true,
       "config": {
@@ -1741,27 +1757,37 @@
       "name": "WatchFooty",
       "description": "watchfooty.st schedule catalog",
       "entry": "catalog/watchfooty.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "enabled": true,
-      "config": { "providerId": "live-watchfooty" }
+      "config": {
+        "providerId": "live-watchfooty"
+      }
     },
     {
       "id": "catalog-streamic",
       "name": "Streamic",
       "description": "streamic.live schedule catalog",
       "entry": "catalog/streamic.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "enabled": true,
-      "config": { "providerId": "live-streamic" }
+      "config": {
+        "providerId": "live-streamic"
+      }
     },
     {
       "id": "catalog-espn",
       "name": "ESPN",
       "description": "ESPN scoreboard schedule catalog",
       "entry": "catalog/espn.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "enabled": true,
       "config": {

@@ -58,8 +58,7 @@ mixin _LiveMatchesData
     );
     _s._lastSyncedIptvPortalKey = p.key;
     final changed = before.portalKey != next.portalKey ||
-        !before.enabled ||
-        before.leagues.isEmpty;
+        (before.leagues.isEmpty && next.leagues.isNotEmpty);
     if (reload || changed) {
       await _load();
     }
@@ -208,6 +207,11 @@ mixin _LiveMatchesData
 
   Future<void> _load() async {
     if (!mounted || !shellTabVisible) return;
+    final iptvConfig = await LiveMatchesIptvSportsConfig.load();
+    if (_s._server == _LiveMatchesServer.iptvSports && !iptvConfig.enabled) {
+      setState(() => _s._server = _LiveMatchesServer.all);
+      unawaited(_s._persistServerPreference(_LiveMatchesServer.all));
+    }
     _s._loadGen++;
     (this as _LiveMatchesForjaLive)._resetForjaLiveCatalogState();
     _s._resetTimelineLazyState();
@@ -244,7 +248,7 @@ mixin _LiveMatchesData
       _s._sportFilter = 'all';
       _s._timelineAutoScrolled = false;
     });
-    oldCtrl?.dispose();
+    (this as _LiveMatchesForjaLive)._deferTabControllerDispose(oldCtrl);
     if (!mounted) return;
     if ((this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog &&
         (_s._streamedMatches.any((m) => m.isForjaLive) ||

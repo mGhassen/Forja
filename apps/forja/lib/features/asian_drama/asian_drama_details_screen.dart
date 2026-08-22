@@ -224,7 +224,9 @@ class _AsianDramaDetailsScreenState
 
   Movie _playMovieFor(KdramaDetails det, RichMediaDetails? tmdb) {
     final m = tmdb?.movie;
-    if (m != null && m.id > 0) return m;
+    if (m != null && m.id > 0) {
+      return m.copyWith(mediaType: 'asian_drama');
+    }
     return Movie(
       id: -det.id,
       title: det.title,
@@ -688,12 +690,9 @@ class _AsianDramaDetailsScreenState
         tvFocus && isUpcoming ? _focusDetailsBack : heroFocusUp;
     final listExtra = HubListStatusHero.extraFocusSlots(_listMenuOpen);
     final playbackSnap = ref.watch(settingsPlaybackProvider).valueOrNull;
-    final catalogMovie = tmdb?.movie;
     final hasCatalogSources = !isUpcoming &&
         hubHasCatalogPanelSources(playbackSnap);
-    final sourcesMovie = (catalogMovie != null && catalogMovie.id > 0)
-        ? catalogMovie
-        : _playMovieFor(det, tmdb);
+    final sourcesMovie = _playMovieFor(det, tmdb);
     final showCatalogSources = hasCatalogSources;
     var tvIndex = 0;
     final playIndex = isUpcoming ? null : tvIndex++;

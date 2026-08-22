@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 /// After a user seek, remount once if playback does not resume:
-/// - BUFFERING stays true for [stallAfter], **or**
-/// - position never advances past the seek target (MediaKit silent freeze)
+/// position never advances past the seek target while **not** buffering
+/// (MediaKit silent freeze).
+///
+/// Does **not** remount during active BUFFERING — remote HLS seek often
+/// needs 10–30s; remount aborts a healthy buffer (Videasy / issue 153).
 ///
 /// Clears when position advances ≥[progressClear] past the target, or pause.
 /// Does not hop providers — same URL reopen only (issue 184).
@@ -17,7 +20,8 @@ class PostSeekStallWatchdog {
     this.enabled = true,
   });
 
-  final Future<void> Function(Duration seekTarget) onRemount;
+  /// Return true only when remount actually ran and resumed playback.
+  final Future<bool> Function(Duration seekTarget) onRemount;
   final Duration stallAfter;
   final Duration armWindow;
   final Duration progressClear;
@@ -51,17 +55,23 @@ class PostSeekStallWatchdog {
     _target = target < Duration.zero ? Duration.zero : target;
     _lastPos = _target!;
     _remountedForSeek = false;
-    // Always arm — MediaKit often freezes with buffering=false.
-    if (_playing) _armTimer();
+    if (_playing && !_buffering) _armTimer();
   }
 
   void onBuffering(bool buffering) {
+    final wasBuffering = _buffering;
     _buffering = buffering;
     if (!enabled || _seekAt == null || _remountedForSeek || _remountInFlight) {
       return;
     }
-    // Do not cancel on buffering=false — silent freeze is the MediaKit case.
-    if (buffering && _playing) _armTimer();
+    if (buffering && _playing) {
+      _timer?.cancel();
+      _timer = null;
+      return;
+    }
+    if (wasBuffering && !buffering && _playing) {
+      _armTimer();
+    }
   }
 
   void onPlaying(bool playing) {
@@ -72,7 +82,10 @@ class PostSeekStallWatchdog {
       _timer = null;
       return;
     }
-    if (_seekAt != null && !_remountedForSeek && !_remountInFlight) {
+    if (_seekAt != null &&
+        !_remountedForSeek &&
+        !_remountInFlight &&
+        !_buffering) {
       final age = DateTime.now().difference(_seekAt!);
       if (age <= armWindow) _armTimer();
     }
@@ -88,21 +101,25 @@ class PostSeekStallWatchdog {
       _seekAt = null;
       _timer?.cancel();
       _timer = null;
+      return;
+    }
+    if (!_buffering && _playing && !_remountedForSeek && _timer == null) {
+      _armTimer();
     }
   }
 
   void _armTimer() {
     if (_timer != null || _remountedForSeek || _remountInFlight) return;
+    if (_buffering) return;
     final target = _target;
     if (target == null || !_playing) return;
     _timer = Timer(stallAfter, () => unawaited(_fire(target)));
   }
 
   bool _looksStalled() {
-    if (_buffering) return true;
+    if (_buffering) return false;
     final target = _target;
     if (target == null) return false;
-    // Frozen on/near seek point — never made progressClear past it.
     return _lastPos - target < progressClear;
   }
 
@@ -111,17 +128,18 @@ class PostSeekStallWatchdog {
     _timer = null;
     if (!enabled || _remountedForSeek || _remountInFlight) return;
     if (!_playing || !_looksStalled()) return;
-    _remountedForSeek = true;
     _remountInFlight = true;
     debugPrint(
-      '[Player] Post-seek stall ≥${stallAfter.inSeconds}s '
+      '[Player] Post-seek silent freeze ≥${stallAfter.inSeconds}s '
       '(buffering=$_buffering pos=${_lastPos.inSeconds}s) — '
       'remount @${target.inSeconds}s',
     );
+    var remounted = false;
     try {
-      await onRemount(target);
+      remounted = await onRemount(target);
     } finally {
       _remountInFlight = false;
+      if (remounted) _remountedForSeek = true;
     }
   }
 }

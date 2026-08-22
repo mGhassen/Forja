@@ -8,7 +8,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       _s._guideVisible = false;
       _s._controlsVisible = true;
     });
-    _scheduleHideControls();
+    _s._hideControlsTimer?.cancel();
+    _s._tvBackExitArmed = false;
     _focusPlayerChrome();
   }
 
@@ -28,8 +29,14 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           _s._selectedGroupId = playingGroup;
         }
       } else {
-        _scheduleHideControls();
-        _focusPlayerChrome();
+        if (iptvUseTvFocus(context)) {
+          _s._hideControlsTimer?.cancel();
+          _s._tvBackExitArmed = false;
+          _focusPlayerChrome();
+        } else {
+          _scheduleHideControls();
+          _focusPlayerChrome();
+        }
       }
     });
   }
@@ -1019,6 +1026,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                           guide: widget.channelGuide!,
                           selectedGroupId: _s._selectedGroupId,
                           currentChannelId: _s._currentChannelId,
+                          epgCache: _s._epgCache,
+                          epgEnabled: ref.watch(iptvEpgEnabledProvider),
                           onGroupSelected: (id) {
                             setState(() => _s._selectedGroupId = id);
                           },

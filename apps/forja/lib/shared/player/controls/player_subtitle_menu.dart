@@ -108,10 +108,11 @@ class PlayerSubtitleMenu {
     BuildContext? anchorContext,
   }) async {
     final current = player.state.track.subtitle;
-    final active = await resolveActiveSubtitleTrack(player);
-    final selectedSubtitleId = selectedExternalSubUrl == null
-        ? (active?.id ?? current.id)
-        : null;
+    final subtitlesOff = current.id == 'no' && selectedExternalSubUrl == null;
+    final active = subtitlesOff ? null : await resolveActiveSubtitleTrack(player);
+    final selectedSubtitleId = subtitlesOff || selectedExternalSubUrl != null
+        ? null
+        : (active?.id ?? current.id);
     // In-stream tracks only — skip Off/auto and http URI tracks (online picker).
     final embedded = player.state.tracks.subtitle
         .where(
@@ -121,7 +122,6 @@ class PlayerSubtitleMenu {
               !t.id.startsWith('http'),
         )
         .toList();
-    final subtitlesOff = current.id == 'no' && selectedExternalSubUrl == null;
 
     void turnOffSubtitles() {
       onSubtitleSelected?.call(off: true);
@@ -254,11 +254,11 @@ class PlayerSubtitleMenu {
                 final key = folderKeys[i];
                 final online = byLangOnline[key] ?? const [];
                 final stream = byLangEmbedded[key] ?? const [];
-                final hasSelected = online.any(
-                      (s) => s['url'] == selectedExternalSubUrl,
-                    ) ||
-                    (selectedExternalSubUrl == null &&
-                        stream.any((t) => t.id == selectedSubtitleId));
+                final hasSelected = !subtitlesOff &&
+                    (online.any((s) => s['url'] == selectedExternalSubUrl) ||
+                        (selectedExternalSubUrl == null &&
+                            selectedSubtitleId != null &&
+                            stream.any((t) => t.id == selectedSubtitleId)));
                 return PlayerPopupNavRow(
                   title: languageDisplayName(key),
                   value: '${stream.length + online.length}',
@@ -346,7 +346,8 @@ class PlayerSubtitleMenu {
                 language: t.language,
               ),
               subtitle: 'In-stream',
-              selected: selectedExternalSubUrl == null &&
+              selected: selectedSubtitleId != null &&
+                  selectedExternalSubUrl == null &&
                   t.id == selectedSubtitleId,
               onTap: () {
                 onSubtitleSelected?.call(

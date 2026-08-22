@@ -2881,19 +2881,24 @@ String _liveForjaPluginDisplayName(String pluginId) {
 }
 
 /// Android TV / leanback: hide embed-only servers (PPV / Streamed / Mut).
-List<_LiveMatchesServer> _liveMatchesServersForSurface({required bool tv}) {
+List<_LiveMatchesServer> _liveMatchesServersForSurface({
+  required bool tv,
+  bool iptvSportsEnabled = false,
+}) {
   if (tv) {
-    return const [
+    return [
       _LiveMatchesServer.all,
       _LiveMatchesServer.forjaLive,
       _LiveMatchesServer.stremio,
-      _LiveMatchesServer.iptvSports,
+      if (iptvSportsEnabled) _LiveMatchesServer.iptvSports,
     ];
   }
   return [
     _LiveMatchesServer.all,
     ..._LiveMatchesServer.values.where(
-      (server) => server != _LiveMatchesServer.all,
+      (server) =>
+          server != _LiveMatchesServer.all &&
+          (server != _LiveMatchesServer.iptvSports || iptvSportsEnabled),
     ),
   ];
 }
@@ -2901,9 +2906,12 @@ List<_LiveMatchesServer> _liveMatchesServersForSurface({required bool tv}) {
 _LiveMatchesServer _liveMatchesClampServerForSurface(
   _LiveMatchesServer server, {
   required bool tv,
+  bool iptvSportsEnabled = false,
 }) {
-  if (!tv) return server;
-  final allowed = _liveMatchesServersForSurface(tv: true);
+  final allowed = _liveMatchesServersForSurface(
+    tv: tv,
+    iptvSportsEnabled: iptvSportsEnabled,
+  );
   if (allowed.contains(server)) return server;
   return _LiveMatchesServer.all;
 }

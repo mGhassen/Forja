@@ -417,6 +417,23 @@ class _BrowserViewState extends State<_BrowserView> {
     WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
+  bool get _letterJumpEnabled =>
+      !_searchOpen && !iptvUseTvFocus(context) && !_tvFloatingReorder;
+
+  void _letterJumpCategory(int index) {
+    final cats = _filteredCategories;
+    if (index < 0 || index >= cats.length) return;
+    _scrollCategorySidebarToIndex(index, keepAbove: 2);
+    iptvFocusRowItem('browser-categories', index);
+  }
+
+  void _letterJumpStream(int index) {
+    final list = _filteredStreams;
+    if (index < 0 || index >= list.length) return;
+    _scrollStreamsToIndex(index);
+    iptvFocusBrowserStreamAt(index);
+  }
+
   void _scrollStreamsToIndex(int index) {
     if (!_streamScroll.hasClients || index < 0) return;
     final cross = _streamCrossAxisCount.clamp(1, 999);
@@ -1106,15 +1123,12 @@ class _BrowserViewState extends State<_BrowserView> {
 
           // Remount when search changes so a prior scroll offset doesn't leave
           // the short filtered list floating mid-viewport.
-          return iptvCatalogRow(
-            rowId: 'browser-categories',
-            sortOrder: 2,
+          final list = ListLetterJumpScope(
+            enabled: _letterJumpEnabled,
             itemCount: cats.length,
-            orientation: ShellTvRowOrientation.vertical,
-            onFocusUp: () => iptvFocusRowItem(
-              'iptv-sections',
-              iptvActiveSectionShelfIndex(ctrl),
-            ),
+            labelAt: (i) =>
+                cats[i].name.isEmpty ? 'Uncategorized' : cats[i].name,
+            onJump: _letterJumpCategory,
             child: IptvTvScrollbar(
               controller: _categoryScroll,
               child: CustomScrollView(
@@ -1146,6 +1160,18 @@ class _BrowserViewState extends State<_BrowserView> {
                 ],
               ),
             ),
+          );
+
+          return iptvCatalogRow(
+            rowId: 'browser-categories',
+            sortOrder: 2,
+            itemCount: cats.length,
+            orientation: ShellTvRowOrientation.vertical,
+            onFocusUp: () => iptvFocusRowItem(
+              'iptv-sections',
+              iptvActiveSectionShelfIndex(ctrl),
+            ),
+            child: list,
           );
         },
       ),
@@ -1225,7 +1251,13 @@ class _BrowserViewState extends State<_BrowserView> {
             'iptv-sections',
             iptvActiveSectionShelfIndex(widget.ctrl),
           ),
-          child: IptvTvScrollbar(controller: _streamScroll, child: scrollable),
+          child: ListLetterJumpScope(
+            enabled: _letterJumpEnabled,
+            itemCount: list.length,
+            labelAt: (i) => list[i].name,
+            onJump: _letterJumpStream,
+            child: IptvTvScrollbar(controller: _streamScroll, child: scrollable),
+          ),
         );
       },
     );
@@ -1283,7 +1315,13 @@ class _BrowserViewState extends State<_BrowserView> {
       orientation: ShellTvRowOrientation.vertical,
       onFocusUp: () =>
           iptvFocusRowItem('iptv-sections', iptvActiveSectionShelfIndex(ctrl)),
-      child: IptvTvScrollbar(controller: _streamScroll, child: scrollable),
+      child: ListLetterJumpScope(
+        enabled: _letterJumpEnabled,
+        itemCount: list.length,
+        labelAt: (i) => list[i].name,
+        onJump: _letterJumpStream,
+        child: IptvTvScrollbar(controller: _streamScroll, child: scrollable),
+      ),
     );
   }
 

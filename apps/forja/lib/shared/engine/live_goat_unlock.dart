@@ -12,7 +12,7 @@ import 'package:path_provider/path_provider.dart';
 class LiveGoatUnlock {
   LiveGoatUnlock._();
 
-  static const _assetRoot = 'assets/providers/live/goat';
+  static const _assetRoot = 'assets/plugins/live/goat';
   static const _embedOrigin = 'https://embed.st';
   static const _ua =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';

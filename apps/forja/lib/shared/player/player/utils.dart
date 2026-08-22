@@ -411,6 +411,30 @@ Future<void> restoreMediaKitAudioOutput(NativePlayer mpv) async {
   } catch (_) {}
 }
 
+/// Switch audio and re-sync demux/output — raw [Player.setAudioTrack] can
+/// leave mpv silent until the next seek (HLS / multi-track MP4).
+Future<void> selectPlayerAudioTrack(Player player, AudioTrack track) async {
+  final active = player.state.track.audio;
+  if (active.id == track.id) return;
+
+  final pos = player.state.position;
+  final playing = player.state.playing;
+
+  await player.setAudioTrack(track);
+
+  final platform = player.platform;
+  if (platform is NativePlayer) {
+    await restoreMediaKitAudioOutput(platform);
+  }
+
+  if (pos > Duration.zero) {
+    await player.seek(pos);
+    if (playing && !player.state.playing) {
+      await player.play();
+    }
+  }
+}
+
 /// Kill audible output immediately via libmpv, without waiting on media_kit's
 /// video-controller init futures (those can hang and leave audio after exit).
 Future<void> silenceMediaKitPlayer(Player player) async {
