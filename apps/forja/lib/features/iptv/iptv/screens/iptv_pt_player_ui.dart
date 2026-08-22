@@ -965,9 +965,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                         );
                       },
                     ),
-                  // Reconnect/buffering banner - hidden in PiP
-                  if (!pipMode && (_s._buffering || _s._statusBanner != null))
-                    _buildBanner(),
+                  // Reconnect/switch always; Buffering… only when picture stalled.
+                  if (!pipMode && _s._showPlaybackBanner) _buildBanner(),
                   // Top bar + bottom controls (below guide when open).
                   // Hidden entirely while PiP is active - replaced by the
                   // floating revert button below on desktop.

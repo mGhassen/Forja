@@ -311,13 +311,24 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
     final pageBleed = widget.pageBottomChild != null && !_compact;
     final imageHeight = _hubBackdropHeight();
     final topBarBleed = _desktopTopBarBleed();
+    final metrics = ShellScope.metricsOf(context);
     final searchTop = topBarBleed + ShellTokens.shellHeaderTopPadding;
-    final textTop = topBarBleed +
-        (_compact
-            ? ShellTokens.shellHeaderTopPadding
-            : ShellTokens.heroTextColumnTopInsetDesktop);
+    final textTop = topBarBleed + ShellTokens.heroTextColumnTopInsetDesktop;
+    final compactRightInset =
+        _compact ? metrics.heroCompactRightInset : 48.0;
+    final textRight = _compact
+        ? shellScaled(context, compactRightInset).clamp(12.0, compactRightInset)
+        : shellScaled(context, 48).clamp(24.0, 48.0);
     final textBottom = shellScaled(context, 16).clamp(8.0, 16.0);
     final textBottomInset = _hubHeroTextBottomInset(defaultBottom: textBottom);
+    final textLeft = shellHomeSectionHorizontalPadding(context);
+    final desktopTextWidth = math.min(
+      MediaQuery.sizeOf(context).width * 0.34,
+      ShellTokens.heroTextColumnWidthDesktop,
+    );
+    final textColumnWidth = _compact
+        ? MediaQuery.sizeOf(context).width - textLeft - textRight
+        : desktopTextWidth;
     final tvNav = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final shellBg = Theme.of(context).scaffoldBackgroundColor;
 
@@ -342,12 +353,10 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
               child: _buildSearchAction(tvNav: tvNav),
             ),
           Positioned(
-            left: shellHomeSectionHorizontalPadding(context),
+            left: textLeft,
             top: textTop,
-            right: _compact
-                ? shellScaled(context, 20).clamp(12.0, 20.0)
-                : shellScaled(context, 48).clamp(24.0, 48.0),
             bottom: textBottomInset,
+            width: textColumnWidth,
             child: _compact
                 ? LayoutBuilder(
                     builder: (context, constraints) {
@@ -369,10 +378,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                           ShellTokens.heroTextColumnVerticalAlign,
                         ),
                         child: SizedBox(
-                          width: math.min(
-                            MediaQuery.sizeOf(context).width * 0.34,
-                            ShellTokens.heroTextColumnWidthDesktop,
-                          ),
+                          width: desktopTextWidth,
                           child: _buildDesktopTextColumn(
                             heroSlide,
                             maxHeight: constraints.maxHeight,
@@ -701,9 +707,9 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
 
   Widget _buildTitle(HubHeroSlide slide, {bool compact = false}) {
     final maxLines = compact ? 2 : 3;
-    final preferred = shellScaled(context, compact ? 28 : 40)
-        .clamp(compact ? 18.0 : 24.0, compact ? 28.0 : 40.0)
-        .toDouble();
+    final preferred = compact
+        ? shellScaled(context, 28).clamp(18.0, 28.0).toDouble()
+        : 32.0;
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 600),
       switchInCurve: Curves.easeOutCubic,
@@ -748,7 +754,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
               preferredSize: preferred,
               minSize: compact ? 16 : 20,
               height: 1.05,
-              letterSpacing: -0.5,
+              letterSpacing: -1.0,
               pad: EdgeInsets.zero,
             );
             return wrapDesktopSelectableTitle(
@@ -762,7 +768,16 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                   fontSize: fontSize,
                   fontWeight: FontWeight.w900,
                   height: 1.05,
-                  letterSpacing: -0.5,
+                  letterSpacing: -1.0,
+                  shadows: compact
+                      ? null
+                      : [
+                          const Shadow(color: Colors.black, blurRadius: 40),
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            blurRadius: 80,
+                          ),
+                        ],
                 ),
               ),
             );

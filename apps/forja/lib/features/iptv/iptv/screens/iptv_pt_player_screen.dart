@@ -396,6 +396,21 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _buffering = false;
   bool _userPlayWhenReady = true;
   String? _statusBanner;
+  /// Debounce live position ticks — see [_syncPlaybackBannerVisibility].
+  bool? _playbackBannerSnapshot;
+
+  /// Reconnect / switch messages always; raw "Buffering…" only when stalled.
+  bool get _showPlaybackBanner {
+    if (_statusBanner != null) return true;
+    if (!_buffering) return false;
+    return !_videoAdvancing;
+  }
+
+  /// Playhead or Exo progress tick moved recently — picture is not frozen.
+  bool get _videoAdvancing =>
+      _playing &&
+      DateTime.now().difference(_lastPosChange) <
+          const Duration(milliseconds: 1500);
   bool _controlsVisible = true;
   Timer? _hideControlsTimer;
   final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');

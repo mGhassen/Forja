@@ -11,12 +11,13 @@ import 'package:flutter/foundation.dart';
 /// On reconnect, Xtream often restarts a few seconds *behind* the previous
 /// socket end — piping that raw would look like a replay. We:
 /// 1. Keep a multi-second read-ahead queue so mpv rarely underruns mid-reconnect
-/// 2. Skip the first ~3 MiB of each reconnect (CDN overlap)
-/// 3. Notify [onUpstreamReconnected] so the player can drop-buffers
+/// 2. Skip the first ~3 MiB of each reconnect (CDN overlap) before feeding mpv
+/// 3. Notify [onUpstreamReconnected] so the player can nudge playback (no flush
+///    while demuxer still has a healthy ahead cushion — play-through)
 class IptvLiveContinuityProxy {
   IptvLiveContinuityProxy({this.onUpstreamReconnected});
 
-  /// Fired on every upstream reopen after the first (mpv should drop-buffers).
+  /// Fired on every upstream reopen after the first.
   final VoidCallback? onUpstreamReconnected;
 
   HttpServer? _server;
@@ -194,7 +195,8 @@ class IptvLiveContinuityProxy {
           debugPrint('[IPTV Proxy] upstream connected (${up.statusCode})');
           firstConnect = false;
         } else {
-          // Overlap from fresh live GET → would replay. Skip + drop mpv cache.
+          // Overlap from fresh live GET → would replay. Skip at byte layer;
+          // player plays through demuxer cushion when cache is healthy.
           skipLeft = _reconnectSkipBytes;
           debugPrint(
             '[IPTV Proxy] upstream reconnected — skip ${skipLeft >> 20}MiB overlap',

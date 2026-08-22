@@ -140,7 +140,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         final buffering = event['value'] == true;
         // Skip no-op setState (ATV Texture/Surface churn hurt perceived FPS).
         if (buffering == _s._buffering) return;
-        setState(() => _s._buffering = buffering);
+        _s._buffering = buffering;
         if (buffering) {
           _s._bufferingClearAt = null;
           _s._bufferingSince ??= DateTime.now();
@@ -148,6 +148,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           // Don't zero the 12s wall on a one-tick false — same as MediaKit.
           _s._bufferingClearAt ??= DateTime.now();
         }
+        _s._playbackBannerSnapshot = null;
+        _syncPlaybackBannerVisibility();
         break;
       case 'progress':
         final posMs = (event['position'] as num?)?.toInt() ?? 0;
@@ -191,10 +193,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           if (!_playbackStarted && pos > Duration.zero) {
             _playbackStarted = true;
           }
+          _syncPlaybackBannerVisibility();
         } else if (_playbackStarted || _s._playing) {
           // Live Exo: position often stuck at 0 while frames flow — progress
           // ticks still prove the pipeline is alive.
           _s._lastPosChange = DateTime.now();
+          _syncPlaybackBannerVisibility();
         }
         break;
       case 'ended':
@@ -244,6 +248,17 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (wasCold) {
       debugPrint('[IPTV] video alive ($reason)');
     }
+    _syncPlaybackBannerVisibility();
+  }
+
+  /// Live skips setState on every position tick — rebuild when banner visibility
+  /// changes (e.g. mpv core-idle while frames still advance).
+  void _syncPlaybackBannerVisibility() {
+    if (!mounted) return;
+    final next = _s._showPlaybackBanner;
+    if (_s._playbackBannerSnapshot == next) return;
+    _s._playbackBannerSnapshot = next;
+    setState(() {});
   }
 
   Future<void> _enginePlay() async {
@@ -351,8 +366,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     _engineSetVolume(_s._volume);
   }
 
-  /// Fresh CDN GET after socket close often overlaps seconds we already played.
-  /// Drop demuxer so mpv does not stitch that into a visible replay.
+  /// CDN socket reopened — play through demuxer cushion when possible.
+  /// Proxy overlap skip keeps overlapping bytes off the wire; only flush mpv
+  /// when cache is already empty (nothing left to play through).
   void _onProxyUpstreamReconnected() {
     unawaited(() async {
       if (_s._disposed || _s._exoBackend) return;
@@ -360,13 +376,39 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       try {
         final p = _s._player?.platform;
         if (p is! NativePlayer) return;
-        await p.command(['drop-buffers']);
+
+        var cacheSecs = _s._cacheAheadSecs;
+        try {
+          final aheadRaw = await p.getProperty('demuxer-cache-duration');
+          final ahead = double.tryParse(aheadRaw.toString());
+          if (ahead != null &&
+              ahead.isFinite &&
+              ahead >= 0 &&
+              ahead <= _IptvPtPlayerScreenState._maxSaneCacheAheadSecs) {
+            cacheSecs = ahead;
+            _applyCacheAheadSample(ahead, source: 'reconnect-probe');
+          }
+        } catch (_) {}
+
+        final playThrough = cacheSecs >=
+            _IptvPtPlayerScreenState._minHealthyCacheSecs;
+        if (playThrough) {
+          debugPrint(
+            '[IPTV Proxy] play-through reconnect '
+            '(cache=${cacheSecs.toStringAsFixed(1)}s — no drop-buffers)',
+          );
+        } else {
+          await p.command(['drop-buffers']);
+          debugPrint(
+            '[IPTV Proxy] drop-buffers on reconnect '
+            '(cache=${cacheSecs.toStringAsFixed(1)}s empty)',
+          );
+        }
         if (_s._userPlayWhenReady && !_s._playing) {
           await _enginePlay();
         }
-        debugPrint('[IPTV Proxy] drop-buffers after upstream reconnect');
       } catch (e) {
-        debugPrint('[IPTV Proxy] drop-buffers failed: $e');
+        debugPrint('[IPTV Proxy] reconnect handoff failed: $e');
       }
     }());
   }
@@ -714,6 +756,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
             _s._statusBanner == null) {
           // we'll evaluate streak in watchdog
         }
+        _syncPlaybackBannerVisibility();
       }
     });
     _s._durSub = player.stream.duration.listen((dur) {
@@ -755,7 +798,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     });
     _s._bufferingSub = player.stream.buffering.listen((b) {
       if (!mounted) return;
-      setState(() => _s._buffering = b);
+      if (_s._buffering == b) return;
+      _s._buffering = b;
       if (b) {
         _s._bufferingClearAt = null;
         _s._bufferingSince ??= DateTime.now();
@@ -770,11 +814,14 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _s._bufferingClearAt ??= DateTime.now();
         if (!_playbackStarted && _livePlaybackProfile) {
           _noteVideoFrame(reason: 'buffering done');
+          return;
         }
         // No mid-stream live-edge snap here. Flushing the cache on every
         // underrun exit throws away the cushion that absorbs the next hiccup,
         // and mpv's own reconnect handles a dropped socket.
       }
+      _s._playbackBannerSnapshot = null;
+      _syncPlaybackBannerVisibility();
     });
     _s._errorSub = player.stream.error.listen((err) {
       final msg = err.toString();
@@ -944,6 +991,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _s._lastPos = Duration.zero;
         _s._lastPosChange = DateTime.now();
         _s._openedAt = DateTime.now();
+        _s._playbackBannerSnapshot = null;
         _resetDemuxerProbe();
         unawaited(_probeStreamCapabilities().then((_) {
           if (mounted && _livePlaybackProfile) _scheduleJumpToLive();
@@ -1232,14 +1280,15 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   void _ensureBufferingChrome(DateTime now) {
     if (_s._buffering) {
       _s._bufferingSince ??= now;
+      _syncPlaybackBannerVisibility();
       return;
     }
     if (!mounted) return;
-    setState(() {
-      _s._buffering = true;
-      _s._bufferingClearAt = null;
-      _s._bufferingSince ??= now;
-    });
+    _s._buffering = true;
+    _s._bufferingClearAt = null;
+    _s._bufferingSince ??= now;
+    _s._playbackBannerSnapshot = null;
+    _syncPlaybackBannerVisibility();
   }
 
   void _logHold(String reason, {required bool healthy}) {
@@ -1542,6 +1591,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _s._lastPos = Duration.zero;
         _s._lastPosChange = DateTime.now();
         _s._openedAt = DateTime.now();
+        _s._playbackBannerSnapshot = null;
         _resetDemuxerProbe();
         return;
       }
@@ -1614,6 +1664,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       _s._lastPos = Duration.zero;
       _s._lastPosChange = DateTime.now();
       _s._openedAt = DateTime.now();
+      _s._playbackBannerSnapshot = null;
       _resetDemuxerProbe();
       unawaited(_probeStreamCapabilities());
       // Soft recovery skips [_openCurrent]'s delayed clear — schedule one here
