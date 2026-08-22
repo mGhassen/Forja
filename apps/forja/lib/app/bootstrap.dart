@@ -374,13 +374,19 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
           home: const DesktopStartupGate(splash: SplashScreen()),
           builder: (context, child) {
             Widget content = ShellScopeBuilder(
-              builder: (context, _) => ForjaToastHost(
-                child: AppUpdateProgressBannerHost(
-                  child: BackNavigationScope(
-                    child: child ?? const SizedBox.shrink(),
+              builder: (context, _) {
+                final body = ForjaToastHost(
+                  child: AppUpdateProgressBannerHost(
+                    child: BackNavigationScope(
+                      child: child ?? const SizedBox.shrink(),
+                    ),
                   ),
-                ),
-              ),
+                );
+                return ShellInputPolicy.maybeWrapFocusTraversal(
+                  enabled: ShellScope.inputPolicyOf(context).wrapAppFocusTraversal,
+                  child: body,
+                );
+              },
             );
             if (ShellTokens.isAndroidTvDevice) {
               final mq = MediaQuery.of(context);
@@ -389,10 +395,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                 child: content,
               );
             }
-            return ShellInputPolicy.maybeWrapFocusTraversal(
-              enabled: ShellTokens.isAndroidTvDevice,
-              child: content,
-            );
+            return content;
           },
         );
         // PostHog replay root (no-op on desktop; required on Android/iOS).

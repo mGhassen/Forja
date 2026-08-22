@@ -6,6 +6,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/tv_search_browse_overlay.dart';
 
 bool shellTvBrowseSearch(BuildContext context) =>
+    ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ??
     ShellTokens.isAndroidTvDevice;
 
 /// TV search field: focusable in browse mode; Enter/Select opens the keyboard.

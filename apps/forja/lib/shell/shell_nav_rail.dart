@@ -294,8 +294,10 @@ class _ShellNavRailState extends State<ShellNavRail> {
     final settingsIndex = _indexForId('settings');
     final metrics = ShellScope.metricsOf(context);
     final isTv = metrics.usesTvDensity;
+    // Rail profile chrome follows shell profile, not input policy — desktop
+    // keeps the large avatar+label even when running TV D-pad input.
     final showDesktopProfile =
-        ShellScope.inputPolicyOf(context).scaleOnHover ||
+        ShellScope.profileOf(context) == ShellProfile.desktop ||
         ShellScope.profileOf(context) == ShellProfile.tv;
     final preferredIconSize = shellNavRailIconSize(context);
     final preferredLabelFont = shellNavRailLabelFontSize(context);

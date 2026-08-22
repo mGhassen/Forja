@@ -83,7 +83,7 @@ class ShellInputPolicy {
   }) =>
       (policy.scaleOnHover && hovered) || (policy.scaleOnFocus && focused);
 
-  /// App-root D-pad traversal - TV only.
+  /// App-root D-pad / arrow traversal when [wrapAppFocusTraversal] is on.
   static Widget maybeWrapFocusTraversal({required Widget child, required bool enabled}) {
     if (!enabled) return child;
     return Shortcuts(

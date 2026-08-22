@@ -30,7 +30,8 @@ const shellPlatformConfigs = <ShellProfile, ShellPlatformConfig>{
   ),
   ShellProfile.desktop: ShellPlatformConfig(
     metrics: ShellMetrics.desktop,
-    inputPolicy: ShellInputPolicy.desktop,
+    // Same D-pad / arrow focus graph as Android TV; density + rail chrome stay desktop.
+    inputPolicy: ShellInputPolicy.tv,
     chromeKind: ShellChromeKind.navRail,
   ),
   ShellProfile.tv: ShellPlatformConfig(

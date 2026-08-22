@@ -27,5 +27,10 @@ void main() {
     expect(ShellInputPolicy.mobile.wrapAppFocusTraversal, isFalse);
     expect(ShellInputPolicy.desktop.kenBurnsBackdrop, isTrue);
     expect(ShellInputPolicy.tv.kenBurnsBackdrop, isFalse);
+    // Desktop shell keeps desktop metrics/chrome but TV D-pad input.
+    final desktopCfg = shellPlatformConfigFor(ShellProfile.desktop);
+    expect(desktopCfg.metrics, ShellMetrics.desktop);
+    expect(desktopCfg.inputPolicy, ShellInputPolicy.tv);
+    expect(desktopCfg.chromeKind, ShellChromeKind.navRail);
   });
 }
