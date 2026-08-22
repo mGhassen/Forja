@@ -317,9 +317,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         ...src.headers,
       };
       var playUrl = src.url;
-      // Live MediaKit: mpv must not see CDN socket closes. Local continuity
-      // proxy reconnects upstream while the loopback pipe stays open.
-      if (_livePlaybackProfile) {
+      final kind = _liveSourceKindFor(src);
+      // Live MediaKit: Xtream TS uses the localhost continuity relay; Stremio /
+      // engine plugins open directly with their own headers + lavf reconnect.
+      if (_livePlaybackProfile && kind.useContinuityProxy) {
         final proxy = _s._liveContinuityProxy ??= IptvLiveContinuityProxy(
           onUpstreamReconnected: _onProxyUpstreamReconnected,
         );
@@ -328,9 +329,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           headers: headers,
         );
         playUrl = local.toString();
+        debugPrint('[IPTV Player] continuity proxy ($kind)');
         await player.open(Media(playUrl));
       } else {
         await _s._liveContinuityProxy?.stop();
+        debugPrint('[IPTV Player] direct open ($kind)');
         await player.open(
           Media(playUrl, httpHeaders: headers),
         );
@@ -593,6 +596,14 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   bool get _currentSourceIsLive {
     if (_s._sources.isEmpty) return true;
     return iptvExoUrlLooksLive(_s._sources[_s._sourceIdx].url);
+  }
+
+  IptvLiveSourceKind _liveSourceKindFor(IptvPlaySource src) {
+    return src.liveSourceKind ??
+        _s.widget.liveSourceKind ??
+        (_s.widget.engineContext == BuiltInPlayerContext.iptv
+            ? IptvLiveSourceKind.iptvXtream
+            : IptvLiveSourceKind.stremio);
   }
 
   /// Live recovery / live-edge profile. Catalog `vodPlayback` wins over URL so

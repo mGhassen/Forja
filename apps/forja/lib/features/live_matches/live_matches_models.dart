@@ -334,6 +334,19 @@ class _StreamedStream {
   );
 }
 
+/// Catalog row in the stream picker — may be unresolved until the user selects it.
+class _StreamedStreamChoice {
+  const _StreamedStreamChoice({
+    required this.catalogMatch,
+    required this.stream,
+  });
+
+  final _StreamedMatch catalogMatch;
+  final _StreamedStream stream;
+
+  bool get needsResolve => stream.embedUrl.trim().isEmpty;
+}
+
 int _liveFirstCompare({
   required bool aLive,
   required bool bLive,
@@ -459,6 +472,100 @@ bool _samePpvStreamedMatch(_DamiTvStream ppv, _StreamedMatch streamed) {
   return ppvTitle.isNotEmpty &&
       streamedTitle.isNotEmpty &&
       ppvTitle == streamedTitle;
+}
+
+List<_StreamedMatch> _streamedMatchesForEvent(
+  _StreamedMatch match,
+  List<_StreamedMatch> pool,
+) =>
+    pool.where((m) => _sameStreamedEvent(match, m)).toList();
+
+_StreamedMatch _pickBetterStreamedMatch(_StreamedMatch a, _StreamedMatch b) {
+  if (a.isLive != b.isLive) return a.isLive ? a : b;
+  if (a.poster.isNotEmpty != b.poster.isNotEmpty) {
+    return a.poster.isNotEmpty ? a : b;
+  }
+  final aSources = a.sources.length + a.inlineStreams.length;
+  final bSources = b.sources.length + b.inlineStreams.length;
+  if (aSources != bSources) return aSources >= bSources ? a : b;
+  if (a.dateMs > 0 && b.dateMs > 0 && a.dateMs != b.dateMs) {
+    return a.dateMs <= b.dateMs ? a : b;
+  }
+  return a;
+}
+
+String? _nonEmptyOrNull(String? value) {
+  final t = value?.trim();
+  return t == null || t.isEmpty ? null : t;
+}
+
+/// Collapse duplicate event rows without dropping ESPN teams or extra source refs.
+_StreamedMatch _mergeStreamedCatalogPair(_StreamedMatch a, _StreamedMatch b) {
+  final primary = _pickBetterStreamedMatch(a, b);
+  final other = identical(primary, a) ? b : a;
+
+  final sources = <_StreamedSourceRef>[...primary.sources];
+  for (final s in other.sources) {
+    if (sources.any((x) => x.source == s.source && x.id == s.id)) continue;
+    sources.add(s);
+  }
+
+  final inlineStreams = <_StreamedStream>[...primary.inlineStreams];
+  for (final s in other.inlineStreams) {
+    final url = s.embedUrl.trim();
+    if (url.isEmpty) continue;
+    if (inlineStreams.any((x) => x.embedUrl.trim() == url)) continue;
+    inlineStreams.add(s);
+  }
+
+  final sportMatchGame = primary.sportMatchGame ?? other.sportMatchGame;
+  final livePluginId = primary.livePluginId.isNotEmpty
+      ? primary.livePluginId
+      : other.livePluginId;
+
+  return _StreamedMatch(
+    id: primary.id,
+    title: primary.title,
+    category: primary.category,
+    dateMs: primary.dateMs > 0 ? primary.dateMs : other.dateMs,
+    poster: primary.poster.isNotEmpty ? primary.poster : other.poster,
+    popular: primary.popular || other.popular,
+    airing: primary.airing || other.airing,
+    homeTeam: _nonEmptyOrNull(primary.homeTeam) ?? other.homeTeam,
+    homeBadge: _nonEmptyOrNull(primary.homeBadge) ?? other.homeBadge,
+    awayTeam: _nonEmptyOrNull(primary.awayTeam) ?? other.awayTeam,
+    awayBadge: _nonEmptyOrNull(primary.awayBadge) ?? other.awayBadge,
+    sources: sources,
+    inlineStreams: inlineStreams,
+    catalog: primary.catalog.isNotEmpty ? primary.catalog : other.catalog,
+    stremioBaseUrl: primary.stremioBaseUrl.isNotEmpty
+        ? primary.stremioBaseUrl
+        : other.stremioBaseUrl,
+    stremioType: primary.stremioType,
+    sportMatchGame: sportMatchGame,
+    livePluginId: livePluginId,
+  );
+}
+
+/// Rows dropped before re-applying ESPN merge (avoid duplicate ESPN-only cards).
+List<_StreamedMatch> _stripEspnMergedScheduleRows(List<_StreamedMatch> matches) =>
+    [
+      for (final m in matches)
+        if (!m.isIptvSports && !m.id.startsWith('espn:')) m,
+    ];
+
+/// One card per event — catalog rows from different Forja Live plugins collapse here.
+List<_StreamedMatch> _mergeStreamedCatalogRows(List<_StreamedMatch> matches) {
+  final out = <_StreamedMatch>[];
+  for (final m in matches) {
+    final idx = out.indexWhere((e) => _sameStreamedEvent(e, m));
+    if (idx < 0) {
+      out.add(m);
+      continue;
+    }
+    out[idx] = _mergeStreamedCatalogPair(out[idx], m);
+  }
+  return out;
 }
 
 /// Cross-catalog match for TV native picker (All card → Stremio addon event).
@@ -1655,6 +1762,32 @@ Map<String, String> _liveEmbedStreamHeaders(
   };
 }
 
+/// iframe `loadData` wrapper — catalog site (timstreams.st, streamfree.top, …).
+String _forjaLiveWrapperReferer(String embedUrl, {String pluginId = ''}) {
+  switch (pluginId) {
+    case 'live-timstreams':
+      return 'https://timstreams.st/';
+    case 'live-streamfree':
+      return 'https://streamfree.top/';
+    case 'live-watchfooty':
+      return 'https://watchfooty.st/';
+    case 'live-streamic':
+      return 'https://streamic.st/';
+    default:
+      break;
+  }
+  final uri = Uri.tryParse(embedUrl.trim());
+  if (uri != null && uri.host.isNotEmpty) return '${uri.origin}/';
+  return 'https://timstreams.st/';
+}
+
+/// CDN token checks — JW/HLS on the third-party embed host, not the catalog.
+String? _forjaLiveCdnReferer(String embedUrl) {
+  final uri = Uri.tryParse(embedUrl.trim());
+  if (uri == null || uri.host.isEmpty) return null;
+  return '${uri.origin}/';
+}
+
 bool _liveEmbedIsSniffableMediaUrl(String url) {
   final lower = url.toLowerCase();
   if (lower.startsWith('blob:') || lower.startsWith('data:')) return false;
@@ -2257,10 +2390,15 @@ List<IptvPlaySource>? _iptvSportsStreamsCacheGet(String key) {
     _iptvSportsStreamsCache.remove(key);
     return null;
   }
+  if (hit.sources.isEmpty) {
+    _iptvSportsStreamsCache.remove(key);
+    return null;
+  }
   return List<IptvPlaySource>.from(hit.sources);
 }
 
 void _iptvSportsStreamsCachePut(String key, List<IptvPlaySource> sources) {
+  if (sources.isEmpty) return;
   _iptvSportsStreamsCache[key] = _IptvSportsStreamsCacheEntry(
     expiresAt: DateTime.now().add(_iptvSportsStreamsCacheTtl),
     sources: List<IptvPlaySource>.from(sources),
@@ -2268,13 +2406,17 @@ void _iptvSportsStreamsCachePut(String key, List<IptvPlaySource> sources) {
 }
 
 Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
-  _StreamedMatch match,
-) async {
+  _StreamedMatch match, {
+  void Function(List<IptvPlaySource> batch)? onPartial,
+}) async {
   final game = match.sportMatchGame ?? _sportMatchGamePayloadFromMatch(match);
   final home = (game['homeTeam'] ?? '').toString().trim();
   final away = (game['awayTeam'] ?? '').toString().trim();
-  if (home.isEmpty && away.isEmpty) {
-    debugPrint('[LiveMatches] IPTV sports: no teams parsed from "${match.title}"');
+  final title = (game['title'] ?? match.title).toString().trim();
+  if (home.isEmpty && away.isEmpty && title.isEmpty) {
+    debugPrint(
+      '[LiveMatches] IPTV sports: no title/teams/keywords for "${match.title}"',
+    );
     return [];
   }
   final config = await LiveMatchesIptvSportsConfig.load();
@@ -2307,7 +2449,10 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
       '[LiveMatches] IPTV sports: cache hit (${cached.length} channels) '
       'ttl=${_iptvSportsStreamsCacheTtl.inMinutes}m',
     );
-    return _ensureIptvSportsLogos(cached, portalKey);
+    final logos = await _ensureIptvSportsLogos(cached, portalKey);
+    final result = _ensureIptvSportsUrls(logos, portal);
+    onPartial?.call(result);
+    return result;
   }
   final inflight = _iptvSportsStreamsInFlight[cacheKey];
   if (inflight != null) return inflight;
@@ -2315,18 +2460,43 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   final xtream = portal;
   final future = () async {
     try {
-      final raw = await runLiveMatchesFetchJson(
-        jsonEncode({
-          'action': 'sport_match_streams',
-          'game': game,
-          'xtream': {
-            'url': xtream.portal.url,
-            'username': xtream.portal.username,
-            'password': xtream.portal.password,
-          },
-          'category_ids': categoryIds,
-        }),
-      );
+      final requestBase = {
+        'action': 'sport_match_streams',
+        'game': game,
+        'xtream': {
+          'url': xtream.portal.url,
+          'username': xtream.portal.username,
+          'password': xtream.portal.password,
+        },
+        'category_ids': categoryIds,
+      };
+
+      final seenUrls = <String>{};
+      void emitPartial(List<IptvPlaySource> batch) {
+        if (onPartial == null || batch.isEmpty) return;
+        final fresh = <IptvPlaySource>[];
+        for (final s in batch) {
+          final url = s.url.trim();
+          if (url.isEmpty || !seenUrls.add(url)) continue;
+          fresh.add(s);
+        }
+        if (fresh.isNotEmpty) onPartial(fresh);
+      }
+
+      if (onPartial != null) {
+        final fastRaw = await runLiveMatchesFetchJson(
+          jsonEncode({...requestBase, 'skip_epg': true}),
+        );
+        final fastParsed = jsonDecode(fastRaw) as Map<String, dynamic>;
+        if (!fastParsed.containsKey('error')) {
+          final fast = _parseSportMatchStreamItems(
+            fastParsed['items'] as List? ?? [],
+          );
+          emitPartial(_ensureIptvSportsUrls(fast, xtream));
+        }
+      }
+
+      final raw = await runLiveMatchesFetchJson(jsonEncode(requestBase));
       final parsed = jsonDecode(raw) as Map<String, dynamic>;
       if (parsed.containsKey('error')) {
         debugPrint(
@@ -2334,36 +2504,12 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
         );
         return <IptvPlaySource>[];
       }
-      final list = parsed['items'] as List? ?? [];
-      final out = <IptvPlaySource>[];
-      for (final s in list) {
-        if (s is! Map) continue;
-        final url = s['url']?.toString().trim() ?? '';
-        if (url.isEmpty) continue;
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-          continue;
-        }
-        final channel = (s['name'] ?? 'Stream').toString().trim();
-        final category = (s['title'] ?? '').toString().trim();
-        final streamId =
-            (s['stream_id'] ?? s['streamId'] ?? '').toString().trim();
-        final logo = (s['logo'] ?? s['stream_icon'] ?? s['cover'] ?? '')
-            .toString()
-            .trim();
-        final tier = s['tier'];
-        final name = channel.isEmpty ? 'Stream' : channel;
-        final label = tier is num ? 'T$tier · $name' : name;
-        out.add(IptvPlaySource(
-          url: url,
-          label: label,
-          detail: category.isEmpty ? null : category,
-          logoUrl: logo.isEmpty ? null : logo,
-          streamId: streamId.isEmpty ? null : streamId,
-        ));
-      }
+      final out = _parseSportMatchStreamItems(parsed['items'] as List? ?? []);
       final enriched = await _ensureIptvSportsLogos(out, portalKey);
-      _iptvSportsStreamsCachePut(cacheKey, enriched);
-      return enriched;
+      final normalized = _ensureIptvSportsUrls(enriched, xtream);
+      emitPartial(normalized);
+      _iptvSportsStreamsCachePut(cacheKey, normalized);
+      return normalized;
     } finally {
       _iptvSportsStreamsInFlight.remove(cacheKey);
     }
@@ -2371,6 +2517,76 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
 
   _iptvSportsStreamsInFlight[cacheKey] = future;
   return future;
+}
+
+List<IptvPlaySource> _parseSportMatchStreamItems(List<dynamic> list) {
+  final out = <IptvPlaySource>[];
+  for (final s in list) {
+    if (s is! Map) continue;
+    final url = s['url']?.toString().trim() ?? '';
+    if (url.isEmpty) continue;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      continue;
+    }
+    final channel = (s['name'] ?? 'Stream').toString().trim();
+    final category = (s['title'] ?? '').toString().trim();
+    final streamId = (s['stream_id'] ?? s['streamId'] ?? '').toString().trim();
+    final logo = (s['logo'] ?? s['stream_icon'] ?? s['cover'] ?? '')
+        .toString()
+        .trim();
+    final tier = s['tier'];
+    final name = channel.isEmpty ? 'Stream' : channel;
+    final label = tier is num ? 'T$tier · $name' : name;
+    out.add(IptvPlaySource(
+      url: url,
+      label: label,
+      detail: category.isEmpty ? null : category,
+      logoUrl: logo.isEmpty ? null : logo,
+      streamId: streamId.isEmpty ? null : streamId,
+      liveSourceKind: IptvLiveSourceKind.iptvXtream,
+    ));
+  }
+  return out;
+}
+
+/// Rebuild Xtream play URLs the same way as IPTV Live (`…/live/u/p/id.ts`).
+List<IptvPlaySource> _ensureIptvSportsUrls(
+  List<IptvPlaySource> sources,
+  VerifiedPortal portal,
+) {
+  if (sources.isEmpty || portal.portal.platform != IptvPortalPlatform.xtream) {
+    return sources;
+  }
+  final p = portal.portal;
+  return [
+    for (final s in sources)
+      () {
+        final id = (s.streamId ?? '').trim();
+        if (id.isEmpty) return s;
+        final url = IptvClient.streamUrl(
+          p,
+          IptvStream(
+            streamId: id,
+            name: '',
+            icon: '',
+            categoryId: '',
+            containerExt: 'ts',
+            epgChannelId: '',
+            kind: 'live',
+          ),
+        );
+        if (url.isEmpty || url == s.url) return s;
+        return IptvPlaySource(
+          url: url,
+          label: s.label,
+          detail: s.detail,
+          logoUrl: s.logoUrl,
+          streamId: s.streamId,
+          headers: s.headers,
+          liveSourceKind: s.liveSourceKind,
+        );
+      }(),
+  ];
 }
 
 /// Fill missing logos from the IPTV live catalog (same icons as the portal grid).
@@ -2445,6 +2661,7 @@ Future<List<IptvPlaySource>> _ensureIptvSportsLogos(
           logoUrl: logo,
           streamId: s.streamId,
           headers: s.headers,
+          liveSourceKind: s.liveSourceKind,
         );
       }(),
   ];

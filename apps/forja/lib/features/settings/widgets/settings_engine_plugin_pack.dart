@@ -190,6 +190,31 @@ class _SettingsEnginePluginGroupListState
               onChanged: (g) => setState(() => _group = g),
             ),
           ),
+        SettingsEnginePluginToggleList(
+          sourceUrl: widget.sourceUrl,
+          plugins: plugins,
+        ),
+      ],
+    );
+  }
+}
+
+/// Flat per-plugin toggles (no category tabs).
+class SettingsEnginePluginToggleList extends StatelessWidget {
+  const SettingsEnginePluginToggleList({
+    super.key,
+    required this.sourceUrl,
+    required this.plugins,
+  });
+
+  final String sourceUrl;
+  final List<EnginePlugin> plugins;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         for (final p in plugins)
           SettingsToggleRow(
             title: p.name,
@@ -202,7 +227,7 @@ class _SettingsEnginePluginGroupListState
             value: p.enabled,
             onChanged: (val) async {
               await EngineService.instance.setPluginEnabled(
-                sourceUrl: widget.sourceUrl,
+                sourceUrl: sourceUrl,
                 pluginId: p.id,
                 enabled: val,
               );

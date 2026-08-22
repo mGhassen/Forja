@@ -55,25 +55,38 @@ async function fetchStreams(ctx, cfg) {
   return [];
 }
 
+function ppvPlayableUrl(data) {
+  if (!data) return '';
+  var fields = [data.m3u8, data.source, data.vip_mpegts];
+  for (var i = 0; i < fields.length; i++) {
+    var url = String(fields[i] || '').trim();
+    if (url && /\.m3u8|\.mp4/i.test(url)) return url;
+  }
+  return '';
+}
+
 async function resolvePpv(ctx, cfg) {
   var streamId = String(ctx.matchId || ctx.config.streamId || '').replace(/^ppv_/, '');
   var iframe = String(ctx.embedUrl || ctx.config.iframe || '').trim();
   if (streamId) {
-    try {
-      var detail = await ctx.fetch('https://ppv.land/api/streams/' + streamId, {
-        headers: { 'User-Agent': ua(), Accept: 'application/json' },
-      });
-      if (detail.ok) {
+    var apis = cfg.apis || [
+      'https://api.ppv.st/api/streams',
+      'https://api.ppv.cx/api/streams',
+    ];
+    var headers = ppvHeaders(cfg);
+    for (var i = 0; i < apis.length; i++) {
+      try {
+        var base = apis[i].replace(/\/$/, '');
+        var detail = await ctx.fetch(base + '/' + streamId, { headers: headers });
+        if (!detail.ok) continue;
         var body = await detail.json();
-        var source = body && body.data && body.data.source;
-        if (source && /\.m3u8|\.mp4/i.test(source)) {
-          return [{
-            url: String(source),
-            headers: ppvHeaders(cfg),
-          }];
+        if (!body || body.success !== true || !body.data) continue;
+        var source = ppvPlayableUrl(body.data);
+        if (source) {
+          return [{ url: source, headers: headers }];
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
   }
   if (iframe) {
     return [{

@@ -968,8 +968,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
       if (cached != null) {
         if (!mounted) return;
-        // Trust TTL cache: keep empty-plugin fetched markers so reopen does
-        // not re-extract. Force refresh / All-expand still use stale helpers.
         setState(() {
           _engineStreams = cached.streams;
           _engineFetchedPluginIds = cached.fetchedPluginIds;

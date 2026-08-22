@@ -1108,6 +1108,7 @@ class PlayerPopupListTile extends StatefulWidget {
     this.onRightEdge,
     this.onUpEdge,
     this.onDownEdge,
+    this.onInteractiveChange,
   });
 
   final String label;
@@ -1125,6 +1126,8 @@ class PlayerPopupListTile extends StatefulWidget {
   final VoidCallback? onRightEdge;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  /// Fired when hover or TV focus becomes active/inactive.
+  final ValueChanged<bool>? onInteractiveChange;
 
   @override
   State<PlayerPopupListTile> createState() => _PlayerPopupListTileState();
@@ -1135,6 +1138,18 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
 
   bool _focused = false;
   bool _hovered = false;
+
+  void _setInteractive({bool? hovered, bool? focused}) {
+    final nextHovered = hovered ?? _hovered;
+    final nextFocused = focused ?? _focused;
+    final wasActive = _hovered || _focused;
+    final nextActive = nextHovered || nextFocused;
+    if (hovered != null) _hovered = hovered;
+    if (focused != null) _focused = focused;
+    if (wasActive != nextActive) {
+      widget.onInteractiveChange?.call(nextActive);
+    }
+  }
 
   Widget? _statusGlyph() {
     final status = widget.status;
@@ -1360,8 +1375,8 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
     if (!tvFocus || widget.onTap == null) {
       if (mouseHover) {
         body = MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() => _hovered = false),
+          onEnter: (_) => setState(() => _setInteractive(hovered: true)),
+          onExit: (_) => setState(() => _setInteractive(hovered: false)),
           child: tile,
         );
       }
@@ -1382,9 +1397,9 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
         showFocusBorder: false,
         showFocusFill: false,
         ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-        onFocusChange: (focused) => setState(() => _focused = focused),
+        onFocusChange: (focused) => setState(() => _setInteractive(focused: focused)),
         onHoverChange:
-            mouseHover ? (h) => setState(() => _hovered = h) : null,
+            mouseHover ? (h) => setState(() => _setInteractive(hovered: h)) : null,
         onLeftEdge: widget.onLeftEdge,
         onRightEdge: widget.onRightEdge,
         onUpEdge: widget.onUpEdge,

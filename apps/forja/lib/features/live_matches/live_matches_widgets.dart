@@ -690,76 +690,60 @@ abstract final class _IptvSportsPanelCopy {
   }
 }
 
-class _IptvSportsPanelLoadingSkeleton extends StatelessWidget {
-  const _IptvSportsPanelLoadingSkeleton({required this.searching});
-
-  final bool searching;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      physics: searching ? null : const NeverScrollableScrollPhysics(),
-      itemCount: 3,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, i) {
-        final fade = 0.55 - (i * 0.12);
-        final tone = Colors.white.withValues(alpha: fade.clamp(0.2, 0.55));
-        return Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: tone,
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 12,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: tone,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    height: 10,
-                    width: 120,
-                    decoration: BoxDecoration(
-                      color: tone.withValues(alpha: 0.65),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
 class _IptvSportsChannelsPanelController extends ChangeNotifier {
   _IptvSportsChannelsPanelController({
     required this.match,
     this.panelTitle = 'Forja Sports',
-  });
+    this.iptvCtrl,
+  }) {
+    healthProbe = IptvLazyUrlHealthProbe(
+      delay: const Duration(milliseconds: 500),
+      onResult: _mirrorProbeToCatalog,
+    );
+    unawaited(_hydrateIptvHealthCache());
+  }
 
   final _StreamedMatch match;
   final String panelTitle;
+  final IptvController? iptvCtrl;
   final List<IptvPlaySource> sources = [];
+  late final IptvLazyUrlHealthProbe healthProbe;
   bool searching = true;
   String searchPhase = '';
   bool _disposed = false;
 
   bool get isDisposed => _disposed;
+
+  void _mirrorProbeToCatalog(String key, bool ok) {
+    final ctrl = iptvCtrl;
+    if (ctrl == null) return;
+    if (!sources.any((s) => (s.streamId ?? '').trim() == key)) return;
+    if (ctrl.streamHealth[key] == ok) return;
+    ctrl.streamHealth[key] = ok;
+    if (ok) {
+      ctrl.aliveStreamIds = {...ctrl.aliveStreamIds, key};
+    } else if (ctrl.aliveStreamIds.contains(key)) {
+      ctrl.aliveStreamIds = {...ctrl.aliveStreamIds}..remove(key);
+    }
+    ctrl.notifyListeners();
+  }
+
+  Future<void> _hydrateIptvHealthCache() async {
+    final ctrl = iptvCtrl;
+    final portal = ctrl?.activePortal;
+    if (ctrl == null || portal == null) return;
+    if (ctrl.aliveCheckedAt != null) return;
+    final snap = await IptvAliveStore.load(
+      IptvAliveStore.portalKey(portal.portal),
+    );
+    if (_disposed || snap == null) return;
+    ctrl.aliveStreamIds = snap.aliveIds;
+    ctrl.aliveCheckedAt = snap.checkedAt;
+    for (final id in snap.aliveIds) {
+      ctrl.streamHealth[id] = true;
+    }
+    ctrl.notifyListeners();
+  }
 
   void setSearchPhase(String phase) {
     if (_disposed) return;
@@ -792,6 +776,7 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    healthProbe.dispose();
     super.dispose();
   }
 }
@@ -805,6 +790,7 @@ class _IptvSportsChannelsPanel {
     required BuildContext context,
     required _StreamedMatch match,
     String panelTitle = 'Forja Sports',
+    IptvController? iptvCtrl,
     required void Function(IptvPlaySource picked, List<IptvPlaySource> all)
         onChannelSelected,
   }) {
@@ -812,6 +798,7 @@ class _IptvSportsChannelsPanel {
     final controller = _IptvSportsChannelsPanelController(
       match: match,
       panelTitle: panelTitle,
+      iptvCtrl: iptvCtrl,
     );
     _controller = controller;
     final overlay = Overlay.of(context);
@@ -933,11 +920,12 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
     final sources = ctrl.sources;
     final tv = SourcesPanelTv.isTv(context);
     final match = ctrl.match;
-    final status = ctrl.searching
-        ? (sources.isEmpty
-            ? _IptvSportsPanelCopy.searching(ctrl.searchPhase)
-            : _IptvSportsPanelCopy.partial(sources.length, ctrl.searchPhase))
-        : (sources.isEmpty ? null : _IptvSportsPanelCopy.ready(sources.length));
+    final showInlineStatus = !ctrl.searching || sources.isNotEmpty;
+    final status = !showInlineStatus
+        ? null
+        : ctrl.searching
+            ? _IptvSportsPanelCopy.partial(sources.length, ctrl.searchPhase)
+            : (sources.isEmpty ? null : _IptvSportsPanelCopy.ready(sources.length));
 
     final matchMeta = [
       if (match.categoryLabel.trim().isNotEmpty) match.categoryLabel.trim(),
@@ -1018,7 +1006,43 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
         Expanded(
           child: sources.isEmpty
               ? (ctrl.searching
-                  ? _IptvSportsPanelLoadingSkeleton(searching: true)
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: ForjaShellColors.sectionAccent,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _IptvSportsPanelCopy.searching(ctrl.searchPhase),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: ForjaShellColors.cinematic.textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Matching channels from your portal',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: ForjaShellColors.cinematic.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
                   : Align(
                       alignment: Alignment.topCenter,
                       child: Padding(
@@ -1052,6 +1076,8 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
                       itemBuilder: (context, i) {
                         return _IptvSportsChannelSheetRow(
                           source: sources[i],
+                          iptvCtrl: ctrl.iptvCtrl,
+                          healthProbe: ctrl.healthProbe,
                           onTap: () => widget.onChannelSelected(sources[i]),
                           tvItemIndex: i,
                           tvRowId: SourcesPanelTv.listRowId,
@@ -1092,6 +1118,8 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
 class _IptvSportsChannelSheetRow extends StatefulWidget {
   const _IptvSportsChannelSheetRow({
     required this.source,
+    required this.healthProbe,
+    this.iptvCtrl,
     required this.onTap,
     this.tvItemIndex,
     this.tvRowId,
@@ -1100,6 +1128,8 @@ class _IptvSportsChannelSheetRow extends StatefulWidget {
   });
 
   final IptvPlaySource source;
+  final IptvLazyUrlHealthProbe healthProbe;
+  final IptvController? iptvCtrl;
   final VoidCallback onTap;
   final int? tvItemIndex;
   final String? tvRowId;
@@ -1116,26 +1146,59 @@ class _IptvSportsChannelSheetRowState
   bool _focused = false;
   bool _hovered = false;
 
-  Widget _logo() {
+  String get _probeKey {
+    final id = (widget.source.streamId ?? '').trim();
+    return id.isEmpty ? widget.source.url : id;
+  }
+
+  bool? _healthFor() {
+    final probed = widget.healthProbe.healthFor(_probeKey);
+    if (probed != null) return probed;
+    final id = (widget.source.streamId ?? '').trim();
+    if (id.isNotEmpty && widget.iptvCtrl != null) {
+      return widget.iptvCtrl!.healthFor(id);
+    }
+    return null;
+  }
+
+  void _syncLiveProbe(bool active) {
+    if (active) {
+      widget.healthProbe.schedule(
+        _probeKey,
+        widget.source.url,
+        onlyThis: iptvUseTvFocus(context),
+      );
+    } else {
+      widget.healthProbe.cancel(_probeKey);
+    }
+  }
+
+  Color _surfaceColor(bool active) =>
+      Colors.white.withValues(alpha: active ? 0.09 : 0.05);
+
+  Color _borderColor(bool active) =>
+      Colors.white.withValues(alpha: active ? 0.18 : 0.08);
+
+  @override
+  void dispose() {
+    widget.healthProbe.cancel(_probeKey);
+    super.dispose();
+  }
+
+  Widget _logo({bool? health}) {
     const size = 40.0;
     final url = (widget.source.logoUrl ?? '').trim();
+    Widget icon;
     if (url.isEmpty) {
-      return SizedBox(
-        width: size,
-        height: size,
-        child: Icon(
-          Icons.tv_rounded,
-          color: ForjaShellColors.sectionAccent,
-          size: size * 0.55,
-        ),
+      icon = Icon(
+        Icons.tv_rounded,
+        color: ForjaShellColors.sectionAccent,
+        size: size * 0.55,
       );
-    }
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final cacheW = (size * dpr).round().clamp(1, 512);
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Image.network(
+    } else {
+      final dpr = MediaQuery.devicePixelRatioOf(context);
+      final cacheW = (size * dpr).round().clamp(1, 512);
+      icon = Image.network(
         url,
         width: size,
         height: size,
@@ -1155,80 +1218,136 @@ class _IptvSportsChannelSheetRowState
             size: size * 0.55,
           );
         },
+      );
+    }
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Center(child: icon),
+          if (health != null)
+            Positioned(
+              top: -2,
+              right: -2,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: health
+                      ? const Color(0xFF22C55E)
+                      : const Color(0xFFEF4444),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 
+  Listenable get _healthListenable {
+    final ctrl = widget.iptvCtrl;
+    if (ctrl == null) return widget.healthProbe;
+    return Listenable.merge([widget.healthProbe, ctrl]);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final src = widget.source;
-    final subtitle = src.pickerSubtitle;
-    final badge = src.tierBadge;
-    final policy = ShellScope.inputPolicyOf(context);
-    final active = ShellInputPolicy.interactiveActive(
-      policy,
-      hovered: _hovered,
-      focused: _focused,
-    );
-    return shellFocusableTap(
-      context: context,
-      onTap: widget.onTap,
-      borderRadius: 12,
-      scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      listIndex: widget.tvItemIndex,
-      tvTabId: widget.tvTabId,
-      tvRowId: widget.tvRowId,
-      tvItemIndex: widget.tvItemIndex,
-      tvZone: ShellTvZone.row,
-      onUpEdge: widget.onUpEdge,
-      onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange:
-          policy.scaleOnHover ? (hovered) => setState(() => _hovered = hovered) : null,
-      child: ListTile(
-        leading: _logo(),
-        title: Text(
-          src.pickerTitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: active ? FontWeight.bold : FontWeight.w600,
-          ),
-        ),
-        subtitle: subtitle == null || subtitle.isEmpty
-            ? null
-            : Text(
-                subtitle,
-                maxLines: 2,
+    return ListenableBuilder(
+      listenable: _healthListenable,
+      builder: (_, _) {
+        final health = _healthFor();
+        final src = widget.source;
+        final subtitle = src.pickerSubtitle;
+        final badge = src.tierBadge;
+        final policy = ShellScope.inputPolicyOf(context);
+        final active = ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: _hovered,
+          focused: _focused,
+        );
+        return shellFocusableTap(
+          context: context,
+          onTap: widget.onTap,
+          borderRadius: 12,
+          scaleOnFocus: 1.0,
+          showFocusBorder: false,
+          listIndex: widget.tvItemIndex,
+          tvTabId: widget.tvTabId,
+          tvRowId: widget.tvRowId,
+          tvItemIndex: widget.tvItemIndex,
+          tvZone: ShellTvZone.row,
+          onUpEdge: widget.onUpEdge,
+          onFocusChange: (focused) {
+            setState(() => _focused = focused);
+            _syncLiveProbe(focused || _hovered);
+          },
+          onHoverChange: policy.scaleOnHover
+              ? (hovered) {
+                  setState(() => _hovered = hovered);
+                  _syncLiveProbe(hovered || _focused);
+                }
+              : null,
+          child: AnimatedContainer(
+            duration: iptvUseTvFocus(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 150),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: _surfaceColor(active),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _borderColor(active)),
+            ),
+            child: ListTile(
+              leading: _logo(health: health),
+              title: Text(
+                src.pickerTitle,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white38, fontSize: 11),
-              ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (badge != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: src.tierBadgeColor ?? ForjaShellColors.sectionAccent,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Text(
-                  badge,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: active ? FontWeight.bold : FontWeight.w600,
                 ),
               ),
-              const SizedBox(width: 6),
-            ],
-            const Icon(Icons.chevron_right, color: Colors.white38),
-          ],
-        ),
-      ),
+              subtitle: subtitle == null || subtitle.isEmpty
+                  ? null
+                  : Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                    ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (badge != null) ...[
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: src.tierBadgeColor ?? ForjaShellColors.sectionAccent,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        badge,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  const Icon(Icons.chevron_right, color: Colors.white38),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -1242,6 +1361,8 @@ class _LiveMatchesEmbedPlayerScreen extends StatefulWidget {
   final String badgeLabel;
   final String referer;
   final String origin;
+  /// HLS proxy Referer/Origin — embed host when CDN token differs from [referer].
+  final String? proxyReferer;
 
   const _LiveMatchesEmbedPlayerScreen({
     required this.embedUrl,
@@ -1250,6 +1371,7 @@ class _LiveMatchesEmbedPlayerScreen extends StatefulWidget {
     required this.badgeLabel,
     this.referer = _ppvReferer,
     this.origin = 'https://ppv.is',
+    this.proxyReferer,
   });
 
   @override
@@ -1748,10 +1870,17 @@ class _LiveMatchesEmbedPlayerScreenState
             await Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                 builder: (_) => IptvPtPlayerScreen(
-                  sources: [IptvPlaySource(url: url, label: label)],
+                  sources: [
+                    IptvPlaySource(
+                      url: url,
+                      label: label,
+                      liveSourceKind: IptvLiveSourceKind.stremio,
+                    ),
+                  ],
                   title: title,
                   subtitle: subtitle,
                   engineContext: BuiltInPlayerContext.live,
+                  liveSourceKind: IptvLiveSourceKind.stremio,
                 ),
               ),
             );
@@ -1789,11 +1918,18 @@ class _LiveMatchesEmbedPlayerScreenState
 
   /// Proxy Referer/Origin — PPV only (Streamed no longer uses `/hls-proxy`).
   Map<String, String> _androidProxyHeadersForAttempt(int attempt) {
+    final cdnReferer = widget.proxyReferer;
     switch (_androidProfile.kind) {
       case LiveEmbedProviderKind.ppv:
         // Always full embedindia URL — catalog-only Referer 403s the CDN.
         return _ppvEmbedStreamHeaders(widget.embedUrl);
       case LiveEmbedProviderKind.streamed:
+        if (cdnReferer != null && cdnReferer.isNotEmpty) {
+          return _liveEmbedStreamHeaders(
+            widget.embedUrl,
+            catalogReferer: cdnReferer,
+          );
+        }
         final useCatalog = attempt == 1 || attempt == 3;
         return _liveEmbedStreamHeaders(
           widget.embedUrl,
@@ -1992,10 +2128,17 @@ class _LiveMatchesEmbedPlayerScreenState
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => IptvPtPlayerScreen(
-          sources: [IptvPlaySource(url: playUrl, label: label)],
+          sources: [
+            IptvPlaySource(
+              url: playUrl,
+              label: label,
+              liveSourceKind: IptvLiveSourceKind.stremio,
+            ),
+          ],
           title: title,
           subtitle: subtitle,
           engineContext: BuiltInPlayerContext.live,
+          liveSourceKind: IptvLiveSourceKind.stremio,
         ),
       ),
     );
@@ -2079,10 +2222,17 @@ class _LiveMatchesEmbedPlayerScreenState
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => IptvPtPlayerScreen(
-          sources: [IptvPlaySource(url: playUrl!, label: label)],
+          sources: [
+            IptvPlaySource(
+              url: playUrl!,
+              label: label,
+              liveSourceKind: IptvLiveSourceKind.stremio,
+            ),
+          ],
           title: title,
           subtitle: subtitle,
           engineContext: BuiltInPlayerContext.live,
+          liveSourceKind: IptvLiveSourceKind.stremio,
         ),
       ),
     );
@@ -2170,10 +2320,17 @@ class _LiveMatchesEmbedPlayerScreenState
     await Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => IptvPtPlayerScreen(
-          sources: [IptvPlaySource(url: playUrl!, label: label)],
+          sources: [
+            IptvPlaySource(
+              url: playUrl!,
+              label: label,
+              liveSourceKind: IptvLiveSourceKind.stremio,
+            ),
+          ],
           title: title,
           subtitle: subtitle,
           engineContext: BuiltInPlayerContext.live,
+          liveSourceKind: IptvLiveSourceKind.stremio,
         ),
       ),
     );
@@ -3105,18 +3262,26 @@ class _MergedPpvStreamRowState extends State<_MergedPpvStreamRow> {
 
 class _StreamedStreamSheet extends StatefulWidget {
   final _StreamedMatch match;
-  final List<_StreamedStream> streams;
-  final void Function(_StreamedStream) onStreamSelected;
+  final List<_StreamedStreamChoice> choices;
+  final void Function(_StreamedStreamChoice) onChoiceSelected;
 
   const _StreamedStreamSheet({
     required this.match,
-    required this.streams,
-    required this.onStreamSelected,
+    required this.choices,
+    required this.onChoiceSelected,
   });
 
   static String sourceLabel(String source) {
     if (source.isEmpty) return '';
     return source[0].toUpperCase() + source.substring(1);
+  }
+
+  static String serverLabelFor(_StreamedMatch match) {
+    if (match.isMut) return 'Mut';
+    if (match.isForjaLive) {
+      return _liveForjaPluginDisplayName(match.livePluginId);
+    }
+    return 'Streamed';
   }
 
   @override
@@ -3145,13 +3310,14 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
     super.dispose();
   }
 
-  List<_StreamedStream> _sortedByViewers() {
-    return [...widget.streams]..sort((a, b) => b.viewers.compareTo(a.viewers));
+  List<_StreamedStreamChoice> _sortedChoices() {
+    return [...widget.choices]
+      ..sort((a, b) => b.stream.viewers.compareTo(a.stream.viewers));
   }
 
   @override
   Widget build(BuildContext context) {
-    final sorted = _sortedByViewers();
+    final sorted = _sortedChoices();
     final maxHeight = MediaQuery.sizeOf(context).height * 0.6;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final body = Padding(
@@ -3181,7 +3347,7 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            '${sorted.length} ${sorted.length == 1 ? 'stream' : 'streams'}',
+            '${sorted.length} ${sorted.length == 1 ? 'source' : 'sources'}',
             style: const TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: 13,
@@ -3197,12 +3363,15 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
                   children: [
                     for (var i = 0; i < sorted.length; i++)
                       _StreamedStreamRow(
-                        stream: sorted[i],
+                        stream: sorted[i].stream,
+                        pendingResolve: sorted[i].needsResolve,
                         sourceLabel: _StreamedStreamSheet.sourceLabel(
-                          sorted[i].source,
+                          sorted[i].stream.source,
                         ),
-                        serverLabel: widget.match.isMut ? 'Mut' : 'Streamed',
-                        onTap: () => widget.onStreamSelected(sorted[i]),
+                        serverLabel: _StreamedStreamSheet.serverLabelFor(
+                          sorted[i].catalogMatch,
+                        ),
+                        onTap: () => widget.onChoiceSelected(sorted[i]),
                         tvItemIndex: i,
                         tvRowId: _rowId,
                         focusNode: i == 0 ? _firstFocus : null,
@@ -3231,6 +3400,7 @@ class _StreamedStreamRow extends StatefulWidget {
   final _StreamedStream stream;
   final String sourceLabel;
   final String serverLabel;
+  final bool pendingResolve;
   final VoidCallback onTap;
   final int? tvItemIndex;
   final String? tvRowId;
@@ -3240,6 +3410,7 @@ class _StreamedStreamRow extends StatefulWidget {
     required this.stream,
     required this.sourceLabel,
     this.serverLabel = 'Streamed',
+    this.pendingResolve = false,
     required this.onTap,
     this.tvItemIndex,
     this.tvRowId,
@@ -3257,9 +3428,16 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
   @override
   Widget build(BuildContext context) {
     final subtitleParts = <String>[
-      if (widget.sourceLabel.isNotEmpty) widget.sourceLabel,
+      if (widget.pendingResolve) 'Resolve on play',
+      if (widget.sourceLabel.isNotEmpty && !widget.pendingResolve)
+        widget.sourceLabel,
       if (widget.stream.language.isNotEmpty) widget.stream.language,
     ];
+    final title = widget.pendingResolve
+        ? (widget.sourceLabel.isNotEmpty
+            ? widget.sourceLabel
+            : widget.serverLabel)
+        : 'Stream ${widget.stream.streamNo > 0 ? widget.stream.streamNo : 1}';
     final policy = ShellScope.inputPolicyOf(context);
     final active = ShellInputPolicy.interactiveActive(
       policy,
@@ -3301,7 +3479,7 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Stream ${widget.stream.streamNo > 0 ? widget.stream.streamNo : 1}',
+                    title,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -3488,15 +3666,6 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
           live: false,
           top: tv ? 6 : 8,
         ),
-      if (m.isForjaLive)
-        _LiveMatchCornerBadge(
-          label: _liveForjaPluginDisplayName(m.livePluginId).toUpperCase(),
-          live: false,
-          color: ForjaShellColors.brandGreen.withValues(alpha: 0.92),
-          bottom: tv ? 6 : 8,
-          right: tv ? 6 : 8,
-          left: null,
-        ),
       if (!hasSources)
         Positioned(
           bottom: 6,
@@ -3602,15 +3771,6 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
             const _LiveMatchCornerBadge(label: '● LIVE', live: true, top: 6)
           else if (m.timeLabel.isNotEmpty)
             _LiveMatchCornerBadge(label: m.timeLabel, live: false, top: 6),
-          if (m.isForjaLive)
-            _LiveMatchCornerBadge(
-              label: _liveForjaPluginDisplayName(m.livePluginId).toUpperCase(),
-              live: false,
-              color: ForjaShellColors.brandGreen.withValues(alpha: 0.92),
-              bottom: 6,
-              right: 6,
-              left: null,
-            ),
         ],
       );
     } else {

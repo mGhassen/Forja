@@ -35,6 +35,17 @@ void main() {
     });
   });
 
+  group('IptvLiveSourceKind', () {
+    test('iptvXtream uses continuity proxy', () {
+      expect(IptvLiveSourceKind.iptvXtream.useContinuityProxy, isTrue);
+    });
+
+    test('stremio and liveEngine open directly', () {
+      expect(IptvLiveSourceKind.stremio.useContinuityProxy, isFalse);
+      expect(IptvLiveSourceKind.liveEngine.useContinuityProxy, isFalse);
+    });
+  });
+
   group('iptvIsHardOpenFail', () {
     test('Failed to open', () {
       expect(

@@ -25,7 +25,8 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
   String? _error;
   String _streamResolveLabel = SettingsService.liveStreamResolveSniffLabel;
   EnginePack? _bundledPack;
-  List<EnginePlugin> _livePlugins = const [];
+  List<EnginePlugin> _liveSourcePlugins = const [];
+  List<EnginePlugin> _liveCatalogPlugins = const [];
 
   @override
   void initState() {
@@ -88,7 +89,14 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     if (!mounted) return;
     setState(() {
       _bundledPack = bundled;
-      _livePlugins = live;
+      _liveSourcePlugins = [
+        for (final p in live)
+          if (!p.isLiveCatalog) p,
+      ];
+      _liveCatalogPlugins = [
+        for (final p in live)
+          if (p.isLiveCatalog) p,
+      ];
     });
   }
 
@@ -144,14 +152,14 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
             ),
           ],
         ),
-        if (_bundledPack != null && _livePlugins.isNotEmpty)
+        if (_bundledPack != null && _liveSourcePlugins.isNotEmpty)
           SettingsGroup(
-            label: 'Forja plugins',
+            label: 'Live plugins',
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
                 child: Text(
-                  'Enabled plugins feed the Forja Live server and All merge. '
+                  'Stream resolve and schedule sources for Forja Live and All. '
                   'Movie Sources → Forja is unchanged.',
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
@@ -164,13 +172,35 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
                 padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
                 child: SettingsEnginePackExpansion(
                   pack: _bundledPack!,
-                  plugins: _livePlugins,
-                  groupKey: EngineCategories.liveGroupKey,
-                  groupLabel: EngineCategories.liveGroupLabel,
-                  groupOrder: EngineCategories.liveGroupOrder,
-                  miniLabel: 'Live plugins',
-                  showMiniLabel: true,
+                  plugins: _liveSourcePlugins,
+                  groupKey: EngineCategories.liveSourceGroupKey,
+                  groupLabel: EngineCategories.liveSourceGroupLabel,
+                  groupOrder: EngineCategories.liveSourceGroupOrder,
                   tabRowId: 'live-engine-pack-tabs',
+                ),
+              ),
+            ],
+          ),
+        if (_bundledPack != null && _liveCatalogPlugins.isNotEmpty)
+          SettingsGroup(
+            label: 'Catalog',
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
+                child: Text(
+                  'Schedule feeds merged into All and Forja Sports name matching.',
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
+                child: SettingsEnginePluginToggleList(
+                  sourceUrl: _bundledPack!.sourceUrl,
+                  plugins: _liveCatalogPlugins,
                 ),
               ),
             ],

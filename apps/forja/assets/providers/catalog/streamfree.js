@@ -25,7 +25,7 @@ async function extract(ctx) {
         poster: String(s.thumbnail_url || ''),
         popular: Number(s.viewers || 0) > 100,
         airing: false,
-        sources: [{ source: 'streamfree', id: String(id), original_category: category }],
+        sources: [{ source: 'streamfree', id: String(id) }],
         catalog: 'forja_live',
         pluginId: pluginId,
       });

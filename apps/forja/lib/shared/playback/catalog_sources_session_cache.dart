@@ -1,11 +1,12 @@
+import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:rust/rust.dart';
 
 /// In-memory TTL cache for catalog Sources (Torrents / Stremio / Nuvio / Engine).
 ///
 /// Shared by media-details and the in-player Sources panel so reopening the
-/// panel within [ttl] reuses the last fetch. Soft hydrate must keep Engine
-/// `fetchedPluginIds` (including empty chips) — stripping "stale" empties on
-/// read caused player Sources to re-run every empty Forja extractor.
+/// panel within [ttl] reuses the last fetch. Empty results and per-provider
+/// misses are never stored — a flaky scraper or dead addon must not block retry.
 class CatalogSourcesSessionCache {
   CatalogSourcesSessionCache._();
 
@@ -80,10 +81,18 @@ class CatalogSourcesSessionCache {
       _stremio.remove(key);
       return null;
     }
+    if (entry.streams.isEmpty) {
+      _stremio.remove(key);
+      return null;
+    }
     return [for (final s in entry.streams) Map<String, dynamic>.from(s)];
   }
 
   static void writeStremio(String key, List<Map<String, dynamic>> streams) {
+    if (streams.isEmpty) {
+      _stremio.remove(key);
+      return;
+    }
     _stremio[key] = (
       at: DateTime.now(),
       streams: [for (final s in streams) Map<String, dynamic>.from(s)],
@@ -99,9 +108,13 @@ class CatalogSourcesSessionCache {
       _nuvio.remove(key);
       return null;
     }
+    if (entry.streams.isEmpty) {
+      _nuvio.remove(key);
+      return null;
+    }
     return (
       streams: [for (final s in entry.streams) Map<String, dynamic>.from(s)],
-      fetchedScraperIds: Set<String>.from(entry.fetchedScraperIds),
+      fetchedScraperIds: _nuvioFetchedWithHits(entry.streams, entry.fetchedScraperIds),
     );
   }
 
@@ -110,10 +123,15 @@ class CatalogSourcesSessionCache {
     List<Map<String, dynamic>> streams, {
     required Set<String> fetchedScraperIds,
   }) {
+    if (streams.isEmpty) {
+      _nuvio.remove(key);
+      return;
+    }
+    final copied = [for (final s in streams) Map<String, dynamic>.from(s)];
     _nuvio[key] = (
       at: DateTime.now(),
-      streams: [for (final s in streams) Map<String, dynamic>.from(s)],
-      fetchedScraperIds: Set<String>.from(fetchedScraperIds),
+      streams: copied,
+      fetchedScraperIds: _nuvioFetchedWithHits(copied, fetchedScraperIds),
     );
     _trim(_nuvio);
   }
@@ -126,9 +144,13 @@ class CatalogSourcesSessionCache {
       _engine.remove(key);
       return null;
     }
+    if (entry.streams.isEmpty) {
+      _engine.remove(key);
+      return null;
+    }
     return (
       streams: [for (final s in entry.streams) Map<String, dynamic>.from(s)],
-      fetchedPluginIds: Set<String>.from(entry.fetchedPluginIds),
+      fetchedPluginIds: _engineFetchedWithHits(entry.streams, entry.fetchedPluginIds),
     );
   }
 
@@ -137,13 +159,34 @@ class CatalogSourcesSessionCache {
     List<Map<String, dynamic>> streams, {
     required Set<String> fetchedPluginIds,
   }) {
+    if (streams.isEmpty) {
+      _engine.remove(key);
+      return;
+    }
+    final copied = [for (final s in streams) Map<String, dynamic>.from(s)];
     _engine[key] = (
       at: DateTime.now(),
-      streams: [for (final s in streams) Map<String, dynamic>.from(s)],
-      fetchedPluginIds: Set<String>.from(fetchedPluginIds),
+      streams: copied,
+      fetchedPluginIds: _engineFetchedWithHits(copied, fetchedPluginIds),
     );
     _trim(_engine);
   }
+
+  static Set<String> _nuvioFetchedWithHits(
+    Iterable<Map<String, dynamic>> streams,
+    Set<String> fetchedScraperIds,
+  ) => {
+    for (final id in fetchedScraperIds)
+      if (streams.any((s) => nuvioStreamBelongsToScraper(s, id))) id,
+  };
+
+  static Set<String> _engineFetchedWithHits(
+    Iterable<Map<String, dynamic>> streams,
+    Set<String> fetchedPluginIds,
+  ) => {
+    for (final id in fetchedPluginIds)
+      if (enginePluginHasStreams(id, streams)) id,
+  };
 
   /// Drop one kind (`torrents` | `stremio` | `nuvio` | `engine`) or all kinds for [key].
   static void invalidate(String key, {String? kind}) {

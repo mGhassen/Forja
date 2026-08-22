@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
+import 'package:forja/features/live_matches/live_matches_sport_filter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persisted config for Live Matches → Forja Sports (RFC-062).
@@ -39,6 +40,14 @@ class LiveMatchesIptvSportsConfig {
     'EPL',
     'MLS',
     'LALIGA',
+    'SERIEA',
+    'BUNDESLIGA',
+    'LIGUE1',
+    'UCL',
+    'EUROPA',
+    'EREDIVISIE',
+    'LIGAPORTUGAL',
+    'LIGAMX',
     'WORLDCUP',
     'UFC',
   ];
@@ -55,6 +64,14 @@ class LiveMatchesIptvSportsConfig {
     'EPL': 'Premier League',
     'MLS': 'MLS',
     'LALIGA': 'La Liga',
+    'SERIEA': 'Serie A',
+    'BUNDESLIGA': 'Bundesliga',
+    'LIGUE1': 'Ligue 1',
+    'UCL': 'Champions League',
+    'EUROPA': 'Europa League',
+    'EREDIVISIE': 'Eredivisie',
+    'LIGAPORTUGAL': 'Primeira Liga',
+    'LIGAMX': 'Liga MX',
     'WORLDCUP': 'FIFA World Cup',
     'UFC': 'UFC',
   };
@@ -67,7 +84,56 @@ class LiveMatchesIptvSportsConfig {
     'BASEBALL',
     'HOCKEY',
     'MMA',
+    'MOTORSPORTS',
+    'GOLF',
+    'TENNIS',
+    'COMBAT',
+    'RUGBY',
+    'CRICKET',
+    'LACROSSE',
   ];
+
+  /// Live Matches catalog sport chip → IPTV portal folder bucket.
+  static const catalogSportToFamily = <String, String>{
+    'motor-sports': 'MOTORSPORTS',
+    'motorsports': 'MOTORSPORTS',
+    'formula-1': 'MOTORSPORTS',
+    'f1': 'MOTORSPORTS',
+    'racing': 'MOTORSPORTS',
+    'nascar': 'MOTORSPORTS',
+    'golf': 'GOLF',
+    'tennis': 'TENNIS',
+    'fight': 'COMBAT',
+    'combat-sports': 'COMBAT',
+    'boxing': 'COMBAT',
+    'rugby': 'RUGBY',
+    'cricket': 'CRICKET',
+    'lacrosse': 'LACROSSE',
+    'australian-football': 'FOOTBALL',
+    'american-football': 'FOOTBALL',
+    'football': 'SOCCER',
+    'basketball': 'BASKETBALL',
+    'hockey': 'HOCKEY',
+    'baseball': 'BASEBALL',
+    'other': 'GLOBAL',
+  };
+
+  static const sportFamilyLabels = <String, String>{
+    'SOCCER': 'Soccer',
+    'BASKETBALL': 'Basketball',
+    'FOOTBALL': 'Football',
+    'BASEBALL': 'Baseball',
+    'HOCKEY': 'Hockey',
+    'MMA': 'MMA',
+    'MOTORSPORTS': 'Motorsports',
+    'GOLF': 'Golf',
+    'TENNIS': 'Tennis',
+    'COMBAT': 'Combat',
+    'RUGBY': 'Rugby',
+    'CRICKET': 'Cricket',
+    'LACROSSE': 'Lacrosse',
+    'GLOBAL': 'Global (all live)',
+  };
 
   static const _leagueToFamily = <String, String>{
     'NBA': 'BASKETBALL',
@@ -81,12 +147,27 @@ class LiveMatchesIptvSportsConfig {
     'EPL': 'SOCCER',
     'MLS': 'SOCCER',
     'LALIGA': 'SOCCER',
+    'SERIEA': 'SOCCER',
+    'BUNDESLIGA': 'SOCCER',
+    'LIGUE1': 'SOCCER',
+    'UCL': 'SOCCER',
+    'EUROPA': 'SOCCER',
+    'EREDIVISIE': 'SOCCER',
+    'LIGAPORTUGAL': 'SOCCER',
+    'LIGAMX': 'SOCCER',
     'WORLDCUP': 'SOCCER',
     'UFC': 'MMA',
   };
 
   static String familyForLeague(String league) =>
       _leagueToFamily[league.toUpperCase()] ?? 'GLOBAL';
+
+  static String familyForCatalogSport(String raw) {
+    final slug = normalizeLiveSportId(raw);
+    return catalogSportToFamily[slug] ??
+        catalogSportToFamily[raw.trim().toLowerCase()] ??
+        'GLOBAL';
+  }
 
   bool get isReady =>
       enabled && portalKey.isNotEmpty && leagues.isNotEmpty;
@@ -156,11 +237,13 @@ class LiveMatchesIptvSportsConfig {
     return '';
   }
 
-  /// Category ids to search for an ESPN league code (e.g. `NBA`).
+  /// Category ids to search for an ESPN league code or Live Matches sport chip.
   List<String> categoryIdsForGame(String leagueOrSport) {
     final key = leagueOrSport.trim().toUpperCase();
+    final slug = normalizeLiveSportId(leagueOrSport);
     final family = _leagueToFamily[key] ??
-        (sportFamilies.contains(key) ? key : familyForLeague(key));
+        catalogSportToFamily[slug] ??
+        (sportFamilies.contains(key) ? key : familyForCatalogSport(leagueOrSport));
     final sportIds = sportCategories[family] ?? const [];
     final global = sportCategories['GLOBAL'] ?? const [];
     return {...sportIds, ...global}.toList();

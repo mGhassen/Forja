@@ -224,9 +224,6 @@ mixin _LiveMatchesData
       _s._timelineScrollController.jumpTo(0);
     }
     ref.invalidate(liveMatchesPrimaryLoadProvider(_s._server));
-    if (_s._server == _LiveMatchesServer.forjaLive) {
-      setState(() => _s._loading = false);
-    }
     if ((this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog) {
       (this as _LiveMatchesForjaLive)._kickForjaLiveLazyCatalog();
     }
@@ -267,6 +264,9 @@ mixin _LiveMatchesData
       _s._timelineScrollController.jumpTo(0);
     }
     markShellTabFresh();
+    if ((this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog) {
+      unawaited((this as _LiveMatchesForjaLive)._applyEspnScheduleMerge());
+    }
   }
 
   /// Sport chip / tab change rebuilds the time canvas - re-land on now.
@@ -289,16 +289,18 @@ mixin _LiveMatchesData
         .toList(),
   );
 
-  List<_StreamedMatch> get _filteredStreamed => _sortStreamedLiveFirst(
-    _s._streamedMatches
-        .where(
-          (m) => _includeInSportFilter(
-            category: m.category,
-            isAlwaysOn: m.isAlwaysOn,
-            sportFilter: _s._sportFilter,
-          ),
-        )
-        .toList(),
+  List<_StreamedMatch> get _filteredStreamed => _mergeStreamedCatalogRows(
+    _sortStreamedLiveFirst(
+      _s._streamedMatches
+          .where(
+            (m) => _includeInSportFilter(
+              category: m.category,
+              isAlwaysOn: m.isAlwaysOn,
+              sportFilter: _s._sportFilter,
+            ),
+          )
+          .toList(),
+    ),
   );
 
 }

@@ -1,5 +1,6 @@
 function ua() {
-  return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  // ESPN blocks common browser UAs from many IPs; plain client strings work.
+  return 'curl/8.7.1';
 }
 
 var LEAGUE_ENDPOINTS = {
@@ -14,11 +15,45 @@ var LEAGUE_ENDPOINTS = {
   EPL: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard',
   MLS: 'https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/scoreboard',
   LALIGA: 'https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard',
+  SERIEA: 'https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard',
+  BUNDESLIGA: 'https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1/scoreboard',
+  LIGUE1: 'https://site.api.espn.com/apis/site/v2/sports/soccer/fra.1/scoreboard',
+  UCL: 'https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard',
+  EUROPA: 'https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.europa/scoreboard',
+  EREDIVISIE: 'https://site.api.espn.com/apis/site/v2/sports/soccer/ned.1/scoreboard',
+  LIGAPORTUGAL: 'https://site.api.espn.com/apis/site/v2/sports/soccer/por.1/scoreboard',
+  LIGAMX: 'https://site.api.espn.com/apis/site/v2/sports/soccer/mex.1/scoreboard',
   WORLDCUP: 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard',
   UFC: 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard',
 };
 
-function leagueCategory(league) {
+var LEAGUE_LABELS = {
+  NBA: 'NBA',
+  NFL: 'NFL',
+  MLB: 'MLB',
+  NHL: 'NHL',
+  WNBA: 'WNBA',
+  NCAAMB: "NCAA Men's Basketball",
+  NCAAWB: "NCAA Women's Basketball",
+  NCAAFB: 'NCAA Football',
+  EPL: 'Premier League',
+  MLS: 'MLS',
+  LALIGA: 'La Liga',
+  SERIEA: 'Serie A',
+  BUNDESLIGA: 'Bundesliga',
+  LIGUE1: 'Ligue 1',
+  UCL: 'Champions League',
+  EUROPA: 'Europa League',
+  EREDIVISIE: 'Eredivisie',
+  LIGAPORTUGAL: 'Primeira Liga',
+  LIGAMX: 'Liga MX',
+  WORLDCUP: 'FIFA World Cup',
+  UFC: 'UFC',
+};
+
+var NCAA_LEAGUES = { NCAAMB: true, NCAAWB: true, NCAAFB: true };
+
+function leagueFamily(league) {
   switch (String(league || '').toUpperCase()) {
     case 'NBA':
     case 'WNBA':
@@ -35,6 +70,14 @@ function leagueCategory(league) {
     case 'EPL':
     case 'MLS':
     case 'LALIGA':
+    case 'SERIEA':
+    case 'BUNDESLIGA':
+    case 'LIGUE1':
+    case 'UCL':
+    case 'EUROPA':
+    case 'EREDIVISIE':
+    case 'LIGAPORTUGAL':
+    case 'LIGAMX':
     case 'WORLDCUP':
       return 'soccer';
     case 'UFC':
@@ -42,6 +85,11 @@ function leagueCategory(league) {
     default:
       return 'other';
   }
+}
+
+function leagueChipLabel(league) {
+  var key = String(league || '').toUpperCase();
+  return LEAGUE_LABELS[key] || leagueFamily(league);
 }
 
 function parseIsoMs(raw) {
@@ -90,11 +138,13 @@ function mapGame(league, event, pluginId) {
     String(status).toUpperCase().indexOf('HALFTIME') >= 0;
   var homeLogo = teamField(homeTeam, ['logo']);
   var awayLogo = teamField(awayTeam, ['logo']);
+  var leagueKey = String(league).toUpperCase();
   var sportMatchGame = {
     id: id,
     title: name,
-    sport: String(league).toUpperCase(),
-    category: leagueCategory(league),
+    sport: leagueKey,
+    category: leagueChipLabel(league),
+    sportFamily: leagueFamily(league),
     homeTeam: homeFull,
     awayTeam: awayFull,
     homeNick: homeNick,
@@ -107,7 +157,7 @@ function mapGame(league, event, pluginId) {
   return {
     id: 'espn:' + id,
     title: name,
-    category: leagueCategory(league),
+    category: leagueChipLabel(league),
     date: parseIsoMs(date),
     poster: homeLogo || awayLogo || '',
     popular: false,
@@ -128,6 +178,9 @@ async function fetchLeague(ctx, league, date, pluginId) {
   if (!url) return [];
   var fetchUrl = url;
   if (date) fetchUrl += (url.indexOf('?') >= 0 ? '&' : '?') + 'dates=' + date;
+  if (NCAA_LEAGUES[String(league || '').toUpperCase()]) {
+    fetchUrl += '&groups=50&limit=500';
+  }
   var res = await ctx.fetch(fetchUrl, {
     headers: { 'User-Agent': ua(), Accept: 'application/json' },
   });
@@ -148,7 +201,10 @@ async function extract(ctx) {
 
   var cfg = ctx.config || {};
   var pluginId = String(cfg.providerId || 'catalog-espn');
-  var leagues = cfg.leagues || Object.keys(LEAGUE_ENDPOINTS);
+  var leaguesRaw = cfg.leagues;
+  var leagues = leaguesRaw && leaguesRaw.length
+    ? leaguesRaw
+    : Object.keys(LEAGUE_ENDPOINTS);
   var date = String(cfg.date || '').trim();
   if (!date) {
     var now = new Date();

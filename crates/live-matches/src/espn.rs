@@ -8,7 +8,8 @@ use serde_json::{json, Value};
 
 use crate::fetch::{http_get_json, ok_items};
 
-const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
+/// ESPN scoreboard blocks common browser UAs from many IPs; plain client strings work.
+const UA: &str = "curl/8.7.1";
 
 fn espn_headers() -> HashMap<String, String> {
     HashMap::from([
@@ -63,6 +64,38 @@ const ESPN_ENDPOINTS: &[(&str, &str)] = &[
         "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard",
     ),
     (
+        "SERIEA",
+        "https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard",
+    ),
+    (
+        "BUNDESLIGA",
+        "https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1/scoreboard",
+    ),
+    (
+        "LIGUE1",
+        "https://site.api.espn.com/apis/site/v2/sports/soccer/fra.1/scoreboard",
+    ),
+    (
+        "UCL",
+        "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard",
+    ),
+    (
+        "EUROPA",
+        "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.europa/scoreboard",
+    ),
+    (
+        "EREDIVISIE",
+        "https://site.api.espn.com/apis/site/v2/sports/soccer/ned.1/scoreboard",
+    ),
+    (
+        "LIGAPORTUGAL",
+        "https://site.api.espn.com/apis/site/v2/sports/soccer/por.1/scoreboard",
+    ),
+    (
+        "LIGAMX",
+        "https://site.api.espn.com/apis/site/v2/sports/soccer/mex.1/scoreboard",
+    ),
+    (
         "WORLDCUP",
         "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard",
     ),
@@ -84,6 +117,14 @@ const ESPN_LEAGUES: &[(&str, &str)] = &[
     ("EPL", "eng.1"),
     ("MLS", "usa.1"),
     ("LALIGA", "esp.1"),
+    ("SERIEA", "ita.1"),
+    ("BUNDESLIGA", "ger.1"),
+    ("LIGUE1", "fra.1"),
+    ("UCL", "uefa.champions"),
+    ("EUROPA", "uefa.europa"),
+    ("EREDIVISIE", "ned.1"),
+    ("LIGAPORTUGAL", "por.1"),
+    ("LIGAMX", "mex.1"),
     ("WORLDCUP", "fifa.world"),
     ("UFC", "ufc"),
 ];
@@ -115,16 +156,45 @@ fn endpoint_for(sport: &str) -> Option<&'static str> {
         .map(|(_, v)| *v)
 }
 
-/// Category chip id for Live Matches (normalized sport family).
+/// Sport family for IPTV folder mapping (Settings → Forja Sports).
 pub fn category_for_league(sport: &str) -> &'static str {
     match sport.to_uppercase().as_str() {
         "NBA" | "WNBA" | "NCAAMB" | "NCAAWB" => "basketball",
         "NFL" | "NCAAFB" => "football",
         "MLB" => "baseball",
         "NHL" => "hockey",
-        "EPL" | "MLS" | "LALIGA" | "WORLDCUP" => "soccer",
+        "EPL" | "MLS" | "LALIGA" | "SERIEA" | "BUNDESLIGA" | "LIGUE1" | "UCL"
+        | "EUROPA" | "EREDIVISIE" | "LIGAPORTUGAL" | "LIGAMX" | "WORLDCUP" => "soccer",
         "UFC" => "mma",
         _ => "other",
+    }
+}
+
+/// Live Matches sport chip label — one chip per league, not a single "Soccer" bucket.
+pub fn league_chip_label(sport: &str) -> &'static str {
+    match sport.to_uppercase().as_str() {
+        "NBA" => "NBA",
+        "NFL" => "NFL",
+        "MLB" => "MLB",
+        "NHL" => "NHL",
+        "WNBA" => "WNBA",
+        "NCAAMB" => "NCAA Men's Basketball",
+        "NCAAWB" => "NCAA Women's Basketball",
+        "NCAAFB" => "NCAA Football",
+        "EPL" => "Premier League",
+        "MLS" => "MLS",
+        "LALIGA" => "La Liga",
+        "SERIEA" => "Serie A",
+        "BUNDESLIGA" => "Bundesliga",
+        "LIGUE1" => "Ligue 1",
+        "UCL" => "Champions League",
+        "EUROPA" => "Europa League",
+        "EREDIVISIE" => "Eredivisie",
+        "LIGAPORTUGAL" => "Primeira Liga",
+        "LIGAMX" => "Liga MX",
+        "WORLDCUP" => "FIFA World Cup",
+        "UFC" => "UFC",
+        _ => category_for_league(sport),
     }
 }
 
@@ -349,7 +419,8 @@ fn map_game(sport: &str, event: &Value) -> Option<Value> {
     Some(json!({
         "id": id,
         "sport": sport.to_uppercase(),
-        "category": category_for_league(sport),
+        "category": league_chip_label(sport),
+        "sportFamily": category_for_league(sport),
         "name": name,
         "title": name,
         "homeTeam": home_full,
@@ -428,7 +499,8 @@ fn map_ufc_event(event: &Value) -> Option<Value> {
     Some(json!({
         "id": id,
         "sport": "UFC",
-        "category": "mma",
+        "category": "UFC",
+        "sportFamily": "mma",
         "name": event_name,
         "title": event_name,
         "homeTeam": name_a,

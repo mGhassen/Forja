@@ -310,7 +310,7 @@ void main() {
   });
 
   group('Nuvio scraper cache', () {
-    test('cache preserves attempted scrapers, including empty responses', () {
+    test('does not stick empty nuvio hits', () {
       const key = 'nuvio-lazy-test';
       CatalogSourcesSessionCache.writeNuvio(
         key,
@@ -318,11 +318,47 @@ void main() {
         fetchedScraperIds: const {'empty-scraper'},
       );
 
+      expect(CatalogSourcesSessionCache.readNuvio(key), isNull);
+    });
+
+    test('keeps fetched scrapers that returned streams', () {
+      const key = 'nuvio-hit-test';
+      CatalogSourcesSessionCache.writeNuvio(
+        key,
+        [
+          {
+            'url': 'https://example.com/a.m3u8',
+            '_nuvioScraperId': 'hit-scraper',
+          },
+        ],
+        fetchedScraperIds: const {'hit-scraper', 'empty-scraper'},
+      );
+
       final cached = CatalogSourcesSessionCache.readNuvio(key);
       expect(cached, isNotNull);
-      expect(cached!.streams, isEmpty);
-      expect(cached.fetchedScraperIds, {'empty-scraper'});
+      expect(cached!.streams, isNotEmpty);
+      expect(cached.fetchedScraperIds, {'hit-scraper'});
       CatalogSourcesSessionCache.invalidate(key);
+    });
+  });
+
+  group('Stremio session cache', () {
+    test('does not stick empty stremio hits', () {
+      const key = 'movie:42';
+      CatalogSourcesSessionCache.writeStremio(key, const []);
+      expect(CatalogSourcesSessionCache.readStremio(key), isNull);
+    });
+  });
+
+  group('Engine session cache', () {
+    test('does not stick empty engine hits', () {
+      const key = 'anime:7';
+      CatalogSourcesSessionCache.writeEngine(
+        key,
+        const [],
+        fetchedPluginIds: const {'videasy'},
+      );
+      expect(CatalogSourcesSessionCache.readEngine(key), isNull);
     });
   });
 

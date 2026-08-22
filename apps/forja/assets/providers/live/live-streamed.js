@@ -201,11 +201,13 @@ async function resolveStream(ctx, cfg) {
   } else {
     var fetched = await postFetch(ctx, slot, cfg);
     referer = (slot.origin || embedOrigin(cfg)) + '/';
+    var m3u8 = '';
+    if (ctx.live && typeof ctx.live.goatUnlock === 'function') {
+      m3u8 = await ctx.live.goatUnlock(fetched.bodyHex, fetched.goat, slot);
+    }
+    if (!m3u8) throw new Error('goat unlock failed');
     return [{
-      goatPending: true,
-      bodyHex: fetched.bodyHex,
-      goat: fetched.goat,
-      slot: slot,
+      url: m3u8,
       headers: {
         Referer: referer,
         Origin: new URL(referer).origin,

@@ -2310,6 +2310,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   /// the active source, same chrome as the Player / Stats menus.
   void _showSourcePicker({BuildContext? anchorContext}) {
     _scheduleHideControls();
+    final sportsProbe = _s.widget.titleTracksSource;
     PlayerPopupPanel.show(
       context: context,
       title: 'Source',
@@ -2321,26 +2322,120 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       maxHeight: 440,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < _s._sources.length; i++)
-              PlayerPopupListTile(
-                leading: _sourceLogo(_s._sources[i]),
-                label: _s._sources[i].pickerTitle,
-                badge: _s._sources[i].tierBadge,
-                badgeColor: _s._sources[i].tierBadgeColor,
-                subtitle: _sourceSubtitle(_s._sources[i]),
-                selected: i == _s._sourceIdx,
-                onTap: () {
+        child: sportsProbe
+            ? _IptvSportsSourcePickerList(
+                sources: _s._sources,
+                selectedIndex: _s._sourceIdx,
+                sourceLogo: _sourceLogo,
+                sourceSubtitle: _sourceSubtitle,
+                onPick: (i) {
                   PlayerPopupPanel.dismiss();
                   _s._switchSource(i);
                 },
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < _s._sources.length; i++)
+                    PlayerPopupListTile(
+                      leading: _sourceLogo(_s._sources[i]),
+                      label: _s._sources[i].pickerTitle,
+                      badge: _s._sources[i].tierBadge,
+                      badgeColor: _s._sources[i].tierBadgeColor,
+                      subtitle: _sourceSubtitle(_s._sources[i]),
+                      selected: i == _s._sourceIdx,
+                      onTap: () {
+                        PlayerPopupPanel.dismiss();
+                        _s._switchSource(i);
+                      },
+                    ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _IptvSportsSourcePickerList extends StatefulWidget {
+  const _IptvSportsSourcePickerList({
+    required this.sources,
+    required this.selectedIndex,
+    required this.sourceLogo,
+    required this.sourceSubtitle,
+    required this.onPick,
+  });
+
+  final List<IptvPlaySource> sources;
+  final int selectedIndex;
+  final Widget Function(IptvPlaySource src) sourceLogo;
+  final String? Function(IptvPlaySource src) sourceSubtitle;
+  final ValueChanged<int> onPick;
+
+  @override
+  State<_IptvSportsSourcePickerList> createState() =>
+      _IptvSportsSourcePickerListState();
+}
+
+class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList> {
+  final _healthProbe = IptvLazyUrlHealthProbe(
+    delay: const Duration(milliseconds: 500),
+  );
+
+  @override
+  void dispose() {
+    _healthProbe.dispose();
+    super.dispose();
+  }
+
+  PlayerSourceStatus? _statusFor(int index, IptvPlaySource src) {
+    if (index == widget.selectedIndex) return PlayerSourceStatus.active;
+    final health = _healthProbe.healthFor(src.url);
+    if (health == null) return null;
+    return health ? PlayerSourceStatus.ready : PlayerSourceStatus.failed;
+  }
+
+  void _syncProbe(IptvPlaySource src, bool active) {
+    if (active) {
+      _healthProbe.schedule(
+        src.url,
+        src.url,
+        onlyThis: iptvUseTvFocus(context),
+      );
+    } else {
+      _healthProbe.cancel(src.url);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _healthProbe,
+      builder: (_, _) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < widget.sources.length; i++)
+              Builder(
+                builder: (context) {
+                  final src = widget.sources[i];
+                  return PlayerPopupListTile(
+                    leading: widget.sourceLogo(src),
+                    label: src.pickerTitle,
+                    badge: src.tierBadge,
+                    badgeColor: src.tierBadgeColor,
+                    subtitle: widget.sourceSubtitle(src),
+                    selected: i == widget.selectedIndex,
+                    status: _statusFor(i, src),
+                    onInteractiveChange: (active) => _syncProbe(src, active),
+                    onTap: () => widget.onPick(i),
+                  );
+                },
               ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

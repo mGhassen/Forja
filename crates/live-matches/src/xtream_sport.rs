@@ -1,7 +1,8 @@
 //! Xtream live streams + short EPG → matcher candidates.
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use base64::Engine;
 use serde_json::{json, Value};
@@ -13,6 +14,50 @@ use crate::fetch::{self, http_get_async, http_get_json, ok_items};
 use crate::sport_match::{self, Candidate, MatchGame};
 
 const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
+const LIVE_CACHE_TTL: Duration = Duration::from_secs(120);
+
+struct PortalLiveCacheEntry {
+    streams: Vec<Value>,
+    categories: HashMap<String, String>,
+    fetched_at: Instant,
+}
+
+fn live_cache() -> &'static Mutex<HashMap<String, PortalLiveCacheEntry>> {
+    static CACHE: OnceLock<Mutex<HashMap<String, PortalLiveCacheEntry>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn portal_cache_key(base: &str, user: &str, pass: &str) -> String {
+    format!("{}|{}|{}", trim_base(base), user, pass)
+}
+
+fn get_or_fetch_portal_live(
+    base: &str,
+    user: &str,
+    pass: &str,
+) -> (Vec<Value>, HashMap<String, String>) {
+    let key = portal_cache_key(base, user, pass);
+    if let Ok(cache) = live_cache().lock() {
+        if let Some(entry) = cache.get(&key) {
+            if entry.fetched_at.elapsed() < LIVE_CACHE_TTL {
+                return (entry.streams.clone(), entry.categories.clone());
+            }
+        }
+    }
+    let streams = fetch_live_streams(base, user, pass);
+    let cats = fetch_live_categories(base, user, pass);
+    if let Ok(mut cache) = live_cache().lock() {
+        cache.insert(
+            key,
+            PortalLiveCacheEntry {
+                streams: streams.clone(),
+                categories: cats.clone(),
+                fetched_at: Instant::now(),
+            },
+        );
+    }
+    (streams, cats)
+}
 
 /// Concurrent `get_short_epg` calls — unbounded JoinSet OOMs Android TV.
 const EPG_CONCURRENCY: usize = 12;
@@ -246,12 +291,8 @@ fn skeleton_candidate(
         base,
         &field_str(s, &["stream_icon", "streamIcon", "logo", "cover"]),
     );
-    let ext = field_str(s, &["container_extension"]);
-    let ext = if ext.is_empty() {
-        "m3u8".into()
-    } else {
-        ext
-    };
+    // Match crates/iptv Xtream live rows — always `.ts`, not API `container_extension`.
+    let ext = "ts";
     let label = category_label_for(s, cats);
     Some(Candidate {
         name,
@@ -306,7 +347,12 @@ async fn fill_epg_async(
 }
 
 /// Build candidates + run matcher.
-pub fn sport_match_streams(game: &Value, xtream: &Value, category_ids: &[String]) -> String {
+pub fn sport_match_streams(
+    game: &Value,
+    xtream: &Value,
+    category_ids: &[String],
+    skip_epg: bool,
+) -> String {
     let base = field_str(xtream, &["url", "baseUrl"]);
     let user = field_str(xtream, &["username", "user"]);
     let pass = field_str(xtream, &["password", "pass"]);
@@ -317,17 +363,21 @@ pub fn sport_match_streams(game: &Value, xtream: &Value, category_ids: &[String]
     let sport = field_str(game, &["sport"]);
     let match_game = MatchGame::from_json(game);
 
-    let streams = fetch_live_streams(&base, &user, &pass);
+    let (streams, cats) = get_or_fetch_portal_live(&base, &user, &pass);
     let filtered: Vec<Value> = streams
         .into_iter()
         .filter(|s| stream_in_categories(s, category_ids))
         .collect();
-    let cats = fetch_live_categories(&base, &user, &pass);
 
     let mut candidates: Vec<Candidate> = filtered
         .iter()
         .filter_map(|s| skeleton_candidate(&base, &user, &pass, s, &cats))
         .collect();
+
+    if skip_epg {
+        let items = sport_match::match_streams(&match_game, &candidates, &[]);
+        return ok_items(items);
+    }
 
     let epg_idxs = sport_match::indices_for_epg(&match_game, &candidates, MAX_EPG_FETCHES);
     fetch::block_on(fill_epg_async(
@@ -354,7 +404,15 @@ mod tests {
 
     #[test]
     fn builds_live_url() {
-        let u = live_url("http://x.com/", "u", "p", "42", "m3u8");
-        assert_eq!(u, "http://x.com/live/u/p/42.m3u8");
+        let u = live_url("http://x.com/", "u", "p", "42", "ts");
+        assert_eq!(u, "http://x.com/live/u/p/42.ts");
+    }
+
+    #[test]
+    fn skeleton_live_url_uses_ts() {
+        let s = json!({"stream_id": "42", "name": "NBA"});
+        let c = skeleton_candidate("http://x.com", "u", "p", &s, &HashMap::new())
+            .expect("candidate");
+        assert!(c.stream_url.ends_with(".ts"), "{}", c.stream_url);
     }
 }

@@ -760,8 +760,9 @@ class EngineService {
         continue;
       }
       if (row['sniffPending'] == true) {
+        final embedRaw = (row['embedUrl'] ?? row['url'] ?? '').toString();
         final url = await LiveGoatUnlock.sniffEmbed(
-          embedUrl: (row['embedUrl'] ?? row['url'] ?? '').toString(),
+          embedUrl: embedRaw,
           referer: (row['referer'] ?? '').toString(),
         );
         if (url == null || url.isEmpty) continue;
@@ -770,7 +771,11 @@ class EngineService {
         if (h is Map) {
           h.forEach((k, v) => headers[k.toString()] = v);
         }
-        if (headers.isEmpty && row['referer'] != null) {
+        final embedUri = Uri.tryParse(embedRaw.trim());
+        if (embedUri != null && embedUri.host.isNotEmpty) {
+          headers['Referer'] = '${embedUri.origin}/';
+          headers['Origin'] = embedUri.origin;
+        } else if (row['referer'] != null) {
           headers['Referer'] = row['referer'].toString();
         }
         out.add({'url': url, 'headers': headers});

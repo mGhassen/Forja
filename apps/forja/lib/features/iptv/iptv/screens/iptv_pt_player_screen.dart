@@ -29,6 +29,7 @@ import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/features/iptv/iptv/iptv_live_continuity_proxy.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.dart';
+import 'package:forja/features/iptv/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/iptv/providers/iptv_player_providers.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_player_chrome_profile.dart';
@@ -70,6 +71,19 @@ bool iptvExoUrlLooksLive(String url) {
   return true;
 }
 
+/// Live native playback profile — one MediaKit/Exo config per surface type,
+/// not inferred from URL shape.
+enum IptvLiveSourceKind {
+  /// IPTV Live tab + Forja Sports Xtream channels (TS continuity proxy).
+  iptvXtream,
+  /// Live Matches Stremio addon streams (direct HLS / lavf reconnect).
+  stremio,
+  /// Forja Live / PPV / Streamed engine plugins (direct open + plugin headers).
+  liveEngine;
+
+  bool get useContinuityProxy => this == IptvLiveSourceKind.iptvXtream;
+}
+
 /// Hard open failure (MediaKit / Exo) — VOD can swap engines once.
 @visibleForTesting
 bool iptvIsHardOpenFail(String msg) {
@@ -83,6 +97,7 @@ bool iptvIsHardOpenFail(String msg) {
       lower.contains('invalidresponsecode') ||
       lower.contains('response code: 403') ||
       lower.contains('response code: 401') ||
+      lower.contains('response code: 407') ||
       lower.contains('arrayindexoutofbounds') ||
       lower.contains('unexpectedloaderexception') ||
       // Exo progressive VOD: HTTP death or Media3 AAC/MP4 extractor crash.
@@ -118,6 +133,8 @@ class IptvPlaySource {
   /// Optional HTTP headers (Cookie / Referer / Origin) for Exo / MediaKit.
   /// Live Matches Streamed handoff uses these instead of `/hls-proxy`.
   final Map<String, String> headers;
+  /// Live Matches: which playback profile applies when this row is active.
+  final IptvLiveSourceKind? liveSourceKind;
   const IptvPlaySource({
     required this.url,
     required this.label,
@@ -125,6 +142,7 @@ class IptvPlaySource {
     this.logoUrl,
     this.streamId,
     this.headers = const {},
+    this.liveSourceKind,
   });
 
   /// Channel name for chrome — strips leading `T3 · ` rank prefix.
@@ -203,6 +221,8 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   /// When true, top chrome **subtitle** follows the active [IptvPlaySource]
   /// (My IPTV sports — title stays the match; each source is a different channel).
   final bool titleTracksSource;
+  /// Default live profile when sources omit [IptvPlaySource.liveSourceKind].
+  final IptvLiveSourceKind? liveSourceKind;
 
   const IptvPtPlayerScreen({
     super.key,
@@ -224,6 +244,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     this.seriesPortal,
     this.seriesShowTitle,
     this.titleTracksSource = false,
+    this.liveSourceKind,
   });
 
   /// Convenience: build for a single Xtream stream.

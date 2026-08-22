@@ -51,6 +51,8 @@ class IptvLiveContinuityProxy {
     _upstream = upstreamUrl;
     _headers = Map<String, String>.from(headers);
     _client = HttpClient()
+      // macOS/Linux env proxies return 407 for IPTV CDNs — mpv/libmpv is direct.
+      ..findProxy = ((_) => 'DIRECT')
       ..connectionTimeout = const Duration(seconds: 12)
       ..idleTimeout = const Duration(seconds: 30)
       ..autoUncompress = false;
@@ -160,8 +162,11 @@ class IptvLiveContinuityProxy {
     }
   }
 
+  static const _fatalUpstreamCodes = {401, 403, 407};
+
   Future<void> _runProducer(int gen) async {
     var firstConnect = true;
+    var fatalUpstream = 0;
     while (!_closed && gen == _generation) {
       HttpClientResponse? up;
       try {
@@ -170,9 +175,19 @@ class IptvLiveContinuityProxy {
         if (up.statusCode < 200 || up.statusCode >= 300) {
           debugPrint('[IPTV Proxy] upstream HTTP ${up.statusCode}');
           await up.drain<void>();
+          if (_fatalUpstreamCodes.contains(up.statusCode)) {
+            fatalUpstream++;
+            if (fatalUpstream >= 3) {
+              debugPrint(
+                '[IPTV Proxy] upstream auth/proxy failure — stopping producer',
+              );
+              break;
+            }
+          }
           await Future<void>.delayed(const Duration(milliseconds: 350));
           continue;
         }
+        fatalUpstream = 0;
 
         var skipLeft = 0;
         if (firstConnect) {
@@ -231,7 +246,23 @@ class IptvLiveContinuityProxy {
     final req = await client.getUrl(Uri.parse(_upstream));
     req.followRedirects = true;
     req.maxRedirects = 8;
-    _headers.forEach(req.headers.set);
+    for (final e in _headers.entries) {
+      req.headers.set(e.key, e.value);
+    }
+    if (!_headers.keys.any(
+      (k) => k.toLowerCase() == HttpHeaders.userAgentHeader,
+    )) {
+      req.headers.set(
+        HttpHeaders.userAgentHeader,
+        'VLC/3.0.20 LibVLC/3.0.20',
+      );
+    }
+    if (!_headers.keys.any(
+      (k) => k.toLowerCase() == HttpHeaders.acceptHeader,
+    )) {
+      req.headers.set(HttpHeaders.acceptHeader, '*/*');
+    }
+    req.headers.set(HttpHeaders.connectionHeader, 'keep-alive');
     return req.close().timeout(const Duration(seconds: 20));
   }
 }

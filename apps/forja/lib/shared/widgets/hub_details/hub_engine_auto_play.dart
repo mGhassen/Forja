@@ -291,7 +291,7 @@ Future<_HubEngineAutoHit?> _raceHubEnginePlugins({
     ];
     final fetched = <String>{
       if (cached != null) ...cached.fetchedPluginIds,
-      pluginId,
+      if (streams.isNotEmpty) pluginId,
     };
     CatalogSourcesSessionCache.writeEngine(
       cacheKey,

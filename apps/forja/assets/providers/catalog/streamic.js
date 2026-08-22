@@ -22,7 +22,7 @@ async function extract(ctx) {
       poster: '',
       popular: false,
       airing: false,
-      sources: [{ source: 'streamic', id: String(m.id || i), url: String(m.url || m.link || '') }],
+      sources: [{ source: 'streamic', id: String(m.id || i) }],
       catalog: 'forja_live',
       pluginId: pluginId,
     };

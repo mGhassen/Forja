@@ -187,10 +187,8 @@ Future<List<_StreamedMatch>> _fetchForjaLiveMatches() async {
 // Kept for bulk fetch tests / tooling; Live Matches UI uses lazy per-plugin load.
 
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesForjaLive() async {
-  return const LiveMatchesPrimaryLoad(
-    sports: [],
-    streamedMatches: [],
-  );
+  // Same PPV · Streamed base as All — engine catalogs + Rust ESPN merge on top.
+  return _fetchLiveMatchesAll();
 }
 
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStremio() async {

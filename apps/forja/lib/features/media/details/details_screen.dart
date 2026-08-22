@@ -929,8 +929,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (_engineStreams.isEmpty) {
       final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
       if (cached != null) {
-        // Trust TTL cache: keep empty-plugin fetched markers so reopen /
-        // player Sources do not re-extract. Force refresh still clears them.
         setState(() {
           _engineStreams = cached.streams;
           _engineFetchedPluginIds = cached.fetchedPluginIds;

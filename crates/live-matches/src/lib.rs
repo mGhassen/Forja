@@ -28,6 +28,9 @@ pub struct LiveMatchesRequest {
     /// Live category ids to search (plus caller may include GLOBAL).
     #[serde(default)]
     pub category_ids: Option<Vec<String>>,
+    /// When true, match on channel names only — skip short-EPG fetches (fast first batch).
+    #[serde(default)]
+    pub skip_epg: Option<bool>,
 }
 
 pub fn fetch_json(request_json: &str) -> String {
@@ -69,7 +72,8 @@ pub fn fetch_json(request_json: &str) -> String {
                 }
             };
             let cats = req.category_ids.unwrap_or_default();
-            xtream_sport::sport_match_streams(&game, &xtream, &cats)
+            let skip_epg = req.skip_epg.unwrap_or(false);
+            xtream_sport::sport_match_streams(&game, &xtream, &cats, skip_epg)
         }
         other => serde_json::json!({ "error": format!("unknown action: {other}") }).to_string(),
     }

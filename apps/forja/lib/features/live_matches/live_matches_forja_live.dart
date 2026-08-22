@@ -46,7 +46,11 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
     if (_s._server == _LiveMatchesServer.forjaLive &&
         _s._forjaLivePluginFilter != 'all') {
       list = list
-          .where((m) => m.livePluginId == _s._forjaLivePluginFilter)
+          .where(
+            (m) => _streamedMatchesForEvent(m, _s._streamedMatches).any(
+              (row) => row.livePluginId == _s._forjaLivePluginFilter,
+            ),
+          )
           .toList();
     }
     return list;
@@ -68,17 +72,51 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
     unawaited(_loadForjaLiveCatalogLazy());
   }
 
+  Future<bool> _isEspnCatalogEnabled() async {
+    await EngineService.instance.ensureBundledInstalled();
+    final packs = await EngineService.instance.listPacks();
+    for (final pack in packs) {
+      for (final p in pack.plugins) {
+        if (p.id == 'catalog-espn') return p.enabled;
+      }
+    }
+    return false;
+  }
+
+  /// Rust ESPN scoreboard — same pipeline as Forja Sports (not catalog-espn.js).
+  Future<void> _applyEspnScheduleMerge() async {
+    if (!_usesForjaLiveLazyCatalog) return;
+    if (!mounted) return;
+    if (!await _isEspnCatalogEnabled()) return;
+
+    final espn = await _fetchEspnSportMatchGames();
+    if (!mounted) return;
+
+    final base = _stripEspnMergedScheduleRows(_s._streamedMatches);
+    final merged = _mergeStreamedWithEspn(base, espn);
+    setState(() {
+      _s._streamedMatches = merged.streamed;
+      _s._espnGames = merged.espnGames;
+    });
+    _rebuildSportTabsFromCurrentMatches();
+  }
+
   Future<void> _loadForjaLiveCatalogLazy() async {
     final gen = _s._forjaLiveLoadGen;
     await EngineService.instance.ensureBundledInstalled();
-    final catalogPlugins =
-        await EngineService.instance.listEnabledLiveCatalogPlugins();
+    final catalogPlugins = [
+      for (final p in await EngineService.instance.listEnabledLiveCatalogPlugins())
+        if (p.id != 'catalog-espn') p,
+    ];
     if (!mounted || gen != _s._forjaLiveLoadGen) return;
+
+    unawaited(_applyEspnScheduleMerge());
 
     if (catalogPlugins.isEmpty) {
       if (_s._server == _LiveMatchesServer.forjaLive) {
         setState(() => _s._forjaLivePluginLoads = {});
       }
+      await _applyEspnScheduleMerge();
       return;
     }
 
@@ -97,10 +135,9 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
       final filterId = EngineService.catalogFilterId(catalog);
       try {
-        final extra = await _forjaLiveCatalogExtraConfig(catalog);
         final rows = await EngineService.instance.runLiveCatalog(
           catalogPlugin: catalog,
-          extraConfig: extra,
+          extraConfig: const {},
           timeout: LiveMatchesEngine.catalogPluginTimeout,
         );
         final matches = rows
@@ -134,22 +171,9 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
         });
       }
     }
-  }
 
-  Future<Map<String, dynamic>> _forjaLiveCatalogExtraConfig(
-    EnginePlugin catalog,
-  ) async {
-    if (catalog.id != 'catalog-espn') return const {};
-    final config = await LiveMatchesIptvSportsConfig.load();
-    final leagues = config.leagues.isEmpty
-        ? LiveMatchesIptvSportsConfig.allLeagues
-        : config.leagues;
-    final now = DateTime.now();
-    final date =
-        '${now.year.toString().padLeft(4, '0')}'
-        '${now.month.toString().padLeft(2, '0')}'
-        '${now.day.toString().padLeft(2, '0')}';
-    return {'leagues': leagues, 'date': date};
+    if (!mounted || gen != _s._forjaLiveLoadGen) return;
+    await _applyEspnScheduleMerge();
   }
 
   void _rebuildSportTabsFromCurrentMatches() {
@@ -164,6 +188,7 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
     }
 
     if (_s._server == _LiveMatchesServer.all ||
+        _s._server == _LiveMatchesServer.forjaLive ||
         _s._server == _LiveMatchesServer.iptvSports) {
       for (final s in _s._damiTvStreams) {
         if (_is247Item(category: s.categoryName, isAlwaysOn: s.isAlwaysOn)) {
