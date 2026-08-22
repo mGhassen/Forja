@@ -1,19 +1,40 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
 /// Live HTTP TS continuity: mpv reads loopback; we reopen the CDN when it
-/// closes the socket (~every 15–70MB on many Xtream panels) without tearing
-/// down mpv's connection. That is what makes the stop invisible.
+/// closes the socket without tearing down mpv's connection.
+///
+/// On reconnect, Xtream often restarts a few seconds *behind* the previous
+/// socket end — piping that raw would look like a replay. We:
+/// 1. Keep a multi-second read-ahead queue so mpv rarely underruns mid-reconnect
+/// 2. Skip the first ~3 MiB of each reconnect (CDN overlap)
+/// 3. Notify [onUpstreamReconnected] so the player can drop-buffers
 class IptvLiveContinuityProxy {
+  IptvLiveContinuityProxy({this.onUpstreamReconnected});
+
+  /// Fired on every upstream reopen after the first (mpv should drop-buffers).
+  final VoidCallback? onUpstreamReconnected;
+
   HttpServer? _server;
   HttpClient? _client;
   String _upstream = '';
   Map<String, String> _headers = const {};
   var _closed = false;
   int _generation = 0;
-  int _upstreamEpoch = 0;
+
+  final Queue<Uint8List> _queue = Queue<Uint8List>();
+  int _queuedBytes = 0;
+  Completer<void>? _waitData;
+
+  /// ~8–12s at typical IPTV bitrates — absorb reconnect without underrun.
+  static const int _maxQueueBytes = 12 * 1024 * 1024;
+
+  /// Fresh GET usually overlaps the last seconds we already sent.
+  static const int _reconnectSkipBytes = 3 * 1024 * 1024;
 
   Uri? get localUri {
     final p = _server?.port;
@@ -46,6 +67,8 @@ class IptvLiveContinuityProxy {
   Future<void> stop() async {
     _closed = true;
     _generation++;
+    _clearQueue();
+    _wakeWaiters();
     final server = _server;
     _server = null;
     final client = _client;
@@ -58,10 +81,44 @@ class IptvLiveContinuityProxy {
     } catch (_) {}
   }
 
+  void _clearQueue() {
+    _queue.clear();
+    _queuedBytes = 0;
+  }
+
+  void _wakeWaiters() {
+    final c = _waitData;
+    _waitData = null;
+    if (c != null && !c.isCompleted) c.complete();
+  }
+
+  Future<void> _waitForData() {
+    if (_queuedBytes > 0 || _closed) return Future<void>.value();
+    final existing = _waitData;
+    if (existing != null) return existing.future;
+    final c = Completer<void>();
+    _waitData = c;
+    return c.future;
+  }
+
+  void _enqueue(Uint8List data) {
+    _queue.add(data);
+    _queuedBytes += data.length;
+    _wakeWaiters();
+  }
+
+  Uint8List? _dequeue() {
+    if (_queue.isEmpty) return null;
+    final chunk = _queue.removeFirst();
+    _queuedBytes -= chunk.length;
+    return chunk;
+  }
+
   Future<void> _onRequest(HttpRequest request) async {
     final gen = _generation;
     final res = request.response;
-    var wrote = false;
+    _clearQueue();
+    unawaited(_runProducer(gen));
     try {
       res.statusCode = HttpStatus.ok;
       res.headers.clear();
@@ -69,58 +126,100 @@ class IptvLiveContinuityProxy {
       res.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
       res.bufferOutput = false;
 
+      var pending = 0;
       while (!_closed && gen == _generation) {
-        final epoch = ++_upstreamEpoch;
-        HttpClientResponse? up;
-        try {
-          up = await _openUpstream();
+        final chunk = _dequeue();
+        if (chunk == null) {
+          await _waitForData().timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {},
+          );
           if (_closed || gen != _generation) break;
-          if (up.statusCode < 200 || up.statusCode >= 300) {
-            debugPrint('[IPTV Proxy] upstream HTTP ${up.statusCode}');
-            await up.drain<void>();
-            await Future<void>.delayed(const Duration(milliseconds: 350));
-            continue;
-          }
-          if (epoch == 1 || !wrote) {
-            debugPrint('[IPTV Proxy] upstream connected (${up.statusCode})');
-          } else {
-            debugPrint('[IPTV Proxy] upstream reconnected');
-          }
-          var pending = 0;
-          await for (final chunk in up) {
-            if (_closed || gen != _generation) break;
-            res.add(chunk);
-            wrote = true;
-            pending += chunk.length;
-            // Flush often enough for live, not every packet.
-            if (pending >= 64 * 1024) {
-              pending = 0;
-              await res.flush();
-            }
-          }
-          if (pending > 0) {
-            try {
-              await res.flush();
-            } catch (_) {}
-          }
-          debugPrint('[IPTV Proxy] upstream EOF — reconnecting');
-        } catch (e) {
-          if (_closed || gen != _generation) break;
-          debugPrint('[IPTV Proxy] upstream error: $e — reconnecting');
-        } finally {
-          try {
-            await up?.drain<void>();
-          } catch (_) {}
+          continue;
         }
-        if (_closed || gen != _generation) break;
-        await Future<void>.delayed(const Duration(milliseconds: 150));
+        res.add(chunk);
+        pending += chunk.length;
+        if (pending >= 64 * 1024) {
+          pending = 0;
+          await res.flush();
+        }
+      }
+      if (pending > 0) {
+        try {
+          await res.flush();
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('[IPTV Proxy] client gone: $e');
     } finally {
+      _closed = true;
+      _wakeWaiters();
       try {
         await res.close();
       } catch (_) {}
+    }
+  }
+
+  Future<void> _runProducer(int gen) async {
+    var firstConnect = true;
+    while (!_closed && gen == _generation) {
+      HttpClientResponse? up;
+      try {
+        up = await _openUpstream();
+        if (_closed || gen != _generation) break;
+        if (up.statusCode < 200 || up.statusCode >= 300) {
+          debugPrint('[IPTV Proxy] upstream HTTP ${up.statusCode}');
+          await up.drain<void>();
+          await Future<void>.delayed(const Duration(milliseconds: 350));
+          continue;
+        }
+
+        var skipLeft = 0;
+        if (firstConnect) {
+          debugPrint('[IPTV Proxy] upstream connected (${up.statusCode})');
+          firstConnect = false;
+        } else {
+          // Overlap from fresh live GET → would replay. Skip + drop mpv cache.
+          skipLeft = _reconnectSkipBytes;
+          debugPrint(
+            '[IPTV Proxy] upstream reconnected — skip ${skipLeft >> 20}MiB overlap',
+          );
+          try {
+            onUpstreamReconnected?.call();
+          } catch (_) {}
+        }
+
+        await for (final raw in up) {
+          if (_closed || gen != _generation) break;
+          var data = raw is Uint8List ? raw : Uint8List.fromList(raw);
+          if (skipLeft > 0) {
+            if (data.length <= skipLeft) {
+              skipLeft -= data.length;
+              continue;
+            }
+            data = data.sublist(skipLeft);
+            skipLeft = 0;
+            debugPrint('[IPTV Proxy] overlap skip done — feeding live');
+          }
+          while (!_closed &&
+              gen == _generation &&
+              _queuedBytes + data.length > _maxQueueBytes) {
+            await Future<void>.delayed(const Duration(milliseconds: 15));
+          }
+          if (_closed || gen != _generation) break;
+          _enqueue(data);
+        }
+        debugPrint('[IPTV Proxy] upstream EOF — reconnecting');
+      } catch (e) {
+        if (_closed || gen != _generation) break;
+        debugPrint('[IPTV Proxy] upstream error: $e — reconnecting');
+      } finally {
+        try {
+          await up?.drain<void>();
+        } catch (_) {}
+      }
+      if (_closed || gen != _generation) break;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
     }
   }
 

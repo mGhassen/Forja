@@ -320,7 +320,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // Live MediaKit: mpv must not see CDN socket closes. Local continuity
       // proxy reconnects upstream while the loopback pipe stays open.
       if (_livePlaybackProfile) {
-        final proxy = _s._liveContinuityProxy ??= IptvLiveContinuityProxy();
+        final proxy = _s._liveContinuityProxy ??= IptvLiveContinuityProxy(
+          onUpstreamReconnected: _onProxyUpstreamReconnected,
+        );
         final local = await proxy.start(
           upstreamUrl: src.url,
           headers: headers,
@@ -341,6 +343,26 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     // Re-apply after every open/recreate - media_kit resets to 100, and
     // mute is volume=0 in Dart state only.
     _engineSetVolume(_s._volume);
+  }
+
+  /// Fresh CDN GET after socket close often overlaps seconds we already played.
+  /// Drop demuxer so mpv does not stitch that into a visible replay.
+  void _onProxyUpstreamReconnected() {
+    unawaited(() async {
+      if (_s._disposed || _s._exoBackend) return;
+      _armTransientHwDecodeIgnore();
+      try {
+        final p = _s._player?.platform;
+        if (p is! NativePlayer) return;
+        await p.command(['drop-buffers']);
+        if (_s._userPlayWhenReady && !_s._playing) {
+          await _enginePlay();
+        }
+        debugPrint('[IPTV Proxy] drop-buffers after upstream reconnect');
+      } catch (e) {
+        debugPrint('[IPTV Proxy] drop-buffers failed: $e');
+      }
+    }());
   }
 
   /// ATV MediaKit: restore ao/mute, pick a real audio track, and ask the TV
@@ -509,7 +531,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         await p.setProperty('cache-secs', '30');
         await p.setProperty('demuxer-readahead-secs', '20');
         await p.setProperty('demuxer-max-bytes', '150000000');
-        await p.setProperty('demuxer-max-back-bytes', '1048576');
+        // No past cushion — underrun freezes; proxy read-ahead absorbs CDN closes.
+        await p.setProperty('demuxer-max-back-bytes', '0');
         await p.setProperty('audio-buffer', '1.0');
         await p.setProperty('cache-pause', 'no');
         await p.setProperty('cache-pause-initial', 'no');

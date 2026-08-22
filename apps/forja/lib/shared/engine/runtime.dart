@@ -832,6 +832,7 @@ class EngineRuntime {
       // onlykdrama.shop is Cloudflare-gated — plain HTTP always gets the
       // interstitial. Route through the Miruro-style headless WebView session.
       if (OnlyKDramaCfSession.handles(uri)) {
+        debugPrint('[engine] onlykdrama CF fetch $method $url');
         final hit = await OnlyKDramaCfSession.instance.fetch(
           url,
           method: method,

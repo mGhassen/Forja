@@ -9,6 +9,18 @@ function extract(ctx) {
   // Hub Sources injects KissKh drama/episode ids — Search never returns tmdbID.
   var episodeId = cfg.episodeId || ctx.config.episodeId;
   var dramaId = cfg.dramaId || ctx.config.dramaId;
+  ctx.log(
+    'kisskh start dramaId=' +
+      (dramaId || '') +
+      ' episodeId=' +
+      (episodeId || '') +
+      ' title=' +
+      title +
+      ' ep=' +
+      (ctx.episode || 1) +
+      ' hasKkey=' +
+      !!(ctx.crypto && ctx.crypto.kisskhKkey),
+  );
 
   function rowsFromEpisode(api) {
     if (!api || typeof api !== 'object') return Promise.resolve([]);
@@ -48,29 +60,50 @@ function extract(ctx) {
 
   function fetchEpisode(id) {
     function tryOnce(withKkey) {
+      if (withKkey && !(ctx.crypto && ctx.crypto.kisskhKkey)) {
+        ctx.log('kisskh kkey missing — Episode API will return SPA HTML');
+        return Promise.resolve([]);
+      }
       return ctx
         .fetch(episodeUrl(id, withKkey), { headers: headers })
         .then(function (r) {
-          if (!r.ok) return null;
-          return r.json();
+          return r.text().then(function (body) {
+            var trimmed = String(body || '').trim();
+            if (!r.ok) {
+              ctx.log('kisskh episode HTTP ' + r.status + ' kkey=' + !!withKkey);
+              return null;
+            }
+            // Without kkey, kisskh.co serves the SPA shell (200 + HTML).
+            if (!trimmed || trimmed.charAt(0) === '<') {
+              ctx.log('kisskh episode HTML shell (need kkey) kkey=' + !!withKkey);
+              return null;
+            }
+            try {
+              return JSON.parse(trimmed);
+            } catch (e) {
+              ctx.log('kisskh episode JSON parse fail kkey=' + !!withKkey);
+              return null;
+            }
+          });
         })
         .then(function (api) {
           if (!api) return [];
           var hasVideo =
             (api.Video || api.video || api.VideoUrl || api.videoUrl) ||
             ((api.ThirdParty || api.thirdParty || []).length > 0);
-          if (!hasVideo) return [];
+          if (!hasVideo) {
+            ctx.log('kisskh episode JSON has no Video/ThirdParty');
+            return [];
+          }
           return rowsFromEpisode(api);
         })
-        .catch(function () {
+        .catch(function (e) {
+          ctx.log('kisskh episode error: ' + (e && e.message ? e.message : e));
           return [];
         });
     }
-    // Miru kisskh.co works without kkey; some mirrors still require consumet kkey.
-    return tryOnce(false).then(function (rows) {
-      if (rows && rows.length) return rows;
-      return tryOnce(true);
-    });
+    // API requires consumet kkey; bare GET returns HTML.
+    return tryOnce(true);
   }
 
   function episodeFromDrama(drama) {

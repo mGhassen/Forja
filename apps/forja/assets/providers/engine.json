@@ -379,7 +379,8 @@
       "entry": "playimdb.js",
       "types": [
         "movie",
-        "tv"
+        "tv",
+        "drama"
       ],
       "kind": "http",
       "config": {

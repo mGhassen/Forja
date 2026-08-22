@@ -71,8 +71,20 @@ function extract(ctx) {
 
   function fetchText(url, extra) {
     return ctx.fetch(url, { headers: Object.assign({}, baseHeaders, extra || {}) }).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
-      return r.text();
+      return r.text().then(function (html) {
+        var lower = String(html || '').toLowerCase();
+        if (
+          r.status === 403 ||
+          r.status === 503 ||
+          lower.indexOf('just a moment') !== -1 ||
+          lower.indexOf('cf-browser-verification') !== -1
+        ) {
+          ctx.log('onlykdrama CF/challenge still present status=' + r.status + ' url=' + url);
+          throw new Error('CF challenge for ' + url);
+        }
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + url);
+        return html;
+      });
     });
   }
 
