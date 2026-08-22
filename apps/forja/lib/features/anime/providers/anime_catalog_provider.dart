@@ -61,40 +61,29 @@ Future<List<AnimeCard>> _safeSection(
 }
 
 Future<AnimeCatalogBundle> _loadAnimeCatalog(AnimeService service) async {
-  final trendingBase =
-      _safeSection(service.getTrending(perPage: 20), 'trending');
-  final spotlight = await trendingBase.then(_spotlightFromTrending);
-  final trending = await trendingBase;
+  // Parallel AniList sections (worker pool ~3) — do not await TMDB here;
+  // hero paints AniList art first, screen swaps TMDB backdrops after apply.
+  final sections = await Future.wait([
+    _safeSection(service.getTrending(perPage: 20), 'trending'),
+    _safeSection(service.getTopAiring(), 'top airing'),
+    _safeSection(service.getMostPopular(), 'most popular'),
+    _safeSection(service.getMostFavorite(), 'most favorite'),
+    _safeSection(service.getTopRated(), 'top rated'),
+    _safeSection(service.getLatestCompleted(), 'latest completed'),
+    _safeSection(service.getRecentEpisodes(), 'recent episodes'),
+  ]);
+  final trending = sections[0];
+  final topAiring = sections[1];
+  final mostPopular = sections[2];
+  final mostFavorite = sections[3];
+  final topRated = sections[4];
+  final latestCompleted = sections[5];
+  final recentEpisodes = sections[6];
+  final spotlight = _spotlightFromTrending(trending);
   final top10 = trending.take(10).toList();
 
-  final topAiring =
-      await _safeSection(service.getTopAiring(), 'top airing');
-  final mostPopular =
-      await _safeSection(service.getMostPopular(), 'most popular');
-  final mostFavorite =
-      await _safeSection(service.getMostFavorite(), 'most favorite');
-  final topRated = await _safeSection(service.getTopRated(), 'top rated');
-  final latestCompleted =
-      await _safeSection(service.getLatestCompleted(), 'latest completed');
-  final recentEpisodes =
-      await _safeSection(service.getRecentEpisodes(), 'recent episodes');
-
-  var enrichedSpotlight = spotlight;
-  if (spotlight.isNotEmpty) {
-    try {
-      final head = spotlight.take(5).toList();
-      final enrichedHead = await service.attachTmdbBackdrops(head);
-      final byId = {for (final c in enrichedHead) c.id: c};
-      enrichedSpotlight = [
-        for (final c in spotlight) byId[c.id] ?? c,
-      ];
-    } catch (e) {
-      debugPrint('[AnimeCatalog] spotlight TMDB enrich failed: $e');
-    }
-  }
-
   return AnimeCatalogBundle(
-    spotlight: enrichedSpotlight,
+    spotlight: spotlight,
     trending: trending,
     topAiring: topAiring,
     mostPopular: mostPopular,

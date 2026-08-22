@@ -26,28 +26,6 @@ mixin _AnimeScreenFeed on ConsumerState<AnimeScreen>, ShellTabRefresh<AnimeScree
     if (mounted) setState(() {});
   }
 
-  Future<List<AnimeCard>> _safeSection(
-    Future<List<AnimeCard>> future,
-    String name,
-  ) async {
-    try {
-      return await future;
-    } catch (e) {
-      debugPrint('[AnimeScreen] $name load failed: $e');
-      return const [];
-    }
-  }
-
-  /// Spotlight / Top 10 / Trending share one AniList TRENDING_DESC page.
-  List<AnimeCard> _spotlightFromTrending(List<AnimeCard> trending) {
-    final filtered = trending.where((a) {
-      final s = (a.status ?? '').toUpperCase();
-      return s.isEmpty || s == 'RELEASING' || s == 'FINISHED';
-    }).take(10).toList();
-    if (filtered.isNotEmpty) return filtered;
-    return trending.take(10).toList();
-  }
-
   /// Hero paints AniList art immediately; TMDB backdrops swap in later.
   Future<void> _enrichSpotlightTmdb(
     int gen,

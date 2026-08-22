@@ -191,12 +191,14 @@ class _AnimeScreenState extends ConsumerState<AnimeScreen>
   }
 
   void _applyCatalogBundle(AnimeCatalogBundle bundle) {
+    final gen = _loadGen;
+    final spotlight = Future.value(bundle.spotlight);
     setState(() {
       _error = bundle.hasCatalog
           ? null
           : 'Failed to load anime - check your connection';
       _catalogResolved = true;
-      _spotlightFuture = Future.value(bundle.spotlight);
+      _spotlightFuture = spotlight;
       _trendingFuture = Future.value(bundle.trending);
       _topAiringFuture = Future.value(bundle.topAiring);
       _mostPopularFuture = Future.value(bundle.mostPopular);
@@ -207,6 +209,7 @@ class _AnimeScreenState extends ConsumerState<AnimeScreen>
       _recentEpisodesFuture = Future.value(bundle.recentEpisodes);
     });
     if (bundle.hasCatalog) markShellTabFresh();
+    unawaited(_enrichSpotlightTmdb(gen, spotlight));
   }
 
   @override
