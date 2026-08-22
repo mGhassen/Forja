@@ -809,6 +809,11 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
               onUpEdge: _s._gridUpEdge(context, i, crossCount),
               onLeftEdge: edges.onLeftEdge,
               onRightEdge: edges.onRightEdge,
+              playableOverride: _s._server == _LiveMatchesServer.forjaLive
+                  ? (this as _LiveMatchesForjaLive)._forjaLiveMatchPlayable(
+                      matches[i],
+                    )
+                  : null,
               onTap: () => _s._openStreamedMatch(matches[i]),
             );
           },

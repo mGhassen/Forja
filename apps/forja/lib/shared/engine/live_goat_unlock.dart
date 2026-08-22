@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 /// embed.st GOAT decrypt bridge for live-streamed.js (`ctx.live.goatUnlock`).
@@ -11,8 +13,151 @@ class LiveGoatUnlock {
   LiveGoatUnlock._();
 
   static const _assetRoot = 'assets/providers/live/goat';
+  static const _embedOrigin = 'https://embed.st';
+  static const _ua =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   static String? _cachedDir;
   static Future<void>? _prepareFuture;
+
+  /// Native Streamed resolve — bypasses flutter_js (no TextEncoder / fetch bridge).
+  static Future<({String url, Map<String, String> headers})?> resolveStreamed({
+    String embedUrl = '',
+    String embedOrigin = _embedOrigin,
+    String source = '',
+    String matchId = '',
+    String stream = '1',
+  }) async {
+    var embed = embedUrl.trim();
+    if (embed.isEmpty && source.isNotEmpty && matchId.isNotEmpty) {
+      final origin = embedOrigin.replaceAll(RegExp(r'/+$'), '');
+      embed = '$origin/embed/$source/$matchId/$stream';
+    }
+    final slot = _parseEmbedSlot(embed, embedOrigin: embedOrigin);
+    if (slot == null) return null;
+
+    final slotSource = (slot['source'] ?? '').toString();
+    if (slotSource == 'golf') {
+      final url = await sniffEmbed(
+        embedUrl: embed,
+        referer: '${slot['origin']}/',
+      );
+      if (url == null || url.isEmpty) return null;
+      return (url: url, headers: _embedHeaders(slot['origin']?.toString()));
+    }
+
+    final origin = (slot['origin'] ?? embedOrigin).toString().replaceAll(
+      RegExp(r'/+$'),
+      '',
+    );
+    final path = (slot['path'] ?? '').toString();
+    if (path.isEmpty) return null;
+
+    try {
+      final body = _encodeFetchBody(
+        slotSource,
+        (slot['id'] ?? '').toString(),
+        (slot['stream'] ?? '1').toString(),
+      );
+      final referer = '$origin/embed/$path';
+      final resp = await http
+          .post(
+            Uri.parse('$origin/fetch'),
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              'Origin': origin,
+              'Referer': referer,
+              'User-Agent': _ua,
+            },
+            body: body,
+          )
+          .timeout(const Duration(seconds: 20));
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        debugPrint('[LiveGoatUnlock] /fetch HTTP ${resp.statusCode}');
+        return null;
+      }
+      final goat = resp.headers['goat'] ?? '';
+      if (goat.isEmpty) {
+        debugPrint('[LiveGoatUnlock] /fetch missing goat header');
+        return null;
+      }
+      final bodyHex = resp.bodyBytes
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      final m3u8 = await unlock(slot: slot, goat: goat, bodyHex: bodyHex);
+      if (m3u8 == null || m3u8.isEmpty) return null;
+      return (url: m3u8, headers: _embedHeaders(origin));
+    } catch (e) {
+      debugPrint('[LiveGoatUnlock] native resolve failed: $e');
+      return null;
+    }
+  }
+
+  static Map<String, String> _embedHeaders(String? origin) {
+    final o = (origin ?? _embedOrigin).replaceAll(RegExp(r'/+$'), '');
+    return {'Referer': '$o/', 'Origin': o, 'User-Agent': _ua};
+  }
+
+  static Map<String, dynamic>? _parseEmbedSlot(
+    String raw, {
+    String embedOrigin = _embedOrigin,
+  }) {
+    final u = Uri.tryParse(raw.trim());
+    if (u == null) return null;
+    final em = RegExp(r'^/embed/([^/]+)/([^/]+)/(\d+)/?$').firstMatch(u.path);
+    if (em != null) {
+      final source = em.group(1)!;
+      final id = em.group(2)!;
+      final stream = em.group(3)!;
+      return {
+        'origin': u.origin,
+        'source': source,
+        'id': id,
+        'stream': stream,
+        'path': '$source/$id/$stream',
+      };
+    }
+    final api = RegExp(r'^/api/stream/([^/]+)/([^/]+)/?$').firstMatch(u.path);
+    if (api != null) {
+      final origin = embedOrigin.replaceAll(RegExp(r'/+$'), '');
+      final source = api.group(1)!;
+      final id = api.group(2)!;
+      final stream = u.queryParameters['stream'] ?? '1';
+      return {
+        'origin': origin,
+        'source': source,
+        'id': id,
+        'stream': stream,
+        'path': '$source/$id/$stream',
+      };
+    }
+    return null;
+  }
+
+  static Uint8List _encodeFetchBody(String source, String id, String stream) {
+    final out = BytesBuilder();
+    void fieldStr(int field, String value) {
+      final body = utf8.encode(value);
+      out.addByte((field << 3) | 2);
+      out.add(_varint(body.length));
+      out.add(body);
+    }
+
+    fieldStr(1, source);
+    fieldStr(2, id);
+    fieldStr(3, stream);
+    return out.toBytes();
+  }
+
+  static Uint8List _varint(int n) {
+    final out = BytesBuilder();
+    var v = n;
+    while (v > 0x7f) {
+      out.addByte((v & 0x7f) | 0x80);
+      v >>= 7;
+    }
+    out.addByte(v);
+    return out.toBytes();
+  }
 
   static Future<String?> unlock({
     required Map<String, dynamic> slot,

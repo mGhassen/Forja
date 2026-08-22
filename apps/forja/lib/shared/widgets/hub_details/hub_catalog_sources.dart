@@ -56,6 +56,7 @@ Future<void> openHubCatalogSources({
     kisskhId: kisskhId,
     kisskhEpisodeId: kisskhEpisodeId,
     engineCategory: engineCategory,
+    detailsHost: true,
     onTorrentSelected: (result) => _playTorrent(
       context: context,
       movie: movie,

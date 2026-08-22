@@ -612,8 +612,6 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 unawaited(_s._skip(10));
               },
             ),
-            const SizedBox(width: 6),
-            _buildVolumeControl(tvFocus: false),
             const SizedBox(width: 8),
             PlayerTimeRange(
               position: _s._position,
@@ -623,6 +621,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         ),
         Row(
           children: [
+            _buildVolumeControl(tvFocus: false),
+            const SizedBox(width: 2),
             PlayerFlatIconButton(
               icon: Icons.subtitles_outlined,
               tooltip: 'Subtitles',

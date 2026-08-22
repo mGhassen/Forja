@@ -26,7 +26,6 @@ pub struct MatchGame {
     pub away_nick: String,
     pub home_abbr: String,
     pub away_abbr: String,
-    pub sport: String,
     #[allow(dead_code)]
     pub title: String,
     /// Event-specific tokens (title + parsed teams).
@@ -76,7 +75,6 @@ impl MatchGame {
             home_abbr: s(v, "homeAbbr"),
             away_abbr: s(v, "awayAbbr"),
             title,
-            sport,
             specific_tokens,
             sport_tokens,
             date_ms,
@@ -542,7 +540,6 @@ mod tests {
             home_abbr: "BOS".into(),
             away_abbr: "TOR".into(),
             title: "Boston Red Sox at Toronto Blue Jays".into(),
-            sport: "MLB".into(),
             specific_tokens: vec![],
             sport_tokens: tokenize_text("MLB"),
             date_ms: 1_700_000_000_000,
@@ -749,7 +746,6 @@ mod tests {
             home_abbr: String::new(),
             away_abbr: String::new(),
             title: "Hull City vs Manchester United".into(),
-            sport: "soccer".into(),
             specific_tokens: build_event_tokens(
                 "Hull City vs Manchester United",
                 "soccer",

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:rust/rust.dart';
 
@@ -57,12 +58,21 @@ class ProfileEngineWarm {
         debugPrint('[Init] Nuvio skip (no VOD tab)');
       }
 
-      if (needs.engine) {
-        debugPrint('[Init] engine defer hydrate to first Sources/Settings use');
-      } else if (!needs.playSourceEngine) {
-        debugPrint('[Init] engine skip (play source off)');
+      if (needs.playSourceEngine) {
+        final install = EngineService.instance
+            .ensureBundledInstalled()
+            .catchError((Object e) {
+          debugPrint('[Init] engine bundled install error (non-fatal): $e');
+        });
+        if (startPlaySources) {
+          debugPrint('[Init] engine bundled install (post-splash await)');
+          await install;
+        } else {
+          debugPrint('[Init] engine bundled install (splash background)');
+          unawaited(install);
+        }
       } else {
-        debugPrint('[Init] engine skip (no VOD tab)');
+        debugPrint('[Init] engine skip (play source off)');
       }
     }
 

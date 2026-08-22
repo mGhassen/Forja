@@ -59,6 +59,42 @@ void main() {
       }, sourceUrl: 'asset:x');
       expect(enabledEnginePluginIds([pack]), {'http-one'});
     });
+
+    test('bundledPackUnchanged ignores enabled flags', () {
+      final base = EnginePack.fromJson({
+        'schema': 1,
+        'name': 'Forja',
+        'version': '1.0.0',
+        'plugins': [
+          {
+            'id': 'videasy',
+            'name': 'Videasy',
+            'entry': 'videasy.js',
+            'types': ['movie'],
+            'kind': 'http',
+          },
+        ],
+      }, sourceUrl: EngineService.bundledSourceUrl);
+      final disabled = base.copyWithPlugins([
+        base.plugins.first.copyWith(enabled: false),
+      ]);
+      expect(EngineService.bundledPackUnchanged(base, disabled), isTrue);
+      final bumped = EnginePack.fromJson({
+        'schema': 1,
+        'name': 'Forja',
+        'version': '1.0.1',
+        'plugins': [
+          {
+            'id': 'videasy',
+            'name': 'Videasy',
+            'entry': 'videasy.js',
+            'types': ['movie'],
+            'kind': 'http',
+          },
+        ],
+      }, sourceUrl: EngineService.bundledSourceUrl);
+      expect(EngineService.bundledPackUnchanged(base, bumped), isFalse);
+    });
   });
 
   group('engine chips', () {

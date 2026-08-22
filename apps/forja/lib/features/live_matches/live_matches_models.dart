@@ -152,12 +152,19 @@ class _DamiTvStream {
 class _StreamedSourceRef {
   final String source;
   final String id;
-  const _StreamedSourceRef({required this.source, required this.id});
+  final String iframe;
+
+  const _StreamedSourceRef({
+    required this.source,
+    required this.id,
+    this.iframe = '',
+  });
 
   factory _StreamedSourceRef.fromJson(Map<String, dynamic> j) =>
       _StreamedSourceRef(
         source: (j['source'] ?? '').toString(),
         id: (j['id'] ?? '').toString(),
+        iframe: (j['iframe'] ?? '').toString(),
       );
 }
 
@@ -2301,12 +2308,13 @@ bool _sameCatalogEventAsEspn({
       espnTitle == catalogTitle;
 }
 
-/// Enrich All streamed rows with ESPN teams; append ESPN-only games.
+/// Enrich streamed rows with ESPN teams; optionally append ESPN-only games.
 ({List<_StreamedMatch> streamed, List<Map<String, dynamic>> espnGames})
     _mergeStreamedWithEspn(
   List<_StreamedMatch> streamed,
-  List<Map<String, dynamic>> espnGames,
-) {
+  List<Map<String, dynamic>> espnGames, {
+  bool appendUnmatched = true,
+}) {
   final remaining = [...espnGames];
   final out = <_StreamedMatch>[];
   for (final m in streamed) {
@@ -2347,7 +2355,9 @@ bool _sameCatalogEventAsEspn({
       ),
     );
   }
-  out.addAll(remaining.map(_espnGameToStreamedMatch));
+  if (appendUnmatched) {
+    out.addAll(remaining.map(_espnGameToStreamedMatch));
+  }
   return (streamed: out, espnGames: espnGames);
 }
 
@@ -2600,6 +2610,7 @@ List<IptvPlaySource> _ensureIptvSportsUrls(
           detail: s.detail,
           logoUrl: s.logoUrl,
           streamId: s.streamId,
+          epgChannelId: s.epgChannelId,
           headers: s.headers,
           liveSourceKind: s.liveSourceKind,
         );
@@ -2607,24 +2618,34 @@ List<IptvPlaySource> _ensureIptvSportsUrls(
   ];
 }
 
-/// Fill missing logos from the IPTV live catalog (same icons as the portal grid).
+/// Fill missing logos and EPG channel ids from the IPTV live catalog.
 Future<List<IptvPlaySource>> _ensureIptvSportsLogos(
   List<IptvPlaySource> sources,
   String portalKey,
 ) async {
   if (sources.isEmpty) return sources;
-  final need = sources.any((s) => (s.logoUrl ?? '').trim().isEmpty);
-  if (!need) return sources;
+  final needLogo = sources.any((s) => (s.logoUrl ?? '').trim().isEmpty);
+  final needEpg = sources.any(
+    (s) =>
+        (s.streamId ?? '').trim().isNotEmpty &&
+        (s.epgChannelId ?? '').trim().isEmpty,
+  );
+  if (!needLogo && !needEpg) return sources;
 
   final byId = <String, String>{};
+  final byEpgId = <String, String>{};
   final byName = <String, String>{};
   try {
     final shelf = await IptvCatalogDiskStore.load(portalKey, IptvSection.live);
     if (shelf != null) {
       for (final s in shelf.streams) {
+        final id = s.streamId.trim();
+        if (id.isNotEmpty) {
+          final epgId = s.epgChannelId.trim();
+          if (epgId.isNotEmpty) byEpgId[id] = epgId;
+        }
         final icon = s.icon.trim();
         if (icon.isEmpty) continue;
-        final id = s.streamId.trim();
         if (id.isNotEmpty) byId[id] = icon;
         final n = s.name.trim().toLowerCase();
         if (n.isNotEmpty) byName.putIfAbsent(n, () => icon);
@@ -2633,10 +2654,10 @@ Future<List<IptvPlaySource>> _ensureIptvSportsLogos(
   } catch (e) {
     debugPrint('[LiveMatches] IPTV catalog logo lookup failed: $e');
   }
-  if (byId.isEmpty && byName.isEmpty) {
+  if (byId.isEmpty && byName.isEmpty && byEpgId.isEmpty) {
     debugPrint(
-      '[LiveMatches] IPTV sports logos: catalog empty — open IPTV once '
-      'to cache channel icons',
+      '[LiveMatches] IPTV sports catalog enrich: empty — open IPTV once '
+      'to cache channel metadata',
     );
     return sources;
   }
@@ -2661,31 +2682,45 @@ Future<List<IptvPlaySource>> _ensureIptvSportsLogos(
   }
 
   // Prefer stream_id (exact catalog row), then name / stem ("WNBA 01" → "WNBA").
-  var filled = 0;
+  var logosFilled = 0;
+  var epgFilled = 0;
   final out = <IptvPlaySource>[
     for (final s in sources)
       () {
-        if ((s.logoUrl ?? '').trim().isNotEmpty) return s;
-        String? logo;
         final id = (s.streamId ?? '').trim();
-        if (id.isNotEmpty) logo = byId[id];
-        logo ??= lookup(s.chromeTitle);
-        if (logo == null || logo.isEmpty) return s;
-        filled++;
+        String? logo = (s.logoUrl ?? '').trim().isNotEmpty ? s.logoUrl : null;
+        if (logo == null || logo.isEmpty) {
+          if (id.isNotEmpty) logo = byId[id];
+          logo ??= lookup(s.chromeTitle);
+        }
+        final epgId = (s.epgChannelId ?? '').trim().isNotEmpty
+            ? s.epgChannelId
+            : (id.isNotEmpty ? byEpgId[id] : null);
+        if (logo == s.logoUrl && epgId == s.epgChannelId) return s;
+        if ((s.logoUrl ?? '').trim().isEmpty &&
+            logo != null &&
+            logo.isNotEmpty) {
+          logosFilled++;
+        }
+        if ((s.epgChannelId ?? '').trim().isEmpty &&
+            (epgId ?? '').trim().isNotEmpty) {
+          epgFilled++;
+        }
         return IptvPlaySource(
           url: s.url,
           label: s.label,
           detail: s.detail,
-          logoUrl: logo,
+          logoUrl: logo ?? s.logoUrl,
           streamId: s.streamId,
+          epgChannelId: epgId,
           headers: s.headers,
           liveSourceKind: s.liveSourceKind,
         );
       }(),
   ];
   debugPrint(
-    '[LiveMatches] IPTV sports logos: filled $filled/${sources.length} '
-    'from catalog (ids=${byId.length} names=${byName.length})',
+    '[LiveMatches] IPTV sports catalog enrich: logos $logosFilled/${sources.length} '
+    'epg $epgFilled/${sources.length} (ids=${byId.length} epg=${byEpgId.length})',
   );
   return out;
 }
@@ -2724,8 +2759,9 @@ Map<String, dynamic> _sportMatchGamePayloadFromMatch(_StreamedMatch match) {
 }
 
 Future<List<_StreamedStream>> _fetchStreamedStreams(
-  _StreamedSourceRef sourceRef,
-) async {
+  _StreamedSourceRef sourceRef, {
+  bool allowFallback = true,
+}) async {
   try {
     final raw = await runLiveMatchesFetchJson(
       jsonEncode({
@@ -2736,7 +2772,9 @@ Future<List<_StreamedStream>> _fetchStreamedStreams(
     );
     final parsed = jsonDecode(raw) as Map<String, dynamic>;
     if (parsed.containsKey('error')) {
-      return _streamedEmbedFallbackStreams(sourceRef);
+      return allowFallback
+          ? _streamedEmbedFallbackStreams(sourceRef)
+          : const [];
     }
     final list = parsed['items'] as List? ?? [];
     final rows = list
@@ -2751,9 +2789,13 @@ Future<List<_StreamedStream>> _fetchStreamedStreams(
         .where((s) => s.embedUrl.isNotEmpty)
         .toList();
     if (rows.isNotEmpty) return rows;
-    return _streamedEmbedFallbackStreams(sourceRef);
+    return allowFallback
+        ? _streamedEmbedFallbackStreams(sourceRef)
+        : const [];
   } catch (_) {
-    return _streamedEmbedFallbackStreams(sourceRef);
+    return allowFallback
+        ? _streamedEmbedFallbackStreams(sourceRef)
+        : const [];
   }
 }
 

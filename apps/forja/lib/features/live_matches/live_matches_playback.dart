@@ -4,8 +4,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   /// Leanback TV: never offer PPV / Streamed / Mut embed rows — only native.
-  bool get _tvNativeLiveOnly =>
-      ShellScope.metricsOf(context).usesTvDensity;
+  bool get _tvNativeLiveOnly => ShellScope.metricsOf(context).usesTvDensity;
 
   /// Stremio catalog/stream fallback — All, Stremio, Forja Sports only.
   bool get _offerStremioPlayFallback =>
@@ -69,7 +68,9 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       () async {
         try {
           for (final source in streamed.sources) {
-            streams.addAll(await _fetchStreamedStreams(source));
+            streams.addAll(
+              await _fetchStreamedStreams(source, allowFallback: false),
+            );
           }
         } catch (e) {
           debugPrint('[LiveMatches] Merged Streamed resolve error: $e');
@@ -106,7 +107,9 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   }
 
   Future<void> _openStreamedMatch(_StreamedMatch match) async {
-    if (_s._server == _LiveMatchesServer.iptvSports || match.isIptvSports) {
+    final forjaLive = _s._server == _LiveMatchesServer.forjaLive;
+    if (_s._server == _LiveMatchesServer.iptvSports ||
+        (match.isIptvSports && !forjaLive)) {
       await _openIptvSportsMatch(match);
       return;
     }
@@ -123,17 +126,34 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       ForjaToast.info('Stream not yet available for this event');
       return;
     }
-    final choices = _catalogStreamChoices(catalogMatches);
+    if (forjaLive && (this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
+      ForjaToast.info('Loading Forja Live plugins…');
+      return;
+    }
+
+    final choices = <_StreamedStreamChoice>[];
+    final ok = await _runWithCancellableLoading('Resolving streams…', () async {
+      choices.addAll(await _resolveAllCatalogStreamChoices(catalogMatches));
+    });
+    if (!ok || !mounted) return;
+
     if (choices.isEmpty) {
-      if (catalogMatches.any((m) => m.sportMatchGame != null)) {
+      if (!forjaLive && catalogMatches.any((m) => m.sportMatchGame != null)) {
         await _openIptvSportsMatch(match);
         return;
       }
-      ForjaToast.info('Stream not yet available for this event');
+      ForjaToast.info('No streams available for this event');
       return;
     }
-    if (!mounted) return;
 
+    _showResolvedStreamSheet(match, choices);
+  }
+
+  void _showResolvedStreamSheet(
+    _StreamedMatch match,
+    List<_StreamedStreamChoice> choices,
+  ) {
+    if (!mounted) return;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF141414),
@@ -145,152 +165,100 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
         choices: choices,
         onChoiceSelected: (choice) {
           Navigator.pop(context);
-          unawaited(_playStreamChoice(match, choice));
+          unawaited(_openResolvedStreamChoice(choice));
         },
       ),
     );
   }
 
-  List<_StreamedStreamChoice> _catalogStreamChoices(
+  Future<List<_StreamedStreamChoice>> _resolveAllCatalogStreamChoices(
     List<_StreamedMatch> catalogMatches,
-  ) {
+  ) async {
     final out = <_StreamedStreamChoice>[];
-    final seen = <String>{};
+    final seenUrls = <String>{};
+    final seenRefs = <String>{};
+    final jobs = <Future<List<_StreamedStreamChoice>>>[];
 
     for (final m in catalogMatches) {
-      final pluginLabel = m.isForjaLive
-          ? _liveForjaPluginDisplayName(m.livePluginId).toLowerCase()
-          : '';
-
       for (final stream in m.inlineStreams) {
         final url = stream.embedUrl.trim();
-        if (url.isEmpty || !seen.add('url:$url')) continue;
+        if (url.isEmpty || !seenUrls.add(url)) continue;
         out.add(_StreamedStreamChoice(catalogMatch: m, stream: stream));
       }
 
       for (final ref in m.sources) {
         final key = 'ref:${m.livePluginId}:${ref.source}:${ref.id}';
-        if (!seen.add(key)) continue;
-        final label = pluginLabel.isNotEmpty ? pluginLabel : ref.source;
-        out.add(
-          _StreamedStreamChoice(
-            catalogMatch: m,
-            stream: _StreamedStream(
-              id: ref.id,
-              streamNo: 1,
-              language: '',
-              hd: false,
-              embedUrl: '',
-              source: label,
-              viewers: 0,
-            ),
-          ),
-        );
+        if (!seenRefs.add(key)) continue;
+        jobs.add(() async {
+          try {
+            final streams = m.isForjaLive
+                ? await _forjaLiveStreamsFromSource(
+                    m,
+                    ref,
+                    allowStreamedFallback: false,
+                  )
+                : await _fetchStreamedStreams(ref, allowFallback: false);
+            return [
+              for (final stream in streams)
+                if (stream.embedUrl.trim().isNotEmpty)
+                  _StreamedStreamChoice(catalogMatch: m, stream: stream),
+            ];
+          } catch (e) {
+            debugPrint(
+              '[LiveMatches] resolve ${ref.source}/${ref.id}: $e',
+            );
+            return const <_StreamedStreamChoice>[];
+          }
+        }());
       }
     }
+
+    final batches = await Future.wait(jobs);
+    for (final batch in batches) {
+      for (final choice in batch) {
+        final url = choice.stream.embedUrl.trim();
+        if (url.isEmpty || !seenUrls.add(url)) continue;
+        out.add(choice);
+      }
+    }
+
+    out.sort((a, b) => b.stream.viewers.compareTo(a.stream.viewers));
     return out;
   }
 
-  Future<void> _playStreamChoice(
-    _StreamedMatch anchor,
-    _StreamedStreamChoice choice,
-  ) async {
-    if (!choice.needsResolve) {
-      await _openStreamedEmbed(
-        _forjaLivePlayMatch(anchor, choice.stream),
-        choice.stream,
-      );
-      return;
-    }
+  bool _isPpvStreamChoice(_StreamedStreamChoice choice) {
+    if (choice.catalogMatch.livePluginId == 'live-ppv') return true;
+    if (choice.stream.source.trim().toLowerCase() == 'ppv') return true;
+    return _ppvEmbedRequiresWebView(choice.stream.embedUrl);
+  }
 
-    final resolved = <_StreamedStream>[];
-    final ok = await _runWithCancellableLoading('Resolving stream…', () async {
-      resolved.addAll(
-        await _resolveCatalogStreamChoice(choice.catalogMatch, choice.stream),
-      );
-    });
-    if (!ok || !mounted) return;
-
-    if (resolved.isEmpty) {
-      ForjaToast.info('No streams available for this source');
-      return;
-    }
-    if (resolved.length == 1) {
-      await _openStreamedEmbed(
-        _forjaLivePlayMatch(anchor, resolved.first),
-        resolved.first,
-      );
-      return;
-    }
-
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _StreamedStreamSheet(
-        match: anchor,
-        choices: [
-          for (final stream in resolved)
-            _StreamedStreamChoice(
-              catalogMatch: choice.catalogMatch,
-              stream: stream,
-            ),
-        ],
-        onChoiceSelected: (picked) {
-          Navigator.pop(context);
-          unawaited(
-            _openStreamedEmbed(
-              _forjaLivePlayMatch(anchor, picked.stream),
-              picked.stream,
-            ),
-          );
-        },
-      ),
+  _DamiTvStream _damiTvFromStreamChoice(_StreamedStreamChoice choice) {
+    final m = choice.catalogMatch;
+    final s = choice.stream;
+    return _DamiTvStream(
+      id: s.id.replaceFirst(RegExp(r'^ppv_'), ''),
+      name: m.title,
+      poster: m.poster,
+      startsAt: m.dateMs > 0 ? m.dateMs ~/ 1000 : 0,
+      endsAt: 0,
+      categoryName: m.category,
+      status: m.airing ? 'live' : '',
+      league: m.categoryLabel,
+      homeTeam: m.homeTeam,
+      homeBadge: m.homeBadge,
+      awayTeam: m.awayTeam,
+      awayBadge: m.awayBadge,
+      viewers: s.viewers,
+      iframe: s.embedUrl,
     );
   }
 
-  Future<List<_StreamedStream>> _resolveCatalogStreamChoice(
-    _StreamedMatch catalogMatch,
-    _StreamedStream placeholder,
-  ) async {
-    _StreamedSourceRef? ref;
-    for (final s in catalogMatch.sources) {
-      if (s.id == placeholder.id) {
-        ref = s;
-        break;
-      }
+  Future<void> _openResolvedStreamChoice(_StreamedStreamChoice choice) async {
+    if (_isPpvStreamChoice(choice)) {
+      await _openDamiTvStream(_damiTvFromStreamChoice(choice));
+      return;
     }
-    if (ref == null) return const [];
-
-    if (catalogMatch.isForjaLive) {
-      return _forjaLiveStreamsFromSource(catalogMatch, ref);
-    }
-    return _fetchStreamedStreams(ref);
-  }
-
-  _StreamedMatch _forjaLivePlayMatch(
-    _StreamedMatch anchor,
-    _StreamedStream stream,
-  ) {
-    final url = stream.embedUrl.trim();
-    if (url.isNotEmpty) {
-      for (final m in _streamedMatchesForEvent(anchor, _s._streamedMatches)) {
-        if (m.inlineStreams.any((s) => s.embedUrl.trim() == url)) return m;
-      }
-    }
-    final sourceKey = stream.source.trim().toLowerCase();
-    if (sourceKey.isNotEmpty) {
-      for (final m in _streamedMatchesForEvent(anchor, _s._streamedMatches)) {
-        if (!m.isForjaLive) continue;
-        if (_liveForjaPluginDisplayName(m.livePluginId).toLowerCase() ==
-            sourceKey) {
-          return m;
-        }
-      }
-    }
-    return anchor;
+    await _openStreamedEmbed(choice.catalogMatch, choice.stream);
   }
 
   String _streamPlaySubtitle(_StreamedMatch match, _StreamedStream stream) {
@@ -301,15 +269,19 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
 
   Future<List<_StreamedStream>> _forjaLiveStreamsFromSource(
     _StreamedMatch match,
-    _StreamedSourceRef source,
-  ) async {
+    _StreamedSourceRef source, {
+    bool allowStreamedFallback = true,
+  }) async {
     final pluginId = match.livePluginId.isNotEmpty
         ? match.livePluginId
         : 'live-streamed';
     final label = _liveForjaPluginDisplayName(pluginId).toLowerCase();
 
     if (pluginId == 'live-streamed') {
-      final rows = await _fetchStreamedStreams(source);
+      final rows = await _fetchStreamedStreams(
+        source,
+        allowFallback: allowStreamedFallback,
+      );
       if (rows.isNotEmpty) return rows;
     }
 
@@ -323,9 +295,26 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
         'category': match.category,
         'title': match.title,
         'stream': '1',
+        'embedUrl': source.iframe,
+        'iframe': source.iframe,
       },
     );
-    if (rows.isEmpty) return [];
+    if (rows.isEmpty) {
+      if (pluginId == 'live-ppv' && source.iframe.trim().isNotEmpty) {
+        return [
+          _StreamedStream(
+            id: source.id,
+            streamNo: 1,
+            language: '',
+            hd: false,
+            embedUrl: source.iframe,
+            source: 'ppv',
+            viewers: 0,
+          ),
+        ];
+      }
+      return [];
+    }
 
     final out = <_StreamedStream>[];
     for (var i = 0; i < rows.length; i++) {
@@ -369,8 +358,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     if (!mounted) return;
     final ctrl = ref.read(iptvControllerProvider);
     final portal = ctrl.activePortal;
-    if (portal != null &&
-        portal.portal.platform == IptvPortalPlatform.xtream) {
+    if (portal != null && portal.portal.platform == IptvPortalPlatform.xtream) {
       await LiveMatchesIptvSportsConfig.ensureArmed(portalKey: portal.key);
     } else {
       await LiveMatchesIptvSportsConfig.ensureArmed();
@@ -383,12 +371,12 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
         : _copyStreamedMatch(
             match,
             sportMatchGame: espnPayload,
-            homeTeam: (espnPayload['homeTeam'] as String?)?.trim().isNotEmpty ==
-                    true
+            homeTeam:
+                (espnPayload['homeTeam'] as String?)?.trim().isNotEmpty == true
                 ? espnPayload['homeTeam'] as String
                 : match.homeTeam,
-            awayTeam: (espnPayload['awayTeam'] as String?)?.trim().isNotEmpty ==
-                    true
+            awayTeam:
+                (espnPayload['awayTeam'] as String?)?.trim().isNotEmpty == true
                 ? espnPayload['awayTeam'] as String
                 : match.awayTeam,
           );
@@ -547,12 +535,12 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
         : _copyStreamedMatch(
             match,
             sportMatchGame: espnPayload,
-            homeTeam: (espnPayload['homeTeam'] as String?)?.trim().isNotEmpty ==
-                    true
+            homeTeam:
+                (espnPayload['homeTeam'] as String?)?.trim().isNotEmpty == true
                 ? espnPayload['homeTeam'] as String
                 : match.homeTeam,
-            awayTeam: (espnPayload['awayTeam'] as String?)?.trim().isNotEmpty ==
-                    true
+            awayTeam:
+                (espnPayload['awayTeam'] as String?)?.trim().isNotEmpty == true
                 ? espnPayload['awayTeam'] as String
                 : match.awayTeam,
           );
@@ -648,19 +636,19 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   }
 
   _StreamedMatch _streamedMatchFromPpv(_DamiTvStream s) => _StreamedMatch(
-        id: 'ppv:${s.id}',
-        title: s.name,
-        category: s.categoryName,
-        dateMs: s.startsAt > 0 ? s.startsAt * 1000 : 0,
-        poster: s.poster,
-        popular: false,
-        airing: s.isLive,
-        homeTeam: s.homeTeam,
-        awayTeam: s.awayTeam,
-        homeBadge: s.homeBadge,
-        awayBadge: s.awayBadge,
-        sources: const [],
-      );
+    id: 'ppv:${s.id}',
+    title: s.name,
+    category: s.categoryName,
+    dateMs: s.startsAt > 0 ? s.startsAt * 1000 : 0,
+    poster: s.poster,
+    popular: false,
+    airing: s.isLive,
+    homeTeam: s.homeTeam,
+    awayTeam: s.awayTeam,
+    homeBadge: s.homeBadge,
+    awayBadge: s.awayBadge,
+    sources: const [],
+  );
 
   Future<void> _openEngineNativeStream({
     required String title,
@@ -669,12 +657,9 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     Map<String, String> headers = const {},
     String label = 'Live',
   }) async {
-    final playUrl = await LiveMatchesEngine.proxyPlayUrl(
-      url: url,
-      headers: headers,
-    );
+    final playUrl = url.trim();
     if (!mounted) return;
-    if (playUrl == null || playUrl.isEmpty) {
+    if (playUrl.isEmpty) {
       LiveMatchesEngine.engineResolveFailed();
       return;
     }
@@ -685,6 +670,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
           IptvPlaySource(
             url: playUrl,
             label: label,
+            headers: headers,
             liveSourceKind: IptvLiveSourceKind.liveEngine,
           ),
         ],
@@ -739,15 +725,12 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       );
     });
     if (!ok) return true;
-    if (result == null || (!result!.playable && result!.embedUrl.isEmpty)) {
-      LiveMatchesEngine.engineResolveFailed();
-      return true;
-    }
-    if (!result!.playable) {
-      LiveMatchesEngine.engineResolveFailed(
-        'Engine could not resolve this stream — try Sniff mode in Settings → Forja Sports',
+    if (result == null || !result!.playable) {
+      debugPrint(
+        '[LiveMatches] Engine resolve missed — falling back to embed '
+        '(${stream.source}/${stream.id})',
       );
-      return true;
+      return false;
     }
     await _openEngineNativeStream(
       title: match.title,
@@ -776,8 +759,11 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     });
     if (!ok) return true;
     if (result == null || !result!.playable) {
-      LiveMatchesEngine.engineResolveFailed();
-      return true;
+      debugPrint(
+        '[LiveMatches] Engine PPV resolve missed — falling back to embed '
+        '(${s.name})',
+      );
+      return false;
     }
     await _openEngineNativeStream(
       title: s.name,
@@ -798,16 +784,16 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     final catalogBase = match.isMut
         ? _mutBase
         : (match.isForjaLive
-            ? (Uri.tryParse(stream.embedUrl)?.origin ?? _streamedBase)
-            : _streamedBase);
+              ? (Uri.tryParse(stream.embedUrl)?.origin ?? _streamedBase)
+              : _streamedBase);
     final catalogReferer = match.isMut
         ? _mutReferer
         : (match.isForjaLive
-            ? _forjaLiveWrapperReferer(
-                stream.embedUrl,
-                pluginId: match.livePluginId,
-              )
-            : _streamedReferer);
+              ? _forjaLiveWrapperReferer(
+                  stream.embedUrl,
+                  pluginId: match.livePluginId,
+                )
+              : _streamedReferer);
     final proxyReferer = match.isForjaLive
         ? _forjaLiveCdnReferer(stream.embedUrl)
         : null;
@@ -823,7 +809,9 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
           embedUrl: embedUrl,
           title: match.title,
           subtitle: match.categoryLabel,
-          badgeLabel: match.isForjaLive ? 'Forja Live' : (match.isMut ? 'Mut' : 'Streamed'),
+          badgeLabel: match.isForjaLive
+              ? 'Forja Live'
+              : (match.isMut ? 'Mut' : 'Streamed'),
           referer: catalogReferer,
           origin: catalogBase,
           proxyReferer: proxyReferer,
@@ -913,5 +901,4 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       ),
     );
   }
-
 }

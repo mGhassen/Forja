@@ -341,6 +341,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       await player.play();
       if (_s._atvMediaKit) {
         unawaited(_tuneAtvMediaKitAfterOpen());
+      } else if (!kIsWeb &&
+          (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+        unawaited(_tuneDesktopMediaKitAfterOpen());
       }
     }
     // Re-apply after every open/recreate - media_kit resets to 100, and
@@ -366,6 +369,47 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         debugPrint('[IPTV Proxy] drop-buffers failed: $e');
       }
     }());
+  }
+
+  /// Desktop MediaKit: restore ao/mute after exit-path silence and pick a real
+  /// audio track when mpv stays on `auto`/`no` (common on live MPEG-TS).
+  Future<void> _tuneDesktopMediaKitAfterOpen() async {
+    if (_s._disposed || _s._exoBackend || _s._atvMediaKit) return;
+    final player = _s._player;
+    final p = player?.platform;
+    if (player == null || p is! NativePlayer) return;
+
+    try {
+      await restoreMediaKitAudioOutput(p);
+      _engineSetVolume(_s._volume);
+    } catch (e) {
+      debugPrint('[IPTV Player] desktop ao restore failed: $e');
+    }
+
+    for (var i = 0; i < 12; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (_s._disposed || _s._exoBackend) return;
+      if (!identical(_s._player, player)) return;
+
+      try {
+        final tracks = player.state.tracks.audio
+            .where((t) => t.id != 'auto' && t.id != 'no')
+            .toList();
+        final current = player.state.track.audio;
+        if (tracks.isNotEmpty &&
+            (current.id == 'auto' || current.id == 'no')) {
+          await player.setAudioTrack(tracks.first);
+          debugPrint(
+            '[IPTV Player] desktop auto audio → '
+            '${tracks.first.title ?? tracks.first.language ?? tracks.first.id}',
+          );
+        }
+        if (tracks.isNotEmpty) return;
+      } catch (e) {
+        debugPrint('[IPTV Player] desktop post-open tune failed: $e');
+        return;
+      }
+    }
   }
 
   /// ATV MediaKit: restore ao/mute, pick a real audio track, and ask the TV
@@ -502,6 +546,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         await p.setProperty('framedrop', 'vo');
       } else {
         await p.setProperty('hwdec', _useSoftwareDecode ? 'no' : 'auto-safe');
+        await restoreMediaKitAudioOutput(p);
       }
       // Direct rendering + D3D11 on Windows live feeds can stick the last
       // frame after the readahead window (~20s) with A/V frozen.

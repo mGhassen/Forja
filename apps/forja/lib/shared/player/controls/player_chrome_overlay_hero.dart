@@ -413,6 +413,7 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
             onLongPress: _toggleSliderPinned,
             child: PlayerFlatIconButton(
               icon: _iconFor(widget.volume),
+              tooltip: widget.volume > 0 ? 'Mute' : 'Unmute',
               size: widget.size,
               iconSize: widget.iconSize,
               tvFocusable: widget.tvFocusable,

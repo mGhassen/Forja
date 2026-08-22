@@ -2855,6 +2855,12 @@ class _LiveMatchesEmbedPlayerScreenState
                                 source: _embedMediaCommandJs('play'),
                               );
                             } else {
+                              // User already tapped the card — unmute before
+                              // autoplay so WebView2 does not stick muted.
+                              await ctrl.evaluateJavascript(
+                                source:
+                                    'window.__forjaMediaMuted = false;',
+                              );
                               await ctrl.evaluateJavascript(
                                 source: _autoplayJs,
                               );
@@ -3284,6 +3290,16 @@ class _StreamedStreamSheet extends StatefulWidget {
     return 'Streamed';
   }
 
+  static String streamTitle(_StreamedStream stream, String sourceLabel) {
+    if (sourceLabel.isNotEmpty && stream.language.isNotEmpty) {
+      return '$sourceLabel · ${stream.language}';
+    }
+    if (sourceLabel.isNotEmpty) return sourceLabel;
+    if (stream.language.isNotEmpty) return stream.language;
+    if (stream.streamNo > 0) return 'Stream ${stream.streamNo}';
+    return 'Stream';
+  }
+
   @override
   State<_StreamedStreamSheet> createState() => _StreamedStreamSheetState();
 }
@@ -3347,7 +3363,7 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            '${sorted.length} ${sorted.length == 1 ? 'source' : 'sources'}',
+            '${sorted.length} ${sorted.length == 1 ? 'stream' : 'streams'}',
             style: const TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: 13,
@@ -3427,23 +3443,24 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
 
   @override
   Widget build(BuildContext context) {
-    final subtitleParts = <String>[
-      if (widget.pendingResolve) 'Resolve on play',
-      if (widget.sourceLabel.isNotEmpty && !widget.pendingResolve)
-        widget.sourceLabel,
-      if (widget.stream.language.isNotEmpty) widget.stream.language,
-    ];
     final title = widget.pendingResolve
         ? (widget.sourceLabel.isNotEmpty
             ? widget.sourceLabel
             : widget.serverLabel)
-        : 'Stream ${widget.stream.streamNo > 0 ? widget.stream.streamNo : 1}';
+        : _StreamedStreamSheet.streamTitle(
+            widget.stream,
+            widget.sourceLabel,
+          );
     final policy = ShellScope.inputPolicyOf(context);
     final active = ShellInputPolicy.interactiveActive(
       policy,
       hovered: _hovered,
       focused: _focused,
     );
+    final subtitleParts = <String>[
+      if (widget.pendingResolve) 'Resolve on play',
+      if (!widget.pendingResolve && widget.stream.hd) 'HD',
+    ];
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,

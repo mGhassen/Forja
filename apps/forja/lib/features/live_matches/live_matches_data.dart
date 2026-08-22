@@ -264,7 +264,8 @@ mixin _LiveMatchesData
       _s._timelineScrollController.jumpTo(0);
     }
     markShellTabFresh();
-    if ((this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog) {
+    if (_s._server == _LiveMatchesServer.all &&
+        (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog) {
       unawaited((this as _LiveMatchesForjaLive)._applyEspnScheduleMerge());
     }
   }

@@ -425,7 +425,12 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
           onProviderCancel: _s._onSourceChipCancel,
           onProviderReload: _s._onSourceChipReload,
           searchQuery: _s._sourceSearchQuery,
-          onSearchChanged: (q) => setState(() => _s._sourceSearchQuery = q),
+          onSearchChanged: (q) {
+            setState(() => _s._sourceSearchQuery = q);
+            if (_s._sourcesListScrollController.hasClients) {
+              _s._sourcesListScrollController.jumpTo(0);
+            }
+          },
           availableQualities: _s._panelAvailableQualities,
           availableLanguages: _s._panelAvailableLanguages,
           availableTech: _s._panelAvailableTech,
@@ -469,7 +474,6 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
           sourcesPanelOpen: _s._sourcesPanelOpen,
           onFocusList: () => SourcesPanelTv.focusListItem(),
         ),
-        const SizedBox(height: 8),
         Expanded(child: _s._buildStreamList(inPanel: true)),
         SourcesPanelMetaFooter(
           episodeLabel: _s._movie.mediaType == 'tv'

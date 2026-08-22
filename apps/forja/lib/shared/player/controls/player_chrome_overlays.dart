@@ -38,28 +38,35 @@ bool playerTvUsesCenteredDialogs(BuildContext context) {
 }
 
 /// Side panel on phone/desktop; centered dialog only on [ShellProfile.tv].
+///
+/// [detailsHost] — movies / hub details on TV: frosted right-side panel
+/// (same as [TorrentSourcesPanel] on media details), not player dialogs.
 Widget playerOverlayShell({
   required BuildContext context,
   required bool isOpen,
   required VoidCallback onClose,
   required Widget child,
   bool enableBlur = false,
+  bool detailsHost = false,
   Uint8List? frozenFrame,
   EdgeInsets? contentPadding,
 }) {
-  if (!playerTvUsesCenteredDialogs(context)) {
+  final tv = playerTvUsesCenteredDialogs(context);
+  if (!tv || detailsHost) {
     return TorrentSourcesPanel(
       isOpen: isOpen,
       onClose: onClose,
-      enableBlur: enableBlur,
+      enableBlur: detailsHost ? true : enableBlur,
       frozenFrame: frozenFrame,
       contentPadding: contentPadding,
-      absorbHitsWhenClosed: true,
-      child: playerSidePanelTvScope(
-        context: context,
-        onClose: onClose,
-        child: child,
-      ),
+      absorbHitsWhenClosed: !detailsHost,
+      child: detailsHost
+          ? child
+          : playerSidePanelTvScope(
+              context: context,
+              onClose: onClose,
+              child: child,
+            ),
     );
   }
 

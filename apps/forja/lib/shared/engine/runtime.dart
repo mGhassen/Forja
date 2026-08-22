@@ -1418,8 +1418,10 @@ class EngineRuntime {
               for (var i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
               return Promise.resolve(buf);
             }
-            var enc = new TextEncoder();
-            return Promise.resolve(enc.encode(body).buffer);
+            var buf = new ArrayBuffer(body.length);
+            var view = new Uint8Array(buf);
+            for (var i = 0; i < body.length; i++) view[i] = body.charCodeAt(i) & 0xff;
+            return Promise.resolve(buf);
           }
         });
       };

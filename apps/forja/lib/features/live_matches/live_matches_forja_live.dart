@@ -41,8 +41,20 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
   bool get _forjaLiveAnyLoading =>
       _s._forjaLivePluginLoads.values.any((e) => e.loading);
 
+  bool _forjaLiveMatchPlayable(_StreamedMatch match) {
+    if (_forjaLiveAnyLoading) return false;
+    return _streamedMatchesForEvent(match, _s._streamedMatches).any(
+      (m) =>
+          m.isForjaLive &&
+          (m.sources.isNotEmpty || m.inlineStreams.isNotEmpty),
+    );
+  }
+
   List<_StreamedMatch> get _displayStreamedMatches {
     var list = (this as _LiveMatchesData)._filteredStreamed;
+    if (_s._server == _LiveMatchesServer.forjaLive) {
+      list = list.where((m) => !m.isIptvSports).toList();
+    }
     if (_s._server == _LiveMatchesServer.forjaLive &&
         _s._forjaLivePluginFilter != 'all') {
       list = list
@@ -87,13 +99,20 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
   Future<void> _applyEspnScheduleMerge() async {
     if (!_usesForjaLiveLazyCatalog) return;
     if (!mounted) return;
+    if (_s._server == _LiveMatchesServer.forjaLive && _forjaLiveAnyLoading) {
+      return;
+    }
     if (!await _isEspnCatalogEnabled()) return;
 
     final espn = await _fetchEspnSportMatchGames();
     if (!mounted) return;
 
     final base = _stripEspnMergedScheduleRows(_s._streamedMatches);
-    final merged = _mergeStreamedWithEspn(base, espn);
+    final merged = _mergeStreamedWithEspn(
+      base,
+      espn,
+      appendUnmatched: _s._server != _LiveMatchesServer.forjaLive,
+    );
     setState(() {
       _s._streamedMatches = merged.streamed;
       _s._espnGames = merged.espnGames;
@@ -110,7 +129,9 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
     ];
     if (!mounted || gen != _s._forjaLiveLoadGen) return;
 
-    unawaited(_applyEspnScheduleMerge());
+    if (_s._server == _LiveMatchesServer.all) {
+      unawaited(_applyEspnScheduleMerge());
+    }
 
     if (catalogPlugins.isEmpty) {
       if (_s._server == _LiveMatchesServer.forjaLive) {

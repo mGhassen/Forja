@@ -39,6 +39,22 @@ class LiveMatchesEngine {
     required String pluginId,
     Map<String, dynamic> params = const {},
   }) async {
+    if (pluginId == 'live-streamed') {
+      final native = await LiveGoatUnlock.resolveStreamed(
+        embedUrl: (params['embedUrl'] ?? params['url'] ?? '').toString(),
+        source: (params['source'] ?? '').toString(),
+        matchId: (params['matchId'] ?? '').toString(),
+        stream: (params['stream'] ?? '1').toString(),
+      );
+      if (native != null) {
+        return LiveEngineResolveResult.playable(
+          url: native.url,
+          headers: native.headers,
+          label: 'Streamed',
+        );
+      }
+    }
+
     final raw = await EngineService.instance.runLivePlugin(
       pluginId: pluginId,
       action: 'resolve',

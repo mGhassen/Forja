@@ -457,7 +457,8 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                       child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
+                    Flexible(
+                      child: Row(
                       children: [
                         ValueListenableBuilder<bool>(
                           valueListenable: _s._isPlayingNotifier,
@@ -487,19 +488,6 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                           const SizedBox(width: 2),
                           nextEp,
                         ],
-                        const SizedBox(width: 6),
-                        ValueListenableBuilder<double>(
-                          valueListenable: _s._volumeNotifier,
-                          builder: (context, vol, _) => PlayerVolumeControl(
-                            volume: vol,
-                            maxVolume: 150,
-                            compact: compact,
-                            onVolumeChanged: _s._player.setVolume,
-                            onInteraction: _s._onMouseMove,
-                            onDragStart: () => _s._hideTimer?.cancel(),
-                            onDragEnd: _s._startHideTimer,
-                          ),
-                        ),
                         const SizedBox(width: 8),
                         ValueListenableBuilder<Duration>(
                           valueListenable: _s._positionNotifier,
@@ -514,8 +502,22 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                         ),
                       ],
                     ),
+                    ),
                     Row(
                       children: [
+                        ValueListenableBuilder<double>(
+                          valueListenable: _s._volumeNotifier,
+                          builder: (context, vol, _) => PlayerVolumeControl(
+                            volume: vol,
+                            maxVolume: 150,
+                            compact: compact,
+                            onVolumeChanged: _s._player.setVolume,
+                            onInteraction: _s._onMouseMove,
+                            onDragStart: () => _s._hideTimer?.cancel(),
+                            onDragEnd: _s._startHideTimer,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
                         if (hasTorrentSources) ...[
                           PlayerFlatIconButton(
                             icon: Icons.link_rounded,

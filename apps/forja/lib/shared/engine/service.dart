@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -82,20 +83,13 @@ class EngineService {
   }
 
   Future<List<EnginePack>> listPacks() async {
-    await ensureBundledInstalled();
-    final prefs = await _prefs;
-    final raw = prefs.getString(_packsKey);
-    if (raw == null || raw.isEmpty) return [];
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return [];
-      return [
-        for (final e in decoded)
-          if (e is Map) EnginePack.fromStored(Map<String, dynamic>.from(e)),
-      ];
-    } catch (_) {
-      return [];
+    final cached = await _listPacksRaw();
+    if (cached.isNotEmpty) {
+      unawaited(ensureBundledInstalled());
+      return cached;
     }
+    await ensureBundledInstalled();
+    return _listPacksRaw();
   }
 
   Future<List<EnginePack>> listSourcesPanelPacks() async {
@@ -207,6 +201,26 @@ class EngineService {
     }
   }
 
+  static bool bundledPackUnchanged(EnginePack previous, EnginePack current) {
+    if (previous.sourceUrl != bundledSourceUrl ||
+        previous.version != current.version ||
+        previous.plugins.length != current.plugins.length) {
+      return false;
+    }
+    for (var i = 0; i < current.plugins.length; i++) {
+      final prev = previous.plugins[i];
+      final cur = current.plugins[i];
+      if (prev.id != cur.id ||
+          prev.entry != cur.entry ||
+          prev.kind != cur.kind ||
+          jsonEncode(prev.config) != jsonEncode(cur.config) ||
+          jsonEncode(prev.hosts) != jsonEncode(cur.hosts)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   Future<void> _installBundled() async {
     final jsonStr = await rootBundle.loadString('$_assetRoot/engine.json');
     final map = jsonDecode(jsonStr) as Map<String, dynamic>;
@@ -215,13 +229,6 @@ class EngineService {
       sourceUrl: bundledSourceUrl,
       bundled: true,
     );
-    final prefs = await _prefs;
-    for (final plugin in pack.plugins) {
-      if (plugin.entry.isEmpty) continue;
-      if (!plugin.isHttp && !plugin.isHop) continue;
-      final code = await rootBundle.loadString('$_assetRoot/${plugin.entry}');
-      await prefs.setString(_scriptPrefix + plugin.id, code);
-    }
     final all = await _listPacksRaw();
     EnginePack? previous;
     for (final a in all) {
@@ -231,31 +238,22 @@ class EngineService {
       }
     }
     if (previous != null) {
-      final prev = previous;
-      final enabledById = {for (final p in prev.plugins) p.id: p.enabled};
+      final enabledById = {for (final p in previous.plugins) p.id: p.enabled};
       pack = pack.copyWithPlugins([
         for (final p in pack.plugins)
           p.copyWith(enabled: enabledById[p.id] ?? p.enabled),
       ]);
-      final same =
-          prev.sourceUrl == bundledSourceUrl &&
-          prev.version == pack.version &&
-          prev.plugins.length == pack.plugins.length &&
-          List.generate(
-            pack.plugins.length,
-            (i) =>
-                prev.plugins[i].id == pack.plugins[i].id &&
-                prev.plugins[i].entry == pack.plugins[i].entry &&
-                jsonEncode(prev.plugins[i].config) ==
-                    jsonEncode(pack.plugins[i].config) &&
-                prev.plugins[i].kind == pack.plugins[i].kind &&
-                jsonEncode(prev.plugins[i].hosts) ==
-                    jsonEncode(pack.plugins[i].hosts),
-          ).every((ok) => ok);
-      if (same) {
+      if (bundledPackUnchanged(previous, pack)) {
         await _syncHops([pack]);
         return;
       }
+    }
+    final prefs = await _prefs;
+    for (final plugin in pack.plugins) {
+      if (plugin.entry.isEmpty) continue;
+      if (!plugin.isHttp && !plugin.isHop) continue;
+      final code = await rootBundle.loadString('$_assetRoot/${plugin.entry}');
+      await prefs.setString(_scriptPrefix + plugin.id, code);
     }
     all.removeWhere((a) => isBundled(a.sourceUrl));
     all.insert(0, pack);
@@ -401,6 +399,11 @@ class EngineService {
   }
 
   Future<String?> _loadScript(EnginePlugin plugin) async {
+    if (plugin.isLive && plugin.entry.isNotEmpty && isBundled(bundledSourceUrl)) {
+      try {
+        return await rootBundle.loadString('$_assetRoot/${plugin.entry}');
+      } catch (_) {}
+    }
     final prefs = await _prefs;
     final cached = prefs.getString(_scriptPrefix + plugin.id);
     if (cached != null && cached.isNotEmpty) return cached;
@@ -667,10 +670,8 @@ class EngineService {
     if (gen != _extractGeneration || code == null) return [];
     final rt = EngineRuntime.instance;
     await _syncHops(packs);
-    if (!rt.isLoaded(plugin.id)) {
-      await rt.loadPlugin(pluginId: plugin.id, code: code);
-    }
     if (gen != _extractGeneration) return [];
+    await rt.loadPlugin(pluginId: plugin.id, code: code);
     final raw = await rt.extractLive(
       pluginId: plugin.id,
       pluginName: plugin.name,

@@ -659,13 +659,17 @@ class _AsianDramaDetailsScreenState
 
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _focusDetailsBack : null;
+    final episodeFocusUp =
+        tvFocus && isUpcoming ? _focusDetailsBack : heroFocusUp;
     final listExtra = HubListStatusHero.extraFocusSlots(_listMenuOpen);
     final playbackSnap = ref.watch(settingsPlaybackProvider).valueOrNull;
     final catalogMovie = tmdb?.movie;
-    final showCatalogSources = !isUpcoming &&
-        catalogMovie != null &&
-        catalogMovie.id > 0 &&
+    final hasCatalogSources = !isUpcoming &&
         hubHasCatalogPanelSources(playbackSnap);
+    final sourcesMovie = (catalogMovie != null && catalogMovie.id > 0)
+        ? catalogMovie
+        : _playMovieFor(det, tmdb);
+    final showCatalogSources = hasCatalogSources;
     var tvIndex = 0;
     final playIndex = isUpcoming ? null : tvIndex++;
     final sourcesIndex = showCatalogSources ? tvIndex++ : null;
@@ -726,7 +730,7 @@ class _AsianDramaDetailsScreenState
               tvSeasonRowId: 'seasons',
               tvEpisodeRowId: 'episodes',
               tvRowOrderBase: 0,
-              tvFocusUp: heroFocusUp,
+              tvFocusUp: episodeFocusUp,
             ),
           )
         : MediaDetailsBody.padContent(
@@ -822,7 +826,7 @@ class _AsianDramaDetailsScreenState
                   enabled: det.episodes.isNotEmpty,
                   onPlay: _playSelected,
                   onOpenSources: showCatalogSources
-                      ? () => _openCatalogSources(catalogMovie)
+                      ? () => _openCatalogSources(sourcesMovie)
                       : null,
                   focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
                   onUpEdge: heroPopUp,

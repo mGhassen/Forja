@@ -72,6 +72,9 @@ class PlayerSourcesPanel {
     required Future<void> Function(TorrentResult result) onTorrentSelected,
     required Future<void> Function(Map<String, dynamic> stream)
     onStremioSelected,
+
+    /// Movies / hub details on TV: frosted side panel, not player dialog.
+    bool detailsHost = false,
   }) {
     playerMenuCaptureReturnFocus(context);
     dismiss();
@@ -98,6 +101,7 @@ class PlayerSourcesPanel {
           kisskhId: kisskhId,
           kisskhEpisodeId: kisskhEpisodeId,
           engineCategory: engineCategory,
+          detailsHost: detailsHost,
           onTorrentSelected: onTorrentSelected,
           onStremioSelected: onStremioSelected,
           onClose: dismiss,
@@ -127,6 +131,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.kisskhId,
     this.kisskhEpisodeId,
     this.engineCategory,
+    this.detailsHost = false,
   });
 
   final Movie movie;
@@ -141,6 +146,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final int? kisskhId;
   final int? kisskhEpisodeId;
   final String? engineCategory;
+  final bool detailsHost;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
   final VoidCallback onClose;
@@ -160,17 +166,20 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final detailsHost = widget.detailsHost;
     return playerOverlayShell(
       context: context,
       isOpen: _open,
       onClose: widget.onClose,
+      detailsHost: detailsHost,
       enableBlur: false,
-      // Desktop: SafeArea.top is off (right panel). Match details air (8).
-      contentPadding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      contentPadding: detailsHost
+          ? null
+          : const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: SourcesPanelTv.wrapBody(
         context: context,
         onClose: widget.onClose,
-        includeOverlayScope: false,
+        includeOverlayScope: detailsHost,
         child: _PlayerSourcesBody(
           movie: widget.movie,
           season: widget.season,
@@ -509,6 +518,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return null;
   }
 
+  void _resetListScroll({bool allowScrollToCurrent = false}) {
+    _pendingScrollToCurrent = allowScrollToCurrent;
+    _scrollToCurrentAttempts = 0;
+    if (_listScrollController.hasClients) {
+      _listScrollController.jumpTo(0);
+    }
+    if (allowScrollToCurrent) {
+      _scheduleScrollToCurrent();
+    }
+  }
+
   void _requestScrollToCurrent() {
     if (_listScrollController.hasClients && _listScrollController.offset > 8) {
       return;
@@ -621,22 +641,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_pendingScrollToCurrent) return;
 
-      // Prefer precise ensureVisible when the tile is already mounted.
-      final ctx = _currentTileKey.currentContext;
-      if (ctx != null) {
-        _pendingScrollToCurrent = false;
-        _scrollToCurrentAttempts = 0;
-        Scrollable.ensureVisible(
-          ctx,
-          alignment: 0.15,
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-        );
-        return;
-      }
-
-      if (!_listScrollController.hasClients) return;
-
       final torrents = _showsTorrents
           ? _filteredTorrents
           : const <TorrentResult>[];
@@ -657,6 +661,31 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       );
       // Lists still loading / wrong provider filter - keep pending.
       if (index == null) return;
+
+      if (index == 0) {
+        _pendingScrollToCurrent = false;
+        _scrollToCurrentAttempts = 0;
+        if (_listScrollController.hasClients) {
+          _listScrollController.jumpTo(0);
+        }
+        return;
+      }
+
+      // Prefer precise ensureVisible when the tile is already mounted.
+      final ctx = _currentTileKey.currentContext;
+      if (ctx != null) {
+        _pendingScrollToCurrent = false;
+        _scrollToCurrentAttempts = 0;
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.0,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+        return;
+      }
+
+      if (!_listScrollController.hasClients) return;
 
       // Lazy ListView has not built the off-screen tile yet - jump by index
       // so the next frame mounts it and ensureVisible can finish.
@@ -2313,11 +2342,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         );
       }
     });
-    if (_listScrollController.hasClients) {
-      _listScrollController.jumpTo(0);
-    }
+    _resetListScroll(allowScrollToCurrent: true);
     _ensureVisibleKindsLoaded();
-    _requestScrollToCurrent();
   }
 
   String get _year {
@@ -2592,6 +2618,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _onChipTap(String id) {
+    _resetListScroll();
     if (id == 'all_nuvio') {
       final enabled = enabledNuvioScraperIds(_nuvioAddons);
       if (enabled.isEmpty) return;
@@ -2900,7 +2927,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           onProviderCancel: _onChipCancel,
           onProviderReload: _onChipReload,
           searchQuery: _searchQuery,
-          onSearchChanged: (q) => setState(() => _searchQuery = q),
+          onSearchChanged: (q) {
+            setState(() => _searchQuery = q);
+            _resetListScroll();
+          },
           availableQualities: _availableQualities,
           availableLanguages: _availableLanguages,
           availableTech: _availableTech,
@@ -2950,7 +2980,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             SourcesPanelTv.focusListItem(index: cur.clamp(0, max));
           },
         ),
-        const SizedBox(height: 4),
         Expanded(
           child: _buildList(
             torrents,

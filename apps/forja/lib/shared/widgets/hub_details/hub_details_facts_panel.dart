@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/design/design.dart';
 
 /// Right-column production metadata panel for hub details heroes (anime, Asian drama).
 /// Visual match for [HeroFactsPanel] on movie/TV details.
@@ -60,6 +61,8 @@ class _HubFactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final valueLines = tv ? 2 : 1;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -78,7 +81,7 @@ class _HubFactRow extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.right,
-            maxLines: 1,
+            maxLines: valueLines,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 13,

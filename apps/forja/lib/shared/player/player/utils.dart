@@ -380,6 +380,37 @@ Future<bool> mediaKitPlayerHandleReady(
   }
 }
 
+/// Restore mpv audio output after [silenceMediaKitPlayer] or a fresh boot.
+///
+/// Exit sets `mute=yes` and `ao=null` (non-Android). ATV already re-applies
+/// this after every open; desktop IPTV / live must too (issue 138 pattern).
+Future<void> restoreMediaKitAudioOutput(NativePlayer mpv) async {
+  if (mpv.disposed) return;
+  if (!await mediaKitPlayerHandleReady(mpv)) return;
+  Future<void> prop(String key, String value) => mpv
+      .setProperty(key, value, waitForInitialization: false)
+      .timeout(const Duration(milliseconds: 150));
+  try {
+    await prop('mute', 'no');
+  } catch (_) {}
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      await prop('ao', 'audiotrack');
+    } catch (_) {}
+    return;
+  }
+  const aoByPlatform = {
+    TargetPlatform.windows: 'wasapi',
+    TargetPlatform.macOS: 'coreaudio',
+    TargetPlatform.linux: 'pulse',
+  };
+  final ao = aoByPlatform[defaultTargetPlatform];
+  if (ao == null) return;
+  try {
+    await prop('ao', ao);
+  } catch (_) {}
+}
+
 /// Kill audible output immediately via libmpv, without waiting on media_kit's
 /// video-controller init futures (those can hang and leave audio after exit).
 Future<void> silenceMediaKitPlayer(Player player) async {

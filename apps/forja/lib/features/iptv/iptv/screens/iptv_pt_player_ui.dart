@@ -66,7 +66,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   Future<List<EpgEntry>>? _floatingEpgFuture() {
     final epgEnabled = ref.watch(iptvEpgEnabledProvider);
     if (!epgEnabled || _s._epgCache == null) return null;
-    final stream = _currentGuideChannel()?.xtreamStream;
+    final stream =
+        _currentGuideChannel()?.xtreamStream ?? _s._epgStreamForActiveSource();
     if (stream == null) return null;
     return _s._epgCache!.load(stream);
   }
@@ -1036,7 +1037,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                         child: IgnorePointer(
                           ignoring: !_s._controlsVisible,
                           child: IptvFloatingEpg(
-                            key: ValueKey(_s._currentChannelId),
+                            key: ValueKey(_s._floatingEpgKey),
                             future: epgFuture,
                             maxWidth: compact ? 440 : 540,
                           ),

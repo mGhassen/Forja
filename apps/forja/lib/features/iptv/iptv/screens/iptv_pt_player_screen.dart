@@ -33,6 +33,7 @@ import 'package:forja/features/iptv/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/iptv/providers/iptv_player_providers.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_player_chrome_profile.dart';
+import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
@@ -130,6 +131,8 @@ class IptvPlaySource {
   final String? logoUrl;
   /// Xtream `stream_id` — used to pull logos from the IPTV catalog cache.
   final String? streamId;
+  /// Xtream `epg_channel_id` — fallback when short EPG by stream id is empty.
+  final String? epgChannelId;
   /// Optional HTTP headers (Cookie / Referer / Origin) for Exo / MediaKit.
   /// Live Matches Streamed handoff uses these instead of `/hls-proxy`.
   final Map<String, String> headers;
@@ -141,6 +144,7 @@ class IptvPlaySource {
     this.detail,
     this.logoUrl,
     this.streamId,
+    this.epgChannelId,
     this.headers = const {},
     this.liveSourceKind,
   });
@@ -674,7 +678,12 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _selectedGroupId = guide?.initialGroupId ?? '';
     _currentChannelId = guide?.initialChannelId ?? '';
     final portal = guide?.xtreamPortal;
-    if (portal != null) _epgCache = IptvGuideEpgCache(portal);
+    if (portal != null) {
+      _epgCache = IptvGuideEpgCache(portal);
+    } else if (widget.titleTracksSource &&
+        widget.liveSourceKind == IptvLiveSourceKind.iptvXtream) {
+      unawaited(_initSportsEpgCache());
+    }
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_onRemoteControlsActivity);
     if (_windowsSoftwareDecode || _desktopLiveSoftwareDecode) {
@@ -1056,6 +1065,54 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     } else {
       _coverDeadSurface = false;
     }
+  }
+
+  /// Forja Sports: resolve the armed Xtream portal for in-player short EPG.
+  Future<void> _initSportsEpgCache() async {
+    final config = await LiveMatchesIptvSportsConfig.load();
+    final armed = await config.resolveForFetch();
+    if (armed == null || _disposed || !mounted) return;
+    final portals = await IptvStore.load();
+    VerifiedPortal? portal;
+    for (final p in portals) {
+      if (p.key == armed.portalKey) {
+        portal = p;
+        break;
+      }
+    }
+    if (portal == null ||
+        portal.portal.platform != IptvPortalPlatform.xtream ||
+        _disposed ||
+        !mounted) {
+      return;
+    }
+    setState(() => _epgCache = IptvGuideEpgCache(portal!));
+  }
+
+  /// Channel guide id or active sports source stream id — keys floating EPG.
+  String get _floatingEpgKey {
+    if (_currentChannelId.isNotEmpty) return _currentChannelId;
+    if (_sources.isEmpty) return '';
+    final id =
+        (_sources[_sourceIdx.clamp(0, _sources.length - 1)].streamId ?? '')
+            .trim();
+    return id;
+  }
+
+  IptvStream? _epgStreamForActiveSource() {
+    if (_sources.isEmpty) return null;
+    final src = _sources[_sourceIdx.clamp(0, _sources.length - 1)];
+    final streamId = (src.streamId ?? '').trim();
+    if (streamId.isEmpty) return null;
+    return IptvStream(
+      streamId: streamId,
+      name: src.chromeTitle,
+      icon: src.logoUrl ?? '',
+      categoryId: '',
+      containerExt: 'ts',
+      kind: 'live',
+      epgChannelId: (src.epgChannelId ?? '').trim(),
+    );
   }
 
   /// My IPTV sports: chrome subtitle = active channel; title stays the match.
