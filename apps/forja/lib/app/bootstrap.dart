@@ -30,6 +30,7 @@ import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/app_update_progress_banner.dart';
+import 'package:forja/shared/widgets/desktop_window_geometry.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_back_handler.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -79,6 +80,10 @@ Future<void> _runDesktopQuit() async {
     return;
   }
   _appShutdownStarted = true;
+
+  try {
+    await DesktopWindowGeometry.saveNow();
+  } catch (_) {}
 
   try {
     await windowManager.hide();
@@ -186,33 +191,14 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await windowManager.ensureInitialized();
 
-    // Size the window to fit the user's primary display. On a 1366×768
-    // laptop the old fixed 1600×1000 was bigger than the screen, so the
-    // title bar / close button / fullscreen toggle fell off-screen.
-    // We clamp the default to the display's work area minus a small
-    // margin, and set a reasonable minimum so tiny screens still work.
-    const double desiredWidth = 1600;
-    const double desiredHeight = 1000;
-    const double screenMargin = 80; // leaves room for taskbar + title bar
-    final display = WidgetsBinding.instance.platformDispatcher.displays.first;
-    final logicalScreen = display.size / display.devicePixelRatio;
-    final double maxW = (logicalScreen.width - screenMargin).clamp(
-      640.0,
-      double.infinity,
-    );
-    final double maxH = (logicalScreen.height - screenMargin).clamp(
-      480.0,
-      double.infinity,
-    );
-    final Size windowSize = Size(
-      desiredWidth.clamp(640.0, maxW),
-      desiredHeight.clamp(480.0, maxH),
-    );
+    // Restore last windowed size/place when present; otherwise clamp a
+    // default to the primary display work area (issue 196).
+    final startup = await DesktopWindowGeometry.loadStartup();
 
     final WindowOptions windowOptions = WindowOptions(
-      size: windowSize,
+      size: startup.size,
       minimumSize: const Size(640, 480),
-      center: true,
+      center: startup.position == null,
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
       titleBarStyle: TitleBarStyle.hidden,
@@ -227,8 +213,19 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
           await windowManager.setBadgeLabel('DEV');
         } catch (_) {}
       }
+      final pos = startup.position;
+      if (pos != null) {
+        try {
+          await windowManager.setPosition(pos);
+        } catch (_) {}
+      }
       await windowManager.show();
       await windowManager.focus();
+      if (startup.maximized) {
+        try {
+          await windowManager.maximize();
+        } catch (_) {}
+      }
     });
   }
 
@@ -333,6 +330,18 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     unawaited(SyncService.instance.refreshSession());
     unawaited(SyncDomainBridge.instance.syncFromCloud());
   }
+
+  @override
+  void onWindowResize() => DesktopWindowGeometry.scheduleSave();
+
+  @override
+  void onWindowMove() => DesktopWindowGeometry.scheduleSave();
+
+  @override
+  void onWindowMaximize() => DesktopWindowGeometry.scheduleSave();
+
+  @override
+  void onWindowUnmaximize() => DesktopWindowGeometry.scheduleSave();
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

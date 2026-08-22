@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **19 / 19** fix · **0 / 15** acceptance |
-| **Current slice** | Empty pause soft-reopens at 5s (no fake working spam); device smoke outstanding |
+| **Progress** | **20 / 20** fix · **0 / 16** acceptance |
+| **Current slice** | Live cache-pause off + 1MiB back-buffer + longer ffmpeg reconnect; device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -40,6 +40,7 @@
 | 17 | I148-T17 | Live Stable: 15s pause-refill grace; detector 3 never `forceHard` on cache-pause self-pause; no mid-stream `play()` fight with paused-for-cache | ✅ |
 | 18 | I148-T18 | Live Stable: hold VT / hw decode fails (no software recreate) — CDN chunk close → corrupt TS is expected; empty-cache detectors still recover dead feeds | ✅ |
 | 19 | I148-T19 | Stop fake `working` logs on empty cache; grace only while feeding/cushion; empty pause soft-reopens at 5s + Buffering chrome | ✅ |
+| 20 | I148-T20 | Live MediaKit: `cache-pause=no`, `demuxer-max-back-bytes=1MiB`, `reconnect_delay_max=30` — CDN socket closes must not hard-pause; underrun freezes without back-buffer replay | ✅ |
 
 ---
 
@@ -62,12 +63,15 @@
 | 13 | I148-A13 | Socket `ends prematurely` + VT one-shot: log shows ignore transient hw fail — no hard software recreate while cache/feed recover | ⬜ |
 | 14 | I148-A14 | Genuinely empty cache + Buffering ≥12s still reconnects (hard wall still works when cushion is gone) | ⬜ |
 | 15 | I148-A15 | After repeated CDN `ends prematurely`: no `silent self-pause` hard recovery loop; log shows `self-pause` hold / live VT hold; picture resumes without recreate thrash | ⬜ |
+| 16 | I148-A16 | Live MediaKit: channel plays through multiple `ends prematurely` without visible pause/reconnect thrash; no silent ~15s replay on underrun | ⬜ |
 
 ---
 
 ## Summary
 
 **Symptom (1.3.135+):** A live IPTV channel plays normally, then after ~1–2 minutes the picture stalls, the buffering spinner shows `Reconnecting… (attempt 1/8)`, and playback may resume on its own. The upstream feed is often still alive.
+
+> **Status update (I148-T20).** Live `cache-pause=yes` made every Xtream HTTP socket close a hard pause (reporter: stop every ~70MB). Reverted to `cache-pause=no` with `demuxer-max-back-bytes=1MiB` (freeze without replay) and `reconnect_delay_max=30` so ffmpeg can bridge closes silently.
 
 > **Status update (I148-T17 / T18).** After T15/T16 the reporter still looped on `silent self-pause, cache empty` hard recreate: CDN closes the HTTP chunk → VT one-shot → `cache-pause` sets `playing=false` with `buffering=false` → detector 3 at 3s. Live Stable now holds 15s pause-refill grace, never forceHard on that path, and does not software-recreate on VT during Stable.
 

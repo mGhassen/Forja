@@ -18,6 +18,7 @@ import 'package:forja/shared/services/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shared/widgets/desktop_window_geometry.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:media_kit/media_kit.dart';
@@ -325,12 +326,8 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
 
   Future<void> _toggleFullscreen() async {
     if (!_supportsWindowFullscreen) return;
-    final isFull = await windowManager.isFullScreen();
-    if (!isFull && await windowManager.isMaximized()) {
-      await windowManager.unmaximize();
-    }
-    await windowManager.setFullScreen(!isFull);
-    if (mounted) setState(() => _isFullscreen = !isFull);
+    final next = await DesktopWindowGeometry.toggleFullscreen();
+    if (mounted) setState(() => _isFullscreen = next);
   }
 
   Future<void> _exitTrailer() async {
@@ -338,8 +335,8 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
       _claimPlayFocus();
       return;
     }
-    if (_supportsWindowFullscreen && _isFullscreen) {
-      await windowManager.setFullScreen(false);
+    if (_supportsWindowFullscreen) {
+      await DesktopWindowGeometry.leavePlayerChrome();
       if (mounted) setState(() => _isFullscreen = false);
     }
     await _teardownPlayer();

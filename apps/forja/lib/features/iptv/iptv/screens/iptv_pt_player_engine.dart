@@ -486,17 +486,18 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         await p.setProperty('cache-pause', 'no');
         await p.setProperty('cache-pause-initial', 'no');
       } else {
-        // Live: pause-to-refill when ahead cache drains — freeze last frame +
-        // Buffering instead of chewing demuxer-max-back-bytes (silent replay).
-        debugPrint('[IPTV Player] MediaKit cache profile=live (pause-on-empty)');
+        // Live: keep playing through CDN HTTP closes while ffmpeg reconnects.
+        // cache-pause=yes turned every socket blip into a hard pause (visible
+        // stop every ~minute). Tiny back-buffer ⇒ underrun freezes (no past
+        // to silently replay) instead of chewing demuxer-max-back-bytes.
+        debugPrint('[IPTV Player] MediaKit cache profile=live (reconnect)');
         await p.setProperty('cache-secs', '30');
         await p.setProperty('demuxer-readahead-secs', '20');
         await p.setProperty('demuxer-max-bytes', '150000000');
-        await p.setProperty('demuxer-max-back-bytes', '25000000');
+        await p.setProperty('demuxer-max-back-bytes', '1048576');
         await p.setProperty('audio-buffer', '1.0');
-        await p.setProperty('cache-pause', 'yes');
-        await p.setProperty('cache-pause-wait', '3');
-        await p.setProperty('cache-pause-initial', 'yes');
+        await p.setProperty('cache-pause', 'no');
+        await p.setProperty('cache-pause-initial', 'no');
       }
 
       await p.setProperty('sub-auto', 'all');
@@ -515,13 +516,14 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // Many Xtream panels gate streams on a VLC user-agent
       await p.setProperty('user-agent', _IptvPtPlayerScreenState._ua);
 
-      // FFmpeg reconnect knobs (the proven set from gist + alexishuxley)
+      // FFmpeg reconnect — live Xtream often closes the HTTP socket mid-stream;
+      // absorb that silently (longer delay budget than the old 5s cap).
       await p.setProperty(
         'stream-lavf-o',
         'reconnect=1,'
             'reconnect_at_eof=1,'
             'reconnect_streamed=1,'
-            'reconnect_delay_max=5,'
+            'reconnect_delay_max=30,'
             'reconnect_on_network_error=1,'
             'reconnect_on_http_error=4xx\\,5xx',
       );
@@ -572,20 +574,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   Future<void> _toggleFullscreen() async {
     if (_s._isDesktop) {
       try {
-        final isFull = await windowManager.isFullScreen();
-        if (isFull) {
-          // Leaving fullscreen - also drop maximize so the user gets a real window.
-          await windowManager.setFullScreen(false);
-          if (await windowManager.isMaximized()) {
-            await windowManager.unmaximize();
-          }
-        } else {
-          if (await windowManager.isMaximized()) {
-            await windowManager.unmaximize();
-          }
-          await windowManager.setFullScreen(true);
-        }
-        if (mounted) setState(() => _s._isFullscreen = !isFull);
+        final next = await DesktopWindowGeometry.toggleFullscreen();
+        if (mounted) setState(() => _s._isFullscreen = next);
       } catch (_) {}
     } else {
       final goFull = !_s._isFullscreen;
@@ -660,13 +650,6 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         // Soft poke only — live mid-stream never auto-reopens.
         _s._readyNotPlayingSince = DateTime.now();
         if (_s._buffering) return;
-        // Live Stable + cache-pause: mpv pauses for refill with playing=false.
-        // Do not fight paused-for-cache with play() — detector 3 soft-reopens
-        // if the cushion never comes back.
-        if (_livePlaybackProfile && _bufferedRecovery) {
-          _armTransientHwDecodeIgnore();
-          return;
-        }
         Future.microtask(() async {
           if (!mounted || !_s._userPlayWhenReady || _s._playing) return;
           if (_s._buffering) return;

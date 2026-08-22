@@ -13,7 +13,6 @@ import 'package:forja/features/iptv/iptv/iptv_title_clean.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:window_manager/window_manager.dart';
 
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/services/external_player_service.dart';
@@ -55,6 +54,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shared/widgets/desktop_window_geometry.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 
@@ -168,7 +168,7 @@ class IptvPlaySource {
 /// [engineContext] (IPTV ≠ VOD ≠ Live); other platforms use libmpv. Includes:
 ///   • Watchdog (3 detectors): long buffering, frozen position, ready-but-not-playing
 ///   • Tiered recovery: reopen + live-edge → stop+open → recreate
-///   • Mid-stream underrun → cache-pause (freeze + Buffering refill; no back-buffer replay)
+///   • Mid-stream underrun → tiny back-buffer (freeze, no replay); ffmpeg reconnect bridges CDN closes
 ///   • Multi-source rotation
 ///   • Backoff retries with healthy-streak reset
 ///   • Pretty responsive overlay UI
@@ -509,8 +509,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   static const double _minHealthyCacheSecs = 2.0;
 
   /// Continuous Buffering + frozen playhead + **empty** cache this long ⇒ dead.
-  /// Healthy demuxer cushion (pause-to-refill) must not trip this — that was
-  /// reconnecting with cache≈28s after live `cache-pause=yes`.
+  /// Must not trip while demuxer still has a healthy ahead cushion.
   static const Duration _bufferingHardWallDuration = Duration(seconds: 12);
 
   /// Ignore one-shot VideoToolbox / hw fails after socket blip or live-edge snap.
@@ -1069,20 +1068,14 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     if (_isDesktop) {
-      // Restore a normal (non-fullscreen, non-maximized) window when leaving.
-      // If we tear down while in PiP, restore window chrome so the next
-      // screen is not stuck in a frameless always-on-top box.
+      // Exit host fullscreen only — never unmaximize (issue 196 / Windows
+      // restore-frame reset). PiP leave still restores its own saved bounds.
       Future.microtask(() async {
         try {
           if (PipService.instance.isDesktopActive) {
             await PipService.instance.leave();
           }
-          if (await windowManager.isFullScreen()) {
-            await windowManager.setFullScreen(false);
-          }
-          if (await windowManager.isMaximized()) {
-            await windowManager.unmaximize();
-          }
+          await DesktopWindowGeometry.leavePlayerChrome();
         } catch (_) {}
       });
     }

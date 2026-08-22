@@ -1992,10 +1992,7 @@ class _LiveMatchesEmbedPlayerScreenState
   Future<void> _enterFullscreen() async {
     if (DesktopWindowChrome.isDesktop) {
       try {
-        if (await windowManager.isMaximized()) {
-          await windowManager.unmaximize();
-        }
-        await windowManager.setFullScreen(true);
+        await DesktopWindowGeometry.enterFullscreen();
       } catch (_) {}
     } else {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -2009,10 +2006,7 @@ class _LiveMatchesEmbedPlayerScreenState
   Future<void> _exitFullscreen() async {
     if (DesktopWindowChrome.isDesktop) {
       try {
-        await windowManager.setFullScreen(false);
-        if (await windowManager.isMaximized()) {
-          await windowManager.unmaximize();
-        }
+        await DesktopWindowGeometry.exitFullscreen();
       } catch (_) {}
     } else {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -2115,12 +2109,7 @@ class _LiveMatchesEmbedPlayerScreenState
     if (DesktopWindowChrome.isDesktop) {
       Future.microtask(() async {
         try {
-          if (await windowManager.isFullScreen()) {
-            await windowManager.setFullScreen(false);
-          }
-          if (await windowManager.isMaximized()) {
-            await windowManager.unmaximize();
-          }
+          await DesktopWindowGeometry.leavePlayerChrome();
         } catch (_) {}
       });
     } else {

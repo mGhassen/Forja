@@ -83,12 +83,8 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
   // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _toggleFullscreen() async {
-    final isFull = await windowManager.isFullScreen();
-    if (!isFull && await windowManager.isMaximized()) {
-      await windowManager.unmaximize();
-    }
-    await windowManager.setFullScreen(!isFull);
-    if (mounted) setState(() => _s._isFullscreen = !isFull);
+    final next = await DesktopWindowGeometry.toggleFullscreen();
+    if (mounted) setState(() => _s._isFullscreen = next);
   }
 
   Future<void> _exitPlayer() async {
@@ -101,10 +97,8 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     // Capture before awaits - State may unmount during stop; dismiss must still run.
     final nav = Navigator.of(context, rootNavigator: true);
     final result = _s._positionNotifier.value;
-    if (_s._isFullscreen) {
-      await windowManager.setFullScreen(false);
-      if (mounted) setState(() => _s._isFullscreen = false);
-    }
+    await DesktopWindowGeometry.leavePlayerChrome();
+    if (mounted) setState(() => _s._isFullscreen = false);
     _s._cancelPendingStreamWork();
     await _s._saveWatchHistory();
     // Instant native mute/pause/ao=null - do not await hung media_kit stop

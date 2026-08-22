@@ -168,7 +168,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [145-[open]-…](145-[open]-macos-live-embed-webkit-fullscreen-crash.md) | macOS Live embed WK fullscreen SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [146-[open]-…](146-[open]-macos-pip-settitlebarstyle-sigtrap.md) | Desktop PiP setTitleBarStyle SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [147-[open]-…](147-[open]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | open | 5/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / Classic + stall checkbox | P1 | High | open | 19/19 · A 0/15 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / Classic + stall checkbox | P1 | High | open | 20/20 · A 0/16 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [149-[open]-…](149-[open]-iptv-player-source-picker-dpad.md) | IPTV/Live player source picker has no D-pad; duplicate source control | P2 | Medium | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (display mode match shipped) | P2 | Medium | open | 2/5 · 1⏭️ · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [151-[open]-…](151-[open]-android-tv-exo-vod-stutter-no-cache.md) | ATV movie player (Exo VOD): 24fps judder + no back buffer / disk cache | P2 | Medium | open | 6/6 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -215,6 +215,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [193-[fixed]-…](fixed/193-[fixed]-nuvio-jsc-use-after-dispose-on-play.md) | Nuvio JSC SIGSEGV on play (deferred drop) | P1 | High | fixed | Complete · 4/4 · A 1/2 | — |
 | [194-[fixed]-…](fixed/194-[fixed]-android-tv-forja-sports-source-load-oom.md) | ATV Forja Sports source load OOM / process kill | P1 | High | fixed | Complete · 3/3 · A 1/2 | — |
 | [195-[open]-…](195-[open]-anime-hub-cold-catalog-load.md) | Anime hub cold catalog slow open | P2 | Medium | open | 2/5 · A 0/4 | — |
+| [196-[fixed]-…](fixed/196-[fixed]-desktop-window-size-resets-after-player.md) | Desktop window size resets after player close | P1 | High | fixed | Complete · 3/3 · A 2/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
