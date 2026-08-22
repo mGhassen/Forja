@@ -435,8 +435,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         return;
       }
 
-      // Prefer one working stream per plugin (next provider), then fill from
-      // batches so we still have up to 3 open attempts.
+      // Prefer one JS stream per plugin, then fill siblings from batches
+      // (no URL sniff — webstreaming-only). Up to 3 open attempts.
       openedPlayer = true;
       final candidates = <Map<String, dynamic>>[];
       final seenUrls = <String>{};
@@ -463,7 +463,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       if (candidates.length < 3) {
         for (final hit in hits) {
           if (candidates.length >= 3) break;
-          final more = await _collectProbedEngineStreams(
+          final more = await _collectEngineStreamsNoSniff(
             hit.batch,
             preferred: hit.stream,
             max: 3 - candidates.length,
@@ -557,41 +557,41 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
           movie: _s._movie,
           allowHostFallback: false,
         );
-        if (isAborted() || completer.isCompleted) return;
-        final streams = batch?.streams ?? const <Map<String, dynamic>>[];
-        if (streams.isEmpty) {
-          statusById[pluginId] = StreamProviderProbeStatus.failed;
-          publishProbes();
-          return;
-        }
-
-        messageNotifier.value =
-            'Probing ${_enginePluginLabel(pluginId)}…';
-        final pick = await _pickProbedEngineStream(
-          streams,
-          isAborted: isAborted,
-          orSettled: () => completer.isCompleted,
-        );
-        if (isAborted() || completer.isCompleted) return;
-        if (pick == null) {
-          statusById[pluginId] = StreamProviderProbeStatus.failed;
-          publishProbes();
-          return;
-        }
-
-        statusById[pluginId] = StreamProviderProbeStatus.success;
-        publishProbes();
-        hits.add(
-          _EngineAutoHit(
-            pluginId: pluginId,
-            stream: pick,
-            batch: List<Map<String, dynamic>>.from(streams),
-          ),
-        );
-        if (hits.length >= maxHits && !completer.isCompleted) {
-          completer.complete(List<_EngineAutoHit>.from(hits));
-          EngineService.instance.cancelPending();
-          _s._engineFetchGen++;
+        // Do not return from try on empty/fail — that skips fill() after finally.
+        if (!isAborted() && !completer.isCompleted) {
+          final streams = batch?.streams ?? const <Map<String, dynamic>>[];
+          if (streams.isEmpty) {
+            statusById[pluginId] = StreamProviderProbeStatus.failed;
+            publishProbes();
+          } else {
+            // Forja Auto: JS extract only. URL sniff is webstreaming-only.
+            final pick = await _firstPlayableEngineStream(
+              streams,
+              isAborted: isAborted,
+              orSettled: () => completer.isCompleted,
+            );
+            if (isAborted() || completer.isCompleted) {
+              // fall through to finally + fill gate
+            } else if (pick == null) {
+              statusById[pluginId] = StreamProviderProbeStatus.failed;
+              publishProbes();
+            } else {
+              statusById[pluginId] = StreamProviderProbeStatus.success;
+              publishProbes();
+              hits.add(
+                _EngineAutoHit(
+                  pluginId: pluginId,
+                  stream: pick,
+                  batch: List<Map<String, dynamic>>.from(streams),
+                ),
+              );
+              if (hits.length >= maxHits && !completer.isCompleted) {
+                completer.complete(List<_EngineAutoHit>.from(hits));
+                EngineService.instance.cancelPending();
+                _s._engineFetchGen++;
+              }
+            }
+          }
         }
       } catch (e) {
         debugPrint('[engine-auto] plugin $pluginId failed: $e');
@@ -624,8 +624,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     return result;
   }
 
-  /// First classify-able HTTP stream whose URL still responds (skip dead CDNs).
-  Future<Map<String, dynamic>?> _pickProbedEngineStream(
+  /// First classify-able stream from JS output — no URL sniff (webstreaming-only).
+  Future<Map<String, dynamic>?> _firstPlayableEngineStream(
     List<Map<String, dynamic>> streams, {
     required bool Function() isAborted,
     required bool Function() orSettled,
@@ -645,33 +645,13 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       if (check is StremioExternalLink || check is StremioResolveFailure) {
         continue;
       }
-      if (check is! StremioPlayable) {
-        // Magnet / debrid row — rare on Forja HTTP; take it without probe.
-        return stream;
-      }
-      final pid = catalogHttpPlayProviderId(stream);
-      final ok = await probeStreamSourceUrl(
-        check.streamUrl,
-        check.headers,
-        sourceKey: pid,
-      );
-      if (isAborted() || orSettled()) return null;
-      if (ok) {
-        debugPrint(
-          '[engine-auto] probe ok $pid '
-          '${check.streamUrl.length > 80 ? '${check.streamUrl.substring(0, 80)}…' : check.streamUrl}',
-        );
-        return stream;
-      }
-      debugPrint(
-        '[engine-auto] probe fail $pid — try next row',
-      );
+      return stream;
     }
     return null;
   }
 
-  /// Up to [max] HTTP rows from [batch] that still respond (preferred first).
-  Future<List<Map<String, dynamic>>> _collectProbedEngineStreams(
+  /// Sibling rows from the same JS batch — classify only, no sniff.
+  Future<List<Map<String, dynamic>>> _collectEngineStreamsNoSniff(
     List<Map<String, dynamic>> batch, {
     required Map<String, dynamic> preferred,
     required int max,
@@ -707,20 +687,9 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       if (check is StremioExternalLink || check is StremioResolveFailure) {
         continue;
       }
-      if (check is! StremioPlayable) continue;
-      if (!seenUrls.add(check.streamUrl)) continue;
-      final pid = catalogHttpPlayProviderId(stream);
-      final ok = await probeStreamSourceUrl(
-        check.streamUrl,
-        check.headers,
-        sourceKey: pid,
-      );
-      if (isAborted()) break;
-      if (!ok) {
-        debugPrint('[engine-auto] sibling probe fail $pid — skip');
-        continue;
+      if (check is StremioPlayable) {
+        if (!seenUrls.add(check.streamUrl)) continue;
       }
-      debugPrint('[engine-auto] sibling probe ok $pid');
       out.add(stream);
     }
     return out;

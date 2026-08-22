@@ -35,8 +35,9 @@ Future<bool> hubEngineAutoPlayEnabled([SettingsService? settings]) async {
 /// Movie RFC-063 Forja Auto for hub details (Asian Drama / Anime).
 ///
 /// Races enabled Forja HTTP plugins in [engineCategory] (`drama` / `anime`),
-/// probes the first playable URL, opens the standard player. Returns after the
-/// player closes (or after cancel / failure UI).
+/// takes the first classify-able JS stream (no URL sniff — webstreaming-only),
+/// opens the standard player. Returns after the player closes (or after
+/// cancel / failure UI).
 Future<void> runHubEngineAutoPlay({
   required BuildContext context,
   required Movie movie,
@@ -316,36 +317,37 @@ Future<_HubEngineAutoHit?> _raceHubEnginePlugins({
         kisskhEpisodeId: kisskhEpisodeId,
         allowHostFallback: false,
       );
-      if (isAborted() || completer.isCompleted) return;
-      final streams = batch?.streams ?? const <Map<String, dynamic>>[];
-      if (streams.isEmpty) {
-        statusById[pluginId] = StreamProviderProbeStatus.failed;
-        publishProbes();
-        return;
-      }
-
-      messageNotifier.value = 'Probing ${labelFor(pluginId)}…';
-      final pick = await _pickProbedEngineStream(
-        streams,
-        settings: settings,
-        profile: profile,
-        isAborted: isAborted,
-        orSettled: () => completer.isCompleted,
-      );
-      if (isAborted() || completer.isCompleted) return;
-      if (pick == null) {
-        statusById[pluginId] = StreamProviderProbeStatus.failed;
-        publishProbes();
-        return;
-      }
-
-      statusById[pluginId] = StreamProviderProbeStatus.success;
-      publishProbes();
-      if (!completer.isCompleted) {
-        completer.complete(
-          _HubEngineAutoHit(pluginId: pluginId, stream: pick),
-        );
-        EngineService.instance.cancelPending();
+      // Do not return from try on empty/fail — that skips fill() after finally.
+      if (!isAborted() && !completer.isCompleted) {
+        final streams = batch?.streams ?? const <Map<String, dynamic>>[];
+        if (streams.isEmpty) {
+          statusById[pluginId] = StreamProviderProbeStatus.failed;
+          publishProbes();
+        } else {
+          // Forja Auto: JS extract only. URL sniff is webstreaming-only.
+          final pick = await _firstPlayableEngineStream(
+            streams,
+            settings: settings,
+            profile: profile,
+            isAborted: isAborted,
+            orSettled: () => completer.isCompleted,
+          );
+          if (isAborted() || completer.isCompleted) {
+            // fall through to finally + fill gate
+          } else if (pick == null) {
+            statusById[pluginId] = StreamProviderProbeStatus.failed;
+            publishProbes();
+          } else {
+            statusById[pluginId] = StreamProviderProbeStatus.success;
+            publishProbes();
+            if (!completer.isCompleted) {
+              completer.complete(
+                _HubEngineAutoHit(pluginId: pluginId, stream: pick),
+              );
+              EngineService.instance.cancelPending();
+            }
+          }
+        }
       }
     } catch (e) {
       debugPrint('[hub-engine-auto] plugin $pluginId failed: $e');
@@ -376,7 +378,8 @@ Future<_HubEngineAutoHit?> _raceHubEnginePlugins({
   return result;
 }
 
-Future<Map<String, dynamic>?> _pickProbedEngineStream(
+/// First classify-able stream from JS — no URL sniff (webstreaming-only).
+Future<Map<String, dynamic>?> _firstPlayableEngineStream(
   List<Map<String, dynamic>> streams, {
   required SettingsService settings,
   required PlaybackProfile profile,
@@ -398,17 +401,7 @@ Future<Map<String, dynamic>?> _pickProbedEngineStream(
     if (check is StremioExternalLink || check is StremioResolveFailure) {
       continue;
     }
-    if (check is! StremioPlayable) {
-      return stream;
-    }
-    final pid = catalogHttpPlayProviderId(stream);
-    final ok = await probeStreamSourceUrl(
-      check.streamUrl,
-      check.headers,
-      sourceKey: pid,
-    );
-    if (isAborted() || orSettled()) return null;
-    if (ok) return stream;
+    return stream;
   }
   return null;
 }
