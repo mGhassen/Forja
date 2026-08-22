@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **20 / 20** fix · **0 / 16** acceptance |
-| **Current slice** | Live cache-pause off + 1MiB back-buffer + longer ffmpeg reconnect; device smoke outstanding |
+| **Progress** | **21 / 21** fix · **0 / 17** acceptance |
+| **Current slice** | Live continuity proxy + macOS/Linux software decode; device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -41,6 +41,7 @@
 | 18 | I148-T18 | Live Stable: hold VT / hw decode fails (no software recreate) — CDN chunk close → corrupt TS is expected; empty-cache detectors still recover dead feeds | ✅ |
 | 19 | I148-T19 | Stop fake `working` logs on empty cache; grace only while feeding/cushion; empty pause soft-reopens at 5s + Buffering chrome | ✅ |
 | 20 | I148-T20 | Live MediaKit: `cache-pause=no`, `demuxer-max-back-bytes=1MiB`, `reconnect_delay_max=30` — CDN socket closes must not hard-pause; underrun freezes without back-buffer replay | ✅ |
+| 21 | I148-T21 | Live MediaKit continuity proxy (localhost TS relay) + macOS/Linux live software decode — CDN closes never reach mpv; no VT death spiral every ~15s | ✅ |
 
 ---
 
@@ -64,12 +65,15 @@
 | 14 | I148-A14 | Genuinely empty cache + Buffering ≥12s still reconnects (hard wall still works when cushion is gone) | ⬜ |
 | 15 | I148-A15 | After repeated CDN `ends prematurely`: no `silent self-pause` hard recovery loop; log shows `self-pause` hold / live VT hold; picture resumes without recreate thrash | ⬜ |
 | 16 | I148-A16 | Live MediaKit: channel plays through multiple `ends prematurely` without visible pause/reconnect thrash; no silent ~15s replay on underrun | ⬜ |
+| 17 | I148-A17 | Live MediaKit logs `[IPTV Proxy] upstream reconnected` on CDN close while picture keeps playing (no mpv `ends prematurely` / self-pause recovery) | ⬜ |
 
 ---
 
 ## Summary
 
 **Symptom (1.3.135+):** A live IPTV channel plays normally, then after ~1–2 minutes the picture stalls, the buffering spinner shows `Reconnecting… (attempt 1/8)`, and playback may resume on its own. The upstream feed is often still alive.
+
+> **Status update (I148-T21).** ffmpeg-in-mpv reconnect could not absorb Xtream socket closes: buffer dumped, VT failed, soft reopen every ~15s. Live MediaKit now opens a **localhost continuity proxy**; mpv never sees upstream EOF. macOS/Linux live forces software decode (Windows already did).
 
 > **Status update (I148-T20).** Live `cache-pause=yes` made every Xtream HTTP socket close a hard pause (reporter: stop every ~70MB). Reverted to `cache-pause=no` with `demuxer-max-back-bytes=1MiB` (freeze without replay) and `reconnect_delay_max=30` so ffmpeg can bridge closes silently.
 

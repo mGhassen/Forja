@@ -6,7 +6,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   bool get _useSoftwareDecode =>
       _s._softwareDecodeForced ||
       _s._androidMediaKitSafeMode ||
-      _s._windowsSoftwareDecode;
+      _s._windowsSoftwareDecode ||
+      _s._desktopLiveSoftwareDecode;
 
   void _initPlayerInstances() {
     _s._videoEpoch++;
@@ -315,9 +316,23 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         'User-Agent': _IptvPtPlayerScreenState._ua,
         ...src.headers,
       };
-      await player.open(
-        Media(src.url, httpHeaders: headers),
-      );
+      var playUrl = src.url;
+      // Live MediaKit: mpv must not see CDN socket closes. Local continuity
+      // proxy reconnects upstream while the loopback pipe stays open.
+      if (_livePlaybackProfile) {
+        final proxy = _s._liveContinuityProxy ??= IptvLiveContinuityProxy();
+        final local = await proxy.start(
+          upstreamUrl: src.url,
+          headers: headers,
+        );
+        playUrl = local.toString();
+        await player.open(Media(playUrl));
+      } else {
+        await _s._liveContinuityProxy?.stop();
+        await player.open(
+          Media(playUrl, httpHeaders: headers),
+        );
+      }
       await player.play();
       if (_s._atvMediaKit) {
         unawaited(_tuneAtvMediaKitAfterOpen());
@@ -1696,6 +1711,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     while (_recoveryInFlight) {
       await Future.delayed(const Duration(milliseconds: 50));
     }
+    await _s._liveContinuityProxy?.stop();
+    _s._liveContinuityProxy = null;
     await _disposePlayer();
   }
 

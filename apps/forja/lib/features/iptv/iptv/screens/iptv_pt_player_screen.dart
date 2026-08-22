@@ -27,6 +27,7 @@ import 'package:forja/features/iptv/iptv/channel_guide/iptv_channel_search_overl
 import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
+import 'package:forja/features/iptv/iptv/iptv_live_continuity_proxy.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/iptv/providers/iptv_player_providers.dart';
@@ -332,8 +333,18 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// the last frame with no reconnect banner. Force software from boot.
   bool get _windowsSoftwareDecode => !kIsWeb && Platform.isWindows;
 
+  /// macOS / Linux live: VideoToolbox / VAAPI one-shots after every CDN socket
+  /// close and collapses playback. Software decode + continuity proxy.
+  bool get _desktopLiveSoftwareDecode =>
+      !widget.vodPlayback &&
+      !kIsWeb &&
+      (Platform.isMacOS || Platform.isLinux);
+
   /// Probed after each open - pure-live feeds must never be seek()'d.
   bool _streamSeekable = false;
+
+  /// Live MediaKit: localhost TS relay so CDN socket closes never hit mpv.
+  IptvLiveContinuityProxy? _liveContinuityProxy;
 
   StreamSubscription? _posSub, _playingSub, _bufferingSub, _errorSub, _logSub;
   StreamSubscription? _durSub, _bufferSub;
@@ -645,7 +656,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     if (portal != null) _epgCache = IptvGuideEpgCache(portal);
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_onRemoteControlsActivity);
-    if (_windowsSoftwareDecode) {
+    if (_windowsSoftwareDecode || _desktopLiveSoftwareDecode) {
       _softwareDecodeForced = true;
     }
     _initOrientationAndChrome();
@@ -863,7 +874,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
     _exoBackend = wantExo;
     _androidMediaKitSafeMode = !_exoBackend && !PlatformInfo.isAndroidTv;
-    _softwareDecodeForced = _windowsSoftwareDecode;
+    _softwareDecodeForced =
+        _windowsSoftwareDecode || _desktopLiveSoftwareDecode;
     _player = null;
     _controller = null;
     _exoViewId = null;
