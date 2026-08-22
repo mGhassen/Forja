@@ -418,7 +418,7 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   bool get _letterJumpEnabled =>
-      !_searchOpen && !iptvUseTvFocus(context) && !_tvFloatingReorder;
+      !iptvLeanbackOnly(context) && !_searchOpen && !_tvFloatingReorder;
 
   void _letterJumpCategory(int index) {
     final cats = _filteredCategories;

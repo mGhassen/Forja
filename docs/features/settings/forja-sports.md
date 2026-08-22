@@ -15,7 +15,7 @@ On-device Sports matcher (Sportio-style): the **same** Live Matches schedule as 
 
 - **Stream resolve** — **Sniff** (embed WebView player, default) or **Engine** (Forja live plugins → native player when GOAT unlock succeeds; otherwise opens the embed player). Dropdown under **Live stream resolve**; a **Sniff** / **Engine** pill on Live Matches mirrors the choice.
 - **Forja plugins** — built-in pack expansion with per-plugin toggles (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, …).
-- **Catalog** — separate group below **Live plugins** for schedule feeds (TimStreams, StreamFree, …). **ESPN** toggle here gates the Rust scoreboard merge (same data as Forja Sports), not a separate JS fetch.
+- **Catalog** — schedule toggles (TimStreams, StreamFree, WatchFooty, Streamic, ESPN). Checked catalogs appear as chips on Live Matches **All** / **Forja Live** and load schedule rows. **Live plugins** toggles are for stream resolve only.
 - Browse the same sports catalog as All, **merged with ESPN** for the same day (clean home/away for matching; ESPN-only games still appear)
 - Pick the Xtream portal from top-right **Portals** (same IPTV panel)
 - Open a match → right-side panel opens immediately while Forja sniffs your portal; ranked channels appear as they land (logo, short name, category, tier badge) → pick one to play (failover keeps the rest in the player Source menu with the same layout). Re-opening the same match within **30 minutes** reuses the last match result (no second portal search)

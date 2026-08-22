@@ -90,6 +90,23 @@ class ListLetterJumpMatcher {
     final normalized = _normalizedLabel(label);
     return normalized.isNotEmpty && normalized.startsWith(prefix);
   }
+
+  /// [KeyEvent.character] is often null on desktop without a focused text field.
+  static String? letterFromKeyDown(KeyDownEvent event) {
+    final char = event.character;
+    if (char != null && char.isNotEmpty) {
+      for (final codeUnit in char.codeUnits) {
+        final ch = String.fromCharCode(codeUnit).toLowerCase();
+        if (ch.length == 1 && ch != ch.toUpperCase()) return ch;
+      }
+    }
+    final label = event.logicalKey.keyLabel;
+    if (label.length == 1) {
+      final ch = label.toLowerCase();
+      if (ch != ch.toUpperCase()) return ch;
+    }
+    return null;
+  }
 }
 
 /// Desktop: hover a vertical list and type letters to scroll by name prefix.
@@ -140,6 +157,10 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
     _handlerBound = false;
   }
 
+  /// [KeyEvent.character] is often null on desktop without a focused text field.
+  static String? _letterFromKeyDown(KeyDownEvent event) =>
+      ListLetterJumpMatcher.letterFromKeyDown(event);
+
   bool _onKey(KeyEvent event) {
     if (!widget.enabled || !_hovered) return false;
     if (event is! KeyDownEvent) return false;
@@ -151,10 +172,8 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
       return false;
     }
 
-    final char = event.character;
-    if (char == null || char.length != 1) return false;
-    final letter = char.toLowerCase();
-    if (letter == letter.toUpperCase()) return false;
+    final letter = _letterFromKeyDown(event);
+    if (letter == null) return false;
 
     final index = _matcher.nextIndex(
       letter: letter,
@@ -169,6 +188,7 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
+      hitTestBehavior: HitTestBehavior.translucent,
       onEnter: (_) {
         _hovered = true;
         _bindHandler();

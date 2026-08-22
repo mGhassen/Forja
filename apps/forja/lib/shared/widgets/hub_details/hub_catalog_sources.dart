@@ -13,9 +13,14 @@ import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
 /// Whether hub details should show the white link Play (catalog Sources).
+///
+/// While [settingsPlaybackProvider] is still loading, uses the same optimistic
+/// default as movie/TV [DetailsPlaySources.pending] (Forja engine on).
 bool hubHasCatalogPanelSources(SettingsPlaybackSnapshot? snap) {
-  if (snap == null) return false;
   final caps = PlatformPlayback.capabilities;
+  if (snap == null) {
+    return caps.playSourceEngine;
+  }
   final torrent = snap.playSourceTorrent &&
       ((caps.playSourceTorrent && caps.builtinTorrentSearch) ||
           (!caps.localTorrentEngine && snap.playSourceTorrent));

@@ -118,6 +118,13 @@ mixin _LiveMatchesForjaLive
     unawaited(_loadForjaLiveCatalogLazy());
   }
 
+  void _onEngineCatalogSettingsChanged() {
+    if (!_usesForjaLiveLazyCatalog) return;
+    if (!(this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible) return;
+    _resetForjaLiveCatalogState();
+    _kickForjaLiveLazyCatalog();
+  }
+
   Future<bool> _isEspnCatalogEnabled() async {
     await EngineService.instance.ensureBundledInstalled();
     final packs = await EngineService.instance.listPacks();

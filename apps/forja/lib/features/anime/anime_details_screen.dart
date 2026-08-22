@@ -758,10 +758,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         tvFocus && isUpcoming ? _focusDetailsBack : heroFocusUp;
     final listExtra = HubListStatusHero.extraFocusSlots(_listMenuOpen);
     final playbackSnap = ref.watch(settingsPlaybackProvider).valueOrNull;
-    final catalogMovie = tmdb?.movie;
-    final showCatalogSources = catalogMovie != null &&
-        catalogMovie.id > 0 &&
-        hubHasCatalogPanelSources(playbackSnap);
+    final showCatalogSources = hubHasCatalogPanelSources(playbackSnap);
     var tvIndex = 0;
     final playIndex = isUpcoming ? null : tvIndex++;
     final sourcesIndex =
@@ -918,7 +915,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
                       enabled: _episodes.isNotEmpty,
                       onPlay: _playSelected,
                       onOpenSources: showCatalogSources
-                          ? () => _openCatalogSources(catalogMovie)
+                          ? () => _openCatalogSources(_playMovieFor(tmdb))
                           : null,
                       focusNode:
                           policy.heroPlayAutoFocus ? _heroPlayFocus : null,

@@ -1230,7 +1230,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   Widget _buildGroupList({ValueChanged<String>? onPick}) {
     final groups = widget.guide.groups;
     return ListLetterJumpScope(
-      enabled: !iptvUseTvFocus(context),
+      enabled: !iptvLeanbackOnly(context),
       itemCount: groups.length,
       labelAt: (i) => groups[i].name,
       onJump: (i) => _focusGroupAt(i, animateScroll: true),
@@ -1349,7 +1349,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     }
 
     return ListLetterJumpScope(
-      enabled: !iptvUseTvFocus(context),
+      enabled: !iptvLeanbackOnly(context),
       itemCount: channels.length,
       labelAt: (i) => channels[i].name,
       onJump: _jumpToChannelByLetter,

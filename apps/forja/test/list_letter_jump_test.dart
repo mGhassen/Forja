@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/widgets/list_letter_jump_scope.dart';
 
@@ -37,6 +38,16 @@ void main() {
       expect(jump('u', m), 2);
       m.reset();
       expect(jump('f', m), 0);
+    });
+
+    test('letterFromKeyDown uses keyLabel when character is null', () {
+      final event = KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.keyF,
+        logicalKey: LogicalKeyboardKey.keyF,
+        character: null,
+        timeStamp: Duration.zero,
+      );
+      expect(ListLetterJumpMatcher.letterFromKeyDown(event), 'f');
     });
   });
 }

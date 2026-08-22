@@ -160,24 +160,16 @@ class EngineService {
     return null;
   }
 
-  /// Enabled catalog plugins: paired live_sport toggles + standalone ESPN catalog.
+  /// Enabled schedule catalogs — Settings → Forja Sports → **Catalog** toggles only.
   Future<List<EnginePlugin>> listEnabledLiveCatalogPlugins() async {
     await ensureBundledInstalled();
-    final enabledLiveSport = {
-      for (final p in await listEnabledLivePlugins()) p.id,
-    };
     final out = <EnginePlugin>[];
     const serverTabCatalogIds = {'catalog-streamed', 'catalog-ppv'};
     for (final pack in await listPacks()) {
       for (final p in pack.plugins) {
         if (!p.isLiveCatalog || !p.isHttp || !p.enabled) continue;
         if (serverTabCatalogIds.contains(p.id)) continue;
-        final providerId = (p.config['providerId'] ?? '').toString().trim();
-        if (providerId.startsWith('live-')) {
-          if (enabledLiveSport.contains(providerId)) out.add(p);
-        } else {
-          out.add(p);
-        }
+        out.add(p);
       }
     }
     out.sort((a, b) => a.name.compareTo(b.name));

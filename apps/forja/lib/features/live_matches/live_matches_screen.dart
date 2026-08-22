@@ -201,6 +201,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   @override
   void initState() {
     super.initState();
+    EngineService.changeNotifier.addListener(_onEnginePackChanged);
     TvHeroActions.bind(
       _tabId,
       enterFromNavFocus: () {
@@ -230,8 +231,18 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     }
   }
 
+  void _onEnginePackChanged() {
+    if (!mounted) return;
+    if (_server != _LiveMatchesServer.all &&
+        _server != _LiveMatchesServer.forjaLive) {
+      return;
+    }
+    (this as _LiveMatchesForjaLive)._onEngineCatalogSettingsChanged();
+  }
+
   @override
   void dispose() {
+    EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     _IptvSportsChannelsPanel.dismiss();
     _timelineLiveTick?.cancel();
     _refreshFocusNode.dispose();
