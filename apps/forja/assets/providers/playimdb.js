@@ -12,9 +12,9 @@ function extract(ctx) {
   };
   var tmdbId = String(ctx.tmdbId || '').trim();
   if (!tmdbId) return Promise.resolve([]);
-  var isTv = ctx.type === 'tv' || ctx.type === 'series';
-  var mediaType = isTv ? 'tv' : 'movie';
-  if (isTv && (!ctx.season || !ctx.episode)) return Promise.resolve([]);
+  var isMovie = ctx.type === 'movie';
+  var mediaType = isMovie ? 'movie' : 'tv';
+  if (!isMovie && (!ctx.season || !ctx.episode)) return Promise.resolve([]);
 
   function qualityFromName(fileName) {
     var n = String(fileName || '').toLowerCase();
@@ -41,7 +41,7 @@ function extract(ctx) {
   }
 
   var url = api + (api.indexOf('?') >= 0 ? '&' : '?') + 'tmdb=' + encodeURIComponent(tmdbId) + '&type=' + mediaType;
-  if (isTv) {
+  if (!isMovie) {
     url += '&season=' + encodeURIComponent(String(ctx.season)) + '&episode=' + encodeURIComponent(String(ctx.episode));
   }
 

@@ -61,6 +61,7 @@ class EngineRuntime {
 
   /// Stop shared + every live fork (panel close / Cancel / tab switch).
   static void abortAll() {
+    OnlyKDramaCfSession.instance.cancelPending();
     instance.abortPendingWork();
     for (final fork in List<EngineRuntime>.of(_liveForks)) {
       fork.abortPendingWork();

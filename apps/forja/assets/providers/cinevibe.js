@@ -5,7 +5,7 @@ function extract(ctx) {
   var fingerprint = cfg.fingerprint || 'eyJzY3JlZW4iOiIzNjB4ODA2eDI0Iiwi';
   var session = cfg.session || 'pjght152dw2rb.ssst4bzleDI0Iiwibv78';
   var ua = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36';
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
 
   if (isTv) return Promise.resolve([]);
 

@@ -59,7 +59,7 @@ function extract(ctx) {
   }
 
   function tmdbTitle() {
-    var kind = ctx.type === 'tv' ? 'tv' : 'movie';
+    var kind = ctx.type === 'movie' ? 'movie' : 'tv';
     return getJson(
       'https://api.themoviedb.org/3/' +
         kind +
@@ -73,7 +73,7 @@ function extract(ctx) {
         Accept: 'application/json',
       },
     ).then(function (d) {
-      return ctx.type === 'tv' ? d.name : d.title;
+      return ctx.type === 'movie' ? d.title : d.name;
     });
   }
 
@@ -140,7 +140,7 @@ function extract(ctx) {
         buildHeaders(ott, { Lastep: '', Usertoken: '' }),
       ).then(function (postData) {
         var targetId = contentId;
-        if (ctx.type === 'tv') {
+        if (ctx.type !== 'movie') {
           return getAllEpisodes(apiBase, ott, contentId, postData).then(function (episodes) {
             var hit = episodes.filter(function (ep) {
               return ep && ep.s === (ctx.season || 1) && ep.ep === (ctx.episode || 1);

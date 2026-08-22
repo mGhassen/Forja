@@ -5,7 +5,7 @@ function extract(ctx) {
   var uiToken = String(cfg.uiToken || '').trim();
   var ossGroup = cfg.ossGroup ? String(cfg.ossGroup) : '';
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
 
   if (!uiToken) return Promise.resolve([]);
 

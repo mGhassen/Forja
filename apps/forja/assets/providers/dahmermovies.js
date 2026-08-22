@@ -4,7 +4,7 @@ function extract(ctx) {
   var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
   var allowed = [2160, 1440, 1080, 720, 480];
 
   ctx.log('start tmdb=' + ctx.tmdbId + ' type=' + (isTv ? 'tv' : 'movie'));

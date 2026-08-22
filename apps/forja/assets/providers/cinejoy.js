@@ -12,7 +12,7 @@ function extract(ctx) {
     Referer: origin + '/',
     'User-Agent': ua,
   };
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
 
   function validate(j) {
     if (!j || j.status !== 200) return null;

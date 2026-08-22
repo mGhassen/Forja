@@ -7,7 +7,7 @@ function extract(ctx) {
   var ua = 'Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0';
   // ninstream and similar CDNs whitelist senshi.live — keep Referer fixed.
   var hdrs = { 'User-Agent': ua, Referer: base + '/', Origin: base, Accept: 'application/json,*/*' };
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
   var epNum = isTv ? ctx.episode || 1 : 1;
 
   function fetchJson(url) {

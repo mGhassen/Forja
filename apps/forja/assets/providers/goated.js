@@ -12,7 +12,7 @@ function extract(ctx) {
   };
   var tmdbId = String(ctx.tmdbId || '');
   if (!tmdbId) return Promise.resolve([]);
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
 
   function solve(host) {
     return ctx.fetch(host + '/api/challenge', { headers: headers }).then(function (r) {

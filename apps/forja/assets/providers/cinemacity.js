@@ -4,7 +4,7 @@ function extract(ctx) {
   var tmdbKey = cfg.tmdbKey || '1865f43a0549ca50d341dd9ab8b29f49';
   var cookie = cfg.cookie || 'dle_user_id=32729; dle_password=894171c6a8dab18ee594d5c652009a35;';
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
 
   function hdrs(extra) {
     return Object.assign({ 'User-Agent': ua, Cookie: cookie, Referer: base + '/' }, extra || {});

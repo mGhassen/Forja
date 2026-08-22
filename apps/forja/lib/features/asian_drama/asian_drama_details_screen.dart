@@ -17,6 +17,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
 import 'package:forja/shared/widgets/hub_list_status_hero.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
@@ -196,29 +197,79 @@ class _AsianDramaDetailsScreenState
     );
   }
 
+  Movie _playMovieFor(KdramaDetails det, RichMediaDetails? tmdb) {
+    final m = tmdb?.movie;
+    if (m != null && m.id > 0) return m;
+    return Movie(
+      id: -det.id,
+      title: det.title,
+      posterPath: det.cover,
+      backdropPath: det.cover,
+      voteAverage: 0,
+      releaseDate: det.year ?? '',
+      overview: det.description,
+      mediaType: 'asian_drama',
+      numberOfEpisodes: det.episodes.length,
+    );
+  }
+
+  Future<void> _afterPlayClosed() async {
+    await _refreshProgress();
+    _loadWatchedEpisodes();
+    if (!mounted) return;
+    if (_detailsScrollController.hasClients) {
+      _detailsScrollController.jumpTo(0);
+    }
+    ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
+      _heroPlayFocus,
+      isMounted: () => mounted,
+    );
+  }
+
   void _play(KdramaEpisode ep, {Duration? startPosition}) {
     final det = _details!;
     final enrich =
         ref.read(asianDramaTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
     HubListFollow.markWatchingOnPlay(_followTarget(det, enrich?.rich));
-    openAsianDramaPlayer(
+    unawaited(_playEpisode(det, ep, enrich?.rich, startPosition: startPosition));
+  }
+
+  Future<void> _playEpisode(
+    KdramaDetails det,
+    KdramaEpisode ep,
+    RichMediaDetails? tmdb, {
+    Duration? startPosition,
+  }) async {
+    // Movie RFC-063: Forja + Auto + Webstreaming off → race drama plugins.
+    if (await hubEngineAutoPlayEnabled()) {
+      if (!mounted) return;
+      final isTv = (tmdb?.movie.mediaType ?? 'tv') != 'movie';
+      await runHubEngineAutoPlay(
+        context: context,
+        movie: _playMovieFor(det, tmdb),
+        engineCategory: 'drama',
+        season: isTv ? 1 : null,
+        episode: isTv ? ep.number.round() : null,
+        kisskhId: det.id,
+        kisskhEpisodeId: ep.id,
+        startPosition: startPosition,
+        loadingSubtitle: 'EP ${ep.displayNumber}',
+      );
+      if (!mounted) return;
+      await _afterPlayClosed();
+      return;
+    }
+
+    if (!mounted) return;
+    await openAsianDramaPlayer(
       context,
       drama: det.toCard(),
       episode: ep,
       allEpisodes: det.episodes,
       startPosition: startPosition,
-    ).then((_) async {
-      await _refreshProgress();
-      _loadWatchedEpisodes();
-      if (!mounted) return;
-      if (_detailsScrollController.hasClients) {
-        _detailsScrollController.jumpTo(0);
-      }
-      ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
-        _heroPlayFocus,
-        isMounted: () => mounted,
-      );
-    });
+    );
+    if (!mounted) return;
+    await _afterPlayClosed();
   }
 
   void _openCatalogSources(Movie movie) {

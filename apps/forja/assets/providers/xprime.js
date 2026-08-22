@@ -14,7 +14,7 @@ function extract(ctx) {
     Origin: origin,
     Referer: origin + '/',
   };
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
 
   function getJson(url, extra) {
     return ctx.fetch(url, { headers: Object.assign({}, headers, extra || {}) }).then(function (r) {

@@ -8,7 +8,7 @@ function extract(ctx) {
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
   var headers = { 'User-Agent': ua, Accept: 'text/html,application/xhtml+xml,*/*' };
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
 
   function fetchText(url, extraHeaders) {
     return ctx.fetch(url, { headers: Object.assign({}, headers, extraHeaders || {}) }).then(function (r) {

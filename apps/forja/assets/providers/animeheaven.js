@@ -5,7 +5,7 @@ function extract(ctx) {
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
   var hdrs = { 'User-Agent': ua, Accept: 'text/html,*/*', Referer: base + '/' };
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
   var epNum = isTv ? ctx.episode || 1 : 1;
 
   function fetchText(url, extra) {

@@ -10,7 +10,7 @@ function extract(ctx) {
     'Accept-Language': 'en-US,en;q=0.9',
     Referer: base + '/',
   };
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
   var title = String(ctx.title || '').trim();
   var year = String(ctx.year || '').trim();
 

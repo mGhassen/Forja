@@ -9,11 +9,7 @@ function extract(ctx) {
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
   var hdrs = { 'User-Agent': ua, Cookie: '__ddg2_=1234567890', Referer: base + '/' };
   // Anime Sources pass type=anime — must NOT fall through to the movie/TMDB branch.
-  var isEpisodic =
-    ctx.type === 'tv' ||
-    ctx.type === 'anime' ||
-    ctx.type === 'drama' ||
-    ctx.type === 'series';
+  var isEpisodic = ctx.type !== 'movie';
   var kwikOrigin = 'https://kwik.si';
 
   function fetchText(url, useProxy) {

@@ -15,7 +15,7 @@ function extract(ctx) {
     hash256: cfg.hash256 || '',
     packagename: appId,
   });
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
   var CryptoJS = ctx.crypto;
 
   function sign(urlStr) {

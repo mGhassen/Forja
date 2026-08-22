@@ -9,7 +9,7 @@ function extract(ctx) {
   var playUa =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
   var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
 
   function apiHeaders(extra) {
     return Object.assign(

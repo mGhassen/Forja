@@ -6,7 +6,7 @@ function extract(ctx) {
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
   var tmdbId = String(ctx.tmdbId);
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
   var season = ctx.season || 1;
   var episode = ctx.episode || 1;
   var headers = {

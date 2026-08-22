@@ -5,7 +5,7 @@ function extract(ctx) {
   var jikan = cfg.jikan || 'https://api.jikan.moe/v4/anime';
   var armBase = (cfg.armBase || 'https://arm.haglund.dev/api/v2').replace(/\/$/, '');
   var tmdbKey = cfg.tmdbKey || '1865f43a0549ca50d341dd9ab8b29f49';
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
   var epNum = isTv ? ctx.episode || 1 : 1;
 
   function bytesToHex(bytes) {

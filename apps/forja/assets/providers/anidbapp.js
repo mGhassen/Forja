@@ -21,7 +21,7 @@ function extract(ctx) {
     'sec-fetch-dest': 'empty',
     'sec-fetch-mode': 'cors',
   });
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
   var epNum = isTv ? ctx.episode || 1 : 1;
 
   function fetchText(url, extra) {

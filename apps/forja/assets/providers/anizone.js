@@ -7,7 +7,7 @@ function extract(ctx) {
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
   var headers = { 'User-Agent': ua, Referer: base + '/' };
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
 
   function getText(url, extra) {
     return ctx.fetch(url, { headers: Object.assign({}, headers, extra || {}) }).then(function (r) {

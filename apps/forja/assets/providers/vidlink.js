@@ -11,7 +11,7 @@ function extract(ctx) {
     Referer: origin + '/',
     Origin: origin,
   };
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
   var tmdbId = String(ctx.tmdbId);
   var MWVAULT_PROXY = cfg.proxy;
   if (!MWVAULT_PROXY) return Promise.resolve([]);

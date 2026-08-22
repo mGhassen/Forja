@@ -5,8 +5,7 @@ function extract(ctx) {
     : ['https://www.miruro.tv', 'https://www.miruro.to', 'https://www.miruro.bz'];
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
-  var isEpisodic =
-    ctx.type === 'tv' || ctx.type === 'anime' || ctx.type === 'drama' || ctx.type === 'series';
+  var isEpisodic = ctx.type !== 'movie';
   var epNum = isEpisodic
     ? Number(ctx.mappedEpisode || ctx.episode || 1) || 1
     : 1;

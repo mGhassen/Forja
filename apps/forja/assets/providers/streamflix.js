@@ -10,7 +10,7 @@ function extract(ctx) {
   };
   var title = String(ctx.title || '').trim();
   if (!title) return Promise.resolve([]);
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
 
   function getJson(url) {
     return ctx.fetch(url, { headers: headers }).then(function (r) {

@@ -7,7 +7,7 @@ function extract(ctx) {
   var cinemetaUrl = cfg.cinemetaUrl || 'https://v3-cinemeta.strem.io/meta';
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   var hdrs = { 'User-Agent': ua, Accept: 'application/json, text/plain, */*', Origin: base, Referer: base + '/' };
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
 
   function fetchJson(url, extra) {
     return ctx.fetch(url, { headers: Object.assign({}, hdrs, extra || {}) })

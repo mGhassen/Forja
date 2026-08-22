@@ -14,7 +14,7 @@ function extract(ctx) {
   var title = String(ctx.title || '').replace(/\s+S\d+$/i, '').trim();
   var year = String(ctx.year || '').substring(0, 4);
   if (!title) return Promise.resolve([]);
-  var isTv = ctx.type === 'tv';
+  var isTv = ctx.type !== 'movie';
   var season = isTv ? ctx.season || 1 : 0;
   var episode = isTv ? ctx.episode || 1 : 0;
 

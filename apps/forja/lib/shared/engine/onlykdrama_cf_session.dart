@@ -1,22 +1,25 @@
 import 'dart:async';
-import 'dart:ui' show Size;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 
-/// Browser-session transport for onlykdrama.shop (Cloudflare-gated).
+/// Cloudflare transport for onlykdrama.shop.
 ///
-/// Plain engine HTTP gets the CF interstitial; a headless WebView clears the
-/// challenge then same-origin `fetch()`es with cookies (Miruro pattern).
+/// Headless alone cannot clear this site's managed/Turnstile challenge
+/// (stays on "Just a moment…" → every fetch 403). Unlock once with a real
+/// on-screen WebView (auto or click), cookies land in [CookieManager], then
+/// a headless session reuses them for same-origin `fetch()`.
 class OnlyKDramaCfSession {
   OnlyKDramaCfSession._();
   static final OnlyKDramaCfSession instance = OnlyKDramaCfSession._();
 
   static const origin = 'https://onlykdrama.shop';
   static const _ua =
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-      '(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 '
+      '(KHTML, like Gecko) Version/18.2 Safari/605.1.15';
 
   ForjaHeadlessInAppWebView? _web;
   InAppWebViewController? _controller;
@@ -103,8 +106,7 @@ class OnlyKDramaCfSession {
     if (hit == null || epoch != _epoch) return null;
 
     final lower = hit.body.toLowerCase();
-    final challenged =
-        hit.status == 403 ||
+    final challenged = hit.status == 403 ||
         hit.status == 503 ||
         lower.contains('just a moment') ||
         lower.contains('cf-browser-verification') ||
@@ -113,7 +115,7 @@ class OnlyKDramaCfSession {
       await _disposeWebView();
       if (epoch != _epoch) return null;
       try {
-        await _ensureBooted();
+        await _ensureBooted(forceUnlock: true);
       } catch (_) {
         return hit;
       }
@@ -129,14 +131,70 @@ class OnlyKDramaCfSession {
     return hit;
   }
 
-  Future<void> _ensureBooted() {
-    if (_boot != null && _controller != null) return _boot!;
-    _boot = _bootWebView();
+  Future<void> _ensureBooted({bool forceUnlock = false}) {
+    if (!forceUnlock && _boot != null && _controller != null) return _boot!;
+    _boot = _bootWebView(forceUnlock: forceUnlock);
     return _boot!;
   }
 
-  Future<void> _bootWebView() async {
+  Future<void> _bootWebView({required bool forceUnlock}) async {
     final bootEpoch = _epoch;
+    try {
+      if (forceUnlock || !await _hasClearanceCookie()) {
+        await _unlockViaVisibleWebView(epoch: bootEpoch);
+      } else if (kDebugMode) {
+        debugPrint('[OnlyKDramaCf] reusing cf_clearance cookie');
+      }
+      if (bootEpoch != _epoch) throw StateError('OnlyKDramaCf cancelled');
+      await _startHeadless(epoch: bootEpoch);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[OnlyKDramaCf] boot failed: $e');
+      await _disposeWebView();
+      rethrow;
+    }
+  }
+
+  Future<bool> _hasClearanceCookie() async {
+    try {
+      final cookies =
+          await CookieManager.instance().getCookies(url: WebUri(origin));
+      return cookies.any(
+        (c) => c.name == 'cf_clearance' && c.value.isNotEmpty,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _unlockViaVisibleWebView({required int epoch}) async {
+    final ctx = shellOverlayNavigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) {
+      throw StateError('OnlyKDramaCf: no UI context to unlock Cloudflare');
+    }
+    if (kDebugMode) {
+      debugPrint('[OnlyKDramaCf] opening visible WebView to clear CF');
+    }
+
+    final result = await showDialog<bool>(
+      context: ctx,
+      barrierDismissible: true,
+      useRootNavigator: true,
+      builder: (dialogCtx) => _OnlyKDramaCfUnlockDialog(
+        origin: origin,
+        userAgent: _ua,
+        onSuccess: () {
+          if (dialogCtx.mounted) Navigator.of(dialogCtx).pop(true);
+        },
+      ),
+    );
+
+    if (epoch != _epoch) throw StateError('OnlyKDramaCf cancelled');
+    if (result != true) {
+      throw StateError('OnlyKDramaCf: unlock dismissed or failed');
+    }
+  }
+
+  Future<void> _startHeadless({required int epoch}) async {
     final ready = Completer<void>();
     _bootReady = ready;
     void markReady() {
@@ -176,25 +234,28 @@ class OnlyKDramaCfSession {
 
     try {
       await _web!.run();
-      if (bootEpoch != _epoch) throw StateError('OnlyKDramaCf cancelled');
+      if (epoch != _epoch) throw StateError('OnlyKDramaCf cancelled');
       await ready.future.timeout(const Duration(seconds: 25));
-      await _waitForCfClearance(epoch: bootEpoch);
-      if (bootEpoch != _epoch) throw StateError('OnlyKDramaCf cancelled');
-    } catch (e) {
-      if (kDebugMode) debugPrint('[OnlyKDramaCf] boot failed: $e');
-      await _disposeWebView();
-      rethrow;
+      final cleared = await _waitForCfClearance(epoch: epoch);
+      if (!cleared) {
+        throw StateError(
+          'OnlyKDramaCf: headless still challenged after unlock',
+        );
+      }
+      if (epoch != _epoch) throw StateError('OnlyKDramaCf cancelled');
+      if (kDebugMode) debugPrint('[OnlyKDramaCf] headless session ready');
     } finally {
       if (identical(_bootReady, ready)) _bootReady = null;
     }
   }
 
-  Future<void> _waitForCfClearance({required int epoch}) async {
+  /// Returns true only when challenge is gone. Does not soft-continue.
+  Future<bool> _waitForCfClearance({required int epoch}) async {
     final controller = _controller;
-    if (controller == null) return;
-    final deadline = DateTime.now().add(const Duration(seconds: 30));
+    if (controller == null) return false;
+    final deadline = DateTime.now().add(const Duration(seconds: 25));
     while (DateTime.now().isBefore(deadline)) {
-      if (epoch != _epoch) return;
+      if (epoch != _epoch) return false;
       try {
         final res = await controller.callAsyncJavaScript(
           functionBody: '''
@@ -207,26 +268,27 @@ class OnlyKDramaCfSession {
               t.includes('attention required') ||
               b.includes('Checking your browser') ||
               b.includes('Enable JavaScript and cookies') ||
-              b.includes('Attention Required');
+              b.includes('Attention Required') ||
+              b.includes('Verify you are human');
             return { blocked: blocked, title: title };
           ''',
         );
         final value = res?.value;
-        if (value is Map && value['blocked'] != true) {
-          final title = value['title']?.toString() ?? '';
-          if (title.trim().isNotEmpty) {
-            if (kDebugMode) {
-              debugPrint('[OnlyKDramaCf] CF clear ($title)');
-            }
-            return;
+        if (value is Map &&
+            value['blocked'] != true &&
+            (value['title']?.toString() ?? '').trim().isNotEmpty) {
+          if (kDebugMode) {
+            debugPrint('[OnlyKDramaCf] CF clear (${value['title']})');
           }
+          return true;
         }
       } catch (_) {}
       await Future<void>.delayed(const Duration(milliseconds: 400));
     }
     if (kDebugMode) {
-      debugPrint('[OnlyKDramaCf] CF wait timed out — continuing anyway');
+      debugPrint('[OnlyKDramaCf] CF wait timed out — failing closed');
     }
+    return false;
   }
 
   Future<({int status, String body, String url})?> _pageFetch(
@@ -297,5 +359,123 @@ class OnlyKDramaCfSession {
         await web.dispose();
       } catch (_) {}
     }
+  }
+}
+
+class _OnlyKDramaCfUnlockDialog extends StatefulWidget {
+  const _OnlyKDramaCfUnlockDialog({
+    required this.origin,
+    required this.userAgent,
+    required this.onSuccess,
+  });
+
+  final String origin;
+  final String userAgent;
+  final VoidCallback onSuccess;
+
+  @override
+  State<_OnlyKDramaCfUnlockDialog> createState() =>
+      _OnlyKDramaCfUnlockDialogState();
+}
+
+class _OnlyKDramaCfUnlockDialogState extends State<_OnlyKDramaCfUnlockDialog> {
+  InAppWebViewController? _controller;
+  Timer? _poll;
+  var _done = false;
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  void _startPoll(InAppWebViewController controller) {
+    _poll?.cancel();
+    _poll = Timer.periodic(const Duration(milliseconds: 500), (_) async {
+      if (!mounted || _done) return;
+      try {
+        final res = await controller.callAsyncJavaScript(
+          functionBody: '''
+            const title = document.title || '';
+            const t = title.toLowerCase();
+            const b = (document.body && document.body.innerText) || '';
+            const blocked =
+              !title.trim() ||
+              t.includes('just a moment') ||
+              t.includes('attention required') ||
+              b.includes('Checking your browser') ||
+              b.includes('Enable JavaScript and cookies') ||
+              b.includes('Attention Required') ||
+              b.includes('Verify you are human');
+            return { blocked: blocked, title: title };
+          ''',
+        );
+        final value = res?.value;
+        if (value is Map &&
+            value['blocked'] != true &&
+            (value['title']?.toString() ?? '').trim().isNotEmpty) {
+          _done = true;
+          _poll?.cancel();
+          widget.onSuccess();
+        }
+      } catch (_) {}
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Text('OnlyKDrama — Cloudflare'),
+      content: SizedBox(
+        width: 420,
+        height: 360,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Finish the check if asked (usually automatic). '
+              'Unlocks OnlyKDrama for this session.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: ForjaInAppWebView(
+                  initialUrlRequest: URLRequest(
+                    url: WebUri('${widget.origin}/'),
+                  ),
+                  initialSettings: InAppWebViewSettings(
+                    javaScriptEnabled: true,
+                    domStorageEnabled: true,
+                    userAgent: widget.userAgent,
+                    mediaPlaybackRequiresUserGesture: true,
+                    allowsInlineMediaPlayback: true,
+                    cacheEnabled: true,
+                    clearCache: false,
+                    incognito: false,
+                  ),
+                  onWebViewCreated: (c) {
+                    _controller = c;
+                    _startPoll(c);
+                  },
+                  onLoadStop: (_, _) {
+                    final c = _controller;
+                    if (c != null) _startPoll(c);
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
   }
 }

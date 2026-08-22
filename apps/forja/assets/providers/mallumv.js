@@ -1162,5 +1162,5 @@ function getStreams(tmdbId, mediaType = 'movie', seasonNum = null, episodeNum = 
 }
 
 // Export for React Native
-  return getStreams(ctx.tmdbId, ctx.type === 'tv' ? 'tv' : 'movie', ctx.season, ctx.episode);
+  return getStreams(ctx.tmdbId, ctx.type === 'movie' ? 'movie' : 'tv', ctx.season, ctx.episode);
 }
