@@ -130,6 +130,9 @@ pub struct ExtractResult {
     pub error: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unsupported: Option<bool>,
+    /// Plugin called `ctx.host(id)` and returned no streams — Dart should sniff.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub needs_host: Option<String>,
 }
 
 const HOST_JS: &str = r#"
@@ -211,6 +214,9 @@ const HOST_JS: &str = r#"
     };
   }
   globalThis.__engineHtml = function(html){
+    if (!globalThis.__engineCheerio || typeof globalThis.__engineCheerio.load !== 'function') {
+      try { __native_ensure_cheerio(); } catch (e) {}
+    }
     var c = globalThis.__engineCheerio;
     if (!c || typeof c.load !== 'function') throw new Error('UNSUPPORTED:cheerio');
     return c.load(String(html == null ? '' : html));
@@ -221,7 +227,10 @@ const HOST_JS: &str = r#"
       catch (e) { return []; }
     });
   };
-  globalThis.__engineHost = function(){ return Promise.resolve([]); };
+  globalThis.__engineHost = function(hostId){
+    try { __native_request_host(String(hostId == null ? '' : hostId)); } catch (e) {}
+    return Promise.resolve([]);
+  };
 })();
 "#;
 
@@ -438,12 +447,14 @@ pub async fn extract(req: ExtractRequest) -> ExtractResult {
                 streams: vec![],
                 error: Some("engine-js timed out".into()),
                 unsupported: None,
+                needs_host: None,
             },
         },
         _ = token.cancelled() => ExtractResult {
             streams: vec![],
             error: Some("cancelled".into()),
             unsupported: None,
+            needs_host: None,
         },
     }
 }
@@ -454,6 +465,7 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
             streams: vec![],
             error: Some("cancelled".into()),
             unsupported: None,
+            needs_host: None,
         };
     }
 
@@ -464,6 +476,7 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
                 streams: vec![],
                 error: Some(format!("AsyncRuntime: {e}")),
                 unsupported: Some(true),
+                needs_host: None,
             };
         }
     };
@@ -474,6 +487,7 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
                 streams: vec![],
                 error: Some(format!("AsyncContext: {e}")),
                 unsupported: Some(true),
+                needs_host: None,
             };
         }
     };
@@ -484,20 +498,25 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
     let plugin_label = plugin_id.clone();
     let hops = std::sync::Arc::new(req.hops.clone());
     let hop_depth = req.hop_depth;
+    let allow_host = req.allow_host_fallback;
 
     let result = async_with!(ctx => |ctx| {
-        run_in_ctx(ctx, plugin_id, code, meta, plugin_label, hops, hop_depth).await
+        run_in_ctx(ctx, plugin_id, code, meta, plugin_label, hops, hop_depth, allow_host).await
     })
     .await;
 
     let _ = rt.idle().await;
 
     match result {
-        Ok(streams) => ExtractResult {
-            streams,
-            error: None,
-            unsupported: None,
-        },
+        Ok((streams, needs_host)) => {
+            let needs_host = if streams.is_empty() { needs_host } else { None };
+            ExtractResult {
+                streams,
+                error: None,
+                unsupported: None,
+                needs_host,
+            }
+        }
         Err(e) => {
             let msg = e.to_string();
             let unsupported = msg.contains("UNSUPPORTED:");
@@ -505,6 +524,7 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
                 streams: vec![],
                 error: Some(msg),
                 unsupported: if unsupported { Some(true) } else { None },
+                needs_host: None,
             }
         }
     }
@@ -518,7 +538,8 @@ async fn run_in_ctx<'js>(
     plugin_label: String,
     hops: std::sync::Arc<Vec<HopScript>>,
     hop_depth: u32,
-) -> Result<Vec<Value>, String> {
+    allow_host: bool,
+) -> Result<(Vec<Value>, Option<String>), String> {
     let fetch_fn = Function::new(ctx.clone(), Async(native_fetch))
         .map_err(|e| e.to_string())?
         .with_name("__native_fetch")
@@ -632,6 +653,50 @@ async fn run_in_ctx<'js>(
         )
         .map_err(|e| e.to_string())?;
 
+    let host_req: std::sync::Arc<std::sync::Mutex<Option<String>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(None));
+    {
+        let host_req = host_req.clone();
+        ctx.globals()
+            .set(
+                "__native_request_host",
+                Function::new(ctx.clone(), move |host_id: String| {
+                    if !allow_host {
+                        return;
+                    }
+                    let id = host_id.trim().to_string();
+                    if id.is_empty() {
+                        return;
+                    }
+                    if let Ok(mut g) = host_req.lock() {
+                        *g = Some(id);
+                    }
+                })
+                .map_err(|e| e.to_string())?,
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
+    let cheerio_loaded = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    {
+        let cheerio_loaded = cheerio_loaded.clone();
+        ctx.globals()
+            .set(
+                "__native_ensure_cheerio",
+                Function::new(ctx.clone(), move |ctx: Ctx<'js>| -> rquickjs::Result<()> {
+                    if cheerio_loaded.load(std::sync::atomic::Ordering::Relaxed) {
+                        return Ok(());
+                    }
+                    let script = cheerio_load_js();
+                    ctx.eval::<(), _>(script.as_str())?;
+                    cheerio_loaded.store(true, std::sync::atomic::Ordering::Relaxed);
+                    Ok(())
+                })
+                .map_err(|e| e.to_string())?,
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
     let hops_for_fn = hops.clone();
     let meta_for_hop = std::sync::Arc::new(meta.clone());
     let hop_fn = Function::new(
@@ -698,9 +763,6 @@ async fn run_in_ctx<'js>(
     ctx.eval::<(), _>(CRYPTO_JS)
         .catch(&ctx)
         .map_err(|e| e.to_string())?;
-    ctx.eval::<(), _>(cheerio_load_js().as_str())
-        .catch(&ctx)
-        .map_err(|e| format!("cheerio: {e}"))?;
 
     let load = format!(
         r#"(function(){{
@@ -802,7 +864,8 @@ async fn run_in_ctx<'js>(
         .catch(&ctx)
         .map_err(|e| e.to_string())?;
     let streams: Vec<Value> = serde_json::from_str(&raw).unwrap_or_default();
-    Ok(streams)
+    let needs_host = host_req.lock().ok().and_then(|g| g.clone());
+    Ok((streams, needs_host))
 }
 
 #[cfg(test)]
@@ -922,5 +985,27 @@ function extract(ctx) {
             r.streams[0].get("url").and_then(|u| u.as_str()),
             Some("https://ex.com/watch/1")
         );
+    }
+
+    #[tokio::test]
+    async fn host_fallback_flag() {
+        let code = r#"
+function extract(ctx) {
+  return ctx.host('vidrock').then(function(){ return []; });
+}
+"#;
+        let r = extract(ExtractRequest {
+            plugin_id: "hosty".into(),
+            code: code.into(),
+            ctx: serde_json::json!({ "tmdbId": "1", "type": "movie" }),
+            timeout_ms: 5_000,
+            allow_host_fallback: true,
+            hops: vec![],
+            hop_depth: 0,
+        })
+        .await;
+        assert!(r.error.is_none(), "{:?}", r.error);
+        assert!(r.streams.is_empty());
+        assert_eq!(r.needs_host.as_deref(), Some("vidrock"));
     }
 }

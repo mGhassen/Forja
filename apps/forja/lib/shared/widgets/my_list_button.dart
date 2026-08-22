@@ -393,8 +393,11 @@ class _StatusPinState extends State<_StatusPin> {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    // Poster cards: D-pad targets the tile only — hide the pin on TV.
-    if (widget.excludeFromTvTraversal && policy.useFocusableMoodChips) {
+    // Poster cards: D-pad targets the tile only — hide the pin on leanback TV.
+    // Desktop shares [useFocusableMoodChips] for arrow keys but still has a mouse.
+    if (widget.excludeFromTvTraversal &&
+        policy.useFocusableMoodChips &&
+        !policy.scaleOnHover) {
       return const SizedBox.shrink();
     }
     final size = widget.iconSize ?? 18.0;
@@ -587,7 +590,10 @@ class _LegacyTogglePin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    if (excludeFromTvTraversal && policy.useFocusableMoodChips) {
+    // Same leanback-only hide as [_StatusPin] — keep pins on desktop hover.
+    if (excludeFromTvTraversal &&
+        policy.useFocusableMoodChips &&
+        !policy.scaleOnHover) {
       return const SizedBox.shrink();
     }
 

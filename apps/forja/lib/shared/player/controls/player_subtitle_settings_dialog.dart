@@ -839,7 +839,12 @@ class _BoldRow extends StatelessWidget {
         ForjaSwitch(
           value: bold,
           scale: ForjaSwitch.settingsScale,
-          onChanged: tvFocus ? null : onChanged,
+          // Desktop hybrid: keep mouse toggle. Leanback: FocusableControl owns OK.
+          onChanged: tvFocus &&
+                  !(ShellScope.maybeOf(context)?.inputPolicy.scaleOnHover ??
+                      true)
+              ? null
+              : onChanged,
         ),
       ],
     );

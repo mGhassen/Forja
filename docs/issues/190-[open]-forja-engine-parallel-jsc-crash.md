@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 8** fix · **0 / 4** acceptance |
+| **Progress** | **9 / 9** fix · **3 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,6 +27,7 @@
 | 6 | I190-T06 | Play closes Sources: always `EngineService.cancelPending` (stop scrapes); `cancelEngineJobs: false` only keeps magnet | ✅ |
 | 7 | I190-T07 | `engine_jobs::cancel_kind(EngineJsExtract)` + FFI — abort Forja extracts without global `request()` / magnet kill | ✅ |
 | 8 | I190-T08 | rust-js CryptoJS façade + `ctx.hop` (vidsrcsbs / multiembed path) | ✅ |
+| 9 | I190-T09 | rust-js `needs_host` → Dart `EngineHostResolver` (no flutter_js re-run) | ✅ |
 
 ---
 
@@ -34,9 +35,9 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I190-A01 | Videasy alone still returns streams (Rust or fallback) | ⬜ |
-| 2 | I190-A02 | Videasy + VidLink + Goated concurrent — app stays up | ⬜ |
-| 3 | I190-A03 | Under All walk, videasy does not burn empty solely from peer cancel / UI-isolate contention | ⬜ |
+| 1 | I190-A01 | Videasy alone still returns streams (Rust or fallback) | ✅ |
+| 2 | I190-A02 | Videasy + VidLink + Goated concurrent — app stays up | ✅ |
+| 3 | I190-A03 | Under All walk, videasy does not burn empty solely from peer cancel / UI-isolate contention | ✅ |
 | 4 | I190-A04 | Play mid All-walk — scrapes stop; no cancel→`flutter_js` stampede; no Lost connection | ⬜ |
 
 ---

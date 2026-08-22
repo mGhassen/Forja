@@ -225,52 +225,66 @@ class _ServerMenuHeaderState extends State<_ServerMenuHeader> {
 
     if (!tvFocus || widget.onTap == null) return row;
 
+    final mouseHover =
+        ShellScope.inputPolicyOf(context).scaleOnHover;
+
     // Split focus: server row ↔ reload (→ / ←). Nested reload FocusableControl
     // must sit outside the server control so D-pad can reach it.
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: shellFocusableTap(
-            context: context,
-            focusNode: _serverFocus,
-            onTap: widget.onTap,
-            borderRadius: 8,
-            scaleOnFocus: 1.0,
-            showFocusBorder: true,
-            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-            onRightEdge: widget.showReload && canReload
-                ? () => _reloadFocus.requestFocus()
-                : null,
-            onFocusChange: (focused) => setState(() => _focused = focused),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(4, 5, 0, 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  PlayerStreamMenu._statusGlyph(
-                    status: widget.status,
-                    isLoaded: widget.isLoaded,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: nameColumn),
-                  PlayerStreamMenu._serverTrailingBadges(
-                    categoryBadge: widget.categoryBadge,
-                    scoreScope: widget.scoreScope,
-                    providerId: widget.providerId,
-                    hideCategoryBadge: widget.hideCategoryBadge,
-                  ),
-                ],
+    return MouseRegion(
+      onEnter: (_) {
+        if (mouseHover) setState(() => _hovered = true);
+      },
+      onExit: (_) {
+        if (mouseHover) setState(() => _hovered = false);
+      },
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: shellFocusableTap(
+              context: context,
+              focusNode: _serverFocus,
+              onTap: widget.onTap,
+              borderRadius: 8,
+              scaleOnFocus: 1.0,
+              showFocusBorder: true,
+              ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+              onRightEdge: widget.showReload && canReload
+                  ? () => _reloadFocus.requestFocus()
+                  : null,
+              onFocusChange: (focused) => setState(() => _focused = focused),
+              onHoverChange: mouseHover
+                  ? (h) => setState(() => _hovered = h)
+                  : null,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 5, 0, 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    PlayerStreamMenu._statusGlyph(
+                      status: widget.status,
+                      isLoaded: widget.isLoaded,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: nameColumn),
+                    PlayerStreamMenu._serverTrailingBadges(
+                      categoryBadge: widget.categoryBadge,
+                      scoreScope: widget.scoreScope,
+                      providerId: widget.providerId,
+                      hideCategoryBadge: widget.hideCategoryBadge,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        if (widget.showReload)
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: reloadButton(focusable: true),
-          ),
-      ],
+          if (widget.showReload)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: reloadButton(focusable: true),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -414,6 +428,7 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     );
 
     if (!tvFocus) return row;
+    final mouseHover = ShellScope.inputPolicyOf(context).scaleOnHover;
     return shellFocusableTap(
       context: context,
       onTap: () {
@@ -430,6 +445,7 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
       showFocusBorder: true,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: mouseHover ? (h) => setState(() => _hovered = h) : null,
       child: row,
     );
   }

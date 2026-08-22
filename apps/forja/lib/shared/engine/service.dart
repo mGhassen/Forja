@@ -795,6 +795,55 @@ class EngineService {
     }
 
     var effectiveRaw = rawList;
+    final needsHost = (decoded['needs_host'] ?? '').toString().trim();
+    if (effectiveRaw.isEmpty &&
+        needsHost.isNotEmpty &&
+        allowHostFallback &&
+        gen == _extractGeneration) {
+      debugPrint('[engine] ${plugin.id} rust-js needs_host=$needsHost');
+      final resolvedMovie =
+          movie ??
+          Movie(
+            id: int.tryParse(tmdbId) ?? 0,
+            imdbId: animeIds?.imdbId,
+            title: title ?? '',
+            posterPath: '',
+            backdropPath: '',
+            voteAverage: 0,
+            releaseDate: year != null ? '$year-01-01' : '',
+            mediaType: mediaType,
+          );
+      final hostPlugin = EnginePlugin(
+        id: 'host:$needsHost',
+        name: needsHost,
+        entry: '',
+        kind: 'host',
+        hostId: needsHost,
+      );
+      try {
+        final hostMapped = await EngineHostResolver.resolve(
+          plugin: hostPlugin,
+          movie: resolvedMovie,
+          season: season ?? 1,
+          episode: episode ?? 1,
+          isCancelled: () => gen != _extractGeneration,
+        );
+        if (gen != _extractGeneration) return null;
+        if (hostMapped.isNotEmpty) {
+          debugPrint(
+            '[engine] ${plugin.id} done (rust-js+host) streams=${hostMapped.length} '
+            '${sw.elapsedMilliseconds}ms',
+          );
+          return EngineExtractResult(
+            pluginId: plugin.id,
+            pluginName: plugin.name,
+            streams: hostMapped,
+          );
+        }
+      } catch (e) {
+        debugPrint('[engine] ${plugin.id} host fallback failed: $e');
+      }
+    }
     if (effectiveRaw.isEmpty &&
         plugin.id == 'videasy' &&
         movie != null &&

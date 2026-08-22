@@ -292,6 +292,7 @@ class _AsianDramaDetailsScreenState
   void _playSelected() {
     final det = _details;
     if (det == null || det.episodes.isEmpty) return;
+    if (KissKhService.isUpcomingStatus(det.status)) return;
     final ep = _episodeLookup(det)[_selectedEpisode];
     if (ep == null) return;
     final p = _progress;
@@ -394,10 +395,16 @@ class _AsianDramaDetailsScreenState
     final networks = extras?.networks ?? const <String>[];
     final languages = extras?.spokenLanguages ?? const <String>[];
     final companies = extras?.productionCompanies ?? const <String>[];
+    final upcoming = KissKhService.isUpcomingStatus(det.status);
     return [
       if (det.title.trim().isNotEmpty) MapEntry('Name', det.title.trim()),
       if (det.releaseDate.isNotEmpty)
-        MapEntry('Released', _formatDate(det.releaseDate)),
+        MapEntry(
+          upcoming ? 'Premieres' : 'Released',
+          upcoming
+              ? KissKhService.formatReleaseDateLabel(det.releaseDate)
+              : _formatDate(det.releaseDate),
+        ),
       if (det.country.isNotEmpty) MapEntry('Country', det.country),
       if (typeBadge != null) MapEntry('Type', typeBadge),
       if (det.status.isNotEmpty) MapEntry('Status', det.status),
@@ -633,10 +640,13 @@ class _AsianDramaDetailsScreenState
     );
     final posMs = canResumeSelected ? rawPosMs : null;
     final durMs = canResumeSelected ? rawDurMs : null;
+    final isUpcoming = KissKhService.isUpcomingStatus(det.status);
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
 
-    if (policy.heroPlayAutoFocus && !_detailsHeroInitialFocusDone) {
+    if (policy.heroPlayAutoFocus &&
+        !isUpcoming &&
+        !_detailsHeroInitialFocusDone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _detailsHeroInitialFocusDone) return;
         if (_heroPlayFocus.context == null || !_heroPlayFocus.canRequestFocus) {
@@ -652,13 +662,15 @@ class _AsianDramaDetailsScreenState
     final listExtra = HubListStatusHero.extraFocusSlots(_listMenuOpen);
     final playbackSnap = ref.watch(settingsPlaybackProvider).valueOrNull;
     final catalogMovie = tmdb?.movie;
-    final showCatalogSources = catalogMovie != null &&
+    final showCatalogSources = !isUpcoming &&
+        catalogMovie != null &&
         catalogMovie.id > 0 &&
         hubHasCatalogPanelSources(playbackSnap);
     var tvIndex = 0;
-    final playIndex = tvIndex++;
+    final playIndex = isUpcoming ? null : tvIndex++;
     final sourcesIndex = showCatalogSources ? tvIndex++ : null;
-    final clearIndex = _progress != null ? tvIndex++ : null;
+    final clearIndex =
+        !isUpcoming && _progress != null ? tvIndex++ : null;
     final listIndex = tvIndex++;
     tvIndex += listExtra;
     final heroActionCount = tvIndex;
@@ -703,10 +715,12 @@ class _AsianDramaDetailsScreenState
               onEpisodeSelected: (ep) {
                 setState(() => _selectedEpisode = ep);
               },
-              onEpisodePlay: (ep) {
-                setState(() => _selectedEpisode = ep);
-                _playSelected();
-              },
+              onEpisodePlay: isUpcoming
+                  ? null
+                  : (ep) {
+                      setState(() => _selectedEpisode = ep);
+                      _playSelected();
+                    },
               onToggleWatched: _toggleEpisodeWatched,
               tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
               tvSeasonRowId: 'seasons',
@@ -794,22 +808,29 @@ class _AsianDramaDetailsScreenState
           onFocusUp: heroPopUp,
           child: Row(
             children: [
-              HubDetailsPlayRow(
-                label: canResumeSelected
-                    ? 'Resume'
-                    : 'Play Ep $_selectedEpisode',
-                enabled: det.episodes.isNotEmpty,
-                onPlay: _playSelected,
-                onOpenSources: showCatalogSources
-                    ? () => _openCatalogSources(catalogMovie)
-                    : null,
-                focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
-                onUpEdge: heroPopUp,
-                tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                tvItemIndex: playIndex,
-                tvSourcesItemIndex: sourcesIndex,
-              ),
-              if (_progress != null) ...[
+              if (isUpcoming)
+                HubDetailsUpcomingNotice(
+                  releaseDateLabel: det.releaseDate.trim().isEmpty
+                      ? null
+                      : KissKhService.formatReleaseDateLabel(det.releaseDate),
+                )
+              else
+                HubDetailsPlayRow(
+                  label: canResumeSelected
+                      ? 'Resume'
+                      : 'Play Ep $_selectedEpisode',
+                  enabled: det.episodes.isNotEmpty,
+                  onPlay: _playSelected,
+                  onOpenSources: showCatalogSources
+                      ? () => _openCatalogSources(catalogMovie)
+                      : null,
+                  focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
+                  onUpEdge: heroPopUp,
+                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                  tvItemIndex: playIndex,
+                  tvSourcesItemIndex: sourcesIndex,
+                ),
+              if (!isUpcoming && _progress != null) ...[
                 const SizedBox(width: 10),
                 HeroPillIconGroup(
                   tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
