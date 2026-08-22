@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 75 / 77** acceptance · **2 ⏭️** manual play QA |
+| **Progress** | **Complete · 76 / 78** acceptance · **2 ⏭️** manual play QA |
 | **Current slice** | Soft Movie/TV/Anime/Drama chip categories; manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -110,6 +110,7 @@
 | 75 | R60-A75 | Bundled HTTP plugins tag `types` as movie/tv, anime, or drama (`engine.json` 1.5.8+) | ✅ |
 | 76 | R60-A76 | Sources → Forja soft-hides off-category chips; Filters → Category can add Movie / TV / Anime / Drama without hard-blocking extract | ✅ |
 | 77 | R60-A77 | Settings → Forja plugins groups toggles by Movie & TV / Anime / Drama | ✅ |
+| 78 | R60-A78 | Bundled PlayIMDb HTTP plugin (`playimdb.js`, vaplayer API, `engine.json` 1.5.9+) | ✅ |
 
 ---
 

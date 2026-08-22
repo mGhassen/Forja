@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "name": "Forja",
-  "version": "1.5.8",
+  "version": "1.5.9",
   "plugins": [
     {
       "id": "videasy",
@@ -228,7 +228,7 @@
       "kind": "http",
       "config": {
         "origin": "https://onlykdrama.shop",
-        "filepress": "https://new5.filepress.wiki"
+        "filepress": "https://new3.filepress.baby"
       }
     },
     {
@@ -371,6 +371,20 @@
             "api": "https://uwu.eat-peach.sbs"
           }
         ]
+      }
+    },
+    {
+      "id": "playimdb",
+      "name": "PlayIMDb",
+      "entry": "playimdb.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "api": "https://streamdata.vaplayer.ru/api.php",
+        "origin": "https://nextgencloudfabric.com"
       }
     },
     {

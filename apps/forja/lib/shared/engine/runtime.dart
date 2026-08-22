@@ -10,6 +10,7 @@ import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/engine_polyfills.dart';
 import 'package:forja/shared/engine/host_resolver.dart';
 import 'package:forja/shared/engine/models.dart';
+import 'package:forja/shared/engine/onlykdrama_cf_session.dart';
 import 'package:forja/shared/extractors/core/stream_crypto.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
@@ -827,6 +828,43 @@ class EngineRuntime {
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
       );
       final uri = Uri.parse(url);
+
+      // onlykdrama.shop is Cloudflare-gated — plain HTTP always gets the
+      // interstitial. Route through the Miruro-style headless WebView session.
+      if (OnlyKDramaCfSession.handles(uri)) {
+        final hit = await OnlyKDramaCfSession.instance.fetch(
+          url,
+          method: method,
+          headers: headers,
+          body: body.isEmpty ? null : body,
+        );
+        if (gen != _fetchGeneration) {
+          _fetchGens.remove(id);
+          return;
+        }
+        if (hit != null) {
+          var text = hit.body;
+          const maxLen = 1024 * 1024;
+          if (text.length > maxLen) text = text.substring(0, maxLen);
+          envelope = {
+            'ok': hit.status >= 200 && hit.status < 300,
+            'status': hit.status,
+            'statusText': '',
+            'url': hit.url,
+            'body': text,
+            'headers': <String, dynamic>{},
+          };
+        } else {
+          envelope = {
+            'ok': false,
+            'status': 0,
+            'statusText': 'OnlyKDramaCf fetch failed',
+            'url': url,
+            'body': '',
+            'headers': <String, dynamic>{},
+          };
+        }
+      } else {
       final req = http.Request(method, uri);
       req.followRedirects = true;
       req.maxRedirects = 8;
@@ -866,6 +904,7 @@ class EngineRuntime {
         'body': text,
         'headers': respHeaders,
       };
+      }
     } catch (e) {
       if (gen != _fetchGeneration) {
         _fetchGens.remove(id);

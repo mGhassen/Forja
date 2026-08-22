@@ -1,7 +1,7 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
   var site = (cfg.origin || 'https://onlykdrama.shop').replace(/\/$/, '');
-  var filepress = (cfg.filepress || 'https://new5.filepress.wiki').replace(/\/$/, '');
+  var filepress = (cfg.filepress || 'https://new3.filepress.baby').replace(/\/$/, '');
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
   var baseHeaders = {

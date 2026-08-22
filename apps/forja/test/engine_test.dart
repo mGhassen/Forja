@@ -392,6 +392,7 @@ void main() {
           'goated',
           'meowtv',
           'peachify',
+          'playimdb',
           'vidsync',
           'vidup',
           'movieblast',
@@ -482,6 +483,11 @@ void main() {
       );
       expect(parsed.firstWhere((p) => p.id == 'meowtv').entry, 'meowtv.js');
       expect(parsed.firstWhere((p) => p.id == 'peachify').entry, 'peachify.js');
+      expect(parsed.firstWhere((p) => p.id == 'playimdb').entry, 'playimdb.js');
+      expect(
+        parsed.firstWhere((p) => p.id == 'playimdb').config['api'],
+        'https://streamdata.vaplayer.ru/api.php',
+      );
       expect(parsed.firstWhere((p) => p.id == 'vidsync').entry, 'vidsync.js');
       expect(parsed.firstWhere((p) => p.id == 'vidup').entry, 'vidup.js');
       expect(parsed.firstWhere((p) => p.id == 'moviebox').entry, 'moviebox.js');
@@ -799,6 +805,12 @@ void main() {
         'assets/providers/peachify.js',
       );
       expect(peachify.contains('dec-peachify'), isTrue);
+
+      final playimdb = await rootBundle.loadString(
+        'assets/providers/playimdb.js',
+      );
+      expect(playimdb.contains('streamdata.vaplayer.ru'), isTrue);
+      expect(playimdb.contains('tmdb='), isTrue);
 
       final vidsync = await rootBundle.loadString(
         'assets/providers/vidsync.js',

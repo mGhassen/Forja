@@ -650,6 +650,12 @@ class EngineService {
     int? kisskhEpisodeId,
     bool allowHostFallback = true,
   }) async {
+    // onlykdrama.shop needs CF WebView fetch (OnlyKDramaCfSession). Rust
+    // reqwest cannot clear the challenge — force flutter_js host path.
+    if (pluginId == 'onlykdrama') {
+      debugPrint('[engine] onlykdrama — skip rust-js (CF WebView fetch)');
+      return null;
+    }
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return null;
