@@ -494,6 +494,36 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     }
   }
 
+  /// Push Forja Auto JS output into the same store Sources reads
+  /// (`_engineStreams` + session TTL cache). Same merge as chip extract.
+  void _mergeEngineAutoResult(
+    String pluginId,
+    List<Map<String, dynamic>> streams,
+  ) {
+    void apply() {
+      _s._engineFetchedPluginIds.add(pluginId);
+      _s._engineStreams.removeWhere(
+        (s) => engineStreamBelongsToPlugin(s, pluginId),
+      );
+      if (streams.isNotEmpty) {
+        _s._engineStreams.addAll(streams);
+        // Keep existing chips; ensure this plugin is selected so rows show.
+        _s._engineSelectedPluginIds.add(pluginId);
+      }
+    }
+
+    if (mounted) {
+      setState(apply);
+    } else {
+      apply();
+    }
+    CatalogSourcesSessionCache.writeEngine(
+      _s._catalogCacheKey,
+      List<Map<String, dynamic>>.from(_s._engineStreams),
+      fetchedPluginIds: _s._engineFetchedPluginIds,
+    );
+  }
+
   Future<List<_EngineAutoHit>> _raceEnginePluginsForAuto({
     required List<String> pluginIds,
     required int playGen,
@@ -560,6 +590,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         // Do not return from try on empty/fail — that skips fill() after finally.
         if (!isAborted() && !completer.isCompleted) {
           final streams = batch?.streams ?? const <Map<String, dynamic>>[];
+          // Same store as Sources panel — Auto is not a separate extract path.
+          _mergeEngineAutoResult(pluginId, streams);
           if (streams.isEmpty) {
             statusById[pluginId] = StreamProviderProbeStatus.failed;
             publishProbes();

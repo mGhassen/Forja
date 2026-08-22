@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
+import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -270,6 +271,34 @@ Future<_HubEngineAutoHit?> _raceHubEnginePlugins({
   final statusById = <String, StreamProviderProbeStatus>{
     for (final id in pluginIds) id: StreamProviderProbeStatus.pending,
   };
+  final cacheKey = CatalogSourcesSessionCache.cacheKey(
+    mediaId: movie.id,
+    mediaType: movie.mediaType,
+    season: season,
+    episode: episode,
+  );
+
+  void mergeIntoSourcesPanel(
+    String pluginId,
+    List<Map<String, dynamic>> streams,
+  ) {
+    final cached = CatalogSourcesSessionCache.readEngine(cacheKey);
+    final merged = <Map<String, dynamic>>[
+      if (cached != null)
+        for (final s in cached.streams)
+          if (!engineStreamBelongsToPlugin(s, pluginId)) s,
+      ...streams,
+    ];
+    final fetched = <String>{
+      if (cached != null) ...cached.fetchedPluginIds,
+      pluginId,
+    };
+    CatalogSourcesSessionCache.writeEngine(
+      cacheKey,
+      merged,
+      fetchedPluginIds: fetched,
+    );
+  }
 
   void publishProbes() {
     probeNotifier.value = [
@@ -320,6 +349,8 @@ Future<_HubEngineAutoHit?> _raceHubEnginePlugins({
       // Do not return from try on empty/fail — that skips fill() after finally.
       if (!isAborted() && !completer.isCompleted) {
         final streams = batch?.streams ?? const <Map<String, dynamic>>[];
+        // Same session cache Sources / player Sources read.
+        mergeIntoSourcesPanel(pluginId, streams);
         if (streams.isEmpty) {
           statusById[pluginId] = StreamProviderProbeStatus.failed;
           publishProbes();
