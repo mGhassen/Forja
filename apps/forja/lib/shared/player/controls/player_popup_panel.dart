@@ -137,10 +137,12 @@ class PlayerPopupPanel {
       capturedConfig = shellPlatformConfigFor(capturedProfile);
     }
 
-    final tv = capturedConfig.inputPolicy.useFocusableMoodChips;
+    // Layout: leanback centered only on real TV profile. Desktop may use TV
+    // input policy for D-pad without forcing centered menus.
+    final centerForTv = capturedProfile == ShellProfile.tv;
     // Capture opener before dismiss / TV centering clears the anchor.
     playerMenuCaptureReturnFocus(context);
-    if (tv) {
+    if (centerForTv) {
       centered = true;
       anchorContext = null;
       final overlaySize = MediaQuery.sizeOf(context);

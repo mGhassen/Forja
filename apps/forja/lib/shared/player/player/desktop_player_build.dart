@@ -48,12 +48,16 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                   ),
                 ),
 
-                // Double-click empty video area → toggle fullscreen
-                // (controls chrome sits above and keeps its own hit targets).
+                // Click empty video → play/pause; double-click → fullscreen.
+                // Chrome sits above and keeps its own hit targets.
                 if (!pipMode)
                   Positioned.fill(
                     child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
+                      onTap: () {
+                        _s._player.playOrPause();
+                        _s._onMouseMove();
+                      },
                       onDoubleTap: () => unawaited(_s._toggleFullscreen()),
                       child: const SizedBox.expand(),
                     ),

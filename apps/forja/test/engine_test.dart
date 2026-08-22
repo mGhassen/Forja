@@ -1123,9 +1123,16 @@ void main() {
           EnginePlugin.fromJson(Map<String, dynamic>.from(p as Map)),
       ];
       EnginePlugin byId(String id) => plugins.firstWhere((p) => p.id == id);
-      expect(byId('videasy').types, ['movie', 'tv']);
-      expect(byId('hianime').types, ['anime']);
+      expect(byId('videasy').types, ['movie', 'tv', 'drama']);
+      expect(byId('vidlink').types, ['movie', 'tv', 'drama']);
+      expect(byId('vixsrc').types, ['movie', 'tv', 'drama']);
+      expect(byId('vidnest').types, ['movie', 'tv', 'drama']);
+      expect(byId('vidrock').types, ['movie', 'tv', 'drama']);
+      expect(byId('vidsrcsbs').types, ['movie', 'tv', 'drama']);
+      expect(byId('2embed').types, ['movie', 'tv', 'drama']);
+      expect(byId('multiembed').types, ['movie', 'tv', 'drama']);
       expect(byId('kisskh').types, ['drama']);
+      expect(byId('hianime').types, ['anime']);
       expect(
         EngineCategories.defaultsForMediaType('movie'),
         {EngineCategories.movie},

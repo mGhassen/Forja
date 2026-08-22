@@ -9,7 +9,8 @@
       "entry": "videasy.js",
       "types": [
         "movie",
-        "tv"
+        "tv",
+        "drama"
       ],
       "kind": "http",
       "config": {
@@ -78,7 +79,8 @@
       "entry": "vidlink.js",
       "types": [
         "movie",
-        "tv"
+        "tv",
+        "drama"
       ],
       "kind": "http",
       "config": {
@@ -95,7 +97,8 @@
       "entry": "vixsrc.js",
       "types": [
         "movie",
-        "tv"
+        "tv",
+        "drama"
       ],
       "kind": "http",
       "config": {
@@ -109,7 +112,8 @@
       "entry": "vidnest.js",
       "types": [
         "movie",
-        "tv"
+        "tv",
+        "drama"
       ],
       "kind": "http",
       "config": {
@@ -124,7 +128,8 @@
       "entry": "vidrock.js",
       "types": [
         "movie",
-        "tv"
+        "tv",
+        "drama"
       ],
       "kind": "http",
       "config": {
@@ -138,7 +143,8 @@
       "entry": "vidsrcsbs.js",
       "types": [
         "movie",
-        "tv"
+        "tv",
+        "drama"
       ],
       "kind": "http",
       "config": {
@@ -175,7 +181,8 @@
       "entry": "multiembed.js",
       "types": [
         "movie",
-        "tv"
+        "tv",
+        "drama"
       ],
       "kind": "http",
       "config": {
@@ -907,7 +914,8 @@
       "entry": "multiembed.js",
       "types": [
         "movie",
-        "tv"
+        "tv",
+        "drama"
       ],
       "kind": "http",
       "config": {

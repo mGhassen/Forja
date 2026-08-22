@@ -49,13 +49,15 @@ class ShellInputPolicy {
     kenBurnsBackdrop: true,
   );
 
+  /// Desktop shell: same arrow/D-pad focus graph as TV, but Ken Burns stays
+  /// on — full-bleed pan/zoom is fine on macOS / Windows / Linux GPUs.
   static const desktop = ShellInputPolicy(
-    scaleOnHover: true,
-    scaleOnFocus: false,
-    ensureVisibleOnFocus: false,
-    wrapAppFocusTraversal: false,
-    useFocusableMoodChips: false,
-    heroPlayAutoFocus: false,
+    scaleOnHover: false,
+    scaleOnFocus: true,
+    ensureVisibleOnFocus: true,
+    wrapAppFocusTraversal: true,
+    useFocusableMoodChips: true,
+    heroPlayAutoFocus: true,
     kenBurnsBackdrop: true,
   );
 

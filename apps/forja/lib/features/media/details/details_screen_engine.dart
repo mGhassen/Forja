@@ -434,21 +434,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         return;
       }
 
-      if (mounted) {
-        setState(() {
-          _s._engineStreams = List<Map<String, dynamic>>.from(hit.batch);
-          _s._engineFetchedPluginIds = {hit.pluginId};
-          _s._engineSelectedPluginIds = {hit.pluginId};
-          _s._engineInFlightPluginIds.clear();
-          _s._selectedSourceId = EngineIds.pluginChip(hit.pluginId);
-        });
-        CatalogSourcesSessionCache.writeEngine(
-          _s._catalogCacheKey,
-          List<Map<String, dynamic>>.from(hit.batch),
-          fetchedPluginIds: {hit.pluginId},
-        );
-      }
-
+      // Do not snap Sources chips / session cache to the auto winner — that
+      // made reopen show the last-played plugin instead of the user's chips.
       openedPlayer = true;
       await _playEngineAutoWinner(
         hit.stream,

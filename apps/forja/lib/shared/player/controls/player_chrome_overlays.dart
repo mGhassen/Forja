@@ -19,8 +19,14 @@ export 'player_menu_return_focus.dart';
 export 'player_seek_scrub_cancel.dart';
 
 /// True when player chrome should use centered TV dialogs (not side panels).
-bool playerTvUsesCenteredDialogs(BuildContext context) =>
-    ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+///
+/// Keys off [ShellProfile.tv] only — desktop can share TV *input* policy
+/// (D-pad focus) without switching Sources / Episodes to leanback dialogs.
+bool playerTvUsesCenteredDialogs(BuildContext context) {
+  final profile =
+      ShellScope.maybeOf(context)?.profile ?? resolveShellProfile(context);
+  return profile == ShellProfile.tv;
+}
 
 /// Dialog width / max height for centered player overlays on TV.
 ({double width, double maxHeight}) playerTvDialogSize(BuildContext context) {
@@ -31,7 +37,7 @@ bool playerTvUsesCenteredDialogs(BuildContext context) =>
   );
 }
 
-/// Side panel on phone/desktop; centered dialog with D-pad on TV.
+/// Side panel on phone/desktop; centered dialog only on [ShellProfile.tv].
 Widget playerOverlayShell({
   required BuildContext context,
   required bool isOpen,

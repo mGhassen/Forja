@@ -11,6 +11,10 @@ import 'package:window_manager/window_manager.dart';
 /// unmaximized first. On Windows that stamps the restore frame to the boot
 /// size — closing any player snapped the window back. Never unmaximize for
 /// playback chrome; persist windowed bounds so relaunch keeps place + size.
+///
+/// Entering host fullscreen captures the current frame; leaving always
+/// restores that snapshot (windowed size/place, or maximized) — never a
+/// full-screen work-area frame.
 class DesktopWindowGeometry {
   DesktopWindowGeometry._();
 
@@ -21,6 +25,11 @@ class DesktopWindowGeometry {
   static const _kMaximized = 'desktop_window_maximized';
 
   static Timer? _saveDebounce;
+
+  /// Frame captured immediately before we enter host fullscreen.
+  static Rect? _preFullscreenBounds;
+  static bool _preFullscreenMaximized = false;
+  static bool _hasPreFullscreenSnapshot = false;
 
   static bool get isDesktop =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
@@ -99,39 +108,88 @@ class DesktopWindowGeometry {
     } catch (_) {}
   }
 
-  /// Drop OS fullscreen only. Never unmaximize — that resets Windows to the
-  /// pre-maximize (often boot) frame when leaving any player.
+  static Future<void> _capturePreFullscreen() async {
+    if (await windowManager.isFullScreen()) return;
+    final pos = await windowManager.getPosition();
+    final size = await windowManager.getSize();
+    _preFullscreenBounds = Rect.fromLTWH(
+      pos.dx,
+      pos.dy,
+      size.width,
+      size.height,
+    );
+    _preFullscreenMaximized = await windowManager.isMaximized();
+    _hasPreFullscreenSnapshot = true;
+  }
+
+  /// After leaving OS fullscreen, force the pre-FS windowed/maximized frame.
+  /// Windows often restores to the work-area "full" size otherwise.
+  static Future<void> _restorePreFullscreen() async {
+    if (!_hasPreFullscreenSnapshot) return;
+    final bounds = _preFullscreenBounds;
+    final wasMaximized = _preFullscreenMaximized;
+    _hasPreFullscreenSnapshot = false;
+    _preFullscreenBounds = null;
+    _preFullscreenMaximized = false;
+    if (bounds == null) return;
+
+    // Let the OS finish leaving fullscreen before we setSize.
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    if (wasMaximized) {
+      if (!await windowManager.isMaximized()) {
+        await windowManager.maximize();
+      }
+      return;
+    }
+
+    if (await windowManager.isMaximized()) {
+      await windowManager.unmaximize();
+    }
+    await windowManager.setSize(Size(bounds.width, bounds.height));
+    await windowManager.setPosition(Offset(bounds.left, bounds.top));
+  }
+
+  /// Drop OS fullscreen and restore the pre-fullscreen windowed size/place
+  /// (or maximized). Never leave the user on a full work-area frame.
   static Future<void> leavePlayerChrome() async {
     if (!isDesktop) return;
     try {
       if (await windowManager.isFullScreen()) {
         await windowManager.setFullScreen(false);
+        await _restorePreFullscreen();
       }
       scheduleSave();
     } catch (_) {}
   }
 
-  /// Enter/leave host fullscreen without unmaximize-first (Windows restore
-  /// frame must stay the user's windowed/maximized size).
+  /// Enter/leave host fullscreen. Enter snapshots the current frame; leave
+  /// restores it exactly.
   static Future<bool> toggleFullscreen() async {
     final isFull = await windowManager.isFullScreen();
-    await windowManager.setFullScreen(!isFull);
-    if (isFull) scheduleSave();
-    return !isFull;
+    if (isFull) {
+      await windowManager.setFullScreen(false);
+      await _restorePreFullscreen();
+      scheduleSave();
+      return false;
+    }
+    await _capturePreFullscreen();
+    await windowManager.setFullScreen(true);
+    return true;
   }
 
   static Future<void> enterFullscreen() async {
     if (!isDesktop) return;
-    if (!await windowManager.isFullScreen()) {
-      await windowManager.setFullScreen(true);
-    }
+    if (await windowManager.isFullScreen()) return;
+    await _capturePreFullscreen();
+    await windowManager.setFullScreen(true);
   }
 
   static Future<void> exitFullscreen() async {
     if (!isDesktop) return;
-    if (await windowManager.isFullScreen()) {
-      await windowManager.setFullScreen(false);
-      scheduleSave();
-    }
+    if (!await windowManager.isFullScreen()) return;
+    await windowManager.setFullScreen(false);
+    await _restorePreFullscreen();
+    scheduleSave();
   }
 }

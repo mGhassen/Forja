@@ -49,7 +49,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 - **Anime / Asian Drama hubs:** Anime D-pad order is **View details → Trending → Continue Watching → Pick your vibe → catalog**; Asian Drama is **View details → Latest Update → Continue Watching → catalog**. **↑** from Continue Watching lands on the bleed row under the hero (Trending / Latest), then View details. Anime vibes use the same circular mood icons as Home (centered on TV); mood posters **↑** return to those vibes; empty Continue Watching is not in the focus graph; **→** from the nav rail restores real page focus (not a blank overlay scope)
 - Search uses the **two-column desktop layout** on TV (last searches then trending suggestions, focused-result detail pane, fluid results grid); D-pad lands on the **search field** first — **Down** moves to suggestions
 - Phone layout is unchanged — leanback density / launcher still apply only on Android TV
-- **Desktop:** same D-pad / arrow-key focus graph as Android TV (focus rings, shelf ←/→, left-to-nav). Layout density and rail chrome stay desktop (mouse still works; hover scale follows TV input policy)
+- **Desktop:** same D-pad / arrow-key focus graph as Android TV (focus rings, shelf ←/→, left-to-nav). Layout density and rail chrome stay desktop; hero Ken Burns pan/zoom stays on (static stills remain Android TV–only). Player **Sources** / **Episodes** stay right-side panels like details — not the leanback centered dialog
 - **Dev:** `flutter run --dart-define=FORJA_ANDROID_TV=true` forces TV profile on any Android device (layout/defaults only — not leanback launcher proof). See [Platforms](platforms.md#android-tv-development).
 
 ## Available tabs
