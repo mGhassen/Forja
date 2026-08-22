@@ -389,6 +389,19 @@ List<_DamiTvStream> _sortDamiTvLiveFirst(List<_DamiTvStream> items) {
   return sorted;
 }
 
+/// Drop stale Forja Live catalog rows before they hit the timeline grid.
+bool _forjaLiveCatalogRowVisible(Map<String, dynamic> row) {
+  if (row['airing'] == true || row['popular'] == true) return true;
+  final raw = (row['date'] as num?)?.toInt() ?? 0;
+  if (raw <= 0) return true;
+  final ms = raw >= 1000000000000 ? raw : raw * 1000;
+  final dt = DateTime.fromMillisecondsSinceEpoch(ms);
+  final now = DateTime.now();
+  final start = now.subtract(const Duration(hours: 6));
+  final end = now.add(const Duration(hours: 48));
+  return !dt.isBefore(start) && !dt.isAfter(end);
+}
+
 List<_StreamedMatch> _sortStreamedLiveFirst(List<_StreamedMatch> items) {
   final sorted = List<_StreamedMatch>.from(items);
   sorted.sort((a, b) {

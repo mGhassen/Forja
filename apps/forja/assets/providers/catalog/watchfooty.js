@@ -2,6 +2,14 @@ function ua() {
   return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 }
 
+function inCatalogWindow(ts, live) {
+  if (live) return true;
+  if (!ts) return false;
+  var ms = ts >= 1e12 ? ts : ts * 1000;
+  var now = Date.now();
+  return ms >= now - 6 * 3600000 && ms <= now + 48 * 3600000;
+}
+
 async function extract(ctx) {
   var action = String(ctx.action || 'catalog');
   if (action !== 'catalog') return [];
@@ -13,7 +21,12 @@ async function extract(ctx) {
   if (!listRes.ok) return [];
   var list = await listRes.json();
   if (!Array.isArray(list)) return [];
-  return list.map(function (item) {
+  return list
+    .filter(function (item) {
+      var live = item.status === 'in' || item.status === 'live';
+      return inCatalogWindow(item.timestamp ? Number(item.timestamp) : 0, live);
+    })
+    .map(function (item) {
     var mid = item.matchId;
     var title = item.title || ((item.teams && item.teams.home && item.teams.home.name) || 'Home') +
       ' vs ' + ((item.teams && item.teams.away && item.teams.away.name) || 'Away');

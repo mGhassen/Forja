@@ -335,16 +335,8 @@ ShellHeroDesktopTextLayout shellHeroDesktopTextLayout({
     );
   }
 
-  if (!fits(titleHeight, overviewBlock)) {
-    includeReadMore = false;
-    slot = slotFor(lines, includeReadMore: includeReadMore);
-    overviewBlock = metaGap + slot;
-    titleHeight = (maxHeight - baseWithoutOverview - overviewBlock).clamp(
-      minTitleHeight,
-      ShellTokens.heroTitleSlotHeightDesktop,
-    );
-  }
-
+  // Keep read-more reserve whenever overview shows — HeroOverviewText always
+  // paints Read More for truncated copy in fixed slots.
   if (!fits(titleHeight, overviewBlock)) {
     titleHeight = minTitleHeight;
     if (fits(titleHeight, overviewBlock)) {

@@ -691,7 +691,6 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
                       style: overviewStyle,
                       maxLines: layout.overviewMaxLines,
                       shrinkWrap: false,
-                      onReadMore: slide.onDetails,
                     ),
                   ),
                 ),
@@ -892,6 +891,7 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
   }
 
   Widget _buildActionRow(HubHeroSlide slide) {
+    final metrics = ShellScope.metricsOf(context);
     final policy = ShellScope.inputPolicyOf(context);
     final tvNav = policy.useFocusableMoodChips;
     final tabId = widget.tvTabId;
@@ -943,12 +943,19 @@ class _HubCinematicHeroState extends State<HubCinematicHero> {
         ],
       ],
     );
-    if (!tvNav || tabId == null) return row;
+    final body = metrics.heroActionUseFittedBox
+        ? FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: row,
+          )
+        : row;
+    if (!tvNav || tabId == null) return body;
     return DetailsHeroTvActionScope(
       tabId: tabId,
       itemCount: slide.listTarget != null ? 2 : 1,
       onFocusUp: focusHubSearch,
-      child: row,
+      child: body,
     );
   }
 

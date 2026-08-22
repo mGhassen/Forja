@@ -165,6 +165,7 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
           timeout: LiveMatchesEngine.catalogPluginTimeout,
         );
         final matches = rows
+            .where(_forjaLiveCatalogRowVisible)
             .map(_forjaLiveRowToMatch)
             .where((m) => m.id.isNotEmpty && m.title.isNotEmpty)
             .toList();
@@ -181,7 +182,6 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
             error: null,
           );
         });
-        _rebuildSportTabsFromCurrentMatches();
       } catch (e) {
         debugPrint('[LiveMatches] Forja Live ${catalog.id}: $e');
         if (!mounted || gen != _s._forjaLiveLoadGen) return;
@@ -197,6 +197,7 @@ mixin _LiveMatchesForjaLive on ConsumerState<LiveMatchesScreen> {
     }
 
     if (!mounted || gen != _s._forjaLiveLoadGen) return;
+    _rebuildSportTabsFromCurrentMatches();
     await _applyEspnScheduleMerge();
   }
 

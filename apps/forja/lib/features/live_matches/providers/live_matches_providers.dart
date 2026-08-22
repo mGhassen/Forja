@@ -179,6 +179,7 @@ _StreamedMatch _forjaLiveRowToMatch(Map<String, dynamic> j) {
 Future<List<_StreamedMatch>> _fetchForjaLiveMatches() async {
   final rows = await LiveMatchesEngine.fetchCatalog();
   return rows
+      .where(_forjaLiveCatalogRowVisible)
       .map(_forjaLiveRowToMatch)
       .where((m) => m.id.isNotEmpty && m.title.isNotEmpty)
       .toList();
