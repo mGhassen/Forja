@@ -490,11 +490,33 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   double get _probeProgress =>
       _probeTotal > 0 ? _probeChecked / _probeTotal : 0;
 
-  StreamProviderProbe? get _tryingProbe {
-    for (final probe in _probes) {
-      if (probe.status == StreamProviderProbeStatus.trying) return probe;
+  List<StreamProviderProbe> get _tryingProbes => _probes
+      .where((p) => p.status == StreamProviderProbeStatus.trying)
+      .toList(growable: false);
+
+  /// Probe list is source of truth — never pair last-write `messageNotifier`
+  /// with a single "first trying" label (parallel checks make them disagree).
+  String get _probeStatusHeadline {
+    final trying = _tryingProbes;
+    if (trying.isEmpty) return _message;
+    final probing = _message.toUpperCase().contains('PROBING');
+    final verb = probing ? 'PROBING' : 'CHECKING';
+    if (trying.length == 1) {
+      return '$verb ${trying.single.label.toUpperCase()}…';
     }
-    return null;
+    return '$verb ${trying.length} SOURCES…';
+  }
+
+  String? get _probeStatusDetail {
+    final trying = _tryingProbes;
+    if (trying.length <= 1) return null;
+    const maxNames = 3;
+    final names =
+        trying.take(maxNames).map((p) => p.label.toUpperCase()).join(' · ');
+    if (trying.length > maxNames) {
+      return '$names · +${trying.length - maxNames}';
+    }
+    return names;
   }
 
   bool _canManualCheck(StreamProviderProbe probe) {
@@ -858,7 +880,8 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
           const SizedBox(height: 16),
         ],
         Text(
-          _message,
+          _probeStatusHeadline,
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.75),
             fontSize: 13,
@@ -867,16 +890,22 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             fontFamily: 'Poppins',
           ),
         ),
-        if (_tryingProbe != null) ...[
+        if (_probeStatusDetail != null) ...[
           const SizedBox(height: 8),
-          Text(
-            _tryingProbe!.label.toUpperCase(),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.45),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 2,
-              fontFamily: 'Poppins',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              _probeStatusDetail!,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.45),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 2,
+                fontFamily: 'Poppins',
+              ),
             ),
           ),
         ],
