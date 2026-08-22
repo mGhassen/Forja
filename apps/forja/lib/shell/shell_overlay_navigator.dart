@@ -94,7 +94,8 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
         // Overlay. After pop-to-root, IgnorePointer blocks hits so the panel
         // stays painted and uncancellable — tear it down with the route.
         dismissShellOverlaySourcePanels();
-        final tabId = ShellTvFocus.currentNavTabId;
+        ShellBus.finishOverlayAndRestoreShellTab();
+        final tabId = ShellBus.activeShellTabId ?? ShellTvFocus.currentNavTabId;
         if (tabId != null && tabId.isNotEmpty) {
           unawaited(ProductAnalytics.screenTab(tabId));
         }
@@ -111,7 +112,8 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
       setState(() => _overlayHasPage = settled);
       if (!settled) {
         dismissShellOverlaySourcePanels();
-        final tabId = ShellTvFocus.currentNavTabId;
+        ShellBus.finishOverlayAndRestoreShellTab();
+        final tabId = ShellBus.activeShellTabId ?? ShellTvFocus.currentNavTabId;
         if (tabId != null && tabId.isNotEmpty) {
           unawaited(ProductAnalytics.screenTab(tabId));
         }
@@ -149,18 +151,27 @@ class _ShellOverlayNavigatorState extends State<ShellOverlayNavigator> {
   }
 }
 
-void _noteFirstOverlayPush() {
+void _noteFirstOverlayPush({String? shellTabId}) {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay == null || overlay.canPop()) return;
-  ShellBus.noteOverlayPushOrigin(ShellTvFocus.currentNavTabId);
-  ShellTvFocus.captureOverlayReturnFocus();
+  final resolved =
+      shellTabId ?? ShellBus.activeShellTabId ?? ShellTvFocus.currentNavTabId;
+  ShellBus.noteOverlayPushOrigin(resolved);
+  ShellTvFocus.captureOverlayReturnFocus(tabId: resolved);
 }
 
 /// Push [route] on the shell overlay when available; otherwise fall back to [context].
-Future<T?> pushShellRoute<T>(BuildContext context, Route<T> route) {
+///
+/// [shellTabId] — hub tab that owns this overlay (`anime`, `asian_drama`, …).
+/// When omitted, [ShellBus.activeShellTabId] from [MainScreen] is used.
+Future<T?> pushShellRoute<T>(
+  BuildContext context,
+  Route<T> route, {
+  String? shellTabId,
+}) {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay != null) {
-    _noteFirstOverlayPush();
+    _noteFirstOverlayPush(shellTabId: shellTabId);
     return overlay.push(route);
   }
   return Navigator.of(context).push(route);
@@ -170,11 +181,12 @@ Future<T?> pushReplacementShellRoute<T, TO>(
   BuildContext context,
   Route<T> route, {
   TO? result,
+  String? shellTabId,
 }) {
   final overlay = shellOverlayNavigatorKey.currentState;
   if (overlay != null) {
     if (!overlay.canPop()) {
-      _noteFirstOverlayPush();
+      _noteFirstOverlayPush(shellTabId: shellTabId);
     }
     return overlay.pushReplacement(route, result: result);
   }

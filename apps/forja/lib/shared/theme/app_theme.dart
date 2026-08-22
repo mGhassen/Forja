@@ -302,7 +302,14 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   @override
   void dispose() {
     _unregisterTvItemNode(widget.tvMeta);
-    _ownedNode?.dispose();
+    final owned = _ownedNode;
+    if (owned != null) {
+      try {
+        if (owned.hasFocus) owned.unfocus();
+      } catch (_) {}
+      owned.dispose();
+      _ownedNode = null;
+    }
     _controller.dispose();
     super.dispose();
   }

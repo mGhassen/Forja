@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
@@ -537,9 +538,11 @@ abstract final class ShellTvFocusCoordinator {
   ///
   /// Home's top bar unmounts while details is open. On pop it remounts and
   /// Flutter lands D-pad on Search / Films instead of the last catalog card.
-  static void captureOverlayReturnFocus() {
+  static void captureOverlayReturnFocus({String? tabId}) {
     if (!tvBackPolicyEnabled) return;
-    _overlayReturnTabId = ShellTvFocus.currentNavTabId ?? '';
+    final resolved =
+        tabId ?? ShellBus.activeShellTabId ?? ShellTvFocus.currentNavTabId ?? '';
+    _overlayReturnTabId = resolved;
     _overlayReturnSnapshot = memoryFor(_overlayReturnTabId);
   }
 
@@ -568,6 +571,13 @@ abstract final class ShellTvFocusCoordinator {
   ]) {
     if (!tvBackPolicyEnabled) return;
     if (tabId.isEmpty) return;
+
+    // Back from hub details often leaves Home nav focused (big icon + label)
+    // even though Anime / Asian Drama is still the selected shell tab.
+    if (ShellTvFocus.anyNavFocused || ShellTvFocus.primaryFocusIsNav) {
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
+
     final memory = snapshot ?? _tabMemory[tabId];
 
     bool landed() {

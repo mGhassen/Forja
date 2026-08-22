@@ -117,8 +117,8 @@ abstract final class ShellTvFocus {
   }
 
   /// Snapshot the shell tab's D-pad memory before overlay chrome remounts.
-  static void captureOverlayReturnFocus() =>
-      ShellTvFocusCoordinator.captureOverlayReturnFocus();
+  static void captureOverlayReturnFocus({String? tabId}) =>
+      ShellTvFocusCoordinator.captureOverlayReturnFocus(tabId: tabId);
 
   /// Restore last catalog/hero focus after details/search overlay pops.
   static void restoreOverlayReturnFocus() =>

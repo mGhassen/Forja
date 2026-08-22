@@ -40,6 +40,7 @@ Future<T?> openAsianDramaDetails<T>(BuildContext context, KdramaCard drama) {
       (_) => AsianDramaDetailsScreen(drama: drama),
       settings: const RouteSettings(name: 'asian_drama_details'),
     ),
+    shellTabId: 'asian_drama',
   );
 }
 
@@ -50,6 +51,7 @@ Future<T?> replaceAsianDramaDetails<T>(BuildContext context, KdramaCard drama) {
       (_) => AsianDramaDetailsScreen(drama: drama),
       settings: const RouteSettings(name: 'asian_drama_details'),
     ),
+    shellTabId: 'asian_drama',
   );
 }
 

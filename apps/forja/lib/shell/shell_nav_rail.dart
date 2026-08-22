@@ -863,10 +863,14 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final itemActive =
         (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
     if (widget.customIconSize != null) {
-      if (itemActive) return _pressed ? big * 0.92 : big;
+      if (itemActive && (widget.selected || _hover)) {
+        return _pressed ? big * 0.92 : big;
+      }
       return 1;
     }
-    if (itemActive) return _pressed ? big * 0.92 : big;
+    if (itemActive && (widget.selected || _hover)) {
+      return _pressed ? big * 0.92 : big;
+    }
     // TV: selected stays big, idle stays small — no rail-engage shrink cascade.
     if (policy.instantFocusChrome) {
       return widget.selected ? big : small;
@@ -954,8 +958,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final useDestinationAccent =
         policy.isInteractiveActive && widget.icon == null;
     final iconColor = useDestinationAccent
-        ? (widget.selected || active
+        ? (widget.selected
               ? destinationAccent
+              : active
+              ? ForjaShellColors.iconHover
               : ForjaShellColors.iconMuted)
         : selectedFocused
         ? Colors.white
@@ -965,8 +971,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         ? ForjaShellColors.iconHover
         : ForjaShellColors.iconMuted;
     final labelColor = useDestinationAccent
-        ? (widget.selected || active
+        ? (widget.selected
               ? destinationAccent
+              : active
+              ? ForjaShellColors.iconHover
               : ForjaShellColors.iconMuted)
         : selectedFocused
         ? Colors.white
@@ -975,8 +983,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         : active
         ? ForjaShellColors.textSecondary
         : ForjaShellColors.iconMuted;
-    final showLabel =
-        widget.alwaysShowLabel || (policy.scaleOnFocus && _focused);
+    final showLabel = widget.alwaysShowLabel ||
+        (policy.scaleOnFocus && _focused && widget.selected);
     final labelStyle = GoogleFonts.plusJakartaSans(
       color: labelColor,
       fontSize: labelFontSize,

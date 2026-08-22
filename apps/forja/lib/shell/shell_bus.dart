@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
 /// Home desktop top-bar category (Films vs TV Shows).
 enum ShellHomeCategory { films, tvShows }
@@ -156,14 +157,19 @@ class ShellBus {
     false,
   );
 
+  /// Authoritative shell tab from [MainScreen] — used when overlay routes open
+  /// so origin capture does not rely on TV focus state alone.
+  static String? activeShellTabId;
+
   /// Shell tab that was active when the first overlay route was pushed (e.g.
-  /// `asian_drama` before details). Restored after pop-to-root so nav selection
-  /// stays aligned with the hub under the overlay.
+  /// `anime` / `asian_drama` before details). Restored after pop-to-root so nav
+  /// selection stays aligned with the hub under the overlay.
   static String? _overlayShellTabId;
 
   static void noteOverlayPushOrigin(String? tabId) {
-    if (tabId == null || tabId.isEmpty) return;
-    _overlayShellTabId = tabId;
+    final resolved = tabId ?? activeShellTabId;
+    if (resolved == null || resolved.isEmpty) return;
+    _overlayShellTabId = resolved;
   }
 
   static String? takeOverlayShellTabId() {
@@ -173,6 +179,19 @@ class ShellBus {
   }
 
   static void clearOverlayShellTabId() => _overlayShellTabId = null;
+
+  /// After the overlay stack returns to root, re-select the tab that opened it
+  /// and return focus to the hub (not the Home nav item).
+  static void finishOverlayAndRestoreShellTab() {
+    final origin = takeOverlayShellTabId();
+    if (origin == null || origin.isEmpty) return;
+    if (activeShellTabId != origin) {
+      requestTab.value = origin;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ShellTvFocusCoordinator.restoreTabFocusAfterOverlayPop(origin);
+    });
+  }
 
   /// True while any fullscreen video player surface is mounted.
   /// Drives tab purge, image-cache trim, and update-toast suppression — not

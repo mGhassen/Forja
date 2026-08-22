@@ -224,18 +224,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   void _syncCurrentNavTab() {
+    ShellBus.activeShellTabId = _currentTabId;
     ShellTvFocus.currentNavTabId = _currentTabId;
-  }
-
-  void _onShellOverlayPageChanged() {
-    if (ShellBus.shellOverlayHasPage.value) return;
-    final origin = ShellBus.takeOverlayShellTabId();
-    if (origin == null) return;
-    final idx = _visibleIds.indexOf(origin);
-    if (idx < 0 || !mounted) return;
-    if (_currentTabId != origin) {
-      _selectTab(idx);
-    }
   }
 
   void _selectTab(int index) {
@@ -311,7 +301,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
     ShellBus.maskShellUnderPlayer.addListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.addListener(_onPlayerResourcePurge);
-    ShellBus.shellOverlayHasPage.addListener(_onShellOverlayPageChanged);
     MacOsShellChannel.listen(onFind: _onFindShortcut);
 
     _loadNavbarConfig();
@@ -501,8 +490,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
     ShellBus.maskShellUnderPlayer.removeListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
-    ShellBus.shellOverlayHasPage.removeListener(_onShellOverlayPageChanged);
     ShellBus.clearOverlayShellTabId();
+    ShellBus.activeShellTabId = null;
     ShellBus.clearHideGlobalNav();
     ShellBus.clearMaskShellUnderPlayer();
     MacOsShellChannel.dispose();

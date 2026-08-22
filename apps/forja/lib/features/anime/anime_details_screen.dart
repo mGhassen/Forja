@@ -42,6 +42,7 @@ Future<T?> openAnimeDetails<T>(BuildContext context, AnimeCard anime) {
       (_) => AnimeDetailsScreen(anime: anime),
       settings: const RouteSettings(name: 'anime_details'),
     ),
+    shellTabId: 'anime',
   );
 }
 

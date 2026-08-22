@@ -4303,6 +4303,9 @@ class _LiveCancellableLoadingDialogState
 
   @override
   void dispose() {
+    try {
+      if (_cancelFocus.hasFocus) _cancelFocus.unfocus();
+    } catch (_) {}
     _cancelFocus.dispose();
     super.dispose();
   }

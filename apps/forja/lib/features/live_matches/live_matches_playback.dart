@@ -42,6 +42,9 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     } finally {
       if (mounted && !cancelled) {
         closingOurselves = true;
+        try {
+          FocusManager.instance.primaryFocus?.unfocus();
+        } catch (_) {}
         final nav = Navigator.of(context, rootNavigator: true);
         if (nav.canPop()) nav.pop();
       }
@@ -664,6 +667,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       LiveMatchesEngine.engineResolveFailed();
       return;
     }
+    _releaseLiveMatchesItemFocusIfHeld();
     await IptvPtPlayerScreen.open(
       context,
       IptvPtPlayerScreen(
