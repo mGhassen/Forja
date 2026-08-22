@@ -466,10 +466,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// After [drop-buffers], VideoToolbox often logs a one-shot hw fail while
   /// re-initing — ignore those so we don't thrash into software decode.
   DateTime? _ignoreHwDecodeFailUntil;
-  /// Live `cache-pause`: socket blip / underrun pauses with buffering=false.
-  /// Hold detector 3 (silent self-pause) through this window so we do not
-  /// hard-recreate while ffmpeg reconnects and the cushion refills.
-  DateTime? _pauseRefillGraceUntil;
   final List<int> _backoffMs = const [
     500,
     1000,
@@ -520,9 +516,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// Ignore one-shot VideoToolbox / hw fails after socket blip or live-edge snap.
   static const Duration _transientHwDecodeIgnore = Duration(seconds: 8);
 
-  /// How long live Stable holds off silent-self-pause hard recovery while
-  /// `cache-pause` / ffmpeg reconnect refill after a CDN close.
-  static const Duration _pauseRefillGrace = Duration(seconds: 15);
+  /// Soft reopen when live stays paused with empty cache this long.
+  static const Duration _liveEmptyPauseReopen = Duration(seconds: 5);
 
   /// Tunables ask for ~30 s readahead. Anything far above that is almost
   /// always a live PTS discontinuity (mpv reports multi-hour "cache"), not

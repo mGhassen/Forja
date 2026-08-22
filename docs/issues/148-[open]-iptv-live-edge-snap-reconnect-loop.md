@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **18 / 18** fix · **0 / 15** acceptance |
-| **Current slice** | Pause-refill grace + live VT hold (no silent-self-pause hard loop); device smoke outstanding |
+| **Progress** | **19 / 19** fix · **0 / 15** acceptance |
+| **Current slice** | Empty pause soft-reopens at 5s (no fake working spam); device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -39,6 +39,7 @@
 | 16 | I148-T16 | Arm 8s transient hw-decode ignore on socket blip, mid-stream Buffering, and live-edge snap — stop VT one-shot → hard software recreate during refill | ✅ |
 | 17 | I148-T17 | Live Stable: 15s pause-refill grace; detector 3 never `forceHard` on cache-pause self-pause; no mid-stream `play()` fight with paused-for-cache | ✅ |
 | 18 | I148-T18 | Live Stable: hold VT / hw decode fails (no software recreate) — CDN chunk close → corrupt TS is expected; empty-cache detectors still recover dead feeds | ✅ |
+| 19 | I148-T19 | Stop fake `working` logs on empty cache; grace only while feeding/cushion; empty pause soft-reopens at 5s + Buffering chrome | ✅ |
 
 ---
 
